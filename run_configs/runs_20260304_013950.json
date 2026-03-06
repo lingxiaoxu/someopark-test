@@ -1,0 +1,22 @@
+{
+  "_comment": "Each pair runs with its own best param set from 16-param grid search. One run per pair.",
+  "start_date": "2024-12-01",
+  "end_date": "auto_minus_30d",
+  "runs": [
+    { "label": "best_MSCI_LII",   "param_set": "default",          "pairs": [["MSCI", "LII"]]   },
+    { "label": "best_D_MCHP",     "param_set": "fast_signal",      "pairs": [["D", "MCHP"]]     },
+    { "label": "best_DG_MOS",     "param_set": "deep_dislocation", "pairs": [["DG", "MOS"]]     },
+    { "label": "best_ESS_EXPD",   "param_set": "aggressive",       "pairs": [["ESS", "EXPD"]]   },
+    { "label": "best_ACGL_UHS",   "param_set": "patient_hold",     "pairs": [["ACGL", "UHS"]]   },
+    { "label": "best_AAPL_META",  "param_set": "long_z_short_v",   "pairs": [["AAPL", "META"]]  },
+    { "label": "best_YUM_MCD",    "param_set": "long_z_short_v",   "pairs": [["YUM", "MCD"]]    },
+    { "label": "best_GS_ALLY",    "param_set": "long_z_short_v",   "pairs": [["GS", "ALLY"]]    },
+    { "label": "best_CL_USO",     "param_set": "patient_hold",     "pairs": [["CL", "USO"]]     },
+    { "label": "best_ALGN_UAL",   "param_set": "short_z_long_v",   "pairs": [["ALGN", "UAL"]]   },
+    { "label": "best_ARES_CG",    "param_set": "fast_signal",      "pairs": [["ARES", "CG"]]    },
+    { "label": "best_AMG_BEN",    "param_set": "fast_signal",      "pairs": [["AMG", "BEN"]]    },
+    { "label": "best_LYFT_UBER",  "param_set": "short_z_long_v",   "pairs": [["LYFT", "UBER"]]  },
+    { "label": "best_TW_CME",     "param_set": "aggressive",       "pairs": [["TW", "CME"]]     },
+    { "label": "best_CART_DASH",  "param_set": "vol_adaptive",     "pairs": [["CART", "DASH"]]  }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "_comment": "Run config for PortfolioStrategyRuns.py. Edit pairs and param_set freely.",
+  "start_date": "2024-12-01",
+  "end_date": "auto_minus_30d",
+  "runs": [
+    {
+      "label": "all15_default",
+      "param_set": "default",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "set1_aggressive",
+      "param_set": "aggressive",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"]
+      ]
+    },
+    {
+      "label": "set2_aggressive",
+      "param_set": "aggressive",
+      "pairs": [
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"]
+      ]
+    },
+    {
+      "label": "set3_aggressive",
+      "param_set": "aggressive",
+      "pairs": [
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "set1_conservative",
+      "param_set": "conservative",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"]
+      ]
+    },
+    {
+      "label": "set2_conservative",
+      "param_set": "conservative",
+      "pairs": [
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"]
+      ]
+    },
+    {
+      "label": "set3_conservative",
+      "param_set": "conservative",
+      "pairs": [
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "set1_fast_signal",
+      "param_set": "fast_signal",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"]
+      ]
+    },
+    {
+      "label": "set2_fast_signal",
+      "param_set": "fast_signal",
+      "pairs": [
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"]
+      ]
+    },
+    {
+      "label": "set3_fast_signal",
+      "param_set": "fast_signal",
+      "pairs": [
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    }
+  ]
+}

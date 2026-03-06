@@ -1,0 +1,29 @@
+{
+  "_comment": "Forward 30-day window: warmup from 2024-12-01, trading only from 2026-02-03 to 2026-02-27. Per-pair best params.",
+  "start_date": "2024-12-01",
+  "end_date": "2026-02-27",
+  "trade_start_date": "2026-02-03",
+  "runs": [
+    {
+      "label": "forward30d_best_per_pair",
+      "param_set": "default",
+      "pairs": [
+        ["MSCI",  "LII",   "default"],
+        ["D",     "MCHP",  "fast_signal"],
+        ["DG",    "MOS",   "deep_dislocation"],
+        ["ESS",   "EXPD",  "aggressive"],
+        ["ACGL",  "UHS",   "patient_hold"],
+        ["AAPL",  "META",  "long_z_short_v"],
+        ["YUM",   "MCD",   "long_z_short_v"],
+        ["GS",    "ALLY",  "long_z_short_v"],
+        ["CL",    "USO",   "patient_hold"],
+        ["ALGN",  "UAL",   "short_z_long_v"],
+        ["ARES",  "CG",    "fast_signal"],
+        ["AMG",   "BEN",   "fast_signal"],
+        ["LYFT",  "UBER",  "short_z_long_v"],
+        ["TW",    "CME",   "aggressive"],
+        ["CART",  "DASH",  "vol_adaptive"]
+      ]
+    }
+  ]
+}

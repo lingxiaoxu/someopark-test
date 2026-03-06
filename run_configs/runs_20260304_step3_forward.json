@@ -1,0 +1,84 @@
+{
+  "_comment": "Step 3 — Forward/validation: same 14 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=2026-02-03 (first weekday after backtest end). Auto-generated 2026-03-04 15:31.",
+  "start_date": "2024-10-01",
+  "end_date": "auto",
+  "trade_start_date": "2026-01-02",
+  "runs": [
+    {
+      "label": "step3_forward",
+      "param_set": "default",
+      "pairs": [
+        [
+          "MSCI",
+          "LII",
+          "fast_reentry"
+        ],
+        [
+          "D",
+          "MCHP",
+          "conservative_no_leverage"
+        ],
+        [
+          "DG",
+          "MOS",
+          "slow_signal"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "fast_signal"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "slow_signal"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "long_z_short_v"
+        ],
+        [
+          "CL",
+          "USO",
+          "conservative_no_leverage"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "ARES",
+          "CG",
+          "low_vol_specialist"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "high_turnover"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "conservative_no_leverage"
+        ],
+        [
+          "TW",
+          "CME",
+          "conservative_no_leverage"
+        ],
+        [
+          "CART",
+          "DASH",
+          "static_threshold"
+        ]
+      ]
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "_comment": "Step 2 — Backtest: 14 selected pairs in ONE combined portfolio run. Each pair entry [s1, s2, param_set] uses its own best param_set from Step 1. Auto-generated 2026-03-04 15:31. Criteria: pair_pnl>0, trades>=3, DSR>0.5 (N=32 trials).",
+  "start_date": "2024-10-01",
+  "end_date": "2025-12-31",
+  "runs": [
+    {
+      "label": "step2_best_per_pair",
+      "param_set": "default",
+      "pairs": [
+        [
+          "MSCI",
+          "LII",
+          "fast_reentry"
+        ],
+        [
+          "D",
+          "MCHP",
+          "conservative_no_leverage"
+        ],
+        [
+          "DG",
+          "MOS",
+          "slow_signal"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "fast_signal"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "slow_signal"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "long_z_short_v"
+        ],
+        [
+          "CL",
+          "USO",
+          "conservative_no_leverage"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "ARES",
+          "CG",
+          "low_vol_specialist"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "high_turnover"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "conservative_no_leverage"
+        ],
+        [
+          "TW",
+          "CME",
+          "conservative_no_leverage"
+        ],
+        [
+          "CART",
+          "DASH",
+          "static_threshold"
+        ]
+      ]
+    }
+  ]
+}

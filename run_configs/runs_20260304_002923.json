@@ -1,0 +1,151 @@
+{
+  "_comment": "Full run: all 15 pairs x 16 param sets = 16 runs. End date auto-set to 30 days before today.",
+  "start_date": "2024-12-01",
+  "end_date": "auto_minus_30d",
+  "runs": [
+    {
+      "label": "all15_default",
+      "param_set": "default",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_aggressive",
+      "param_set": "aggressive",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_conservative",
+      "param_set": "conservative",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_fast_signal",
+      "param_set": "fast_signal",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_slow_signal",
+      "param_set": "slow_signal",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_tight_exit",
+      "param_set": "tight_exit",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_patient_hold",
+      "param_set": "patient_hold",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_vol_adaptive",
+      "param_set": "vol_adaptive",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_scalping",
+      "param_set": "scalping",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_long_z_short_v",
+      "param_set": "long_z_short_v",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_short_z_long_v",
+      "param_set": "short_z_long_v",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_no_leverage_patient",
+      "param_set": "no_leverage_patient",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_flat_threshold",
+      "param_set": "flat_threshold",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_deep_dislocation",
+      "param_set": "deep_dislocation",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_high_turnover_tight_risk",
+      "param_set": "high_turnover_tight_risk",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_symmetric_thresholds",
+      "param_set": "symmetric_thresholds",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    }
+  ]
+}
