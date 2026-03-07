@@ -433,14 +433,20 @@ def load_config(config_path):
     start_date = cfg.get('start_date', '2024-12-01')
 
     raw_end = cfg.get('end_date', 'auto_minus_30d')
-    if raw_end == 'auto_minus_30d':
-        end_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+    if raw_end.startswith('auto_minus_') and raw_end[len('auto_minus_'):].rstrip('d').isdigit():
+        days = int(raw_end[len('auto_minus_'):].rstrip('d'))
+        end_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
     elif raw_end == 'auto':
         end_date = datetime.now().strftime('%Y-%m-%d')
     else:
         end_date = raw_end
 
-    trade_start_date = cfg.get('trade_start_date')  # optional — None means trade from day 1
+    raw_tsd = cfg.get('trade_start_date')
+    if raw_tsd and raw_tsd.startswith('auto_minus_') and raw_tsd[len('auto_minus_'):].rstrip('d').isdigit():
+        days = int(raw_tsd[len('auto_minus_'):].rstrip('d'))
+        trade_start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
+    else:
+        trade_start_date = raw_tsd
 
     runs = cfg.get('runs', [])
     if not runs:

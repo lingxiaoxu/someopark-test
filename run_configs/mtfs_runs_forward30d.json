@@ -1,0 +1,27 @@
+{
+  "_comment": "MTFS Forward ~30-trading-day window: warmup from start_date, trading only from trade_start_date to end_date. Per-pair best params from most recent Step 2 selection. Update pairs/param_sets here after running MTFSUpdateConfigs.py.",
+  "start_date": "2024-12-01",
+  "end_date": "auto",
+  "trade_start_date": "auto_minus_30d",
+  "runs": [
+    {
+      "label": "mtfs_forward30d_best_per_pair",
+      "param_set": "default",
+      "pairs": [
+        ["D",    "MCHP",  "trend_leverage"],
+        ["DG",   "MOS",   "beta_neutral"],
+        ["ESS",  "EXPD",  "no_reversal_protection"],
+        ["ACGL", "UHS",   "short_term_tilt"],
+        ["AAPL", "META",  "sensitive_reversal"],
+        ["GS",   "ALLY",  "aggressive"],
+        ["CL",   "USO",   "slow_rebalance"],
+        ["ALGN", "UAL",   "no_skip_month"],
+        ["ARES", "CG",    "aggressive"],
+        ["AMG",  "BEN",   "aggressive"],
+        ["LYFT", "UBER",  "aggressive"],
+        ["TW",   "CME",   "weekly_aligned_windows"],
+        ["CART", "DASH",  "no_trend_filter"]
+      ]
+    }
+  ]
+}

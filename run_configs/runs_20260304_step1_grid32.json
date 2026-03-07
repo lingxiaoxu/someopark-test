@@ -1,7 +1,7 @@
 {
-  "_comment": "Step 1 — Grid search: 15 pairs x 32 param sets = 32 runs. Each run uses all 15 pairs with the same param_set. Run update_configs_from_grid.py after this to select best param_set per pair using Deflated Sharpe Ratio (DSR) correction for 32 trials.",
+  "_comment": "Step 1 \u2014 Grid search: 15 pairs x 32 param sets = 32 runs. Each run uses all 15 pairs with the same param_set. Run MRPTUpdateConfigs.py after this to select best param_set per pair using Deflated Sharpe Ratio (DSR) correction for 32 trials.",
   "start_date": "2024-01-02",
-  "end_date": "2026-03-04",
+  "end_date": "auto_minus_70d",
   "runs": [
     {
       "label": "all15_default",

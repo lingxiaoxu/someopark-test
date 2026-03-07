@@ -1,6 +1,6 @@
 {
-  "_comment": "Step 3 \u2014 Forward/validation: same 14 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=2026-02-03 (first weekday after backtest end). Auto-generated 2026-03-04 15:31.",
-  "start_date": "2024-10-01",
+  "_comment": "Step 3 \u2014 Forward/validation: same 13 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=auto_minus_70d (forward window start). Auto-generated 2026-03-07 23:27.",
+  "start_date": "2024-09-07",
   "end_date": "auto",
   "trade_start_date": "auto_minus_70d",
   "runs": [
@@ -9,74 +9,69 @@
       "param_set": "default",
       "pairs": [
         [
-          "MSCI",
-          "LII",
-          "fast_reentry"
-        ],
-        [
           "D",
           "MCHP",
-          "conservative_no_leverage"
+          "trend_leverage"
         ],
         [
           "DG",
           "MOS",
-          "slow_signal"
+          "beta_neutral"
         ],
         [
           "ESS",
           "EXPD",
-          "fast_signal"
+          "no_reversal_protection"
         ],
         [
           "ACGL",
           "UHS",
-          "deep_entry_quick_exit"
+          "short_term_tilt"
         ],
         [
-          "YUM",
-          "MCD",
-          "slow_signal"
+          "AAPL",
+          "META",
+          "sensitive_reversal"
         ],
         [
           "GS",
           "ALLY",
-          "long_z_short_v"
+          "aggressive"
         ],
         [
           "CL",
           "USO",
-          "conservative_no_leverage"
+          "slow_rebalance"
         ],
         [
           "ALGN",
           "UAL",
-          "fast_signal_tight_stop"
+          "no_skip_month"
         ],
         [
           "ARES",
           "CG",
-          "low_vol_specialist"
+          "aggressive"
         ],
         [
           "AMG",
           "BEN",
-          "high_turnover"
+          "aggressive"
         ],
         [
           "LYFT",
           "UBER",
-          "conservative_no_leverage"
+          "aggressive"
         ],
         [
           "TW",
           "CME",
-          "conservative_no_leverage"
+          "weekly_aligned_windows"
         ],
         [
           "CART",
           "DASH",
-          "static_threshold"
+          "no_trend_filter"
         ]
       ]
     }

@@ -1,0 +1,97 @@
+{
+  "_comment": "MTFS (Momentum Trend Following Strategy) run config. Pairs are pre-ranked: stock_1=winner, stock_2=loser.",
+  "start_date": "2024-12-01",
+  "end_date": "auto_minus_30d",
+  "runs": [
+    {
+      "label": "all15_default",
+      "param_set": "default",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_aggressive",
+      "param_set": "aggressive",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_conservative",
+      "param_set": "conservative",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_no_trend_filter",
+      "param_set": "no_trend_filter",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_raw_momentum",
+      "param_set": "raw_momentum",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_short_term_tilt",
+      "param_set": "short_term_tilt",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_long_term_tilt",
+      "param_set": "long_term_tilt",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_sensitive_reversal",
+      "param_set": "sensitive_reversal",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_no_reversal_protection",
+      "param_set": "no_reversal_protection",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    },
+    {
+      "label": "all15_beta_neutral",
+      "param_set": "beta_neutral",
+      "pairs": [
+        ["MSCI", "LII"], ["D", "MCHP"], ["DG", "MOS"], ["ESS", "EXPD"], ["ACGL", "UHS"],
+        ["AAPL", "META"], ["YUM", "MCD"], ["GS", "ALLY"], ["CL", "USO"], ["ALGN", "UAL"],
+        ["ARES", "CG"], ["AMG", "BEN"], ["LYFT", "UBER"], ["TW", "CME"], ["CART", "DASH"]
+      ]
+    }
+  ]
+}

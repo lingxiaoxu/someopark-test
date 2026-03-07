@@ -1964,3 +1964,816 @@ class PortfolioConstruct:
         # print(f"End of function. volatilities_in_window for {pair_key}: {context.portfolio.volatilities_in_window[pair_key]}")
         return context.portfolio.normalized_volatility, context.execution.entry_z, context.execution.exit_z
 
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MTFS (Momentum Trend Following Strategy) Classes
+# These classes are additive — existing MRPT classes above are NOT modified.
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class MomentumSignal:
+    """Computes multi-window momentum scores, VAMS, trend confirmation,
+    and trend-reversal detection for a single stock."""
+
+    # Default lookback windows (trading days)
+    DEFAULT_WINDOWS = [6, 12, 30, 60, 120, 150]
+    # Default weights for composite scoring (tilt toward medium-term)
+    DEFAULT_WEIGHTS = [0.10, 0.15, 0.20, 0.20, 0.20, 0.15]
+    # Skip most-recent 21 trading days for windows >= this threshold
+    SKIP_THRESHOLD = 60
+    SKIP_DAYS = 21
+    # SMA periods for trend confirmation
+    SMA_SHORT = 50
+    SMA_LONG = 200
+
+    def __init__(self, windows=None, weights=None, skip_days=None):
+        self.windows = windows or self.DEFAULT_WINDOWS
+        self.weights = weights or self.DEFAULT_WEIGHTS
+        self.skip_days = skip_days if skip_days is not None else self.SKIP_DAYS
+        if len(self.windows) != len(self.weights):
+            raise ValueError("windows and weights must have the same length")
+
+    # ── single-stock helpers ──────────────────────────────────────────────
+
+    def compute_return(self, prices, window):
+        """Raw return over *window* trading days with optional skip-month.
+        prices: pd.Series indexed by date, sorted ascending.
+        Returns scalar float or np.nan if insufficient data."""
+        skip = self.skip_days if window >= self.SKIP_THRESHOLD else 0
+        required = window + skip
+        if len(prices) < required + 1:
+            return np.nan
+        end_price = prices.iloc[-(1 + skip)] if skip > 0 else prices.iloc[-1]
+        start_price = prices.iloc[-(1 + window)]
+        if start_price == 0:
+            return np.nan
+        return (end_price / start_price) - 1.0
+
+    def compute_realized_vol(self, prices, window):
+        """Annualised realized volatility over *window* days."""
+        if len(prices) < window + 1:
+            return np.nan
+        daily_ret = prices.pct_change().dropna().iloc[-window:]
+        if len(daily_ret) < 2:
+            return np.nan
+        return daily_ret.std() * np.sqrt(252)
+
+    def compute_vams(self, prices, window):
+        """Volatility-Adjusted Momentum Score for one window."""
+        ret = self.compute_return(prices, window)
+        vol = self.compute_realized_vol(prices, window)
+        if np.isnan(ret) or np.isnan(vol) or vol == 0:
+            return np.nan
+        return ret / vol
+
+    def compute_sma(self, prices, period):
+        """Simple moving average of the last *period* prices."""
+        if len(prices) < period:
+            return np.nan
+        return prices.iloc[-period:].mean()
+
+    # ── composite scoring ─────────────────────────────────────────────────
+
+    def composite_raw_momentum(self, prices):
+        """Weighted average of raw returns across all windows."""
+        scores = []
+        for w, wt in zip(self.windows, self.weights):
+            r = self.compute_return(prices, w)
+            if np.isnan(r):
+                return np.nan
+            scores.append(r * wt)
+        return sum(scores)
+
+    def composite_vams(self, prices):
+        """Weighted average of VAMS across all windows."""
+        scores = []
+        for w, wt in zip(self.windows, self.weights):
+            v = self.compute_vams(prices, w)
+            if np.isnan(v):
+                return np.nan
+            scores.append(v * wt)
+        return sum(scores)
+
+    def per_window_returns(self, prices):
+        """Dict of {window: raw_return} for all windows."""
+        return {w: self.compute_return(prices, w) for w in self.windows}
+
+    def per_window_vams(self, prices):
+        """Dict of {window: vams} for all windows."""
+        return {w: self.compute_vams(prices, w) for w in self.windows}
+
+    # ── trend confirmation ────────────────────────────────────────────────
+
+    def trend_confirmed_long(self, prices):
+        """True if Price > SMA_short AND SMA_short > SMA_long."""
+        sma_s = self.compute_sma(prices, self.SMA_SHORT)
+        sma_l = self.compute_sma(prices, self.SMA_LONG)
+        if np.isnan(sma_s) or np.isnan(sma_l):
+            return False
+        return prices.iloc[-1] > sma_s and sma_s > sma_l
+
+    def trend_confirmed_short(self, prices):
+        """True if Price < SMA_short AND SMA_short < SMA_long."""
+        sma_s = self.compute_sma(prices, self.SMA_SHORT)
+        sma_l = self.compute_sma(prices, self.SMA_LONG)
+        if np.isnan(sma_s) or np.isnan(sma_l):
+            return False
+        return prices.iloc[-1] < sma_s and sma_s < sma_l
+
+    # ── trend reversal detection ──────────────────────────────────────────
+
+    def momentum_decay_detected(self, prices, short_window=10, long_window=90):
+        """True if short-term momentum has flipped sign relative to long-term.
+        This is the primary momentum crash early-warning signal."""
+        r_short = self.compute_return(prices, short_window)
+        r_long = self.compute_return(prices, long_window)
+        if np.isnan(r_short) or np.isnan(r_long):
+            return False
+        # Decay: long-term is positive but short-term has turned negative, or vice versa
+        return (r_long > 0 and r_short < 0) or (r_long < 0 and r_short > 0)
+
+    def sma_crossover_reversal(self, prices, lookback=5):
+        """True if SMA_short crossed below SMA_long in the last *lookback* days
+        (bearish for longs) OR crossed above (bearish for shorts).
+        Returns (reversal_detected: bool, direction: str or None)."""
+        if len(prices) < max(self.SMA_SHORT, self.SMA_LONG) + lookback:
+            return False, None
+        sma_s = prices.rolling(self.SMA_SHORT).mean()
+        sma_l = prices.rolling(self.SMA_LONG).mean()
+        recent_diff = (sma_s - sma_l).dropna().iloc[-lookback:]
+        if len(recent_diff) < 2:
+            return False, None
+        # Check for sign change in the recent window
+        signs = np.sign(recent_diff.values)
+        for i in range(1, len(signs)):
+            if signs[i] != signs[i - 1] and signs[i - 1] != 0:
+                direction = 'bearish' if signs[i] < 0 else 'bullish'
+                return True, direction
+        return False, None
+
+    def momentum_consistency(self, prices):
+        """Returns a 0-1 score measuring how consistent momentum is across windows.
+        1 = all windows agree on direction, 0 = maximum disagreement."""
+        returns = self.per_window_returns(prices)
+        valid = [r for r in returns.values() if not np.isnan(r)]
+        if not valid:
+            return 0.0
+        positive_count = sum(1 for r in valid if r > 0)
+        negative_count = sum(1 for r in valid if r < 0)
+        return max(positive_count, negative_count) / len(valid)
+
+    def trailing_factor_volatility(self, daily_pnl_series, window=60):
+        """Annualised volatility of recent strategy daily returns.
+        Used for momentum crash filter: if > 90th percentile of history, scale down."""
+        if len(daily_pnl_series) < window:
+            return np.nan
+        return np.std(daily_pnl_series[-window:]) * np.sqrt(252)
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# MTFS Statistical Test Classes
+# Mirrors the ADF / Half_Life / Hurst / KPSS pattern used in MRPT,
+# but tests momentum-specific properties instead of cointegration.
+# ════════════════════════════════════════════════════════════════════════════
+
+class MomentumDecayTest:
+    """Detects short-term vs long-term momentum divergence.
+    Primary trend-reversal early-warning signal.
+    Analogous to Half_Life — both measure how quickly a regime is changing."""
+
+    def __init__(self):
+        self.short_window = 6
+        self.long_window = 60
+        self.short_return = None
+        self.long_return = None
+        self.decay_ratio = None      # short_ret / long_ret  (< 0 = divergence)
+        self.is_decaying = None
+        self.look_back = 60
+
+    def apply(self, prices, ms):
+        """prices: pd.Series, ms: MomentumSignal instance."""
+        self.short_return = ms.compute_return(prices, self.short_window)
+        self.long_return = ms.compute_return(prices, self.long_window)
+        if np.isnan(self.short_return) or np.isnan(self.long_return):
+            self.decay_ratio = np.nan
+            self.is_decaying = None
+            return
+        if self.long_return == 0:
+            self.decay_ratio = 0.0
+        else:
+            self.decay_ratio = self.short_return / self.long_return
+        # Decay: long positive but short negative, or vice versa
+        self.is_decaying = (self.long_return > 0 and self.short_return < 0) or \
+                           (self.long_return < 0 and self.short_return > 0)
+
+    def use(self):
+        """True if momentum is NOT decaying (safe to hold)."""
+        if self.is_decaying is None:
+            return False
+        return not self.is_decaying
+
+
+class TrendStrengthTest:
+    """ADX-like directional strength measure using rolling returns.
+    High value = strong trend, low value = choppy / range-bound.
+    Analogous to Hurst — both characterise the nature of the time series."""
+
+    def __init__(self):
+        self.look_back = 30
+        self.strength_min = 0.3    # minimum to consider trend tradeable
+        self.strength_max = 1.0
+        self.trend_strength = None
+        self.avg_abs_daily_return = None
+        self.cumulative_return = None
+
+    def apply(self, prices):
+        """Efficiency ratio: |cum_return| / sum(|daily_returns|).
+        1.0 = perfectly straight trend, 0.0 = pure noise."""
+        if len(prices) < self.look_back + 1:
+            self.trend_strength = np.nan
+            return
+        recent = prices.iloc[-(self.look_back + 1):]
+        daily_ret = recent.pct_change().dropna()
+        self.cumulative_return = (recent.iloc[-1] / recent.iloc[0]) - 1.0
+        sum_abs = daily_ret.abs().sum()
+        self.avg_abs_daily_return = daily_ret.abs().mean()
+        if sum_abs == 0:
+            self.trend_strength = 0.0
+        else:
+            self.trend_strength = abs(self.cumulative_return) / sum_abs
+
+    def use(self):
+        if self.trend_strength is None or np.isnan(self.trend_strength):
+            return False
+        return self.trend_strength >= self.strength_min
+
+
+class MomentumConsistencyTest:
+    """Measures cross-window directional agreement.
+    Analogous to ADF — both are pass/fail gating tests for entry."""
+
+    def __init__(self):
+        self.consistency = None
+        self.positive_windows = None
+        self.negative_windows = None
+        self.total_windows = None
+        self.consistency_min = 0.6   # at least 60% windows must agree
+
+    def apply(self, prices, ms):
+        """ms: MomentumSignal instance."""
+        returns = ms.per_window_returns(prices)
+        valid = {w: r for w, r in returns.items() if not np.isnan(r)}
+        self.total_windows = len(valid)
+        if self.total_windows == 0:
+            self.consistency = 0.0
+            self.positive_windows = 0
+            self.negative_windows = 0
+            return
+        self.positive_windows = sum(1 for r in valid.values() if r > 0)
+        self.negative_windows = sum(1 for r in valid.values() if r < 0)
+        self.consistency = max(self.positive_windows, self.negative_windows) / self.total_windows
+
+    def use(self):
+        if self.consistency is None:
+            return False
+        return self.consistency >= self.consistency_min
+
+
+class VolatilityRegimeTest:
+    """Tests whether current realized vol is in a normal or crash regime.
+    Analogous to KPSS — both characterise the current regime state."""
+
+    def __init__(self):
+        self.look_back = 60
+        self.current_vol = None          # annualised realized vol
+        self.vol_percentile = None       # percentile rank vs full history
+        self.crash_threshold = 0.90      # vol > 90th pctl = crash regime
+        self.is_crash_regime = None
+
+    def apply(self, prices):
+        if len(prices) < self.look_back + 1:
+            self.current_vol = np.nan
+            self.vol_percentile = np.nan
+            self.is_crash_regime = None
+            return
+        daily_ret = prices.pct_change().dropna()
+        self.current_vol = daily_ret.iloc[-self.look_back:].std() * np.sqrt(252)
+        # Rolling vol history for percentile
+        if len(daily_ret) >= self.look_back * 2:
+            rolling_vol = daily_ret.rolling(self.look_back).std().dropna() * np.sqrt(252)
+            self.vol_percentile = (rolling_vol < self.current_vol).mean()
+        else:
+            self.vol_percentile = 0.5  # neutral if not enough history
+        self.is_crash_regime = self.vol_percentile > self.crash_threshold
+
+    def use(self):
+        """True if NOT in crash regime (safe to trade)."""
+        if self.is_crash_regime is None:
+            return False
+        return not self.is_crash_regime
+
+
+class SMACrossoverTest:
+    """Tests SMA crossover status for trend confirmation / reversal.
+    Records the current SMA gap and recent crossover events."""
+
+    def __init__(self):
+        self.sma_short_period = 50
+        self.sma_long_period = 200
+        self.crossover_lookback = 5
+        self.sma_short = None
+        self.sma_long = None
+        self.sma_gap = None              # (sma_short - sma_long) / price
+        self.crossover_detected = None
+        self.crossover_direction = None  # 'bullish' or 'bearish'
+
+    def apply(self, prices, ms):
+        if len(prices) < self.sma_long_period:
+            self.sma_short = np.nan
+            self.sma_long = np.nan
+            self.sma_gap = np.nan
+            self.crossover_detected = None
+            self.crossover_direction = None
+            return
+        self.sma_short = ms.compute_sma(prices, self.sma_short_period)
+        self.sma_long = ms.compute_sma(prices, self.sma_long_period)
+        current_price = prices.iloc[-1]
+        if current_price != 0:
+            self.sma_gap = (self.sma_short - self.sma_long) / current_price
+        else:
+            self.sma_gap = 0.0
+        self.crossover_detected, self.crossover_direction = \
+            ms.sma_crossover_reversal(prices, self.crossover_lookback)
+
+    def use(self):
+        """True if trend alignment is bullish (SMA_short > SMA_long)."""
+        if self.sma_gap is None or np.isnan(self.sma_gap):
+            return False
+        return self.sma_gap > 0
+
+
+class MTFSExecution:
+    """Execution parameters specific to Momentum Trend Following Strategy.
+    Analogous to the MRPT Execution class but with momentum-specific params."""
+
+    def __init__(self):
+        # ── Momentum windows & scoring ────────────────────────────────────
+        self.momentum_windows = [6, 12, 30, 60, 120, 150]
+        self.momentum_weights = [0.20, 0.20, 0.20, 0.15, 0.15, 0.10]
+        self.skip_days = 21  # skip-month for windows >= 60
+        self.use_vams = True  # volatility-adjusted momentum scoring
+
+        # ── Trend confirmation ────────────────────────────────────────────
+        self.sma_short = 20
+        self.sma_long = 50
+        self.require_trend_confirmation = True  # gate opens on SMA alignment
+
+        # ── Momentum entry/exit thresholds ────────────────────────────────
+        # Composite momentum score must exceed this to open a position.
+        # For the long stock: composite > entry_momentum_threshold
+        # For the short stock: composite < -entry_momentum_threshold
+        self.entry_momentum_threshold = 0.0   # 0 means always enter (rely on ranking)
+        self.exit_momentum_decay_threshold = 0.5  # consistency < this triggers exit
+
+        # ── Trend reversal thresholds ─────────────────────────────────────
+        self.reversal_sma_lookback = 3       # days to check for SMA crossover
+        self.momentum_decay_short_window = 5
+        self.momentum_decay_long_window = 30
+        self.exit_on_reversal = True         # close if SMA crossover reversal detected
+        self.exit_on_momentum_decay = True   # close if short/long momentum diverge
+
+        # ── Volatility scaling (portfolio-level crash filter) ─────────────
+        self.target_annual_vol = 0.10        # 10% target portfolio volatility
+        self.vol_scale_window = 40           # trailing days for realized vol
+        self.max_vol_scale_factor = 1.5      # cap leverage from vol scaling
+        self.crash_vol_percentile = 0.85     # if trailing vol > this percentile, reduce
+        self.crash_scale_factor = 0.20       # scale to 20% during crash regime
+
+        # ── Position sizing & leverage ────────────────────────────────────
+        self.amplifier = 2
+        self.use_vol_weighted_sizing = False  # True = inverse-vol weight within pair
+
+        # ── Hedge ratio (pair dollar-neutrality) ──────────────────────────
+        self.hedge_method = 'dollar_neutral'  # 'dollar_neutral' | 'beta_neutral' | 'kalman'
+        self.hedge_lag = 1
+
+        # ── Stop loss (analogous to MRPT) ─────────────────────────────────
+        self.volatility_stop_loss_multiplier = 1.5
+        self.max_holding_period = 10         # ~2 weeks for momentum
+        self.cooling_off_period = 3
+        self.pair_stop_loss_pct = 0.03       # -3% per pair
+        self.price_level_stop_loss = {}
+        self.stop_loss_history = {}
+
+        # ── Rebalancing ───────────────────────────────────────────────────
+        self.rebalance_frequency = 10        # trading days between full rebalances
+
+        # ── Lookback for spread/vol (reused from MRPT for stop-loss calcs) ─
+        self.mean_back = 20
+        self.std_back = 20
+        self.v_back = 20
+
+        # ── Dynamic threshold bounds (analogous to MRPT) ─────────────────
+        self.volatility_stop_loss_level = None
+        self.price_stop_loss_level = None
+
+
+class MTFSPortfolioConstruct:
+    """Pair construction and hedge-ratio computation for MTFS.
+    Handles dollar-neutral pairing, volatility-weighted sizing,
+    and dynamic momentum-based entry/exit thresholds."""
+
+    def __init__(self, constant=1):
+        self.constant = constant
+        self.momentum_signal = MomentumSignal()
+
+    def compute_pair_hedge_ratio(self, stock_1_prices, stock_2_prices, method='dollar_neutral'):
+        """Compute hedge ratio for a momentum pair.
+
+        Methods:
+            'dollar_neutral': hedge = price_1 / price_2 (equal dollar allocation)
+            'beta_neutral':   hedge via rolling beta regression
+            'kalman':         Kalman filter (same as MRPT)
+        """
+        if method == 'dollar_neutral':
+            p1 = stock_1_prices.iloc[-1]
+            p2 = stock_2_prices.iloc[-1]
+            if p2 == 0:
+                return 1.0
+            return p1 / p2
+
+        elif method == 'beta_neutral':
+            # Rolling beta: cov(r1, r2) / var(r2)
+            r1 = stock_1_prices.pct_change().dropna()
+            r2 = stock_2_prices.pct_change().dropna()
+            window = min(60, len(r1), len(r2))
+            if window < 10:
+                return stock_1_prices.iloc[-1] / stock_2_prices.iloc[-1]
+            r1_w = r1.iloc[-window:]
+            r2_w = r2.iloc[-window:]
+            cov = np.cov(r1_w, r2_w)[0, 1]
+            var = np.var(r2_w)
+            if var == 0:
+                return stock_1_prices.iloc[-1] / stock_2_prices.iloc[-1]
+            return cov / var
+
+        elif method == 'kalman':
+            # Reuse the MRPT Kalman filter approach
+            return PortfolioConstruct(constant=1).hedge_ratio(stock_1_prices, stock_2_prices)
+
+        else:
+            raise ValueError(f"Unknown hedge method: {method}")
+
+    def compute_momentum_scores(self, prices_dict):
+        """Compute composite momentum scores for all stocks.
+
+        Args:
+            prices_dict: dict of {symbol: pd.Series of prices}
+
+        Returns:
+            dict of {symbol: {'composite_raw': float, 'composite_vams': float,
+                              'per_window': dict, 'consistency': float,
+                              'trend_long': bool, 'trend_short': bool}}
+        """
+        scores = {}
+        for symbol, prices in prices_dict.items():
+            composite_raw = self.momentum_signal.composite_raw_momentum(prices)
+            composite_vams = self.momentum_signal.composite_vams(prices)
+            per_window = self.momentum_signal.per_window_returns(prices)
+            consistency = self.momentum_signal.momentum_consistency(prices)
+            trend_long = self.momentum_signal.trend_confirmed_long(prices)
+            trend_short = self.momentum_signal.trend_confirmed_short(prices)
+            scores[symbol] = {
+                'composite_raw': composite_raw,
+                'composite_vams': composite_vams,
+                'per_window': per_window,
+                'consistency': consistency,
+                'trend_long': trend_long,
+                'trend_short': trend_short,
+            }
+        return scores
+
+    def compute_vol_scale_factor(self, daily_pnl_history, execution):
+        """Portfolio-level volatility scaling factor.
+        Implements Barroso & Santa-Clara (2015) vol-targeting.
+
+        Returns a multiplier in [crash_scale_factor, max_vol_scale_factor]."""
+        if len(daily_pnl_history) < execution.vol_scale_window:
+            return 1.0  # not enough history yet
+
+        pnl_values = [v for _, v in daily_pnl_history]
+        recent_pnl = pnl_values[-execution.vol_scale_window:]
+        realized_vol = np.std(recent_pnl) * np.sqrt(252)
+
+        if realized_vol == 0:
+            return 1.0
+
+        # Check for momentum crash regime
+        all_vols = []
+        for i in range(execution.vol_scale_window, len(pnl_values)):
+            chunk = pnl_values[i - execution.vol_scale_window:i]
+            all_vols.append(np.std(chunk) * np.sqrt(252))
+
+        if all_vols:
+            percentile_rank = sum(1 for v in all_vols if v <= realized_vol) / len(all_vols)
+            if percentile_rank >= execution.crash_vol_percentile:
+                return execution.crash_scale_factor
+
+        # Normal vol-targeting
+        # Convert realized_vol from dollar-space to return-space (approx)
+        scale = execution.target_annual_vol / realized_vol
+        return max(execution.crash_scale_factor, min(scale, execution.max_vol_scale_factor))
+
+    def calculate_dynamic_momentum_thresholds(self, context, pair_key, stock_1_prices, stock_2_prices):
+        """Calculate dynamic entry/exit thresholds based on pair momentum characteristics.
+
+        Analogous to MRPT's calculate_dynamic_z_scores_entry_exit but for momentum.
+        Returns (momentum_strength, entry_threshold, exit_threshold)."""
+        ms = self.momentum_signal
+
+        # Compute momentum strength as average of both stocks' consistency
+        consistency_1 = ms.momentum_consistency(stock_1_prices)
+        consistency_2 = ms.momentum_consistency(stock_2_prices)
+        momentum_strength = (consistency_1 + consistency_2) / 2.0
+
+        # Compute pair-level volatility from price ratio
+        if len(stock_1_prices) > 30 and len(stock_2_prices) > 30:
+            ratio = stock_1_prices / stock_2_prices
+            ratio = ratio.dropna()
+            if len(ratio) > 30:
+                ratio_vol = ratio.pct_change().dropna().iloc[-30:].std() * np.sqrt(252)
+            else:
+                ratio_vol = 0.5
+        else:
+            ratio_vol = 0.5
+
+        # Track volatilities for normalization (like MRPT)
+        if pair_key not in context.portfolio.volatilities_in_window:
+            context.portfolio.volatilities_in_window[pair_key] = []
+        context.portfolio.volatilities_in_window[pair_key].append(ratio_vol)
+        max_v_back = context.execution.v_back // 2
+        context.portfolio.volatilities_in_window[pair_key] = \
+            context.portfolio.volatilities_in_window[pair_key][-max_v_back:]
+
+        vols = context.portfolio.volatilities_in_window[pair_key]
+        min_v = min(vols)
+        max_v = max(vols)
+        if max_v > min_v:
+            normalized_vol = (ratio_vol - min_v) / (max_v - min_v)
+        else:
+            normalized_vol = 0.5
+
+        context.portfolio.normalized_volatility = normalized_vol
+
+        # Dynamic entry: higher vol → harder to enter (raise threshold)
+        entry_threshold = context.execution.entry_momentum_threshold + 0.3 * normalized_vol
+        # Dynamic exit: higher vol → easier to exit (lower consistency required)
+        exit_threshold = max(0.2, context.execution.exit_momentum_decay_threshold - 0.2 * normalized_vol)
+
+        return momentum_strength, entry_threshold, exit_threshold
+
+
+class MTFSStopLossFunction:
+    """Stop-loss functions adapted for Momentum Trend Following Strategy.
+    Mirrors PortfolioStopLossFunction interface but uses momentum-based triggers."""
+
+    def __init__(self, constant=1):
+        self.constant = constant
+        self.portfolio_order = PortfolioMakeOrder(constant=1)
+        self.momentum_signal = MomentumSignal()
+
+    def check_momentum_reversal_stop(self, context, pair, stock_1_prices, stock_2_prices):
+        """Stop loss triggered by trend reversal detection.
+        This is the MTFS-specific critical risk control."""
+        pair_key = f"{pair[0]}/{pair[1]}"
+        in_long = pair[2].get('in_long', False)
+        in_short = pair[2].get('in_short', False)
+
+        if not in_long and not in_short:
+            return False, None, None
+
+        ms = self.momentum_signal
+
+        # Check momentum decay (short vs long window divergence)
+        if context.execution.exit_on_momentum_decay:
+            stock_1_sym = pair[0]
+            stock_2_sym = pair[1]
+
+            if in_long:
+                # Long stock_1 (winner), short stock_2 (loser)
+                # Danger: winner's short-term momentum turns negative
+                decay_1 = ms.momentum_decay_detected(
+                    stock_1_prices,
+                    context.execution.momentum_decay_short_window,
+                    context.execution.momentum_decay_long_window
+                )
+                # Danger: loser's short-term momentum turns positive (recovering)
+                decay_2 = ms.momentum_decay_detected(
+                    stock_2_prices,
+                    context.execution.momentum_decay_short_window,
+                    context.execution.momentum_decay_long_window
+                )
+                if decay_1 and decay_2:
+                    return True, "Momentum Decay (both stocks reversing)", None
+
+            elif in_short:
+                decay_1 = ms.momentum_decay_detected(
+                    stock_1_prices,
+                    context.execution.momentum_decay_short_window,
+                    context.execution.momentum_decay_long_window
+                )
+                decay_2 = ms.momentum_decay_detected(
+                    stock_2_prices,
+                    context.execution.momentum_decay_short_window,
+                    context.execution.momentum_decay_long_window
+                )
+                if decay_1 and decay_2:
+                    return True, "Momentum Decay (both stocks reversing)", None
+
+        # Check SMA crossover reversal
+        if context.execution.exit_on_reversal:
+            if in_long:
+                rev_1, dir_1 = ms.sma_crossover_reversal(
+                    stock_1_prices, context.execution.reversal_sma_lookback)
+                rev_2, dir_2 = ms.sma_crossover_reversal(
+                    stock_2_prices, context.execution.reversal_sma_lookback)
+                # Long winner reversing bearish = danger
+                if rev_1 and dir_1 == 'bearish':
+                    return True, f"SMA Reversal ({pair[0]} bearish crossover)", None
+                # Short loser reversing bullish = danger
+                if rev_2 and dir_2 == 'bullish':
+                    return True, f"SMA Reversal ({pair[1]} bullish crossover)", None
+
+            elif in_short:
+                rev_1, dir_1 = ms.sma_crossover_reversal(
+                    stock_1_prices, context.execution.reversal_sma_lookback)
+                rev_2, dir_2 = ms.sma_crossover_reversal(
+                    stock_2_prices, context.execution.reversal_sma_lookback)
+                if rev_1 and dir_1 == 'bullish':
+                    return True, f"SMA Reversal ({pair[0]} bullish crossover)", None
+                if rev_2 and dir_2 == 'bearish':
+                    return True, f"SMA Reversal ({pair[1]} bearish crossover)", None
+
+        return False, None, None
+
+    def check_pair_pnl_stop_loss(self, context, pair):
+        """Stop loss based on per-pair P&L percentage.
+        Triggers if pair has lost more than pair_stop_loss_pct."""
+        pair_key = f"{pair[0]}/{pair[1]}"
+        stock_1, stock_2 = pair[0], pair[1]
+
+        # Get current positions and prices
+        pos_1 = context.portfolio.positions.get(stock_1, 0)
+        pos_2 = context.portfolio.positions.get(stock_2, 0)
+        if pos_1 == 0 and pos_2 == 0:
+            return False, None, None
+
+        price_1 = PortfolioMakeOrder.get_current_price(context, stock_1)
+        price_2 = PortfolioMakeOrder.get_current_price(context, stock_2)
+
+        # Get cost basis
+        cb_1 = context.portfolio.cost_basis_history.get(stock_1, [(None, 0)])[-1][1]
+        cb_2 = context.portfolio.cost_basis_history.get(stock_2, [(None, 0)])[-1][1]
+
+        # Calculate pair P&L
+        pnl_1 = pos_1 * (price_1 - cb_1) if cb_1 != 0 else 0
+        pnl_2 = pos_2 * (price_2 - cb_2) if cb_2 != 0 else 0
+        pair_pnl = pnl_1 + pnl_2
+
+        # Calculate notional
+        notional = abs(pos_1) * cb_1 + abs(pos_2) * cb_2
+        if notional == 0:
+            return False, None, None
+
+        pnl_pct = pair_pnl / notional
+        if pnl_pct < -context.execution.pair_stop_loss_pct:
+            return True, f"Pair P&L Stop Loss ({pnl_pct:.2%})", pnl_pct
+
+        return False, None, None
+
+    def check_volatility_stop_loss(self, context, pair, stock_1_prices, stock_2_prices):
+        """Volatility-based stop loss using price ratio volatility.
+        Analogous to MRPT's spread-based volatility stop."""
+        pair_key = f"{pair[0]}/{pair[1]}"
+
+        # Use price ratio as the "spread" analog
+        if len(stock_1_prices) < context.execution.mean_back or len(stock_2_prices) < context.execution.mean_back:
+            return False, None, None
+
+        ratio = (stock_1_prices / stock_2_prices).dropna()
+        if len(ratio) < context.execution.mean_back:
+            return False, None, None
+
+        mean_ratio = ratio.iloc[-context.execution.mean_back:].mean()
+        std_ratio = ratio.iloc[-context.execution.std_back:].std()
+        current_ratio = ratio.iloc[-1]
+
+        in_long = pair[2].get('in_long', False)
+        in_short = pair[2].get('in_short', False)
+
+        if in_long:
+            stop_level = mean_ratio - context.execution.volatility_stop_loss_multiplier * std_ratio
+            context.execution.volatility_stop_loss_level = stop_level
+            if current_ratio < stop_level:
+                return True, "Volatility Stop Loss (Long)", stop_level
+        elif in_short:
+            stop_level = mean_ratio + context.execution.volatility_stop_loss_multiplier * std_ratio
+            context.execution.volatility_stop_loss_level = stop_level
+            if current_ratio > stop_level:
+                return True, "Volatility Stop Loss (Short)", stop_level
+
+        return False, None, None
+
+    def check_time_based_stop_loss(self, context, pair):
+        """Reuse the same time-based stop loss logic as MRPT."""
+        pair_key = f"{pair[0]}/{pair[1]}"
+        if pair_key in context.portfolio.pair_trade_history:
+            trades = context.portfolio.pair_trade_history[pair_key]
+            if not trades:
+                return False, None, None
+            last_trade = trades[-1]
+
+            stock = pair[0]
+            historical_data = context.data.history(
+                [stock], "price", context.execution.max_holding_period * 2, "1d")
+
+            if last_trade.date not in historical_data.index:
+                return True, "Time-based Stop Loss", None
+
+            last_trade_index = historical_data.index.get_loc(last_trade.date)
+            current_date_index = historical_data.index.get_loc(context.portfolio.current_date)
+            trading_days_since = current_date_index - last_trade_index
+
+            if trading_days_since > context.execution.max_holding_period:
+                return True, "Time-based Stop Loss", None
+        return False, None, None
+
+    def handle_stop_loss(self, context, pair, reason, momentum_score=None):
+        """Close positions and record the stop loss event.
+        Same interface as MRPT's handle_stop_loss."""
+        stock_1, stock_2 = pair[0], pair[1]
+        pair_key = f"{stock_1}/{stock_2}"
+
+        current_price_1 = PortfolioMakeOrder.get_current_price(context, stock_1)
+        current_price_2 = PortfolioMakeOrder.get_current_price(context, stock_2)
+
+        # Close both positions
+        self.portfolio_order.order_target(context, stock_1, 0)
+        self.portfolio_order.order_target(context, stock_2, 0)
+
+        # Record stop loss event
+        if pair_key not in context.execution.stop_loss_history:
+            context.execution.stop_loss_history[pair_key] = []
+
+        context.execution.stop_loss_history[pair_key].append({
+            'date': context.portfolio.current_date.strftime('%Y-%m-%d'),
+            'reason': reason,
+            'price_1': current_price_1,
+            'price_2': current_price_2,
+            'spread': current_price_1 / current_price_2 if current_price_2 != 0 else None,
+            'z_score': momentum_score,
+            'volatility_stop_loss_level': context.execution.volatility_stop_loss_level,
+            'price_stop_loss_level': context.execution.price_stop_loss_level,
+            'max_holding_period': context.execution.max_holding_period,
+            'since_last_trade': (
+                context.portfolio.current_date - context.portfolio.pair_trade_history[pair_key][-1].date
+            ).days if context.portfolio.pair_trade_history.get(pair_key) else None,
+            'triggered_by': reason
+        })
+
+        # Reset pair state
+        for p in context.strategy_pairs:
+            if p[0] == stock_1 and p[1] == stock_2:
+                p[2]['in_short'] = False
+                p[2]['in_long'] = False
+                break
+
+        log.info(f"MTFS Stop Loss triggered for pair {pair_key}: {reason}")
+        context.execution.price_level_stop_loss[pair_key] = None
+
+        return [stock_1, stock_2,
+                {'in_short': False, 'in_long': False,
+                 'momentum_history': pair[2].get('momentum_history', {})}]
+
+    def re_evaluate_pair(self, context, pair):
+        """Cooling-off period check — same logic as MRPT."""
+        stock_1, stock_2 = pair[0], pair[1]
+        pair_key = f"{stock_1}/{stock_2}"
+
+        last_stop_loss = context.execution.stop_loss_history[pair_key][-1]['date']
+        if isinstance(last_stop_loss, str):
+            last_stop_loss = pd.Timestamp(last_stop_loss)
+
+        if (context.portfolio.current_date - last_stop_loss).days < context.execution.cooling_off_period:
+            return False
+
+        context.execution.stop_loss_history[pair_key].append({
+            'date': context.portfolio.current_date.strftime('%Y-%m-%d'),
+            'reason': "Cooling-off period ended",
+            'price_1': None, 'price_2': None, 'spread': None, 'z_score': None,
+            'volatility_stop_loss_level': None, 'price_stop_loss_level': None,
+            'max_holding_period': None, 'since_last_trade': None,
+            'triggered_by': "Re-evaluation"
+        })
+        return True
+
