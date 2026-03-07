@@ -85,11 +85,18 @@ def _find_oos_windows(wf_dir, run_prefix=None):
             continue
         widx = int(m.group(1))
 
-        # Find OOS test xlsx — MTFS files use portfolio_history_wf_test_window* pattern
+        # Find OOS test xlsx — MTFS files use portfolio_history_MTFS_wf_test_window* pattern
         xlsx_list = glob.glob(os.path.join(wdir, 'historical_runs',
-                                            f'portfolio_history_wf_test_window{widx:02d}_*.xlsx'))
+                                            f'portfolio_history_MTFS_wf_test_window{widx:02d}_*.xlsx'))
         if not xlsx_list:
-            # Also check directly in window_dir (MTFSWalkForward writes to window_dir)
+            # Fallback: no MTFS_ prefix
+            xlsx_list = glob.glob(os.path.join(wdir, 'historical_runs',
+                                               f'portfolio_history_wf_test_window{widx:02d}_*.xlsx'))
+        if not xlsx_list:
+            # Also check directly in window_dir
+            xlsx_list = glob.glob(os.path.join(wdir,
+                                               f'portfolio_history_MTFS_wf_test_window{widx:02d}_*.xlsx'))
+        if not xlsx_list:
             xlsx_list = glob.glob(os.path.join(wdir,
                                                f'portfolio_history_wf_test_window{widx:02d}_*.xlsx'))
         if not xlsx_list:

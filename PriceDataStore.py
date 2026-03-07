@@ -251,36 +251,46 @@ class PriceDataStore:
                 f"{start_date}/{end_date}?adjusted=true&sort=asc&limit=50000"
                 f"&apiKey={self._api_key}"
             )
-            try:
-                resp = requests.get(url, timeout=30)
-                resp.raise_for_status()
-                body = resp.json()
+            last_err = None
+            for attempt in range(3):
+                try:
+                    resp = requests.get(url, timeout=45)
+                    resp.raise_for_status()
+                    body = resp.json()
 
-                if body.get('status') not in ('OK', 'DELAYED'):
-                    if body.get('resultsCount', 0) == 0:
-                        # No data for this week (e.g., holiday week) — skip
-                        continue
-                    raise ValueError(f"Polygon API error for {symbol}: "
-                                     f"status={body.get('status')}")
+                    if body.get('status') not in ('OK', 'DELAYED'):
+                        if body.get('resultsCount', 0) == 0:
+                            # No data for this week (e.g., holiday week) — skip
+                            break
+                        raise ValueError(f"Polygon API error for {symbol}: "
+                                         f"status={body.get('status')}")
 
-                results = body.get('results')
-                if not results:
-                    continue
+                    results = body.get('results')
+                    if not results:
+                        break
 
-                df = pd.DataFrame(results)
-                df['date'] = pd.to_datetime(df['t'], unit='ms')
-                df = df.set_index('date')
+                    df = pd.DataFrame(results)
+                    df['date'] = pd.to_datetime(df['t'], unit='ms')
+                    df = df.set_index('date')
 
-                result[symbol] = {
-                    'Open': df['o'],
-                    'High': df['h'],
-                    'Low': df['l'],
-                    'Close': df['c'],
-                    'Volume': df['v'],
-                }
-            except Exception as e:
-                log.error(f"  API fetch failed for {symbol}: {e}")
-                raise
+                    result[symbol] = {
+                        'Open': df['o'],
+                        'High': df['h'],
+                        'Low': df['l'],
+                        'Close': df['c'],
+                        'Volume': df['v'],
+                    }
+                    last_err = None
+                    break
+                except Exception as e:
+                    last_err = e
+                    wait = 2 ** attempt  # 1s, 2s, 4s
+                    log.warning(f"  API fetch failed for {symbol} (attempt {attempt+1}/3): {e}. "
+                                f"Retrying in {wait}s...")
+                    time_module.sleep(wait)
+            if last_err is not None:
+                log.error(f"  API fetch failed for {symbol} after 3 attempts: {last_err}")
+                raise last_err
 
             if i < len(symbols) - 1:
                 time_module.sleep(self._api_delay)
@@ -335,8 +345,15 @@ class PriceDataStore:
                 f"&apiKey={self._api_key}"
             )
             while url:
-                resp = requests.get(url, timeout=60)
-                resp.raise_for_status()
+                for attempt in range(3):
+                    try:
+                        resp = requests.get(url, timeout=60)
+                        resp.raise_for_status()
+                        break
+                    except Exception as e:
+                        if attempt == 2:
+                            raise
+                        time_module.sleep(2 ** attempt)
                 body = resp.json()
                 all_divs.extend(body.get('results', []))
                 next_url = body.get('next_url')
