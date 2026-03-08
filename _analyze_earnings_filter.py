@@ -1,3 +1,4 @@
+import sys
 import json
 import pandas as pd
 import numpy as np
@@ -20,18 +21,32 @@ def in_blackout(sym, date_str):
             return True, ed_str
     return False, None
 
-bt_path = 'historical_runs/portfolio_history_all15_best_per_pair_default_20260304_021640.xlsx'
+# Accept path as CLI arg, or fall back to latest MRPT forward/step3 run
+if len(sys.argv) > 1:
+    bt_path = sys.argv[1]
+else:
+    import glob, os
+    candidates = sorted(glob.glob('historical_runs/portfolio_history_*.xlsx'))
+    # Prefer MRPT forward30d or step3 runs (not MTFS, not test/baseline)
+    # Prefer all15_best_per_pair (largest sample), else any non-MTFS
+    all15 = [f for f in candidates
+             if 'MTFS' not in os.path.basename(f)
+             and 'all15_best_per_pair' in os.path.basename(f)]
+    if all15:
+        bt_path = all15[-1]
+    else:
+        mrpt = [f for f in candidates if 'MTFS' not in os.path.basename(f)]
+        bt_path = mrpt[-1] if mrpt else candidates[-1]
+
+print('Using:', bt_path)
 pt  = pd.read_excel(bt_path, sheet_name='pair_trade_history')
 acc = pd.read_excel(bt_path, sheet_name='acc_pair_trade_pnl_history')
 sl  = pd.read_excel(bt_path, sheet_name='stop_loss_history')
 pt['Date']  = pd.to_datetime(pt['Date'])
 acc['Date'] = pd.to_datetime(acc['Date'])
 
-PAIRS = [
-    'MSCI/LII','D/MCHP','DG/MOS','ESS/EXPD','ACGL/UHS',
-    'AAPL/META','YUM/MCD','GS/ALLY','CL/USO','ALGN/UAL',
-    'ARES/CG','AMG/BEN','LYFT/UBER','TW/CME','CART/DASH',
-]
+# Auto-detect pairs from the file
+PAIRS = sorted(pt['Pair'].unique().tolist())
 
 hdr = "# | Pair            | Open Date  | BlkSym      | Earn Date  | PnL ($)    | Reason"
 print(hdr)

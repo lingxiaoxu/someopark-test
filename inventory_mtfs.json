@@ -1,0 +1,28 @@
+{
+  "as_of": "2026-03-07",
+  "capital": 500000,
+  "pairs": {
+    "GS/ALLY": {
+      "strategy": "mtfs",
+      "param_set": "aggressive",
+      "direction": "long",
+      "s1_shares": 41,
+      "s2_shares": -861,
+      "open_date": "2026-03-05",
+      "open_s1_price": 835.46,
+      "open_s2_price": 39.90,
+      "days_held": 2
+    },
+    "ESS/EXPD": {
+      "strategy": "mtfs",
+      "param_set": "no_reversal_protection",
+      "direction": "short",
+      "s1_shares": -154,
+      "s2_shares": 268,
+      "open_date": "2026-03-06",
+      "open_s1_price": 255.13,
+      "open_s2_price": 146.86,
+      "days_held": 1
+    }
+  }
+}

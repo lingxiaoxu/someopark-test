@@ -221,7 +221,16 @@ def build_leg_dict(symbol: str, shares: int, price: float | None) -> dict:
 # ── Inventory injection ────────────────────────────────────────────────────────
 
 def _inject_inventory_into_context(context, inventory: dict, signal_date: pd.Timestamp):
-    """Inject real positions from inventory into simulation state."""
+    """
+    Inject real positions from inventory into simulation state.
+
+    In addition to setting in_long/in_short flags and portfolio.positions,
+    this also injects a synthetic Trade record into pair_trade_history so
+    that check_time_based_stop_loss() can correctly count days held from
+    the real open_date (not just warmup history).
+    """
+    from PortfolioClasses import Trade
+
     pairs_inv = inventory.get('pairs', {})
 
     for pair in context.strategy_pairs:
@@ -230,25 +239,50 @@ def _inject_inventory_into_context(context, inventory: dict, signal_date: pd.Tim
         inv_pair  = pairs_inv.get(key, {})
         direction = inv_pair.get('direction')
 
-        if direction == 'long':
-            pair[2]['in_long']  = True
-            pair[2]['in_short'] = False
+        if direction in ('long', 'short'):
             s1s = inv_pair.get('s1_shares', 0)
             s2s = inv_pair.get('s2_shares', 0)
+
+            if direction == 'long':
+                pair[2]['in_long']  = True
+                pair[2]['in_short'] = False
+            else:
+                pair[2]['in_long']  = False
+                pair[2]['in_short'] = True
+
             if s1s:
                 context.portfolio.positions[s1] = s1s
             if s2s:
                 context.portfolio.positions[s2] = s2s
 
-        elif direction == 'short':
-            pair[2]['in_long']  = False
-            pair[2]['in_short'] = True
-            s1s = inv_pair.get('s1_shares', 0)
-            s2s = inv_pair.get('s2_shares', 0)
-            if s1s:
-                context.portfolio.positions[s1] = s1s
-            if s2s:
-                context.portfolio.positions[s2] = s2s
+            # ── Inject synthetic Trade so time-based stop works ──────────
+            open_date_str = inv_pair.get('open_date')
+            if open_date_str:
+                try:
+                    open_ts = pd.Timestamp(open_date_str)
+                    # Find the closest date in the data index on or after open_date
+                    # (handles weekends/holidays — Trade.date must be in price history)
+                    all_dates = context.portfolio.processed_dates
+                    valid_dates = [d for d in all_dates if d >= open_ts]
+                    trade_date = valid_dates[0] if valid_dates else (
+                        all_dates[-1] if all_dates else open_ts)
+
+                    open_p1 = inv_pair.get('open_s1_price') or 0
+                    # s1 amount: positive for long (bought s1), negative for short (sold s1)
+                    s1_amount = abs(s1s) if direction == 'long' else -abs(s1s)
+                    fake_trade = Trade(
+                        date=trade_date,
+                        symbol=s1,
+                        amount=s1_amount,
+                        price=open_p1,
+                        order_type='open',
+                    )
+                    # Clear any stale synthetic trades and inject fresh one
+                    context.portfolio.pair_trade_history[key] = [fake_trade]
+                    log.debug(f"[inject] {key}: fake Trade injected at {trade_date.date()}, "
+                              f"direction={direction}, s1_amount={s1_amount}")
+                except Exception as e:
+                    log.warning(f"[inject] {key}: could not inject fake Trade: {e}")
 
         else:
             pair[2]['in_long']  = False
@@ -465,11 +499,28 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
 
 # ── Inventory update ───────────────────────────────────────────────────────────
 
-def update_inventory_from_signals(inventory: dict, signals: list, signal_date: str) -> dict:
+def update_inventory_from_signals(
+    inventory: dict,
+    signals: list,
+    signal_date: str,
+    strategy: str = '',
+    pair_configs: list | None = None,
+) -> dict:
+    """
+    Update inventory from today's signals.
+    strategy + pair_configs are used to store param_set on open,
+    so that monitor_existing_positions() can later reconstruct the run.
+    """
     inv = deepcopy(inventory)
     inv['as_of'] = signal_date
     if 'pairs' not in inv:
         inv['pairs'] = {}
+
+    # Build a lookup: pair_key -> param_set_name (from pair_configs)
+    param_set_lookup = {}
+    if pair_configs:
+        for s1, s2, ps in pair_configs:
+            param_set_lookup[f'{s1}/{s2}'] = ps
 
     for sig in signals:
         pair   = sig['pair']
@@ -477,6 +528,8 @@ def update_inventory_from_signals(inventory: dict, signals: list, signal_date: s
 
         if action in ('OPEN_LONG', 'OPEN_SHORT'):
             inv['pairs'][pair] = {
+                'strategy':      strategy,
+                'param_set':     param_set_lookup.get(pair, 'default'),
                 'direction':     sig['direction'],
                 's1_shares':     sig.get('s1_shares', 0),
                 's2_shares':     sig.get('s2_shares', 0),
@@ -573,6 +626,247 @@ def _run_simulation(strategy, pair_configs, signal_date, inventory):
                     lst_ref.pop()
 
     return context, effective_signal_ts, all_symbols
+
+
+# ── Existing-position monitor (isolated from new-signal logic) ─────────────────
+
+def _run_position_monitor(
+    pair_key: str,
+    strategy: str,
+    param_set: str,
+    inv_pair: dict,
+    signal_date: date,
+    scale_factor: float,
+) -> dict:
+    """
+    Run a dedicated simulation for ONE already-open pair to check today's status.
+
+    Completely isolated from the new-signal selection path.
+    Uses only 150 trading-day warmup window (fast), not full 2-year history.
+
+    Returns a signal dict with action in:
+        HOLD / CLOSE / CLOSE_STOP / NO_DATA / ERROR
+    """
+    s1, s2 = pair_key.split('/')
+    direction = inv_pair.get('direction')
+    open_date_str = inv_pair.get('open_date', '')
+
+    if strategy == 'mrpt':
+        import PortfolioMRPTRun as PortfolioRun
+        import PortfolioMRPTStrategyRuns as Runs
+        from PortfolioMRPTRun import initialize, my_handle_data, CustomData
+    else:
+        import PortfolioMTFSRun as PortfolioRun
+        import PortfolioMTFSStrategyRuns as Runs
+        from PortfolioMTFSRun import initialize, my_handle_data, CustomData
+
+    # ── Resolve params ────────────────────────────────────────────────────
+    try:
+        params_dict, _ = Runs._resolve_param_set(param_set, pair_key)
+    except Exception as e:
+        log.warning(f"[monitor] {pair_key}: unknown param_set '{param_set}', using default: {e}")
+        params_dict, _ = Runs._resolve_param_set('default', pair_key)
+
+    # ── Data window: 150 trading days before open_date for warmup ─────────
+    try:
+        open_ts = pd.Timestamp(open_date_str) if open_date_str else pd.Timestamp(signal_date)
+    except Exception:
+        open_ts = pd.Timestamp(signal_date)
+    # 150 bdays of warmup before open_date + data through today
+    warmup_start = open_ts - pd.offsets.BDay(160)
+    data_start   = warmup_start.strftime('%Y-%m-%d')
+    data_end     = signal_date.strftime('%Y-%m-%d')
+
+    log.info(f"[monitor] {pair_key} ({strategy}/{param_set}) "
+             f"data {data_start}→{data_end} | open={open_date_str} dir={direction}")
+
+    try:
+        historical_data = PortfolioRun.load_historical_data(data_start, data_end, [s1, s2])
+    except Exception as e:
+        log.error(f"[monitor] {pair_key}: data load failed: {e}")
+        return {'pair': pair_key, 'action': 'NO_DATA', 'monitored': True,
+                'note': f'Data load failed: {e}'}
+
+    # ── Build single-pair context ──────────────────────────────────────────
+    pairs = [[s1, s2]]
+    pair_params = {pair_key: params_dict}
+    context = SimpleNamespace()
+    context.data = None
+    initialize(context, pairs=pairs, params=params_dict, pair_params=pair_params)
+
+    # Use last available date (handles weekends)
+    last_data_ts = historical_data.index[-1]
+    effective_ts = last_data_ts
+    if effective_ts.date() < signal_date:
+        log.info(f"[monitor] {pair_key}: no data for {signal_date}; using {effective_ts.date()}")
+
+    # open_date as Timestamp for injection comparison
+    try:
+        open_ts_data = pd.Timestamp(open_date_str) if open_date_str else effective_ts
+    except Exception:
+        open_ts_data = effective_ts
+
+    inventory_injected = False
+
+    for date_ts in historical_data.index:
+        context.portfolio.current_date = date_ts
+        context.portfolio.processed_dates.append(date_ts)
+        current_data = CustomData(historical_data.loc[:date_ts])
+        context.warmup_mode = date_ts < effective_ts
+
+        # Inject position just before the signal day runs
+        if not inventory_injected and date_ts >= effective_ts:
+            # Build a minimal inventory dict for _inject_inventory_into_context
+            mini_inv = {'pairs': {pair_key: inv_pair}}
+            _inject_inventory_into_context(context, mini_inv, date_ts)
+
+            # ── Fix price-level stop: set using open prices as approx spread ──
+            # hedge ratio at this point from hedge_history if available
+            hh = context.portfolio.hedge_history.get(pair_key, [])
+            hedge_approx = hh[-1][1] if hh else 1.0
+            open_p1 = inv_pair.get('open_s1_price') or 0
+            open_p2 = inv_pair.get('open_s2_price') or 0
+            open_spread_approx = open_p1 - hedge_approx * open_p2
+            if open_spread_approx != 0:
+                if direction == 'long':
+                    context.execution.price_level_stop_loss[pair_key] = open_spread_approx * 0.8
+                else:
+                    context.execution.price_level_stop_loss[pair_key] = open_spread_approx * 1.5
+                log.debug(f"[monitor] {pair_key}: price_level_stop={context.execution.price_level_stop_loss[pair_key]:.4f}")
+
+            inventory_injected = True
+
+        if context.warmup_mode:
+            _saved_rate = context.portfolio.interest_rate
+            context.portfolio.interest_rate = 0.0
+
+        my_handle_data(context, current_data)
+
+        if context.warmup_mode:
+            context.portfolio.interest_rate = _saved_rate
+            for hist_attr in (
+                'asset_cash_history', 'liability_loan_history',
+                'asset_history', 'liability_history',
+                'equity_history', 'value_history',
+                'daily_pnl_history', 'interest_expense_history', 'acc_interest_history',
+                'acc_daily_pnl_history',
+            ):
+                lst_ref = getattr(context.portfolio, hist_attr)
+                if lst_ref:
+                    lst_ref.pop()
+
+    # ── Extract signal from recorded_vars ─────────────────────────────────
+    today_rv = _find_today_rv(context, pair_key, effective_ts)
+    if today_rv is None:
+        return {'pair': pair_key, 'action': 'NO_DATA', 'monitored': True,
+                'note': 'No recorded_vars after monitor run'}
+
+    # Today's price
+    prices_today = {}
+    for sym in (s1, s2):
+        ph = context.portfolio.price_history.get(sym)
+        if ph:
+            prices_today[sym] = ph[-1][1]
+
+    sig = _build_signal(pair_key, s1, s2, today_rv, {'pairs': {pair_key: inv_pair}},
+                        context, prices_today, strategy, scale_factor=scale_factor)
+
+    # Tag as coming from position monitor (not new-signal selection)
+    sig['monitored']  = True
+    sig['open_date']  = open_date_str
+    sig['param_set']  = param_set
+
+    # Unrealized PnL calculation
+    open_p1 = inv_pair.get('open_s1_price')
+    open_p2 = inv_pair.get('open_s2_price')
+    p1_now  = prices_today.get(s1)
+    p2_now  = prices_today.get(s2)
+    s1s     = inv_pair.get('s1_shares', 0)
+    s2s     = inv_pair.get('s2_shares', 0)
+    if open_p1 and open_p2 and p1_now and p2_now:
+        if direction == 'long':
+            # long: bought s1, sold s2
+            upnl = (p1_now - open_p1) * abs(s1s) - (p2_now - open_p2) * abs(s2s)
+        else:
+            # short: sold s1, bought s2
+            upnl = (open_p1 - p1_now) * abs(s1s) + (p2_now - open_p2) * abs(s2s)
+        sig['unrealized_pnl'] = round(upnl * scale_factor, 2)
+        sig['unrealized_pnl_pct'] = round(
+            upnl / (open_p1 * abs(s1s) + open_p2 * abs(s2s)) * 100, 3) if (
+            open_p1 * abs(s1s) + open_p2 * abs(s2s)) > 0 else None
+
+    log.info(f"[monitor] {pair_key}: action={sig['action']}  "
+             f"days_held={inv_pair.get('days_held',0)}  "
+             f"upnl={sig.get('unrealized_pnl','n/a')}")
+    return sig
+
+
+def monitor_existing_positions(
+    signal_date: date,
+    dry_run: bool = False,
+    mrpt_capital: float | None = None,
+    mtfs_capital: float | None = None,
+) -> dict:
+    """
+    Monitor all open positions from both inventories.
+    Completely isolated from new-signal selection.
+
+    Returns:
+        {
+          'mrpt': [list of monitor signals],
+          'mtfs': [list of monitor signals],
+          'has_positions': bool,
+        }
+    """
+    result = {'mrpt': [], 'mtfs': [], 'has_positions': False}
+
+    for strategy in ('mrpt', 'mtfs'):
+        inventory = load_inventory(strategy)
+        pairs_inv = inventory.get('pairs', {})
+        sim_capital = float(inventory.get('capital', BACKTEST_BASE_CAPITAL))
+
+        # Actual capital for scaling
+        if strategy == 'mrpt':
+            actual_cap = mrpt_capital or sim_capital
+        else:
+            actual_cap = mtfs_capital or sim_capital
+        scale_factor = compute_scale_factor(actual_cap, sim_capital)
+
+        for pair_key, inv_pair in pairs_inv.items():
+            direction = inv_pair.get('direction')
+            if not direction:
+                continue  # already closed / flat
+
+            # Must have strategy + param_set (stored since this fix)
+            inv_strategy = inv_pair.get('strategy', strategy)
+            inv_param_set = inv_pair.get('param_set', 'default')
+
+            result['has_positions'] = True
+            try:
+                sig = _run_position_monitor(
+                    pair_key=pair_key,
+                    strategy=inv_strategy,
+                    param_set=inv_param_set,
+                    inv_pair=inv_pair,
+                    signal_date=signal_date,
+                    scale_factor=scale_factor,
+                )
+            except Exception as e:
+                log.error(f"[monitor] {pair_key}: monitor failed: {e}", exc_info=True)
+                sig = {'pair': pair_key, 'action': 'ERROR', 'monitored': True,
+                       'note': str(e)}
+
+            result[strategy].append(sig)
+
+        # Apply monitor signals to inventory (update HOLD days_held, remove CLOSE)
+        if not dry_run and result[strategy]:
+            updated_inv = update_inventory_from_signals(
+                inventory, result[strategy], signal_date.strftime('%Y-%m-%d'),
+                strategy=strategy)
+            save_inventory(updated_inv, strategy)
+            log.info(f"[monitor] inventory_{strategy}.json updated after position monitoring")
+
+    return result
 
 
 # ── Regime detection ───────────────────────────────────────────────────────────
@@ -703,6 +997,45 @@ def _print_signals(signals, signal_date, strategy, dry_run,
     print(f"{'='*72}")
 
 
+def _print_monitor_summary(monitor: dict, signal_date):
+    """Print position monitor results to console."""
+    mrpt_sigs = monitor.get('mrpt', [])
+    mtfs_sigs = monitor.get('mtfs', [])
+    all_sigs  = mrpt_sigs + mtfs_sigs
+    if not all_sigs:
+        return
+
+    print()
+    print(f"{'='*72}")
+    print(f"  POSITION MONITOR  —  {signal_date}  ({len(all_sigs)} open positions)")
+    print(f"{'='*72}")
+    ACTION_LABELS = {
+        'HOLD':       '─ HOLD      ',
+        'CLOSE':      '✕ CLOSE     ',
+        'CLOSE_STOP': '✕ STOP LOSS ',
+        'NO_DATA':    '? NO_DATA   ',
+        'ERROR':      '! ERROR     ',
+    }
+    for strat, sigs in (('MRPT', mrpt_sigs), ('MTFS', mtfs_sigs)):
+        if not sigs:
+            continue
+        print(f"\n  [{strat}]")
+        for sig in sigs:
+            label   = ACTION_LABELS.get(sig['action'], f"  {sig['action']}")
+            pair    = sig['pair']
+            days    = sig.get('days_held', sig.get('open_date', ''))
+            upnl    = sig.get('unrealized_pnl')
+            upnl_str = f"  uPnL=${upnl:+,.0f}" if upnl is not None else ''
+            sv_key  = 'z_score' if strat == 'MRPT' else 'momentum_spread'
+            sv      = sig.get(sv_key)
+            sv_str  = f"  {'z' if strat=='MRPT' else 'ms'}={sv:+.2f}" if sv is not None else ''
+            print(f"    {label}  {pair:<12}  days={sig.get('days_held',0)}{sv_str}{upnl_str}"
+                  f"  [{sig.get('param_set','')}]")
+            if sig['action'] in ('CLOSE', 'CLOSE_STOP', 'ERROR', 'NO_DATA'):
+                print(f"             ↳ {sig.get('note','')}")
+    print(f"{'='*72}")
+
+
 def _print_combined_summary(mrpt_out: dict, mtfs_out: dict, total_capital: float,
                              regime: dict | None, signal_date):
     """Print combined portfolio summary for --strategy both."""
@@ -778,7 +1111,6 @@ def run_daily_signal(
     regime = None
     if strategy == 'both' or (strategy in ('mrpt', 'mtfs') and not skip_regime):
         if mrpt_weight is not None:
-            # Manual override
             regime = {
                 'regime_score':   mrpt_weight * 100 if strategy == 'both' else 50.0,
                 'regime_label':   'manual_override',
@@ -803,6 +1135,17 @@ def run_daily_signal(
         mrpt_cap = T * mw
         mtfs_cap = T * tw
 
+        # ── Step 1: Monitor existing positions (isolated, runs first) ──────
+        log.info("── Monitoring existing positions ──")
+        monitor = monitor_existing_positions(
+            signal_date=signal_date,
+            dry_run=dry_run,
+            mrpt_capital=mrpt_cap,
+            mtfs_capital=mtfs_cap,
+        )
+        _print_monitor_summary(monitor, signal_date)
+
+        # ── Step 2: New signal selection (completely independent) ───────────
         mrpt_out = _run_single(
             strategy='mrpt',
             signal_date=signal_date,
@@ -822,13 +1165,14 @@ def run_daily_signal(
 
         # Save combined output
         combined_out = {
-            'mode':          'combined',
-            'signal_date':   signal_date.strftime('%Y-%m-%d'),
-            'generated_at':  datetime.now().isoformat(timespec='seconds'),
-            'total_capital': T,
-            'regime':        _clean_for_json(regime),
-            'mrpt':          mrpt_out,
-            'mtfs':          mtfs_out,
+            'mode':              'combined',
+            'signal_date':       signal_date.strftime('%Y-%m-%d'),
+            'generated_at':      datetime.now().isoformat(timespec='seconds'),
+            'total_capital':     T,
+            'regime':            _clean_for_json(regime),
+            'position_monitor':  _clean_for_json(monitor),
+            'mrpt':              mrpt_out,
+            'mtfs':              mtfs_out,
         }
         sig_path = os.path.join(SIGNALS_DIR,
                                 f"combined_signals_{signal_date.strftime('%Y%m%d')}.json")
@@ -846,6 +1190,7 @@ def run_daily_signal(
             regime=regime,
             mrpt_out=mrpt_out,
             mtfs_out=mtfs_out,
+            monitor=monitor,
         )
         rpt_json_path = os.path.join(REPORTS_DIR, f'daily_report_{date_str}.json')
         with open(rpt_json_path, 'w', encoding='utf-8') as f:
@@ -860,11 +1205,20 @@ def run_daily_signal(
         return combined_out
 
     # ── Single strategy mode ──────────────────────────────────────────────
-    # Determine effective capital
     if capital is None:
-        # Default: use inventory capital
         inv = load_inventory(strategy)
         capital = float(inv.get('capital', 500_000))
+
+    # Monitor existing positions for this single strategy
+    log.info("── Monitoring existing positions ──")
+    mon_cap = capital
+    monitor = monitor_existing_positions(
+        signal_date=signal_date,
+        dry_run=dry_run,
+        mrpt_capital=mon_cap if strategy == 'mrpt' else None,
+        mtfs_capital=mon_cap if strategy == 'mtfs' else None,
+    )
+    _print_monitor_summary(monitor, signal_date)
 
     single_out = _run_single(
         strategy=strategy,
@@ -883,6 +1237,7 @@ def run_daily_signal(
         total_capital=capital,
         regime=regime,
         single_out=single_out,
+        monitor=monitor,
     )
     rpt_json_path = os.path.join(REPORTS_DIR, f'daily_report_{strategy}_{date_str}.json')
     with open(rpt_json_path, 'w', encoding='utf-8') as f:
@@ -945,7 +1300,9 @@ def _run_single(strategy: str, signal_date: date, dry_run: bool,
     log.info(f"[{strategy.upper()}] Signals saved → {sig_path}")
 
     if not dry_run:
-        updated_inv = update_inventory_from_signals(inventory, signals, end_date_str)
+        updated_inv = update_inventory_from_signals(
+            inventory, signals, end_date_str,
+            strategy=strategy, pair_configs=pair_configs)
         save_inventory(updated_inv, strategy)
         print(f"\n  inventory_{strategy}.json updated for {end_date_str}")
     else:
@@ -1204,6 +1561,45 @@ def _build_regime_report_section(regime: dict) -> dict:
     }
 
 
+def _build_monitor_report_section(monitor: dict) -> dict:
+    """Build position monitor section for the full report."""
+    if not monitor or not monitor.get('has_positions'):
+        return {'has_positions': False, 'mrpt': [], 'mtfs': []}
+
+    def _enrich(sigs):
+        out = []
+        for s in sigs:
+            entry = {
+                'pair':            s.get('pair'),
+                'action':          s.get('action'),
+                'direction':       s.get('direction'),
+                'open_date':       s.get('open_date'),
+                'days_held':       s.get('days_held', 0),
+                'param_set':       s.get('param_set', ''),
+                'z_score':         s.get('z_score'),
+                'momentum_spread': s.get('momentum_spread'),
+                'entry_threshold': s.get('entry_threshold'),
+                'exit_threshold':  s.get('exit_threshold'),
+                's1':              s.get('leg_s1', {}),
+                's2':              s.get('leg_s2', {}),
+                'unrealized_pnl':  s.get('unrealized_pnl'),
+                'unrealized_pnl_pct': s.get('unrealized_pnl_pct'),
+                'note':            s.get('note', ''),
+            }
+            out.append(entry)
+        return out
+
+    return {
+        'has_positions': monitor.get('has_positions', False),
+        'mrpt': _enrich(monitor.get('mrpt', [])),
+        'mtfs': _enrich(monitor.get('mtfs', [])),
+        'total_open':  len([s for s in monitor.get('mrpt', []) + monitor.get('mtfs', [])
+                            if s.get('action') in ('HOLD',)]),
+        'total_close': len([s for s in monitor.get('mrpt', []) + monitor.get('mtfs', [])
+                            if 'CLOSE' in s.get('action', '')]),
+    }
+
+
 def build_full_report_json(
     strategy: str,
     signal_date: date,
@@ -1212,17 +1608,19 @@ def build_full_report_json(
     mrpt_out: dict | None = None,
     mtfs_out: dict | None = None,
     single_out: dict | None = None,
+    monitor: dict | None = None,
 ) -> dict:
     """
     Build the complete report JSON for saving as daily_report_YYYYMMDD.json.
     Covers single-strategy or combined mode.
     """
     report = {
-        'report_type':    'combined' if strategy == 'both' else f'single_{strategy}',
-        'signal_date':    signal_date.strftime('%Y-%m-%d'),
-        'generated_at':   datetime.now().isoformat(timespec='seconds'),
-        'total_capital':  total_capital,
-        'regime':         _build_regime_report_section(regime),
+        'report_type':        'combined' if strategy == 'both' else f'single_{strategy}',
+        'signal_date':        signal_date.strftime('%Y-%m-%d'),
+        'generated_at':       datetime.now().isoformat(timespec='seconds'),
+        'total_capital':      total_capital,
+        'regime':             _build_regime_report_section(regime),
+        'position_monitor':   _build_monitor_report_section(monitor or {}),
     }
 
     if strategy == 'both' and mrpt_out and mtfs_out:
@@ -1348,6 +1746,66 @@ def write_report_txt(report: dict, path: str):
         lines.append(f'  Scaling 说明: 所有回测的 Dollar PnL / MaxDD 乘以对应 scale 因子')
         lines.append(f'  得到实际资金规模下的预期值。Sharpe / MaxDD% 不受影响。')
         blank()
+
+    # ── Position Monitor section ──────────────────────────────────────────────
+    mon_sec = report.get('position_monitor', {})
+    if mon_sec.get('has_positions'):
+        h('当前持仓监测 (POSITION MONITOR)')
+        blank()
+        lines.append(f'  说明: 以下配对为昨日或更早开仓、今日继续持有的真实头寸。')
+        lines.append(f'        运行专属回测（参数与开仓时相同）重新计算今日z-score/止损。')
+        blank()
+        mon_hold  = [s for s in mon_sec.get('mrpt',[]) + mon_sec.get('mtfs',[]) if s.get('action') == 'HOLD']
+        mon_close = [s for s in mon_sec.get('mrpt',[]) + mon_sec.get('mtfs',[]) if 'CLOSE' in s.get('action','')]
+
+        if mon_hold:
+            h2(f'  ─ 持仓中 HOLD ({len(mon_hold)} 个)')
+            blank()
+            lines.append(f'  {"策略":<6}{"配对":<14}{"方向":<7}{"持有天":>6}{"z/ms":>8}{"uPnL($)":>12}{"uPnL%":>8}  参数集')
+            lines.append(f'  {"-"*72}')
+            for strat_key in ('mrpt', 'mtfs'):
+                for s in mon_sec.get(strat_key, []):
+                    if s.get('action') != 'HOLD':
+                        continue
+                    pair   = s.get('pair', '')
+                    dirn   = s.get('direction', '')
+                    days   = s.get('days_held', 0)
+                    sv_key = 'z_score' if strat_key == 'mrpt' else 'momentum_spread'
+                    sv     = s.get(sv_key)
+                    sv_str = f'{sv:+.3f}' if sv is not None else 'n/a'
+                    upnl   = s.get('unrealized_pnl')
+                    upnl_pct = s.get('unrealized_pnl_pct')
+                    upnl_str = f'${upnl:+,.0f}' if upnl is not None else 'n/a'
+                    upct_str = f'{upnl_pct:+.2f}%' if upnl_pct is not None else ''
+                    ps = s.get('param_set', '')
+                    lines.append(f'  {strat_key.upper():<6}{pair:<14}{dirn:<7}{days:>6}{sv_str:>8}'
+                                 f'{upnl_str:>12}{upct_str:>8}  {ps}')
+            blank()
+
+        if mon_close:
+            h2(f'  ✕ 今日关闭 CLOSE ({len(mon_close)} 个) — 明日开盘执行')
+            blank()
+            for strat_key in ('mrpt', 'mtfs'):
+                for s in mon_sec.get(strat_key, []):
+                    if 'CLOSE' not in s.get('action', ''):
+                        continue
+                    pair = s.get('pair', '')
+                    act  = s.get('action', '')
+                    leg1 = s.get('s1', {})
+                    leg2 = s.get('s2', {})
+                    upnl = s.get('unrealized_pnl')
+                    lines.append(f'  ┌─ {act:<14}  {strat_key.upper()} {pair}  持有{s.get("days_held",0)}天')
+                    lines.append(f'  │  原因: {s.get("note","")}')
+                    if leg1:
+                        lines.append(f'  │  腿1: {leg1.get("side",""):<12} {leg1.get("symbol","")}  '
+                                     f'{leg1.get("shares",0):+d}股 @${leg1.get("price","")}')
+                    if leg2:
+                        lines.append(f'  │  腿2: {leg2.get("side",""):<12} {leg2.get("symbol","")}  '
+                                     f'{leg2.get("shares",0):+d}股 @${leg2.get("price","")}')
+                    if upnl is not None:
+                        lines.append(f'  │  实现盈亏估算: ${upnl:+,.0f}')
+                    lines.append(f'  └{"─"*60}')
+                    blank()
 
     # ── Per-strategy sections ─────────────────────────────────────────────────
     strats = ['mrpt', 'mtfs'] if rtype == 'combined' else [rtype.replace('single_', '')]
