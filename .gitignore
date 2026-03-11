@@ -12,12 +12,26 @@ __pycache__/
 
 # Data / output (large files, not for version control)
 price_data/
-historical_runs/
 charts/
 logs/
 
 # Archive of old runs (never commit)
 archive/
 
-# Daily trading signals & reports (runtime output, not for version control)
-trading_signals/
+# historical_runs: ignore everything except specific walk-forward output files
+# Note: must NOT ignore the directory itself — use wildcard on contents instead
+historical_runs/*
+!historical_runs/walk_forward/
+!historical_runs/walk_forward_mtfs/
+historical_runs/walk_forward/*
+!historical_runs/walk_forward/walk_forward_summary_*.json
+!historical_runs/walk_forward/oos_pair_summary_*.csv
+!historical_runs/walk_forward/oos_equity_curve_*.csv
+!historical_runs/walk_forward/dsr_selection_log_*.csv
+historical_runs/walk_forward_mtfs/*
+!historical_runs/walk_forward_mtfs/walk_forward_summary_*.json
+!historical_runs/walk_forward_mtfs/oos_pair_summary_*.csv
+!historical_runs/walk_forward_mtfs/oos_equity_curve_*.csv
+!historical_runs/walk_forward_mtfs/dsr_selection_log_*.csv
+
+# Daily trading signals & reports — all files tracked

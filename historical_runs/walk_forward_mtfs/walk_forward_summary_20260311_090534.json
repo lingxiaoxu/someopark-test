@@ -1,0 +1,476 @@
+{
+  "generated_at": "2026-03-11T09:05:34.450937",
+  "strategy": "MTFS",
+  "mode": "expanding",
+  "n_param_sets": 30,
+  "train_start": "2024-01-19",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 162,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-01-19",
+      "train_end": "2025-07-18",
+      "test_start": "2025-07-21",
+      "test_end": "2025-08-26",
+      "n_selected_pairs": 12,
+      "selected_pairs": [
+        [
+          "D",
+          "MCHP",
+          "vol_weighted_aggressive"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AAPL",
+          "META",
+          "short_term_beta_neutral"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "short_term_beta_neutral"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "no_trend_filter"
+        ],
+        [
+          "CL",
+          "USO",
+          "raw_momentum"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "aggressive"
+        ],
+        [
+          "ARES",
+          "CG",
+          "vol_weighted_aggressive"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "no_skip_month"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "no_trend_filter"
+        ],
+        [
+          "TW",
+          "CME",
+          "beta_neutral"
+        ],
+        [
+          "CART",
+          "DASH",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": -3.6808065579088454,
+      "oos_pnl": -24975.790691337796
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-01-19",
+      "train_end": "2025-08-26",
+      "test_start": "2025-08-27",
+      "test_end": "2025-10-03",
+      "n_selected_pairs": 12,
+      "selected_pairs": [
+        [
+          "D",
+          "MCHP",
+          "vol_weighted_aggressive"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AAPL",
+          "META",
+          "short_term_beta_neutral"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "short_term_beta_neutral"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "no_trend_filter"
+        ],
+        [
+          "CL",
+          "USO",
+          "no_reversal_protection"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "no_skip_month"
+        ],
+        [
+          "ARES",
+          "CG",
+          "vol_weighted_aggressive"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "no_skip_month"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "aggressive"
+        ],
+        [
+          "TW",
+          "CME",
+          "beta_neutral"
+        ],
+        [
+          "CART",
+          "DASH",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": 4.7390861301451555,
+      "oos_pnl": 28298.47329512528
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-01-19",
+      "train_end": "2025-10-03",
+      "test_start": "2025-10-06",
+      "test_end": "2025-11-11",
+      "n_selected_pairs": 12,
+      "selected_pairs": [
+        [
+          "D",
+          "MCHP",
+          "vol_weighted_aggressive"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AAPL",
+          "META",
+          "short_term_beta_neutral"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "conservative"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "no_trend_filter"
+        ],
+        [
+          "CL",
+          "USO",
+          "no_reversal_protection"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "fast_trend_filter"
+        ],
+        [
+          "ARES",
+          "CG",
+          "vol_weighted_aggressive"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "fast_trend_filter"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "aggressive"
+        ],
+        [
+          "TW",
+          "CME",
+          "beta_neutral"
+        ],
+        [
+          "CART",
+          "DASH",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": -1.38934711558891,
+      "oos_pnl": -7208.016388596516
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-01-19",
+      "train_end": "2025-11-11",
+      "test_start": "2025-11-12",
+      "test_end": "2025-12-19",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "D",
+          "MCHP",
+          "vol_weighted_aggressive"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "short_term_tilt"
+        ],
+        [
+          "AAPL",
+          "META",
+          "no_reversal_protection"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "conservative"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "aggressive"
+        ],
+        [
+          "CL",
+          "USO",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "fast_trend_filter"
+        ],
+        [
+          "ARES",
+          "CG",
+          "no_trend_filter"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "sensitive_reversal"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "no_trend_filter"
+        ],
+        [
+          "TW",
+          "CME",
+          "beta_neutral"
+        ],
+        [
+          "CART",
+          "DASH",
+          "short_term_beta_neutral"
+        ]
+      ],
+      "oos_sharpe": -2.8812546279472677,
+      "oos_pnl": -15029.312416851535
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-01-19",
+      "train_end": "2025-12-19",
+      "test_start": "2025-12-22",
+      "test_end": "2026-01-30",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "D",
+          "MCHP",
+          "no_trend_filter"
+        ],
+        [
+          "DG",
+          "MOS",
+          "raw_momentum"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "no_reversal_protection"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "short_term_tilt"
+        ],
+        [
+          "AAPL",
+          "META",
+          "short_term_beta_neutral"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "short_term_beta_neutral"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "aggressive"
+        ],
+        [
+          "CL",
+          "USO",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "fast_trend_filter"
+        ],
+        [
+          "ARES",
+          "CG",
+          "weekly_aligned_windows"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "sensitive_reversal"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "aggressive"
+        ],
+        [
+          "TW",
+          "CME",
+          "beta_neutral"
+        ],
+        [
+          "CART",
+          "DASH",
+          "fast_strict"
+        ]
+      ],
+      "oos_sharpe": -2.326749645401869,
+      "oos_pnl": -9570.56191780897
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-01-19",
+      "train_end": "2026-01-30",
+      "test_start": "2026-02-02",
+      "test_end": "2026-03-11",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "D",
+          "MCHP",
+          "conservative"
+        ],
+        [
+          "DG",
+          "MOS",
+          "raw_momentum"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "no_reversal_protection"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "short_term_tilt"
+        ],
+        [
+          "AAPL",
+          "META",
+          "short_term_beta_neutral"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "short_term_beta_neutral"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "aggressive"
+        ],
+        [
+          "CL",
+          "USO",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "fast_trend_filter"
+        ],
+        [
+          "ARES",
+          "CG",
+          "weekly_aligned_windows"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "sensitive_reversal"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "aggressive"
+        ],
+        [
+          "TW",
+          "CME",
+          "beta_neutral"
+        ],
+        [
+          "CART",
+          "DASH",
+          "fast_strict"
+        ]
+      ],
+      "oos_sharpe": -2.867979534570555,
+      "oos_pnl": -16067.286036147867
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": -42581.88185460697,
+    "oos_trading_days": 156,
+    "oos_sharpe": -1.2490598487986697,
+    "oos_max_dd_dollar": -56300.189379602205,
+    "oos_max_dd_pct": -0.11094746920031079
+  }
+}

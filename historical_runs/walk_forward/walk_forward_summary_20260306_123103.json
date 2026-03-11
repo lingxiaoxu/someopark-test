@@ -1,0 +1,55 @@
+{
+  "generated_at": "2026-03-06T12:31:03.803531",
+  "mode": "expanding",
+  "oos_stats": {
+    "oos_total_pnl": 12230.598658014962,
+    "oos_trading_days": 144,
+    "oos_sharpe": 0.43689320200716386,
+    "oos_max_dd_dollar": -34047.516992884804,
+    "oos_max_dd_pct": -0.06372782446754832
+  },
+  "windows": [
+    {
+      "window_idx": 1,
+      "test_start": "2025-08-01",
+      "test_end": "2025-09-05",
+      "n_selected_pairs": 14,
+      "oos_pnl": 7759.340476680663
+    },
+    {
+      "window_idx": 2,
+      "test_start": "2025-09-08",
+      "test_end": "2025-10-10",
+      "n_selected_pairs": 14,
+      "oos_pnl": 15381.002670395828
+    },
+    {
+      "window_idx": 3,
+      "test_start": "2025-10-13",
+      "test_end": "2025-11-14",
+      "n_selected_pairs": 14,
+      "oos_pnl": -22240.004892703902
+    },
+    {
+      "window_idx": 4,
+      "test_start": "2025-11-17",
+      "test_end": "2025-12-22",
+      "n_selected_pairs": 14,
+      "oos_pnl": 10315.556960898393
+    },
+    {
+      "window_idx": 5,
+      "test_start": "2025-12-23",
+      "test_end": "2026-01-29",
+      "n_selected_pairs": 14,
+      "oos_pnl": 4117.9490267199
+    },
+    {
+      "window_idx": 6,
+      "test_start": "2026-01-30",
+      "test_end": "2026-03-06",
+      "n_selected_pairs": 14,
+      "oos_pnl": -3103.2455839759205
+    }
+  ]
+}
