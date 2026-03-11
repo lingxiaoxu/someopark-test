@@ -1,28 +1,24 @@
 {
-  "as_of": "2026-03-07",
+  "as_of": "2026-03-11",
   "capital": 500000,
   "pairs": {
     "DG/MOS": {
-      "strategy": "mrpt",
-      "param_set": "slow_signal",
-      "direction": "short",
-      "s1_shares": -687,
-      "s2_shares": 3513,
-      "open_date": "2026-02-25",
-      "open_s1_price": 154.79,
-      "open_s2_price": 26.98,
-      "days_held": 6
+      "direction": null
     },
     "GS/ALLY": {
+      "direction": null
+    },
+    "D/MCHP": {
       "strategy": "mrpt",
-      "param_set": "long_z_short_v",
-      "direction": "long",
-      "s1_shares": 73,
-      "s2_shares": -1587,
-      "open_date": "2026-02-19",
-      "open_s1_price": 916.65,
-      "open_s2_price": 41.90,
-      "days_held": 12
+      "param_set": "conservative_no_leverage",
+      "direction": "short",
+      "s1_shares": -1312,
+      "s2_shares": 1179,
+      "open_date": "2026-03-11",
+      "open_s1_price": 62.73,
+      "open_s2_price": 65.33,
+      "days_held": 1,
+      "last_updated": "2026-03-11"
     }
   }
 }

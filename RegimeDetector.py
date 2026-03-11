@@ -165,17 +165,33 @@ class RegimeDetector:
             log.warning(f"yfinance fetch {ticker} failed: {e}")
             return pd.Series(dtype=float)
 
-    def _fetch_fred(self, series_id: str, days_back: int = 400) -> pd.Series:
-        """Fetch FRED series. Returns daily/monthly series."""
+    def _fetch_fred(self, series_id: str, days_back: int = 400,
+                    retries: int = 3, retry_delay: float = 2.0) -> pd.Series:
+        """Fetch FRED series with retry on transient errors (HTTP 500/503)."""
+        import time
         if self._fred is None:
             return pd.Series(dtype=float)
-        try:
-            start = (datetime.today() - timedelta(days=days_back)).strftime('%Y-%m-%d')
-            s = self._fred.get_series(series_id, observation_start=start)
-            return s.dropna()
-        except Exception as e:
-            log.warning(f"FRED fetch {series_id} failed: {e}")
-            return pd.Series(dtype=float)
+        start = (datetime.today() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+        last_exc = None
+        for attempt in range(1, retries + 1):
+            try:
+                s = self._fred.get_series(series_id, observation_start=start)
+                return s.dropna()
+            except Exception as e:
+                last_exc = e
+                err_str = str(e).lower()
+                # Retry on server-side errors; give up on auth/not-found
+                if any(x in err_str for x in ('internal server error', '500', '503',
+                                               'service unavailable', 'timed out',
+                                               'connection')):
+                    if attempt < retries:
+                        log.debug(f"FRED fetch {series_id} attempt {attempt} failed ({e}), "
+                                  f"retrying in {retry_delay}s...")
+                        time.sleep(retry_delay)
+                        continue
+                break
+        log.warning(f"FRED fetch {series_id} failed: {last_exc}")
+        return pd.Series(dtype=float)
 
     def _last_val(self, s: pd.Series) -> float | None:
         """Return last non-NaN value."""

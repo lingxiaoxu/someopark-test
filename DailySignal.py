@@ -135,48 +135,158 @@ def save_inventory(inv: dict, strategy: str):
     log.info(f"inventory_{strategy}.json updated → {path}")
 
 
-# ── Pair config ────────────────────────────────────────────────────────────────
+# ── Walk-forward config loader (auto, no hardcoding) ──────────────────────────
+
+# Exclusion thresholds — adjust these to change which pairs get traded
+_WF_EXCLUDE_SHARPE = -0.10   # OOS Sharpe below this → exclude
+_WF_EXCLUDE_PNL    = -1000   # OOS cumulative PnL below this ($1M base) → exclude
+
+
+def _load_wf_configs(strategy: str) -> tuple[list, dict]:
+    """
+    Auto-load pair configs and OOS performance reference from the most recent
+    walk-forward output files.  Runs after every new walk-forward automatically —
+    no manual hardcoding of pair lists or OOS stats needed.
+
+    Sources:
+      walk_forward_summary_*.json  → W(last) selected_pairs + param_sets
+      oos_pair_summary_*.csv       → cumulative OOS Sharpe/PnL/MaxDD per pair
+
+    Returns:
+      pair_configs : [(s1, s2, param_set), ...] for pairs passing filters,
+                     sorted by OOS Sharpe descending
+      oos_perf     : {pair_key: {oos_sharpe, oos_pnl, oos_maxdd, tier,
+                                  excluded, reason}, ...}
+    """
+    import pandas as pd
+
+    if strategy == 'mrpt':
+        wf_dir = os.path.join(BASE_DIR, 'historical_runs', 'walk_forward')
+    else:
+        wf_dir = os.path.join(BASE_DIR, 'historical_runs', 'walk_forward_mtfs')
+
+    # ── Latest walk-forward summary → W(last) param_sets ──────────────────
+    # Sort by mtime (not filename) to handle inconsistent timestamp formats
+    summaries = sorted(glob.glob(os.path.join(wf_dir, 'walk_forward_summary_*.json')),
+                       key=os.path.getmtime)
+    if not summaries:
+        log.warning(f"[wf_config] No walk-forward summary in {wf_dir}")
+        return [], {}
+    with open(summaries[-1]) as f:
+        wf = json.load(f)
+
+    windows = wf.get('windows', [])
+    if not windows:
+        return [], {}
+    last_w = windows[-1]
+    n_windows = len(windows)
+    # param_set lookup from last (most recent) window
+    param_lookup = {f'{s1}/{s2}': ps for s1, s2, ps in last_w.get('selected_pairs', [])}
+    # Count how many windows each pair appeared in (for pos_windows display)
+    from collections import defaultdict as _dd
+    pair_window_count: dict = _dd(int)
+    for win in windows:
+        for s1, s2, _ in win.get('selected_pairs', []):
+            pair_window_count[f'{s1}/{s2}'] += 1
+
+    log.info(f"[wf_config] {strategy.upper()}: W{last_w['window_idx']} "
+             f"({last_w['test_start']}→{last_w['test_end']}) "
+             f"from {os.path.basename(summaries[-1])}")
+
+    # ── Latest OOS pair summary CSV → cumulative stats ────────────────────
+    # Sort by mtime to robustly pick the newest file regardless of naming convention
+    pair_csvs = sorted(glob.glob(os.path.join(wf_dir, 'oos_pair_summary_*.csv')),
+                       key=os.path.getmtime)
+    if not pair_csvs:
+        log.warning(f"[wf_config] No oos_pair_summary CSV in {wf_dir}")
+        return [], {}
+    df = pd.read_csv(pair_csvs[-1])
+
+    oos_perf = {}
+    pair_configs = []
+
+    for _, row in df.iterrows():
+        pair_key  = row['Pair']
+        sharpe    = float(row.get('Sharpe',   0) or 0)
+        pnl       = float(row.get('OOS_PnL',  0) or 0)
+        maxdd     = float(row.get('MaxDD',     0) or 0)
+        maxdd_pct = float(row.get('MaxDD_pct', 0) or 0)
+        n_trades  = int(row.get('N_Trades',    0) or 0)
+
+        # Exclusion logic — OR: either condition alone triggers exclusion
+        excluded, reason = False, ''
+        if n_trades == 0:
+            excluded, reason = True, 'No trades in OOS'
+        elif sharpe < _WF_EXCLUDE_SHARPE or pnl < _WF_EXCLUDE_PNL:
+            excluded = True
+            parts = []
+            if sharpe < _WF_EXCLUDE_SHARPE:
+                parts.append(f'Sharpe={sharpe:.2f}<{_WF_EXCLUDE_SHARPE}')
+            if pnl < _WF_EXCLUDE_PNL:
+                parts.append(f'PnL=${pnl:,.0f}<${_WF_EXCLUDE_PNL:,.0f}')
+            reason = ', '.join(parts)
+
+        # Tier
+        if excluded:
+            tier = 0
+        elif sharpe >= 0.8:
+            tier = 1
+        elif sharpe >= 0.3:
+            tier = 2
+        elif pnl > 0:
+            tier = 3
+        else:
+            tier = 4
+
+        oos_perf[pair_key] = {
+            'oos_sharpe':  round(sharpe, 4),
+            'oos_pnl':     round(pnl, 0),
+            'oos_maxdd':   round(maxdd, 0),
+            'pos_windows': f'{pair_window_count.get(pair_key, 0)}/{n_windows}',
+            'tier':        tier,
+            'excluded':    excluded,
+            'reason':      reason,
+        }
+
+        # Only include pairs that pass filters AND appear in last window's selection
+        if not excluded and pair_key in param_lookup:
+            s1, s2 = pair_key.split('/')
+            pair_configs.append((s1, s2, param_lookup[pair_key]))
+
+    pair_configs.sort(
+        key=lambda x: oos_perf.get(f'{x[0]}/{x[1]}', {}).get('oos_sharpe', 0),
+        reverse=True,
+    )
+    n_excl = sum(1 for v in oos_perf.values() if v['excluded'])
+    log.info(f"[wf_config] {strategy.upper()}: {len(pair_configs)} pairs selected, "
+             f"{n_excl} excluded "
+             f"(Sharpe<{_WF_EXCLUDE_SHARPE} AND PnL<${_WF_EXCLUDE_PNL:,})")
+    return pair_configs, oos_perf
+
+
+# Module-level cache — loaded once per process, refreshed on next run
+_wf_cache: dict = {}
+
 
 def get_pair_configs_mrpt() -> list[tuple[str, str, str]]:
-    """
-    MRPT: 10 OOS-filtered pairs (from 6-window walk-forward, updated 2026-03-08).
-    Excluded (poor OOS): GS/ALLY, ESS/EXPD, MSCI/LII, AMG/BEN.
-    Params = DSR-best from W6 (most recent training window).
-    """
-    return [
-        # Tier 1: strong OOS Sharpe > 1.0
-        ('ALGN',  'UAL',   'slow_reentry'),           # OOS Sharpe=+1.94, PnL=+$17K
-        ('DG',    'MOS',   'deep_dislocation'),        # OOS Sharpe=+1.25, PnL=+$19K
-        # Tier 2: decent OOS Sharpe 0.3-0.7
-        ('ACGL',  'UHS',   'vol_agnostic'),            # OOS Sharpe=+0.67, PnL=+$3K
-        ('TW',    'CME',   'conservative_no_leverage'),# OOS Sharpe=+0.53, PnL=+$1.8K
-        ('ARES',  'CG',    'fast_signal'),             # OOS Sharpe=+0.38, PnL=+$2.9K
-        # Tier 3: marginal but positive PnL, acceptable stability
-        ('D',     'MCHP',  'conservative_no_leverage'),# OOS Sharpe=+0.14, PnL=+$388
-        ('CART',  'DASH',  'static_threshold'),        # OOS Sharpe=+0.04, PnL=+$454, W3+/3-
-        # Tier 4: slight negative but stable enough (W3+/1-)
-        ('CL',    'USO',   'patient_hold'),            # OOS Sharpe=-0.05, W3+/1-
-        ('YUM',   'MCD',   'long_z_short_v'),          # OOS Sharpe=-0.13, W3+/3-
-        ('LYFT',  'UBER',  'conservative'),            # OOS Sharpe=-0.25, W3+/2-
-    ]
+    """Auto-loaded from latest MRPT walk-forward output."""
+    if 'mrpt' not in _wf_cache:
+        _wf_cache['mrpt'] = _load_wf_configs('mrpt')
+    return _wf_cache['mrpt'][0]
 
 
 def get_pair_configs_mtfs() -> list[tuple[str, str, str]]:
-    """
-    MTFS: 5 OOS-filtered pairs (from 6-window walk-forward, updated 2026-03-08).
-    Excluded (poor OOS): CL/USO, ALGN/UAL, GS/ALLY, CART/DASH, ACGL/UHS,
-                         D/MCHP, AAPL/META, ARES/CG (PosW=1/5 too unstable).
-    Params = DSR-best from W6 (most recent training window).
-    """
-    return [
-        # Tier 1: strong OOS Sharpe + momentum confirmed
-        ('TW',    'CME',   'beta_neutral'),            # OOS Sharpe=+1.49, PnL=+$216
-        ('DG',    'MOS',   'entry_threshold_weak'),    # OOS Sharpe=+0.99, PnL=+$3.8K
-        # Tier 2: positive PnL, reasonable stability
-        ('AMG',   'BEN',   'aggressive'),              # OOS Sharpe=+0.53, PnL=+$3.9K, W3+/2-
-        ('LYFT',  'UBER',  'aggressive'),              # OOS Sharpe=+0.46, PnL=+$3.8K, W3+/1-
-        ('ESS',   'EXPD',  'raw_momentum'),            # OOS Sharpe=+0.45, PnL=+$3.4K, W2+/1-
-    ]
+    """Auto-loaded from latest MTFS walk-forward output."""
+    if 'mtfs' not in _wf_cache:
+        _wf_cache['mtfs'] = _load_wf_configs('mtfs')
+    return _wf_cache['mtfs'][0]
+
+
+def _get_oos_perf(strategy: str) -> dict:
+    """OOS performance reference dict used by report builders."""
+    if strategy not in _wf_cache:
+        _wf_cache[strategy] = _load_wf_configs(strategy)
+    return _wf_cache[strategy][1]
 
 
 # ── Capital scaling ────────────────────────────────────────────────────────────
@@ -544,11 +654,13 @@ def update_inventory_from_signals(
 
         elif action == 'HOLD':
             if pair in inv['pairs'] and inv['pairs'][pair].get('direction'):
-                inv['pairs'][pair]['days_held'] = inv['pairs'][pair].get('days_held', 0) + 1
-                inv['pairs'][pair]['s1_shares'] = sig.get('s1_shares',
-                                                           inv['pairs'][pair].get('s1_shares', 0))
-                inv['pairs'][pair]['s2_shares'] = sig.get('s2_shares',
-                                                           inv['pairs'][pair].get('s2_shares', 0))
+                # Only increment days_held once per calendar day (idempotent re-runs)
+                last_updated = inv['pairs'][pair].get('last_updated')
+                if last_updated != signal_date:
+                    inv['pairs'][pair]['days_held'] = inv['pairs'][pair].get('days_held', 0) + 1
+                inv['pairs'][pair]['last_updated'] = signal_date
+                # Do NOT update shares on HOLD — open shares are fixed at entry and
+                # must not drift with regime-driven capital/scale changes each day.
     return inv
 
 
@@ -858,13 +970,17 @@ def monitor_existing_positions(
 
             result[strategy].append(sig)
 
-        # Apply monitor signals to inventory (update HOLD days_held, remove CLOSE)
-        if not dry_run and result[strategy]:
+        # Apply monitor CLOSE signals to inventory only — do NOT increment days_held here.
+        # days_held is incremented once per day by _run_single (Step 2).
+        # Incrementing in both monitor and _run_single would double-count.
+        close_sigs = [s for s in result[strategy]
+                      if s.get('action') in ('CLOSE', 'CLOSE_STOP')]
+        if not dry_run and close_sigs:
             updated_inv = update_inventory_from_signals(
-                inventory, result[strategy], signal_date.strftime('%Y-%m-%d'),
+                inventory, close_sigs, signal_date.strftime('%Y-%m-%d'),
                 strategy=strategy)
             save_inventory(updated_inv, strategy)
-            log.info(f"[monitor] inventory_{strategy}.json updated after position monitoring")
+            log.info(f"[monitor] inventory_{strategy}.json updated (closed positions)")
 
     return result
 
@@ -1329,42 +1445,6 @@ def _clean_for_json(obj):
 
 # ── Report builders ────────────────────────────────────────────────────────────
 
-# OOS performance reference (from 6-window walk-forward, updated 2026-03-08)
-_OOS_PERF_MRPT = {
-    'ALGN/UAL':  {'oos_sharpe': 1.937, 'oos_pnl': 17192,  'oos_maxdd': -3895,  'pos_windows': '3/6', 'tier': 1},
-    'DG/MOS':    {'oos_sharpe': 1.247, 'oos_pnl': 18901,  'oos_maxdd': -17260, 'pos_windows': '4/6', 'tier': 1},
-    'ACGL/UHS':  {'oos_sharpe': 0.668, 'oos_pnl': 3013,   'oos_maxdd': -4631,  'pos_windows': '3/6', 'tier': 2},
-    'TW/CME':    {'oos_sharpe': 0.528, 'oos_pnl': 1814,   'oos_maxdd': -3955,  'pos_windows': '1/6', 'tier': 2},
-    'ARES/CG':   {'oos_sharpe': 0.379, 'oos_pnl': 2885,   'oos_maxdd': -9230,  'pos_windows': '3/6', 'tier': 2},
-    'D/MCHP':    {'oos_sharpe': 0.136, 'oos_pnl': 388,    'oos_maxdd': -2275,  'pos_windows': '3/6', 'tier': 3},
-    'CART/DASH': {'oos_sharpe': 0.036, 'oos_pnl': 454,    'oos_maxdd': -21585, 'pos_windows': '3/6', 'tier': 3},
-    'CL/USO':    {'oos_sharpe': -0.055,'oos_pnl': -273,   'oos_maxdd': -4153,  'pos_windows': '3/6', 'tier': 4},
-    'YUM/MCD':   {'oos_sharpe': -0.125,'oos_pnl': -478,   'oos_maxdd': -4020,  'pos_windows': '3/6', 'tier': 4},
-    'LYFT/UBER': {'oos_sharpe': -0.252,'oos_pnl': -1626,  'oos_maxdd': -8966,  'pos_windows': '3/6', 'tier': 4},
-    # Excluded pairs (for transparency in report)
-    'GS/ALLY':   {'oos_sharpe': -1.099,'oos_pnl': -5958,  'oos_maxdd': -7436,  'pos_windows': '1/6', 'tier': 0, 'excluded': True, 'reason': 'Sharpe<-0.5, PnL<-$3K, PosW=1/6 unstable'},
-    'ESS/EXPD':  {'oos_sharpe': -0.921,'oos_pnl': -11769, 'oos_maxdd': -23380, 'pos_windows': '4/6', 'tier': 0, 'excluded': True, 'reason': 'Sharpe<-0.5, PnL<-$3K'},
-    'MSCI/LII':  {'oos_sharpe': -0.474,'oos_pnl': -4118,  'oos_maxdd': -15184, 'pos_windows': '2/6', 'tier': 0, 'excluded': True, 'reason': 'PnL<-$3K'},
-    'AMG/BEN':   {'oos_sharpe': 0.301, 'oos_pnl': 1258,   'oos_maxdd': -6372,  'pos_windows': '1/6', 'tier': 0, 'excluded': True, 'reason': 'PosW=1/6 unstable'},
-    'AAPL/META': {'oos_sharpe': 0.000, 'oos_pnl': 0,      'oos_maxdd': 0,      'pos_windows': '0/6', 'tier': 0, 'excluded': True, 'reason': 'No trades in OOS'},
-}
-
-_OOS_PERF_MTFS = {
-    'TW/CME':    {'oos_sharpe': 1.487, 'oos_pnl': 216,    'oos_maxdd': 0,      'pos_windows': '0/5', 'tier': 1},
-    'DG/MOS':    {'oos_sharpe': 0.989, 'oos_pnl': 3784,   'oos_maxdd': -3463,  'pos_windows': '0/5', 'tier': 1},
-    'AMG/BEN':   {'oos_sharpe': 0.532, 'oos_pnl': 3894,   'oos_maxdd': -8205,  'pos_windows': '3/5', 'tier': 2},
-    'LYFT/UBER': {'oos_sharpe': 0.463, 'oos_pnl': 3849,   'oos_maxdd': -13672, 'pos_windows': '3/5', 'tier': 2},
-    'ESS/EXPD':  {'oos_sharpe': 0.448, 'oos_pnl': 3372,   'oos_maxdd': -6515,  'pos_windows': '2/5', 'tier': 2},
-    # Excluded pairs
-    'CL/USO':    {'oos_sharpe': -2.801,'oos_pnl': -4063,  'oos_maxdd': -4063,  'pos_windows': '0/5', 'tier': 0, 'excluded': True, 'reason': 'Sharpe<-0.5, PnL<-$3K'},
-    'ALGN/UAL':  {'oos_sharpe': -2.589,'oos_pnl': -17906, 'oos_maxdd': -20683, 'pos_windows': '0/5', 'tier': 0, 'excluded': True, 'reason': 'Sharpe<-0.5, PnL<-$3K, PosW=0/5'},
-    'GS/ALLY':   {'oos_sharpe': -2.411,'oos_pnl': -14843, 'oos_maxdd': -15508, 'pos_windows': '0/5', 'tier': 0, 'excluded': True, 'reason': 'Sharpe<-0.5, PnL<-$3K, PosW=0/5'},
-    'CART/DASH': {'oos_sharpe': -1.890,'oos_pnl': -10828, 'oos_maxdd': -12558, 'pos_windows': '0/5', 'tier': 0, 'excluded': True, 'reason': 'Sharpe<-0.5, PnL<-$3K, PosW=0/5'},
-    'ACGL/UHS':  {'oos_sharpe': -1.120,'oos_pnl': -1169,  'oos_maxdd': -1478,  'pos_windows': '0/3', 'tier': 0, 'excluded': True, 'reason': 'Sharpe<-0.5'},
-    'D/MCHP':    {'oos_sharpe': -0.730,'oos_pnl': -5576,  'oos_maxdd': -12987, 'pos_windows': '0/5', 'tier': 0, 'excluded': True, 'reason': 'Sharpe<-0.5, PnL<-$3K, PosW=0/5'},
-    'AAPL/META': {'oos_sharpe': -0.030,'oos_pnl': -108,   'oos_maxdd': -3922,  'pos_windows': '1/5', 'tier': 0, 'excluded': True, 'reason': 'PosW=1/5 unstable'},
-    'ARES/CG':   {'oos_sharpe': 1.497, 'oos_pnl': 9607,   'oos_maxdd': -6866,  'pos_windows': '1/5', 'tier': 0, 'excluded': True, 'reason': 'PosW=1/5 unstable (1 large win W1)'},
-}
 
 _REGIME_INDICATOR_LABELS = {
     'vix_level':           ('VIX',                  'Equity volatility index',             lambda v: f'{v:.1f}',        lambda v: '偏高 (>25=警戒)' if v > 25 else ('正常' if v > 15 else '极低')),
@@ -1405,7 +1485,7 @@ def _build_strategy_report_section(strategy: str, out: dict) -> dict:
     sim_cap    = out.get('sim_capital', 1_000_000)
     scale      = out.get('scale_factor', 1.0)
     sig_date   = out.get('signal_date', '')
-    oos_ref    = _OOS_PERF_MRPT if strategy == 'mrpt' else _OOS_PERF_MTFS
+    oos_ref    = _get_oos_perf(strategy)
     sig_key    = 'z_score' if strategy == 'mrpt' else 'momentum_spread'
     sig_label  = 'Z-score' if strategy == 'mrpt' else 'Momentum Spread'
 
@@ -1943,7 +2023,7 @@ def write_report_txt(report: dict, path: str):
         lines.append(f'  {"配对":<12}  {"Tier":>5}  {"OOS Sharpe":>11}  {"OOS PnL($1M)":>13}  '
                      f'{"MaxDD($1M)":>11}  {"盈利窗口/总窗口":>14}  DSR参数集')
         lines.append(f'  {"-"*95}')
-        oos_ref_dict = _OOS_PERF_MRPT if strat == 'mrpt' else _OOS_PERF_MTFS
+        oos_ref_dict = _get_oos_perf(strat)
         pair_configs_fn = get_pair_configs_mrpt if strat == 'mrpt' else get_pair_configs_mtfs
         for s1, s2, ps in pair_configs_fn():
             pair = f'{s1}/{s2}'
@@ -1967,10 +2047,12 @@ def write_report_txt(report: dict, path: str):
     # Use latest OOS PnL sums as reference for selected pairs
     mrpt_sec = report.get('mrpt', {})
     mtfs_sec = report.get('mtfs', {})
-    mrpt_pnl_1m = sum(v.get('oos_pnl', 0) for v in _OOS_PERF_MRPT.values() if not v.get('excluded'))
-    mtfs_pnl_1m = sum(v.get('oos_pnl', 0) for v in _OOS_PERF_MTFS.values() if not v.get('excluded'))
-    mrpt_dd_1m  = min(v.get('oos_maxdd', 0) for v in _OOS_PERF_MRPT.values() if not v.get('excluded'))
-    mtfs_dd_1m  = min(v.get('oos_maxdd', 0) for v in _OOS_PERF_MTFS.values() if not v.get('excluded'))
+    _oos_mrpt = _get_oos_perf('mrpt')
+    _oos_mtfs = _get_oos_perf('mtfs')
+    mrpt_pnl_1m = sum(v.get('oos_pnl', 0) for v in _oos_mrpt.values() if not v.get('excluded'))
+    mtfs_pnl_1m = sum(v.get('oos_pnl', 0) for v in _oos_mtfs.values() if not v.get('excluded'))
+    mrpt_dd_1m  = min((v.get('oos_maxdd', 0) for v in _oos_mrpt.values() if not v.get('excluded')), default=0)
+    mtfs_dd_1m  = min((v.get('oos_maxdd', 0) for v in _oos_mtfs.values() if not v.get('excluded')), default=0)
 
     for cap in [250_000, 500_000, 1_000_000, 2_000_000, 5_000_000]:
         sf = cap / 1_000_000
