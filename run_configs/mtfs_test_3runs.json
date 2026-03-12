@@ -1,0 +1,22 @@
+{
+  "_comment": "Quick 3-run test: 3 different param_sets on the same 3 pairs",
+  "start_date": "2024-01-01",
+  "end_date": "2026-03-12",
+  "runs": [
+    {
+      "label": "test_kalman_aggressive",
+      "param_set": "kalman_aggressive",
+      "pairs": [["MCHP","D"], ["MOS","DG"], ["ALLY","GS"]]
+    },
+    {
+      "label": "test_monthly_aligned_windows",
+      "param_set": "monthly_aligned_windows",
+      "pairs": [["MCHP","D"], ["MOS","DG"], ["ALLY","GS"]]
+    },
+    {
+      "label": "test_fast_strict",
+      "param_set": "fast_strict",
+      "pairs": [["MCHP","D"], ["MOS","DG"], ["ALLY","GS"]]
+    }
+  ]
+}
