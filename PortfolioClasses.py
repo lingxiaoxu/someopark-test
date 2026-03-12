@@ -623,10 +623,10 @@ class PortfolioAnalysis:
     def calculate_weighted_pnl_percentage(self, stock1, stock2, pnl_percent1, pnl_percent2, use_current=True):
         index = -1 if use_current else -2
 
-        stock1_percent = self.portfolio.percentage_history[stock1][index][1] if len(
-            self.portfolio.percentage_history[stock1]) >= abs(index) else 0
-        stock2_percent = self.portfolio.percentage_history[stock2][index][1] if len(
-            self.portfolio.percentage_history[stock2]) >= abs(index) else 0
+        stock1_hist = self.portfolio.percentage_history.get(stock1, [])
+        stock2_hist = self.portfolio.percentage_history.get(stock2, [])
+        stock1_percent = stock1_hist[index][1] if len(stock1_hist) >= abs(index) else 0
+        stock2_percent = stock2_hist[index][1] if len(stock2_hist) >= abs(index) else 0
 
         total_abs_percent = abs(stock1_percent) + abs(stock2_percent)
         if total_abs_percent != 0:
@@ -2388,38 +2388,77 @@ class MTFSPortfolioConstruct:
         self.momentum_signal = MomentumSignal()
 
     def compute_pair_hedge_ratio(self, stock_1_prices, stock_2_prices, method='dollar_neutral'):
-        """Compute hedge ratio for a momentum pair.
+        """Compute sizing ratio for an MTFS momentum pair.
+
+        IMPORTANT: In MTFS the returned value is a *sizing ratio* (always > 0), NOT a
+        cointegration hedge ratio.  The trade direction (long/short) is already determined
+        by the momentum signal before this function is called.  The ratio only controls
+        the relative notional allocation between the two legs:
+            stock_1_shares =  1        (direction: long winner)
+            stock_2_shares = -ratio    (direction: short loser)
+        A negative ratio would flip the short leg to long, creating an unhedged
+        directional bet — so we always enforce ratio > 0.
 
         Methods:
-            'dollar_neutral': hedge = price_1 / price_2 (equal dollar allocation)
-            'beta_neutral':   hedge via rolling beta regression
-            'kalman':         Kalman filter (same as MRPT)
+            'dollar_neutral':  ratio = price_1 / price_2  (equal dollar notional)
+            'vol_neutral':     ratio = vol_2 / vol_1  (inverse-volatility weight;
+                               allocates less notional to the more volatile leg)
+            'beta_neutral':    |rolling OLS beta|, falling back to dollar_neutral
+                               when beta <= 0 (MTFS pairs are often negatively
+                               correlated by construction, so raw beta is unreliable)
+            'kalman':          |Kalman-filter beta|, same fallback as beta_neutral
         """
+        p1 = stock_1_prices.iloc[-1]
+        p2 = stock_2_prices.iloc[-1]
+        dollar_neutral_ratio = p1 / p2 if p2 != 0 else 1.0
+
         if method == 'dollar_neutral':
-            p1 = stock_1_prices.iloc[-1]
-            p2 = stock_2_prices.iloc[-1]
-            if p2 == 0:
-                return 1.0
-            return p1 / p2
+            return dollar_neutral_ratio
+
+        elif method == 'vol_neutral':
+            # Inverse-vol sizing: give less notional to the more volatile leg.
+            r1 = stock_1_prices.pct_change().dropna()
+            r2 = stock_2_prices.pct_change().dropna()
+            window = min(20, len(r1), len(r2))
+            if window < 5:
+                return dollar_neutral_ratio
+            vol_1 = r1.iloc[-window:].std()
+            vol_2 = r2.iloc[-window:].std()
+            if vol_1 == 0 or vol_2 == 0:
+                return dollar_neutral_ratio
+            # ratio = (vol_2 / vol_1) * (p1 / p2) keeps dollar-notional roughly equal
+            # after adjusting for volatility differences
+            return (vol_2 / vol_1) * dollar_neutral_ratio
 
         elif method == 'beta_neutral':
-            # Rolling beta: cov(r1, r2) / var(r2)
+            # Rolling OLS beta: cov(r1, r2) / var(r2).
+            # MTFS pairs are often negatively correlated (winner vs loser), so beta
+            # can be negative.  We fall back to dollar_neutral in that case.
             r1 = stock_1_prices.pct_change().dropna()
             r2 = stock_2_prices.pct_change().dropna()
             window = min(60, len(r1), len(r2))
             if window < 10:
-                return stock_1_prices.iloc[-1] / stock_2_prices.iloc[-1]
+                return dollar_neutral_ratio
             r1_w = r1.iloc[-window:]
             r2_w = r2.iloc[-window:]
             cov = np.cov(r1_w, r2_w)[0, 1]
             var = np.var(r2_w)
             if var == 0:
-                return stock_1_prices.iloc[-1] / stock_2_prices.iloc[-1]
-            return cov / var
+                return dollar_neutral_ratio
+            beta = cov / var
+            if beta <= 0:
+                # Negative beta: pair is negatively correlated over rolling window,
+                # which is expected for MTFS.  Dollar-neutral is the safe fallback.
+                return dollar_neutral_ratio
+            return beta
 
         elif method == 'kalman':
-            # Reuse the MRPT Kalman filter approach
-            return PortfolioConstruct(constant=1).hedge_ratio(stock_1_prices, stock_2_prices)
+            # Kalman-filter beta (same as MRPT).  Can be negative for MTFS pairs;
+            # fall back to dollar_neutral when that happens.
+            kalman_beta = PortfolioConstruct(constant=1).hedge_ratio(stock_1_prices, stock_2_prices)
+            if kalman_beta <= 0:
+                return dollar_neutral_ratio
+            return kalman_beta
 
         else:
             raise ValueError(f"Unknown hedge method: {method}")

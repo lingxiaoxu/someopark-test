@@ -37,9 +37,9 @@ import pandas as pd
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ALL_PAIRS = [
-    'MSCI/LII', 'D/MCHP', 'DG/MOS', 'ESS/EXPD', 'ACGL/UHS',
-    'AAPL/META', 'YUM/MCD', 'GS/ALLY', 'CL/USO', 'ALGN/UAL',
-    'ARES/CG', 'AMG/BEN', 'LYFT/UBER', 'TW/CME', 'CART/DASH',
+    'LII/MSCI', 'MCHP/D', 'MOS/DG', 'EXPD/ESS', 'UHS/ACGL',
+    'META/AAPL', 'MCD/YUM', 'ALLY/GS', 'USO/CL', 'UAL/ALGN',
+    'CG/ARES', 'BEN/AMG', 'UBER/LYFT', 'CME/TW', 'DASH/CART',
 ]
 
 

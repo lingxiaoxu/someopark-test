@@ -1,6 +1,6 @@
 {
-  "_comment": "Step 2 \u2014 Backtest: 13 selected pairs in ONE combined portfolio run. Each pair entry [s1, s2, param_set] uses its own best param_set from Step 1. Auto-generated 2026-03-07 23:27. Criteria: pair_pnl>0, trades>=3, DSR>0.5 (N=30 trials).",
-  "start_date": "2024-09-07",
+  "_comment": "Step 2 \u2014 Backtest: 13 selected pairs in ONE combined portfolio run. Each pair entry [s1, s2, param_set] uses its own best param_set from Step 1. Auto-generated 2026-03-12 17:59. Criteria: pair_pnl>0, trades>=3, DSR>0.5 (N=31 trials).",
+  "start_date": "2024-09-12",
   "end_date": "auto_minus_70d",
   "runs": [
     {
@@ -8,69 +8,69 @@
       "param_set": "default",
       "pairs": [
         [
-          "D",
           "MCHP",
-          "trend_leverage"
+          "D",
+          "monthly_aligned_windows"
         ],
         [
-          "DG",
           "MOS",
-          "beta_neutral"
+          "DG",
+          "raw_momentum_kalman"
         ],
         [
-          "ESS",
           "EXPD",
-          "no_reversal_protection"
+          "ESS",
+          "vol_sized_conservative"
         ],
         [
-          "ACGL",
           "UHS",
-          "short_term_tilt"
+          "ACGL",
+          "short_term_beta_neutral"
         ],
         [
-          "AAPL",
           "META",
-          "sensitive_reversal"
+          "AAPL",
+          "long_term_tilt"
         ],
         [
-          "GS",
           "ALLY",
-          "aggressive"
+          "GS",
+          "monthly_aligned_windows"
         ],
         [
-          "CL",
           "USO",
-          "slow_rebalance"
+          "CL",
+          "fast_strict"
         ],
         [
-          "ALGN",
           "UAL",
+          "ALGN",
           "no_skip_month"
         ],
         [
-          "ARES",
           "CG",
-          "aggressive"
+          "ARES",
+          "kalman_aggressive"
         ],
         [
-          "AMG",
           "BEN",
-          "aggressive"
+          "AMG",
+          "no_skip_month"
         ],
         [
-          "LYFT",
           "UBER",
-          "aggressive"
+          "LYFT",
+          "monthly_aligned_windows"
         ],
         [
-          "TW",
           "CME",
-          "weekly_aligned_windows"
+          "TW",
+          "beta_neutral"
         ],
         [
-          "CART",
           "DASH",
-          "no_trend_filter"
+          "CART",
+          "weekly_aligned_windows"
         ]
       ]
     }

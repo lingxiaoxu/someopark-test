@@ -1,13 +1,16 @@
 {
-  "_comment": "MTFS Forward ~30-trading-day window: warmup from start_date, trading only from trade_start_date to end_date. Per-pair best params from most recent Step 2 selection. Update pairs/param_sets here after running MTFSUpdateConfigs.py.",
-  "start_date": "2024-12-01",
-  "end_date": "auto",
-  "trade_start_date": "auto_minus_30d",
+  "_comment": "Test run for monthly_aligned_windows only \u2014 verifies fix for data.history calendar-vs-trading-days bug",
+  "start_date": "2023-12-16",
+  "end_date": "auto_minus_70d",
   "runs": [
     {
-      "label": "mtfs_forward30d_best_per_pair",
-      "param_set": "default",
+      "label": "all15_monthly_aligned_windows",
+      "param_set": "monthly_aligned_windows",
       "pairs": [
+        [
+          "LII",
+          "MSCI"
+        ],
         [
           "MCHP",
           "D"
@@ -27,6 +30,10 @@
         [
           "META",
           "AAPL"
+        ],
+        [
+          "MCD",
+          "YUM"
         ],
         [
           "ALLY",

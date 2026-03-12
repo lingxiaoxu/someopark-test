@@ -169,49 +169,51 @@ PARAM_SETS = {
     # 测试趋势确认过滤器的影响
     # ════════════════════════════════════════════════════════════════════════
 
-    # B1: 无趋势确认。纯动量得分驱动，不需SMA对齐
-    'no_trend_filter': {
+    # B1: Kalman + 激进放大。测试Kalman动态hedge ratio能否控制高杠杆下的风险
+    # 现有kalman_hedge和aggressive都与default配置接近，此组交叉两者
+    'kalman_aggressive': {
         'momentum_windows': [6, 12, 30, 60, 120, 150],
         'momentum_weights': [0.20, 0.20, 0.20, 0.15, 0.15, 0.10],
         'skip_days': 21,
         'use_vams': True,
         'sma_short': 20, 'sma_long': 50,
-        'require_trend_confirmation': False,
+        'require_trend_confirmation': False,    # KEY: 激进，不过滤趋势
         'entry_momentum_threshold': 0.0,
-        'exit_momentum_decay_threshold': 0.5,
+        'exit_momentum_decay_threshold': 0.4,
         'reversal_sma_lookback': 3,
         'momentum_decay_short_window': 5,
         'momentum_decay_long_window': 30,
-        'exit_on_reversal': True,
+        'exit_on_reversal': False,              # KEY: 激进，不提前止损反转
         'exit_on_momentum_decay': True,
-        'target_annual_vol': 0.10,
-        'vol_scale_window': 40,
-        'max_vol_scale_factor': 1.5,
-        'crash_vol_percentile': 0.85,
-        'crash_scale_factor': 0.20,
-        'amplifier': 2,
+        'target_annual_vol': 0.12,              # KEY: 更高波动目标
+        'vol_scale_window': 30,
+        'max_vol_scale_factor': 2.0,
+        'crash_vol_percentile': 0.90,
+        'crash_scale_factor': 0.25,
+        'amplifier': 3,                         # KEY: 高杠杆
         'use_vol_weighted_sizing': False,
-        'hedge_method': 'dollar_neutral',
+        'hedge_method': 'kalman',               # KEY: Kalman hedge ratio
         'hedge_lag': 1,
-        'volatility_stop_loss_multiplier': 1.5,
-        'max_holding_period': 10,
-        'cooling_off_period': 3,
-        'pair_stop_loss_pct': 0.03,
+        'volatility_stop_loss_multiplier': 1.8,
+        'max_holding_period': 12,
+        'cooling_off_period': 1,
+        'pair_stop_loss_pct': 0.05,
         'rebalance_frequency': 10,
         'mean_back': 20, 'std_back': 20, 'v_back': 20,
     },
 
-    # B2: 快速SMA确认。SMA 10/30（更快响应趋势变化）
-    'fast_trend_filter': {
+    # B2: 均等权重基准。测试均匀分配各窗口权重 vs 短期偏重的效果
+    # 消除权重偏向，纯看多时间框架的均值动量
+    'uniform_weights': {
         'momentum_windows': [6, 12, 30, 60, 120, 150],
-        'momentum_weights': [0.20, 0.20, 0.20, 0.15, 0.15, 0.10],
+        'momentum_weights': [0.167, 0.167, 0.167, 0.167, 0.167, 0.165],  # KEY: 均等权重
         'skip_days': 21,
         'use_vams': True,
-        'sma_short': 10, 'sma_long': 30,
+        'sma_short': 20, 'sma_long': 50,
         'require_trend_confirmation': True,
         'entry_momentum_threshold': 0.0,
         'exit_momentum_decay_threshold': 0.5,
-        'reversal_sma_lookback': 2,
+        'reversal_sma_lookback': 3,
         'momentum_decay_short_window': 5,
         'momentum_decay_long_window': 30,
         'exit_on_reversal': True,
@@ -302,8 +304,9 @@ PARAM_SETS = {
         'mean_back': 20, 'std_back': 20, 'v_back': 20,
     },
 
-    # C3: 无杠杆基准。amplifier=1, 测试纯信号质量
-    'no_leverage': {
+    # C3: vol-weighted + 保守风控组合。测试波动率加权仓位在低风险端是否提升Sharpe
+    # 低杠杆 + vol-weighted共同压缩尾部风险，探索不同于default的保守增益路径
+    'vol_sized_conservative': {
         'momentum_windows': [6, 12, 30, 60, 120, 150],
         'momentum_weights': [0.20, 0.20, 0.20, 0.15, 0.15, 0.10],
         'skip_days': 21,
@@ -311,25 +314,25 @@ PARAM_SETS = {
         'sma_short': 20, 'sma_long': 50,
         'require_trend_confirmation': True,
         'entry_momentum_threshold': 0.0,
-        'exit_momentum_decay_threshold': 0.5,
+        'exit_momentum_decay_threshold': 0.55,
         'reversal_sma_lookback': 3,
         'momentum_decay_short_window': 5,
         'momentum_decay_long_window': 30,
         'exit_on_reversal': True,
         'exit_on_momentum_decay': True,
-        'target_annual_vol': 0.10,
+        'target_annual_vol': 0.08,              # KEY: 低波动目标
         'vol_scale_window': 40,
         'max_vol_scale_factor': 1.0,
-        'crash_vol_percentile': 0.85,
-        'crash_scale_factor': 0.20,
-        'amplifier': 1,
-        'use_vol_weighted_sizing': False,
+        'crash_vol_percentile': 0.80,
+        'crash_scale_factor': 0.15,
+        'amplifier': 1,                         # KEY: 无放大
+        'use_vol_weighted_sizing': True,         # KEY: vol-weighted仓位
         'hedge_method': 'dollar_neutral',
         'hedge_lag': 1,
-        'volatility_stop_loss_multiplier': 1.5,
+        'volatility_stop_loss_multiplier': 1.2,
         'max_holding_period': 10,
-        'cooling_off_period': 3,
-        'pair_stop_loss_pct': 0.03,
+        'cooling_off_period': 4,
+        'pair_stop_loss_pct': 0.02,
         'rebalance_frequency': 10,
         'mean_back': 20, 'std_back': 20, 'v_back': 20,
     },
@@ -678,17 +681,17 @@ PARAM_SETS = {
     # 现有19组 entry_momentum_threshold 全部为0，这是未探索的关键维度
     # ════════════════════════════════════════════════════════════════════════
 
-    # H1: 弱过滤阈值。只允许moderate正动量差再入场
-    # 减少低质量交易，但不会过度限制信号
-    'entry_threshold_weak': {
+    # H1: 强过滤阈值 + Kalman对冲组合。只交易强信号，同时用Kalman精确hedge
+    # 两个独立改进单独看都有意义，组合可能形成协同效应（减少noise trade + 更准hedge）
+    'entry_filter_kalman': {
         'momentum_windows': [6, 12, 30, 60, 120, 150],
         'momentum_weights': [0.20, 0.20, 0.20, 0.15, 0.15, 0.10],
         'skip_days': 21,
         'use_vams': True,
         'sma_short': 20, 'sma_long': 50,
         'require_trend_confirmation': True,
-        'entry_momentum_threshold': 0.02,   # KEY: 过滤掉差值<0.02的弱信号
-        'exit_momentum_decay_threshold': 0.5,
+        'entry_momentum_threshold': 0.05,   # KEY: 只做最强信号
+        'exit_momentum_decay_threshold': 0.45,
         'reversal_sma_lookback': 3,
         'momentum_decay_short_window': 5,
         'momentum_decay_long_window': 30,
@@ -701,12 +704,12 @@ PARAM_SETS = {
         'crash_scale_factor': 0.20,
         'amplifier': 2,
         'use_vol_weighted_sizing': False,
-        'hedge_method': 'dollar_neutral',
+        'hedge_method': 'kalman',           # KEY: Kalman hedge + 强过滤
         'hedge_lag': 1,
         'volatility_stop_loss_multiplier': 1.5,
-        'max_holding_period': 10,
+        'max_holding_period': 14,
         'cooling_off_period': 3,
-        'pair_stop_loss_pct': 0.03,
+        'pair_stop_loss_pct': 0.04,
         'rebalance_frequency': 10,
         'mean_back': 20, 'std_back': 20, 'v_back': 20,
     },
@@ -780,35 +783,36 @@ PARAM_SETS = {
         'mean_back': 20, 'std_back': 20, 'v_back': 20,
     },
 
-    # I2: 波动率加权仓位 + 高杠杆。测试vol-weighted在放大leverage时的风控效果
-    # vol-weighted能否有效控制tail risk，让高sharpe对的仓位更大
-    'vol_weighted_aggressive': {
+    # I2: 原始动量 + Kalman对冲组合。vams=False + hedge=kalman，两个单轴变量的交叉
+    # raw_momentum目前只测了dollar_neutral hedge；kalman_hedge只测了vams=True
+    # 交叉验证：Kalman hedge是否与原始动量评分配合更好
+    'raw_momentum_kalman': {
         'momentum_windows': [6, 12, 30, 60, 120, 150],
         'momentum_weights': [0.20, 0.20, 0.20, 0.15, 0.15, 0.10],
         'skip_days': 21,
-        'use_vams': True,
+        'use_vams': False,                      # KEY: 原始动量（不做波动率调整）
         'sma_short': 20, 'sma_long': 50,
-        'require_trend_confirmation': False,
+        'require_trend_confirmation': True,
         'entry_momentum_threshold': 0.0,
-        'exit_momentum_decay_threshold': 0.45,
+        'exit_momentum_decay_threshold': 0.5,
         'reversal_sma_lookback': 3,
         'momentum_decay_short_window': 5,
         'momentum_decay_long_window': 30,
-        'exit_on_reversal': False,
+        'exit_on_reversal': True,
         'exit_on_momentum_decay': True,
-        'target_annual_vol': 0.15,
-        'vol_scale_window': 30,
-        'max_vol_scale_factor': 2.0,
-        'crash_vol_percentile': 0.90,
-        'crash_scale_factor': 0.25,
-        'amplifier': 3,                         # KEY: 高杠杆
-        'use_vol_weighted_sizing': True,         # KEY: 但用vol-weighted控制单对风险
-        'hedge_method': 'dollar_neutral',
+        'target_annual_vol': 0.10,
+        'vol_scale_window': 40,
+        'max_vol_scale_factor': 1.5,
+        'crash_vol_percentile': 0.85,
+        'crash_scale_factor': 0.20,
+        'amplifier': 2,
+        'use_vol_weighted_sizing': False,
+        'hedge_method': 'kalman',               # KEY: Kalman hedge + 原始动量评分
         'hedge_lag': 1,
-        'volatility_stop_loss_multiplier': 1.8,
-        'max_holding_period': 12,
-        'cooling_off_period': 2,
-        'pair_stop_loss_pct': 0.04,
+        'volatility_stop_loss_multiplier': 1.5,
+        'max_holding_period': 10,
+        'cooling_off_period': 3,
+        'pair_stop_loss_pct': 0.03,
         'rebalance_frequency': 10,
         'mean_back': 20, 'std_back': 20, 'v_back': 20,
     },
@@ -821,13 +825,18 @@ PARAM_SETS = {
 
     # J1: 月度对齐窗口。[21,42,63,126,189,252] ≈ 1/2/3/6/9/12个月
     # 贴合机构投资者的月度动量再平衡周期
+    # Fix: skip_days=0 — SKIP_THRESHOLD=60 means windows <60 (21,42) never skip
+    # while windows >=60 (63,126,189,252) do skip, causing inconsistent momentum
+    # direction across windows → consistency stays <0.7 → no entries ever trigger.
+    # Setting skip_days=0 makes all windows measure the same recency consistently.
+    # Also: require_trend_confirmation=False to avoid the high consistency threshold.
     'monthly_aligned_windows': {
-        'momentum_windows': [21, 42, 63, 126, 189, 252],   # KEY: 月度对齐
+        'momentum_windows': [21, 42, 63, 84, 105, 126],    # KEY: 月度对齐 1M/2M/3M/4M/5M/6M
         'momentum_weights': [0.20, 0.20, 0.20, 0.15, 0.15, 0.10],
-        'skip_days': 21,
+        'skip_days': 0,             # max_window=126 → required_bars=127; from 2024-09-07 gives 181 tradeable days
         'use_vams': True,
         'sma_short': 21, 'sma_long': 63,
-        'require_trend_confirmation': True,
+        'require_trend_confirmation': False,   # FIX: was True — blocked entry via consistency threshold
         'entry_momentum_threshold': 0.0,
         'exit_momentum_decay_threshold': 0.5,
         'reversal_sma_lookback': 3,
@@ -854,13 +863,15 @@ PARAM_SETS = {
 
     # J2: 短期日历窗口。[5,10,20,40,60,90] ≈ 周/双周/月/季度
     # 捕捉更高频的短周期动量，适合高换手股票对
+    # Fix: skip_days=0 — with SKIP_THRESHOLD=60, only windows 60 and 90 would skip,
+    # causing 4 of 6 windows to be inconsistent with the others → no entries trigger.
     'weekly_aligned_windows': {
         'momentum_windows': [5, 10, 20, 40, 60, 90],       # KEY: 周/月对齐
         'momentum_weights': [0.25, 0.25, 0.20, 0.15, 0.10, 0.05],
-        'skip_days': 5,     # KEY: skip_days=5（只跳过1周，而非1个月）
+        'skip_days': 0,     # FIX: was 5 — only windows>=60 would skip, causing inconsistency
         'use_vams': True,
         'sma_short': 10, 'sma_long': 40,
-        'require_trend_confirmation': True,
+        'require_trend_confirmation': False,   # FIX: was True — blocked entry via consistency threshold
         'entry_momentum_threshold': 0.0,
         'exit_momentum_decay_threshold': 0.45,
         'reversal_sma_lookback': 2,
@@ -1026,7 +1037,40 @@ PARAM_SETS = {
         'mean_back': 15, 'std_back': 15, 'v_back': 15,
     },
 
-    # L3: 让利润奔跑型。宽止损 + 长持仓 + 慢反转保护 + 低波动目标
+    # L3: Beta-neutral + 长期动量组合。消除市场beta + 长期趋势权重
+    # beta_neutral现有唯一组合(short_term_beta_neutral)是短期权重，此组探索长持仓端
+    'beta_neutral_long_term': {
+        'momentum_windows': [6, 12, 30, 60, 120, 150],
+        'momentum_weights': [0.05, 0.10, 0.15, 0.25, 0.25, 0.20],   # KEY: 极长期偏重
+        'skip_days': 21,
+        'use_vams': True,
+        'sma_short': 30, 'sma_long': 80,
+        'require_trend_confirmation': True,
+        'entry_momentum_threshold': 0.0,
+        'exit_momentum_decay_threshold': 0.5,
+        'reversal_sma_lookback': 5,
+        'momentum_decay_short_window': 10,
+        'momentum_decay_long_window': 60,
+        'exit_on_reversal': True,
+        'exit_on_momentum_decay': True,
+        'target_annual_vol': 0.10,
+        'vol_scale_window': 50,
+        'max_vol_scale_factor': 1.5,
+        'crash_vol_percentile': 0.85,
+        'crash_scale_factor': 0.20,
+        'amplifier': 2,
+        'use_vol_weighted_sizing': False,
+        'hedge_method': 'beta_neutral',         # KEY: beta-neutral消除市场暴露
+        'hedge_lag': 1,
+        'volatility_stop_loss_multiplier': 2.0,
+        'max_holding_period': 21,
+        'cooling_off_period': 5,
+        'pair_stop_loss_pct': 0.05,
+        'rebalance_frequency': 21,
+        'mean_back': 30, 'std_back': 30, 'v_back': 30,
+    },
+
+    # L4: 让利润奔跑型。宽止损 + 长持仓 + 慢反转保护 + 低波动目标
     # 减少过早离场，让强势趋势充分发展
     'let_profits_run': {
         'momentum_windows': [6, 12, 30, 60, 120, 150],

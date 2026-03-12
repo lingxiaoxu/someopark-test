@@ -42,7 +42,7 @@ Deflated Sharpe Ratio (Bailey & López de Prado, 2014):
     SR_benchmark = sqrt(V[SR]) * ((1-gamma)*Z(1-1/N) + gamma*Z(1-1/(N*e)))
 
 MTFS-specific notes:
-  - 29/30 param_sets (vs 32 for MRPT) — more focused momentum-parameter grid
+  - 31 param_sets (vs 32 for MRPT) — more focused momentum-parameter grid
   - OOS window = 20 trading days (vs 25 for MRPT) — monthly cadence
   - All 4 stop-loss mechanisms are momentum-specific: Momentum Decay, Pair P&L,
     Volatility Stop, Time-based exits
@@ -89,9 +89,9 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GRID_CONFIG = os.path.join(BASE_DIR, 'run_configs', 'mtfs_runs_all_params.json')
 
 ALL_PAIRS = [
-    ('MSCI', 'LII'), ('D', 'MCHP'), ('DG', 'MOS'), ('ESS', 'EXPD'), ('ACGL', 'UHS'),
-    ('AAPL', 'META'), ('YUM', 'MCD'), ('GS', 'ALLY'), ('CL', 'USO'), ('ALGN', 'UAL'),
-    ('ARES', 'CG'), ('AMG', 'BEN'), ('LYFT', 'UBER'), ('TW', 'CME'), ('CART', 'DASH'),
+    ('LII', 'MSCI'), ('MCHP', 'D'), ('MOS', 'DG'), ('EXPD', 'ESS'), ('UHS', 'ACGL'),
+    ('META', 'AAPL'), ('MCD', 'YUM'), ('ALLY', 'GS'), ('USO', 'CL'), ('UAL', 'ALGN'),
+    ('CG', 'ARES'), ('BEN', 'AMG'), ('UBER', 'LYFT'), ('CME', 'TW'), ('DASH', 'CART'),
 ]
 
 # Selection thresholds (same as MTFSUpdateConfigs.py)
@@ -459,7 +459,7 @@ def select_pairs_with_dsr(summary_csv, window, n_trials=None):
     Read grid summary, compute per-pair IS Sharpe + DSR, select best param_set.
 
     n_trials defaults to len(Runs.PARAM_SETS) to automatically pick up the
-    correct number of MTFS param_sets (29 or 30 depending on run configuration).
+    correct number of MTFS param_sets (31).
 
     Returns list of [s1, s2, best_param_set] for pairs that pass DSR filter.
     """

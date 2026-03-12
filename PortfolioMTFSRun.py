@@ -71,11 +71,11 @@ def schedule_function(func, date_rule, time_rule):
 
 
 DEFAULT_PAIRS = [
-    ['MSCI', 'LII'],
-    ['D', 'MCHP'],
-    ['DG', 'MOS'],
-    ['ESS', 'EXPD'],
-    ['ACGL', 'UHS'],
+    ['LII', 'MSCI'],
+    ['MCHP', 'D'],
+    ['MOS', 'DG'],
+    ['EXPD', 'ESS'],
+    ['UHS', 'ACGL'],
 ]
 
 
@@ -324,6 +324,9 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
     }
 
     # ── Record variables (full data available) ────────────────────────────
+    # Record all four trend flags so OPEN_SHORT entries can be audited:
+    # OPEN_LONG  checks: trend_long_1  AND trend_short_2
+    # OPEN_SHORT checks: trend_long_2  AND trend_short_1
     record_vars(context,
                 Y_pct=0, X_pct=0,
                 Momentum_1=score_1, Momentum_2=score_2,
@@ -335,6 +338,7 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
                 Vol_Scale=vol_scale,
                 Normalized_Vol=context.portfolio.normalized_volatility,
                 Trend_Long_1=trend_long_1, Trend_Short_2=trend_short_2,
+                Trend_Short_1=trend_short_1, Trend_Long_2=trend_long_2,
                 in_long=in_long, in_short=in_short,
                 **per_win_vars)
 
@@ -875,8 +879,12 @@ class CustomData(Data):
         if frequency != '1d':
             raise ValueError("Only daily frequency is supported")
 
-        end_date = self.historical_data.index[-1]
-        start_date = end_date - pd.Timedelta(days=bar_count - 1)
+        # Use iloc[-bar_count:] to get exactly bar_count trading days ending at
+        # the current simulation date (self.historical_data.index[-1]).
+        # The old approach used pd.Timedelta(calendar days) which under-counted
+        # trading days, causing strategies with large momentum windows (e.g. 252)
+        # to never accumulate enough bars and produce zero trades.
+        window_data = self.historical_data.iloc[-bar_count:]
 
         if isinstance(fields, str):
             fields = [fields]
@@ -889,20 +897,20 @@ class CustomData(Data):
 
         available_fields = set([col[0] for col in self.historical_data.columns])
 
-        result = pd.DataFrame(index=self.historical_data.loc[start_date:end_date].index)
+        result = pd.DataFrame(index=window_data.index)
 
         for asset in assets:
             for field in fields:
                 if field in field_mapping:
                     for alt_field in field_mapping[field]:
                         if alt_field in available_fields and (alt_field, asset) in self.historical_data.columns:
-                            result[asset] = self.historical_data.loc[start_date:end_date, (alt_field, asset)]
+                            result[asset] = window_data[(alt_field, asset)]
                             break
                     else:
                         raise ValueError(f"Could not find suitable alternative for field '{field}' for asset '{asset}'")
                 else:
                     if (field, asset) in self.historical_data.columns:
-                        result[asset] = self.historical_data.loc[start_date:end_date, (field, asset)]
+                        result[asset] = window_data[(field, asset)]
                     else:
                         raise ValueError(f"Field '{field}' not available for asset '{asset}'")
 

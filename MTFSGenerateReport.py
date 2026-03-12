@@ -124,39 +124,39 @@ def _value_cell(ws, row, col, value, fmt=None, bold=False,
 # ─────────────────────────────────────────────────────────────────────────────
 # Sector-based Momentum_Spread column mapping (mirrors record_vars in PortfolioMTFSRun.py)
 SPREAD_COL_MAP = {
-    'MSCI/LII':  'Momentum_Spread_industrial', 'LYFT/UBER': 'Momentum_Spread_industrial',
-    'ALGN/UAL':  'Momentum_Spread_industrial',
-    'D/MCHP':    'Momentum_Spread_tech',       'AAPL/META': 'Momentum_Spread_tech',
-    'CART/DASH': 'Momentum_Spread_tech',
-    'DG/MOS':    'Momentum_Spread_food',       'YUM/MCD':   'Momentum_Spread_food',
-    'ESS/EXPD':  'Momentum_Spread_energy',     'CL/USO':    'Momentum_Spread_energy',
-    'ACGL/UHS':  'Momentum_Spread_finance',    'GS/ALLY':   'Momentum_Spread_finance',
-    'ARES/CG':   'Momentum_Spread_finance',    'AMG/BEN':   'Momentum_Spread_finance',
-    'TW/CME':    'Momentum_Spread_finance',
+    'LII/MSCI':  'Momentum_Spread_industrial', 'UBER/LYFT': 'Momentum_Spread_industrial',
+    'UAL/ALGN':  'Momentum_Spread_industrial',
+    'MCHP/D':    'Momentum_Spread_tech',       'META/AAPL': 'Momentum_Spread_tech',
+    'DASH/CART': 'Momentum_Spread_tech',
+    'MOS/DG':    'Momentum_Spread_food',       'MCD/YUM':   'Momentum_Spread_food',
+    'EXPD/ESS':  'Momentum_Spread_energy',     'USO/CL':    'Momentum_Spread_energy',
+    'UHS/ACGL':  'Momentum_Spread_finance',    'ALLY/GS':   'Momentum_Spread_finance',
+    'CG/ARES':   'Momentum_Spread_finance',    'BEN/AMG':   'Momentum_Spread_finance',
+    'CME/TW':    'Momentum_Spread_finance',
 }
 
 PARAM_MAP = {
-    'MSCI/LII':  'default',
-    'D/MCHP':  'trend_leverage',
-    'DG/MOS':  'beta_neutral',
-    'ESS/EXPD':  'no_reversal_protection',
-    'ACGL/UHS':  'short_term_tilt',
-    'AAPL/META':  'sensitive_reversal',
-    'YUM/MCD':  'default',
-    'GS/ALLY':  'aggressive',
-    'CL/USO':  'slow_rebalance',
-    'ALGN/UAL':  'no_skip_month',
-    'ARES/CG':  'aggressive',
-    'AMG/BEN':  'aggressive',
-    'LYFT/UBER':  'aggressive',
-    'TW/CME':  'weekly_aligned_windows',
-    'CART/DASH':  'no_trend_filter'
+    'LII/MSCI':  'default',
+    'MCHP/D':  'monthly_aligned_windows',
+    'MOS/DG':  'raw_momentum_kalman',
+    'EXPD/ESS':  'vol_sized_conservative',
+    'UHS/ACGL':  'short_term_beta_neutral',
+    'META/AAPL':  'long_term_tilt',
+    'MCD/YUM':  'default',
+    'ALLY/GS':  'monthly_aligned_windows',
+    'USO/CL':  'fast_strict',
+    'UAL/ALGN':  'no_skip_month',
+    'CG/ARES':  'kalman_aggressive',
+    'BEN/AMG':  'no_skip_month',
+    'UBER/LYFT':  'monthly_aligned_windows',
+    'CME/TW':  'beta_neutral',
+    'DASH/CART':  'weekly_aligned_windows'
 }
 
 PAIR_ORDER = [
-    'MSCI/LII','D/MCHP','DG/MOS','ESS/EXPD','ACGL/UHS',
-    'AAPL/META','YUM/MCD','GS/ALLY','CL/USO','ALGN/UAL',
-    'ARES/CG','AMG/BEN','LYFT/UBER','TW/CME','CART/DASH',
+    'LII/MSCI','MCHP/D','MOS/DG','EXPD/ESS','UHS/ACGL',
+    'META/AAPL','MCD/YUM','ALLY/GS','USO/CL','UAL/ALGN',
+    'CG/ARES','BEN/AMG','UBER/LYFT','CME/TW','DASH/CART',
 ]
 
 

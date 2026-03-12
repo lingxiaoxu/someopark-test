@@ -1,6 +1,6 @@
 {
-  "_comment": "Step 3 \u2014 Forward/validation: same 13 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=auto_minus_70d (forward window start). Auto-generated 2026-03-07 23:27.",
-  "start_date": "2024-09-07",
+  "_comment": "Step 3 \u2014 Forward/validation: same 13 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=auto_minus_70d (forward window start). Auto-generated 2026-03-12 17:59.",
+  "start_date": "2024-09-12",
   "end_date": "auto",
   "trade_start_date": "auto_minus_70d",
   "runs": [
@@ -9,69 +9,69 @@
       "param_set": "default",
       "pairs": [
         [
-          "D",
           "MCHP",
-          "trend_leverage"
+          "D",
+          "monthly_aligned_windows"
         ],
         [
-          "DG",
           "MOS",
-          "beta_neutral"
+          "DG",
+          "raw_momentum_kalman"
         ],
         [
-          "ESS",
           "EXPD",
-          "no_reversal_protection"
+          "ESS",
+          "vol_sized_conservative"
         ],
         [
-          "ACGL",
           "UHS",
-          "short_term_tilt"
+          "ACGL",
+          "short_term_beta_neutral"
         ],
         [
-          "AAPL",
           "META",
-          "sensitive_reversal"
+          "AAPL",
+          "long_term_tilt"
         ],
         [
-          "GS",
           "ALLY",
-          "aggressive"
+          "GS",
+          "monthly_aligned_windows"
         ],
         [
-          "CL",
           "USO",
-          "slow_rebalance"
+          "CL",
+          "fast_strict"
         ],
         [
-          "ALGN",
           "UAL",
+          "ALGN",
           "no_skip_month"
         ],
         [
-          "ARES",
           "CG",
-          "aggressive"
+          "ARES",
+          "kalman_aggressive"
         ],
         [
-          "AMG",
           "BEN",
-          "aggressive"
+          "AMG",
+          "no_skip_month"
         ],
         [
-          "LYFT",
           "UBER",
-          "aggressive"
+          "LYFT",
+          "monthly_aligned_windows"
         ],
         [
-          "TW",
           "CME",
-          "weekly_aligned_windows"
+          "TW",
+          "beta_neutral"
         ],
         [
-          "CART",
           "DASH",
-          "no_trend_filter"
+          "CART",
+          "weekly_aligned_windows"
         ]
       ]
     }

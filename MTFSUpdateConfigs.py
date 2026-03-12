@@ -2,7 +2,7 @@
 MTFSUpdateConfigs.py — Read Step 1 grid search results and
 auto-fill Step 2 (backtest) and Step 3 (forward) config files.
 
-Step 1 runs all 15 pairs × 30 param_sets = 30 runs.
+Step 1 runs all 15 pairs × 31 param_sets = 31 runs.
 Each run's Excel output contains per-pair PnL in the acc_pair_trade_pnl_history sheet
 and day-over-day PnL in the dod_pair_trade_pnl_history sheet.
 This script reads every run's Excel, extracts per-pair PnL + Sharpe, applies
@@ -51,7 +51,7 @@ log = logging.getLogger(__name__)
 MIN_PNL    = 0      # pair-level final acc_pnl must be > this
 MIN_TRADES = 3      # pair's number of open orders must be >= this
 MIN_DSR    = 0.5    # Deflated Sharpe Ratio p-value must be > this (multiple-comparison correction)
-N_TRIALS   = 30     # number of param_sets tested (for DSR benchmark)
+N_TRIALS   = 31     # number of param_sets tested (for DSR benchmark)
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -59,9 +59,9 @@ STEP2_PATH = os.path.join(BASE_DIR, 'run_configs', 'mtfs_runs_step2_best_backtes
 STEP3_PATH = os.path.join(BASE_DIR, 'run_configs', 'mtfs_runs_step3_forward.json')
 
 ALL_PAIRS = [
-    ('MSCI', 'LII'), ('D', 'MCHP'), ('DG', 'MOS'), ('ESS', 'EXPD'), ('ACGL', 'UHS'),
-    ('AAPL', 'META'), ('YUM', 'MCD'), ('GS', 'ALLY'), ('CL', 'USO'), ('ALGN', 'UAL'),
-    ('ARES', 'CG'), ('AMG', 'BEN'), ('LYFT', 'UBER'), ('TW', 'CME'), ('CART', 'DASH'),
+    ('LII', 'MSCI'), ('MCHP', 'D'), ('MOS', 'DG'), ('EXPD', 'ESS'), ('UHS', 'ACGL'),
+    ('META', 'AAPL'), ('MCD', 'YUM'), ('ALLY', 'GS'), ('USO', 'CL'), ('UAL', 'ALGN'),
+    ('CG', 'ARES'), ('BEN', 'AMG'), ('UBER', 'LYFT'), ('CME', 'TW'), ('DASH', 'CART'),
 ]
 
 
