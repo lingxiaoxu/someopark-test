@@ -1,0 +1,247 @@
+{
+  "strategy": "mtfs",
+  "signal_date": "2026-03-13",
+  "generated_at": "2026-03-13T03:56:01",
+  "dry_run": false,
+  "capital": 452000.0,
+  "sim_capital": 500000.0,
+  "scale_factor": 0.904,
+  "regime": {
+    "as_of": "2026-03-13",
+    "regime_score": 42.0,
+    "regime_label": "neutral",
+    "mrpt_weight": 0.548,
+    "mtfs_weight": 0.452,
+    "indicators": {
+      "vix_level": 26.33,
+      "vix_z": 1.356716,
+      "vix_pct52w": 0.93254,
+      "move_level": 78.593803,
+      "move_z": -0.240159,
+      "spy_20d": -0.036548,
+      "spy_5d": -0.021488,
+      "spy_z": -1.266972,
+      "qqq_spy_ratio": 0.896621,
+      "qqq_spy_z": 0.30198,
+      "iwm_spy_ratio": 0.371076,
+      "iwm_spy_z": 0.806613,
+      "xlk_spy_z": 0.318358,
+      "nvda_20d": -0.035571,
+      "nvda_5d": -0.000274,
+      "nvda_level": 183.279907,
+      "arkk_20d": -0.004233,
+      "arkk_5d": -0.046222,
+      "arkk_level": 70.57,
+      "soxx_20d": -0.084314,
+      "soxx_5d": -0.023478,
+      "soxx_level": 329.829987,
+      "gld_20d": 0.000706,
+      "gld_level": 467.959991,
+      "uso_20d": 0.500188,
+      "uso_level": 118.3498,
+      "uup_20d": 0.03224,
+      "uup_level": 27.695,
+      "tnx_level": 4.273,
+      "tnx_z": 0.348139,
+      "hyg_level": 79.379997,
+      "hyg_20d": -0.013122,
+      "hyg_z": 0.752679,
+      "hy_spread_level": 3.09,
+      "hy_spread_z": 0.081416,
+      "ig_spread_level": 0.88,
+      "ig_spread_z": 0.365276,
+      "yield_curve_level": 0.57,
+      "yield_curve_z": 0.257551,
+      "effr_level": 3.64,
+      "effr_1y_change": -0.69,
+      "breakeven_10y_level": 2.36,
+      "breakeven_10y_z": 0.843306,
+      "breakeven_5y_level": 2.58,
+      "fin_stress_level": -0.4279,
+      "fin_stress_z": 0.406876,
+      "nfci_level": -0.5137,
+      "consumer_sent_level": 56.4,
+      "recession_flag": 0,
+      "dgs10_level": 4.15,
+      "dgs2_level": 3.57,
+      "yield_curve_daily": 0.58,
+      "yield_curve_daily_z": 0.366715
+    },
+    "component_scores": {
+      "volatility": {
+        "aggregate": 0.4936,
+        "sub": {
+          "vix": 0.9427,
+          "vix_level": 0.4342,
+          "move": 0.1039
+        },
+        "weight": 0.25
+      },
+      "credit": {
+        "aggregate": 0.2421,
+        "sub": {
+          "hy_spread": 0.2326,
+          "ig_spread": 0.3461,
+          "hy_level": 0.1475
+        },
+        "weight": 0.18
+      },
+      "rates": {
+        "aggregate": 0.4147,
+        "sub": {
+          "yield_curve": 0.472,
+          "effr": 0.428,
+          "breakeven": 0.344
+        },
+        "weight": 0.1
+      },
+      "momentum_ai": {
+        "aggregate": 0.364,
+        "sub": {
+          "nvda": 0.3933,
+          "arkk": 0.4894,
+          "soxx": 0.2892,
+          "tech_premium": 0.3208,
+          "xlk_premium": 0.3273
+        },
+        "weight": 0.18
+      },
+      "macro_stress": {
+        "aggregate": 0.4363,
+        "sub": {
+          "fin_stress": 0.343,
+          "nfci": 0.2959,
+          "consumer_sent": 0.67
+        },
+        "weight": 0.12
+      },
+      "geopolitical": {
+        "aggregate": 0.5958,
+        "sub": {
+          "gold": 0.5018,
+          "oil": 0.85,
+          "dollar": 0.4355
+        },
+        "weight": 0.09
+      },
+      "strategy_vol": {
+        "aggregate": 0.5,
+        "sub": {},
+        "weight": 0.08
+      }
+    },
+    "strategy_vol": {
+      "mrpt_vol": 67738.122889,
+      "mtfs_vol": null,
+      "vol_ratio": null
+    },
+    "weight_rationale": "Regime score: 42.0/100  \u2192  MRPT 55%  MTFS 45%\n\n  Volatility   : VIX=26.3 (z=+1.36)\n  Credit       : HY spread=3.09% IG=0.88\n  Rates        : Yield curve (10y-2y)=+0.57  EFFR=3.64\n  AI/Momentum  : NVDA 20d=-3.6%  ARKK 20d=-0.4%\n  Macro stress : St.Louis FSI=-0.4279  NFCI=-0.5137\n  Geopolitical : GLD 20d=+0.1%  USO 20d=+50.0%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.49\n    credit         : [\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.24\n    rates          : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.41\n    momentum_ai    : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.36\n    macro_stress   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.44\n    geopolitical   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.60\n    strategy_vol   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.50"
+  },
+  "signals": [
+    {
+      "pair": "MOS/DG",
+      "s1": "MOS",
+      "s2": "DG",
+      "momentum_spread": 0.048,
+      "s1_price": 31.2561,
+      "s2_price": 135.245,
+      "action": "FLAT",
+      "entry_threshold": 0.3,
+      "note": "No position, signal=0.048 within \u00b10.3 \u2014 wait"
+    },
+    {
+      "pair": "BEN/AMG",
+      "s1": "BEN",
+      "s2": "AMG",
+      "momentum_spread": 0.001,
+      "s1_price": 24.0,
+      "s2_price": 270.75,
+      "action": "FLAT",
+      "entry_threshold": 0.168,
+      "note": "No position, signal=0.001 within \u00b10.168 \u2014 wait"
+    },
+    {
+      "pair": "UHS/ACGL",
+      "s1": "UHS",
+      "s2": "ACGL",
+      "momentum_spread": -0.068,
+      "s1_price": 191.21,
+      "s2_price": 94.75,
+      "action": "FLAT",
+      "entry_threshold": 0.3,
+      "note": "No position, signal=-0.068 within \u00b10.3 \u2014 wait"
+    },
+    {
+      "pair": "UAL/ALGN",
+      "s1": "UAL",
+      "s2": "ALGN",
+      "momentum_spread": -0.431,
+      "s1_price": 86.515,
+      "s2_price": 169.0,
+      "action": "FLAT",
+      "entry_threshold": 0.195,
+      "note": "No position, signal=-0.431 within \u00b10.195 \u2014 wait"
+    },
+    {
+      "pair": "CME/TW",
+      "s1": "CME",
+      "s2": "TW",
+      "momentum_spread": 0.227,
+      "s1_price": 311.005,
+      "s2_price": 124.05,
+      "action": "FLAT",
+      "entry_threshold": 0.052,
+      "note": "No position, signal=0.227 within \u00b10.052 \u2014 wait"
+    },
+    {
+      "pair": "MCHP/D",
+      "s1": "MCHP",
+      "s2": "D",
+      "momentum_spread": -0.533,
+      "s1_price": 62.82,
+      "s2_price": 63.14,
+      "action": "OPEN_SHORT",
+      "direction": "short",
+      "entry_threshold": 0.0,
+      "s1_shares": -1798,
+      "s2_shares": 1789,
+      "note": "signal=-0.533 triggered short entry (threshold \u00b10.0)",
+      "leg_s1": {
+        "symbol": "MCHP",
+        "shares": -1798,
+        "side": "SELL_SHORT",
+        "price": 62.82,
+        "est_value": 112950.0
+      },
+      "leg_s2": {
+        "symbol": "D",
+        "shares": 1789,
+        "side": "BUY",
+        "price": 63.14,
+        "est_value": 112957.0
+      }
+    },
+    {
+      "pair": "EXPD/ESS",
+      "s1": "EXPD",
+      "s2": "ESS",
+      "momentum_spread": 0.219,
+      "s1_price": 142.845,
+      "s2_price": 251.155,
+      "action": "FLAT",
+      "entry_threshold": 0.0,
+      "note": "No position, signal=0.219 within \u00b10.0 \u2014 wait"
+    },
+    {
+      "pair": "UBER/LYFT",
+      "s1": "UBER",
+      "s2": "LYFT",
+      "momentum_spread": -0.097,
+      "s1_price": 73.075,
+      "s2_price": 13.035,
+      "action": "FLAT",
+      "entry_threshold": 0.3,
+      "note": "No position, signal=-0.097 within \u00b10.3 \u2014 wait"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-03-11",
+  "as_of": "2026-03-13",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -25,6 +25,17 @@
       "open_s2_price": 146.86,
       "days_held": 3,
       "last_updated": "2026-03-11"
+    },
+    "MCHP/D": {
+      "strategy": "mtfs",
+      "param_set": "monthly_aligned_windows",
+      "direction": "short",
+      "s1_shares": -1798,
+      "s2_shares": 1789,
+      "open_date": "2026-03-13",
+      "open_s1_price": 62.82,
+      "open_s2_price": 63.14,
+      "days_held": 0
     }
   }
 }

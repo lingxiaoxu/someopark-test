@@ -1,0 +1,519 @@
+{
+  "generated_at": "2026-03-13T02:00:42.636699",
+  "mode": "expanding",
+  "train_start": "2024-02-07",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 150,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-02-07",
+      "train_end": "2025-08-06",
+      "test_start": "2025-08-07",
+      "test_end": "2025-09-11",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "MSCI",
+          "LII",
+          "high_vol_specialist"
+        ],
+        [
+          "D",
+          "MCHP",
+          "conservative_no_leverage"
+        ],
+        [
+          "DG",
+          "MOS",
+          "deep_dislocation"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "vol_gated"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "vol_agnostic"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "long_z_short_v"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "patient_hold"
+        ],
+        [
+          "CL",
+          "USO",
+          "patient_hold"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "slow_reentry"
+        ],
+        [
+          "ARES",
+          "CG",
+          "fast_signal"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "vol_gated"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "patient_hold"
+        ],
+        [
+          "TW",
+          "CME",
+          "high_vol_specialist"
+        ],
+        [
+          "CART",
+          "DASH",
+          "static_threshold"
+        ]
+      ],
+      "oos_sharpe": 4.434292759411796,
+      "oos_pnl": 14953.4300060534
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-02-07",
+      "train_end": "2025-09-11",
+      "test_start": "2025-09-12",
+      "test_end": "2025-10-16",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "MSCI",
+          "LII",
+          "high_vol_specialist"
+        ],
+        [
+          "D",
+          "MCHP",
+          "conservative_no_leverage"
+        ],
+        [
+          "DG",
+          "MOS",
+          "deep_dislocation"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "vol_gated"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "flash_hold"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "long_z_short_v"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "patient_hold"
+        ],
+        [
+          "CL",
+          "USO",
+          "patient_hold"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "slow_reentry"
+        ],
+        [
+          "ARES",
+          "CG",
+          "fast_signal"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "slow_signal"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "conservative"
+        ],
+        [
+          "TW",
+          "CME",
+          "high_vol_specialist"
+        ],
+        [
+          "CART",
+          "DASH",
+          "static_threshold"
+        ]
+      ],
+      "oos_sharpe": 4.68418937843832,
+      "oos_pnl": 15562.169715090291
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-02-07",
+      "train_end": "2025-10-16",
+      "test_start": "2025-10-17",
+      "test_end": "2025-11-20",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "MSCI",
+          "LII",
+          "slow_reentry"
+        ],
+        [
+          "D",
+          "MCHP",
+          "conservative_no_leverage"
+        ],
+        [
+          "DG",
+          "MOS",
+          "deep_dislocation"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "aggressive"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "flash_hold"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "long_z_short_v"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "patient_hold"
+        ],
+        [
+          "CL",
+          "USO",
+          "patient_hold"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "slow_reentry"
+        ],
+        [
+          "ARES",
+          "CG",
+          "fast_signal"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "vol_gated"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "conservative"
+        ],
+        [
+          "TW",
+          "CME",
+          "high_vol_specialist"
+        ],
+        [
+          "CART",
+          "DASH",
+          "static_threshold"
+        ]
+      ],
+      "oos_sharpe": -0.43076165390072507,
+      "oos_pnl": -2279.1442562325537
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-02-07",
+      "train_end": "2025-11-20",
+      "test_start": "2025-11-21",
+      "test_end": "2025-12-29",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "MSCI",
+          "LII",
+          "slow_reentry"
+        ],
+        [
+          "D",
+          "MCHP",
+          "conservative_no_leverage"
+        ],
+        [
+          "DG",
+          "MOS",
+          "deep_dislocation"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "aggressive"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "flash_hold"
+        ],
+        [
+          "AAPL",
+          "META",
+          "patient_hold"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "long_z_short_v"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "patient_hold"
+        ],
+        [
+          "CL",
+          "USO",
+          "patient_hold"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "slow_reentry"
+        ],
+        [
+          "ARES",
+          "CG",
+          "fast_signal"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "slow_signal"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "conservative"
+        ],
+        [
+          "TW",
+          "CME",
+          "no_leverage"
+        ],
+        [
+          "CART",
+          "DASH",
+          "static_threshold"
+        ]
+      ],
+      "oos_sharpe": 0.5306326260562845,
+      "oos_pnl": 1354.6820428180363
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-02-07",
+      "train_end": "2025-12-29",
+      "test_start": "2025-12-30",
+      "test_end": "2026-02-04",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "MSCI",
+          "LII",
+          "slow_reentry"
+        ],
+        [
+          "D",
+          "MCHP",
+          "conservative_no_leverage"
+        ],
+        [
+          "DG",
+          "MOS",
+          "deep_dislocation"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "aggressive"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "flash_hold"
+        ],
+        [
+          "AAPL",
+          "META",
+          "patient_hold"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "long_z_short_v"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "deep_dislocation"
+        ],
+        [
+          "CL",
+          "USO",
+          "conservative_no_leverage"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "slow_reentry"
+        ],
+        [
+          "ARES",
+          "CG",
+          "fast_signal"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "slow_signal"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "conservative"
+        ],
+        [
+          "TW",
+          "CME",
+          "no_leverage"
+        ],
+        [
+          "CART",
+          "DASH",
+          "static_threshold"
+        ]
+      ],
+      "oos_sharpe": 1.7920326387727532,
+      "oos_pnl": 6034.360348476897
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-02-07",
+      "train_end": "2026-02-04",
+      "test_start": "2026-02-05",
+      "test_end": "2026-03-12",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "MSCI",
+          "LII",
+          "symmetric_exit"
+        ],
+        [
+          "D",
+          "MCHP",
+          "conservative_no_leverage"
+        ],
+        [
+          "DG",
+          "MOS",
+          "deep_dislocation"
+        ],
+        [
+          "ESS",
+          "EXPD",
+          "aggressive"
+        ],
+        [
+          "ACGL",
+          "UHS",
+          "vol_agnostic"
+        ],
+        [
+          "YUM",
+          "MCD",
+          "long_z_short_v"
+        ],
+        [
+          "GS",
+          "ALLY",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "CL",
+          "USO",
+          "patient_hold"
+        ],
+        [
+          "ALGN",
+          "UAL",
+          "slow_reentry"
+        ],
+        [
+          "ARES",
+          "CG",
+          "fast_signal"
+        ],
+        [
+          "AMG",
+          "BEN",
+          "long_z_short_v"
+        ],
+        [
+          "LYFT",
+          "UBER",
+          "conservative"
+        ],
+        [
+          "TW",
+          "CME",
+          "conservative_no_leverage"
+        ],
+        [
+          "CART",
+          "DASH",
+          "static_threshold"
+        ]
+      ],
+      "oos_sharpe": -0.26592587233106224,
+      "oos_pnl": -2463.796629089993
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": 35871.39159031492,
+    "oos_trading_days": 144,
+    "oos_sharpe": 1.3153958556047587,
+    "oos_max_dd_dollar": -22945.375494483043,
+    "oos_max_dd_pct": -0.04210388054702635
+  }
+}
