@@ -29,9 +29,12 @@ cp .env.example .env
 
 ```
 POLYGON_API_KEY=your_polygon_api_key_here
+FRED_API_KEY=your_fred_api_key_here
+MONGO_URI=your_mongo_uri_here
+MONGO_VEC_URI=your_mongo_vec_uri_here
 ```
 
-> `.env` 已加入 `.gitignore`，不会提交到版本库。
+> `.env` 已加入 `.gitignore`，不会提交到版本库。所有 API key 和数据库连接字符串仅存放于此文件，代码中不含任何硬编码凭证。
 
 ### 3. 运行所有脚本的正确方式
 
@@ -63,6 +66,8 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `PriceDataStore.py` | 价格数据读取与缓存（Polygon / Yahoo），Parquet 格式 |
 | `AuditPairs.py` | 验证 Excel 输出文件规则合规性（MRPT / MTFS 通用，`--strategy mrpt\|mtfs`） |
 | `DailySignal.py` | 每日信号生成器（`--strategy mrpt\|mtfs\|both`），含 Regime 检测、Position Monitor、完整报告输出 |
+| `SelectPairs.py` | 从 someopark 数据库筛选最优 MRPT / MTFS 配对，决定 s1/s2 方向，可直接写入 pair_universe_*.json |
+| `UpdateStep1Configs.py` | 读取 pair_universe_*.json，更新 Step1 grid search config 的 pairs 字段（换配对后必须运行） |
 | `CompactPriceData.py` | 合并同一周内的多个 Parquet 文件为单文件，重算 SHA256 hash，更新 index.json |
 | `AnalyzeEarningsFilter.py` | 分析财报过滤策略的历史效果，评估屏蔽日对回测的影响 |
 | `MomentumPairSelector.py` | 从 S&P500 全市场扫描动量配对候选，下载价格数据并输出候选列表 |
@@ -89,6 +94,48 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `MTFSWalkForward.py` | Walk-forward 优化：6 窗口 × 27 OOS 交易日，DSR 选参 |
 | `MTFSWalkForwardReport.py` | 读取最近一次 walk-forward 结果，生成完整 OOS 报告（含止损类型分解） |
 | `MTFSGenerateReport.py` | 生成回测 vs 验证期对比报告 |
+
+---
+
+## 更换配对的完整流程
+
+当需要重新筛选交易配对时（例如：定期更新、回测表现下滑），按以下顺序操作：
+
+### 1. 筛选配对
+
+```bash
+# 分析最近 30 天数据，预览结果（不写入）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py
+
+# 分析最近 60 天数据
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py --days 60
+
+# 确认结果后写入 pair_universe_mrpt.json / pair_universe_mtfs.json（会自动备份旧文件）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py --save
+```
+
+**SelectPairs.py 逻辑：**
+
+| 策略 | 筛选逻辑 | s1/s2 方向 |
+|------|----------|-----------|
+| MRPT | `coint_rate×1.0 + pca_rate×0.5 + similar_bonus×0.3`，优先选跨天稳定出现的协整配对 | 字母序（均值回归不依赖方向） |
+| MTFS | `pca_rate²×(1-coint_rate) + similar_rate×0.5`，优先选有因子关联但协整性弱的配对 | **s1 = 近 30 天涨幅更高的 ticker**，s2 = 涨幅低的 ticker |
+
+数据来源：someopark 数据库 `pairs_day_select` 集合（需 `MONGO_URI` 环境变量）。
+
+### 2. 更新 Step1 config
+
+```bash
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+```
+
+更新（in-place）：
+- `run_configs/runs_20260304_step1_grid32.json` 中的 `pairs` 字段
+- `run_configs/mtfs_runs_step1_grid30.json` 中的 `pairs` 字段
+
+### 3. 重新运行 Step1 → Step3 或 Walk-Forward
+
+参见下方各策略完整流程。
 
 ---
 

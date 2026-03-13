@@ -1,7 +1,7 @@
 # Someopark Run Commands Manual
 
 所有命令必须在 `/Users/xuling/code/someopark-test/` 目录下运行。
-所有命令必须先加载 `.env`（含 POLYGON_API_KEY、FRED_API_KEY），并使用 `someopark_run` conda 环境。
+所有命令必须先加载 `.env`（含 POLYGON_API_KEY、FRED_API_KEY、MONGO_URI、MONGO_VEC_URI），并使用 `someopark_run` conda 环境。
 
 **通用前缀（每条命令都要带）：**
 ```bash
@@ -10,7 +10,39 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
-## 0. UpdateStep1Configs.py — 换配对后更新 Step1 config（换配对时才需要）
+## 0a. SelectPairs.py — 从数据库筛选最优配对（换配对时首先运行）
+
+**从 someopark 数据库的 `pairs_day_select` 集合中筛选 MRPT 和 MTFS 最优 15 对配对。需要 `MONGO_URI` 环境变量。**
+
+```bash
+# 预览：分析最近30天，打印推荐配对（不写入任何文件）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py
+
+# 分析最近60天
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py --days 60
+
+# 确认结果无误后，写入 pair_universe_mrpt.json / pair_universe_mtfs.json
+# （自动将旧文件备份为 pair_universe_mrpt_backup.json / pair_universe_mtfs_backup.json）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py --save
+```
+
+**筛选逻辑：**
+
+| 策略 | 评分公式 | s1/s2 方向 |
+|------|----------|-----------|
+| MRPT | `coint_rate×1.0 + pca_rate×0.5 + similar_bonus×0.3` | 字母序（均值回归不依赖方向） |
+| MTFS | `pca_rate²×(1-coint_rate) + similar_rate×0.5`，0.9× 惩罚偶发协整 | **s1 = 近 30 天涨幅更高的 ticker**，s2 = 涨幅低的 ticker |
+
+输出（`--save` 时覆写）：
+- `pair_universe_mrpt.json` — MRPT 15对
+- `pair_universe_mtfs.json` — MTFS 15对
+- 旧文件自动备份为 `*_backup.json`
+
+**完成后必须运行 `UpdateStep1Configs.py`（见下节）。**
+
+---
+
+## 0b. UpdateStep1Configs.py — 换配对后更新 Step1 config（换配对时才需要）
 
 **只在修改了 `pair_universe_mrpt.json` 或 `pair_universe_mtfs.json` 之后运行，普通回测不需要。**
 
@@ -269,7 +301,10 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 ## 标准全流程（从头 Step1 → Step3）
 
 ```bash
-# ── 换配对时才需要：更新 Step1 config（修改 pair_universe_*.json 后执行）──
+# ── 换配对时才需要（Step 0）──
+# 0a. 从数据库筛选配对并写入 pair_universe_*.json
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py --save
+# 0b. 将新配对写入 Step1 config
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
 
 # ── MRPT ──
@@ -298,7 +333,10 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 ## 标准全流程（重新跑一次 Walk-Forward + 更新信号）
 
 ```bash
-# ── 换配对时才需要：更新 Step1 config（修改 pair_universe_*.json 后执行）──
+# ── 换配对时才需要（Step 0）──
+# 0a. 从数据库筛选配对并写入 pair_universe_*.json
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py --save
+# 0b. 将新配对写入 Step1 config
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
 
 # 1. MRPT Walk-Forward
@@ -473,12 +511,21 @@ daily_report_<YYYYMMDD>.txt           ← 完整报告（人可读文本）
 
 ### pair_universe_mrpt.json / pair_universe_mtfs.json — 交易配对唯一来源
 
-**这是唯一需要手动编辑的配对文件。** 所有脚本通过 `pair_universe.py`（内部加载器模块，不直接运行）读取，修改后无需改动任何代码。
+所有脚本通过 `pair_universe.py`（内部加载器模块，不直接运行）读取，修改后无需改动任何代码。
 
 ```
 pair_universe_mrpt.json   — MRPT 15对：s1=均值回归多腿，s2=空腿
 pair_universe_mtfs.json   — MTFS 15对：s1=动量强腿（做多），s2=动量弱腿（做空）
-                            注意：MTFS 的 s1/s2 顺序与 MRPT 相反
+                            注意：MTFS 的 s1/s2 顺序与 MRPT 相反（s1 = 近期涨幅更高）
+pair_universe_mrpt_backup.json / pair_universe_mtfs_backup.json — SelectPairs --save 时自动备份
+```
+
+**推荐更新方式（通过 SelectPairs.py）：**
+```bash
+# 预览
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py
+# 写入
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py --save
 ```
 
 **字段说明：**
