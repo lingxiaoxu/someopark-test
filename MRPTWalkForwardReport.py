@@ -29,11 +29,8 @@ import pandas as pd
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-ALL_PAIRS = [
-    'MSCI/LII', 'D/MCHP', 'DG/MOS', 'ESS/EXPD', 'ACGL/UHS',
-    'AAPL/META', 'YUM/MCD', 'GS/ALLY', 'CL/USO', 'ALGN/UAL',
-    'ARES/CG', 'AMG/BEN', 'LYFT/UBER', 'TW/CME', 'CART/DASH',
-]
+from pair_universe import mrpt_pair_keys
+ALL_PAIRS = mrpt_pair_keys()
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────

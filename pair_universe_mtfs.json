@@ -1,0 +1,17 @@
+[
+  {"s1": "LII",   "s2": "MSCI", "sector": "industrial", "spread_col": "Momentum_Spread_industrial"},
+  {"s1": "MCHP",  "s2": "D",    "sector": "tech",        "spread_col": "Momentum_Spread_tech"},
+  {"s1": "MOS",   "s2": "DG",   "sector": "food",        "spread_col": "Momentum_Spread_food"},
+  {"s1": "EXPD",  "s2": "ESS",  "sector": "energy",      "spread_col": "Momentum_Spread_energy"},
+  {"s1": "UHS",   "s2": "ACGL", "sector": "finance",     "spread_col": "Momentum_Spread_finance"},
+  {"s1": "META",  "s2": "AAPL", "sector": "tech",        "spread_col": "Momentum_Spread_tech"},
+  {"s1": "MCD",   "s2": "YUM",  "sector": "food",        "spread_col": "Momentum_Spread_food"},
+  {"s1": "ALLY",  "s2": "GS",   "sector": "finance",     "spread_col": "Momentum_Spread_finance"},
+  {"s1": "USO",   "s2": "CL",   "sector": "energy",      "spread_col": "Momentum_Spread_energy"},
+  {"s1": "UAL",   "s2": "ALGN", "sector": "industrial",  "spread_col": "Momentum_Spread_industrial"},
+  {"s1": "CG",    "s2": "ARES", "sector": "finance",     "spread_col": "Momentum_Spread_finance"},
+  {"s1": "BEN",   "s2": "AMG",  "sector": "finance",     "spread_col": "Momentum_Spread_finance"},
+  {"s1": "UBER",  "s2": "LYFT", "sector": "industrial",  "spread_col": "Momentum_Spread_industrial"},
+  {"s1": "CME",   "s2": "TW",   "sector": "finance",     "spread_col": "Momentum_Spread_finance"},
+  {"s1": "DASH",  "s2": "CART", "sector": "tech",        "spread_col": "Momentum_Spread_tech"}
+]

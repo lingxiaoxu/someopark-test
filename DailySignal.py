@@ -403,13 +403,8 @@ def _inject_inventory_into_context(context, inventory: dict, signal_date: pd.Tim
 
 # ── Signal extraction ──────────────────────────────────────────────────────────
 
-_SECTOR_MAP = {
-    frozenset({'AAPL', 'META', 'D', 'MCHP', 'CART', 'DASH'}):                       'tech',
-    frozenset({'GS', 'ALLY', 'ACGL', 'UHS', 'ARES', 'CG', 'AMG', 'BEN', 'TW', 'CME'}): 'finance',
-    frozenset({'ALGN', 'UAL', 'MSCI', 'LII', 'LYFT', 'UBER'}):                      'industrial',
-    frozenset({'CL', 'USO', 'ESS', 'EXPD'}):                                         'energy',
-    frozenset({'DG', 'MOS', 'YUM', 'MCD'}):                                          'food',
-}
+from pair_universe import mrpt_sector_map as _build_sector_map
+_SECTOR_MAP = _build_sector_map()
 
 
 def _get_sector(s1, s2) -> str:

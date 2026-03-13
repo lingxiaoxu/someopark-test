@@ -123,41 +123,13 @@ def _value_cell(ws, row, col, value, fmt=None, bold=False,
 # MTFS-specific mappings
 # ─────────────────────────────────────────────────────────────────────────────
 # Sector-based Momentum_Spread column mapping (mirrors record_vars in PortfolioMTFSRun.py)
-SPREAD_COL_MAP = {
-    'LII/MSCI':  'Momentum_Spread_industrial', 'UBER/LYFT': 'Momentum_Spread_industrial',
-    'UAL/ALGN':  'Momentum_Spread_industrial',
-    'MCHP/D':    'Momentum_Spread_tech',       'META/AAPL': 'Momentum_Spread_tech',
-    'DASH/CART': 'Momentum_Spread_tech',
-    'MOS/DG':    'Momentum_Spread_food',       'MCD/YUM':   'Momentum_Spread_food',
-    'EXPD/ESS':  'Momentum_Spread_energy',     'USO/CL':    'Momentum_Spread_energy',
-    'UHS/ACGL':  'Momentum_Spread_finance',    'ALLY/GS':   'Momentum_Spread_finance',
-    'CG/ARES':   'Momentum_Spread_finance',    'BEN/AMG':   'Momentum_Spread_finance',
-    'CME/TW':    'Momentum_Spread_finance',
-}
+from pair_universe import mtfs_spread_col_map, mtfs_pair_keys
 
-PARAM_MAP = {
-    'LII/MSCI':  'default',
-    'MCHP/D':  'monthly_aligned_windows',
-    'MOS/DG':  'raw_momentum_kalman',
-    'EXPD/ESS':  'vol_sized_conservative',
-    'UHS/ACGL':  'short_term_beta_neutral',
-    'META/AAPL':  'long_term_tilt',
-    'MCD/YUM':  'default',
-    'ALLY/GS':  'monthly_aligned_windows',
-    'USO/CL':  'fast_strict',
-    'UAL/ALGN':  'no_skip_month',
-    'CG/ARES':  'kalman_aggressive',
-    'BEN/AMG':  'no_skip_month',
-    'UBER/LYFT':  'monthly_aligned_windows',
-    'CME/TW':  'beta_neutral',
-    'DASH/CART':  'weekly_aligned_windows'
-}
+SPREAD_COL_MAP = mtfs_spread_col_map()
+PAIR_ORDER     = mtfs_pair_keys()
 
-PAIR_ORDER = [
-    'LII/MSCI','MCHP/D','MOS/DG','EXPD/ESS','UHS/ACGL',
-    'META/AAPL','MCD/YUM','ALLY/GS','USO/CL','UAL/ALGN',
-    'CG/ARES','BEN/AMG','UBER/LYFT','CME/TW','DASH/CART',
-]
+# PARAM_MAP is used only as a display fallback; actual params come from the Step 2/3 Excel files.
+PARAM_MAP = {}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

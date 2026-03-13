@@ -34,12 +34,8 @@ from datetime import datetime, timedelta, date
 POLYGON_API_KEY = os.environ['POLYGON_API_KEY']
 CACHE_PATH = 'price_data/earnings_cache.json'
 
-ALL_SYMBOLS = [
-    'MSCI', 'LII', 'D', 'MCHP', 'DG', 'MOS', 'ESS', 'EXPD',
-    'ACGL', 'UHS', 'AAPL', 'META', 'YUM', 'MCD', 'GS', 'ALLY',
-    'CL', 'USO', 'ALGN', 'UAL', 'ARES', 'CG', 'AMG', 'BEN',
-    'LYFT', 'UBER', 'TW', 'CME', 'CART', 'DASH',
-]
+from pair_universe import all_symbols
+ALL_SYMBOLS = all_symbols()
 
 
 def _curl_get(url):

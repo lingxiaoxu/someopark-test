@@ -45,13 +45,8 @@ def schedule_function(func, date_rule, time_rule):
     scheduled_functions.append((func, date_rule, time_rule))
 
 
-DEFAULT_PAIRS = [
-    ['MSCI', 'LII'],
-    ['D', 'MCHP'],
-    ['DG', 'MOS'],
-    ['ESS', 'EXPD'],
-    ['ACGL', 'UHS'],
-]
+from pair_universe import mrpt_pairs as _mrpt_pairs
+DEFAULT_PAIRS = [[s1, s2] for s1, s2 in _mrpt_pairs()]
 
 
 def _is_earnings_blackout(context, s1, s2, date):
@@ -500,11 +495,13 @@ def record_vars(context, **kwargs):
         context.recorded_vars[pair][current_date] = {}
 
     # Determine the sector based on the stocks in the pair
-    _tech_stocks       = {'AAPL', 'META', 'NVDA', 'TSM', 'D', 'MCHP', 'CART', 'DASH'}
-    _finance_stocks    = {'GS', 'ALLY', 'ACGL', 'UHS', 'ARES', 'CG', 'AMG', 'BEN', 'TW', 'CME'}
-    _industrial_stocks = {'ALGN', 'UAL', 'MSCI', 'LII', 'LYFT', 'UBER'}
-    _energy_stocks     = {'CL', 'USO', 'ESS', 'EXPD'}
-    _food_stocks       = {'DG', 'MOS', 'YUM', 'MCD'}
+    from pair_universe import sector_sets_mrpt as _ss
+    _ss_map = _ss()
+    _tech_stocks       = _ss_map.get('tech', set())
+    _finance_stocks    = _ss_map.get('finance', set())
+    _industrial_stocks = _ss_map.get('industrial', set())
+    _energy_stocks     = _ss_map.get('energy', set())
+    _food_stocks       = _ss_map.get('food', set())
 
     pair_stocks = {stock_1, stock_2}
     if pair_stocks & _tech_stocks:

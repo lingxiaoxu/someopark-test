@@ -81,11 +81,8 @@ log = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 GRID_CONFIG = os.path.join(BASE_DIR, 'run_configs', 'runs_20260304_step1_grid32.json')
 
-ALL_PAIRS = [
-    ('MSCI', 'LII'), ('D', 'MCHP'), ('DG', 'MOS'), ('ESS', 'EXPD'), ('ACGL', 'UHS'),
-    ('AAPL', 'META'), ('YUM', 'MCD'), ('GS', 'ALLY'), ('CL', 'USO'), ('ALGN', 'UAL'),
-    ('ARES', 'CG'), ('AMG', 'BEN'), ('LYFT', 'UBER'), ('TW', 'CME'), ('CART', 'DASH'),
-]
+from pair_universe import mrpt_pairs
+ALL_PAIRS = mrpt_pairs()
 
 # Selection thresholds (same as MRPTUpdateConfigs.py)
 MIN_PNL    = 0

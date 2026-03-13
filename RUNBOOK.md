@@ -10,11 +10,34 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 0. UpdateStep1Configs.py — 换配对后更新 Step1 config（换配对时才需要）
+
+**只在修改了 `pair_universe_mrpt.json` 或 `pair_universe_mtfs.json` 之后运行，普通回测不需要。**
+
+影响范围：
+- `PortfolioMRPTStrategyRuns.py` / `PortfolioMTFSStrategyRuns.py` Step1 grid search（直接读 config 里的 pairs）
+- `MRPTWalkForward.py` / `MTFSWalkForward.py`（内部也读 Step1 config 里的 param_set + pairs 做 grid search）
+
+```bash
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+```
+
+更新（in-place）：
+- `run_configs/runs_20260304_step1_grid32.json` — MRPT Step1 config 的 pairs
+- `run_configs/mtfs_runs_step1_grid30.json` — MTFS Step1 config 的 pairs
+
+完成后再运行 Step1 grid search 或 WalkForward。
+
+---
+
 ## 1. PortfolioMRPTStrategyRuns.py — MRPT 批量回测
 
 接收一个 JSON config 文件作为参数。**Step 1 跑完后必须先运行 MRPTUpdateConfigs.py，才能运行 Step 2。**
 
 ```bash
+# 换配对时才需要（更新 runs_20260304_step1_grid32.json 的 pairs，Step2/3 不受影响）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+
 # Step 1: Grid search（32个param_set × 15对）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python PortfolioMRPTStrategyRuns.py run_configs/runs_20260304_step1_grid32.json
 
@@ -38,6 +61,9 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 接收一个 JSON config 文件作为参数。**Step 1 跑完后必须先运行 MTFSUpdateConfigs.py，才能运行 Step 2。**
 
 ```bash
+# 换配对时才需要（更新 mtfs_runs_step1_grid30.json 的 pairs，Step2/3 不受影响）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+
 # Step 1: Grid search（31个param_set × 15对）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python PortfolioMTFSStrategyRuns.py run_configs/mtfs_runs_step1_grid30.json
 
@@ -100,7 +126,12 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ## 7. MRPTWalkForward.py — MRPT Walk-Forward 6窗口
 
+**换配对后需先运行 `UpdateStep1Configs.py`（WalkForward 内部读 `runs_20260304_step1_grid32.json` 的 param_set + pairs 做 grid search）。**
+
 ```bash
+# 换配对时才需要（更新 runs_20260304_step1_grid32.json 的 pairs）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+
 # 标准运行（6个OOS窗口，expanding模式，输出到 historical_runs/walk_forward/）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTWalkForward.py --oos-windows 6
 
@@ -119,7 +150,12 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ## 8. MTFSWalkForward.py — MTFS Walk-Forward 6窗口
 
+**换配对后需先运行 `UpdateStep1Configs.py`（WalkForward 内部读 `mtfs_runs_step1_grid30.json` 的 param_set + pairs 做 grid search）。**
+
 ```bash
+# 换配对时才需要（更新 mtfs_runs_step1_grid30.json 的 pairs）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+
 # 标准运行（6个OOS窗口，expanding模式，输出到 historical_runs/walk_forward_mtfs/）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MTFSWalkForward.py --oos-windows 6
 
@@ -233,6 +269,9 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 ## 标准全流程（从头 Step1 → Step3）
 
 ```bash
+# ── 换配对时才需要：更新 Step1 config（修改 pair_universe_*.json 后执行）──
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+
 # ── MRPT ──
 # 1. Grid search
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python PortfolioMRPTStrategyRuns.py run_configs/runs_20260304_step1_grid32.json
@@ -259,6 +298,9 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 ## 标准全流程（重新跑一次 Walk-Forward + 更新信号）
 
 ```bash
+# ── 换配对时才需要：更新 Step1 config（修改 pair_universe_*.json 后执行）──
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+
 # 1. MRPT Walk-Forward
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTWalkForward.py --oos-windows 6
 
@@ -424,3 +466,62 @@ daily_report_<YYYYMMDD>.txt           ← 完整报告（人可读文本）
   "mtfs": { ... }
 }
 ```
+
+---
+
+## 核心配置文件（手动维护）
+
+### pair_universe_mrpt.json / pair_universe_mtfs.json — 交易配对唯一来源
+
+**这是唯一需要手动编辑的配对文件。** 所有脚本通过 `pair_universe.py`（内部加载器模块，不直接运行）读取，修改后无需改动任何代码。
+
+```
+pair_universe_mrpt.json   — MRPT 15对：s1=均值回归多腿，s2=空腿
+pair_universe_mtfs.json   — MTFS 15对：s1=动量强腿（做多），s2=动量弱腿（做空）
+                            注意：MTFS 的 s1/s2 顺序与 MRPT 相反
+```
+
+**字段说明：**
+
+| 字段 | 说明 |
+|---|---|
+| `s1` | 第一腿 ticker |
+| `s2` | 第二腿 ticker |
+| `sector` | 所属板块（`tech` / `finance` / `industrial` / `energy` / `food`） |
+| `z_col` | （MRPT）Z-score 列名，格式 `Z_<sector>` |
+| `spread_col` | （MTFS）动量差列名，格式 `Momentum_Spread_<sector>` |
+
+**修改配对后必须执行：**
+```bash
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+```
+然后重新跑 Step1 grid search 或 WalkForward。
+
+---
+
+### inventory_mrpt.json / inventory_mtfs.json — 当前持仓状态
+
+**由 `DailySignal.py` 自动维护，不要手动编辑 pairs 内容。** 以下字段可在必要时手动调整：
+
+```
+inventory_mrpt.json   — MRPT 当前开仓记录
+inventory_mtfs.json   — MTFS 当前开仓记录
+```
+
+**字段说明：**
+
+| 字段 | 说明 |
+|---|---|
+| `as_of` | 最后更新日期（DailySignal 写入） |
+| `capital` | 该策略分配资本（DailySignal 按 regime 权重计算后写入） |
+| `pairs.<key>.direction` | 持仓方向：`"long"` / `"short"` / `null`（无仓位） |
+| `pairs.<key>.s1_shares` | S1 持仓股数（正=多，负=空） |
+| `pairs.<key>.s2_shares` | S2 持仓股数 |
+| `pairs.<key>.open_date` | 开仓日期 |
+| `pairs.<key>.open_s1_price` | 开仓时 S1 价格（用于计算未实现 PnL） |
+| `pairs.<key>.open_s2_price` | 开仓时 S2 价格 |
+| `pairs.<key>.days_held` | 已持仓日历天数（每日 idempotent 递增） |
+| `pairs.<key>.last_updated` | 最后更新日期（防止重复计数） |
+| `pairs.<key>.param_set` | 该仓位使用的参数组 |
+
+> **注意**：`days_held` 基于日历天数，每天只递增一次（通过 `last_updated` 保证 re-run 幂等）。持仓期间 shares 固定不变，不随 regime 调整。

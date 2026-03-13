@@ -58,11 +58,8 @@ BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 STEP2_PATH = os.path.join(BASE_DIR, 'run_configs', 'mtfs_runs_step2_best_backtest.json')
 STEP3_PATH = os.path.join(BASE_DIR, 'run_configs', 'mtfs_runs_step3_forward.json')
 
-ALL_PAIRS = [
-    ('LII', 'MSCI'), ('MCHP', 'D'), ('MOS', 'DG'), ('EXPD', 'ESS'), ('UHS', 'ACGL'),
-    ('META', 'AAPL'), ('MCD', 'YUM'), ('ALLY', 'GS'), ('USO', 'CL'), ('UAL', 'ALGN'),
-    ('CG', 'ARES'), ('BEN', 'AMG'), ('UBER', 'LYFT'), ('CME', 'TW'), ('DASH', 'CART'),
-]
+from pair_universe import mtfs_pairs
+ALL_PAIRS = mtfs_pairs()
 
 
 def find_latest_summary():

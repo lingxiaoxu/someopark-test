@@ -52,46 +52,12 @@ log = logging.getLogger(__name__)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ─── Strategy-specific configuration ────────────────────────────────────────
+from pair_universe import mrpt_pairs, mtfs_pairs, mrpt_z_col_map, mtfs_sector_map
 
-MRPT_PAIRS = [
-    ('MSCI', 'LII'), ('D', 'MCHP'), ('DG', 'MOS'), ('ESS', 'EXPD'), ('ACGL', 'UHS'),
-    ('AAPL', 'META'), ('YUM', 'MCD'), ('GS', 'ALLY'), ('CL', 'USO'), ('ALGN', 'UAL'),
-    ('ARES', 'CG'), ('AMG', 'BEN'), ('LYFT', 'UBER'), ('TW', 'CME'), ('CART', 'DASH'),
-]
-
-MTFS_PAIRS = [
-    ('MSCI', 'LII'), ('D', 'MCHP'), ('DG', 'MOS'), ('ESS', 'EXPD'), ('ACGL', 'UHS'),
-    ('AAPL', 'META'), ('YUM', 'MCD'), ('GS', 'ALLY'), ('CL', 'USO'), ('ALGN', 'UAL'),
-    ('ARES', 'CG'), ('AMG', 'BEN'), ('LYFT', 'UBER'), ('TW', 'CME'), ('CART', 'DASH'),
-]
-
-# Sector → Z-column mapping (MRPT only)
-MRPT_PAIR_Z_COL = {
-    'MSCI/LII':   'Z_industrial',
-    'D/MCHP':     'Z_tech',
-    'DG/MOS':     'Z_food',
-    'ESS/EXPD':   'Z_energy',
-    'ACGL/UHS':   'Z_finance',
-    'AAPL/META':  'Z_tech',
-    'YUM/MCD':    'Z_food',
-    'GS/ALLY':    'Z_finance',
-    'CL/USO':     'Z_energy',
-    'ALGN/UAL':   'Z_industrial',
-    'ARES/CG':    'Z_finance',
-    'AMG/BEN':    'Z_finance',
-    'LYFT/UBER':  'Z_industrial',
-    'TW/CME':     'Z_finance',
-    'CART/DASH':  'Z_tech',
-}
-
-# Sector → Momentum_Spread column mapping (MTFS)
-MTFS_SECTOR_MAP = {
-    frozenset({'AAPL', 'META', 'D', 'MCHP', 'CART', 'DASH'}):                     'tech',
-    frozenset({'GS', 'ALLY', 'ACGL', 'UHS', 'ARES', 'CG', 'AMG', 'BEN', 'TW', 'CME'}): 'finance',
-    frozenset({'ALGN', 'UAL', 'MSCI', 'LII', 'LYFT', 'UBER'}):                    'industrial',
-    frozenset({'CL', 'USO', 'ESS', 'EXPD'}):                                       'energy',
-    frozenset({'DG', 'MOS', 'YUM', 'MCD'}):                                        'food',
-}
+MRPT_PAIRS       = mrpt_pairs()
+MTFS_PAIRS       = mtfs_pairs()
+MRPT_PAIR_Z_COL  = mrpt_z_col_map()
+MTFS_SECTOR_MAP  = mtfs_sector_map()
 
 # MTFS stop-loss reason keywords → category label
 MTFS_SL_CATEGORIES = {

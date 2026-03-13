@@ -43,6 +43,7 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 from scipy.stats import norm
+from pair_universe import mrpt_pairs
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 log = logging.getLogger(__name__)
@@ -58,11 +59,7 @@ BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
 STEP2_PATH = os.path.join(BASE_DIR, 'run_configs', 'runs_20260304_step2_best_backtest.json')
 STEP3_PATH = os.path.join(BASE_DIR, 'run_configs', 'runs_20260304_step3_forward.json')
 
-ALL_PAIRS = [
-    ('MSCI', 'LII'), ('D', 'MCHP'), ('DG', 'MOS'), ('ESS', 'EXPD'), ('ACGL', 'UHS'),
-    ('AAPL', 'META'), ('YUM', 'MCD'), ('GS', 'ALLY'), ('CL', 'USO'), ('ALGN', 'UAL'),
-    ('ARES', 'CG'), ('AMG', 'BEN'), ('LYFT', 'UBER'), ('TW', 'CME'), ('CART', 'DASH'),
-]
+ALL_PAIRS = mrpt_pairs()
 
 
 def find_latest_summary():

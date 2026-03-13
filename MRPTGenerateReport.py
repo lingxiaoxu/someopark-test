@@ -132,34 +132,13 @@ def _fmt_pct(v):
 # ─────────────────────────────────────────────────────────────────────────────
 # Data extraction
 # ─────────────────────────────────────────────────────────────────────────────
-Z_COL_MAP = {
-    'MSCI/LII':  'Z_industrial', 'LYFT/UBER': 'Z_industrial',
-    'ALGN/UAL':  'Z_industrial',
-    'D/MCHP':    'Z_tech',       'AAPL/META': 'Z_tech',
-    'CART/DASH': 'Z_tech',
-    'DG/MOS':    'Z_food',       'YUM/MCD':   'Z_food',
-    'ESS/EXPD':  'Z_energy',     'CL/USO':    'Z_energy',
-    'ACGL/UHS':  'Z_finance',    'GS/ALLY':   'Z_finance',
-    'ARES/CG':   'Z_finance',    'AMG/BEN':   'Z_finance',
-    'TW/CME':    'Z_finance',
-}
+from pair_universe import mrpt_z_col_map, mrpt_pair_keys
 
-PARAM_MAP = {
-    'MSCI/LII':  'default',          'D/MCHP':    'fast_signal',
-    'DG/MOS':    'deep_dislocation', 'ESS/EXPD':  'aggressive',
-    'ACGL/UHS':  'patient_hold',     'AAPL/META': 'long_z_short_v',
-    'YUM/MCD':   'long_z_short_v',   'GS/ALLY':   'long_z_short_v',
-    'CL/USO':    'patient_hold',     'ALGN/UAL':  'short_z_long_v',
-    'ARES/CG':   'fast_signal',      'AMG/BEN':   'fast_signal',
-    'LYFT/UBER': 'short_z_long_v',   'TW/CME':    'aggressive',
-    'CART/DASH': 'vol_adaptive',
-}
+Z_COL_MAP  = mrpt_z_col_map()
+PAIR_ORDER = mrpt_pair_keys()
 
-PAIR_ORDER = [
-    'MSCI/LII','D/MCHP','DG/MOS','ESS/EXPD','ACGL/UHS',
-    'AAPL/META','YUM/MCD','GS/ALLY','CL/USO','ALGN/UAL',
-    'ARES/CG','AMG/BEN','LYFT/UBER','TW/CME','CART/DASH',
-]
+# PARAM_MAP is used only as a display fallback; actual params come from the Step 2/3 Excel files.
+PARAM_MAP = {}
 
 
 def extract_pair_stats(bt_path, fwd_path):
