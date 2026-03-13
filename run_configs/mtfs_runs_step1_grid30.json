@@ -8,64 +8,64 @@
       "param_set": "default",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -74,64 +74,64 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -140,64 +140,64 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -206,64 +206,64 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -272,64 +272,64 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -338,64 +338,64 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -404,64 +404,64 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -470,64 +470,64 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -536,64 +536,64 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -602,64 +602,64 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -668,64 +668,64 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -734,64 +734,64 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -800,64 +800,64 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -866,64 +866,64 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -932,64 +932,64 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -998,64 +998,64 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1064,64 +1064,64 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1130,64 +1130,64 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1196,64 +1196,64 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1262,64 +1262,64 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1328,64 +1328,64 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1394,64 +1394,64 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1460,64 +1460,64 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1526,64 +1526,64 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1592,64 +1592,64 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1658,64 +1658,64 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1724,64 +1724,64 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1790,64 +1790,64 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1856,64 +1856,64 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1922,64 +1922,64 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     },
@@ -1988,64 +1988,64 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "LII",
-          "MSCI"
-        ],
-        [
-          "MCHP",
-          "D"
-        ],
-        [
-          "MOS",
-          "DG"
-        ],
-        [
-          "EXPD",
-          "ESS"
-        ],
-        [
-          "UHS",
-          "ACGL"
-        ],
-        [
-          "META",
-          "AAPL"
-        ],
-        [
-          "MCD",
-          "YUM"
-        ],
-        [
-          "ALLY",
+          "ALL",
           "GS"
         ],
         [
-          "USO",
-          "CL"
+          "ALL",
+          "SPG"
         ],
         [
-          "UAL",
-          "ALGN"
+          "BK",
+          "ALL"
         ],
         [
-          "CG",
-          "ARES"
+          "XOM",
+          "V"
         ],
         [
-          "BEN",
-          "AMG"
+          "CB",
+          "ACGL"
         ],
         [
-          "UBER",
-          "LYFT"
+          "CTRA",
+          "ACGL"
         ],
         [
-          "CME",
-          "TW"
+          "MCD",
+          "ACGL"
         ],
         [
-          "DASH",
-          "CART"
+          "AEE",
+          "BKR"
+        ],
+        [
+          "RSG",
+          "AFL"
+        ],
+        [
+          "AIG",
+          "HST"
+        ],
+        [
+          "JNJ",
+          "AIG"
+        ],
+        [
+          "RSG",
+          "AIG"
+        ],
+        [
+          "ETR",
+          "AVB"
+        ],
+        [
+          "EVRG",
+          "AVB"
+        ],
+        [
+          "C",
+          "GS"
         ]
       ]
     }

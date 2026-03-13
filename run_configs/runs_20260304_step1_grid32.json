@@ -8,64 +8,64 @@
       "param_set": "default",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -74,64 +74,64 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -140,64 +140,64 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -206,64 +206,64 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -272,64 +272,64 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -338,64 +338,64 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -404,64 +404,64 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -470,64 +470,64 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -536,64 +536,64 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -602,64 +602,64 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -668,64 +668,64 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -734,64 +734,64 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -800,64 +800,64 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -866,64 +866,64 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -932,64 +932,64 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -998,64 +998,64 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1064,64 +1064,64 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1130,64 +1130,64 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1196,64 +1196,64 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1262,64 +1262,64 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1328,64 +1328,64 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1394,64 +1394,64 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1460,64 +1460,64 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1526,64 +1526,64 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1592,64 +1592,64 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1658,64 +1658,64 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1724,64 +1724,64 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1790,64 +1790,64 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1856,64 +1856,64 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1922,64 +1922,64 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -1988,64 +1988,64 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     },
@@ -2054,64 +2054,64 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "MSCI",
-          "LII"
-        ],
-        [
-          "D",
-          "MCHP"
-        ],
-        [
-          "DG",
-          "MOS"
-        ],
-        [
-          "ESS",
-          "EXPD"
-        ],
-        [
-          "ACGL",
-          "UHS"
-        ],
-        [
-          "AAPL",
-          "META"
-        ],
-        [
-          "YUM",
-          "MCD"
-        ],
-        [
-          "GS",
-          "ALLY"
+          "AWK",
+          "FOX"
         ],
         [
           "CL",
-          "USO"
+          "WST"
         ],
         [
-          "ALGN",
-          "UAL"
+          "MKTX",
+          "WST"
         ],
         [
-          "ARES",
-          "CG"
+          "MSCI",
+          "MTB"
         ],
         [
-          "AMG",
-          "BEN"
+          "AWK",
+          "STLD"
         ],
         [
-          "LYFT",
-          "UBER"
+          "FSLR",
+          "WST"
         ],
         [
-          "TW",
-          "CME"
+          "AWK",
+          "EXPD"
         ],
         [
-          "CART",
-          "DASH"
+          "F",
+          "PG"
+        ],
+        [
+          "MTCH",
+          "NVR"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "CL",
+          "GD"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "CL",
+          "SRE"
+        ],
+        [
+          "ED",
+          "NTAP"
         ]
       ]
     }

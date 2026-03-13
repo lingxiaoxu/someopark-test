@@ -1,17 +1,92 @@
 [
-  {"s1": "MSCI",  "s2": "LII",  "sector": "industrial", "z_col": "Z_industrial"},
-  {"s1": "D",     "s2": "MCHP", "sector": "tech",        "z_col": "Z_tech"},
-  {"s1": "DG",    "s2": "MOS",  "sector": "food",        "z_col": "Z_food"},
-  {"s1": "ESS",   "s2": "EXPD", "sector": "energy",      "z_col": "Z_energy"},
-  {"s1": "ACGL",  "s2": "UHS",  "sector": "finance",     "z_col": "Z_finance"},
-  {"s1": "AAPL",  "s2": "META", "sector": "tech",        "z_col": "Z_tech"},
-  {"s1": "YUM",   "s2": "MCD",  "sector": "food",        "z_col": "Z_food"},
-  {"s1": "GS",    "s2": "ALLY", "sector": "finance",     "z_col": "Z_finance"},
-  {"s1": "CL",    "s2": "USO",  "sector": "energy",      "z_col": "Z_energy"},
-  {"s1": "ALGN",  "s2": "UAL",  "sector": "industrial",  "z_col": "Z_industrial"},
-  {"s1": "ARES",  "s2": "CG",   "sector": "finance",     "z_col": "Z_finance"},
-  {"s1": "AMG",   "s2": "BEN",  "sector": "finance",     "z_col": "Z_finance"},
-  {"s1": "LYFT",  "s2": "UBER", "sector": "industrial",  "z_col": "Z_industrial"},
-  {"s1": "TW",    "s2": "CME",  "sector": "finance",     "z_col": "Z_finance"},
-  {"s1": "CART",  "s2": "DASH", "sector": "tech",        "z_col": "Z_tech"}
+  {
+    "s1": "AWK",
+    "s2": "FOX",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "CL",
+    "s2": "WST",
+    "sector": "energy",
+    "z_col": "Z_energy"
+  },
+  {
+    "s1": "MKTX",
+    "s2": "WST",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "MSCI",
+    "s2": "MTB",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "AWK",
+    "s2": "STLD",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "FSLR",
+    "s2": "WST",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "AWK",
+    "s2": "EXPD",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "F",
+    "s2": "PG",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "MTCH",
+    "s2": "NVR",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "HII",
+    "s2": "PG",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
+    "s1": "ETR",
+    "s2": "MKTX",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "CL",
+    "s2": "GD",
+    "sector": "energy",
+    "z_col": "Z_energy"
+  },
+  {
+    "s1": "GRMN",
+    "s2": "KO",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "CL",
+    "s2": "SRE",
+    "sector": "energy",
+    "z_col": "Z_energy"
+  },
+  {
+    "s1": "ED",
+    "s2": "NTAP",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  }
 ]
