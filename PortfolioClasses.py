@@ -2032,6 +2032,49 @@ class MomentumSignal:
             return np.nan
         return prices.iloc[-period:].mean()
 
+    @staticmethod
+    def apply_llt(prices, n=10):
+        """Low-Lag Trendline (LLT) filter — second-order low-pass filter.
+        Reduces MA lag while preserving trend direction.
+        n: period equivalent (alpha = 2/(n+1)).
+        Returns a pd.Series of the same length as prices."""
+        alpha = 2.0 / (n + 1)
+        llt = prices.copy().astype(float).values
+        p = prices.values
+        for i in range(2, len(p)):
+            llt[i] = (
+                (alpha - alpha ** 2 / 4.0) * p[i]
+                + (alpha ** 2 / 2.0) * p[i - 1]
+                - (alpha - 3.0 * alpha ** 2 / 4.0) * p[i - 2]
+                + 2.0 * (1.0 - alpha) * llt[i - 1]
+                - (1.0 - alpha) ** 2 * llt[i - 2]
+            )
+        return pd.Series(llt, index=prices.index)
+
+    def compute_llt_return(self, prices, window, llt_n=None):
+        """Return over *window* days computed on LLT-smoothed prices.
+        llt_n: LLT period; defaults to window//3 (capped 5..30) if None."""
+        if llt_n is None:
+            llt_n = max(5, min(30, window // 3))
+        skip = self.skip_days if window >= self.SKIP_THRESHOLD else 0
+        required = window + skip
+        if len(prices) < required + 1:
+            return np.nan
+        llt = self.apply_llt(prices, n=llt_n)
+        end_price = llt.iloc[-(1 + skip)] if skip > 0 else llt.iloc[-1]
+        start_price = llt.iloc[-(1 + window)]
+        if start_price == 0:
+            return np.nan
+        return float(end_price / start_price) - 1.0
+
+    def compute_llt_vams(self, prices, window, llt_n=None):
+        """VAMS computed on LLT-smoothed prices."""
+        ret = self.compute_llt_return(prices, window, llt_n=llt_n)
+        vol = self.compute_realized_vol(prices, window)
+        if np.isnan(ret) or np.isnan(vol) or vol == 0:
+            return np.nan
+        return ret / vol
+
     # ── composite scoring ─────────────────────────────────────────────────
 
     def composite_raw_momentum(self, prices):
@@ -2049,6 +2092,17 @@ class MomentumSignal:
         scores = []
         for w, wt in zip(self.windows, self.weights):
             v = self.compute_vams(prices, w)
+            if np.isnan(v):
+                return np.nan
+            scores.append(v * wt)
+        return sum(scores)
+
+    def composite_llt_momentum(self, prices, use_vams=True):
+        """Weighted composite using LLT-smoothed returns (parallel to composite_vams/raw).
+        use_vams=True: LLT return / realized vol; False: raw LLT return."""
+        scores = []
+        for w, wt in zip(self.windows, self.weights):
+            v = self.compute_llt_vams(prices, w) if use_vams else self.compute_llt_return(prices, w)
             if np.isnan(v):
                 return np.nan
             scores.append(v * wt)
@@ -2322,6 +2376,7 @@ class MTFSExecution:
         self.momentum_weights = [0.20, 0.20, 0.20, 0.15, 0.15, 0.10]
         self.skip_days = 21  # skip-month for windows >= 60
         self.use_vams = True  # volatility-adjusted momentum scoring
+        self.use_llt = False  # LLT-smoothed prices for momentum scoring
 
         # ── Trend confirmation ────────────────────────────────────────────
         self.sma_short = 20

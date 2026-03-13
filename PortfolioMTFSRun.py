@@ -169,7 +169,7 @@ def process_pair(pair, context, data):
     # Apply per-pair parameter overrides
     _saved_exec_params = {}
     _PAIR_PARAM_KEYS = [
-        'momentum_windows', 'momentum_weights', 'skip_days', 'use_vams',
+        'momentum_windows', 'momentum_weights', 'skip_days', 'use_vams', 'use_llt',
         'sma_short', 'sma_long', 'require_trend_confirmation',
         'entry_momentum_threshold', 'exit_momentum_decay_threshold',
         'reversal_sma_lookback', 'momentum_decay_short_window', 'momentum_decay_long_window',
@@ -277,7 +277,10 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
         return [stock_1, stock_2, pair[2]]
 
     # ── Compute composite momentum scores ─────────────────────────────────
-    if context.execution.use_vams:
+    if context.execution.use_llt:
+        score_1 = ms.composite_llt_momentum(stock_1_P, use_vams=context.execution.use_vams)
+        score_2 = ms.composite_llt_momentum(stock_2_P, use_vams=context.execution.use_vams)
+    elif context.execution.use_vams:
         score_1 = ms.composite_vams(stock_1_P)
         score_2 = ms.composite_vams(stock_2_P)
     else:

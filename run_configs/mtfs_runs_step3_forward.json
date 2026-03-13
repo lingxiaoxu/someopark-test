@@ -1,6 +1,6 @@
 {
-  "_comment": "Step 3 \u2014 Forward/validation: same 13 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=auto_minus_70d (forward window start). Auto-generated 2026-03-12 17:59.",
-  "start_date": "2024-09-12",
+  "_comment": "Step 3 \u2014 Forward/validation: same 15 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=auto_minus_70d (forward window start). Auto-generated 2026-03-14 03:25.",
+  "start_date": "2024-09-14",
   "end_date": "auto",
   "trade_start_date": "auto_minus_70d",
   "runs": [
@@ -9,34 +9,44 @@
       "param_set": "default",
       "pairs": [
         [
+          "LII",
+          "MSCI",
+          "aggressive"
+        ],
+        [
           "MCHP",
           "D",
-          "monthly_aligned_windows"
+          "weekly_aligned_windows"
         ],
         [
           "MOS",
           "DG",
-          "raw_momentum_kalman"
+          "sensitive_reversal"
         ],
         [
           "EXPD",
           "ESS",
-          "vol_sized_conservative"
+          "kalman_hedge"
         ],
         [
           "UHS",
           "ACGL",
-          "short_term_beta_neutral"
+          "fast_rebalance"
         ],
         [
           "META",
           "AAPL",
-          "long_term_tilt"
+          "short_term_tilt"
+        ],
+        [
+          "MCD",
+          "YUM",
+          "sensitive_reversal"
         ],
         [
           "ALLY",
           "GS",
-          "monthly_aligned_windows"
+          "weekly_aligned_windows"
         ],
         [
           "USO",
@@ -46,22 +56,22 @@
         [
           "UAL",
           "ALGN",
-          "no_skip_month"
+          "short_term_tilt"
         ],
         [
           "CG",
           "ARES",
-          "kalman_aggressive"
+          "aggressive"
         ],
         [
           "BEN",
           "AMG",
-          "no_skip_month"
+          "sensitive_reversal"
         ],
         [
           "UBER",
           "LYFT",
-          "monthly_aligned_windows"
+          "weekly_aligned_windows"
         ],
         [
           "CME",

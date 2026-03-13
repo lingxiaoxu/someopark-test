@@ -129,7 +129,23 @@ SPREAD_COL_MAP = mtfs_spread_col_map()
 PAIR_ORDER     = mtfs_pair_keys()
 
 # PARAM_MAP is used only as a display fallback; actual params come from the Step 2/3 Excel files.
-PARAM_MAP = {}
+PARAM_MAP = {
+    'LII/MSCI':  'aggressive',
+    'MCHP/D':  'weekly_aligned_windows',
+    'MOS/DG':  'sensitive_reversal',
+    'EXPD/ESS':  'kalman_hedge',
+    'UHS/ACGL':  'fast_rebalance',
+    'META/AAPL':  'short_term_tilt',
+    'MCD/YUM':  'sensitive_reversal',
+    'ALLY/GS':  'weekly_aligned_windows',
+    'USO/CL':  'fast_strict',
+    'UAL/ALGN':  'short_term_tilt',
+    'CG/ARES':  'aggressive',
+    'BEN/AMG':  'sensitive_reversal',
+    'UBER/LYFT':  'weekly_aligned_windows',
+    'CME/TW':  'beta_neutral',
+    'DASH/CART':  'weekly_aligned_windows'
+}
 
 
 # ─────────────────────────────────────────────────────────────────────────────

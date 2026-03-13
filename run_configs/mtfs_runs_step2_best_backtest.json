@@ -1,6 +1,6 @@
 {
-  "_comment": "Step 2 \u2014 Backtest: 13 selected pairs in ONE combined portfolio run. Each pair entry [s1, s2, param_set] uses its own best param_set from Step 1. Auto-generated 2026-03-12 17:59. Criteria: pair_pnl>0, trades>=3, DSR>0.5 (N=31 trials).",
-  "start_date": "2024-09-12",
+  "_comment": "Step 2 \u2014 Backtest: 15 selected pairs in ONE combined portfolio run. Each pair entry [s1, s2, param_set] uses its own best param_set from Step 1. Auto-generated 2026-03-14 03:25. Criteria: pair_pnl>0, trades>=3, DSR>0.5 (N=31 trials).",
+  "start_date": "2024-09-14",
   "end_date": "auto_minus_70d",
   "runs": [
     {
@@ -8,34 +8,44 @@
       "param_set": "default",
       "pairs": [
         [
+          "LII",
+          "MSCI",
+          "aggressive"
+        ],
+        [
           "MCHP",
           "D",
-          "monthly_aligned_windows"
+          "weekly_aligned_windows"
         ],
         [
           "MOS",
           "DG",
-          "raw_momentum_kalman"
+          "sensitive_reversal"
         ],
         [
           "EXPD",
           "ESS",
-          "vol_sized_conservative"
+          "kalman_hedge"
         ],
         [
           "UHS",
           "ACGL",
-          "short_term_beta_neutral"
+          "fast_rebalance"
         ],
         [
           "META",
           "AAPL",
-          "long_term_tilt"
+          "short_term_tilt"
+        ],
+        [
+          "MCD",
+          "YUM",
+          "sensitive_reversal"
         ],
         [
           "ALLY",
           "GS",
-          "monthly_aligned_windows"
+          "weekly_aligned_windows"
         ],
         [
           "USO",
@@ -45,22 +55,22 @@
         [
           "UAL",
           "ALGN",
-          "no_skip_month"
+          "short_term_tilt"
         ],
         [
           "CG",
           "ARES",
-          "kalman_aggressive"
+          "aggressive"
         ],
         [
           "BEN",
           "AMG",
-          "no_skip_month"
+          "sensitive_reversal"
         ],
         [
           "UBER",
           "LYFT",
-          "monthly_aligned_windows"
+          "weekly_aligned_windows"
         ],
         [
           "CME",
