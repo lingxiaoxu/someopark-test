@@ -35,3 +35,4 @@ historical_runs/walk_forward_mtfs/*
 !historical_runs/walk_forward_mtfs/dsr_selection_log_*.csv
 
 # Daily trading signals & reports — all files tracked
+.env.example
