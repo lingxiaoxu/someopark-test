@@ -59,7 +59,9 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
 # ~~~~~~~~~~~~~~~~~~~~~~ DATA SOURCE CONFIGURATION ~~~~~~~~~~~~~~~~~~~~~~
-DATA_SOURCE = 'polygon'
+# 'mongo' (default), 'polygon', or 'yahoo'
+# Waterfall: mongo → polygon (PriceDataStore + Parquet cache) → yahoo
+DATA_SOURCE = 'mongo'
 POLYGON_API_KEY = os.environ['POLYGON_API_KEY']
 
 
@@ -477,7 +479,7 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
                 stock_1_shares, stock_2_shares,
                 stock_1_P.iloc[-1], stock_2_P.iloc[-1])
 
-            effective_amplifier = context.execution.amplifier * vol_scale
+            effective_amplifier = context.execution.amplifier * context.execution.capital_utilization * vol_scale
             context.portfolio_order.order_target_percent(
                 context, stock_1,
                 stock_1_perc * effective_amplifier / context.num_pairs)
@@ -506,7 +508,7 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
                 stock_1_shares, stock_2_shares,
                 stock_1_P.iloc[-1], stock_2_P.iloc[-1])
 
-            effective_amplifier = context.execution.amplifier * vol_scale
+            effective_amplifier = context.execution.amplifier * context.execution.capital_utilization * vol_scale
             context.portfolio_order.order_target_percent(
                 context, stock_1,
                 stock_1_perc * effective_amplifier / context.num_pairs)
@@ -760,6 +762,193 @@ def _compute_dividend_adjusted_close(df, dividends):
     return adj
 
 
+def load_historical_data_mongo(start_date, end_date, symbols):
+    """Load historical data from MongoDB stock_data collection — same as MRPT."""
+    from db.connection import get_main_db
+
+    start_dt = pd.Timestamp(start_date)
+    end_dt   = pd.Timestamp(end_date)
+    start_ms = int(start_dt.timestamp() * 1000)
+    end_ms   = int(end_dt.timestamp() * 1000)
+    min_expected_rows = max(1, int((end_dt - start_dt).days * 0.5))
+
+    log.info("=" * 60)
+    log.info(f"[DataLoader/MTFS] source=mongo  symbols={len(symbols)}  "
+             f"range={start_date} → {end_date}  min_rows≥{min_expected_rows}")
+    log.info("=" * 60)
+
+    # ── Connect ──────────────────────────────────────────────────────────────
+    try:
+        db  = get_main_db()
+        col = db["stock_data"]
+        log.info("[DataLoader/MTFS] MongoDB connection OK")
+    except Exception as e:
+        log.error(f"[DataLoader/MTFS] FAIL  MongoDB connection error: {e}")
+        raise RuntimeError(f"MongoDB connection failed: {e}") from e
+
+    all_data         = {}
+    fallback_symbols = []
+
+    # ── Per-symbol fetch ─────────────────────────────────────────────────────
+    for symbol in symbols:
+        docs      = None
+        fetch_err = None
+
+        for attempt in range(2):
+            try:
+                docs = list(
+                    col.find(
+                        {"symbol": symbol, "t": {"$gte": start_ms, "$lte": end_ms}},
+                        {"o": 1, "h": 1, "l": 1, "c": 1, "v": 1, "t": 1, "_id": 0}
+                    ).sort("t", 1)
+                )
+                fetch_err = None
+                break
+            except Exception as e:
+                fetch_err = e
+                if attempt == 0:
+                    log.warning(f"[DataLoader/MTFS] {symbol}  query error (attempt 1), retrying: {e}")
+                else:
+                    log.error(f"[DataLoader/MTFS] {symbol}  FAIL  query error after retry: {e}  "
+                              f"→ per-symbol polygon fallback")
+                    docs = []
+
+        n_rows = len(docs) if docs else 0
+
+        if fetch_err and not docs:
+            reason = f"query exception after retry: {fetch_err}"
+            log.warning(f"[DataLoader/MTFS] {symbol}  FALLBACK  reason=query_error  {reason}")
+            fallback_symbols.append(symbol)
+            continue
+
+        if n_rows == 0:
+            log.warning(f"[DataLoader/MTFS] {symbol}  FALLBACK  reason=zero_rows  "
+                        f"MongoDB returned 0 rows for range {start_date}→{end_date}")
+            fallback_symbols.append(symbol)
+            continue
+
+        if n_rows < min_expected_rows:
+            actual_start = pd.Timestamp(docs[0]['t'],  unit='ms').date()
+            actual_end   = pd.Timestamp(docs[-1]['t'], unit='ms').date()
+            log.warning(f"[DataLoader/MTFS] {symbol}  FALLBACK  reason=insufficient_rows  "
+                        f"got={n_rows}  expected≥{min_expected_rows}  "
+                        f"actual_coverage={actual_start}→{actual_end}  "
+                        f"requested={start_date}→{end_date}")
+            fallback_symbols.append(symbol)
+            continue
+
+        actual_start = pd.Timestamp(docs[0]['t'],  unit='ms').date()
+        actual_end   = pd.Timestamp(docs[-1]['t'], unit='ms').date()
+        df = pd.DataFrame(docs)
+        df['date'] = pd.to_datetime(df['t'], unit='ms').dt.normalize()
+        df = df.set_index('date')
+        df = df[~df.index.duplicated(keep='last')]
+
+        log.info(f"[DataLoader/MTFS] {symbol}  mongo OK  rows={n_rows}  "
+                 f"coverage={actual_start}→{actual_end}")
+
+        # ── Adj Close via dividends_cache.json ────────────────────────────
+        try:
+            store     = PriceDataStore(
+                base_dir=os.path.dirname(os.path.abspath(__file__)),
+                polygon_api_key=POLYGON_API_KEY,
+            )
+            dividends = store._fetch_dividends(symbol, start_date, end_date)
+            adj_close = df['c'].copy()
+            divs_applied = 0
+            for div in reversed(dividends):
+                ex_date = pd.Timestamp(div['ex_dividend_date'])
+                amount  = div['cash_amount']
+                mask    = adj_close.index < ex_date
+                if not mask.any():
+                    continue
+                pre_ex_close = df.loc[adj_close.index[mask][-1], 'c']
+                if pre_ex_close == 0:
+                    continue
+                factor = 1.0 - (amount / pre_ex_close)
+                adj_close.loc[mask] *= factor
+                divs_applied += 1
+            log.info(f"[DataLoader/MTFS] {symbol}  adj_close OK  "
+                     f"dividends_fetched={len(dividends)}  applied={divs_applied}")
+        except Exception as e:
+            log.warning(f"[DataLoader/MTFS] {symbol}  adj_close WARN  "
+                        f"dividend fetch/apply failed ({e}), using raw Close as Adj Close")
+            adj_close = df['c'].copy()
+
+        all_data[symbol] = {
+            'Open':      df['o'].astype(float),
+            'High':      df['h'].astype(float),
+            'Low':       df['l'].astype(float),
+            'Close':     df['c'].astype(float),
+            'Adj Close': adj_close.astype(float),
+            'Volume':    df['v'].astype(float),
+        }
+
+    # ── Per-symbol polygon fallback ──────────────────────────────────────────
+    if fallback_symbols:
+        log.info(f"[DataLoader/MTFS] per-symbol polygon fallback  count={len(fallback_symbols)}  "
+                 f"symbols={fallback_symbols}")
+        try:
+            store       = PriceDataStore(
+                base_dir=os.path.dirname(os.path.abspath(__file__)),
+                polygon_api_key=POLYGON_API_KEY,
+            )
+            fallback_df = store.load(fallback_symbols, start_date, end_date)
+            for symbol in fallback_symbols:
+                sym_data = {}
+                for field in ('Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'):
+                    if (field, symbol) in fallback_df.columns:
+                        sym_data[field] = fallback_df[(field, symbol)]
+                if sym_data:
+                    all_data[symbol] = sym_data
+                    rows = len(next(iter(sym_data.values())))
+                    log.info(f"[DataLoader/MTFS] {symbol}  polygon fallback OK  rows={rows}")
+                else:
+                    log.error(f"[DataLoader/MTFS] {symbol}  FAIL  polygon fallback returned no data")
+                    raise RuntimeError(f"Polygon fallback also returned no data for {symbol}")
+        except RuntimeError:
+            raise
+        except Exception as e:
+            log.error(f"[DataLoader/MTFS] polygon fallback FAIL  error: {e}")
+            raise RuntimeError(f"Polygon fallback failed: {e}") from e
+
+    if not all_data:
+        log.error("[DataLoader/MTFS] FAIL  no usable data from any source for any symbol")
+        raise RuntimeError("MongoDB returned no usable data for any symbol")
+
+    # ── Summary ──────────────────────────────────────────────────────────────
+    mongo_ok = [s for s in symbols if s in all_data and s not in fallback_symbols]
+    poly_ok  = [s for s in fallback_symbols if s in all_data]
+    failed   = [s for s in symbols if s not in all_data]
+    log.info(f"[DataLoader/MTFS] SUMMARY  mongo_ok={len(mongo_ok)}  "
+             f"polygon_fallback={len(poly_ok)}  failed={len(failed)}")
+    if mongo_ok:
+        log.info(f"[DataLoader/MTFS]   via mongo:   {mongo_ok}")
+    if poly_ok:
+        log.info(f"[DataLoader/MTFS]   via polygon: {poly_ok}")
+    if failed:
+        log.error(f"[DataLoader/MTFS]   FAILED:      {failed}")
+
+    fields = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+    tuples = []
+    arrays = {}
+    for field in fields:
+        for symbol in symbols:
+            if symbol not in all_data:
+                continue
+            col_key = (field, symbol)
+            tuples.append(col_key)
+            arrays[col_key] = all_data[symbol][field]
+
+    multi_index = pd.MultiIndex.from_tuples(tuples, names=['Price', 'Ticker'])
+    data = pd.DataFrame(arrays, columns=multi_index)
+    data.index.name = 'Date'
+    data = data.sort_index()
+
+    log.info(f"MongoDB: built DataFrame with {len(data)} rows, {len(data.columns)} columns")
+    return data
+
+
 def load_historical_data_polygon(start_date, end_date, symbols):
     """Load historical data from Polygon.io — same as MRPT."""
     log.info(f"Downloading data from Polygon.io for {len(symbols)} symbols...")
@@ -847,27 +1036,50 @@ def load_historical_data_yahoo(start_date, end_date, symbols):
 
 
 def load_historical_data(start_date, end_date, symbols, data_source=None):
-    """Load historical data — same as MRPT."""
+    """Load historical data with waterfall fallback: mongo → polygon → yahoo.
+
+    mongo:   Direct MongoDB stock_data query. No Parquet cache. Per-symbol
+             polygon fallback if a symbol is missing or has insufficient rows.
+             Adj Close computed from dividends_cache.json.
+    polygon: PriceDataStore with weekly Parquet cache. Polygon API on miss.
+    yahoo:   yf.download() fallback, no cache. Last resort.
+    """
     if data_source is None:
         data_source = DATA_SOURCE
 
     log.info(f"Attempting to load historical data for {len(symbols)} symbols "
              f"from {start_date} to {end_date} [source={data_source}]")
 
-    try:
-        if data_source == 'polygon':
+    # ── Stage 1: MongoDB ────────────────────────────────────────────────────
+    if data_source == 'mongo':
+        try:
+            data = load_historical_data_mongo(start_date, end_date, symbols)
+            data = check_data_structure(data)
+            return data
+        except Exception as e:
+            log.warning(f"MongoDB load failed ({e}). Falling back to polygon.")
+            data_source = 'polygon'  # cascade
+
+    # ── Stage 2: Polygon (PriceDataStore + Parquet cache) ──────────────────
+    if data_source == 'polygon':
+        try:
             store = PriceDataStore(
                 base_dir=os.path.dirname(os.path.abspath(__file__)),
                 polygon_api_key=POLYGON_API_KEY,
             )
             data = store.load(symbols, start_date, end_date)
-        else:
-            data = load_historical_data_yahoo(start_date, end_date, symbols)
+            data = check_data_structure(data)
+            return data
+        except Exception as e:
+            log.warning(f"Polygon load failed ({e}). Falling back to yahoo.")
 
+    # ── Stage 3: Yahoo Finance (last resort) ────────────────────────────────
+    try:
+        data = load_historical_data_yahoo(start_date, end_date, symbols)
         data = check_data_structure(data)
         return data
     except Exception as e:
-        log.error(f"Failed to load data from {data_source}: {e}")
+        log.error(f"All data sources failed. Last error: {e}")
         log.error("Cannot proceed without real market data. Exiting.")
         sys.exit(1)
 

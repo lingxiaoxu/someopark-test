@@ -1384,6 +1384,7 @@ class Execution:
         self.stop_loss_history = {}
 
         self.amplifier = 2
+        self.capital_utilization = 0.70       # fraction of net equity to deploy (70% default)
 
         self.base_entry_z = 0.75
         self.base_exit_z = 0.0
@@ -1863,14 +1864,20 @@ class PortfolioMakeOrder:
         return (stock_1_perc, stock_2_perc)
 
 
+    def _apply_order_constraints(self, context, asset, shares_to_trade, current_price, current_position, target):
+        # Only constrain opening long positions; closing short (shares_to_trade > 0 but target == 0) is unrestricted
+        is_opening_long = target > 0 and current_position >= 0
+        cost = shares_to_trade * current_price
+        if is_opening_long and cost > context.portfolio.asset_cash:
+            shares_to_trade = context.portfolio.asset_cash // current_price
+        return shares_to_trade
+
     def order_target(self, context, asset, target):
         current_position = context.portfolio.positions.get(asset, 0)
         shares_to_trade = target - current_position
         current_price = PortfolioMakeOrder.get_current_price(context, asset)
-        cost = shares_to_trade * current_price
 
-        if cost > context.portfolio.asset_cash and shares_to_trade > 0:
-            shares_to_trade = context.portfolio.asset_cash // current_price
+        shares_to_trade = self._apply_order_constraints(context, asset, shares_to_trade, current_price, current_position, target)
 
         if abs(shares_to_trade) > 0:
             self.update_balance_sheet(context.portfolio, asset, shares_to_trade, current_price, current_position)
@@ -2406,6 +2413,7 @@ class MTFSExecution:
 
         # ── Position sizing & leverage ────────────────────────────────────
         self.amplifier = 2
+        self.capital_utilization = 0.70       # fraction of net equity to deploy (70% default)
         self.use_vol_weighted_sizing = False  # True = inverse-vol weight within pair
 
         # ── Hedge ratio (pair dollar-neutrality) ──────────────────────────

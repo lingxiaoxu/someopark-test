@@ -1,0 +1,14 @@
+{
+  "_comment": "Test config — MTFS 1 pair (ALL/GS from pair_universe_mtfs.json), testing mongo data loading waterfall. param_set=default.",
+  "start_date": "2023-01-03",
+  "end_date": "auto",
+  "runs": [
+    {
+      "label": "test_mongo_mtfs",
+      "param_set": "default",
+      "pairs": [
+        ["ALL", "GS"]
+      ]
+    }
+  ]
+}
