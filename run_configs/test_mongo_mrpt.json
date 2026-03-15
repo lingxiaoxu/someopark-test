@@ -1,13 +1,20 @@
 {
-  "_comment": "Test config — MRPT 1 pair (AWK/FOX from pair_universe_mrpt.json), testing mongo data loading waterfall. param_set=default.",
+  "_comment": "Test config — shared-symbol pairs (CL in 3 pairs, AWK in 3 pairs, WST in 3 pairs) to verify per-pair trade attribution fix. param_set=default.",
   "start_date": "2023-01-03",
   "end_date": "auto",
   "runs": [
     {
-      "label": "test_mongo_mrpt",
+      "label": "test_mango_mrpt",
       "param_set": "default",
       "pairs": [
-        ["AWK", "FOX"]
+        ["CL", "WST"],
+        ["CL", "SRE"],
+        ["CL", "GD"],
+        ["AWK", "FOX"],
+        ["AWK", "STLD"],
+        ["AWK", "EXPD"],
+        ["MKTX", "WST"],
+        ["FSLR", "WST"]
       ]
     }
   ]

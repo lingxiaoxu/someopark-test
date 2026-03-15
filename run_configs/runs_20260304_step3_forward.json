@@ -1,87 +1,87 @@
 {
-  "_comment": "Step 3 \u2014 Forward/validation: same 15 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=2026-02-11 (first weekday after backtest end). Auto-generated 2026-03-12 15:08.",
-  "start_date": "2024-09-12",
+  "_comment": "Step 3 \u2014 Forward/validation: same 15 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=2026-02-16 (first weekday after backtest end). Auto-generated 2026-03-16 06:07.",
+  "start_date": "2024-09-16",
   "end_date": "auto",
-  "trade_start_date": "2026-02-11",
+  "trade_start_date": "2026-02-16",
   "runs": [
     {
       "label": "step3_forward",
       "param_set": "default",
       "pairs": [
         [
-          "MSCI",
-          "LII",
-          "short_z_long_v"
-        ],
-        [
-          "D",
-          "MCHP",
-          "conservative_no_leverage"
-        ],
-        [
-          "DG",
-          "MOS",
-          "deep_dislocation"
-        ],
-        [
-          "ESS",
-          "EXPD",
-          "aggressive"
-        ],
-        [
-          "ACGL",
-          "UHS",
-          "flash_hold"
-        ],
-        [
-          "AAPL",
-          "META",
-          "patient_hold"
-        ],
-        [
-          "YUM",
-          "MCD",
-          "long_z_short_v"
-        ],
-        [
-          "GS",
-          "ALLY",
-          "deep_dislocation"
+          "AWK",
+          "FOX",
+          "low_vol_specialist"
         ],
         [
           "CL",
-          "USO",
-          "conservative_no_leverage"
+          "WST",
+          "fast_reentry"
         ],
         [
-          "ALGN",
-          "UAL",
-          "quick_exit"
+          "MKTX",
+          "WST",
+          "vol_adaptive"
         ],
         [
-          "ARES",
-          "CG",
-          "fast_signal"
+          "MSCI",
+          "MTB",
+          "symmetric_exit"
         ],
         [
-          "AMG",
-          "BEN",
+          "AWK",
+          "STLD",
+          "patient_hold"
+        ],
+        [
+          "FSLR",
+          "WST",
+          "vol_agnostic"
+        ],
+        [
+          "AWK",
+          "EXPD",
           "slow_signal"
         ],
         [
-          "LYFT",
-          "UBER",
-          "conservative"
+          "F",
+          "PG",
+          "stable_signal_quick_exit"
         ],
         [
-          "TW",
-          "CME",
-          "no_leverage"
-        ],
-        [
-          "CART",
-          "DASH",
+          "MTCH",
+          "NVR",
           "static_threshold"
+        ],
+        [
+          "HII",
+          "PG",
+          "medium_signal_high_leverage"
+        ],
+        [
+          "ETR",
+          "MKTX",
+          "conservative_no_leverage"
+        ],
+        [
+          "CL",
+          "GD",
+          "tight_stop"
+        ],
+        [
+          "GRMN",
+          "KO",
+          "vol_adaptive"
+        ],
+        [
+          "CL",
+          "SRE",
+          "fast_signal"
+        ],
+        [
+          "ED",
+          "NTAP",
+          "high_turnover"
         ]
       ]
     }

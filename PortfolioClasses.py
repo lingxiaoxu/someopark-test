@@ -52,13 +52,14 @@ class time_rules:
 
 
 class Trade:
-    def __init__(self, date, symbol, amount, price, order_type):
+    def __init__(self, date, symbol, amount, price, order_type, pair=None):
         self.date = date
         self.symbol = symbol
         self.amount = amount
         self.price = price
         self.order_type = order_type  # 'open' or 'close'
         self.direction = 'long' if amount > 0 else 'short'
+        self.pair = pair  # pair key e.g. "CL/WST", set at order time
 
 
 class Portfolio:
@@ -108,6 +109,22 @@ class Portfolio:
         self.finished_trades_pnl = {}
         self.cost_basis_history = {}
         self.total_cost_history = {}
+
+        # Per-pair parallel tables: {pair: {symbol: ...}}
+        self.share_history_by_pair = {}
+        self.cost_basis_history_by_pair = {}
+        self.finished_trades_pnl_by_pair = {}
+        self.total_cost_history_by_pair = {}
+
+        # Per-pair current net position tracker (updated on each trade, used to build share_history_by_pair)
+        self._pair_positions = {}  # {pair: {symbol: current_net_shares}}
+
+        # Per-pair percentage history: {pair: {symbol: [(date, pct)]}}
+        # pct = signed market value of symbol within pair / sum of abs market values of both legs
+        self.percentage_history_by_pair = {}
+
+        self.acc_security_pnl_history_by_pair = {}  # {date: {pair: {symbol: {pnl_dollar, pnl_percent}}}}
+
         self.interest_expense_history = []
         self.daily_pnl_history = []
 
@@ -164,6 +181,15 @@ class Portfolio:
                 if symbol not in self.share_history:
                     self.share_history[symbol] = []
                 self.share_history[symbol].append((self.current_date, current_shares))
+                # Sync share_history_by_pair from _pair_positions (per-pair net position, not broadcast)
+                for pair in self.pair_trade_history:
+                    if symbol in pair.split('/'):
+                        pair_shares = self._pair_positions.get(pair, {}).get(symbol, 0)
+                        if pair not in self.share_history_by_pair:
+                            self.share_history_by_pair[pair] = {}
+                        if symbol not in self.share_history_by_pair[pair]:
+                            self.share_history_by_pair[pair][symbol] = []
+                        self.share_history_by_pair[pair][symbol].append((self.current_date, pair_shares))
 
                 # Add to total asset or liability based on existing position
                 if current_shares > 0:  # Long position
@@ -224,6 +250,25 @@ class Portfolio:
             else:
                 percentage = 0
             self.percentage_history[symbol].append((self.current_date, percentage))
+
+        # Update per-pair percentage history
+        # pct[sym] = signed_value(sym) / (|val_s1| + |val_s2|) within each pair
+        for pair in self.pair_trade_history:
+            stock1, stock2 = pair.split('/')
+            pos1 = self._pair_positions.get(pair, {}).get(stock1, 0)
+            pos2 = self._pair_positions.get(pair, {}).get(stock2, 0)
+            price1 = prices.get(stock1, 0)
+            price2 = prices.get(stock2, 0)
+            val1 = pos1 * price1
+            val2 = pos2 * price2
+            total_abs = abs(val1) + abs(val2)
+            if pair not in self.percentage_history_by_pair:
+                self.percentage_history_by_pair[pair] = {}
+            for sym, val in ((stock1, val1), (stock2, val2)):
+                if sym not in self.percentage_history_by_pair[pair]:
+                    self.percentage_history_by_pair[pair][sym] = []
+                pct = val / total_abs if total_abs != 0 else 0
+                self.percentage_history_by_pair[pair][sym].append((self.current_date, pct))
 
     def update_pnl_history(self, portfolio_analysis, data, symbols):
         current_prices = data.history(symbols, "Adj Close", 1, "1d").iloc[-1]
@@ -286,18 +331,34 @@ class Portfolio:
                 (self.current_date, self.max_drawdown_history[-1][1], self.max_drawdown_history[-1][2])
             )
 
-    def record_trade(self, trade):
+    def record_trade(self, trade, pair_key=None):
         self.trades.append(trade)
         if trade.symbol not in self.signal_history:
             self.signal_history[trade.symbol] = []
         self.signal_history[trade.symbol].append((self.current_date, trade.direction))
 
-        # Update pair trade history
-        pair = self.get_pair_for_symbol(trade.symbol)
+        # Update pair trade history — use pair_key hint when available (fixes shared-symbol attribution)
+        pair = self.get_pair_for_symbol(trade.symbol, hint_pair=pair_key)
         if pair:
             self.pair_trade_history[pair].append(trade)
+            # Update per-pair net position tracker
+            if pair not in self._pair_positions:
+                self._pair_positions[pair] = {}
+            prev = self._pair_positions[pair].get(trade.symbol, 0)
+            self._pair_positions[pair][trade.symbol] = prev + trade.amount
 
-    def get_pair_for_symbol(self, symbol):
+    def get_pair_for_symbol(self, symbol, hint_pair=None):
+        """Return the pair key for the given symbol.
+
+        If hint_pair is supplied (e.g. "CL/GD"), use it when the symbol
+        belongs to that pair — this correctly handles symbols that appear in
+        multiple pairs (e.g. CL in CL/WST, CL/GD, CL/SRE).
+        Falls back to the first matching pair when no valid hint is given.
+        """
+        if hint_pair:
+            parts = hint_pair.split('/')
+            if symbol in parts:
+                return hint_pair
         for pair in self.strategy_pairs:
             if symbol in pair[:2]:  # Check only the first two elements (stock symbols)
                 return f"{pair[0]}/{pair[1]}"
@@ -585,9 +646,11 @@ class PortfolioAnalysis:
         prev_cost_basis_1 = self.calculate_cost_basis(stock1, prev_date) if prev_date else 0
         prev_cost_basis_2 = self.calculate_cost_basis(stock2, prev_date) if prev_date else 0
 
-        # Get trades
-        trades_1 = [trade for trade in reversed(self.portfolio.trades) if trade.symbol == stock1]
-        trades_2 = [trade for trade in reversed(self.portfolio.trades) if trade.symbol == stock2]
+        # Get trades — use pair-specific trade history to avoid cross-pair contamination
+        # (e.g. CL traded in CL/WST today should not affect trade_today for CL/SRE)
+        pair_trades = list(reversed(self.portfolio.pair_trade_history.get(pair, [])))
+        trades_1 = [t for t in pair_trades if t.symbol == stock1]
+        trades_2 = [t for t in pair_trades if t.symbol == stock2]
         last_trade_1 = trades_1[0] if trades_1 else None
         last_trade_2 = trades_2[0] if trades_2 else None
         previous_trade_1 = trades_1[1] if len(trades_1) > 1 else None
@@ -620,13 +683,21 @@ class PortfolioAnalysis:
             }
         }
 
-    def calculate_weighted_pnl_percentage(self, stock1, stock2, pnl_percent1, pnl_percent2, use_current=True):
+    def calculate_weighted_pnl_percentage(self, stock1, stock2, pnl_percent1, pnl_percent2, use_current=True, pair=None):
         index = -1 if use_current else -2
 
-        stock1_hist = self.portfolio.percentage_history.get(stock1, [])
-        stock2_hist = self.portfolio.percentage_history.get(stock2, [])
-        stock1_percent = stock1_hist[index][1] if len(stock1_hist) >= abs(index) else 0
-        stock2_percent = stock2_hist[index][1] if len(stock2_hist) >= abs(index) else 0
+        if pair and pair in self.portfolio.percentage_history_by_pair:
+            # Use per-pair percentage (avoids shared-symbol net-zero weight problem)
+            pair_pct = self.portfolio.percentage_history_by_pair[pair]
+            s1_hist = pair_pct.get(stock1, [])
+            s2_hist = pair_pct.get(stock2, [])
+            stock1_percent = s1_hist[index][1] if len(s1_hist) >= abs(index) else 0
+            stock2_percent = s2_hist[index][1] if len(s2_hist) >= abs(index) else 0
+        else:
+            stock1_hist = self.portfolio.percentage_history.get(stock1, [])
+            stock2_hist = self.portfolio.percentage_history.get(stock2, [])
+            stock1_percent = stock1_hist[index][1] if len(stock1_hist) >= abs(index) else 0
+            stock2_percent = stock2_hist[index][1] if len(stock2_hist) >= abs(index) else 0
 
         total_abs_percent = abs(stock1_percent) + abs(stock2_percent)
         if total_abs_percent != 0:
@@ -653,6 +724,112 @@ class PortfolioAnalysis:
                     self.portfolio.cost_basis_history[symbol][index] = (date, new_cost_basis)
             else:
                 self.portfolio.cost_basis_history[symbol].append((date, new_cost_basis))
+        self._update_cost_basis_history_by_pair(symbol, date, new_cost_basis)
+
+    # ── Per-pair parallel table updaters ────────────────────────────────────
+
+    def _get_pairs_for_symbol(self, symbol):
+        """Return all pair keys that contain this symbol."""
+        return [pair for pair in self.portfolio.pair_trade_history if symbol in pair.split('/')]
+
+    def _update_share_history_by_pair(self, symbol, date, shares):
+        """Sync share_history_by_pair whenever share_history[symbol] is updated."""
+        for pair in self._get_pairs_for_symbol(symbol):
+            pbp = self.portfolio.share_history_by_pair
+            if pair not in pbp:
+                pbp[pair] = {}
+            if symbol not in pbp[pair]:
+                pbp[pair][symbol] = []
+            pbp[pair][symbol].append((date, shares))
+            # Reconcile: latest value in _by_pair must match share_history
+            ref = self.portfolio.share_history.get(symbol, [])
+            if ref and pbp[pair][symbol][-1] != ref[-1]:
+                log.warning(f"share_history_by_pair reconcile fail: {pair}/{symbol} "
+                            f"by_pair={pbp[pair][symbol][-1]} vs symbol={ref[-1]}")
+
+    def _update_cost_basis_history_by_pair(self, symbol, date, new_cost_basis):
+        """Recompute cost_basis_history_by_pair for all pairs containing symbol.
+
+        Each pair's cost basis is calculated independently from its own trade history
+        (weighted average of open trades up to date), so shared symbols (e.g. CL in
+        CL/WST and CL/SRE) reflect their own entry prices rather than the portfolio-wide
+        weighted average.
+
+        Reconcile invariant: the weighted average across all pairs (weighted by shares)
+        should equal the symbol-level cost basis.
+        """
+        pbp = self.portfolio.cost_basis_history_by_pair
+        all_pairs = self._get_pairs_for_symbol(symbol)
+
+        total_shares_check = 0
+        total_cost_check = 0.0
+
+        for pair in all_pairs:
+            if pair not in pbp:
+                pbp[pair] = {}
+            if symbol not in pbp[pair]:
+                pbp[pair][symbol] = []
+
+            # Compute cost basis for this pair from its own trade history up to date
+            pair_trades = [t for t in self.portfolio.pair_trade_history.get(pair, [])
+                           if t.symbol == symbol and t.date <= date]
+
+            net_shares = 0
+            total_cost = 0.0
+            for t in pair_trades:
+                if t.order_type == 'open':
+                    total_cost += abs(t.amount) * t.price
+                    net_shares += t.amount
+                elif t.order_type == 'close':
+                    # Proportionally reduce cost basis on close
+                    if net_shares != 0:
+                        close_shares = min(abs(t.amount), abs(net_shares))
+                        total_cost -= close_shares * (total_cost / abs(net_shares))
+                    net_shares += t.amount  # t.amount is negative for close
+
+            pair_cost_basis = (total_cost / abs(net_shares)) if net_shares != 0 else 0
+
+            existing = next((e for e in pbp[pair][symbol] if e[0] == date), None)
+            if existing:
+                if existing[1] != pair_cost_basis:
+                    idx = pbp[pair][symbol].index(existing)
+                    pbp[pair][symbol][idx] = (date, pair_cost_basis)
+            else:
+                pbp[pair][symbol].append((date, pair_cost_basis))
+
+            total_shares_check += abs(net_shares)
+            total_cost_check += total_cost
+
+        # No cross-pair reconcile for cost_basis: each pair uses its own entry price,
+        # which intentionally differs from the portfolio-level weighted average.
+
+    def _update_finished_trades_pnl_by_pair(self, pair, symbol, value):
+        """Sync finished_trades_pnl_by_pair whenever finished_trades_pnl[symbol] is updated."""
+        pbp = self.portfolio.finished_trades_pnl_by_pair
+        if pair not in pbp:
+            pbp[pair] = {}
+        pbp[pair][symbol] = value
+        # Reconcile: sum across all pairs for this symbol must equal symbol-level total
+        all_pairs = self._get_pairs_for_symbol(symbol)
+        pair_sum = sum(pbp.get(p, {}).get(symbol, 0) for p in all_pairs)
+        ref = self.portfolio.finished_trades_pnl.get(symbol, 0)
+        if not math.isclose(pair_sum, ref, abs_tol=1e-6):
+            log.warning(f"finished_trades_pnl_by_pair reconcile fail: {symbol} "
+                        f"pair_sum={pair_sum} vs symbol_total={ref}")
+
+    def _update_total_cost_history_by_pair(self, pair, symbol, value):
+        """Sync total_cost_history_by_pair whenever total_cost_history[symbol] is updated."""
+        pbp = self.portfolio.total_cost_history_by_pair
+        if pair not in pbp:
+            pbp[pair] = {}
+        pbp[pair][symbol] = value
+        # Reconcile: sum across all pairs for this symbol should equal symbol-level total
+        all_pairs = self._get_pairs_for_symbol(symbol)
+        pair_sum = sum(pbp.get(p, {}).get(symbol, 0) for p in all_pairs)
+        ref = self.portfolio.total_cost_history.get(symbol, 0)
+        if ref != 0 and not math.isclose(pair_sum, ref, rel_tol=1e-6):
+            log.warning(f"total_cost_history_by_pair reconcile fail: {symbol} "
+                        f"pair_sum={pair_sum} vs symbol_total={ref}")
 
     def calculate_dod_security_pnl(self):
         acc_history = self.portfolio.acc_security_pnl_history
@@ -711,8 +888,10 @@ class PortfolioAnalysis:
         return self.portfolio.dod_security_pnl
 
     def calculate_dod_pair_trade_pnl(self):
-        dod_security_pnl = self.calculate_dod_security_pnl()
-        dates = sorted(dod_security_pnl.keys())
+        # Use per-pair acc_security_pnl_by_pair (not symbol-level dod_security_pnl) to avoid
+        # shared-symbol double-counting (e.g. CL appears in CL/WST, CL/SRE, CL/GD simultaneously).
+        acc_by_pair_history = self.portfolio.acc_security_pnl_history_by_pair
+        dates = sorted(acc_by_pair_history.keys())
 
         if not hasattr(self.portfolio, 'dod_pair_trade_pnl_history'):
             self.portfolio.dod_pair_trade_pnl_history = {}
@@ -725,218 +904,274 @@ class PortfolioAnalysis:
             date = dates[i]
             self.portfolio.dod_pair_trade_pnl_history[date] = {}
 
-            # Find the previous processed date
             prev_date_index = self.portfolio.processed_dates.index(date) - 1
             prev_date = self.portfolio.processed_dates[prev_date_index] if prev_date_index >= 0 else None
 
             for pair in self.portfolio.pair_trade_history.keys():
                 stock1, stock2 = pair.split('/')
-                if stock1 in dod_security_pnl[date] and stock2 in dod_security_pnl[date]:
-                    # Check if positions were closed on this date
-                    positions_closed = all(
-                        trade.date == date and trade.order_type == 'close'
-                        for trade in self.portfolio.pair_trade_history[pair]
-                        if trade.date == date
-                    )
 
-                    # Check if the trade was opened on the previous day
-                    opened_prev_day = any(
-                        trade.date == prev_date and trade.order_type == 'open'
-                        for trade in self.portfolio.pair_trade_history[pair]
-                        if prev_date and trade.date == prev_date
-                    )
+                curr_pair_pnl = acc_by_pair_history.get(date, {}).get(pair, {})
+                prev_pair_pnl = acc_by_pair_history.get(prev_date, {}).get(pair, {}) if prev_date else {}
 
-                    if positions_closed:
-                        if opened_prev_day:
-                            # Trade lasted one day, use current date's PnL percentages
-                            stock1_pnl_percent = dod_security_pnl[date][stock1]['pnl_percent']
-                            stock2_pnl_percent = dod_security_pnl[date][stock2]['pnl_percent']
-                            use_current = False
-                        elif prev_date and prev_date in dod_security_pnl:
-                            # Trade lasted more than one day, use previous date's PnL percentages
-                            stock1_pnl_percent = dod_security_pnl[prev_date][stock1]['pnl_percent']
-                            stock2_pnl_percent = dod_security_pnl[prev_date][stock2]['pnl_percent']
-                            use_current = False
-                        else:
-                            # No previous date available (e.g. first day of OOS period), use current
-                            stock1_pnl_percent = dod_security_pnl[date][stock1]['pnl_percent']
-                            stock2_pnl_percent = dod_security_pnl[date][stock2]['pnl_percent']
-                            use_current = True
-                    else:
-                        # Trade is still open, use current date's PnL percentages
-                        stock1_pnl_percent = dod_security_pnl[date][stock1]['pnl_percent']
-                        stock2_pnl_percent = dod_security_pnl[date][stock2]['pnl_percent']
-                        use_current = True
+                if stock1 not in curr_pair_pnl or stock2 not in curr_pair_pnl:
+                    continue
 
-                    try:
-                        pair_pnl_percent = self.calculate_weighted_pnl_percentage(
-                            stock1, stock2, stock1_pnl_percent, stock2_pnl_percent, use_current
-                        )
-                    except KeyError:
-                        # If percentage_history is not available, use a simple average
-                        pair_pnl_percent = (stock1_pnl_percent + stock2_pnl_percent) / 2
-                        # Only show this warning once per pair
-                        warning_key = f"percentage_history_{pair}"
-                        if warning_key not in self.portfolio.warnings_shown:
-                            log.warning(f"Percentage history not available for {pair}. Using simple average.")
-                            self.portfolio.warnings_shown.add(warning_key)
+                # DoD dollar = current acc per-pair minus previous acc per-pair (per symbol, then sum)
+                curr_s1 = curr_pair_pnl[stock1]['pnl_dollar']
+                curr_s2 = curr_pair_pnl[stock2]['pnl_dollar']
+                prev_s1 = prev_pair_pnl.get(stock1, {}).get('pnl_dollar', 0) if prev_pair_pnl else 0
+                prev_s2 = prev_pair_pnl.get(stock2, {}).get('pnl_dollar', 0) if prev_pair_pnl else 0
 
-                    pair_pnl_dollar = dod_security_pnl[date][stock1]['pnl_dollar'] + dod_security_pnl[date][stock2][
-                        'pnl_dollar']
+                pair_pnl_dollar = (curr_s1 - prev_s1) + (curr_s2 - prev_s2)
 
-                    self.portfolio.dod_pair_trade_pnl_history[date][pair] = {
-                        'pnl_dollar': pair_pnl_dollar,
-                        'pnl_percent': pair_pnl_percent
-                    }
+                # DoD percent: use per-pair acc pnl_percent diff weighted by position cost
+                pair_cost_s1 = self.portfolio.total_cost_history_by_pair.get(pair, {}).get(stock1, 0)
+                pair_cost_s2 = self.portfolio.total_cost_history_by_pair.get(pair, {}).get(stock2, 0)
+                total_pair_cost = pair_cost_s1 + pair_cost_s2
+                if total_pair_cost != 0:
+                    pair_pnl_percent = pair_pnl_dollar / total_pair_cost
+                else:
+                    pair_pnl_percent = 0
+
+                self.portfolio.dod_pair_trade_pnl_history[date][pair] = {
+                    'pnl_dollar': pair_pnl_dollar,
+                    'pnl_percent': pair_pnl_percent
+                }
 
         return self.portfolio.dod_pair_trade_pnl_history
 
     def calculate_acc_security_pnl(self, current_prices):
         acc_security_pnl = {}
+        current_date = self.portfolio.current_date
 
         for symbol, current_price in current_prices.items():
-            prev_vs_current = self.get_previous_vs_current_security(symbol, current_price)
-            prev = prev_vs_current['previous']
-            current = prev_vs_current['current']
-
-            # Initialize or get the previous finished trade PnL
-            prev_finished_pnl = self.portfolio.finished_trades_pnl.get(symbol, 0)
-
-            # Initialize or get the total cost of all trades for this security
             if symbol not in self.portfolio.total_cost_history:
                 self.portfolio.total_cost_history[symbol] = 0
-            total_cost_all_trades = self.portfolio.total_cost_history[symbol]
 
-            if current['last_trade'] and current['last_trade'].date == current['current_date']:
-                # New trade occurred
-                if current['last_trade'].order_type == 'open':
-                    # For new open trades, use the trade price as the cost basis
-                    new_cost_basis = current['last_trade'].price
-                    total_cost = abs(current['current_position']) * new_cost_basis
-                    current_pnl_dollar = 0
-                    current_pnl_percent = 0
+            # All trades for this symbol today, in order, each carrying their pair
+            trades_today = [t for t in self.portfolio.trades
+                            if t.symbol == symbol and t.date == current_date]
 
-                    # Update total cost history
-                    self.portfolio.total_cost_history[symbol] += total_cost
+            if trades_today:
+                # Process each trade individually so every pair's open/close is handled
+                for trade in trades_today:
+                    trade_pair = trade.pair
+                    if trade.order_type == 'open':
+                        total_cost = abs(trade.amount) * trade.price
+                        self.portfolio.total_cost_history[symbol] += total_cost
+                        if trade_pair:
+                            prev_pair_cost = self.portfolio.total_cost_history_by_pair.get(trade_pair, {}).get(symbol, 0)
+                            self._update_total_cost_history_by_pair(trade_pair, symbol, prev_pair_cost + total_cost)
 
-                elif current['last_trade'].order_type == 'close':
-                    # For closing trades, use the previous cost basis and position
-                    total_cost = abs(prev['prev_position']) * prev['prev_cost_basis']
+                    elif trade.order_type == 'close':
+                        if trade_pair:
+                            cb_history = self.portfolio.cost_basis_history_by_pair.get(trade_pair, {}).get(symbol, [])
+                            pair_cost_basis = next((v for d, v in reversed(cb_history) if d < current_date), 0)
+                            sh_history = self.portfolio.share_history_by_pair.get(trade_pair, {}).get(symbol, [])
+                            pair_prev_position = next(
+                                (s for d, s in reversed(sh_history) if d < current_date), 0)
+                        else:
+                            pair_cost_basis = 0
+                            pair_prev_position = 0
 
-                    # Calculate PnL for closing trades
-                    closing_amount = min(abs(prev['prev_position']), abs(current['last_trade'].amount))
-                    if prev['prev_position'] > 0:  # Long position
-                        current_pnl_dollar = (current['last_trade'].price - prev['prev_cost_basis']) * closing_amount
-                    else:  # Short position
-                        current_pnl_dollar = (prev['prev_cost_basis'] - current['last_trade'].price) * closing_amount
+                        if pair_cost_basis != 0 and pair_prev_position != 0:
+                            closing_amount = abs(trade.amount)
+                            if pair_prev_position > 0:
+                                pnl = (trade.price - pair_cost_basis) * closing_amount
+                            else:
+                                pnl = (pair_cost_basis - trade.price) * closing_amount
 
-                    # Update finished trades PnL
-                    self.portfolio.finished_trades_pnl[symbol] = prev_finished_pnl + current_pnl_dollar
+                            self.portfolio.finished_trades_pnl[symbol] = \
+                                self.portfolio.finished_trades_pnl.get(symbol, 0) + pnl
+                            if trade_pair:
+                                prev_pair_finished = self.portfolio.finished_trades_pnl_by_pair.get(trade_pair, {}).get(symbol, 0)
+                                self._update_finished_trades_pnl_by_pair(trade_pair, symbol, prev_pair_finished + pnl)
 
-                    # Calculate percentage PnL
-                    current_pnl_percent = current_pnl_dollar / self.portfolio.total_cost_history[symbol] if \
-                    self.portfolio.total_cost_history[symbol] != 0 else 0
-
-                    # Update cost basis for remaining position (if any)
-                    remaining_position_date = self.find_remaining_position_date(symbol, prev_vs_current)
-                    new_cost_basis = self.calculate_cost_basis(symbol, remaining_position_date)
-
-                # Update cost_basis_history
-                self.update_cost_basis_history(symbol, current['current_date'], new_cost_basis)
+                # After processing all today's trades, update cost_basis_history (symbol level)
+                prev_vs_current = self.get_previous_vs_current_security(symbol, current_price)
+                remaining_position_date = self.find_remaining_position_date(symbol, prev_vs_current)
+                new_cost_basis = self.calculate_cost_basis(symbol, remaining_position_date)
+                self.update_cost_basis_history(symbol, current_date, new_cost_basis)
 
             else:
-                # No new trade, use the current cost basis
-                new_cost_basis = current['new_cost_basis']
-                total_cost = abs(current['current_position']) * new_cost_basis
+                # No new trade today
+                prev_vs_current = self.get_previous_vs_current_security(symbol, current_price)
+                current_info = prev_vs_current['current']
+                new_cost_basis = current_info['new_cost_basis']
+                self.update_cost_basis_history(symbol, current_date, new_cost_basis)
 
-                # Calculate PnL for existing positions
-                current_pnl_dollar = (current_price - new_cost_basis) * current['current_position']
-                current_pnl_percent = current_pnl_dollar / self.portfolio.total_cost_history[symbol] if \
-                self.portfolio.total_cost_history[symbol] != 0 else 0
+            # Symbol-level acc_pnl placeholder — will be overwritten from by_pair sum below
+            acc_security_pnl[symbol] = {'pnl_dollar': 0, 'pnl_percent': 0}
 
-            # Calculate accumulated PnL
-            acc_pnl_dollar = prev_finished_pnl + current_pnl_dollar
-            acc_pnl_percent = current_pnl_percent  # This is now just the current percentage
+        # Build acc_security_pnl_by_pair using per-pair finished_trades_pnl and total_cost_history
+        current_date = self.portfolio.current_date
+        acc_security_pnl_by_pair = {}
+        for pair in self.portfolio.pair_trade_history:
+            acc_security_pnl_by_pair[pair] = {}
+            stock1, stock2 = pair.split('/')
+            for symbol in (stock1, stock2):
+                if symbol not in current_prices:
+                    continue
+                current_price = current_prices[symbol]
+                pair_finished = self.portfolio.finished_trades_pnl_by_pair.get(pair, {}).get(symbol, 0)
+                pair_cost = self.portfolio.total_cost_history_by_pair.get(pair, {}).get(symbol, 0)
 
-            # Update acc_security_pnl
-            acc_security_pnl[symbol] = {
-                'pnl_dollar': acc_pnl_dollar,
-                'pnl_percent': acc_pnl_percent,
-            }
+                # Determine if this pair has an active position for this symbol
+                # by counting open vs close trades up to current_date in pair_trade_history
+                pair_sym_trades = [t for t in self.portfolio.pair_trade_history[pair]
+                                   if t.symbol == symbol and t.date <= current_date]
+                opens_count = sum(1 for t in pair_sym_trades if t.order_type == 'open')
+                closes_count = sum(1 for t in pair_sym_trades if t.order_type == 'close')
+                pair_has_position = opens_count > closes_count
+
+                # Only compute MTM if this pair currently holds a position
+                if pair_has_position:
+                    cb_history = self.portfolio.cost_basis_history_by_pair.get(pair, {}).get(symbol, [])
+                    cost_basis = next((v for d, v in reversed(cb_history) if d <= current_date), 0)
+                    sh_history = self.portfolio.share_history_by_pair.get(pair, {}).get(symbol, [])
+                    position = next((s for d, s in reversed(sh_history) if d == current_date), 0)
+                    mtm_pnl = (current_price - cost_basis) * position if position != 0 and cost_basis != 0 else 0
+                    # open 当天 MTM = 0
+                    pair_trades_today = [t for t in pair_sym_trades if t.date == current_date]
+                    if pair_trades_today and pair_trades_today[-1].order_type == 'open':
+                        mtm_pnl = 0
+                else:
+                    mtm_pnl = 0
+
+                acc_security_pnl_by_pair[pair][symbol] = {
+                    'pnl_dollar': pair_finished + mtm_pnl,
+                    'pnl_percent': (pair_finished + mtm_pnl) / pair_cost if pair_cost != 0 else 0,
+                }
+        self.portfolio.acc_security_pnl_history_by_pair[current_date] = acc_security_pnl_by_pair
+
+        # Overwrite symbol-level acc_security_pnl with sum of per-pair values.
+        # This enforces Invariant C: sum(acc_pnl_by_pair[pair][sym]) == acc_security_pnl[sym]
+        # and ensures correctness when a symbol appears in multiple pairs (e.g. CL in CL/WST, CL/SRE, CL/GD).
+        for symbol in list(acc_security_pnl.keys()):
+            pairs_for = [p for p in acc_security_pnl_by_pair if symbol in p.split('/')]
+            if pairs_for:
+                sym_sum = sum(acc_security_pnl_by_pair[p].get(symbol, {}).get('pnl_dollar', 0) for p in pairs_for)
+                total_cost = self.portfolio.total_cost_history.get(symbol, 0)
+                acc_security_pnl[symbol] = {
+                    'pnl_dollar': sym_sum,
+                    'pnl_percent': sym_sum / total_cost if total_cost != 0 else 0,
+                }
 
         return acc_security_pnl
 
     def calculate_acc_pair_trade_pnl(self, current_prices):
         acc_pair_trade_pnl = {}
-        latest_acc_security_pnl = self.portfolio.acc_security_pnl_history.get(self.portfolio.current_date, {})
+        # Use per-pair security PnL (already built in calculate_acc_security_pnl)
+        latest_acc_security_pnl_by_pair = self.portfolio.acc_security_pnl_history_by_pair.get(
+            self.portfolio.current_date, {})
 
         current_date = self.portfolio.current_date
 
         for pair in self.portfolio.pair_trade_history.keys():
             stock1, stock2 = pair.split('/')
-            if stock1 in latest_acc_security_pnl and stock2 in latest_acc_security_pnl:
-                # Get previous and current data
-                prev_vs_current = self.get_previous_vs_current_pair(pair, current_prices)
-                prev_date = prev_vs_current['previous']['prev_date']
-                prev_acc_pair_pnl = prev_vs_current['previous']['prev_acc_pair_pnl']
-                last_trade_1, last_trade_2 = prev_vs_current['current']['last_trade']
+            # Get previous and current data
+            prev_vs_current = self.get_previous_vs_current_pair(pair, current_prices)
+            prev_date = prev_vs_current['previous']['prev_date']
+            prev_acc_pair_pnl = prev_vs_current['previous']['prev_acc_pair_pnl']
 
-                position1, position2 = prev_vs_current['current']['current_position']
-                prev_position1, prev_position2 = prev_vs_current['previous']['prev_position']
+            # Per-pair security PnL for this pair
+            pair_sec_pnl = latest_acc_security_pnl_by_pair.get(pair, {})
 
-                # Calculate PnL dollar as the sum of individual security PnLs
-                pnl_dollar = latest_acc_security_pnl[stock1]['pnl_dollar'] + latest_acc_security_pnl[stock2][
-                    'pnl_dollar']
+            # Bug B fix: if either stock missing from today's per-pair security PnL, fall back to prev value
+            if stock1 not in pair_sec_pnl or stock2 not in pair_sec_pnl:
+                if prev_acc_pair_pnl:
+                    acc_pair_trade_pnl[pair] = {
+                        'pnl_dollar': prev_acc_pair_pnl['pnl_dollar'],
+                        'pnl_percent': prev_acc_pair_pnl['pnl_percent'],
+                    }
+                continue
 
-                # Determine if a trade occurred on the current date
-                trade_today = (last_trade_1 and last_trade_1.date == current_date) or \
-                              (last_trade_2 and last_trade_2.date == current_date)
+            last_trade_1, last_trade_2 = prev_vs_current['current']['last_trade']
 
-                # Determine if positions were closed on the current date
-                positions_closed_today = (position1 == 0 and position2 == 0) and (
-                            prev_position1 != 0 or prev_position2 != 0)
+            position1, position2 = prev_vs_current['current']['current_position']
+            prev_position1, prev_position2 = prev_vs_current['previous']['prev_position']
 
-                if trade_today and not positions_closed_today:
-                    # New trade occurred on current date, use previous PnL
-                    pnl_dollar = prev_acc_pair_pnl['pnl_dollar']
-                    pnl_percent = prev_acc_pair_pnl['pnl_percent']
-                elif positions_closed_today or position1 != 0 or position2 != 0:
-                    # Positions were closed today or are still open, calculate new PnL
-                    pnl_percent = self.calculate_weighted_pnl_percentage(
-                        stock1, stock2,
-                        latest_acc_security_pnl[stock1]['pnl_percent'],
-                        latest_acc_security_pnl[stock2]['pnl_percent'],
-                        use_current=True
-                    )
+            # Calculate PnL dollar from per-pair security PnL (no shared-symbol duplication)
+            pnl_dollar = pair_sec_pnl[stock1]['pnl_dollar'] + pair_sec_pnl[stock2]['pnl_dollar']
+
+            # Determine if a trade occurred on the current date
+            trade_today = (last_trade_1 and last_trade_1.date == current_date) or \
+                          (last_trade_2 and last_trade_2.date == current_date)
+
+            # Determine if positions were closed on the current date
+            positions_closed_today = (position1 == 0 and position2 == 0) and (
+                        prev_position1 != 0 or prev_position2 != 0)
+
+            # Compute pnl_percent using total_cost_history_by_pair as stable denominator.
+            # This avoids the portfolio-level percentage_history pitfalls (shared symbols,
+            # closed positions, etc.) and is consistent across all branches.
+            pair_cost_s1 = self.portfolio.total_cost_history_by_pair.get(pair, {}).get(stock1, 0)
+            pair_cost_s2 = self.portfolio.total_cost_history_by_pair.get(pair, {}).get(stock2, 0)
+            total_pair_cost = pair_cost_s1 + pair_cost_s2
+
+            if trade_today and not positions_closed_today:
+                is_open_trade = (
+                    (last_trade_1 and last_trade_1.date == current_date and last_trade_1.order_type == 'open') or
+                    (last_trade_2 and last_trade_2.date == current_date and last_trade_2.order_type == 'open')
+                )
+                is_close_trade = (
+                    (last_trade_1 and last_trade_1.date == current_date and last_trade_1.order_type == 'close') or
+                    (last_trade_2 and last_trade_2.date == current_date and last_trade_2.order_type == 'close')
+                )
+                if is_open_trade or is_close_trade:
+                    pnl_percent = pnl_dollar / total_pair_cost if total_pair_cost != 0 else 0
                 else:
-                    # Both positions are closed and were closed before the current date
                     pnl_dollar = prev_acc_pair_pnl['pnl_dollar']
                     pnl_percent = prev_acc_pair_pnl['pnl_percent']
+                    if abs(pnl_percent) < 1e-10 and abs(pnl_dollar) > 1e-4 and total_pair_cost != 0:
+                        pnl_percent = pnl_dollar / total_pair_cost
+            elif positions_closed_today or position1 != 0 or position2 != 0:
+                pnl_percent = pnl_dollar / total_pair_cost if total_pair_cost != 0 else 0
+            else:
+                # Both positions are closed and were closed before the current date
+                pnl_dollar = prev_acc_pair_pnl['pnl_dollar']
+                pnl_percent = prev_acc_pair_pnl['pnl_percent']
+                # Repair: if inherited percent is 0 but dollar is non-zero, recompute from total_cost
+                if abs(pnl_percent) < 1e-10 and abs(pnl_dollar) > 1e-4 and total_pair_cost != 0:
+                    pnl_percent = pnl_dollar / total_pair_cost
 
-                # Calculate accumulated PnL
-                acc_pair_trade_pnl[pair] = {
-                    'pnl_dollar': pnl_dollar,
-                    'pnl_percent': pnl_percent
-                }
+            # Calculate accumulated PnL
+            acc_pair_trade_pnl[pair] = {
+                'pnl_dollar': pnl_dollar,
+                'pnl_percent': pnl_percent
+            }
 
         return acc_pair_trade_pnl
 
     def reconcile_pnls(self, acc_security_pnl, acc_pair_trade_pnl):
-        total_security_pnl = sum(pnl['pnl_dollar'] for pnl in acc_security_pnl.values())
+        # Use per-pair security PnL to avoid double-counting shared symbols (Bug C fix)
+        current_date = self.portfolio.current_date
+        acc_security_pnl_by_pair = self.portfolio.acc_security_pnl_history_by_pair.get(current_date, {})
+
+        # total_security_pnl: sum each pair's two symbols independently (no shared-symbol duplication)
+        total_security_pnl_by_pair = sum(
+            sec_pnl['pnl_dollar']
+            for pair_sec in acc_security_pnl_by_pair.values()
+            for sec_pnl in pair_sec.values()
+        )
         total_pair_pnl = sum(pnl['pnl_dollar'] for pnl in acc_pair_trade_pnl.values())
 
-        if not math.isclose(total_security_pnl, total_pair_pnl, rel_tol=1e-9):
-            log.warning(f"Total PnL mismatch on {self.portfolio.current_date}: "
-                        f"Total Security PnL = {total_security_pnl}, Total Pair PnL = {total_pair_pnl}")
+        if not math.isclose(total_security_pnl_by_pair, total_pair_pnl, rel_tol=1e-9):
+            log.warning(f"Total PnL mismatch on {current_date}: "
+                        f"Total Security PnL (by_pair) = {total_security_pnl_by_pair}, Total Pair PnL = {total_pair_pnl}")
 
-        # Check individual pairs
+        # Check individual pairs using per-pair security PnL
         for pair, pair_pnl in acc_pair_trade_pnl.items():
-            stock1, stock2 = pair.split('/')
-            security_pnl_sum = acc_security_pnl[stock1]['pnl_dollar'] + acc_security_pnl[stock2]['pnl_dollar']
+            pair_sec = acc_security_pnl_by_pair.get(pair, {})
+            if not pair_sec:
+                continue
+            security_pnl_sum = sum(s['pnl_dollar'] for s in pair_sec.values())
             if not math.isclose(pair_pnl['pnl_dollar'], security_pnl_sum, rel_tol=1e-9):
-                log.warning(f"PnL mismatch for pair {pair} on {self.portfolio.current_date}: "
-                            f"Pair PnL = {pair_pnl['pnl_dollar']}, Security PnL sum = {security_pnl_sum}")
+                log.warning(f"PnL mismatch for pair {pair} on {current_date}: "
+                            f"Pair PnL = {pair_pnl['pnl_dollar']}, Security PnL sum (by_pair) = {security_pnl_sum}")
 
+        # Also return symbol-level total for backward compatibility
+        total_security_pnl = sum(pnl['pnl_dollar'] for pnl in acc_security_pnl.values())
         return total_security_pnl, total_pair_pnl
 
     def calculate_trading_days_percentage(self, portfolio):
@@ -1008,7 +1243,7 @@ class ExportExcel:
         return str(date)
 
     def format_percentage(self, value):
-        return f"{value:.6f}"  # Increased precision to 6 decimal places
+        return value  # Store raw float for full precision; Excel will format for display
 
     def should_keep_time(self, dates):
         return any(isinstance(d, datetime) and d.time() != time(0, 0, 0) for d in dates)
@@ -1118,6 +1353,18 @@ class ExportExcel:
                 row = [self.format_date(date), symbol, pnl['pnl_dollar'], self.format_percentage(pnl['pnl_percent'])]
                 sheet.append(row)
 
+    def export_acc_security_pnl_history_by_pair(self, sheet, data):
+        """Export acc_security_pnl_history_by_pair: {date: {pair: {symbol: {pnl_dollar, pnl_percent}}}}"""
+        sheet.delete_rows(1, sheet.max_row)
+        headers = ['Date', 'Pair', 'Symbol', 'PnL Dollar', 'PnL Percent']
+        sheet.append(headers)
+        for date, pairs in data.items():
+            for pair, securities in pairs.items():
+                for symbol, pnl in securities.items():
+                    row = [self.format_date(date), pair, symbol,
+                           pnl['pnl_dollar'], self.format_percentage(pnl['pnl_percent'])]
+                    sheet.append(row)
+
     def export_acc_pair_trade_pnl_history(self, sheet, data):
         sheet.delete_rows(1, sheet.max_row)  # Clear existing data
         headers = ['Date', 'Pair', 'PnL Dollar', 'PnL Percent']
@@ -1211,6 +1458,38 @@ class ExportExcel:
             if cell.row > 1:  # Skip header
                 cell.value = cell.value.split()[0] if cell.value else cell.value
 
+    def export_symbol_scalar_dict(self, sheet, data):
+        """Export {symbol: scalar_value} — e.g. finished_trades_pnl, total_cost_history."""
+        sheet.delete_rows(1, sheet.max_row)
+        sheet.append(['Symbol', 'Value'])
+        for symbol, value in sorted(data.items()):
+            sheet.append([symbol, value])
+
+    def export_pair_symbol_scalar_dict(self, sheet, data):
+        """Export {pair: {symbol: scalar_value}} — e.g. finished_trades_pnl_by_pair."""
+        sheet.delete_rows(1, sheet.max_row)
+        sheet.append(['Pair', 'Symbol', 'Value'])
+        for pair, sym_dict in sorted(data.items()):
+            for symbol, value in sorted(sym_dict.items()):
+                sheet.append([pair, symbol, value])
+
+    def export_pair_symbol_tuple_history(self, sheet, data):
+        """Export {pair: {symbol: [(date, value), ...]}} — e.g. share_history_by_pair."""
+        sheet.delete_rows(1, sheet.max_row)
+        sheet.append(['Date', 'Pair', 'Symbol', 'Value'])
+        rows = []
+        for pair, sym_dict in data.items():
+            for symbol, history in sym_dict.items():
+                for date, value in history:
+                    rows.append((date, pair, symbol, value))
+        rows.sort(key=lambda r: r[0])
+        for date, pair, symbol, value in rows:
+            sheet.append([self.format_date(date), pair, symbol, value])
+
+    def export_pair_symbol_cb_history(self, sheet, data):
+        """Export cost_basis_history_by_pair: {pair: {symbol: [(date, cost_basis), ...]}}."""
+        self.export_pair_symbol_tuple_history(sheet, data)
+
     def export_max_drawdown_history(self, sheet, data):
         sheet.delete_rows(1, sheet.max_row)  # Clear existing data
         sheet.append(['Date', 'Max Drawdown ($)', 'Max Drawdown (%)'])
@@ -1237,7 +1516,12 @@ class ExportExcel:
             'price_history', 'share_history', 'percentage_history', 'cost_basis_history',
             'hedge_history',
             'asset_cash_history', 'asset_securities_history',
-            'liability_securities_history', 'liability_loan_history'
+            'liability_securities_history', 'liability_loan_history',
+            'share_history_by_pair', 'cost_basis_by_pair',
+            'finished_trades_pnl', 'finished_trades_pnl_by_pair',
+            'total_cost_history', 'total_cost_history_by_pair',
+            'acc_sec_pnl_by_pair',
+            'percentage_history_by_pair',
         ]
 
         # Remove any sheets that are not in the all_attributes list, but keep at least one
@@ -1282,6 +1566,25 @@ class ExportExcel:
                         sheet = workbook[attr]
                     self.export_dict_of_symbol_tuples(sheet, data)
 
+        # Export per-pair parallel tables (immediately after their symbol-level counterparts)
+        for sheet_name, attr, method in [
+            ('share_history_by_pair',        'share_history_by_pair',        self.export_pair_symbol_tuple_history),
+            ('cost_basis_by_pair',           'cost_basis_history_by_pair',   self.export_pair_symbol_cb_history),
+            ('finished_trades_pnl',          'finished_trades_pnl',          self.export_symbol_scalar_dict),
+            ('finished_trades_pnl_by_pair',  'finished_trades_pnl_by_pair',  self.export_pair_symbol_scalar_dict),
+            ('total_cost_history',           'total_cost_history',           self.export_symbol_scalar_dict),
+            ('total_cost_history_by_pair',   'total_cost_history_by_pair',   self.export_pair_symbol_scalar_dict),
+            ('percentage_history_by_pair',   'percentage_history_by_pair',   self.export_pair_symbol_tuple_history),
+        ]:
+            if hasattr(portfolio, attr):
+                data = getattr(portfolio, attr)
+                if data:
+                    if sheet_name not in workbook.sheetnames:
+                        sheet = workbook.create_sheet(sheet_name)
+                    else:
+                        sheet = workbook[sheet_name]
+                    method(sheet, data)
+
         # Export new histories
         if 'daily_pnl_history' not in workbook.sheetnames:
             sheet = workbook.create_sheet('daily_pnl_history')
@@ -1294,6 +1597,12 @@ class ExportExcel:
         else:
             sheet = workbook['acc_security_pnl_history']
         self.export_acc_security_pnl_history(sheet, portfolio.acc_security_pnl_history)
+
+        if 'acc_sec_pnl_by_pair' not in workbook.sheetnames:
+            sheet = workbook.create_sheet('acc_sec_pnl_by_pair')
+        else:
+            sheet = workbook['acc_sec_pnl_by_pair']
+        self.export_acc_security_pnl_history_by_pair(sheet, portfolio.acc_security_pnl_history_by_pair)
 
         if 'acc_pair_trade_pnl_history' not in workbook.sheetnames:
             sheet = workbook.create_sheet('acc_pair_trade_pnl_history')
@@ -1836,20 +2145,21 @@ class PortfolioMakeOrder:
             # Opening a new position (long or short)
             context.cost_basis_history[asset].append((context.current_date, current_price))
         elif (current_position > 0 and shares_to_trade > 0) or (current_position < 0 and shares_to_trade < 0):
-            # Adding to an existing position
-            total_cost = abs(current_position) * context.cost_basis_history[asset][-1][1] + abs(
-                shares_to_trade) * current_price
+            # Same direction: weighted average
+            prev_cb = context.cost_basis_history[asset][-1][1] if context.cost_basis_history[asset] else current_price
+            total_cost = abs(current_position) * prev_cb + abs(shares_to_trade) * current_price
             new_cost_basis = total_cost / abs(new_position)
             context.cost_basis_history[asset].append((context.current_date, new_cost_basis))
         elif (current_position > 0 and shares_to_trade < 0) or (current_position < 0 and shares_to_trade > 0):
-            # Reducing or closing a position
+            # Opposite direction: new trade offsets existing position
             if new_position == 0:
+                # Fully closed
                 context.cost_basis_history[asset].append((context.current_date, 0))
-            elif abs(shares_to_trade) >= abs(current_position):
-                # Closing or reversing a position
+            elif abs(shares_to_trade) > abs(current_position):
+                # Reversed: old position fully consumed, remainder is entirely new → use new price
                 context.cost_basis_history[asset].append((context.current_date, current_price))
             else:
-                # Partially reducing a position, keep the current cost basis
+                # Partially reduced: old position survives, keep old cost basis
                 pass
 
         context.positions[asset] = new_position
@@ -1873,18 +2183,28 @@ class PortfolioMakeOrder:
         return shares_to_trade
 
     def order_target(self, context, asset, target):
-        current_position = context.portfolio.positions.get(asset, 0)
-        shares_to_trade = target - current_position
-        current_price = PortfolioMakeOrder.get_current_price(context, asset)
+        current_pair_key = (f"{context.current_pair[0]}/{context.current_pair[1]}"
+                            if hasattr(context, 'current_pair') and context.current_pair else None)
 
-        shares_to_trade = self._apply_order_constraints(context, asset, shares_to_trade, current_price, current_position, target)
+        # Use pair-level position as the baseline so that shared symbols (e.g. CL in CL/WST and CL/SRE)
+        # are treated independently per pair rather than saturating on the portfolio-level net position.
+        if current_pair_key:
+            pair_position = context.portfolio._pair_positions.get(current_pair_key, {}).get(asset, 0)
+        else:
+            pair_position = context.portfolio.positions.get(asset, 0)
+
+        shares_to_trade = target - pair_position
+        current_price = PortfolioMakeOrder.get_current_price(context, asset)
+        portfolio_position = context.portfolio.positions.get(asset, 0)
+
+        shares_to_trade = self._apply_order_constraints(context, asset, shares_to_trade, current_price, portfolio_position, target)
 
         if abs(shares_to_trade) > 0:
-            self.update_balance_sheet(context.portfolio, asset, shares_to_trade, current_price, current_position)
+            self.update_balance_sheet(context.portfolio, asset, shares_to_trade, current_price, portfolio_position)
             self.update_position(context.portfolio, asset, shares_to_trade, current_price)
             trade = Trade(context.portfolio.current_date, asset, shares_to_trade, current_price,
-                          'open' if target != 0 else 'close')
-            context.portfolio.record_trade(trade)
+                          'open' if target != 0 else 'close', pair=current_pair_key)
+            context.portfolio.record_trade(trade, pair_key=current_pair_key)
 
         return shares_to_trade
 
