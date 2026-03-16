@@ -36,3 +36,6 @@ historical_runs/walk_forward_mtfs/*
 
 # Daily trading signals & reports — all files tracked
 .env.example
+
+# Backup files
+*_backup.json

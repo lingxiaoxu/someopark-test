@@ -86,7 +86,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 log = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-GRID_CONFIG = os.path.join(BASE_DIR, 'run_configs', 'mtfs_runs_all_params.json')
+GRID_CONFIG = os.path.join(BASE_DIR, 'run_configs', 'mtfs_runs_step1_grid30.json')
 
 from pair_universe import mtfs_pairs
 ALL_PAIRS = mtfs_pairs()

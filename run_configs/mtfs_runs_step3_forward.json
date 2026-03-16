@@ -1,6 +1,6 @@
 {
-  "_comment": "Step 3 \u2014 Forward/validation: same 15 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=auto_minus_70d (forward window start). Auto-generated 2026-03-14 03:25.",
-  "start_date": "2024-09-14",
+  "_comment": "Step 3 \u2014 Forward/validation: same 14 pairs + per-pair param_sets as Step 2. ONE combined portfolio run. trade_start_date=auto_minus_70d (forward window start). Auto-generated 2026-03-16 16:43.",
+  "start_date": "2024-09-16",
   "end_date": "auto",
   "trade_start_date": "auto_minus_70d",
   "runs": [
@@ -9,79 +9,74 @@
       "param_set": "default",
       "pairs": [
         [
-          "LII",
-          "MSCI",
+          "ALL",
+          "GS",
           "aggressive"
         ],
         [
-          "MCHP",
-          "D",
-          "weekly_aligned_windows"
+          "ALL",
+          "SPG",
+          "monthly_aligned_windows"
         ],
         [
-          "MOS",
-          "DG",
-          "sensitive_reversal"
+          "BK",
+          "ALL",
+          "monthly_aligned_windows"
         ],
         [
-          "EXPD",
-          "ESS",
-          "kalman_hedge"
-        ],
-        [
-          "UHS",
-          "ACGL",
-          "fast_rebalance"
-        ],
-        [
-          "META",
-          "AAPL",
+          "XOM",
+          "V",
           "short_term_tilt"
         ],
         [
-          "MCD",
-          "YUM",
-          "sensitive_reversal"
+          "CB",
+          "ACGL",
+          "short_term_tilt"
         ],
         [
-          "ALLY",
-          "GS",
-          "weekly_aligned_windows"
-        ],
-        [
-          "USO",
-          "CL",
+          "CTRA",
+          "ACGL",
           "fast_strict"
         ],
         [
-          "UAL",
-          "ALGN",
-          "short_term_tilt"
-        ],
-        [
-          "CG",
-          "ARES",
-          "aggressive"
-        ],
-        [
-          "BEN",
-          "AMG",
+          "AEE",
+          "BKR",
           "sensitive_reversal"
         ],
         [
-          "UBER",
-          "LYFT",
-          "weekly_aligned_windows"
+          "RSG",
+          "AFL",
+          "long_term_tilt"
         ],
         [
-          "CME",
-          "TW",
+          "AIG",
+          "HST",
+          "no_reversal_protection"
+        ],
+        [
+          "JNJ",
+          "AIG",
           "beta_neutral"
         ],
         [
-          "DASH",
-          "CART",
+          "RSG",
+          "AIG",
+          "aggressive"
+        ],
+        [
+          "ETR",
+          "AVB",
           "weekly_aligned_windows"
+        ],
+        [
+          "EVRG",
+          "AVB",
+          "no_reversal_protection"
+        ],
+        [
+          "C",
+          "GS",
+          "monthly_aligned_windows"
         ]
       ]
     }

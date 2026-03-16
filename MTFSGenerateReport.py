@@ -130,21 +130,21 @@ PAIR_ORDER     = mtfs_pair_keys()
 
 # PARAM_MAP is used only as a display fallback; actual params come from the Step 2/3 Excel files.
 PARAM_MAP = {
-    'LII/MSCI':  'aggressive',
-    'MCHP/D':  'weekly_aligned_windows',
-    'MOS/DG':  'sensitive_reversal',
-    'EXPD/ESS':  'kalman_hedge',
-    'UHS/ACGL':  'fast_rebalance',
-    'META/AAPL':  'short_term_tilt',
-    'MCD/YUM':  'sensitive_reversal',
-    'ALLY/GS':  'weekly_aligned_windows',
-    'USO/CL':  'fast_strict',
-    'UAL/ALGN':  'short_term_tilt',
-    'CG/ARES':  'aggressive',
-    'BEN/AMG':  'sensitive_reversal',
-    'UBER/LYFT':  'weekly_aligned_windows',
-    'CME/TW':  'beta_neutral',
-    'DASH/CART':  'weekly_aligned_windows'
+    'ALL/GS':  'aggressive',
+    'ALL/SPG':  'monthly_aligned_windows',
+    'BK/ALL':  'monthly_aligned_windows',
+    'XOM/V':  'short_term_tilt',
+    'CB/ACGL':  'short_term_tilt',
+    'CTRA/ACGL':  'fast_strict',
+    'MCD/ACGL':  'default',
+    'AEE/BKR':  'sensitive_reversal',
+    'RSG/AFL':  'long_term_tilt',
+    'AIG/HST':  'no_reversal_protection',
+    'JNJ/AIG':  'beta_neutral',
+    'RSG/AIG':  'aggressive',
+    'ETR/AVB':  'weekly_aligned_windows',
+    'EVRG/AVB':  'no_reversal_protection',
+    'C/GS':  'monthly_aligned_windows'
 }
 
 
