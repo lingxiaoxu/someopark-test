@@ -1,4 +1,20 @@
-# someopark — 双策略配对交易回测框架
+<p align="center">
+  <img src="public/SOMEO PARK矢量源文件 Big Square.svg" alt="Someopark" width="160"/>
+</p>
+
+<h1 align="center">someopark</h1>
+<p align="center"><b>双策略配对交易回测框架</b></p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/conda-someopark__run-green?logo=anaconda&logoColor=white"/>
+  <img src="https://img.shields.io/badge/strategies-MRPT%20%7C%20MTFS-orange"/>
+  <img src="https://img.shields.io/badge/param__sets-32%20%2B%2031-purple"/>
+  <img src="https://img.shields.io/badge/walk--forward-6%20windows-teal"/>
+  <img src="https://img.shields.io/badge/data-Polygon%20%7C%20Yahoo-lightgrey"/>
+</p>
+
+---
 
 本项目包含两个并列运行的配对交易策略：
 
