@@ -1463,6 +1463,10 @@ _REGIME_INDICATOR_LABELS = {
     'uup_20d':             ('美元(UUP) 20日涨跌',      'Dollar index 20d return',             lambda v: f'{v:+.1%}',       lambda v: '美元走强(risk-off)' if v > 0.02 else ('美元弱(risk-on)' if v < -0.02 else '中性')),
     'spy_20d':             ('SPY 20日涨跌',            'S&P 500 20d momentum',                lambda v: f'{v:+.1%}',       lambda v: '市场上行' if v > 0.03 else ('市场下跌' if v < -0.03 else '横盘')),
     'tnx_level':           ('10Y美债收益率',           '10-year Treasury yield',              lambda v: f'{v:.2f}%',       lambda v: '收益率偏高' if v > 4.5 else '正常'),
+    'unrate_level':        ('失业率',                  'U.S. Unemployment Rate (monthly)',    lambda v: f'{v:.1f}%',        lambda v: '劳动市场偏紧' if v < 4.0 else ('偏松' if v > 5.0 else '正常')),
+    'payems_mom':          ('非农就业变化(千人)',        'Nonfarm Payrolls MoM change (k)',     lambda v: f'{v:+.0f}k',       lambda v: '就业强劲' if v > 200 else ('就业疲弱' if v < 50 else '正常')),
+    'icsa_level':          ('初领失业金(万人)',          'Initial Jobless Claims (weekly)',     lambda v: f'{v/10000:.1f}万', lambda v: '就业市场走弱' if v > 300000 else '正常'),
+    'ccsa_level':          ('续领失业金(万人)',          'Continuing Claims (weekly)',          lambda v: f'{v/10000:.1f}万', lambda v: '失业延续偏高' if v > 1800000 else '正常'),
 }
 
 
@@ -1592,18 +1596,22 @@ def _build_regime_report_section(regime: dict) -> dict:
         return {}
 
     indicators = regime.get('indicators', {})
+    ind_history = regime.get('indicator_history', {})
     enriched_indicators = {}
     for key, (name, description, fmt_fn, interp_fn) in _REGIME_INDICATOR_LABELS.items():
         val = indicators.get(key)
         if val is not None:
             try:
-                enriched_indicators[key] = {
+                entry = {
                     'name':           name,
                     'description':    description,
                     'raw_value':      round(val, 6) if isinstance(val, float) else val,
                     'formatted':      fmt_fn(val),
                     'interpretation': interp_fn(val),
                 }
+                if key in ind_history:
+                    entry['history'] = ind_history[key]
+                enriched_indicators[key] = entry
             except Exception:
                 enriched_indicators[key] = {'name': name, 'raw_value': val}
 
@@ -1770,22 +1778,110 @@ def write_report_txt(report: dict, path: str):
     blank()
 
     # Key indicators table
-    lines.append(f'  {"指标":<28}{"当前值":>12}  {"解读":<30}')
-    lines.append(f'  {"-"*68}')
     key_inds = [
         'vix_level','vix_z','move_level','hy_spread_level','ig_spread_level',
         'yield_curve_level','effr_level','effr_1y_change','breakeven_10y_level',
         'fin_stress_level','nfci_level','consumer_sent_level','recession_flag',
         'nvda_20d','arkk_20d','soxx_20d','gld_20d','uso_20d','uup_20d','spy_20d',
+        'unrate_level','payems_mom','icsa_level','ccsa_level',
     ]
     ind_data = regime_sec.get('indicators', {})
+
+    def _fmt_chg(abs_v, pct_v, raw_v):
+        """Format change string: show abs change and % change."""
+        if abs_v is None:
+            return 'n/a'
+        try:
+            # For small absolute values (spreads, rates) show abs; for % returns show pct only
+            if pct_v is not None:
+                sign = '+' if abs_v >= 0 else ''
+                return f'{sign}{abs_v:.4g} ({pct_v:+.1%})'
+            else:
+                sign = '+' if abs_v >= 0 else ''
+                return f'{sign}{abs_v:.4g}'
+        except Exception:
+            return 'n/a'
+
+    def _fmt_vs(vs_pct):
+        if vs_pct is None:
+            return 'n/a'
+        return f'{vs_pct:+.1%}'
+
+    # ── Column layout (single line per indicator) ────────────────────────────
+    # 指标(28) | 当前值+日期(18) | 前值+日期(18) | 变化(10) | 频(3) | 30均(10) | vs30(8) | 90均(10) | vs90(8) | 解读
+    HDR_IND   = f'{"指标":<28}'
+    HDR_CUR   = f'{"当前值(日期)":>18}'
+    HDR_PREV  = f'{"前值(日期)":>18}'
+    HDR_CHG   = f'{"变化":>10}'
+    HDR_FREQ  = f'{"频":>3}'
+    HDR_A30   = f'{"30obs均":>10}'
+    HDR_D30   = f'{"vs30":>8}'
+    HDR_A90   = f'{"90obs均":>10}'
+    HDR_D90   = f'{"vs90":>8}'
+    HDR_INTERP = '  解读'
+    lines.append(f'  {HDR_IND}{HDR_CUR}{HDR_PREV}{HDR_CHG}{HDR_FREQ}{HDR_A30}{HDR_D30}{HDR_A90}{HDR_D90}{HDR_INTERP}')
+    lines.append(f'  {"-"*122}')
+
     for k in key_inds:
-        if k in ind_data:
-            d = ind_data[k]
-            name  = d.get('name', k)
-            fmtd  = d.get('formatted', str(d.get('raw_value','')))
-            interp_str = d.get('interpretation', '')
-            lines.append(f'  {name:<28}{fmtd:>12}  {interp_str}')
+        if k not in ind_data:
+            continue
+        d    = ind_data[k]
+        name = d.get('name', k)
+        fmtd = d.get('formatted', str(d.get('raw_value', '')))
+        interp_str = d.get('interpretation', '')
+        hist = d.get('history', {})
+
+        if hist:
+            freq      = hist.get('freq', '')
+            freq_lbl  = {'daily': '日', 'weekly': '周', 'monthly': '月'}.get(freq, freq)
+            prev_val  = hist.get('prev_val')
+            cur_date  = hist.get('cur_date', '')[-5:]   # MM-DD
+            prev_date = hist.get('prev_date', '')[-5:]  # MM-DD
+            chg_abs   = hist.get('change_abs')
+            avg30     = hist.get('avg30')
+            avg90     = hist.get('avg90')
+            raw_v     = d.get('raw_value')
+
+            try:
+                fmt_fn     = _REGIME_INDICATOR_LABELS[k][2]
+                prev_fmtd  = fmt_fn(prev_val) if prev_val is not None else 'n/a'
+                avg30_fmtd = fmt_fn(avg30)     if avg30   is not None else 'n/a'
+                avg90_fmtd = fmt_fn(avg90)     if avg90   is not None else 'n/a'
+                # Change string (formatted, with explicit + sign)
+                if chg_abs is not None:
+                    chg_fmtd = fmt_fn(chg_abs)
+                    if chg_abs > 0 and not chg_fmtd.startswith('+'):
+                        chg_fmtd = '+' + chg_fmtd
+                    chg_str = chg_fmtd
+                else:
+                    chg_str = 'n/a'
+                # vs30/vs90: absolute difference current - avg, same format
+                vs30_str = vs90_str = 'n/a'
+                if raw_v is not None and avg30 is not None:
+                    d30 = raw_v - avg30
+                    s = fmt_fn(d30)
+                    vs30_str = ('+' + s if d30 > 0 and not s.startswith('+') else s)
+                if raw_v is not None and avg90 is not None:
+                    d90 = raw_v - avg90
+                    s = fmt_fn(d90)
+                    vs90_str = ('+' + s if d90 > 0 and not s.startswith('+') else s)
+            except Exception:
+                prev_fmtd  = str(prev_val) if prev_val is not None else 'n/a'
+                avg30_fmtd = f'{avg30:.4g}' if avg30 is not None else 'n/a'
+                avg90_fmtd = f'{avg90:.4g}' if avg90 is not None else 'n/a'
+                chg_str  = f'{chg_abs:+.4g}' if chg_abs is not None else 'n/a'
+                vs30_str = vs90_str = 'n/a'
+
+            cur_cell  = f'{fmtd}({cur_date})'
+            prev_cell = f'{prev_fmtd}({prev_date})'
+            lines.append(
+                f'  {name:<28}{cur_cell:>18}{prev_cell:>18}{chg_str:>10}{freq_lbl:>3}'
+                f'{avg30_fmtd:>10}{vs30_str:>8}{avg90_fmtd:>10}{vs90_str:>8}  {interp_str}'
+            )
+        else:
+            lines.append(
+                f'  {name:<28}{fmtd:>18}{"":>18}{"":>10}{"":>3}{"":>10}{"":>8}{"":>10}{"":>8}  {interp_str}'
+            )
     blank()
 
     # Component scores bar chart

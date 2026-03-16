@@ -141,6 +141,7 @@ class RegimeDetector:
         self._fred         = None
         self._mrpt_curve   = mrpt_oos_curve
         self._mtfs_curve   = mtfs_oos_curve
+        self._ind_history: dict = {}   # populated during _fetch_all_indicators
 
         if FREDAPI_AVAILABLE and self.fred_api_key:
             try:
@@ -198,6 +199,53 @@ class RegimeDetector:
         if s.empty:
             return None
         return float(s.iloc[-1])
+
+    def _series_stats(self, s: pd.Series, freq: str = 'daily') -> dict:
+        """
+        Compute prev value, change, 30d/90d averages for a series.
+        freq: 'daily' | 'weekly' | 'monthly'
+        Returns dict with keys: prev_val, prev_date, change_abs, change_pct,
+                                 avg30, avg90, vs30_pct, vs90_pct, freq,
+                                 cur_date
+        """
+        if s.empty or len(s) < 2:
+            return {'freq': freq}
+        # Map freq → how many observations back = "previous"
+        prev_step = {'daily': 1, 'weekly': 1, 'monthly': 1}[freq]
+        cur_val  = float(s.iloc[-1])
+        cur_date = str(s.index[-1].date()) if hasattr(s.index[-1], 'date') else str(s.index[-1])
+        prev_idx = -(prev_step + 1)
+        if len(s) < prev_step + 1:
+            return {'freq': freq, 'cur_date': cur_date}
+        prev_val  = float(s.iloc[-prev_step - 1])
+        prev_date = str(s.index[-prev_step - 1].date()) if hasattr(s.index[-prev_step - 1], 'date') else str(s.index[-prev_step - 1])
+        change_abs = cur_val - prev_val
+        change_pct = (cur_val / prev_val - 1) if prev_val != 0 else None
+
+        # 30-obs and 90-obs trailing averages (calendar-agnostic, uses observation count)
+        # For daily series: 30obs≈30d, 90obs≈90d
+        # For weekly: 30obs≈30w, but we want 30d/90d, so cap at series length
+        # Use actual calendar days mapped to index:
+        # Simpler: just use trailing n observations
+        n30 = min(30, len(s))
+        n90 = min(90, len(s))
+        avg30 = float(s.iloc[-n30:].mean())
+        avg90 = float(s.iloc[-n90:].mean())
+        vs30_pct = (cur_val / avg30 - 1) if avg30 != 0 else None
+        vs90_pct = (cur_val / avg90 - 1) if avg90 != 0 else None
+
+        return {
+            'freq':       freq,
+            'cur_date':   cur_date,
+            'prev_val':   round(prev_val, 6),
+            'prev_date':  prev_date,
+            'change_abs': round(change_abs, 6),
+            'change_pct': round(change_pct, 6) if change_pct is not None else None,
+            'avg30':      round(avg30, 6),
+            'avg90':      round(avg90, 6),
+            'vs30_pct':   round(vs30_pct, 6) if vs30_pct is not None else None,
+            'vs90_pct':   round(vs90_pct, 6) if vs90_pct is not None else None,
+        }
 
     def _rolling_zscore(self, s: pd.Series, window: int | None = None) -> float | None:
         """Z-score of last value relative to rolling window."""
@@ -538,6 +586,7 @@ class RegimeDetector:
             },
             'strategy_vol':    vol_info,
             'weight_rationale': rationale,
+            'indicator_history': self._ind_history,
         }
 
         log.info(f"Regime: {label}  score={regime_score}  MRPT={mrpt_w:.0%}  MTFS={mtfs_w:.0%}")
@@ -546,6 +595,7 @@ class RegimeDetector:
     def _fetch_all_indicators(self) -> dict:
         """Fetch all raw indicator values. Returns flat dict."""
         raw = {}
+        self._ind_history = {}
 
         # ── yfinance batch fetch ───────────────────────────────────────────
         tickers_needed = {
@@ -575,17 +625,22 @@ class RegimeDetector:
             raw['vix_level']  = self._last_val(series['vix'])
             raw['vix_z']      = self._rolling_zscore(series['vix'])
             raw['vix_pct52w'] = self._percentile_of_last(series['vix'])
+            self._ind_history['vix_level'] = self._series_stats(series['vix'], 'daily')
 
         # MOVE
         if not series['move'].empty:
             raw['move_level'] = self._last_val(series['move'])
             raw['move_z']     = self._rolling_zscore(series['move'])
+            self._ind_history['move_level'] = self._series_stats(series['move'], 'daily')
 
         # SPY momentum
         if not series['spy'].empty:
             raw['spy_20d'] = self._pct_change_nd(series['spy'], 20)
             raw['spy_5d']  = self._pct_change_nd(series['spy'], 5)
             raw['spy_z']   = self._rolling_zscore(series['spy'].pct_change().dropna() * 100)
+            spy_ret20 = series['spy'].pct_change(20).dropna()
+            if not spy_ret20.empty:
+                self._ind_history['spy_20d'] = self._series_stats(spy_ret20, 'daily')
 
         # QQQ/SPY ratio
         if not series['qqq'].empty and not series['spy'].empty:
@@ -616,12 +671,18 @@ class RegimeDetector:
                 raw[f'{key}_20d']  = self._pct_change_nd(series[key], 20)
                 raw[f'{key}_5d']   = self._pct_change_nd(series[key], 5)
                 raw[f'{key}_level'] = self._last_val(series[key])
+                ret20 = series[key].pct_change(20).dropna()
+                if not ret20.empty:
+                    self._ind_history[f'{key}_20d'] = self._series_stats(ret20, 'daily')
 
         # Safe haven
         for key in ('gld', 'uso', 'uup'):
             if not series[key].empty:
                 raw[f'{key}_20d']  = self._pct_change_nd(series[key], 20)
                 raw[f'{key}_level'] = self._last_val(series[key])
+                ret20 = series[key].pct_change(20).dropna()
+                if not ret20.empty:
+                    self._ind_history[f'{key}_20d'] = self._series_stats(ret20, 'daily')
 
         # TNX (10yr yield)
         if not series['tnx'].empty:
@@ -643,18 +704,21 @@ class RegimeDetector:
             if not s.empty:
                 raw['hy_spread_level'] = self._last_val(s)
                 raw['hy_spread_z']     = self._rolling_zscore(s)
+                self._ind_history['hy_spread_level'] = self._series_stats(s, 'daily')
 
             # IG credit spread
             s = self._fetch_fred('BAMLC0A0CM')
             if not s.empty:
                 raw['ig_spread_level'] = self._last_val(s)
                 raw['ig_spread_z']     = self._rolling_zscore(s)
+                self._ind_history['ig_spread_level'] = self._series_stats(s, 'daily')
 
             # Yield curve (10yr - 2yr)
             s = self._fetch_fred('T10Y2Y')
             if not s.empty:
                 raw['yield_curve_level'] = self._last_val(s)
                 raw['yield_curve_z']     = self._rolling_zscore(s)
+                self._ind_history['yield_curve_level'] = self._series_stats(s, 'daily')
 
             # Effective Fed Funds
             s = self._fetch_fred('EFFR')
@@ -663,12 +727,14 @@ class RegimeDetector:
                 # Rate change: positive delta = hiking, negative = cutting
                 if len(s) >= 252:
                     raw['effr_1y_change'] = float(s.iloc[-1] - s.iloc[-252])
+                self._ind_history['effr_level'] = self._series_stats(s, 'daily')
 
             # Inflation breakeven
             s = self._fetch_fred('T10YIE')
             if not s.empty:
                 raw['breakeven_10y_level'] = self._last_val(s)
                 raw['breakeven_10y_z']     = self._rolling_zscore(s)
+                self._ind_history['breakeven_10y_level'] = self._series_stats(s, 'daily')
 
             s = self._fetch_fred('T5YIE')
             if not s.empty:
@@ -679,21 +745,49 @@ class RegimeDetector:
             if not s.empty:
                 raw['fin_stress_level'] = self._last_val(s)
                 raw['fin_stress_z']     = self._rolling_zscore(s)
+                self._ind_history['fin_stress_level'] = self._series_stats(s, 'weekly')
 
             # NFCI
             s = self._fetch_fred('NFCI')
             if not s.empty:
                 raw['nfci_level'] = self._last_val(s)
+                self._ind_history['nfci_level'] = self._series_stats(s, 'weekly')
 
             # Consumer sentiment (monthly, forward-fill)
             s = self._fetch_fred('UMCSENT')
             if not s.empty:
                 raw['consumer_sent_level'] = self._last_val(s)
+                self._ind_history['consumer_sent_level'] = self._series_stats(s, 'monthly')
 
             # Recession indicator
             s = self._fetch_fred('USREC')
             if not s.empty:
                 raw['recession_flag'] = int(self._last_val(s) or 0)
+                self._ind_history['recession_flag'] = self._series_stats(s, 'monthly')
+
+            # Unemployment rate (monthly)
+            s = self._fetch_fred('UNRATE')
+            if not s.empty:
+                raw['unrate_level'] = self._last_val(s)
+                self._ind_history['unrate_level'] = self._series_stats(s, 'monthly')
+
+            # Nonfarm payrolls MoM change (monthly)
+            s = self._fetch_fred('PAYEMS')
+            if not s.empty:
+                raw['payems_mom'] = float(s.diff().iloc[-1]) if len(s) >= 2 else None
+                self._ind_history['payems_mom'] = self._series_stats(s.diff().dropna(), 'monthly')
+
+            # Initial jobless claims (weekly, thousands)
+            s = self._fetch_fred('ICSA')
+            if not s.empty:
+                raw['icsa_level'] = self._last_val(s)
+                self._ind_history['icsa_level'] = self._series_stats(s, 'weekly')
+
+            # Continuing claims (weekly, thousands)
+            s = self._fetch_fred('CCSA')
+            if not s.empty:
+                raw['ccsa_level'] = self._last_val(s)
+                self._ind_history['ccsa_level'] = self._series_stats(s, 'weekly')
 
             # DGS10 / DGS2 daily
             s10 = self._fetch_fred('DGS10')

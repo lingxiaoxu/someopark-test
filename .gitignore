@@ -21,6 +21,7 @@ archive/
 # historical_runs: ignore everything except specific walk-forward output files
 # Note: must NOT ignore the directory itself — use wildcard on contents instead
 historical_runs/*
+!historical_runs/wf_diagnostic_*.xlsx
 !historical_runs/walk_forward/
 !historical_runs/walk_forward_mtfs/
 historical_runs/walk_forward/*
