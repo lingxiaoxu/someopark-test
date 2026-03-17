@@ -17,7 +17,7 @@ Produces Excel with sheets:
 Output: historical_runs/wf_diagnostic_<timestamp>.xlsx
 """
 
-import json, os, sys, warnings
+import glob, json, os, sys, warnings
 from datetime import datetime
 
 import numpy as np
@@ -530,6 +530,328 @@ def _read_daily_report_macro():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# FILE DISCOVERY HELPERS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _find_oos_xlsx(wf_dir, wf_data, strategy):
+    """
+    For each OOS window in wf_data, find the latest portfolio_history OOS test xlsx.
+
+    Logic:
+      1. anchor = wf_data['windows'][0]['train_start']
+      2. window dir = wf_dir/window{NN}_{anchor}_*  (matches the run, not just any window)
+      3. within window dir, search recursively for *wf_test_window{NN}*.xlsx
+      4. sort by mtime, take latest (handles multiple reruns)
+
+    Returns dict: {window_idx: (xlsx_path, test_start, test_end)}
+    """
+    anchor = wf_data['windows'][0]['train_start']
+    prefix = 'MTFS' if strategy == 'MTFS' else 'MRPT'
+    result = {}
+    for w in wf_data['windows']:
+        widx = w['window_idx']
+        dirs = glob.glob(os.path.join(wf_dir, f'window{widx:02d}_{anchor}_*'))
+        if not dirs:
+            continue
+        wdir = dirs[0]
+        # Search recursively - OOS test files may be directly in historical_runs/ under wdir
+        candidates = glob.glob(
+            os.path.join(wdir, '**', f'*{prefix}*wf_test_window{widx:02d}*.xlsx'),
+            recursive=True
+        )
+        if not candidates:
+            # fallback without strategy prefix
+            candidates = glob.glob(
+                os.path.join(wdir, '**', f'*wf_test_window{widx:02d}*.xlsx'),
+                recursive=True
+            )
+        if not candidates:
+            continue
+        latest = sorted(candidates, key=os.path.getmtime)[-1]
+        result[widx] = (latest, w['test_start'], w['test_end'])
+    return result
+
+
+def _load_dsr_log(wf_dir):
+    """Load latest dsr_selection_log_*.csv from wf_dir (sorted by mtime)."""
+    files = sorted(
+        glob.glob(os.path.join(wf_dir, 'dsr_selection_log_*.csv')),
+        key=os.path.getmtime
+    )
+    if not files:
+        return pd.DataFrame()
+    return pd.read_csv(files[-1])
+
+
+def _load_oos_pair_summary(wf_dir):
+    """Load latest oos_pair_summary_*.csv from wf_dir (sorted by mtime)."""
+    files = sorted(
+        glob.glob(os.path.join(wf_dir, 'oos_pair_summary_*.csv')),
+        key=os.path.getmtime
+    )
+    if not files:
+        return pd.DataFrame()
+    return pd.read_csv(files[-1])
+
+
+def _load_oos_equity_curve(wf_dir):
+    """Load latest oos_equity_curve_*.csv from wf_dir (sorted by mtime)."""
+    files = sorted(
+        glob.glob(os.path.join(wf_dir, 'oos_equity_curve_*.csv')),
+        key=os.path.getmtime
+    )
+    if not files:
+        return pd.DataFrame()
+    df = pd.read_csv(files[-1])
+    df['Date'] = pd.to_datetime(df['Date'])
+    return df
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NEW ANALYSIS FUNCTIONS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def build_is_oos_decay(dsr_log, oos_pair_summary, wf_data, strategy):
+    """
+    IS→OOS Sharpe Decay sheet.
+
+    For each pair:
+      - IS best Sharpe & best DSR p-value (from dsr_selection_log, best across all param sets)
+      - N param sets that passed DSR>0.5 (robustness count)
+      - OOS actual Sharpe, PnL, MaxDD, WinRate (from oos_pair_summary)
+      - Decay = OOS_Sharpe / IS_Best_Sharpe
+      - Robustness label: Fragile (1), Moderate (2-4), Robust (5+)
+      - W6 selected? (from wf_data last window)
+    """
+    if dsr_log.empty or oos_pair_summary.empty:
+        return pd.DataFrame()
+
+    last_w = wf_data['windows'][-1]
+    selected_keys = {f"{s[0]}/{s[1]}" for s in last_w.get('selected_pairs', [])}
+
+    # Per-pair IS stats: best across all windows and param sets
+    is_best = dsr_log.groupby('pair_key').agg(
+        IS_Best_Sharpe=('pair_sharpe', 'max'),
+        IS_Best_DSR=('dsr_pvalue', 'max'),
+        N_Total_Runs=('param_set', 'count'),
+    ).reset_index()
+
+    # Count how many param sets passed DSR>0.5 AND sharpe>0 (across ALL windows)
+    passed = dsr_log[(dsr_log['dsr_pvalue'] > 0.5) & (dsr_log['pair_sharpe'] > 0)]
+    robust_counts = passed.groupby('pair_key')['param_set'].count().rename('N_Passed_DSR').reset_index()
+
+    # W6 DSR stats specifically
+    w6 = dsr_log[dsr_log['window_idx'] == dsr_log['window_idx'].max()]
+    w6_best = w6.groupby('pair_key').agg(
+        W6_Best_Sharpe=('pair_sharpe', 'max'),
+        W6_Best_DSR=('dsr_pvalue', 'max'),
+    ).reset_index()
+    w6_passed = w6[(w6['dsr_pvalue'] > 0.5) & (w6['pair_sharpe'] > 0)]
+    w6_robust = w6_passed.groupby('pair_key')['param_set'].count().rename('W6_N_Passed_DSR').reset_index()
+
+    # Merge
+    df = is_best.merge(robust_counts, on='pair_key', how='left')
+    df = df.merge(w6_best, on='pair_key', how='left')
+    df = df.merge(w6_robust, on='pair_key', how='left')
+    df['N_Passed_DSR'] = df['N_Passed_DSR'].fillna(0).astype(int)
+    df['W6_N_Passed_DSR'] = df['W6_N_Passed_DSR'].fillna(0).astype(int)
+
+    # OOS actual performance
+    oos = oos_pair_summary.rename(columns={'Pair': 'pair_key'})
+    df = df.merge(oos[['pair_key', 'OOS_PnL', 'Sharpe', 'MaxDD', 'MaxDD_pct', 'WinRate', 'N_Trades']],
+                  on='pair_key', how='left')
+    df.rename(columns={'Sharpe': 'OOS_Sharpe', 'MaxDD': 'OOS_MaxDD',
+                       'MaxDD_pct': 'OOS_MaxDD_pct', 'WinRate': 'OOS_WinRate',
+                       'N_Trades': 'OOS_N_Trades'}, inplace=True)
+
+    # Derived metrics
+    df['Sharpe_Decay'] = np.where(
+        df['IS_Best_Sharpe'] > 0,
+        df['OOS_Sharpe'] / df['IS_Best_Sharpe'],
+        np.nan
+    )
+    df['Robustness'] = df['N_Passed_DSR'].apply(
+        lambda n: 'Fragile(1)' if n <= 1 else ('Moderate(2-4)' if n <= 4 else 'Robust(5+)')
+    )
+    df['W6_Selected'] = df['pair_key'].isin(selected_keys)
+    df['Strategy'] = strategy
+
+    cols = ['Strategy', 'pair_key', 'IS_Best_Sharpe', 'IS_Best_DSR', 'N_Passed_DSR', 'Robustness',
+            'W6_Best_Sharpe', 'W6_Best_DSR', 'W6_N_Passed_DSR', 'W6_Selected',
+            'OOS_Sharpe', 'OOS_PnL', 'OOS_MaxDD', 'OOS_MaxDD_pct', 'OOS_WinRate', 'OOS_N_Trades',
+            'Sharpe_Decay']
+    return df[[c for c in cols if c in df.columns]].sort_values('OOS_PnL', ascending=False)
+
+
+def build_dsr_robustness(dsr_log, wf_data, strategy):
+    """
+    DSR Robustness sheet: per pair × per window stats across 31/32 param sets.
+
+    Columns: Strategy, Pair, Window, N_Param_Sets, N_Passed_DSR, Pass_Rate,
+             Best_Sharpe, Median_Sharpe, Std_Sharpe, Best_DSR, Selected_Param, Selected_DSR
+    """
+    if dsr_log.empty:
+        return pd.DataFrame()
+
+    # selected param per window from wf_data
+    selected_map = {}
+    for w in wf_data['windows']:
+        widx = w['window_idx']
+        for s1, s2, ps in w.get('selected_pairs', []):
+            selected_map[(widx, f'{s1}/{s2}')] = ps
+
+    rows = []
+    for (widx, pair_key), grp in dsr_log.groupby(['window_idx', 'pair_key']):
+        n_total = len(grp)
+        passed = grp[(grp['dsr_pvalue'] > 0.5) & (grp['pair_sharpe'] > 0)]
+        n_passed = len(passed)
+        best_row = grp.loc[grp['pair_sharpe'].idxmax()]
+        sel_ps = selected_map.get((widx, pair_key))
+        sel_row = grp[grp['param_set'] == sel_ps].iloc[0] if sel_ps and len(grp[grp['param_set'] == sel_ps]) > 0 else None
+
+        rows.append({
+            'Strategy': strategy,
+            'Pair': pair_key,
+            'Window': widx,
+            'N_Param_Sets': n_total,
+            'N_Passed_DSR': n_passed,
+            'Pass_Rate': round(n_passed / n_total, 3) if n_total > 0 else 0,
+            'Best_Sharpe': round(best_row['pair_sharpe'], 3),
+            'Median_Sharpe': round(float(grp['pair_sharpe'].median()), 3),
+            'Std_Sharpe': round(float(grp['pair_sharpe'].std()), 3),
+            'Best_DSR': round(best_row['dsr_pvalue'], 4),
+            'Selected_Param': sel_ps or ('EXCLUDED' if sel_ps is None else sel_ps),
+            'Selected_DSR': round(float(sel_row['dsr_pvalue']), 4) if sel_row is not None else np.nan,
+            'Selected_Sharpe': round(float(sel_row['pair_sharpe']), 3) if sel_row is not None else np.nan,
+        })
+
+    return pd.DataFrame(rows).sort_values(['Pair', 'Window'])
+
+
+def build_oos_pnl_heatmap(oos_xlsx_map, strategy):
+    """
+    OOS PnL heatmap: pair × window → cumulative PnL from dod_pair_trade_pnl_history.
+
+    Returns wide DataFrame: rows=pairs, cols=W1..W6 + Total
+    Also returns long DataFrame for detailed analysis.
+    """
+    if not oos_xlsx_map:
+        return pd.DataFrame(), pd.DataFrame()
+
+    long_rows = []
+    for widx, (xlsx, test_start, test_end) in sorted(oos_xlsx_map.items()):
+        ts, te = pd.Timestamp(test_start), pd.Timestamp(test_end)
+        try:
+            dod = pd.read_excel(xlsx, sheet_name='dod_pair_trade_pnl_history')
+            dod['Date'] = pd.to_datetime(dod['Date'])
+            dod = dod[(dod['Date'] >= ts) & (dod['Date'] <= te)].copy()
+            trades = pd.read_excel(xlsx, sheet_name='pair_trade_history')
+            trades['Date'] = pd.to_datetime(trades['Date'])
+            trades = trades[(trades['Date'] >= ts) & (trades['Date'] <= te)].copy()
+        except Exception as e:
+            print(f"  WARNING: W{widx} xlsx read error: {e}")
+            continue
+
+        for pair, grp in dod.groupby('Pair'):
+            daily = grp['PnL Dollar'].values
+            cum_pnl = float(np.sum(daily))
+            active = daily[daily != 0]
+            win_rate = float((active > 0).sum() / len(active)) if len(active) > 0 else np.nan
+            # Days with position
+            n_days_active = int((daily != 0).sum())
+            # Trade count from pair_trade_history
+            n_trades = len(trades[(trades['Pair'] == pair) & (trades['Order Type'] == 'open')]['Date'].unique()) if 'Pair' in trades.columns else 0
+            # Stop loss triggers
+            n_stops = 0
+            if 'Exit Reason' in trades.columns:
+                closes = trades[(trades['Pair'] == pair) & (trades['Order Type'] == 'close')]
+                n_stops = int(closes['Exit Reason'].notna().sum())
+
+            long_rows.append({
+                'Strategy': strategy, 'Pair': pair, 'Window': widx,
+                'Test_Start': test_start, 'Test_End': test_end,
+                'OOS_PnL': round(cum_pnl, 0),
+                'WinRate': round(win_rate, 3) if not np.isnan(win_rate) else np.nan,
+                'N_Days_Active': n_days_active,
+                'N_Trades': n_trades,
+                'N_Stops': n_stops,
+            })
+
+    if not long_rows:
+        return pd.DataFrame(), pd.DataFrame()
+
+    long_df = pd.DataFrame(long_rows)
+
+    # Wide heatmap: pair × window PnL
+    heatmap = long_df.pivot_table(index='Pair', columns='Window', values='OOS_PnL', aggfunc='sum')
+    heatmap.columns = [f'W{int(c)}_PnL' for c in heatmap.columns]
+    heatmap['Total_PnL'] = heatmap.sum(axis=1)
+    heatmap['Positive_Windows'] = (heatmap[[c for c in heatmap.columns if c.startswith('W')]] > 0).sum(axis=1)
+    heatmap['Consistency'] = heatmap['Positive_Windows'].apply(
+        lambda n: 'Consistent' if n >= 5 else ('Mixed' if n >= 3 else 'Inconsistent')
+    )
+    heatmap = heatmap.reset_index().sort_values('Total_PnL', ascending=False)
+
+    return heatmap, long_df
+
+
+def build_equity_curve_comparison(mrpt_curve, mtfs_curve):
+    """
+    OOS equity curve comparison: MRPT vs MTFS daily PnL correlation,
+    rolling drawdown, per-window performance.
+    """
+    rows = []
+    if mrpt_curve.empty and mtfs_curve.empty:
+        return pd.DataFrame()
+
+    for strategy, curve in [('MRPT', mrpt_curve), ('MTFS', mtfs_curve)]:
+        if curve.empty:
+            continue
+        for widx, grp in curve.groupby('Window'):
+            grp = grp.sort_values('Date')
+            eq = grp['Equity_Chained'].values
+            pnl = grp['DailyPnL'].fillna(0).values
+            window_pnl = float(eq[-1] - eq[0])
+            peak = np.maximum.accumulate(eq)
+            dd = eq - peak
+            max_dd = float(dd.min())
+            mean_d = np.mean(pnl); std_d = np.std(pnl, ddof=1)
+            sharpe = mean_d / std_d * np.sqrt(252) if std_d > 0 else 0
+            rows.append({
+                'Strategy': strategy, 'Window': int(widx),
+                'Start': str(grp['Date'].iloc[0].date()),
+                'End': str(grp['Date'].iloc[-1].date()),
+                'OOS_PnL': round(window_pnl, 0),
+                'Sharpe': round(sharpe, 3),
+                'MaxDD': round(max_dd, 0),
+                'N_Days': len(pnl),
+            })
+
+    df = pd.DataFrame(rows)
+
+    # Add cross-strategy correlation if both available
+    if not mrpt_curve.empty and not mtfs_curve.empty:
+        m = mrpt_curve.set_index('Date')['DailyPnL'].fillna(0)
+        t = mtfs_curve.set_index('Date')['DailyPnL'].fillna(0)
+        common = m.index.intersection(t.index)
+        if len(common) > 10:
+            corr = float(m.loc[common].corr(t.loc[common]))
+            # Append a summary row
+            df = pd.concat([df, pd.DataFrame([{
+                'Strategy': 'MRPT_vs_MTFS',
+                'Window': 0,
+                'Start': str(common[0].date()),
+                'End': str(common[-1].date()),
+                'OOS_PnL': round(float(m.loc[common].sum() + t.loc[common].sum()), 0),
+                'Sharpe': round(corr, 4),  # repurposed as correlation
+                'MaxDD': np.nan,
+                'N_Days': len(common),
+            }])], ignore_index=True)
+
+    return df
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -783,6 +1105,46 @@ def main():
     df_overlap = pd.DataFrame(overlap_rows) if overlap_rows else pd.DataFrame(columns=['Ticker', 'Strategy', 'N_Pairs', 'Pairs', 'Risk'])
 
     # ══════════════════════════════════════════════════════════════════════════
+    # NEW: Load pre-computed run files (dsr log, oos summary, equity curves, xlsx)
+    # ══════════════════════════════════════════════════════════════════════════
+    print("Loading pre-computed run files (DSR logs, OOS summaries, equity curves)...")
+    mrpt_dsr     = _load_dsr_log(MRPT_WF_DIR)
+    mtfs_dsr     = _load_dsr_log(MTFS_WF_DIR)
+    mrpt_oos_sum = _load_oos_pair_summary(MRPT_WF_DIR)
+    mtfs_oos_sum = _load_oos_pair_summary(MTFS_WF_DIR)
+    mrpt_curve   = _load_oos_equity_curve(MRPT_WF_DIR)
+    mtfs_curve   = _load_oos_equity_curve(MTFS_WF_DIR)
+    mrpt_xlsx_map = _find_oos_xlsx(MRPT_WF_DIR, MRPT_WF, 'MRPT')
+    mtfs_xlsx_map = _find_oos_xlsx(MTFS_WF_DIR, MTFS_WF, 'MTFS')
+    print(f"  MRPT: dsr={len(mrpt_dsr)} rows, oos_sum={len(mrpt_oos_sum)} pairs, "
+          f"curve={len(mrpt_curve)} days, xlsx_windows={len(mrpt_xlsx_map)}")
+    print(f"  MTFS: dsr={len(mtfs_dsr)} rows, oos_sum={len(mtfs_oos_sum)} pairs, "
+          f"curve={len(mtfs_curve)} days, xlsx_windows={len(mtfs_xlsx_map)}")
+
+    # ── IS→OOS Sharpe Decay ──────────────────────────────────────────────────
+    print("Building IS→OOS Sharpe decay analysis...")
+    df_decay_mrpt = build_is_oos_decay(mrpt_dsr, mrpt_oos_sum, MRPT_WF, 'MRPT')
+    df_decay_mtfs = build_is_oos_decay(mtfs_dsr, mtfs_oos_sum, MTFS_WF, 'MTFS')
+    df_decay = pd.concat([df_decay_mrpt, df_decay_mtfs], ignore_index=True)
+
+    # ── DSR Robustness per pair × window ─────────────────────────────────────
+    print("Building DSR robustness analysis...")
+    df_dsr_rob_mrpt = build_dsr_robustness(mrpt_dsr, MRPT_WF, 'MRPT')
+    df_dsr_rob_mtfs = build_dsr_robustness(mtfs_dsr, MTFS_WF, 'MTFS')
+    df_dsr_rob = pd.concat([df_dsr_rob_mrpt, df_dsr_rob_mtfs], ignore_index=True)
+
+    # ── OOS PnL Heatmap (per pair × window from actual xlsx) ─────────────────
+    print("Building OOS PnL heatmap from portfolio xlsx files...")
+    df_mrpt_heatmap, df_mrpt_pnl_long = build_oos_pnl_heatmap(mrpt_xlsx_map, 'MRPT')
+    df_mtfs_heatmap, df_mtfs_pnl_long = build_oos_pnl_heatmap(mtfs_xlsx_map, 'MTFS')
+    df_pnl_heatmap = pd.concat([df_mrpt_heatmap, df_mtfs_heatmap], ignore_index=True)
+    df_pnl_long    = pd.concat([df_mrpt_pnl_long, df_mtfs_pnl_long], ignore_index=True)
+
+    # ── OOS Equity Curve Comparison ──────────────────────────────────────────
+    print("Building OOS equity curve comparison...")
+    df_curve_comp = build_equity_curve_comparison(mrpt_curve, mtfs_curve)
+
+    # ══════════════════════════════════════════════════════════════════════════
     # Executive Summary
     # ══════════════════════════════════════════════════════════════════════════
     print("Building executive summary...")
@@ -809,6 +1171,21 @@ def main():
         df_summary.to_excel(writer, sheet_name='Summary_Diagnosis', index=False)
         df_overlap.to_excel(writer, sheet_name='Ticker_Overlap', index=False)
         df_macro.to_excel(writer, sheet_name='Macro_Raw', index=False)
+        # ── New sheets ───────────────────────────────────────────────────────
+        if not df_decay.empty:
+            df_decay.to_excel(writer, sheet_name='IS_OOS_Decay', index=False)
+        if not df_dsr_rob.empty:
+            df_dsr_rob.to_excel(writer, sheet_name='DSR_Robustness', index=False)
+        if not df_pnl_heatmap.empty:
+            df_pnl_heatmap.to_excel(writer, sheet_name='OOS_PnL_Heatmap', index=False)
+        if not df_pnl_long.empty:
+            df_pnl_long.to_excel(writer, sheet_name='OOS_PnL_Detail', index=False)
+        if not df_curve_comp.empty:
+            df_curve_comp.to_excel(writer, sheet_name='OOS_Curve_Comparison', index=False)
+        if not mrpt_curve.empty:
+            mrpt_curve.to_excel(writer, sheet_name='MRPT_Equity_Curve', index=False)
+        if not mtfs_curve.empty:
+            mtfs_curve.to_excel(writer, sheet_name='MTFS_Equity_Curve', index=False)
         # Daily report macro snapshot
         daily_report_text = _read_daily_report_macro()
         if daily_report_text:

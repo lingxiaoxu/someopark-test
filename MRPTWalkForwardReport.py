@@ -326,10 +326,15 @@ def generate_report(wf_dir=None, run_prefix=None):
     # ── Section 2: Interest expense ───────────────────────────────────────────
     # interest_expense_history stores a daily rate (same value repeated each day),
     # NOT a cumulative total.  Sum across all OOS days to get actual cost.
+    # first_day_interest: each window's day-1 interest is charged to equity but
+    # has no corresponding dod pair PnL (no position yet on day 1).  We track
+    # this to reconcile PAIR SUM → GROSS TOTAL.
     total_interest = 0.0
+    first_day_interest = 0.0
     for w, (eq, dpnl, dod, trades, interest) in windows_data:
         if not interest.empty and 'Value' in interest.columns:
             total_interest += float(interest['Value'].sum())
+            first_day_interest += float(interest['Value'].iloc[0])
 
     if total_interest != 0:
         lines.append(f"  Interest expense:   ${-total_interest:>12,.0f}  (margin borrowing cost)")
@@ -367,17 +372,15 @@ def generate_report(wf_dir=None, run_prefix=None):
 
     lines.append('-' * 72)
     totals = pair_df.agg({'OOS_PnL': 'sum', 'N_Trades': 'sum', 'Turnover': 'sum'})
+    # Add back per-window day-1 interest (charged to equity but no dod entry yet)
+    gross_total = float(totals['OOS_PnL']) + first_day_interest
     lines.append(
-        f"{'GROSS TOTAL':<12} {totals['OOS_PnL']:>+10,.0f} {'':>7} {'':>10} {'':>7} {'':>8} "
+        f"{'GROSS TOTAL':<12} {gross_total:>+10,.0f} {'':>7} {'':>10} {'':>7} {'':>8} "
         f"{int(totals['N_Trades']):>7} {totals['Turnover']:>10,.0f}"
     )
     if total_interest != 0:
-        lines.append(
-            f"{'Interest':<12} {-total_interest:>+10,.0f}"
-        )
-        lines.append(
-            f"{'NET TOTAL':<12} {cs['total_pnl']:>+10,.0f}"
-        )
+        lines.append(f"{'Interest':<12} {-total_interest:>+10,.0f}")
+        lines.append(f"{'NET TOTAL':<12} {gross_total - total_interest:>+10,.0f}")
     lines.append('')
 
     # ── Section 4: Per-window pair selection ─────────────────────────────────

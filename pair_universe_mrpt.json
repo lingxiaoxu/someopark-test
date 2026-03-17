@@ -36,16 +36,16 @@
     "z_col": "Z_other"
   },
   {
-    "s1": "AWK",
-    "s2": "EXPD",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
-  },
-  {
     "s1": "F",
     "s2": "PG",
     "sector": "other",
     "z_col": "Z_other"
+  },
+  {
+    "s1": "AWK",
+    "s2": "EXPD",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
   },
   {
     "s1": "MTCH",
@@ -66,16 +66,16 @@
     "z_col": "Z_utilities"
   },
   {
-    "s1": "CL",
-    "s2": "GD",
-    "sector": "energy",
-    "z_col": "Z_energy"
-  },
-  {
     "s1": "GRMN",
     "s2": "KO",
     "sector": "food",
     "z_col": "Z_food"
+  },
+  {
+    "s1": "CL",
+    "s2": "GD",
+    "sector": "energy",
+    "z_col": "Z_energy"
   },
   {
     "s1": "CL",
@@ -84,9 +84,9 @@
     "z_col": "Z_energy"
   },
   {
-    "s1": "ED",
-    "s2": "NTAP",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
+    "s1": "PG",
+    "s2": "RTX",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
   }
 ]

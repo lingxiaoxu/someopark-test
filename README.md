@@ -432,16 +432,53 @@ conda run -n someopark_run python MTFSWalkForwardReport.py
 
 报告包含：
 - **窗口级汇总**：每个 OOS 窗口的 PnL / Sharpe / MaxDD / 天数
-- **拼接 OOS 总览**：跨 6 窗口的净 PnL、Sharpe、最大回撤；利息拆分
+- **拼接 OOS 总览**：跨 6 窗口的 GROSS TOTAL（含 first-day interest 修正）→ Interest → NET TOTAL；利息拆分
 - **配对级明细**：各配对在全部窗口的总 PnL / Sharpe / 胜率 / 交易次数
 - **各窗口入选配对**：DSR 过滤后实际参与 OOS 的配对列表
 - **止损分解（MTFS 专属）**：各类止损触发次数及占比
+
+> **GROSS TOTAL 修正说明**：每个 OOS 窗口 Day-1 的利息费用计入 equity，但当天无配对 PnL 记录（还未开仓）。报告在 PAIR SUM 基础上加回各窗口 `first_day_interest` 得到 GROSS TOTAL，再减去全部利息得到 NET TOTAL，使三行数字严格对齐。
 
 ### 解读结果
 
 - **OOS Sharpe > 0** 且**各窗口一致正向**：策略真实可用
 - **OOS Sharpe 远低于 IS Sharpe**：存在过拟合，需审查参数复杂度
 - **DSR 选中率低**：信号质量弱，需重新设计因子
+
+---
+
+### WalkForwardDiagnostic — 深度诊断报告
+
+`WalkForwardDiagnostic.py` 自动读取最新 walk-forward 结果，输出多维 Excel 诊断报告。
+
+```bash
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python WalkForwardDiagnostic.py
+```
+
+输出：`historical_runs/wf_diagnostic_<timestamp>.xlsx`
+
+**文件查找逻辑（全自动，无硬编码日期）：**
+
+- `walk_forward_summary_*.json`：按 mtime 取最新，提取 `windows[0].train_start` 作为锚点
+- 窗口目录：匹配 `window{NN}_{anchor}_*`，通过锚点避免选错旧 run
+- OOS test xlsx：在各窗口目录下递归 glob，按 mtime 取最新（同一参数可能因重跑有多个文件）
+- DSR log / OOS pair summary / equity curve：在 wf_dir 根目录 glob，按 mtime 取最新
+
+**Excel 工作表说明：**
+
+| Sheet | 内容 |
+|-------|------|
+| `Executive_Summary` | 宏观环境 IS→OOS 变化、各窗口 PnL/Sharpe/VIX/SPY、协整检验、Ticker 集中风险、问题配对综合结论 |
+| `MRPT_Pairs` / `MTFS_Pairs` | 每个配对 × 7 窗口（IS + 6 OOS）的 Sharpe / MaxDD / 协整 p 值 / 相关系数 |
+| `Regime_Comparison` | 每个 OOS 窗口的 VIX、SPY 回报、HY 利差、利率、失业率等宏观指标快照 |
+| `Cross_Correlations` | IS vs OOS 跨品种相关矩阵对比，标注变化最大的 ticker 对 |
+| `Cointegration` | 每个配对每窗口的协整 p 值，标注 IS 强但 OOS 丧失协整的风险配对 |
+| `IS_OOS_Decay` | IS 最优 Sharpe → OOS 实际 Sharpe 的衰减比率；DSR 鲁棒性标签（Fragile / Moderate / Robust） |
+| `DSR_Robustness` | 每个配对 × 窗口：31/32 个参数集中通过 DSR 的数量、Pass Rate、Selected 参数的 Sharpe/DSR |
+| `OOS_PnL_Heatmap` | 配对 × 窗口 PnL 热图（宽表，直接从 portfolio xlsx 读取 dod_pair_trade_pnl_history） |
+| `OOS_PnL_Detail` | 每个配对每窗口的 WinRate、N_Days_Active、N_Stops 明细 |
+| `OOS_Curve_Comparison` | MRPT vs MTFS 每日 PnL 相关系数，评估双策略分散化效果 |
+| `MRPT_Equity_Curve` / `MTFS_Equity_Curve` | 拼接 6 窗口的逐日权益曲线 |
 
 ---
 

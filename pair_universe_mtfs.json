@@ -12,6 +12,12 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
+    "s1": "CTRA",
+    "s2": "ACGL",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
     "s1": "BK",
     "s2": "ALL",
     "sector": "finance",
@@ -30,22 +36,10 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "CTRA",
-    "s2": "ACGL",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
     "s1": "MCD",
     "s2": "ACGL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "AEE",
-    "s2": "BKR",
-    "sector": "energy",
-    "spread_col": "Momentum_Spread_energy"
   },
   {
     "s1": "RSG",
@@ -79,6 +73,12 @@
   },
   {
     "s1": "EVRG",
+    "s2": "AVB",
+    "sector": "realestate",
+    "spread_col": "Momentum_Spread_realestate"
+  },
+  {
+    "s1": "TJX",
     "s2": "AVB",
     "sector": "realestate",
     "spread_col": "Momentum_Spread_realestate"

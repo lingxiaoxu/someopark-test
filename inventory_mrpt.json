@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-03-17",
+  "as_of": "2026-03-18",
   "capital": 500000,
   "pairs": {
     "DG/MOS": {
@@ -28,15 +28,7 @@
       "days_held": 0
     },
     "CART/DASH": {
-      "strategy": "mrpt",
-      "param_set": "static_threshold",
-      "direction": "short",
-      "s1_shares": -2706,
-      "s2_shares": 598,
-      "open_date": "2026-03-13",
-      "open_s1_price": 37.6,
-      "open_s2_price": 162.725,
-      "days_held": 0
+      "direction": null
     },
     "CL/SRE": {
       "strategy": "mrpt",
@@ -47,6 +39,17 @@
       "open_date": "2026-03-17",
       "open_s1_price": 88.84,
       "open_s2_price": 95.11,
+      "days_held": 0
+    },
+    "MTCH/NVR": {
+      "strategy": "mrpt",
+      "param_set": "static_threshold",
+      "direction": "long",
+      "s1_shares": 2742,
+      "s2_shares": -12,
+      "open_date": "2026-03-18",
+      "open_s1_price": 30.29,
+      "open_s2_price": 6565.94,
       "days_held": 0
     }
   }
