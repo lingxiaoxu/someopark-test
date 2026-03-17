@@ -437,8 +437,6 @@ conda run -n someopark_run python MTFSWalkForwardReport.py
 - **各窗口入选配对**：DSR 过滤后实际参与 OOS 的配对列表
 - **止损分解（MTFS 专属）**：各类止损触发次数及占比
 
-> **GROSS TOTAL 修正说明**：每个 OOS 窗口 Day-1 的利息费用计入 equity，但当天无配对 PnL 记录（还未开仓）。报告在 PAIR SUM 基础上加回各窗口 `first_day_interest` 得到 GROSS TOTAL，再减去全部利息得到 NET TOTAL，使三行数字严格对齐。
-
 ### 解读结果
 
 - **OOS Sharpe > 0** 且**各窗口一致正向**：策略真实可用
