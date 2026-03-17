@@ -298,6 +298,34 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 14. WalkForwardDiagnostic.py — Walk-Forward 深度诊断
+
+在 MRPT 和 MTFS Walk-Forward 都完成后运行，自动读取最新结果，生成多维 Excel 诊断报告。
+
+```bash
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python WalkForwardDiagnostic.py
+```
+
+输出：`historical_runs/wf_diagnostic_<timestamp>.xlsx`，包含以下 sheet：
+
+| Sheet | 内容 |
+|-------|------|
+| `Executive_Summary` | 宏观环境 IS→OOS 变化、各窗口 PnL/Sharpe/VIX/SPY、协整检验、Ticker 集中风险、问题配对综合结论 |
+| `MRPT_Pairs` / `MTFS_Pairs` | 每个配对 × 7 窗口（IS + 6 OOS）的 Sharpe / MaxDD / 协整 p 值 / 相关系数 |
+| `Regime_Comparison` | 每个 OOS 窗口的 VIX、SPY 回报、HY 利差、利率、失业率等宏观指标快照 |
+| `Cross_Correlations` | IS vs OOS 跨品种相关矩阵对比，标注变化最大的 ticker 对 |
+| `Cointegration` | 每个配对每窗口的协整 p 值，标注 IS 强但 OOS 丧失协整的风险配对 |
+| `IS_OOS_Decay` | IS 最优 Sharpe → OOS 实际 Sharpe 的衰减比率；DSR 鲁棒性标签（Fragile / Moderate / Robust） |
+| `DSR_Robustness` | 每个配对 × 窗口：31/32 个参数集中通过 DSR 的数量、Pass Rate、Selected 参数的 Sharpe/DSR |
+| `OOS_PnL_Heatmap` | 配对 × 窗口 PnL 热图（宽表，直接从 portfolio xlsx 读取 `dod_pair_trade_pnl_history`） |
+| `OOS_PnL_Detail` | 每个配对每窗口的 WinRate、N_Days_Active、N_Stops 明细 |
+| `OOS_Curve_Comparison` | MRPT vs MTFS 每日 PnL 相关系数，评估双策略分散化效果 |
+| `MRPT_Equity_Curve` / `MTFS_Equity_Curve` | 拼接 6 窗口的逐日权益曲线 |
+
+> 所有文件自动按 mtime 查找最新版本，无需指定日期或路径。
+
+---
+
 ## 标准全流程（从头 Step1 → Step3）
 
 ```bash
@@ -353,6 +381,10 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 # 5. 每日信号
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both
+
+# 6. Walk-Forward 深度诊断（两个 WalkForward 都跑完后运行）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python WalkForwardDiagnostic.py
+# 输出：historical_runs/wf_diagnostic_<timestamp>.xlsx
 ```
 
 ---
