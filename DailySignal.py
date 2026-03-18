@@ -81,6 +81,7 @@ import argparse
 import json
 import logging
 import os
+import shutil
 import sys
 import glob
 from copy import deepcopy
@@ -101,6 +102,7 @@ BASE_DIR    = os.path.dirname(os.path.abspath(__file__))
 TRADING_DIR = os.path.join(BASE_DIR, 'trading_signals')
 SIGNALS_DIR = TRADING_DIR
 REPORTS_DIR = TRADING_DIR
+INVENTORY_HISTORY_DIR = os.path.join(BASE_DIR, 'inventory_history')
 
 # 回测基准资本（order_target_percent 基于此，scaling 以此为分母）
 BACKTEST_BASE_CAPITAL = 1_000_000.0
@@ -130,6 +132,13 @@ def load_inventory(strategy: str) -> dict:
 
 def save_inventory(inv: dict, strategy: str):
     path = inventory_path(strategy)
+    # Backup existing file before overwriting
+    if os.path.exists(path):
+        os.makedirs(INVENTORY_HISTORY_DIR, exist_ok=True)
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        backup_path = os.path.join(INVENTORY_HISTORY_DIR, f"inventory_{strategy}_{ts}.json")
+        shutil.copy2(path, backup_path)
+        log.info(f"inventory_{strategy}.json backed up → {backup_path}")
     with open(path, 'w') as f:
         json.dump(inv, f, indent=2, default=str)
     log.info(f"inventory_{strategy}.json updated → {path}")
@@ -1285,15 +1294,15 @@ def run_daily_signal(
             'mrpt':              mrpt_out,
             'mtfs':              mtfs_out,
         }
+        ts_str = datetime.now().strftime('%Y%m%d_%H%M%S')
         sig_path = os.path.join(SIGNALS_DIR,
-                                f"combined_signals_{signal_date.strftime('%Y%m%d')}.json")
+                                f"combined_signals_{ts_str}.json")
         with open(sig_path, 'w') as f:
             json.dump(combined_out, f, indent=2, default=str)
         log.info(f"Combined signals saved → {sig_path}")
 
         # ── 生成详细报告 ───────────────────────────────────────────────────
         os.makedirs(REPORTS_DIR, exist_ok=True)
-        date_str = signal_date.strftime('%Y%m%d')
         report = build_full_report_json(
             strategy='both',
             signal_date=signal_date,
@@ -1303,12 +1312,12 @@ def run_daily_signal(
             mtfs_out=mtfs_out,
             monitor=monitor,
         )
-        rpt_json_path = os.path.join(REPORTS_DIR, f'daily_report_{date_str}.json')
+        rpt_json_path = os.path.join(REPORTS_DIR, f'daily_report_{ts_str}.json')
         with open(rpt_json_path, 'w', encoding='utf-8') as f:
             json.dump(report, f, indent=2, ensure_ascii=False, default=str)
         log.info(f"Report JSON saved → {rpt_json_path}")
 
-        rpt_txt_path = os.path.join(REPORTS_DIR, f'daily_report_{date_str}.txt')
+        rpt_txt_path = os.path.join(REPORTS_DIR, f'daily_report_{ts_str}.txt')
         write_report_txt(report, rpt_txt_path)
         print(f"\n  详细报告: {rpt_json_path}")
         print(f"  文字报告: {rpt_txt_path}")
@@ -1341,7 +1350,7 @@ def run_daily_signal(
 
     # ── 生成详细报告 ──────────────────────────────────────────────────────
     os.makedirs(REPORTS_DIR, exist_ok=True)
-    date_str = signal_date.strftime('%Y%m%d')
+    ts_str = datetime.now().strftime('%Y%m%d_%H%M%S')
     report = build_full_report_json(
         strategy=strategy,
         signal_date=signal_date,
@@ -1350,12 +1359,12 @@ def run_daily_signal(
         single_out=single_out,
         monitor=monitor,
     )
-    rpt_json_path = os.path.join(REPORTS_DIR, f'daily_report_{strategy}_{date_str}.json')
+    rpt_json_path = os.path.join(REPORTS_DIR, f'daily_report_{strategy}_{ts_str}.json')
     with open(rpt_json_path, 'w', encoding='utf-8') as f:
         json.dump(report, f, indent=2, ensure_ascii=False, default=str)
     log.info(f"Report JSON saved → {rpt_json_path}")
 
-    rpt_txt_path = os.path.join(REPORTS_DIR, f'daily_report_{strategy}_{date_str}.txt')
+    rpt_txt_path = os.path.join(REPORTS_DIR, f'daily_report_{strategy}_{ts_str}.txt')
     write_report_txt(report, rpt_txt_path)
     print(f"\n  详细报告: {rpt_json_path}")
     print(f"  文字报告: {rpt_txt_path}")
@@ -1405,7 +1414,7 @@ def _run_single(strategy: str, signal_date: date, dry_run: bool,
     }
 
     sig_path = os.path.join(SIGNALS_DIR,
-                            f"{strategy}_signals_{signal_date.strftime('%Y%m%d')}.json")
+                            f"{strategy}_signals_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     with open(sig_path, 'w') as f:
         json.dump(out, f, indent=2, default=str)
     log.info(f"[{strategy.upper()}] Signals saved → {sig_path}")

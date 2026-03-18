@@ -17,15 +17,7 @@
       "direction": null
     },
     "D/MCHP": {
-      "strategy": "mrpt",
-      "param_set": "conservative_no_leverage",
-      "direction": "short",
-      "s1_shares": -824,
-      "s2_shares": 757,
-      "open_date": "2026-03-13",
-      "open_s1_price": 63.1132,
-      "open_s2_price": 62.825,
-      "days_held": 0
+      "direction": null
     },
     "CART/DASH": {
       "direction": null
@@ -42,14 +34,17 @@
       "days_held": 0
     },
     "MTCH/NVR": {
+      "direction": null
+    },
+    "F/PG": {
       "strategy": "mrpt",
-      "param_set": "static_threshold",
-      "direction": "long",
-      "s1_shares": 2742,
-      "s2_shares": -12,
+      "param_set": "stable_signal_quick_exit",
+      "direction": "short",
+      "s1_shares": -6426,
+      "s2_shares": 500,
       "open_date": "2026-03-18",
-      "open_s1_price": 30.29,
-      "open_s2_price": 6565.94,
+      "open_s1_price": 11.94,
+      "open_s2_price": 151.48,
       "days_held": 0
     }
   }

@@ -15,9 +15,11 @@ SelectPairs.py — 从 someopark 数据库的 pairs_day_select 集合中
 import argparse
 import json
 import os
+import shutil
 import sys
 import time
 from collections import defaultdict, Counter
+from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -447,6 +449,17 @@ def print_table(title, selected, strategy_type="mrpt", returns: dict = None):
 
 
 def save_json(data, filepath):
+    # Backup existing file before overwriting
+    if os.path.exists(filepath):
+        base = os.path.dirname(filepath)
+        history_dir = os.path.join(base, 'pair_universe_history')
+        os.makedirs(history_dir, exist_ok=True)
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = os.path.basename(filepath)
+        name, ext = os.path.splitext(filename)
+        backup_path = os.path.join(history_dir, f"{name}_{ts}{ext}")
+        shutil.copy2(filepath, backup_path)
+        print(f"已备份: {backup_path}")
     with open(filepath, "w") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
     print(f"已保存: {filepath}")

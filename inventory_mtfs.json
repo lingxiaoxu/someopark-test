@@ -58,6 +58,18 @@
       "open_date": "2026-03-18",
       "open_s1_price": 106.17,
       "open_s2_price": 169.14,
+      "days_held": 1,
+      "last_updated": "2026-03-18"
+    },
+    "RSG/AFL": {
+      "strategy": "mtfs",
+      "param_set": "kalman_aggressive",
+      "direction": "short",
+      "s1_shares": -799,
+      "s2_shares": 1628,
+      "open_date": "2026-03-18",
+      "open_s1_price": 224.77,
+      "open_s2_price": 109.52,
       "days_held": 0
     }
   }
