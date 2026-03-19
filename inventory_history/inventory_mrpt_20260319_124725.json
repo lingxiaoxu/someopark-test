@@ -1,0 +1,35 @@
+{
+  "as_of": "2026-03-19",
+  "capital": 500000,
+  "pairs": {
+    "DG/MOS": {
+      "strategy": "mrpt",
+      "param_set": "deep_dislocation",
+      "direction": "long",
+      "s1_shares": 1005,
+      "s2_shares": -5208,
+      "open_date": "2026-03-13",
+      "open_s1_price": 135.635,
+      "open_s2_price": 31.205,
+      "days_held": 0
+    },
+    "GS/ALLY": {
+      "direction": null
+    },
+    "D/MCHP": {
+      "direction": null
+    },
+    "CART/DASH": {
+      "direction": null
+    },
+    "CL/SRE": {
+      "direction": null
+    },
+    "MTCH/NVR": {
+      "direction": null
+    },
+    "F/PG": {
+      "direction": null
+    }
+  }
+}

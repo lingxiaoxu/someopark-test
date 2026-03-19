@@ -294,7 +294,16 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both --date 2026-03-12
 ```
 
-输出：`trading_signals/mrpt_signals_<date>.json`，`trading_signals/mtfs_signals_<date>.json`，`trading_signals/combined_signals_<date>.json`，`trading_signals/daily_report_<date>.txt`
+**Position Monitor 行为：**
+- 对 `inventory_mrpt.json` / `inventory_mtfs.json` 中所有开仓记录，从 `open_date` 模拟至今（或 `--date` 指定日期），每日检测止损条件
+- 使用开仓时记录的 `param_set` + `open_hedge_ratio`，与实盘参数完全一致
+- MRPT 止损：波动率止损（spread vs mean±2.5σ）、价格止损（spread × 0.8/1.5）、时间止损（max_holding_period）、z-score 自然回归
+- MTFS 止损：动量衰减/反转（exit_on_momentum_decay + SMA 穿越）、配对 PnL 止损（-3%）、波动率止损（价格比率）、时间止损
+- 输出：HOLD（继续持仓）/ CLOSE（自然平仓）/ CLOSE_STOP（止损触发，含触发日期和原因）
+- 每对模拟 Excel 保存至 `trading_signals/monitor_history/monitor_<strategy>_<pair>_<ts>.xlsx`
+- 每次运行前自动将 inventory 备份到 `inventory_history/`（按 as_of 日期保留唯一快照）
+
+输出：`trading_signals/mrpt_signals_<date>.json`，`trading_signals/mtfs_signals_<date>.json`，`trading_signals/combined_signals_<date>.json`，`trading_signals/daily_report_<date>.txt`，`trading_signals/monitor_history/monitor_*.xlsx`
 
 ---
 
@@ -601,6 +610,11 @@ inventory_mtfs.json   — MTFS 当前开仓记录
 | `pairs.<key>.open_s2_price` | 开仓时 S2 价格 |
 | `pairs.<key>.days_held` | 已持仓日历天数（每日 idempotent 递增） |
 | `pairs.<key>.last_updated` | 最后更新日期（防止重复计数） |
-| `pairs.<key>.param_set` | 该仓位使用的参数组 |
+| `pairs.<key>.param_set` | 该仓位使用的参数组（Position Monitor 用此参数跑模拟） |
+| `pairs.<key>.open_hedge_ratio` | 开仓时的对冲比率（MRPT: Kalman ratio；MTFS: dollar ratio） |
+| `pairs.<key>.open_signal` | 开仓时的信号值（MRPT: z_score；MTFS: momentum_spread） |
+| `pairs.<key>.wf_source` | 来源 Walk-Forward 文件（`walk_forward_summary_*.json`） |
+| `pairs.<key>.open_price_level_stop` | 开仓时的价格止损水位（MRPT 专属，null 表示未设置） |
+| `pairs.<key>.monitor_log` | 最近一次 Position Monitor 输出摘要（action / days_held / upnl） |
 
-> **注意**：`days_held` 基于日历天数，每天只递增一次（通过 `last_updated` 保证 re-run 幂等）。持仓期间 shares 固定不变，不随 regime 调整。
+> **注意**：`days_held` 基于日历天数，每天只递增一次（通过 `last_updated` 保证 re-run 幂等）。持仓期间 shares 固定不变，不随 regime 调整。inventory 每次运行前自动备份至 `inventory_history/`，按 `as_of` 日期去重保留唯一快照。

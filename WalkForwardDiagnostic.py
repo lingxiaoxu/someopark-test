@@ -500,7 +500,7 @@ def build_executive_summary(df_macro, df_regime, df_summary, df_coint, all_windo
 def _read_daily_report_macro():
     """Read the latest daily_report macro section from trading_signals/."""
     import glob as globmod
-    pattern = os.path.join(BASE_DIR, 'trading_signals', 'daily_report_*.txt')
+    pattern = os.path.join(BASE_DIR, 'trading_signals', 'daily_report_[0-9]*.txt')
     files = sorted(globmod.glob(pattern))
     if not files:
         return None

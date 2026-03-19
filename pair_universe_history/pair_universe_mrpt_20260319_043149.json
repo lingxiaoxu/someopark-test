@@ -1,0 +1,92 @@
+[
+  {
+    "s1": "AWK",
+    "s2": "FOX",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "CL",
+    "s2": "WST",
+    "sector": "energy",
+    "z_col": "Z_energy"
+  },
+  {
+    "s1": "MKTX",
+    "s2": "WST",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "MSCI",
+    "s2": "MTB",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "AWK",
+    "s2": "STLD",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "FSLR",
+    "s2": "WST",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "F",
+    "s2": "PG",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "MTCH",
+    "s2": "NVR",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "AWK",
+    "s2": "EXPD",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "GRMN",
+    "s2": "KO",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "ETR",
+    "s2": "MKTX",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "HII",
+    "s2": "PG",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
+    "s1": "CL",
+    "s2": "GD",
+    "sector": "energy",
+    "z_col": "Z_energy"
+  },
+  {
+    "s1": "GIS",
+    "s2": "HUBB",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "PG",
+    "s2": "RTX",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  }
+]

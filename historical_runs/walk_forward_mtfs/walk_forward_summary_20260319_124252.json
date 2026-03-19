@@ -1,0 +1,536 @@
+{
+  "generated_at": "2026-03-19T12:42:52.185537",
+  "strategy": "MTFS",
+  "mode": "expanding",
+  "n_param_sets": 31,
+  "train_start": "2024-01-29",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 162,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-01-29",
+      "train_end": "2025-07-28",
+      "test_start": "2025-07-29",
+      "test_end": "2025-09-04",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "ALL",
+          "GS",
+          "fast_strict"
+        ],
+        [
+          "ALL",
+          "SPG",
+          "balanced"
+        ],
+        [
+          "CB",
+          "ACGL",
+          "aggressive"
+        ],
+        [
+          "CTRA",
+          "ACGL",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BK",
+          "ALL",
+          "weekly_aligned_windows"
+        ],
+        [
+          "XOM",
+          "V",
+          "aggressive"
+        ],
+        [
+          "MCD",
+          "ACGL",
+          "monthly_aligned_windows"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ETR",
+          "AIG",
+          "aggressive"
+        ],
+        [
+          "AIG",
+          "HST",
+          "no_reversal_protection"
+        ],
+        [
+          "JNJ",
+          "AIG",
+          "fast_rebalance"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "weekly_aligned_windows"
+        ],
+        [
+          "EVRG",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "TJX",
+          "AVB",
+          "sensitive_reversal"
+        ],
+        [
+          "C",
+          "GS",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": -4.942289158498314,
+      "oos_pnl": -13829.729371301379
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-01-29",
+      "train_end": "2025-09-04",
+      "test_start": "2025-09-05",
+      "test_end": "2025-10-13",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "ALL",
+          "GS",
+          "fast_strict"
+        ],
+        [
+          "ALL",
+          "SPG",
+          "vol_sized_conservative"
+        ],
+        [
+          "CB",
+          "ACGL",
+          "sensitive_reversal"
+        ],
+        [
+          "CTRA",
+          "ACGL",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BK",
+          "ALL",
+          "sensitive_reversal"
+        ],
+        [
+          "XOM",
+          "V",
+          "aggressive"
+        ],
+        [
+          "MCD",
+          "ACGL",
+          "aggressive"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "aggressive"
+        ],
+        [
+          "ETR",
+          "AIG",
+          "aggressive"
+        ],
+        [
+          "AIG",
+          "HST",
+          "sensitive_reversal"
+        ],
+        [
+          "JNJ",
+          "AIG",
+          "fast_rebalance"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "aggressive"
+        ],
+        [
+          "EVRG",
+          "AVB",
+          "kalman_aggressive"
+        ],
+        [
+          "TJX",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "C",
+          "GS",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": 6.692570787276182,
+      "oos_pnl": 17016.045351826804
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-01-29",
+      "train_end": "2025-10-13",
+      "test_start": "2025-10-14",
+      "test_end": "2025-11-19",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "ALL",
+          "GS",
+          "fast_strict"
+        ],
+        [
+          "ALL",
+          "SPG",
+          "vol_sized_conservative"
+        ],
+        [
+          "CB",
+          "ACGL",
+          "sensitive_reversal"
+        ],
+        [
+          "CTRA",
+          "ACGL",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BK",
+          "ALL",
+          "sensitive_reversal"
+        ],
+        [
+          "XOM",
+          "V",
+          "aggressive"
+        ],
+        [
+          "MCD",
+          "ACGL",
+          "aggressive"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "aggressive"
+        ],
+        [
+          "ETR",
+          "AIG",
+          "aggressive"
+        ],
+        [
+          "AIG",
+          "HST",
+          "sensitive_reversal"
+        ],
+        [
+          "JNJ",
+          "AIG",
+          "beta_neutral_long_term"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "aggressive"
+        ],
+        [
+          "EVRG",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "TJX",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "C",
+          "GS",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": -0.9407721657742639,
+      "oos_pnl": -1421.7810633231566
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-01-29",
+      "train_end": "2025-11-19",
+      "test_start": "2025-11-20",
+      "test_end": "2025-12-30",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "ALL",
+          "GS",
+          "fast_strict"
+        ],
+        [
+          "ALL",
+          "SPG",
+          "vol_sized_conservative"
+        ],
+        [
+          "CB",
+          "ACGL",
+          "sensitive_reversal"
+        ],
+        [
+          "CTRA",
+          "ACGL",
+          "weekly_aligned_windows"
+        ],
+        [
+          "BK",
+          "ALL",
+          "monthly_aligned_windows"
+        ],
+        [
+          "XOM",
+          "V",
+          "aggressive"
+        ],
+        [
+          "MCD",
+          "ACGL",
+          "aggressive"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "aggressive"
+        ],
+        [
+          "ETR",
+          "AIG",
+          "aggressive"
+        ],
+        [
+          "AIG",
+          "HST",
+          "sensitive_reversal"
+        ],
+        [
+          "JNJ",
+          "AIG",
+          "aggressive"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "aggressive"
+        ],
+        [
+          "EVRG",
+          "AVB",
+          "weekly_aligned_windows"
+        ],
+        [
+          "TJX",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "C",
+          "GS",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": -9.153329498199566,
+      "oos_pnl": -31790.197516189437
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-01-29",
+      "train_end": "2025-12-30",
+      "test_start": "2025-12-31",
+      "test_end": "2026-02-09",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "ALL",
+          "GS",
+          "fast_strict"
+        ],
+        [
+          "ALL",
+          "SPG",
+          "vol_sized_conservative"
+        ],
+        [
+          "CB",
+          "ACGL",
+          "sensitive_reversal"
+        ],
+        [
+          "CTRA",
+          "ACGL",
+          "weekly_aligned_windows"
+        ],
+        [
+          "BK",
+          "ALL",
+          "weekly_aligned_windows"
+        ],
+        [
+          "XOM",
+          "V",
+          "aggressive"
+        ],
+        [
+          "MCD",
+          "ACGL",
+          "aggressive"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "kalman_aggressive"
+        ],
+        [
+          "ETR",
+          "AIG",
+          "aggressive"
+        ],
+        [
+          "AIG",
+          "HST",
+          "sensitive_reversal"
+        ],
+        [
+          "JNJ",
+          "AIG",
+          "beta_neutral"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "weekly_aligned_windows"
+        ],
+        [
+          "EVRG",
+          "AVB",
+          "weekly_aligned_windows"
+        ],
+        [
+          "TJX",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "C",
+          "GS",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": 4.009649457071414,
+      "oos_pnl": 18467.057521877563
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-01-29",
+      "train_end": "2026-02-09",
+      "test_start": "2026-02-10",
+      "test_end": "2026-03-19",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "ALL",
+          "GS",
+          "short_term_tilt"
+        ],
+        [
+          "ALL",
+          "SPG",
+          "vol_sized_conservative"
+        ],
+        [
+          "CB",
+          "ACGL",
+          "sensitive_reversal"
+        ],
+        [
+          "BK",
+          "ALL",
+          "weekly_aligned_windows"
+        ],
+        [
+          "XOM",
+          "V",
+          "aggressive"
+        ],
+        [
+          "MCD",
+          "ACGL",
+          "aggressive"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "kalman_aggressive"
+        ],
+        [
+          "ETR",
+          "AIG",
+          "aggressive"
+        ],
+        [
+          "AIG",
+          "HST",
+          "sensitive_reversal"
+        ],
+        [
+          "JNJ",
+          "AIG",
+          "beta_neutral"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "aggressive"
+        ],
+        [
+          "EVRG",
+          "AVB",
+          "weekly_aligned_windows"
+        ],
+        [
+          "TJX",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "C",
+          "GS",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": 0.6050711294139354,
+      "oos_pnl": 1027.5625393431255
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": -11407.056318945892,
+    "oos_trading_days": 156,
+    "oos_sharpe": -0.5073199699137068,
+    "oos_max_dd_dollar": -46057.16759631864,
+    "oos_max_dd_pct": -0.09061150120900924
+  }
+}

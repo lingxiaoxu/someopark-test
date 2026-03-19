@@ -1,0 +1,76 @@
+{
+  "as_of": "2026-03-18",
+  "capital": 500000,
+  "pairs": {
+    "GS/ALLY": {
+      "strategy": "mtfs",
+      "param_set": "aggressive",
+      "direction": "long",
+      "s1_shares": 38,
+      "s2_shares": -802,
+      "open_date": "2026-03-05",
+      "open_s1_price": 835.46,
+      "open_s2_price": 39.9,
+      "days_held": 4,
+      "last_updated": "2026-03-11"
+    },
+    "ESS/EXPD": {
+      "strategy": "mtfs",
+      "param_set": "no_reversal_protection",
+      "direction": "short",
+      "s1_shares": -130,
+      "s2_shares": 227,
+      "open_date": "2026-03-06",
+      "open_s1_price": 255.13,
+      "open_s2_price": 146.86,
+      "days_held": 3,
+      "last_updated": "2026-03-11"
+    },
+    "MCHP/D": {
+      "strategy": "mtfs",
+      "param_set": "monthly_aligned_windows",
+      "direction": "short",
+      "s1_shares": -1798,
+      "s2_shares": 1789,
+      "open_date": "2026-03-13",
+      "open_s1_price": 62.82,
+      "open_s2_price": 63.14,
+      "days_held": 0
+    },
+    "XOM/V": {
+      "strategy": "mtfs",
+      "param_set": "aggressive",
+      "direction": "long",
+      "s1_shares": 1064,
+      "s2_shares": -541,
+      "open_date": "2026-03-17",
+      "open_s1_price": 156.12,
+      "open_s2_price": 307.14,
+      "days_held": 1,
+      "last_updated": "2026-03-18"
+    },
+    "ETR/AVB": {
+      "strategy": "mtfs",
+      "param_set": "aggressive",
+      "direction": "long",
+      "s1_shares": 1151,
+      "s2_shares": -722,
+      "open_date": "2026-03-18",
+      "open_s1_price": 106.17,
+      "open_s2_price": 169.14,
+      "days_held": 1,
+      "last_updated": "2026-03-18"
+    },
+    "RSG/AFL": {
+      "strategy": "mtfs",
+      "param_set": "kalman_aggressive",
+      "direction": "short",
+      "s1_shares": -799,
+      "s2_shares": 1628,
+      "open_date": "2026-03-18",
+      "open_s1_price": 224.77,
+      "open_s2_price": 109.52,
+      "days_held": 0
+    }
+  }
+}
