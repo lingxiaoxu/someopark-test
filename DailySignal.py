@@ -374,6 +374,14 @@ def _inject_inventory_into_context(context, inventory: dict, signal_date: pd.Tim
             if s2s:
                 context.portfolio.positions[s2] = s2s
 
+            # ── Inject cost basis so PnL stop works correctly ────────────
+            open_p1 = inv_pair.get('open_s1_price') or 0
+            open_p2 = inv_pair.get('open_s2_price') or 0
+            if open_p1 and s1s:
+                context.portfolio.cost_basis_history[s1] = [(signal_date, open_p1)]
+            if open_p2 and s2s:
+                context.portfolio.cost_basis_history[s2] = [(signal_date, open_p2)]
+
             # ── Inject synthetic Trade so time-based stop works ──────────
             open_date_str = inv_pair.get('open_date')
             if open_date_str:
@@ -386,7 +394,6 @@ def _inject_inventory_into_context(context, inventory: dict, signal_date: pd.Tim
                     trade_date = valid_dates[0] if valid_dates else (
                         all_dates[-1] if all_dates else open_ts)
 
-                    open_p1 = inv_pair.get('open_s1_price') or 0
                     # s1 amount: positive for long (bought s1), negative for short (sold s1)
                     s1_amount = abs(s1s) if direction == 'long' else -abs(s1s)
                     fake_trade = Trade(
@@ -547,11 +554,21 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
         d.update(_legs(inv_direction))
         return d
 
+    # Values at open time — stored in inventory for accurate monitor restoration.
+    # open_hedge_ratio: OLS hedge on open day (informational).
+    # open_price_level_stop: the exact stop level set by the strategy (spread[-1]*0.8
+    #   for long, *1.5 for short) — injected directly by monitor, no reconstruction.
+    _hh = context.portfolio.hedge_history.get(pair_key, [])
+    open_hedge_ratio = _hh[-1][1] if _hh else None
+    open_price_level_stop = context.execution.price_level_stop_loss.get(pair_key)
+
     # OPEN LONG
     if in_long and not inv_direction:
         d = {**base, 'action': 'OPEN_LONG', 'direction': 'long',
              'entry_threshold': et,
              's1_shares': s1_shares, 's2_shares': s2_shares,
+             'open_hedge_ratio': open_hedge_ratio,
+             'open_price_level_stop': open_price_level_stop,
              'note': f'signal={sv} triggered long entry (threshold ±{et})'}
         d.update(_legs('long'))
         return d
@@ -561,6 +578,8 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
         d = {**base, 'action': 'OPEN_SHORT', 'direction': 'short',
              'entry_threshold': et,
              's1_shares': s1_shares, 's2_shares': s2_shares,
+             'open_hedge_ratio': open_hedge_ratio,
+             'open_price_level_stop': open_price_level_stop,
              'note': f'signal={sv} triggered short entry (threshold ±{et})'}
         d.update(_legs('short'))
         return d
@@ -613,6 +632,109 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
 
 # ── Inventory update ───────────────────────────────────────────────────────────
 
+def _build_wf_source_for_pair(pair_key: str, strategy: str) -> dict:
+    """
+    Build wf_source dict for a pair at the time of entry into inventory.
+    Records walk-forward summary file path and per-window param_sets / OOS stats
+    for every window where this pair appeared, keyed as W1..W6.
+    Default monitor window = last window (W6 or whatever the highest index is).
+    """
+    if strategy == 'mrpt':
+        wf_dir = os.path.join(BASE_DIR, 'historical_runs', 'walk_forward')
+    else:
+        wf_dir = os.path.join(BASE_DIR, 'historical_runs', 'walk_forward_mtfs')
+
+    summaries = sorted(glob.glob(os.path.join(wf_dir, 'walk_forward_summary_*.json')),
+                       key=os.path.getmtime)
+    if not summaries:
+        return {}
+
+    summary_file = summaries[-1]
+    try:
+        with open(summary_file) as f:
+            wf = json.load(f)
+    except Exception:
+        return {}
+
+    windows_info = {}
+    default_window = None
+    for win in wf.get('windows', []):
+        idx = win.get('window_idx')
+        wkey = f'W{idx}'
+        for s1, s2, ps in win.get('selected_pairs', []):
+            if f'{s1}/{s2}' == pair_key:
+                windows_info[wkey] = {
+                    'param_set':  ps,
+                    'train_end':  win.get('train_end'),
+                    'test_start': win.get('test_start'),
+                    'test_end':   win.get('test_end'),
+                    'oos_sharpe': round(win.get('oos_sharpe', float('nan')), 4)
+                    if win.get('oos_sharpe') is not None else None,
+                    'oos_pnl':    round(win.get('oos_pnl', 0), 2),
+                }
+                default_window = wkey  # last matching window becomes default
+
+    return {
+        'wf_summary_file': os.path.relpath(summary_file, BASE_DIR),
+        'wf_dir':          os.path.relpath(wf_dir, BASE_DIR),
+        'windows':         windows_info,
+        'default_window':  default_window,  # W6 or last window this pair appeared in
+    }
+
+
+def _lookup_hedge_from_wf(pair_key: str, open_date_str: str, strategy: str) -> float | None:
+    """
+    Fallback: look up the hedge ratio for pair_key on open_date from the latest
+    walk-forward window Excel (hedge_history sheet).
+
+    Used when open_hedge_ratio is absent from inventory (positions opened before
+    this field was introduced).  Searches all window dirs newest-first and returns
+    the first match at or before open_date.
+    """
+    if strategy == 'mrpt':
+        wf_dir = os.path.join(BASE_DIR, 'historical_runs', 'walk_forward')
+    else:
+        wf_dir = os.path.join(BASE_DIR, 'historical_runs', 'walk_forward_mtfs')
+
+    # All window subdirs sorted newest first (by mtime)
+    win_dirs = sorted(
+        [d for d in glob.glob(os.path.join(wf_dir, 'window*')) if os.path.isdir(d)],
+        key=os.path.getmtime, reverse=True,
+    )
+    if not win_dirs:
+        return None
+
+    open_ts = pd.Timestamp(open_date_str)
+
+    for win_dir in win_dirs:
+        xlsx_files = sorted(
+            glob.glob(os.path.join(win_dir, 'historical_runs', 'portfolio_history_*.xlsx')),
+            key=os.path.getmtime, reverse=True,
+        )
+        if not xlsx_files:
+            continue
+        xlsx = xlsx_files[0]
+        try:
+            hh = pd.read_excel(xlsx, sheet_name='hedge_history', parse_dates=['Date'])
+            if pair_key not in hh.columns:
+                continue
+            # Find the row closest to (and not after) open_date
+            candidates = hh[hh['Date'] <= open_ts + pd.Timedelta(days=3)]
+            if candidates.empty:
+                continue
+            row = candidates.iloc[-1]
+            val = row[pair_key]
+            if pd.notna(val):
+                log.debug(f"[monitor] {pair_key}: hedge fallback from {os.path.basename(win_dir)} "
+                          f"date={row['Date'].date()} hedge={val:.6f}")
+                return float(val)
+        except Exception as e:
+            log.debug(f"[monitor] hedge fallback: could not read {xlsx}: {e}")
+            continue
+
+    return None
+
+
 def update_inventory_from_signals(
     inventory: dict,
     signals: list,
@@ -641,16 +763,32 @@ def update_inventory_from_signals(
         action = sig['action']
 
         if action in ('OPEN_LONG', 'OPEN_SHORT'):
+            # ── Signal measures at entry ──────────────────────────────────
+            open_signal = {}
+            if strategy == 'mrpt':
+                open_signal['z_score']         = sig.get('z_score')
+                open_signal['entry_threshold'] = sig.get('entry_threshold')
+                open_signal['exit_threshold']  = sig.get('exit_threshold')
+            else:
+                open_signal['momentum_spread'] = sig.get('momentum_spread')
+                open_signal['entry_threshold'] = sig.get('entry_threshold')
+                open_signal['exit_threshold']  = sig.get('exit_threshold')
+
             inv['pairs'][pair] = {
-                'strategy':      strategy,
-                'param_set':     param_set_lookup.get(pair, 'default'),
-                'direction':     sig['direction'],
-                's1_shares':     sig.get('s1_shares', 0),
-                's2_shares':     sig.get('s2_shares', 0),
-                'open_date':     signal_date,
-                'open_s1_price': sig.get('s1_price'),
-                'open_s2_price': sig.get('s2_price'),
-                'days_held':     0,
+                'strategy':             strategy,
+                'param_set':            param_set_lookup.get(pair, 'default'),
+                'direction':            sig['direction'],
+                's1_shares':            sig.get('s1_shares', 0),
+                's2_shares':            sig.get('s2_shares', 0),
+                'open_date':            signal_date,
+                'open_s1_price':        sig.get('s1_price'),
+                'open_s2_price':        sig.get('s2_price'),
+                'open_hedge_ratio':     sig.get('open_hedge_ratio'),
+                'open_price_level_stop': sig.get('open_price_level_stop'),
+                'days_held':            0,
+                'open_signal':          open_signal,
+                'wf_source':            _build_wf_source_for_pair(pair, strategy),
+                'monitor_log':          [],
             }
 
         elif action in ('CLOSE', 'CLOSE_STOP'):
@@ -783,13 +921,17 @@ def _run_position_monitor(
         log.warning(f"[monitor] {pair_key}: unknown param_set '{param_set}', using default: {e}")
         params_dict, _ = Runs._resolve_param_set('default', pair_key)
 
-    # ── Data window: 150 trading days before open_date for warmup ─────────
+    # ── Data window: strategy-specific warmup before open_date ────────────
+    # MRPT needs z_back=36 + hedge_lag=1 = 37 bars minimum → 80 bday buffer
+    # MTFS needs max_window=150 + skip_days=21 + 1 = 172 bars minimum → 220 bday buffer
+    _MONITOR_WARMUP_BDAYS = {'mrpt': 80, 'mtfs': 220}
+    warmup_bdays = _MONITOR_WARMUP_BDAYS.get(strategy, 220)
+
     try:
         open_ts = pd.Timestamp(open_date_str) if open_date_str else pd.Timestamp(signal_date)
     except Exception:
         open_ts = pd.Timestamp(signal_date)
-    # 150 bdays of warmup before open_date + data through today
-    warmup_start = open_ts - pd.offsets.BDay(160)
+    warmup_start = open_ts - pd.offsets.BDay(warmup_bdays)
     data_start   = warmup_start.strftime('%Y-%m-%d')
     data_end     = signal_date.strftime('%Y-%m-%d')
 
@@ -816,41 +958,39 @@ def _run_position_monitor(
     if effective_ts.date() < signal_date:
         log.info(f"[monitor] {pair_key}: no data for {signal_date}; using {effective_ts.date()}")
 
-    # open_date as Timestamp for injection comparison
+    # ── Resolve open_date to first available trading day on or after open_date ──
+    # Handles weekends/holidays so injection aligns with actual data index.
     try:
-        open_ts_data = pd.Timestamp(open_date_str) if open_date_str else effective_ts
+        open_ts_raw = pd.Timestamp(open_date_str) if open_date_str else effective_ts
     except Exception:
+        open_ts_raw = effective_ts
+    # Find first data date >= open_date (injection point)
+    valid_open_dates = [d for d in historical_data.index if d >= open_ts_raw]
+    open_ts_data = valid_open_dates[0] if valid_open_dates else effective_ts
+
+    if open_ts_data > effective_ts:
+        # open_date is after latest data — shouldn't happen, fall back to effective_ts
+        log.warning(f"[monitor] {pair_key}: open_ts_data {open_ts_data.date()} > effective_ts "
+                    f"{effective_ts.date()}, falling back to effective_ts injection")
         open_ts_data = effective_ts
 
+    log.info(f"[monitor] {pair_key}: warmup ends {open_ts_data.date()}, "
+             f"position held {open_ts_data.date()} → {effective_ts.date()}")
+
     inventory_injected = False
+    # Track if the original injected position was closed by a stop or exit signal.
+    # If so, we break immediately to prevent the strategy from re-opening a synthetic
+    # position with different sizing that doesn't match the real inventory entry.
+    original_position_closed = False
+    stop_triggered_date = None
+    stop_triggered_reason = None
 
     for date_ts in historical_data.index:
         context.portfolio.current_date = date_ts
         context.portfolio.processed_dates.append(date_ts)
         current_data = CustomData(historical_data.loc[:date_ts])
-        context.warmup_mode = date_ts < effective_ts
-
-        # Inject position just before the signal day runs
-        if not inventory_injected and date_ts >= effective_ts:
-            # Build a minimal inventory dict for _inject_inventory_into_context
-            mini_inv = {'pairs': {pair_key: inv_pair}}
-            _inject_inventory_into_context(context, mini_inv, date_ts)
-
-            # ── Fix price-level stop: set using open prices as approx spread ──
-            # hedge ratio at this point from hedge_history if available
-            hh = context.portfolio.hedge_history.get(pair_key, [])
-            hedge_approx = hh[-1][1] if hh else 1.0
-            open_p1 = inv_pair.get('open_s1_price') or 0
-            open_p2 = inv_pair.get('open_s2_price') or 0
-            open_spread_approx = open_p1 - hedge_approx * open_p2
-            if open_spread_approx != 0:
-                if direction == 'long':
-                    context.execution.price_level_stop_loss[pair_key] = open_spread_approx * 0.8
-                else:
-                    context.execution.price_level_stop_loss[pair_key] = open_spread_approx * 1.5
-                log.debug(f"[monitor] {pair_key}: price_level_stop={context.execution.price_level_stop_loss[pair_key]:.4f}")
-
-            inventory_injected = True
+        # Warmup = everything before real open date; position runs from open_date → today
+        context.warmup_mode = date_ts < open_ts_data
 
         if context.warmup_mode:
             _saved_rate = context.portfolio.interest_rate
@@ -871,11 +1011,142 @@ def _run_position_monitor(
                 if lst_ref:
                     lst_ref.pop()
 
+        # ── Inject position AFTER handle_data on open_ts_data ─────────────
+        # Injecting after (not before) the opening bar mirrors real trading:
+        # the position opens during open_ts_data, so stop checks only start
+        # on the NEXT bar.  Injecting before would cause "1-day early" false
+        # stop triggers (e.g. a short opened at z=1.5 could fire a 2-σ stop
+        # immediately if the signal and volatility windows differ).
+        if not inventory_injected and date_ts == open_ts_data:
+            mini_inv = {'pairs': {pair_key: inv_pair}}
+            _inject_inventory_into_context(context, mini_inv, date_ts)
+
+            # ── Price-level stop: inject exact value from opening simulation ──
+            open_plstop = inv_pair.get('open_price_level_stop')
+            if open_plstop is not None:
+                context.execution.price_level_stop_loss[pair_key] = open_plstop
+                log.debug(f"[monitor] {pair_key}: price_level_stop={open_plstop:.4f} (from inventory)")
+            else:
+                # Clear any price_level_stop the strategy may have set during its
+                # natural open on this bar — we cannot trust that approximate value.
+                context.execution.price_level_stop_loss.pop(pair_key, None)
+                log.debug(f"[monitor] {pair_key}: open_price_level_stop not in inventory — "
+                          f"price_level_stop cleared (position predates this field)")
+
+            inventory_injected = True
+
+        # ── Detect position closure after injection ────────────────────────
+        # Only check on bars AFTER open_ts_data — never on the injection bar
+        # itself — to prevent false CLOSE_STOP on the opening day.
+        if inventory_injected and date_ts > open_ts_data and not original_position_closed:
+            pair_state = next(
+                (p[2] for p in context.strategy_pairs if f"{p[0]}/{p[1]}" == pair_key),
+                None
+            )
+            if pair_state is not None:
+                if not pair_state.get('in_long', False) and not pair_state.get('in_short', False):
+                    original_position_closed = True
+                    slh = context.execution.stop_loss_history.get(pair_key, [])
+                    if slh:
+                        # Use actual stop date from history, not detection date
+                        stop_triggered_date = pd.Timestamp(slh[-1]['date'])
+                        stop_triggered_reason = slh[-1].get('reason', 'Stop Loss')
+                    else:
+                        stop_triggered_date = date_ts
+                        stop_triggered_reason = 'Exit Signal'
+                    log.info(f"[monitor] {pair_key}: original position closed on "
+                             f"{stop_triggered_date if isinstance(stop_triggered_date, str) else stop_triggered_date.date()} "
+                             f"reason='{stop_triggered_reason}' "
+                             f"— stopping simulation to prevent synthetic re-entry")
+                    break
+
+    # ── If original injected position was closed during simulation ─────────
+    if original_position_closed:
+        slh  = context.execution.stop_loss_history.get(pair_key, [])
+        action = 'CLOSE_STOP' if slh else 'CLOSE'
+
+        # Use real inventory prices for unrealized PnL (simulation prices may differ)
+        open_p1 = inv_pair.get('open_s1_price')
+        open_p2 = inv_pair.get('open_s2_price')
+        s1s     = inv_pair.get('s1_shares', 0)
+        s2s     = inv_pair.get('s2_shares', 0)
+        upnl    = None
+        upnl_pct = None
+        prices_today = {}
+        for sym in (s1, s2):
+            ph = context.portfolio.price_history.get(sym)
+            if ph:
+                prices_today[sym] = ph[-1][1]
+        p1_now = prices_today.get(s1)
+        p2_now = prices_today.get(s2)
+        if open_p1 and open_p2 and p1_now and p2_now:
+            if direction == 'long':
+                upnl = (p1_now - open_p1) * abs(s1s) - (p2_now - open_p2) * abs(s2s)
+            else:
+                upnl = (open_p1 - p1_now) * abs(s1s) + (p2_now - open_p2) * abs(s2s)
+            cost_basis = open_p1 * abs(s1s) + open_p2 * abs(s2s)
+            upnl_pct = round(upnl / cost_basis * 100, 3) if cost_basis > 0 else None
+            upnl = round(upnl * scale_factor, 2)
+
+        # Export partial monitor history up to stop date
+        monitor_history_file = None
+        try:
+            from PortfolioClasses import ExportExcel as _ExportExcel
+            monitor_dir = os.path.join(BASE_DIR, 'trading_signals', 'monitor_history')
+            os.makedirs(monitor_dir, exist_ok=True)
+            pair_safe = pair_key.replace('/', '_')
+            ts_file = datetime.now().strftime('%Y%m%d_%H%M%S')
+            monitor_filename = os.path.join(
+                monitor_dir, f'monitor_{strategy}_{pair_safe}_{ts_file}.xlsx')
+            exporter = _ExportExcel(monitor_filename)
+            exporter.export_portfolio_data(context.portfolio, context)
+            log.info(f"[monitor] {pair_key}: partial history saved → {monitor_filename}")
+            monitor_history_file = os.path.relpath(monitor_filename, BASE_DIR)
+        except Exception as e:
+            log.warning(f"[monitor] {pair_key}: could not export history: {e}")
+
+        sig = {
+            'pair':              pair_key,
+            'action':            action,
+            'direction':         inv_pair.get('direction'),
+            'days_held':         inv_pair.get('days_held', 0),
+            'monitored':         True,
+            'open_date':         open_date_str,
+            'param_set':         param_set,
+            'unrealized_pnl':    upnl,
+            'unrealized_pnl_pct': upnl_pct,
+            'note': (f"Injected position closed in simulation on "
+                     f"{stop_triggered_date.date()} ({stop_triggered_reason}). "
+                     f"Simulation stopped — synthetic re-entry suppressed."),
+        }
+        if monitor_history_file:
+            sig['monitor_history_file'] = monitor_history_file
+        log.info(f"[monitor] {pair_key}: action={sig['action']}  "
+                 f"days_held={inv_pair.get('days_held',0)}  "
+                 f"upnl={upnl}  stop_date={stop_triggered_date.date()}")
+        return sig
+
     # ── Extract signal from recorded_vars ─────────────────────────────────
     today_rv = _find_today_rv(context, pair_key, effective_ts)
     if today_rv is None:
         return {'pair': pair_key, 'action': 'NO_DATA', 'monitored': True,
                 'note': 'No recorded_vars after monitor run'}
+
+    # Guard: if insufficient data bars, momentum/z-score was not computed —
+    # do NOT let _build_signal misinterpret missing in_long as CLOSE.
+    data_bars     = today_rv.get('data_bars')
+    required_bars = today_rv.get('required_bars')
+    if data_bars is not None and required_bars is not None and data_bars < required_bars:
+        return {
+            'pair':      pair_key,
+            'action':    'HOLD',
+            'direction': inv_pair.get('direction'),
+            'days_held': inv_pair.get('days_held', 0),
+            'monitored': True,
+            'open_date': open_date_str,
+            'param_set': param_set,
+            'note': f'Insufficient data ({data_bars}/{required_bars} bars) — cannot evaluate exit, holding',
+        }
 
     # Today's price
     prices_today = {}
@@ -914,6 +1185,23 @@ def _run_position_monitor(
     log.info(f"[monitor] {pair_key}: action={sig['action']}  "
              f"days_held={inv_pair.get('days_held',0)}  "
              f"upnl={sig.get('unrealized_pnl','n/a')}")
+
+    # ── Export full monitor history to Excel ───────────────────────────────
+    try:
+        from PortfolioClasses import ExportExcel as _ExportExcel
+        monitor_dir = os.path.join(BASE_DIR, 'trading_signals', 'monitor_history')
+        os.makedirs(monitor_dir, exist_ok=True)
+        pair_safe = pair_key.replace('/', '_')
+        ts_file = datetime.now().strftime('%Y%m%d_%H%M%S')
+        monitor_filename = os.path.join(monitor_dir,
+                                        f'monitor_{strategy}_{pair_safe}_{ts_file}.xlsx')
+        exporter = _ExportExcel(monitor_filename)
+        exporter.export_portfolio_data(context.portfolio, context)
+        log.info(f"[monitor] {pair_key}: history saved → {monitor_filename}")
+        sig['monitor_history_file'] = os.path.relpath(monitor_filename, BASE_DIR)
+    except Exception as e:
+        log.warning(f"[monitor] {pair_key}: could not export history: {e}")
+
     return sig
 
 
@@ -974,17 +1262,46 @@ def monitor_existing_positions(
 
             result[strategy].append(sig)
 
-        # Apply monitor CLOSE signals to inventory only — do NOT increment days_held here.
-        # days_held is incremented once per day by _run_single (Step 2).
-        # Incrementing in both monitor and _run_single would double-count.
-        close_sigs = [s for s in result[strategy]
-                      if s.get('action') in ('CLOSE', 'CLOSE_STOP')]
-        if not dry_run and close_sigs:
-            updated_inv = update_inventory_from_signals(
-                inventory, close_sigs, signal_date.strftime('%Y-%m-%d'),
-                strategy=strategy)
-            save_inventory(updated_inv, strategy)
-            log.info(f"[monitor] inventory_{strategy}.json updated (closed positions)")
+        if not dry_run and result[strategy]:
+            # ── Append today's monitor result to each pair's monitor_log ──────
+            date_str = signal_date.strftime('%Y-%m-%d')
+            inv_updated = deepcopy(inventory)
+            for sig in result[strategy]:
+                pk = sig.get('pair')
+                if pk not in inv_updated.get('pairs', {}):
+                    continue
+                log_entry = {
+                    'date':             date_str,
+                    'action':           sig.get('action'),
+                    'direction':        sig.get('direction'),
+                    'z_score':          sig.get('z_score'),
+                    'momentum_spread':  sig.get('momentum_spread'),
+                    'exit_threshold':   sig.get('exit_threshold'),
+                    'unrealized_pnl':   sig.get('unrealized_pnl'),
+                    'unrealized_pnl_pct': sig.get('unrealized_pnl_pct'),
+                    'note':             sig.get('note', ''),
+                }
+                if 'monitor_log' not in inv_updated['pairs'][pk]:
+                    inv_updated['pairs'][pk]['monitor_log'] = []
+                # Idempotent: only append if no entry for this date yet
+                existing_dates = {e.get('date') for e in inv_updated['pairs'][pk]['monitor_log']}
+                if date_str not in existing_dates:
+                    inv_updated['pairs'][pk]['monitor_log'].append(log_entry)
+
+            # Apply monitor CLOSE signals to inventory.
+            # days_held is incremented once per day by _run_single (Step 2).
+            close_sigs = [s for s in result[strategy]
+                          if s.get('action') in ('CLOSE', 'CLOSE_STOP')]
+            if close_sigs:
+                inv_updated = update_inventory_from_signals(
+                    inv_updated, close_sigs, date_str,
+                    strategy=strategy)
+
+            save_inventory(inv_updated, strategy)
+            if close_sigs:
+                log.info(f"[monitor] inventory_{strategy}.json updated (closed + monitor_log)")
+            else:
+                log.info(f"[monitor] inventory_{strategy}.json updated (monitor_log only)")
 
     return result
 

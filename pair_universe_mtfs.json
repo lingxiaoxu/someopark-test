@@ -24,8 +24,8 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "ALL",
-    "s2": "BK",
+    "s1": "BK",
+    "s2": "ALL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
