@@ -1,0 +1,1188 @@
+我需要你设计一个前端 但是要照顾到我的后端运行 https://github.com/lingxiaoxu/someopark-test 。后端readme和runbook已经附带。ui设计元素要用我给的定义 最后面附加出来了。
+
+首先，你阅读 [https://github.com/lingxiaoxu/someopark-test](https://github.com/lingxiaoxu/someopark-test) 整个代码库，然后理解一下。这里边讲了什么东西？一定要细致读每一行代码。
+
+读一下我的输出文件结构：walk-forward 有什么输出，daily signal 有什么输出，WF diagnostics 有什么输出。我需要建一个 AI chatbot 前端，可以用 agent 模式从多个所需要的文件里查询所需要的内容并输出，类似 Manus 那种。sandbox 可以用 e2b，也可以在云端部署一个轻量 OpenClaw 达到目的。不要写代码，只是告诉我怎么做，我看看 plan。
+
+这个前端要是那种类似 ChatGPT 的、以一个对话窗口为主的那种。左边有每个用户登录以后的对话记录，以及将他们本地的小龙虾（OpenClaw）通过一些方式接入（后面我给出来了将他们本地的小龙虾接入口的设计 参阅），也可以不用他们的小龙虾 那就会直接用我们的后端来计算 比如进入我们的云端 VPS由我们的小龙虾操控寻找答案然后返回到前端对话窗口，类似 Manus 那种。
+
+我下面有很多数据，在不同的地方。你要知道有什么，下一步才知道怎么 work with them。
+
+三个主要数据：
+
+1. 配对宇宙 viewer —— 3 个数据库（协整 30 对、历史 15 对、PCA 60–1000 对），显示全部但高亮已选的 15+15 对。三个数据库来自 MongoDB `pairs_day_select` 集合：`coint_pairs`（协整稳定）、`similar_pairs`（历史相似）、`pca_pairs`（PCA 关联）。
+2. WF Grid 加配对 filter —— 每个参数运行其实是 15 对 × 32 参数，看参数时要能按配对筛选。
+3. 参数运行 Zoom-in 页 —— 点进一个 `portfolio_history.xlsx`，里面 >15 个 sheet，需要结构化显示。结构清楚了。35 个 sheet，核心的是：`acc_pair_trade_pnl_history`（每对 PnL 历史）、`recorded_vars`（Z-score / 信号）、`pair_trade_history`（交易记录）、`stop_loss_history`（止损事件）、`statistical_test_history`（协整健康度）。
+4. 输出文件结构全景包括### 1. Walk-Forward 输出（`historical_runs/walk_forward/` 和 `walk_forward_mtfs/`）
+
+| 文件                               | 格式   | 内容                                                                                                  | 可查询维度         |
+| -------------------------------- | ---- | --------------------------------------------------------------------------------------------------- | ------------- |
+| `walk_forward_summary_<ts>.json` | JSON | 6 个窗口的完整配置：train/test 日期、每窗口选出的 pairs + `param_set`、每窗口 OOS Sharpe / PnL                            | 按窗口、按配对、按参数集  |
+| `dsr_selection_log_<ts>.csv`     | CSV  | 所有 15 对 × 32 参数集 × 6 窗口的 DSR 选参过程：`pair_pnl`, `pair_sharpe`, `run_sharpe`, `dsr_pvalue`, `n_trades` | 按配对 × 参数集交叉查询 |
+| `oos_equity_curve_<ts>.csv`      | CSV  | 每日 OOS 净值曲线：`Date`, `Equity`, `DailyPnL`, `Window`, `Equity_Chained`                                | 时间序列分析 / 绘图   |
+| `oos_pair_summary_<ts>.csv`      | CSV  | 配对级汇总：`OOS_PnL`, `Sharpe`, `MaxDD`, `MaxDD_pct`, `WinRate`, `N_Trades`, `Turnover`, `N_Days`        | 配对排名 / 筛选     |
+| `window*_<dates>/`（子目录）          | 目录   | 每窗口的回测 Excel 详细文件（grid search 中间结果）                                                                 | 深入分析单窗口       |
+
+### 2. Daily Signal 输出（`trading_signals/`）
+
+| 文件                                                    | 格式    | 内容                                                                                           | 可查询维度               |
+| ----------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------- | ------------------- |
+| `mrpt_signals_<ts>.json`                              | JSON  | MRPT 单策略信号：每对的 `action`（OPEN/CLOSE/HOLD/FLAT）、`z_score`、`shares`、`prices`、`regime` 指标、OOS 参考 | 按配对 / 按 `action` 类型 |
+| `mtfs_signals_<ts>.json`                              | JSON  | MTFS 单策略信号：同上，但用 `momentum_spread`                                                           | 同上                  |
+| `combined_signals_<ts>.json`                          | JSON  | 双策略合并信号 + `regime` 完整指标 + `component_scores`（7 类）+ 资金分配                                      | 跨策略对比               |
+| `daily_report_<ts>.json`                              | JSON  | 人类可读报告的结构化版本：`regime` 解读（中文）、指标历史对比（30 obs / 90 obs 均值）、持仓监测                                 | 全维度查询               |
+| `daily_report_<ts>.txt`                               | TXT   | 格式化文本报告：`regime` 分析表、持仓 HOLD 列表、OPEN/CLOSE 指令、观望配对、OOS 淘汰配对、OOS 历史表现排名                       | 人类阅读                |
+| `monitor_history/monitor_<strategy>_<pair>_<ts>.xlsx` | Excel | 每个持仓配对的专属回测 Excel（参数与开仓时相同），含 `recorded_vars`、`pair_trade_history`、`stop_loss` 等 sheet       | 深入分析单配对持仓健康度        |
+
+### 3. Inventory 状态（`inventory_mrpt.json` / `inventory_mtfs.json`）
+
+| 字段                                     | 内容                                                  |
+| -------------------------------------- | --------------------------------------------------- |
+| `as_of`                                | 信号日期                                                |
+| `capital`                              | 回测基准资本                                              |
+| `pairs.<key>.direction`                | `long` / `short` / `null`                           |
+| `pairs.<key>.s1_shares` / `s2_shares`  | 持仓股数                                                |
+| `pairs.<key>.open_date` / `open_price` | 开仓信息                                                |
+| `pairs.<key>.wf_source`                | 完整 walk-forward 来源：每个窗口的 `param_set` 和 OOS 表现       |
+| `pairs.<key>.monitor_log`              | 最近一次监测记录：`action`、`unrealized_pnl`、`exit_threshold` |
+
+### 4. WF Diagnostic 输出（`historical_runs/wf_diagnostic_<ts>.xlsx`）
+
+| Sheet                       | 内容                                                 |
+| --------------------------- | -------------------------------------------------- |
+| `Executive_Summary`         | 宏观 IS→OOS 对比表 + 关键结论                               |
+| `Macro_Regime`              | 每窗口宏观指标（VIX / MOVE / HY / YC 等）                    |
+| `Cross_Corr_IS`             | 42-ticker IS 期相关系数矩阵                               |
+| `Cross_Corr_OOS`            | 42-ticker OOS 期相关系数矩阵                              |
+| `Corr_Shift`                | IS→OOS 相关性变化热力图                                    |
+| `Pair_Cointegration`        | Engle-Granger 协整 p 值（每窗口）                          |
+| `MRPT_Pairs` / `MTFS_Pairs` | 逐配对逐窗口统计                                           |
+| `Summary_Diagnosis`         | 问题分类（`regime shift` / `cointegration breakdown` 等） |
+| `Ticker_Overlap`            | Ticker 集中度风险分析                                     |
+
+### 5. Pair Universe（`pair_universe_mrpt.json` / `pair_universe_mtfs.json`）
+
+当前 15 对 MRPT + 15 对 MTFS 配对定义，含 `s1` / `s2` / `sector` / `z_col` 或 `spread_col`。
+
+### 6. Inventory History（`inventory_history/`）
+
+每次信号生成前的 inventory 快照备份。
+
+---
+
+## 二、Chatbot 需要回答的典型问题
+
+1. **持仓查询**：“现在持有哪些仓位？每个的盈亏是多少？”
+2. **信号查询**：“今天有什么新开仓 / 平仓信号？”
+3. **Regime 查询**：“当前市场状态怎样？VIX 多少？信用利差在什么位置？MRPT / MTFS 权重建议？”
+4. **WF 表现查询**：“CL/SRE 这对在 walk-forward 里表现怎么样？6 个窗口分别赚了多少？”
+5. **参数查询**：“F/PG 用的什么参数集？这个参数集的 DSR p-value 是多少？”
+6. **历史对比**：“上周和这周的 regime 评分变化？持仓盈亏趋势？”
+7. **诊断查询**：“哪些配对的 IS→OOS 协整性断裂了？相关性 shift 最大的是哪些？”
+8. **排名查询**：“OOS Sharpe 最高的 5 对是哪些？哪些配对被淘汰了？淘汰原因是什么？”
+9. **风控查询**：“当前最大的单对亏损是多少？总体 MaxDD 是什么水平？”
+
+先找配对数据库在哪。
+先看一下 xlsx 里面实际有哪些 sheets。
+
+### 考虑我的后端方案，是这样的：轻量 OpenClaw（自托管 Agent Runtime）
+
+```text
+用户 ──→ 前端 (Next.js)
+              ↓
+         SomeoClaw （OpenClaw） Agent (云端 VPS)
+              ↓ tool calls
+         本地文件系统 (直接读取 someopark-test/)
+              ↓
+         Python subprocess (pandas 分析)
+              ↓
+         返回结果到Someo Park (返回 分析)
+```
+
+或者：
+```text
+
+用户 ──→ 前端 (Next.js)
+              ↓
+         接入他们的OpenClaw Agent （使用我们的前端接口填入借口信息）
+              ↓
+         OpenClaw Agent (在他们用户那边)
+              ↓ tool calls
+         本地文件系统 (直接读取 他们本地的符合someopark-test/结构的文件夹 )
+              ↓
+         使用我们的 Someo Park OpenClaw Skill (我们会做出skill给他们
+              ↓
+         Sub-agent processes
+              ↓
+         返回结果到Someo Park (返回 分析)
+```
+
+
+**具体做法：**
+
+1. **部署一台轻量 VPS**（2C4G 足够，Hetzner / Vultr ~ $10 / 月）
+
+   * 把 `someopark-test` 仓库 clone 上去
+   * `DailySignal` 的 cron job 也跑在这台机器上
+   * 这样文件天然在同一台机器，无需同步
+
+2. **OpenClaw / Open Interpreter / Claude Agent SDK**
+
+   * 用 Claude Agent SDK 搭建一个 agent 服务
+   * tools 直接操作本地文件系统（无需 sandbox，因为只读）
+   * 暴露一个 HTTP API 给前端调用
+
+3. **前端**
+
+   * 你来写 这是工作的重点 注意ui style 参考
+
+
+小龙虾接口参阅：
+仓库是一个 Python 3.11 的双策略配对交易回测与日常运行框架，包含 MRPT 与 MTFS 两套策略，共用 PortfolioClasses.py、PriceDataStore.py、DailySignal.py、SelectPairs.py 等基础设施，并明确支持 策略回测、walk-forward、每日信号、inventory 持仓快照、regime 检测、position monitor 等能力   。另外，README 明确写到 DailySignal.py 支持 mrpt | mtfs | both，并输出完整信号与报告；RUNBOOK 进一步给出了标准日常运行命令、策略权重、dry-run、历史回填等操作方式   。
+⸻
+
+SomeoClaw 接入设计文档
+
+Project: Someo Park
+Module: SomeoClaw
+Document Type: Product + System Design
+Version: v1.1
+Status: Draft for MVP
+
+1. 设计目标
+
+在 Someo Park 官网增加一个“小窗式接入向导”，允许用户将自己的 OpenClaw 接入到 Someo Park 平台，并调用 Someo Park 已有量化策略能力，包括：
+	•	策略回测
+	•	Walk-forward 验证
+	•	每日信号生成
+	•	持仓监控
+	•	生产交易前的执行建议
+	•	后续扩展到 paper trading / live trading
+
+这个设计必须以现有代码库为基础，而不是重新发明一套策略系统。当前仓库已经具备双策略框架、参数集、配对筛选、每日信号和 walk-forward 体系：README 写明项目为“双策略配对交易回测框架”，包含 MRPT 与 MTFS 两个并列策略，并共享统一基础设施 。README 和 RUNBOOK 还明确列出了 DailySignal.py、SelectPairs.py、MRPTWalkForward.py、MTFSWalkForward.py、PortfolioMRPTStrategyRuns.py、PortfolioMTFSStrategyRuns.py 等核心脚本   。
+
+2. 当前代码库能力抽象
+
+根据仓库文档，现有系统不是单纯的研究代码，而是已经接近一个可运行的策略引擎，至少包含以下六层能力：
+
+2.1 数据与环境层
+
+系统依赖 .env 中的 POLYGON_API_KEY、FRED_API_KEY、MONGO_URI、MONGO_VEC_URI，并统一要求在 someopark_run conda 环境下执行，说明当前引擎已经依赖外部市场数据、宏观数据和数据库资源   。
+
+2.2 策略层
+
+仓库当前有两条主策略线：
+	•	MRPT：均值回归配对交易，基于 Kalman Filter 对冲比率与动态 z-score 逻辑
+	•	MTFS：动量趋势跟随配对交易，基于多窗口动量评分、SMA 趋势确认和波动率调仓
+
+2.3 研究与优化层
+
+现有仓库已经支持：
+	•	grid search
+	•	DSR 选参
+	•	Step1 → Step2 → Step3 三步法
+	•	walk-forward 多窗口 OOS 验证
+	•	IS/OOS 报告生成
+
+这些流程在 README 与 RUNBOOK 中都有完整运行说明   。
+
+2.4 日常运行层
+
+README 明确写到 DailySignal.py 用于每个交易日收盘后运行，输出 OPEN / CLOSE / HOLD / FLAT 信号，并生成报告、更新 inventory、执行 regime 检测和 position monitor 。RUNBOOK 还给出了 --strategy both、--dry-run、--skip-regime、--date 等生产级命令入口，说明日常运行层已经基本成型  。
+
+2.5 持仓状态层
+
+仓库当前已经有：
+	•	inventory_mrpt.json
+	•	inventory_mtfs.json
+	•	inventory_history/
+
+并记录开仓时间、价格、param_set、hedge_ratio、open_signal、wf_source 等字段，用于 Position Monitor 精确复现仓位状态   。
+
+2.6 风控与环境自适应层
+
+README 写明 DailySignal.py 内含 Regime 检测，综合波动率、信用利差、利率、AI 动量等指标给出 0–100 分，从而动态调整 MRPT 与 MTFS 的资金权重；同时 Position Monitor 会以开仓时参数持续监控止损与平仓条件 。
+
+因此，SomeoClaw 的设计原则不是“把 OpenClaw 变成策略引擎”，而是：
+
+OpenClaw 负责接入、触发、编排和对话交互；Someo Park 现有代码库继续负责核心量化逻辑。
+
+⸻
+
+3. SomeoClaw 的定位
+
+SomeoClaw 是 Someo Park 网站上的一个接入层。它的功能不是重写策略，而是把用户侧的 OpenClaw 变成一个可以安全调用 Someo Park 策略服务的远程 agent。
+
+3.1 用户视角
+
+用户完成接入后，可以在 Someo Park 网站或其 OpenClaw 中发起以下动作：
+	•	对某个策略做回测
+	•	对一组参数做 walk-forward
+	•	查询今日信号
+	•	查询持仓监控结果
+	•	生成当日执行建议
+	•	后续扩展到 paper/live trading
+
+3.2 平台视角
+
+Someo Park 对外暴露的是 skill 接口，不是仓库内部脚本本身。也就是说：
+	•	PortfolioMRPTStrategyRuns.py 不直接暴露给用户
+	•	DailySignal.py 不直接暴露为 shell 命令
+	•	用户只看到 skill，例如：
+	•	backtest_mrpt
+	•	backtest_mtfs
+	•	run_daily_signals
+	•	monitor_positions
+	•	run_walk_forward
+	•	generate_execution_plan
+
+⸻
+
+4. 功能范围
+
+4.1 MVP 范围
+
+MVP 仅覆盖以下能力：
+	1.	OpenClaw 接入注册
+	2.	Agent 心跳与鉴权
+	3.	Skill 权限绑定
+	4.	回测 skill
+	5.	每日运行 skill
+	6.	持仓监控 skill
+	7.	测试任务与状态验证
+
+4.2 暂不纳入 MVP
+
+以下能力先不在第一版上线：
+	•	自动真实下单
+	•	用户自定义策略代码上传
+	•	多账户清算
+	•	分润与链上结算
+	•	完整 marketplace
+
+⸻
+
+5. 网站小窗设计
+
+5.1 入口
+
+Someo Park 网站增加按钮：
+
+Connect Your OpenClaw
+
+点击后弹出 SomeoClaw 接入小窗。
+
+5.2 小窗步骤
+
+设计为三步，避免复杂化。
+
+Step 1：用户填写基础信息
+字段建议如下：
+	•	Agent Name
+	•	用户邮箱或 Someo Park 账户 ID
+	•	选择启用 skill
+	•	模式选择：
+	•	Research only
+	•	Backtest only
+	•	Daily run
+	•	Production trading ready
+	•	风险级别：
+	•	conservative
+	•	balanced
+	•	aggressive
+
+Step 2：生成接入配置
+系统生成该用户专属：
+	•	agent_token
+	•	bridge_url
+	•	workspace_id
+	•	enabled_skills
+	•	使用说明 prompt
+
+Step 3：验证连接
+用户将配置复制到 OpenClaw 后，回 Someo Park 点击：
+
+Verify Connection
+
+后端检查：
+	•	token 是否有效
+	•	bridge 是否连接
+	•	heartbeat 是否正常
+	•	测试任务是否成功返回
+
+⸻
+
+6. 系统架构
+
+6.1 高层架构
+
+Someo Park Web
+    ↓
+SomeoClaw Onboarding Modal
+    ↓
+SomeoClaw API Layer
+    ↓
++-----------------------------+
+| Agent Registry              |
+| Bridge Gateway              |
+| Skill Router                |
+| Auth & Risk Controls        |
++-----------------------------+
+    ↓
+Someo Park Strategy Services
+    ↓
+Existing Python Repo Runtime
+    ↓
+OpenClaw Agent
+
+6.2 核心原则
+
+当前仓库已经提供完整运行命令和脚本入口，因此 SomeoClaw 应该新增一个 API 封装层，将脚本级能力服务化，而不是要求 OpenClaw 直接在用户侧本地执行这些 Python 脚本。
+
+⸻
+
+7. 与现有代码库的映射关系
+
+7.1 Skill 到脚本映射
+
+Skill 名称	底层脚本/能力
+backtest_mrpt	PortfolioMRPTStrategyRuns.py
+backtest_mtfs	PortfolioMTFSStrategyRuns.py
+select_pairs	SelectPairs.py
+update_configs	UpdateStep1Configs.py / MRPTUpdateConfigs.py / MTFSUpdateConfigs.py
+walk_forward_mrpt	MRPTWalkForward.py
+walk_forward_mtfs	MTFSWalkForward.py
+daily_signal	DailySignal.py
+monitor_positions	Position Monitor in DailySignal.py
+generate_reports	MRPTGenerateReport.py / MTFSGenerateReport.py / WalkForwardReport
+
+这个映射不是猜测，而是来自 README 与 RUNBOOK 对核心文件和标准运行流程的定义   。
+
+7.2 为什么不让 OpenClaw 直接跑脚本
+
+因为当前仓库的执行依赖：
+	•	特定 conda 环境
+	•	.env 注入
+	•	API key
+	•	Mongo 数据库
+	•	本地 price data / historical_runs / inventory 结构
+
+这些都写在 README 和 RUNBOOK 中   。所以更合理的设计是：
+
+Someo Park 服务端运行这些脚本，OpenClaw 只是远程发起任务和接收结果。
+
+⸻
+
+8. Bridge 协议设计
+
+8.1 注册消息
+
+{
+  "type": "register",
+  "agent_token": "oc_live_xxx",
+  "agent_name": "Ling Quant Agent",
+  "workspace_id": "sp_user_001"
+}
+
+8.2 心跳消息
+
+{
+  "type": "ping",
+  "timestamp": 1710000000
+}
+
+返回：
+
+{
+  "type": "pong"
+}
+
+8.3 下发任务
+
+{
+  "type": "task",
+  "task_id": "task_001",
+  "skill": "daily_signal",
+  "input": {
+    "strategy": "both",
+    "date": "2026-03-21",
+    "dry_run": true
+  }
+}
+
+8.4 结果返回
+
+{
+  "type": "task_result",
+  "task_id": "task_001",
+  "status": "success",
+  "output": {
+    "report_url": "/reports/daily/2026-03-21",
+    "summary": "MRPT 55%, MTFS 45%, 3 OPEN, 2 HOLD"
+  }
+}
+
+
+⸻
+
+9. 服务端 API 设计
+
+9.1 Agent 接入类接口
+
+POST /api/someoclaw/generate-config
+生成用户专属接入配置。
+
+请求：
+
+{
+  "agent_name": "Ling Quant Agent",
+  "skills": ["daily_signal", "backtest_mrpt"],
+  "mode": "paper_trading"
+}
+
+响应：
+
+{
+  "agent_id": "agent_123",
+  "agent_token": "oc_live_xxx",
+  "bridge_url": "wss://someopark.com/ws/someoclaw",
+  "workspace_id": "sp_user_001",
+  "onboarding_prompt": "..."
+}
+
+POST /api/someoclaw/verify
+校验 agent 是否在线。
+
+GET /api/someoclaw/status/:agent_id
+返回在线状态、最后心跳、已启用 skill。
+
+⸻
+
+9.2 策略类接口
+
+POST /api/skills/backtest/mrpt
+封装 PortfolioMRPTStrategyRuns.py
+
+POST /api/skills/backtest/mtfs
+封装 PortfolioMTFSStrategyRuns.py
+
+POST /api/skills/daily-signal
+封装 DailySignal.py
+
+POST /api/skills/walk-forward/mrpt
+封装 MRPTWalkForward.py
+
+POST /api/skills/walk-forward/mtfs
+封装 MTFSWalkForward.py
+
+GET /api/skills/monitor-positions
+读取最新 inventory 监控结果
+
+⸻
+
+10. 运行层设计
+
+10.1 执行方式
+
+服务端执行层不应让前端直接 shell 调度，而应通过一个内部 Job Runner 实现。
+
+每个 skill 请求进入后：
+	1.	生成任务记录
+	2.	写入参数
+	3.	调用内部 runner
+	4.	runner 以受控方式运行仓库脚本
+	5.	收集输出文件
+	6.	返回结构化结果
+
+10.2 Job Runner 封装原则
+
+因为 RUNBOOK 已明确要求所有命令都必须：
+	•	在指定目录下
+	•	加载 .env
+	•	用 conda run -n someopark_run --no-capture-output python ...
+
+所以内部 runner 必须统一封装这个调用规范，不能让每个 skill 自己拼命令  。
+
+⸻
+
+11. 数据模型
+
+11.1 agents
+
+id
+user_id
+agent_name
+agent_token
+workspace_id
+status
+last_heartbeat_at
+created_at
+
+11.2 agent_skills
+
+agent_id
+skill_name
+enabled
+
+11.3 strategy_jobs
+
+id
+agent_id
+skill_name
+status
+input_json
+output_json
+artifact_path
+created_at
+finished_at
+
+11.4 execution_permissions
+
+agent_id
+paper_trading_enabled
+live_trading_enabled
+max_capital
+risk_level
+
+
+⸻
+
+12. 风控设计
+
+12.1 技术风控
+	•	每个 agent 独立 token
+	•	skill 白名单
+	•	任务级 timeout
+	•	并发限制
+	•	审计日志
+
+12.2 策略风控
+
+SomeoClaw 不改动现有策略逻辑，而是在其上方加治理层：
+	•	不允许未授权用户运行 live trading
+	•	默认只开 dry_run 或 paper trading
+	•	对高风险任务增加审批开关
+	•	每个用户可设每日资本上限
+	•	每个用户可限制资产范围
+
+12.3 生产交易风控
+
+MVP 阶段建议只做到：
+	•	生成交易建议
+	•	不自动下真实单
+
+等后续再增加 broker adapter。
+
+⸻
+
+13. 用户接入文案
+
+13.1 小窗标题
+
+Connect Your OpenClaw to Someo Park
+
+13.2 副标题
+
+Use your OpenClaw agent with Someo Park strategy backtesting, daily signal generation, and production-ready trading workflows.
+
+13.3 三步说明
+	1.	Generate your personalized SomeoClaw config
+	2.	Paste it into your OpenClaw
+	3.	Verify the connection and start using Someo Park skills
+
+⸻
+
+
+⸻
+
+15. 关键结论
+
+根据你仓库当前结构，SomeoClaw 最合理的实现方式不是“把 OpenClaw 变成策略计算器”，而是：
+
+把 OpenClaw 变成 Someo Park 的远程 agent 接入层；把你现有 Python 双策略系统封装成可控的策略 skill 服务。
+
+这样做有三个直接好处：
+
+第一，你现有仓库的研究与生产逻辑可以继续复用，因为 README 和 RUNBOOK 已经表明它具备较成熟的回测、walk-forward、每日信号和 inventory 体系   。
+第二，核心策略 IP 仍留在 Someo Park 服务器，而不是暴露在用户侧 OpenClaw。
+第三，未来从 backtest 扩展到 paper / live trading 时，系统边界会更清晰。
+
+
+UI设计元素：
+下面是一个**可以直接丢进你另一个项目复现的 Design System Markdown（专业级）**。
+我按 **组件级别 + token级别 +交互状态** 给你定义清楚，基本就是一个“Stanse-style AI Terminal UI Spec”。
+
+---
+
+# **SomeoClaw / Stanse-style AI UI Design System**
+
+**Version:** v1.0
+**Type:** Dark AI-native Chat Interface
+**Target:** Next.js + Tailwind / CSS Variables
+
+---
+
+# 1. 设计原则（Design Principles）
+
+1. **AI-first interaction**
+
+   * Chat 是 primary interface
+   * 所有功能通过 conversation 驱动
+
+2. **Low visual noise**
+
+   * 无强边框
+   * 依赖层级与背景区分
+
+3. **State visibility**
+
+   * 用户必须看到 agent 在“工作”
+
+4. **Data-native UI**
+
+   * JSON / 表格 / 图表是一级组件，不是附属
+
+---
+
+# 2. Design Tokens（核心）
+
+## 2.1 Color System
+
+```css
+:root {
+  /* Background */
+  --bg-primary: #0B0B0C;
+  --bg-secondary: #141416;
+  --bg-tertiary: #1A1A1C;
+
+  /* Text */
+  --text-primary: #E5E7EB;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+
+  /* Accent */
+  --accent-primary: #4F46E5;
+  --accent-hover: #6366F1;
+
+  /* Status */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+
+  /* Border */
+  --border-subtle: rgba(255,255,255,0.06);
+}
+```
+
+---
+
+## 2.2 Typography
+
+```css
+font-family: Inter, SF Pro, system-ui;
+
+--font-xs: 12px;
+--font-sm: 13px;
+--font-md: 14px;
+--font-lg: 16px;
+
+--line-height: 1.6;
+```
+
+---
+
+## 2.3 Spacing
+
+```css
+--space-xs: 4px;
+--space-sm: 8px;
+--space-md: 12px;
+--space-lg: 16px;
+--space-xl: 24px;
+```
+
+---
+
+## 2.4 Radius
+
+```css
+--radius-sm: 8px;
+--radius-md: 12px;
+--radius-lg: 16px;
+--radius-xl: 20px;
+```
+
+---
+
+# 3. Layout System
+
+## 3.1 Main Layout
+
+```text
+Sidebar (260px) | Chat (flex) | Right Panel (320px)
+```
+
+---
+
+## 3.2 Grid Definition
+
+```css
+.container {
+  display: grid;
+  grid-template-columns: 260px 1fr 320px;
+  height: 100vh;
+}
+```
+
+---
+
+# 4. Components
+
+---
+
+# 4.1 Button
+
+## Base
+
+```css
+.button {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-md);
+  font-size: var(--font-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+```
+
+---
+
+## Variants
+
+### Primary
+
+```css
+.button-primary {
+  background: var(--accent-primary);
+  color: white;
+}
+
+.button-primary:hover {
+  background: var(--accent-hover);
+}
+```
+
+---
+
+### Secondary
+
+```css
+.button-secondary {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+```
+
+---
+
+### Ghost
+
+```css
+.button-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.button-ghost:hover {
+  background: var(--bg-tertiary);
+}
+```
+
+---
+
+# 4.2 Input / Chat Box
+
+## Container
+
+```css
+.chat-input {
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-xl);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+}
+```
+
+---
+
+## Textarea
+
+```css
+.chat-textarea {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--font-md);
+  width: 100%;
+}
+```
+
+---
+
+## Features
+
+* 自动扩展高度（max ~200px）
+* 支持：
+
+  * `/command`
+  * `@file`
+  * 拖拽上传
+
+---
+
+# 4.3 Message Bubble
+
+## User Message
+
+```css
+.message-user {
+  align-self: flex-end;
+  background: #2A2A2E;
+  border-radius: 16px;
+  padding: 12px 16px;
+  max-width: 70%;
+}
+```
+
+---
+
+## Assistant Message（关键）
+
+```css
+.message-ai {
+  display: flex;
+  gap: 12px;
+}
+```
+
+### 内容块
+
+```css
+.message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+```
+
+👉 无明显 bubble（区别于普通 chat）
+
+---
+
+# 4.4 Code Block
+
+```css
+.code-block {
+  background: #111113;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  font-family: monospace;
+  font-size: 13px;
+  overflow-x: auto;
+}
+```
+
+---
+
+# 4.5 Table (DataFrame)
+
+```css
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.table td {
+  padding: 6px 8px;
+}
+```
+
+---
+
+# 4.6 Dropdown
+
+## Base
+
+```css
+.dropdown {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+```
+
+---
+
+## Item
+
+```css
+.dropdown-item {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.dropdown-item:hover {
+  background: var(--bg-tertiary);
+}
+```
+
+---
+
+# 4.7 Sidebar
+
+```css
+.sidebar {
+  background: var(--bg-primary);
+  border-right: 1px solid var(--border-subtle);
+  padding: 12px;
+}
+```
+
+---
+
+## Conversation Item
+
+```css
+.chat-item {
+  padding: 10px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.chat-item:hover {
+  background: var(--bg-tertiary);
+}
+
+.chat-item.active {
+  background: #1F1F23;
+}
+```
+
+---
+
+# 4.8 Right Panel
+
+```css
+.right-panel {
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-subtle);
+  padding: 16px;
+}
+```
+
+---
+
+# 4.9 Tabs
+
+```css
+.tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.tab {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.tab.active {
+  background: var(--bg-tertiary);
+}
+```
+
+---
+
+# 4.10 Card / Box（你问的“框”）
+
+```css
+.card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+}
+```
+
+---
+
+## Use Cases
+
+* Inventory card
+* Pair card
+* WF window card
+
+---
+
+# 5. State System（非常关键）
+
+## 5.1 Status Types
+
+```text
+idle
+thinking
+running
+streaming
+success
+error
+```
+
+---
+
+## 5.2 UI 表现
+
+### Thinking
+
+```css
+.shimmer {
+  animation: shimmer 1.5s infinite;
+}
+```
+
+---
+
+### Running Tool
+
+```text
+Running DailySignal...
+```
+
+---
+
+### Streaming
+
+* 逐字输出（SSE）
+
+---
+
+# 6. Financial UI Components（你项目专用）
+
+---
+
+## 6.1 Pair Card
+
+```css
+.pair-card {
+  background: var(--bg-tertiary);
+  padding: 12px;
+  border-radius: var(--radius-md);
+}
+```
+
+内容：
+
+```text
+AAPL / MSFT
+Z-score: -2.3
+PnL: +1.2%
+```
+
+---
+
+## 6.2 Inventory Box
+
+```css
+.inventory-box {
+  border-left: 3px solid var(--accent-primary);
+}
+```
+
+---
+
+## 6.3 WF Window Box
+
+```css
+.wf-box {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+}
+```
+
+---
+
+# 7. Interaction Patterns
+
+---
+
+## 7.1 Hover
+
+```css
+transition: background 0.2s ease;
+```
+
+---
+
+## 7.2 Click
+
+* scale: 0.98
+* subtle feedback
+
+---
+
+## 7.3 Scroll
+
+* chat 自动 scroll bottom
+* smooth scroll
+
+---
+
+# 8. Animation
+
+```css
+transition: all 0.2s ease;
+```
+
+---
+
+## Message 出现
+
+```css
+opacity: 0 → 1
+translateY: 6px → 0
+```
+
+---
+
+# 9. Icon System
+
+建议：
+
+* lucide-react
+* 线性 icon（不要填充）
+
+---
+
+# 10. 技术映射（你直接用）
+
+## Tailwind 示例
+
+```js
+bg-[#0B0B0C]
+text-gray-200
+rounded-xl
+border border-white/5
+```
+
+

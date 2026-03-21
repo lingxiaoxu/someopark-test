@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "SF Pro", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+@layer base {
+  :root {
+    /* Background */
+    --bg-primary: #0B0B0C;
+    --bg-secondary: #141416;
+    --bg-tertiary: #1A1A1C;
+
+    /* Text */
+    --text-primary: #E5E7EB;
+    --text-secondary: #9CA3AF;
+    --text-muted: #6B7280;
+
+    /* Accent */
+    --accent-primary: #4F46E5;
+    --accent-hover: #6366F1;
+
+    /* Status */
+    --success: #10B981;
+    --warning: #F59E0B;
+    --error: #EF4444;
+
+    /* Border */
+    --border-subtle: rgba(255, 255, 255, 0.06);
+
+    /* Typography */
+    --font-xs: 12px;
+    --font-sm: 13px;
+    --font-md: 14px;
+    --font-lg: 16px;
+    --line-height: 1.6;
+
+    /* Spacing */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 12px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+
+    /* Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    line-height: var(--line-height);
+    margin: 0;
+    padding: 0;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .button {
+    height: 36px;
+    padding: 0 14px;
+    border-radius: var(--radius-md);
+    font-size: var(--font-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  .button-primary {
+    background: var(--accent-primary);
+    color: white;
+  }
+  .button-primary:hover {
+    background: var(--accent-hover);
+  }
+  .button-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+  .button-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+  }
+  .button-ghost:hover {
+    background: var(--bg-tertiary);
+  }
+
+  /* Chat Input */
+  .chat-input {
+    background: var(--bg-tertiary);
+    border-radius: var(--radius-xl);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+  }
+  .chat-textarea {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: var(--font-md);
+    width: 100%;
+    resize: none;
+  }
+
+  /* Messages */
+  .message-user {
+    align-self: flex-end;
+    background: #2A2A2E;
+    border-radius: 16px;
+    padding: 12px 16px;
+    max-width: 70%;
+  }
+  .message-ai {
+    display: flex;
+    gap: 12px;
+  }
+  .message-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Code & Tables */
+  .code-block {
+    background: #111113;
+    border-radius: var(--radius-md);
+    padding: 12px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    overflow-x: auto;
+  }
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .table th {
+    color: var(--text-muted);
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .table td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  /* Layout Components */
+  .sidebar {
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border-subtle);
+    padding: 12px;
+  }
+  .right-panel {
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-subtle);
+    padding: 16px;
+  }
+  .chat-item {
+    padding: 10px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .chat-item:hover {
+    background: var(--bg-tertiary);
+  }
+  .chat-item.active {
+    background: #1F1F23;
+  }
+
+  /* Cards & Boxes */
+  .card {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+  }
+  .pair-card {
+    background: var(--bg-tertiary);
+    padding: 12px;
+    border-radius: var(--radius-md);
+  }
+  .inventory-box {
+    border-left: 3px solid var(--accent-primary);
+    background: var(--bg-secondary);
+    padding: 12px;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
+  .wf-box {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-sm);
+  }
+
+  /* Animations */
+  @keyframes shimmer {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+  }
+  .shimmer {
+    animation: shimmer 1.5s infinite;
+  }
+}
