@@ -47,7 +47,9 @@
     "chatWfDiagnostics": "WF 診断分析",
     "chatDailySignal": "デイリーシグナルレポート",
     "chatPairUniverse": "ペアユニバース選択",
-    "chatWfGrid": "Walk-Forward グリッド検索"
+    "chatWfGrid": "Walk-Forward グリッド検索",
+    "signIn": "ログイン",
+    "signOut": "ログアウト"
   },
 
   "chat": {
@@ -89,7 +91,11 @@
     "cloudVpsInput": "クラウド VPS",
     "localOpenClawInput": "ローカル OpenClaw",
     "footerCloud": "SomeoClaw エージェントはクラウド VPS 上で稼働し、someopark-test にアクセスしています。",
-    "footerLocal": "Bridge 接続経由でローカル OpenClaw エージェントを使用中。"
+    "footerLocal": "Bridge 接続経由でローカル OpenClaw エージェントを使用中。",
+    "welcomeTitle": "SomeoClaw へようこそ",
+    "welcomeDesc": "トレーディング戦略について質問するか、以下のデータビューを探索してください。",
+    "activePairs": "アクティブペア",
+    "clickToPreview": "クリックしてプレビュー"
   },
 
   "connection": {
@@ -316,5 +322,49 @@
     "themeDesc": "インターフェースの配色",
     "dark": "ダーク",
     "light": "ライト"
+  },
+
+  "auth": {
+    "email": "メールアドレス",
+    "password": "パスワード",
+    "confirmPassword": "パスワード確認",
+    "forgotPassword": "パスワードを忘れた？",
+    "signIn": "ログイン",
+    "signUp": "新規登録",
+    "signInToSomeoPark": "Someo Park にログイン",
+    "orContinueWith": "または以下で続行",
+    "noAccount": "アカウントをお持ちでない方",
+    "hasAccount": "すでにアカウントをお持ちの方",
+    "backToSignIn": "ログインに戻る",
+    "sendResetInstructions": "リセット手順を送信",
+    "updatePassword": "パスワードを更新",
+    "newPassword": "新しいパスワード",
+    "checkEmail": "確認リンクをメールで確認してください。",
+    "checkEmailReset": "パスワードリセットの手順をメールで確認してください。",
+    "passwordUpdated": "パスワードが正常に更新されました。"
+  },
+  "chatInput": {
+    "placeholder": "SomeoClaw に質問...",
+    "tryAgain": "再試行"
+  },
+  "chatPicker": {
+    "persona": "ペルソナ",
+    "selectModel": "モデルを選択"
+  },
+  "chatSettings": {
+    "title": "LLM 設定",
+    "morphApply": "Morph Apply を使用",
+    "learnMorph": "Morph Apply について詳しく",
+    "apiKey": "API キー",
+    "baseURL": "Base URL",
+    "parameters": "パラメータ",
+    "outputTokens": "出力トークン",
+    "temperature": "温度",
+    "frequencyPenalty": "頻度ペナルティ",
+    "presencePenalty": "存在ペナルティ"
+  },
+  "codePreview": {
+    "code": "コード",
+    "preview": "プレビュー"
   }
 }

@@ -47,7 +47,9 @@
     "chatWfDiagnostics": "WF 诊断分析",
     "chatDailySignal": "每日信号报告",
     "chatPairUniverse": "配对筛选",
-    "chatWfGrid": "Walk-Forward 网格搜索"
+    "chatWfGrid": "Walk-Forward 网格搜索",
+    "signIn": "登录",
+    "signOut": "退出登录"
   },
 
   "chat": {
@@ -89,7 +91,11 @@
     "cloudVpsInput": "云端 VPS",
     "localOpenClawInput": "本地 OpenClaw",
     "footerCloud": "SomeoClaw 代理正在云端 VPS 上运行，并访问 someopark-test。",
-    "footerLocal": "正在通过 Bridge 连接使用本地 OpenClaw 代理。"
+    "footerLocal": "正在通过 Bridge 连接使用本地 OpenClaw 代理。",
+    "welcomeTitle": "欢迎使用 SomeoClaw",
+    "welcomeDesc": "询问交易策略相关问题，或探索下方的数据视图。",
+    "activePairs": "活跃交易对",
+    "clickToPreview": "点击查看预览"
   },
 
   "connection": {
@@ -316,5 +322,53 @@
     "themeDesc": "界面配色方案",
     "dark": "暗色",
     "light": "浅色"
+  },
+
+  "auth": {
+    "email": "邮箱地址",
+    "password": "密码",
+    "confirmPassword": "确认密码",
+    "forgotPassword": "忘记密码？",
+    "signIn": "登录",
+    "signUp": "注册",
+    "signInToSomeoPark": "登录 Someo Park",
+    "orContinueWith": "或使用以下方式继续",
+    "noAccount": "没有账户？",
+    "hasAccount": "已有账户？",
+    "backToSignIn": "返回登录",
+    "sendResetInstructions": "发送重置说明",
+    "updatePassword": "更新密码",
+    "newPassword": "新密码",
+    "checkEmail": "请查看您的邮箱以获取确认链接。",
+    "checkEmailReset": "请查看您的邮箱以获取密码重置说明。",
+    "passwordUpdated": "密码更新成功。"
+  },
+
+  "chatInput": {
+    "placeholder": "向 SomeoClaw 提问...",
+    "tryAgain": "重试"
+  },
+
+  "chatPicker": {
+    "persona": "角色",
+    "selectModel": "选择模型"
+  },
+
+  "chatSettings": {
+    "title": "LLM 设置",
+    "morphApply": "使用 Morph Apply",
+    "learnMorph": "了解更多关于 Morph Apply",
+    "apiKey": "API 密钥",
+    "baseURL": "Base URL",
+    "parameters": "参数",
+    "outputTokens": "输出 tokens",
+    "temperature": "温度",
+    "frequencyPenalty": "频率惩罚",
+    "presencePenalty": "存在惩罚"
+  },
+
+  "codePreview": {
+    "code": "代码",
+    "preview": "预览"
   }
 }

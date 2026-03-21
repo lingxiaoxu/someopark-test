@@ -47,7 +47,9 @@
     "chatWfDiagnostics": "Análisis diagnóstico WF",
     "chatDailySignal": "Informe de señales diario",
     "chatPairUniverse": "Selección de universo de pares",
-    "chatWfGrid": "Búsqueda en cuadrícula Walk-Forward"
+    "chatWfGrid": "Búsqueda en cuadrícula Walk-Forward",
+    "signIn": "Iniciar sesion",
+    "signOut": "Cerrar sesion"
   },
 
   "chat": {
@@ -89,7 +91,11 @@
     "cloudVpsInput": "Cloud VPS",
     "localOpenClawInput": "OpenClaw local",
     "footerCloud": "El agente SomeoClaw está ejecutándose en Cloud VPS y accediendo a someopark-test.",
-    "footerLocal": "Usando su agente OpenClaw local mediante conexión Bridge."
+    "footerLocal": "Usando su agente OpenClaw local mediante conexión Bridge.",
+    "welcomeTitle": "Bienvenido a SomeoClaw",
+    "welcomeDesc": "Pregunte sobre sus estrategias de trading o explore las vistas de datos a continuacion.",
+    "activePairs": "Pares activos",
+    "clickToPreview": "Clic para previsualizar"
   },
 
   "connection": {
@@ -316,5 +322,49 @@
     "themeDesc": "Esquema de colores de la interfaz",
     "dark": "Oscuro",
     "light": "Claro"
+  },
+
+  "auth": {
+    "email": "Correo electronico",
+    "password": "Contrasena",
+    "confirmPassword": "Confirmar contrasena",
+    "forgotPassword": "Olvidaste tu contrasena?",
+    "signIn": "Iniciar sesion",
+    "signUp": "Registrarse",
+    "signInToSomeoPark": "Iniciar sesion en Someo Park",
+    "orContinueWith": "O continuar con",
+    "noAccount": "No tienes cuenta?",
+    "hasAccount": "Ya tienes cuenta?",
+    "backToSignIn": "Volver al inicio de sesion",
+    "sendResetInstructions": "Enviar instrucciones",
+    "updatePassword": "Actualizar contrasena",
+    "newPassword": "Nueva contrasena",
+    "checkEmail": "Revise su correo para el enlace de confirmacion.",
+    "checkEmailReset": "Revise su correo para las instrucciones de restablecimiento.",
+    "passwordUpdated": "Contrasena actualizada exitosamente."
+  },
+  "chatInput": {
+    "placeholder": "Pregunta a SomeoClaw...",
+    "tryAgain": "Intentar de nuevo"
+  },
+  "chatPicker": {
+    "persona": "Persona",
+    "selectModel": "Seleccionar modelo"
+  },
+  "chatSettings": {
+    "title": "Configuracion LLM",
+    "morphApply": "Usar Morph Apply",
+    "learnMorph": "Mas informacion sobre Morph Apply",
+    "apiKey": "Clave API",
+    "baseURL": "URL base",
+    "parameters": "Parametros",
+    "outputTokens": "Tokens de salida",
+    "temperature": "Temperatura",
+    "frequencyPenalty": "Penalizacion de frecuencia",
+    "presencePenalty": "Penalizacion de presencia"
+  },
+  "codePreview": {
+    "code": "Codigo",
+    "preview": "Vista previa"
   }
 }

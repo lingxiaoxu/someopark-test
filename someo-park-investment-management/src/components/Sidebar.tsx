@@ -1,19 +1,25 @@
-import React from 'react';
-import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, LogOut, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Session } from '@supabase/supabase-js';
 
 export default function Sidebar({
   onConnectClick,
   agentMode,
   setAgentMode,
   isLocalConnected,
-  onSettingsClick
+  onSettingsClick,
+  session,
+  onSignInClick,
+  onSignOut,
 }: {
   onConnectClick: () => void,
   agentMode: 'cloud' | 'local',
   setAgentMode: (mode: 'cloud' | 'local') => void,
   isLocalConnected: boolean,
-  onSettingsClick?: () => void
+  onSettingsClick?: () => void,
+  session: Session | null,
+  onSignInClick?: () => void,
+  onSignOut?: () => void,
 }) {
   const { t } = useTranslation();
 
@@ -82,7 +88,28 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="mt-auto pt-4 border-t border-[var(--border-subtle)]">
+      <div className="mt-auto pt-4 border-t border-[var(--border-subtle)] space-y-1">
+        {session ? (
+          <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
+            <div className="w-7 h-7 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border-subtle)]">
+              <User className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-xs text-[var(--text-primary)] truncate block">{session.user?.email}</span>
+            </div>
+            {onSignOut && (
+              <button onClick={onSignOut} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title={t('sidebar.signOut')}>
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <button onClick={onSignInClick} className="chat-item flex items-center gap-3 w-full">
+            <LogIn className="w-4 h-4 text-[var(--text-secondary)]" />
+            <span className="text-sm">{t('sidebar.signIn')}</span>
+          </button>
+        )}
+
         <div className="chat-item flex items-center gap-3 cursor-pointer" onClick={onSettingsClick}>
           <Settings className="w-4 h-4 text-[var(--text-secondary)]" />
           <span className="text-sm">{t('common.settings')}</span>

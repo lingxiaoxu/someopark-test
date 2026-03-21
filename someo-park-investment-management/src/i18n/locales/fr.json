@@ -47,7 +47,9 @@
     "chatWfDiagnostics": "Analyse diagnostique WF",
     "chatDailySignal": "Rapport de signaux quotidien",
     "chatPairUniverse": "Sélection de l'univers de paires",
-    "chatWfGrid": "Recherche en grille Walk-Forward"
+    "chatWfGrid": "Recherche en grille Walk-Forward",
+    "signIn": "Se connecter",
+    "signOut": "Se deconnecter"
   },
 
   "chat": {
@@ -89,7 +91,11 @@
     "cloudVpsInput": "Cloud VPS",
     "localOpenClawInput": "OpenClaw local",
     "footerCloud": "L'agent SomeoClaw fonctionne sur Cloud VPS et accède à someopark-test.",
-    "footerLocal": "Utilisation de votre agent OpenClaw local via la connexion Bridge."
+    "footerLocal": "Utilisation de votre agent OpenClaw local via la connexion Bridge.",
+    "welcomeTitle": "Bienvenue sur SomeoClaw",
+    "welcomeDesc": "Posez des questions sur vos strategies de trading ou explorez les vues de donnees ci-dessous.",
+    "activePairs": "Paires actives",
+    "clickToPreview": "Cliquer pour previsualiser"
   },
 
   "connection": {
@@ -316,5 +322,49 @@
     "themeDesc": "Schéma de couleurs de l'interface",
     "dark": "Sombre",
     "light": "Clair"
+  },
+
+  "auth": {
+    "email": "Adresse email",
+    "password": "Mot de passe",
+    "confirmPassword": "Confirmer le mot de passe",
+    "forgotPassword": "Mot de passe oublie ?",
+    "signIn": "Se connecter",
+    "signUp": "S'inscrire",
+    "signInToSomeoPark": "Se connecter a Someo Park",
+    "orContinueWith": "Ou continuer avec",
+    "noAccount": "Pas encore de compte ?",
+    "hasAccount": "Deja un compte ?",
+    "backToSignIn": "Retour a la connexion",
+    "sendResetInstructions": "Envoyer les instructions",
+    "updatePassword": "Mettre a jour le mot de passe",
+    "newPassword": "Nouveau mot de passe",
+    "checkEmail": "Verifiez votre email pour le lien de confirmation.",
+    "checkEmailReset": "Verifiez votre email pour les instructions de reinitialisation.",
+    "passwordUpdated": "Mot de passe mis a jour avec succes."
+  },
+  "chatInput": {
+    "placeholder": "Demandez a SomeoClaw...",
+    "tryAgain": "Reessayer"
+  },
+  "chatPicker": {
+    "persona": "Persona",
+    "selectModel": "Choisir un modele"
+  },
+  "chatSettings": {
+    "title": "Parametres LLM",
+    "morphApply": "Utiliser Morph Apply",
+    "learnMorph": "En savoir plus sur Morph Apply",
+    "apiKey": "Cle API",
+    "baseURL": "URL de base",
+    "parameters": "Parametres",
+    "outputTokens": "Tokens de sortie",
+    "temperature": "Temperature",
+    "frequencyPenalty": "Penalite de frequence",
+    "presencePenalty": "Penalite de presence"
+  },
+  "codePreview": {
+    "code": "Code",
+    "preview": "Apercu"
   }
 }

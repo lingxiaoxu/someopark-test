@@ -36,9 +36,17 @@ function correlationColor(value: number): string {
   }
 }
 
-function fmtCell(val: any): string {
+// Headers whose values should always render as integers (no decimals)
+const INTEGER_HEADERS = new Set(['window', 'n_pairs', 'n_selected', 'rank', 'count', 'num_pairs', 'num_selected', 'window_idx']);
+
+function isIntegerColumn(header: string): boolean {
+  return INTEGER_HEADERS.has(header.toLowerCase());
+}
+
+function fmtCell(val: any, header?: string): string {
   if (val == null) return '';
   if (typeof val === 'number') {
+    if (header && isIntegerColumn(header)) return Math.round(val).toString();
     const abs = Math.abs(val);
     if (abs >= 1000) return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (abs < 0.01 && abs > 0) return val.toFixed(6);
@@ -57,13 +65,27 @@ function getSectionTitle(row: any, headers: string[]): string {
   return val.replace(/[═━─]/g, '').trim();
 }
 
-// GenericTable with section separators and negative coloring
+// GenericTable with section separators, negative coloring, and window filter
 function GenericTable({ headers, rows, sheetName }: { headers: string[]; rows: any[]; sheetName?: string }) {
+  // Detect WINDOW column for filtering
+  const windowHeader = headers.find(h => h.toLowerCase() === 'window' || h.toLowerCase() === 'window_idx');
+  const windowValues = useMemo(() => {
+    if (!windowHeader) return [];
+    const vals = [...new Set(rows.map(r => r[windowHeader]).filter(v => v != null))].map(v => Math.round(Number(v)));
+    return vals.sort((a, b) => a - b);
+  }, [rows, windowHeader]);
+  const [selectedWindow, setSelectedWindow] = useState<number | null>(null);
+
+  const filteredRows = useMemo(() => {
+    if (selectedWindow === null || !windowHeader) return rows;
+    return rows.filter(r => Math.round(Number(r[windowHeader])) === selectedWindow);
+  }, [rows, selectedWindow, windowHeader]);
+
   const sections = useMemo(() => {
     const result: { title?: string; rows: any[] }[] = [];
     let current: { title?: string; rows: any[] } = { rows: [] };
 
-    for (const row of rows) {
+    for (const row of filteredRows) {
       if (isSectionRow(row, headers)) {
         if (current.rows.length > 0 || current.title) result.push(current);
         current = { title: getSectionTitle(row, headers), rows: [] };
@@ -73,13 +95,31 @@ function GenericTable({ headers, rows, sheetName }: { headers: string[]; rows: a
     }
     if (current.rows.length > 0 || current.title) result.push(current);
     return result;
-  }, [headers, rows]);
+  }, [headers, filteredRows]);
 
   const hasSections = sections.some(s => s.title);
+
+  const windowFilter = windowValues.length > 1 && (
+    <div className="flex items-center gap-1.5 mb-3">
+      <span className="text-[10px] text-[var(--text-muted)] font-medium mr-1">Window:</span>
+      <button
+        onClick={() => setSelectedWindow(null)}
+        className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${selectedWindow === null ? 'bg-[var(--accent-primary)] text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+      >All</button>
+      {windowValues.map(w => (
+        <button
+          key={w}
+          onClick={() => setSelectedWindow(w)}
+          className={`px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${selectedWindow === w ? 'bg-[var(--accent-primary)] text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+        >{w}</button>
+      ))}
+    </div>
+  );
 
   if (hasSections) {
     return (
       <div className="space-y-4">
+        {windowFilter}
         {sections.map((section, si) => {
           // Detect macro snapshot section embedded in Executive Summary
           const isMacroSnapshot = section.title && (section.title.includes('宏观环境快照') || section.title.includes('daily_report'));
@@ -129,7 +169,7 @@ function GenericTable({ headers, rows, sheetName }: { headers: string[]; rows: a
                             return (
                               <td key={j} className={`px-3 py-2 ${isNum ? 'font-mono' : ''} whitespace-nowrap`}
                                 style={{ color: isNeg ? 'var(--error)' : 'var(--text-primary)' }}>
-                                {isPair ? renderPairCell(String(val)) : isNum ? fmtCell(num) : String(val ?? '')}
+                                {isPair ? renderPairCell(String(val)) : isNum ? fmtCell(num, h) : String(val ?? '')}
                               </td>
                             );
                           })}
@@ -147,35 +187,38 @@ function GenericTable({ headers, rows, sheetName }: { headers: string[]; rows: a
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left">
-        <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
-          <tr>
-            {headers.map((h, i) => (
-              <th key={i} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-[var(--border-subtle)] text-xs">
-          {rows.map((row, i) => (
-            <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors">
-              {headers.map((h, j) => {
-                const val = row[h];
-                const num = typeof val === 'number' ? val : parseFloat(val);
-                const isNum = !isNaN(num) && typeof val !== 'boolean' && val !== '' && val != null;
-                const isNeg = isNum && num < 0;
-                const isPair = isPairCell(h, val);
-                return (
-                  <td key={j} className={`px-3 py-2 ${isNum ? 'font-mono' : ''} whitespace-nowrap`}
-                    style={{ color: isNeg ? 'var(--error)' : 'var(--text-primary)' }}>
-                    {isPair ? renderPairCell(String(val)) : isNum ? fmtCell(num) : String(val ?? '')}
-                  </td>
-                );
-              })}
+    <div>
+      {windowFilter}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left">
+          <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
+            <tr>
+              {headers.map((h, i) => (
+                <th key={i} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-[var(--border-subtle)] text-xs">
+            {filteredRows.map((row, i) => (
+              <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                {headers.map((h, j) => {
+                  const val = row[h];
+                  const num = typeof val === 'number' ? val : parseFloat(val);
+                  const isNum = !isNaN(num) && typeof val !== 'boolean' && val !== '' && val != null;
+                  const isNeg = isNum && num < 0;
+                  const isPair = isPairCell(h, val);
+                  return (
+                    <td key={j} className={`px-3 py-2 ${isNum ? 'font-mono' : ''} whitespace-nowrap`}
+                      style={{ color: isNeg ? 'var(--error)' : 'var(--text-primary)' }}>
+                      {isPair ? renderPairCell(String(val)) : isNum ? fmtCell(num, h) : String(val ?? '')}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

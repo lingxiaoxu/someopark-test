@@ -11,10 +11,13 @@ import walkForwardRoutes from './routes/walkForward.js';
 import pairUniverseRoutes from './routes/pairUniverse.js';
 import diagnosticRoutes from './routes/diagnostic.js';
 import monitorHistoryRoutes from './routes/monitorHistory.js';
+import chatRoutes from './routes/chat.js';
+import morphChatRoutes from './routes/morphChat.js';
+import sandboxRoutes from './routes/sandbox.js';
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Routes
 app.use('/api/inventory', inventoryRoutes);
@@ -25,6 +28,9 @@ app.use('/api/wf', walkForwardRoutes);
 app.use('/api/pairs', pairUniverseRoutes);
 app.use('/api/diagnostic', diagnosticRoutes);
 app.use('/api/monitor-history', monitorHistoryRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/morph-chat', morphChatRoutes);
+app.use('/api/sandbox', sandboxRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {
