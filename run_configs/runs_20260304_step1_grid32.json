@@ -16,10 +16,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -28,16 +24,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -48,24 +48,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -82,10 +82,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -94,16 +90,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -114,24 +114,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -148,10 +148,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -160,16 +156,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -180,24 +180,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -214,10 +214,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -226,16 +222,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -246,24 +246,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -280,10 +280,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -292,16 +288,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -312,24 +312,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -346,10 +346,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -358,16 +354,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -378,24 +378,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -412,10 +412,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -424,16 +420,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -444,24 +444,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -478,10 +478,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -490,16 +486,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -510,24 +510,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -544,10 +544,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -556,16 +552,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -576,24 +576,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -610,10 +610,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -622,16 +618,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -642,24 +642,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -676,10 +676,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -688,16 +684,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -708,24 +708,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -742,10 +742,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -754,16 +750,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -774,24 +774,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -808,10 +808,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -820,16 +816,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -840,24 +840,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -874,10 +874,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -886,16 +882,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -906,24 +906,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -940,10 +940,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -952,16 +948,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -972,24 +972,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1006,10 +1006,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1018,16 +1014,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1038,24 +1038,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1072,10 +1072,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1084,16 +1080,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1104,24 +1104,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1138,10 +1138,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1150,16 +1146,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1170,24 +1170,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1204,10 +1204,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1216,16 +1212,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1236,24 +1236,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1270,10 +1270,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1282,16 +1278,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1302,24 +1302,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1336,10 +1336,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1348,16 +1344,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1368,24 +1368,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1402,10 +1402,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1414,16 +1410,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1434,24 +1434,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1468,10 +1468,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1480,16 +1476,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1500,24 +1500,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1534,10 +1534,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1546,16 +1542,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1566,24 +1566,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1600,10 +1600,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1612,16 +1608,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1632,24 +1632,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1666,10 +1666,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1678,16 +1674,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1698,24 +1698,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1732,10 +1732,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1744,16 +1740,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1764,24 +1764,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1798,10 +1798,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1810,16 +1806,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1830,24 +1830,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1864,10 +1864,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1876,16 +1872,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1896,24 +1896,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1930,10 +1930,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1942,16 +1938,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -1962,24 +1962,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -1996,10 +1996,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -2008,16 +2004,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -2028,24 +2028,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     },
@@ -2062,10 +2062,6 @@
           "WST"
         ],
         [
-          "MKTX",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -2074,16 +2070,20 @@
           "STLD"
         ],
         [
+          "MKTX",
+          "WST"
+        ],
+        [
           "F",
           "PG"
         ],
         [
-          "FSLR",
-          "WST"
-        ],
-        [
           "MTCH",
           "NVR"
+        ],
+        [
+          "FSLR",
+          "WST"
         ],
         [
           "AWK",
@@ -2094,24 +2094,24 @@
           "MKTX"
         ],
         [
-          "HII",
-          "PG"
-        ],
-        [
           "GRMN",
           "KO"
         ],
         [
-          "CL",
-          "GD"
+          "AMT",
+          "TJX"
+        ],
+        [
+          "HII",
+          "PG"
+        ],
+        [
+          "LNT",
+          "MKTX"
         ],
         [
           "GIS",
           "HUBB"
-        ],
-        [
-          "PG",
-          "RTX"
         ]
       ]
     }

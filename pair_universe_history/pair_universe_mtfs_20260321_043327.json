@@ -12,6 +12,12 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
+    "s1": "CB",
+    "s2": "ACGL",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
     "s1": "ALL",
     "s2": "BK",
     "sector": "finance",
@@ -82,11 +88,5 @@
     "s2": "CPT",
     "sector": "realestate",
     "spread_col": "Momentum_Spread_realestate"
-  },
-  {
-    "s1": "D",
-    "s2": "NSC",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
   }
 ]
