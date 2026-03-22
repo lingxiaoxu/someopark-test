@@ -12,9 +12,14 @@ async function fetchText(path: string): Promise<string> {
   return res.text();
 }
 
-// Inventory
-export const getInventory = (strategy: string) =>
-  fetchApi<any>(`/api/inventory/${strategy}`);
+// Inventory — try live API first, fallback to static snapshot for Firebase hosting
+export const getInventory = async (strategy: string) => {
+  try {
+    return await fetchApi<any>(`/api/inventory/${strategy}`);
+  } catch {
+    return fetchApi<any>(`/data/inventory_${strategy}.json`);
+  }
+};
 export const getInventoryHistory = (strategy: string) =>
   fetchApi<any[]>(`/api/inventory/history/${strategy}`);
 export const getInventorySnapshot = (strategy: string, filename: string) =>
