@@ -14,6 +14,9 @@ import modelList from '../lib/models.json'
 import PairBadge from './PairBadge'
 import { useApi } from '../hooks/useApi'
 import { getInventory } from '../lib/api'
+import { db } from '../lib/firebase'
+import { collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
+import { Session } from '@supabase/supabase-js'
 
 export default function ChatArea({
   agentMode,
@@ -26,6 +29,7 @@ export default function ChatArea({
   onUseMorphApplyChange,
   selectedTemplate,
   onSelectedTemplateChange,
+  session,
 }: {
   agentMode: 'cloud' | 'local'
   isLocalConnected: boolean
@@ -37,6 +41,7 @@ export default function ChatArea({
   onUseMorphApplyChange: (v: boolean) => void
   selectedTemplate: string
   onSelectedTemplateChange: (t: string) => void
+  session?: Session | null
 }) {
   const { t } = useTranslation()
   const [input, setInput] = useState('')
@@ -79,6 +84,38 @@ export default function ChatArea({
     setInput('')
     setIsLoading(true)
     setIsErrored(false)
+
+    // Route to VPS via Firestore when cloud mode and message mentions SomeoClaw
+    if (agentMode === 'cloud' && input.trim().includes('SomeoClaw')) {
+      const docRef = await addDoc(collection(db, 'bot_commands'), {
+        command: input.trim(),
+        uid: session?.user?.id ?? 'anonymous',
+        status: 'pending',
+        reply: null,
+        createdAt: serverTimestamp(),
+        repliedAt: null,
+      })
+
+      setIsLoading(true)
+      const unsub = onSnapshot(docRef, (snap) => {
+        const data = snap.data()
+        if (data?.reply) {
+          const assistantMessage: Message = {
+            role: 'assistant',
+            content: [{ type: 'text', text: data.reply }],
+          }
+          setMessages(prev => [...prev, assistantMessage])
+          setIsLoading(false)
+          unsub()
+        } else if (data?.status === 'error') {
+          setIsErrored(true)
+          setErrorMessage(data.error || 'VPS command failed')
+          setIsLoading(false)
+          unsub()
+        }
+      })
+      return
+    }
 
     const controller = new AbortController()
     abortControllerRef.current = controller

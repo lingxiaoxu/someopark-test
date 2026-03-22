@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // bot_commands: frontend writes new commands (unauthenticated via Firebase Auth,
+    // uses Supabase auth instead). Server-side updates via Admin SDK bypass rules.
+    match /bot_commands/{docId} {
+      allow create: if true;
+      allow read: if true;
+      allow update, delete: if false;
+    }
+  }
+}

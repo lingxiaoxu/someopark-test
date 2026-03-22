@@ -139,6 +139,7 @@ export default function App() {
               onUseMorphApplyChange={setUseMorphApply}
               selectedTemplate={selectedTemplate}
               onSelectedTemplateChange={setSelectedTemplate}
+              session={session}
             />
           )}
         </div>
