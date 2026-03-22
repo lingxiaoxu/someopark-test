@@ -1,6 +1,3 @@
-import { createOpenAI } from '@ai-sdk/openai'
-import { generateText, LanguageModel } from 'ai'
-
 export async function applyPatch({
   targetFile,
   instructions,
@@ -22,16 +19,28 @@ export async function applyPatch({
     )
   }
 
-  const openai = createOpenAI({
-    apiKey: morphApiKey,
-    baseURL: 'https://api.morphllm.com/v1',
-  })
+  const prompt = `<instruction>${instructions}</instruction>\n<code>${initialCode}</code>\n<update>${codeEdit}</update>`
 
   try {
-    const { text: mergedCode } = await generateText({
-      model: openai('morph-v3-large') as LanguageModel,
-      prompt: `<instruction>${instructions}</instruction>\n<code>${initialCode}</code>\n<update>${codeEdit}</update>`,
+    const response = await fetch('https://api.morphllm.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${morphApiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'morph-v3-large',
+        messages: [{ role: 'user', content: prompt }],
+      }),
     })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Morph API error ${response.status}: ${errorText}`)
+    }
+
+    const data = await response.json() as any
+    const mergedCode = data?.choices?.[0]?.message?.content
 
     if (!mergedCode) {
       throw new Error('Morph Apply returned empty content')
@@ -42,7 +51,7 @@ export async function applyPatch({
       code: mergedCode,
     }
   } catch (error: any) {
-    if (error.message.includes('Invalid API key') || error.status === 401) {
+    if (error.message.includes('Invalid API key') || error.message.includes('401')) {
       throw new Error('Invalid Morph API key. Please check your settings.')
     }
     throw new Error(`Failed to apply morph: ${error.message}`)

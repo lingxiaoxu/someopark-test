@@ -25,6 +25,7 @@ router.post('/', async (req: Request, res: Response) => {
         userID: userID ?? '',
       },
       timeoutMs: sandboxTimeout,
+      secure: false, // older templates (nextjs-developer, etc.) require secure:false
     })
 
     // Install packages

@@ -14,6 +14,7 @@ import monitorHistoryRoutes from './routes/monitorHistory.js';
 import chatRoutes from './routes/chat.js';
 import morphChatRoutes from './routes/morphChat.js';
 import sandboxRoutes from './routes/sandbox.js';
+import publishRoutes from './routes/publish.js';
 
 const app = express();
 app.use(cors());
@@ -31,6 +32,7 @@ app.use('/api/monitor-history', monitorHistoryRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/morph-chat', morphChatRoutes);
 app.use('/api/sandbox', sandboxRoutes);
+app.use('/api/publish', publishRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

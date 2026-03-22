@@ -65,13 +65,20 @@ export default function App() {
     stanseAgent: DeepPartial<StanseAgentSchema>;
     result?: ExecutionResult;
   } | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   const handleLanguageModelChange = useCallback((config: LLMModelConfig) => {
     setLanguageModel(prev => ({ ...prev, ...config }));
   }, [setLanguageModel]);
 
-  const handleCodePreview = useCallback((preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult }) => {
-    setCodePreview(preview);
+  const handleCodePreview = useCallback((preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult; isLoading?: boolean }) => {
+    if (preview.isLoading) {
+      setIsPreviewLoading(true);
+      setCodePreview({ stanseAgent: preview.stanseAgent });
+    } else {
+      setIsPreviewLoading(false);
+      setCodePreview({ stanseAgent: preview.stanseAgent, result: preview.result });
+    }
     setActiveArtifact(null);
   }, []);
 
@@ -149,8 +156,8 @@ export default function App() {
                   stanseAgent={codePreview.stanseAgent}
                   result={codePreview.result}
                   isChatLoading={false}
-                  isPreviewLoading={false}
-                  onClose={() => setCodePreview(null)}
+                  isPreviewLoading={isPreviewLoading}
+                  onClose={() => { setCodePreview(null); setIsPreviewLoading(false); }}
                 />
               ) : null}
             </div>

@@ -8,23 +8,26 @@ import templates from '../../src/lib/templates.js'
 
 const router = Router()
 
-// Keywords that indicate a code/app generation request
-const CODE_KEYWORDS = [
-  'build', 'create', 'make', 'generate', 'program', 'code', 'develop', 'write',
-  'app', 'application', 'website', 'page', 'tool', 'game', 'bot',
-  'calculator', 'graph', 'form', 'server', 'database',
-  'function', 'script', 'component', 'widget', 'interface', 'ui', 'frontend',
-  'backend', 'deploy', 'fix', 'debug', 'refactor',
-  'streamlit', 'react', 'next', 'python', 'javascript', 'typescript', 'html', 'css',
-  'plotly', 'pandas', 'numpy',
-  '编写', '编程', '程序', '应用', '网站', '页面',
-  '修改', '修复',
+// Regex patterns for code generation intent
+const CODE_INTENT_PATTERNS = [
+  // English: action verb + (me/us/a/an/me a/...) + thing
+  /\b(build|create|make|generate|write|program|develop|code|implement)\s+(me\s+)?(a|an|the|some|us\s+a)?\s*\w/i,
+  // "show me code", "give me code"
+  /\b(show|give)\s+(me\s+)?(some\s+)?code\b/i,
+  // Tech stack names
+  /\b(streamlit|nextjs|next\.js|react\s+app|vue\s+app|gradio|flask|fastapi)\b/i,
+  /\b(python\s+script|javascript|typescript|html\s+page|pandas|numpy|plotly)\b/i,
+  // App type nouns when used as build targets
+  /\b(web\s+app|dashboard\s+app|chatbot|calculator|game|widget|component)\b/i,
+  // Fix/debug existing code
+  /\b(fix|debug|refactor)\s+(this|the|my)\s+(code|bug|error|script|app)\b/i,
+  // Chinese
+  /写代码|编写代码|帮我写|生成代码|写一个|做一个|开发一个|创建一个|制作一个|修复这段|帮我做/,
 ]
 
 function isCodeRequest(text: string): boolean {
   if (!text || text.length === 0) return false
-  const lower = text.toLowerCase()
-  return CODE_KEYWORDS.some(keyword => lower.includes(keyword))
+  return CODE_INTENT_PATTERNS.some(pattern => pattern.test(text))
 }
 
 router.post('/', async (req: Request, res: Response) => {

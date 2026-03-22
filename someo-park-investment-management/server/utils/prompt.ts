@@ -66,6 +66,10 @@ export function toPrompt(template: Templates) {
     When asked to write code, generate a complete runnable application.
     Follow the same code generation patterns as a skilled software engineer.
 
+    ## Next.js Rules
+    - Always use 'use client' for components with hooks.
+    - Never read Date/time during SSR — use useEffect + useState to avoid hydration mismatch.
+
     You can use one of the following templates:
     ${templatesToPrompt(template)}
 

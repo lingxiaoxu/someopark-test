@@ -42,16 +42,16 @@ export function ChatSettings({
       </button>
 
       {open && (
-        <div className="absolute bottom-full mb-1 right-0 w-[280px] rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-xl z-50 p-3 space-y-3">
+        <div className="absolute bottom-full mb-2 right-0 w-[260px] rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-xl z-[100] p-3 space-y-3">
           {/* Morph Apply Toggle */}
           <div className="flex items-center justify-between">
             <label className="text-sm text-[var(--text-primary)]">{t('chatSettings.morphApply')}</label>
             <button
               type="button"
               onClick={() => onUseMorphApplyChange(!useMorphApply)}
-              className={`relative w-9 h-5 rounded-full transition-colors ${useMorphApply ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}`}
+              className={`relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 ${useMorphApply ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}`}
             >
-              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${useMorphApply ? 'translate-x-4' : 'translate-x-0.5'}`} />
+              <span className={`inline-block w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ease-in-out self-center ${useMorphApply ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </button>
           </div>
           <a className="text-xs text-[var(--text-muted)] flex items-center gap-1 hover:underline" target="_blank" href="https://morphllm.com" rel="noreferrer">

@@ -30,7 +30,7 @@ export default function ChatArea({
   agentMode: 'cloud' | 'local'
   isLocalConnected: boolean
   setActiveArtifact: (a: any) => void
-  onCodePreview?: (preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult }) => void
+  onCodePreview?: (preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult; isLoading?: boolean }) => void
   languageModel: LLMModelConfig
   onLanguageModelChange: (config: LLMModelConfig) => void
   useMorphApply: boolean
@@ -154,8 +154,12 @@ export default function ChatArea({
         setActiveArtifact({ type: first.type, title: first.title, params: first.params })
       }
 
-      // If code was generated, trigger sandbox
+      // If code was generated, open preview immediately then run sandbox
       if (parsedAgent?.code && parsedAgent.template && parsedAgent.template !== 'chat-response') {
+        // Open code panel right away (no result yet, preview tab will show loading)
+        if (onCodePreview) {
+          onCodePreview({ stanseAgent: parsedAgent, isLoading: true })
+        }
         try {
           const sandboxRes = await fetch('/api/sandbox', {
             method: 'POST',
@@ -178,6 +182,10 @@ export default function ChatArea({
           }
         } catch (err) {
           console.error('Sandbox error:', err)
+          // Still open preview with just the code
+          if (onCodePreview && parsedAgent) {
+            onCodePreview({ stanseAgent: parsedAgent })
+          }
         }
       }
     } catch (err: any) {
