@@ -1,6 +1,16 @@
-import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, LogOut, User } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
+import { useState, useRef, useEffect } from 'react';
+import i18n from '../i18n';
+
+const LANGUAGES = [
+  { code: 'en', flag: '🇺🇸', label: 'EN' },
+  { code: 'zh', flag: '🇨🇳', label: '中' },
+  { code: 'ja', flag: '🇯🇵', label: 'JP' },
+  { code: 'fr', flag: '🇫🇷', label: 'FR' },
+  { code: 'es', flag: '🇪🇸', label: 'ES' },
+];
 
 export default function Sidebar({
   onConnectClick,
@@ -22,6 +32,26 @@ export default function Sidebar({
   onSignOut?: () => void,
 }) {
   const { t } = useTranslation();
+  const [currentLang, setCurrentLang] = useState(localStorage.getItem('sp-lang') || 'en');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const changeLang = (code: string) => {
+    i18n.changeLanguage(code);
+    localStorage.setItem('sp-lang', code);
+    setCurrentLang(code);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <div className="sidebar flex flex-col h-full">
@@ -88,19 +118,60 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="mt-auto pt-4 border-t border-[var(--border-subtle)] space-y-1">
+      {/* Bottom area */}
+      <div className="mt-auto pt-4 border-t border-[var(--border-subtle)]">
+
+        {/* Language flags - 4 inline icons */}
+        <div className="flex items-center gap-1 px-1 mb-3">
+          {LANGUAGES.map(lang => (
+            <button
+              key={lang.code}
+              onClick={() => changeLang(lang.code)}
+              title={lang.label}
+              className={`flex-1 py-1 rounded-md text-base transition-all ${currentLang === lang.code ? 'bg-[var(--bg-tertiary)] ring-1 ring-[var(--accent-primary)]/40' : 'hover:bg-[var(--bg-secondary)] opacity-50 hover:opacity-80'}`}
+            >
+              {lang.flag}
+            </button>
+          ))}
+        </div>
+
+        {/* Auth section */}
         {session ? (
-          <div className="flex items-center gap-3 px-3 py-2 rounded-lg">
-            <div className="w-7 h-7 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border-subtle)]">
-              <User className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-xs text-[var(--text-primary)] truncate block">{session.user?.email}</span>
-            </div>
-            {onSignOut && (
-              <button onClick={onSignOut} className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" title={t('sidebar.signOut')}>
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(prev => !prev)}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
+            >
+              <div className="w-7 h-7 rounded-full bg-[var(--accent-primary)]/20 flex items-center justify-center text-xs font-semibold text-[var(--accent-primary)] shrink-0">
+                {session.user?.email?.[0]?.toUpperCase() ?? '?'}
+              </div>
+              <div className="flex-1 min-w-0 text-left">
+                <div className="text-xs font-medium text-[var(--text-primary)] truncate">{session.user?.email}</div>
+              </div>
+            </button>
+
+            {menuOpen && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl shadow-xl overflow-hidden z-50">
+                <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
+                  <div className="text-xs font-medium text-[var(--text-primary)]">My Account</div>
+                  <div className="text-[11px] text-[var(--text-muted)] truncate">{session.user?.email}</div>
+                </div>
+                <button
+                  onClick={() => { setMenuOpen(false); onSettingsClick?.(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  About SomeoClaw
+                </button>
+                <div className="border-t border-[var(--border-subtle)]" />
+                <button
+                  onClick={() => { setMenuOpen(false); onSignOut?.(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition-colors"
+                >
+                  <span className="w-3.5 h-3.5 text-sm">↩</span>
+                  Sign out
+                </button>
+              </div>
             )}
           </div>
         ) : (
@@ -109,11 +180,6 @@ export default function Sidebar({
             <span className="text-sm">{t('sidebar.signIn')}</span>
           </button>
         )}
-
-        <div className="chat-item flex items-center gap-3 cursor-pointer" onClick={onSettingsClick}>
-          <Settings className="w-4 h-4 text-[var(--text-secondary)]" />
-          <span className="text-sm">{t('common.settings')}</span>
-        </div>
       </div>
     </div>
   );
