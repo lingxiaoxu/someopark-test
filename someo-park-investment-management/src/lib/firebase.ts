@@ -5,7 +5,7 @@ const firebaseConfig = {
   projectId: 'someopark',
   appId: '1:692205032293:web:bf34833b8b6a1ce9bbc78c',
   storageBucket: 'someopark.firebasestorage.app',
-  apiKey: 'AIzaSyAnQ1GAX5Wt0G5aHKLmiKisf1yGNQZGFl8',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: 'someopark.firebaseapp.com',
   messagingSenderId: '692205032293',
 };
