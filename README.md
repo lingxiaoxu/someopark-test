@@ -82,6 +82,8 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `PriceDataStore.py` | 价格数据读取与缓存（Polygon / Yahoo），Parquet 格式 |
 | `AuditPairs.py` | 验证 Excel 输出文件规则合规性（MRPT / MTFS 通用，`--strategy mrpt\|mtfs`） |
 | `DailySignal.py` | 每日信号生成器（`--strategy mrpt\|mtfs\|both`），含 Regime 检测、Position Monitor、完整报告输出 |
+| `MacroDataStore.py` | 宏观指数数据存储（VIX/MOVE 日线 + VIX/VXTLT hourly），按年分 Parquet 存储，供 RegimeDetector 读取短期百分位 |
+| `RegimeDetector.py` | Regime 检测器：CISS 动态加权、倒 U 型波动率曲线、90 天 hourly 百分位分层合成，输出 0–100 分 + 各类 sub-scores |
 | `SelectPairs.py` | 从 someopark 数据库筛选最优 MRPT / MTFS 配对，决定 s1/s2 方向，可直接写入 pair_universe_*.json |
 | `UpdateStep1Configs.py` | 读取 pair_universe_*.json，更新 Step1 grid search config 的 pairs 字段（换配对后必须运行） |
 | `CompactPriceData.py` | 合并同一周内的多个 Parquet 文件为单文件，重算 SHA256 hash，更新 index.json |
@@ -328,7 +330,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 **主要功能：**
 
-- **Regime 检测**（`RegimeDetector.py`）：综合波动率、信用利差、利率、AI 动量等 7 类市场指标，输出 0–100 分，自动决定 MRPT / MTFS 资金权重。分数低（< 40）偏均值回归，分数高（> 60）偏趋势跟随，中间为中性
+- **Regime 检测**（`RegimeDetector.py`）：综合波动率、信用利差、利率、AI 动量等 7 类市场指标，输出 0–100 分，自动决定 MRPT / MTFS 资金权重。分数低（< 40）偏均值回归，分数高（> 60）偏趋势跟随，中间为中性。类别权重：波动率 30%、动量/AI 18%、信用 11%、利率 10%、宏观压力 14%、地缘 9%、策略 vol 8%。波动率使用 CISS 动态加权 + 倒 U 型曲线 + 90 天 hourly 百分位（VIX / VXTLT）分层合成
 - **Position Monitor**：对所有已开仓配对，以开仓时注入的 param_set 从 `open_date` 跑模拟至今，每日检测止损条件（MRPT：波动率止损 / 价格止损 / z-score 自然回归 / 时间止损；MTFS：动量衰减 / 配对 PnL 止损 / 波动率止损 / 时间止损），输出 HOLD / CLOSE（自然平仓）/ CLOSE_STOP（止损触发）。仓位在 `open_date` 的 `my_handle_data` 之后注入，止损从次日起检测，与实盘逻辑一致。每对监测结果输出 Excel 至 `trading_signals/monitor_history/`
 - **完整报告**：所有输出统一写入 `trading_signals/`，包含信号 JSON 和人类可读中文 TXT 报告（含 Regime 分析、持仓监测、OOS 历史参考）
 

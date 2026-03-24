@@ -944,11 +944,11 @@ class RegimeDetector:
         # 4. Category weights (tuned based on MRPT/MTFS nature)
         #    All scores: 0=MRPT-favoring, 1=MTFS-favoring
         category_weights = {
-            'volatility':    0.25,   # VIX/MOVE — 最直接的信号
-            'credit':        0.18,   # 信用利差 — MRPT最怕spread blow-up
+            'volatility':    0.30,   # VIX/MOVE — 最直接的信号
+            'credit':        0.11,   # 信用利差 — MRPT最怕spread blow-up
             'rates':         0.10,   # 利率环境
             'momentum_ai':   0.18,   # AI/动量含量 — MTFS的主要 alpha 来源
-            'macro_stress':  0.12,   # 宏观金融压力
+            'macro_stress':  0.14,   # 宏观金融压力
             'geopolitical':  0.09,   # 地缘/避险
             'strategy_vol':  0.08,   # 策略自身 vol parity
         }
