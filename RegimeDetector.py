@@ -679,7 +679,26 @@ class RegimeDetector:
                   f"equity={equity_vol:.3f} | rt_long={rt_long_score:.3f} rt_short={rt_short_score} "
                   f"rates={rates_vol:.3f} | composite={vol_composite:.3f}")
 
-        return {'vol_composite': float(np.clip(vol_composite, 0.0, 1.0))}
+        # 返回完整分层明细，供前端展示（vol_composite 是最终合成值）
+        result: dict[str, float] = {'vol_composite': float(np.clip(vol_composite, 0.0, 1.0))}
+
+        # Equity 层
+        for k, v in eq_long.items():
+            result[f'eq_{k}'] = round(v, 4)          # eq_vix_level, eq_vix_z
+        result['eq_long'] = round(eq_long_score, 4)
+        if eq_short_score is not None:
+            result['eq_short'] = round(eq_short_score, 4)
+        result['equity_vol'] = round(equity_vol, 4)
+
+        # Rates 层
+        for k, v in rt_long.items():
+            result[f'rt_{k}'] = round(v, 4)           # rt_move_level, rt_move_z
+        result['rt_long'] = round(rt_long_score, 4)
+        if rt_short_score is not None:
+            result['rt_short'] = round(rt_short_score, 4)
+        result['rates_vol'] = round(rates_vol, 4)
+
+        return result
 
     def _score_credit(self, raw: dict) -> dict:
         """
