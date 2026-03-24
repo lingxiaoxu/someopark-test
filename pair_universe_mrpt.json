@@ -24,14 +24,14 @@
     "z_col": "Z_utilities"
   },
   {
-    "s1": "MKTX",
-    "s2": "WST",
+    "s1": "F",
+    "s2": "PG",
     "sector": "other",
     "z_col": "Z_other"
   },
   {
-    "s1": "F",
-    "s2": "PG",
+    "s1": "MKTX",
+    "s2": "WST",
     "sector": "other",
     "z_col": "Z_other"
   },
@@ -42,22 +42,10 @@
     "z_col": "Z_other"
   },
   {
-    "s1": "FSLR",
-    "s2": "WST",
-    "sector": "other",
-    "z_col": "Z_other"
-  },
-  {
-    "s1": "AWK",
-    "s2": "EXPD",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
-  },
-  {
-    "s1": "ETR",
-    "s2": "MKTX",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
+    "s1": "AMT",
+    "s2": "TJX",
+    "sector": "realestate",
+    "z_col": "Z_realestate"
   },
   {
     "s1": "GRMN",
@@ -66,10 +54,22 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "AMT",
-    "s2": "TJX",
-    "sector": "realestate",
-    "z_col": "Z_realestate"
+    "s1": "ETR",
+    "s2": "MKTX",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "AWK",
+    "s2": "EXPD",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "GIS",
+    "s2": "HUBB",
+    "sector": "food",
+    "z_col": "Z_food"
   },
   {
     "s1": "HII",
@@ -84,9 +84,9 @@
     "z_col": "Z_other"
   },
   {
-    "s1": "GIS",
-    "s2": "HUBB",
-    "sector": "food",
-    "z_col": "Z_food"
+    "s1": "GLW",
+    "s2": "WST",
+    "sector": "other",
+    "z_col": "Z_other"
   }
 ]

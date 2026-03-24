@@ -1315,6 +1315,13 @@ def _run_regime_detection(fred_key: str | None = None,
     Falls back to neutral (50/50) if detection fails.
     """
     try:
+        # 增量更新 VIX/MOVE 历史数据（每日自动追加，边界随历史自动更新）
+        try:
+            from MacroDataStore import MacroDataStore
+            MacroDataStore().update()
+        except Exception as e:
+            log.debug(f"MacroDataStore update skipped: {e}")
+
         from RegimeDetector import RegimeDetector
 
         # Auto-find latest OOS equity curves

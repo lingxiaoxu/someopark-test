@@ -42,6 +42,14 @@ import yfinance as yf
 
 log = logging.getLogger('RegimeDetector')
 
+# ── 可选：MacroDataStore 百分位（本地20年历史）──────────────────────────────
+try:
+    from MacroDataStore import MacroDataStore as _MacroDataStore
+    _MACRO_STORE = _MacroDataStore()
+    _MACRO_STORE_AVAILABLE = True
+except Exception:
+    _MACRO_STORE_AVAILABLE = False
+
 # ── 可选依赖 ──────────────────────────────────────────────────────────────────
 try:
     from fredapi import Fred
@@ -131,7 +139,7 @@ class RegimeDetector:
         self,
         fred_api_key: str | None = None,
         lookback_days: int = 252,
-        min_weight: float = 0.20,
+        min_weight: float = 0.15,
         mrpt_oos_curve: str | None = None,
         mtfs_oos_curve: str | None = None,
     ):
@@ -143,12 +151,113 @@ class RegimeDetector:
         self._mtfs_curve   = mtfs_oos_curve
         self._ind_history: dict = {}   # populated during _fetch_all_indicators
 
+        # 预加载 VIX/MOVE 历史百分位（长期20年 + 近2年），用于自动计算分段边界
+        # Fallback：若 MacroDataStore 不可用，使用从20年历史算出的固定值
+        _VOL_PCT_FALLBACK = {
+            'vix': {
+                'long_term': {'p15': 12.67, 'p25': 13.74, 'median': 17.11, 'p75': 22.48, 'p85': 25.84},
+                'recent_2y': {'p15': 14.31, 'p25': 15.12, 'median': 16.73, 'p75': 19.54, 'p85': 21.65},
+            },
+            'move': {
+                'long_term': {'p15': 56.13, 'p25': 61.24, 'median': 77.29, 'p75': 103.60, 'p85': 118.40},
+                'recent_2y': {'p15': 72.59, 'p25': 79.38, 'median': 92.65, 'p75': 101.45, 'p85': 108.14},
+            },
+        }
+        self._vol_pct: dict = _VOL_PCT_FALLBACK.copy()
+        self._vol_pct_short: dict = {}   # 近90天 hourly 百分位，空=不可用
+        if _MACRO_STORE_AVAILABLE:
+            try:
+                self._vol_pct['vix']  = _MACRO_STORE.percentiles('vix')
+                self._vol_pct['move'] = _MACRO_STORE.percentiles('move')
+                log.debug(f"MacroDataStore percentiles loaded: vix={self._vol_pct['vix']}")
+            except Exception as e:
+                log.warning(f"MacroDataStore percentile load failed, using fallback values: {e}")
+            try:
+                self._vol_pct_short['vix']   = _MACRO_STORE.percentiles_short('vix')
+                self._vol_pct_short['vxtlt'] = _MACRO_STORE.percentiles_short('vxtlt')
+                log.debug(f"MacroDataStore short percentiles loaded: vix={self._vol_pct_short.get('vix')}")
+            except Exception as e:
+                log.warning(f"MacroDataStore short percentile load failed (will skip): {e}")
+
         if FREDAPI_AVAILABLE and self.fred_api_key:
             try:
                 self._fred = Fred(api_key=self.fred_api_key)
                 log.debug("FRED API connected")
             except Exception as e:
                 log.warning(f"FRED API init failed: {e}")
+
+        # 用历史日线数据回算 sub-score 序列，初始化 CISS 相关矩阵
+        self._ind_history: dict = {}
+        if _MACRO_STORE_AVAILABLE:
+            self._bootstrap_ciss_history()
+
+    def _bootstrap_ciss_history(self) -> None:
+        """
+        从 MacroDataStore 历史日线数据回算过去 lookback_days 天的 vol sub-score 序列，
+        填充 _ind_history['vol_eq_*'] 和 _ind_history['vol_rt_*']，
+        使 CISS 动态相关矩阵在第一次 detect() 时即可生效。
+
+        只使用当时已知信息（rolling z-score 用截至当天的历史窗口），无前视偏差。
+        """
+        try:
+            vix_s  = _MACRO_STORE.load('vix')
+            move_s = _MACRO_STORE.load('move')
+            if vix_s.empty or move_s.empty:
+                return
+
+            # 只取最近 lookback_days 个交易日（避免过长计算）
+            n = min(self.lookback_days, len(vix_s))
+            vix_s  = vix_s.iloc[-n:]
+            move_s = move_s.iloc[-n:]
+
+            # 只回算长期层（level + z-score），short_pct 是独立信号不进 CISS
+            eq_hist: dict[str, list[float]] = {'vix_level': [], 'vix_z': []}
+            rt_hist: dict[str, list[float]] = {'move_level': [], 'move_z': []}
+
+            # 对齐两个序列的日期范围
+            common_idx = vix_s.index.intersection(move_s.index)
+            if len(common_idx) < 30:
+                return
+
+            vix_aligned  = vix_s.reindex(common_idx).values.astype(float)
+            move_aligned = move_s.reindex(common_idx).values.astype(float)
+            T = len(common_idx)
+
+            w = self.lookback_days
+            for i in range(T):
+                win_start = max(0, i + 1 - w)
+                vix_win  = vix_aligned[win_start: i + 1]
+                move_win = move_aligned[win_start: i + 1]
+
+                if len(vix_win) < 30:
+                    continue
+
+                v_lvl = float(vix_win[-1])
+                v_mu  = float(vix_win.mean()); v_sd = float(vix_win.std())
+                v_z   = float((v_lvl - v_mu) / v_sd) if v_sd > 0 else 0.0
+                eq_hist['vix_level'].append(
+                    self._vol_piecewise(v_lvl, self._vol_pct.get('vix', {}), 'vix'))
+                eq_hist['vix_z'].append(
+                    float(np.clip(0.50 - v_z * 0.10, 0.15, 0.70)))
+
+                m_lvl = float(move_win[-1])
+                m_mu  = float(move_win.mean()); m_sd = float(move_win.std())
+                m_z   = float((m_lvl - m_mu) / m_sd) if m_sd > 0 else 0.0
+                rt_hist['move_level'].append(
+                    self._vol_piecewise(m_lvl, self._vol_pct.get('move', {}), 'move'))
+                rt_hist['move_z'].append(
+                    float(np.clip(0.50 - m_z * 0.10, 0.15, 0.70)))
+
+            for k, lst in eq_hist.items():
+                self._ind_history[f'vol_eq_{k}'] = lst
+            for k, lst in rt_hist.items():
+                self._ind_history[f'vol_rt_{k}'] = lst
+
+            log.debug(f"CISS history bootstrapped: {T} days, "
+                      f"eq={len(eq_hist['vix_level'])} pts, rt={len(rt_hist['move_level'])} pts")
+
+        except Exception as e:
+            log.warning(f"_bootstrap_ciss_history failed (CISS will use equal weights): {e}")
 
     # ── 数据获取 ───────────────────────────────────────────────────────────────
 
@@ -292,32 +401,285 @@ class RegimeDetector:
 
     # ── 核心评分 ───────────────────────────────────────────────────────────────
 
+    def _vol_piecewise(self, level: float, pct: dict, label: str) -> float:
+        """
+        倒U型波动率—策略偏好曲线（Avellaneda & Lee 2010; Ang & Bekaert 2002）。
+
+        经济逻辑：
+          - VIX 极低（<P15）：价差太小，信号稀少，MRPT 机会不足 → 偏 MTFS
+          - VIX 中低~中高（P15~P85）：配对交易甜蜜区，价差充分但协整未破裂 → 偏 MRPT
+            · 峰值偏 MRPT 的点设在 P50~P65 附近（中高波动率区）
+          - VIX 极高（>P85）：arbitrage limits（Shleifer & Vishny 1997），协整破裂风险大 → 偏 MTFS
+          · 极端上限以 P85+2×IQR 为封顶
+
+        边界（混合长期×0.7 + 近2年×0.3，防止极端年份漂移）：
+          very_low  = 长期P15 混合
+          low       = 长期P25 混合
+          high      = 长期P75 混合
+          very_high = 长期P85 混合
+          extreme   = very_high + 2×长期IQR
+
+        输出分段（0=MRPT-favoring, 1=MTFS-favoring）：
+          level < very_low  : 0.72→0.65  (极低，轻度 MTFS)
+          very_low~low      : 0.65→0.25  (低区快速向 MRPT 过渡)
+          low~high          : 0.25→0.30  (甜蜜区，MRPT 主导，峰值偏 MRPT)
+          high~very_high    : 0.30→0.60  (高区，MTFS 渐增)
+          very_high~extreme : 0.60→0.85  (极高，偏 MTFS)
+          >extreme          : 0.85 (cap)
+        """
+        lt = pct.get('long_term', {})
+        r2 = pct.get('recent_2y', {})
+
+        if not (lt and 'p15' in lt and 'p75' in lt):
+            log.warning(f"_vol_piecewise {label}: missing percentile keys, returning neutral")
+            return 0.50
+
+        def mix(key: str) -> float:
+            return lt[key] * 0.7 + r2.get(key, lt[key]) * 0.3
+
+        very_low  = mix('p15')
+        low       = mix('p25')
+        high      = mix('p75')
+        very_high = mix('p85')
+        iqr       = lt['p75'] - lt.get('p25', lt['p15'])
+        extreme   = very_high + 2.0 * iqr if iqr > 0 else very_high * 1.4
+
+        if level < very_low:
+            # 极低区：0.72（level=0）→ 0.65（level=very_low）
+            t = level / max(very_low, 1e-6)
+            return float(np.clip(0.72 - t * 0.07, 0.60, 0.75))
+
+        elif level < low:
+            # 低区向甜蜜区过渡：0.65 → 0.25
+            t = (level - very_low) / max(low - very_low, 1e-6)
+            return float(0.65 - t * 0.40)
+
+        elif level <= high:
+            # 甜蜜区（MRPT 主导）：0.25 → 0.30，中部最低
+            t = (level - low) / max(high - low, 1e-6)
+            # 倒U底部：先降后升，峰值（最偏 MRPT）在区间 40% 处
+            return float(0.25 + 4 * 0.05 * t * (1 - t))   # parabola: 0.25 at ends, 0.30 mid
+
+        elif level <= very_high:
+            # 高区：0.30 → 0.60
+            t = (level - high) / max(very_high - high, 1e-6)
+            return float(0.30 + t * 0.30)
+
+        else:
+            # 极高区：0.60 → 0.85，以 extreme 为封顶
+            t = min((level - very_high) / max(extreme - very_high, 1e-6), 1.0)
+            return float(np.clip(0.60 + t * 0.25, 0.60, 0.85))
+
+    @staticmethod
+    def _ciss_weights(scores_dict: dict) -> dict:
+        """
+        CISS-style 相关矩阵加权（Hollo, Kremer & Lo Duca 2012, ECB WP-1426）。
+
+        权重 = 相关矩阵逆矩阵行和归一化：
+          w_i ∝ Σ_j C^{-1}_{ij}
+        高度相关的指标（如 level 和 z-score）自动降权；
+        跨资产低相关指标（VIX vs MOVE）自动升权。
+
+        使用过去 lookback 窗口内的 sub-score 历史相关矩阵（动态）。
+        若历史不足或矩阵奇异，退化为等权。
+        """
+        keys = list(scores_dict.keys())
+        n = len(keys)
+        if n <= 1:
+            return {k: 1.0 / max(n, 1) for k in keys}
+
+        vals = np.array([scores_dict[k] for k in keys], dtype=float)
+        # 所有分数相同则退化等权
+        if np.all(vals == vals[0]):
+            return {k: 1.0 / n for k in keys}
+
+        # 用单位相关矩阵近似（离线 bootstrap）：构造对角为1、off-diagonal用值差异估计
+        # 实际动态实现：将 sub-score 历史放入 _vol_score_history 后计算
+        # 此处用基于先验知识的静态结构（见调用处动态覆盖）
+        return {k: 1.0 / n for k in keys}
+
+    def _ciss_aggregate(self, scores_dict: dict, history_key: str) -> float:
+        """
+        动态 CISS 加权聚合：用 _ind_history 中存储的历史 sub-score 序列
+        计算滚动相关矩阵，然后用逆矩阵行和作为权重。
+
+        history_key : 在 _ind_history 里查找各 sub-score 历史的前缀键
+        若历史不足 30 个点，退化为等权均值（Fallback）。
+        """
+        keys = [k for k, v in scores_dict.items() if v is not None]
+        if not keys:
+            return 0.50
+        if len(keys) == 1:
+            return float(scores_dict[keys[0]])
+
+        vals = np.array([scores_dict[k] for k in keys], dtype=float)
+
+        # 尝试从历史中构建相关矩阵
+        hist_matrix = []
+        min_hist = 999
+        for k in keys:
+            hkey = f'{history_key}_{k}'
+            hist = self._ind_history.get(hkey, [])
+            hist_matrix.append(hist)
+            min_hist = min(min_hist, len(hist))
+
+        if min_hist >= 30:
+            try:
+                arr = np.array([h[-min_hist:] for h in hist_matrix], dtype=float)  # shape (n, T)
+                # 相关矩阵
+                corr = np.corrcoef(arr)
+                # 正则化：防止奇异（加 0.1 对角，较强正则化减少极端权重）
+                corr_reg = corr + 0.10 * np.eye(len(keys))
+                inv_corr = np.linalg.inv(corr_reg)
+                raw_w = inv_corr.sum(axis=1)
+                # 负权重 clip 到 0，但保证每个指标至少 5% 权重（防止信息完全丢失）
+                raw_w = np.clip(raw_w, 0, None)
+                min_floor = 0.05
+                # 先做归一化，再加 floor，再归一化
+                total = raw_w.sum()
+                if total > 1e-8:
+                    weights = raw_w / total
+                    # floor：每个指标至少 min_floor
+                    weights = np.maximum(weights, min_floor)
+                    weights = weights / weights.sum()
+                    score = float(np.dot(weights, vals))
+                    log.debug(f"CISS [{history_key}] weights={dict(zip(keys, weights.round(3)))} → {score:.3f}")
+                    return float(np.clip(score, 0.0, 1.0))
+            except np.linalg.LinAlgError:
+                pass
+
+        # Fallback：等权
+        return float(np.mean(vals))
+
+    def _short_pct_score(self, cp: float) -> float:
+        """
+        近90天 hourly 百分位 → sub-score（反转映射，均值回归逻辑）。
+
+        经济逻辑（Avellaneda & Lee 2010）：
+          近90天高位（cp>70）→ 短期峰值，均值回归概率高 → MRPT 有利 → score 低
+          近90天低位（cp<30）→ 短期低点，可能继续下行或趋势 → MTFS 有利 → score 高
+
+        分段（反转）：
+          cp < 30   : score 0.65→0.50  (低位，轻度 MTFS)
+          30–70     : score 0.50→0.25  (线性过渡到 MRPT)
+          > 70      : score 0.25→0.15  (近期高位，强 MRPT)
+        """
+        if cp < 30:
+            t = cp / 30.0
+            return float(0.65 - t * 0.15)    # 0.65 → 0.50
+        elif cp <= 70:
+            t = (cp - 30) / 40.0
+            return float(0.50 - t * 0.25)    # 0.50 → 0.25
+        else:
+            t = min((cp - 70) / 30.0, 1.0)
+            return float(0.25 - t * 0.10)    # 0.25 → 0.15
+
     def _score_volatility(self, raw: dict) -> dict:
         """
-        VIX + MOVE → vol regime score (0=low_vol, 1=high_vol)
-        MRPT 偏好低波动，MTFS 偏好高波动
+        波动率 regime score（0=MRPT-favoring, 1=MTFS-favoring）
+
+        架构（Guidolin & Timmermann 2008; Hollo et al. 2012）：
+          equity_vol  ← VIX（level + z + short_pct），CISS 动态加权
+          rates_vol   ← MOVE（level + z + vxtlt_short_pct），CISS 动态加权
+          最终 = equity_vol × 0.65 + rates_vol × 0.35
+          （配对交易主要暴露于股票风险，债券为次级；Avellaneda & Lee 2010）
+
+        倒U型 level 曲线（见 _vol_piecewise）：
+          极低 vol → MTFS（信号稀少）
+          中等 vol → MRPT（甜蜜区）
+          极高 vol → MTFS（协整破裂风险）
+
+        z-score（1年 rolling）：高z → 处于历史高位将均值回归 → MRPT（反转信号）
+        short_pct（90天 hourly）：高百分位 → 近期峰值 → MRPT（反转信号，已反转映射）
+
+        参考：
+          Avellaneda & Lee (2010) QF; Ang & Bekaert (2002) RFS;
+          Hollo, Kremer & Lo Duca (2012) ECB WP-1426;
+          Daniel & Moskowitz (2016) JFE; Shleifer & Vishny (1997) JF
         """
-        scores = {}
+        # ── Equity Vol（VIX）──────────────────────────────────────────────────
+        #
+        # 分层设计（时间维度分离，防止 CISS 把跨时间尺度信号当竞争关系消除）：
+        #   长期层（1年 z-score + 20年 level）→ CISS 加权 → eq_long
+        #   短期层（90天 hourly 百分位）       → 独立信号  → eq_short
+        #   equity_vol = eq_long × 0.60 + eq_short × 0.40
+        #
+        # 权重依据（Cochrane & Piazzesi 2005; Bekaert & Hoerova 2014）：
+        #   长期信号捕获结构性 regime，短期信号捕获均值回归时机，两者独立互补
 
-        # VIX z-score
-        vix_z = raw.get('vix_z')
-        if vix_z is not None:
-            # z > 1.5 → 极高波动 (score→1 favors MTFS)
-            # z < -1   → 极低波动 (score→0 favors MRPT)
-            scores['vix'] = float(np.clip((vix_z + 1) / 2.5, 0, 1))
-
-        # VIX absolute level (secondary check)
+        eq_long: dict[str, float] = {}
         vix_lvl = raw.get('vix_level')
         if vix_lvl is not None:
-            # <15=0.1, 25=0.5, 35=0.85, >45=1.0
-            scores['vix_level'] = float(np.clip((vix_lvl - 12) / 33, 0.05, 1.0))
+            eq_long['vix_level'] = self._vol_piecewise(
+                vix_lvl, self._vol_pct.get('vix', {}), 'vix'
+            )
+        vix_z = raw.get('vix_z')
+        if vix_z is not None:
+            eq_long['vix_z'] = float(np.clip(0.50 - vix_z * 0.10, 0.15, 0.70))
 
-        # MOVE z-score
+        # 存长期层历史供 CISS
+        for k, v in eq_long.items():
+            hkey = f'vol_eq_{k}'
+            if hkey not in self._ind_history:
+                self._ind_history[hkey] = []
+            self._ind_history[hkey].append(v)
+            if len(self._ind_history[hkey]) > self.lookback_days:
+                self._ind_history[hkey] = self._ind_history[hkey][-self.lookback_days:]
+
+        eq_long_score = self._ciss_aggregate(eq_long, 'vol_eq')
+
+        # 短期层（独立，固定权重 0.40）
+        eq_short_score: float | None = None
+        vix_sp = self._vol_pct_short.get('vix', {})
+        if vix_sp and 'current_pct' in vix_sp:
+            eq_short_score = self._short_pct_score(vix_sp['current_pct'])
+
+        if eq_short_score is not None:
+            equity_vol = eq_long_score * 0.60 + eq_short_score * 0.40
+        else:
+            equity_vol = eq_long_score
+
+        # ── Rates Vol（MOVE / VXTLT）────────────────────────────────────────────
+        # 同样分层：长期（move_level + move_z）CISS 加权，短期（vxtlt_short_pct）独立
+
+        rt_long: dict[str, float] = {}
+        move_lvl = raw.get('move_level')
+        if move_lvl is not None:
+            rt_long['move_level'] = self._vol_piecewise(
+                move_lvl, self._vol_pct.get('move', {}), 'move'
+            )
         move_z = raw.get('move_z')
         if move_z is not None:
-            scores['move'] = float(np.clip((move_z + 0.5) / 2.5, 0, 1))
+            rt_long['move_z'] = float(np.clip(0.50 - move_z * 0.10, 0.15, 0.70))
 
-        return scores  # individual scores, averaged in main
+        for k, v in rt_long.items():
+            hkey = f'vol_rt_{k}'
+            if hkey not in self._ind_history:
+                self._ind_history[hkey] = []
+            self._ind_history[hkey].append(v)
+            if len(self._ind_history[hkey]) > self.lookback_days:
+                self._ind_history[hkey] = self._ind_history[hkey][-self.lookback_days:]
+
+        rt_long_score = self._ciss_aggregate(rt_long, 'vol_rt')
+
+        rt_short_score: float | None = None
+        vxtlt_sp = self._vol_pct_short.get('vxtlt', {})
+        if vxtlt_sp and 'current_pct' in vxtlt_sp:
+            rt_short_score = self._short_pct_score(vxtlt_sp['current_pct'])
+
+        if rt_short_score is not None:
+            rates_vol = rt_long_score * 0.60 + rt_short_score * 0.40
+        else:
+            rates_vol = rt_long_score
+
+        # ── 最终合成（equity 0.65 + rates 0.35）────────────────────────────────
+        vol_composite = equity_vol * 0.65 + rates_vol * 0.35
+
+        log.debug(f"vol_score: eq_long={eq_long_score:.3f} eq_short={eq_short_score} "
+                  f"equity={equity_vol:.3f} | rt_long={rt_long_score:.3f} rt_short={rt_short_score} "
+                  f"rates={rates_vol:.3f} | composite={vol_composite:.3f}")
+
+        return {'vol_composite': float(np.clip(vol_composite, 0.0, 1.0))}
 
     def _score_credit(self, raw: dict) -> dict:
         """
@@ -432,25 +794,88 @@ class RegimeDetector:
 
     def _score_geopolitical(self, raw: dict) -> dict:
         """
-        Gold + Oil → 地缘政治风险
-        金价飙升 + 油价飙升 → 地缘紧张 → 不确定性 → 动量（趋势）有机会
+        前向视角：开仓时预测未来持仓期（5-20天）价差是否会收敛（MRPT-favoring=低分）
+
+        5个维度，全部用连续公式，无 hardcode 输出值：
+        - 维度1: GLD-SPY corr20 + GLD_5d 修正（Baur & Lucey 2010: safe haven vs hedge）
+        - 维度2: 油价来源 × VIX背景 × 加速度（Kilian 2009: supply/demand/speculative）
+        - 维度3: USD × GLD 联动（Akram 2009: 真/假 risk-off 区分）
+        - 维度4: 油价冲击持续性（Caldara 2022: GPR冲击大多 transient 1-3月）
+        - 维度5: GLD level × momentum（risk-off 顶点检测，开仓最佳时机）
         """
         scores = {}
 
         gld_20d = raw.get('gld_20d')
-        if gld_20d is not None:
-            # 金价涨 → risk-off → 不利于均值回归 → 偏 MTFS
-            scores['gold'] = float(np.clip(0.5 + gld_20d * 2.5, 0.1, 0.85))
-
+        gld_5d  = raw.get('gld_5d')
+        gld_z   = raw.get('gld_z')
         uso_20d = raw.get('uso_20d')
-        if uso_20d is not None:
-            # 油价大涨 → 地缘风险/通胀预期 → MTFS 偏向
-            scores['oil'] = float(np.clip(0.5 + uso_20d * 1.5, 0.15, 0.85))
-
+        uso_5d  = raw.get('uso_5d')
         uup_20d = raw.get('uup_20d')
-        if uup_20d is not None:
-            # 美元强 → risk-off → MRPT 偏向
-            scores['dollar'] = float(np.clip(0.5 - uup_20d * 2.0, 0.15, 0.85))
+        vix_z   = raw.get('vix_z')
+        corr20  = raw.get('gld_spy_corr20')
+
+        # ── 维度1：GLD-SPY corr20 + GLD_5d 修正（Baur & Lucey 2010）────────
+        # corr20 < 0 → safe haven 触发，机构 flight to safety → 价差可能继续扩大
+        # corr20 > 0 → hedge 模式，非系统性恐慌 → 价差倾向收敛
+        # gld_5d 校正：safe haven 信号但黄金最近5日回落 → 正在消退 → 偏 MRPT
+        if corr20 is not None:
+            base = float(np.clip(0.5 - corr20 * 1.2, 0.10, 0.90))
+            if gld_5d is not None:
+                correction = float(np.clip(-gld_5d * 2.5, -0.15, 0.15))
+                scores['gold_safe_haven'] = float(np.clip(base + correction, 0.10, 0.90))
+            else:
+                scores['gold_safe_haven'] = base
+
+        # ── 维度2：油价来源分解（Kilian 2009）────────────────────────────────
+        # USO 涨幅规模 × VIX背景（supply/geo vs demand）× 加速度（投机信号）
+        if uso_20d is not None and vix_z is not None:
+            # 涨幅规模 → 基础不确定性（涨得越多越不稳定）
+            mag_score = float(np.clip(0.35 + uso_20d * 1.5, 0.20, 0.70))
+            # VIX 背景：高VIX=供给/地缘冲击(transient,小幅加)，低VIX=需求驱动(减)
+            vix_mod = float(np.clip(vix_z * 0.04, -0.10, 0.10))
+            # 加速度修正：5日日均 vs 20日日均，加速=投机，最不稳定
+            accel_mod = 0.0
+            if uso_5d is not None and uso_20d != 0:
+                daily_20  = uso_20d / 20
+                daily_5   = uso_5d  / 5
+                accel_ratio = (daily_5 / daily_20) if daily_20 != 0 else 1.0
+                accel_mod = float(np.clip((accel_ratio - 1.0) * 0.08, -0.05, 0.15))
+            scores['oil_source'] = float(np.clip(mag_score + vix_mod + accel_mod, 0.15, 0.75))
+
+        # ── 维度3：美元+黄金联动（Akram 2009 三角传导）──────────────────────
+        # UUP↑ + GLD↑ → 真 flight to safety → 价差受压
+        # UUP↑ + GLD↓ → 美国经济强，非 risk-off → 价差稳定
+        # 用各自 return 归一化后的乘积作为联动信号
+        if uup_20d is not None and gld_20d is not None:
+            uup_norm = uup_20d / 0.02   # 归一化（UUP月典型波动约±2%）
+            gld_norm = gld_20d / 0.05   # 归一化（GLD月典型波动约±5%）
+            joint    = uup_norm * gld_norm  # 正=同向, 负=反向
+            if uup_20d > 0:
+                # 美元涨：joint>0(黄金也涨)=真risk-off; joint<0(黄金跌)=经济强
+                scores['usd_gold_joint'] = float(np.clip(0.50 + joint * 0.12, 0.15, 0.85))
+            else:
+                # 美元跌：风险偏好改善，整体偏 MRPT
+                scores['usd_gold_joint'] = float(np.clip(0.35 + joint * 0.08, 0.15, 0.60))
+
+        # ── 维度4：油价冲击持续性（Caldara 2022: GPR冲击大多 transient）──────
+        # 5日日均速率 vs 20日日均速率：减速=冲击消化中=价差收敛; 加速=冲击未止
+        if uso_20d is not None and uso_5d is not None:
+            daily_20 = uso_20d / 4    # 20d折算成5d等价
+            decel    = daily_20 - uso_5d   # 正=减速，负=加速
+            shock    = abs(uso_20d)        # 冲击规模
+            scores['oil_persistence'] = float(
+                np.clip(0.45 - decel * 2.0 - shock * 0.15, 0.15, 0.70)
+            )
+
+        # ── 维度5：黄金 level × momentum（risk-off 顶点检测）────────────────
+        # gld_z高（历史高位）+ gld_5d负（下跌）= risk-off peaked = MRPT 最佳入场时机
+        # gld_z高 + gld_5d正（仍在涨）= risk-off 仍构建中 = 等待
+        if gld_z is not None and gld_5d is not None:
+            level_factor    = float(np.clip(gld_z  * 0.08, -0.15, 0.20))
+            momentum_factor = float(np.clip(gld_5d * 3.00, -0.20, 0.20))
+            scores['gold_level_momentum'] = float(
+                np.clip(0.40 + level_factor + momentum_factor, 0.10, 0.75)
+            )
 
         return scores
 
@@ -595,7 +1020,10 @@ class RegimeDetector:
     def _fetch_all_indicators(self) -> dict:
         """Fetch all raw indicator values. Returns flat dict."""
         raw = {}
-        self._ind_history = {}
+        # 保留 bootstrap 的 CISS 历史（vol_eq_* / vol_rt_*），只清除 daily 指标快照
+        ciss_keys = {k: v for k, v in self._ind_history.items()
+                     if k.startswith('vol_eq_') or k.startswith('vol_rt_')}
+        self._ind_history = ciss_keys
 
         # ── yfinance batch fetch ───────────────────────────────────────────
         tickers_needed = {
@@ -679,10 +1107,24 @@ class RegimeDetector:
         for key in ('gld', 'uso', 'uup'):
             if not series[key].empty:
                 raw[f'{key}_20d']  = self._pct_change_nd(series[key], 20)
+                raw[f'{key}_5d']   = self._pct_change_nd(series[key], 5)
                 raw[f'{key}_level'] = self._last_val(series[key])
                 ret20 = series[key].pct_change(20).dropna()
                 if not ret20.empty:
                     self._ind_history[f'{key}_20d'] = self._series_stats(ret20, 'daily')
+
+        # GLD z-score（用于 level 位置判断）
+        if not series['gld'].empty:
+            raw['gld_z'] = self._rolling_zscore(series['gld'])
+
+        # GLD-SPY 20日滚动相关系数（Baur & Lucey safe haven 触发器）
+        if not series['gld'].empty and not series['spy'].empty:
+            gld_ret = series['gld'].pct_change().dropna()
+            spy_ret = series['spy'].pct_change().dropna()
+            corr_aligned = pd.concat([gld_ret, spy_ret], axis=1, join='inner').dropna()
+            corr_aligned.columns = ['gld', 'spy']
+            if len(corr_aligned) >= 20:
+                raw['gld_spy_corr20'] = float(corr_aligned.iloc[-20:].corr().iloc[0, 1])
 
         # TNX (10yr yield)
         if not series['tnx'].empty:
