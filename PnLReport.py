@@ -1,0 +1,975 @@
+"""
+PnLReport.py — 通用 PnL PDF 报告生成器
+
+用法:
+  python PnLReport.py                          # 自动检测最近数据
+  python PnLReport.py --end 2026-03-24
+  python PnLReport.py --start 2026-03-13 --end 2026-03-24
+  python PnLReport.py --end 2026-03-24 --out /tmp/report.pdf
+
+数据源全部自动从 inventory_history/ + trading_signals/ 读取。
+"""
+
+import argparse
+import glob
+import json
+import os
+import sys
+from datetime import datetime
+
+import pandas as pd
+import yfinance as yf
+
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.platypus import (
+    SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable,
+    KeepTogether,
+)
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+INV_DIR      = os.path.join(BASE_DIR, 'inventory_history')
+SIG_DIR      = os.path.join(BASE_DIR, 'trading_signals')
+CASH_CAP     = 1_000_000.0  # 最大现金（自有上限）
+MAX_ACCOUNT  = 2_000_000.0  # 最大账户规模 = 现金 + 100% margin loan
+# 回测参数: initial_cash=500K, initial_loan=500K（各策略独立，仅用于仓位sizing，非真实资本）
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Font
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _register_cjk() -> str:
+    for path in [
+        '/System/Library/Fonts/PingFang.ttc',
+        '/System/Library/Fonts/STHeiti Light.ttc',
+        '/Library/Fonts/Arial Unicode MS.ttf',
+        '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
+    ]:
+        if os.path.exists(path):
+            try:
+                pdfmetrics.registerFont(TTFont('CJK', path))
+                return 'CJK'
+            except Exception:
+                continue
+    return 'Helvetica'
+
+FONT = _register_cjk()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Styles & colors
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def S(name, **kw):
+    kw.setdefault('fontName', FONT)
+    return ParagraphStyle(name, **kw)
+
+C_HEADER  = colors.HexColor('#1a1a2e')
+C_SUBHDR  = colors.HexColor('#16213e')
+C_ROW_ALT = colors.HexColor('#f7f9fc')
+C_POS     = colors.HexColor('#1a7a4a')
+C_NEG     = colors.HexColor('#c0392b')
+C_GOLD    = colors.HexColor('#d4a843')
+C_BORDER  = colors.HexColor('#cccccc')
+C_GRAY    = colors.HexColor('#888888')
+
+title_style = S('TT', fontSize=15, leading=19, alignment=TA_CENTER, spaceAfter=4)
+sub_style   = S('ST', fontSize=8.5, leading=12, alignment=TA_CENTER,
+                textColor=colors.HexColor('#555555'), spaceAfter=14)
+h1_style    = S('H1', fontSize=10, leading=14, textColor=C_HEADER,
+                spaceBefore=12, spaceAfter=5)
+body_style  = S('BD', fontSize=8, leading=11)
+footer_style= S('FT', fontSize=7, leading=9.5, alignment=TA_CENTER,
+                textColor=C_GRAY, spaceBefore=6)
+
+
+def money(v, color=True) -> str:
+    if v is None:
+        return 'N/A'
+    s = f'+{abs(v):,.2f}' if v >= 0 else f'-{abs(v):,.2f}'
+    if not color:
+        return s
+    c = '#1a7a4a' if v >= 0 else '#c0392b'
+    return f'<font color="{c}">{s}</font>'
+
+
+def pct(v) -> str:
+    if v is None:
+        return 'N/A'
+    s = f'+{abs(v):.2f}%' if v >= 0 else f'-{abs(v):.2f}%'
+    c = '#1a7a4a' if v >= 0 else '#c0392b'
+    return f'<font color="{c}"><b>{s}</b></font>'
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Table helpers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_CELL_STYLE  = ParagraphStyle('_c',  fontName='Helvetica', fontSize=7.5, leading=10.5)
+_CELL_STYLE_R= ParagraphStyle('_cr', fontName='Helvetica', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)
+
+def C(text, align='LEFT', header=False) -> Paragraph:
+    """Wrap a plain string as a wrapping Paragraph for table cells.
+    header=True: white bold text for dark header rows."""
+    s = ParagraphStyle('_cx', fontName=FONT, fontSize=7.5, leading=10.5,
+                       alignment=(TA_RIGHT if align == 'RIGHT' else 0),
+                       textColor=(colors.white if header else colors.black))
+    content = f'<b>{text}</b>' if header else str(text)
+    return Paragraph(content, s)
+
+
+def H(text, align='LEFT') -> Paragraph:
+    """Header cell: white bold text for dark-background header rows."""
+    return C(text, align=align, header=True)
+
+
+def make_table(data, col_widths, pnl_col=-1, header_rows=1):
+    """Generic styled table. pnl_col: column index whose values get PnL coloring."""
+    t = Table(data, colWidths=col_widths, repeatRows=header_rows)
+    n = len(data)
+    cmds = [
+        ('FONTNAME',      (0,0), (-1,-1), FONT),
+        ('FONTSIZE',      (0,0), (-1,-1), 7.5),
+        ('LEADING',       (0,0), (-1,-1), 10.5),
+        ('BACKGROUND',    (0,0), (-1, header_rows-1), C_HEADER),
+        ('TEXTCOLOR',     (0,0), (-1, header_rows-1), colors.white),
+        ('FONTSIZE',      (0,0), (-1, header_rows-1), 7.5),
+        ('ALIGN',         (0,0), (-1,-1), 'LEFT'),
+        ('ALIGN',         (-1,0),(-1,-1), 'RIGHT'),
+        ('VALIGN',        (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING',    (0,0), (-1,-1), 3.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3.5),
+        ('LEFTPADDING',   (0,0), (-1,-1), 5),
+        ('RIGHTPADDING',  (0,0), (-1,-1), 5),
+        ('GRID',          (0,0), (-1,-1), 0.35, C_BORDER),
+        ('LINEBELOW',     (0, header_rows-1), (-1, header_rows-1), 0.9, C_GOLD),
+    ]
+    for i in range(header_rows, n):
+        bg = C_ROW_ALT if (i - header_rows) % 2 == 1 else colors.white
+        cmds.append(('BACKGROUND', (0,i), (-1,i), bg))
+    t.setStyle(TableStyle(cmds))
+    return t
+
+
+def make_kv_table(rows, label_w=9.5*cm, val_w=5*cm):
+    """Two-column label/value summary box."""
+    sl = ParagraphStyle('_sl', fontName=FONT, fontSize=7.5, leading=10.5)
+    sv = ParagraphStyle('_sv', fontName=FONT, fontSize=7.5, leading=10.5, alignment=TA_RIGHT)
+    data = [[Paragraph(f'<b>{r[0]}</b>', sl), Paragraph(r[1], sv)] for r in rows]
+    t = Table(data, colWidths=[label_w, val_w])
+    t.setStyle(TableStyle([
+        ('FONTNAME',       (0,0), (-1,-1), FONT),
+        ('ALIGN',          (1,0), (1,-1), 'RIGHT'),
+        ('VALIGN',         (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING',     (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING',  (0,0), (-1,-1), 3),
+        ('LEFTPADDING',    (0,0), (-1,-1), 7),
+        ('RIGHTPADDING',   (0,0), (-1,-1), 7),
+        ('LINEABOVE',      (0,0), (-1,0), 0.5, C_GOLD),
+        ('LINEBELOW',      (0,-1),(-1,-1), 0.5, C_GOLD),
+        ('ROWBACKGROUNDS', (0,0), (-1,-1), [colors.HexColor('#fafbfc'), colors.white]),
+    ]))
+    return t
+
+
+def note_item(num: str, text: str, W: float):
+    sl = ParagraphStyle('_nl', fontName=FONT, fontSize=7.5, leading=10.5)
+    st = ParagraphStyle('_nt', fontName=FONT, fontSize=7.5, leading=10.5)
+    return Table(
+        [[Paragraph(num, sl), Paragraph(text, st)]],
+        colWidths=[0.6*cm, W - 0.6*cm],
+        style=[
+            ('VALIGN',        (0,0),(-1,-1), 'TOP'),
+            ('TOPPADDING',    (0,0),(-1,-1), 1),
+            ('BOTTOMPADDING', (0,0),(-1,-1), 1),
+            ('LEFTPADDING',   (0,0),(-1,-1), 0),
+            ('RIGHTPADDING',  (0,0),(-1,-1), 0),
+        ]
+    )
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Data loading (reuses logic from reconcile.py, inlined for self-containedness)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _parse_ts(fname: str):
+    """Extract (day_ts, full_ts) from inventory/report filename."""
+    parts = os.path.basename(fname).replace('.json', '').split('_')
+    if len(parts) < 4:
+        return None, None
+    try:
+        day  = pd.Timestamp(parts[-2])
+        full = pd.Timestamp(f"{parts[-2]} {parts[-1][:6]}")
+        return day, full
+    except Exception:
+        return None, None
+
+
+def load_positions(start_ts, end_ts) -> list[dict]:
+    """All active pair positions seen in inventory snapshots within date range."""
+    positions: dict[str, dict] = {}
+    for fpath in sorted(glob.glob(os.path.join(INV_DIR, 'inventory_*.json'))):
+        day, _ = _parse_ts(fpath)
+        if day is None or day < start_ts or day > end_ts:
+            continue
+        strategy = os.path.basename(fpath).split('_')[1]
+        with open(fpath) as f:
+            data = json.load(f)
+        for pair_name, p in data.get('pairs', {}).items():
+            if not isinstance(p, dict) or not p.get('direction'):
+                continue
+            if '/' not in pair_name:
+                continue
+            s1, s2 = pair_name.split('/', 1)
+            ml = p.get('monitor_log', [])
+            positions[pair_name] = {
+                'pair':          pair_name,
+                'strategy':      strategy,
+                's1':            s1,
+                's2':            s2,
+                's1_shares':     p.get('s1_shares', 0),
+                's2_shares':     p.get('s2_shares', 0),
+                'open_date':     p.get('open_date'),
+                'open_s1_price': p.get('open_s1_price'),
+                'open_s2_price': p.get('open_s2_price'),
+                'direction':     p.get('direction'),
+                'param_set':     p.get('param_set', '—'),
+                'last_pnl':      ml[-1]['unrealized_pnl'] if ml else None,
+                'last_pnl_date': ml[-1]['date'] if ml else None,
+            }
+    return list(positions.values())
+
+
+def load_close_events(start_ts, end_ts) -> dict[str, dict]:
+    """Latest CLOSE/CLOSE_STOP per pair, excluding those superseded by a later HOLD."""
+    all_ev: dict[str, list] = {}
+    hold_ts: dict[str, pd.Timestamp] = {}
+
+    for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
+        day, full = _parse_ts(fpath)
+        if day is None or day < start_ts or day > end_ts:
+            continue
+        with open(fpath) as f:
+            data = json.load(f)
+        pm = data.get('position_monitor', {})
+        for strat in ('mrpt', 'mtfs'):
+            for e in pm.get(strat, []):
+                if not isinstance(e, dict):
+                    continue
+                pair = e.get('pair')
+                if not pair:
+                    continue
+                action = e.get('action', '')
+                if action in ('CLOSE', 'CLOSE_STOP'):
+                    ev = {
+                        'action':      action,
+                        'pnl':         e.get('unrealized_pnl'),
+                        'note':        e.get('note', ''),
+                        'report_date': str(day.date()),
+                        '_ts':         full,
+                    }
+                    all_ev.setdefault(pair, []).append(ev)
+                elif action == 'HOLD':
+                    if full > hold_ts.get(pair, pd.Timestamp('1970-01-01')):
+                        hold_ts[pair] = full
+
+    result: dict[str, dict] = {}
+    for pair, evs in all_ev.items():
+        latest_hold = hold_ts.get(pair, pd.Timestamp('1970-01-01'))
+        valid = [ev for ev in evs if ev['_ts'] > latest_hold]
+        if valid:
+            result[pair] = max(valid, key=lambda e: e['_ts'])
+    return result
+
+
+def load_hold_pnl(end_ts) -> dict[str, dict]:
+    """HOLD PnL from the latest daily_report within range."""
+    best_f, best_ts = None, pd.Timestamp('1970-01-01')
+    for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
+        day, full = _parse_ts(fpath)
+        if day is None or day > end_ts:
+            continue
+        if full > best_ts:
+            best_ts, best_f = full, fpath
+    if not best_f:
+        return {}
+    with open(best_f) as f:
+        data = json.load(f)
+    result: dict[str, dict] = {}
+    pm = data.get('position_monitor', {})
+    for strat in ('mrpt', 'mtfs'):
+        for e in pm.get(strat, []):
+            if isinstance(e, dict) and e.get('action') == 'HOLD' and e.get('pair'):
+                result[e['pair']] = {
+                    'pnl':         e.get('unrealized_pnl'),
+                    'report_date': str(best_ts.date()),
+                }
+    return result
+
+
+def download_prices(tickers: set, price_start: str, price_end: str) -> pd.DataFrame:
+    end_plus = str((pd.Timestamp(price_end) + pd.Timedelta(days=1)).date())
+    print(f'  Downloading prices ({len(tickers)} tickers, {price_start}→{price_end})...')
+    raw = yf.download(sorted(tickers), start=price_start, end=end_plus,
+                      auto_adjust=True, progress=False)
+    return raw['Close']
+
+
+def get_price(prices: pd.DataFrame, ticker: str, dt: str):
+    ts = pd.Timestamp(dt)
+    avail = prices.index[prices.index <= ts]
+    if len(avail) == 0:
+        return None
+    v = prices[ticker][avail[-1]]
+    return float(v) if pd.notna(v) else None
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Analysis
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def _compute_leverage(start_ts, end_ts) -> dict:
+    """
+    Compute gross / single-side / net leverage ratios from inventory snapshots.
+    Denominators:
+      MAX_ACCOUNT ($2M) = 现金$1M + 100% margin loan，用于毛杠杆（是否超出账户上限）
+      CASH_CAP    ($1M) = 纯现金上限，用于 ROE / 现金利用率
+    """
+    from collections import defaultdict
+
+    def latest_by_date(pat):
+        by_date: dict = defaultdict(list)
+        for fpath in sorted(glob.glob(os.path.join(INV_DIR, pat))):
+            day, _ = _parse_ts(fpath)
+            if day is None or day < start_ts or day > end_ts:
+                continue
+            by_date[str(day.date())].append(fpath)
+        return {d: sorted(fps)[-1] for d, fps in by_date.items()}
+
+    mrpt_snap = latest_by_date('inventory_mrpt_*.json')
+    mtfs_snap = latest_by_date('inventory_mtfs_*.json')
+    all_dates = sorted(set(list(mrpt_snap.keys()) + list(mtfs_snap.keys())))
+
+    gross_vals, ss_vals, net_vals = [], [], []
+    daily_rows = []
+
+    for date in all_dates:
+        gross = net = 0.0
+        for snap_map in (mrpt_snap, mtfs_snap):
+            if date not in snap_map:
+                continue
+            with open(snap_map[date]) as f:
+                data = json.load(f)
+            for pos in data.get('pairs', {}).values():
+                if not pos.get('direction'):
+                    continue
+                for shk, prk in (('s1_shares', 'open_s1_price'), ('s2_shares', 'open_s2_price')):
+                    sh = pos.get(shk) or 0
+                    pr = pos.get(prk) or 0
+                    val = sh * pr
+                    gross += abs(val)
+                    net   += val
+        ss = gross / 2
+        gross_vals.append(gross)
+        ss_vals.append(ss)
+        net_vals.append(abs(net))
+        daily_rows.append({
+            'date': date, 'gross': gross, 'ss': ss, 'net': abs(net),
+            # vs MAX_ACCOUNT ($2M): 是否超出账户上限
+            'gross_lev': gross / MAX_ACCOUNT,
+            'ss_lev':    ss    / MAX_ACCOUNT,
+            'net_lev':   abs(net) / MAX_ACCOUNT,
+            'over_limit': gross > MAX_ACCOUNT,
+        })
+
+    if not gross_vals:
+        return {}
+
+    peak_gross = max(gross_vals)
+    return {
+        'daily':          daily_rows,
+        'avg_gross':      sum(gross_vals) / len(gross_vals),
+        'avg_ss':         sum(ss_vals)    / len(ss_vals),
+        'avg_net':        sum(net_vals)   / len(net_vals),
+        'peak_gross':     peak_gross,
+        'peak_ss':        max(ss_vals),
+        # vs MAX_ACCOUNT ($2M = $1M现金 + $1M借款)
+        'avg_gross_lev':  sum(gross_vals) / len(gross_vals) / MAX_ACCOUNT,
+        'avg_ss_lev':     sum(ss_vals)    / len(ss_vals)    / MAX_ACCOUNT,
+        'avg_net_lev':    sum(net_vals)   / len(net_vals)   / MAX_ACCOUNT,
+        'peak_gross_lev': peak_gross / MAX_ACCOUNT,
+        'peak_ss_lev':    max(ss_vals) / MAX_ACCOUNT,
+        # 是否超出账户上限，需要多大的 scale down
+        'peak_over_limit': peak_gross > MAX_ACCOUNT,
+        'scale_needed':    min(1.0, MAX_ACCOUNT / peak_gross) if peak_gross > 0 else 1.0,
+        'days_over_limit': sum(1 for g in gross_vals if g > MAX_ACCOUNT),
+        'n_days':          len(gross_vals),
+        # ROE: PnL vs 现金上限
+        'cash_cap':        CASH_CAP,
+        'max_account':     MAX_ACCOUNT,
+    }
+
+
+def build_report_data(start: str, end: str) -> dict:
+    """Collect all data needed for the PDF."""
+    start_ts = pd.Timestamp(start)
+    end_ts   = pd.Timestamp(end)
+
+    positions   = load_positions(start_ts, end_ts)
+    close_evs   = load_close_events(start_ts, end_ts)
+    hold_pnl    = load_hold_pnl(end_ts)
+
+    if not positions:
+        sys.exit('[ERROR] No positions found for the given date range.')
+
+    # Download prices
+    tickers = {p['s1'] for p in positions} | {p['s2'] for p in positions}
+    open_dates = [p['open_date'] for p in positions if p['open_date']]
+    price_start = min(open_dates) if open_dates else start
+    prices = download_prices(tickers, price_start, end)
+
+    rows = []
+    for p in sorted(positions, key=lambda x: (x['strategy'], x['open_date'] or '')):
+        pair   = p['pair']
+        s1, s2 = p['s1'], p['s2']
+        s1_sh, s2_sh = p['s1_shares'], p['s2_shares']
+        op1, op2     = p['open_s1_price'], p['open_s2_price']
+        open_dt      = p['open_date'] or '?'
+
+        # Determine close vs hold
+        close_ev = close_evs.get(pair)
+        hold_ev  = hold_pnl.get(pair)
+
+        if close_ev:
+            is_open    = False
+            sys_pnl    = close_ev['pnl']
+            exit_dt    = close_ev['report_date']
+            action     = close_ev['action']
+            close_note = close_ev['note']
+        elif hold_ev:
+            is_open    = True
+            sys_pnl    = hold_ev['pnl']
+            exit_dt    = hold_ev['report_date']
+            action     = 'HOLD'
+            close_note = ''
+        else:
+            is_open    = True
+            sys_pnl    = p['last_pnl']
+            exit_dt    = p['last_pnl_date'] or end
+            action     = 'HOLD'
+            close_note = ''
+
+        # yf PnL
+        yf_pnl = None
+        if op1 and op2:
+            ep1 = get_price(prices, s1, exit_dt)
+            ep2 = get_price(prices, s2, exit_dt)
+            if ep1 and ep2:
+                yf_pnl = (s1_sh * ep1 + s2_sh * ep2) - (s1_sh * op1 + s2_sh * op2)
+
+        # Extract close reason from note
+        reason = ''
+        if close_note:
+            note_l = close_note.lower()
+            if 'price level stop' in note_l:
+                reason = 'Price Level Stop'
+            elif 'time-based stop' in note_l or 'time based stop' in note_l:
+                reason = 'Time-based Stop'
+            elif 'pair p&l stop' in note_l or 'pair pnl stop' in note_l:
+                pct_match = ''
+                import re
+                m = re.search(r'\((-[\d.]+%)\)', close_note)
+                if m:
+                    pct_match = f' ({m.group(1)})'
+                reason = f'Pair PnL Stop{pct_match}'
+            elif 'momentum decay' in note_l:
+                reason = 'Momentum Decay Stop'
+            elif 'stop loss' in note_l:
+                reason = 'Stop Loss'
+            elif 'passed exit threshold' in note_l:
+                reason = '信号退出'
+            else:
+                reason = action
+
+        # Single-side notional (industry standard denominator for pairs PnL%)
+        gross_notional = abs(s1_sh * op1) + abs(s2_sh * op2) if (op1 and op2) else None
+        ss_notional    = gross_notional / 2 if gross_notional else None
+
+        rows.append({
+            'pair':           pair,
+            'strategy':       p['strategy'],
+            's1':             s1, 's2': s2,
+            'direction':      p['direction'],
+            'param_set':      p['param_set'],
+            'open_date':      open_dt,
+            'is_open':        is_open,
+            'action':         action,
+            'exit_date':      exit_dt,
+            'reason':         reason,
+            'sys_pnl':        sys_pnl,
+            'yf_pnl':         yf_pnl,
+            'gross_notional': gross_notional,
+            'ss_notional':    ss_notional,
+        })
+
+    # Compute totals
+    totals = {}
+    for strat in ('mrpt', 'mtfs'):
+        r      = sum(x['sys_pnl'] or 0 for x in rows if x['strategy'] == strat and not x['is_open'])
+        u      = sum(x['sys_pnl'] or 0 for x in rows if x['strategy'] == strat and x['is_open'])
+        ss_c   = sum(x['ss_notional'] or 0 for x in rows if x['strategy'] == strat and not x['is_open'])
+        ss_o   = sum(x['ss_notional'] or 0 for x in rows if x['strategy'] == strat and x['is_open'])
+        totals[strat] = {
+            'realized': r, 'unrealized': u, 'subtotal': r + u,
+            'ss_closed': ss_c, 'ss_open': ss_o, 'ss_total': ss_c + ss_o,
+        }
+    totals['grand']    = sum(v['subtotal'] for v in totals.values())
+    totals['ss_closed'] = sum(totals[s]['ss_closed'] for s in ('mrpt', 'mtfs'))
+    totals['ss_open']   = sum(totals[s]['ss_open']   for s in ('mrpt', 'mtfs'))
+    totals['ss_total']  = totals['ss_closed'] + totals['ss_open']
+
+    # Leverage metrics (denominator = equity capital)
+    # Computed from inventory snapshots across all dates in range
+    lev_rows = _compute_leverage(start_ts, end_ts)
+    totals['leverage'] = lev_rows
+
+    return {
+        'start':  start,
+        'end':    end,
+        'rows':   rows,
+        'totals': totals,
+    }
+
+
+def _analyse(rows: list[dict], totals: dict) -> list[str]:
+    """Generate simple analysis bullets from data."""
+    points = []
+    grand = totals['grand']
+
+    # Overall — use single-side notional as denominator
+    direction = '盈利' if grand >= 0 else '亏损'
+    ss_total = totals.get('ss_total') or 0
+    ss_pct_str = f'，PnL/单边名义 {grand/ss_total*100:+.2f}%' if ss_total > 0 else ''
+    roe_str = f'，ROE(现金) {grand/CASH_CAP*100:+.2f}%' if CASH_CAP > 0 else ''
+    points.append(
+        f'期间合计 {money(grand, color=False)}{ss_pct_str}{roe_str}，整体{direction}。'
+    )
+
+    # Best and worst
+    closed = [r for r in rows if not r['is_open'] and r['sys_pnl'] is not None]
+    open_  = [r for r in rows if r['is_open']     and r['sys_pnl'] is not None]
+    if closed:
+        best  = max(closed, key=lambda r: r['sys_pnl'])
+        worst = min(closed, key=lambda r: r['sys_pnl'])
+        if best['sys_pnl'] > 0:
+            points.append(
+                f'已实现最优：{best["pair"]}（{money(best["sys_pnl"], color=False)}，{best["reason"] or best["action"]}）。'
+            )
+        if worst['sys_pnl'] < 0:
+            points.append(
+                f'已实现最差：{worst["pair"]}（{money(worst["sys_pnl"], color=False)}，{worst["reason"] or worst["action"]}）。'
+            )
+    if open_:
+        best_o = max(open_, key=lambda r: r['sys_pnl'])
+        if best_o['sys_pnl'] > 0:
+            points.append(
+                f'最大浮盈：{best_o["pair"]}（当前 {money(best_o["sys_pnl"], color=False)}，仍持仓）。'
+            )
+
+    # Strategy breakdown
+    for strat in ('mrpt', 'mtfs'):
+        t = totals[strat]
+        points.append(
+            f'{strat.upper()} 小计 {money(t["subtotal"], color=False)}'
+            f'（已实现 {money(t["realized"], color=False)}，未实现 {money(t["unrealized"], color=False)}）。'
+        )
+
+    # Stop loss count
+    n_stops = sum(1 for r in rows if r['action'] == 'CLOSE_STOP')
+    n_close = sum(1 for r in rows if r['action'] == 'CLOSE')
+    if n_stops or n_close:
+        points.append(
+            f'期间共触发止损 {n_stops} 笔，正常信号退出 {n_close} 笔。'
+        )
+
+    # yf vs sys divergence note
+    big_div = [r for r in rows
+               if r['sys_pnl'] is not None and r['yf_pnl'] is not None
+               and abs(r['sys_pnl'] - r['yf_pnl']) > 3000]
+    if big_div:
+        names = '、'.join(r['pair'] for r in big_div)
+        points.append(
+            f'系统价与参考收盘价差异较大（>$3,000）的仓位：{names}，'
+            f'均由报告时刻价 vs 当日收盘价的时间差异导致，属正常。'
+        )
+
+    return points
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# PDF builder
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
+    start = report['start']
+    end   = report['end']
+    rows  = report['rows']
+    totals= report['totals']
+
+    doc = SimpleDocTemplate(
+        output_path, pagesize=A4,
+        leftMargin=2*cm, rightMargin=2*cm,
+        topMargin=2*cm, bottomMargin=2*cm,
+    )
+    W = A4[0] - 4*cm
+    story = []
+
+    # ── Title ────────────────────────────────────────────────────────────────
+    story.append(Paragraph('Someo Park — 组合 PnL 分析报告', title_style))
+    story.append(Paragraph(
+        f'报告区间：{start} ～ {end} | MRPT + MTFS 策略',
+        sub_style
+    ))
+    story.append(HRFlowable(width='100%', thickness=1, color=C_GOLD, spaceAfter=10))
+
+    # ── Section 1: Summary totals ─────────────────────────────────────────────
+    story.append(Paragraph('一、汇总', h1_style))
+
+    grand = totals['grand']
+    total_data = [
+        [H('策略'), H('已实现', 'RIGHT'), H('未实现', 'RIGHT'), H('小计', 'RIGHT')],
+    ]
+    for strat in ('mrpt', 'mtfs'):
+        t = totals[strat]
+        total_data.append([
+            C(strat.upper()),
+            Paragraph(money(t['realized']),   S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(money(t['unrealized']),  S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(money(t['subtotal']),    S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+        ])
+    total_data.append([
+        H('合计'),
+        Paragraph(money(totals['mrpt']['realized'] + totals['mtfs']['realized']),
+                  S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+        Paragraph(money(totals['mrpt']['unrealized'] + totals['mtfs']['unrealized']),
+                  S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+        Paragraph(money(grand),
+                  S('_g', fontSize=8.5, leading=11.5, alignment=TA_RIGHT)),
+    ])
+
+    cw_sum = [3*cm, 4*cm, 4*cm, 4.5*cm]
+    t_sum = Table(total_data, colWidths=cw_sum)
+    t_sum.setStyle(TableStyle([
+        ('FONTNAME',       (0,0), (-1,-1), FONT),
+        ('FONTSIZE',       (0,0), (-1,-1), 8),
+        ('LEADING',        (0,0), (-1,-1), 11),
+        ('BACKGROUND',     (0,0), (-1,0), C_SUBHDR),
+        ('TEXTCOLOR',      (0,0), (-1,0), colors.white),
+        ('BACKGROUND',     (0,-1),(-1,-1), colors.HexColor('#1a1a2e')),
+        ('TEXTCOLOR',      (0,-1),(-1,-1), C_GOLD),
+        ('ALIGN',          (1,0), (-1,-1), 'RIGHT'),
+        ('ALIGN',          (0,0), (0,-1), 'LEFT'),
+        ('VALIGN',         (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING',     (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING',  (0,0), (-1,-1), 5),
+        ('LEFTPADDING',    (0,0), (-1,-1), 7),
+        ('RIGHTPADDING',   (0,0), (-1,-1), 7),
+        ('GRID',           (0,0), (-1,-1), 0.35, C_BORDER),
+        ('LINEABOVE',      (0,-1),(-1,-1), 1.2, C_GOLD),
+        ('LINEBELOW',      (0,0), (-1,0), 0.9, C_GOLD),
+    ]))
+    story.append(t_sum)
+    story.append(Spacer(1, 6))
+
+    # PnL metrics row
+    ss_total  = totals.get('ss_total') or 0
+    ss_closed = totals.get('ss_closed') or 0
+    r_pnl = totals['mrpt']['realized'] + totals['mtfs']['realized']
+    lev   = totals.get('leverage', {})
+
+    metric_parts = []
+    if ss_total > 0:
+        metric_parts.append(
+            f'PnL / 单边名义 = {money(grand, color=False)} / {ss_total:,.0f} = {pct(grand/ss_total*100)}'
+        )
+    if ss_closed > 0:
+        metric_parts.append(
+            f'（已实现 {r_pnl:+,.0f} / {ss_closed:,.0f} = {pct(r_pnl/ss_closed*100)}）'
+        )
+    if grand != 0:
+        metric_parts.append(
+            f'ROE(现金) = {money(grand, color=False)} / {CASH_CAP:,.0f} = {pct(grand/CASH_CAP*100)}'
+        )
+    story.append(Paragraph(
+        '    '.join(metric_parts),
+        S('cap', fontSize=8, leading=12, alignment=TA_CENTER, spaceBefore=2)
+    ))
+
+    # Leverage metrics box
+    if lev:
+        story.append(Spacer(1, 5))
+        warn = ' ⚠' if lev.get('peak_over_limit') else ''
+        scale_str = (f'  →  需缩仓至 {lev["scale_needed"]*100:.1f}%'
+                     if lev.get('peak_over_limit') else '  ✓ 在账户上限内')
+        lev_rows_kv = [
+            ('现金上限 / 最大账户规模（含100%融资）',
+             f'${CASH_CAP:,.0f}  /  ${MAX_ACCOUNT:,.0f}'),
+            (f'毛杠杆 vs 账户上限（均值 / 峰值{warn}）',
+             f'{lev["avg_gross_lev"]:.2f}x  /  {lev["peak_gross_lev"]:.2f}x{scale_str}'),
+            ('单边杠杆 Single-Side（均值 / 峰值）',
+             f'{lev["avg_ss_lev"]:.2f}x  /  {lev["peak_ss_lev"]:.2f}x'),
+            ('净杠杆 Net Exposure（均值）',
+             f'{lev["avg_net_lev"]:.3f}x  ≈ 市场中性'),
+            ('分母说明',
+             f'杠杆率 ÷ 账户上限 ${MAX_ACCOUNT:,.0f}；PnL% ÷ 单边名义；ROE ÷ 现金 ${CASH_CAP:,.0f}'),
+        ]
+        story.append(make_kv_table(lev_rows_kv, label_w=10*cm, val_w=5.5*cm))
+        if lev.get('peak_over_limit'):
+            n_over = lev.get('days_over_limit', 0)
+            n_total = lev.get('n_days', 1)
+            story.append(Paragraph(
+                f'⚠ 峰值毛名义 ${lev["peak_gross"]:,.0f} 超出账户上限 ${MAX_ACCOUNT:,.0f}，'
+                f'共 {n_over}/{n_total} 个交易日超出。'
+                f'若以 ${CASH_CAP:,.0f} 现金实盘，需将所有仓位缩小至 {lev["scale_needed"]*100:.1f}%。',
+                S('_lnote', fontSize=7, leading=10,
+                  textColor=colors.HexColor('#c0392b'), spaceBefore=3)
+            ))
+
+    # ── Section 2: Closed positions ──────────────────────────────────────────
+    closed_rows = [r for r in rows if not r['is_open']]
+    if closed_rows:
+        story.append(Paragraph(
+            '二、已平仓明细（来源：daily_report CLOSE / CLOSE_STOP 实际执行价）',
+            h1_style
+        ))
+        hdr = [H('仓位'), H('策略'), H('方向'), H('平仓日'), H('方式'), H('原因'), H('单边名义','RIGHT'), H('PnL','RIGHT'), H('PnL/SS','RIGHT')]
+        data = [hdr]
+        for r in sorted(closed_rows, key=lambda x: x['exit_date'] or ''):
+            ss = r.get('ss_notional')
+            pnl_v = r['sys_pnl']
+            pct_v  = pnl_v / ss * 100 if (ss and pnl_v is not None) else None
+            data.append([
+                C(r['pair']),
+                C(r['strategy'].upper()),
+                C(r['direction'].capitalize()),
+                C(r['exit_date'][5:] if r['exit_date'] else '?'),
+                C(r['action']),
+                C(r['reason'] or '—'),
+                C(f'{ss:,.0f}' if ss else '—', 'RIGHT'),
+                Paragraph(money(pnl_v), S('_p', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+                Paragraph(pct(pct_v) if pct_v is not None else '—',
+                          S('_pp', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            ])
+        cw = [2.0*cm, 1.1*cm, 1.2*cm, 1.4*cm, 2.1*cm, 3.3*cm, 1.9*cm, 1.9*cm, 1.8*cm]
+        story.append(make_table(data, cw))
+
+    # ── Section 3: MRPT ───────────────────────────────────────────────────────
+    mrpt_rows = [r for r in rows if r['strategy'] == 'mrpt']
+    story.append(Paragraph('三、MRPT 策略明细', h1_style))
+    hdr_mrpt = [H('仓位'), H('方向'), H('状态'), H('Param Set'), H('开仓日'), H('单边名义','RIGHT'), H('PnL','RIGHT'), H('PnL/SS','RIGHT')]
+    data_mrpt = [hdr_mrpt]
+    for r in mrpt_rows:
+        if r['is_open']:
+            status = f'持仓 ({r["exit_date"][5:] if r["exit_date"] else end[5:]})'
+        else:
+            short_dt = r['exit_date'][5:] if r['exit_date'] else '?'
+            reason_short = r['reason'] or r['action']
+            status = f'已平仓 {short_dt}（{reason_short}）'
+        ss = r.get('ss_notional')
+        pnl_v = r['sys_pnl']
+        pct_v = pnl_v / ss * 100 if (ss and pnl_v is not None) else None
+        data_mrpt.append([
+            C(r['pair']),
+            C(r['direction'].capitalize()),
+            C(status),
+            C(r['param_set']),
+            C(r['open_date'][5:] if r['open_date'] else '?'),
+            C(f'{ss:,.0f}' if ss else '—', 'RIGHT'),
+            Paragraph(money(pnl_v), S('_m', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(pct(pct_v) if pct_v is not None else '—',
+                      S('_mp', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+        ])
+    cw_mrpt = [1.9*cm, 1.2*cm, 3.8*cm, 3.3*cm, 1.2*cm, 1.8*cm, 1.8*cm, 1.5*cm]
+    story.append(make_table(data_mrpt, cw_mrpt))
+    story.append(Spacer(1, 7))
+
+    tm = totals['mrpt']
+    r_pairs = [r for r in mrpt_rows if not r['is_open'] and r['sys_pnl'] is not None]
+    u_pairs = [r for r in mrpt_rows if r['is_open']     and r['sys_pnl'] is not None]
+    r_expr = ' + '.join(f"{r['sys_pnl']:+,.2f}" for r in r_pairs) or '0'
+    u_expr = ' + '.join(f"{r['sys_pnl']:+,.2f}" for r in u_pairs) or '0'
+    story.append(make_kv_table([
+        (f'已实现  {r_expr}', f'<font color="{"#1a7a4a" if tm["realized"]>=0 else "#c0392b"}"><b>{tm["realized"]:+,.2f}</b></font>'),
+        (f'未实现  {u_expr}', f'<font color="{"#1a7a4a" if tm["unrealized"]>=0 else "#c0392b"}"><b>{tm["unrealized"]:+,.2f}</b></font>'),
+        ('MRPT 小计', f'<font color="{"#1a7a4a" if tm["subtotal"]>=0 else "#c0392b"}"><b>{tm["subtotal"]:+,.2f}</b></font>'),
+    ]))
+
+    # ── Section 4: MTFS ───────────────────────────────────────────────────────
+    mtfs_rows = [r for r in rows if r['strategy'] == 'mtfs']
+    story.append(Paragraph('四、MTFS 策略明细', h1_style))
+    hdr_mtfs = [H('仓位'), H('方向'), H('状态'), H('开仓日'), H('单边名义','RIGHT'), H('PnL','RIGHT'), H('PnL/SS','RIGHT')]
+    data_mtfs = [hdr_mtfs]
+    for r in mtfs_rows:
+        if r['is_open']:
+            status = f'持仓 ({r["exit_date"][5:] if r["exit_date"] else end[5:]})'
+        else:
+            short_dt = r['exit_date'][5:] if r['exit_date'] else '?'
+            reason_short = r['reason'] or r['action']
+            status = f'已平仓 {short_dt}（{reason_short}）'
+        ss = r.get('ss_notional')
+        pnl_v = r['sys_pnl']
+        pct_v = pnl_v / ss * 100 if (ss and pnl_v is not None) else None
+        data_mtfs.append([
+            C(r['pair']),
+            C(r['direction'].capitalize()),
+            C(status),
+            C(r['open_date'][5:] if r['open_date'] else '?'),
+            C(f'{ss:,.0f}' if ss else '—', 'RIGHT'),
+            Paragraph(money(pnl_v), S('_n', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(pct(pct_v) if pct_v is not None else '—',
+                      S('_np', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+        ])
+    cw_mtfs = [1.9*cm, 1.2*cm, 5.2*cm, 1.2*cm, 1.8*cm, 1.8*cm, 1.6*cm]
+    story.append(make_table(data_mtfs, cw_mtfs))
+    story.append(Spacer(1, 7))
+
+    tmt = totals['mtfs']
+    r_pairs_m = [r for r in mtfs_rows if not r['is_open'] and r['sys_pnl'] is not None]
+    u_pairs_m = [r for r in mtfs_rows if r['is_open']     and r['sys_pnl'] is not None]
+    r_expr_m = ' + '.join(f"{r['sys_pnl']:+,.2f}" for r in r_pairs_m) or '0'
+    u_expr_m = ' + '.join(f"{r['sys_pnl']:+,.2f}" for r in u_pairs_m) or '0'
+    story.append(make_kv_table([
+        (f'已实现  {r_expr_m}', f'<font color="{"#1a7a4a" if tmt["realized"]>=0 else "#c0392b"}"><b>{tmt["realized"]:+,.2f}</b></font>'),
+        (f'未实现  {u_expr_m}', f'<font color="{"#1a7a4a" if tmt["unrealized"]>=0 else "#c0392b"}"><b>{tmt["unrealized"]:+,.2f}</b></font>'),
+        ('MTFS 小计', f'<font color="{"#1a7a4a" if tmt["subtotal"]>=0 else "#c0392b"}"><b>{tmt["subtotal"]:+,.2f}</b></font>'),
+    ]))
+
+    # ── Section 5: Analysis ───────────────────────────────────────────────────
+    story.append(Paragraph('五、简要分析', h1_style))
+    bullets = _analyse(rows, totals)
+    for i, b in enumerate(bullets, 1):
+        story.append(note_item(f'{i}.', b, W))
+        story.append(Spacer(1, 3))
+
+    # ── Section 6: yf vs sys comparison ──────────────────────────────────────
+    if yf_compare:
+        story.append(Paragraph('六、系统成交价 vs 参考收盘价对照', h1_style))
+        story.append(Paragraph(
+            '系统成交价为报告生成时刻价（盘中或收盘后）；参考收盘价为 signal_date 当日收盘价（数据源：yfinance）。'
+            '注：信号生成后最早执行为次日开盘，故参考收盘价并非实际可成交价，差异属正常。',
+            S('_note', fontSize=7.5, leading=10.5, textColor=C_GRAY, spaceAfter=5)
+        ))
+        _yp = ParagraphStyle('_yp', fontName=FONT, fontSize=7.2, leading=9.5, alignment=TA_RIGHT)
+        _yf_s = ParagraphStyle('_yf', fontName=FONT, fontSize=7, leading=9.5)
+        hdr_yf = [H('仓位'), H('结算日'), H('系统\n成交价PnL','RIGHT'), H('参考\n收盘价PnL','RIGHT'), H('差异\n(系统−参考)','RIGHT'), H('说明')]
+        data_yf = [hdr_yf]
+        valid_yf = [r for r in rows if not (r['sys_pnl'] is None and r['yf_pnl'] is None)]
+        tot_sys = tot_yf = tot_diff = 0.0
+        has_sys = has_yf = has_diff = True
+        for r in valid_yf:
+            diff = (r['sys_pnl'] - r['yf_pnl']) if (r['sys_pnl'] is not None and r['yf_pnl'] is not None) else None
+            flag = '⚠ 差异>$3k' if (diff is not None and abs(diff) > 3000) else ''
+            if r['sys_pnl'] is not None: tot_sys  += r['sys_pnl']
+            else: has_sys = False
+            if r['yf_pnl'] is not None: tot_yf   += r['yf_pnl']
+            else: has_yf = False
+            if diff is not None: tot_diff += diff
+            else: has_diff = False
+            data_yf.append([
+                C(r['pair']),
+                C(r['exit_date'][5:] if r['exit_date'] else '?'),
+                Paragraph(money(r['sys_pnl']), _yp),
+                Paragraph(money(r['yf_pnl']),  _yp),
+                Paragraph(money(diff),          _yp),
+                Paragraph(f'<font color="#888888">{flag}</font>', _yf_s),
+            ])
+        # Totals row
+        _ps = ParagraphStyle('_yp2', fontName=FONT, fontSize=7.2, leading=9.5, alignment=TA_RIGHT)
+        _ytl = ParagraphStyle('_ytl', fontName=FONT, fontSize=7.2, leading=9.5)
+        _yfl = ParagraphStyle('_yfl', fontName=FONT, fontSize=7, leading=9.5)
+        data_yf.append([
+            Paragraph('<b>合计</b>', _ytl),
+            Paragraph('', _ytl),
+            Paragraph(f'<b>{money(tot_sys if has_sys else None)}</b>', _ps),
+            Paragraph(f'<b>{money(tot_yf  if has_yf  else None)}</b>', _ps),
+            Paragraph(f'<b>{money(tot_diff if has_diff else None)}</b>', _ps),
+            Paragraph(
+                ('<font color="#555555">系统多算</font>' if (has_diff and tot_diff > 0)
+                 else ('<font color="#555555">系统少算</font>' if (has_diff and tot_diff < 0)
+                       else '<font color="#555555">—</font>')),
+                _yfl
+            ),
+        ])
+        cw_yf = [2.0*cm, 1.4*cm, 2.8*cm, 2.8*cm, 2.8*cm, 2.0*cm]
+        t_yf = make_table(data_yf, cw_yf)
+        # Style the totals row differently
+        n_yf = len(data_yf)
+        t_yf.setStyle(TableStyle([
+            ('BACKGROUND',    (0, n_yf-1), (-1, n_yf-1), colors.HexColor('#f0f0f0')),
+            ('LINEABOVE',     (0, n_yf-1), (-1, n_yf-1), 0.8, C_GOLD),
+            ('FONTNAME',      (0, n_yf-1), (-1, n_yf-1), FONT),
+        ]))
+        story.append(t_yf)
+        # Interpretation note
+        if has_diff:
+            interp = (f'差异合计 {tot_diff:+,.2f}：系统成交价总计比 yf 收盘价{"多算" if tot_diff > 0 else "少算"}'
+                      f' {abs(tot_diff):,.2f}，来源于盘中执行时刻差异，非数据错误。')
+            story.append(Paragraph(interp,
+                S('_yi', fontSize=7.2, leading=10, textColor=C_GRAY, spaceBefore=4)))
+
+    # ── Footer ────────────────────────────────────────────────────────────────
+    story.append(Spacer(1, 16))
+    story.append(HRFlowable(width='100%', thickness=0.4, color=C_BORDER))
+    story.append(Paragraph(
+        f'Generated by Someo Park System · {datetime.now().strftime("%Y-%m-%d %H:%M")}',
+        footer_style
+    ))
+
+    doc.build(story)
+    print(f'PDF saved: {output_path}')
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# CLI
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def main():
+    parser = argparse.ArgumentParser(description='生成 PnL PDF 报告')
+    parser.add_argument('--start',  default=None, help='起始日期 YYYY-MM-DD')
+    parser.add_argument('--end',    default=None, help='截止日期 YYYY-MM-DD（默认今天）')
+    parser.add_argument('--out',    default=None, help='输出路径（默认自动命名）')
+    parser.add_argument('--no-yf',  action='store_true',
+                        help='不生成「系统成交价 vs 参考收盘价对照」章节')
+    args = parser.parse_args()
+
+    end   = args.end   or str(pd.Timestamp.now().date())
+    if args.start:
+        start = args.start
+    else:
+        # Auto-detect: earliest inventory snapshot date (first position ever opened)
+        inv_files = sorted(glob.glob(os.path.join(INV_DIR, 'inventory_*.json')))
+        if inv_files:
+            first_day, _ = _parse_ts(inv_files[0])
+            start = str(first_day.date()) if first_day else str((pd.Timestamp(end) - pd.Timedelta(days=30)).date())
+        else:
+            start = str((pd.Timestamp(end) - pd.Timedelta(days=30)).date())
+
+    reports_dir = os.path.join(BASE_DIR, 'trading_signals', 'pnl_reports')
+    os.makedirs(reports_dir, exist_ok=True)
+    out = args.out or os.path.join(
+        reports_dir, f'pnl_report_{end.replace("-","")}.pdf'
+    )
+
+    print(f'\nBuilding report: {start} → {end}  (yf_compare={"off" if args.no_yf else "on"})')
+    report = build_report_data(start, end)
+    build_pdf(report, out, yf_compare=not args.no_yf)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,12 +1,6 @@
 [
   {
     "s1": "ALL",
-    "s2": "CFG",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "ALL",
     "s2": "GS",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
@@ -18,14 +12,20 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "AWK",
-    "s2": "PLD",
-    "sector": "utilities",
-    "spread_col": "Momentum_Spread_utilities"
+    "s1": "ALL",
+    "s2": "BK",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "ACGL",
-    "s2": "MCD",
+    "s1": "CTRA",
+    "s2": "ACGL",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "MCD",
+    "s2": "ACGL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -36,19 +36,19 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "AIG",
-    "s2": "AVB",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "BK",
+    "s1": "ETR",
     "s2": "AIG",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "C",
+    "s1": "EVRG",
+    "s2": "AIG",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "HST",
     "s2": "AIG",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
@@ -60,16 +60,10 @@
     "spread_col": "Momentum_Spread_realestate"
   },
   {
-    "s1": "AWK",
-    "s2": "AXP",
-    "sector": "utilities",
-    "spread_col": "Momentum_Spread_utilities"
-  },
-  {
-    "s1": "AWK",
-    "s2": "BK",
-    "sector": "utilities",
-    "spread_col": "Momentum_Spread_utilities"
+    "s1": "TJX",
+    "s2": "AVB",
+    "sector": "realestate",
+    "spread_col": "Momentum_Spread_realestate"
   },
   {
     "s1": "C",
@@ -88,5 +82,11 @@
     "s2": "CPT",
     "sector": "realestate",
     "spread_col": "Momentum_Spread_realestate"
+  },
+  {
+    "s1": "D",
+    "s2": "NSC",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
   }
 ]

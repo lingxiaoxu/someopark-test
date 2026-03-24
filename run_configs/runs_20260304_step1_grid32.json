@@ -8,12 +8,12 @@
       "param_set": "default",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -74,12 +74,12 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -140,12 +140,12 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -206,12 +206,12 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -272,12 +272,12 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -338,12 +338,12 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -404,12 +404,12 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -470,12 +470,12 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -536,12 +536,12 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -602,12 +602,12 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -668,12 +668,12 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -734,12 +734,12 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -800,12 +800,12 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -866,12 +866,12 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -932,12 +932,12 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -998,12 +998,12 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1064,12 +1064,12 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1130,12 +1130,12 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1196,12 +1196,12 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1262,12 +1262,12 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1328,12 +1328,12 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1394,12 +1394,12 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1460,12 +1460,12 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1526,12 +1526,12 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1592,12 +1592,12 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1658,12 +1658,12 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1724,12 +1724,12 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1790,12 +1790,12 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1856,12 +1856,12 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1922,12 +1922,12 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -1988,12 +1988,12 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",
@@ -2054,12 +2054,12 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "AWK",
-          "FOX"
-        ],
-        [
           "CL",
           "WST"
+        ],
+        [
+          "AWK",
+          "FOX"
         ],
         [
           "MSCI",

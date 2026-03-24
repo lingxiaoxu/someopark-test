@@ -1,15 +1,15 @@
 [
   {
-    "s1": "CL",
-    "s2": "WST",
-    "sector": "energy",
-    "z_col": "Z_energy"
-  },
-  {
     "s1": "AWK",
     "s2": "FOX",
     "sector": "utilities",
     "z_col": "Z_utilities"
+  },
+  {
+    "s1": "CL",
+    "s2": "WST",
+    "sector": "energy",
+    "z_col": "Z_energy"
   },
   {
     "s1": "MSCI",

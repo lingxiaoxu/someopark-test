@@ -1,0 +1,564 @@
+{
+  "strategy": "mtfs",
+  "signal_date": "2026-03-24",
+  "generated_at": "2026-03-24T12:57:32",
+  "dry_run": false,
+  "capital": 476000.0,
+  "sim_capital": 500000.0,
+  "scale_factor": 0.952,
+  "regime": {
+    "as_of": "2026-03-24",
+    "regime_score": 46.0,
+    "regime_label": "neutral",
+    "mrpt_weight": 0.524,
+    "mtfs_weight": 0.476,
+    "indicators": {
+      "vix_level": 26.15,
+      "vix_z": 1.287081,
+      "vix_pct52w": 0.920635,
+      "move_level": 98.147598,
+      "move_z": 0.925653,
+      "spy_20d": -0.036959,
+      "spy_5d": -0.017727,
+      "spy_z": 0.822428,
+      "qqq_spy_ratio": 0.897189,
+      "qqq_spy_z": 0.210556,
+      "iwm_spy_ratio": 0.377567,
+      "iwm_spy_z": 1.31739,
+      "xlk_spy_z": 0.383504,
+      "nvda_20d": -0.08301,
+      "nvda_5d": -0.041371,
+      "nvda_level": 175.639999,
+      "arkk_20d": 0.013143,
+      "arkk_5d": -0.015684,
+      "arkk_level": 70.919998,
+      "soxx_20d": -0.056114,
+      "soxx_5d": -0.003057,
+      "soxx_level": 336.589996,
+      "gld_20d": -0.160489,
+      "gld_level": 404.040009,
+      "uso_20d": 0.366625,
+      "uso_level": 110.559998,
+      "uup_20d": 0.01735,
+      "uup_level": 27.559999,
+      "tnx_level": 4.334,
+      "tnx_z": 0.777314,
+      "hyg_level": 79.440002,
+      "hyg_20d": -0.012864,
+      "hyg_z": 0.736654,
+      "hy_spread_level": 3.24,
+      "hy_spread_z": 0.55421,
+      "ig_spread_level": 0.88,
+      "ig_spread_z": 0.399499,
+      "yield_curve_level": 0.51,
+      "yield_curve_z": -0.478444,
+      "effr_level": 3.64,
+      "effr_1y_change": -0.69,
+      "breakeven_10y_level": 2.33,
+      "breakeven_10y_z": 0.271886,
+      "breakeven_5y_level": 2.53,
+      "fin_stress_level": -0.299,
+      "fin_stress_z": 0.874944,
+      "nfci_level": -0.48574,
+      "consumer_sent_level": 56.4,
+      "recession_flag": 0,
+      "unrate_level": 4.4,
+      "payems_mom": -92.0,
+      "icsa_level": 205000.0,
+      "ccsa_level": 1857000.0,
+      "dgs10_level": 4.39,
+      "dgs2_level": 3.88,
+      "yield_curve_daily": 0.51,
+      "yield_curve_daily_z": -0.45603
+    },
+    "component_scores": {
+      "volatility": {
+        "aggregate": 0.638,
+        "sub": {
+          "vix": 0.9148,
+          "vix_level": 0.4288,
+          "move": 0.5703
+        },
+        "weight": 0.25
+      },
+      "credit": {
+        "aggregate": 0.3222,
+        "sub": {
+          "hy_spread": 0.4217,
+          "ig_spread": 0.3598,
+          "hy_level": 0.185
+        },
+        "weight": 0.18
+      },
+      "rates": {
+        "aggregate": 0.4187,
+        "sub": {
+          "yield_curve": 0.496,
+          "effr": 0.428,
+          "breakeven": 0.332
+        },
+        "weight": 0.1
+      },
+      "momentum_ai": {
+        "aggregate": 0.3562,
+        "sub": {
+          "nvda": 0.251,
+          "arkk": 0.5329,
+          "soxx": 0.3597,
+          "tech_premium": 0.2842,
+          "xlk_premium": 0.3534
+        },
+        "weight": 0.18
+      },
+      "macro_stress": {
+        "aggregate": 0.4498,
+        "sub": {
+          "fin_stress": 0.3753,
+          "nfci": 0.3043,
+          "consumer_sent": 0.67
+        },
+        "weight": 0.12
+      },
+      "geopolitical": {
+        "aggregate": 0.4718,
+        "sub": {
+          "gold": 0.1,
+          "oil": 0.85,
+          "dollar": 0.4653
+        },
+        "weight": 0.09
+      },
+      "strategy_vol": {
+        "aggregate": 0.5,
+        "sub": {},
+        "weight": 0.08
+      }
+    },
+    "strategy_vol": {
+      "mrpt_vol": 29945.215344,
+      "mtfs_vol": null,
+      "vol_ratio": null
+    },
+    "weight_rationale": "Regime score: 46.0/100  \u2192  MRPT 52%  MTFS 48%\n\n  Volatility   : VIX=26.1 (z=+1.29)\n  Credit       : HY spread=3.24% IG=0.88\n  Rates        : Yield curve (10y-2y)=+0.51  EFFR=3.64\n  AI/Momentum  : NVDA 20d=-8.3%  ARKK 20d=+1.3%\n  Macro stress : St.Louis FSI=-0.2990  NFCI=-0.48574\n  Geopolitical : GLD 20d=-16.0%  USO 20d=+36.7%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.64\n    credit         : [\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.32\n    rates          : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.42\n    momentum_ai    : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.36\n    macro_stress   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.45\n    geopolitical   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.47\n    strategy_vol   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.50",
+    "indicator_history": {
+      "vix_level": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": 26.780001,
+        "prev_date": "2026-03-20",
+        "change_abs": -0.630001,
+        "change_pct": -0.023525,
+        "avg30": 22.231,
+        "avg90": 18.809445,
+        "vs30_pct": 0.176285,
+        "vs90_pct": 0.390259
+      },
+      "move_level": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": 108.839996,
+        "prev_date": "2026-03-20",
+        "change_abs": -10.692398,
+        "change_pct": -0.09824,
+        "avg30": 75.372919,
+        "avg90": 69.279306,
+        "vs30_pct": 0.30216,
+        "vs90_pct": 0.416694
+      },
+      "spy_20d": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": -0.056697,
+        "prev_date": "2026-03-20",
+        "change_abs": 0.019739,
+        "change_pct": -0.348141,
+        "avg30": -0.015363,
+        "avg90": 0.000778,
+        "vs30_pct": 1.405646,
+        "vs90_pct": -48.519482
+      },
+      "nvda_20d": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": -0.090142,
+        "prev_date": "2026-03-20",
+        "change_abs": 0.007132,
+        "change_pct": -0.079118,
+        "avg30": -0.0077,
+        "avg90": -0.008646,
+        "vs30_pct": 9.780497,
+        "vs90_pct": 8.601296
+      },
+      "arkk_20d": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": -0.032732,
+        "prev_date": "2026-03-20",
+        "change_abs": 0.045875,
+        "change_pct": -1.401531,
+        "avg30": -0.044244,
+        "avg90": -0.036157,
+        "vs30_pct": -1.297056,
+        "vs90_pct": -1.363491
+      },
+      "soxx_20d": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": -0.074326,
+        "prev_date": "2026-03-20",
+        "change_abs": 0.018212,
+        "change_pct": -0.24503,
+        "avg30": -0.000714,
+        "avg90": 0.034441,
+        "vs30_pct": 77.584917,
+        "vs90_pct": -2.629284
+      },
+      "gld_20d": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": -0.117878,
+        "prev_date": "2026-03-20",
+        "change_abs": -0.042611,
+        "change_pct": 0.361481,
+        "avg30": 0.025346,
+        "avg90": 0.048698,
+        "vs30_pct": -7.331993,
+        "vs90_pct": -4.295567
+      },
+      "uso_20d": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": 0.501917,
+        "prev_date": "2026-03-20",
+        "change_abs": -0.135292,
+        "change_pct": -0.26955,
+        "avg30": 0.244303,
+        "avg90": 0.093764,
+        "vs30_pct": 0.500699,
+        "vs90_pct": 2.910077
+      },
+      "uup_20d": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": 0.021779,
+        "prev_date": "2026-03-20",
+        "change_abs": -0.00443,
+        "change_pct": -0.203391,
+        "avg30": 0.010742,
+        "avg90": 0.003344,
+        "vs30_pct": 0.615062,
+        "vs90_pct": 4.188988
+      },
+      "hy_spread_level": {
+        "freq": "daily",
+        "cur_date": "2026-03-20",
+        "prev_val": 3.27,
+        "prev_date": "2026-03-19",
+        "change_abs": -0.03,
+        "change_pct": -0.009174,
+        "avg30": 3.043667,
+        "avg90": 2.925222,
+        "vs30_pct": 0.064506,
+        "vs90_pct": 0.107608
+      },
+      "ig_spread_level": {
+        "freq": "daily",
+        "cur_date": "2026-03-20",
+        "prev_val": 0.9,
+        "prev_date": "2026-03-19",
+        "change_abs": -0.02,
+        "change_pct": -0.022222,
+        "avg30": 0.837333,
+        "avg90": 0.802444,
+        "vs30_pct": 0.050955,
+        "vs90_pct": 0.096649
+      },
+      "yield_curve_level": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": 0.51,
+        "prev_date": "2026-03-20",
+        "change_abs": 0.0,
+        "change_pct": 0.0,
+        "avg30": 0.582333,
+        "avg90": 0.620444,
+        "vs30_pct": -0.124213,
+        "vs90_pct": -0.178009
+      },
+      "effr_level": {
+        "freq": "daily",
+        "cur_date": "2026-03-20",
+        "prev_val": 3.64,
+        "prev_date": "2026-03-19",
+        "change_abs": 0.0,
+        "change_pct": 0.0,
+        "avg30": 3.64,
+        "avg90": 3.699333,
+        "vs30_pct": 0.0,
+        "vs90_pct": -0.016039
+      },
+      "breakeven_10y_level": {
+        "freq": "daily",
+        "cur_date": "2026-03-23",
+        "prev_val": 2.38,
+        "prev_date": "2026-03-20",
+        "change_abs": -0.05,
+        "change_pct": -0.021008,
+        "avg30": 2.317,
+        "avg90": 2.289556,
+        "vs30_pct": 0.005611,
+        "vs90_pct": 0.017665
+      },
+      "fin_stress_level": {
+        "freq": "weekly",
+        "cur_date": "2026-03-13",
+        "prev_val": -0.4287,
+        "prev_date": "2026-03-06",
+        "change_abs": 0.1297,
+        "change_pct": -0.302543,
+        "avg30": -0.503253,
+        "avg90": -0.515291,
+        "vs30_pct": -0.405866,
+        "vs90_pct": -0.419745
+      },
+      "nfci_level": {
+        "freq": "weekly",
+        "cur_date": "2026-03-13",
+        "prev_val": -0.50151,
+        "prev_date": "2026-03-06",
+        "change_abs": 0.01577,
+        "change_pct": -0.031445,
+        "avg30": -0.526713,
+        "avg90": -0.497527,
+        "vs30_pct": -0.077791,
+        "vs90_pct": -0.023691
+      },
+      "consumer_sent_level": {
+        "freq": "monthly",
+        "cur_date": "2026-01-01",
+        "prev_val": 52.9,
+        "prev_date": "2025-12-01",
+        "change_abs": 3.5,
+        "change_pct": 0.066163,
+        "avg30": 56.308333,
+        "avg90": 56.308333,
+        "vs30_pct": 0.001628,
+        "vs90_pct": 0.001628
+      },
+      "recession_flag": {
+        "freq": "monthly",
+        "cur_date": "2026-02-01",
+        "prev_val": 0.0,
+        "prev_date": "2026-01-01",
+        "change_abs": 0.0,
+        "change_pct": null,
+        "avg30": 0.0,
+        "avg90": 0.0,
+        "vs30_pct": null,
+        "vs90_pct": null
+      },
+      "unrate_level": {
+        "freq": "monthly",
+        "cur_date": "2026-02-01",
+        "prev_val": 4.3,
+        "prev_date": "2026-01-01",
+        "change_abs": 0.1,
+        "change_pct": 0.023256,
+        "avg30": 4.3,
+        "avg90": 4.3,
+        "vs30_pct": 0.023256,
+        "vs90_pct": 0.023256
+      },
+      "payems_mom": {
+        "freq": "monthly",
+        "cur_date": "2026-02-01",
+        "prev_val": 126.0,
+        "prev_date": "2026-01-01",
+        "change_abs": -218.0,
+        "change_pct": -1.730159,
+        "avg30": 13.0,
+        "avg90": 13.0,
+        "vs30_pct": -8.076923,
+        "vs90_pct": -8.076923
+      },
+      "icsa_level": {
+        "freq": "weekly",
+        "cur_date": "2026-03-14",
+        "prev_val": 213000.0,
+        "prev_date": "2026-03-07",
+        "change_abs": -8000.0,
+        "change_pct": -0.037559,
+        "avg30": 221233.333333,
+        "avg90": 224642.857143,
+        "vs30_pct": -0.073377,
+        "vs90_pct": -0.08744
+      },
+      "ccsa_level": {
+        "freq": "weekly",
+        "cur_date": "2026-03-07",
+        "prev_val": 1847000.0,
+        "prev_date": "2026-02-28",
+        "change_abs": 10000.0,
+        "change_pct": 0.005414,
+        "avg30": 1901300.0,
+        "avg90": 1904981.818182,
+        "vs30_pct": -0.0233,
+        "vs90_pct": -0.025188
+      }
+    }
+  },
+  "signals": [
+    {
+      "pair": "AIG/CAT",
+      "s1": "AIG",
+      "s2": "CAT",
+      "momentum_spread": null,
+      "s1_price": 75.09,
+      "s2_price": 701.7,
+      "action": "FLAT",
+      "entry_threshold": 0.0,
+      "note": "No position, signal=None within \u00b10.0 \u2014 wait"
+    },
+    {
+      "pair": "ETR/AVB",
+      "s1": "ETR",
+      "s2": "AVB",
+      "momentum_spread": null,
+      "s1_price": 101.34,
+      "s2_price": 163.27,
+      "action": "HOLD",
+      "direction": "long",
+      "entry_threshold": 0.0,
+      "exit_threshold": 0.5,
+      "s1_shares": 1096,
+      "s2_shares": -1325,
+      "days_held": 2,
+      "note": "Holding long, signal=None, exit at 0.5",
+      "leg_s1": {
+        "symbol": "ETR",
+        "shares": 1096,
+        "side": "BUY",
+        "price": 101.34,
+        "est_value": 111069.0
+      },
+      "leg_s2": {
+        "symbol": "AVB",
+        "shares": -1325,
+        "side": "SELL_SHORT",
+        "price": 163.27,
+        "est_value": 216333.0
+      }
+    },
+    {
+      "pair": "TJX/AVB",
+      "s1": "TJX",
+      "s2": "AVB",
+      "momentum_spread": null,
+      "s1_price": 156.5,
+      "s2_price": 163.27,
+      "action": "HOLD",
+      "direction": "long",
+      "entry_threshold": 0.0,
+      "exit_threshold": 0.5,
+      "s1_shares": 1416,
+      "s2_shares": -1325,
+      "days_held": 0,
+      "note": "Holding long, signal=None, exit at 0.5",
+      "leg_s1": {
+        "symbol": "TJX",
+        "shares": 1416,
+        "side": "BUY",
+        "price": 156.5,
+        "est_value": 221604.0
+      },
+      "leg_s2": {
+        "symbol": "AVB",
+        "shares": -1325,
+        "side": "SELL_SHORT",
+        "price": 163.27,
+        "est_value": 216333.0
+      }
+    },
+    {
+      "pair": "ALL/BK",
+      "s1": "ALL",
+      "s2": "BK",
+      "momentum_spread": null,
+      "s1_price": 207.76,
+      "s2_price": 116.36,
+      "action": "OPEN_LONG",
+      "direction": "long",
+      "entry_threshold": 0.0,
+      "s1_shares": 514,
+      "s2_shares": -918,
+      "open_hedge_ratio": 1.7854932966655208,
+      "open_price_level_stop": null,
+      "note": "signal=None triggered long entry (threshold \u00b10.0)",
+      "leg_s1": {
+        "symbol": "ALL",
+        "shares": 514,
+        "side": "BUY",
+        "price": 207.76,
+        "est_value": 106789.0
+      },
+      "leg_s2": {
+        "symbol": "BK",
+        "shares": -918,
+        "side": "SELL_SHORT",
+        "price": 116.36,
+        "est_value": 106818.0
+      }
+    },
+    {
+      "pair": "C/AIG",
+      "s1": "C",
+      "s2": "AIG",
+      "momentum_spread": null,
+      "s1_price": 111.64,
+      "s2_price": 75.09,
+      "action": "FLAT",
+      "entry_threshold": 0.0,
+      "note": "No position, signal=None within \u00b10.0 \u2014 wait"
+    },
+    {
+      "pair": "RSG/AFL",
+      "s1": "RSG",
+      "s2": "AFL",
+      "momentum_spread": null,
+      "s1_price": 216.73,
+      "s2_price": 106.65,
+      "action": "CLOSE_STOP",
+      "direction": "short",
+      "exit_threshold": 0.465,
+      "s1_shares": -761,
+      "s2_shares": 1550,
+      "days_held": 1,
+      "note": "Stop loss \u2014 close short",
+      "leg_s1": {
+        "symbol": "RSG",
+        "shares": -761,
+        "side": "SELL_SHORT",
+        "price": 216.73,
+        "est_value": 164932.0
+      },
+      "leg_s2": {
+        "symbol": "AFL",
+        "shares": 1550,
+        "side": "BUY",
+        "price": 106.65,
+        "est_value": 165308.0
+      }
+    },
+    {
+      "pair": "AWK/AXP",
+      "s1": "AWK",
+      "s2": "AXP",
+      "momentum_spread": null,
+      "s1_price": 135.73,
+      "s2_price": 301.91,
+      "action": "FLAT",
+      "entry_threshold": 0.098,
+      "note": "No position, signal=None within \u00b10.098 \u2014 wait"
+    }
+  ]
+}
