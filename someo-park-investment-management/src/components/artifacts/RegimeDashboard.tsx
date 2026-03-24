@@ -237,7 +237,7 @@ export default function RegimeDashboard() {
           <div className="flex flex-wrap gap-2">
             {CATEGORY_ORDER.filter(cat => componentScores[cat] != null).map(cat => {
               const raw = componentScores[cat];
-              const val = typeof raw === 'number' ? raw : raw?.aggregate ?? 0;
+              const val = typeof raw === 'number' ? raw : (raw?.aggregate_score ?? raw?.aggregate ?? 0);
               const clr = val >= 0.6 ? 'var(--error)' : val >= 0.4 ? 'var(--warning)' : 'var(--success)';
               return (
                 <div key={cat} className="px-2 py-1 rounded text-[11px] font-mono border" style={{ color: clr, borderColor: `color-mix(in srgb, ${clr} 30%, transparent)` }}>
@@ -266,7 +266,7 @@ export default function RegimeDashboard() {
                 <span className="text-[10px] text-[var(--text-muted)]">({items.length})</span>
               </div>
               {score != null && (
-                <span className="text-[10px] font-mono text-[var(--text-muted)]">score: {(typeof score === 'number' ? score : score?.aggregate ?? 0).toFixed(2)}</span>
+                <span className="text-[10px] font-mono text-[var(--text-muted)]">score: {(typeof score === 'number' ? score : (score?.aggregate_score ?? score?.aggregate ?? 0)).toFixed(2)}</span>
               )}
             </button>
             {!isCollapsed && (
@@ -276,8 +276,8 @@ export default function RegimeDashboard() {
                     <IndicatorCard key={name} name={name} ind={ind} t={t} />
                   ))}
                 </div>
-                {cat === 'volatility' && score?.sub && (
-                  <VolDecomposition sub={score.sub} />
+                {cat === 'volatility' && (score?.sub_scores || score?.sub) && (
+                  <VolDecomposition sub={score.sub_scores ?? score.sub} />
                 )}
               </div>
             )}
