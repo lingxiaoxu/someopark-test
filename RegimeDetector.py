@@ -58,6 +58,13 @@ except ImportError:
     FREDAPI_AVAILABLE = False
     log.warning("fredapi not installed — FRED macro indicators disabled. pip install fredapi")
 
+# ── 可选：VIXForecast（Chronos-2 预测信号）────────────────────────────────────
+try:
+    from VIXForecast import run_vix_forecast as _run_vix_forecast
+    _VIXFORECAST_AVAILABLE = True
+except Exception:
+    _VIXFORECAST_AVAILABLE = False
+
 
 # ── 指标定义 ──────────────────────────────────────────────────────────────────
 
@@ -142,14 +149,19 @@ class RegimeDetector:
         min_weight: float = 0.15,
         mrpt_oos_curve: str | None = None,
         mtfs_oos_curve: str | None = None,
+        use_vix_forecast: bool = False,
+        vix_forecast_finetune: bool = False,
     ):
-        self.fred_api_key  = fred_api_key or os.getenv('FRED_API_KEY', '')
-        self.lookback_days = lookback_days
-        self.min_weight    = min_weight
-        self._fred         = None
-        self._mrpt_curve   = mrpt_oos_curve
-        self._mtfs_curve   = mtfs_oos_curve
-        self._ind_history: dict = {}   # populated during _fetch_all_indicators
+        self.fred_api_key          = fred_api_key or os.getenv('FRED_API_KEY', '')
+        self.lookback_days         = lookback_days
+        self.min_weight            = min_weight
+        self._fred                 = None
+        self._mrpt_curve           = mrpt_oos_curve
+        self._mtfs_curve           = mtfs_oos_curve
+        self._ind_history: dict    = {}   # populated during _fetch_all_indicators
+        self.use_vix_forecast      = use_vix_forecast and _VIXFORECAST_AVAILABLE
+        self.vix_forecast_finetune = vix_forecast_finetune
+        self._vix_forecast_result: dict | None = None   # cached in detect()
 
         # 预加载 VIX/MOVE 历史百分位（长期20年 + 近2年），用于自动计算分段边界
         # Fallback：若 MacroDataStore 不可用，使用从20年历史算出的固定值
@@ -634,10 +646,26 @@ class RegimeDetector:
         if vix_sp and 'current_pct' in vix_sp:
             eq_short_score = self._short_pct_score(vix_sp['current_pct'])
 
+        # 原有权重路径不变
         if eq_short_score is not None:
             equity_vol = eq_long_score * 0.60 + eq_short_score * 0.40
         else:
             equity_vol = eq_long_score
+
+        # ── VIX Forecast 方向性微调（Chronos-2，可选）────────────────────────
+        # 不改原有权重结构，只在模型有明确方向判断时做 ±0.05 微调。
+        # score > 0.65 → 预测 VIX 强烈上行 → equity_vol +0.05（偏 MTFS）
+        # score < 0.35 → 预测 VIX 强烈下行 → equity_vol -0.05（偏 MRPT）
+        # flat 区间（0.35–0.65）→ 不调整，保持原始信号
+        # 无泄露：VIXForecast.py 只用截至今天的历史数据推理。
+        if self.use_vix_forecast and self._vix_forecast_result:
+            vix_fc_score = float(self._vix_forecast_result.get('score', 0.50))
+            log.debug(f"vix_forecast_score={vix_fc_score:.4f}  "
+                      f"direction={self._vix_forecast_result.get('direction')}")
+            if vix_fc_score > 0.65:
+                equity_vol = min(equity_vol + 0.05, 1.0)
+            elif vix_fc_score < 0.35:
+                equity_vol = max(equity_vol - 0.05, 0.0)
 
         # ── Rates Vol（MOVE / VXTLT）────────────────────────────────────────────
         # 同样分层：长期（move_level + move_z）CISS 加权，短期（vxtlt_short_pct）独立
@@ -926,6 +954,18 @@ class RegimeDetector:
         """
         log.info("Running regime detection...")
 
+        # 0. VIX Forecast（Chronos-2，在 score_volatility 之前运行）
+        self._vix_forecast_result = None
+        if self.use_vix_forecast:
+            try:
+                self._vix_forecast_result = _run_vix_forecast(
+                    finetune=self.vix_forecast_finetune, use_cache=True)
+                log.info(f"VIXForecast: score={self._vix_forecast_result['score']:.3f}  "
+                         f"direction={self._vix_forecast_result['direction']}  "
+                         f"change={self._vix_forecast_result['change_pct']:+.1%}")
+            except Exception as e:
+                log.warning(f"VIXForecast 失败，跳过: {e}")
+
         # 1. Fetch all raw data
         raw = self._fetch_all_indicators()
 
@@ -1031,9 +1071,15 @@ class RegimeDetector:
             'strategy_vol':    vol_info,
             'weight_rationale': rationale,
             'indicator_history': self._ind_history,
+            'vix_forecast':    self._vix_forecast_result,   # None if not enabled
         }
 
         log.info(f"Regime: {label}  score={regime_score}  MRPT={mrpt_w:.0%}  MTFS={mtfs_w:.0%}")
+        if self._vix_forecast_result:
+            log.info(f"  VIX Forecast: {self._vix_forecast_result['direction'].upper()}  "
+                     f"score={self._vix_forecast_result['score']:.3f}  "
+                     f"current={self._vix_forecast_result['current_vix']:.1f} → "
+                     f"pred={self._vix_forecast_result['pred_median']:.1f}")
         return result
 
     def _fetch_all_indicators(self) -> dict:

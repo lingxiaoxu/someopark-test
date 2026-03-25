@@ -1309,7 +1309,9 @@ def monitor_existing_positions(
 # ── Regime detection ───────────────────────────────────────────────────────────
 
 def _run_regime_detection(fred_key: str | None = None,
-                          min_weight: float = 0.20) -> dict:
+                          min_weight: float = 0.20,
+                          use_vix_forecast: bool = False,
+                          vix_forecast_finetune: bool = False) -> dict:
     """
     Run RegimeDetector and return result dict.
     Falls back to neutral (50/50) if detection fails.
@@ -1339,6 +1341,8 @@ def _run_regime_detection(fred_key: str | None = None,
             min_weight=min_weight,
             mrpt_oos_curve=mrpt_curve,
             mtfs_oos_curve=mtfs_curve,
+            use_vix_forecast=use_vix_forecast,
+            vix_forecast_finetune=vix_forecast_finetune,
         )
         return rd.detect()
     except Exception as e:
@@ -1540,6 +1544,8 @@ def run_daily_signal(
     fred_key: str | None = None,
     min_regime_weight: float = 0.20,
     skip_regime: bool = False,
+    use_vix_forecast: bool = False,
+    vix_forecast_finetune: bool = False,
 ) -> dict:
     """
     Core runner. Returns output dict(s).
@@ -1569,6 +1575,8 @@ def run_daily_signal(
             regime = _run_regime_detection(
                 fred_key=fred_key or os.getenv('FRED_API_KEY', ''),
                 min_weight=min_regime_weight,
+                use_vix_forecast=use_vix_forecast,
+                vix_forecast_finetune=vix_forecast_finetune,
             )
 
     # ── BOTH mode ─────────────────────────────────────────────────────────
@@ -2546,6 +2554,10 @@ Examples:
                            help='Min weight for any strategy (default 0.20)')
     reg_group.add_argument('--skip-regime', action='store_true',
                            help='Skip regime detection, use equal weights')
+    reg_group.add_argument('--vix-forecast', action='store_true',
+                           help='启用 VIX Chronos-2 预测信号（加权 10%% 进入 volatility score）')
+    reg_group.add_argument('--vix-forecast-finetune', action='store_true',
+                           help='VIX 预测使用 fine-tuned 模型（首次运行需额外约 2 分钟训练）')
 
     parser.add_argument('--dry-run', action='store_true',
                         help='Print signals without updating inventory JSON')
@@ -2562,6 +2574,8 @@ Examples:
         total_capital   = args.total_capital,
         mrpt_weight     = args.mrpt_weight,
         fred_key        = args.fred_key or os.getenv('FRED_API_KEY', ''),
-        min_regime_weight = args.min_regime_weight,
-        skip_regime     = args.skip_regime,
+        min_regime_weight    = args.min_regime_weight,
+        skip_regime          = args.skip_regime,
+        use_vix_forecast     = args.vix_forecast,
+        vix_forecast_finetune= args.vix_forecast_finetune,
     )

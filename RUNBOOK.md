@@ -268,6 +268,65 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 12b. VIXForecast.py — VIX Chronos-2 预测（可独立运行）
+
+**每日 VIX 预测模块，独立于 DailySignal 运行。输出 0.15–0.85 分数供 RegimeDetector 使用。**
+
+双模型集成：
+- `finetune-full`：VIX + VIX9D/VIX3M past_covariates，无 FOMC
+- `finetune-fomc`：VIX + VIX9D/VIX3M past_covariates + FOMC future_covariates
+- 集成权重：W_full=0.542（Dir Acc 65%）/ W_fomc=0.458（Dir Acc 55%）
+
+Checkpoint 当日复用，当天首次运行约 2–3 分钟，再次运行直接读缓存（<10 秒）。
+
+```bash
+# Zero-shot 推理（快速，约 5 秒）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python VIXForecast.py
+
+# 双模型 fine-tuning + 推理（首次约 2-3 分钟，当日 checkpoint 复用后秒级）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python VIXForecast.py --finetune
+
+# 强制重新 fine-tune（忽略当日 checkpoint）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python VIXForecast.py --finetune --no-cache
+
+# FOMC rule override：FOMC 在 ≤10 交易日内时切换为 fomc 模型
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python VIXForecast.py --finetune --fomc-rule
+```
+
+**输出字段说明：**
+
+| 字段 | 说明 |
+|------|------|
+| `score` | 0.15–0.85，<0.45 偏 MRPT，>0.55 偏 MTFS |
+| `pred_median` | 预测 VIX 均值（未来 10 交易日中位数均值） |
+| `pred_q10` / `pred_q90` | 预测 P10 / P90 区间 |
+| `current_vix` | context 末日 VIX |
+| `change_pct` | (pred_median - current_vix) / current_vix |
+| `direction` | `up` (>+3%) / `down` (<-3%) / `flat` |
+| `mode` | `finetune-dual` / `zero-shot-cov` |
+| `ensemble_method` | `weighted-dirAcc` / `fomc-rule(Ntd)` |
+| `models.full` / `models.fomc` | 各子模型详细结果 |
+
+**Checkpoint 位置：**
+- `historical_runs/vix_chronos2/ft_ckpt_full/` — finetune-full checkpoint
+- `historical_runs/vix_chronos2/ft_ckpt_fomc/` — finetune-fomc checkpoint
+- `historical_runs/vix_chronos2/vix_forecast_cache.json` — 当日推理缓存
+
+**零数据泄露设计：**
+- context：`[-504:]` 历史数据（不含今天之后）
+- VIX9D/VIX3M：past_covariates，OOS 段用最后值填充（未知）
+- FOMC 特征：future_covariates，日历公告已知，无泄露
+- 训练样本：全部在今天之前，预测窗口是明天起
+
+**在 DailySignal 中启用：**
+
+```bash
+# DailySignal 默认不启用 VIXForecast；通过 RegimeDetector 初始化参数开启
+# 在 DailySignal.py 中找到 RegimeDetector(use_vix_forecast=True, vix_forecast_finetune=True)
+```
+
+---
+
 ## 13. DailySignal.py — 每日信号生成
 
 ```bash

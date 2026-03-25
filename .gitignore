@@ -8,6 +8,10 @@ someo-park-investment-management/.env
 # macOS
 .DS_Store
 
+# Chronos Module
+chronos-forecasting-main/
+chronos-2-finetuned/
+
 # Python
 __pycache__/
 *.pyc

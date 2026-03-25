@@ -708,7 +708,7 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
         )
     story.append(Paragraph(
         '    '.join(metric_parts),
-        S('cap', fontSize=8, leading=12, alignment=TA_CENTER, spaceBefore=2)
+        S('cap', fontSize=7.2, leading=10.8, alignment=TA_CENTER, spaceBefore=2)
     ))
 
     # Leverage metrics box
