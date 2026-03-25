@@ -483,7 +483,21 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
     # ── Strategy-specific signal value ────────────────────────────────────
     if strategy == 'mrpt':
         sector         = _get_sector(s1, s2)
-        signal_value   = today_rv.get(f'Z_{sector}', today_rv.get('z_score', float('nan')))
+        signal_value   = today_rv.get(f'Z_{sector}', float('nan'))
+        # Fallback: if sector guess missed (e.g. pair removed from pair_universe
+        # but still held in inventory), scan today_rv for any Z_* key.
+        if np.isnan(signal_value):
+            for k, v in today_rv.items():
+                if k.startswith('Z_'):
+                    try:
+                        candidate = float(v)
+                        if not np.isnan(candidate):
+                            signal_value = candidate
+                            break
+                    except (TypeError, ValueError):
+                        pass
+        if np.isnan(signal_value):
+            signal_value = today_rv.get('z_score', float('nan'))
         entry_thr      = today_rv.get('Entry_Z', float('nan'))
         exit_thr       = today_rv.get('Exit_Z', 0.0)
         signal_label   = 'z_score'
@@ -501,8 +515,20 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
             }
     else:  # mtfs
         sector         = _get_sector(s1, s2)
-        signal_value   = today_rv.get(f'Momentum_Spread_{sector}',
-                                      today_rv.get('Momentum_Spread', float('nan')))
+        signal_value   = today_rv.get(f'Momentum_Spread_{sector}', float('nan'))
+        # Fallback: scan for any Momentum_Spread_* key (pair removed from universe)
+        if np.isnan(signal_value):
+            for k, v in today_rv.items():
+                if k.startswith('Momentum_Spread_'):
+                    try:
+                        candidate = float(v)
+                        if not np.isnan(candidate):
+                            signal_value = candidate
+                            break
+                    except (TypeError, ValueError):
+                        pass
+        if np.isnan(signal_value):
+            signal_value = today_rv.get('Momentum_Spread', float('nan'))
         entry_thr      = today_rv.get('Entry_Threshold', float('nan'))
         exit_thr       = today_rv.get('Exit_Threshold', 0.0)
         signal_label   = 'momentum_spread'
@@ -1105,6 +1131,43 @@ def _run_position_monitor(
         except Exception as e:
             log.warning(f"[monitor] {pair_key}: could not export history: {e}")
 
+        # Extract z_score / momentum_spread from recorded_vars at stop date
+        last_signal_value = None
+        rv_all = context.recorded_vars.get(pair_key, {})
+        if rv_all:
+            # Use stop_triggered_date only; do not guess if not found
+            stop_rv = None
+            if stop_triggered_date is not None:
+                stop_rv = _find_today_rv(context, pair_key, stop_triggered_date)
+            if stop_rv is not None:
+                sector = _get_sector(s1, s2)
+                if strategy == 'mrpt':
+                    last_signal_value = stop_rv.get(f'Z_{sector}', float('nan'))
+                    if np.isnan(last_signal_value):
+                        for k, v in stop_rv.items():
+                            if k.startswith('Z_'):
+                                try:
+                                    candidate = float(v)
+                                    if not np.isnan(candidate):
+                                        last_signal_value = candidate
+                                        break
+                                except (TypeError, ValueError):
+                                    pass
+                else:
+                    last_signal_value = stop_rv.get(f'Momentum_Spread_{sector}', float('nan'))
+                    if np.isnan(last_signal_value):
+                        for k, v in stop_rv.items():
+                            if k.startswith('Momentum_Spread_'):
+                                try:
+                                    candidate = float(v)
+                                    if not np.isnan(candidate):
+                                        last_signal_value = candidate
+                                        break
+                                except (TypeError, ValueError):
+                                    pass
+                last_signal_value = _r(last_signal_value)
+
+        sig_key = 'z_score' if strategy == 'mrpt' else 'momentum_spread'
         sig = {
             'pair':              pair_key,
             'action':            action,
@@ -1113,6 +1176,7 @@ def _run_position_monitor(
             'monitored':         True,
             'open_date':         open_date_str,
             'param_set':         param_set,
+            sig_key:             last_signal_value,
             'unrealized_pnl':    upnl,
             'unrealized_pnl_pct': upnl_pct,
             'note': (f"Injected position closed in simulation on "

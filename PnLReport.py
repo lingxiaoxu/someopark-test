@@ -13,10 +13,12 @@ PnLReport.py — 通用 PnL PDF 报告生成器
 import argparse
 import glob
 import json
+import math
 import os
 import sys
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 import yfinance as yf
 
@@ -416,6 +418,195 @@ def _compute_leverage(start_ts, end_ts) -> dict:
     }
 
 
+def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
+    """
+    Build daily portfolio PnL time series from inventory snapshots + market prices,
+    then compute max drawdown, Sharpe ratio, and benchmark comparison (SP500, Russell 3000).
+    """
+    from collections import defaultdict
+
+    # ── Step 1: Identify all positions and their lifecycles ──
+    # For each trading day in range, mark-to-market all open positions
+    trade_days = prices.index[
+        (prices.index >= start_ts) & (prices.index <= end_ts)
+    ]
+    if len(trade_days) < 2:
+        return {}
+
+    # Build position map: pair -> {s1, s2, s1_shares, s2_shares, open_s1_price, open_s2_price, open_date, close_date}
+    # Use inventory snapshots to know which positions are open on which dates
+    def latest_inv_by_date(pat):
+        by_date: dict = defaultdict(list)
+        for fpath in sorted(glob.glob(os.path.join(INV_DIR, pat))):
+            day, _ = _parse_ts(fpath)
+            if day is None:
+                continue
+            by_date[str(day.date())].append(fpath)
+        return {d: sorted(fps)[-1] for d, fps in by_date.items()}
+
+    mrpt_snap = latest_inv_by_date('inventory_mrpt_*.json')
+    mtfs_snap = latest_inv_by_date('inventory_mtfs_*.json')
+
+    # For each trade day, find the latest inventory snapshot on or before that day
+    all_snap_dates = sorted(set(list(mrpt_snap.keys()) + list(mtfs_snap.keys())))
+
+    def get_snap_on_or_before(snap_map, date_str):
+        candidates = [d for d in sorted(snap_map.keys()) if d <= date_str]
+        return snap_map[candidates[-1]] if candidates else None
+
+    # ── Step 1b: Collect realized PnL from close events ──
+    # When a position closes, it disappears from inventory (direction=null).
+    # Its realized PnL must be locked in and carried forward, otherwise the
+    # cumulative PnL curve has discontinuities (realized profit evaporates).
+    realized_by_date: dict[str, float] = defaultdict(float)
+    _seen_close: set[tuple] = set()  # (pair, date) de-dup
+    for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
+        day, full = _parse_ts(fpath)
+        if day is None or day < start_ts or day > end_ts:
+            continue
+        with open(fpath) as f:
+            dr = json.load(f)
+        pm = dr.get('position_monitor', {})
+        for strat in ('mrpt', 'mtfs'):
+            for e in pm.get(strat, []):
+                if not isinstance(e, dict):
+                    continue
+                action = e.get('action', '')
+                pair = e.get('pair')
+                if action in ('CLOSE', 'CLOSE_STOP') and pair:
+                    key = (pair, str(day.date()))
+                    if key not in _seen_close:
+                        _seen_close.add(key)
+                        pnl = e.get('unrealized_pnl', 0) or 0
+                        realized_by_date[str(day.date())] += pnl
+
+    # ── Step 2: Daily portfolio PnL = cum_realized + open_positions_mtm ──
+    daily_pnl = []
+    prev_total = 0.0
+    cum_realized = 0.0   # running sum of all locked-in realized PnL
+
+    # Pending realized PnL keyed by date (pop as consumed)
+    _pending_realized = dict(realized_by_date)
+
+    for td in trade_days:
+        td_str = str(td.date())
+
+        # Accumulate realized PnL from close events on or before this trade day
+        for rd in sorted(list(_pending_realized.keys())):
+            if rd <= td_str:
+                cum_realized += _pending_realized.pop(rd)
+
+        # Mark-to-market all currently open positions
+        total_mtm = 0.0
+        has_pos = False
+
+        for snap_map in (mrpt_snap, mtfs_snap):
+            fpath = get_snap_on_or_before(snap_map, td_str)
+            if not fpath:
+                continue
+            with open(fpath) as f:
+                data = json.load(f)
+            for pair_name, pos in data.get('pairs', {}).items():
+                if not pos.get('direction') or '/' not in pair_name:
+                    continue
+                s1, s2 = pair_name.split('/', 1)
+                s1_sh = pos.get('s1_shares', 0)
+                s2_sh = pos.get('s2_shares', 0)
+                op1 = pos.get('open_s1_price', 0)
+                op2 = pos.get('open_s2_price', 0)
+
+                # Get current market price
+                try:
+                    cp1 = prices[s1].loc[:td].dropna().iloc[-1] if s1 in prices.columns else None
+                    cp2 = prices[s2].loc[:td].dropna().iloc[-1] if s2 in prices.columns else None
+                except (IndexError, KeyError):
+                    cp1 = cp2 = None
+
+                if cp1 is not None and cp2 is not None:
+                    pair_pnl = (s1_sh * float(cp1) + s2_sh * float(cp2)) - (s1_sh * op1 + s2_sh * op2)
+                    total_mtm += pair_pnl
+                    has_pos = True
+
+        # Total PnL = locked realized + current unrealized
+        total_pnl = cum_realized + total_mtm
+        if has_pos or cum_realized != 0:
+            daily_pnl.append({'date': td, 'cum_pnl': total_pnl, 'daily_chg': total_pnl - prev_total})
+            prev_total = total_pnl
+
+    if len(daily_pnl) < 2:
+        return {}
+
+    # ── Step 3: Portfolio metrics ──
+    cum_pnl = np.array([d['cum_pnl'] for d in daily_pnl])
+    daily_chg = np.array([d['daily_chg'] for d in daily_pnl])
+
+    # Max drawdown on the equity curve (CASH_CAP + cum_pnl)
+    equity = CASH_CAP + cum_pnl
+    equity_peak = np.maximum.accumulate(equity)
+    drawdowns = equity - equity_peak          # always <= 0
+    max_dd = float(drawdowns.min())           # dollar drawdown
+    max_dd_idx = int(np.argmin(drawdowns))
+    peak_idx = int(np.argmax(equity[:max_dd_idx + 1])) if max_dd_idx > 0 else 0
+
+    # Max drawdown as % of equity peak (industry standard)
+    max_dd_pct = max_dd / float(equity_peak[max_dd_idx]) * 100
+
+    # Sharpe ratio (annualized, daily returns as % of CASH_CAP)
+    daily_ret = daily_chg / CASH_CAP
+    if np.std(daily_ret) > 0:
+        sharpe = float(np.mean(daily_ret) / np.std(daily_ret) * np.sqrt(252))
+    else:
+        sharpe = 0.0
+
+    # ── Step 4: Benchmark comparison ──
+    bench_start = str(trade_days[0].date())
+    bench_end = str((trade_days[-1] + pd.Timedelta(days=1)).date())
+    benchmarks = {}
+    try:
+        bench_tickers = {'^GSPC': 'S&P 500', '^RUA': 'Russell 3000'}
+        bench_raw = yf.download(list(bench_tickers.keys()), start=bench_start, end=bench_end,
+                                auto_adjust=True, progress=False)
+        bench_close = bench_raw['Close'] if len(bench_tickers) > 1 else bench_raw[['Close']]
+
+        for ticker, name in bench_tickers.items():
+            col = ticker if ticker in bench_close.columns else None
+            if col is None:
+                continue
+            bprices = bench_close[col].dropna()
+            if len(bprices) < 2:
+                continue
+            b_ret = bprices.pct_change().dropna()
+            b_cum_ret = (1 + b_ret).cumprod() - 1
+            total_ret = float(b_cum_ret.iloc[-1]) * 100
+            # Benchmark max drawdown
+            b_cum = (1 + b_ret).cumprod()
+            b_running_max = b_cum.cummax()
+            b_dd = (b_cum / b_running_max - 1)
+            b_max_dd = float(b_dd.min()) * 100
+            # Benchmark Sharpe
+            b_sharpe = float(b_ret.mean() / b_ret.std() * np.sqrt(252)) if b_ret.std() > 0 else 0.0
+            benchmarks[name] = {
+                'total_return_pct': total_ret,
+                'max_dd_pct': b_max_dd,
+                'sharpe': b_sharpe,
+            }
+    except Exception as e:
+        print(f'  [WARN] Benchmark download failed: {e}')
+
+    return {
+        'daily_pnl': daily_pnl,
+        'total_pnl': float(cum_pnl[-1]),
+        'max_dd': max_dd,
+        'max_dd_pct': max_dd_pct,
+        'max_dd_peak_date': str(daily_pnl[peak_idx]['date'].date()),
+        'max_dd_trough_date': str(daily_pnl[max_dd_idx]['date'].date()),
+        'sharpe': sharpe,
+        'n_days': len(daily_pnl),
+        'portfolio_return_pct': float(cum_pnl[-1]) / CASH_CAP * 100,
+        'benchmarks': benchmarks,
+    }
+
+
 def build_report_data(start: str, end: str) -> dict:
     """Collect all data needed for the PDF."""
     start_ts = pd.Timestamp(start)
@@ -539,6 +730,11 @@ def build_report_data(start: str, end: str) -> dict:
     lev_rows = _compute_leverage(start_ts, end_ts)
     totals['leverage'] = lev_rows
 
+    # Portfolio metrics: daily PnL series, max drawdown, Sharpe, benchmark comparison
+    print('  Computing portfolio metrics (drawdown, Sharpe, benchmarks)...')
+    port_metrics = _compute_portfolio_metrics(start_ts, end_ts, positions, prices)
+    totals['portfolio'] = port_metrics
+
     return {
         'start':  start,
         'end':    end,
@@ -597,6 +793,32 @@ def _analyse(rows: list[dict], totals: dict) -> list[str]:
         points.append(
             f'期间共触发止损 {n_stops} 笔，正常信号退出 {n_close} 笔。'
         )
+
+    # Portfolio metrics: max drawdown, Sharpe
+    port = totals.get('portfolio', {})
+    if port:
+        points.append(
+            f'组合最大回撤 {money(port["max_dd"], color=False)}'
+            f'（{port["max_dd_pct"]:+.2f}% of 现金），'
+            f'峰值 {port["max_dd_peak_date"]} → 谷值 {port["max_dd_trough_date"]}。'
+        )
+        points.append(
+            f'年化 Sharpe Ratio（基于日收益/现金）：{port["sharpe"]:.2f}。'
+        )
+        # Benchmark comparison
+        bm = port.get('benchmarks', {})
+        port_ret = port.get('portfolio_return_pct', 0)
+        if bm:
+            bm_parts = []
+            for name, m in bm.items():
+                bm_parts.append(
+                    f'{name} 收益 {m["total_return_pct"]:+.2f}%，'
+                    f'最大回撤 {m["max_dd_pct"]:.2f}%，Sharpe {m["sharpe"]:.2f}'
+                )
+            points.append(
+                f'基准对比（同期）：组合收益 {port_ret:+.2f}%；'
+                + '；'.join(bm_parts) + '。'
+            )
 
     # yf vs sys divergence note
     big_div = [r for r in rows
@@ -719,7 +941,7 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
                      if lev.get('peak_over_limit') else '  ✓ 在账户上限内')
         lev_rows_kv = [
             ('现金上限 / 最大账户规模（含100%融资）',
-             f'${CASH_CAP:,.0f}  /  ${MAX_ACCOUNT:,.0f}'),
+             f'${CASH_CAP:,.0f}  /  ${MAX_ACCOUNT:,.0f} <super>¹</super>'),
             (f'毛杠杆 vs 账户上限（均值 / 峰值{warn}）',
              f'{lev["avg_gross_lev"]:.2f}x  /  {lev["peak_gross_lev"]:.2f}x{scale_str}'),
             ('单边杠杆 Single-Side（均值 / 峰值）',
@@ -734,11 +956,12 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
             n_over = lev.get('days_over_limit', 0)
             n_total = lev.get('n_days', 1)
             story.append(Paragraph(
-                f'⚠ 峰值毛名义 ${lev["peak_gross"]:,.0f} 超出账户上限 ${MAX_ACCOUNT:,.0f}，'
+                f'<super>¹</super> 峰值毛名义 ${lev["peak_gross"]:,.0f} 超出账户上限 ${MAX_ACCOUNT:,.0f}，'
                 f'共 {n_over}/{n_total} 个交易日超出。'
                 f'若以 ${CASH_CAP:,.0f} 现金实盘，需将所有仓位缩小至 {lev["scale_needed"]*100:.1f}%。',
                 S('_lnote', fontSize=7, leading=10,
-                  textColor=colors.HexColor('#c0392b'), spaceBefore=3)
+                  textColor=colors.HexColor('#c0392b'), spaceBefore=3,
+                  leftIndent=(W - 15.5*cm) / 2)
             ))
 
     # ── Section 2: Closed positions ──────────────────────────────────────────
@@ -857,13 +1080,69 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
         story.append(note_item(f'{i}.', b, W))
         story.append(Spacer(1, 3))
 
+    # ── Section 5b: Portfolio metrics & benchmark table ─────────────────────
+    port = totals.get('portfolio', {})
+    if port:
+        story.append(Spacer(1, 4))
+        story.append(Paragraph('五(b)、组合风险指标 & 基准对比 <super>²</super>', h1_style))
+        bench_data = [
+            [H('指标'), H('组合', 'RIGHT'), H('S&P 500', 'RIGHT'), H('Russell 3000', 'RIGHT')],
+        ]
+        bm = port.get('benchmarks', {})
+        sp = bm.get('S&P 500', {})
+        ru = bm.get('Russell 3000', {})
+
+        bench_data.append([
+            C('期间收益率'),
+            Paragraph(pct(port.get('portfolio_return_pct')),
+                      S('_br1', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(pct(sp.get('total_return_pct')) if sp else '—',
+                      S('_br2', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(pct(ru.get('total_return_pct')) if ru else '—',
+                      S('_br3', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+        ])
+        bench_data.append([
+            C('最大回撤'),
+            Paragraph(f'{port["max_dd_pct"]:.2f}%',
+                      S('_bd1', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(f'{sp["max_dd_pct"]:.2f}%' if sp else '—',
+                      S('_bd2', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(f'{ru["max_dd_pct"]:.2f}%' if ru else '—',
+                      S('_bd3', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+        ])
+        bench_data.append([
+            C('年化 Sharpe'),
+            Paragraph(f'{port["sharpe"]:.2f}',
+                      S('_bs1', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(f'{sp["sharpe"]:.2f}' if sp else '—',
+                      S('_bs2', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(f'{ru["sharpe"]:.2f}' if ru else '—',
+                      S('_bs3', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+        ])
+        bench_data.append([
+            C('最大回撤（$）'),
+            Paragraph(money(port['max_dd']),
+                      S('_bdd', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            C('—', 'RIGHT'), C('—', 'RIGHT'),
+        ])
+
+        cw_bench = [4*cm, 3.5*cm, 3.5*cm, 3.5*cm]
+        story.append(make_table(bench_data, cw_bench))
+        story.append(Paragraph(
+            f'<super>²</super> 组合收益率 = PnL / 现金 ${CASH_CAP:,.0f}；Sharpe = 日收益均值/标准差 × √252；'
+            f'回撤区间 {port["max_dd_peak_date"]} → {port["max_dd_trough_date"]}（{port["n_days"]} 个交易日）',
+            S('_bnote', fontSize=7, leading=10, textColor=C_GRAY, spaceBefore=3,
+              leftIndent=(W - 14.5*cm) / 2)
+        ))
+
     # ── Section 6: yf vs sys comparison ──────────────────────────────────────
     if yf_compare:
-        story.append(Paragraph('六、系统成交价 vs 参考收盘价对照', h1_style))
+        story.append(Paragraph('六、系统成交价 vs 参考收盘价对照 <super>³</super>', h1_style))
         story.append(Paragraph(
-            '系统成交价为报告生成时刻价（盘中或收盘后）；参考收盘价为 signal_date 当日收盘价（数据源：yfinance）。'
+            '<super>³</super> 系统成交价为报告生成时刻价（盘中或收盘后）；参考收盘价为 signal_date 当日收盘价（数据源：yfinance）。'
             '注：信号生成后最早执行为次日开盘，故参考收盘价并非实际可成交价，差异属正常。',
-            S('_note', fontSize=7.5, leading=10.5, textColor=C_GRAY, spaceAfter=5)
+            S('_note', fontSize=7.5, leading=10.5, textColor=C_GRAY, spaceAfter=5,
+              leftIndent=(W - 13.8*cm) / 2)
         ))
         _yp = ParagraphStyle('_yp', fontName=FONT, fontSize=7.2, leading=9.5, alignment=TA_RIGHT)
         _yf_s = ParagraphStyle('_yf', fontName=FONT, fontSize=7, leading=9.5)
@@ -894,7 +1173,7 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
         _ytl = ParagraphStyle('_ytl', fontName=FONT, fontSize=7.2, leading=9.5)
         _yfl = ParagraphStyle('_yfl', fontName=FONT, fontSize=7, leading=9.5)
         data_yf.append([
-            Paragraph('<b>合计</b>', _ytl),
+            Paragraph('<b>合计 <super>⁴</super></b>', _ytl),
             Paragraph('', _ytl),
             Paragraph(f'<b>{money(tot_sys if has_sys else None)}</b>', _ps),
             Paragraph(f'<b>{money(tot_yf  if has_yf  else None)}</b>', _ps),
@@ -918,10 +1197,11 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
         story.append(t_yf)
         # Interpretation note
         if has_diff:
-            interp = (f'差异合计 {tot_diff:+,.2f}：系统成交价总计比 yf 收盘价{"多算" if tot_diff > 0 else "少算"}'
+            interp = (f'<super>⁴</super> 差异合计 {tot_diff:+,.2f}：系统成交价总计比 yf 收盘价{"多算" if tot_diff > 0 else "少算"}'
                       f' {abs(tot_diff):,.2f}，来源于盘中执行时刻差异，非数据错误。')
             story.append(Paragraph(interp,
-                S('_yi', fontSize=7.2, leading=10, textColor=C_GRAY, spaceBefore=4)))
+                S('_yi', fontSize=7.2, leading=10, textColor=C_GRAY, spaceBefore=4,
+                  leftIndent=(W - 13.8*cm) / 2)))
 
     # ── Footer ────────────────────────────────────────────────────────────────
     story.append(Spacer(1, 16))

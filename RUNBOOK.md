@@ -330,7 +330,10 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 ## 13. DailySignal.py — 每日信号生成
 
 ```bash
-# 标准每日运行（MRPT + MTFS，regime 自动加权）
+# 标准模式每日运行（MRPT + MTFS，regime 自动加权， VIX 预测 finetune 双模型）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both --vix-forecast --vix-forecast-finetune
+
+# 不开启预测的每日运行（MRPT + MTFS，regime 自动加权）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both
 
 # 单策略运行
@@ -348,6 +351,12 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 # Dry run（不更新 inventory，只打印信号）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both --dry-run
+
+# VIX 预测模式（Chronos-2 zero-shot，score > 0.65 或 < 0.35 时对 volatility score ±0.05 微调）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both --vix-forecast
+
+# VIX 预测 finetune 双模型 ensemble（finetune-full + finetune-fomc，首次运行约多 2 分钟训练）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both --vix-forecast --vix-forecast-finetune
 
 # 指定日期（回填历史信号）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both --date 2026-03-12
