@@ -40,17 +40,54 @@ function correlationColor(value: number): string {
 const INTEGER_HEADERS = new Set(['window', 'n_pairs', 'n_selected', 'rank', 'count', 'num_pairs', 'num_selected', 'window_idx']);
 
 function isIntegerColumn(header: string): boolean {
-  return INTEGER_HEADERS.has(header.toLowerCase());
+  const h = header.toLowerCase();
+  return INTEGER_HEADERS.has(h) || h.startsWith('n_');
+}
+
+function isPnlColumn(header: string): boolean {
+  const h = header.toLowerCase();
+  return h.endsWith('_pnl') || h === 'oos_pnl' || h === 'is_pnl' || h === 'pnl';
+}
+
+function isDateColumn(header: string): boolean {
+  const h = header.toLowerCase();
+  return h === 'start' || h === 'end' || h === 'test_start' || h === 'test_end' || h === 'date' || h.endsWith('_date');
+}
+
+// Convert Excel serial date number or raw number to YYYY-MM-DD
+function formatDateValue(val: any): string {
+  if (val == null) return '';
+  const s = String(val);
+  if (s.includes('-') && s.length >= 8) return s; // already formatted
+  const num = Number(val);
+  if (!isNaN(num) && num > 1900 && num < 2200) {
+    // Looks like a year (e.g. 2025.00, 2026.00) — format as integer year
+    if (Number.isInteger(num) || Math.abs(num - Math.round(num)) < 0.001) return Math.round(num).toString();
+  }
+  if (!isNaN(num) && num > 40000 && num < 60000) {
+    // Excel serial date
+    const d = new Date((num - 25569) * 86400000);
+    return d.toISOString().slice(0, 10);
+  }
+  return s;
+}
+
+function fmtPnl(val: number): string {
+  const abs = Math.abs(val);
+  const formatted = abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return val < 0 ? `-$${formatted}` : `$${formatted}`;
 }
 
 function fmtCell(val: any, header?: string): string {
   if (val == null) return '';
+  if (header && isDateColumn(header)) return formatDateValue(val);
   if (typeof val === 'number') {
     if (header && isIntegerColumn(header)) return Math.round(val).toString();
+    if (header && isPnlColumn(header)) return fmtPnl(val);
     const abs = Math.abs(val);
     if (abs >= 1000) return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (abs < 0.01 && abs > 0) return val.toFixed(6);
-    return val.toFixed(4);
+    if (abs < 0.01 && abs > 0) return val.toFixed(4);
+    return val.toFixed(2);
   }
   return String(val);
 }
@@ -71,14 +108,23 @@ function GenericTable({ headers, rows, sheetName }: { headers: string[]; rows: a
   const windowHeader = headers.find(h => h.toLowerCase() === 'window' || h.toLowerCase() === 'window_idx');
   const windowValues = useMemo(() => {
     if (!windowHeader) return [];
-    const vals = [...new Set(rows.map(r => r[windowHeader]).filter(v => v != null))].map(v => Math.round(Number(v)));
-    return vals.sort((a, b) => a - b);
+    const raw = [...new Set(rows.map(r => r[windowHeader]).filter(v => v != null))];
+    // Check if values are numeric or string
+    const allNumeric = raw.every(v => !isNaN(Number(v)));
+    if (allNumeric) {
+      return raw.map(v => Math.round(Number(v))).sort((a, b) => a - b);
+    }
+    // String window values — sort naturally
+    return raw.map(v => String(v)).sort();
   }, [rows, windowHeader]);
-  const [selectedWindow, setSelectedWindow] = useState<number | null>(null);
+  const [selectedWindow, setSelectedWindow] = useState<string | number | null>(null);
 
   const filteredRows = useMemo(() => {
     if (selectedWindow === null || !windowHeader) return rows;
-    return rows.filter(r => Math.round(Number(r[windowHeader])) === selectedWindow);
+    if (typeof selectedWindow === 'number') {
+      return rows.filter(r => Math.round(Number(r[windowHeader])) === selectedWindow);
+    }
+    return rows.filter(r => String(r[windowHeader]) === selectedWindow);
   }, [rows, selectedWindow, windowHeader]);
 
   const sections = useMemo(() => {
@@ -100,7 +146,7 @@ function GenericTable({ headers, rows, sheetName }: { headers: string[]; rows: a
   const hasSections = sections.some(s => s.title);
 
   const windowFilter = windowValues.length > 1 && (
-    <div className="flex items-center gap-1.5 mb-3">
+    <div className="flex items-center flex-wrap gap-1.5 mb-3">
       <span className="text-[10px] text-[var(--text-muted)] font-medium mr-1">Window:</span>
       <button
         onClick={() => setSelectedWindow(null)}
@@ -162,14 +208,15 @@ function GenericTable({ headers, rows, sheetName }: { headers: string[]; rows: a
                         <tr key={ri} className="hover:bg-[var(--bg-secondary)] transition-colors">
                           {headers.map((h, j) => {
                             const val = row[h];
+                            const isDate = isDateColumn(h);
                             const num = typeof val === 'number' ? val : parseFloat(val);
-                            const isNum = !isNaN(num) && typeof val !== 'boolean' && val !== '' && val != null;
-                            const isNeg = isNum && num < 0;
+                            const isNum = !isDate && !isNaN(num) && typeof val !== 'boolean' && val !== '' && val != null;
+                            const isNeg = isNum && num < 0 && !isDateColumn(h);
                             const isPair = isPairCell(h, val);
                             return (
-                              <td key={j} className={`px-3 py-2 ${isNum ? 'font-mono' : ''} whitespace-nowrap`}
+                              <td key={j} className={`px-3 py-2 ${isNum && !isDate ? 'font-mono' : ''} whitespace-nowrap`}
                                 style={{ color: isNeg ? 'var(--error)' : 'var(--text-primary)' }}>
-                                {isPair ? renderPairCell(String(val)) : isNum ? fmtCell(num, h) : String(val ?? '')}
+                                {isPair ? renderPairCell(String(val)) : isDate ? formatDateValue(val) : isNum ? fmtCell(num, h) : String(val ?? '')}
                               </td>
                             );
                           })}
@@ -203,14 +250,15 @@ function GenericTable({ headers, rows, sheetName }: { headers: string[]; rows: a
               <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors">
                 {headers.map((h, j) => {
                   const val = row[h];
+                  const isDate = isDateColumn(h);
                   const num = typeof val === 'number' ? val : parseFloat(val);
-                  const isNum = !isNaN(num) && typeof val !== 'boolean' && val !== '' && val != null;
+                  const isNum = !isDate && !isNaN(num) && typeof val !== 'boolean' && val !== '' && val != null;
                   const isNeg = isNum && num < 0;
                   const isPair = isPairCell(h, val);
                   return (
-                    <td key={j} className={`px-3 py-2 ${isNum ? 'font-mono' : ''} whitespace-nowrap`}
+                    <td key={j} className={`px-3 py-2 ${isNum && !isDate ? 'font-mono' : ''} whitespace-nowrap`}
                       style={{ color: isNeg ? 'var(--error)' : 'var(--text-primary)' }}>
-                      {isPair ? renderPairCell(String(val)) : isNum ? fmtCell(num, h) : String(val ?? '')}
+                      {isPair ? renderPairCell(String(val)) : isDate ? formatDateValue(val) : isNum ? fmtCell(num, h) : String(val ?? '')}
                     </td>
                   );
                 })}

@@ -14,12 +14,23 @@ export default function EquityChart({ params }: { params?: any }) {
 
   const startEquity = 500000;
 
+  // Convert Excel serial date number to YYYY-MM-DD string
+  const formatDate = (val: any): string => {
+    if (typeof val === 'string' && val.includes('-')) return val;
+    const num = Number(val);
+    if (!isNaN(num) && num > 40000 && num < 60000) {
+      const d = new Date((num - 25569) * 86400000);
+      return d.toISOString().slice(0, 10);
+    }
+    return String(val);
+  };
+
   // Add return % to each data point
   const enrichedData = useMemo(() => {
     if (!chartData) return [];
     return chartData.map((d: any) => {
       const eq = d.Equity_Chained || d.OOS_Equity_Chained || d.Equity || startEquity;
-      return { ...d, _equity: eq, _returnPct: ((eq - startEquity) / startEquity) * 100 };
+      return { ...d, Date: formatDate(d.Date), _equity: eq, _returnPct: ((eq - startEquity) / startEquity) * 100 };
     });
   }, [chartData]);
 

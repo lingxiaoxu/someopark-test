@@ -1,4 +1,21 @@
 {
+  "artifactTitles": {
+    "equityCurve": "OOS エクイティカーブ",
+    "signals": "トレーディングシグナル",
+    "regime": "マクロ経済レジーム",
+    "pairUniverse": "ペアユニバース",
+    "wfGrid": "Walk-Forward グリッド",
+    "portfolioHistory": "ポートフォリオ履歴",
+    "wfDiagnostic": "WF 診断レポート",
+    "wfSummary": "Walk-Forward サマリー",
+    "oosPairSummary": "OOS ペアサマリー",
+    "dailyReport": "日次レポート",
+    "inventory": "現在の保有",
+    "inventoryHistory": "保有履歴",
+    "wfStructure": "バックテストファイル構造",
+    "pnlReport": "PnLレポート"
+  },
+
   "common": {
     "loading": "データを読み込み中...",
     "failedToLoad": "データの読み込みに失敗しました",
@@ -69,7 +86,7 @@
     "section4": "4. ポジション状況",
     "section5": "5. WF 診断",
     "btnPairUniverse": "どのペアを取引しているの？",
-    "btnWfSummary": "フォワードテストはどうだった？",
+    "btnWfSummary": "サンプル外フォワードテストはどうだった？",
     "btnDsrGrid": "パラメータスキャンの記録を見せて。",
     "btnOosEquity": "サンプル外のパフォーマンス曲線を描いて。",
     "btnOosPairSummary": "サンプル外をペア別に分けて見せて。",
@@ -78,14 +95,15 @@
     "btnMonitorHistory": "保有ポジション履歴を拡大して見て。",
     "btnCurrentInventory": "今何を持っているの？",
     "btnInventoryHistory": "過去のポジションを振り返って。",
-    "btnWfDiagnostic": "フォワードテストに異常はある？",
+    "btnWfDiagnostic": "サンプル外フォワードテストに異常はある？",
     "btnRegime": "マクロ経済の状態はどうなっている？",
     "userMsg3": "CL/SRE ペアの Walk-Forward でのパフォーマンスは？",
     "aiMsg3": "CL/SRE の直近 6 つの Walk-Forward ウィンドウでのパフォーマンスは以下の通りです：",
     "btnEquityCurve": "エクイティカーブと詳細を表示",
     "userMsg4": "バックテスト＋OOS の具体的なパフォーマンスは？Walk-Forward のファイル構造を説明してもらえますか？",
     "aiMsg4": "もちろんです。Walk-Forward のファイル構造は非常に複雑で、サンプル内（IS）のグリッド検索トレーニング結果とサンプル外（OOS）の実際のパフォーマンステスト結果が含まれています。インタラクティブな構造化ビューを生成しました。下のボタンをクリックして、フォルダを展開し、ファイル構造、Excelシート名、パラメータの詳細を順に確認できます。",
-    "btnWfStructure": "実行ファイルのレイアウトを見せて。",
+    "btnWfStructure": "バックテストファイルのレイアウトを見せて。",
+    "btnPnlReport": "最近の取引に基づいてPnLレポートを生成して。",
     "agentThinking": "エージェント思考中...",
     "inputPlaceholder": "SomeoClaw にメッセージ（{{mode}}）...",
     "cloudVpsInput": "クラウド VPS",
@@ -127,6 +145,10 @@
     "maxDrawdown": "最大ドローダウン",
     "equity": "エクイティ",
     "return": "リターン"
+  },
+
+  "pnlReport": {
+    "noReports": "PnLレポートがありません。"
   },
 
   "signals": {
@@ -249,7 +271,7 @@
   },
 
   "wfStructure": {
-    "title": "Walk-Forward 分析ビューア",
+    "title": "バックテスト分析ビューア",
     "runInspector": "ラン検査",
     "fileExplorer": "ファイルエクスプローラー",
     "explorer": "エクスプローラー",

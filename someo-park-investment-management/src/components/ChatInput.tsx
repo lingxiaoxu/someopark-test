@@ -39,146 +39,288 @@ export function ChatInput({
   function handleFileInput(e: React.ChangeEvent<HTMLInputElement>) {
     handleFileChange((prev) => {
       const newFiles = Array.from(e.target.files || []) as File[]
-      const uniqueFiles = newFiles.filter((file) => !isFileInArray(file, prev))
-      return [...prev, ...uniqueFiles]
+      return [...prev, ...newFiles.filter(f => !isFileInArray(f, prev))]
     })
   }
 
   function handleFileRemove(file: File) {
-    handleFileChange((prev) => prev.filter((f) => f !== file))
+    handleFileChange((prev) => prev.filter(f => f !== file))
   }
 
   function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    const items = Array.from(e.clipboardData.items) as DataTransferItem[]
-    for (const item of items) {
+    for (const item of Array.from(e.clipboardData.items) as DataTransferItem[]) {
       if (item.type.indexOf('image') !== -1) {
         e.preventDefault()
         const file = item.getAsFile()
-        if (file) {
-          handleFileChange((prev) => isFileInArray(file, prev) ? prev : [...prev, file])
-        }
+        if (file) handleFileChange((prev) => isFileInArray(file, prev) ? prev : [...prev, file])
       }
     }
   }
 
   const [dragActive, setDragActive] = useState(false)
+  const [toolbarVisible, setToolbarVisible] = useState(false)
+  const hideTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function handleInputAreaEnter() {
+    if (hideTimerRef.current) { clearTimeout(hideTimerRef.current); hideTimerRef.current = null; }
+    setToolbarVisible(true)
+  }
+
+  function handleInputAreaLeave() {
+    hideTimerRef.current = setTimeout(() => setToolbarVisible(false), 2000)
+  }
+
+  useEffect(() => {
+    return () => { if (hideTimerRef.current) clearTimeout(hideTimerRef.current) }
+  }, [])
 
   function handleDrag(e: React.DragEvent) {
-    e.preventDefault()
-    e.stopPropagation()
-    if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true)
-    else if (e.type === 'dragleave') setDragActive(false)
+    e.preventDefault(); e.stopPropagation()
+    setDragActive(e.type === 'dragenter' || e.type === 'dragover')
   }
 
   function handleDrop(e: React.DragEvent) {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     setDragActive(false)
-    const droppedFiles = (Array.from(e.dataTransfer.files) as File[]).filter((f) => f.type.startsWith('image/'))
-    if (droppedFiles.length > 0) {
-      handleFileChange((prev) => [...prev, ...droppedFiles.filter((f) => !isFileInArray(f, prev))])
-    }
+    const dropped = Array.from(e.dataTransfer.files as FileList).filter(f => f.type.startsWith('image/'))
+    if (dropped.length) handleFileChange(prev => [...prev, ...dropped.filter(f => !isFileInArray(f, prev))])
   }
 
   const filePreview = useMemo(() => {
-    if (files.length === 0) return null
-    return files.map((file) => (
-      <div className="relative" key={file.name}>
-        <span onClick={() => handleFileRemove(file)} className="absolute -top-2 -right-2 bg-[var(--bg-tertiary)] rounded-full p-0.5 cursor-pointer hover:bg-[var(--bg-secondary)]">
-          <X className="h-3 w-3 text-[var(--text-muted)]" />
-        </span>
-        <img src={URL.createObjectURL(file)} alt={file.name} className="rounded-lg w-10 h-10 object-cover" />
+    if (!files.length) return null
+    return files.map(file => (
+      <div key={file.name} style={{ position: 'relative', display: 'inline-block' }}>
+        <button type="button" onClick={() => handleFileRemove(file)} style={{ position: 'absolute', top: -6, right: -6, width: 16, height: 16, background: '#111', border: '1px solid #111', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+          <X style={{ width: 10, height: 10, color: '#fff' }} />
+        </button>
+        <img src={URL.createObjectURL(file)} alt={file.name} style={{ width: 40, height: 40, objectFit: 'cover', border: '2px solid #111', display: 'block' }} />
       </div>
     ))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [files])
 
   function onEnter(e: React.KeyboardEvent<HTMLFormElement>) {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
-      if (e.currentTarget.checkValidity()) {
-        handleSubmit(e)
-      } else {
-        e.currentTarget.reportValidity()
-      }
+      if (e.currentTarget.checkValidity()) handleSubmit(e)
+      else e.currentTarget.reportValidity()
     }
   }
 
   useEffect(() => {
     if (!isMultiModal) handleFileChange([])
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMultiModal])
+
+  // Shared action button style (Stanse: p-3 border-2 border-black, flex-shrink-0)
+  const actionBtnBase: React.CSSProperties = {
+    flexShrink: 0,
+    alignSelf: 'flex-end',
+    padding: '12px 14px',
+    border: '2px solid #111',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'background .1s, transform .1s, box-shadow .1s',
+    fontFamily: 'var(--font-mono)',
+  }
 
   return (
     <form
       onSubmit={handleSubmit}
       onKeyDown={onEnter}
-      className="mb-2 mt-auto flex flex-col"
+      style={{ marginBottom: 8, display: 'flex', flexDirection: 'column', position: 'relative' }}
       onDragEnter={isMultiModal ? handleDrag : undefined}
       onDragLeave={isMultiModal ? handleDrag : undefined}
       onDragOver={isMultiModal ? handleDrag : undefined}
       onDrop={isMultiModal ? handleDrop : undefined}
+      onMouseEnter={handleInputAreaEnter}
+      onMouseLeave={handleInputAreaLeave}
     >
+
+      {/* Error bar */}
       {isErrored && (
-        <div className="flex items-center p-2 text-sm font-medium mx-4 mb-3 rounded-xl bg-red-400/10 text-red-400">
-          <span className="flex-1 px-1.5">{errorMessage}</span>
-          <button className="px-2 py-1 rounded-md bg-red-400/20 hover:bg-red-400/30" onClick={retry}>
+        <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', marginBottom: 10, background: '#fff0f0', border: '2px solid #ff3333', borderLeft: '4px solid #ff3333', fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#ff3333', gap: 10 }}>
+          <span style={{ flex: 1 }}>{errorMessage}</span>
+          <button onClick={retry} type="button" style={{ padding: '3px 10px', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', background: '#ff3333', color: '#fff', border: '2px solid #ff3333', cursor: 'pointer' }}>
             {t('chatInput.tryAgain')}
           </button>
         </div>
       )}
-      <div className="relative">
-        <div className={`rounded-2xl relative z-10 bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-sm ${dragActive ? 'border-[var(--accent-primary)] border-dashed' : ''}`}>
-          <div className="flex items-center px-3 py-2 gap-1">{children}</div>
-          <TextareaAutosize
-            autoFocus={true}
-            minRows={1}
-            maxRows={5}
-            className="text-sm px-3 resize-none ring-0 bg-inherit w-full m-0 outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-            required={true}
-            placeholder={t('chatInput.placeholder')}
-            disabled={isErrored}
-            value={input}
-            onChange={handleInputChange}
-            onPaste={isMultiModal ? handlePaste : undefined}
-          />
-          <div className="flex p-3 gap-2 items-center">
-            <input type="file" id="multimodal" name="multimodal" accept="image/*" multiple className="hidden" onChange={handleFileInput} />
-            <div className="flex items-center flex-1 gap-2">
-              <button
-                disabled={!isMultiModal || isErrored}
-                type="button"
-                className="p-2 rounded-lg border border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors disabled:opacity-30"
-                onClick={(e) => { e.preventDefault(); document.getElementById('multimodal')?.click() }}
-              >
-                <Paperclip className="h-4 w-4" />
-              </button>
-              {files.length > 0 && filePreview}
-            </div>
-            <div>
-              {!isLoading ? (
-                <button
-                  disabled={isErrored}
-                  type="submit"
-                  className="p-2 rounded-lg bg-[var(--accent-primary)] text-white hover:opacity-90 transition-opacity disabled:opacity-30"
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="p-2 rounded-lg bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)]"
-                  onClick={(e) => { e.preventDefault(); stop() }}
-                >
-                  <Square className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
+
+      {/* ── Toolbar row (model picker, settings) — floating above input ── */}
+      <div
+        onMouseEnter={handleInputAreaEnter}
+        style={{
+          position: 'absolute',
+          bottom: '100%',
+          left: 0,
+          right: 0,
+          zIndex: 20,
+          display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+          background: '#f4f4f4',
+          border: '2px solid #111',
+          padding: '7px 10px',
+          marginBottom: 4,
+          boxShadow: '0 -2px 8px rgba(0,0,0,0.08)',
+          opacity: toolbarVisible ? 1 : 0,
+          pointerEvents: toolbarVisible ? 'auto' : 'none',
+          transform: toolbarVisible ? 'translateY(0)' : 'translateY(6px)',
+          transition: 'opacity .15s ease, transform .15s ease',
+        }}
+      >
+        {children}
+      </div>
+
+      {/* ── File previews ── */}
+      {files.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', flexWrap: 'wrap', background: '#fff', border: '2px solid #111', borderTop: 'none', borderBottom: '1px solid #e5e5e5' }}>
+          {filePreview}
+        </div>
+      )}
+
+      {/* ── Main input row — Stanse pattern: flex gap-2 items-end ── */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          alignItems: 'flex-end',
+          padding: '10px 12px',
+          background: '#fff',
+          border: '2px solid #111',
+          borderTop: dragActive ? '2px dashed #111' : '2px solid #111',
+          boxShadow: '4px 4px 0 0 #111',
+        }}
+      >
+        {/* Textarea */}
+        <TextareaAutosize
+          autoFocus
+          minRows={3}
+          maxRows={8}
+          style={{
+            flex: 1,
+            padding: '10px 12px',
+            background: '#f9f9f9',
+            border: '2px solid #ccc',
+            outline: 'none',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '13px',
+            color: '#111',
+            resize: 'none',
+            lineHeight: '1.6',
+            caretColor: '#111',
+            transition: 'border-color .15s',
+          }}
+          required
+          placeholder={t('chatInput.placeholder')}
+          disabled={isErrored}
+          value={input}
+          onChange={handleInputChange}
+          onPaste={isMultiModal ? handlePaste : undefined}
+          onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = '#111'}
+          onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = '#ccc'}
+        />
+
+        {/* Right-side action buttons — stacked vertically */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+
+          {/* Attachment button */}
+          <input type="file" id="multimodal" name="multimodal" accept="image/*" multiple style={{ display: 'none' }} onChange={handleFileInput} />
+          <button
+            disabled={!isMultiModal || isErrored}
+            type="button"
+            onClick={e => { e.preventDefault(); document.getElementById('multimodal')?.click() }}
+            title="Attach image"
+            style={{
+              ...actionBtnBase,
+              alignSelf: 'auto',
+              background: (!isMultiModal || isErrored) ? '#f4f4f4' : '#fff',
+              opacity: (!isMultiModal || isErrored) ? 0.35 : 1,
+              cursor: (!isMultiModal || isErrored) ? 'not-allowed' : 'pointer',
+              boxShadow: '2px 2px 0 0 #111',
+            }}
+            onMouseEnter={e => {
+              if (isMultiModal && !isErrored) {
+                (e.currentTarget as HTMLElement).style.background = '#111'
+                ;(e.currentTarget as HTMLElement).style.transform = 'translate(-1px,-1px)'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '3px 3px 0 0 #111'
+              }
+            }}
+            onMouseLeave={e => {
+              if (isMultiModal && !isErrored) {
+                (e.currentTarget as HTMLElement).style.background = '#fff'
+                ;(e.currentTarget as HTMLElement).style.transform = 'none'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '2px 2px 0 0 #111'
+              }
+              // reset icon color
+              const icon = (e.currentTarget as HTMLElement).querySelector('svg') as SVGElement
+              if (icon) icon.style.color = '#555'
+            }}
+          >
+            <Paperclip style={{ width: 16, height: 16, color: '#555', transition: 'color .1s' }} />
+          </button>
+
+          {/* Send / Stop button */}
+          {!isLoading ? (
+            <button
+              disabled={isErrored}
+              type="submit"
+              title="Send"
+              style={{
+                ...actionBtnBase,
+                alignSelf: 'auto',
+                background: '#111',
+                color: '#fff',
+                boxShadow: '2px 2px 0 0 #555',
+                opacity: isErrored ? 0.4 : 1,
+                cursor: isErrored ? 'not-allowed' : 'pointer',
+              }}
+              onMouseEnter={e => {
+                if (!isErrored) {
+                  (e.currentTarget as HTMLElement).style.background = '#333'
+                  ;(e.currentTarget as HTMLElement).style.transform = 'translate(-1px,-1px)'
+                  ;(e.currentTarget as HTMLElement).style.boxShadow = '3px 3px 0 0 #555'
+                }
+              }}
+              onMouseLeave={e => {
+                ;(e.currentTarget as HTMLElement).style.background = '#111'
+                ;(e.currentTarget as HTMLElement).style.transform = 'none'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '2px 2px 0 0 #555'
+              }}
+            >
+              <ArrowUp style={{ width: 18, height: 18, color: '#fff' }} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={e => { e.preventDefault(); stop() }}
+              title="Stop"
+              style={{
+                ...actionBtnBase,
+                alignSelf: 'auto',
+                background: '#ff3333',
+                color: '#fff',
+                border: '2px solid #ff3333',
+                boxShadow: '2px 2px 0 0 #cc0000',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => {
+                ;(e.currentTarget as HTMLElement).style.background = '#cc0000'
+                ;(e.currentTarget as HTMLElement).style.transform = 'translate(-1px,-1px)'
+              }}
+              onMouseLeave={e => {
+                ;(e.currentTarget as HTMLElement).style.background = '#ff3333'
+                ;(e.currentTarget as HTMLElement).style.transform = 'none'
+              }}
+            >
+              <Square style={{ width: 18, height: 18, color: '#fff' }} />
+            </button>
+          )}
         </div>
       </div>
-      <p className="text-[10px] text-[var(--text-muted)] mt-2 text-center">
-        SomeoClaw - Someo Park AI Assistant
+
+      {/* Hint */}
+      <p style={{ fontSize: '9px', color: '#aaa', marginTop: 14, textAlign: 'center', fontFamily: 'var(--font-mono)', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+        SOMEOCLAW — SOMEO PARK AI AGENTS SYSTEM
       </p>
     </form>
   )

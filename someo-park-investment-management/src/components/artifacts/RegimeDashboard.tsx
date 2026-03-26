@@ -74,7 +74,7 @@ function scoreBar(val: number) {
   const color = val >= 0.6 ? 'var(--error)' : val >= 0.4 ? 'var(--warning)' : 'var(--success)';
   return (
     <div className="flex items-center gap-1.5 mt-0.5">
-      <div className="flex-1 h-1 rounded-full bg-[var(--border-subtle)] overflow-hidden">
+      <div className="flex-1 h-1.5 rounded-full bg-[#ddd] overflow-hidden">
         <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
       </div>
       <span className="text-[10px] font-mono tabular-nums" style={{ color }}>{val.toFixed(3)}</span>
@@ -101,7 +101,7 @@ function VolDecomposition({ sub }: { sub: Record<string, number> }) {
             const meta = VOL_SUB_META[k] || { label: k, hint: '' };
             const isComposite = k === 'vol_composite' || k === 'equity_vol' || k === 'rates_vol' || k === 'eq_long' || k === 'rt_long';
             return (
-              <div key={k} className={`px-2 py-1.5 rounded-lg ${isComposite ? 'bg-[var(--bg-primary)] border border-[var(--border-subtle)]' : 'bg-[var(--bg-secondary)]'}`}>
+              <div key={k} className={`px-2 py-1.5 rounded-lg ${isComposite ? 'bg-[var(--bg-primary)] border border-[#ccc]' : 'bg-[var(--bg-secondary)]'}`}>
                 <div className="flex items-center justify-between">
                   <span className={`text-[10px] ${isComposite ? 'font-semibold text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>
                     {meta.label}

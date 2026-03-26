@@ -93,10 +93,21 @@ export default function DailyReportViewer() {
                   {actionRequired.map((act: any, idx: number) => (
                     <div key={idx} className="flex items-center justify-between bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-lg p-3">
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-[10px] ${
-                          act.action?.includes('OPEN') ? 'bg-[var(--success)]/10 text-[var(--success)]' :
-                          'bg-[var(--warning)]/10 text-[var(--warning)]'
-                        }`}>{act.action?.split('_')[0]}</div>
+                        <div
+                          className="flex items-center justify-center font-bold text-[10px] uppercase tracking-wider"
+                          style={{
+                            width: 'auto',
+                            minWidth: '48px',
+                            height: '28px',
+                            padding: '0 8px',
+                            border: '2px solid #111',
+                            boxShadow: '2px 2px 0 0 #111',
+                            background: act.action?.includes('OPEN') ? '#00cc66' : '#ff3333',
+                            color: '#fff',
+                            fontFamily: 'var(--font-mono)',
+                            letterSpacing: '.06em',
+                          }}
+                        >{act.action?.replace('_', ' ')}</div>
                         <div>
                           <PairBadge
                             pair={act.pair}

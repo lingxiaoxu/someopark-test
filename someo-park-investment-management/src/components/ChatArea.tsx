@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Activity, Terminal, Cloud, Laptop, LoaderIcon } from 'lucide-react'
+import { Activity, Terminal, Cloud, Laptop, LoaderIcon, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Message, ArtifactTrigger } from '../lib/messages'
 import { StanseAgentSchema } from '../lib/schema'
@@ -30,6 +30,9 @@ export default function ChatArea({
   selectedTemplate,
   onSelectedTemplateChange,
   session,
+  chatKey,
+  onFirstMessage,
+  onConnectClick,
 }: {
   agentMode: 'cloud' | 'local'
   isLocalConnected: boolean
@@ -42,6 +45,9 @@ export default function ChatArea({
   selectedTemplate: string
   onSelectedTemplateChange: (t: string) => void
   session?: Session | null
+  chatKey?: number
+  onFirstMessage?: (text: string) => void
+  onConnectClick?: () => void
 }) {
   const { t } = useTranslation()
   const [input, setInput] = useState('')
@@ -52,6 +58,8 @@ export default function ChatArea({
   const [files, setFiles] = useState<File[]>([])
   const [currentStanseAgent, setCurrentStanseAgent] = useState<DeepPartial<StanseAgentSchema> | null>(null)
   const [selectedStrategy, setSelectedStrategy] = useState<'mrpt' | 'mtfs'>('mrpt')
+  const [runtimeDropdownOpen, setRuntimeDropdownOpen] = useState(false)
+  const runtimeDropdownRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -64,16 +72,45 @@ export default function ChatArea({
   const currentModel = models.find(m => m.id === languageModel.model) || models[0]
   const isMultiModal = currentModel?.multiModal ?? false
 
-  // Auto-scroll to bottom
+  // Close runtime dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (runtimeDropdownRef.current && !runtimeDropdownRef.current.contains(e.target as Node)) {
+        setRuntimeDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Reset messages when chatKey changes (new chat)
+  useEffect(() => {
+    setMessages([])
+    setInput('')
+    setIsLoading(false)
+    setIsErrored(false)
+    setCurrentStanseAgent(null)
+  }, [chatKey])
+
+  // Auto-scroll: to top when no messages (welcome), to bottom when chatting
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+      if (messages.length === 0) {
+        chatContainerRef.current.scrollTop = 0
+      } else {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+      }
     }
   }, [messages, isLoading])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
+
+    // Notify parent on first message for chat history
+    if (messages.length === 0 && onFirstMessage) {
+      onFirstMessage(input.trim())
+    }
 
     const userMessage: Message = {
       role: 'user',
@@ -273,22 +310,47 @@ export default function ChatArea({
   const hasMessages = messages.length > 0
 
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-primary)] relative">
+    <div className="flex flex-col h-full relative" style={{ background: 'var(--color-bg)' }}>
       {/* Header */}
-      <div className="h-14 border-b border-[var(--border-subtle)] flex items-center justify-between px-6 shrink-0">
+      <div className="h-14 flex items-center justify-between px-6 shrink-0" style={{ borderBottom: '3px solid #111', background: '#fff' }}>
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-[var(--text-secondary)]">{t('chat.currentRuntime')}</span>
-          {agentMode === 'cloud' ? (
-            <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]">
-              <Cloud className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
-              <span className="text-xs font-mono text-[var(--text-primary)]">{t('chat.cloudVpsLabel')}</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-[var(--bg-tertiary)] border border-[var(--border-subtle)]">
-              <Laptop className="w-3.5 h-3.5 text-[var(--success)]" />
-              <span className="text-xs font-mono text-[var(--text-primary)]">{t('chat.localConnectedLabel')}</span>
-            </div>
-          )}
+          <span style={{ fontSize: '10px', letterSpacing: '.12em', textTransform: 'uppercase', color: '#888', fontFamily: 'var(--font-mono)' }}>{t('chat.currentRuntime')}</span>
+          <div className="relative" ref={runtimeDropdownRef}>
+            <button
+              onClick={() => setRuntimeDropdownOpen(prev => !prev)}
+              className="flex items-center gap-2 px-3 py-1"
+              style={{
+                background: agentMode === 'cloud' ? '#111' : '#fff',
+                border: '2px solid #111',
+                boxShadow: 'var(--shadow-pixel-sm)',
+                cursor: 'pointer',
+              }}
+            >
+              {agentMode === 'cloud' ? (
+                <Cloud className="w-3.5 h-3.5" style={{ color: '#fff' }} />
+              ) : (
+                <Laptop className="w-3.5 h-3.5" style={{ color: '#111' }} />
+              )}
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: agentMode === 'cloud' ? '#fff' : '#111', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>
+                {agentMode === 'cloud' ? t('chat.cloudVpsLabel') : t('chat.localConnectedLabel')}
+              </span>
+              <ChevronDown className="w-3 h-3" style={{ color: agentMode === 'cloud' ? '#fff' : '#111', transition: 'transform .15s', transform: runtimeDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+            </button>
+            {runtimeDropdownOpen && (
+              <div className="absolute top-full left-0 mt-1 z-50 animate-slide-in" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)', minWidth: '100%' }}>
+                <button
+                  onClick={() => { setRuntimeDropdownOpen(false); onConnectClick?.(); }}
+                  className="w-full flex items-center gap-2 px-3 py-2"
+                  style={{ cursor: 'pointer', background: '#fff', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#333', transition: 'all .1s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#111'; e.currentTarget.style.color = '#fff'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#333'; }}
+                >
+                  <Laptop className="w-3.5 h-3.5" />
+                  Open Claw
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -298,24 +360,56 @@ export default function ChatArea({
           {!hasMessages ? (
             <>
               <div className="flex flex-col items-center justify-center py-6 gap-4">
-                <div className="w-12 h-12 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center border border-[var(--border-subtle)]">
-                  <Terminal className="w-6 h-6 text-[var(--accent-primary)]" />
+                {/* Stanse-style icon — black box with pixel shadow */}
+                <div className="w-14 h-14 flex items-center justify-center" style={{ background: '#111', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)' }}>
+                  <Terminal className="w-7 h-7" style={{ color: '#fff', opacity: 1 }} />
                 </div>
-                <h2 className="text-lg font-semibold text-[var(--text-primary)]">{t('chat.welcomeTitle')}</h2>
-                <p className="text-sm text-[var(--text-muted)] text-center max-w-md">{t('chat.welcomeDesc')}</p>
+                <h2 style={{ fontFamily: 'var(--font-pixel)', fontSize: '28px', color: '#111', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>{t('chat.welcomeTitle')}</h2>
+                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', maxWidth: '28rem', fontFamily: 'var(--font-mono)' }}>{t('chat.welcomeDesc')}</p>
               </div>
 
-              <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)]">
+              {/* Active Pairs card — Stanse PixelCard */}
+              <div className="p-4 relative" style={{ background: '#fff', border: '3px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
+                {/* Corner dots */}
+                <div style={{ position: 'absolute', top: -2, left: -2, width: 6, height: 6, background: '#111' }} />
+                <div style={{ position: 'absolute', top: -2, right: -2, width: 6, height: 6, background: '#111' }} />
+                <div style={{ position: 'absolute', bottom: -2, left: -2, width: 6, height: 6, background: '#111' }} />
+                <div style={{ position: 'absolute', bottom: -2, right: -2, width: 6, height: 6, background: '#111' }} />
                 <div className="flex items-center justify-between mb-3">
-                  <div className="text-xs font-medium text-[var(--text-muted)]">{t('chat.activePairs')} ({activePairs.length})</div>
-                  <div className="flex rounded-lg overflow-hidden border border-[var(--border-subtle)]">
+                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#111', fontFamily: 'var(--font-mono)' }}>{t('chat.activePairs')} <span style={{ color: '#00cc66' }}>({activePairs.length})</span></div>
+                  {/* Strategy toggle */}
+                  <div className="flex overflow-hidden" style={{ border: '2px solid #111' }}>
                     <button
                       onClick={() => setSelectedStrategy('mrpt')}
-                      className={`px-3 py-1 text-xs font-medium transition-colors ${selectedStrategy === 'mrpt' ? 'bg-[var(--accent-primary)] text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                      style={{
+                        padding: '3px 12px',
+                        fontSize: '10px',
+                        fontFamily: 'var(--font-mono)',
+                        fontWeight: 700,
+                        letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                        transition: 'all .1s',
+                        background: selectedStrategy === 'mrpt' ? '#111' : '#fff',
+                        color: selectedStrategy === 'mrpt' ? '#fff' : '#555',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
                     >MRPT</button>
                     <button
                       onClick={() => setSelectedStrategy('mtfs')}
-                      className={`px-3 py-1 text-xs font-medium transition-colors ${selectedStrategy === 'mtfs' ? 'bg-[var(--accent-primary)] text-white' : 'bg-[var(--bg-tertiary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+                      style={{
+                        padding: '3px 12px',
+                        fontSize: '10px',
+                        fontFamily: 'var(--font-mono)',
+                        fontWeight: 700,
+                        letterSpacing: '.06em',
+                        textTransform: 'uppercase',
+                        transition: 'all .1s',
+                        background: selectedStrategy === 'mtfs' ? '#111' : '#fff',
+                        color: selectedStrategy === 'mtfs' ? '#fff' : '#555',
+                        borderLeft: '2px solid #111',
+                        cursor: 'pointer',
+                      }}
                     >MTFS</button>
                   </div>
                 </div>
@@ -373,19 +467,22 @@ export default function ChatArea({
                 <button onClick={() => setActiveArtifact({ type: 'wf_structure', title: 'WF File Structure' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnWfStructure')}
                 </button>
+                <button onClick={() => setActiveArtifact({ type: 'pnl_report', title: 'PnL Report' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                  <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnPnlReport')}
+                </button>
               </div>
             </>
           ) : (
             messages.map((msg, idx) => (
               <div key={idx} className={msg.role === 'user' ? 'message-user' : 'message-ai'}>
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)]">
-                    <Terminal className="w-4 h-4 text-[var(--accent-primary)]" />
+                  <div className="w-8 h-8 flex items-center justify-center shrink-0" style={{ background: '#111', border: '2px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
+                    <Terminal className="w-4 h-4" style={{ color: '#fff', opacity: 1 }} />
                   </div>
                 )}
                 <div className={msg.role === 'user' ? '' : 'message-content w-full'}>
                   {msg.content.map((c, ci) => {
-                    if (c.type === 'text') return <p key={ci} className="text-sm text-[var(--text-primary)] leading-relaxed whitespace-pre-wrap">{c.text}</p>
+                    if (c.type === 'text') return <p key={ci} className={`text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user' ? 'text-white' : 'text-[var(--text-primary)]'}`}>{c.text}</p>
                     if (c.type === 'image') return <img key={ci} src={c.image} alt="" className="w-16 h-16 rounded-lg object-cover" />
                     return null
                   })}
@@ -413,8 +510,8 @@ export default function ChatArea({
 
           {isLoading && (
             <div className="message-ai">
-              <div className="w-8 h-8 rounded-full bg-[var(--bg-tertiary)] flex items-center justify-center shrink-0 border border-[var(--border-subtle)] shimmer">
-                <Terminal className="w-4 h-4 text-[var(--text-muted)]" />
+              <div className="w-8 h-8 flex items-center justify-center shrink-0 shimmer" style={{ background: '#e5e5e5', border: '2px solid #111' }}>
+                <Terminal className="w-4 h-4" style={{ color: '#888', opacity: 1 }} />
               </div>
               <div className="message-content justify-center">
                 <div className="flex items-center gap-1.5 text-sm text-[var(--text-muted)]">

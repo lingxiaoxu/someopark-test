@@ -15,6 +15,7 @@ import chatRoutes from './routes/chat.js';
 import morphChatRoutes from './routes/morphChat.js';
 import sandboxRoutes from './routes/sandbox.js';
 import publishRoutes from './routes/publish.js';
+import pnlReportRoutes from './routes/pnlReport.js';
 
 const app = express();
 app.use(cors());
@@ -33,6 +34,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/morph-chat', morphChatRoutes);
 app.use('/api/sandbox', sandboxRoutes);
 app.use('/api/publish', publishRoutes);
+app.use('/api/pnl-report', pnlReportRoutes);
 
 // Health check
 app.get('/api/health', (_req, res) => {

@@ -1,4 +1,21 @@
 {
+  "artifactTitles": {
+    "equityCurve": "Curva de capital OOS",
+    "signals": "Señales de trading",
+    "regime": "Régimen macroeconómico",
+    "pairUniverse": "Universo de pares",
+    "wfGrid": "Cuadrícula Walk-Forward",
+    "portfolioHistory": "Historial del portafolio",
+    "wfDiagnostic": "Informe diagnóstico WF",
+    "wfSummary": "Resumen Walk-Forward",
+    "oosPairSummary": "Resumen OOS por par",
+    "dailyReport": "Informe diario",
+    "inventory": "Inventario actual",
+    "inventoryHistory": "Historial de inventario",
+    "wfStructure": "Estructura de archivos de backtest",
+    "pnlReport": "Informe PnL"
+  },
+
   "common": {
     "loading": "Cargando datos...",
     "failedToLoad": "Error al cargar los datos",
@@ -69,7 +86,7 @@
     "section4": "4. Estado de posiciones",
     "section5": "5. Diagnóstico WF",
     "btnPairUniverse": "¿Qué pares estamos operando?",
-    "btnWfSummary": "¿Cómo salió el run forward?",
+    "btnWfSummary": "¿Cómo salió el run forward fuera de muestra?",
     "btnDsrGrid": "Muéstrame los registros del barrido.",
     "btnOosEquity": "Grafica la curva de rendimiento fuera de muestra.",
     "btnOosPairSummary": "Desglosa por par fuera de muestra.",
@@ -78,14 +95,15 @@
     "btnMonitorHistory": "Amplía el historial de posiciones.",
     "btnCurrentInventory": "¿Qué tenemos ahora mismo?",
     "btnInventoryHistory": "Llévame por las posiciones pasadas.",
-    "btnWfDiagnostic": "¿Algo raro en el run forward?",
+    "btnWfDiagnostic": "¿Algo raro en el run forward fuera de muestra?",
     "btnRegime": "¿Qué está haciendo el régimen macroeconómico?",
     "userMsg3": "¿Cómo se desempeñó CL/SRE en el walk-forward?",
     "aiMsg3": "CL/SRE se desempeñó de la siguiente manera en las 6 ventanas Walk-Forward más recientes:",
     "btnEquityCurve": "Ver curva de capital y detalles",
     "userMsg4": "¿Cómo se ve el rendimiento de backtest + OOS? ¿Me pueden explicar la estructura completa de archivos Walk-Forward?",
     "aiMsg4": "Por supuesto. La estructura de archivos Walk-Forward es bastante compleja — contiene resultados de entrenamiento de búsqueda en cuadrícula In-Sample (IS) y resultados de prueba de rendimiento real Out-of-Sample (OOS). He generado una vista estructurada interactiva para ti. Haz clic en el botón de abajo para expandir carpetas, ver estructuras de archivos, nombres de hojas Excel y detalles de parámetros paso a paso.",
-    "btnWfStructure": "Muéstrame cómo están organizados los archivos.",
+    "btnWfStructure": "Muéstrame cómo están organizados los archivos de backtest.",
+    "btnPnlReport": "Genera un informe PnL basado en mis operaciones recientes.",
     "agentThinking": "El agente está pensando...",
     "inputPlaceholder": "Mensaje a SomeoClaw ({{mode}})...",
     "cloudVpsInput": "Cloud VPS",
@@ -127,6 +145,10 @@
     "maxDrawdown": "Drawdown máximo",
     "equity": "Capital",
     "return": "Retorno"
+  },
+
+  "pnlReport": {
+    "noReports": "No hay informes PnL disponibles."
   },
 
   "signals": {
@@ -249,7 +271,7 @@
   },
 
   "wfStructure": {
-    "title": "Visor de análisis Walk-Forward",
+    "title": "Visor de análisis de backtest",
     "runInspector": "Inspector de ejecución",
     "fileExplorer": "Explorador de archivos",
     "explorer": "Explorador",

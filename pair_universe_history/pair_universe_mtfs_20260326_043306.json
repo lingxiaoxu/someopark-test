@@ -1,0 +1,92 @@
+[
+  {
+    "s1": "ALL",
+    "s2": "CFG",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "ALL",
+    "s2": "GS",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "ALL",
+    "s2": "SPG",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "AWK",
+    "s2": "PLD",
+    "sector": "utilities",
+    "spread_col": "Momentum_Spread_utilities"
+  },
+  {
+    "s1": "ACGL",
+    "s2": "MCD",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "RSG",
+    "s2": "AFL",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "AIG",
+    "s2": "AVB",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "BK",
+    "s2": "AIG",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "C",
+    "s2": "AIG",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "ETR",
+    "s2": "AVB",
+    "sector": "realestate",
+    "spread_col": "Momentum_Spread_realestate"
+  },
+  {
+    "s1": "AWK",
+    "s2": "AXP",
+    "sector": "utilities",
+    "spread_col": "Momentum_Spread_utilities"
+  },
+  {
+    "s1": "AWK",
+    "s2": "BK",
+    "sector": "utilities",
+    "spread_col": "Momentum_Spread_utilities"
+  },
+  {
+    "s1": "C",
+    "s2": "GS",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "C",
+    "s2": "STT",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "XEL",
+    "s2": "CPT",
+    "sector": "realestate",
+    "spread_col": "Momentum_Spread_realestate"
+  }
+]

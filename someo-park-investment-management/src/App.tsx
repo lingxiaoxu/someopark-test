@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { PanelLeftOpen } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import RightPanel from './components/RightPanel';
@@ -42,7 +43,32 @@ export default function App() {
   const [agentMode, setAgentMode] = useState<AgentMode>('cloud');
   const [isLocalConnected, setIsLocalConnected] = useState(false);
   const [activeArtifact, setActiveArtifact] = useState<any>(null);
+  const [lastClosedArtifact, setLastClosedArtifact] = useState<any>(null);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [chatKey, setChatKey] = useState(0);
+  const [chatHistory, setChatHistory] = useState<{ id: number; title: string }[]>([]);
+  const [activeChatId, setActiveChatId] = useState<number | null>(null);
+
+  const handleNewChat = useCallback(() => {
+    // If there's an active chat, it stays in history
+    const newId = Date.now();
+    setChatKey(k => k + 1);
+    setActiveChatId(newId);
+    setActiveArtifact(null);
+    setCodePreview(null);
+    setShowSettings(false);
+  }, []);
+
+  const handleFirstMessage = useCallback((text: string) => {
+    if (activeChatId != null) {
+      setChatHistory(prev => {
+        const exists = prev.find(c => c.id === activeChatId);
+        if (exists) return prev;
+        return [{ id: activeChatId, title: text.slice(0, 40) }, ...prev];
+      });
+    }
+  }, [activeChatId]);
 
   const [rightPanelWidth, setRightPanelWidth] = useState(480);
   const [isResizing, setIsResizing] = useState(false);
@@ -87,7 +113,7 @@ export default function App() {
       if (!isResizing || !appRef.current) return;
       const appRect = appRef.current.getBoundingClientRect();
       const newWidth = appRect.right - e.clientX;
-      setRightPanelWidth(Math.min(Math.max(newWidth, 320), appRect.width * 0.5));
+      setRightPanelWidth(Math.min(Math.max(newWidth, 320), appRect.width * 0.6));
     };
     const handleMouseUp = () => setIsResizing(false);
 
@@ -110,7 +136,7 @@ export default function App() {
 
   return (
     <ArtifactProvider value={setActiveArtifact}>
-    <div ref={appRef} className="flex h-screen w-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden font-sans">
+    <div ref={appRef} className="flex h-full w-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden font-sans">
       <div className="w-[260px] shrink-0 border-r border-[var(--border-subtle)] z-20 bg-[var(--bg-primary)]">
         <Sidebar
           onConnectClick={() => setIsModalOpen(true)}
@@ -121,6 +147,9 @@ export default function App() {
           session={session}
           onSignInClick={() => setIsAuthDialogOpen(true)}
           onSignOut={() => supabase?.auth.signOut()}
+          onNewChat={handleNewChat}
+          chatHistory={chatHistory}
+          activeChatId={activeChatId}
         />
       </div>
       <div className="flex-1 flex min-w-0 relative">
@@ -140,18 +169,53 @@ export default function App() {
               selectedTemplate={selectedTemplate}
               onSelectedTemplateChange={setSelectedTemplate}
               session={session}
+              chatKey={chatKey}
+              onFirstMessage={handleFirstMessage}
+              onConnectClick={() => setIsModalOpen(true)}
             />
           )}
         </div>
+        {/* Reopen button — shown when panel is closed but lastClosedArtifact exists */}
+        {!showRightPanel && lastClosedArtifact && (
+          <div className="absolute top-3 right-3 z-30">
+            <button
+              onClick={() => { setActiveArtifact(lastClosedArtifact); setLastClosedArtifact(null); }}
+              style={{
+                padding: '5px',
+                background: 'transparent',
+                border: '2px solid transparent',
+                cursor: 'pointer',
+                transition: 'all .1s',
+                color: '#555',
+              }}
+              onMouseEnter={e => { const el = e.currentTarget; el.style.background = '#111'; el.style.borderColor = '#111'; el.style.color = '#fff'; }}
+              onMouseLeave={e => { const el = e.currentTarget; el.style.background = 'transparent'; el.style.borderColor = 'transparent'; el.style.color = '#555'; }}
+              title="Reopen panel"
+            >
+              <PanelLeftOpen className="w-4 h-4" />
+            </button>
+          </div>
+        )}
         {showRightPanel && (
           <>
             <div
               className="w-1 hover:w-1.5 cursor-col-resize hover:bg-[var(--accent-primary)] active:bg-[var(--accent-primary)] transition-all z-30 -ml-1"
-              onMouseDown={() => setIsResizing(true)}
+              onMouseDown={() => {
+                if (isMaximized && appRef.current) {
+                  setRightPanelWidth(appRef.current.getBoundingClientRect().width * 0.6);
+                }
+                setIsMaximized(false);
+                setIsResizing(true);
+              }}
             />
-            <div className="shrink-0 z-20 bg-[var(--bg-primary)]" style={{ width: rightPanelWidth }}>
+            <div className="shrink-0 z-20 bg-[var(--bg-primary)]" style={{ width: isMaximized ? (appRef.current ? appRef.current.getBoundingClientRect().width * 0.6 : rightPanelWidth) : rightPanelWidth }}>
               {activeArtifact ? (
-                <RightPanel artifact={activeArtifact} onClose={() => setActiveArtifact(null)} />
+                <RightPanel
+                  artifact={activeArtifact}
+                  onClose={() => { setLastClosedArtifact(activeArtifact); setActiveArtifact(null); setIsMaximized(false); }}
+                  onMaximize={() => setIsMaximized(m => !m)}
+                  isMaximized={isMaximized}
+                />
               ) : codePreview ? (
                 <CodePreview
                   stanseAgent={codePreview.stanseAgent}

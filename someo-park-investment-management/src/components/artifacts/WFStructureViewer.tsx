@@ -813,40 +813,40 @@ export default function WFStructureViewer({ data }: { data?: any }) {
             {phase === 'IS' ? (
               <div className="flex items-center justify-between text-xs">
                 <div className="flex flex-col items-center gap-2 w-1/5">
-                  <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center">
-                    <FileJson className="w-5 h-5 text-[var(--warning)]" />
+                  <div className="w-10 h-10 flex items-center justify-center relative" style={{ background: '#f5a623', border: '2px solid #111', boxShadow: '2px 2px 0 0 #111' }}>
+                    <FileJson className="w-5 h-5" style={{ color: '#fff' }} />
                   </div>
                   <span className="text-center text-[var(--text-primary)] font-medium">{t('wfStructure.gridConfig')}</span>
                   <span className="text-center text-[var(--text-muted)] text-[10px]">{t('wfStructure.paramSetsCount', { count: paramSets.length })}</span>
                 </div>
-                <div className="flex-1 h-px bg-[var(--border-subtle)] relative">
-                  <ChevronRight className="w-4 h-4 text-[var(--border-subtle)] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
+                <div className="flex-1 h-0.5 bg-[#111] relative mx-1">
+                  <ChevronRight className="w-4 h-4 text-[#111] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
                 </div>
                 <div className="flex flex-col items-center gap-2 w-1/5">
-                  <div className="w-10 h-10 rounded-full bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 flex items-center justify-center relative">
-                    <Play className="w-5 h-5 text-[var(--accent-primary)]" />
-                    <span className="absolute -top-2 -right-2 bg-[var(--accent-primary)] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">x{paramSets.length}</span>
+                  <div className="w-10 h-10 flex items-center justify-center relative" style={{ background: '#111', border: '2px solid #111', boxShadow: '2px 2px 0 0 #111' }}>
+                    <Play className="w-5 h-5" style={{ color: '#fff' }} />
+                    <span className="absolute -top-2 -right-2 flex items-center justify-center text-[9px] font-bold px-1.5 py-0.5" style={{ background: '#111', color: '#fff', border: '1px solid #111' }}>x{paramSets.length}</span>
                   </div>
                   <span className="text-center text-[var(--text-primary)] font-medium">{t('wfStructure.parallelRuns')}</span>
                   <span className="text-center text-[var(--text-muted)] text-[10px]">{t('wfStructure.pairsEach', { count: selectedPairs.length })}</span>
                 </div>
-                <div className="flex-1 h-px bg-[var(--border-subtle)] relative">
-                  <ChevronRight className="w-4 h-4 text-[var(--border-subtle)] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
+                <div className="flex-1 h-0.5 bg-[#111] relative mx-1">
+                  <ChevronRight className="w-4 h-4 text-[#111] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
                 </div>
                 <div className="flex flex-col items-center gap-2 w-1/5">
-                  <div className="w-10 h-10 rounded-full bg-[var(--success)]/10 border border-[var(--success)]/30 flex items-center justify-center relative">
-                    <FileSpreadsheet className="w-5 h-5 text-[var(--success)]" />
-                    <span className="absolute -top-2 -right-2 bg-[var(--success)] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">x{paramSets.length}</span>
+                  <div className="w-10 h-10 flex items-center justify-center relative" style={{ background: '#00cc66', border: '2px solid #111', boxShadow: '2px 2px 0 0 #111' }}>
+                    <FileSpreadsheet className="w-5 h-5" style={{ color: '#fff' }} />
+                    <span className="absolute -top-2 -right-2 flex items-center justify-center text-[9px] font-bold px-1.5 py-0.5" style={{ background: '#00cc66', color: '#fff', border: '1px solid #111' }}>x{paramSets.length}</span>
                   </div>
                   <span className="text-center text-[var(--text-primary)] font-medium">{t('wfStructure.portfolioHistory')}</span>
                   <span className="text-center text-[var(--text-muted)] text-[10px]">{t('wfStructure.oneXlsxPerParam')}</span>
                 </div>
-                <div className="flex-1 h-px bg-[var(--border-subtle)] relative">
-                  <ChevronRight className="w-4 h-4 text-[var(--border-subtle)] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
+                <div className="flex-1 h-0.5 bg-[#111] relative mx-1">
+                  <ChevronRight className="w-4 h-4 text-[#111] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
                 </div>
                 <div className="flex flex-col items-center gap-2 w-1/5">
-                  <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center">
-                    <Database className="w-5 h-5 text-emerald-500" />
+                  <div className="w-10 h-10 flex items-center justify-center" style={{ background: '#00cc66', border: '2px solid #111', boxShadow: '2px 2px 0 0 #111' }}>
+                    <Database className="w-5 h-5" style={{ color: '#fff' }} />
                   </div>
                   <span className="text-center text-[var(--text-primary)] font-medium">{t('wfStructure.dsrSelection')}</span>
                   <span className="text-center text-[var(--text-muted)] text-[10px]">{t('wfStructure.bestParamPerPair')}</span>
@@ -855,28 +855,28 @@ export default function WFStructureViewer({ data }: { data?: any }) {
             ) : (
               <div className="flex items-center justify-between text-xs">
                 <div className="flex flex-col items-center gap-2 w-1/4">
-                  <div className="w-10 h-10 rounded-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] flex items-center justify-center">
-                    <FileJson className="w-5 h-5 text-[var(--warning)]" />
+                  <div className="w-10 h-10 flex items-center justify-center" style={{ background: '#f5a623', border: '2px solid #111', boxShadow: '2px 2px 0 0 #111' }}>
+                    <FileJson className="w-5 h-5" style={{ color: '#fff' }} />
                   </div>
                   <span className="text-center text-[var(--text-primary)] font-medium">{t('wfStructure.selectedPairsLabel')}</span>
                   <span className="text-center text-[var(--text-muted)] text-[10px]">{t('wfStructure.pairsPerPairParams', { count: selectedPairs.length })}</span>
                 </div>
-                <div className="flex-1 h-px bg-[var(--border-subtle)] relative">
-                  <ChevronRight className="w-4 h-4 text-[var(--border-subtle)] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
+                <div className="flex-1 h-0.5 bg-[#111] relative mx-1">
+                  <ChevronRight className="w-4 h-4 text-[#111] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
                 </div>
                 <div className="flex flex-col items-center gap-2 w-1/4">
-                  <div className="w-10 h-10 rounded-full bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/30 flex items-center justify-center">
-                    <Play className="w-5 h-5 text-[var(--accent-primary)]" />
+                  <div className="w-10 h-10 flex items-center justify-center" style={{ background: '#111', border: '2px solid #111', boxShadow: '2px 2px 0 0 #111' }}>
+                    <Play className="w-5 h-5" style={{ color: '#fff' }} />
                   </div>
                   <span className="text-center text-[var(--text-primary)] font-medium">{t('wfStructure.oosRun')}</span>
                   <span className="text-center text-[var(--text-muted)] text-[10px]">{t('wfStructure.optimalParamsPerPair')}</span>
                 </div>
-                <div className="flex-1 h-px bg-[var(--border-subtle)] relative">
-                  <ChevronRight className="w-4 h-4 text-[var(--border-subtle)] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
+                <div className="flex-1 h-0.5 bg-[#111] relative mx-1">
+                  <ChevronRight className="w-4 h-4 text-[#111] absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-[var(--bg-primary)]" />
                 </div>
                 <div className="flex flex-col items-center gap-2 w-1/4">
-                  <div className="w-10 h-10 rounded-full bg-[var(--success)]/10 border border-[var(--success)]/30 flex items-center justify-center">
-                    <FileSpreadsheet className="w-5 h-5 text-[var(--success)]" />
+                  <div className="w-10 h-10 flex items-center justify-center" style={{ background: '#00cc66', border: '2px solid #111', boxShadow: '2px 2px 0 0 #111' }}>
+                    <FileSpreadsheet className="w-5 h-5" style={{ color: '#fff' }} />
                   </div>
                   <span className="text-center text-[var(--text-primary)] font-medium">{t('wfStructure.oosPortfolioHistory')}</span>
                   <span className="text-center text-[var(--text-muted)] text-[10px]">{t('wfStructure.oneXlsxReal')}</span>

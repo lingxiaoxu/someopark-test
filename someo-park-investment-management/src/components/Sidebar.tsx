@@ -5,11 +5,11 @@ import { useState, useRef, useEffect } from 'react';
 import i18n from '../i18n';
 
 const LANGUAGES = [
-  { code: 'en', flag: '🇺🇸', label: 'EN' },
-  { code: 'zh', flag: '🇨🇳', label: '中' },
-  { code: 'ja', flag: '🇯🇵', label: 'JP' },
-  { code: 'fr', flag: '🇫🇷', label: 'FR' },
-  { code: 'es', flag: '🇪🇸', label: 'ES' },
+  { code: 'en', flag: 'EN', label: 'EN' },
+  { code: 'zh', flag: 'ZH', label: 'ZH' },
+  { code: 'ja', flag: 'JP', label: 'JP' },
+  { code: 'fr', flag: 'FR', label: 'FR' },
+  { code: 'es', flag: 'ES', label: 'ES' },
 ];
 
 export default function Sidebar({
@@ -21,6 +21,9 @@ export default function Sidebar({
   session,
   onSignInClick,
   onSignOut,
+  onNewChat,
+  chatHistory,
+  activeChatId,
 }: {
   onConnectClick: () => void,
   agentMode: 'cloud' | 'local',
@@ -30,6 +33,9 @@ export default function Sidebar({
   session: Session | null,
   onSignInClick?: () => void,
   onSignOut?: () => void,
+  onNewChat?: () => void,
+  chatHistory?: { id: number; title: string }[],
+  activeChatId?: number | null,
 }) {
   const { t } = useTranslation();
   const [currentLang, setCurrentLang] = useState(localStorage.getItem('sp-lang') || 'en');
@@ -57,80 +63,135 @@ export default function Sidebar({
 
   return (
     <div className="sidebar flex flex-col h-full">
-      <div className="flex items-center gap-2 py-2 mb-4">
-        <Terminal className="w-6 h-6 text-[var(--accent-primary)]" />
-        <span className="font-semibold text-[var(--text-primary)] tracking-wide">{t('sidebar.appName')}</span>
+      {/* Logo */}
+      <div className="flex items-center gap-2 py-2 mb-5" style={{ borderBottom: '3px solid #111', paddingBottom: '12px' }}>
+        <Terminal className="w-5 h-5" style={{ color: '#111' }} />
+        <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '20px', color: '#111', letterSpacing: '.06em', lineHeight: 1 }}>{t('sidebar.appName')}</span>
       </div>
 
       {/* Agent Mode Selector */}
-      <div className="mb-6">
-        <div className="text-[10px] font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">{t('sidebar.agentRuntime')}</div>
-        <div className="flex flex-col gap-1.5">
+      <div className="mb-5">
+        <div className="section-label">{t('sidebar.agentRuntime')}</div>
+        <div className="flex flex-col gap-2">
           <button
             onClick={() => setAgentMode('cloud')}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${agentMode === 'cloud' ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-subtle)] shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] border border-transparent'}`}
+            className="flex items-center gap-3 px-3 py-2.5 transition-all"
+            style={{
+              background: agentMode === 'cloud' ? '#111' : '#fff',
+              border: '2px solid #111',
+              borderLeft: agentMode === 'cloud' ? '4px solid #111' : '2px solid #111',
+              color: agentMode === 'cloud' ? '#fff' : '#333',
+              boxShadow: agentMode === 'cloud' ? 'var(--shadow-pixel-sm)' : 'none',
+              fontFamily: 'var(--font-mono)',
+              cursor: 'pointer',
+            }}
           >
-            <Cloud className={`w-4 h-4 ${agentMode === 'cloud' ? 'text-[var(--accent-primary)]' : ''}`} />
+            <Cloud className="w-4 h-4" style={{ color: agentMode === 'cloud' ? '#fff' : '#555' }} />
             <div className="flex flex-col items-start">
-              <span className="font-medium">{t('sidebar.cloudVps')}</span>
-              <span className="text-[10px] text-[var(--text-muted)]">{t('sidebar.cloudHosted')}</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('sidebar.cloudVps')}</span>
+              <span style={{ fontSize: '10px', color: agentMode === 'cloud' ? '#ccc' : '#888' }}>{t('sidebar.cloudHosted')}</span>
             </div>
           </button>
 
           <button
             onClick={() => isLocalConnected ? setAgentMode('local') : onConnectClick()}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all ${agentMode === 'local' ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-subtle)] shadow-sm' : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] border border-transparent'}`}
+            className="flex items-center gap-3 px-3 py-2.5 transition-all"
+            style={{
+              background: agentMode === 'local' ? '#111' : '#fff',
+              border: '2px solid #111',
+              borderLeft: agentMode === 'local' ? '4px solid #111' : '2px solid #111',
+              color: agentMode === 'local' ? '#fff' : '#333',
+              boxShadow: agentMode === 'local' ? 'var(--shadow-pixel-sm)' : 'none',
+              fontFamily: 'var(--font-mono)',
+              cursor: 'pointer',
+            }}
           >
-            <Laptop className={`w-4 h-4 ${agentMode === 'local' ? 'text-[var(--success)]' : ''}`} />
+            <Laptop className="w-4 h-4" style={{ color: agentMode === 'local' ? '#fff' : '#555' }} />
             <div className="flex flex-col items-start flex-1">
-              <span className="font-medium">{t('sidebar.localOpenClaw')}</span>
-              <span className="text-[10px] text-[var(--text-muted)]">{isLocalConnected ? t('sidebar.connected') : t('sidebar.notConnected')}</span>
+              <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('sidebar.localOpenClaw')}</span>
+              <span style={{ fontSize: '10px', color: agentMode === 'local' ? '#ccc' : '#888' }}>{isLocalConnected ? t('sidebar.connected') : t('sidebar.notConnected')}</span>
             </div>
-            {!isLocalConnected && <Plus className="w-3.5 h-3.5 text-[var(--text-muted)]" />}
+            {!isLocalConnected && <Plus className="w-3.5 h-3.5" style={{ color: '#888' }} />}
           </button>
         </div>
       </div>
 
-      <button className="button button-primary w-full mb-6">
+      {/* New Chat button */}
+      <button className="button button-primary w-full mb-5" onClick={onNewChat}>
         <Plus className="w-4 h-4" />
         {t('sidebar.newChat')}
       </button>
 
       <div className="flex-1 overflow-y-auto flex flex-col gap-1">
         <div className="text-xs font-medium text-[var(--text-muted)] mb-2 uppercase tracking-wider">{t('sidebar.recentChats')}</div>
-        <div className="chat-item active flex items-center gap-3">
-          <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
-          <span className="text-sm truncate">{t('sidebar.chatMrptInventory')}</span>
-        </div>
-        <div className="chat-item flex items-center gap-3">
-          <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
-          <span className="text-sm truncate">{t('sidebar.chatWfDiagnostics')}</span>
-        </div>
-        <div className="chat-item flex items-center gap-3">
-          <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
-          <span className="text-sm truncate">{t('sidebar.chatDailySignal')}</span>
-        </div>
-        <div className="chat-item flex items-center gap-3">
-          <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
-          <span className="text-sm truncate">{t('sidebar.chatPairUniverse')}</span>
-        </div>
-        <div className="chat-item flex items-center gap-3">
-          <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
-          <span className="text-sm truncate">{t('sidebar.chatWfGrid')}</span>
-        </div>
+        {/* Dynamic chat history from user sessions */}
+        {chatHistory && chatHistory.map(chat => (
+          <div key={chat.id} className={`chat-item flex items-center gap-3 ${chat.id === activeChatId ? 'active' : ''}`}>
+            <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
+            <span className="text-sm truncate">{chat.title}</span>
+          </div>
+        ))}
+        {/* Default placeholder chats (shown when no history) */}
+        {(!chatHistory || chatHistory.length === 0) && (
+          <>
+            <div className={`chat-item flex items-center gap-3 ${activeChatId == null ? 'active' : ''}`}>
+              <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
+              <span className="text-sm truncate">{t('sidebar.chatMrptInventory')}</span>
+            </div>
+            <div className="chat-item flex items-center gap-3">
+              <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
+              <span className="text-sm truncate">{t('sidebar.chatWfDiagnostics')}</span>
+            </div>
+            <div className="chat-item flex items-center gap-3">
+              <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
+              <span className="text-sm truncate">{t('sidebar.chatDailySignal')}</span>
+            </div>
+            <div className="chat-item flex items-center gap-3">
+              <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
+              <span className="text-sm truncate">{t('sidebar.chatPairUniverse')}</span>
+            </div>
+            <div className="chat-item flex items-center gap-3">
+              <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
+              <span className="text-sm truncate">{t('sidebar.chatWfGrid')}</span>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Bottom area */}
-      <div className="mt-auto pt-4 border-t border-[var(--border-subtle)]">
+      <div className="mt-auto pt-4" style={{ borderTop: '2px solid var(--border-subtle)' }}>
 
-        {/* Language flags - 4 inline icons */}
+        {/* Language flags */}
         <div className="flex items-center gap-1 px-1 mb-3">
           {LANGUAGES.map(lang => (
             <button
               key={lang.code}
               onClick={() => changeLang(lang.code)}
               title={lang.label}
-              className={`flex-1 py-1 rounded-md text-base transition-all ${currentLang === lang.code ? 'bg-[var(--bg-tertiary)] ring-1 ring-[var(--accent-primary)]/40' : 'hover:bg-[var(--bg-secondary)] opacity-50 hover:opacity-80'}`}
+              style={{
+                flex: 1,
+                padding: '4px 0',
+                background: currentLang === lang.code ? '#111' : '#fff',
+                color: currentLang === lang.code ? '#fff' : '#555',
+                border: '2px solid #111',
+                boxShadow: currentLang === lang.code ? '2px 2px 0 0 #111' : 'none',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '10px',
+                fontWeight: 700,
+                letterSpacing: '.06em',
+                transition: 'all .1s',
+              }}
+              onMouseEnter={e => {
+                if (currentLang !== lang.code) {
+                  (e.currentTarget as HTMLElement).style.background = '#f4f4f4'
+                }
+              }}
+              onMouseLeave={e => {
+                if (currentLang !== lang.code) {
+                  (e.currentTarget as HTMLElement).style.background = '#fff'
+                }
+              }}
             >
               {lang.flag}
             </button>
@@ -153,7 +214,7 @@ export default function Sidebar({
             </button>
 
             {menuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl shadow-xl overflow-hidden z-50">
+              <div className="absolute bottom-full left-0 right-0 mb-1 overflow-hidden z-50 animate-slide-in" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)' }}>
                 {showAbout ? (
                   <>
                     <div className="px-3 py-2 border-b border-[var(--border-subtle)] flex items-center gap-2">

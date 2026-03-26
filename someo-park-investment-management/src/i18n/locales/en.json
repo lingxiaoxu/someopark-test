@@ -1,4 +1,21 @@
 {
+  "artifactTitles": {
+    "equityCurve": "OOS Equity Curve",
+    "signals": "Trading Signals",
+    "regime": "Macro Regime Status",
+    "pairUniverse": "Pair Universe",
+    "wfGrid": "Walk-Forward Grid",
+    "portfolioHistory": "Portfolio History",
+    "wfDiagnostic": "WF Diagnostic Report",
+    "wfSummary": "Walk-Forward Summary",
+    "oosPairSummary": "OOS Pair Summary",
+    "dailyReport": "Daily Report",
+    "inventory": "Current Inventory",
+    "inventoryHistory": "Inventory History",
+    "wfStructure": "Backtesting Files Structure",
+    "pnlReport": "PnL Report"
+  },
+
   "common": {
     "loading": "Loading data...",
     "failedToLoad": "Failed to load data",
@@ -62,6 +79,10 @@
     "maxDrawdown": "Max Drawdown",
     "equity": "Equity",
     "return": "Return"
+  },
+
+  "pnlReport": {
+    "noReports": "No PnL reports available."
   },
 
   "signals": {
@@ -184,7 +205,7 @@
   },
 
   "wfStructure": {
-    "title": "Walk-Forward Analysis Viewer",
+    "title": "Backtesting Analysis Viewer",
     "runInspector": "Run Inspector",
     "fileExplorer": "File Explorer",
     "explorer": "Explorer",
@@ -315,7 +336,7 @@
     "section4": "4. Inventory Status",
     "section5": "5. WF Diagnostic",
     "btnPairUniverse": "Which pairs are we trading?",
-    "btnWfSummary": "How did the forward looking run hold up?",
+    "btnWfSummary": "How did the out of sample forward looking run hold up?",
     "btnDsrGrid": "Show me the parameter sweep records.",
     "btnOosEquity": "Plot the out of sample run's performance curve.",
     "btnOosPairSummary": "Break it down by pair in out of sample run.",
@@ -324,14 +345,15 @@
     "btnMonitorHistory": "Zoom into holding position history.",
     "btnCurrentInventory": "What are we holding right now?",
     "btnInventoryHistory": "Walk me through past positions.",
-    "btnWfDiagnostic": "Anything look off in the forward looking run?",
+    "btnWfDiagnostic": "Anything look off in the out of sample forward looking run?",
     "btnRegime": "What's the macro economy regime doing?",
     "userMsg3": "How did CL/SRE perform in the walk-forward?",
     "aiMsg3": "CL/SRE performed as follows across the 6 most recent Walk-Forward windows:",
     "btnEquityCurve": "View Equity Curve & Details",
     "userMsg4": "What does the backtest + OOS performance look like? Can you walk me through the full Walk-Forward file structure?",
     "aiMsg4": "Sure. The Walk-Forward file structure is quite complex — it contains In-Sample (IS) Grid Search training results and Out-of-Sample (OOS) real performance test results. I've generated an interactive structured view for you. Click the button below to expand folders, view file structures, Excel sheet names, and specific parameter details step by step.",
-    "btnWfStructure": "Show me how the files are laid out in runs.",
+    "btnWfStructure": "Show me how the files are laid out in backtests.",
+    "btnPnlReport": "Generate a PnL report based on my recent trades.",
     "agentThinking": "Agent is thinking...",
     "inputPlaceholder": "Message SomeoClaw ({{mode}})...",
     "cloudVpsInput": "Cloud VPS",

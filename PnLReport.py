@@ -1242,9 +1242,13 @@ def main():
 
     reports_dir = os.path.join(BASE_DIR, 'trading_signals', 'pnl_reports')
     os.makedirs(reports_dir, exist_ok=True)
-    out = args.out or os.path.join(
-        reports_dir, f'pnl_report_{end.replace("-","")}.pdf'
-    )
+    if args.out:
+        out = args.out
+    elif args.no_yf:
+        gen_ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        out = os.path.join(reports_dir, f'pnl_report_{end.replace("-","")}_{gen_ts}.pdf')
+    else:
+        out = os.path.join(reports_dir, f'pnl_report_{end.replace("-","")}.pdf')
 
     print(f'\nBuilding report: {start} → {end}  (yf_compare={"off" if args.no_yf else "on"})')
     report = build_report_data(start, end)

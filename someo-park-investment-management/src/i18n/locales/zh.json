@@ -1,4 +1,21 @@
 {
+  "artifactTitles": {
+    "equityCurve": "OOS 权益曲线",
+    "signals": "交易信号",
+    "regime": "宏观经济状态",
+    "pairUniverse": "配对宇宙",
+    "wfGrid": "Walk-Forward 网格",
+    "portfolioHistory": "组合历史",
+    "wfDiagnostic": "WF 诊断报告",
+    "wfSummary": "Walk-Forward 汇总",
+    "oosPairSummary": "OOS 配对汇总",
+    "dailyReport": "每日报告",
+    "inventory": "当前持仓",
+    "inventoryHistory": "持仓历史",
+    "wfStructure": "回测文件结构图",
+    "pnlReport": "盈亏报告"
+  },
+
   "common": {
     "loading": "加载数据中...",
     "failedToLoad": "数据加载失败",
@@ -69,7 +86,7 @@
     "section4": "4. 持仓状态",
     "section5": "5. WF 诊断",
     "btnPairUniverse": "我们在交易哪些配对？",
-    "btnWfSummary": "前向测试跑得怎么样？",
+    "btnWfSummary": "样本外前向测试跑得怎么样？",
     "btnDsrGrid": "给我看参数扫描记录。",
     "btnOosEquity": "画出样本外运行的表现曲线。",
     "btnOosPairSummary": "按样本外配对分别看一下。",
@@ -78,14 +95,15 @@
     "btnMonitorHistory": "放大查看持仓历史。",
     "btnCurrentInventory": "我们现在持有什么？",
     "btnInventoryHistory": "带我回顾过去的持仓。",
-    "btnWfDiagnostic": "前向测试有没有什么异常？",
+    "btnWfDiagnostic": "样本外前向测试有没有什么异常？",
     "btnRegime": "宏观经济状态在做什么？",
     "userMsg3": "CL/SRE 这对在 walk-forward 里表现怎么样？",
     "aiMsg3": "CL/SRE 在最近的 6 个 Walk-Forward 窗口中表现如下：",
     "btnEquityCurve": "查看权益曲线和详情",
     "userMsg4": "回测+OOS的具体表现是什么样的？能给我讲解一下完整的 Walk-Forward 文件结构吗？",
     "aiMsg4": "没问题。Walk-Forward 的文件结构非常复杂，包含了样本内（IS）的 Grid Search 训练结果，以及样本外（OOS）的真实表现测试结果。我为你生成了一个结构化的交互式视图，你可以点击下方按钮，一步步展开文件夹、查看文件结构、Excel 的 Sheet 名以及具体的参数内容。",
-    "btnWfStructure": "给我看看运行文件是怎么布局的。",
+    "btnWfStructure": "给我看看回测文件是怎么布局的。",
+    "btnPnlReport": "根据最近的交易生成盈亏报告。",
     "agentThinking": "代理思考中...",
     "inputPlaceholder": "给 SomeoClaw 发消息（{{mode}}）...",
     "cloudVpsInput": "云端 VPS",
@@ -127,6 +145,10 @@
     "maxDrawdown": "最大回撤",
     "equity": "权益",
     "return": "回报"
+  },
+
+  "pnlReport": {
+    "noReports": "暂无盈亏报告。"
   },
 
   "signals": {
@@ -249,7 +271,7 @@
   },
 
   "wfStructure": {
-    "title": "Walk-Forward 分析查看器",
+    "title": "回测分析浏览",
     "runInspector": "运行检查器",
     "fileExplorer": "文件浏览器",
     "explorer": "浏览器",

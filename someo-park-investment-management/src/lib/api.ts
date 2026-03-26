@@ -71,6 +71,12 @@ export const getDiagnosticSheets = () =>
 export const getDiagnosticSheet = (sheet: string) =>
   fetchApi<any>(`/api/diagnostic/latest/${encodeURIComponent(sheet)}`);
 
+// PnL Report
+export const getPnlReportList = () =>
+  fetchApi<{ date: string; filename: string }[]>(`/api/pnl-report`);
+export const getPnlReportUrl = (date?: string) =>
+  date ? `/api/pnl-report/${date}` : `/api/pnl-report/latest`;
+
 // Monitor / Portfolio History
 export const getMonitorHistoryList = () =>
   fetchApi<any[]>(`/api/monitor-history/list`);

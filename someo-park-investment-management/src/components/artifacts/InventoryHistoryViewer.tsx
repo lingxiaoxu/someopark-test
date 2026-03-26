@@ -200,7 +200,7 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
 
       <div className="flex-1 overflow-y-auto space-y-2">
         {(history as any[]).map((h: any, i: number) => (
-          <div key={i} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg overflow-hidden">
+          <div key={i} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg">
             <div
               className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-[var(--bg-secondary)] transition-colors"
               onClick={() => handleExpand(h.filename)}
@@ -236,7 +236,7 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
                         <span>{t('common.flat')}:</span>
                         {Object.entries(snapshotData.pairs || {})
                           .filter(([, p]: any) => (p as any).direction === null)
-                          .map(([k]) => <span key={k}><PairBadge pair={k} compact noPopover /></span>)}
+                          .map(([k]) => <span key={k}><PairBadge pair={k} strategy={strategy} compact /></span>)}
                       </div>
                     )}
                   </div>

@@ -30,65 +30,128 @@ export function ChatSettings({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '5px 8px',
+    background: '#f4f4f4', border: '2px solid #111',
+    fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#111',
+    outline: 'none',
+  }
+  const numInputStyle: React.CSSProperties = {
+    width: 72, height: 26, padding: '0 6px',
+    background: '#f4f4f4', border: '2px solid #ccc',
+    fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#111',
+    textAlign: 'center', outline: 'none',
+  }
+  const labelStyle: React.CSSProperties = {
+    fontSize: '10px', fontWeight: 700, letterSpacing: '.1em',
+    textTransform: 'uppercase', color: '#888',
+    fontFamily: 'var(--font-mono)', display: 'block', marginBottom: 4,
+  }
+  const dividerStyle: React.CSSProperties = { borderTop: '1px solid #e5e5e5', margin: '8px 0' }
+
   return (
-    <div className="relative" ref={ref}>
+    <div style={{ position: 'relative' }} ref={ref}>
+      {/* Trigger — Stanse-style border-2 button */}
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="p-1.5 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition-colors"
         title={t('chatSettings.title')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          padding: '3px 8px',
+          background: open ? '#111' : '#fff',
+          color: open ? '#fff' : '#111',
+          border: '2px solid #111',
+          boxShadow: open ? 'none' : '2px 2px 0 0 #111',
+          fontFamily: 'var(--font-mono)', cursor: 'pointer', transition: 'all .1s',
+          transform: open ? 'translate(2px,2px)' : 'none',
+        }}
+        onMouseEnter={e => { if (!open) { (e.currentTarget as HTMLElement).style.background = '#111'; (e.currentTarget as HTMLElement).style.color = '#fff' } }}
+        onMouseLeave={e => { if (!open) { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#111' } }}
       >
-        <Settings2 className="h-4 w-4" />
+        <Settings2 style={{ width: 14, height: 14 }} />
       </button>
 
       {open && (
-        <div className="absolute bottom-full mb-2 right-0 w-[260px] rounded-lg bg-[var(--bg-primary)] border border-[var(--border-subtle)] shadow-xl z-[100] p-3 space-y-3">
-          {/* Morph Apply Toggle */}
-          <div className="flex items-center justify-between">
-            <label className="text-sm text-[var(--text-primary)]">{t('chatSettings.morphApply')}</label>
+        <div style={{
+          position: 'absolute', bottom: 'calc(100% + 6px)', right: 0,
+          width: 260, background: '#fff',
+          border: '2px solid #111', boxShadow: '4px 4px 0 0 #111',
+          zIndex: 100, padding: '12px',
+        }}>
+
+          {/* Header */}
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: '#111', borderBottom: '2px solid #111', paddingBottom: 8, marginBottom: 12 }}>
+            {t('chatSettings.title')}
+          </div>
+
+          {/* Morph Apply — Stanse-style toggle (checkbox-like) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#111' }}>{t('chatSettings.morphApply')}</span>
             <button
               type="button"
               onClick={() => onUseMorphApplyChange(!useMorphApply)}
-              className={`relative inline-flex w-11 h-6 rounded-full transition-colors flex-shrink-0 ${useMorphApply ? 'bg-[var(--accent-primary)]' : 'bg-[var(--bg-tertiary)]'}`}
+              style={{
+                width: 44, height: 22,
+                background: useMorphApply ? '#111' : '#e5e5e5',
+                border: '2px solid #111',
+                cursor: 'pointer', position: 'relative', transition: 'background .15s',
+                padding: 0,
+              }}
             >
-              <span className={`inline-block w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ease-in-out self-center ${useMorphApply ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              <span style={{
+                position: 'absolute', top: 1,
+                left: useMorphApply ? 'calc(100% - 20px)' : 2,
+                width: 16, height: 16,
+                background: useMorphApply ? '#fff' : '#888',
+                border: '1px solid #111',
+                transition: 'left .15s, background .15s',
+                display: 'block',
+              }} />
             </button>
           </div>
-          <a className="text-xs text-[var(--text-muted)] flex items-center gap-1 hover:underline" target="_blank" href="https://morphllm.com" rel="noreferrer">
-            {t('chatSettings.learnMorph')} <ExternalLink className="h-3 w-3" />
+          <a style={{ fontSize: '11px', color: '#888', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+            target="_blank" href="https://morphllm.com" rel="noreferrer"
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = '#111'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = '#888'}
+          >
+            {t('chatSettings.learnMorph')} <ExternalLink style={{ width: 11, height: 11 }} />
           </a>
 
-          <div className="border-t border-[var(--border-subtle)]" />
+          <div style={dividerStyle} />
 
           {/* API Key */}
           {apiKeyConfigurable && (
             <>
-              <div className="space-y-1">
-                <label className="text-xs text-[var(--text-secondary)]">{t('chatSettings.apiKey')}</label>
+              <div style={{ marginBottom: 8 }}>
+                <label style={labelStyle}>{t('chatSettings.apiKey')}</label>
                 <input type="password" placeholder="Auto" defaultValue={languageModel.apiKey}
-                  onChange={(e) => onLanguageModelChange({ apiKey: e.target.value || undefined })}
-                  className="w-full px-2 py-1.5 rounded-md bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]" />
+                  onChange={e => onLanguageModelChange({ apiKey: e.target.value || undefined })}
+                  style={inputStyle}
+                  onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = '#111'}
+                />
               </div>
-              <div className="border-t border-[var(--border-subtle)]" />
+              <div style={dividerStyle} />
             </>
           )}
 
           {/* Base URL */}
           {baseURLConfigurable && (
             <>
-              <div className="space-y-1">
-                <label className="text-xs text-[var(--text-secondary)]">{t('chatSettings.baseURL')}</label>
+              <div style={{ marginBottom: 8 }}>
+                <label style={labelStyle}>{t('chatSettings.baseURL')}</label>
                 <input type="text" placeholder="Auto" defaultValue={languageModel.baseURL}
-                  onChange={(e) => onLanguageModelChange({ baseURL: e.target.value || undefined })}
-                  className="w-full px-2 py-1.5 rounded-md bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent-primary)]" />
+                  onChange={e => onLanguageModelChange({ baseURL: e.target.value || undefined })}
+                  style={inputStyle}
+                />
               </div>
-              <div className="border-t border-[var(--border-subtle)]" />
+              <div style={dividerStyle} />
             </>
           )}
 
           {/* Parameters */}
-          <div className="space-y-2">
-            <span className="text-xs font-medium text-[var(--text-primary)]">{t('chatSettings.parameters')}</span>
+          <div>
+            <div style={{ ...labelStyle, marginBottom: 10 }}>{t('chatSettings.parameters')}</div>
             {[
               { label: t('chatSettings.outputTokens'), key: 'maxTokens', min: 50, max: 10000, step: 1 },
               { label: t('chatSettings.temperature'), key: 'temperature', min: 0, max: 5, step: 0.01 },
@@ -97,15 +160,17 @@ export function ChatSettings({
               { label: t('chatSettings.frequencyPenalty'), key: 'frequencyPenalty', min: 0, max: 2, step: 0.01 },
               { label: t('chatSettings.presencePenalty'), key: 'presencePenalty', min: 0, max: 2, step: 0.01 },
             ].map(({ label, key, min, max, step }) => (
-              <div key={key} className="flex items-center gap-2">
-                <span className="text-xs text-[var(--text-muted)] flex-1">{label}</span>
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#555' }}>{label}</span>
                 <input
                   type="number"
                   defaultValue={(languageModel as any)[key]}
                   min={min} max={max} step={step}
                   placeholder="Auto"
-                  onChange={(e) => onLanguageModelChange({ [key]: parseFloat(e.target.value) || undefined })}
-                  className="w-[72px] h-6 rounded-md bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[10px] text-center text-[var(--text-primary)] tabular-nums focus:outline-none focus:border-[var(--accent-primary)]"
+                  onChange={e => onLanguageModelChange({ [key]: parseFloat(e.target.value) || undefined })}
+                  style={numInputStyle}
+                  onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = '#111'}
+                  onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = '#ccc'}
                 />
               </div>
             ))}

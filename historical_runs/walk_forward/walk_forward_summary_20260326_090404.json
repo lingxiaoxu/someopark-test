@@ -1,0 +1,539 @@
+{
+  "generated_at": "2026-03-26T09:04:04.147300",
+  "mode": "expanding",
+  "train_start": "2024-02-21",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 150,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-02-21",
+      "train_end": "2025-08-20",
+      "test_start": "2025-08-21",
+      "test_end": "2025-09-25",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "CL",
+          "WST",
+          "fast_reentry"
+        ],
+        [
+          "AWK",
+          "FOX",
+          "low_vol_specialist"
+        ],
+        [
+          "MSCI",
+          "MTB",
+          "symmetric_exit"
+        ],
+        [
+          "AWK",
+          "STLD",
+          "patient_hold"
+        ],
+        [
+          "F",
+          "PG",
+          "conservative"
+        ],
+        [
+          "MTCH",
+          "NVR",
+          "static_threshold"
+        ],
+        [
+          "MKTX",
+          "WST",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "AMT",
+          "TJX",
+          "vol_gated"
+        ],
+        [
+          "GRMN",
+          "KO",
+          "vol_adaptive"
+        ],
+        [
+          "ETR",
+          "MKTX",
+          "conservative_no_leverage"
+        ],
+        [
+          "GIS",
+          "HUBB",
+          "deep_dislocation"
+        ],
+        [
+          "AWK",
+          "EXPD",
+          "slow_signal"
+        ],
+        [
+          "HII",
+          "PG",
+          "deep_dislocation"
+        ],
+        [
+          "GLW",
+          "WST",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "CL",
+          "GD",
+          "long_z_short_v"
+        ]
+      ],
+      "oos_sharpe": 6.258229449520412,
+      "oos_pnl": 8885.209324622396
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-02-21",
+      "train_end": "2025-09-25",
+      "test_start": "2025-09-26",
+      "test_end": "2025-10-30",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "CL",
+          "WST",
+          "low_vol_specialist"
+        ],
+        [
+          "AWK",
+          "FOX",
+          "low_vol_specialist"
+        ],
+        [
+          "MSCI",
+          "MTB",
+          "symmetric_exit"
+        ],
+        [
+          "AWK",
+          "STLD",
+          "patient_hold"
+        ],
+        [
+          "F",
+          "PG",
+          "conservative"
+        ],
+        [
+          "MTCH",
+          "NVR",
+          "static_threshold"
+        ],
+        [
+          "MKTX",
+          "WST",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "AMT",
+          "TJX",
+          "vol_gated"
+        ],
+        [
+          "GRMN",
+          "KO",
+          "vol_adaptive"
+        ],
+        [
+          "ETR",
+          "MKTX",
+          "conservative_no_leverage"
+        ],
+        [
+          "GIS",
+          "HUBB",
+          "deep_dislocation"
+        ],
+        [
+          "AWK",
+          "EXPD",
+          "slow_signal"
+        ],
+        [
+          "HII",
+          "PG",
+          "deep_dislocation"
+        ],
+        [
+          "GLW",
+          "WST",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "CL",
+          "GD",
+          "long_z_short_v"
+        ]
+      ],
+      "oos_sharpe": 5.738098010236347,
+      "oos_pnl": 19176.9518041408
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-02-21",
+      "train_end": "2025-10-30",
+      "test_start": "2025-10-31",
+      "test_end": "2025-12-05",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "CL",
+          "WST",
+          "low_vol_specialist"
+        ],
+        [
+          "AWK",
+          "FOX",
+          "low_vol_specialist"
+        ],
+        [
+          "MSCI",
+          "MTB",
+          "symmetric_exit"
+        ],
+        [
+          "AWK",
+          "STLD",
+          "patient_hold"
+        ],
+        [
+          "F",
+          "PG",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "MTCH",
+          "NVR",
+          "static_threshold"
+        ],
+        [
+          "MKTX",
+          "WST",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "AMT",
+          "TJX",
+          "vol_gated"
+        ],
+        [
+          "GRMN",
+          "KO",
+          "vol_adaptive"
+        ],
+        [
+          "ETR",
+          "MKTX",
+          "conservative_no_leverage"
+        ],
+        [
+          "GIS",
+          "HUBB",
+          "deep_dislocation"
+        ],
+        [
+          "AWK",
+          "EXPD",
+          "slow_signal"
+        ],
+        [
+          "HII",
+          "PG",
+          "deep_dislocation"
+        ],
+        [
+          "GLW",
+          "WST",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "CL",
+          "GD",
+          "long_z_short_v"
+        ]
+      ],
+      "oos_sharpe": -3.259287526598965,
+      "oos_pnl": -7402.375532605118
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-02-21",
+      "train_end": "2025-12-05",
+      "test_start": "2025-12-08",
+      "test_end": "2026-01-13",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "CL",
+          "WST",
+          "fast_reentry"
+        ],
+        [
+          "AWK",
+          "FOX",
+          "low_vol_specialist"
+        ],
+        [
+          "MSCI",
+          "MTB",
+          "symmetric_exit"
+        ],
+        [
+          "AWK",
+          "STLD",
+          "patient_hold"
+        ],
+        [
+          "F",
+          "PG",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "MTCH",
+          "NVR",
+          "static_threshold"
+        ],
+        [
+          "MKTX",
+          "WST",
+          "fast_signal"
+        ],
+        [
+          "AMT",
+          "TJX",
+          "vol_gated"
+        ],
+        [
+          "GRMN",
+          "KO",
+          "vol_adaptive"
+        ],
+        [
+          "ETR",
+          "MKTX",
+          "conservative_no_leverage"
+        ],
+        [
+          "GIS",
+          "HUBB",
+          "deep_dislocation"
+        ],
+        [
+          "AWK",
+          "EXPD",
+          "slow_signal"
+        ],
+        [
+          "HII",
+          "PG",
+          "deep_dislocation"
+        ],
+        [
+          "GLW",
+          "WST",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "CL",
+          "GD",
+          "high_leverage"
+        ]
+      ],
+      "oos_sharpe": -1.5551849048784951,
+      "oos_pnl": -1662.3392468154343
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-02-21",
+      "train_end": "2026-01-13",
+      "test_start": "2026-01-14",
+      "test_end": "2026-02-19",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "CL",
+          "WST",
+          "slow_reentry"
+        ],
+        [
+          "AWK",
+          "FOX",
+          "low_vol_specialist"
+        ],
+        [
+          "MSCI",
+          "MTB",
+          "symmetric_exit"
+        ],
+        [
+          "AWK",
+          "STLD",
+          "conservative_no_leverage"
+        ],
+        [
+          "F",
+          "PG",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "MTCH",
+          "NVR",
+          "static_threshold"
+        ],
+        [
+          "MKTX",
+          "WST",
+          "vol_adaptive"
+        ],
+        [
+          "AMT",
+          "TJX",
+          "vol_gated"
+        ],
+        [
+          "GRMN",
+          "KO",
+          "vol_adaptive"
+        ],
+        [
+          "ETR",
+          "MKTX",
+          "high_vol_specialist"
+        ],
+        [
+          "GIS",
+          "HUBB",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "AWK",
+          "EXPD",
+          "slow_signal"
+        ],
+        [
+          "HII",
+          "PG",
+          "deep_dislocation"
+        ],
+        [
+          "GLW",
+          "WST",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "CL",
+          "GD",
+          "long_z_short_v"
+        ]
+      ],
+      "oos_sharpe": -2.1470191447171048,
+      "oos_pnl": -13914.58016971768
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-02-21",
+      "train_end": "2026-02-19",
+      "test_start": "2026-02-20",
+      "test_end": "2026-03-26",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "CL",
+          "WST",
+          "high_turnover"
+        ],
+        [
+          "AWK",
+          "FOX",
+          "low_vol_specialist"
+        ],
+        [
+          "MSCI",
+          "MTB",
+          "symmetric_exit"
+        ],
+        [
+          "AWK",
+          "STLD",
+          "conservative_no_leverage"
+        ],
+        [
+          "F",
+          "PG",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "MTCH",
+          "NVR",
+          "vol_agnostic"
+        ],
+        [
+          "MKTX",
+          "WST",
+          "vol_adaptive"
+        ],
+        [
+          "AMT",
+          "TJX",
+          "vol_gated"
+        ],
+        [
+          "GRMN",
+          "KO",
+          "vol_adaptive"
+        ],
+        [
+          "ETR",
+          "MKTX",
+          "conservative_no_leverage"
+        ],
+        [
+          "GIS",
+          "HUBB",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "AWK",
+          "EXPD",
+          "flash_hold"
+        ],
+        [
+          "HII",
+          "PG",
+          "deep_dislocation"
+        ],
+        [
+          "GLW",
+          "WST",
+          "conservative"
+        ],
+        [
+          "CL",
+          "GD",
+          "fast_signal"
+        ]
+      ],
+      "oos_sharpe": 2.951989913266766,
+      "oos_pnl": 7425.083330728914
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": 10069.060713119165,
+    "oos_trading_days": 144,
+    "oos_sharpe": 0.42360493475232924,
+    "oos_max_dd_dollar": -33145.11990859645,
+    "oos_max_dd_pct": -0.06226323253482396
+  }
+}

@@ -30,14 +30,14 @@
     "z_col": "Z_other"
   },
   {
-    "s1": "MKTX",
-    "s2": "WST",
+    "s1": "MTCH",
+    "s2": "NVR",
     "sector": "other",
     "z_col": "Z_other"
   },
   {
-    "s1": "MTCH",
-    "s2": "NVR",
+    "s1": "MKTX",
+    "s2": "WST",
     "sector": "other",
     "z_col": "Z_other"
   },
@@ -60,16 +60,16 @@
     "z_col": "Z_utilities"
   },
   {
-    "s1": "AWK",
-    "s2": "EXPD",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
-  },
-  {
     "s1": "GIS",
     "s2": "HUBB",
     "sector": "food",
     "z_col": "Z_food"
+  },
+  {
+    "s1": "AWK",
+    "s2": "EXPD",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
   },
   {
     "s1": "HII",
@@ -78,15 +78,15 @@
     "z_col": "Z_industrial"
   },
   {
-    "s1": "LNT",
-    "s2": "MKTX",
-    "sector": "other",
-    "z_col": "Z_other"
-  },
-  {
     "s1": "GLW",
     "s2": "WST",
     "sector": "other",
     "z_col": "Z_other"
+  },
+  {
+    "s1": "CL",
+    "s2": "GD",
+    "sector": "energy",
+    "z_col": "Z_energy"
   }
 ]
