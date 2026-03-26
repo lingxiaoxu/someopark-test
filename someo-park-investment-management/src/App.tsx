@@ -13,9 +13,12 @@ import { supabase } from './lib/supabase';
 import { LLMModelConfig } from './lib/models';
 import { StanseAgentSchema } from './lib/schema';
 import { ExecutionResult } from './lib/types';
+import { Message } from './lib/messages';
 import { DeepPartial } from 'ai';
 
 export type AgentMode = 'cloud' | 'local';
+
+type ChatEntry = { id: number; title: string };
 
 function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((prev: T) => T)) => void] {
   const [storedValue, setStoredValue] = useState<T>(() => {
@@ -38,6 +41,22 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((pre
   return [storedValue, setValue];
 }
 
+// Helpers for per-chat message cache in localStorage
+function loadChatMessages(chatId: number): Message[] {
+  try {
+    const raw = localStorage.getItem(`sp-chat-${chatId}`);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function saveChatMessages(chatId: number, messages: Message[]) {
+  try {
+    localStorage.setItem(`sp-chat-${chatId}`, JSON.stringify(messages));
+  } catch { /* quota exceeded — silently fail */ }
+}
+function deleteChatMessages(chatId: number) {
+  localStorage.removeItem(`sp-chat-${chatId}`);
+}
+
 export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentMode>('cloud');
@@ -47,18 +66,55 @@ export default function App() {
   const [isMaximized, setIsMaximized] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [chatKey, setChatKey] = useState(0);
-  const [chatHistory, setChatHistory] = useState<{ id: number; title: string }[]>([]);
+  const [chatHistory, setChatHistory] = useLocalStorage<ChatEntry[]>('sp-chatHistory', []);
   const [activeChatId, setActiveChatId] = useState<number | null>(null);
+  const [initialMessages, setInitialMessages] = useState<Message[]>([]);
+  // Ref to track current messages for saving before switching
+  const currentMessagesRef = useRef<Message[]>([]);
+
+  const handleMessagesChange = useCallback((messages: Message[]) => {
+    currentMessagesRef.current = messages;
+    // Auto-save to localStorage
+    if (activeChatId != null) {
+      saveChatMessages(activeChatId, messages);
+    }
+  }, [activeChatId]);
 
   const handleNewChat = useCallback(() => {
-    // If there's an active chat, it stays in history
     const newId = Date.now();
     setChatKey(k => k + 1);
     setActiveChatId(newId);
+    setInitialMessages([]);
+    currentMessagesRef.current = [];
     setActiveArtifact(null);
     setCodePreview(null);
     setShowSettings(false);
   }, []);
+
+  const handleSelectChat = useCallback((chatId: number) => {
+    if (chatId === activeChatId) return;
+    // Load the target chat's messages from cache
+    const msgs = loadChatMessages(chatId);
+    setActiveChatId(chatId);
+    setInitialMessages(msgs);
+    currentMessagesRef.current = msgs;
+    setChatKey(k => k + 1);
+    setActiveArtifact(null);
+    setCodePreview(null);
+    setShowSettings(false);
+  }, [activeChatId]);
+
+  const handleDeleteChat = useCallback((chatId: number) => {
+    setChatHistory(prev => prev.filter(c => c.id !== chatId));
+    deleteChatMessages(chatId);
+    // If deleting the active chat, reset to welcome
+    if (chatId === activeChatId) {
+      setActiveChatId(null);
+      setInitialMessages([]);
+      currentMessagesRef.current = [];
+      setChatKey(k => k + 1);
+    }
+  }, [activeChatId, setChatHistory]);
 
   const handleFirstMessage = useCallback((text: string) => {
     if (activeChatId != null) {
@@ -68,7 +124,7 @@ export default function App() {
         return [{ id: activeChatId, title: text.slice(0, 40) }, ...prev];
       });
     }
-  }, [activeChatId]);
+  }, [activeChatId, setChatHistory]);
 
   const [rightPanelWidth, setRightPanelWidth] = useState(480);
   const [isResizing, setIsResizing] = useState(false);
@@ -150,6 +206,8 @@ export default function App() {
           onNewChat={handleNewChat}
           chatHistory={chatHistory}
           activeChatId={activeChatId}
+          onSelectChat={handleSelectChat}
+          onDeleteChat={handleDeleteChat}
         />
       </div>
       <div className="flex-1 flex min-w-0 relative">
@@ -172,6 +230,8 @@ export default function App() {
               chatKey={chatKey}
               onFirstMessage={handleFirstMessage}
               onConnectClick={() => setIsModalOpen(true)}
+              initialMessages={initialMessages}
+              onMessagesChange={handleMessagesChange}
             />
           )}
         </div>

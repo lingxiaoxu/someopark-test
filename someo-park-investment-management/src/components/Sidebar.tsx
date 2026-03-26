@@ -1,4 +1,4 @@
-import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
 import { useState, useRef, useEffect } from 'react';
@@ -24,6 +24,8 @@ export default function Sidebar({
   onNewChat,
   chatHistory,
   activeChatId,
+  onSelectChat,
+  onDeleteChat,
 }: {
   onConnectClick: () => void,
   agentMode: 'cloud' | 'local',
@@ -36,6 +38,8 @@ export default function Sidebar({
   onNewChat?: () => void,
   chatHistory?: { id: number; title: string }[],
   activeChatId?: number | null,
+  onSelectChat?: (id: number) => void,
+  onDeleteChat?: (id: number) => void,
 }) {
   const { t } = useTranslation();
   const [currentLang, setCurrentLang] = useState(localStorage.getItem('sp-lang') || 'en');
@@ -126,9 +130,22 @@ export default function Sidebar({
         <div className="text-xs font-medium text-[var(--text-muted)] mb-2 uppercase tracking-wider">{t('sidebar.recentChats')}</div>
         {/* Dynamic chat history from user sessions */}
         {chatHistory && chatHistory.map(chat => (
-          <div key={chat.id} className={`chat-item flex items-center gap-3 ${chat.id === activeChatId ? 'active' : ''}`}>
-            <MessageSquare className="w-4 h-4 text-[var(--text-secondary)]" />
-            <span className="text-sm truncate">{chat.title}</span>
+          <div
+            key={chat.id}
+            className={`chat-item flex items-center gap-3 group ${chat.id === activeChatId ? 'active' : ''}`}
+            onClick={() => onSelectChat?.(chat.id)}
+            style={{ cursor: 'pointer' }}
+          >
+            <MessageSquare className="w-4 h-4 text-[var(--text-secondary)] shrink-0" />
+            <span className="text-sm truncate flex-1">{chat.title}</span>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDeleteChat?.(chat.id); }}
+              className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px' }}
+              title="Delete chat"
+            >
+              <Trash2 className="w-3 h-3 text-[var(--text-muted)] hover:text-red-400" />
+            </button>
           </div>
         ))}
         {/* Default placeholder chats (shown when no history) */}

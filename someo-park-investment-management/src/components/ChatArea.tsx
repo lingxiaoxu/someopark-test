@@ -10,6 +10,78 @@ import { ChatPicker, LLMModel } from './ChatPicker'
 import { ChatSettings } from './ChatSettings'
 import { DeepPartial } from 'ai'
 import templates from '../lib/templates'
+
+/** Lightweight Markdown-to-JSX renderer for chat messages */
+function renderMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split('\n')
+  const result: React.ReactNode[] = []
+  let listItems: React.ReactNode[] = []
+  let listLevel = 0 // 0 = not in list
+
+  const flushList = () => {
+    if (listItems.length > 0) {
+      result.push(<ul key={`ul-${result.length}`} style={{ margin: '4px 0', paddingLeft: '1.2em', listStyleType: 'disc' }}>{listItems}</ul>)
+      listItems = []
+      listLevel = 0
+    }
+  }
+
+  const inlineBold = (s: string): React.ReactNode[] => {
+    const parts: React.ReactNode[] = []
+    const re = /\*\*(.+?)\*\*/g
+    let last = 0
+    let m: RegExpExecArray | null
+    while ((m = re.exec(s)) !== null) {
+      if (m.index > last) parts.push(s.slice(last, m.index))
+      parts.push(<strong key={m.index}>{m[1]}</strong>)
+      last = m.index + m[0].length
+    }
+    if (last < s.length) parts.push(s.slice(last))
+    return parts
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    // Headings: # ## ###
+    const hMatch = line.match(/^(#{1,3})\s+(.+)$/)
+    if (hMatch) {
+      flushList()
+      const level = hMatch[1].length
+      const sizes = { 1: '16px', 2: '14px', 3: '13px' } as Record<number, string>
+      const weights = { 1: 800, 2: 700, 3: 600 } as Record<number, number>
+      result.push(
+        <div key={`h-${i}`} style={{ fontSize: sizes[level], fontWeight: weights[level], margin: '8px 0 4px', lineHeight: 1.4 }}>
+          {inlineBold(hMatch[2])}
+        </div>
+      )
+      continue
+    }
+
+    // List items: - or * or numbered (1.)
+    const liMatch = line.match(/^(\s*)[-*]\s+(.+)$/) || line.match(/^(\s*)\d+\.\s+(.+)$/)
+    if (liMatch) {
+      const indent = liMatch[1].length
+      if (listItems.length === 0) listLevel = indent
+      listItems.push(<li key={`li-${i}`} style={{ marginBottom: '2px' }}>{inlineBold(liMatch[2])}</li>)
+      continue
+    }
+
+    // Empty line
+    if (line.trim() === '') {
+      flushList()
+      result.push(<div key={`br-${i}`} style={{ height: '8px' }} />)
+      continue
+    }
+
+    // Regular paragraph
+    flushList()
+    result.push(<span key={`p-${i}`}>{inlineBold(line)}{'\n'}</span>)
+  }
+
+  flushList()
+  return result
+}
 import modelList from '../lib/models.json'
 import PairBadge from './PairBadge'
 import { useApi } from '../hooks/useApi'
@@ -33,6 +105,8 @@ export default function ChatArea({
   chatKey,
   onFirstMessage,
   onConnectClick,
+  initialMessages,
+  onMessagesChange,
 }: {
   agentMode: 'cloud' | 'local'
   isLocalConnected: boolean
@@ -48,6 +122,8 @@ export default function ChatArea({
   chatKey?: number
   onFirstMessage?: (text: string) => void
   onConnectClick?: () => void
+  initialMessages?: Message[]
+  onMessagesChange?: (messages: Message[]) => void
 }) {
   const { t } = useTranslation()
   const [input, setInput] = useState('')
@@ -83,9 +159,9 @@ export default function ChatArea({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Reset messages when chatKey changes (new chat)
+  // Reset messages when chatKey changes (new chat or switching chat)
   useEffect(() => {
-    setMessages([])
+    setMessages(initialMessages || [])
     setInput('')
     setIsLoading(false)
     setIsErrored(false)
@@ -102,6 +178,13 @@ export default function ChatArea({
       }
     }
   }, [messages, isLoading])
+
+  // Notify parent when messages change (for persistence)
+  useEffect(() => {
+    if (messages.length > 0) {
+      onMessagesChange?.(messages)
+    }
+  }, [messages])
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
@@ -482,7 +565,11 @@ export default function ChatArea({
                 )}
                 <div className={msg.role === 'user' ? '' : 'message-content w-full'}>
                   {msg.content.map((c, ci) => {
-                    if (c.type === 'text') return <p key={ci} className={`text-sm leading-relaxed whitespace-pre-wrap ${msg.role === 'user' ? 'text-white' : 'text-[var(--text-primary)]'}`}>{c.text}</p>
+                    if (c.type === 'text') return (
+                      <div key={ci} className={`text-sm leading-relaxed ${msg.role === 'user' ? 'text-white whitespace-pre-wrap' : 'text-[var(--text-primary)]'}`}>
+                        {msg.role === 'assistant' ? renderMarkdown(c.text) : c.text}
+                      </div>
+                    )
                     if (c.type === 'image') return <img key={ci} src={c.image} alt="" className="w-16 h-16 rounded-lg object-cover" />
                     return null
                   })}
