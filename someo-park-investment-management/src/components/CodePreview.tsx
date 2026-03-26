@@ -70,9 +70,10 @@ export function CodePreview({
     if (!selectedDuration || !result?.sbxId) return
     setIsDeploying(true)
     try {
-      await fetch('/api/publish', {
+      const { API_BASE, apiHeaders } = await import('../lib/api')
+      await fetch(`${API_BASE}/api/publish`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...apiHeaders() },
         body: JSON.stringify({ sbxId: result.sbxId, duration: selectedDuration }),
       })
       setDeployed(true)

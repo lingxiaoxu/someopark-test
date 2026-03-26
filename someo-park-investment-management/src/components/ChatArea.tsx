@@ -85,7 +85,7 @@ function renderMarkdown(text: string): React.ReactNode[] {
 import modelList from '../lib/models.json'
 import PairBadge from './PairBadge'
 import { useApi } from '../hooks/useApi'
-import { getInventory } from '../lib/api'
+import { getInventory, API_BASE, apiHeaders } from '../lib/api'
 import { db } from '../lib/firebase'
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { Session } from '@supabase/supabase-js'
@@ -252,9 +252,9 @@ export default function ChatArea({
         ? { messages: msgPayload, model: currentModel, config: languageModel, currentStanseAgent }
         : { messages: msgPayload, model: currentModel, config: languageModel }
 
-      const response = await fetch(endpoint, {
+      const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...apiHeaders() },
         body: JSON.stringify(body),
         signal: controller.signal,
       })
@@ -318,9 +318,9 @@ export default function ChatArea({
           onCodePreview({ stanseAgent: parsedAgent, isLoading: true })
         }
         try {
-          const sandboxRes = await fetch('/api/sandbox', {
+          const sandboxRes = await fetch(`${API_BASE}/api/sandbox`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...apiHeaders() },
             body: JSON.stringify({ stanseAgent: parsedAgent }),
           })
           if (sandboxRes.ok) {

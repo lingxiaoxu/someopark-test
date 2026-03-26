@@ -21,6 +21,17 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// API key guard — only enforced when SP_API_KEY env is set (i.e. when exposed via ngrok)
+const SP_API_KEY = process.env.SP_API_KEY;
+if (SP_API_KEY) {
+  app.use('/api', (req, res, next) => {
+    const key = req.headers['x-api-key'] || req.query.key;
+    if (key === SP_API_KEY) return next();
+    res.status(401).json({ error: 'Unauthorized' });
+  });
+  console.log('API key protection enabled');
+}
+
 // Routes
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/signals', signalsRoutes);

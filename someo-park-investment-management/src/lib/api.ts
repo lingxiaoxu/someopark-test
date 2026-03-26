@@ -1,13 +1,21 @@
-const API_BASE = '';  // Use Vite proxy, so relative paths work
+// In dev: empty (Vite proxy handles it). In prod: set VITE_API_URL to your tunnel/server URL.
+const API_BASE = import.meta.env.VITE_API_URL || '';
+const API_KEY = import.meta.env.VITE_API_KEY || '';
+
+export function apiHeaders(): Record<string, string> {
+  return API_KEY ? { 'x-api-key': API_KEY } : {};
+}
+
+export { API_BASE };
 
 async function fetchApi<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, { headers: apiHeaders() });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
 }
 
 async function fetchText(path: string): Promise<string> {
-  const res = await fetch(`${API_BASE}${path}`);
+  const res = await fetch(`${API_BASE}${path}`, { headers: apiHeaders() });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.text();
 }
@@ -74,8 +82,11 @@ export const getDiagnosticSheet = (sheet: string) =>
 // PnL Report
 export const getPnlReportList = () =>
   fetchApi<{ date: string; filename: string }[]>(`/api/pnl-report`);
-export const getPnlReportUrl = (date?: string) =>
-  date ? `/api/pnl-report/${date}` : `/api/pnl-report/latest`;
+export const getPnlReportUrl = (date?: string) => {
+  const path = date ? `/api/pnl-report/${date}` : `/api/pnl-report/latest`;
+  const keyParam = API_KEY ? `?key=${API_KEY}` : '';
+  return `${API_BASE}${path}${keyParam}`;
+};
 
 // Monitor / Portfolio History
 export const getMonitorHistoryList = () =>
