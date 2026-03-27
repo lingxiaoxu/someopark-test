@@ -13,7 +13,8 @@
     "inventory": "Inventaire actuel",
     "inventoryHistory": "Historique d'inventaire",
     "wfStructure": "Structure des fichiers de backtest",
-    "pnlReport": "Rapport PnL"
+    "pnlReport": "Rapport PnL",
+    "strategyPerformance": "Performance de la stratégie"
   },
 
   "common": {
@@ -104,6 +105,7 @@
     "aiMsg4": "Bien sûr. La structure des fichiers Walk-Forward est assez complexe — elle contient les résultats d'entraînement de la recherche en grille In-Sample (IS) et les résultats de test de performance réelle Out-of-Sample (OOS). J'ai généré une vue structurée interactive pour vous. Cliquez sur le bouton ci-dessous pour développer les dossiers, voir les structures de fichiers, les noms des feuilles Excel et les détails des paramètres étape par étape.",
     "btnWfStructure": "Montre-moi l'organisation des fichiers de backtest.",
     "btnPnlReport": "Génère un rapport PnL basé sur mes trades récents.",
+    "btnStrategyPerformance": "Afficher la performance globale de la stratégie.",
     "agentThinking": "L'agent réfléchit...",
     "inputPlaceholder": "Message à SomeoClaw ({{mode}})...",
     "cloudVpsInput": "Cloud VPS",

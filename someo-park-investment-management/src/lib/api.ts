@@ -3,7 +3,10 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
 
 export function apiHeaders(): Record<string, string> {
-  return API_KEY ? { 'x-api-key': API_KEY } : {};
+  const h: Record<string, string> = {};
+  if (API_KEY) h['x-api-key'] = API_KEY;
+  if (API_BASE) h['ngrok-skip-browser-warning'] = '1';
+  return h;
 }
 
 export { API_BASE };

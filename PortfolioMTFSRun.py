@@ -938,7 +938,10 @@ def load_historical_data_mongo(start_date, end_date, symbols):
                 continue
             col_key = (field, symbol)
             tuples.append(col_key)
-            arrays[col_key] = all_data[symbol][field]
+            s = all_data[symbol][field]
+            s = s.copy()
+            s.index = s.index.normalize()
+            arrays[col_key] = s
 
     multi_index = pd.MultiIndex.from_tuples(tuples, names=['Price', 'Ticker'])
     data = pd.DataFrame(arrays, columns=multi_index)

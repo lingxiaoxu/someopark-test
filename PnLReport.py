@@ -315,6 +315,33 @@ def load_hold_pnl(end_ts) -> dict[str, dict]:
     return result
 
 
+def download_prices_mongo(tickers: set, price_start: str, price_end: str) -> pd.DataFrame:
+    """Load close prices from MongoDB stock_data (deterministic, no yfinance drift)."""
+    from db.connection import get_main_db
+    db = get_main_db()
+    col = db["stock_data"]
+
+    start_ms = int(pd.Timestamp(price_start).timestamp() * 1000)
+    end_ms = int((pd.Timestamp(price_end) + pd.Timedelta(days=1)).timestamp() * 1000)
+
+    frames = {}
+    for sym in sorted(tickers):
+        docs = list(col.find(
+            {"symbol": sym, "t": {"$gte": start_ms, "$lte": end_ms}},
+            {"c": 1, "t": 1, "_id": 0}
+        ).sort("t", 1))
+        if docs:
+            dates = [pd.Timestamp(d["t"], unit="ms").normalize() for d in docs]
+            closes = [d["c"] for d in docs]
+            frames[sym] = pd.Series(closes, index=dates, name=sym)
+
+    if not frames:
+        return pd.DataFrame()
+    df = pd.DataFrame(frames)
+    df.index.name = "Date"
+    return df
+
+
 def download_prices(tickers: set, price_start: str, price_end: str) -> pd.DataFrame:
     end_plus = str((pd.Timestamp(price_end) + pd.Timedelta(days=1)).date())
     print(f'  Downloading prices ({len(tickers)} tickers, {price_start}→{price_end})...')
@@ -458,14 +485,22 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
     # When a position closes, it disappears from inventory (direction=null).
     # Its realized PnL must be locked in and carried forward, otherwise the
     # cumulative PnL curve has discontinuities (realized profit evaporates).
-    realized_by_date: dict[str, float] = defaultdict(float)
-    _seen_close: set[tuple] = set()  # (pair, date) de-dup
+    #
+    # De-dup strategy: group CLOSE events by (pair, signal_date).
+    #   - Same signal_date = same DailySignal run (or re-run) → keep latest ts only
+    #   - Different signal_date = different open→close lifecycle → each counts
+    # This correctly handles:
+    #   (a) Multiple DailySignal runs on the same day producing duplicate CLOSEs
+    #   (b) Step 2 re-opening a position that Step 1 just closed, leading to
+    #       consecutive CLOSEs on different dates with no HOLD in between
+    _all_close_ev: list[tuple] = []   # (pair, signal_date, ts, pnl)
     for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
         day, full = _parse_ts(fpath)
         if day is None or day < start_ts or day > end_ts:
             continue
         with open(fpath) as f:
             dr = json.load(f)
+        signal_date_str = dr.get('signal_date', str(day.date()))
         pm = dr.get('position_monitor', {})
         for strat in ('mrpt', 'mtfs'):
             for e in pm.get(strat, []):
@@ -473,12 +508,24 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
                     continue
                 action = e.get('action', '')
                 pair = e.get('pair')
-                if action in ('CLOSE', 'CLOSE_STOP') and pair:
-                    key = (pair, str(day.date()))
-                    if key not in _seen_close:
-                        _seen_close.add(key)
-                        pnl = e.get('unrealized_pnl', 0) or 0
-                        realized_by_date[str(day.date())] += pnl
+                if not pair:
+                    continue
+                if action in ('CLOSE', 'CLOSE_STOP'):
+                    pnl = e.get('unrealized_pnl', 0) or 0
+                    _all_close_ev.append((pair, signal_date_str, full, pnl))
+
+    # Group by (pair, signal_date) and keep only the latest CLOSE per group
+    _close_by_pair_date: dict[tuple, list] = {}  # (pair, signal_date) -> [(ts, pnl)]
+    for pair, sig_date, ts, pnl in _all_close_ev:
+        _close_by_pair_date.setdefault((pair, sig_date), []).append((ts, pnl))
+
+    realized_by_date: dict[str, float] = defaultdict(float)
+    _seen_close: set[tuple] = set()  # (pair, signal_date) for MTM guard
+
+    for (pair, sig_date), entries in _close_by_pair_date.items():
+        best_ts, best_pnl = max(entries, key=lambda x: x[0])
+        _seen_close.add((pair, sig_date))
+        realized_by_date[sig_date] += best_pnl
 
     # ── Step 2: Daily portfolio PnL = cum_realized + open_positions_mtm ──
     daily_pnl = []
@@ -509,13 +556,18 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
             for pair_name, pos in data.get('pairs', {}).items():
                 if not pos.get('direction') or '/' not in pair_name:
                     continue
+
+                # Skip positions that closed on this date — their PnL is
+                # already captured in realized_by_date (avoid double-counting).
+                if (pair_name, td_str) in _seen_close:
+                    continue
+
                 s1, s2 = pair_name.split('/', 1)
                 s1_sh = pos.get('s1_shares', 0)
                 s2_sh = pos.get('s2_shares', 0)
                 op1 = pos.get('open_s1_price', 0)
                 op2 = pos.get('open_s2_price', 0)
 
-                # Get current market price
                 try:
                     cp1 = prices[s1].loc[:td].dropna().iloc[-1] if s1 in prices.columns else None
                     cp2 = prices[s2].loc[:td].dropna().iloc[-1] if s2 in prices.columns else None
@@ -731,8 +783,20 @@ def build_report_data(start: str, end: str) -> dict:
     totals['leverage'] = lev_rows
 
     # Portfolio metrics: daily PnL series, max drawdown, Sharpe, benchmark comparison
+    # Use MongoDB prices for equity curve (deterministic, not affected by yfinance drift)
     print('  Computing portfolio metrics (drawdown, Sharpe, benchmarks)...')
-    port_metrics = _compute_portfolio_metrics(start_ts, end_ts, positions, prices)
+    try:
+        mongo_prices = download_prices_mongo(tickers, price_start, end)
+        if not mongo_prices.empty and len(mongo_prices) >= 2:
+            print(f'  Using MongoDB prices for equity curve ({len(mongo_prices)} rows)')
+            metrics_prices = mongo_prices
+        else:
+            print('  MongoDB prices insufficient, falling back to yfinance')
+            metrics_prices = prices
+    except Exception as e:
+        print(f'  MongoDB prices failed ({e}), falling back to yfinance')
+        metrics_prices = prices
+    port_metrics = _compute_portfolio_metrics(start_ts, end_ts, positions, metrics_prices)
     totals['portfolio'] = port_metrics
 
     return {

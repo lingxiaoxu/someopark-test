@@ -94,7 +94,7 @@ export default function DailyReportViewer() {
                     <div key={idx} className="flex items-center justify-between bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded-lg p-3">
                       <div className="flex items-center gap-3">
                         <div
-                          className="flex items-center justify-center font-bold text-[10px] uppercase tracking-wider"
+                          className="flex items-center justify-center font-bold text-[10px] uppercase tracking-wider whitespace-nowrap"
                           style={{
                             width: 'auto',
                             minWidth: '48px',

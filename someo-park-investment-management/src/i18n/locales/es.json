@@ -13,7 +13,8 @@
     "inventory": "Inventario actual",
     "inventoryHistory": "Historial de inventario",
     "wfStructure": "Estructura de archivos de backtest",
-    "pnlReport": "Informe PnL"
+    "pnlReport": "Informe PnL",
+    "strategyPerformance": "Rendimiento de la estrategia"
   },
 
   "common": {
@@ -104,6 +105,7 @@
     "aiMsg4": "Por supuesto. La estructura de archivos Walk-Forward es bastante compleja — contiene resultados de entrenamiento de búsqueda en cuadrícula In-Sample (IS) y resultados de prueba de rendimiento real Out-of-Sample (OOS). He generado una vista estructurada interactiva para ti. Haz clic en el botón de abajo para expandir carpetas, ver estructuras de archivos, nombres de hojas Excel y detalles de parámetros paso a paso.",
     "btnWfStructure": "Muéstrame cómo están organizados los archivos de backtest.",
     "btnPnlReport": "Genera un informe PnL basado en mis operaciones recientes.",
+    "btnStrategyPerformance": "Ver el rendimiento general de la estrategia.",
     "agentThinking": "El agente está pensando...",
     "inputPlaceholder": "Mensaje a SomeoClaw ({{mode}})...",
     "cloudVpsInput": "Cloud VPS",

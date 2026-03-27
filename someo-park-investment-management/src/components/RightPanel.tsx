@@ -15,6 +15,7 @@ import InventoryViewer from './artifacts/InventoryViewer';
 import InventoryHistoryViewer from './artifacts/InventoryHistoryViewer';
 import WFStructureViewer from './artifacts/WFStructureViewer';
 import PnlReportViewer from './artifacts/PnlReportViewer';
+import StrategyPerformanceViewer from './artifacts/StrategyPerformanceViewer';
 
 // Artifact type → i18n title key mapping
 const ARTIFACT_TITLE_KEYS: Record<string, string> = {
@@ -32,6 +33,7 @@ const ARTIFACT_TITLE_KEYS: Record<string, string> = {
   inventory_history: 'artifactTitles.inventoryHistory',
   wf_structure: 'artifactTitles.wfStructure',
   pnl_report: 'artifactTitles.pnlReport',
+  strategy_performance: 'artifactTitles.strategyPerformance',
 };
 
 // Download URLs for artifact types that have downloadable files
@@ -157,6 +159,7 @@ export default function RightPanel({ artifact, onClose, onMaximize, isMaximized 
         {artifact.type === 'inventory_history' && <InventoryHistoryViewer params={params} />}
         {artifact.type === 'wf_structure'      && <WFStructureViewer data={artifact.data} />}
         {artifact.type === 'pnl_report'        && <PnlReportViewer />}
+        {artifact.type === 'strategy_performance' && <StrategyPerformanceViewer />}
       </div>
     </div>
   );
