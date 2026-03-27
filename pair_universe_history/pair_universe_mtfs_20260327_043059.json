@@ -12,14 +12,8 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "HLT",
-    "s2": "AIG",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
     "s1": "ALL",
-    "s2": "DGX",
+    "s2": "EQR",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -32,12 +26,6 @@
   {
     "s1": "ACGL",
     "s2": "MCD",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "NWS",
-    "s2": "AFL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -55,6 +43,12 @@
   },
   {
     "s1": "BK",
+    "s2": "AIG",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "C",
     "s2": "AIG",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
@@ -78,14 +72,20 @@
     "spread_col": "Momentum_Spread_utilities"
   },
   {
-    "s1": "AWK",
-    "s2": "BK",
+    "s1": "BK",
+    "s2": "AWK",
     "sector": "utilities",
     "spread_col": "Momentum_Spread_utilities"
   },
   {
     "s1": "RJF",
     "s2": "BLK",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "C",
+    "s2": "GS",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   }

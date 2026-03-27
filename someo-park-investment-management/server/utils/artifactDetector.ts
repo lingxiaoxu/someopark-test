@@ -84,6 +84,11 @@ const ARTIFACT_PATTERNS: Array<{
     title: 'Walk-Forward File Structure',
     keywords: ['wf structure', 'file structure', 'walk-forward structure', '文件结构'],
   },
+  {
+    type: 'strategy_performance',
+    title: 'Strategy Performance',
+    keywords: ['strategy performance', 'overall performance', 'performance curve', 'inception', '策略表现', '策略曲线', '整体表现', '净值曲线总览'],
+  },
 ]
 
 export function detectArtifacts(message: string): ArtifactTrigger[] {

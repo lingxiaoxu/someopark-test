@@ -553,6 +553,9 @@ export default function ChatArea({
                 <button onClick={() => setActiveArtifact({ type: 'pnl_report', title: 'PnL Report' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnPnlReport')}
                 </button>
+                <button onClick={() => setActiveArtifact({ type: 'strategy_performance', title: 'Strategy Performance' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                  <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnStrategyPerformance')}
+                </button>
               </div>
             </>
           ) : (

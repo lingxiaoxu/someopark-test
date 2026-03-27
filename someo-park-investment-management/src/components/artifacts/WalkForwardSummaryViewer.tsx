@@ -83,7 +83,7 @@ export default function WalkForwardSummaryViewer({ params }: { params?: any }) {
                 <span className="text-[var(--text-muted)]">{t('wfSummary.selectedPairs')}</span>
                 <span className="text-[var(--accent-primary)]">{w.n_selected_pairs}</span>
                 {w.selected_pairs && w.selected_pairs.slice(0, 5).map((p: any, pi: number) => (
-                  <span key={pi}><PairBadge s1={p[0]} s2={p[1]} strategy={strategy} compact noPopover /></span>
+                  <span key={pi}><PairBadge s1={p[0]} s2={p[1]} strategy={strategy} compact /></span>
                 ))}
                 {w.selected_pairs && w.selected_pairs.length > 5 && (
                   <span className="text-[var(--text-muted)]">{t('wfSummary.nMore', { count: w.selected_pairs.length - 5 })}</span>

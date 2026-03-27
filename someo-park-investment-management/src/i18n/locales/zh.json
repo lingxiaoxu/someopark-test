@@ -13,7 +13,8 @@
     "inventory": "当前持仓",
     "inventoryHistory": "持仓历史",
     "wfStructure": "回测文件结构图",
-    "pnlReport": "盈亏报告"
+    "pnlReport": "盈亏报告",
+    "strategyPerformance": "策略表现"
   },
 
   "common": {
@@ -104,6 +105,7 @@
     "aiMsg4": "没问题。Walk-Forward 的文件结构非常复杂，包含了样本内（IS）的 Grid Search 训练结果，以及样本外（OOS）的真实表现测试结果。我为你生成了一个结构化的交互式视图，你可以点击下方按钮，一步步展开文件夹、查看文件结构、Excel 的 Sheet 名以及具体的参数内容。",
     "btnWfStructure": "给我看看回测文件是怎么布局的。",
     "btnPnlReport": "根据最近的交易生成盈亏报告。",
+    "btnStrategyPerformance": "查看策略整体表现。",
     "agentThinking": "代理思考中...",
     "inputPlaceholder": "给 SomeoClaw 发消息（{{mode}}）...",
     "cloudVpsInput": "云端 VPS",

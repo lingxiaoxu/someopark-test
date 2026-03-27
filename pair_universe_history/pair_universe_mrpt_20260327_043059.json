@@ -1,11 +1,5 @@
 [
   {
-    "s1": "AWK",
-    "s2": "STLD",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
-  },
-  {
     "s1": "CL",
     "s2": "WST",
     "sector": "energy",
@@ -22,6 +16,12 @@
     "s2": "MTB",
     "sector": "finance",
     "z_col": "Z_finance"
+  },
+  {
+    "s1": "AWK",
+    "s2": "STLD",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
   },
   {
     "s1": "F",
@@ -78,15 +78,15 @@
     "z_col": "Z_industrial"
   },
   {
+    "s1": "GLW",
+    "s2": "WST",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
     "s1": "CL",
     "s2": "GD",
     "sector": "energy",
     "z_col": "Z_energy"
-  },
-  {
-    "s1": "LNT",
-    "s2": "MKTX",
-    "sector": "other",
-    "z_col": "Z_other"
   }
 ]

@@ -13,7 +13,8 @@
     "inventory": "現在の保有",
     "inventoryHistory": "保有履歴",
     "wfStructure": "バックテストファイル構造",
-    "pnlReport": "PnLレポート"
+    "pnlReport": "PnLレポート",
+    "strategyPerformance": "戦略パフォーマンス"
   },
 
   "common": {
@@ -104,6 +105,7 @@
     "aiMsg4": "もちろんです。Walk-Forward のファイル構造は非常に複雑で、サンプル内（IS）のグリッド検索トレーニング結果とサンプル外（OOS）の実際のパフォーマンステスト結果が含まれています。インタラクティブな構造化ビューを生成しました。下のボタンをクリックして、フォルダを展開し、ファイル構造、Excelシート名、パラメータの詳細を順に確認できます。",
     "btnWfStructure": "バックテストファイルのレイアウトを見せて。",
     "btnPnlReport": "最近の取引に基づいてPnLレポートを生成して。",
+    "btnStrategyPerformance": "戦略全体のパフォーマンスを表示。",
     "agentThinking": "エージェント思考中...",
     "inputPlaceholder": "SomeoClaw にメッセージ（{{mode}}）...",
     "cloudVpsInput": "クラウド VPS",
