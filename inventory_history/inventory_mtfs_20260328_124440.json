@@ -152,7 +152,7 @@
       "open_s2_price": 163.41,
       "open_hedge_ratio": 0.6294596413928156,
       "open_price_level_stop": null,
-      "days_held": 1,
+      "days_held": 0,
       "open_signal": {
         "momentum_spread": 0.595,
         "entry_threshold": 0.0,
@@ -213,20 +213,7 @@
         },
         "default_window": "W6"
       },
-      "monitor_log": [
-        {
-          "date": "2026-03-27",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.61,
-          "exit_threshold": 0.4,
-          "unrealized_pnl": 0.0,
-          "unrealized_pnl_pct": 0.0,
-          "note": "Holding long, signal=0.61, exit at 0.4"
-        }
-      ],
-      "last_updated": "2026-03-27"
+      "monitor_log": []
     },
     "RSG/AFL": {
       "direction": null

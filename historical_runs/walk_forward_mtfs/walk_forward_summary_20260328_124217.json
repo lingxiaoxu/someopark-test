@@ -1,0 +1,481 @@
+{
+  "generated_at": "2026-03-28T12:42:17.015533",
+  "strategy": "MTFS",
+  "mode": "expanding",
+  "n_param_sets": 31,
+  "train_start": "2024-02-06",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 162,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-02-06",
+      "train_end": "2025-08-05",
+      "test_start": "2025-08-06",
+      "test_end": "2025-09-12",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "ALL",
+          "CFG",
+          "short_term_tilt"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "no_skip_month"
+        ],
+        [
+          "AWK",
+          "PLD",
+          "no_skip_month"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "weekly_aligned_windows"
+        ],
+        [
+          "NWS",
+          "AFL",
+          "aggressive"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "balanced"
+        ],
+        [
+          "AIG",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BK",
+          "AIG",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "weekly_aligned_windows"
+        ],
+        [
+          "L",
+          "AVB",
+          "slow_rebalance"
+        ],
+        [
+          "AWK",
+          "AXP",
+          "raw_momentum_kalman"
+        ],
+        [
+          "AWK",
+          "BK",
+          "long_term_kalman"
+        ]
+      ],
+      "oos_sharpe": -5.53891114672039,
+      "oos_pnl": -12350.053559063075
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-02-06",
+      "train_end": "2025-09-12",
+      "test_start": "2025-09-15",
+      "test_end": "2025-10-21",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "ALL",
+          "CFG",
+          "fast_strict"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "no_skip_month"
+        ],
+        [
+          "AWK",
+          "PLD",
+          "no_skip_month"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "weekly_aligned_windows"
+        ],
+        [
+          "NWS",
+          "AFL",
+          "aggressive"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "balanced"
+        ],
+        [
+          "AIG",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BK",
+          "AIG",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "weekly_aligned_windows"
+        ],
+        [
+          "L",
+          "AVB",
+          "crash_defensive"
+        ],
+        [
+          "AWK",
+          "AXP",
+          "raw_momentum_kalman"
+        ],
+        [
+          "AWK",
+          "BK",
+          "long_term_kalman"
+        ]
+      ],
+      "oos_sharpe": -6.842020522189749,
+      "oos_pnl": -20370.128736580737
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-02-06",
+      "train_end": "2025-10-21",
+      "test_start": "2025-10-22",
+      "test_end": "2025-11-28",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "ALL",
+          "CFG",
+          "fast_strict"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "no_skip_month"
+        ],
+        [
+          "AWK",
+          "PLD",
+          "no_skip_month"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "weekly_aligned_windows"
+        ],
+        [
+          "NWS",
+          "AFL",
+          "aggressive"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "entry_filter_kalman"
+        ],
+        [
+          "AIG",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BK",
+          "AIG",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "no_reversal_protection"
+        ],
+        [
+          "L",
+          "AVB",
+          "crash_defensive"
+        ],
+        [
+          "AWK",
+          "AXP",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AWK",
+          "BK",
+          "long_term_kalman"
+        ]
+      ],
+      "oos_sharpe": 2.5575855400841854,
+      "oos_pnl": 7175.537076683584
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-02-06",
+      "train_end": "2025-11-28",
+      "test_start": "2025-12-01",
+      "test_end": "2026-01-08",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "ALL",
+          "CFG",
+          "fast_strict"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "sensitive_reversal"
+        ],
+        [
+          "AWK",
+          "PLD",
+          "long_term_tilt"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "weekly_aligned_windows"
+        ],
+        [
+          "NWS",
+          "AFL",
+          "monthly_aligned_windows"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "let_profits_run"
+        ],
+        [
+          "AIG",
+          "AVB",
+          "beta_neutral_long_term"
+        ],
+        [
+          "BK",
+          "AIG",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "no_reversal_protection"
+        ],
+        [
+          "L",
+          "AVB",
+          "crash_defensive"
+        ],
+        [
+          "AWK",
+          "AXP",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AWK",
+          "BK",
+          "long_term_kalman"
+        ]
+      ],
+      "oos_sharpe": -1.7239242314713958,
+      "oos_pnl": -4677.895452901852
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-02-06",
+      "train_end": "2026-01-08",
+      "test_start": "2026-01-09",
+      "test_end": "2026-02-18",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "ALL",
+          "CFG",
+          "aggressive"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "no_skip_month"
+        ],
+        [
+          "AWK",
+          "PLD",
+          "long_term_tilt"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "weekly_aligned_windows"
+        ],
+        [
+          "NWS",
+          "AFL",
+          "monthly_aligned_windows"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "long_term_tilt"
+        ],
+        [
+          "AIG",
+          "AVB",
+          "beta_neutral_long_term"
+        ],
+        [
+          "BK",
+          "AIG",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "no_reversal_protection"
+        ],
+        [
+          "L",
+          "AVB",
+          "crash_defensive"
+        ],
+        [
+          "AWK",
+          "AXP",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AWK",
+          "BK",
+          "long_term_kalman"
+        ]
+      ],
+      "oos_sharpe": -0.39841748176179886,
+      "oos_pnl": -3701.4097788232757
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-02-06",
+      "train_end": "2026-02-18",
+      "test_start": "2026-02-19",
+      "test_end": "2026-03-27",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "ALL",
+          "CFG",
+          "aggressive"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "no_skip_month"
+        ],
+        [
+          "AWK",
+          "PLD",
+          "long_term_tilt"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "weekly_aligned_windows"
+        ],
+        [
+          "NWS",
+          "AFL",
+          "short_term_beta_neutral"
+        ],
+        [
+          "RSG",
+          "AFL",
+          "long_term_tilt"
+        ],
+        [
+          "AIG",
+          "AVB",
+          "beta_neutral_long_term"
+        ],
+        [
+          "BK",
+          "AIG",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ETR",
+          "AVB",
+          "monthly_aligned_windows"
+        ],
+        [
+          "L",
+          "AVB",
+          "kalman_aggressive"
+        ],
+        [
+          "AWK",
+          "AXP",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AWK",
+          "BK",
+          "beta_neutral_long_term"
+        ]
+      ],
+      "oos_sharpe": -3.392674914977397,
+      "oos_pnl": -6745.746711493484
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": -38560.892241967435,
+    "oos_trading_days": 156,
+    "oos_sharpe": -1.8421623213788938,
+    "oos_max_dd_dollar": -45503.6211468798,
+    "oos_max_dd_pct": -0.0907357258512411
+  }
+}

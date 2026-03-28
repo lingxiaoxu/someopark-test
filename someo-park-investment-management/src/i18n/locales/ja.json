@@ -67,7 +67,10 @@
     "chatPairUniverse": "ペアユニバース選択",
     "chatWfGrid": "Walk-Forward グリッド検索",
     "signIn": "ログイン",
-    "signOut": "ログアウト"
+    "signOut": "ログアウト",
+    "myAccount": "マイアカウント",
+    "aboutSomeoClaw": "SomeoClaw について",
+    "aboutDescription": "SomeoClaw は Someo Park の定量インフラ上に構築された AI 投資リサーチアシスタントです。ウォークフォワード取引戦略（MRPT & MTFS）、リアルタイムポジション、シグナル、診断に接続し、自然言語とコード生成でデータの照会・可視化・構築を行えます。"
   },
 
   "chat": {
@@ -390,5 +393,22 @@
   "codePreview": {
     "code": "コード",
     "preview": "プレビュー"
+  },
+
+  "strategyPerf": {
+    "mrpt": "MRPT",
+    "mtfs": "MTFS",
+    "combined": "統合 (70/30)",
+    "return": "リターン",
+    "sharpe": "シャープ",
+    "maxDD": "最大DD",
+    "winRate": "勝率",
+    "netPnL": "純損益",
+    "equity": "資産",
+    "date": "日付",
+    "equityCurveTitle": "資産曲線 — 2025年11月〜2026年3月",
+    "drawdownTitle": "ドローダウン (%)",
+    "dailyPnLTitle": "日次損益",
+    "footer": "開始日：2025年11月11日 · {{days}} 取引日 · 初期資金 $1M · MRPT/MTFS ウェイト 70/30"
   }
 }

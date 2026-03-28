@@ -67,7 +67,10 @@
     "chatPairUniverse": "Sélection de l'univers de paires",
     "chatWfGrid": "Recherche en grille Walk-Forward",
     "signIn": "Se connecter",
-    "signOut": "Se deconnecter"
+    "signOut": "Se deconnecter",
+    "myAccount": "Mon compte",
+    "aboutSomeoClaw": "À propos de SomeoClaw",
+    "aboutDescription": "SomeoClaw est un assistant de recherche en investissement alimenté par l'IA, construit sur l'infrastructure quantitative de Someo Park. Il se connecte aux stratégies de trading walk-forward (MRPT & MTFS), à l'inventaire en temps réel, aux signaux et aux diagnostics — vous permettant d'interroger, de visualiser et de construire avec vos données via le langage naturel et la génération de code."
   },
 
   "chat": {
@@ -390,5 +393,22 @@
   "codePreview": {
     "code": "Code",
     "preview": "Apercu"
+  },
+
+  "strategyPerf": {
+    "mrpt": "MRPT",
+    "mtfs": "MTFS",
+    "combined": "Combine (70/30)",
+    "return": "Rendement",
+    "sharpe": "Sharpe",
+    "maxDD": "DD Max",
+    "winRate": "Taux de reussite",
+    "netPnL": "PnL net",
+    "equity": "Capital",
+    "date": "Date",
+    "equityCurveTitle": "Courbe de capital — Nov 2025 a Mars 2026",
+    "drawdownTitle": "Drawdown (%)",
+    "dailyPnLTitle": "PnL quotidien",
+    "footer": "Debut : 11 nov. 2025 · {{days}} jours de trading · Capital initial $1M · Ponderation MRPT/MTFS 70/30"
   }
 }
