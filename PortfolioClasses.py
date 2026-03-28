@@ -211,7 +211,7 @@ class Portfolio:
         net_equity = total_asset - total_liability
 
         # Calculate and update daily P&L
-        if len(self.equity_history) > 1:
+        if len(self.equity_history) >= 1:
             prev_equity = self.equity_history[-1][1]
             daily_pnl = net_equity - prev_equity
         else:

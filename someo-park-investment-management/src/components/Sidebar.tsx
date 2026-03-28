@@ -236,16 +236,16 @@ export default function Sidebar({
                   <>
                     <div className="px-3 py-2 border-b border-[var(--border-subtle)] flex items-center gap-2">
                       <button onClick={() => setShowAbout(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-xs">←</button>
-                      <div className="text-xs font-medium text-[var(--text-primary)]">About SomeoClaw</div>
+                      <div className="text-xs font-medium text-[var(--text-primary)]">{t('sidebar.aboutSomeoClaw')}</div>
                     </div>
                     <div className="px-3 py-3 text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                      SomeoClaw is an AI-powered investment research assistant built on Someo Park's quantitative infrastructure. It connects to walk-forward trading strategies (MRPT & MTFS), live inventory, signals, and diagnostics — letting you query, visualize, and build with your data through natural language and code generation.
+                      {t('sidebar.aboutDescription')}
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="px-3 py-2 border-b border-[var(--border-subtle)]">
-                      <div className="text-xs font-medium text-[var(--text-primary)]">My Account</div>
+                      <div className="text-xs font-medium text-[var(--text-primary)]">{t('sidebar.myAccount')}</div>
                       <div className="text-[11px] text-[var(--text-muted)] truncate">{session.user?.email}</div>
                     </div>
                     <button
@@ -253,7 +253,7 @@ export default function Sidebar({
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
                     >
                       <Settings className="w-3.5 h-3.5" />
-                      About SomeoClaw
+                      {t('sidebar.aboutSomeoClaw')}
                     </button>
                     <div className="border-t border-[var(--border-subtle)]" />
                     <button
@@ -261,7 +261,7 @@ export default function Sidebar({
                       className="w-full flex items-center gap-2 px-3 py-2 text-xs text-red-400 hover:bg-red-400/10 transition-colors"
                     >
                       <span className="w-3.5 h-3.5 text-sm">↩</span>
-                      Sign out
+                      {t('sidebar.signOut')}
                     </button>
                   </>
                 )}

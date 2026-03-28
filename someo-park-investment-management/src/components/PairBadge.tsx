@@ -41,6 +41,7 @@ function fmtNum(v: number | null | undefined, decimals = 2): string {
 export default function PairBadge({ pair, s1, s2, direction, strategy, details, compact, noPopover }: PairBadgeProps) {
   const { t } = useTranslation();
   const [showPopover, setShowPopover] = useState(false);
+  const [popoverAlign, setPopoverAlign] = useState<'left' | 'right'>('left');
   const badgeRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const setActiveArtifact = useSetArtifact();
@@ -69,6 +70,11 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
   const handleClick = (e: React.MouseEvent) => {
     if (noPopover) return;
     e.stopPropagation();
+    if (!showPopover && badgeRef.current) {
+      const rect = badgeRef.current.getBoundingClientRect();
+      const spaceRight = window.innerWidth - rect.left;
+      setPopoverAlign(spaceRight < 340 ? 'right' : 'left');
+    }
     setShowPopover(!showPopover);
   };
 
@@ -135,7 +141,7 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
       {showPopover && !noPopover && (
         <div
           ref={popoverRef}
-          className="absolute z-50 top-full left-0 mt-1 w-[320px] bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg shadow-xl shadow-black/30 overflow-hidden"
+          className={`absolute z-50 top-full mt-1 w-[320px] bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg shadow-xl shadow-black/30 overflow-hidden ${popoverAlign === 'right' ? 'right-0' : 'left-0'}`}
           style={{ minWidth: 280 }}
         >
           {/* Popover Header */}

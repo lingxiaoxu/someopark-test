@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, ReferenceLine,
@@ -26,13 +27,9 @@ const COLORS = {
   combined: '#111',
 };
 
-const STRATEGY_LABELS: Record<string, string> = {
-  mrpt: 'MRPT',
-  mtfs: 'MTFS',
-  combined: 'Combined (70/30)',
-};
 
 export default function StrategyPerformanceViewer() {
+  const { t } = useTranslation();
   const [data, setData] = useState<DayData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,7 +151,7 @@ export default function StrategyPerformanceViewer() {
               transition: 'all .15s',
             }}
           >
-            {STRATEGY_LABELS[key]}
+            {t(`strategyPerf.${key}`)}
           </button>
         ))}
       </div>
@@ -166,27 +163,27 @@ export default function StrategyPerformanceViewer() {
           return (
             <div key={key} style={{ background: '#fff', border: '2px solid #111', padding: '12px' }}>
               <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COLORS[key], marginBottom: '8px' }}>
-                {STRATEGY_LABELS[key]}
+                {t(`strategyPerf.${key}`)}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '11px' }}>
                 <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>Return</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.return')}</div>
                   <div style={{ fontWeight: 700, color: s.totalReturn >= 0 ? '#16a34a' : '#dc2626' }}>{fmtPct(s.totalReturn)}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>Sharpe</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.sharpe')}</div>
                   <div style={{ fontWeight: 700 }}>{s.sharpe.toFixed(2)}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>Max DD</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.maxDD')}</div>
                   <div style={{ fontWeight: 700, color: '#dc2626' }}>{s.maxDD.toFixed(2)}%</div>
                 </div>
                 <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>Win Rate</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.winRate')}</div>
                   <div style={{ fontWeight: 700 }}>{s.winRate.toFixed(0)}%</div>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>Net P&L</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.netPnL')}</div>
                   <div style={{ fontWeight: 700, color: s.totalPnL >= 0 ? '#16a34a' : '#dc2626' }}>{fmtMoney(s.totalPnL)}</div>
                 </div>
               </div>
@@ -198,7 +195,7 @@ export default function StrategyPerformanceViewer() {
       {/* Equity Curve */}
       <div style={{ background: '#fff', border: '2px solid #111', padding: '16px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
-          Equity Curve — Nov 2025 to Mar 2026
+          {t('strategyPerf.equityCurveTitle')}
         </div>
         <div style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -221,10 +218,10 @@ export default function StrategyPerformanceViewer() {
               <Tooltip
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
                 formatter={(val: number, name: string) => {
-                  if (name.includes('ret')) return [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%`, name.replace('_ret', '').toUpperCase() + ' Return'];
-                  return [fmtMoney(val), name.replace('_equity', '').toUpperCase() + ' Equity'];
+                  if (name.includes('ret')) return [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%`, name.replace('_ret', '').toUpperCase() + ' ' + t('strategyPerf.return')];
+                  return [fmtMoney(val), name.replace('_equity', '').toUpperCase() + ' ' + t('strategyPerf.equity')];
                 }}
-                labelFormatter={(label: string) => `Date: ${label}`}
+                labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
               />
               <ReferenceLine yAxisId="left" y={1000000} stroke="#ccc" strokeDasharray="4 4" />
               {activeStrategies.has('mrpt') && <Line yAxisId="left" type="monotone" dataKey="mrpt_equity" stroke={COLORS.mrpt} strokeWidth={2} dot={false} name="mrpt_equity" />}
@@ -242,7 +239,7 @@ export default function StrategyPerformanceViewer() {
       {/* Drawdown Chart */}
       <div style={{ background: '#fff', border: '2px solid #111', padding: '16px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
-          Drawdown (%)
+          {t('strategyPerf.drawdownTitle')}
         </div>
         <div style={{ height: 180 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -253,7 +250,7 @@ export default function StrategyPerformanceViewer() {
               <Tooltip
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
                 formatter={(val: number, name: string) => [`${val.toFixed(2)}%`, name.replace('_dd', '').toUpperCase()]}
-                labelFormatter={(label: string) => `Date: ${label}`}
+                labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
               />
               <ReferenceLine y={0} stroke="#111" strokeWidth={1} />
               {activeStrategies.has('mrpt') && <Area type="monotone" dataKey="mrpt_dd" stroke={COLORS.mrpt} fill={COLORS.mrpt} fillOpacity={0.1} strokeWidth={1.5} dot={false} name="mrpt_dd" />}
@@ -267,7 +264,7 @@ export default function StrategyPerformanceViewer() {
       {/* Daily P&L Bar-like via line */}
       <div style={{ background: '#fff', border: '2px solid #111', padding: '16px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
-          Daily P&L
+          {t('strategyPerf.dailyPnLTitle')}
         </div>
         <div style={{ height: 160 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -278,7 +275,7 @@ export default function StrategyPerformanceViewer() {
               <Tooltip
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
                 formatter={(val: number, name: string) => [fmtMoney(val), name.replace('_pnl', '').toUpperCase()]}
-                labelFormatter={(label: string) => `Date: ${label}`}
+                labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
               />
               <ReferenceLine y={0} stroke="#111" strokeWidth={1} />
               {activeStrategies.has('combined') && <Area type="stepAfter" dataKey="combined_pnl" stroke={COLORS.combined} fill={COLORS.combined} fillOpacity={0.08} strokeWidth={1.5} dot={false} name="combined_pnl" />}
@@ -291,7 +288,7 @@ export default function StrategyPerformanceViewer() {
 
       {/* Footer metadata */}
       <div style={{ fontSize: '9px', color: '#999', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-        Inception: Nov 11, 2025 &middot; {data.length} Trading Days &middot; $1M Initial Capital &middot; 70/30 MRPT/MTFS Weighting
+        {t('strategyPerf.footer', { days: data.length })}
       </div>
     </div>
   );

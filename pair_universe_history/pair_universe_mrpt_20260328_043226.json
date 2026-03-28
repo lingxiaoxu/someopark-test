@@ -48,12 +48,6 @@
     "z_col": "Z_realestate"
   },
   {
-    "s1": "PFG",
-    "s2": "WMT",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "GRMN",
     "s2": "KO",
     "sector": "food",
@@ -72,21 +66,27 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "HII",
-    "s2": "PG",
-    "sector": "industrial",
-    "z_col": "Z_industrial"
-  },
-  {
     "s1": "AWK",
     "s2": "EXPD",
     "sector": "utilities",
     "z_col": "Z_utilities"
   },
   {
+    "s1": "HII",
+    "s2": "PG",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
     "s1": "CL",
     "s2": "GD",
     "sector": "energy",
     "z_col": "Z_energy"
+  },
+  {
+    "s1": "LNT",
+    "s2": "MKTX",
+    "sector": "other",
+    "z_col": "Z_other"
   }
 ]
