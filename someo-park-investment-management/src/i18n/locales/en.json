@@ -402,7 +402,7 @@
   "strategyPerf": {
     "mrpt": "MRPT",
     "mtfs": "MTFS",
-    "combined": "Combined (70/30)",
+    "combined": "Combined",
     "return": "Return",
     "sharpe": "Sharpe",
     "maxDD": "Max DD",
@@ -410,9 +410,9 @@
     "netPnL": "Net P&L",
     "equity": "Equity",
     "date": "Date",
-    "equityCurveTitle": "Equity Curve — Nov 2025 to Mar 2026",
-    "drawdownTitle": "Drawdown (%)",
-    "dailyPnLTitle": "Daily P&L",
-    "footer": "Inception: Nov 11, 2025 · {{days}} Trading Days · $1M Initial Capital · 70/30 MRPT/MTFS Weighting"
+    "equityCurveTitle": "Equity Curve (% and $)",
+    "drawdownTitle": "Drawdown (% and $)",
+    "dailyPnLTitle": "Daily P&L ($ and %)",
+    "footer": "Inception: Nov 11, 2025 · {{days}} Trading Days · $1M Initial Capital · {{mrptPct}}/{{mtfsPct}} MRPT/MTFS Weighting"
   }
 }

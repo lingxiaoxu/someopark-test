@@ -34,11 +34,19 @@ export default function StrategyPerformanceViewer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'combined']));
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
 
   useEffect(() => {
     fetch(`${API_BASE}/data/strategy_performance.json`, { headers: apiHeaders() })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-      .then(d => setData(d))
+      .then((d: DayData[]) => {
+        setData(d);
+        if (d.length > 0) {
+          setStartDate(d[0].date);
+          setEndDate(d[d.length - 1].date);
+        }
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -52,75 +60,129 @@ export default function StrategyPerformanceViewer() {
     });
   };
 
-  // Compute enriched chart data with return %
-  const chartData = useMemo(() => {
+  // Filter data by date range
+  const filteredData = useMemo(() => {
     if (!data) return [];
-    const start = 1000000;
-    return data.map(d => ({
-      ...d,
-      mrpt_ret: ((d.mrpt_equity - start) / start) * 100,
-      mtfs_ret: ((d.mtfs_equity - start) / start) * 100,
-      combined_ret: ((d.combined_equity - start) / start) * 100,
-      label: d.date.slice(5), // MM-DD
-    }));
+    return data.filter(d => d.date >= startDate && d.date <= endDate);
+  }, [data, startDate, endDate]);
+
+  // Available date range from full data
+  const dateRange = useMemo(() => {
+    if (!data || data.length === 0) return { min: '', max: '' };
+    return { min: data[0].date, max: data[data.length - 1].date };
   }, [data]);
 
-  // Auto-fit Y domain for equity chart based on active strategies
-  const [eqYMin, eqYMax] = useMemo(() => {
-    if (chartData.length === 0) return [950000, 1200000];
+  // Recompute drawdown relative to filtered window
+  const windowData = useMemo(() => {
+    if (filteredData.length === 0) return [];
+    const first = filteredData[0];
+
+    // Track peaks within the window for DD
+    let mrptPeak = first.mrpt_equity;
+    let mtfsPeak = first.mtfs_equity;
+    let combPeak = first.combined_equity;
+
+    return filteredData.map((d, i) => {
+      if (d.mrpt_equity > mrptPeak) mrptPeak = d.mrpt_equity;
+      if (d.mtfs_equity > mtfsPeak) mtfsPeak = d.mtfs_equity;
+      if (d.combined_equity > combPeak) combPeak = d.combined_equity;
+
+      const prevEq = i > 0 ? filteredData[i - 1].combined_equity : d.combined_equity;
+      return {
+        ...d,
+        mrpt_ret: ((d.mrpt_equity - first.mrpt_equity) / first.mrpt_equity) * 100,
+        mtfs_ret: ((d.mtfs_equity - first.mtfs_equity) / first.mtfs_equity) * 100,
+        combined_ret: ((d.combined_equity - first.combined_equity) / first.combined_equity) * 100,
+        // Drawdown recomputed for this window
+        mrpt_dd_w: (d.mrpt_equity - mrptPeak) / mrptPeak * 100,
+        mtfs_dd_w: (d.mtfs_equity - mtfsPeak) / mtfsPeak * 100,
+        combined_dd_w: (d.combined_equity - combPeak) / combPeak * 100,
+        // DD $ from peak
+        mrpt_dd_dollar: d.mrpt_equity - mrptPeak,
+        mtfs_dd_dollar: d.mtfs_equity - mtfsPeak,
+        combined_dd_dollar: d.combined_equity - combPeak,
+        // PnL
+        mrpt_pnl_w: i > 0 ? d.mrpt_equity - filteredData[i - 1].mrpt_equity : 0,
+        mtfs_pnl_w: i > 0 ? d.mtfs_equity - filteredData[i - 1].mtfs_equity : 0,
+        combined_pnl_w: i > 0 ? d.combined_equity - filteredData[i - 1].combined_equity : 0,
+        // PnL %
+        mrpt_pnl_pct: i > 0 ? ((d.mrpt_equity - filteredData[i - 1].mrpt_equity) / filteredData[i - 1].mrpt_equity) * 100 : 0,
+        mtfs_pnl_pct: i > 0 ? ((d.mtfs_equity - filteredData[i - 1].mtfs_equity) / filteredData[i - 1].mtfs_equity) * 100 : 0,
+        combined_pnl_pct: i > 0 ? (d.combined_pnl / prevEq) * 100 : 0,
+        combined_dd_eq: d.combined_equity,
+        label: d.date.slice(5), // MM-DD
+      };
+    });
+  }, [filteredData]);
+
+  // Auto-fit Y domain for return %
+  const [retYMin, retYMax] = useMemo(() => {
+    if (windowData.length === 0) return [-3, 15];
     const vals: number[] = [];
-    for (const d of chartData) {
-      if (activeStrategies.has('mrpt')) vals.push(d.mrpt_equity);
-      if (activeStrategies.has('mtfs')) vals.push(d.mtfs_equity);
-      if (activeStrategies.has('combined')) vals.push(d.combined_equity);
+    for (const d of windowData) {
+      if (activeStrategies.has('mrpt')) vals.push(d.mrpt_ret);
+      if (activeStrategies.has('mtfs')) vals.push(d.mtfs_ret);
+      if (activeStrategies.has('combined')) vals.push(d.combined_ret);
     }
-    if (vals.length === 0) return [950000, 1200000];
+    if (vals.length === 0) return [-3, 15];
     const min = Math.min(...vals);
     const max = Math.max(...vals);
-    const range = max - min || 10000;
-    const pad = range * 0.1;
-    return [Math.floor((min - pad) / 5000) * 5000, Math.ceil((max + pad) / 5000) * 5000];
-  }, [chartData, activeStrategies]);
+    const range = max - min || 5;
+    const pad = range * 0.15;
+    return [Math.floor((min - pad) * 2) / 2, Math.ceil((max + pad) * 2) / 2];
+  }, [windowData, activeStrategies]);
 
-  // Auto-fit return % axis (derived from equity domain)
-  const retYMin = ((eqYMin - 1000000) / 1000000) * 100;
-  const retYMax = ((eqYMax - 1000000) / 1000000) * 100;
+  // Right axis: combined equity $
+  const firstRow0 = filteredData?.[0];
+  const combEqMin = firstRow0 ? firstRow0.combined_equity * (1 + retYMin / 100) : 880000;
+  const combEqMax = firstRow0 ? firstRow0.combined_equity * (1 + retYMax / 100) : 1020000;
 
-  // Scorecard stats
+  // Current weight ratio (from latest data point in window)
+  const weightPcts = useMemo(() => {
+    if (filteredData.length === 0) return { mrpt: 50, mtfs: 50 };
+    const last = filteredData[filteredData.length - 1];
+    const total = last.mrpt_equity + last.mtfs_equity;
+    const mrpt = Math.round(last.mrpt_equity / total * 100);
+    return { mrpt, mtfs: 100 - mrpt };
+  }, [filteredData]);
+
+  // Scorecard stats (computed over filtered window)
   const stats = useMemo(() => {
-    if (!data || data.length === 0) return null;
-    const last = data[data.length - 1];
-    const start = 1000000;
+    if (filteredData.length === 0) return null;
+    const last = filteredData[filteredData.length - 1];
+    const firstRow = filteredData[0];
 
-    const calcStats = (eqKey: keyof DayData, ddKey: keyof DayData, pnlKey: keyof DayData) => {
-      const ret = ((last[eqKey] as number) - start) / start * 100;
-      const maxDD = Math.min(...data.map(d => d[ddKey] as number));
-      const dailyReturns = data.map((d, i) => {
+    const calcStats = (eqKey: keyof DayData, ddKey: string) => {
+      const startEq = firstRow[eqKey] as number;
+      const ret = ((last[eqKey] as number) - startEq) / startEq * 100;
+      // Use window-recomputed DD
+      const maxDD = Math.min(...windowData.map(d => (d as Record<string, number>)[ddKey] ?? 0));
+      const dailyReturns = filteredData.map((d, i) => {
         if (i === 0) return 0;
-        const prev = data[i - 1][eqKey] as number;
+        const prev = filteredData[i - 1][eqKey] as number;
         return ((d[eqKey] as number) - prev) / prev;
       }).slice(1);
       const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
       const std = Math.sqrt(dailyReturns.reduce((a, b) => a + (b - mean) ** 2, 0) / dailyReturns.length);
       const sharpe = std > 0 ? (mean / std) * Math.sqrt(252) : 0;
       const winDays = dailyReturns.filter(r => r > 0).length;
-      const winRate = (winDays / dailyReturns.length) * 100;
+      const winRate = dailyReturns.length > 0 ? (winDays / dailyReturns.length) * 100 : 0;
       return {
         totalReturn: ret,
         maxDD,
         sharpe,
         winRate,
         finalEquity: last[eqKey] as number,
-        totalPnL: (last[eqKey] as number) - start,
+        totalPnL: (last[eqKey] as number) - startEq,
       };
     };
 
     return {
-      mrpt: calcStats('mrpt_equity', 'mrpt_dd', 'mrpt_pnl'),
-      mtfs: calcStats('mtfs_equity', 'mtfs_dd', 'mtfs_pnl'),
-      combined: calcStats('combined_equity', 'combined_dd', 'combined_pnl'),
+      mrpt: calcStats('mrpt_equity', 'mrpt_dd_w'),
+      mtfs: calcStats('mtfs_equity', 'mtfs_dd_w'),
+      combined: calcStats('combined_equity', 'combined_dd_w'),
     };
-  }, [data]);
+  }, [filteredData, windowData]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -129,11 +191,21 @@ export default function StrategyPerformanceViewer() {
   const fmtPct = (v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(2)}%`;
   const fmtMoney = (v: number) => `$${v.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
+  const inputStyle: React.CSSProperties = {
+    padding: '3px 6px',
+    fontSize: '10px',
+    fontFamily: 'var(--font-mono)',
+    border: '1px solid #ccc',
+    background: '#fff',
+    color: '#333',
+    width: '110px',
+  };
+
   return (
     <div className="flex flex-col gap-5" style={{ fontFamily: 'var(--font-mono)' }}>
 
-      {/* Strategy toggles */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Strategy toggles + date range */}
+      <div className="flex items-center gap-2 shrink-0 flex-wrap">
         {(['mrpt', 'mtfs', 'combined'] as const).map(key => (
           <button
             key={key}
@@ -151,9 +223,28 @@ export default function StrategyPerformanceViewer() {
               transition: 'all .15s',
             }}
           >
-            {t(`strategyPerf.${key}`)}
+            {key === 'combined' ? `${t('strategyPerf.combined')} (${weightPcts.mrpt}/${weightPcts.mtfs})` : t(`strategyPerf.${key}`)}
           </button>
         ))}
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <input
+            type="date"
+            value={startDate}
+            min={dateRange.min}
+            max={endDate}
+            onChange={e => setStartDate(e.target.value)}
+            style={inputStyle}
+          />
+          <span style={{ fontSize: '10px', color: '#999' }}>—</span>
+          <input
+            type="date"
+            value={endDate}
+            min={startDate}
+            max={dateRange.max}
+            onChange={e => setEndDate(e.target.value)}
+            style={inputStyle}
+          />
+        </div>
       </div>
 
       {/* Scorecard */}
@@ -192,95 +283,116 @@ export default function StrategyPerformanceViewer() {
         })}
       </div>
 
-      {/* Equity Curve */}
+      {/* Equity Curve (% and $) */}
       <div style={{ background: '#fff', border: '2px solid #111', padding: '16px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
           {t('strategyPerf.equityCurveTitle')}
         </div>
         <div style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 50, left: 0, bottom: 0 }}>
+            <LineChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
               <XAxis dataKey="label" fontSize={9} stroke="#999" tickLine={false} axisLine={false} minTickGap={50} />
               <YAxis
-                yAxisId="left"
-                domain={[eqYMin, eqYMax]}
-                fontSize={9} stroke="#999" tickLine={false} axisLine={false}
-                tickFormatter={v => `$${(v / 1000).toFixed(0)}k`}
-              />
-              <YAxis
-                yAxisId="right"
-                orientation="right"
+                yAxisId="ret"
                 domain={[retYMin, retYMax]}
                 fontSize={9} stroke="#999" tickLine={false} axisLine={false}
                 tickFormatter={v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`}
               />
+              <YAxis
+                yAxisId="eq"
+                orientation="right"
+                domain={[combEqMin, combEqMax]}
+                fontSize={9} stroke="#999" tickLine={false} axisLine={false}
+                tickFormatter={v => `$${(v / 1000).toFixed(0)}k`}
+                width={40}
+              />
               <Tooltip
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
-                formatter={(val: number, name: string) => {
-                  if (name.includes('ret')) return [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%`, name.replace('_ret', '').toUpperCase() + ' ' + t('strategyPerf.return')];
-                  return [fmtMoney(val), name.replace('_equity', '').toUpperCase() + ' ' + t('strategyPerf.equity')];
+                formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
+                  const strat = name.replace('_ret', '');
+                  const label = strat.toUpperCase();
+                  const eq = props.payload?.[`${strat}_equity`];
+                  const eqStr = eq != null ? ` (${fmtMoney(eq)})` : '';
+                  return [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%${eqStr}`, label];
                 }}
                 labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
               />
-              <ReferenceLine yAxisId="left" y={1000000} stroke="#ccc" strokeDasharray="4 4" />
-              {activeStrategies.has('mrpt') && <Line yAxisId="left" type="monotone" dataKey="mrpt_equity" stroke={COLORS.mrpt} strokeWidth={2} dot={false} name="mrpt_equity" />}
-              {activeStrategies.has('mtfs') && <Line yAxisId="left" type="monotone" dataKey="mtfs_equity" stroke={COLORS.mtfs} strokeWidth={2} dot={false} name="mtfs_equity" />}
-              {activeStrategies.has('combined') && <Line yAxisId="left" type="monotone" dataKey="combined_equity" stroke={COLORS.combined} strokeWidth={2.5} dot={false} name="combined_equity" />}
-              {/* Invisible lines for right axis return % */}
-              {activeStrategies.has('mrpt') && <Line yAxisId="right" type="monotone" dataKey="mrpt_ret" stroke="transparent" strokeWidth={0} dot={false} name="mrpt_ret" />}
-              {activeStrategies.has('mtfs') && <Line yAxisId="right" type="monotone" dataKey="mtfs_ret" stroke="transparent" strokeWidth={0} dot={false} name="mtfs_ret" />}
-              {activeStrategies.has('combined') && <Line yAxisId="right" type="monotone" dataKey="combined_ret" stroke="transparent" strokeWidth={0} dot={false} name="combined_ret" />}
+              <ReferenceLine yAxisId="ret" y={0} stroke="#ccc" strokeDasharray="4 4" />
+              {activeStrategies.has('mrpt') && <Line yAxisId="ret" type="monotone" dataKey="mrpt_ret" stroke={COLORS.mrpt} strokeWidth={2} dot={false} name="mrpt_ret" />}
+              {activeStrategies.has('mtfs') && <Line yAxisId="ret" type="monotone" dataKey="mtfs_ret" stroke={COLORS.mtfs} strokeWidth={2} dot={false} name="mtfs_ret" />}
+              {activeStrategies.has('combined') && <Line yAxisId="ret" type="monotone" dataKey="combined_ret" stroke={COLORS.combined} strokeWidth={2.5} dot={false} name="combined_ret" />}
+              <Line yAxisId="eq" type="monotone" dataKey="combined_equity" stroke="transparent" strokeWidth={0} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Drawdown Chart */}
+      {/* Drawdown (% and $) */}
       <div style={{ background: '#fff', border: '2px solid #111', padding: '16px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
           {t('strategyPerf.drawdownTitle')}
         </div>
         <div style={{ height: 180 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
+            <AreaChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
               <XAxis dataKey="label" fontSize={9} stroke="#999" tickLine={false} axisLine={false} minTickGap={50} />
-              <YAxis fontSize={9} stroke="#999" tickLine={false} axisLine={false} tickFormatter={v => `${v.toFixed(1)}%`} />
+              <YAxis yAxisId="left" fontSize={9} stroke="#999" tickLine={false} axisLine={false} tickFormatter={v => `${v.toFixed(1)}%`} />
+              <YAxis yAxisId="right" orientation="right" fontSize={9} stroke="#999" tickLine={false} axisLine={false}
+                tickFormatter={v => `${fmtMoney(v)}`} />
               <Tooltip
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
-                formatter={(val: number, name: string) => [`${val.toFixed(2)}%`, name.replace('_dd', '').toUpperCase()]}
+                formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
+                  if (name === 'combined_dd_dollar') return null;
+                  const strat = name.replace('_dd_w', '');
+                  const label = strat.toUpperCase();
+                  const dollar = props.payload?.[`${strat}_dd_dollar`];
+                  const dollarStr = dollar != null ? ` (${fmtMoney(dollar)})` : '';
+                  return [`${val.toFixed(2)}%${dollarStr}`, label];
+                }}
                 labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
               />
-              <ReferenceLine y={0} stroke="#111" strokeWidth={1} />
-              {activeStrategies.has('mrpt') && <Area type="monotone" dataKey="mrpt_dd" stroke={COLORS.mrpt} fill={COLORS.mrpt} fillOpacity={0.1} strokeWidth={1.5} dot={false} name="mrpt_dd" />}
-              {activeStrategies.has('mtfs') && <Area type="monotone" dataKey="mtfs_dd" stroke={COLORS.mtfs} fill={COLORS.mtfs} fillOpacity={0.1} strokeWidth={1.5} dot={false} name="mtfs_dd" />}
-              {activeStrategies.has('combined') && <Area type="monotone" dataKey="combined_dd" stroke={COLORS.combined} fill={COLORS.combined} fillOpacity={0.08} strokeWidth={2} dot={false} name="combined_dd" />}
+              <ReferenceLine yAxisId="left" y={0} stroke="#111" strokeWidth={1} />
+              {activeStrategies.has('mrpt') && <Area yAxisId="left" type="monotone" dataKey="mrpt_dd_w" stroke={COLORS.mrpt} fill={COLORS.mrpt} fillOpacity={0.1} strokeWidth={1.5} dot={false} name="mrpt_dd_w" />}
+              {activeStrategies.has('mtfs') && <Area yAxisId="left" type="monotone" dataKey="mtfs_dd_w" stroke={COLORS.mtfs} fill={COLORS.mtfs} fillOpacity={0.1} strokeWidth={1.5} dot={false} name="mtfs_dd_w" />}
+              {activeStrategies.has('combined') && <Area yAxisId="left" type="monotone" dataKey="combined_dd_w" stroke={COLORS.combined} fill={COLORS.combined} fillOpacity={0.08} strokeWidth={2} dot={false} name="combined_dd_w" />}
+              <Area yAxisId="right" type="monotone" dataKey="combined_dd_dollar" stroke="transparent" fill="transparent" dot={false} name="combined_dd_dollar" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Daily P&L Bar-like via line */}
+      {/* Daily P&L ($ and %) */}
       <div style={{ background: '#fff', border: '2px solid #111', padding: '16px' }}>
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
           {t('strategyPerf.dailyPnLTitle')}
         </div>
         <div style={{ height: 160 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
+            <AreaChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
               <XAxis dataKey="label" fontSize={9} stroke="#999" tickLine={false} axisLine={false} minTickGap={50} />
-              <YAxis fontSize={9} stroke="#999" tickLine={false} axisLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+              <YAxis yAxisId="left" fontSize={9} stroke="#999" tickLine={false} axisLine={false} tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
+              <YAxis yAxisId="right" orientation="right" fontSize={9} stroke="#999" tickLine={false} axisLine={false}
+                tickFormatter={v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`} />
               <Tooltip
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
-                formatter={(val: number, name: string) => [fmtMoney(val), name.replace('_pnl', '').toUpperCase()]}
+                formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
+                  if (name === 'combined_pnl_pct') return null;
+                  const strat = name.replace('_pnl_w', '');
+                  const label = strat.toUpperCase();
+                  const pct = props.payload?.[`${strat}_pnl_pct`];
+                  const pctStr = pct != null ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)` : '';
+                  return [`${fmtMoney(val)}${pctStr}`, label];
+                }}
                 labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
               />
-              <ReferenceLine y={0} stroke="#111" strokeWidth={1} />
-              {activeStrategies.has('combined') && <Area type="stepAfter" dataKey="combined_pnl" stroke={COLORS.combined} fill={COLORS.combined} fillOpacity={0.08} strokeWidth={1.5} dot={false} name="combined_pnl" />}
-              {activeStrategies.has('mrpt') && <Area type="stepAfter" dataKey="mrpt_pnl" stroke={COLORS.mrpt} fill={COLORS.mrpt} fillOpacity={0.08} strokeWidth={1} dot={false} name="mrpt_pnl" />}
-              {activeStrategies.has('mtfs') && <Area type="stepAfter" dataKey="mtfs_pnl" stroke={COLORS.mtfs} fill={COLORS.mtfs} fillOpacity={0.08} strokeWidth={1} dot={false} name="mtfs_pnl" />}
+              <ReferenceLine yAxisId="left" y={0} stroke="#111" strokeWidth={1} />
+              {activeStrategies.has('combined') && <Area yAxisId="left" type="stepAfter" dataKey="combined_pnl_w" stroke={COLORS.combined} fill={COLORS.combined} fillOpacity={0.08} strokeWidth={1.5} dot={false} name="combined_pnl_w" />}
+              {activeStrategies.has('mrpt') && <Area yAxisId="left" type="stepAfter" dataKey="mrpt_pnl_w" stroke={COLORS.mrpt} fill={COLORS.mrpt} fillOpacity={0.08} strokeWidth={1} dot={false} name="mrpt_pnl_w" />}
+              {activeStrategies.has('mtfs') && <Area yAxisId="left" type="stepAfter" dataKey="mtfs_pnl_w" stroke={COLORS.mtfs} fill={COLORS.mtfs} fillOpacity={0.08} strokeWidth={1} dot={false} name="mtfs_pnl_w" />}
+              <Area yAxisId="right" type="stepAfter" dataKey="combined_pnl_pct" stroke="transparent" fill="transparent" dot={false} name="combined_pnl_pct" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -288,7 +400,7 @@ export default function StrategyPerformanceViewer() {
 
       {/* Footer metadata */}
       <div style={{ fontSize: '9px', color: '#999', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-        {t('strategyPerf.footer', { days: data.length })}
+        {t('strategyPerf.footer', { days: filteredData.length, mrptPct: weightPcts.mrpt, mtfsPct: weightPcts.mtfs })}
       </div>
     </div>
   );

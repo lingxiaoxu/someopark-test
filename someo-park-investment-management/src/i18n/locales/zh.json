@@ -402,7 +402,7 @@
   "strategyPerf": {
     "mrpt": "MRPT",
     "mtfs": "MTFS",
-    "combined": "组合 (70/30)",
+    "combined": "组合",
     "return": "收益率",
     "sharpe": "夏普比率",
     "maxDD": "最大回撤",
@@ -410,9 +410,9 @@
     "netPnL": "净盈亏",
     "equity": "权益",
     "date": "日期",
-    "equityCurveTitle": "权益曲线 — 2025年11月 至 2026年3月",
-    "drawdownTitle": "回撤 (%)",
-    "dailyPnLTitle": "每日盈亏",
-    "footer": "起始日期：2025年11月11日 · {{days}} 个交易日 · 初始资金 $1M · MRPT/MTFS 权重 70/30"
+    "equityCurveTitle": "权益曲线 (% and $)",
+    "drawdownTitle": "回撤 (% and $)",
+    "dailyPnLTitle": "每日盈亏 ($ and %)",
+    "footer": "起始日期：2025年11月11日 · {{days}} 个交易日 · 初始资金 $1M · MRPT/MTFS 权重 {{mrptPct}}/{{mtfsPct}}"
   }
 }
