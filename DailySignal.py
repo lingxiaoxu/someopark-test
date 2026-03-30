@@ -142,6 +142,11 @@ def save_inventory(inv: dict, strategy: str):
     with open(path, 'w') as f:
         json.dump(inv, f, indent=2, default=str)
     log.info(f"inventory_{strategy}.json updated → {path}")
+    # Sync to web app public/data/ for Firebase Hosting static fallback
+    web_data_dir = os.path.join(BASE_DIR, 'someo-park-investment-management', 'public', 'data')
+    if os.path.isdir(web_data_dir):
+        shutil.copy2(path, os.path.join(web_data_dir, f'inventory_{strategy}.json'))
+        log.info(f"inventory_{strategy}.json synced → {web_data_dir}")
 
 
 # ── Walk-forward config loader (auto, no hardcoding) ──────────────────────────

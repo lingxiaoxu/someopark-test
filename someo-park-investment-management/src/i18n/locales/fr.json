@@ -398,7 +398,7 @@
   "strategyPerf": {
     "mrpt": "MRPT",
     "mtfs": "MTFS",
-    "combined": "Combine (70/30)",
+    "combined": "Combine",
     "return": "Rendement",
     "sharpe": "Sharpe",
     "maxDD": "DD Max",
@@ -406,9 +406,9 @@
     "netPnL": "PnL net",
     "equity": "Capital",
     "date": "Date",
-    "equityCurveTitle": "Courbe de capital — Nov 2025 a Mars 2026",
-    "drawdownTitle": "Drawdown (%)",
-    "dailyPnLTitle": "PnL quotidien",
-    "footer": "Debut : 11 nov. 2025 · {{days}} jours de trading · Capital initial $1M · Ponderation MRPT/MTFS 70/30"
+    "equityCurveTitle": "Courbe de capital (% et $)",
+    "drawdownTitle": "Drawdown (% et $)",
+    "dailyPnLTitle": "PnL quotidien ($ et %)",
+    "footer": "Debut : 11 nov. 2025 · {{days}} jours de trading · Capital initial $1M · Ponderation MRPT/MTFS {{mrptPct}}/{{mtfsPct}}"
   }
 }

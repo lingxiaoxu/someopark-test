@@ -398,7 +398,7 @@
   "strategyPerf": {
     "mrpt": "MRPT",
     "mtfs": "MTFS",
-    "combined": "統合 (70/30)",
+    "combined": "統合",
     "return": "リターン",
     "sharpe": "シャープ",
     "maxDD": "最大DD",
@@ -406,9 +406,9 @@
     "netPnL": "純損益",
     "equity": "資産",
     "date": "日付",
-    "equityCurveTitle": "資産曲線 — 2025年11月〜2026年3月",
-    "drawdownTitle": "ドローダウン (%)",
-    "dailyPnLTitle": "日次損益",
-    "footer": "開始日：2025年11月11日 · {{days}} 取引日 · 初期資金 $1M · MRPT/MTFS ウェイト 70/30"
+    "equityCurveTitle": "資産曲線 (% and $)",
+    "drawdownTitle": "ドローダウン (% and $)",
+    "dailyPnLTitle": "日次損益 ($ and %)",
+    "footer": "開始日：2025年11月11日 · {{days}} 取引日 · 初期資金 $1M · MRPT/MTFS ウェイト {{mrptPct}}/{{mtfsPct}}"
   }
 }

@@ -23,7 +23,7 @@ async function fetchText(path: string): Promise<string> {
   return res.text();
 }
 
-// Inventory — try live API first, fallback to static snapshot for Firebase hosting
+// Inventory — try Express API first, fallback to static snapshot for Firebase Hosting
 export const getInventory = async (strategy: string) => {
   try {
     return await fetchApi<any>(`/api/inventory/${strategy}`);
