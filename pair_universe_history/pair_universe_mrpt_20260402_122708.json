@@ -12,6 +12,12 @@
     "z_col": "Z_energy"
   },
   {
+    "s1": "AWK",
+    "s2": "FOX",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
     "s1": "MSCI",
     "s2": "MTB",
     "sector": "finance",
@@ -24,12 +30,6 @@
     "z_col": "Z_other"
   },
   {
-    "s1": "PFG",
-    "s2": "YUM",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "MTCH",
     "s2": "NVR",
     "sector": "other",
@@ -37,7 +37,7 @@
   },
   {
     "s1": "PFG",
-    "s2": "WMT",
+    "s2": "YUM",
     "sector": "food",
     "z_col": "Z_food"
   },
@@ -46,6 +46,12 @@
     "s2": "WST",
     "sector": "other",
     "z_col": "Z_other"
+  },
+  {
+    "s1": "PFG",
+    "s2": "WMT",
+    "sector": "food",
+    "z_col": "Z_food"
   },
   {
     "s1": "AMT",
@@ -82,11 +88,5 @@
     "s2": "PG",
     "sector": "industrial",
     "z_col": "Z_industrial"
-  },
-  {
-    "s1": "GLW",
-    "s2": "WST",
-    "sector": "other",
-    "z_col": "Z_other"
   }
 ]

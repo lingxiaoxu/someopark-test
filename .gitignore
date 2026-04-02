@@ -46,5 +46,11 @@ historical_runs/walk_forward_mtfs/*
 # Daily trading signals & reports — all files tracked
 .env.example
 
+# Pipeline state
+pipeline_state/
+
+# Factsheet generator
+factsheet_generator/
+
 # Backup files
 *_backup.json
