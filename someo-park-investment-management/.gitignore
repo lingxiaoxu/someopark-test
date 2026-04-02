@@ -8,3 +8,4 @@ coverage/
 !.env.example
 .firebase/
 public/data/
+!public/data/strategy_performance.json
