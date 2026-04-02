@@ -8,12 +8,20 @@
       "param_set": "default",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -28,44 +36,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -74,12 +74,20 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -94,44 +102,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -140,12 +140,20 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -160,44 +168,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -206,12 +206,20 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -226,44 +234,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -272,12 +272,20 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -292,44 +300,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -338,12 +338,20 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -358,44 +366,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -404,12 +404,20 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -424,44 +432,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -470,12 +470,20 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -490,44 +498,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -536,12 +536,20 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -556,44 +564,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -602,12 +602,20 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -622,44 +630,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -668,12 +668,20 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -688,44 +696,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -734,12 +734,20 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -754,44 +762,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -800,12 +800,20 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -820,44 +828,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -866,12 +866,20 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -886,44 +894,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -932,12 +932,20 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -952,44 +960,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -998,12 +998,20 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1018,44 +1026,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1064,12 +1064,20 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1084,44 +1092,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1130,12 +1130,20 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1150,44 +1158,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1196,12 +1196,20 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1216,44 +1224,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1262,12 +1262,20 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1282,44 +1290,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1328,12 +1328,20 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1348,44 +1356,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1394,12 +1394,20 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1414,44 +1422,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1460,12 +1460,20 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1480,44 +1488,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1526,12 +1526,20 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1546,44 +1554,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1592,12 +1592,20 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1612,44 +1620,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1658,12 +1658,20 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1678,44 +1686,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1724,12 +1724,20 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1744,44 +1752,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1790,12 +1790,20 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1810,44 +1818,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1856,12 +1856,20 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1876,44 +1884,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1922,12 +1922,20 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -1942,44 +1950,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     },
@@ -1988,12 +1988,20 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "ALL",
-          "CFG"
+          "CFG",
+          "ALL"
+        ],
+        [
+          "CSX",
+          "AIG"
         ],
         [
           "HLT",
           "AIG"
+        ],
+        [
+          "AIG",
+          "WELL"
         ],
         [
           "ALL",
@@ -2008,44 +2016,36 @@
           "PLD"
         ],
         [
+          "D",
+          "NSC"
+        ],
+        [
           "WFC",
           "MMM"
+        ],
+        [
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
           "MCD"
         ],
         [
-          "NWS",
-          "AFL"
+          "ACGL",
+          "YUM"
         ],
         [
-          "RSG",
-          "AFL"
-        ],
-        [
-          "AIG",
+          "AFL",
           "AVB"
         ],
         [
-          "BK",
-          "AIG"
-        ],
-        [
-          "ETR",
-          "AVB"
-        ],
-        [
-          "L",
-          "AVB"
+          "AFL",
+          "RSG"
         ],
         [
           "AWK",
-          "AXP"
-        ],
-        [
-          "AWK",
-          "BK"
+          "AIZ"
         ]
       ]
     }
