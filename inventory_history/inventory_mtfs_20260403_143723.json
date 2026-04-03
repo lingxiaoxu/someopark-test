@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-04-03",
+  "as_of": "2026-04-02",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -348,7 +348,7 @@
       "open_s2_price": 267.24,
       "open_hedge_ratio": 2.00905553060919,
       "open_price_level_stop": null,
-      "days_held": 1,
+      "days_held": 0,
       "open_signal": {
         "momentum_spread": -0.486,
         "entry_threshold": 0.037,
@@ -421,8 +421,7 @@
           "unrealized_pnl_pct": -1.508,
           "note": "Holding short, signal=-0.444, exit at 0.358"
         }
-      ],
-      "last_updated": "2026-04-03"
+      ]
     }
   }
 }
