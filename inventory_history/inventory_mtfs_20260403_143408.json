@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-04-03",
+  "as_of": "2026-04-02",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -170,17 +170,6 @@
           "unrealized_pnl": 8471.82,
           "unrealized_pnl_pct": 2.897,
           "note": "Holding long, signal=0.952, exit at 0.2"
-        },
-        {
-          "date": "2026-04-03",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.908,
-          "exit_threshold": 0.2,
-          "unrealized_pnl": 7297.33,
-          "unrealized_pnl_pct": 2.496,
-          "note": "Holding long, signal=0.908, exit at 0.2"
         }
       ],
       "open_price_level_stop": null
@@ -301,17 +290,6 @@
           "unrealized_pnl": 27408.94,
           "unrealized_pnl_pct": 4.755,
           "note": "Holding long, signal=0.631, exit at 0.245"
-        },
-        {
-          "date": "2026-04-03",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.629,
-          "exit_threshold": 0.247,
-          "unrealized_pnl": 29132.33,
-          "unrealized_pnl_pct": 5.054,
-          "note": "Holding long, signal=0.629, exit at 0.247"
         }
       ],
       "last_updated": "2026-04-01"
@@ -348,7 +326,7 @@
       "open_s2_price": 267.24,
       "open_hedge_ratio": 2.00905553060919,
       "open_price_level_stop": null,
-      "days_held": 1,
+      "days_held": 0,
       "open_signal": {
         "momentum_spread": -0.486,
         "entry_threshold": 0.037,
@@ -409,20 +387,7 @@
         },
         "default_window": "W6"
       },
-      "monitor_log": [
-        {
-          "date": "2026-04-03",
-          "action": "HOLD",
-          "direction": "short",
-          "z_score": null,
-          "momentum_spread": -0.444,
-          "exit_threshold": 0.358,
-          "unrealized_pnl": -3505.6,
-          "unrealized_pnl_pct": -1.508,
-          "note": "Holding short, signal=-0.444, exit at 0.358"
-        }
-      ],
-      "last_updated": "2026-04-03"
+      "monitor_log": []
     }
   }
 }

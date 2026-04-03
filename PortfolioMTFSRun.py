@@ -116,8 +116,8 @@ def initialize(context, pairs=None, params=None, pair_params=None):
 
     context.recorded_vars = {}
 
-    # Day counter for rebalancing
-    context.days_since_rebalance = 0
+    # Per-pair rebalance counters (each pair tracks independently)
+    context.pair_days_since_rebalance = {}
 
     log.info("MTFS Algorithm initialized")
 
@@ -147,9 +147,6 @@ def my_handle_data(context, data):
 
     context.portfolio.update_price_history(context.portfolio.current_date, all_prices)
 
-    # Increment rebalance counter
-    context.days_since_rebalance += 1
-
     # Process each pair
     for i in range(len(context.strategy_pairs)):
         pair = context.strategy_pairs[i]
@@ -167,6 +164,14 @@ def process_pair(pair, context, data):
     stock_2 = pair[1]
     context.current_pair = (stock_1, stock_2)
     pair_key = f"{stock_1}/{stock_2}"
+
+    # Per-pair rebalance counter: initialize to rebalance_frequency so first day can open
+    # (avoids wasting OOS day 1, and avoids the old == 1 next-day re-entry loophole)
+    if pair_key not in context.pair_days_since_rebalance:
+        context.pair_days_since_rebalance[pair_key] = context.execution.rebalance_frequency
+    else:
+        context.pair_days_since_rebalance[pair_key] += 1
+    days_since_rebalance = context.pair_days_since_rebalance[pair_key]
 
     # Apply per-pair parameter overrides
     _saved_exec_params = {}
@@ -411,10 +416,10 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
     # (or vice versa, depending on current momentum).
     # We go long the one with stronger momentum, short the weaker one.
 
-    # Check if enough time has passed since last rebalance
-    # (Only open NEW positions at rebalance intervals, but allow exits anytime)
-    can_open = (context.days_since_rebalance >= context.execution.rebalance_frequency
-                or context.days_since_rebalance == 1)  # also allow on first day
+    # Check if enough time has passed since last rebalance (per-pair, signal-driven)
+    # Each pair tracks independently — one pair opening does not block others
+    days_since_rebalance = context.pair_days_since_rebalance.get(pair_key, context.execution.rebalance_frequency)
+    can_open = days_since_rebalance >= context.execution.rebalance_frequency
 
     if not in_long and not in_short and can_open:
         # Check cooling-off period
@@ -490,8 +495,8 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
             record_vars(context, Y_pct=stock_1_perc, X_pct=stock_2_perc,
                         in_long=in_long, in_short=in_short, action='OPEN_LONG')
 
-            # Reset rebalance counter
-            context.days_since_rebalance = 0
+            # Reset this pair's counter only — other pairs are unaffected
+            context.pair_days_since_rebalance[pair_key] = 0
 
             return [stock_1, stock_2,
                     {'in_short': in_short, 'in_long': in_long,
@@ -519,7 +524,8 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
             record_vars(context, Y_pct=stock_1_perc, X_pct=stock_2_perc,
                         in_long=in_long, in_short=in_short, action='OPEN_SHORT')
 
-            context.days_since_rebalance = 0
+            # Reset this pair's counter only — other pairs are unaffected
+            context.pair_days_since_rebalance[pair_key] = 0
 
             return [stock_1, stock_2,
                     {'in_short': in_short, 'in_long': in_long,

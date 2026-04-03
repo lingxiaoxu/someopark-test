@@ -18,8 +18,8 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "AIG",
-    "s2": "WELL",
+    "s1": "WELL",
+    "s2": "AIG",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -66,8 +66,8 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "ACGL",
-    "s2": "YUM",
+    "s1": "YUM",
+    "s2": "ACGL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
