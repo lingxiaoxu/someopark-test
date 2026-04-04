@@ -16,41 +16,41 @@ type FileNode = {
 };
 
 const excelSheets = [
-  { name: 'Sheet1', desc: 'Summary' },
-  { name: 'acc_daily_pnl_history', desc: 'Accumulated daily PnL' },
-  { name: 'acc_interest_history', desc: 'Accumulated interest' },
-  { name: 'asset_history', desc: 'Total assets' },
-  { name: 'equity_history', desc: 'NAV curve' },
-  { name: 'interest_expense_history', desc: 'Interest expense' },
-  { name: 'liability_history', desc: 'Liabilities' },
-  { name: 'value_history', desc: 'Portfolio value' },
-  { name: 'asset_cash_history', desc: 'Cash assets' },
-  { name: 'liability_loan_history', desc: 'Loan liabilities' },
-  { name: 'price_history', desc: 'Position prices' },
-  { name: 'share_history', desc: 'Position shares' },
-  { name: 'percentage_history', desc: 'Position %' },
-  { name: 'cost_basis_history', desc: 'Cost basis' },
-  { name: 'hedge_history', desc: 'Hedge ratio' },
-  { name: 'asset_securities_history', desc: 'Security assets' },
-  { name: 'liability_securities_history', desc: 'Short positions' },
-  { name: 'share_history_by_pair', desc: 'Shares by pair' },
-  { name: 'cost_basis_by_pair', desc: 'Cost by pair' },
-  { name: 'finished_trades_pnl', desc: 'Completed trade PnL' },
-  { name: 'finished_trades_pnl_by_pair', desc: 'PnL by pair' },
-  { name: 'total_cost_history', desc: 'Total cost' },
-  { name: 'total_cost_history_by_pair', desc: 'Cost by pair' },
-  { name: 'percentage_history_by_pair', desc: 'Position % by pair' },
-  { name: 'daily_pnl_history', desc: 'Daily PnL' },
-  { name: 'acc_security_pnl_history', desc: 'Accumulated security PnL' },
-  { name: 'acc_sec_pnl_by_pair', desc: 'Security PnL by pair' },
-  { name: 'acc_pair_trade_pnl_history', desc: 'Accumulated pair trade PnL' },
-  { name: 'dod_security_pnl_history', desc: 'Day-over-day security PnL' },
-  { name: 'dod_pair_trade_pnl_history', desc: 'Day-over-day pair trade PnL' },
-  { name: 'statistical_test_history', desc: 'Statistical tests (z-score etc.)' },
-  { name: 'recorded_vars', desc: 'Strategy recorded variables' },
-  { name: 'stop_loss_history', desc: 'Stop loss events' },
-  { name: 'pair_trade_history', desc: 'Pair trade open/close records' },
-  { name: 'max_drawdown_history', desc: 'Max drawdown records' }
+  { name: 'Sheet1', desc: 'wfStructure.sheetDesc.Sheet1' },
+  { name: 'acc_daily_pnl_history', desc: 'wfStructure.sheetDesc.acc_daily_pnl_history' },
+  { name: 'acc_interest_history', desc: 'wfStructure.sheetDesc.acc_interest_history' },
+  { name: 'asset_history', desc: 'wfStructure.sheetDesc.asset_history' },
+  { name: 'equity_history', desc: 'wfStructure.sheetDesc.equity_history' },
+  { name: 'interest_expense_history', desc: 'wfStructure.sheetDesc.interest_expense_history' },
+  { name: 'liability_history', desc: 'wfStructure.sheetDesc.liability_history' },
+  { name: 'value_history', desc: 'wfStructure.sheetDesc.value_history' },
+  { name: 'asset_cash_history', desc: 'wfStructure.sheetDesc.asset_cash_history' },
+  { name: 'liability_loan_history', desc: 'wfStructure.sheetDesc.liability_loan_history' },
+  { name: 'price_history', desc: 'wfStructure.sheetDesc.price_history' },
+  { name: 'share_history', desc: 'wfStructure.sheetDesc.share_history' },
+  { name: 'percentage_history', desc: 'wfStructure.sheetDesc.percentage_history' },
+  { name: 'cost_basis_history', desc: 'wfStructure.sheetDesc.cost_basis_history' },
+  { name: 'hedge_history', desc: 'wfStructure.sheetDesc.hedge_history' },
+  { name: 'asset_securities_history', desc: 'wfStructure.sheetDesc.asset_securities_history' },
+  { name: 'liability_securities_history', desc: 'wfStructure.sheetDesc.liability_securities_history' },
+  { name: 'share_history_by_pair', desc: 'wfStructure.sheetDesc.share_history_by_pair' },
+  { name: 'cost_basis_by_pair', desc: 'wfStructure.sheetDesc.cost_basis_by_pair' },
+  { name: 'finished_trades_pnl', desc: 'wfStructure.sheetDesc.finished_trades_pnl' },
+  { name: 'finished_trades_pnl_by_pair', desc: 'wfStructure.sheetDesc.finished_trades_pnl_by_pair' },
+  { name: 'total_cost_history', desc: 'wfStructure.sheetDesc.total_cost_history' },
+  { name: 'total_cost_history_by_pair', desc: 'wfStructure.sheetDesc.total_cost_history_by_pair' },
+  { name: 'percentage_history_by_pair', desc: 'wfStructure.sheetDesc.percentage_history_by_pair' },
+  { name: 'daily_pnl_history', desc: 'wfStructure.sheetDesc.daily_pnl_history' },
+  { name: 'acc_security_pnl_history', desc: 'wfStructure.sheetDesc.acc_security_pnl_history' },
+  { name: 'acc_sec_pnl_by_pair', desc: 'wfStructure.sheetDesc.acc_sec_pnl_by_pair' },
+  { name: 'acc_pair_trade_pnl_history', desc: 'wfStructure.sheetDesc.acc_pair_trade_pnl_history' },
+  { name: 'dod_security_pnl_history', desc: 'wfStructure.sheetDesc.dod_security_pnl_history' },
+  { name: 'dod_pair_trade_pnl_history', desc: 'wfStructure.sheetDesc.dod_pair_trade_pnl_history' },
+  { name: 'statistical_test_history', desc: 'wfStructure.sheetDesc.statistical_test_history' },
+  { name: 'recorded_vars', desc: 'wfStructure.sheetDesc.recorded_vars' },
+  { name: 'stop_loss_history', desc: 'wfStructure.sheetDesc.stop_loss_history' },
+  { name: 'pair_trade_history', desc: 'wfStructure.sheetDesc.pair_trade_history' },
+  { name: 'max_drawdown_history', desc: 'wfStructure.sheetDesc.max_drawdown_history' }
 ];
 
 const mrptParams = "aggressive, balanced_plus, conservative, conservative_no_leverage, deep_dislocation, deep_entry_quick_exit, default, fast_reentry, fast_signal, fast_signal_tight_stop, flash_hold, high_entry, high_leverage, high_turnover, high_vol_specialist, long_z_short_v, low_entry, low_vol_specialist, medium_signal_high_leverage, no_leverage, patient_hold, quick_exit, short_z_long_v, slow_reentry, slow_signal, stable_signal_quick_exit, static_threshold, symmetric_exit, tight_stop, vol_adaptive, vol_agnostic, vol_gated";
@@ -65,31 +65,31 @@ const fileSystem: FileNode[] = [
   {
     name: 'walk_forward',
     type: 'folder',
-    description: 'MRPT (Mean Reversion Pair Trading) Walk-Forward root directory',
+    description: 'wfStructure.fsDesc.mrptRoot',
     children: [
-      { name: 'walk_forward_summary_20260321.json', type: 'json', description: 'Main config + all window OOS performance summary' },
-      { name: 'dsr_selection_log_20260321.csv', type: 'csv', description: 'DSR selection log for each pair x param_set' },
-      { name: 'oos_equity_curve_20260321.csv', type: 'csv', description: '6-window chained daily equity curve' },
-      { name: 'oos_pair_summary_20260321.csv', type: 'csv', description: 'Per-pair OOS aggregated performance' },
-      { name: 'oos_report_20260321.txt', type: 'txt', description: 'Human-readable text report' },
+      { name: 'walk_forward_summary_20260321.json', type: 'json', description: 'wfStructure.fsDesc.wfSummary' },
+      { name: 'dsr_selection_log_20260321.csv', type: 'csv', description: 'wfStructure.fsDesc.dsrLog' },
+      { name: 'oos_equity_curve_20260321.csv', type: 'csv', description: 'wfStructure.fsDesc.oosEquityCurve' },
+      { name: 'oos_pair_summary_20260321.csv', type: 'csv', description: 'wfStructure.fsDesc.oosPairSummary' },
+      { name: 'oos_report_20260321.txt', type: 'txt', description: 'wfStructure.fsDesc.oosReport' },
       {
         name: 'window06_2024-02-15_2026-02-12',
         type: 'folder',
-        description: 'Rolling window 6 (IS training + OOS test)',
+        description: 'wfStructure.fsDesc.rollingWindow',
         children: [
-          { name: 'selected_pairs.json', type: 'json', description: 'Selected pairs for this window' },
+          { name: 'selected_pairs.json', type: 'json', description: 'wfStructure.fsDesc.selectedPairs' },
           {
             name: 'historical_runs',
             type: 'folder',
-            description: 'OOS test results (real performance using selected optimal strategy)',
+            description: 'wfStructure.fsDesc.oosResults',
             children: [
-              { name: 'portfolio_history_wf_test_window06_2026-02-13_2026-03-20_1.xlsx', type: 'excel', description: 'OOS period real performance' }
+              { name: 'portfolio_history_wf_test_window06_2026-02-13_2026-03-20_1.xlsx', type: 'excel', description: 'wfStructure.fsDesc.oosPerformance' }
             ]
           },
           {
             name: 'charts',
             type: 'folder',
-            description: 'OOS test charts',
+            description: 'wfStructure.fsDesc.oosCharts',
             children: [
               {
                 name: 'wf_test_window06_2026-02-13_2026-03-20_1',
@@ -98,7 +98,7 @@ const fileSystem: FileNode[] = [
                   { name: 'individual_stocks.png', type: 'png' },
                   { name: 'pair_trades.png', type: 'png' },
                   { name: 'portfolio_history.png', type: 'png' },
-                  { name: 'z_scores_and_pnl.png', type: 'png', description: 'MRPT specific chart' }
+                  { name: 'z_scores_and_pnl.png', type: 'png', description: 'wfStructure.fsDesc.mrptChart' }
                 ]
               }
             ]
@@ -106,7 +106,7 @@ const fileSystem: FileNode[] = [
           {
             name: 'logs',
             type: 'folder',
-            description: 'OOS test logs',
+            description: 'wfStructure.fsDesc.oosLogs',
             children: [
               { name: 'run_wf_test_window06_1.log', type: 'log' }
             ]
@@ -114,14 +114,14 @@ const fileSystem: FileNode[] = [
           {
             name: 'wf_window06_2024-02-15_2026-02-12',
             type: 'folder',
-            description: 'IS Grid Search results (in-sample training)',
+            description: 'wfStructure.fsDesc.isGridSearch',
             children: [
-              { name: 'grid_config.json', type: 'json', description: 'Grid search config' },
-              { name: 'strategy_summary_20260321.csv', type: 'csv', description: 'Grid search summary table', content: { cols: mrptCsvCols, params: mrptParams } },
+              { name: 'grid_config.json', type: 'json', description: 'wfStructure.fsDesc.gridConfig' },
+              { name: 'strategy_summary_20260321.csv', type: 'csv', description: 'wfStructure.fsDesc.gridSummary', content: { cols: mrptCsvCols, params: mrptParams } },
               {
                 name: 'historical_runs',
                 type: 'folder',
-                description: 'Per param_set backtest Excel (64 files)',
+                description: 'wfStructure.fsDesc.perParamBacktest',
                 children: [
                   { name: 'portfolio_history_all15_aggressive_aggressive_1.xlsx', type: 'excel' },
                   { name: 'portfolio_history_all15_balanced_plus_balanced_plus_1.xlsx', type: 'excel' },
@@ -131,7 +131,7 @@ const fileSystem: FileNode[] = [
               {
                 name: 'charts',
                 type: 'folder',
-                description: 'Per param_set charts (64 subdirectories)',
+                description: 'wfStructure.fsDesc.perParamCharts',
                 children: [
                    { name: 'all15_aggressive_1', type: 'folder', children: [] }
                 ]
@@ -139,7 +139,7 @@ const fileSystem: FileNode[] = [
               {
                 name: 'logs',
                 type: 'folder',
-                description: 'Per param_set run logs (64 files)',
+                description: 'wfStructure.fsDesc.perParamLogs',
                 children: [
                   { name: 'run_all15_aggressive_1.log', type: 'log' }
                 ]
@@ -153,7 +153,7 @@ const fileSystem: FileNode[] = [
   {
     name: 'walk_forward_mtfs',
     type: 'folder',
-    description: 'MTFS (Multi-Timeframe Momentum Strategy) Walk-Forward root directory',
+    description: 'wfStructure.fsDesc.mtfsRoot',
     children: [
       { name: 'walk_forward_summary_20260321.json', type: 'json' },
       { name: 'dsr_selection_log_20260321.csv', type: 'csv' },
@@ -183,8 +183,8 @@ const fileSystem: FileNode[] = [
                   { name: 'individual_stocks.png', type: 'png' },
                   { name: 'pair_trades.png', type: 'png' },
                   { name: 'portfolio_history.png', type: 'png' },
-                  { name: 'momentum_scores_and_pnl.png', type: 'png', description: 'MTFS specific chart' },
-                  { name: 'vams_window_decomposition.png', type: 'png', description: 'MTFS specific chart' }
+                  { name: 'momentum_scores_and_pnl.png', type: 'png', description: 'wfStructure.fsDesc.mtfsChart' },
+                  { name: 'vams_window_decomposition.png', type: 'png', description: 'wfStructure.fsDesc.mtfsChart' }
                 ]
               }
             ]
@@ -577,7 +577,7 @@ export default function WFStructureViewer({ data }: { data?: any }) {
                     </div>
                     <div className="min-w-0">
                       <h3 className="text-sm font-medium text-[var(--text-primary)] break-all">{selectedNode.name}</h3>
-                      <div className="text-xs text-[var(--text-muted)] mt-1 uppercase tracking-wider">{selectedNode.type} File</div>
+                      <div className="text-xs text-[var(--text-muted)] mt-1 uppercase tracking-wider">{t('wfStructure.fileTypeLabel', { type: selectedNode.type })}</div>
                     </div>
                   </div>
 
@@ -586,7 +586,7 @@ export default function WFStructureViewer({ data }: { data?: any }) {
                       <div className="flex items-center gap-1.5 text-[var(--accent-primary)] font-medium mb-1 text-xs uppercase tracking-wider">
                         <Info className="w-3.5 h-3.5" /> {t('wfStructure.description')}
                       </div>
-                      {selectedNode.description}
+                      {t(selectedNode.description)}
                     </div>
                   )}
 
@@ -604,8 +604,8 @@ export default function WFStructureViewer({ data }: { data?: any }) {
                           <thead className="bg-[var(--bg-tertiary)] text-[var(--text-muted)] sticky top-0">
                             <tr>
                               <th className="px-3 py-2 font-medium">#</th>
-                              <th className="px-3 py-2 font-medium">Sheet Name</th>
-                              <th className="px-3 py-2 font-medium">Content</th>
+                              <th className="px-3 py-2 font-medium">{t('wfStructure.sheetNameCol')}</th>
+                              <th className="px-3 py-2 font-medium">{t('wfStructure.contentCol')}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -613,7 +613,7 @@ export default function WFStructureViewer({ data }: { data?: any }) {
                               <tr key={idx} className="hover:bg-[var(--bg-primary)]">
                                 <td className="px-3 py-1.5 text-[var(--text-muted)]">{idx + 1}</td>
                                 <td className="px-3 py-1.5 font-mono text-[var(--accent-primary)]">{sheet.name}</td>
-                                <td className="px-3 py-1.5 text-[var(--text-secondary)]">{sheet.desc}</td>
+                                <td className="px-3 py-1.5 text-[var(--text-secondary)]">{t(sheet.desc)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -768,7 +768,7 @@ export default function WFStructureViewer({ data }: { data?: any }) {
                     <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-tertiary)] sticky top-0 z-10">
                       <tr>
                         <th className="px-3 py-1.5 font-medium">#</th>
-                        <th className="px-3 py-1.5 font-medium">Pair</th>
+                        <th className="px-3 py-1.5 font-medium">{t('common.pair')}</th>
                         <th className="px-3 py-1.5 font-medium">{t('wfStructure.optimalParamSetCol')}</th>
                       </tr>
                     </thead>
@@ -896,8 +896,8 @@ export default function WFStructureViewer({ data }: { data?: any }) {
                   <h4 className="text-sm font-medium text-[var(--text-primary)]">{t('wfStructure.deepDive')}</h4>
                   <p className="text-xs text-[var(--text-muted)] mt-0.5">
                     {phase === 'IS'
-                      ? `all15_${paramSet} (${selectedPairs.length} pairs x 1 param set)`
-                      : `wf_test_window${String(windowIdx).padStart(2, '0')} (${selectedPairs.length} pairs, optimal params)`}
+                      ? t('wfStructure.deepDiveIsDesc', { param: `all15_${paramSet}`, count: selectedPairs.length })
+                      : t('wfStructure.deepDiveOosDesc', { window: String(windowIdx).padStart(2, '0'), count: selectedPairs.length })}
                   </p>
                 </div>
               </div>
@@ -905,7 +905,7 @@ export default function WFStructureViewer({ data }: { data?: any }) {
                 onClick={() => setShowInlineViewer(!showInlineViewer)}
                 className={`text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-colors shadow-sm shrink-0 ${showInlineViewer ? 'bg-[var(--bg-tertiary)] text-[var(--text-primary)] border border-[var(--border-subtle)]' : 'bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary)]/90'}`}
               >
-                <Play className="w-3.5 h-3.5" /> {showInlineViewer ? 'Close' : 'Open'}
+                <Play className="w-3.5 h-3.5" /> {showInlineViewer ? t('common.close') : t('common.open')}
               </button>
             </div>
 
@@ -923,21 +923,21 @@ export default function WFStructureViewer({ data }: { data?: any }) {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-[var(--bg-tertiary)] text-[var(--text-muted)]">
                     <tr>
-                      <th className="px-4 py-2 font-medium">Key Sheet Name</th>
-                      <th className="px-4 py-2 font-medium">Description</th>
+                      <th className="px-4 py-2 font-medium">{t('wfStructure.keySheetNameCol')}</th>
+                      <th className="px-4 py-2 font-medium">{t('wfStructure.descriptionCol')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--border-subtle)]">
                     {[
-                      { name: 'equity_history', desc: 'Net Asset Value curve' },
-                      { name: 'daily_pnl_history', desc: 'Daily Profit and Loss' },
-                      { name: 'pair_trade_history', desc: 'Record of all pair trades' },
-                      { name: 'percentage_history_by_pair', desc: 'Position sizing per pair' },
-                      { name: 'recorded_vars', desc: 'Strategy recorded variables' },
+                      { name: 'equity_history', desc: 'wfStructure.ddSheetDesc.equity_history' },
+                      { name: 'daily_pnl_history', desc: 'wfStructure.ddSheetDesc.daily_pnl_history' },
+                      { name: 'pair_trade_history', desc: 'wfStructure.ddSheetDesc.pair_trade_history' },
+                      { name: 'percentage_history_by_pair', desc: 'wfStructure.ddSheetDesc.percentage_history_by_pair' },
+                      { name: 'recorded_vars', desc: 'wfStructure.ddSheetDesc.recorded_vars' },
                     ].map((s, i) => (
                       <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors">
                         <td className="px-4 py-2 font-mono text-[var(--accent-primary)]">{s.name}</td>
-                        <td className="px-4 py-2 text-[var(--text-secondary)]">{s.desc}</td>
+                        <td className="px-4 py-2 text-[var(--text-secondary)]">{t(s.desc)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -36,7 +36,12 @@ export function toChatPrompt() {
   `
 }
 
-export function toPrompt(template: Templates) {
+export function toPrompt(template: Templates, selectedTemplate?: string) {
+  const hasSelection = selectedTemplate && selectedTemplate !== 'auto'
+  const templateSection = hasSelection
+    ? `You MUST use the "${selectedTemplate}" template. Here is its specification:\n${templatesToPrompt(template, selectedTemplate)}`
+    : `You can use one of the following templates:\n${templatesToPrompt(template)}`
+
   return `
     You are SomeoClaw, the AI assistant for Someo Park Investment Management.
     You are a skilled software engineer and quantitative finance expert.
@@ -70,8 +75,7 @@ export function toPrompt(template: Templates) {
     - Always use 'use client' for components with hooks.
     - Never read Date/time during SSR — use useEffect + useState to avoid hydration mismatch.
 
-    You can use one of the following templates:
-    ${templatesToPrompt(template)}
+    ${templateSection}
 
     ## Rules
     - Use pair notation: "CL/SRE", "XOM/CVX"

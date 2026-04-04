@@ -73,7 +73,7 @@ export default function DailyReportViewer() {
                       <span className="text-xl font-mono text-[var(--text-primary)]">{ind.formatted || ind.raw_value?.toFixed?.(2) || ind.raw_value}</span>
                       {ind.interpretation && <span className="text-xs text-[var(--text-muted)] mb-1 truncate max-w-[120px]">{ind.interpretation}</span>}
                     </div>
-                    {ind.history?.avg90 != null && <div className="text-[10px] text-[var(--text-muted)] mt-1">90d avg: {ind.history.avg90.toFixed(2)}</div>}
+                    {ind.history?.avg90 != null && <div className="text-[10px] text-[var(--text-muted)] mt-1">{t('regime.history90d', { value: ind.history.avg90.toFixed(2) })}</div>}
                   </div>
                 ))}
               </div>

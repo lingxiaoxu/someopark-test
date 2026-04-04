@@ -20,6 +20,8 @@ import morphChatRoutes from './routes/morphChat.js';
 import sandboxRoutes from './routes/sandbox.js';
 import publishRoutes from './routes/publish.js';
 import pnlReportRoutes from './routes/pnlReport.js';
+import agentRoutes from './routes/agent.js';
+import { registerAllTools } from './tools/index.js';
 
 const app = express();
 app.use(cors());
@@ -53,6 +55,10 @@ app.use('/api/morph-chat', morphChatRoutes);
 app.use('/api/sandbox', sandboxRoutes);
 app.use('/api/publish', publishRoutes);
 app.use('/api/pnl-report', pnlReportRoutes);
+app.use('/api/agent', agentRoutes);
+
+// Register Someo Agent tools
+registerAllTools();
 
 // Health check
 app.get('/api/health', (_req, res) => {

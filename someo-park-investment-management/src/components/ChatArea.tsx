@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Activity, Terminal, Cloud, Laptop, LoaderIcon, ChevronDown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Message, ArtifactTrigger } from '../lib/messages'
+import { Message, ArtifactTrigger, AgentStep } from '../lib/messages'
 import { StanseAgentSchema } from '../lib/schema'
 import { ExecutionResult } from '../lib/types'
 import { LLMModelConfig } from '../lib/models'
@@ -85,10 +85,12 @@ function renderMarkdown(text: string): React.ReactNode[] {
 import modelList from '../lib/models.json'
 import PairBadge from './PairBadge'
 import { useApi } from '../hooks/useApi'
-import { getInventory, API_BASE, apiHeaders } from '../lib/api'
+import { getInventory, API_BASE, apiHeaders, callAgent, answerAgentQuestion } from '../lib/api'
 import { db } from '../lib/firebase'
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { Session } from '@supabase/supabase-js'
+import { AgentModeToggle } from './AgentModeToggle'
+import { AgentProgress } from './AgentProgress'
 
 export default function ChatArea({
   agentMode,
@@ -138,6 +140,12 @@ export default function ChatArea({
   const runtimeDropdownRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const stickToBottomRef = useRef(true) // track whether user is near bottom
+
+  // Someo Agent mode state
+  const [isAgentMode, setIsAgentMode] = useState(false)
+  const [isAgentRunning, setIsAgentRunning] = useState(false)
+  const sessionIdRef = useRef(crypto.randomUUID())
 
   const { data: mrptInv } = useApi(() => getInventory('mrpt'), [])
   const { data: mtfsInv } = useApi(() => getInventory('mtfs'), [])
@@ -168,12 +176,36 @@ export default function ChatArea({
     setCurrentStanseAgent(null)
   }, [chatKey])
 
-  // Auto-scroll: to top when no messages (welcome), to bottom when chatting
+  // Track whether user is near bottom — if they scroll up, stop auto-scrolling
+  useEffect(() => {
+    const el = chatContainerRef.current
+    if (!el) return
+    const onScroll = () => {
+      const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+      stickToBottomRef.current = nearBottom
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Show scrollbar only while scrolling (for touch + mouse)
+  useEffect(() => {
+    const el = chatContainerRef.current
+    if (!el) return
+    let timer: ReturnType<typeof setTimeout>
+    const show = () => { el.classList.add('is-scrolling'); clearTimeout(timer); timer = setTimeout(() => el.classList.remove('is-scrolling'), 1200); }
+    el.addEventListener('scroll', show, { passive: true })
+    el.addEventListener('touchstart', show, { passive: true })
+    return () => { el.removeEventListener('scroll', show); el.removeEventListener('touchstart', show); clearTimeout(timer); }
+  }, [])
+
+  // Auto-scroll: to top when no messages (welcome), to bottom only if user hasn't scrolled up
   useEffect(() => {
     if (chatContainerRef.current) {
       if (messages.length === 0) {
         chatContainerRef.current.scrollTop = 0
-      } else {
+        stickToBottomRef.current = true
+      } else if (stickToBottomRef.current) {
         chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
       }
     }
@@ -186,9 +218,132 @@ export default function ChatArea({
     }
   }, [messages])
 
+  // === Someo Agent submit handler ===
+  const handleAgentSubmit = useCallback(async () => {
+    if (!input.trim() || isLoading || isAgentRunning) return
+
+    if (messages.length === 0 && onFirstMessage) {
+      onFirstMessage(input.trim())
+    }
+
+    const userMessage: Message = {
+      role: 'user',
+      content: [{ type: 'text', text: input.trim() }],
+    }
+    setMessages(prev => [...prev, userMessage])
+    setInput('')
+    setIsAgentRunning(true)
+    setIsLoading(true)
+    setIsErrored(false)
+
+    // Create placeholder agent assistant message
+    const placeholder: Message = {
+      role: 'assistant',
+      content: [{ type: 'text', text: '' }],
+      isAgentMessage: true,
+      agentSteps: [],
+      agentFinalText: '',
+    }
+    setMessages(prev => [...prev, placeholder])
+
+    const updateLastAgentMsg = (updater: (m: Message) => Message) => {
+      setMessages(prev => {
+        const copy = [...prev]
+        const last = copy[copy.length - 1]
+        if (last?.isAgentMessage) copy[copy.length - 1] = updater(last)
+        return copy
+      })
+    }
+
+    try {
+      // Build messages in Anthropic API format
+      const apiMessages = [...messages, userMessage].map(m => ({
+        role: m.role,
+        content: m.content.map(c => c.type === 'code' ? { type: 'text', text: c.text } : c),
+      }))
+
+      const steps: AgentStep[] = []
+      let finalText = ''
+      let usageData: any = null
+
+      for await (const evt of callAgent(apiMessages, { id: languageModel.model }, sessionIdRef.current)) {
+        if (evt.type === 'thinking') {
+          steps.push({ type: 'thinking', text: evt.text })
+        } else if (evt.type === 'tool_call') {
+          // Match by toolUseId (CC pattern: unique per tool_use block)
+          const existing = steps.find(
+            s => s.type === 'tool_call' && (s as any).toolUseId === evt.toolUseId
+          ) as any
+          if (existing) {
+            if (evt.toolInput && Object.keys(evt.toolInput).length > 0) {
+              existing.toolInput = evt.toolInput
+            }
+          } else {
+            steps.push({ type: 'tool_call', toolName: evt.toolName, toolInput: evt.toolInput || {}, status: 'pending', toolUseId: evt.toolUseId })
+          }
+        } else if (evt.type === 'tool_result') {
+          // Match tool_call by toolUseId (exact, no ambiguity)
+          const pending = steps.find(
+            s => s.type === 'tool_call' && (s as any).toolUseId === evt.toolUseId
+          ) as any
+          if (pending) pending.status = evt.isError ? 'error' : 'completed'
+          steps.push({ type: 'tool_result', toolName: evt.toolName, toolResult: evt.toolResult, isError: !!evt.isError, toolUseId: evt.toolUseId })
+        } else if (evt.type === 'text') {
+          finalText += evt.text
+        } else if (evt.type === 'task_update') {
+          // Replace last task_update instead of pushing duplicate
+          let lastTaskIdx = -1
+          for (let j = steps.length - 1; j >= 0; j--) {
+            if (steps[j].type === 'task_update') { lastTaskIdx = j; break }
+          }
+          if (lastTaskIdx >= 0) {
+            steps[lastTaskIdx] = { type: 'task_update', tasks: evt.tasks }
+          } else {
+            steps.push({ type: 'task_update', tasks: evt.tasks })
+          }
+        } else if (evt.type === 'ask_user') {
+          steps.push({ type: 'ask_user', question: evt.question, options: evt.options })
+        } else if (evt.type === 'usage') {
+          usageData = evt
+        } else if (evt.type === 'done') {
+          // Explicit done signal
+          break
+        }
+        updateLastAgentMsg(m => ({ ...m, agentSteps: [...steps], agentFinalText: finalText, agentUsage: usageData }))
+      }
+
+      updateLastAgentMsg(m => ({
+        ...m,
+        agentSteps: steps,
+        agentFinalText: finalText,
+        agentUsage: usageData,
+        content: [{ type: 'text', text: finalText }],
+      }))
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        updateLastAgentMsg(m => ({ ...m, content: [{ type: 'text', text: `Someo Agent error: ${err.message}` }] }))
+        setIsErrored(true)
+        setErrorMessage(err.message || 'Agent error')
+      }
+    } finally {
+      setIsAgentRunning(false)
+      setIsLoading(false)
+    }
+  }, [input, isLoading, isAgentRunning, messages, languageModel, onFirstMessage])
+
+  const handleAskUserAnswer = useCallback(async (answer: string) => {
+    await answerAgentQuestion(sessionIdRef.current, answer)
+  }, [])
+
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
+
+    // Branch: Someo Agent mode
+    if (isAgentMode) {
+      await handleAgentSubmit()
+      return
+    }
 
     // Notify parent on first message for chat history
     if (messages.length === 0 && onFirstMessage) {
@@ -249,8 +404,8 @@ export default function ChatArea({
       }))
 
       const body = useMorphApply && currentStanseAgent
-        ? { messages: msgPayload, model: currentModel, config: languageModel, currentStanseAgent }
-        : { messages: msgPayload, model: currentModel, config: languageModel }
+        ? { messages: msgPayload, model: currentModel, config: languageModel, currentStanseAgent, selectedTemplate }
+        : { messages: msgPayload, model: currentModel, config: languageModel, selectedTemplate }
 
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
@@ -354,7 +509,7 @@ export default function ChatArea({
       setIsLoading(false)
       abortControllerRef.current = null
     }
-  }, [input, isLoading, messages, currentModel, languageModel, useMorphApply, currentStanseAgent, onCodePreview])
+  }, [input, isLoading, messages, currentModel, languageModel, useMorphApply, currentStanseAgent, onCodePreview, isAgentMode, handleAgentSubmit])
 
   const stop = useCallback(() => {
     abortControllerRef.current?.abort()
@@ -391,6 +546,15 @@ export default function ChatArea({
   )
 
   const hasMessages = messages.length > 0
+
+  // Dynamic placeholder based on mode
+  // Priority: Someo Agent > explicit SomeoClaw connection > default
+  const isClawExplicit = agentMode === 'local' && isLocalConnected
+  const inputPlaceholder = isAgentMode
+    ? t('chat.placeholderAgent')
+    : isClawExplicit
+      ? t('chat.placeholderClaw')
+      : t('chat.placeholderDefault')
 
   return (
     <div className="flex flex-col h-full relative" style={{ background: 'var(--color-bg)' }}>
@@ -438,8 +602,8 @@ export default function ChatArea({
       </div>
 
       {/* Messages or Welcome */}
-      <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 pt-4 pb-2 flex flex-col items-center">
-        <div className="w-full max-w-3xl flex flex-col gap-4 pb-2">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto scrollbar-autohide px-6 pt-4 pb-6 flex flex-col items-center">
+        <div className="w-full max-w-3xl flex flex-col gap-4 pb-8">
           {!hasMessages ? (
             <>
               <div className="flex flex-col items-center justify-center py-6 gap-4">
@@ -562,13 +726,23 @@ export default function ChatArea({
             messages.map((msg, idx) => (
               <div key={idx} className={msg.role === 'user' ? 'message-user' : 'message-ai'}>
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 flex items-center justify-center shrink-0" style={{ background: '#111', border: '2px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
+                  <div className="w-8 h-8 flex items-center justify-center shrink-0" style={{ background: msg.isAgentMessage ? '#7c3aed' : '#111', border: '2px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
                     <Terminal className="w-4 h-4" style={{ color: '#fff', opacity: 1 }} />
                   </div>
                 )}
                 <div className={msg.role === 'user' ? '' : 'message-content w-full'}>
+                  {/* Someo Agent progress steps */}
+                  {msg.isAgentMessage && msg.agentSteps && msg.agentSteps.length > 0 && (
+                    <AgentProgress
+                      steps={msg.agentSteps}
+                      isRunning={isAgentRunning && idx === messages.length - 1}
+                      onAskUserAnswer={handleAskUserAnswer}
+                      usage={msg.agentUsage}
+                    />
+                  )}
+                  {/* Final text content */}
                   {msg.content.map((c, ci) => {
-                    if (c.type === 'text') return (
+                    if (c.type === 'text' && c.text) return (
                       <div key={ci} className={`text-sm leading-relaxed ${msg.role === 'user' ? 'text-white whitespace-pre-wrap' : 'text-[var(--text-primary)]'}`}>
                         {msg.role === 'assistant' ? renderMarkdown(c.text) : c.text}
                       </div>
@@ -629,7 +803,13 @@ export default function ChatArea({
             isMultiModal={isMultiModal}
             files={files}
             handleFileChange={setFiles}
+            placeholder={inputPlaceholder}
           >
+            <AgentModeToggle
+              enabled={isAgentMode}
+              onChange={setIsAgentMode}
+              disabled={isLoading || isAgentRunning}
+            />
             <ChatPicker
               templates={templates}
               selectedTemplate={selectedTemplate}

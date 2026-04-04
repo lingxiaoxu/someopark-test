@@ -73,6 +73,35 @@
     height: 100%;
   }
 
+  /* Auto-hide scrollbar — visible only while scrolling */
+  .scrollbar-autohide {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+    transition: scrollbar-color 0.3s;
+  }
+  .scrollbar-autohide:hover,
+  .scrollbar-autohide:active,
+  .scrollbar-autohide.is-scrolling {
+    scrollbar-color: rgba(0,0,0,0.3) transparent;
+  }
+  /* WebKit (Chrome/Safari/iOS) */
+  .scrollbar-autohide::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-autohide::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-autohide::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 3px;
+    transition: background 0.3s;
+  }
+  .scrollbar-autohide:hover::-webkit-scrollbar-thumb,
+  .scrollbar-autohide:active::-webkit-scrollbar-thumb,
+  .scrollbar-autohide.is-scrolling::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.3);
+  }
+
   /* Noise texture overlay — Stanse signature */
   body::before {
     content: "";
@@ -148,7 +177,6 @@
   /* ════ SIDEBAR ════════════════════════════════════════ */
   .sidebar {
     background: #fff;
-    border-right: 4px solid #111;
     padding: 16px 12px 12px;
     display: flex;
     flex-direction: column;

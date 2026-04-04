@@ -117,18 +117,29 @@ export default function App() {
   }, [activeChatId, setChatHistory]);
 
   const handleFirstMessage = useCallback((text: string) => {
-    if (activeChatId != null) {
-      setChatHistory(prev => {
-        const exists = prev.find(c => c.id === activeChatId);
-        if (exists) return prev;
-        return [{ id: activeChatId, title: text.slice(0, 40) }, ...prev];
-      });
+    let chatId = activeChatId
+    // Auto-create chat if user sends from welcome screen without clicking "New Chat"
+    if (chatId == null) {
+      chatId = Date.now()
+      setActiveChatId(chatId)
     }
+    setChatHistory(prev => {
+      const exists = prev.find(c => c.id === chatId);
+      if (exists) return prev;
+      return [{ id: chatId!, title: text.slice(0, 40) }, ...prev];
+    });
   }, [activeChatId, setChatHistory]);
 
   const [rightPanelWidth, setRightPanelWidth] = useState(480);
   const [isResizing, setIsResizing] = useState(false);
   const appRef = useRef<HTMLDivElement>(null);
+
+  // Sidebar resize
+  const DEFAULT_SIDEBAR_WIDTH = 260;
+  const SIDEBAR_MIN = Math.round(DEFAULT_SIDEBAR_WIDTH * 0.82); // 213
+  const SIDEBAR_MAX = Math.round(DEFAULT_SIDEBAR_WIDTH * 1.18); // 307
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
+  const [isSidebarResizing, setIsSidebarResizing] = useState(false);
 
   // Auth
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
@@ -165,17 +176,21 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const handleMove = (clientX: number) => {
       if (!isResizing || !appRef.current) return;
       const appRect = appRef.current.getBoundingClientRect();
-      const newWidth = appRect.right - e.clientX;
+      const newWidth = appRect.right - clientX;
       setRightPanelWidth(Math.min(Math.max(newWidth, 320), appRect.width * 0.6));
     };
-    const handleMouseUp = () => setIsResizing(false);
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
+    const handleTouchMove = (e: TouchEvent) => { e.preventDefault(); handleMove(e.touches[0].clientX); };
+    const handleEnd = () => setIsResizing(false);
 
     if (isResizing) {
       document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleEnd);
       document.body.style.cursor = 'col-resize';
       document.body.style.userSelect = 'none';
     } else {
@@ -184,31 +199,90 @@ export default function App() {
     }
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleEnd);
     };
   }, [isResizing]);
+
+  // Sidebar resize effect
+  useEffect(() => {
+    const handleMove = (clientX: number) => {
+      if (!isSidebarResizing || !appRef.current) return;
+      const appRect = appRef.current.getBoundingClientRect();
+      const newWidth = clientX - appRect.left;
+      setSidebarWidth(Math.min(Math.max(newWidth, SIDEBAR_MIN), SIDEBAR_MAX));
+    };
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX);
+    const handleTouchMove = (e: TouchEvent) => { e.preventDefault(); handleMove(e.touches[0].clientX); };
+    const handleEnd = () => setIsSidebarResizing(false);
+
+    if (isSidebarResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchend', handleEnd);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    } else if (!isResizing) {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleEnd);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleEnd);
+    };
+  }, [isSidebarResizing]);
 
   const showRightPanel = activeArtifact || codePreview;
 
   return (
     <ArtifactProvider value={setActiveArtifact}>
     <div ref={appRef} className="flex h-full w-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden font-sans">
-      <div className="w-[260px] shrink-0 border-r border-[var(--border-subtle)] z-20 bg-[var(--bg-primary)]">
-        <Sidebar
-          onConnectClick={() => setIsModalOpen(true)}
-          agentMode={agentMode}
-          setAgentMode={setAgentMode}
-          isLocalConnected={isLocalConnected}
-          onSettingsClick={() => { setShowSettings(true); setActiveArtifact(null); setCodePreview(null); }}
-          session={session}
-          onSignInClick={() => setIsAuthDialogOpen(true)}
-          onSignOut={() => supabase?.auth.signOut()}
-          onNewChat={handleNewChat}
-          chatHistory={chatHistory}
-          activeChatId={activeChatId}
-          onSelectChat={handleSelectChat}
-          onDeleteChat={handleDeleteChat}
-        />
+      <div className="shrink-0 z-20 bg-[var(--bg-primary)] relative flex" style={{ width: sidebarWidth }}>
+        <div className="flex-1 min-w-0">
+          <Sidebar
+            onConnectClick={() => setIsModalOpen(true)}
+            agentMode={agentMode}
+            setAgentMode={setAgentMode}
+            isLocalConnected={isLocalConnected}
+            onSettingsClick={() => { setShowSettings(true); setActiveArtifact(null); setCodePreview(null); }}
+            session={session}
+            onSignInClick={() => setIsAuthDialogOpen(true)}
+            onSignOut={() => supabase?.auth.signOut()}
+            onNewChat={handleNewChat}
+            chatHistory={chatHistory}
+            activeChatId={activeChatId}
+            onSelectChat={handleSelectChat}
+            onDeleteChat={handleDeleteChat}
+          />
+        </div>
+        {/* Sidebar resize handle — touch-friendly with wider hit area */}
+        <div
+          onMouseDown={() => setIsSidebarResizing(true)}
+          onTouchStart={() => setIsSidebarResizing(true)}
+          className="cursor-col-resize"
+          style={{
+            width: '16px',
+            position: 'absolute',
+            right: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 30,
+            display: 'flex',
+            alignItems: 'stretch',
+            justifyContent: 'flex-end',
+            touchAction: 'none',
+          }}
+        >
+          <div className="hover:w-1.5 active:w-1.5" style={{
+            width: isSidebarResizing ? '6px' : '4px',
+            background: '#111',
+            transition: 'width 0.15s',
+          }} />
+        </div>
       </div>
       <div className="flex-1 flex min-w-0 relative">
         <div className="flex-1 min-w-0">
@@ -259,7 +333,8 @@ export default function App() {
         {showRightPanel && (
           <>
             <div
-              className="w-1 hover:w-1.5 cursor-col-resize hover:bg-[var(--accent-primary)] active:bg-[var(--accent-primary)] transition-all z-30 -ml-1"
+              className="cursor-col-resize z-30 flex items-stretch justify-center"
+              style={{ width: '16px', marginLeft: '-8px', marginRight: '-8px', touchAction: 'none' }}
               onMouseDown={() => {
                 if (isMaximized && appRef.current) {
                   setRightPanelWidth(appRef.current.getBoundingClientRect().width * 0.6);
@@ -267,8 +342,17 @@ export default function App() {
                 setIsMaximized(false);
                 setIsResizing(true);
               }}
-            />
-            <div className="shrink-0 z-20 bg-[var(--bg-primary)]" style={{ width: isMaximized ? (appRef.current ? appRef.current.getBoundingClientRect().width * 0.6 : rightPanelWidth) : rightPanelWidth }}>
+              onTouchStart={() => {
+                if (isMaximized && appRef.current) {
+                  setRightPanelWidth(appRef.current.getBoundingClientRect().width * 0.6);
+                }
+                setIsMaximized(false);
+                setIsResizing(true);
+              }}
+            >
+              <div className="w-1 hover:w-1.5 bg-transparent hover:bg-[var(--accent-primary)] active:bg-[var(--accent-primary)] transition-all" />
+            </div>
+            <div className="shrink-0 z-20 bg-[var(--bg-primary)] overflow-hidden" style={{ width: isMaximized ? (appRef.current ? appRef.current.getBoundingClientRect().width * 0.6 : rightPanelWidth) : rightPanelWidth }}>
               {activeArtifact ? (
                 <RightPanel
                   artifact={activeArtifact}
