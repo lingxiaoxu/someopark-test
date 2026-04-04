@@ -36,11 +36,13 @@ router.post('/', async (req: Request, res: Response) => {
     userID,
     model,
     config,
+    selectedTemplate,
   }: {
     messages: ModelMessage[]
     userID: string | undefined
     model: LLMModel
     config: LLMModelConfig
+    selectedTemplate?: string
   } = req.body
 
   console.log('Chat request:', { userID, model: model?.id })
@@ -80,7 +82,7 @@ router.post('/', async (req: Request, res: Response) => {
       const stream = await streamObject({
         model: modelClient as LanguageModel,
         schema,
-        system: toPrompt(templates),
+        system: toPrompt(templates, selectedTemplate),
         messages,
         maxRetries: 0,
         maxTokens: modelParams.maxTokens || defaultMaxTokens,

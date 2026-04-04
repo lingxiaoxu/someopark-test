@@ -98,3 +98,41 @@ export const getMonitorHistorySheets = (filename: string) =>
   fetchApi<string[]>(`/api/monitor-history/${encodeURIComponent(filename)}/sheets`);
 export const getMonitorHistorySheet = (filename: string, sheet: string) =>
   fetchApi<any>(`/api/monitor-history/${encodeURIComponent(filename)}/${encodeURIComponent(sheet)}`);
+
+// === Someo Agent SSE streaming ===
+export async function* callAgent(
+  messages: any[],
+  model: any,
+  sessionId: string,
+): AsyncGenerator<any> {
+  const res = await fetch(`${API_BASE}/api/agent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...apiHeaders() },
+    body: JSON.stringify({ messages, model, sessionId }),
+  })
+  if (!res.ok) throw new Error(`Agent API error: ${res.status}`)
+
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let buf = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buf += decoder.decode(value, { stream: true })
+    const lines = buf.split('\n')
+    buf = lines.pop() || ''
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try { yield JSON.parse(line.slice(6)) } catch { /* skip malformed */ }
+      }
+    }
+  }
+}
+
+export async function answerAgentQuestion(sessionId: string, answer: string) {
+  return fetch(`${API_BASE}/api/agent/answer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...apiHeaders() },
+    body: JSON.stringify({ sessionId, answer }),
+  })
+}

@@ -20,6 +20,7 @@ export function ChatInput({
   files,
   handleFileChange,
   children,
+  placeholder,
 }: {
   retry: () => void
   isErrored: boolean
@@ -33,6 +34,7 @@ export function ChatInput({
   files: File[]
   handleFileChange: (change: SetStateAction<File[]>) => void
   children: React.ReactNode
+  placeholder?: string
 }) {
   const { t } = useTranslation()
 
@@ -211,13 +213,19 @@ export function ChatInput({
             transition: 'border-color .15s',
           }}
           required
-          placeholder={t('chatInput.placeholder')}
+          placeholder={placeholder || t('chatInput.placeholder')}
           disabled={isErrored}
           value={input}
           onChange={handleInputChange}
           onPaste={isMultiModal ? handlePaste : undefined}
-          onFocus={e => (e.currentTarget as HTMLElement).style.borderColor = '#111'}
-          onBlur={e => (e.currentTarget as HTMLElement).style.borderColor = '#ccc'}
+          onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = '#111'; handleInputAreaEnter(); }}
+          onBlur={e => {
+            (e.currentTarget as HTMLElement).style.borderColor = '#ccc';
+            // Don't hide toolbar if focus moved to another element within the form (e.g. toolbar buttons)
+            const form = e.currentTarget.closest('form');
+            if (form && e.relatedTarget && form.contains(e.relatedTarget as Node)) return;
+            handleInputAreaLeave();
+          }}
         />
 
         {/* Right-side action buttons — stacked vertically */}

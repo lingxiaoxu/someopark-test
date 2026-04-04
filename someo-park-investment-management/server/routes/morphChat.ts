@@ -57,8 +57,10 @@ router.post('/', async (req: Request, res: Response) => {
     }
   }
 
-  // If not a code edit request, fall back to normal chat with artifact detection
-  if (!isCodeEditRequest(lastContent)) {
+  // If currentStanseAgent has code, assume user wants to modify it — skip intent check.
+  // Only fall back to chat if there's no active code AND it doesn't look like a code request.
+  const hasActiveCode = currentStanseAgent?.code && currentStanseAgent.code.length > 0
+  if (!hasActiveCode && !isCodeEditRequest(lastContent)) {
     const detectedArtifacts = detectArtifacts(lastContent)
     try {
       const result = await generateText({

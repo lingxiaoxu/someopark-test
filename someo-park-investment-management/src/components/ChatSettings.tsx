@@ -1,3 +1,4 @@
+import React from 'react'
 import { LLMModelConfig } from '../lib/models'
 import { Settings2, ExternalLink } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowRightLeft, TrendingUp, TrendingDown, ExternalLink } from 'lucide-react';
 import { useSetArtifact } from '../contexts/ArtifactContext';
@@ -41,7 +42,7 @@ function fmtNum(v: number | null | undefined, decimals = 2): string {
 export default function PairBadge({ pair, s1, s2, direction, strategy, details, compact, noPopover }: PairBadgeProps) {
   const { t } = useTranslation();
   const [showPopover, setShowPopover] = useState(false);
-  const [popoverAlign, setPopoverAlign] = useState<'left' | 'right'>('left');
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
   const badgeRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const setActiveArtifact = useSetArtifact();
@@ -52,7 +53,6 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
 
   // Direction-based colors
   const s1Long = direction === 'long';
-  const s1Short = direction === 'short';
   const hasDirection = direction === 'long' || direction === 'short';
 
   // Close popover on outside click
@@ -67,13 +67,33 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
     return () => document.removeEventListener('mousedown', handler);
   }, [showPopover]);
 
+  // Close popover on scroll or resize (position would be stale)
+  useEffect(() => {
+    if (!showPopover) return;
+    const close = () => setShowPopover(false);
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [showPopover]);
+
   const handleClick = (e: React.MouseEvent) => {
     if (noPopover) return;
     e.stopPropagation();
     if (!showPopover && badgeRef.current) {
       const rect = badgeRef.current.getBoundingClientRect();
       const spaceRight = window.innerWidth - rect.left;
-      setPopoverAlign(spaceRight < 340 ? 'right' : 'left');
+      const alignRight = spaceRight < 340;
+      setPopoverStyle({
+        position: 'fixed',
+        top: rect.bottom + 4,
+        left: alignRight ? rect.right - 320 : rect.left,
+        zIndex: 9999,
+        width: 320,
+        minWidth: 280,
+      });
     }
     setShowPopover(!showPopover);
   };
@@ -137,12 +157,12 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
         )}
       </button>
 
-      {/* Popover */}
-      {showPopover && !noPopover && (
+      {/* Popover via Portal — avoids overflow clipping from parent tables */}
+      {showPopover && !noPopover && createPortal(
         <div
           ref={popoverRef}
-          className={`absolute z-50 top-full mt-1 w-[320px] bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg shadow-xl shadow-black/30 overflow-hidden ${popoverAlign === 'right' ? 'right-0' : 'left-0'}`}
-          style={{ minWidth: 280 }}
+          className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg shadow-xl shadow-black/30 overflow-hidden"
+          style={popoverStyle}
         >
           {/* Popover Header */}
           <div className="px-3 py-2.5 bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] flex items-center justify-between">
@@ -273,7 +293,8 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
               {t('pairBadge.tradeHistory')}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

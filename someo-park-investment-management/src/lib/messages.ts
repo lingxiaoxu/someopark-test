@@ -24,12 +24,40 @@ export type Message = {
   result?: ExecutionResult
   // Someo Park artifact triggers
   artifacts?: ArtifactTrigger[]
+  // Someo Agent fields
+  isAgentMessage?: boolean
+  agentSteps?: AgentStep[]
+  agentFinalText?: string
+  agentUsage?: Extract<AgentStep, { type: 'usage' }>
 }
 
 export type ArtifactTrigger = {
   type: string
   title: string
   params?: Record<string, any>
+}
+
+// === Someo Agent types ===
+
+export type AgentStep =
+  | { type: 'thinking'; text: string }
+  | { type: 'tool_call'; toolName: string; toolInput: Record<string, any>; status: 'pending' | 'completed' | 'error'; toolUseId?: string }
+  | { type: 'tool_result'; toolName: string; toolResult: string; isError: boolean; toolUseId?: string }
+  | { type: 'text'; text: string }
+  | { type: 'task_update'; tasks: TaskItem[] }
+  | { type: 'ask_user'; question: string; options?: string[] }
+  | { type: 'usage'; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number; cost_usd: number; iterations: number }
+
+export interface TaskItem {
+  id: string
+  title: string
+  status: 'pending' | 'in_progress' | 'completed' | 'failed'
+  activeForm?: string
+}
+
+export interface AgentSSEEvent {
+  type: string
+  [key: string]: any
 }
 
 export function toAISDKMessages(messages: Message[]) {
