@@ -709,6 +709,50 @@ def compute_oos_stats(oos_df):
     }
 
 
+def _try_load_existing_oos(window, window_dir):
+    """
+    Check if a valid OOS xlsx already exists for this window.
+    Valid = file exists and equity_history last row is not NaN.
+    Returns a minimal result dict compatible with build_oos_curve, or None.
+    """
+    pattern = os.path.join(window_dir, 'historical_runs',
+                           f'portfolio_history_wf_test_window{window["window_idx"]:02d}_*.xlsx')
+    files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+    if not files:
+        return None
+
+    xlsx_path = files[0]
+    try:
+        eq = pd.read_excel(xlsx_path, sheet_name='equity_history')
+        if eq.empty or pd.isna(eq['Value'].iloc[-1]):
+            log.info(f'  [Window {window["window_idx"]}] Existing OOS xlsx has NaN equity — will re-run.')
+            return None
+
+        # Check tail coverage: last equity date should be close to test_end
+        last_date = pd.Timestamp(eq['Date'].iloc[-1]).date()
+        test_end  = pd.Timestamp(window['test_end']).date()
+        if (test_end - last_date).days > 3:
+            log.info(f'  [Window {window["window_idx"]}] Existing OOS xlsx ends at {last_date}, '
+                     f'test_end={test_end} (gap>{(test_end - last_date).days}d) — will re-run.')
+            return None
+
+        final_eq = eq['Value'].iloc[-1]
+        acc_pnl  = final_eq - 500_000
+        daily_returns = eq['Value'].pct_change().dropna()
+        sr = (daily_returns.mean() / daily_returns.std() * (252 ** 0.5)) if len(daily_returns) > 1 and daily_returns.std() > 0 else 0.0
+
+        log.info(f'  [Window {window["window_idx"]}] Reusing existing OOS: {os.path.basename(xlsx_path)}')
+        return {
+            'final_equity':  final_eq,
+            'acc_pnl':       acc_pnl,
+            'sharpe_ratio':  sr,
+            'output_file':   xlsx_path,
+        }
+    except Exception as e:
+        log.warning(f'  [Window {window["window_idx"]}] Failed to load existing OOS ({e}) — will re-run.')
+        return None
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -729,6 +773,10 @@ def main():
                         help='Output directory (default: historical_runs/walk_forward/)')
     parser.add_argument('--skip-grid',  action='store_true',
                         help='Skip grid search if summary CSV already exists for a window')
+    parser.add_argument('--skip-oos',   action='store_true',
+                        help='Skip OOS test if a valid OOS xlsx already exists for a window '
+                             '(equity last row is not NaN). Combine with --skip-grid to only '
+                             're-run windows whose OOS results are missing or invalid.')
     args = parser.parse_args()
 
     output_dir = args.output_dir or os.path.join(BASE_DIR, 'historical_runs', 'walk_forward')
@@ -792,13 +840,26 @@ def main():
             with open(sel_path, 'w') as f:
                 json.dump({'window': window, 'selected_pairs': selected_pairs}, f, indent=2)
 
-        # Step C: run OOS test window
-        result = run_test_window(window, selected_pairs, window_dir)
+        # Step C: run OOS test window (or reuse existing valid result)
+        result = None
+        if args.skip_oos:
+            result = _try_load_existing_oos(window, window_dir)
+        if result is None:
+            result = run_test_window(window, selected_pairs, window_dir)
         window_results.append((window, result))
 
         if result:
-            log.info(f'\n  OOS result: Equity={result["final_equity"]:.0f}  '
-                     f'PnL={result["acc_pnl"]:.0f}  Sharpe={result["sharpe_ratio"]:.3f}')
+            eq  = result.get("final_equity")
+            pnl = result.get("acc_pnl")
+            sr  = result.get("sharpe_ratio")
+            if eq is None or pnl is None or sr is None or (isinstance(eq, float) and pd.isna(eq)):
+                raise RuntimeError(
+                    f"Window {window['window_idx']} OOS run produced invalid results "
+                    f"(Equity={eq}, PnL={pnl}, Sharpe={sr}). "
+                    f"This usually means price data is missing for the last trading day(s). "
+                    f"Check MongoDB stock_data coverage for test_end={window['test_end']}."
+                )
+            log.info(f'\n  OOS result: Equity={eq:.0f}  PnL={pnl:.0f}  Sharpe={sr:.3f}')
 
     # ── Build and save chained OOS curve ──────────────────────────────────────
     log.info(f'\n{"=" * 65}')

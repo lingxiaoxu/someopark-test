@@ -214,8 +214,12 @@ def _parse_ts(fname: str):
 
 
 def load_positions(start_ts, end_ts) -> list[dict]:
-    """All active pair positions seen in inventory snapshots within date range."""
+    """All pair positions seen in inventory snapshots within date range.
+    Tracks the last active state of each pair. Pairs that were later closed
+    (direction=null in a subsequent snapshot) are marked _closed_in_snapshot
+    so the caller can distinguish truly-open from closed-mid-period."""
     positions: dict[str, dict] = {}
+    closed_pairs: set[str] = set()   # pairs seen with direction=null AFTER being active
     for fpath in sorted(glob.glob(os.path.join(INV_DIR, 'inventory_*.json'))):
         day, _ = _parse_ts(fpath)
         if day is None or day < start_ts or day > end_ts:
@@ -224,10 +228,18 @@ def load_positions(start_ts, end_ts) -> list[dict]:
         with open(fpath) as f:
             data = json.load(f)
         for pair_name, p in data.get('pairs', {}).items():
-            if not isinstance(p, dict) or not p.get('direction'):
+            if not isinstance(p, dict):
                 continue
             if '/' not in pair_name:
                 continue
+            if not p.get('direction'):
+                # Pair was closed in this snapshot — mark it but keep the record
+                if pair_name in positions:
+                    closed_pairs.add(pair_name)
+                continue
+            # Active snapshot — record (or update) position, and un-mark closed
+            # in case it was re-opened after a previous close
+            closed_pairs.discard(pair_name)
             s1, s2 = pair_name.split('/', 1)
             ml = p.get('monitor_log', [])
             positions[pair_name] = {
@@ -245,6 +257,10 @@ def load_positions(start_ts, end_ts) -> list[dict]:
                 'last_pnl':      ml[-1]['unrealized_pnl'] if ml else None,
                 'last_pnl_date': ml[-1]['date'] if ml else None,
             }
+    # Mark pairs that were closed in a later snapshot
+    for pair_name in closed_pairs:
+        if pair_name in positions:
+            positions[pair_name]['_closed_in_snapshot'] = True
     return list(positions.values())
 
 
@@ -695,6 +711,15 @@ def build_report_data(start: str, end: str) -> dict:
             exit_dt    = close_ev['report_date']
             action     = close_ev['action']
             close_note = close_ev['note']
+        elif p.get('_closed_in_snapshot'):
+            # Pair was closed in inventory (direction→null) but no monitor
+            # close event was recorded (orphan close from Step 1 signal).
+            # Treat as closed with last known PnL from monitor_log.
+            is_open    = False
+            sys_pnl    = p['last_pnl']
+            exit_dt    = p['last_pnl_date'] or end
+            action     = 'CLOSE'
+            close_note = 'Closed by signal (no monitor event)'
         elif hold_ev:
             is_open    = True
             sys_pnl    = hold_ev['pnl']

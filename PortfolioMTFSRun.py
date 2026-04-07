@@ -845,6 +845,17 @@ def load_historical_data_mongo(start_date, end_date, symbols):
 
         actual_start = pd.Timestamp(docs[0]['t'],  unit='ms').date()
         actual_end   = pd.Timestamp(docs[-1]['t'], unit='ms').date()
+
+        # Check tail coverage: if MongoDB data doesn't reach end_date,
+        # the last trading day(s) will be NaN — fall back to Polygon.
+        requested_end = pd.Timestamp(end_date).date()
+        if actual_end < requested_end - pd.Timedelta(days=3):
+            log.warning(f"[DataLoader/MTFS] {symbol}  FALLBACK  reason=stale_tail  "
+                        f"mongo_end={actual_end}  requested_end={requested_end}  "
+                        f"gap={requested_end - actual_end}")
+            fallback_symbols.append(symbol)
+            continue
+
         df = pd.DataFrame(docs)
         df['date'] = pd.to_datetime(df['t'], unit='ms').dt.normalize()
         df = df.set_index('date')
