@@ -48,8 +48,8 @@
     "spread_col": "Momentum_Spread_industrial"
   },
   {
-    "s1": "NDSN",
-    "s2": "MSCI",
+    "s1": "MSCI",
+    "s2": "NDSN",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },

@@ -1682,6 +1682,13 @@ def run_daily_signal(
             regime=regime,
         )
 
+        # Merge Step 1 orphan closes into monitor so PnLReport can track them
+        for strat, out in [('mrpt', mrpt_out), ('mtfs', mtfs_out)]:
+            for close_ev in out.get('step1_closes', []):
+                monitor[strat].append(close_ev)
+                log.info(f"[monitor] Orphan close from Step 1: {close_ev['pair']} "
+                         f"{close_ev['action']} pnl={close_ev.get('unrealized_pnl')}")
+
         _print_combined_summary(mrpt_out, mtfs_out, T, regime, signal_date)
 
         # Save combined output
@@ -1748,6 +1755,12 @@ def run_daily_signal(
         capital=capital,
         regime=regime,
     )
+
+    # Merge Step 1 orphan closes into monitor
+    for close_ev in single_out.get('step1_closes', []):
+        monitor[strategy].append(close_ev)
+        log.info(f"[monitor] Orphan close from Step 1: {close_ev['pair']} "
+                 f"{close_ev['action']} pnl={close_ev.get('unrealized_pnl')}")
 
     # ── 生成详细报告 ──────────────────────────────────────────────────────
     os.makedirs(REPORTS_DIR, exist_ok=True)
@@ -1820,15 +1833,44 @@ def _run_single(strategy: str, signal_date: date, dry_run: bool,
         json.dump(out, f, indent=2, default=str)
     log.info(f"[{strategy.upper()}] Signals saved → {sig_path}")
 
+    # Track which pairs Step 1 closes (for orphan close detection)
+    step1_closes = []
     if not dry_run:
+        # Snapshot pre-update state to detect orphan closes
+        pre_pairs = {k: v.get('direction') for k, v in inventory.get('pairs', {}).items()}
         updated_inv = update_inventory_from_signals(
             inventory, signals, end_date_str,
             strategy=strategy, pair_configs=pair_configs)
         save_inventory(updated_inv, strategy)
         print(f"\n  inventory_{strategy}.json updated for {end_date_str}")
+
+        # Detect orphan closes: pairs that had direction before but null after,
+        # where the close came from Step 1 signals (not monitor).
+        # These need to be recorded so PnLReport can track them.
+        for pair_key, old_dir in pre_pairs.items():
+            if not old_dir:
+                continue
+            new_dir = updated_inv.get('pairs', {}).get(pair_key, {}).get('direction')
+            if new_dir is not None:
+                continue
+            # This pair was closed by Step 1. Find the signal that closed it.
+            close_sig = next((s for s in signals if s.get('pair') == pair_key
+                              and s.get('action') in ('CLOSE', 'CLOSE_STOP')), None)
+            if close_sig:
+                step1_closes.append({
+                    'pair':             pair_key,
+                    'action':           close_sig.get('action'),
+                    'direction':        old_dir,
+                    'unrealized_pnl':   close_sig.get('unrealized_pnl', 0),
+                    'unrealized_pnl_pct': close_sig.get('unrealized_pnl_pct'),
+                    'note':             close_sig.get('note', 'Closed by Step 1 signal (not monitor)'),
+                    'source':           'step1_signal',
+                    'monitored':        False,
+                })
     else:
         print(f"\n  [DRY RUN] inventory_{strategy}.json NOT updated")
 
+    out['step1_closes'] = step1_closes
     return out
 
 

@@ -860,7 +860,11 @@ def main():
     earliest = min(w['start'] for w in all_windows)
     latest = max(w['end'] for w in all_windows)
     fetch_start = (pd.Timestamp(earliest) - pd.Timedelta(days=60)).strftime('%Y-%m-%d')
-    fetch_end = (pd.Timestamp(latest) + pd.Timedelta(days=5)).strftime('%Y-%m-%d')
+    # Cap fetch_end to today — no point requesting future dates, and it avoids
+    # triggering stale_tail fallback when MongoDB is current but test_end is ahead.
+    today = pd.Timestamp.now().normalize()
+    raw_end = pd.Timestamp(latest) + pd.Timedelta(days=5)
+    fetch_end = min(raw_end, today).strftime('%Y-%m-%d')
 
     print(f"Analysis period: {earliest} → {latest}")
     print(f"Fetch range: {fetch_start} → {fetch_end}")
