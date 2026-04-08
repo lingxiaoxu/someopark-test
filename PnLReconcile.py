@@ -28,6 +28,27 @@ INV_DIR  = os.path.join(BASE_DIR, 'inventory_history')
 SIG_DIR  = os.path.join(BASE_DIR, 'trading_signals')
 
 
+def _us_market_date() -> pd.Timestamp:
+    """Latest fully-closed NYSE trading day (US Eastern, before 16:00 → previous day,
+    then snap to most recent NYSE trading day to skip weekends + holidays)."""
+    try:
+        from datetime import timedelta
+        from zoneinfo import ZoneInfo
+        import pandas_market_calendars as mcal
+        us_now = pd.Timestamp.now(tz='America/New_York')
+        if us_now.hour < 16:
+            us_ref = (us_now - timedelta(days=1)).date()
+        else:
+            us_ref = us_now.date()
+        nyse = mcal.get_calendar('NYSE')
+        valid = nyse.valid_days(
+            (pd.Timestamp(us_ref) - pd.Timedelta(days=10)).strftime('%Y-%m-%d'),
+            pd.Timestamp(us_ref).strftime('%Y-%m-%d'))
+        return pd.Timestamp(valid[-1].date()) if len(valid) > 0 else pd.Timestamp(us_ref)
+    except Exception:
+        return pd.Timestamp.now().normalize()
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # 1. 读取 inventory_history — 提取每个 pair 的持仓生命周期
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -43,7 +64,7 @@ def load_positions_from_inventory(start: str | None, end: str | None) -> list[di
         open_signal, last_pnl (最后一条 monitor_log 的 unrealized_pnl),
         last_pnl_date, first_seen_date, last_seen_date
     """
-    end_ts   = pd.Timestamp(end) if end else pd.Timestamp.now()
+    end_ts   = pd.Timestamp(end) if end else _us_market_date()
     start_ts = pd.Timestamp(start) if start else pd.Timestamp('1970-01-01')
 
     # pair -> {data_dict}  (latest snapshot wins)
@@ -126,7 +147,7 @@ def load_close_pnl_from_reports(start: str | None, end: str | None) -> dict[str,
     最新的报告覆盖旧的（同一 pair 可能在不同日期平仓多次，各自保留）。
     实际返回最后一次 CLOSE 记录。
     """
-    end_ts   = pd.Timestamp(end) if end else pd.Timestamp.now()
+    end_ts   = pd.Timestamp(end) if end else _us_market_date()
     start_ts = pd.Timestamp(start) if start else pd.Timestamp('1970-01-01')
 
     # pair -> list of (file_date, event_dict) for all CLOSE/CLOSE_STOP events
@@ -221,7 +242,7 @@ def load_close_pnl_from_reports(start: str | None, end: str | None) -> dict[str,
 
 def load_hold_pnl_from_reports(end: str | None) -> dict[str, dict]:
     """最新一份 daily_report 中 HOLD 状态仓位的 unrealized_pnl。"""
-    end_ts = pd.Timestamp(end) if end else pd.Timestamp.now()
+    end_ts = pd.Timestamp(end) if end else _us_market_date()
 
     files = sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json')))
     # find latest file within range (use full timestamp)
@@ -308,7 +329,7 @@ def run(start: str | None, end: str | None, decompose: bool = False):
     hold_pnl_map = load_hold_pnl_from_reports(end)
 
     # --- Determine evaluation date ---
-    eval_date = end if end else str(pd.Timestamp.now().date())
+    eval_date = end if end else str(_us_market_date().date())
 
     # --- Download prices ---
     all_tickers: set[str] = set()

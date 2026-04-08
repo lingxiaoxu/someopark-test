@@ -84,6 +84,7 @@ function scoreBar(val: number) {
 }
 
 function VolDecomposition({ sub }: { sub: Record<string, number> }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const rows = VOL_SUB_ORDER.filter(k => sub[k] != null);
   if (rows.length === 0) return null;

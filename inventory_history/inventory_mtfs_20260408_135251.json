@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-04-08",
+  "as_of": "2026-04-07",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -296,72 +296,6 @@
         }
       ],
       "last_updated": "2026-04-03"
-    },
-    "D/NSC": {
-      "strategy": "mtfs",
-      "param_set": "let_profits_run",
-      "direction": "long",
-      "s1_shares": 2450,
-      "s2_shares": -532,
-      "open_date": "2026-04-08",
-      "open_s1_price": 62.69,
-      "open_s2_price": 288.5,
-      "open_hedge_ratio": 0.21729636048526862,
-      "open_price_level_stop": null,
-      "days_held": 0,
-      "open_signal": {
-        "momentum_spread": 0.145,
-        "entry_threshold": 0.0,
-        "exit_threshold": null
-      },
-      "wf_source": {
-        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260408_134712.json",
-        "wf_dir": "historical_runs/walk_forward_mtfs",
-        "windows": {
-          "W1": {
-            "param_set": "let_profits_run",
-            "train_end": "2025-08-14",
-            "test_start": "2025-08-15",
-            "test_end": "2025-09-23",
-            "oos_sharpe": -2.5176,
-            "oos_pnl": -4805.55
-          },
-          "W2": {
-            "param_set": "let_profits_run",
-            "train_end": "2025-09-23",
-            "test_start": "2025-09-24",
-            "test_end": "2025-10-30",
-            "oos_sharpe": -11.1313,
-            "oos_pnl": -21863.33
-          },
-          "W3": {
-            "param_set": "let_profits_run",
-            "train_end": "2025-10-30",
-            "test_start": "2025-10-31",
-            "test_end": "2025-12-09",
-            "oos_sharpe": -4.1377,
-            "oos_pnl": -11293.64
-          },
-          "W4": {
-            "param_set": "let_profits_run",
-            "train_end": "2025-12-09",
-            "test_start": "2025-12-10",
-            "test_end": "2026-01-20",
-            "oos_sharpe": -0.3606,
-            "oos_pnl": -949.28
-          },
-          "W6": {
-            "param_set": "let_profits_run",
-            "train_end": "2026-02-27",
-            "test_start": "2026-03-02",
-            "test_end": "2026-04-08",
-            "oos_sharpe": -6.043,
-            "oos_pnl": -5213.93
-          }
-        },
-        "default_window": "W6"
-      },
-      "monitor_log": []
     }
   }
 }
