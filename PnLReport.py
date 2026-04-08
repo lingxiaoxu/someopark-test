@@ -1317,7 +1317,28 @@ def main():
                         help='不生成「系统成交价 vs 参考收盘价对照」章节')
     args = parser.parse_args()
 
-    end   = args.end   or str(pd.Timestamp.now().date())
+    if args.end:
+        end = args.end
+    else:
+        # Use US Eastern time; if before market close (16:00 ET), use previous day.
+        # Then snap to the most recent NYSE trading day (skip weekends + holidays).
+        try:
+            from zoneinfo import ZoneInfo
+            from datetime import timedelta
+            us_now = pd.Timestamp.now(tz='America/New_York')
+            if us_now.hour < 16:
+                us_ref = (us_now - timedelta(days=1)).date()
+            else:
+                us_ref = us_now.date()
+            # Snap to NYSE trading day
+            import pandas_market_calendars as mcal
+            nyse = mcal.get_calendar('NYSE')
+            valid = nyse.valid_days(
+                (pd.Timestamp(us_ref) - pd.Timedelta(days=10)).strftime('%Y-%m-%d'),
+                pd.Timestamp(us_ref).strftime('%Y-%m-%d'))
+            end = str(valid[-1].date()) if len(valid) > 0 else str(us_ref)
+        except Exception:
+            end = str(pd.Timestamp.now().date())
     if args.start:
         start = args.start
     else:
@@ -1331,13 +1352,14 @@ def main():
 
     reports_dir = os.path.join(BASE_DIR, 'trading_signals', 'pnl_reports')
     os.makedirs(reports_dir, exist_ok=True)
+    run_date = datetime.now().strftime('%Y%m%d')
     if args.out:
         out = args.out
     elif args.no_yf:
         gen_ts = datetime.now().strftime('%Y%m%d_%H%M%S')
-        out = os.path.join(reports_dir, f'pnl_report_{end.replace("-","")}_{gen_ts}.pdf')
+        out = os.path.join(reports_dir, f'pnl_report_{run_date}_{gen_ts}.pdf')
     else:
-        out = os.path.join(reports_dir, f'pnl_report_{end.replace("-","")}.pdf')
+        out = os.path.join(reports_dir, f'pnl_report_{run_date}.pdf')
 
     print(f'\nBuilding report: {start} → {end}  (yf_compare={"off" if args.no_yf else "on"})')
     report = build_report_data(start, end)

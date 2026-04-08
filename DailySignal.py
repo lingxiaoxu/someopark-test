@@ -111,6 +111,20 @@ BACKTEST_BASE_CAPITAL = 1_000_000.0
 # ── Date helpers ───────────────────────────────────────────────────────────────
 
 def prev_weekday(d: date) -> date:
+    """Return the most recent NYSE trading day on or before d.
+    Uses pandas_market_calendars for accurate holiday handling."""
+    try:
+        import pandas_market_calendars as mcal
+        nyse = mcal.get_calendar('NYSE')
+        # Look back up to 10 days to find the last valid trading day
+        start = (pd.Timestamp(d) - pd.Timedelta(days=10)).strftime('%Y-%m-%d')
+        end = pd.Timestamp(d).strftime('%Y-%m-%d')
+        schedule = nyse.valid_days(start, end)
+        if len(schedule) > 0:
+            return schedule[-1].date()
+    except Exception:
+        pass
+    # Fallback: skip weekends only
     while d.weekday() >= 5:
         d -= timedelta(days=1)
     return d
@@ -2675,7 +2689,22 @@ Examples:
 
     args = parser.parse_args()
 
-    signal_date = date.fromisoformat(args.date) if args.date else prev_weekday(date.today())
+    if args.date:
+        signal_date = date.fromisoformat(args.date)
+    else:
+        # Use US Eastern time to determine the latest fully-closed trading day.
+        # If US market hasn't closed yet (before 16:00 ET), use previous trading day.
+        try:
+            from zoneinfo import ZoneInfo
+            us_now = datetime.now(ZoneInfo('America/New_York'))
+            if us_now.hour < 16:
+                # Market hasn't closed yet — use yesterday
+                us_ref = (us_now - timedelta(days=1)).date()
+            else:
+                us_ref = us_now.date()
+        except Exception:
+            us_ref = date.today()
+        signal_date = prev_weekday(us_ref)
 
     run_daily_signal(
         strategy        = args.strategy,
