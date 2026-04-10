@@ -65,9 +65,23 @@ def _find_oos_windows(wf_dir, run_prefix=None):
                 groups[m.group(2)].append(d)
         if not groups:
             return []
-        # Pick the group with the most windows (most complete run)
-        best_anchor = max(groups, key=lambda k: (len(groups[k]), max(os.path.getmtime(d) for d in groups[k])))
-        all_dirs = groups[best_anchor]
+        # Pick the group with the most unique window indices, then latest mtime.
+        # Deduplicate first: if multiple dirs exist for the same window_idx,
+        # keep the latest by mtime. Then select anchor by unique count + recency.
+        def _dedup_group(dirs):
+            seen = {}
+            for d in dirs:
+                m2 = re.search(r'window(\d+)_', os.path.basename(d))
+                if m2:
+                    widx = m2.group(1)
+                    if widx not in seen or os.path.getmtime(d) > os.path.getmtime(seen[widx]):
+                        seen[widx] = d
+            return seen
+        best_anchor = max(groups, key=lambda k: (
+            len(_dedup_group(groups[k])),
+            max(os.path.getmtime(d) for d in groups[k])
+        ))
+        all_dirs = sorted(_dedup_group(groups[best_anchor]).values())
 
     windows = []
     for wdir in sorted(all_dirs):

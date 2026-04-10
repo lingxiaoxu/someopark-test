@@ -1,0 +1,516 @@
+{
+  "generated_at": "2026-04-09T13:42:07.570790",
+  "strategy": "MTFS",
+  "mode": "expanding",
+  "n_param_sets": 31,
+  "train_start": "2024-02-16",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 162,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-02-16",
+      "train_end": "2025-08-15",
+      "test_start": "2025-08-18",
+      "test_end": "2025-09-24",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "CFG",
+          "ALL",
+          "short_term_tilt"
+        ],
+        [
+          "ALL",
+          "EQR",
+          "crash_defensive"
+        ],
+        [
+          "CSX",
+          "AIG",
+          "fast_rebalance"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AIG",
+          "WELL",
+          "balanced"
+        ],
+        [
+          "D",
+          "NSC",
+          "let_profits_run"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "MSCI",
+          "NDSN",
+          "entry_filter_kalman"
+        ],
+        [
+          "CSCO",
+          "HST",
+          "long_term_tilt"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ACGL",
+          "YUM",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AFL",
+          "AVB",
+          "conservative"
+        ],
+        [
+          "AFL",
+          "RSG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AWK",
+          "AIZ",
+          "let_profits_run"
+        ]
+      ],
+      "oos_sharpe": -4.25911730621444,
+      "oos_pnl": -8338.916729968223
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-02-16",
+      "train_end": "2025-09-24",
+      "test_start": "2025-09-25",
+      "test_end": "2025-10-31",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "CFG",
+          "ALL",
+          "conservative"
+        ],
+        [
+          "ALL",
+          "EQR",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CSX",
+          "AIG",
+          "fast_rebalance"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AIG",
+          "WELL",
+          "balanced"
+        ],
+        [
+          "D",
+          "NSC",
+          "let_profits_run"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "MSCI",
+          "NDSN",
+          "beta_neutral"
+        ],
+        [
+          "CSCO",
+          "HST",
+          "long_term_tilt"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ACGL",
+          "YUM",
+          "raw_momentum"
+        ],
+        [
+          "AFL",
+          "AVB",
+          "beta_neutral"
+        ],
+        [
+          "AFL",
+          "RSG",
+          "long_term_tilt"
+        ],
+        [
+          "AWK",
+          "AIZ",
+          "let_profits_run"
+        ]
+      ],
+      "oos_sharpe": -7.504949038166327,
+      "oos_pnl": -21541.996912260605
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-02-16",
+      "train_end": "2025-10-31",
+      "test_start": "2025-11-03",
+      "test_end": "2025-12-10",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "CFG",
+          "ALL",
+          "conservative"
+        ],
+        [
+          "ALL",
+          "EQR",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CSX",
+          "AIG",
+          "fast_rebalance"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "no_reversal_protection"
+        ],
+        [
+          "AIG",
+          "WELL",
+          "conservative"
+        ],
+        [
+          "D",
+          "NSC",
+          "let_profits_run"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "MSCI",
+          "NDSN",
+          "sensitive_reversal"
+        ],
+        [
+          "CSCO",
+          "HST",
+          "aggressive"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ACGL",
+          "YUM",
+          "raw_momentum"
+        ],
+        [
+          "AFL",
+          "AVB",
+          "fast_strict"
+        ],
+        [
+          "AFL",
+          "RSG",
+          "long_term_tilt"
+        ],
+        [
+          "AWK",
+          "AIZ",
+          "kalman_aggressive"
+        ]
+      ],
+      "oos_sharpe": -2.833513519447251,
+      "oos_pnl": -7370.530069941837
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-02-16",
+      "train_end": "2025-12-10",
+      "test_start": "2025-12-11",
+      "test_end": "2026-01-21",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "CFG",
+          "ALL",
+          "aggressive"
+        ],
+        [
+          "ALL",
+          "EQR",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CSX",
+          "AIG",
+          "fast_rebalance"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AIG",
+          "WELL",
+          "entry_filter_kalman"
+        ],
+        [
+          "D",
+          "NSC",
+          "let_profits_run"
+        ],
+        [
+          "MSCI",
+          "NDSN",
+          "sensitive_reversal"
+        ],
+        [
+          "CSCO",
+          "HST",
+          "slow_rebalance"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ACGL",
+          "YUM",
+          "raw_momentum"
+        ],
+        [
+          "AFL",
+          "AVB",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AFL",
+          "RSG",
+          "long_term_tilt"
+        ],
+        [
+          "AWK",
+          "AIZ",
+          "kalman_aggressive"
+        ]
+      ],
+      "oos_sharpe": 0.1344771984785542,
+      "oos_pnl": 216.34513169904676
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-02-16",
+      "train_end": "2026-01-21",
+      "test_start": "2026-01-22",
+      "test_end": "2026-03-02",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "CFG",
+          "ALL",
+          "aggressive"
+        ],
+        [
+          "ALL",
+          "EQR",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CSX",
+          "AIG",
+          "sensitive_reversal"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "beta_neutral"
+        ],
+        [
+          "AIG",
+          "WELL",
+          "entry_filter_kalman"
+        ],
+        [
+          "ALL",
+          "DGX",
+          "conservative"
+        ],
+        [
+          "D",
+          "NSC",
+          "let_profits_run"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "MSCI",
+          "NDSN",
+          "kalman_aggressive"
+        ],
+        [
+          "CSCO",
+          "HST",
+          "slow_rebalance"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ACGL",
+          "YUM",
+          "raw_momentum"
+        ],
+        [
+          "AFL",
+          "AVB",
+          "fast_strict"
+        ],
+        [
+          "AFL",
+          "RSG",
+          "long_term_tilt"
+        ],
+        [
+          "AWK",
+          "AIZ",
+          "kalman_aggressive"
+        ]
+      ],
+      "oos_sharpe": -5.183962385847977,
+      "oos_pnl": -25298.742654921203
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-02-16",
+      "train_end": "2026-03-02",
+      "test_start": "2026-03-03",
+      "test_end": "2026-04-09",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "CFG",
+          "ALL",
+          "conservative"
+        ],
+        [
+          "ALL",
+          "EQR",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CSX",
+          "AIG",
+          "sensitive_reversal"
+        ],
+        [
+          "HLT",
+          "AIG",
+          "fast_strict"
+        ],
+        [
+          "AIG",
+          "WELL",
+          "entry_threshold_strong"
+        ],
+        [
+          "ALL",
+          "DGX",
+          "conservative"
+        ],
+        [
+          "D",
+          "NSC",
+          "let_profits_run"
+        ],
+        [
+          "WFC",
+          "MMM",
+          "short_term_beta_neutral"
+        ],
+        [
+          "MSCI",
+          "NDSN",
+          "aggressive"
+        ],
+        [
+          "CSCO",
+          "HST",
+          "long_term_tilt"
+        ],
+        [
+          "ACGL",
+          "MCD",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ACGL",
+          "YUM",
+          "raw_momentum"
+        ],
+        [
+          "AFL",
+          "AVB",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AFL",
+          "RSG",
+          "long_term_tilt"
+        ],
+        [
+          "AWK",
+          "AIZ",
+          "let_profits_run"
+        ]
+      ],
+      "oos_sharpe": -4.2950169930674935,
+      "oos_pnl": -4541.37899858709
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": -66464.26132987044,
+    "oos_trading_days": 156,
+    "oos_sharpe": -3.6833836015837256,
+    "oos_max_dd_dollar": -67859.15502850048,
+    "oos_max_dd_pct": -0.13573690415346026
+  }
+}

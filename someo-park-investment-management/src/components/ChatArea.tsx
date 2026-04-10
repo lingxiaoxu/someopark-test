@@ -104,6 +104,7 @@ export default function ChatArea({
   selectedTemplate,
   onSelectedTemplateChange,
   session,
+  onSignInClick,
   chatKey,
   onFirstMessage,
   onConnectClick,
@@ -121,6 +122,7 @@ export default function ChatArea({
   selectedTemplate: string
   onSelectedTemplateChange: (t: string) => void
   session?: Session | null
+  onSignInClick?: () => void
   chatKey?: number
   onFirstMessage?: (text: string) => void
   onConnectClick?: () => void
@@ -136,6 +138,11 @@ export default function ChatArea({
   const [files, setFiles] = useState<File[]>([])
   const [currentStanseAgent, setCurrentStanseAgent] = useState<DeepPartial<StanseAgentSchema> | null>(null)
   const [selectedStrategy, setSelectedStrategy] = useState<'mrpt' | 'mtfs'>('mrpt')
+  // Gate all artifact/chat interactions behind login
+  const guardedSetArtifact = useCallback((a: any) => {
+    if (!session) { onSignInClick?.(); return }
+    setActiveArtifact(a)
+  }, [session, onSignInClick, setActiveArtifact])
   const [runtimeDropdownOpen, setRuntimeDropdownOpen] = useState(false)
   const runtimeDropdownRef = useRef<HTMLDivElement>(null)
   const chatContainerRef = useRef<HTMLDivElement>(null)
@@ -337,6 +344,7 @@ export default function ChatArea({
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!session) { onSignInClick?.(); return }
     if (!input.trim() || isLoading) return
 
     // Branch: Someo Agent mode
@@ -537,7 +545,7 @@ export default function ChatArea({
   const renderArtifactButton = (artifact: ArtifactTrigger) => (
     <button
       key={`${artifact.type}-${artifact.title}`}
-      onClick={() => setActiveArtifact({ type: artifact.type, title: artifact.title, params: artifact.params })}
+      onClick={() => guardedSetArtifact({ type: artifact.type, title: artifact.title, params: artifact.params })}
       className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-xs text-[var(--text-primary)]"
     >
       <Activity className="w-3.5 h-3.5 text-[var(--accent-primary)]" />
@@ -675,49 +683,49 @@ export default function ChatArea({
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => setActiveArtifact({ type: 'pair_universe', title: 'Pair Universe', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'pair_universe', title: 'Pair Universe', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnPairUniverse')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'table', title: 'Trading Signals', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'table', title: 'Trading Signals', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnSignals')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'inventory', title: 'Current Inventory', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'inventory', title: 'Current Inventory', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnCurrentInventory')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'inventory_history', title: 'Inventory History', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'inventory_history', title: 'Inventory History', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnInventoryHistory')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'daily_report', title: 'Daily Report' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'daily_report', title: 'Daily Report' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnDailyReport')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'dashboard', title: 'Macro Regime Status' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'dashboard', title: 'Macro Regime Status' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnRegime')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'chart', title: 'OOS Equity Curve', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'chart', title: 'OOS Equity Curve', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnOosEquity')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'oos_pair_summary', title: 'OOS Pair Summary', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'oos_pair_summary', title: 'OOS Pair Summary', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnOosPairSummary')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'wf_grid', title: 'Walk-Forward Grid', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'wf_grid', title: 'Walk-Forward Grid', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnDsrGrid')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'wf_summary', title: 'Walk-Forward Summary', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'wf_summary', title: 'Walk-Forward Summary', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnWfSummary')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'wf_diagnostic', title: 'WF Diagnostic Report' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'wf_diagnostic', title: 'WF Diagnostic Report' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnWfDiagnostic')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'portfolio_history', title: 'Portfolio History', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'portfolio_history', title: 'Portfolio History', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnMonitorHistory')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'wf_structure', title: 'WF File Structure' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'wf_structure', title: 'WF File Structure' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnWfStructure')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'pnl_report', title: 'PnL Report' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'pnl_report', title: 'PnL Report' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnPnlReport')}
                 </button>
-                <button onClick={() => setActiveArtifact({ type: 'strategy_performance', title: 'Strategy Performance' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
+                <button onClick={() => guardedSetArtifact({ type: 'strategy_performance', title: 'Strategy Performance' })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnStrategyPerformance')}
                 </button>
               </div>
