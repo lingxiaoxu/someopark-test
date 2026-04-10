@@ -301,6 +301,7 @@ export default function App() {
               selectedTemplate={selectedTemplate}
               onSelectedTemplateChange={setSelectedTemplate}
               session={session}
+              onSignInClick={() => setIsAuthDialogOpen(true)}
               chatKey={chatKey}
               onFirstMessage={handleFirstMessage}
               onConnectClick={() => setIsModalOpen(true)}
