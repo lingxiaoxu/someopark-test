@@ -82,9 +82,17 @@ export const searchContentTool: AgentTool = {
 
     args.push(absolutePath)
 
+    // Resolve rg binary: prefer system rg, fallback to Claude Code vendored binary
+    const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
+    const platform = process.platform === 'darwin' ? 'darwin' : 'linux'
+    const vendoredRg = `/opt/homebrew/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/${arch}-${platform}/rg`
+    const rgBin = (() => {
+      try { execSync('which rg', { stdio: 'pipe' }); return 'rg' } catch { return vendoredRg }
+    })()
+
     // Execute ripgrep
     try {
-      const stdout = execSync(`rg ${args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')}`, {
+      const stdout = execSync(`"${rgBin}" ${args.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')}`, {
         encoding: 'utf8',
         maxBuffer: 10 * 1024 * 1024,
         timeout: 30000,
