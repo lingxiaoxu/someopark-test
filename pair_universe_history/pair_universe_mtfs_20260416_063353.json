@@ -6,6 +6,18 @@
     "spread_col": "Momentum_Spread_tech"
   },
   {
+    "s1": "CFG",
+    "s2": "ALL",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "ALL",
+    "s2": "EQR",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
     "s1": "CSX",
     "s2": "AIG",
     "sector": "finance",
@@ -25,7 +37,7 @@
   },
   {
     "s1": "ALL",
-    "s2": "WELL",
+    "s2": "DGX",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -42,8 +54,20 @@
     "spread_col": "Momentum_Spread_tech"
   },
   {
+    "s1": "INVH",
+    "s2": "WELL",
+    "sector": "other",
+    "spread_col": "Momentum_Spread_other"
+  },
+  {
     "s1": "NDSN",
     "s2": "MSCI",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "ACGL",
+    "s2": "MCD",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -60,32 +84,8 @@
     "spread_col": "Momentum_Spread_other"
   },
   {
-    "s1": "CMI",
-    "s2": "ALL",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "ALL",
-    "s2": "ESS",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "CINF",
-    "s2": "AWK",
-    "sector": "utilities",
-    "spread_col": "Momentum_Spread_utilities"
-  },
-  {
-    "s1": "CMI",
-    "s2": "AWK",
-    "sector": "utilities",
-    "spread_col": "Momentum_Spread_utilities"
-  },
-  {
-    "s1": "RJF",
-    "s2": "BLK",
+    "s1": "AFL",
+    "s2": "AVB",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   }

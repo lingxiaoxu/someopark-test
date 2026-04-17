@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-04-16",
+  "as_of": "2026-04-10",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -185,28 +185,6 @@
           "unrealized_pnl": 32220.06,
           "unrealized_pnl_pct": 5.527,
           "note": "Holding long, signal=0.381, exit at 0.221"
-        },
-        {
-          "date": "2026-04-15",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.413,
-          "exit_threshold": 0.342,
-          "unrealized_pnl": 23692.27,
-          "unrealized_pnl_pct": 3.856,
-          "note": "Holding long, signal=0.413, exit at 0.342"
-        },
-        {
-          "date": "2026-04-16",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.409,
-          "exit_threshold": 0.314,
-          "unrealized_pnl": 21250.05,
-          "unrealized_pnl_pct": 3.466,
-          "note": "Holding long, signal=0.409, exit at 0.314"
         }
       ],
       "last_updated": "2026-04-01"
