@@ -8,28 +8,36 @@
       "param_set": "default",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -40,32 +48,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -74,28 +74,36 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -106,32 +114,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -140,28 +140,36 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -172,32 +180,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -206,28 +206,36 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -238,32 +246,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -272,28 +272,36 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -304,32 +312,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -338,28 +338,36 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -370,32 +378,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -404,28 +404,36 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -436,32 +444,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -470,28 +470,36 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -502,32 +510,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -536,28 +536,36 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -568,32 +576,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -602,28 +602,36 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -634,32 +642,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -668,28 +668,36 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -700,32 +708,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -734,28 +734,36 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -766,32 +774,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -800,28 +800,36 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -832,32 +840,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -866,28 +866,36 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -898,32 +906,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -932,28 +932,36 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -964,32 +972,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -998,28 +998,36 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1030,32 +1038,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1064,28 +1064,36 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1096,32 +1104,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1130,28 +1130,36 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1162,32 +1170,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1196,28 +1196,36 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1228,32 +1236,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1262,28 +1262,36 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1294,32 +1302,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1328,28 +1328,36 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1360,32 +1368,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1394,28 +1394,36 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1426,32 +1434,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1460,28 +1460,36 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1492,32 +1500,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1526,28 +1526,36 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1558,32 +1566,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1592,28 +1592,36 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1624,32 +1632,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1658,28 +1658,36 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1690,32 +1698,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1724,28 +1724,36 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1756,32 +1764,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1790,28 +1790,36 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1822,32 +1830,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1856,28 +1856,36 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1888,32 +1896,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1922,28 +1922,36 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -1954,32 +1962,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -1988,28 +1988,36 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -2020,32 +2028,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     },
@@ -2054,28 +2054,36 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "CL",
-          "WST"
-        ],
-        [
           "PFG",
           "YUM"
+        ],
+        [
+          "CL",
+          "WST"
         ],
         [
           "MSCI",
           "MTB"
         ],
         [
-          "F",
-          "PG"
-        ],
-        [
           "PFG",
           "WMT"
         ],
         [
+          "F",
+          "PG"
+        ],
+        [
+          "ALB",
+          "YUM"
+        ],
+        [
           "GRMN",
           "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
         ],
         [
           "MTCH",
@@ -2086,32 +2094,24 @@
           "TJX"
         ],
         [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "MKTX",
-          "WST"
+          "ETR",
+          "MKTX"
         ],
         [
           "PFE",
           "PSX"
         ],
         [
-          "BALL",
-          "SBUX"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
           "CI",
           "LVS"
         ],
         [
-          "GLW",
+          "MKTX",
           "WST"
+        ],
+        [
+          "HAS",
+          "PFE"
         ]
       ]
     }
