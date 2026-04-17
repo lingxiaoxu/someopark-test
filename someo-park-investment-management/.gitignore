@@ -7,5 +7,6 @@ coverage/
 .env*
 !.env.example
 .firebase/
+TUNNEL_GUIDE.md
 public/data/
 !public/data/strategy_performance.json
