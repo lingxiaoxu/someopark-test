@@ -36,6 +36,12 @@
     "z_col": "Z_other"
   },
   {
+    "s1": "GRMN",
+    "s2": "KO",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
     "s1": "GIS",
     "s2": "HUBB",
     "sector": "food",
@@ -48,22 +54,16 @@
     "z_col": "Z_realestate"
   },
   {
-    "s1": "GRMN",
-    "s2": "KO",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "ETR",
     "s2": "MKTX",
     "sector": "utilities",
     "z_col": "Z_utilities"
   },
   {
-    "s1": "CI",
-    "s2": "LVS",
-    "sector": "health",
-    "z_col": "Z_health"
+    "s1": "MTCH",
+    "s2": "NVR",
+    "sector": "other",
+    "z_col": "Z_other"
   },
   {
     "s1": "PFE",
@@ -72,10 +72,10 @@
     "z_col": "Z_health"
   },
   {
-    "s1": "MTCH",
-    "s2": "NVR",
-    "sector": "other",
-    "z_col": "Z_other"
+    "s1": "CI",
+    "s2": "LVS",
+    "sector": "health",
+    "z_col": "Z_health"
   },
   {
     "s1": "HAS",
