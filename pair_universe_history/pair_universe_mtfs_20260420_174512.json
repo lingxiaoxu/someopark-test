@@ -6,12 +6,6 @@
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "AIG",
-    "s2": "PEP",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
     "s1": "CSX",
     "s2": "AIG",
     "sector": "finance",
@@ -24,8 +18,14 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "WELL",
-    "s2": "ALL",
+    "s1": "AIG",
+    "s2": "WELL",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "ALL",
+    "s2": "WELL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -84,7 +84,7 @@
     "spread_col": "Momentum_Spread_utilities"
   },
   {
-    "s1": "L",
+    "s1": "CMI",
     "s2": "AWK",
     "sector": "utilities",
     "spread_col": "Momentum_Spread_utilities"

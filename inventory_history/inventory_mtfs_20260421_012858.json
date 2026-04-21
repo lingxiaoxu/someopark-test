@@ -1,0 +1,51 @@
+{
+  "as_of": "2026-04-17",
+  "capital": 500000,
+  "pairs": {
+    "GS/ALLY": {
+      "direction": null
+    },
+    "ESS/EXPD": {
+      "direction": null
+    },
+    "MCHP/D": {
+      "direction": null
+    },
+    "XOM/V": {
+      "direction": null
+    },
+    "ETR/AVB": {
+      "direction": null
+    },
+    "RSG/AFL": {
+      "direction": null
+    },
+    "EVRG/AVB": {
+      "direction": null
+    },
+    "TJX/AVB": {
+      "direction": null
+    },
+    "ALL/BK": {
+      "direction": null
+    },
+    "AWK/AXP": {
+      "direction": null
+    },
+    "L/AVB": {
+      "direction": null
+    },
+    "AIG/AVB": {
+      "direction": null
+    },
+    "MSCI/NDSN": {
+      "direction": null
+    },
+    "D/NSC": {
+      "direction": null
+    },
+    "ACGL/MCD": {
+      "direction": null
+    }
+  }
+}
