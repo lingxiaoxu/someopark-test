@@ -51,7 +51,7 @@ Full-stack dashboard for the [someopark](../README.md) quantitative pair-trading
 | **Current Inventory** | `inventory_mrpt.json` / `inventory_mtfs.json` | 当前持仓状态：开仓日期、价格、param_set、对冲比率、WF 来源 |
 | **Inventory History** | `inventory_history/*.json` | 历史持仓快照浏览（含监测日志、PnL 追踪） |
 | **Portfolio History** | `historical_runs/*/portfolio_history_*.xlsx` | 组合历史 Excel 内联查看器（35 个 Sheet，按日期 / 配对 / 交易分解） |
-| **PnL Report** | `pnl_reports/pnl_report_*.json` | 盈亏报告：交易明细、杠杆分析、系统价 vs 收盘价 |
+| **PnL Report** | `pnl_reports/pnl_report_*.json` | 盈亏报告：交易明细、杠杆分析、系统价 vs 执行价（次日开盘） |
 | **Strategy Performance** | `public/data/strategy_performance.json` | 策略整体表现：权益曲线（% / $）、回撤、每日 PnL，支持日期范围选择 |
 | **Pair Universe** | `pair_universe_mrpt.json` / `pair_universe_mtfs.json` | 配对筛选视图：已选 / 协整 / 相似 / PCA 候选 |
 | **WF Diagnostic** | `historical_runs/walk_forward*/oos_report_*.txt` | Walk-Forward 诊断文本报告 |
