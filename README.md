@@ -82,7 +82,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `PriceDataStore.py` | 价格数据读取与缓存（Polygon / Yahoo），Parquet 格式 |
 | `AuditPairs.py` | 验证 Excel 输出文件规则合规性（MRPT / MTFS 通用，`--strategy mrpt\|mtfs`） |
 | `DailySignal.py` | 每日信号生成器（`--strategy mrpt\|mtfs\|both`），含 Regime 检测、Position Monitor、完整报告输出 |
-| `PnLReport.py` | 生成 PDF 绩效报告：交易明细、PnL 汇总、杠杆分析（总/单边/净/ROE）、系统成交价 vs 参考收盘价对照。`--end YYYY-MM-DD [--start YYYY-MM-DD] [--no-yf]` |
+| `PnLReport.py` | 生成 PDF 绩效报告：交易明细、PnL 汇总、杠杆分析（总/单边/净/ROE）、系统成交价 vs 参考执行价对照（执行日开盘价）。`--end YYYY-MM-DD [--start YYYY-MM-DD] [--no-yf]` |
 | `PnLReconcile.py` | 通用对账工具：逐笔核查成交记录与 inventory 快照的一致性 |
 | `MacroDataStore.py` | 宏观指数数据存储（VIX/MOVE 日线 + VIX/VXTLT hourly），按年分 Parquet 存储，供 RegimeDetector 读取短期百分位 |
 | `RegimeDetector.py` | Regime 检测器：CISS 动态加权、倒 U 型波动率曲线、90 天 hourly 百分位分层合成，输出 0–100 分 + 各类 sub-scores |
