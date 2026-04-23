@@ -55,18 +55,19 @@ export default function SignalTable({ params }: { params?: any }) {
                   <td className="px-4 py-3">
                     <PairBadge
                       pair={sig.pair}
-                      direction={sig.action?.includes('LONG') ? 'long' : sig.action?.includes('SHORT') ? 'short' : undefined}
+                      direction={sig.direction || (sig.action?.includes('LONG') ? 'long' : sig.action?.includes('SHORT') ? 'short' : undefined)}
                       strategy={strategy}
                       compact
                     />
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide ${
+                      sig.action === 'MACRO_VETO' ? 'bg-[var(--warning)]/10 text-[var(--warning)]' :
                       sig.action?.includes('OPEN') ? 'bg-[var(--success)]/10 text-[var(--success)]' :
                       sig.action?.includes('CLOSE') ? 'bg-[var(--error)]/10 text-[var(--error)]' :
                       'bg-[var(--text-muted)]/10 text-[var(--text-muted)]'
                     }`}>
-                      {sig.action}
+                      {sig.action === 'MACRO_VETO' ? `⊘ ${sig.original_action?.replace('_', ' ') ?? 'VETO'}` : sig.action}
                     </span>
                   </td>
                   <td className="px-4 py-3 font-mono text-xs">{sig.z_score?.toFixed(2) ?? sig.momentum_spread?.toFixed(2) ?? 'N/A'}</td>

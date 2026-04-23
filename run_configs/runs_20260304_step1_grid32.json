@@ -12,10 +12,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -24,48 +20,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -78,10 +78,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -90,48 +86,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -144,10 +144,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -156,48 +152,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -210,10 +210,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -222,48 +218,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -276,10 +276,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -288,48 +284,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -342,10 +342,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -354,48 +350,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -408,10 +408,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -420,48 +416,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -474,10 +474,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -486,48 +482,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -540,10 +540,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -552,48 +548,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -606,10 +606,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -618,48 +614,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -672,10 +672,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -684,48 +680,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -738,10 +738,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -750,48 +746,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -804,10 +804,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -816,48 +812,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -870,10 +870,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -882,48 +878,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -936,10 +936,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -948,48 +944,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1002,10 +1002,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1014,48 +1010,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1068,10 +1068,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1080,48 +1076,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1134,10 +1134,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1146,48 +1142,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1200,10 +1200,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1212,48 +1208,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1266,10 +1266,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1278,48 +1274,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1332,10 +1332,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1344,48 +1340,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1398,10 +1398,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1410,48 +1406,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1464,10 +1464,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1476,48 +1472,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1530,10 +1530,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1542,48 +1538,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1596,10 +1596,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1608,48 +1604,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1662,10 +1662,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1674,48 +1670,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1728,10 +1728,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1740,48 +1736,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1794,10 +1794,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1806,48 +1802,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1860,10 +1860,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1872,48 +1868,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1926,10 +1926,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -1938,48 +1934,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -1992,10 +1992,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -2004,48 +2000,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     },
@@ -2058,10 +2058,6 @@
           "YUM"
         ],
         [
-          "CL",
-          "WST"
-        ],
-        [
           "MSCI",
           "MTB"
         ],
@@ -2070,48 +2066,52 @@
           "WMT"
         ],
         [
+          "CL",
+          "WST"
+        ],
+        [
           "ALB",
           "YUM"
-        ],
-        [
-          "F",
-          "PG"
-        ],
-        [
-          "GIS",
-          "HUBB"
-        ],
-        [
-          "AMT",
-          "TJX"
-        ],
-        [
-          "GRMN",
-          "KO"
-        ],
-        [
-          "ETR",
-          "MKTX"
-        ],
-        [
-          "CI",
-          "LVS"
-        ],
-        [
-          "PFE",
-          "PSX"
-        ],
-        [
-          "MTCH",
-          "NVR"
         ],
         [
           "HAS",
           "PFE"
         ],
         [
+          "AMT",
+          "TJX"
+        ],
+        [
+          "F",
+          "PG"
+        ],
+        [
+          "CI",
+          "LVS"
+        ],
+        [
           "LNT",
           "MKTX"
+        ],
+        [
+          "GRMN",
+          "KO"
+        ],
+        [
+          "GIS",
+          "HUBB"
+        ],
+        [
+          "ETR",
+          "MKTX"
+        ],
+        [
+          "GIS",
+          "MTD"
+        ],
+        [
+          "OKE",
+          "WST"
         ]
       ]
     }

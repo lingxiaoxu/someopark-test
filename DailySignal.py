@@ -657,8 +657,85 @@ def _r(val, decimals=3):
         return None
 
 
+def _compute_vix_term_slope_chg(signal_date) -> float | None:
+    """
+    Compute 5-day change in VIX term slope (vix3m - vix).
+
+    Positive value = VIX term structure steepening (contango increasing).
+    This happens when the market is transitioning from panic back to calm:
+    spot VIX is falling faster than 3-month VIX → momentum signals fade.
+
+    MTFS macro gate: if slope_5d_chg > 1.5 → block new momentum entries.
+
+    Derivation (15 live MTFS trades, 2026-03):
+      threshold > 1.5: saves $9,650 losses, misses only $1,995 wins → net +$7,655
+    """
+    from pathlib import Path
+    vix_dir = Path(__file__).parent / 'price_data' / 'macro' / 'vix'
+    sd = signal_date if isinstance(signal_date, date) else pd.Timestamp(signal_date).date()
+
+    def _load(name):
+        yr = sd.year
+        files = [vix_dir / f'{name}_{y}.parquet' for y in (yr - 1, yr)
+                 if (vix_dir / f'{name}_{y}.parquet').exists()]
+        if not files:
+            return None
+        dfs_out = []
+        for f in files:
+            df = pd.read_parquet(f)
+            # Flatten MultiIndex columns (e.g. vix3m has ('close', '^VIX3M'))
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
+            dfs_out.append(df[['close']].rename(columns={'close': name}))
+        s = pd.concat(dfs_out).sort_index()[name]
+        s.index = pd.to_datetime(s.index)
+        return s
+
+    try:
+        vix_s   = _load('vix')
+        vix3m_s = _load('vix3m')
+        if vix_s is None or vix3m_s is None:
+            return None
+        # Filter both to signal_date
+        vix_s   = vix_s[vix_s.index   <= pd.Timestamp(sd)]
+        vix3m_s = vix3m_s[vix3m_s.index <= pd.Timestamp(sd)]
+        if len(vix_s) < 6 or vix3m_s.empty:
+            return None
+        # vix3m may lag behind (raw file not yet updated) → forward-fill onto vix dates
+        vix3m_aligned = vix3m_s.reindex(vix_s.index, method='ffill')
+        slope = vix3m_aligned - vix_s
+        slope = slope.dropna()
+        if len(slope) < 6:
+            return None
+        return float(slope.iloc[-1] - slope.iloc[-6])
+    except Exception as e:
+        log.warning(f"[macro_gate] vix_term_slope_chg load error: {e}")
+        return None
+
+
+_MTFS_SLOPE_CHG_THRESHOLD = 1.5   # VIX term slope 5d change threshold for MTFS gate
+
+
 def extract_signals(context, pair_configs, signal_ts, inventory,
                     prices_today, strategy, scale_factor: float = 1.0) -> list:
+    # ── MTFS macro gate: compute once for all pairs ───────────────────────
+    macro_gate: dict = {}
+    if strategy == 'mtfs':
+        sd = signal_ts.date() if hasattr(signal_ts, 'date') else signal_ts
+        slope_5d_chg = _compute_vix_term_slope_chg(sd)
+        if slope_5d_chg is not None:
+            macro_gate['vix_term_slope_5d_chg'] = round(slope_5d_chg, 3)
+            if slope_5d_chg > _MTFS_SLOPE_CHG_THRESHOLD:
+                macro_gate['block_new_opens'] = True
+                macro_gate['block_reason'] = (
+                    f"VIX term slope +{slope_5d_chg:.2f}pt/5d > {_MTFS_SLOPE_CHG_THRESHOLD} — "
+                    f"market transitioning from panic to calm, MTFS momentum likely fading"
+                )
+                log.info(f"[MACRO_GATE] MTFS new opens BLOCKED — {macro_gate['block_reason']}")
+            else:
+                log.info(f"[MACRO_GATE] MTFS gate clear — vix_term_slope_5d_chg={slope_5d_chg:.2f} "
+                         f"(threshold={_MTFS_SLOPE_CHG_THRESHOLD})")
+
     signals = []
     for s1, s2, _ in pair_configs:
         pair_key = f"{s1}/{s2}"
@@ -671,6 +748,16 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
             continue
         sig = _build_signal(pair_key, s1, s2, today_rv, inventory, context,
                             prices_today, strategy, scale_factor)
+
+        # Apply macro gate: veto new opens only; HOLDs and CLOSEs are unaffected
+        if macro_gate.get('block_new_opens') and sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
+            original_action = sig['action']
+            sig['action'] = 'MACRO_VETO'
+            sig['original_action'] = original_action
+            sig['macro_gate'] = macro_gate
+            sig['note'] = macro_gate['block_reason']
+            log.info(f"[MACRO_GATE] {pair_key}: vetoed {original_action}")
+
         signals.append(sig)
     return signals
 
@@ -1400,7 +1487,7 @@ def _run_regime_detection(fred_key: str | None = None,
     Falls back to neutral (50/50) if detection fails.
     """
     try:
-        # 增量更新 VIX/MOVE 历史数据（每日自动追加，边界随历史自动更新）
+        # 增量更新 VIX/MOVE 历史数据（幂等：已是当日则跳过；MacroStateStore step 3 已提前跑过一次）
         try:
             from MacroDataStore import MacroDataStore
             MacroDataStore().update()
@@ -1447,14 +1534,15 @@ def _print_signals(signals, signal_date, strategy, dry_run,
                    capital: float | None = None, scale_factor: float = 1.0,
                    regime: dict | None = None):
     ACTION_LABELS = {
-        'OPEN_LONG':  '  ▲ OPEN LONG ',
-        'OPEN_SHORT': '  ▼ OPEN SHORT',
-        'CLOSE':      '  ✕ CLOSE     ',
-        'CLOSE_STOP': '  ✕ STOP LOSS ',
-        'HOLD':       '  — HOLD      ',
-        'FLAT':       '    FLAT      ',
-        'BLACKOUT':   '  ◉ BLACKOUT  ',
-        'NO_DATA':    '  ? NO DATA   ',
+        'OPEN_LONG':   '  ▲ OPEN LONG ',
+        'OPEN_SHORT':  '  ▼ OPEN SHORT',
+        'CLOSE':       '  ✕ CLOSE     ',
+        'CLOSE_STOP':  '  ✕ STOP LOSS ',
+        'HOLD':        '  — HOLD      ',
+        'FLAT':        '    FLAT      ',
+        'BLACKOUT':    '  ◉ BLACKOUT  ',
+        'NO_DATA':     '  ? NO DATA   ',
+        'MACRO_VETO':  '  ⊘ MACRO VETO',
     }
 
     print()
@@ -1477,6 +1565,7 @@ def _print_signals(signals, signal_date, strategy, dry_run,
 
     grouped = {
         'OPEN':  [s for s in signals if s['action'] in ('OPEN_LONG', 'OPEN_SHORT')],
+        'VETO':  [s for s in signals if s['action'] == 'MACRO_VETO'],
         'CLOSE': [s for s in signals if s['action'] in ('CLOSE', 'CLOSE_STOP')],
         'HOLD':  [s for s in signals if s['action'] == 'HOLD'],
         'FLAT':  [s for s in signals if s['action'] == 'FLAT'],
@@ -1496,7 +1585,7 @@ def _print_signals(signals, signal_date, strategy, dry_run,
             val   = sig.get(sig_key)
             val_str = f"{sig_prefix}={val:+.2f}" if val is not None else f"{sig_prefix}=n/a"
 
-            if sig['action'] in ('OPEN_LONG', 'OPEN_SHORT', 'CLOSE', 'CLOSE_STOP', 'HOLD'):
+            if sig['action'] in ('OPEN_LONG', 'OPEN_SHORT', 'CLOSE', 'CLOSE_STOP', 'HOLD', 'MACRO_VETO'):
                 s1, s2   = pair.split('/')
                 leg1     = sig.get('leg_s1', {})
                 leg2     = sig.get('leg_s2', {})
@@ -1512,6 +1601,8 @@ def _print_signals(signals, signal_date, strategy, dry_run,
                 print(f"  {label}  {pair:<12}  {val_str:<10}  "
                       f"{s1} {sh1:+d}@{p1}  {s2} {sh2:+d}@{p2}  "
                       f"{val_str2}{days_str}")
+                if sig['action'] == 'MACRO_VETO':
+                    print(f"             ↳ {sig.get('note','')}")
             elif sig['action'] == 'BLACKOUT':
                 print(f"  {label}  {pair:<12}  {val_str:<10}  {sig.get('note','')}")
             elif sig['action'] == 'FLAT':
@@ -1523,8 +1614,9 @@ def _print_signals(signals, signal_date, strategy, dry_run,
 
     n = {k: len(v) for k, v in grouped.items()}
     print()
+    veto_str = f"  |  {n['VETO']} macro_veto" if n.get('VETO') else ""
     print(f"  {n['OPEN']} open  |  {n['CLOSE']} close  |  "
-          f"{n['HOLD']} hold  |  {n['FLAT']} flat  |  {n['OTHER']} other")
+          f"{n['HOLD']} hold  |  {n['FLAT']} flat  |  {n['OTHER']} other{veto_str}")
     print(f"{'='*72}")
 
 
@@ -1954,7 +2046,7 @@ def _build_strategy_report_section(strategy: str, out: dict) -> dict:
     sig_key    = 'z_score' if strategy == 'mrpt' else 'momentum_spread'
     sig_label  = 'Z-score' if strategy == 'mrpt' else 'Momentum Spread'
 
-    active   = [s for s in signals if s['action'] in ('OPEN_LONG', 'OPEN_SHORT', 'CLOSE', 'CLOSE_STOP', 'HOLD')]
+    active   = [s for s in signals if s['action'] in ('OPEN_LONG', 'OPEN_SHORT', 'CLOSE', 'CLOSE_STOP', 'HOLD', 'MACRO_VETO')]
     flat     = [s for s in signals if s['action'] == 'FLAT']
     blackout = [s for s in signals if s['action'] == 'BLACKOUT']
     no_data  = [s for s in signals if s['action'] == 'NO_DATA']
@@ -1990,6 +2082,10 @@ def _build_strategy_report_section(strategy: str, out: dict) -> dict:
             'oos_pos_windows':   perf.get('pos_windows'),
             'oos_tier':          perf.get('tier'),
         }
+        if s.get('original_action'):
+            entry['original_action'] = s['original_action']
+        if s.get('macro_gate'):
+            entry['macro_gate'] = s['macro_gate']
         active_rich.append(entry)
 
     # Flat signals: enrich with how far signal is from threshold
@@ -2043,6 +2139,7 @@ def _build_strategy_report_section(strategy: str, out: dict) -> dict:
             'n_open':    len([s for s in active if 'OPEN' in s['action']]),
             'n_close':   len([s for s in active if 'CLOSE' in s['action']]),
             'n_hold':    len([s for s in active if s['action'] == 'HOLD']),
+            'n_veto':    len([s for s in active if s['action'] == 'MACRO_VETO']),
             'n_flat':    len(flat),
             'n_blackout': len(blackout),
             'n_no_data': len(no_data),
@@ -2492,7 +2589,7 @@ def write_report_txt(report: dict, path: str):
                 action_symbols = {
                     'OPEN_LONG': '▲ OPEN LONG ', 'OPEN_SHORT': '▼ OPEN SHORT',
                     'CLOSE': '✕ CLOSE     ', 'CLOSE_STOP': '✕ STOP LOSS ',
-                    'HOLD':  '— HOLD      ',
+                    'HOLD':  '— HOLD      ', 'MACRO_VETO': '⊘ MACRO VETO',
                 }
                 asym = action_symbols.get(action, action)
 

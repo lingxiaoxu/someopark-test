@@ -8,36 +8,32 @@
       "param_set": "default",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -56,8 +52,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -74,36 +74,32 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -122,8 +118,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -140,36 +140,32 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -188,8 +184,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -206,36 +206,32 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -254,8 +250,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -272,36 +272,32 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -320,8 +316,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -338,36 +338,32 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -386,8 +382,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -404,36 +404,32 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -452,8 +448,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -470,36 +470,32 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -518,8 +514,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -536,36 +536,32 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -584,8 +580,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -602,36 +602,32 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -650,8 +646,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -668,36 +668,32 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -716,8 +712,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -734,36 +734,32 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -782,8 +778,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -800,36 +800,32 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -848,8 +844,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -866,36 +866,32 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -914,8 +910,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -932,36 +932,32 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -980,8 +976,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -998,36 +998,32 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1046,8 +1042,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1064,36 +1064,32 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1112,8 +1108,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1130,36 +1130,32 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1178,8 +1174,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1196,36 +1196,32 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1244,8 +1240,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1262,36 +1262,32 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1310,8 +1306,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1328,36 +1328,32 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1376,8 +1372,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1394,36 +1394,32 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1442,8 +1438,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1460,36 +1460,32 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1508,8 +1504,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1526,36 +1526,32 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1574,8 +1570,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1592,36 +1592,32 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1640,8 +1636,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1658,36 +1658,32 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1706,8 +1702,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1724,36 +1724,32 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1772,8 +1768,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1790,36 +1790,32 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1838,8 +1834,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1856,36 +1856,32 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1904,8 +1900,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1922,36 +1922,32 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -1970,8 +1966,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",
@@ -1988,36 +1988,32 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
-          "AIG",
-          "PEP"
+          "PEP",
+          "AIG"
         ],
         [
           "CSX",
           "AIG"
         ],
         [
-          "HLT",
-          "AIG"
-        ],
-        [
           "WELL",
-          "ALL"
+          "AIG"
         ],
         [
           "MAR",
           "AME"
         ],
         [
-          "FOX",
+          "MNST",
           "AWK"
         ],
         [
-          "NDSN",
-          "MSCI"
+          "MSCI",
+          "NDSN"
         ],
         [
           "ACGL",
@@ -2036,8 +2032,12 @@
           "ALL"
         ],
         [
-          "CMI",
+          "CSCO",
           "ALL"
+        ],
+        [
+          "ALL",
+          "ESS"
         ],
         [
           "CINF",

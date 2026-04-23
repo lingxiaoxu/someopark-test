@@ -102,12 +102,12 @@ export default function DailyReportViewer() {
                             padding: '0 8px',
                             border: '2px solid #111',
                             boxShadow: '2px 2px 0 0 #111',
-                            background: act.action?.includes('OPEN') ? '#00cc66' : '#ff3333',
+                            background: act.action === 'MACRO_VETO' ? '#e67e22' : act.action?.includes('OPEN') ? '#00cc66' : '#ff3333',
                             color: '#fff',
                             fontFamily: 'var(--font-mono)',
                             letterSpacing: '.06em',
                           }}
-                        >{act.action?.replace('_', ' ')}</div>
+                        >{act.action === 'MACRO_VETO' ? `⊘ ${act.original_action?.replace('_', ' ') ?? 'VETO'}` : act.action?.replace('_', ' ')}</div>
                         <div>
                           <PairBadge
                             pair={act.pair}

@@ -57,6 +57,7 @@ echo "RUNNING" > "$PIPEDIR/pre_status"
 
 run_step 1 "SelectPairs.py --save" "SelectPairs"
 run_step 2 "UpdateStep1Configs.py" "UpdateStep1Configs"
+run_step 3 "MacroStateStore.py --update" "MacroStateStore_update"
 
 log "=== PRE-PIPELINE COMPLETE — ready to run pipeline_runner.sh ==="
 echo "ALL_DONE" >> "$PIPEDIR/pre_status"

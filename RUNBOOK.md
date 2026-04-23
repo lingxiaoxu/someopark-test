@@ -156,6 +156,24 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 6.5 MacroStateStore — 宏观快照更新（WalkForward 和 DailySignal 之前必须运行）
+
+MacroStateStore 存储每日宏观快照（280 列指标），是 MCPS（Macro-Conditioned Parameter Selection）的数据基础。
+**WalkForward 在 `select_pairs_with_dsr()` 中调用 MCPS 选择最优参数集时依赖此数据；DailySignal 每日从 Top-K 候选中选参数时也依赖此数据。**
+
+```bash
+# 每次运行 WalkForward 或 DailySignal 之前执行
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MacroStateStore.py --update
+```
+
+**数据分层（无重复）：**
+- `MacroDataStore` → VIX/MOVE 原始价格 → `price_data/macro/vix/`, `move/`（RegimeDetector 使用）
+- `MacroStateStore` → 读 MacroDataStore 文件 + yfinance/FRED → `price_data/macro/state/`（MCPS 使用）
+
+如果 update 失败，WalkForward/DailySignal 降级为纯 DSR Top-1 选择（不影响正常运行）。
+
+---
+
 ## 7. MRPTWalkForward.py — MRPT Walk-Forward 6窗口
 
 **换配对后需先运行 `UpdateStep1Configs.py`（WalkForward 内部读 `runs_20260304_step1_grid32.json` 的 param_set + pairs 做 grid search）。**
@@ -329,6 +347,10 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ## 13. DailySignal.py — 每日信号生成
 
+### 13.0 MacroStateStore 日更新
+
+见 **Section 6.5**。每次运行前执行一次即可，WalkForward 和 DailySignal 共用同一次更新结果。
+
 ```bash
 # 标准模式每日运行（MRPT + MTFS，regime 自动加权， VIX 预测 finetune 双模型）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both --vix-forecast --vix-forecast-finetune
@@ -412,6 +434,9 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 # 0b. 将新配对写入 Step1 config
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
 
+# ── 必须最先运行：更新宏观快照（见 Section 6.5）──
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MacroStateStore.py --update
+
 # ── MRPT ──
 # 1. Grid search
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python PortfolioMRPTStrategyRuns.py run_configs/runs_20260304_step1_grid32.json
@@ -443,6 +468,9 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python SelectPairs.py --save
 # 0b. 将新配对写入 Step1 config
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
+
+# ── 必须最先运行：更新宏观快照（见 Section 6.5）──
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MacroStateStore.py --update
 
 # 1. MRPT Walk-Forward
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTWalkForward.py --oos-windows 6

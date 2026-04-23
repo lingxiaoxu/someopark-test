@@ -12,6 +12,9 @@ someo-park-investment-management/.env
 chronos-forecasting-main/
 chronos-2-finetuned/
 
+# Qlib
+qlib-main/
+
 # Python
 __pycache__/
 *.pyc
