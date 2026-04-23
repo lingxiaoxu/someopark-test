@@ -275,6 +275,7 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
             continue
         with open(fpath) as f:
             data = json.load(f)
+        signal_date_str = data.get('signal_date', str(day.date()))
         pm = data.get('position_monitor', {})
         for strat in ('mrpt', 'mtfs'):
             for e in pm.get(strat, []):
@@ -290,6 +291,7 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
                         'pnl':         e.get('unrealized_pnl'),
                         'note':        e.get('note', ''),
                         'report_date': str(day.date()),
+                        'signal_date': signal_date_str,
                         '_ts':         full,
                     }
                     all_ev.setdefault(pair, []).append(ev)
@@ -319,6 +321,7 @@ def load_hold_pnl(end_ts) -> dict[str, dict]:
         return {}
     with open(best_f) as f:
         data = json.load(f)
+    signal_date_str = data.get('signal_date', str(best_ts.date()))
     result: dict[str, dict] = {}
     pm = data.get('position_monitor', {})
     for strat in ('mrpt', 'mtfs'):
@@ -327,6 +330,7 @@ def load_hold_pnl(end_ts) -> dict[str, dict]:
                 result[e['pair']] = {
                     'pnl':         e.get('unrealized_pnl'),
                     'report_date': str(best_ts.date()),
+                    'signal_date': signal_date_str,
                 }
     return result
 
@@ -364,6 +368,14 @@ def download_prices(tickers: set, price_start: str, price_end: str) -> pd.DataFr
     raw = yf.download(sorted(tickers), start=price_start, end=end_plus,
                       auto_adjust=True, progress=False)
     return raw['Close']
+
+
+def download_open_prices(tickers: set, price_start: str, price_end: str) -> pd.DataFrame:
+    """Download Open prices from yfinance (for execution-price comparison)."""
+    end_plus = str((pd.Timestamp(price_end) + pd.Timedelta(days=2)).date())  # +2 for exec day
+    raw = yf.download(sorted(tickers), start=price_start, end=end_plus,
+                      auto_adjust=True, progress=False)
+    return raw['Open']
 
 
 def get_price(prices: pd.DataFrame, ticker: str, dt: str):
@@ -509,7 +521,7 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
     #   (a) Multiple DailySignal runs on the same day producing duplicate CLOSEs
     #   (b) Step 2 re-opening a position that Step 1 just closed, leading to
     #       consecutive CLOSEs on different dates with no HOLD in between
-    _all_close_ev: list[tuple] = []   # (pair, signal_date, ts, pnl)
+    _all_close_ev: list[tuple] = []   # (pair, signal_date, ts, pnl, file_date_str)
     for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
         day, full = _parse_ts(fpath)
         if day is None or day < start_ts or day > end_ts:
@@ -517,6 +529,7 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
         with open(fpath) as f:
             dr = json.load(f)
         signal_date_str = dr.get('signal_date', str(day.date()))
+        file_date_str = str(day.date())
         pm = dr.get('position_monitor', {})
         for strat in ('mrpt', 'mtfs'):
             for e in pm.get(strat, []):
@@ -528,20 +541,40 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
                     continue
                 if action in ('CLOSE', 'CLOSE_STOP'):
                     pnl = e.get('unrealized_pnl', 0) or 0
-                    _all_close_ev.append((pair, signal_date_str, full, pnl))
+                    _all_close_ev.append((pair, signal_date_str, full, pnl, file_date_str))
 
     # Group by (pair, signal_date) and keep only the latest CLOSE per group
-    _close_by_pair_date: dict[tuple, list] = {}  # (pair, signal_date) -> [(ts, pnl)]
-    for pair, sig_date, ts, pnl in _all_close_ev:
-        _close_by_pair_date.setdefault((pair, sig_date), []).append((ts, pnl))
+    _close_by_pair_date: dict[tuple, list] = {}  # (pair, signal_date) -> [(ts, pnl, file_date)]
+    for pair, sig_date, ts, pnl, fdate in _all_close_ev:
+        _close_by_pair_date.setdefault((pair, sig_date), []).append((ts, pnl, fdate))
 
     realized_by_date: dict[str, float] = defaultdict(float)
-    _seen_close: set[tuple] = set()  # (pair, signal_date) for MTM guard
+    _seen_close: set[tuple] = set()  # (pair, exec_date) for MTM guard
+
+    # Helper: map signal_date → execution_date.
+    # - Same-day run  (file_date == signal_date): close already executed and
+    #   inventory updated on signal_date → exec_date = signal_date.
+    # - Overnight run (file_date >  signal_date): close signal generated after
+    #   signal_date's close, execution on next trading day → exec_date = T+1.
+    _td_strs = sorted(set(str(td.date()) for td in trade_days))
+    def _next_td(sig_date_str: str) -> str | None:
+        for t in _td_strs:
+            if t > sig_date_str:
+                return t
+        return None
 
     for (pair, sig_date), entries in _close_by_pair_date.items():
-        best_ts, best_pnl = max(entries, key=lambda x: x[0])
-        _seen_close.add((pair, sig_date))
-        realized_by_date[sig_date] += best_pnl
+        best_ts, best_pnl, best_fdate = max(entries, key=lambda x: x[0])
+        if best_fdate == sig_date:
+            # Same-day run: close already reflected in inventory on signal_date
+            exec_date = sig_date
+        else:
+            # Overnight run: execution happens next trading day
+            exec_date = _next_td(sig_date)
+            if exec_date is None:
+                continue  # close is beyond report range → stay MTM
+        _seen_close.add((pair, exec_date))
+        realized_by_date[exec_date] += best_pnl
 
     # ── Step 2: Daily portfolio PnL = cum_realized + open_positions_mtm ──
     daily_pnl = []
@@ -693,6 +726,12 @@ def build_report_data(start: str, end: str) -> dict:
     price_start = min(open_dates) if open_dates else start
     prices = download_prices(tickers, price_start, end)
 
+    # Download Open prices for execution-price comparison (Section 六)
+    try:
+        exec_open_prices = download_open_prices(tickers, price_start, end)
+    except Exception:
+        exec_open_prices = None
+
     rows = []
     for p in sorted(positions, key=lambda x: (x['strategy'], x['open_date'] or '')):
         pair   = p['pair']
@@ -733,13 +772,33 @@ def build_report_data(start: str, end: str) -> dict:
             action     = 'HOLD'
             close_note = ''
 
-        # yf PnL
+        # yf PnL — execution-price comparison
+        # CLOSE: use Open price on exec_date (signal_date + 1 trading day)
+        # HOLD:  use Close price on report end_date (current market value)
         yf_pnl = None
         if op1 and op2:
-            ep1 = get_price(prices, s1, exit_dt)
-            ep2 = get_price(prices, s2, exit_dt)
-            if ep1 and ep2:
-                yf_pnl = (s1_sh * ep1 + s2_sh * ep2) - (s1_sh * op1 + s2_sh * op2)
+            if not is_open and exec_open_prices is not None:
+                # CLOSE: find next trading day after signal_date, use Open price
+                sig_dt = None
+                if close_ev and close_ev.get('signal_date'):
+                    sig_dt = close_ev['signal_date']
+                elif p.get('_closed_in_snapshot'):
+                    sig_dt = exit_dt  # fallback
+                if sig_dt:
+                    sig_ts = pd.Timestamp(sig_dt)
+                    future = exec_open_prices.index[exec_open_prices.index > sig_ts]
+                    if len(future) > 0:
+                        exec_day = future[0]
+                        ep1 = exec_open_prices[s1][exec_day] if s1 in exec_open_prices.columns else None
+                        ep2 = exec_open_prices[s2][exec_day] if s2 in exec_open_prices.columns else None
+                        if ep1 is not None and ep2 is not None and not (pd.isna(ep1) or pd.isna(ep2)):
+                            yf_pnl = (s1_sh * float(ep1) + s2_sh * float(ep2)) - (s1_sh * op1 + s2_sh * op2)
+            else:
+                # HOLD: use Close price on end_date
+                ep1 = get_price(prices, s1, end)
+                ep2 = get_price(prices, s2, end)
+                if ep1 and ep2:
+                    yf_pnl = (s1_sh * ep1 + s2_sh * ep2) - (s1_sh * op1 + s2_sh * op2)
 
         # Extract close reason from note
         reason = ''
@@ -916,8 +975,8 @@ def _analyse(rows: list[dict], totals: dict) -> list[str]:
     if big_div:
         names = '、'.join(r['pair'] for r in big_div)
         points.append(
-            f'系统价与参考收盘价差异较大（>$3,000）的仓位：{names}，'
-            f'均由报告时刻价 vs 当日收盘价的时间差异导致，属正常。'
+            f'系统价与参考执行价差异较大（>$3,000）的仓位：{names}，'
+            f'差异来源于 signal_date 收盘价 vs 执行日开盘价的隔夜漂移。'
         )
 
     return points
@@ -1226,16 +1285,17 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
 
     # ── Section 6: yf vs sys comparison ──────────────────────────────────────
     if yf_compare:
-        story.append(Paragraph('六、系统成交价 vs 参考收盘价对照 <super>³</super>', h1_style))
+        story.append(Paragraph('六、系统成交价 vs 参考执行价对照 <super>³</super>', h1_style))
         story.append(Paragraph(
-            '<super>³</super> 系统成交价为报告生成时刻价（盘中或收盘后）；参考收盘价为 signal_date 当日收盘价（数据源：yfinance）。'
-            '注：信号生成后最早执行为次日开盘，故参考收盘价并非实际可成交价，差异属正常。',
+            '<super>³</super> 系统成交价为 signal_date 收盘价（策略模拟）；'
+            '参考执行价为执行日（signal_date 次一交易日）开盘价（yfinance），即最早可成交价格。'
+            '持仓仓位参考价为报告截止日收盘价。差异反映隔夜价格漂移。',
             S('_note', fontSize=7.5, leading=10.5, textColor=C_GRAY, spaceAfter=5,
               leftIndent=(W - 13.8*cm) / 2)
         ))
         _yp = ParagraphStyle('_yp', fontName=FONT, fontSize=7.2, leading=9.5, alignment=TA_RIGHT)
         _yf_s = ParagraphStyle('_yf', fontName=FONT, fontSize=7, leading=9.5)
-        hdr_yf = [H('仓位'), H('结算日'), H('系统\n成交价PnL','RIGHT'), H('参考\n收盘价PnL','RIGHT'), H('差异\n(系统−参考)','RIGHT'), H('说明')]
+        hdr_yf = [H('仓位'), H('结算日'), H('系统\n成交价PnL','RIGHT'), H('参考\n执行价PnL','RIGHT'), H('差异\n(系统−参考)','RIGHT'), H('说明')]
         data_yf = [hdr_yf]
         valid_yf = [r for r in rows if not (r['sys_pnl'] is None and r['yf_pnl'] is None)]
         tot_sys = tot_yf = tot_diff = 0.0
@@ -1286,8 +1346,8 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
         story.append(t_yf)
         # Interpretation note
         if has_diff:
-            interp = (f'<super>⁴</super> 差异合计 {tot_diff:+,.2f}：系统成交价总计比 yf 收盘价{"多算" if tot_diff > 0 else "少算"}'
-                      f' {abs(tot_diff):,.2f}，来源于盘中执行时刻差异，非数据错误。')
+            interp = (f'<super>⁴</super> 差异合计 {tot_diff:+,.2f}：系统成交价总计比参考执行价{"多算" if tot_diff > 0 else "少算"}'
+                      f' {abs(tot_diff):,.2f}，来源于 signal_date 收盘 vs 执行日开盘的隔夜价格漂移。')
             story.append(Paragraph(interp,
                 S('_yi', fontSize=7.2, leading=10, textColor=C_GRAY, spaceBefore=4,
                   leftIndent=(W - 13.8*cm) / 2)))

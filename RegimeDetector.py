@@ -288,8 +288,8 @@ class RegimeDetector:
             return pd.Series(dtype=float)
 
     def _fetch_fred(self, series_id: str, days_back: int = 400,
-                    retries: int = 3, retry_delay: float = 2.0) -> pd.Series:
-        """Fetch FRED series with retry on transient errors (HTTP 500/503)."""
+                    retries: int = 4, retry_delay: float = 2.0) -> pd.Series:
+        """Fetch FRED series with exponential backoff on transient errors."""
         import time
         if self._fred is None:
             return pd.Series(dtype=float)
@@ -307,9 +307,10 @@ class RegimeDetector:
                                                'service unavailable', 'timed out',
                                                'connection')):
                     if attempt < retries:
+                        delay = retry_delay * (2 ** (attempt - 1))  # 2s, 4s, 8s
                         log.debug(f"FRED fetch {series_id} attempt {attempt} failed ({e}), "
-                                  f"retrying in {retry_delay}s...")
-                        time.sleep(retry_delay)
+                                  f"retrying in {delay:.0f}s...")
+                        time.sleep(delay)
                         continue
                 break
         log.warning(f"FRED fetch {series_id} failed: {last_exc}")

@@ -1,13 +1,13 @@
 [
   {
-    "s1": "HST",
-    "s2": "CSCO",
+    "s1": "CSCO",
+    "s2": "HST",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "AIG",
-    "s2": "PEP",
+    "s1": "PEP",
+    "s2": "AIG",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -18,14 +18,8 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "HLT",
-    "s2": "AIG",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
     "s1": "WELL",
-    "s2": "ALL",
+    "s2": "AIG",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -36,14 +30,14 @@
     "spread_col": "Momentum_Spread_industrial"
   },
   {
-    "s1": "FOX",
+    "s1": "MNST",
     "s2": "AWK",
     "sector": "utilities",
     "spread_col": "Momentum_Spread_utilities"
   },
   {
-    "s1": "NDSN",
-    "s2": "MSCI",
+    "s1": "MSCI",
+    "s2": "NDSN",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -72,8 +66,14 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "CMI",
+    "s1": "CSCO",
     "s2": "ALL",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "ALL",
+    "s2": "ESS",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
