@@ -33,6 +33,14 @@
 
 依赖 `someopark_run` conda 环境（含 `pandas_market_calendars` 等包）。
 
+```bash
+# 从快照恢复完整环境
+conda env create -f someopark_run_env.yml
+
+# 或仅恢复 pip 包（需先手动创建 conda env）
+pip install -r someopark_run_requirements.txt
+```
+
 ### 2. 配置 API Key
 
 复制模板文件，填入真实 key：
