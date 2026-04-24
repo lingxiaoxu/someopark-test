@@ -371,6 +371,209 @@ def build_pe_series_from_constituents(
 
 
 # ---------------------------------------------------------------------------
+# Polygon-based P/E time series builder
+# ---------------------------------------------------------------------------
+
+def _fetch_quarterly_eps_polygon(
+    stock: str,
+    api_key: str,
+    pause_sec: float = 0.2,
+    max_pages: int = 5,
+) -> pd.Series:
+    """
+    Fetch quarterly diluted EPS for a single stock via Polygon /vX/reference/financials.
+
+    Paginates up to max_pages (40 quarters/page → ~50 years max).
+    Returns pd.Series with quarter-end dates as index, EPS float as values.
+    Returns empty Series on failure.
+    """
+    import json
+    import subprocess
+
+    all_results = []
+    url = (
+        f"https://api.polygon.io/vX/reference/financials"
+        f"?ticker={stock}&timeframe=quarterly&limit=40"
+        f"&sort=period_of_report_date&order=desc"
+        f"&apiKey={api_key}"
+    )
+    pages = 0
+    while url and pages < max_pages:
+        result = subprocess.run(
+            ["curl", "-s", "--max-time", "30", url],
+            capture_output=True, text=True,
+        )
+        if result.returncode != 0:
+            logger.warning(f"Polygon curl failed for {stock} (returncode={result.returncode})")
+            break
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            logger.warning(f"Polygon JSON decode error for {stock}")
+            break
+
+        batch = data.get("results", [])
+        all_results.extend(batch)
+        pages += 1
+
+        next_url = data.get("next_url")
+        url = (next_url + f"&apiKey={api_key}") if next_url else None
+        time.sleep(pause_sec)
+
+    if not all_results:
+        logger.debug(f"Polygon: no data for {stock}")
+        return pd.Series(dtype=float)
+
+    eps_dict: Dict[pd.Timestamp, float] = {}
+    for r in all_results:
+        end_date = r.get("end_date")
+        if not end_date:
+            continue
+        inc = r.get("financials", {}).get("income_statement", {})
+        eps = (
+            (inc.get("diluted_earnings_per_share") or {}).get("value")
+            or (inc.get("basic_earnings_per_share") or {}).get("value")
+        )
+        if eps is not None:
+            eps_dict[pd.Timestamp(end_date)] = float(eps)
+
+    if not eps_dict:
+        logger.debug(f"Polygon: EPS parse empty for {stock}")
+        return pd.Series(dtype=float)
+
+    return pd.Series(eps_dict).sort_index()
+
+
+def build_pe_series_from_polygon(
+    etf_tickers: List[str],
+    start: str,
+    end: str,
+    api_key: str,
+    n_top: int = 5,
+    pause_sec: float = 0.2,
+    cache_path: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Build monthly sector P/E time series using Polygon quarterly EPS data.
+
+    Identical pipeline to build_pe_series_from_constituents() but uses
+    Polygon /vX/reference/financials instead of yfinance quarterly_income_stmt.
+    Polygon typically provides 10+ years of quarterly EPS history, giving
+    full coverage back to 2015 (vs yfinance's 4-6 quarters).
+
+    Parameters
+    ----------
+    etf_tickers : list of str
+    start, end : str   date range for monthly index and price download
+    api_key : str      Polygon API key (POLYGON_API_KEY)
+    n_top : int        representative stocks per sector
+    pause_sec : float  sleep between Polygon API calls
+    cache_path : Path, optional
+
+    Returns
+    -------
+    pd.DataFrame
+        Monthly TTM P/E ratios. index = month-end, cols = ETF tickers.
+    """
+    # --- Cache check ---
+    if cache_path is not None and cache_path.exists():
+        try:
+            with open(cache_path, "rb") as f:
+                cached = pickle.load(f)
+            logger.info(f"Loaded Polygon P/E from cache: {cache_path}")
+            return cached
+        except Exception as e:
+            logger.warning(f"Cache load failed ({e}), re-fetching from Polygon...")
+
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise ImportError("yfinance is required for monthly price download.")
+
+    monthly_idx = pd.date_range(start, end, freq="ME")
+
+    # Download monthly prices for all constituent stocks in one batch
+    all_constituents: List[str] = []
+    etf_to_stocks: Dict[str, List[str]] = {}
+    for etf in etf_tickers:
+        stocks = SECTOR_REPRESENTATIVES.get(etf, [])[:n_top]
+        etf_to_stocks[etf] = stocks
+        all_constituents.extend(stocks)
+    all_constituents = list(dict.fromkeys(all_constituents))
+
+    logger.info(f"Downloading monthly prices for {len(all_constituents)} constituent stocks (for Polygon P/E)...")
+    raw_prices = yf.download(
+        all_constituents,
+        start=start,
+        end=end,
+        interval="1mo",
+        auto_adjust=True,
+        progress=False,
+    )
+    if isinstance(raw_prices.columns, pd.MultiIndex):
+        stock_prices = raw_prices["Close"]
+    else:
+        stock_prices = raw_prices[["Close"]].rename(columns={"Close": all_constituents[0]})
+    stock_prices.index = stock_prices.index.to_period("M").to_timestamp("M")
+    stock_prices = stock_prices.reindex(monthly_idx)
+
+    # Build P/E series for each sector ETF
+    result: Dict[str, pd.Series] = {}
+    for etf in etf_tickers:
+        stocks = etf_to_stocks.get(etf, [])
+        if not stocks:
+            result[etf] = pd.Series(np.nan, index=monthly_idx)
+            continue
+
+        logger.info(f"Computing Polygon P/E for {etf} ({stocks})...")
+        pe_list: List[pd.Series] = []
+        for stock in stocks:
+            if stock not in stock_prices.columns:
+                logger.debug(f"  {stock}: price not available, skip")
+                continue
+            prices_s = stock_prices[stock].dropna()
+            if prices_s.empty:
+                continue
+
+            eps_q = _fetch_quarterly_eps_polygon(stock, api_key=api_key, pause_sec=pause_sec)
+            if eps_q.empty:
+                logger.debug(f"  {stock}: no Polygon EPS, skip")
+                continue
+
+            ttm = _quarterly_eps_to_monthly_ttm(eps_q, monthly_idx)
+            pe = prices_s.reindex(monthly_idx) / ttm
+            pe[ttm <= 0] = np.nan
+            pe[pe <= 0] = np.nan
+            pe[pe > 300] = np.nan
+            pe_list.append(pe)
+
+        if not pe_list:
+            result[etf] = pd.Series(np.nan, index=monthly_idx)
+            continue
+
+        pe_df_sector = pd.concat(pe_list, axis=1)
+        sector_pe = pe_df_sector.mean(axis=1, skipna=True)
+        result[etf] = sector_pe.reindex(monthly_idx)
+
+        valid_months = sector_pe.notna().sum()
+        logger.info(f"  {etf}: {valid_months}/{len(monthly_idx)} months with valid P/E (Polygon)")
+
+    pe_df_out = pd.DataFrame(result, index=monthly_idx)
+
+    # --- Cache save ---
+    if cache_path is not None:
+        try:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(cache_path, "wb") as f:
+                pickle.dump(pe_df_out, f)
+            logger.info(f"Saved Polygon P/E to cache: {cache_path}")
+        except Exception as e:
+            logger.warning(f"Cache save failed: {e}")
+
+    return pe_df_out
+
+
+# ---------------------------------------------------------------------------
 # P/E Percentile Signal
 # ---------------------------------------------------------------------------
 
@@ -519,16 +722,20 @@ def compute_value_signal_full(
     lookback_years: float = 10.0,
     missing_data_weight: float = 0.0,
     cache_dir: Optional[Path] = None,
+    polygon_api_key: Optional[str] = None,
 ) -> pd.DataFrame:
     """
     Compute sector relative value signal.
 
     Sources (in order of accuracy):
     --------------------------------
-    "constituents" (default):
-        Build monthly TTM P/E from yfinance quarterly earnings of representative
-        constituent stocks (see SECTOR_REPRESENTATIVES). This is the primary path.
-        Requires yfinance network access; results are cached in cache_dir.
+    "polygon" (recommended):
+        Build monthly TTM P/E from Polygon /vX/reference/financials quarterly EPS.
+        Full history back to 2015+, using POLYGON_API_KEY. Results cached in cache_dir.
+
+    "constituents":
+        Build monthly TTM P/E from yfinance quarterly earnings.
+        Only returns ~4-8 quarters of history; not recommended for backtesting.
 
     "external":
         Caller provides pe_history directly (pd.DataFrame, monthly, tickers as cols).
@@ -549,20 +756,66 @@ def compute_value_signal_full(
     pe_history : pd.DataFrame, optional
         Pre-built monthly P/E time series (required only for source="external").
     source : str
-        Data source: "constituents" | "external" | "proxy" | "yfinance_info".
+        "polygon" | "constituents" | "external" | "proxy" | "yfinance_info".
     lookback_years : float
         Rolling window for percentile computation.
     missing_data_weight : float
         Score for tickers with no P/E data.
     cache_dir : Path, optional
-        Directory for caching constituent P/E data (used only for source="constituents").
+        Directory for caching P/E data.
+    polygon_api_key : str, optional
+        Polygon API key (required when source="polygon"). Falls back to proxy if None.
 
     Returns
     -------
     pd.DataFrame
         Month-end value z-scores.
     """
-    if source == "constituents":
+    if source == "polygon":
+        if not polygon_api_key:
+            import os
+            polygon_api_key = os.environ.get("POLYGON_API_KEY")
+        if not polygon_api_key:
+            logger.warning("POLYGON_API_KEY not available; falling back to proxy.")
+            return compute_value_signal_full(
+                prices, source="proxy",
+                lookback_years=lookback_years,
+                missing_data_weight=missing_data_weight,
+            )
+
+        etf_tickers = list(prices.columns)
+        start = prices.index[0].strftime("%Y-%m-%d")
+        end   = prices.index[-1].strftime("%Y-%m-%d")
+
+        cache_path: Optional[Path] = None
+        if cache_dir is not None:
+            tickers_key = "_".join(sorted(etf_tickers))
+            cache_path = Path(cache_dir) / f"pe_polygon_{tickers_key}.pkl"
+
+        try:
+            pe_df = build_pe_series_from_polygon(
+                etf_tickers=etf_tickers,
+                start=start,
+                end=end,
+                api_key=polygon_api_key,
+                cache_path=cache_path,
+            )
+            if pe_df.notna().any().any():
+                return compute_value_signal(
+                    pe_df, lookback_years=lookback_years,
+                    missing_data_weight=missing_data_weight,
+                )
+            logger.warning("Polygon P/E returned all NaN; falling back to proxy.")
+        except Exception as e:
+            logger.warning(f"Polygon P/E fetch failed ({e}); falling back to proxy.")
+
+        return compute_value_signal_full(
+            prices, source="proxy",
+            lookback_years=lookback_years,
+            missing_data_weight=missing_data_weight,
+        )
+
+    elif source == "constituents":
         etf_tickers = list(prices.columns)
         start = prices.index[0].strftime("%Y-%m-%d")
         end   = prices.index[-1].strftime("%Y-%m-%d")
