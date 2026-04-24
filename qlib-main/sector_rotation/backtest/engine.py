@@ -598,10 +598,10 @@ class SectorRotationBacktest:
             equity_curve[dt] = portfolio_value
             daily_returns_list.append((dt, port_ret))
 
-            portfolio_daily_returns = pd.concat([
-                portfolio_daily_returns,
-                pd.Series([port_ret], index=[dt]),
-            ])
+            _new = pd.Series([port_ret], index=[dt])
+            portfolio_daily_returns = pd.concat(
+                [s for s in [portfolio_daily_returns, _new] if not s.empty]
+            )
 
         equity_curve = equity_curve.dropna()
         daily_returns = pd.Series(
