@@ -6,14 +6,17 @@ Event-driven monthly backtest for the sector rotation strategy.
 Architecture
 ------------
 Primary path uses qlib's full backtest infrastructure:
-    - SectorETFExchange          (qlib Exchange)         : price data
-    - Account + Position         (qlib account layer)    : portfolio state
-    - USTradeCalendarManager     (qlib TradeCalendarManager) : US trading dates
-    - SectorRotationWeightStrategy (qlib WeightStrategyBase) : signal→weight logic
-    - SectorSimulatorExecutor    (qlib SimulatorExecutor)    : order execution
-    - CommonInfrastructure       (qlib)                      : shared infra
-    - backtest_loop              (qlib)                      : main execution loop
-    - decompose_portofolio_weight (qlib)                     : attribution
+    - SectorETFExchange          (qlib Exchange)            : price data
+    - Account + Position         (qlib account layer)       : portfolio state
+    - USTradeCalendarManager     (qlib TradeCalendarManager): US trading dates
+    - SectorRotationWeightStrategy (qlib WeightStrategyBase): signal→weight logic
+    - SectorSimulatorExecutor    (qlib SimulatorExecutor)   : order execution
+    - CommonInfrastructure       (qlib)                     : shared infra
+    - backtest_loop              (qlib)                     : main execution loop
+    - decompose_portofolio       (qlib profit_attribution)  : sector weight+return decomposition
+    - indicator_analysis         (qlib contrib.evaluate)    : trade execution quality (pa, pos, ffr)
+    - Account turnover           (qlib Account metrics)     : total_turnover, turnover columns
+    - QlibRecorder + MLflowExpManager (qlib.workflow)       : experiment tracking (MLflow backend)
 
 Fallback path (if qlib not available) runs a pure-Python weight-based loop with
 identical semantics.
@@ -62,10 +65,27 @@ except Exception:
     _QLIB_BACKTEST_AVAILABLE = False
 
 try:
-    from qlib.backtest.profit_attribution import decompose_portofolio_weight as _qlib_decompose
+    from qlib.backtest.profit_attribution import (
+        decompose_portofolio_weight as _qlib_decompose_weight,
+        decompose_portofolio as _qlib_decompose_portfolio,
+    )
     _QLIB_ATTRIBUTION_AVAILABLE = True
 except Exception:
     _QLIB_ATTRIBUTION_AVAILABLE = False
+
+try:
+    from qlib.contrib.evaluate import indicator_analysis as _qlib_indicator_analysis
+    _QLIB_INDICATOR_AVAILABLE = True
+except Exception:
+    _QLIB_INDICATOR_AVAILABLE = False
+
+try:
+    from qlib.workflow.expm import MLflowExpManager
+    from qlib.workflow import QlibRecorder
+    _QLIB_WORKFLOW_AVAILABLE = True
+except Exception:
+    _QLIB_WORKFLOW_AVAILABLE = False
+
 sys.stderr = _engine_stderr
 
 from .costs import compute_transaction_costs, compute_daily_fee_drag
@@ -109,8 +129,13 @@ class BacktestResult:
     benchmark_equity: Optional[pd.Series] = None
     # Trade orders (qlib Order objects if available, else empty list)
     trade_orders: List = field(default_factory=list)
-    # Brinson attribution (from qlib decompose_portofolio_weight)
-    attribution: Optional[pd.DataFrame] = None
+    # Sector attribution: dict with "group_weight" and "group_return" DataFrames
+    # (from qlib decompose_portofolio — sector-level weight + return decomposition)
+    attribution: Optional[dict] = None
+    # Trade execution quality from qlib indicator_analysis (pa, pos, ffr)
+    trade_indicators: Optional[pd.DataFrame] = None
+    # qlib Account turnover tracking: columns [total_turnover, turnover]
+    qlib_turnover: Optional[pd.DataFrame] = None
 
     def summary(self) -> str:
         """Print a one-page performance summary."""
@@ -219,11 +244,18 @@ class SectorRotationBacktest:
             if k not in ("method", "regime_weights", "defensive_sectors", "defensive_bonus_risk_off")
         }
 
+        # value_source: "constituents" builds TTM P/E from yfinance quarterly earnings;
+        #               "proxy" is the price-based fallback (used in tests / offline).
+        value_source = self.sig_cfg.get("value_source", "constituents")
+        value_cache_dir = self.cfg.get("data", {}).get("cache_dir")
+
         composite, regime_monthly, components = compute_composite_signals(
             etf_prices,
             macro,
             weights=sig_weights,
             regime_method=regime_method,
+            value_source=value_source,
+            value_cache_dir=value_cache_dir,
             regime_kwargs=regime_kwargs,
         )
 
@@ -241,9 +273,10 @@ class SectorRotationBacktest:
         # ---------------------------------------------------------------
         # 4. Run backtest: qlib path (primary) → native loop (fallback)
         # ---------------------------------------------------------------
+        result: Optional[BacktestResult] = None
         if _QLIB_BACKTEST_AVAILABLE:
             try:
-                return self._run_qlib(
+                result = self._run_qlib(
                     prices=prices,
                     macro=macro,
                     etf_prices=etf_prices,
@@ -265,22 +298,30 @@ class SectorRotationBacktest:
                     f"falling back to native loop"
                 )
 
-        return self._run_native(
-            prices=prices,
-            macro=macro,
-            etf_prices=etf_prices,
-            bench_prices=bench_prices,
-            etf_tickers=etf_tickers,
-            benchmark_ticker=benchmark_ticker,
-            composite=composite,
-            regime_monthly=regime_monthly,
-            rebalance_dates=rebalance_dates,
-            bt_start=bt_start,
-            bt_end=bt_end,
-            initial_capital=initial_capital,
-            bench_daily_ret=bench_daily_ret,
-            etf_daily_ret=etf_daily_ret,
-        )
+        if result is None:
+            result = self._run_native(
+                prices=prices,
+                macro=macro,
+                etf_prices=etf_prices,
+                bench_prices=bench_prices,
+                etf_tickers=etf_tickers,
+                benchmark_ticker=benchmark_ticker,
+                composite=composite,
+                regime_monthly=regime_monthly,
+                rebalance_dates=rebalance_dates,
+                bt_start=bt_start,
+                bt_end=bt_end,
+                initial_capital=initial_capital,
+                bench_daily_ret=bench_daily_ret,
+                etf_daily_ret=etf_daily_ret,
+            )
+
+        # ---------------------------------------------------------------
+        # 5. Record experiment to qlib.workflow (MLflow backend)
+        # ---------------------------------------------------------------
+        self._record_experiment(result, bt_start, bt_end)
+
+        return result
 
     # -----------------------------------------------------------------------
     # qlib-backed execution path
@@ -380,6 +421,21 @@ class SectorRotationBacktest:
         # daily_returns: portfolio return rate per day (pre-cost gross return)
         daily_returns: pd.Series = portfolio_df["return"].rename("portfolio")
 
+        # qlib Account turnover (portfolio_df["total_turnover"] / "turnover")
+        qlib_turnover: Optional[pd.DataFrame] = None
+        turnover_cols = [c for c in ["total_turnover", "turnover"] if c in portfolio_df.columns]
+        if turnover_cols:
+            qlib_turnover = portfolio_df[turnover_cols].copy()
+
+        # Extract indicator_df from indicator_dict for qlib indicator_analysis
+        # indicator_dict: {freq_key → (indicator_df, indicator_obj)}
+        indicator_df: Optional[pd.DataFrame] = None
+        if indicator_dict:
+            for _key, (_ind_df, _ind_obj) in indicator_dict.items():
+                if _ind_df is not None and not _ind_df.empty:
+                    indicator_df = _ind_df
+                    break
+
         # --- 8. Build BacktestResult from qlib data + strategy tracking ---
         return self._assemble_result(
             equity_curve=equity_curve,
@@ -396,7 +452,10 @@ class SectorRotationBacktest:
             benchmark_ticker=benchmark_ticker,
             hist_positions=hist_positions,
             etf_tickers=etf_tickers,
+            etf_daily_ret=etf_daily_ret,
             portfolio_df_qlib=portfolio_df,
+            indicator_df=indicator_df,
+            qlib_turnover=qlib_turnover,
         )
 
     # -----------------------------------------------------------------------
@@ -566,6 +625,7 @@ class SectorRotationBacktest:
             benchmark_ticker=benchmark_ticker,
             hist_positions=None,
             etf_tickers=etf_tickers,
+            etf_daily_ret=etf_daily_ret,
             portfolio_df_qlib=None,
             trade_orders=trade_orders_list,
         )
@@ -590,7 +650,10 @@ class SectorRotationBacktest:
         benchmark_ticker: str,
         hist_positions: Optional[dict],
         etf_tickers: List[str],
+        etf_daily_ret: Optional[pd.DataFrame] = None,
         portfolio_df_qlib: Optional[pd.DataFrame] = None,
+        indicator_df: Optional[pd.DataFrame] = None,
+        qlib_turnover: Optional[pd.DataFrame] = None,
         trade_orders: Optional[List] = None,
     ) -> BacktestResult:
         """Build BacktestResult from execution tracking data."""
@@ -620,16 +683,25 @@ class SectorRotationBacktest:
         sub_metrics = subperiod_analysis(daily_returns, bench_returns)
         dd_episodes = find_drawdown_episodes(daily_returns)
 
-        # Brinson attribution via qlib decompose_portofolio_weight
-        attribution: Optional[pd.DataFrame] = None
+        # Sector attribution via qlib decompose_portofolio (weight + return decomposition)
+        attribution: Optional[dict] = None
         if _QLIB_ATTRIBUTION_AVAILABLE and hist_positions and not weights_history.empty:
             try:
                 attribution = self._compute_attribution(
                     hist_positions=hist_positions,
                     etf_tickers=etf_tickers,
+                    etf_daily_ret=etf_daily_ret,
                 )
             except Exception as _e:
                 logger.debug(f"Attribution skipped: {_e}")
+
+        # Trade execution quality via qlib indicator_analysis (pa, pos, ffr)
+        trade_indicators: Optional[pd.DataFrame] = None
+        if _QLIB_INDICATOR_AVAILABLE and indicator_df is not None:
+            try:
+                trade_indicators = _qlib_indicator_analysis(indicator_df)
+            except Exception as _e:
+                logger.debug(f"indicator_analysis skipped: {_e}")
 
         result = BacktestResult(
             equity_curve=equity_curve,
@@ -647,6 +719,8 @@ class SectorRotationBacktest:
             benchmark_equity=bench_equity,
             trade_orders=trade_orders,
             attribution=attribution,
+            trade_indicators=trade_indicators,
+            qlib_turnover=qlib_turnover,
         )
 
         logger.info(f"\n{result.summary()}")
@@ -656,13 +730,29 @@ class SectorRotationBacktest:
         self,
         hist_positions: dict,
         etf_tickers: List[str],
-    ) -> Optional[pd.DataFrame]:
+        etf_daily_ret: Optional[pd.DataFrame] = None,
+    ) -> Optional[dict]:
         """
-        Compute portfolio weight decomposition using qlib's
-        decompose_portofolio_weight(weight_df, group_df).
+        Compute sector-level weight and return decomposition using qlib's
+        decompose_portofolio(stock_weight_df, stock_group_df, stock_ret_df).
 
-        weight_df  : DataFrame, rows=dates, cols=instruments, values=weights
-        group_df   : DataFrame, rows=instruments, cols=["group"], maps each ETF to a sector group
+        Each ETF is treated as its own sector group. Group IDs are integers
+        (required by decompose_portofolio's np.isnan filter on group values).
+
+        Parameters
+        ----------
+        hist_positions : dict
+            qlib hist_positions from account.get_portfolio_metrics()
+        etf_tickers : list of str
+            ETF tickers in the universe
+        etf_daily_ret : pd.DataFrame, optional
+            Daily ETF returns (rows=dates, cols=tickers) for return decomposition
+
+        Returns
+        -------
+        dict with:
+            "group_weight" : DataFrame (dates × tickers) — daily sector weight
+            "group_return" : DataFrame (dates × tickers) or None — daily sector return
         """
         # Build weight_df from qlib hist_positions (daily Position snapshots)
         rows = {}
@@ -677,14 +767,111 @@ class SectorRotationBacktest:
             return None
 
         weight_df = pd.DataFrame(rows).T.fillna(0.0)
+        tickers_present = [t for t in etf_tickers if t in weight_df.columns]
+        weight_df = weight_df[tickers_present].fillna(0.0)
 
-        # Build group_df: each ETF maps to itself as its group (sector = ticker)
-        # In a more sophisticated version, this could map ETF → GICS sector
-        group_df = pd.DataFrame(
-            {"group": {t: t for t in etf_tickers}}
+        # Build stock_group_df: rows=dates, cols=tickers, values=numeric group ID
+        # decompose_portofolio uses np.isnan() to filter groups — values MUST be float
+        # Each ETF is its own sector group → unique float per ticker
+        ticker_to_gid = {t: float(i) for i, t in enumerate(tickers_present)}
+        stock_group_df = pd.DataFrame(
+            {t: ticker_to_gid[t] for t in tickers_present},
+            index=weight_df.index,
         )
 
-        return _qlib_decompose(weight_df=weight_df, group_df=group_df)
+        # Return decomposition via qlib decompose_portofolio (weight + return)
+        group_ret_df: Optional[pd.DataFrame] = None
+        if etf_daily_ret is not None:
+            stock_ret_df = (
+                etf_daily_ret[tickers_present]
+                .reindex(weight_df.index)
+                .fillna(0.0)
+            )
+            group_weight_df, group_ret_df = _qlib_decompose_portfolio(
+                weight_df, stock_group_df, stock_ret_df
+            )
+            # Rename numeric group IDs back to ticker names for readability
+            gid_to_ticker = {v: k for k, v in ticker_to_gid.items()}
+            group_weight_df = group_weight_df.rename(columns=gid_to_ticker)
+            group_ret_df = group_ret_df.rename(columns=gid_to_ticker)
+        else:
+            # Weight-only decomposition via qlib decompose_portofolio_weight
+            group_weight_dict, _ = _qlib_decompose_weight(weight_df, stock_group_df)
+            group_weight_df = pd.DataFrame(group_weight_dict)
+            gid_to_ticker = {v: k for k, v in ticker_to_gid.items()}
+            group_weight_df = group_weight_df.rename(columns=gid_to_ticker)
+
+        return {
+            "group_weight": group_weight_df,
+            "group_return": group_ret_df,
+        }
+
+    def _record_experiment(
+        self,
+        result: "BacktestResult",
+        bt_start: str,
+        bt_end: str,
+    ) -> None:
+        """
+        Record backtest results to qlib.workflow experiment store (MLflow backend).
+
+        Uses QlibRecorder + MLflowExpManager directly with a local file URI,
+        so no qlib.init() or Chinese data provider is required.
+
+        Stores:
+            params   : flattened config sections (portfolio, risk, rebalance, etc.)
+            metrics  : sharpe, cagr, max_drawdown, calmar, annual_vol, info_ratio,
+                       monthly_win_rate (NaN values skipped — mlflow rejects them)
+            tags     : bt_start, bt_end, strategy label
+        """
+        if not _QLIB_WORKFLOW_AVAILABLE:
+            return
+        try:
+            mlruns_path = Path(__file__).parent.parent.parent.resolve() / "mlruns"
+            uri = f"file://{mlruns_path}"
+            exp_manager = MLflowExpManager(uri=uri, default_exp_name="sector_rotation")
+            recorder_client = QlibRecorder(exp_manager)
+
+            with recorder_client.start(experiment_name="sector_rotation_backtest"):
+                # Log config as params (flatten each config section)
+                flat_params: dict = {}
+                for section, vals in result.config.items():
+                    if isinstance(vals, dict):
+                        for k, v in vals.items():
+                            flat_params[f"{section}.{k}"] = str(v)[:500]
+                    else:
+                        flat_params[section] = str(vals)[:500]
+                recorder_client.log_params(**flat_params)
+
+                # Log key performance metrics (skip NaN — mlflow rejects them)
+                m = result.metrics
+                metric_vals = {
+                    "sharpe":           m.get("sharpe"),
+                    "cagr":             m.get("annual_return"),
+                    "max_drawdown":     m.get("max_drawdown"),
+                    "calmar":           m.get("calmar"),
+                    "annual_vol":       m.get("annual_vol"),
+                    "info_ratio":       m.get("info_ratio"),
+                    "monthly_win_rate": m.get("monthly_win_rate"),
+                }
+                clean_metrics = {
+                    k: float(v)
+                    for k, v in metric_vals.items()
+                    if v is not None and not (isinstance(v, float) and np.isnan(v))
+                }
+                if clean_metrics:
+                    recorder_client.log_metrics(**clean_metrics)
+
+                # Tag start/end dates and strategy label
+                recorder_client.set_tags(
+                    bt_start=bt_start,
+                    bt_end=bt_end,
+                    strategy="sector_rotation",
+                )
+
+            logger.debug(f"qlib.workflow run recorded to {uri}")
+        except Exception as _e:
+            logger.debug(f"qlib.workflow recording skipped: {_e}")
 
 
 # ---------------------------------------------------------------------------
