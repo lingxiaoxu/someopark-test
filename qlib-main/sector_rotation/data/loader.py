@@ -347,17 +347,31 @@ def load_monthly_returns(prices: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 
 FRED_SERIES: Dict[str, str] = {
-    "vix":           "VIXCLS",           # CBOE Volatility Index (daily)
-    "yield_curve":   "T10Y2Y",           # 10Y-2Y Treasury spread (daily)
-    "hy_spread":     "BAMLH0A0HYM2",     # ICE BofA HY OAS (daily, bps)
-    "breakeven_10y": "T10YIE",           # 10Y breakeven inflation rate (daily)
-    "fed_rate":      "FEDFUNDS",         # Effective federal funds rate (monthly)
+    # --- Daily series ---
+    "vix":           "VIXCLS",           # CBOE Volatility Index
+    "yield_curve":   "T10Y2Y",           # 10Y-2Y Treasury spread
+    "hy_spread":     "BAMLH0A0HYM2",     # ICE BofA HY OAS (pct → converted to bps below)
+    "ig_spread":     "BAMLC0A0CM",       # ICE BofA IG OAS (pct → converted to bps below)
+    "breakeven_10y": "T10YIE",           # 10Y inflation breakeven
+    "breakeven_5y":  "T5YIE",            # 5Y inflation breakeven
+    "effr":          "EFFR",             # Effective Fed Funds Rate (daily; replaces monthly FEDFUNDS)
+    "dgs10":         "DGS10",            # 10Y Treasury yield
+    "dgs2":          "DGS2",             # 2Y Treasury yield
+    # --- Weekly series ---
+    "fin_stress":    "STLFSI4",          # St. Louis Financial Stress Index
+    "nfci":          "NFCI",             # National Financial Conditions Index
+    "icsa":          "ICSA",             # Initial jobless claims (thousands)
+    # --- Monthly series ---
+    "consumer_sent": "UMCSENT",          # U Michigan Consumer Sentiment
+    "recession_flag":"USREC",            # NBER recession indicator (0/1)
+    "unrate":        "UNRATE",           # Unemployment rate
     # ISM Manufacturing PMI is proprietary (not available via free FRED API).
     # regime.py handles ism_mfg=NaN gracefully — omitted here.
 }
 
-# Some FRED series are monthly — mark them so we can forward-fill correctly
-MONTHLY_SERIES: set = {"fed_rate"}
+# Forward-fill limits by release frequency
+WEEKLY_SERIES: set  = {"fin_stress", "nfci", "icsa"}
+MONTHLY_SERIES: set = {"consumer_sent", "recession_flag", "unrate"}
 
 
 def _load_fred_series(
@@ -452,26 +466,35 @@ def load_macro_data(
     start_dt = pd.Timestamp(start)
     idx = pd.date_range(start=start_dt, end=end_dt, freq="B")  # Business days
 
+    # Calendar day index: used as intermediate step so that non-business-day
+    # FRED release dates (e.g. ICSA is indexed on Saturdays) get carried forward
+    # to the subsequent business day via ffill before the final reindex.
+    cal_idx = pd.date_range(start=start_dt, end=end_dt + pd.Timedelta(days=8), freq="D")
+
     result = pd.DataFrame(index=idx)
     for field_name, s in series_dict.items():
-        aligned = s.reindex(idx)
+        # Step 1: align to calendar days (catches Sat/Sun-dated weekly releases)
+        s_cal = s.reindex(cal_idx)
         if field_name in MONTHLY_SERIES:
-            # Monthly data: forward-fill up to 31 days
-            aligned = aligned.ffill(limit=31)
+            s_cal = s_cal.ffill(limit=31)
+        elif field_name in WEEKLY_SERIES:
+            s_cal = s_cal.ffill(limit=7)
         else:
-            # Daily data: forward-fill up to 5 days (handle weekends/holidays)
-            aligned = aligned.ffill(limit=5)
-        result[field_name] = aligned
+            # Daily series: fill weekends/holidays only
+            s_cal = s_cal.ffill(limit=5)
+        # Step 2: select only business days
+        result[field_name] = s_cal.reindex(idx)
 
     # Add missing fields as NaN columns so the schema is always consistent
     for field_name in FRED_SERIES:
         if field_name not in result.columns:
             result[field_name] = np.nan
 
-    # FRED HY spread is in percentage points (e.g., 3.5 = 350 bps)
+    # FRED credit spreads are in percentage points (e.g., 3.5 = 350 bps)
     # Convert to basis points for easier threshold comparisons
-    if "hy_spread" in result.columns:
-        result["hy_spread"] = result["hy_spread"] * 100  # pct → bps
+    for _spread_col in ("hy_spread", "ig_spread"):
+        if _spread_col in result.columns:
+            result[_spread_col] = result[_spread_col] * 100  # pct → bps
 
     # Log data quality
     nan_pct = result.isna().mean() * 100
