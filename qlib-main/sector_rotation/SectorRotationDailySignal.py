@@ -580,7 +580,7 @@ def run_daily_signal(
     capital       : Portfolio capital in USD.
     dry_run       : If True, compute everything but do NOT update inventory.
     force_rebalance: Force rebalance regardless of schedule.
-    value_source  : "proxy" (fast, no EPS download) | "constituents" (full P/E, slow on first run).
+    value_source  : "proxy" | "polygon" (recommended: full TTM P/E via Polygon API) | "constituents" (yfinance, limited history).
     config_path   : Path to config.yaml (default: sector_rotation/config.yaml).
 
     Returns
@@ -648,6 +648,8 @@ def run_daily_signal(
     defensive_tickers = regime_cfg.get("defensive_sectors") or None
     defensive_bonus = float(regime_cfg.get("defensive_bonus_risk_off", 0.30))
 
+    polygon_api_key = os.environ.get("POLYGON_API_KEY") if value_source == "polygon" else None
+
     composite, regime_monthly, components = compute_composite_signals(
         prices=etf_prices,
         macro=macro,
@@ -658,6 +660,7 @@ def run_daily_signal(
         regime_method=regime_method,
         value_source=value_source,
         value_cache_dir=CACHE_DIR,
+        polygon_api_key=polygon_api_key,
         regime_kwargs=regime_kwargs,
     )
 
@@ -930,12 +933,13 @@ Examples:
         help="Force rebalance even if today is not a scheduled date",
     )
     parser.add_argument(
-        "--value-source", choices=["proxy", "constituents", "external"],
+        "--value-source", choices=["proxy", "constituents", "external", "polygon"],
         default="proxy",
         help=(
             "P/E data source for value signal. "
             "'proxy'=price-to-5yr-avg (fast, no extra downloads); "
-            "'constituents'=real TTM P/E from yfinance quarterly EPS (accurate, slow first run)"
+            "'polygon'=real TTM P/E from Polygon quarterly EPS, full history (recommended); "
+            "'constituents'=real TTM P/E from yfinance (only last 4-8 quarters, not recommended)"
         ),
     )
     parser.add_argument(

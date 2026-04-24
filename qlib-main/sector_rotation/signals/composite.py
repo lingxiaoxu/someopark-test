@@ -95,6 +95,7 @@ def compute_composite_signals(
     regime_method: str = "rules",
     value_source: str = "constituents",
     value_cache_dir=None,
+    polygon_api_key: Optional[str] = None,
     regime_kwargs: Optional[dict] = None,
     signal_kwargs: Optional[dict] = None,
 ) -> Tuple[pd.DataFrame, pd.Series, Dict[str, pd.DataFrame]]:
@@ -175,6 +176,7 @@ def compute_composite_signals(
         lookback_years=signal_kwargs.get("value_lookback_years", 10.0),
         missing_data_weight=signal_kwargs.get("value_missing_weight", 0.0),
         cache_dir=value_cache_dir,
+        polygon_api_key=polygon_api_key,
     )
 
     # Align value to monthly index of cs_mom
