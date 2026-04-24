@@ -104,7 +104,6 @@ def _load_prices_yfinance(
         end=end,
         auto_adjust=auto_adjust,
         progress=False,
-        show_errors=False,
     )
 
     # yfinance returns MultiIndex columns when multiple tickers
@@ -353,11 +352,12 @@ FRED_SERIES: Dict[str, str] = {
     "hy_spread":     "BAMLH0A0HYM2",     # ICE BofA HY OAS (daily, bps)
     "breakeven_10y": "T10YIE",           # 10Y breakeven inflation rate (daily)
     "fed_rate":      "FEDFUNDS",         # Effective federal funds rate (monthly)
-    "ism_mfg":       "ISM/MAN_PMI",      # ISM Manufacturing PMI (monthly)
+    # ISM Manufacturing PMI is proprietary (not available via free FRED API).
+    # regime.py handles ism_mfg=NaN gracefully — omitted here.
 }
 
 # Some FRED series are monthly — mark them so we can forward-fill correctly
-MONTHLY_SERIES: set = {"fed_rate", "ism_mfg"}
+MONTHLY_SERIES: set = {"fed_rate"}
 
 
 def _load_fred_series(

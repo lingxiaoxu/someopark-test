@@ -71,12 +71,13 @@ signals:
 
   # Relative value: P/E percentile vs own 10-year history
   # Lower P/E percentile = cheaper = higher score
+  # "constituents": TTM P/E from yfinance quarterly earnings (accurate; slow on first run, cached)
+  # "proxy": price-to-5yr-avg fast fallback (no network beyond price data)
+  value_source: "constituents"
   value:
     pe_lookback_years: 10
     # If PE data unavailable for a ticker, use this fallback weight (0 = skip value signal)
     missing_data_weight: 0.0
-    # PE data source: "yfinance_info" | "manual"
-    source: "yfinance_info"
 
   # Acceleration filter: 3-month momentum change (bonus signal, not stand-alone)
   acceleration:
