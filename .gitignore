@@ -24,6 +24,7 @@ __pycache__/
 
 # Data / output (large files, not for version control)
 price_data/
+sector_rotation/    # stale cache from old loader runs; ETF data now lives in price_data/sector_etfs/
 charts/
 logs/
 
