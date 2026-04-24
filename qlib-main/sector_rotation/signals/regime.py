@@ -115,6 +115,10 @@ def _classify_regime_row(
     ism_mfg: Optional[float],
     vix_raw: float,
     hy_spread_raw: float,
+    # Optional additional indicators (from FRED — use if available)
+    fin_stress: float = np.nan,    # St. Louis FSI z-score (STLFSI4)
+    ig_spread: float = np.nan,     # IG OAS z-score (BAMLC0A0CM)
+    nfci: float = np.nan,          # National Financial Conditions z-score (NFCI)
     # Thresholds (raw values)
     vix_high: float = 25.0,
     vix_extreme: float = 35.0,
@@ -127,6 +131,7 @@ def _classify_regime_row(
 
     Uses raw VIX and HY spread for absolute thresholds, and z-scores for
     relative context (identifying transitions vs persistent regime changes).
+    Optionally uses fin_stress (STLFSI4), ig_spread, and nfci when available.
 
     Returns one of: RISK_ON, RISK_OFF, TRANSITION_UP, TRANSITION_DOWN
     """
@@ -187,6 +192,27 @@ def _classify_regime_row(
             score += 1
         elif ism_mfg < ism_expansion - 5:  # < 45: contraction
             score -= 1
+
+    # Financial Stress Index (STLFSI4): z-score > +1 = stress, < -1 = calm
+    if not np.isnan(fin_stress):
+        if fin_stress > 1.5:
+            score -= 1
+        elif fin_stress < -1.0:
+            score += 1
+
+    # National Financial Conditions (NFCI): positive = tighter = worse
+    if not np.isnan(nfci):
+        if nfci > 1.0:
+            score -= 1
+        elif nfci < -1.0:
+            score += 1
+
+    # IG spread direction (corroborates HY)
+    if not np.isnan(ig_spread):
+        if ig_spread > 1.5:
+            score -= 1
+        elif ig_spread < -1.0:
+            score += 1
 
     # Map score to regime
     if score >= 3:
@@ -250,6 +276,9 @@ def compute_regime_rules(
             ism_mfg=row.get("ism_mfg", np.nan),
             vix_raw=row.get("vix", np.nan),
             hy_spread_raw=row.get("hy_spread", np.nan),
+            fin_stress=row_z.get("fin_stress", np.nan),
+            ig_spread=row_z.get("ig_spread", np.nan),
+            nfci=row_z.get("nfci", np.nan),
             vix_high=vix_high_threshold,
             vix_extreme=vix_extreme_threshold,
             hy_spread_high_bps=hy_spread_high_bps,
