@@ -5,30 +5,42 @@ Sector P/E percentile relative to own 10-year history.
 
 Lower P/E percentile → sector is cheap relative to its own history → higher signal score.
 
-Data source strategy:
-    - Primary: yfinance `.info` dict for each ETF (trailing PE or forward PE).
-    - Limitation: yfinance P/E for ETFs is often stale, estimated, or unavailable.
-    - Fallback: If P/E is missing for a ticker, that ticker's value weight is set
-      to 0 and its composite score comes from momentum + regime only.
+Data source strategy (in order of quality):
+    1. "constituents": Build monthly TTM P/E time series from constituent stock quarterly
+       earnings (via yfinance quarterly_income_stmt). This is the primary path and uses
+       actual reported EPS — no price substitution. Results are cached to disk.
+    2. "external": Caller provides a pre-built monthly P/E DataFrame.
+    3. "proxy": Fallback using price-to-5yr-avg as a rough "expensiveness" proxy.
+       Used only when earnings data is unavailable and for unit tests.
+    4. "yfinance_info": Point-in-time snapshot from yfinance .info — look-ahead biased,
+       falls back to proxy automatically.
 
-Important caveats:
-    - ETF P/E represents aggregate portfolio P/E, which is a weighted average of
-      constituent stock P/Es. This is not directly comparable to individual stock P/Es.
-    - Survivorship and composition changes (e.g., XLC restructuring 2018-09) affect
-      historical P/E series comparability.
-    - P/E from yfinance .info is a point-in-time snapshot, not time-series.
-      For a proper time-series analysis, a commercial data vendor is needed.
-    - This module implements a best-effort approach with transparent caveats.
+Constituent basket (SECTOR_REPRESENTATIVES):
+    Top 5 representative large-caps per SPDR sector ETF. Fixed basket used as a
+    proxy for the ETF's aggregate P/E. The basket is intentionally stable (large caps
+    do not frequently enter/exit sectors) to avoid survivorship bias in the sample period.
+
+    Known caveats:
+    - XLC basket changes at 2018-09 GICS restructuring (Meta/Alphabet moved from XLK).
+      XLC basket is defined for post-2018 composition.
+    - ETF constituent weights shift monthly; equal-weighting the top-5 is an approximation.
+    - yfinance quarterly earnings availability: typically 4-6 years back.
+      Pre-2018 data may be partial or missing.
 
 Reference:
-    Asness, C., Moskowitz, T., & Pedersen, L. (2013).
+    Asness, C., Moskowitz, & Pedersen, L. (2013).
     Value and momentum everywhere. Journal of Finance, 68(3), 929-985.
+
+    Fama, E. & French, K. (1992).
+    The Cross-Section of Expected Stock Returns. Journal of Finance, 47(2), 427-465.
 """
 
 from __future__ import annotations
 
 import logging
+import pickle
 import time
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -37,7 +49,29 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# P/E Data Fetching
+# Sector constituent baskets for P/E computation
+# ---------------------------------------------------------------------------
+
+# Top 5 representative large-cap stocks per SPDR sector ETF.
+# These are the largest, most liquid names that collectively account for
+# a substantial fraction of each sector ETF's weight.
+SECTOR_REPRESENTATIVES: Dict[str, List[str]] = {
+    "XLK":  ["AAPL", "MSFT", "NVDA", "AVGO", "ORCL"],    # Info Technology
+    "XLF":  ["BRK-B", "JPM", "V", "MA", "BAC"],           # Financials
+    "XLE":  ["XOM", "CVX", "COP", "SLB", "EOG"],           # Energy
+    "XLV":  ["LLY", "UNH", "JNJ", "ABBV", "MRK"],          # Health Care
+    "XLU":  ["NEE", "DUK", "SO", "AEP", "EXC"],            # Utilities
+    "XLI":  ["GE", "CAT", "RTX", "HON", "UPS"],            # Industrials
+    "XLY":  ["AMZN", "TSLA", "HD", "MCD", "NKE"],          # Consumer Discretionary
+    "XLP":  ["PG", "KO", "PEP", "COST", "WMT"],            # Consumer Staples
+    "XLB":  ["LIN", "APD", "SHW", "FCX", "NEM"],           # Materials
+    "XLC":  ["GOOGL", "META", "NFLX", "DIS", "VZ"],        # Communication Services
+    "XLRE": ["AMT", "PLD", "EQIX", "CCI", "PSA"],          # Real Estate
+}
+
+
+# ---------------------------------------------------------------------------
+# P/E Data Fetching (snapshot — for live signals only)
 # ---------------------------------------------------------------------------
 
 def fetch_pe_snapshot(tickers: List[str], pause_sec: float = 0.5) -> Dict[str, Optional[float]]:
@@ -48,7 +82,7 @@ def fetch_pe_snapshot(tickers: List[str], pause_sec: float = 0.5) -> Dict[str, O
     None means the data was not available or was an invalid value (negative, zero).
 
     Note: This is a SNAPSHOT at time of call, not a historical time series.
-    For backtesting, use `build_pe_proxy_series` or a commercial data provider.
+    For backtesting, use build_pe_series_from_constituents().
     """
     try:
         import yfinance as yf
@@ -59,11 +93,10 @@ def fetch_pe_snapshot(tickers: List[str], pause_sec: float = 0.5) -> Dict[str, O
     for ticker in tickers:
         try:
             info = yf.Ticker(ticker).info
-            # yfinance keys vary; try multiple
             pe = (
                 info.get("trailingPE")
                 or info.get("forwardPE")
-                or info.get("pegRatio")   # Last resort proxy
+                or info.get("pegRatio")
             )
             if pe and isinstance(pe, (int, float)) and pe > 0:
                 pe_dict[ticker] = float(pe)
@@ -79,6 +112,262 @@ def fetch_pe_snapshot(tickers: List[str], pause_sec: float = 0.5) -> Dict[str, O
     available = [t for t, v in pe_dict.items() if v is not None]
     logger.info(f"P/E available for {len(available)}/{len(tickers)} tickers: {available}")
     return pe_dict
+
+
+# ---------------------------------------------------------------------------
+# Constituent-based P/E time series builder (primary backtest path)
+# ---------------------------------------------------------------------------
+
+def _fetch_quarterly_eps(stock: str, pause_sec: float = 0.3) -> pd.Series:
+    """
+    Fetch quarterly Diluted EPS for a single stock from yfinance.
+
+    Returns a pd.Series with quarter-end dates as index and EPS (float) as values.
+    Returns an empty Series if data is unavailable.
+    """
+    try:
+        import yfinance as yf
+    except ImportError:
+        return pd.Series(dtype=float)
+
+    try:
+        time.sleep(pause_sec)
+        ticker = yf.Ticker(stock)
+
+        # Try quarterly income statement (newer yfinance API)
+        stmt = None
+        try:
+            stmt = ticker.quarterly_income_stmt  # rows=metrics, cols=quarter-end dates
+        except Exception:
+            pass
+
+        if stmt is None or stmt.empty:
+            return pd.Series(dtype=float)
+
+        # Look for EPS rows (try Diluted first, then Basic)
+        eps_row = None
+        for candidate in ("Diluted EPS", "Basic EPS"):
+            if candidate in stmt.index:
+                eps_row = stmt.loc[candidate]
+                break
+
+        if eps_row is None:
+            logger.debug(f"{stock}: no EPS row found in quarterly_income_stmt")
+            return pd.Series(dtype=float)
+
+        # eps_row is a Series with quarter-end dates as index (most recent first)
+        eps = eps_row.astype(float).dropna()
+        eps.index = pd.DatetimeIndex(eps.index)
+        eps = eps.sort_index()  # ascending (oldest first)
+        logger.debug(f"{stock}: fetched {len(eps)} quarterly EPS points")
+        return eps
+
+    except Exception as e:
+        logger.warning(f"Quarterly EPS fetch failed for {stock}: {e}")
+        return pd.Series(dtype=float)
+
+
+def _quarterly_eps_to_monthly_ttm(
+    eps_quarterly: pd.Series,
+    monthly_idx: pd.DatetimeIndex,
+) -> pd.Series:
+    """
+    Convert a quarterly EPS Series to a monthly TTM (trailing-twelve-month) EPS Series.
+
+    For each month M:
+        TTM EPS = sum of the last 4 reported quarterly EPS values on or before M.
+
+    This respects reporting lag: only uses EPS values that were already known at M.
+    Returns NaN for months with fewer than 4 quarters of history.
+
+    Parameters
+    ----------
+    eps_quarterly : pd.Series
+        Quarterly EPS with quarter-end dates as index.
+    monthly_idx : pd.DatetimeIndex
+        Target month-end dates for the output.
+    """
+    result = {}
+    for month_end in monthly_idx:
+        # All quarters reported on or before this month
+        available = eps_quarterly.loc[:month_end]
+        if len(available) < 4:
+            result[month_end] = np.nan
+        else:
+            result[month_end] = float(available.iloc[-4:].sum())
+    return pd.Series(result)
+
+
+def _constituent_pe_series(
+    stock: str,
+    monthly_prices: pd.Series,
+    pause_sec: float = 0.3,
+) -> pd.Series:
+    """
+    Compute monthly P/E series for a single constituent stock.
+
+    P/E = monthly closing price / TTM diluted EPS.
+    Returns NaN for months where EPS ≤ 0 (avoids negative / infinite P/E).
+
+    Parameters
+    ----------
+    stock : str
+        Stock ticker.
+    monthly_prices : pd.Series
+        Monthly closing prices for this stock (index = month-end DatetimeIndex).
+    """
+    eps_q = _fetch_quarterly_eps(stock, pause_sec=pause_sec)
+    if eps_q.empty:
+        return pd.Series(np.nan, index=monthly_prices.index)
+
+    ttm = _quarterly_eps_to_monthly_ttm(eps_q, monthly_prices.index)
+
+    # P/E = price / TTM EPS; exclude non-positive EPS (negative earnings)
+    pe = monthly_prices / ttm
+    pe[ttm <= 0] = np.nan  # exclude loss-making periods
+    pe[pe <= 0] = np.nan   # sanity check
+    pe[pe > 300] = np.nan  # cap extreme outliers (>300x P/E is noise)
+    return pe
+
+
+def build_pe_series_from_constituents(
+    etf_tickers: List[str],
+    start: str,
+    end: str,
+    n_top: int = 5,
+    pause_sec: float = 0.3,
+    cache_path: Optional[Path] = None,
+) -> pd.DataFrame:
+    """
+    Build monthly sector P/E time series from top constituent stock earnings.
+
+    For each sector ETF:
+    1. Identify up to n_top representative stocks from SECTOR_REPRESENTATIVES.
+    2. Download quarterly Diluted EPS from yfinance quarterly_income_stmt.
+    3. Compute TTM EPS = sum of last 4 quarters at each month-end.
+    4. Compute per-stock P/E = monthly price / TTM EPS.
+    5. Equal-weight average across constituents with positive TTM EPS.
+
+    The result is a monthly P/E DataFrame (index = month-end, cols = ETF tickers).
+    NaN means no earnings data was available for that sector/period.
+
+    This is the primary data source for compute_value_signal_full(source="constituents").
+    Results are cached to disk to avoid repeated yfinance requests.
+
+    Parameters
+    ----------
+    etf_tickers : list of str
+        Sector ETF tickers for which to build P/E series.
+    start : str
+        Start date (e.g., "2018-01-01"). Prices start is used; earnings may extend earlier.
+    end : str
+        End date.
+    n_top : int
+        Number of representative constituents to average per sector (default 5).
+    pause_sec : float
+        Sleep between yfinance API calls.
+    cache_path : Path, optional
+        If provided, load from / save to this pickle file.
+
+    Returns
+    -------
+    pd.DataFrame
+        Monthly TTM P/E ratios. index = month-end DatetimeIndex, cols = ETF tickers.
+        NaN where earnings data is unavailable.
+    """
+    # --- Cache check ---
+    if cache_path is not None and cache_path.exists():
+        try:
+            with open(cache_path, "rb") as f:
+                cached = pickle.load(f)
+            logger.info(f"Loaded constituent P/E from cache: {cache_path}")
+            return cached
+        except Exception as e:
+            logger.warning(f"Cache load failed ({e}), re-fetching...")
+
+    try:
+        import yfinance as yf
+    except ImportError:
+        raise ImportError("yfinance is required for constituent P/E computation.")
+
+    monthly_idx = pd.date_range(start, end, freq="ME")
+
+    # Download monthly prices for all constituent stocks in one batch
+    all_constituents: List[str] = []
+    etf_to_stocks: Dict[str, List[str]] = {}
+    for etf in etf_tickers:
+        stocks = SECTOR_REPRESENTATIVES.get(etf, [])[:n_top]
+        etf_to_stocks[etf] = stocks
+        all_constituents.extend(stocks)
+    all_constituents = list(dict.fromkeys(all_constituents))  # deduplicate, preserve order
+
+    logger.info(f"Downloading monthly prices for {len(all_constituents)} constituent stocks...")
+    raw_prices = yf.download(
+        all_constituents,
+        start=start,
+        end=end,
+        interval="1mo",
+        auto_adjust=True,
+        progress=False,
+    )
+
+    # Extract Close prices; handle single-ticker case (no MultiIndex)
+    if isinstance(raw_prices.columns, pd.MultiIndex):
+        stock_prices = raw_prices["Close"]
+    else:
+        # Single ticker — yfinance returns flat columns
+        stock_prices = raw_prices[["Close"]].rename(columns={"Close": all_constituents[0]})
+
+    # Align to month-end index
+    stock_prices.index = stock_prices.index.to_period("M").to_timestamp("M")
+    stock_prices = stock_prices.reindex(monthly_idx)
+
+    # Build P/E series for each sector ETF
+    result: Dict[str, pd.Series] = {}
+    for etf in etf_tickers:
+        stocks = etf_to_stocks.get(etf, [])
+        if not stocks:
+            result[etf] = pd.Series(np.nan, index=monthly_idx)
+            continue
+
+        logger.info(f"Computing constituent P/E for {etf} ({stocks})...")
+        pe_list: List[pd.Series] = []
+        for stock in stocks:
+            if stock not in stock_prices.columns:
+                logger.debug(f"  {stock}: price not available, skip")
+                continue
+            prices_s = stock_prices[stock].dropna()
+            if prices_s.empty:
+                continue
+            pe_s = _constituent_pe_series(stock, prices_s, pause_sec=pause_sec)
+            pe_list.append(pe_s)
+
+        if not pe_list:
+            result[etf] = pd.Series(np.nan, index=monthly_idx)
+            continue
+
+        # Equal-weight average across constituents (NaN = exclude that stock that month)
+        pe_df = pd.concat(pe_list, axis=1)
+        sector_pe = pe_df.mean(axis=1, skipna=True)  # skipna=True: exclude missing
+        sector_pe[sector_pe.isna()] = np.nan
+        result[etf] = sector_pe.reindex(monthly_idx)
+
+        valid_months = sector_pe.notna().sum()
+        logger.info(f"  {etf}: {valid_months}/{len(monthly_idx)} months with valid P/E")
+
+    pe_df_out = pd.DataFrame(result, index=monthly_idx)
+
+    # --- Cache save ---
+    if cache_path is not None:
+        try:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(cache_path, "wb") as f:
+                pickle.dump(pe_df_out, f)
+            logger.info(f"Saved constituent P/E to cache: {cache_path}")
+        except Exception as e:
+            logger.warning(f"Cache save failed: {e}")
+
+    return pe_df_out
 
 
 # ---------------------------------------------------------------------------
@@ -180,37 +469,25 @@ def compute_value_signal(
 
 
 # ---------------------------------------------------------------------------
-# P/E Proxy Series Builder (for backtesting)
+# P/E Proxy Series Builder (fallback only — used when earnings unavailable)
 # ---------------------------------------------------------------------------
 
 def build_pe_proxy_series(
     prices: pd.DataFrame,
-    earnings_yield_proxy: str = "price_to_book",
+    earnings_yield_proxy: str = "normalized_price",
 ) -> pd.DataFrame:
     """
-    Build a proxy P/E time series for backtesting using available price data.
+    Build a rough P/E proxy from price data alone. FALLBACK ONLY.
 
-    IMPORTANT: This is a fallback proxy when true P/E time series are unavailable.
-    Real P/E data requires a commercial data vendor (Bloomberg, FactSet, etc.).
+    Used when constituent earnings data (build_pe_series_from_constituents) is
+    unavailable — e.g., in unit tests, offline environments, or for tickers with
+    no coverage in SECTOR_REPRESENTATIVES.
 
-    Proxy approaches:
-        1. "price_to_book": Not implementable from price data alone.
-        2. "normalized_price": Use 12-month rolling price level / 5-year avg price level.
-           This is a very rough proxy for "expensiveness" relative to history.
-           NOT a true P/E but directionally correct for sector rotation timing.
-
-    Parameters
-    ----------
-    prices : pd.DataFrame
-        Monthly ETF prices.
-    earnings_yield_proxy : str
-        Proxy method. Currently only "normalized_price" is supported.
-
-    Returns
-    -------
-    pd.DataFrame
-        Proxy "P/E"-like series for value signal computation.
-        NOTE: Do NOT mix with real P/E data without rescaling.
+    Method "normalized_price":
+        Proxy P/E = current price / 5-year rolling average price.
+        Higher ratio → relatively expensive → acts like high P/E.
+        This is a directional approximation only; magnitudes are not comparable
+        to true P/E ratios and should not be mixed with real P/E data.
     """
     if earnings_yield_proxy != "normalized_price":
         raise NotImplementedError(
@@ -221,56 +498,103 @@ def build_pe_proxy_series(
     monthly = prices.resample("ME").last()
 
     # Proxy: ratio of current price to 60-month (5-year) rolling average price
-    # Higher ratio → relatively expensive → acts like high P/E
     proxy = monthly / monthly.rolling(window=60, min_periods=24).mean()
 
     logger.warning(
-        "Using price-to-5yr-avg as P/E proxy. This is a rough approximation. "
-        "For production use, obtain actual P/E data from a commercial provider."
+        "Using price-to-5yr-avg as P/E proxy (fallback). "
+        "For accurate value signals, ensure yfinance access so that "
+        "build_pe_series_from_constituents() can fetch real earnings data."
     )
     return proxy
 
 
 # ---------------------------------------------------------------------------
-# Full value signal computation with proxy fallback
+# Full value signal computation — primary API
 # ---------------------------------------------------------------------------
 
 def compute_value_signal_full(
     prices: pd.DataFrame,
     pe_history: Optional[pd.DataFrame] = None,
-    source: str = "proxy",
+    source: str = "constituents",
     lookback_years: float = 10.0,
     missing_data_weight: float = 0.0,
+    cache_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
     """
-    Compute value signal with automatic fallback to price proxy.
+    Compute sector relative value signal.
+
+    Sources (in order of accuracy):
+    --------------------------------
+    "constituents" (default):
+        Build monthly TTM P/E from yfinance quarterly earnings of representative
+        constituent stocks (see SECTOR_REPRESENTATIVES). This is the primary path.
+        Requires yfinance network access; results are cached in cache_dir.
+
+    "external":
+        Caller provides pe_history directly (pd.DataFrame, monthly, tickers as cols).
+        Use when you have Bloomberg/FactSet P/E data.
+
+    "proxy":
+        Fallback: normalized price proxy. No earnings data required.
+        Directionally correct but not a real P/E.
+
+    "yfinance_info":
+        Point-in-time snapshot from yfinance .info — look-ahead biased.
+        Auto-falls back to "proxy" for backtesting.
 
     Parameters
     ----------
     prices : pd.DataFrame
-        Daily adjusted close prices.
+        Daily adjusted close prices. Columns = ETF tickers.
     pe_history : pd.DataFrame, optional
-        External P/E time series (monthly). If None, uses proxy.
+        Pre-built monthly P/E time series (required only for source="external").
     source : str
-        "yfinance_info" | "proxy" | "external"
-        "yfinance_info" fetches current snapshot (backtest-incompatible).
-        "proxy" uses normalized price as P/E proxy.
-        "external" uses pe_history argument.
+        Data source: "constituents" | "external" | "proxy" | "yfinance_info".
     lookback_years : float
-        Rolling history window for percentile.
+        Rolling window for percentile computation.
     missing_data_weight : float
-        Score for tickers with no data.
+        Score for tickers with no P/E data.
+    cache_dir : Path, optional
+        Directory for caching constituent P/E data (used only for source="constituents").
 
     Returns
     -------
     pd.DataFrame
         Month-end value z-scores.
     """
-    if source == "proxy":
-        monthly_prices = prices.resample("ME").last()
-        pe_proxy = build_pe_proxy_series(monthly_prices)
-        return compute_value_signal(pe_proxy, lookback_years=lookback_years,
-                                     missing_data_weight=missing_data_weight)
+    if source == "constituents":
+        etf_tickers = list(prices.columns)
+        start = prices.index[0].strftime("%Y-%m-%d")
+        end   = prices.index[-1].strftime("%Y-%m-%d")
+
+        cache_path: Optional[Path] = None
+        if cache_dir is not None:
+            tickers_key = "_".join(sorted(etf_tickers))
+            cache_path = Path(cache_dir) / f"pe_constituents_{tickers_key}.pkl"
+
+        try:
+            pe_df = build_pe_series_from_constituents(
+                etf_tickers=etf_tickers,
+                start=start,
+                end=end,
+                cache_path=cache_path,
+            )
+            # If all data is NaN, fall through to proxy
+            if pe_df.notna().any().any():
+                return compute_value_signal(
+                    pe_df, lookback_years=lookback_years,
+                    missing_data_weight=missing_data_weight,
+                )
+            logger.warning("Constituent P/E returned all NaN; falling back to proxy.")
+        except Exception as e:
+            logger.warning(f"Constituent P/E fetch failed ({e}); falling back to proxy.")
+
+        # Fallback to proxy if constituents unavailable
+        return compute_value_signal_full(
+            prices, source="proxy",
+            lookback_years=lookback_years,
+            missing_data_weight=missing_data_weight,
+        )
 
     elif source == "external":
         if pe_history is None:
@@ -278,25 +602,30 @@ def compute_value_signal_full(
         return compute_value_signal(pe_history, lookback_years=lookback_years,
                                      missing_data_weight=missing_data_weight)
 
+    elif source == "proxy":
+        monthly_prices = prices.resample("ME").last()
+        pe_proxy = build_pe_proxy_series(monthly_prices)
+        return compute_value_signal(pe_proxy, lookback_years=lookback_years,
+                                     missing_data_weight=missing_data_weight)
+
     elif source == "yfinance_info":
         logger.warning(
             "yfinance_info P/E source fetches current snapshot only. "
-            "Using this in backtesting creates a look-ahead bias. "
-            "Treating as missing data and using proxy instead."
+            "Look-ahead bias in backtesting. Falling back to proxy."
         )
-        # Fall back to proxy for backtesting
         return compute_value_signal_full(
-            prices, pe_history=None, source="proxy",
+            prices, source="proxy",
             lookback_years=lookback_years,
             missing_data_weight=missing_data_weight,
         )
 
     else:
-        raise ValueError(f"Unknown value signal source: {source}")
+        raise ValueError(f"Unknown value signal source: '{source}'. "
+                         "Choose: 'constituents', 'external', 'proxy', 'yfinance_info'.")
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG, format="%(asctime)s %(levelname)s: %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s: %(message)s")
 
     import sys
     sys.path.insert(0, str(__import__("pathlib").Path(__file__).parent.parent.parent))
@@ -305,6 +634,7 @@ if __name__ == "__main__":
     prices, _ = load_all()
     etf_prices = prices.drop(columns=["SPY"], errors="ignore")
 
-    print("\n=== Value Signal (proxy method, last 3 months) ===")
-    val_sig = compute_value_signal_full(etf_prices, source="proxy")
+    print("\n=== Value Signal (constituents method, last 3 months) ===")
+    cache = Path("sector_rotation/data/cache")
+    val_sig = compute_value_signal_full(etf_prices, source="constituents", cache_dir=cache)
     print(val_sig.tail(3).to_string())

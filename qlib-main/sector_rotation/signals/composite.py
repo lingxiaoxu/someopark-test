@@ -93,7 +93,8 @@ def compute_composite_signals(
     defensive_tickers: Optional[list] = None,
     defensive_bonus: float = DEFENSIVE_BONUS_RISK_OFF,
     regime_method: str = "rules",
-    value_source: str = "proxy",
+    value_source: str = "constituents",
+    value_cache_dir=None,
     regime_kwargs: Optional[dict] = None,
     signal_kwargs: Optional[dict] = None,
 ) -> Tuple[pd.DataFrame, pd.Series, Dict[str, pd.DataFrame]]:
@@ -117,7 +118,12 @@ def compute_composite_signals(
     regime_method : str
         "rules" or "hmm".
     value_source : str
-        "proxy" or "external".
+        "constituents" (default) | "proxy" | "external" | "yfinance_info".
+        "constituents" builds monthly TTM P/E from yfinance quarterly earnings
+        of representative stocks per sector (see SECTOR_REPRESENTATIVES in value.py).
+        "proxy" uses price-to-5yr-avg as a rough fallback (no earnings data needed).
+    value_cache_dir : Path or str, optional
+        Cache directory for constituent P/E data (passed to compute_value_signal_full).
     regime_kwargs : dict, optional
         Extra kwargs passed to compute_regime().
     signal_kwargs : dict, optional
@@ -168,6 +174,7 @@ def compute_composite_signals(
         source=value_source,
         lookback_years=signal_kwargs.get("value_lookback_years", 10.0),
         missing_data_weight=signal_kwargs.get("value_missing_weight", 0.0),
+        cache_dir=value_cache_dir,
     )
 
     # Align value to monthly index of cs_mom
