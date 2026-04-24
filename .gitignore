@@ -12,8 +12,9 @@ someo-park-investment-management/.env
 chronos-forecasting-main/
 chronos-2-finetuned/
 
-# Qlib
-qlib-main/
+# Qlib — ignore everything except sector_rotation
+qlib-main/*
+!qlib-main/sector_rotation
 
 # Python
 __pycache__/
