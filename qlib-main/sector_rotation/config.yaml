@@ -7,7 +7,7 @@
 # Data
 # ---------------------------------------------------------------------------
 data:
-  cache_dir: "sector_rotation/data/cache"
+  cache_dir: "../../price_data/sector_etfs"   # relative to qlib-main/sector_rotation/ → someopark-test/price_data/sector_etfs/
   price_source: "yfinance"          # "mongodb" | "yfinance"
   price_start: "2017-01-01"         # Earlier than backtest start for lookback warmup
   price_end: null                   # null = today

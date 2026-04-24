@@ -599,7 +599,10 @@ def load_all(
     source = data_cfg.get("price_source", "yfinance")
     start = data_cfg.get("price_start", "2017-01-01")
     end = data_cfg.get("price_end")
-    cache_dir = Path(data_cfg.get("cache_dir", "sector_rotation/data/cache"))
+    _raw_cache = data_cfg.get("cache_dir", "../../price_data/sector_etfs")
+    cache_dir = Path(_raw_cache)
+    if not cache_dir.is_absolute():
+        cache_dir = (_DEFAULT_CONFIG_PATH.parent / cache_dir).resolve()
     fred_env = data_cfg.get("fred_api_key_env", "FRED_API_KEY")
     fred_key = os.environ.get(fred_env)
     mongo_cfg = data_cfg.get("mongodb", {})
