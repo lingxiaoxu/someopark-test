@@ -1,0 +1,238 @@
+# =============================================================================
+# Sector Rotation Strategy Configuration
+# All tunable parameters in one place. Import via config.py or load directly.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+data:
+  cache_dir: "sector_rotation/data/cache"
+  price_source: "yfinance"          # "mongodb" | "yfinance"
+  price_start: "2017-01-01"         # Earlier than backtest start for lookback warmup
+  price_end: null                   # null = today
+  macro_source: "fred"
+  fred_api_key_env: "FRED_API_KEY"  # Read from env var
+
+  # MongoDB connection (only used when price_source = "mongodb")
+  mongodb:
+    host_env: "MONGO_HOST"          # e.g. "localhost"
+    port: 27017
+    db: "market_data"
+    collection: "prices"
+
+  # yfinance download settings
+  yfinance:
+    auto_adjust: true               # Use adjusted closes (dividend-adjusted)
+    progress: false
+
+# ---------------------------------------------------------------------------
+# Universe
+# ---------------------------------------------------------------------------
+universe:
+  etfs:
+    - "XLE"   # Energy
+    - "XLB"   # Materials
+    - "XLI"   # Industrials
+    - "XLY"   # Consumer Discretionary
+    - "XLP"   # Consumer Staples
+    - "XLV"   # Health Care
+    - "XLF"   # Financials
+    - "XLK"   # Information Technology
+    - "XLC"   # Communication Services
+    - "XLU"   # Utilities
+    - "XLRE"  # Real Estate
+  benchmark: "SPY"
+  # Earliest valid date for full 11-sector universe (XLC listed 2018-06-18)
+  universe_start: "2018-07-01"
+
+# ---------------------------------------------------------------------------
+# Signals
+# ---------------------------------------------------------------------------
+signals:
+  # Signal weights (must sum to 1.0)
+  weights:
+    cross_sectional_momentum: 0.40
+    ts_momentum:              0.15
+    relative_value:           0.20
+    regime_adjustment:        0.25
+
+  # Cross-sectional momentum: 12-1 month (skip last 1 month for reversal)
+  cs_momentum:
+    lookback_months: 12           # Total lookback
+    skip_months: 1                # Skip most recent N months
+    zscore_window: 36             # Rolling window for z-score normalization (months)
+
+  # Time-series momentum: 12-month self-return > 0 → full weight
+  ts_momentum:
+    lookback_months: 12
+    # Crash filter: if sector ts-mom < 0, apply this weight multiplier (0 = fully exclude)
+    crash_filter_multiplier: 0.0
+
+  # Relative value: P/E percentile vs own 10-year history
+  # Lower P/E percentile = cheaper = higher score
+  value:
+    pe_lookback_years: 10
+    # If PE data unavailable for a ticker, use this fallback weight (0 = skip value signal)
+    missing_data_weight: 0.0
+    # PE data source: "yfinance_info" | "manual"
+    source: "yfinance_info"
+
+  # Acceleration filter: 3-month momentum change (bonus signal, not stand-alone)
+  acceleration:
+    enabled: true
+    lookback_months: 3
+    weight_boost: 0.05            # Added to composite score for top-acceleration sectors
+
+  # Regime conditioning
+  regime:
+    method: "rules"               # "rules" | "hmm" (HMM requires hmmlearn)
+    vix_high_threshold: 25.0      # VIX > this → risk-off
+    vix_extreme_threshold: 35.0   # VIX > this → emergency de-risk
+    hy_spread_high_bps: 450       # HY OAS > this (bps) → credit stress
+    yield_curve_inversion: -0.10  # 10Y-2Y < this → inversion warning
+    ism_expansion: 50.0           # ISM > this → expansion
+
+    # Regime-conditional signal weight multipliers
+    # Format: {regime_state: {signal: multiplier}}
+    regime_weights:
+      risk_on:
+        cross_sectional_momentum: 1.0
+        ts_momentum: 1.0
+        relative_value: 1.0
+      risk_off:
+        cross_sectional_momentum: 0.6   # Reduce momentum in panics (crowded)
+        ts_momentum: 0.8
+        relative_value: 1.2             # Value more reliable in stress
+      transition_up:
+        cross_sectional_momentum: 1.1
+        ts_momentum: 1.0
+        relative_value: 0.9
+      transition_down:
+        cross_sectional_momentum: 0.7
+        ts_momentum: 0.9
+        relative_value: 1.1
+
+    # Defensive sector bonus in risk-off regime
+    defensive_sectors: ["XLU", "XLP", "XLV"]
+    defensive_bonus_risk_off: 0.3       # Add to z-score in risk-off
+
+# ---------------------------------------------------------------------------
+# Portfolio
+# ---------------------------------------------------------------------------
+portfolio:
+  # Optimization method: "inv_vol" | "risk_parity" | "gmv" | "equal_weight"
+  optimizer: "inv_vol"
+
+  # Covariance estimation
+  cov:
+    method: "ledoit_wolf"         # "ledoit_wolf" | "sample"
+    lookback_days: 252            # Rolling window for cov estimation
+    min_periods: 63               # Minimum days required
+
+  # Position constraints
+  constraints:
+    max_weight: 0.40              # Single sector max (prevent Tech dominance)
+    min_weight: 0.00              # Allow zero allocation
+    max_cash: 0.50                # Max cash (only during emergency de-risk)
+    beta_min: 0.85                # vs SPY
+    beta_max: 1.15                # vs SPY
+
+  # Number of "core" sectors (top N get positive allocation)
+  top_n_sectors: 4
+
+  # Minimum z-score to receive any allocation
+  min_zscore: -0.5
+
+  # Scale raw z-scores to weights (sigmoid or rank-based)
+  weight_scheme: "rank"           # "rank" | "zscore_softmax"
+
+# ---------------------------------------------------------------------------
+# Rebalancing
+# ---------------------------------------------------------------------------
+rebalance:
+  frequency: "monthly"           # "monthly" | "biweekly"
+  # Day-of-month: "first_trading_day" | "last_trading_day"
+  rebalance_day: "first_trading_day"
+
+  # Threshold filter: skip rebalance for sector if |z-score change| < threshold
+  zscore_change_threshold: 0.5   # sigma units
+
+  # Emergency de-risk: VIX > threshold → move to 50% cash
+  emergency_derisk_vix: 35.0
+  emergency_cash_pct: 0.50
+
+  # Maximum single-day turnover (single-side, in fraction of portfolio)
+  max_monthly_turnover: 0.80
+
+# ---------------------------------------------------------------------------
+# Risk Management
+# ---------------------------------------------------------------------------
+risk:
+  # Volatility scaling
+  vol_scaling:
+    enabled: true
+    target_vol_annual: 0.12       # Target portfolio annualized vol
+    estimation_window: 20         # Days for realized vol estimate
+    scale_threshold: 1.5          # Scale only when realized_vol > threshold * historical_avg
+    historical_window: 252        # Days for historical avg vol
+
+  # Drawdown circuit breaker
+  drawdown:
+    monthly_dd_alert: -0.08       # Log alert (no auto action)
+    cumulative_dd_halve: -0.15    # Reduce position 50% until DD recovers to -10%
+    cumulative_dd_recovery: -0.10
+
+# ---------------------------------------------------------------------------
+# Backtest
+# ---------------------------------------------------------------------------
+backtest:
+  start_date: "2018-07-01"        # Full 11-sector universe available
+  end_date: null                  # null = latest available
+  initial_capital: 1_000_000.0   # USD
+  # IS/OOS split for walk-forward validation
+  is_years: 3
+  oos_months: 12
+
+  # For rolling IS/OOS walk-forward
+  walk_forward:
+    enabled: false
+    step_months: 6                # Advance window by N months each fold
+
+# ---------------------------------------------------------------------------
+# Transaction Costs
+# ---------------------------------------------------------------------------
+costs:
+  # Three liquidity tiers based on daily volume
+  tier_1_tickers: ["XLE", "XLK", "XLF", "XLV"]    # ~$1B+ daily volume
+  tier_2_tickers: ["XLB", "XLI", "XLY", "XLP", "XLU"]
+  tier_3_tickers: ["XLC", "XLRE"]                   # Lower liquidity
+
+  # One-way cost per trade (spread + impact, bps)
+  tier_1_cost_bps: 3
+  tier_2_cost_bps: 5
+  tier_3_cost_bps: 8
+
+  # Estimated annual management fee of sector ETFs (pass-through cost, bps)
+  etf_fee_bps: 9
+
+# ---------------------------------------------------------------------------
+# Report
+# ---------------------------------------------------------------------------
+report:
+  output_dir: "sector_rotation/report/output"
+  figsize: [14, 8]
+  dpi: 150
+  # PDF tearsheet
+  pdf_filename: "sector_rotation_tearsheet.pdf"
+  # Colors
+  strategy_color: "#1f77b4"
+  benchmark_color: "#ff7f0e"
+  ew_color: "#2ca02c"
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging:
+  level: "INFO"                   # DEBUG | INFO | WARNING | ERROR
+  log_dir: "sector_rotation/logs"
