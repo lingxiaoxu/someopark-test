@@ -115,10 +115,10 @@ def _classify_regime_row(
     ism_mfg: Optional[float],
     vix_raw: float,
     hy_spread_raw: float,
-    # Optional additional indicators (from FRED — use if available)
-    fin_stress: float = np.nan,    # St. Louis FSI z-score (STLFSI4)
-    ig_spread: float = np.nan,     # IG OAS z-score (BAMLC0A0CM)
-    nfci: float = np.nan,          # National Financial Conditions z-score (NFCI)
+    # Optional additional indicators — all None-safe (follow RegimeDetector.py convention)
+    ig_spread_z: Optional[float] = None,      # IG OAS 252d rolling z-score (BAMLC0A0CM)
+    fin_stress_level: Optional[float] = None, # STLFSI4 raw level (already centred: 0=avg, +>0=stress)
+    nfci_level: Optional[float] = None,       # NFCI raw level (already centred: 0=neutral, +>0=tight)
     # Thresholds (raw values)
     vix_high: float = 25.0,
     vix_extreme: float = 35.0,
@@ -131,11 +131,19 @@ def _classify_regime_row(
 
     Uses raw VIX and HY spread for absolute thresholds, and z-scores for
     relative context (identifying transitions vs persistent regime changes).
-    Optionally uses fin_stress (STLFSI4), ig_spread, and nfci when available.
+
+    Optional indicators follow RegimeDetector.py convention:
+    - ig_spread_z   : use z-score (spread level varies by cycle; direction matters)
+    - fin_stress_level: use raw STLFSI4 level — already a centred index (0=avg, >1=high stress)
+    - nfci_level    : use raw NFCI level    — already a centred index (0=neutral, >0=tighter)
+
+    All optional params default to None; missing data is skipped silently.
+    Never use np.isnan() on these — use `is not None` to match RegimeDetector.py.
 
     Returns one of: RISK_ON, RISK_OFF, TRANSITION_UP, TRANSITION_DOWN
     """
-    if np.isnan(vix_raw) or np.isnan(hy_spread_raw):
+    import pandas as pd
+    if pd.isna(vix_raw) or pd.isna(hy_spread_raw):
         return RISK_ON  # Default when data unavailable
 
     # Hard stops → RISK_OFF
@@ -159,59 +167,61 @@ def _classify_regime_row(
         score -= 2   # Crisis
 
     # VIX direction (z-score rising = getting worse)
-    if not np.isnan(vix):
+    if not pd.isna(vix):
         if vix > 1.5:
             score -= 1   # VIX spiking (z > +1.5σ)
         elif vix < -1.0:
             score += 1   # VIX falling (z < -1σ)
 
     # Yield curve contribution
-    if not np.isnan(yield_curve):
+    if not pd.isna(yield_curve):
         if yield_curve > 0.5:  # Healthy slope (50+ bps)
             score += 1
         elif yield_curve < yield_curve_inversion:
             score -= 1
 
     # HY spread contribution
-    if not np.isnan(hy_spread_raw):
+    if not pd.isna(hy_spread_raw):
         if hy_spread_raw < 300:        # < 300 bps = tight = risk-on
             score += 1
         elif hy_spread_raw > hy_spread_high_bps:
             score -= 1
 
     # HY spread direction (z-score)
-    if not np.isnan(hy_spread):
+    if not pd.isna(hy_spread):
         if hy_spread > 1.5:
             score -= 1   # Credit stress rising
         elif hy_spread < -1.0:
             score += 1   # Credit conditions easing
 
     # ISM contribution
-    if ism_mfg is not None and not np.isnan(ism_mfg):
+    if ism_mfg is not None and not pd.isna(ism_mfg):
         if ism_mfg > ism_expansion + 3:   # > 53: expansion with momentum
             score += 1
         elif ism_mfg < ism_expansion - 5:  # < 45: contraction
             score -= 1
 
-    # Financial Stress Index (STLFSI4): z-score > +1 = stress, < -1 = calm
-    if not np.isnan(fin_stress):
-        if fin_stress > 1.5:
+    # IG spread z-score (corroborates HY; follows RegimeDetector._score_credit)
+    if ig_spread_z is not None:
+        if ig_spread_z > 1.5:
+            score -= 1   # IG credit stress rising
+        elif ig_spread_z < -1.0:
+            score += 1   # IG credit conditions easing
+
+    # St. Louis Financial Stress Index — raw level (0=avg, >1=high stress, <-0.5=easy)
+    # Follows RegimeDetector._score_macro_stress thresholds
+    if fin_stress_level is not None:
+        if fin_stress_level > 1.0:
             score -= 1
-        elif fin_stress < -1.0:
+        elif fin_stress_level < -0.5:
             score += 1
 
-    # National Financial Conditions (NFCI): positive = tighter = worse
-    if not np.isnan(nfci):
-        if nfci > 1.0:
+    # National Financial Conditions Index — raw level (0=neutral, >0.5=tighter, <-0.5=looser)
+    # Follows RegimeDetector._score_macro_stress thresholds
+    if nfci_level is not None:
+        if nfci_level > 0.5:
             score -= 1
-        elif nfci < -1.0:
-            score += 1
-
-    # IG spread direction (corroborates HY)
-    if not np.isnan(ig_spread):
-        if ig_spread > 1.5:
-            score -= 1
-        elif ig_spread < -1.0:
+        elif nfci_level < -0.5:
             score += 1
 
     # Map score to regime
@@ -269,16 +279,24 @@ def compute_regime_rules(
         row = macro.iloc[i]
         row_z = macro_z.iloc[i]
 
+        # Helper: convert pandas scalar to None if NaN/NA (safe for np.isnan-free checks)
+        def _val(series, key):
+            import pandas as pd
+            v = series.get(key)
+            return None if (v is None or pd.isna(v)) else float(v)
+
         regime = _classify_regime_row(
             vix=row_z.get("vix", np.nan),
             yield_curve=row_z.get("yield_curve", np.nan),
             hy_spread=row_z.get("hy_spread", np.nan),
-            ism_mfg=row.get("ism_mfg", np.nan),
+            ism_mfg=_val(row, "ism_mfg"),
             vix_raw=row.get("vix", np.nan),
             hy_spread_raw=row.get("hy_spread", np.nan),
-            fin_stress=row_z.get("fin_stress", np.nan),
-            ig_spread=row_z.get("ig_spread", np.nan),
-            nfci=row_z.get("nfci", np.nan),
+            # ig_spread: use z-score (direction matters; RegimeDetector uses ig_spread_z)
+            ig_spread_z=_val(row_z, "ig_spread"),
+            # fin_stress / nfci: use raw level (already centred indices, not z-scored again)
+            fin_stress_level=_val(row, "fin_stress"),
+            nfci_level=_val(row, "nfci"),
             vix_high=vix_high_threshold,
             vix_extreme=vix_extreme_threshold,
             hy_spread_high_bps=hy_spread_high_bps,
