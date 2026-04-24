@@ -26,7 +26,7 @@ Multi-factor sector rotation across 11 GICS SPDR ETFs (XLE, XLB, XLI, XLY, XLP, 
 |---|---|---|
 | Cross-Sectional Momentum | 40% | 12-1 month relative return, z-scored cross-sectionally |
 | Time-Series Momentum | 15% | 12-month self-return crash filter (multiplier) |
-| Relative Value | 20% | P/E percentile vs 10-year history (proxy: normalized price) |
+| Relative Value | 20% | TTM P/E percentile vs 10-year history (constituent earnings from yfinance; proxy fallback available) |
 | Regime Adjustment | 25% | 4-state VIX/spread/ISM rule-based regime → signal weight modifiers |
 
 ### Academic Basis
@@ -116,9 +116,10 @@ sector_rotation/
 │   └── tearsheet.py      Multi-page PDF tearsheet generator
 │
 ├── tests/
-│   ├── test_signals.py   Signal unit tests (no network)
-│   ├── test_optimizer.py Portfolio/risk unit tests
-│   └── test_backtest.py  Cost + metrics unit tests
+│   ├── test_signals.py      Signal unit tests (no network)
+│   ├── test_optimizer.py    Portfolio/risk unit tests
+│   ├── test_backtest.py     Cost + metrics unit tests
+│   └── test_engine_smoke.py End-to-end smoke tests (synthetic data, no network)
 │
 └── notebooks/
     ├── 01_data_exploration.ipynb   Sector correlations, rolling stats
@@ -171,6 +172,9 @@ Uses qlib components where available, with fallbacks:
 | Covariance | `qlib.model.riskmodel.ShrinkCovEstimator` | sklearn LedoitWolf |
 | Risk metrics | `qlib.backtest.analyze.risk_analysis` | manual computation |
 | Portfolio opt | Custom (qlib's PortfolioOptimizer API changed) | scipy.optimize |
+| Brinson attribution | `qlib.backtest.profit_attribution.decompose_portofolio` | skipped |
+| Trade indicators | `qlib.contrib.evaluate.indicator_analysis` | skipped |
+| Experiment tracking | `qlib.workflow.QlibRecorder` + `MLflowExpManager` | skipped |
 
 ---
 
