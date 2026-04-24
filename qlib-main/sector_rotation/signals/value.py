@@ -37,6 +37,7 @@ Reference:
 
 from __future__ import annotations
 
+import json
 import logging
 import pickle
 import time
@@ -47,6 +48,59 @@ import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# EPS history store — auto-discovered path
+# update_eps_history.py populates price_data/sector_etfs/eps_history.json
+# ---------------------------------------------------------------------------
+
+# value.py lives at qlib-main/sector_rotation/signals/value.py
+# 4 dirs up → someopark-test/
+_EPS_HISTORY_DEFAULT: Path = (
+    Path(__file__).resolve().parent.parent.parent.parent
+    / "price_data" / "sector_etfs" / "eps_history.json"
+)
+
+# Module-level cache: store loaded once per process
+_eps_store_cache: Optional[dict] = None
+_eps_store_path_loaded: Optional[Path] = None
+
+
+def _load_eps_store(path: Optional[Path] = None) -> dict:
+    """Load eps_history.json into module-level cache (once per process)."""
+    global _eps_store_cache, _eps_store_path_loaded
+    p = Path(path) if path else _EPS_HISTORY_DEFAULT
+    if _eps_store_cache is not None and _eps_store_path_loaded == p:
+        return _eps_store_cache
+    if not p.exists():
+        _eps_store_cache = {}
+        _eps_store_path_loaded = p
+        return _eps_store_cache
+    try:
+        with open(p) as f:
+            _eps_store_cache = json.load(f).get("symbols", {})
+        _eps_store_path_loaded = p
+        logger.debug(f"Loaded EPS history store: {len(_eps_store_cache)} symbols from {p}")
+    except Exception as e:
+        logger.warning(f"Failed to load EPS history store ({p}): {e}")
+        _eps_store_cache = {}
+    return _eps_store_cache
+
+
+def _load_eps_from_store(stock: str, path: Optional[Path] = None) -> pd.Series:
+    """
+    Return quarterly EPS pd.Series for a stock from the local history store.
+    Index = quarter-end DatetimeIndex, values = diluted EPS (float).
+    Returns empty Series if stock not in store.
+    """
+    store = _load_eps_store(path)
+    entries = store.get(stock, [])
+    if not entries:
+        return pd.Series(dtype=float)
+    idx = pd.DatetimeIndex([e["end_date"] for e in entries])
+    vals = [e["eps"] for e in entries]
+    return pd.Series(vals, index=idx, dtype=float).sort_index()
+
 
 # ---------------------------------------------------------------------------
 # Sector constituent baskets for P/E computation
@@ -118,13 +172,8 @@ def fetch_pe_snapshot(tickers: List[str], pause_sec: float = 0.5) -> Dict[str, O
 # Constituent-based P/E time series builder (primary backtest path)
 # ---------------------------------------------------------------------------
 
-def _fetch_quarterly_eps(stock: str, pause_sec: float = 0.3) -> pd.Series:
-    """
-    Fetch quarterly Diluted EPS for a single stock from yfinance.
-
-    Returns a pd.Series with quarter-end dates as index and EPS (float) as values.
-    Returns an empty Series if data is unavailable.
-    """
+def _fetch_quarterly_eps_yfinance(stock: str, pause_sec: float = 0.3) -> pd.Series:
+    """Fetch recent quarterly Diluted EPS from yfinance (typically last 4-8 quarters)."""
     try:
         import yfinance as yf
     except ImportError:
@@ -133,38 +182,73 @@ def _fetch_quarterly_eps(stock: str, pause_sec: float = 0.3) -> pd.Series:
     try:
         time.sleep(pause_sec)
         ticker = yf.Ticker(stock)
-
-        # Try quarterly income statement (newer yfinance API)
         stmt = None
         try:
-            stmt = ticker.quarterly_income_stmt  # rows=metrics, cols=quarter-end dates
+            stmt = ticker.quarterly_income_stmt
         except Exception:
             pass
-
         if stmt is None or stmt.empty:
             return pd.Series(dtype=float)
-
-        # Look for EPS rows (try Diluted first, then Basic)
         eps_row = None
         for candidate in ("Diluted EPS", "Basic EPS"):
             if candidate in stmt.index:
                 eps_row = stmt.loc[candidate]
                 break
-
         if eps_row is None:
-            logger.debug(f"{stock}: no EPS row found in quarterly_income_stmt")
             return pd.Series(dtype=float)
-
-        # eps_row is a Series with quarter-end dates as index (most recent first)
         eps = eps_row.astype(float).dropna()
         eps.index = pd.DatetimeIndex(eps.index)
-        eps = eps.sort_index()  # ascending (oldest first)
-        logger.debug(f"{stock}: fetched {len(eps)} quarterly EPS points")
-        return eps
-
+        return eps.sort_index()
     except Exception as e:
-        logger.warning(f"Quarterly EPS fetch failed for {stock}: {e}")
+        logger.warning(f"yfinance EPS fetch failed for {stock}: {e}")
         return pd.Series(dtype=float)
+
+
+def _fetch_quarterly_eps(
+    stock: str,
+    pause_sec: float = 0.3,
+    eps_store_path: Optional[Path] = None,
+) -> pd.Series:
+    """
+    Fetch quarterly Diluted EPS for a single stock.
+
+    Strategy (in priority order):
+    1. Load historical data from local eps_history.json store (populated by
+       update_eps_history.py using Polygon API — typically 10+ years).
+    2. Fetch recent quarters from yfinance (last 4-8 quarters).
+    3. Merge: store provides the deep history; yfinance fills in the most
+       recent quarters not yet in the store.
+
+    Returns pd.Series with quarter-end dates as index. Empty if no data.
+    """
+    historical = _load_eps_from_store(stock, eps_store_path)
+    recent = _fetch_quarterly_eps_yfinance(stock, pause_sec=pause_sec)
+
+    if historical.empty and recent.empty:
+        logger.debug(f"{stock}: no EPS from store or yfinance")
+        return pd.Series(dtype=float)
+
+    if historical.empty:
+        logger.debug(f"{stock}: store empty, using yfinance only ({len(recent)} quarters)")
+        return recent
+
+    if recent.empty:
+        logger.debug(f"{stock}: yfinance empty, using store only ({len(historical)} quarters)")
+        return historical
+
+    # Merge: historical as base, recent overrides (more accurate for latest quarters)
+    merged = historical.copy()
+    merged = merged.combine_first(recent)  # recent fills gaps not in historical
+    # For overlapping dates, prefer recent (more up-to-date restatements)
+    for dt in recent.index:
+        if dt in merged.index:
+            merged[dt] = recent[dt]
+    merged = merged.sort_index()
+    logger.debug(
+        f"{stock}: merged store({len(historical)}) + yfinance({len(recent)}) "
+        f"→ {len(merged)} quarters"
+    )
+    return merged
 
 
 def _quarterly_eps_to_monthly_ttm(
@@ -202,21 +286,15 @@ def _constituent_pe_series(
     stock: str,
     monthly_prices: pd.Series,
     pause_sec: float = 0.3,
+    eps_store_path: Optional[Path] = None,
 ) -> pd.Series:
     """
     Compute monthly P/E series for a single constituent stock.
 
     P/E = monthly closing price / TTM diluted EPS.
     Returns NaN for months where EPS ≤ 0 (avoids negative / infinite P/E).
-
-    Parameters
-    ----------
-    stock : str
-        Stock ticker.
-    monthly_prices : pd.Series
-        Monthly closing prices for this stock (index = month-end DatetimeIndex).
     """
-    eps_q = _fetch_quarterly_eps(stock, pause_sec=pause_sec)
+    eps_q = _fetch_quarterly_eps(stock, pause_sec=pause_sec, eps_store_path=eps_store_path)
     if eps_q.empty:
         return pd.Series(np.nan, index=monthly_prices.index)
 
@@ -237,43 +315,30 @@ def build_pe_series_from_constituents(
     n_top: int = 5,
     pause_sec: float = 0.3,
     cache_path: Optional[Path] = None,
+    eps_store_path: Optional[Path] = None,
 ) -> pd.DataFrame:
     """
     Build monthly sector P/E time series from top constituent stock earnings.
 
-    For each sector ETF:
-    1. Identify up to n_top representative stocks from SECTOR_REPRESENTATIVES.
-    2. Download quarterly Diluted EPS from yfinance quarterly_income_stmt.
-    3. Compute TTM EPS = sum of last 4 quarters at each month-end.
-    4. Compute per-stock P/E = monthly price / TTM EPS.
-    5. Equal-weight average across constituents with positive TTM EPS.
-
-    The result is a monthly P/E DataFrame (index = month-end, cols = ETF tickers).
-    NaN means no earnings data was available for that sector/period.
-
-    This is the primary data source for compute_value_signal_full(source="constituents").
-    Results are cached to disk to avoid repeated yfinance requests.
+    EPS data strategy:
+    - If price_data/sector_etfs/eps_history.json exists (populated by update_eps_history.py),
+      use it as the historical base (10+ years from Polygon).
+    - Always fetch recent quarters from yfinance and merge.
+    - If no store exists, falls back to yfinance-only (last 4-8 quarters only).
 
     Parameters
     ----------
     etf_tickers : list of str
-        Sector ETF tickers for which to build P/E series.
-    start : str
-        Start date (e.g., "2018-01-01"). Prices start is used; earnings may extend earlier.
-    end : str
-        End date.
-    n_top : int
-        Number of representative constituents to average per sector (default 5).
-    pause_sec : float
-        Sleep between yfinance API calls.
-    cache_path : Path, optional
-        If provided, load from / save to this pickle file.
+    start, end : str
+    n_top : int        representative stocks per sector
+    pause_sec : float  sleep between yfinance API calls
+    cache_path : Path, optional   pickle cache for the final P/E DataFrame
+    eps_store_path : Path, optional  override for eps_history.json location
 
     Returns
     -------
     pd.DataFrame
         Monthly TTM P/E ratios. index = month-end DatetimeIndex, cols = ETF tickers.
-        NaN where earnings data is unavailable.
     """
     # --- Cache check ---
     if cache_path is not None and cache_path.exists():
@@ -301,7 +366,11 @@ def build_pe_series_from_constituents(
         all_constituents.extend(stocks)
     all_constituents = list(dict.fromkeys(all_constituents))  # deduplicate, preserve order
 
-    logger.info(f"Downloading monthly prices for {len(all_constituents)} constituent stocks...")
+    store_available = (eps_store_path or _EPS_HISTORY_DEFAULT).exists()
+    logger.info(
+        f"Downloading monthly prices for {len(all_constituents)} constituent stocks "
+        f"(EPS store: {'found' if store_available else 'not found — yfinance only'})"
+    )
     raw_prices = yf.download(
         all_constituents,
         start=start,
@@ -339,7 +408,8 @@ def build_pe_series_from_constituents(
             prices_s = stock_prices[stock].dropna()
             if prices_s.empty:
                 continue
-            pe_s = _constituent_pe_series(stock, prices_s, pause_sec=pause_sec)
+            pe_s = _constituent_pe_series(stock, prices_s, pause_sec=pause_sec,
+                                           eps_store_path=eps_store_path)
             pe_list.append(pe_s)
 
         if not pe_list:
