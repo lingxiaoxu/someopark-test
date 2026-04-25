@@ -412,8 +412,12 @@ eps-symbols)
 # ─────────────────────────────────────────────────────────────────────────────
 backtest)
     log "Mode: BACKTEST  (2018-07-01 → today)"
-    run_python 1 "SectorRotationBacktest engine" \
-        qlib-main/sector_rotation/backtest/engine.py
+    set -a && source "$REPO/.env" && set +a
+    PYTHONPATH="$REPO/qlib-main" $CONDA_QLIB python -m sector_rotation.backtest.engine \
+        >> "$LOGFILE" 2>&1
+    RC=$?
+    if [[ $RC -ne 0 ]]; then log_fail "STEP 1 (SectorRotationBacktest engine) exit=$RC"; exit $RC; fi
+    log "→ STEP 1 OK: SectorRotationBacktest engine"
     log_section "BACKTEST COMPLETE"
     ;;
 
@@ -622,7 +626,7 @@ PYEOF
 signal-raw)
     log "Mode: SIGNAL-RAW  (get_current_signals() API)"
     set -a && source "$REPO/.env" && set +a
-    $CONDA_QLIB python - 2>&1 | tee -a "$LOGFILE" <<'PYEOF'
+    $CONDA_QLIB python - <<'PYEOF' 2>&1 | tee -a "$LOGFILE"
 import sys, pathlib, json
 sys.path.insert(0, str(pathlib.Path('qlib-main').resolve()))
 
