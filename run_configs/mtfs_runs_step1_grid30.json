@@ -8,8 +8,8 @@
       "param_set": "default",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -32,10 +32,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -48,16 +44,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -66,6 +62,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -74,8 +74,8 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -98,10 +98,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -114,16 +110,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -132,6 +128,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -140,8 +140,8 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -164,10 +164,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -180,16 +176,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -198,6 +194,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -206,8 +206,8 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -230,10 +230,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -246,16 +242,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -264,6 +260,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -272,8 +272,8 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -296,10 +296,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -312,16 +308,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -330,6 +326,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -338,8 +338,8 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -362,10 +362,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -378,16 +374,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -396,6 +392,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -404,8 +404,8 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -428,10 +428,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -444,16 +440,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -462,6 +458,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -470,8 +470,8 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -494,10 +494,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -510,16 +506,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -528,6 +524,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -536,8 +536,8 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -560,10 +560,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -576,16 +572,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -594,6 +590,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -602,8 +602,8 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -626,10 +626,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -642,16 +638,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -660,6 +656,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -668,8 +668,8 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -692,10 +692,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -708,16 +704,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -726,6 +722,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -734,8 +734,8 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -758,10 +758,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -774,16 +770,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -792,6 +788,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -800,8 +800,8 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -824,10 +824,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -840,16 +836,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -858,6 +854,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -866,8 +866,8 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -890,10 +890,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -906,16 +902,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -924,6 +920,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -932,8 +932,8 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -956,10 +956,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -972,16 +968,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -990,6 +986,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -998,8 +998,8 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1022,10 +1022,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1038,16 +1034,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1056,6 +1052,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1064,8 +1064,8 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1088,10 +1088,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1104,16 +1100,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1122,6 +1118,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1130,8 +1130,8 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1154,10 +1154,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1170,16 +1166,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1188,6 +1184,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1196,8 +1196,8 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1220,10 +1220,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1236,16 +1232,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1254,6 +1250,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1262,8 +1262,8 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1286,10 +1286,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1302,16 +1298,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1320,6 +1316,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1328,8 +1328,8 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1352,10 +1352,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1368,16 +1364,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1386,6 +1382,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1394,8 +1394,8 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1418,10 +1418,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1434,16 +1430,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1452,6 +1448,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1460,8 +1460,8 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1484,10 +1484,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1500,16 +1496,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1518,6 +1514,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1526,8 +1526,8 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1550,10 +1550,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1566,16 +1562,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1584,6 +1580,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1592,8 +1592,8 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1616,10 +1616,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1632,16 +1628,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1650,6 +1646,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1658,8 +1658,8 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1682,10 +1682,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1698,16 +1694,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1716,6 +1712,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1724,8 +1724,8 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1748,10 +1748,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1764,16 +1760,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1782,6 +1778,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1790,8 +1790,8 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1814,10 +1814,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1830,16 +1826,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1848,6 +1844,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1856,8 +1856,8 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1880,10 +1880,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1896,16 +1892,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1914,6 +1910,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1922,8 +1922,8 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -1946,10 +1946,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -1962,16 +1958,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -1980,6 +1976,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     },
@@ -1988,8 +1988,8 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "CSCO",
-          "HST"
+          "HST",
+          "CSCO"
         ],
         [
           "PEP",
@@ -2012,10 +2012,6 @@
           "AWK"
         ],
         [
-          "MSCI",
-          "NDSN"
-        ],
-        [
           "ACGL",
           "YUM"
         ],
@@ -2028,16 +2024,16 @@
           "ICE"
         ],
         [
-          "BK",
+          "ESS",
           "ALL"
         ],
         [
-          "CSCO",
+          "HST",
           "ALL"
         ],
         [
-          "ALL",
-          "ESS"
+          "SPG",
+          "ALL"
         ],
         [
           "CINF",
@@ -2046,6 +2042,10 @@
         [
           "L",
           "AWK"
+        ],
+        [
+          "STT",
+          "C"
         ]
       ]
     }
