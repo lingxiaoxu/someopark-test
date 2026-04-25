@@ -135,7 +135,7 @@ class TestEngineSmokeNative(unittest.TestCase):
         macro  = _make_macro()
         cfg    = _minimal_config()
 
-        bt = SectorRotationBacktest(cfg)
+        bt = SectorRotationBacktest(cfg, mlflow_experiment="sector_rotation_test")
         cls.result = bt.run(prices=prices, macro=macro)
 
         _eng._QLIB_BACKTEST_AVAILABLE = cls._orig_flag
@@ -183,7 +183,7 @@ class TestEngineQlibPath(unittest.TestCase):
         macro  = _make_macro()
         cfg    = _minimal_config()
 
-        bt = SectorRotationBacktest(cfg)
+        bt = SectorRotationBacktest(cfg, mlflow_experiment="sector_rotation_test")
         try:
             cls.result = bt.run(prices=prices, macro=macro)
             cls._ran_qlib = cls._qlib_available
@@ -245,7 +245,7 @@ class TestBacktestResultFields(unittest.TestCase):
 
         prices = _make_prices()
         macro  = _make_macro()
-        bt = SectorRotationBacktest(_minimal_config())
+        bt = SectorRotationBacktest(_minimal_config(), mlflow_experiment="sector_rotation_test")
         cls.result = bt.run(prices=prices, macro=macro)
         _eng._QLIB_BACKTEST_AVAILABLE = _orig
 

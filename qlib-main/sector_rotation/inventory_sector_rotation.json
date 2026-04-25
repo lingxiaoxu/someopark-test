@@ -1,11 +1,12 @@
 {
-  "as_of": "2026-04-24",
+  "positions": {},
   "last_updated": "2026-04-24",
-  "capital": 1000000.0,
+  "strategy": "sector_rotation",
+  "capital": 1000000,
   "holdings": {
     "XLE": {
-      "weight": 0.22485,
-      "shares": 3946,
+      "weight": 0.22046,
+      "shares": 3869,
       "last_price": 56.98,
       "cost_basis": 56.98,
       "entry_date": "2026-04-24",
@@ -14,8 +15,8 @@
       "action_today": "ENTER"
     },
     "XLB": {
-      "weight": 0.251423,
-      "shares": 4852,
+      "weight": 0.246117,
+      "shares": 4750,
       "last_price": 51.81,
       "cost_basis": 51.81,
       "entry_date": "2026-04-24",
@@ -24,8 +25,8 @@
       "action_today": "ENTER"
     },
     "XLI": {
-      "weight": 0.264917,
-      "shares": 1521,
+      "weight": 0.259121,
+      "shares": 1488,
       "last_price": 174.07,
       "cost_basis": 174.07,
       "entry_date": "2026-04-24",
@@ -33,11 +34,11 @@
       "days_held": 1,
       "action_today": "ENTER"
     },
-    "XLV": {
-      "weight": 0.25881,
-      "shares": 1769,
-      "last_price": 146.24,
-      "cost_basis": 146.24,
+    "XLU": {
+      "weight": 0.274302,
+      "shares": 5951,
+      "last_price": 46.09,
+      "cost_basis": 46.09,
       "entry_date": "2026-04-24",
       "last_rebalance_date": "2026-04-24",
       "days_held": 1,
@@ -46,62 +47,63 @@
   },
   "cash_weight": 0.0,
   "prev_weights": {
-    "XLE": 0.22485,
-    "XLB": 0.251423,
-    "XLI": 0.264917,
+    "XLE": 0.22046,
+    "XLB": 0.246117,
+    "XLI": 0.259121,
     "XLY": 0.0,
     "XLP": 0.0,
-    "XLV": 0.25881,
+    "XLV": 0.0,
     "XLF": 0.0,
     "XLK": 0.0,
     "XLC": 0.0,
-    "XLU": 0.0,
+    "XLU": 0.274302,
     "XLRE": 0.0
   },
   "prev_composite_scores": {
-    "XLE": 1.7538,
-    "XLB": 1.2439,
-    "XLI": 0.3346,
-    "XLY": -0.3902,
-    "XLP": -0.0229,
-    "XLV": 0.2997,
-    "XLF": -1.1256,
-    "XLK": -0.0438,
-    "XLC": -1.9194,
-    "XLU": 0.109,
-    "XLRE": -0.2391
+    "XLE": 1.6896,
+    "XLB": 1.3834,
+    "XLI": 0.7076,
+    "XLY": -0.023,
+    "XLP": -0.782,
+    "XLV": -0.3589,
+    "XLF": -0.6739,
+    "XLK": -0.3708,
+    "XLC": -1.773,
+    "XLU": 0.4433,
+    "XLRE": -0.2422
   },
+  "as_of": "2026-04-24",
   "rebalance_history": [
     {
       "date": "2026-04-24",
       "reason": "first_run",
       "regime": "transition_up",
       "weights": {
-        "XLE": 0.22485,
-        "XLB": 0.251423,
-        "XLI": 0.264917,
+        "XLE": 0.22046,
+        "XLB": 0.246117,
+        "XLI": 0.259121,
         "XLY": 0.0,
         "XLP": 0.0,
-        "XLV": 0.25881,
+        "XLV": 0.0,
         "XLF": 0.0,
         "XLK": 0.0,
         "XLC": 0.0,
-        "XLU": 0.0,
+        "XLU": 0.274302,
         "XLRE": 0.0
       },
       "cash_weight": 0.0,
       "composite_scores": {
-        "XLE": 1.7538,
-        "XLB": 1.2439,
-        "XLI": 0.3346,
-        "XLY": -0.3902,
-        "XLP": -0.0229,
-        "XLV": 0.2997,
-        "XLF": -1.1256,
-        "XLK": -0.0438,
-        "XLC": -1.9194,
-        "XLU": 0.109,
-        "XLRE": -0.2391
+        "XLE": 1.6896,
+        "XLB": 1.3834,
+        "XLI": 0.7076,
+        "XLY": -0.023,
+        "XLP": -0.782,
+        "XLV": -0.3589,
+        "XLF": -0.6739,
+        "XLK": -0.3708,
+        "XLC": -1.773,
+        "XLU": 0.4433,
+        "XLRE": -0.2422
       }
     }
   ]

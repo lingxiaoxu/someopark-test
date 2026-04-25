@@ -288,9 +288,12 @@ qlib-main/sector_rotation/
 | `price_data/sector_etfs/*.parquet` | ETF 日线 OHLCV 缓存 | 读写（`data/loader.py`） |
 | `price_data/macro/*.parquet` | 宏观指标 parquets | **只读**（由 someopark 主 pipeline 写入） |
 | `qlib-main/sector_rotation/inventory_sector_rotation.json` | 当前持仓快照 | 读写（`SectorRotationDailySignal.py`） |
+| `qlib-main/sector_rotation/inventory_history/` | 每次 inventory 变更时的快照备份 | 写 |
 | `qlib-main/sector_rotation/trading_signals/` | 每日信号 JSON / 报告 | 写 |
+| `qlib-main/sector_rotation/report/output/` | Tearsheet PDF 输出（`tearsheet` 模式） | 写 |
 | `qlib-main/sector_rotation/logs/` | Pipeline 日志 | 写 |
-| `qlib-main/sector_rotation/pipeline_state/` | 运行状态标记 | 写 |
+| `qlib-main/sector_rotation/pipeline_state/` | Pipeline 状态标记 | 写 |
+| `qlib-main/mlruns/mlflow.db` | MLflow 实验追踪 SQLite（backtest / sensitivity run 历史） | 读写（`backtest/engine.py`） |
 
 ---
 

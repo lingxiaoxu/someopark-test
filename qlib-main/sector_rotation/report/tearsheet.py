@@ -215,7 +215,15 @@ def generate_tearsheet(
     # Resolve output path
     if output_path is None:
         report_cfg = result.config.get("report", {})
-        out_dir = Path(report_cfg.get("output_dir", "sector_rotation/report/output"))
+        _default_out = Path(__file__).parent / "output"
+        raw_dir = report_cfg.get("output_dir")
+        if raw_dir:
+            out_dir = Path(raw_dir)
+            if not out_dir.is_absolute():
+                # Relative paths in config.yaml are resolved from qlib-main/sector_rotation/
+                out_dir = Path(__file__).parent.parent / out_dir
+        else:
+            out_dir = _default_out
         out_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         output_path = out_dir / f"sector_rotation_tearsheet_{ts}.pdf"

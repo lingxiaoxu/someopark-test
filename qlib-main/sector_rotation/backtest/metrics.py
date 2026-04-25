@@ -280,6 +280,7 @@ def compute_metrics(
             ra_df = qlib_risk_analysis(
                 portfolio_returns.dropna(),
                 N=periods_per_year,
+                freq=None,   # suppress "freq will be ignored" warning when N is explicit
                 mode="product",
             )
             ra = ra_df["risk"]  # pd.Series indexed by metric name

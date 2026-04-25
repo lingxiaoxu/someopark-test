@@ -182,7 +182,7 @@ class SectorRotationBacktest:
         print(result.summary())
     """
 
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, mlflow_experiment: str = "sector_rotation_backtest"):
         self.cfg = config
         self.bt_cfg = config.get("backtest", {})
         self.sig_cfg = config.get("signals", {})
@@ -190,6 +190,7 @@ class SectorRotationBacktest:
         self.reb_cfg = config.get("rebalance", {})
         self.risk_cfg = config.get("risk", {})
         self.cost_cfg = config.get("costs", {})
+        self._mlflow_experiment = mlflow_experiment
 
     def run(
         self,
@@ -827,12 +828,16 @@ class SectorRotationBacktest:
         if not _QLIB_WORKFLOW_AVAILABLE:
             return
         try:
+            # MLflow 3.x deprecated the file:// backend (FileStore) unconditionally.
+            # MlflowClient accepts sqlite:/// natively; data is stored in mlflow.db
+            # in the same mlruns/ directory. No migration needed — first run creates it.
             mlruns_path = Path(__file__).parent.parent.parent.resolve() / "mlruns"
-            uri = f"file://{mlruns_path}"
+            mlruns_path.mkdir(parents=True, exist_ok=True)
+            uri = f"sqlite:///{mlruns_path}/mlflow.db"
             exp_manager = MLflowExpManager(uri=uri, default_exp_name="sector_rotation")
             recorder_client = QlibRecorder(exp_manager)
 
-            with recorder_client.start(experiment_name="sector_rotation_backtest"):
+            with recorder_client.start(experiment_name=self._mlflow_experiment):
                 # Log config as params (flatten each config section)
                 flat_params: dict = {}
                 for section, vals in result.config.items():
