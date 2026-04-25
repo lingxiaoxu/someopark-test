@@ -1,0 +1,128 @@
+{
+  "as_of": "2026-04-22",
+  "capital": 500000,
+  "pairs": {
+    "DG/MOS": {
+      "direction": null
+    },
+    "GS/ALLY": {
+      "direction": null
+    },
+    "D/MCHP": {
+      "direction": null
+    },
+    "CART/DASH": {
+      "direction": null
+    },
+    "CL/SRE": {
+      "direction": null
+    },
+    "MTCH/NVR": {
+      "direction": null
+    },
+    "F/PG": {
+      "strategy": "mrpt",
+      "param_set": "stable_signal_quick_exit",
+      "direction": "short",
+      "s1_shares": -8156,
+      "s2_shares": 717,
+      "open_date": "2026-04-22",
+      "open_s1_price": 12.78,
+      "open_s2_price": 142.32,
+      "open_hedge_ratio": 0.08800703843813035,
+      "open_price_level_stop": 0.3822574342279328,
+      "days_held": 0,
+      "open_signal": {
+        "z_score": 0.908,
+        "entry_threshold": 0.75,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward/walk_forward_summary_20260422_214802.json",
+        "wf_dir": "historical_runs/walk_forward",
+        "windows": {
+          "W1": {
+            "param_set": "conservative",
+            "train_end": "2025-09-16",
+            "test_start": "2025-09-17",
+            "test_end": "2025-10-21",
+            "oos_sharpe": -0.7037,
+            "oos_pnl": -2852.95
+          },
+          "W2": {
+            "param_set": "conservative",
+            "train_end": "2025-10-21",
+            "test_start": "2025-10-22",
+            "test_end": "2025-11-25",
+            "oos_sharpe": 0.9107,
+            "oos_pnl": 2642.01
+          },
+          "W3": {
+            "param_set": "stable_signal_quick_exit",
+            "train_end": "2025-11-25",
+            "test_start": "2025-11-26",
+            "test_end": "2026-01-02",
+            "oos_sharpe": -1.4324,
+            "oos_pnl": -2428.28
+          },
+          "W4": {
+            "param_set": "conservative",
+            "train_end": "2026-01-02",
+            "test_start": "2026-01-05",
+            "test_end": "2026-02-09",
+            "oos_sharpe": -1.5266,
+            "oos_pnl": -8444.55
+          },
+          "W5": {
+            "param_set": "conservative",
+            "train_end": "2026-02-09",
+            "test_start": "2026-02-10",
+            "test_end": "2026-03-17",
+            "oos_sharpe": -3.4703,
+            "oos_pnl": -9528.89
+          },
+          "W6": {
+            "param_set": "stable_signal_quick_exit",
+            "train_end": "2026-03-17",
+            "test_start": "2026-03-18",
+            "test_end": "2026-04-22",
+            "oos_sharpe": -4.8589,
+            "oos_pnl": -16945.6
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "AWK/FOX": {
+      "direction": null
+    },
+    "AWK/EXPD": {
+      "direction": null
+    },
+    "CL/WST": {
+      "direction": null
+    },
+    "AMT/TJX": {
+      "direction": null
+    },
+    "MSCI/MTB": {
+      "direction": null
+    },
+    "ETR/MKTX": {
+      "direction": null
+    },
+    "PFE/PSX": {
+      "direction": null
+    },
+    "PFG/WMT": {
+      "direction": null
+    },
+    "ALB/YUM": {
+      "direction": null
+    },
+    "CI/LVS": {
+      "direction": null
+    }
+  }
+}

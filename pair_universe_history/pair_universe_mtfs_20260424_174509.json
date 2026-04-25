@@ -1,7 +1,7 @@
 [
   {
-    "s1": "HST",
-    "s2": "CSCO",
+    "s1": "CSCO",
+    "s2": "HST",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
@@ -36,6 +36,12 @@
     "spread_col": "Momentum_Spread_utilities"
   },
   {
+    "s1": "MSCI",
+    "s2": "NDSN",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
     "s1": "ACGL",
     "s2": "YUM",
     "sector": "finance",
@@ -54,20 +60,20 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "ESS",
+    "s1": "BK",
     "s2": "ALL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "HST",
+    "s1": "CSCO",
     "s2": "ALL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "SPG",
-    "s2": "ALL",
+    "s1": "ALL",
+    "s2": "ESS",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -82,11 +88,5 @@
     "s2": "AWK",
     "sector": "utilities",
     "spread_col": "Momentum_Spread_utilities"
-  },
-  {
-    "s1": "STT",
-    "s2": "C",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
   }
 ]
