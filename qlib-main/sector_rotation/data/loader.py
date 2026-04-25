@@ -34,6 +34,7 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
 # Configuration helpers
 # ---------------------------------------------------------------------------
@@ -96,6 +97,14 @@ def _load_prices_yfinance(
         DatetimeIndex, columns = tickers, values = adjusted close prices.
     """
     import yfinance as yf
+
+    # yfinance.__init__ inserts ('default', DeprecationWarning, '^yfinance') at filters[0]
+    # on every import — which would take priority over any filter we set before the import.
+    # Re-insert our suppress filters at position 0 so they win.
+    import warnings as _w
+    _w.filters.insert(0, ("ignore", None, DeprecationWarning, None, 0))
+    _w.filters.insert(0, ("ignore", None, FutureWarning, None, 0))
+    _w._filters_mutated()
 
     logger.info(f"Downloading prices from yfinance: {tickers}, {start} → {end or 'today'}")
     raw = yf.download(
@@ -499,10 +508,29 @@ def load_macro_data(
     # Log data quality
     nan_pct = result.isna().mean() * 100
     for col in result.columns:
-        if nan_pct[col] > 5:
-            logger.warning(f"Macro {col}: {nan_pct[col]:.1f}% NaN after fill")
-        else:
+        if nan_pct[col] <= 5:
             logger.debug(f"Macro {col}: {nan_pct[col]:.1f}% NaN after fill")
+            continue
+        col_series = result[col]
+        first_valid = col_series.first_valid_index()
+        last_valid  = col_series.last_valid_index()
+        if first_valid is None:
+            logger.warning(f"Macro {col}: 100% NaN — series entirely missing")
+            continue
+        # Check if NaN is concentrated at head (series just starts later)
+        tail_nan_pct = col_series.loc[first_valid:].isna().mean() * 100
+        if tail_nan_pct < 2:
+            # All NaN is pre-start: data availability limitation, not a data error
+            logger.info(
+                f"Macro {col}: available from {first_valid.date()} "
+                f"(pre-history NaN is expected — {nan_pct[col]:.1f}% total)"
+            )
+        else:
+            logger.warning(
+                f"Macro {col}: {nan_pct[col]:.1f}% NaN after fill "
+                f"(data range {first_valid.date()} → {last_valid.date()}, "
+                f"{tail_nan_pct:.1f}% NaN within available range)"
+            )
 
     if cache_dir:
         _save_cache(cp, result)

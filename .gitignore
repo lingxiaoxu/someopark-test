@@ -59,3 +59,10 @@ factsheet_generator/
 
 # Backup files
 *_backup.json
+
+# MLflow tracking database (runtime, not for version control)
+mlruns/
+
+# Sector rotation: generated outputs
+qlib-main/sector_rotation/report/output/
+qlib-main/sector_rotation/logs/

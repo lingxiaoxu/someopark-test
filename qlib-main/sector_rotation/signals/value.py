@@ -50,6 +50,22 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
+# Suppress yfinance DeprecationWarning / FutureWarning noise.
+# yfinance.__init__ registers a 'default' DeprecationWarning filter at position 0
+# on first import, which causes pandas Pandas4Warning (Timestamp.utcnow) to leak
+# to stderr. We pre-import yfinance here and immediately insert a higher-priority
+# 'ignore' filter so downstream calls are clean.
+try:
+    import yfinance as _yf_init  # noqa: F401 — triggers __init__.py once
+    import warnings as _w
+    _w.filters.insert(0, ("ignore", None, DeprecationWarning, None, 0))
+    _w.filters.insert(0, ("ignore", None, FutureWarning, None, 0))
+    _w._filters_mutated()
+    del _yf_init, _w
+except ImportError:
+    pass  # yfinance not installed; will fail later with a clear message
+
+# ---------------------------------------------------------------------------
 # EPS history store — auto-discovered path
 # update_eps_history.py populates price_data/sector_etfs/eps_history.json
 # ---------------------------------------------------------------------------

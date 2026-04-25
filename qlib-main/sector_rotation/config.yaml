@@ -221,7 +221,7 @@ costs:
 # Report
 # ---------------------------------------------------------------------------
 report:
-  output_dir: "sector_rotation/report/output"
+  output_dir: "report/output"
   figsize: [14, 8]
   dpi: 150
   # PDF tearsheet
