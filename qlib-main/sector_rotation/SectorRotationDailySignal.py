@@ -702,6 +702,9 @@ def run_daily_signal(
     # Approximate portfolio returns: equal-weight sector basket
     portfolio_returns = daily_returns.mean(axis=1)
 
+    prog_cfg   = risk_cfg.get("vix_progressive_derisk", {})
+    prog_tiers = prog_cfg.get("tiers", []) if prog_cfg.get("enabled", False) else []
+
     target_weights, cash_weight, risk_flags = apply_risk_controls(
         weights=target_weights_raw,
         portfolio_returns=portfolio_returns,
@@ -722,6 +725,7 @@ def run_daily_signal(
         dd_halve_threshold=risk_cfg.get("drawdown", {}).get("cumulative_dd_halve", -0.15),
         dd_recovery_threshold=risk_cfg.get("drawdown", {}).get("cumulative_dd_recovery", -0.10),
         max_weight=port_cfg.get("constraints", {}).get("max_weight", 0.40),
+        vix_progressive_tiers=prog_tiers,
     )
 
     log.info(f"Target weights (post-risk):\n{target_weights.round(3).to_string()}")

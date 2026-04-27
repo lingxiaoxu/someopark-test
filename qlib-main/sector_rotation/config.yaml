@@ -184,6 +184,17 @@ risk:
     cumulative_dd_halve: -0.15    # Reduce position 50% until DD recovers to -10%
     cumulative_dd_recovery: -0.10
 
+  # Progressive VIX de-risking: graduated cash tiers BELOW the emergency threshold.
+  # Each tier sets the TOTAL target cash_pct when VIX reaches that level.
+  # Applied after VIX emergency check; ignored when emergency is already active.
+  # Set enabled: false to revert to the old binary-at-35 behavior.
+  vix_progressive_derisk:
+    enabled: false   # enable to trade CAGR for lower MaxDD (see tiers below)
+    tiers:
+      - {vix_above: 25, cash_pct: 0.15}   # elevated stress: 15% cash
+      - {vix_above: 30, cash_pct: 0.35}   # high stress: 35% cash
+      # VIX ≥ 35 → handled by rebalance.emergency_derisk_vix (50% cash)
+
 # ---------------------------------------------------------------------------
 # Backtest
 # ---------------------------------------------------------------------------

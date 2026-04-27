@@ -203,6 +203,7 @@ def apply_risk_controls(
     beta_min: float = 0.85,
     beta_max: float = 1.15,
     max_weight: float = 0.40,
+    vix_progressive_tiers: Optional[list] = None,
 ) -> Tuple[pd.Series, float, RiskFlags]:
     """
     Apply all risk controls and return adjusted weights + cash allocation.
@@ -237,6 +238,11 @@ def apply_risk_controls(
         Acceptable portfolio beta range vs benchmark.
     max_weight : float
         Maximum single-sector weight.
+    vix_progressive_tiers : list of dict, optional
+        Graduated cash tiers below the emergency threshold.
+        Each entry: {"vix_above": <float>, "cash_pct": <float>}.
+        Applied only when VIX is below vix_emergency_threshold.
+        Pass [] or None to disable (default behavior = emergency-only at VIX=35).
 
     Returns
     -------
@@ -277,6 +283,34 @@ def apply_risk_controls(
         flags.notes.append(f"VIX emergency: {current_vix:.1f}")
 
     # -------------------------------------------------------------------
+    # 1b. Progressive VIX de-risking (graduated tiers below emergency)
+    # -------------------------------------------------------------------
+    elif not np.isnan(current_vix) and vix_progressive_tiers:
+        # Find the highest applicable tier (tiers sorted descending by vix_above)
+        prog_cash = 0.0
+        prog_vix_hit = None
+        for tier in sorted(vix_progressive_tiers, key=lambda t: t["vix_above"], reverse=True):
+            if current_vix >= tier["vix_above"]:
+                prog_cash = float(tier["cash_pct"])
+                prog_vix_hit = tier["vix_above"]
+                break
+
+        if prog_cash > cash_pct + 1e-9:
+            prev_invested = 1.0 - cash_pct
+            new_invested  = 1.0 - prog_cash
+            if prev_invested > 0:
+                adjusted_weights = adjusted_weights * (new_invested / prev_invested)
+            cash_pct = prog_cash
+            flags.cash_pct = cash_pct
+            flags.notes.append(
+                f"Progressive VIX: VIX={current_vix:.1f} ≥ {prog_vix_hit} → {prog_cash:.0%} cash"
+            )
+            logger.info(
+                f"Progressive VIX de-risk: VIX={current_vix:.1f} ≥ {prog_vix_hit}, "
+                f"cash_pct={prog_cash:.0%}"
+            )
+
+    # -------------------------------------------------------------------
     # 2. Drawdown circuit breaker
     # -------------------------------------------------------------------
     current_dd = 0.0
@@ -294,8 +328,7 @@ def apply_risk_controls(
         # Additional 50% reduction (on top of any VIX-triggered reduction)
         additional_cash = (1.0 - cash_pct) * 0.5
         cash_pct = min(cash_pct + additional_cash, 0.90)  # Cap at 90% cash
-        adjusted_weights = adjusted_weights * (1.0 - cash_pct / (1.0 - (cash_pct - additional_cash) + 1e-10))
-        # Renormalize
+        # Renormalize to new invested_pct (1 - cash_pct)
         if adjusted_weights.sum() > 0:
             adjusted_weights = adjusted_weights / adjusted_weights.sum() * (1.0 - cash_pct)
         flags.dd_circuit_triggered = True
@@ -330,12 +363,31 @@ def apply_risk_controls(
     # -------------------------------------------------------------------
     # 4. Concentration constraint (max weight)
     # -------------------------------------------------------------------
-    if adjusted_weights.max() > max_weight:
-        adjusted_weights = adjusted_weights.clip(upper=max_weight)
-        # Renormalize to (1 - cash_pct)
+    if adjusted_weights.max() > max_weight + 1e-9:
+        n_active = int((adjusted_weights > 1e-6).sum())
         invested_pct = 1.0 - cash_pct
-        if adjusted_weights.sum() > 0:
-            adjusted_weights = adjusted_weights / adjusted_weights.sum() * invested_pct
+
+        if n_active > 0 and n_active * max_weight < invested_pct - 1e-9:
+            # Infeasible: fewer sectors than needed to deploy full capital.
+            # Add a cash buffer so each sector stays ≤ max_weight of total portfolio.
+            concentration_cash = invested_pct - n_active * max_weight
+            cash_pct += concentration_cash
+            invested_pct = n_active * max_weight
+            flags.notes.append(
+                f"Concentration cash buffer: +{concentration_cash:.1%} "
+                f"(only {n_active} sector(s), max_weight={max_weight:.0%})"
+            )
+
+        # Iterative water-filling to enforce max_weight among the selected sectors
+        for _ in range(100):
+            over = adjusted_weights > max_weight + 1e-9
+            if not over.any():
+                break
+            adjusted_weights = adjusted_weights.clip(upper=max_weight)
+            s = adjusted_weights.sum()
+            if s > 0:
+                adjusted_weights = adjusted_weights / s * invested_pct
+
         flags.notes.append("Concentration constraint applied")
 
     # -------------------------------------------------------------------

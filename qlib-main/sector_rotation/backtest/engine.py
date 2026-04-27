@@ -555,17 +555,27 @@ class SectorRotationBacktest:
                     filtered_weights = cap_turnover(filtered_weights, current_weights, max_to)
 
                     macro_slice = macro.loc[:dt] if dt in macro.index else macro
+                    # equity_curve is a pd.Series of portfolio values; dropna() gives
+                    # only the completed trading days prior to today's rebalance.
+                    ec_so_far = equity_curve.dropna()
+                    prog_cfg = self.risk_cfg.get("vix_progressive_derisk", {})
+                    prog_tiers = (
+                        prog_cfg.get("tiers", [])
+                        if prog_cfg.get("enabled", False)
+                        else []
+                    )
                     adj_weights, cash_pct, flags = apply_risk_controls(
                         weights=filtered_weights,
                         portfolio_returns=portfolio_daily_returns.iloc[-252:] if len(portfolio_daily_returns) > 0 else pd.Series(dtype=float),
                         macro=macro_slice,
-                        equity_curve=None,
+                        equity_curve=ec_so_far if len(ec_so_far) > 0 else None,
                         vol_target=self.risk_cfg.get("vol_scaling", {}).get("target_vol_annual", 0.12),
                         vol_scaling_enabled=self.risk_cfg.get("vol_scaling", {}).get("enabled", True),
                         vix_emergency_threshold=self.reb_cfg.get("emergency_derisk_vix", 35.0),
                         emergency_cash_pct=self.reb_cfg.get("emergency_cash_pct", 0.50),
                         dd_halve_threshold=self.risk_cfg.get("drawdown", {}).get("cumulative_dd_halve", -0.15),
                         max_weight=self.port_cfg.get("constraints", {}).get("max_weight", 0.40),
+                        vix_progressive_tiers=prog_tiers,
                     )
 
                     cost_result = compute_transaction_costs(
