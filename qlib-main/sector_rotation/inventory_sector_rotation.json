@@ -7,41 +7,41 @@
     "XLE": {
       "weight": 0.22046,
       "shares": 3869,
-      "last_price": 56.98,
+      "last_price": 56.87,
       "cost_basis": 56.98,
       "entry_date": "2026-04-24",
       "last_rebalance_date": "2026-04-24",
-      "days_held": 1,
+      "days_held": 2,
       "action_today": "ENTER"
     },
     "XLB": {
       "weight": 0.246117,
       "shares": 4750,
-      "last_price": 51.81,
+      "last_price": 51.92,
       "cost_basis": 51.81,
       "entry_date": "2026-04-24",
       "last_rebalance_date": "2026-04-24",
-      "days_held": 1,
+      "days_held": 2,
       "action_today": "ENTER"
     },
     "XLI": {
       "weight": 0.259121,
       "shares": 1488,
-      "last_price": 174.07,
+      "last_price": 172.47,
       "cost_basis": 174.07,
       "entry_date": "2026-04-24",
       "last_rebalance_date": "2026-04-24",
-      "days_held": 1,
+      "days_held": 2,
       "action_today": "ENTER"
     },
     "XLU": {
       "weight": 0.274302,
       "shares": 5951,
-      "last_price": 46.09,
+      "last_price": 46.18,
       "cost_basis": 46.09,
       "entry_date": "2026-04-24",
       "last_rebalance_date": "2026-04-24",
-      "days_held": 1,
+      "days_held": 2,
       "action_today": "ENTER"
     }
   },
@@ -72,7 +72,7 @@
     "XLU": 0.4433,
     "XLRE": -0.2422
   },
-  "as_of": "2026-04-24",
+  "as_of": "2026-04-27",
   "rebalance_history": [
     {
       "date": "2026-04-24",
@@ -106,5 +106,6 @@
         "XLRE": -0.2422
       }
     }
-  ]
+  ],
+  "last_daily_update": "2026-04-27"
 }
