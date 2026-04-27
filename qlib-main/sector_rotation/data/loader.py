@@ -298,7 +298,7 @@ def _validate_and_clean_prices(df: pd.DataFrame) -> pd.DataFrame:
             logger.info(f"Price gaps in {col}: {gaps[:5]}{'...' if len(gaps) > 5 else ''}")
 
     # Fill NaN
-    df = df.ffill().bfill()
+    df = df.ffill()
 
     # Drop all-NaN rows
     df = df.dropna(how="all")

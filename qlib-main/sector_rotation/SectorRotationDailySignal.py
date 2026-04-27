@@ -250,6 +250,7 @@ def _should_rebalance(
     macro_recent: pd.DataFrame,
     cfg: dict,
     force: bool = False,
+    emergency_active: bool = False,
 ) -> Tuple[bool, str]:
     """
     Returns (should_rebalance: bool, reason: str).
@@ -260,10 +261,14 @@ def _should_rebalance(
     if not inv.get("holdings"):
         return True, "first_run"
 
-    # Emergency VIX check
+    # Emergency VIX check (with cooldown: only trigger on first crossing, not every day)
     vix_threshold = float(cfg.get("rebalance", {}).get("emergency_derisk_vix", 35.0))
-    if should_emergency_rebalance(macro_recent, pd.Series(dtype=float), vix_threshold=vix_threshold):
-        return True, f"emergency_vix"
+    if should_emergency_rebalance(
+        macro_recent, pd.Series(dtype=float),
+        vix_threshold=vix_threshold,
+        emergency_active=emergency_active,
+    ):
+        return True, "emergency_vix"
 
     # Monthly: first trading day of the month
     first_day = get_first_trading_day_of_month(signal_date.year, signal_date.month)
@@ -726,9 +731,27 @@ def run_daily_signal(
     inv = load_inventory()
     inv["capital"] = capital
 
+    # VIX emergency cooldown: read persisted state, clear if VIX has recovered
+    vix_threshold    = float(cfg.get("rebalance", {}).get("emergency_derisk_vix", 35.0))
+    vix_recovery     = vix_threshold * float(cfg.get("rebalance", {}).get("vix_recovery_factor", 0.80))
+    emergency_active = bool(inv.get("emergency_mode_active", False))
+    if emergency_active and not macro_recent.empty and "vix" in macro_recent.columns:
+        current_vix = float(macro_recent["vix"].dropna().iloc[-1]) if not macro_recent["vix"].dropna().empty else vix_threshold
+        if current_vix < vix_recovery:
+            emergency_active = False
+            log.info(f"VIX emergency cleared: VIX={current_vix:.1f} < recovery threshold {vix_recovery:.1f}")
+
     will_rebalance, rebalance_reason = _should_rebalance(
-        signal_date, inv, macro_recent, cfg, force=force_rebalance
+        signal_date, inv, macro_recent, cfg,
+        force=force_rebalance,
+        emergency_active=emergency_active,
     )
+    # Persist emergency state: set True on trigger, False on recovery or monthly rebalance
+    if rebalance_reason == "emergency_vix":
+        emergency_active = True
+    elif rebalance_reason == "monthly_rebalance":
+        emergency_active = False   # Monthly rebalance resets emergency mode
+    inv["emergency_mode_active"] = emergency_active
 
     log.info(f"Rebalance: {will_rebalance}  reason={rebalance_reason}")
 

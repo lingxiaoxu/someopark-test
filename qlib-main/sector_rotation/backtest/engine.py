@@ -502,13 +502,27 @@ class SectorRotationBacktest:
         equity_level = initial_capital
 
         rebalance_date_set = set(rebalance_dates)
+        emergency_active = False           # cooldown state: True = already in emergency mode
+        vix_threshold    = self.reb_cfg.get("emergency_derisk_vix", 35.0)
+        vix_recovery     = vix_threshold * self.reb_cfg.get("vix_recovery_factor", 0.80)
 
         for dt in all_dates:
-            if dt in rebalance_date_set or should_emergency_rebalance(
+            # Update emergency_active state: clear when VIX recovers
+            if emergency_active and "vix" in macro.columns and dt in macro.index:
+                current_vix = float(macro.loc[dt, "vix"]) if not pd.isna(macro.loc[dt, "vix"]) else vix_threshold
+                if current_vix < vix_recovery:
+                    emergency_active = False
+
+            trigger_emergency = should_emergency_rebalance(
                 macro.loc[:dt] if dt in macro.index else macro,
                 current_weights,
-                vix_threshold=self.reb_cfg.get("emergency_derisk_vix", 35.0),
-            ):
+                vix_threshold=vix_threshold,
+                emergency_active=emergency_active,
+            )
+            if trigger_emergency:
+                emergency_active = True
+
+            if dt in rebalance_date_set or trigger_emergency:
                 avail_scores = composite.loc[:dt].dropna(how="all")
                 if not avail_scores.empty:
                     latest_scores = avail_scores.iloc[-1]

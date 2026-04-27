@@ -143,11 +143,14 @@ def _classify_regime_row(
     Returns one of: RISK_ON, RISK_OFF, TRANSITION_UP, TRANSITION_DOWN
     """
     import pandas as pd
-    if pd.isna(vix_raw) or pd.isna(hy_spread_raw):
-        return RISK_ON  # Default when data unavailable
+    if pd.isna(vix_raw):
+        return RISK_ON  # VIX is primary indicator; fall back only if VIX unavailable
 
     # Hard stops → RISK_OFF
-    if vix_raw > vix_extreme or hy_spread_raw > hy_spread_high_bps * 1.3:
+    # VIX alone is sufficient for crisis detection (hy_spread may be NaN / delayed)
+    if vix_raw > vix_extreme:
+        return RISK_OFF
+    if not pd.isna(hy_spread_raw) and hy_spread_raw > hy_spread_high_bps * 1.3:
         return RISK_OFF
 
     # Score-based classification
