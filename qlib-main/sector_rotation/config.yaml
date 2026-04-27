@@ -52,10 +52,10 @@ universe:
 signals:
   # Signal weights (must sum to 1.0)
   weights:
-    cross_sectional_momentum: 0.40
+    cross_sectional_momentum: 0.30   # was 0.40; reduced to give regime more influence
     ts_momentum:              0.15
     relative_value:           0.20
-    regime_adjustment:        0.25
+    regime_adjustment:        0.35   # was 0.25; faster defensive rotation in stress
 
   # Cross-sectional momentum: 12-1 month (skip last 1 month for reversal)
   cs_momentum:
@@ -160,7 +160,7 @@ rebalance:
   zscore_change_threshold: 0.5   # sigma units
 
   # Emergency de-risk: VIX > threshold → move to 50% cash
-  emergency_derisk_vix: 35.0
+  emergency_derisk_vix: 32.0   # was 35; VIX=32 is already high-fear territory and fires earlier
   emergency_cash_pct: 0.50
 
   # Maximum single-day turnover (single-side, in fraction of portfolio)
@@ -181,7 +181,7 @@ risk:
   # Drawdown circuit breaker
   drawdown:
     monthly_dd_alert: -0.08       # Log alert (no auto action)
-    cumulative_dd_halve: -0.15    # Reduce position 50% until DD recovers to -10%
+    cumulative_dd_halve: -0.20    # was -0.15; fires only in extreme events (COVID-level)
     cumulative_dd_recovery: -0.10
 
   # Progressive VIX de-risking: graduated cash tiers BELOW the emergency threshold.
