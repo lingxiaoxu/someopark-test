@@ -588,12 +588,28 @@ def optimize_weights(
                 f"Use one of: {list(_QLIB_METHOD_MAP.keys()) + list(_QLIB_EI_METHODS) + ['equal_weight']}."
             )
 
-    # Step 4: Apply box constraints (clip + renorm)
-    raw_w = np.clip(raw_w, min_weight, max_weight)
-    if raw_w.sum() > 0:
-        raw_w = raw_w / raw_w.sum()
-    else:
+    # Step 4: Apply box constraints (iterative water-filling)
+    # When n * max_weight < 1.0 the constraint is infeasible (too few sectors);
+    # fall back to equal weight and let risk.py add a concentration cash buffer.
+    if n > 0 and n * max_weight < 1.0 - 1e-9:
+        logger.warning(
+            f"max_weight={max_weight} infeasible with {n} sector(s) "
+            f"(max possible sum={n * max_weight:.2f} < 1.0). Using equal weight; "
+            "risk.py will add concentration cash buffer."
+        )
         raw_w = np.ones(n) / n
+    else:
+        for _ in range(100):
+            over = raw_w > max_weight + 1e-9
+            if not over.any():
+                break
+            raw_w = np.clip(raw_w, min_weight, max_weight)
+            s = raw_w.sum()
+            if s > 0:
+                raw_w = raw_w / s
+            else:
+                raw_w = np.ones(n) / n
+                break
 
     # Step 5: Assign to output
     for i, ticker in enumerate(selected):
