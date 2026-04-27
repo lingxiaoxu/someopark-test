@@ -125,6 +125,10 @@ def apply_zscore_threshold_filter(
     held_tickers : list
         Sectors that kept previous weights due to threshold filter.
     """
+    # First-run: no prior scores → bypass threshold, rebalance all sectors
+    if prev_scores.empty:
+        return new_weights.copy(), list(new_scores.index), []
+
     score_change = (new_scores - prev_scores).abs()
     rebalanced = []
     held = []
@@ -217,12 +221,25 @@ def should_emergency_rebalance(
     macro: pd.DataFrame,
     current_weights: pd.Series,
     vix_threshold: float = 35.0,
+    emergency_active: bool = False,
+    vix_recovery_factor: float = 0.80,
 ) -> bool:
     """
-    Check if an emergency rebalance is needed (VIX > threshold).
+    Check if an emergency rebalance should be triggered TODAY.
 
-    Returns True if an emergency de-risk should be triggered TODAY,
-    even if it's not a scheduled rebalance day.
+    Cooldown logic:
+    - Trigger on the FIRST day VIX crosses above vix_threshold (False → True transition).
+    - Once in emergency mode (emergency_active=True), do NOT re-trigger until VIX
+      recovers below vix_threshold * vix_recovery_factor.
+    - This prevents the engine from firing daily rebalances throughout a volatility spike.
+
+    Parameters
+    ----------
+    emergency_active : bool
+        Whether an emergency was already triggered and has not yet recovered.
+    vix_recovery_factor : float
+        Fraction of vix_threshold below which emergency is considered cleared (default 0.80).
+        E.g. threshold=35, factor=0.80 → recovery at VIX < 28.
     """
     if "vix" not in macro.columns or len(macro) == 0:
         return False
@@ -230,11 +247,17 @@ def should_emergency_rebalance(
     if len(vix_series) == 0:
         return False
     current_vix = float(vix_series.iloc[-1])
+
     if current_vix > vix_threshold:
-        logger.warning(
-            f"Emergency rebalance triggered: VIX={current_vix:.1f} > {vix_threshold}"
-        )
-        return True
+        if not emergency_active:
+            # First crossing: trigger emergency
+            logger.warning(
+                f"Emergency rebalance triggered: VIX={current_vix:.1f} > {vix_threshold}"
+            )
+            return True
+        else:
+            # Already in emergency mode: suppress re-trigger (cooldown active)
+            return False
     return False
 
 
