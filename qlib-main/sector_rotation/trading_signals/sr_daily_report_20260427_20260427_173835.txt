@@ -1,18 +1,18 @@
 ================================================================
-  SECTOR ROTATION DAILY SIGNAL  —  2026-04-24
+  SECTOR ROTATION DAILY SIGNAL  —  2026-04-27
 ================================================================
 
   Regime : TRANSITION_UP
-  VIX    : 19.3  HY=284bps  Curve=+0.51%  FSI=-0.758  NFCI=-0.497
+  VIX    : 18.7  HY=286bps  Curve=+0.51%  FSI=-0.758  NFCI=-0.497
 
-  Rebalance : YES  (forced)
+  Rebalance : YES  (first_run)
 
   SECTOR  TARGET%    PREV%   DELTA%   SIGNAL  ACTION
   ------------------------------------------------------------
-  XLU       27.4%    27.4%    +0.0%    0.443  HOLD
-  XLI       25.9%    25.9%    +0.0%    0.708  HOLD
-  XLB       24.6%    24.6%    +0.0%    1.383  HOLD
-  XLE       22.0%    22.0%    +0.0%    1.690  HOLD
+  XLU       27.4%     0.0%   +27.4%    0.443  ENTER
+  XLI       25.9%     0.0%   +25.9%    0.708  ENTER
+  XLB       24.6%     0.0%   +24.6%    1.383  ENTER
+  XLE       22.0%     0.0%   +22.0%    1.690  ENTER
   XLC        0.0%     0.0%    +0.0%   -1.773  FLAT
   XLF        0.0%     0.0%    +0.0%   -0.674  FLAT
   XLK        0.0%     0.0%    +0.0%   -0.371  FLAT
@@ -20,6 +20,14 @@
   XLRE       0.0%     0.0%    +0.0%   -0.242  FLAT
   XLV        0.0%     0.0%    +0.0%   -0.359  FLAT
   XLY        0.0%     0.0%    +0.0%   -0.023  FLAT
+
+  TRADES  (@$1,000,000)
+  ------------------------------------------------------------
+  XLB    BUY   4739 sh @ $   51.92  = $  246,049
+  XLE    BUY   3876 sh @ $   56.87  = $  220,428
+  XLI    BUY   1502 sh @ $  172.47  = $  259,050
+  XLU    BUY   5940 sh @ $   46.18  = $  274,309
+  Est. transaction cost: $456 (4.6 bps)
 
   SECTOR   CS_MOM  TS_MULT  COMPOSITE
   ----------------------------------------

@@ -1,12 +1,11 @@
 ================================================================
-  SECTOR ROTATION DAILY SIGNAL  —  2026-04-24
+  SECTOR ROTATION DAILY SIGNAL  —  2026-04-27
 ================================================================
 
   Regime : TRANSITION_UP
-  VIX    : 19.3  HY=284bps  Curve=+0.51%  FSI=-0.758  NFCI=-0.497
+  VIX    : 18.7  HY=286bps  Curve=+0.51%  FSI=-0.758  NFCI=-0.497
 
-  Rebalance : NO  (no_rebalance)
-  → No trades today. Showing current holdings for reference.
+  Rebalance : YES  (forced)
 
   SECTOR  TARGET%    PREV%   DELTA%   SIGNAL  ACTION
   ------------------------------------------------------------
