@@ -49,6 +49,323 @@ set -a && source .env && set +a && conda run -n qlib_run --no-capture-output pyt
 
 ---
 
+## 零、运行 Schedule（调度计划）
+
+### 时区约定
+
+所有时间以 **ET（美东时间）** 为基准。UTC 换算：EST = UTC-5（冬）／EDT = UTC-4（夏）。
+NYSE 收盘时间：**4:00 PM ET（周一至周五）**。
+
+---
+
+### 完整 Cron 配置
+
+```bash
+crontab -e
+```
+
+```cron
+# ──────────────────────────────────────────────────────────────────────
+# SECTOR ROTATION — 调度（所有时间 UTC）
+# 冬令时 EST = UTC-5 / 夏令时 EDT = UTC-4
+# ──────────────────────────────────────────────────────────────────────
+
+# 【每日】工作日 17:20 ET = 22:20 UTC（冬）/ 21:20 UTC（夏）
+# 在 someopark DailySignal（~01:15 UTC）写入 MacroStateStore 之后执行
+# 脚本自动检测 NYSE 休市并 exit 0（不计入失败）
+20 22 * * 1-5  cd /Users/xuling/code/someopark-test && \
+               bash qlib-main/sector_rotation/sector_rotation_pipeline.sh daily \
+               >> qlib-main/sector_rotation/logs/cron_sr_daily.log 2>&1
+
+# 【每周日】01:00 ET = 06:00 UTC — EPS 增量维护 + dry-run 验证
+0 6 * * 0      cd /Users/xuling/code/someopark-test && \
+               bash qlib-main/sector_rotation/sector_rotation_pipeline.sh weekly \
+               >> qlib-main/sector_rotation/logs/cron_sr_weekly.log 2>&1
+```
+
+> **夏令时说明**：22:20 UTC 在夏令时为 ET 18:20，在冬令时为 ET 17:20，均在 yfinance 调整后收盘价可用窗口内（4:30–4:45 PM ET），无需调整。
+
+---
+
+### 每日运行（工作日，自动）
+
+**触发时间**：每个工作日 17:20 ET（收盘后约 80 分钟）
+
+**内部步骤**：
+
+| 步骤 | 内容 | 耗时 |
+|------|------|------|
+| ① NYSE holiday check | 检测是否为交易日，若休市则 exit 0 | <5 秒 |
+| ② EPS auto-refresh | 若 `eps_history.json` > 7 天未更新，触发增量拉取 | 跳过 0 秒 / 拉取 1–3 分钟 |
+| ③ SectorRotationDailySignal | 加载 ETF 价格 + MacroStateStore → 信号 → 调仓判断 → 写 inventory + 报告 | 2–4 分钟 |
+
+**总耗时**：正常 3–5 分钟，EPS 触发时 5–8 分钟
+
+**每日输出**：
+
+```
+trading_signals/sr_daily_report_YYYYMMDD_HHMMSS.txt   ← 人可读摘要（核心检查点）
+trading_signals/sr_daily_report_YYYYMMDD_HHMMSS.json  ← 完整机器可读报告
+inventory_sector_rotation.json                        ← 当前持仓（月首才变更）
+inventory_history/inventory_sector_rotation_<ts>.json ← 每次变更的快照
+logs/sr_daily_YYYYMMDD.log                            ← 完整运行日志
+```
+
+**每日验证清单**：
+
+```bash
+# 1. 日志末尾无报错
+tail -20 qlib-main/sector_rotation/logs/sr_daily_$(date +%Y%m%d).log
+# 预期末行：══ SR PIPELINE  mode=daily ── DAILY COMPLETE
+
+# 2. 今日报告文件已生成
+ls -lt qlib-main/sector_rotation/trading_signals/ | head -4
+# 应有今日时间戳的 .txt 和 .json
+
+# 3. 查看信号摘要（Regime / Rebalance / 权重分布）
+cat $(ls -t qlib-main/sector_rotation/trading_signals/sr_daily_report_*.txt | head -1)
+
+# 4. 确认 inventory 日期更新
+python3 -c "
+import json
+d = json.load(open('qlib-main/sector_rotation/inventory_sector_rotation.json'))
+print('as_of:', d.get('as_of'), '  last_updated:', d.get('last_updated'))
+"
+```
+
+**绝大多数工作日**：无交易（HOLD），月首交易日自动触发 `monthly_rebalance`。
+
+---
+
+### 月首交易日（每月，含在每日 cron 内）
+
+**无需额外操作**。`daily` 脚本自动识别月首交易日并触发 `monthly_rebalance`。
+
+**当日额外操作（人工）**：
+1. 查看 TXT 报告中的 trades 清单（ENTER / EXIT / INCREASE / DECREASE）
+2. 确认 regime 状态和持仓权重合理
+3. **次日开盘按清单执行交易**（若对接实盘在此步下单）
+
+**月底可选**：生成月度绩效 tearsheet（约 10–15 分钟）
+```bash
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
+# 输出：qlib-main/sector_rotation/report/output/sector_rotation_tearsheet.pdf
+```
+
+**手动补跑**（若 daily cron 当日未运行）：
+```bash
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh monthly --skip-holiday
+```
+
+---
+
+### 每周运行（周日，自动）
+
+**触发时间**：周日 01:00 ET = 06:00 UTC
+
+**步骤**：
+
+| 步骤 | 内容 | 耗时 |
+|------|------|------|
+| ① EPS 增量更新 | 拉取全部 55 个成分股中 > 7 天未更新的 symbol | 1–10 分钟 |
+| ② dry-run 验证 | 跑完整信号 pipeline 不写 inventory | 2–3 分钟 |
+
+**总耗时**：5–15 分钟
+
+**验证**：
+```bash
+tail -20 qlib-main/sector_rotation/logs/cron_sr_weekly.log
+# 预期：══ WEEKLY MAINTENANCE COMPLETE
+
+grep -i "error\|fail\|traceback" qlib-main/sector_rotation/logs/cron_sr_weekly.log
+# 应无输出
+```
+
+---
+
+### 每季度（手动，季末）
+
+**时机**：季末（3、6、9、12 月最后一周）或重大市场结构变化后
+
+```bash
+# 1. EPS 全量刷新（约 5 分钟，Polygon，55 个成分股完整历史）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh eps-full
+
+# 2. 完整回测（约 10–20 分钟，2018-07-01 → 今日）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh backtest
+# 结果写入 MLflow: mlruns/mlflow.db (experiment: sector_rotation_backtest)
+
+# 3. 参数敏感性分析（约 15–30 分钟）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh sensitivity
+
+# 4. PDF tearsheet（约 10–15 分钟）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
+```
+
+**季度检查要点**：
+
+| 指标 | 目标 | 行动 |
+|------|------|------|
+| Sharpe（扣费后） | 0.40–0.60 | 低于 0.35 → 考虑调整 `top_n_sectors` / `optimizer` |
+| 最大回撤 | < 20% | 超过 25% → 检查 `max_weight` / `vol_scaling` 参数 |
+| Regime 分布 | risk_on 占比 > 50%（正常市） | 长期 risk_off 主导 → 检查 VIX 阈值设置 |
+| Sensitivity sweep | 无明显单点最优 | 若结果高度集中于某一参数值 → 可能过拟合 |
+
+---
+
+### 紧急情况（VIX > 35，随时）
+
+**自动检测**：`daily` 运行时 `should_emergency_rebalance()` 自动检查，无需额外触发。
+
+**触发结果**：报告中 `Rebalance: YES (emergency_vix)`，目标持仓 → 50% 现金 + 50% 防御板块（XLU / XLP / XLV）
+
+**人工流程**：
+1. 收到 daily 报告，确认 `emergency_vix` 触发
+2. 审阅新目标持仓，确认现金权重合理
+3. 当日或次日开盘执行减仓
+4. 每日继续运行，等待 VIX 回落 < 25 后自动恢复 risk_on
+
+**随时查看状态（不写入）**：
+```bash
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh dry-run
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh status
+```
+
+---
+
+### 故障处理
+
+#### 故障 1：NYSE 休市（预期行为，非错误）
+
+**现象**：日志出现 `NYSE 休市 (YYYY-MM-DD) — pipeline skip, exit 0`
+
+**处理**：正常，脚本 exit 0，cron 不报错，无需操作。
+
+---
+
+#### 故障 2：yfinance ETF 价格下载失败
+
+**现象**：日志含 `YFRateLimitError` / `ConnectionError` / `No data returned`
+
+**处理**：
+```bash
+# 等 30 分钟后重跑（rate limit 通常快速恢复）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh daily --skip-holiday
+
+# 若频繁失败，删除价格缓存强制重下
+rm price_data/sector_etfs/prices_yfinance_*.pkl
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh dry-run --skip-holiday
+```
+
+---
+
+#### 故障 3：EPS 增量更新失败（非致命）
+
+**现象**：日志含 `EPS incremental update failed`，pipeline 继续运行
+
+**影响**：value signal 自动降级为 `proxy` 模式（price-to-5yr-avg），信号仍然有效，覆盖率略低
+
+**处理**：
+```bash
+# 手动检查详细错误
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh eps-update
+cat qlib-main/sector_rotation/logs/sr_eps-update_$(date +%Y%m%d).log | grep -i error
+
+# 验证 Polygon API key
+set -a && source .env && set +a && echo "Key: ${POLYGON_API_KEY:0:8}..."
+```
+
+---
+
+#### 故障 4：MacroStateStore 数据陈旧
+
+**现象**：日志含 `MacroStateStore load failed` 或 `Falling back to FRED API`
+
+**处理**：
+- macro parquets 由 **someopark 主 pipeline** 维护，sector rotation 不负责更新
+- 若 MacroStateStore 不可用，regime 信号自动降级为仅用实时 VIX（yfinance），可接受
+- 若完全无数据，FRED fallback 自动触发，需要 `FRED_API_KEY` 有效
+- 确认主 pipeline 当日已运行；恢复后次日数据自动更新
+
+---
+
+#### 故障 5：信号计算失败（exit 非零）
+
+**现象**：日志末行含 `FAILED:` / `exit=1` / Python traceback
+
+**处理**：
+```bash
+# 查看完整错误
+tail -60 qlib-main/sector_rotation/logs/sr_daily_$(date +%Y%m%d).log
+
+# 安全诊断（不写 inventory）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh dry-run --skip-holiday
+```
+
+常见原因：
+- 价格数据不足 → 检查 `price_data/sector_etfs/`
+- qlib_run 环境包版本冲突 → `conda run -n qlib_run python -m pytest qlib-main/sector_rotation/tests/ -x`
+- config.yaml 参数错误 → `git diff qlib-main/sector_rotation/config.yaml`
+
+---
+
+#### 故障 6：错过月首调仓
+
+**现象**：月初几天后发现 inventory `rebalance_history` 无当月记录
+
+**处理**：
+```bash
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh monthly --skip-holiday
+# 或
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh daily --force-rebalance --skip-holiday
+```
+
+---
+
+#### 故障 7：inventory 状态异常
+
+**现象**：持仓权重错误 / `last_updated` 停留在过去某日
+
+**处理**：
+```bash
+# 查看备份历史
+ls -lt qlib-main/sector_rotation/inventory_history/
+
+# 恢复到最近正常快照
+cp qlib-main/sector_rotation/inventory_history/inventory_sector_rotation_<正常时间戳>.json \
+   qlib-main/sector_rotation/inventory_sector_rotation.json
+
+# 验证恢复状态
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh dry-run --skip-holiday
+```
+
+---
+
+### 与 someopark 主 Pipeline 的执行顺序
+
+```
+~01:15 UTC    someopark: MacroStateStore.py --update（写入 price_data/macro/）
+~01:15 UTC    someopark: DailySignal.py --strategy both（MRPT + MTFS 信号）
+              ↓  price_data/macro/ parquets 写入完成
+~22:20 UTC    sector_rotation: sector_rotation_pipeline.sh daily（读取 price_data/macro/，只读）
+```
+
+两者间隔约 21 小时，MacroStateStore 数据当日内始终有效，无竞争风险，可并行运行也无妨。
+
+---
+
+### 频率总览
+
+| 频率 | 时间（ET） | 命令 | 预计耗时 | 人工操作 |
+|------|-----------|------|---------|---------|
+| 每个工作日 | 17:20 PM（cron） | `daily` | 3–5 分钟 | 月首：审阅交易清单 + 次日执行 |
+| 每周日 | 01:00 AM（cron） | `weekly` | 5–15 分钟 | 无 |
+| 每月底（可选） | 任意 | `tearsheet` | 10–15 分钟 | 无 |
+| 每季度末 | 任意（手动） | `eps-full` → `backtest` → `sensitivity` | 30–60 分钟 | 审阅绩效 + 参数稳健性 |
+| VIX > 35 | daily 自动触发 | （含在 daily 内） | — | 确认后当日 / 次日执行 emergency de-risk |
+
+---
+
 ## 一、首次初始化（新机器 / 数据重置）
 
 **完整初始化流程（按顺序执行）：**
