@@ -427,6 +427,7 @@ def _update_inventory(
     inv["prev_composite_scores"]  = {t: round(float(s), 4) for t, s in composite_scores.items()}
     inv["as_of"]                  = today_str
     inv["last_updated"]           = today_str
+    inv["last_daily_update"]      = today_str
     inv["rebalance_history"]      = history
     return inv
 
@@ -832,11 +833,18 @@ def run_daily_signal(
             capital=capital,
         )
     else:
-        # Non-rebalance day: still update last_price in holdings (but not last_updated)
+        # Non-rebalance day: update last_price + increment days_held (idempotent via last_daily_update)
+        today_str = signal_date.isoformat()
+        already_updated = inv.get("last_daily_update") == today_str
         for t, holding in inv.get("holdings", {}).items():
             p = float(prices_today.get(t, holding.get("last_price", 0.0)))
             if p > 0:
                 holding["last_price"] = round(p, 4)
+            if not already_updated:
+                holding["days_held"] = holding.get("days_held", 0) + 1
+        if not already_updated:
+            inv["as_of"] = today_str
+            inv["last_daily_update"] = today_str
 
     save_inventory(inv, dry_run=dry_run)
 
