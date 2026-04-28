@@ -6,26 +6,14 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "PFG",
-    "s2": "WMT",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "MSCI",
     "s2": "MTB",
     "sector": "finance",
     "z_col": "Z_finance"
   },
   {
-    "s1": "HAS",
-    "s2": "PFE",
-    "sector": "health",
-    "z_col": "Z_health"
-  },
-  {
-    "s1": "ALB",
-    "s2": "YUM",
+    "s1": "PFG",
+    "s2": "WMT",
     "sector": "food",
     "z_col": "Z_food"
   },
@@ -34,6 +22,18 @@
     "s2": "WST",
     "sector": "energy",
     "z_col": "Z_energy"
+  },
+  {
+    "s1": "ALB",
+    "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "HAS",
+    "s2": "PFE",
+    "sector": "health",
+    "z_col": "Z_health"
   },
   {
     "s1": "AMT",
@@ -54,16 +54,16 @@
     "z_col": "Z_other"
   },
   {
-    "s1": "GIS",
-    "s2": "MTD",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "LNT",
     "s2": "MKTX",
     "sector": "other",
     "z_col": "Z_other"
+  },
+  {
+    "s1": "GIS",
+    "s2": "MTD",
+    "sector": "food",
+    "z_col": "Z_food"
   },
   {
     "s1": "OKE",
@@ -72,21 +72,21 @@
     "z_col": "Z_energy"
   },
   {
-    "s1": "IQV",
-    "s2": "PG",
-    "sector": "health",
-    "z_col": "Z_health"
-  },
-  {
-    "s1": "CPB",
-    "s2": "CRL",
+    "s1": "GRMN",
+    "s2": "KO",
     "sector": "food",
     "z_col": "Z_food"
   },
   {
-    "s1": "OKE",
-    "s2": "XYL",
-    "sector": "energy",
-    "z_col": "Z_energy"
+    "s1": "GIS",
+    "s2": "HUBB",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "ETR",
+    "s2": "MKTX",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
   }
 ]

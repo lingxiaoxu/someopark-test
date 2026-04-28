@@ -207,7 +207,9 @@ class TestRiskControls(unittest.TestCase):
         self.assertAlmostEqual(adj_w.sum(), 0.50, places=5)
 
     def test_normal_vix_no_emergency(self):
-        weights = pd.Series({"ETF0": 0.5, "ETF1": 0.5})
+        # Use 4 equal-weight tickers (4 × 0.25 = 1.0; each < max_weight=0.40)
+        # so the concentration cash buffer does not fire. Only checks VIX emergency.
+        weights = pd.Series({"ETF0": 0.25, "ETF1": 0.25, "ETF2": 0.25, "ETF3": 0.25})
         port_ret = pd.Series(np.random.normal(0, 0.01, 100))
         macro_normal = _make_macro(vix_level=16.0)
 
