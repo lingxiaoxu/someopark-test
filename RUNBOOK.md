@@ -714,3 +714,44 @@ inventory_mtfs.json   — MTFS 当前开仓记录
 | `pairs.<key>.monitor_log` | 最近一次 Position Monitor 输出摘要（action / days_held / upnl） |
 
 > **注意**：`days_held` 基于日历天数，每天只递增一次（通过 `last_updated` 保证 re-run 幂等）。持仓期间 shares 固定不变，不随 regime 调整。inventory 每次运行前自动备份至 `inventory_history/`，按 `as_of` 日期去重保留唯一快照。
+
+---
+
+## Strategy Performance 前端数据更新
+
+### 数据源
+
+`someo-park-investment-management/public/data/strategy_performance.json` — 静态文件，Firebase Hosting 部署后前端直接读取。
+
+### 更新脚本
+
+```bash
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output \
+  python UpdateStrategyPerformance.py --start YYYY-MM-DD --end YYYY-MM-DD
+```
+
+- `--start`：从这一天开始重算（含）
+- `--end`：截止日期（含），通常是最新有 PnL report 的交易日
+- `--dry-run`：只打印结果，不写文件
+- `--daily-weights`：用每日实际 regime 权重（默认 fixed，用 end 日期最新权重）
+
+### 注意：capital base 拼接问题
+
+`UpdateStrategyPerformance` 每次都从 `SIM_CAPITAL = $500,000` 起算 sim equity，再按 regime 权重缩放为 real equity。**如果只补最近几天**，新段的 real equity 起点（= regime_capital × 1.0）会和历史数据的 equity 不连续，造成虚假暴跌。
+
+**正确做法**：每次补数据时，`--start` 必须从上一次数据的连续起点往回拉足够长，让 realized PnL 从头累积。
+
+例如，当前数据到 4/21，补 4/22～4/30，应该用：
+```bash
+python UpdateStrategyPerformance.py --start 2026-03-19 --end 2026-04-30
+```
+而不是 `--start 2026-04-22`。起点选 `strategy_performance.json` 中当前连续段的第一天即可（通常是上次完整重跑的起始日）。
+
+### 更新后需要重新 build + deploy
+
+```bash
+cd someo-park-investment-management
+npm run build && firebase deploy --only hosting
+```
+
+> `VITE_*` 变量和 `public/data/` 静态文件都是构建时/部署时注入的，改了必须重新 deploy。
