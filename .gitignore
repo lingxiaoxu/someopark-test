@@ -12,9 +12,12 @@ someo-park-investment-management/.env
 chronos-forecasting-main/
 chronos-2-finetuned/
 
-# Qlib — ignore everything except sector_rotation
+# Qlib — ignore everything except sector_rotation and env export files
 qlib-main/*
 !qlib-main/sector_rotation
+!qlib-main/qlib_run_conda_export.txt
+!qlib-main/qlib_run_env.yml
+!qlib-main/qlib_run_requirements.txt
 
 # Python
 __pycache__/
