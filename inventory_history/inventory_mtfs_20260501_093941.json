@@ -321,7 +321,7 @@
       "open_s2_price": 73.79,
       "open_hedge_ratio": 0.6055021005556308,
       "open_price_level_stop": null,
-      "days_held": 1,
+      "days_held": 0,
       "open_signal": {
         "momentum_spread": 0.548,
         "entry_threshold": 0.3,
@@ -382,20 +382,7 @@
         },
         "default_window": "W6"
       },
-      "monitor_log": [
-        {
-          "date": "2026-04-30",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.539,
-          "exit_threshold": 0.4,
-          "unrealized_pnl": 0.0,
-          "unrealized_pnl_pct": 0.0,
-          "note": "Holding long, signal=0.539, exit at 0.4"
-        }
-      ],
-      "last_updated": "2026-04-30"
+      "monitor_log": []
     },
     "STT/C": {
       "strategy": "mtfs",
@@ -509,7 +496,7 @@
       "open_s2_price": 73.79,
       "open_hedge_ratio": 0.25489875869339096,
       "open_price_level_stop": null,
-      "days_held": 1,
+      "days_held": 0,
       "open_signal": {
         "momentum_spread": 0.432,
         "entry_threshold": 0.287,
@@ -570,20 +557,7 @@
         },
         "default_window": "W6"
       },
-      "monitor_log": [
-        {
-          "date": "2026-04-30",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.435,
-          "exit_threshold": 0.309,
-          "unrealized_pnl": 0.0,
-          "unrealized_pnl_pct": 0.0,
-          "note": "Holding long, signal=0.435, exit at 0.309"
-        }
-      ],
-      "last_updated": "2026-04-30"
+      "monitor_log": []
     },
     "PEP/AIG": {
       "strategy": "mtfs",
@@ -596,7 +570,7 @@
       "open_s2_price": 73.79,
       "open_hedge_ratio": 2.1044857026697383,
       "open_price_level_stop": null,
-      "days_held": 1,
+      "days_held": 0,
       "open_signal": {
         "momentum_spread": 0.252,
         "entry_threshold": 0.028,
@@ -657,20 +631,7 @@
         },
         "default_window": "W6"
       },
-      "monitor_log": [
-        {
-          "date": "2026-04-30",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.234,
-          "exit_threshold": 0.381,
-          "unrealized_pnl": 0.0,
-          "unrealized_pnl_pct": 0.0,
-          "note": "Holding long, signal=0.234, exit at 0.381"
-        }
-      ],
-      "last_updated": "2026-04-30"
+      "monitor_log": []
     }
   }
 }

@@ -1,0 +1,134 @@
+{
+  "as_of": "2026-04-29",
+  "capital": 500000,
+  "pairs": {
+    "DG/MOS": {
+      "direction": null
+    },
+    "GS/ALLY": {
+      "direction": null
+    },
+    "D/MCHP": {
+      "direction": null
+    },
+    "CART/DASH": {
+      "direction": null
+    },
+    "CL/SRE": {
+      "direction": null
+    },
+    "MTCH/NVR": {
+      "direction": null
+    },
+    "F/PG": {
+      "direction": null
+    },
+    "AWK/FOX": {
+      "direction": null
+    },
+    "AWK/EXPD": {
+      "direction": null
+    },
+    "CL/WST": {
+      "strategy": "mrpt",
+      "param_set": "conservative",
+      "direction": "short",
+      "s1_shares": -710,
+      "s2_shares": 203,
+      "open_date": "2026-04-29",
+      "open_s1_price": 85.67,
+      "open_s2_price": 291.91,
+      "open_hedge_ratio": 0.28597795531744297,
+      "open_price_level_stop": 3.2852625949278575,
+      "days_held": 0,
+      "open_signal": {
+        "z_score": 2.521,
+        "entry_threshold": 2.5,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward/walk_forward_summary_20260429_215552.json",
+        "wf_dir": "historical_runs/walk_forward",
+        "windows": {
+          "W1": {
+            "param_set": "low_vol_specialist",
+            "train_end": "2025-09-23",
+            "test_start": "2025-09-24",
+            "test_end": "2025-10-28",
+            "oos_sharpe": 2.4615,
+            "oos_pnl": 12912.48
+          },
+          "W2": {
+            "param_set": "low_vol_specialist",
+            "train_end": "2025-10-28",
+            "test_start": "2025-10-29",
+            "test_end": "2025-12-03",
+            "oos_sharpe": -4.997,
+            "oos_pnl": -12380.98
+          },
+          "W3": {
+            "param_set": "low_vol_specialist",
+            "train_end": "2025-12-03",
+            "test_start": "2025-12-04",
+            "test_end": "2026-01-09",
+            "oos_sharpe": -4.4103,
+            "oos_pnl": -11148.7
+          },
+          "W4": {
+            "param_set": "low_vol_specialist",
+            "train_end": "2026-01-09",
+            "test_start": "2026-01-12",
+            "test_end": "2026-02-17",
+            "oos_sharpe": -3.2706,
+            "oos_pnl": -18849.65
+          },
+          "W5": {
+            "param_set": "slow_signal",
+            "train_end": "2026-02-17",
+            "test_start": "2026-02-18",
+            "test_end": "2026-03-24",
+            "oos_sharpe": -3.9898,
+            "oos_pnl": -8829.8
+          },
+          "W6": {
+            "param_set": "conservative",
+            "train_end": "2026-03-24",
+            "test_start": "2026-03-25",
+            "test_end": "2026-04-29",
+            "oos_sharpe": 0.047,
+            "oos_pnl": -43.03
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "AMT/TJX": {
+      "direction": null
+    },
+    "MSCI/MTB": {
+      "direction": null
+    },
+    "ETR/MKTX": {
+      "direction": null
+    },
+    "PFE/PSX": {
+      "direction": null
+    },
+    "PFG/WMT": {
+      "direction": null
+    },
+    "ALB/YUM": {
+      "direction": null
+    },
+    "CI/LVS": {
+      "direction": null
+    },
+    "GIS/MTD": {
+      "direction": null
+    },
+    "OKE/WST": {
+      "direction": null
+    }
+  }
+}
