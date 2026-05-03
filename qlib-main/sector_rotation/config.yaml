@@ -52,10 +52,10 @@ universe:
 signals:
   # Signal weights (must sum to 1.0)
   weights:
-    cross_sectional_momentum: 0.30   # was 0.40; reduced to give regime more influence
+    cross_sectional_momentum: 0.40   # restored to 0.40; reduces regime over-coverage of momentum
     ts_momentum:              0.15
     relative_value:           0.20
-    regime_adjustment:        0.35   # was 0.25; faster defensive rotation in stress
+    regime_adjustment:        0.25   # reduced from 0.35; regime was dominating momentum signal
 
   # Cross-sectional momentum: 12-1 month (skip last 1 month for reversal)
   cs_momentum:
@@ -106,9 +106,9 @@ signals:
         ts_momentum: 0.8
         relative_value: 1.2             # Value more reliable in stress
       transition_up:
-        cross_sectional_momentum: 1.1
+        cross_sectional_momentum: 1.2   # strengthened: transition_up should favor momentum leaders
         ts_momentum: 1.0
-        relative_value: 0.9
+        relative_value: 0.8             # reduced: less value bias during up-transition
       transition_down:
         cross_sectional_momentum: 0.7
         ts_momentum: 0.9
@@ -136,8 +136,8 @@ portfolio:
     max_weight: 0.40              # Single sector max (prevent Tech dominance)
     min_weight: 0.00              # Allow zero allocation
     max_cash: 0.50                # Max cash (only during emergency de-risk)
-    beta_min: 0.85                # vs SPY
-    beta_max: 1.15                # vs SPY
+    beta_min: 0.70                # relaxed from 0.85; allow optimizer more freedom
+    beta_max: 1.10                # tightened from 1.15; avoid excess market exposure
 
   # Number of "core" sectors (top N get positive allocation)
   top_n_sectors: 4
@@ -189,10 +189,10 @@ risk:
   # Applied after VIX emergency check; ignored when emergency is already active.
   # Set enabled: false to revert to the old binary-at-35 behavior.
   vix_progressive_derisk:
-    enabled: false   # enable to trade CAGR for lower MaxDD (see tiers below)
+    enabled: true    # graduated de-risk instead of hard binary cut at VIX=32
     tiers:
-      - {vix_above: 25, cash_pct: 0.15}   # elevated stress: 15% cash
-      - {vix_above: 30, cash_pct: 0.35}   # high stress: 35% cash
+      - {vix_above: 28, cash_pct: 0.15}   # elevated stress: 15% cash (raised from 25 — VIX 25 fires too often)
+      - {vix_above: 32, cash_pct: 0.35}   # high stress: 35% cash
       # VIX ≥ 35 → handled by rebalance.emergency_derisk_vix (50% cash)
 
 # ---------------------------------------------------------------------------
