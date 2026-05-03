@@ -321,6 +321,357 @@ qlib-main/sector_rotation/
 
 ---
 
+## 全参数完整参考
+
+> 所有 `config.yaml` 参数均可在不修改代码的情况下调整。代码内硬编码常量需直接修改对应 `.py` 文件。
+
+---
+
+### 一、数据参数 `data`
+
+#### `data.cache_dir`
+- **默认值** `"../../price_data/sector_etfs"`
+- ETF 价格和 EPS 缓存目录（相对于 `qlib-main/sector_rotation/`）
+- 引用：`data/loader.py`、`SectorRotationDailySignal.py`
+
+#### `data.price_source`
+- **默认值** `"yfinance"`
+- 价格数据来源，可选 `"yfinance"` 或 `"mongodb"`
+- 引用：`data/loader.py`
+
+#### `data.price_start`
+- **默认值** `"2017-01-01"`
+- 价格历史起始日，比回测起点早以提供信号 warm-up 数据
+- 引用：`data/loader.py`、`SectorRotationDailySignal.py`
+
+#### `data.price_end`
+- **默认值** `null`
+- 价格历史截止日，`null` = 今日
+- 引用：`data/loader.py`
+
+#### `data.fred_api_key_env`
+- **默认值** `"FRED_API_KEY"`
+- FRED API key 的环境变量名
+- 引用：`data/loader.py`
+
+#### `data.mongodb.*`
+- 子参数：`host_env`、`port`（27017）、`db`（`"market_data"`）、`collection`（`"prices"`）
+- 仅在 `price_source="mongodb"` 时生效
+- 引用：`data/loader.py`
+
+---
+
+### 二、标的参数 `universe`
+
+#### `universe.etfs`
+- **默认值** `["XLE", "XLB", "XLI", "XLY", "XLP", "XLV", "XLF", "XLK", "XLC", "XLU", "XLRE"]`
+- 11 个 GICS SPDR 行业 ETF，构成完整轮动宇宙
+- 引用：`backtest/engine.py`、`SectorRotationDailySignal.py`
+
+#### `universe.benchmark`
+- **默认值** `"SPY"`
+- 基准指数，用于 Alpha/IR 计算和 beta 约束
+- 引用：`backtest/engine.py`、`SectorRotationDailySignal.py`
+
+#### `universe.universe_start`
+- **默认值** `"2018-07-01"`
+- 完整 11 板块宇宙最早有效日期（XLC 于 2018-06-18 上市）
+- 注意：`data/universe.py` 同时将此值硬编码为常量 `UNIVERSE_START`
+
+---
+
+### 三、信号参数 `signals`
+
+#### 3.1 信号权重（`signals.weights`）
+
+> 四个权重之和必须 = 1.0
+
+| 参数 | 当前值 | 说明 | 引用 |
+|---|---|---|---|
+| `cross_sectional_momentum` | `0.40` | 截面动量在复合信号中的权重 | `signals/composite.py`、`backtest/engine.py` |
+| `ts_momentum` | `0.15` | 时序动量（crash filter 乘数）权重 | `signals/composite.py` |
+| `relative_value` | `0.20` | 相对估值（P/E 百分位）权重 | `signals/composite.py` |
+| `regime_adjustment` | `0.25` | Regime 条件调整权重（通过乘数影响其他三个信号） | `signals/composite.py` |
+
+#### 3.2 截面动量（`signals.cs_momentum`）
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `lookback_months` | `12` | 总回看窗口（12-1 动量，即过去 12 个月跳过最近 1 月） | `signals/composite.py`、`signals/momentum.py` |
+| `skip_months` | `1` | 跳过最近 N 月，避免短期反转效应 | `signals/composite.py`、`signals/momentum.py` |
+| `zscore_window` | `36` | Z-score 标准化的滚动窗口（月数，约 3 年） | `signals/composite.py`、`signals/momentum.py` |
+
+#### 3.3 时序动量（`signals.ts_momentum`）
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `lookback_months` | `12` | 自身 12 月回报，判断板块趋势方向（crash filter） | `signals/composite.py`、`signals/momentum.py` |
+| `crash_filter_multiplier` | `0.0` | TS 动量 < 0 时的权重乘数（0 = 完全排除，1 = 不过滤） | `signals/composite.py`、`signals/momentum.py` |
+
+#### 3.4 相对估值（`signals.value`）
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `value_source`（顶层） | `"constituents"` | P/E 数据来源：`"constituents"`（yfinance 季报）/ `"proxy"`（价格比历史均值）/ `"polygon"`（Polygon API） | `backtest/engine.py`、`SectorRotationDailySignal.py` |
+| `value.pe_lookback_years` | `10` | P/E 百分位历史窗口（年数） | `signals/composite.py`、`signals/value.py` |
+| `value.missing_data_weight` | `0.0` | P/E 数据缺失时的分数（0 = 中性跳过） | `signals/composite.py`、`signals/value.py` |
+
+#### 3.5 加速因子（`signals.acceleration`）
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `enabled` | `true` | 是否启用动量加速度奖励分 | `signals/composite.py` |
+| `lookback_months` | `3` | 短期加速度回看窗口（月数） | `signals/composite.py` |
+| `weight_boost` | `0.05` | 高加速度板块的复合分数加成 | `signals/composite.py` |
+
+#### 3.6 Regime 检测（`signals.regime`）
+
+**基础阈值**
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `method` | `"rules"` | Regime 检测方法：`"rules"`（规则型）或 `"hmm"`（需要 hmmlearn） | `backtest/engine.py`、`SectorRotationDailySignal.py` |
+| `vix_high_threshold` | `25.0` | VIX > 此值 → risk-off | `signals/regime.py`、`SectorRotationDailySignal.py` |
+| `vix_extreme_threshold` | `35.0` | VIX > 此值 → 紧急去风险（emergency de-risk） | `signals/regime.py`、`backtest/engine.py` |
+| `hy_spread_high_bps` | `450` | HY OAS > 此值（bps）→ 信用压力信号 | `signals/regime.py` |
+| `yield_curve_inversion` | `-0.10` | 10Y-2Y 利差 < 此值 → 收益率曲线倒挂警告 | `signals/regime.py` |
+| `ism_expansion` | `50.0` | ISM > 此值 → 扩张期，否则收缩期 | `signals/regime.py` |
+
+**Regime 条件信号乘数（`signals.regime.regime_weights`）**
+
+| Regime 状态 | `cs_mom` 乘数 | `ts_mom` 乘数 | `value` 乘数 | 说明 |
+|---|---|---|---|---|
+| `risk_on` | `1.0` | `1.0` | `1.0` | 全信号标准权重 |
+| `risk_off` | `0.6` | `0.8` | `1.2` | 压制动量（恐慌中拥挤效应），提升估值可靠性 |
+| `transition_up` | `1.2` | `1.0` | `0.8` | 强化动量（上升周期领头板块），减弱估值偏差 |
+| `transition_down` | `0.7` | `0.9` | `1.1` | 保守动量，提升估值防守性 |
+
+**防御板块配置**
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `defensive_sectors` | `["XLU", "XLP", "XLV"]` | risk_off 时获得 Z-score 加分的防御板块 | `signals/composite.py`、`SectorRotationDailySignal.py` |
+| `defensive_bonus_risk_off` | `0.3` | risk_off 状态下防御板块的 Z-score 加分幅度 | `signals/composite.py`、`SectorRotationDailySignal.py` |
+
+---
+
+### 四、投资组合参数 `portfolio`
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `optimizer` | `"inv_vol"` | 权重优化方法：`"inv_vol"`、`"risk_parity"`、`"gmv"`、`"mvo"`、`"equal_weight"` | `backtest/engine.py`、`portfolio/optimizer.py` |
+| `cov.method` | `"ledoit_wolf"` | 协方差估计方法：`"ledoit_wolf"`、`"oas"`、`"structured_pca"`、`"sample"` | `backtest/engine.py`、`portfolio/optimizer.py` |
+| `cov.lookback_days` | `252` | 协方差估计滚动窗口（交易日数） | `backtest/engine.py`、`portfolio/optimizer.py` |
+| `cov.min_periods` | `63` | 协方差估计所需最少观测日数 | `portfolio/optimizer.py` |
+| `constraints.max_weight` | `0.40` | 单个板块最大权重（防止 XLK 等过度集中） | `backtest/engine.py`、`portfolio/risk.py`、`portfolio/optimizer.py` |
+| `constraints.min_weight` | `0.00` | 单个板块最小权重（0 = 允许空仓） | `backtest/engine.py`、`portfolio/optimizer.py` |
+| `constraints.max_cash` | `0.50` | 最大现金比例，实际由 `emergency_cash_pct` 控制 | 文档参数 |
+| `constraints.beta_min` | `0.70` | 组合相对 SPY 的最低 beta（放宽后优化器自由度更高） | `portfolio/risk.py` |
+| `constraints.beta_max` | `1.10` | 组合相对 SPY 的最高 beta | `portfolio/risk.py` |
+| `top_n_sectors` | `4` | 持有的核心板块数量（复合分最高的前 N 个） | `backtest/engine.py`、`portfolio/optimizer.py` |
+| `min_zscore` | `-0.5` | 分配权重所需最低复合 Z-score（低于此值 → 0 仓位） | `backtest/engine.py`、`portfolio/optimizer.py` |
+| `weight_scheme` | `"rank"` | 权重缩放方式：`"rank"` 或 `"zscore_softmax"` | `portfolio/optimizer.py` |
+
+---
+
+### 五、调仓参数 `rebalance`
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `frequency` | `"monthly"` | 调仓频率：`"monthly"` 或 `"biweekly"` | `SectorRotationDailySignal.py` |
+| `rebalance_day` | `"first_trading_day"` | 月内调仓时间：`"first_trading_day"` 或 `"last_trading_day"` | `SectorRotationDailySignal.py` |
+| `zscore_change_threshold` | `0.5` | Z-score 变化 < 此值时跳过该板块调仓（降低无效换手） | `backtest/engine.py`、`SectorRotationDailySignal.py`、`portfolio/rebalance.py` |
+| `emergency_derisk_vix` | `32.0` | VIX 超过此值触发紧急去风险（强制至 50% 现金）| `backtest/engine.py`、`SectorRotationDailySignal.py`、`portfolio/risk.py` |
+| `emergency_cash_pct` | `0.50` | 紧急去风险时的目标现金比例 | `backtest/engine.py`、`SectorRotationDailySignal.py`、`portfolio/risk.py` |
+| `max_monthly_turnover` | `0.80` | 单侧最大月度换手率上限（超过则混合新旧权重降低冲击） | `backtest/engine.py`、`SectorRotationDailySignal.py`、`portfolio/rebalance.py` |
+| `vix_recovery_factor` | `0.80`（代码硬编码，未暴露至 yaml） | 紧急状态解除所需 VIX 降至阈值的比例（如阈值 32，恢复线 = 32 × 0.80 = 25.6） | `SectorRotationDailySignal.py` |
+
+---
+
+### 六、风险管理参数 `risk`
+
+#### 6.1 波动率缩放（`risk.vol_scaling`）
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `enabled` | `true` | 是否启用波动率缩放（realized vol 过高时缩减仓位） | `backtest/engine.py`、`portfolio/risk.py` |
+| `target_vol_annual` | `0.12` | 目标年化波动率（12%）；超目标时等比缩减权重 | `backtest/engine.py`、`portfolio/risk.py` |
+| `estimation_window` | `20` | 计算实际波动率的滚动窗口（交易日） | `backtest/engine.py`、`portfolio/risk.py` |
+| `scale_threshold` | `1.5` | 仅当 `realized_vol > threshold × historical_avg` 时触发缩放（避免过度调整） | `backtest/engine.py`、`portfolio/risk.py` |
+| `historical_window` | `252` | 计算历史平均波动率的窗口（交易日，约 1 年） | `backtest/engine.py`、`portfolio/risk.py` |
+
+#### 6.2 回撤熔断器（`risk.drawdown`）
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `monthly_dd_alert` | `-0.08` | 单月回撤超过此值时记录警告日志（不触发自动操作） | 文档参数 |
+| `cumulative_dd_halve` | `-0.20` | 累计回撤超过此值 → 仓位减半（COVID 级别极端事件才触发） | `backtest/engine.py`、`portfolio/risk.py` |
+| `cumulative_dd_recovery` | `-0.10` | 累计回撤恢复至此值 → 解除熔断 | 文档参数 |
+
+#### 6.3 渐进式 VIX 去风险（`risk.vix_progressive_derisk`）
+
+> 在 `emergency_derisk_vix` 触发前，通过阶梯现金配置逐步降低风险敞口。与紧急去风险独立运作。
+
+| 参数 | 当前值 | 说明 | 引用 |
+|---|---|---|---|
+| `enabled` | `true` | 启用阶梯式现金增加（代替单一硬切） | `backtest/engine.py`、`portfolio/risk.py` |
+| `tiers[0]` | `{vix_above: 28, cash_pct: 0.15}` | 第一档：VIX > 28 → 持有 15% 现金 | `portfolio/risk.py` |
+| `tiers[1]` | `{vix_above: 32, cash_pct: 0.35}` | 第二档：VIX > 32 → 持有 35% 现金 | `portfolio/risk.py` |
+
+VIX 完整阶梯：
+
+```
+VIX < 28  → 0% cash（全仓）
+VIX ≥ 28  → 15% cash
+VIX ≥ 32  → 35% cash
+VIX ≥ 35  → 50% cash（emergency_derisk_vix 触发）
+```
+
+---
+
+### 七、回测参数 `backtest`
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `start_date` | `"2018-07-01"` | 回测起始日（不能早于 XLC 上市日，否则 11 板块宇宙不完整） | `backtest/engine.py` |
+| `end_date` | `null` | 回测截止日，`null` = 最新可用数据 | `backtest/engine.py` |
+| `initial_capital` | `1_000_000.0` | 初始资本（美元） | `backtest/engine.py`、`SectorRotationDailySignal.py` |
+| `is_years` | `3` | Walk-forward 中样本期长度（年） | `backtest/engine.py` |
+| `oos_months` | `12` | Walk-forward 样本外评估期（月） | `backtest/engine.py` |
+| `walk_forward.enabled` | `false` | 是否启用 walk-forward 验证 | `backtest/engine.py` |
+| `walk_forward.step_months` | `6` | Walk-forward 窗口每次滚动步长（月） | `backtest/engine.py` |
+
+---
+
+### 八、交易成本参数 `costs`
+
+| 参数 | 默认值 | 说明 | 引用 |
+|---|---|---|---|
+| `tier_1_tickers` | `["XLE", "XLK", "XLF", "XLV"]` | 流动性最高（日均成交量 $1B+），单向成本 3 bps | `backtest/costs.py` |
+| `tier_2_tickers` | `["XLB", "XLI", "XLY", "XLP", "XLU"]` | 中等流动性，单向成本 5 bps | `backtest/costs.py` |
+| `tier_3_tickers` | `["XLC", "XLRE"]` | 流动性较低，单向成本 8 bps | `backtest/costs.py` |
+| `tier_1_cost_bps` | `3` | Tier 1 单向交易成本（价差 + 市场冲击，bps） | `backtest/costs.py` |
+| `tier_2_cost_bps` | `5` | Tier 2 单向交易成本 | `backtest/costs.py` |
+| `tier_3_cost_bps` | `8` | Tier 3 单向交易成本 | `backtest/costs.py` |
+| `etf_fee_bps` | `9` | ETF 年管理费（bps），逐日从收益中扣除（9 bps ≈ SPDR 平均 expense ratio） | `backtest/costs.py`、`backtest/engine.py`、`SectorRotationDailySignal.py` |
+
+---
+
+### 九、报告参数 `report`
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `output_dir` | `"report/output"` | Tearsheet PDF 输出目录 |
+| `figsize` | `[14, 8]` | 图表尺寸（英寸） |
+| `dpi` | `150` | 图表分辨率 |
+| `pdf_filename` | `"sector_rotation_tearsheet.pdf"` | PDF 报告文件名 |
+| `strategy_color` | `"#1f77b4"` | 策略曲线颜色 |
+| `benchmark_color` | `"#ff7f0e"` | 基准曲线颜色 |
+| `ew_color` | `"#2ca02c"` | 等权基准曲线颜色 |
+
+---
+
+### 十、代码内硬编码常量
+
+> 以下常量未暴露至 `config.yaml`，如需调整须直接修改对应 `.py` 文件。
+
+#### `SectorRotationDailySignal.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `REBALANCE_THRESHOLD` | `0.03` | `:93` | 权重变化 < 3% 时不触发该板块调仓（独立于 `zscore_change_threshold`） |
+| `cache_max_age_hours` | `8.0` | `:238` | 价格/宏观数据缓存过期时间（小时） |
+| `macro warmup min_rows` | `252` | `:210` | 宏观数据可用前至少需要 1 年历史 |
+
+#### `signals/regime.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `rolling_window` | `252` | `:77` | 宏观指标 Z-score 标准化的滚动窗口（交易日） |
+| `min_periods` | `63` | `:78` | 标准化所需最少观测日数 |
+| `smoothing_days` | `5` | `:248, 314` | Regime 标签滚动众数平滑天数（减少信号抖动） |
+
+#### `portfolio/risk.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `beta_window` | `252` | `:158` | OLS 回归估计 beta 的滚动窗口（交易日） |
+| `beta_min_periods` | `20` | `:170` | Beta 估计所需最少观测日数 |
+| `beta_mix_alpha max` | `0.3` | `:413` | Beta 调整时向等权混合的最大比例（30%） |
+| `concentration max_iter` | `100` | `:382` | 权重约束的 water-filling 迭代次数 |
+
+#### `portfolio/optimizer.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `num_factors` | `3` | `:156, 218, 438` | `structured_pca` 协方差估计的因子数 |
+| `risk_parity max_iter` | `500` | `:319` | Risk parity 优化器最大迭代次数 |
+| `risk_parity tol` | `1e-8` | `:320` | Risk parity 收敛容差 |
+| `gmv max_iter` | `500` | `:390` | GMV scipy 优化最大迭代次数 |
+| `gmv ftol` | `1e-9` | `:390` | GMV 函数容差 |
+
+#### `signals/momentum.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `accel_short` | `3` | `:165` | 加速度因子短期回看（月） |
+| `accel_long` | `12` | `:166` | 加速度因子长期回看（月） |
+
+#### `signals/value.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `PE max cap` | `300` | `:323` | 异常 P/E 上限截断值（防止极端值扭曲百分位） |
+| `PE percentile min_periods` | `24` | `:669` | P/E 百分位计算所需最少历史季度数 |
+| `yfinance pause_sec` | `0.3` | `:191` | yfinance API 调用间隔（秒，限流） |
+| `Polygon pause_sec` | `0.2` | `:223` | Polygon API 调用间隔（秒，限流） |
+
+#### `data/universe.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `UNIVERSE_START` | `date(2018, 7, 1)` | `:32` | 最早有效日期（与 `universe.universe_start` 保持一致） |
+| `GICS_COMMSVCS_BREAK` | `date(2018, 9, 28)` | `:35` | XLC 成分股重组日期（GICS 结构性断点） |
+
+#### `data/loader.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `cache_max_age_hours` | `8.0` | `:188, 414` | 默认缓存过期时间（小时） |
+| `monthly ff fill limit` | `31` | `:488` | 月频数据前向填充最大天数 |
+| `weekly ff fill limit` | `7` | `:490` | 周频数据前向填充最大天数 |
+| `daily ff fill limit` | `5` | `:493` | 日频数据前向填充最大天数 |
+
+#### `backtest/metrics.py`
+
+| 常量 | 值 | 位置 | 说明 |
+|---|---|---|---|
+| `periods_per_year` | `252` | `:87–237` | 年化收益率计算所用的每年交易日数 |
+| `SUBPERIODS` | 固定日期列表 | `:594–600` | 子期分析固定分段：Pre-COVID Bull / COVID Crash / Recovery / Rate Hike / Post-Hike |
+
+---
+
+### 参数总览
+
+| 类别 | `config.yaml` 参数数 | 代码内硬编码常量 |
+|---|---|---|
+| 数据（`data`） | 9 | 3 |
+| 标的（`universe`） | 3 | 2 |
+| 信号权重（`signals.weights`） | 4 | — |
+| 截面 / 时序动量 | 5 | 3 |
+| 相对估值 | 3 | 4 |
+| 加速因子 | 3 | — |
+| Regime 检测 | 14 | 3 |
+| 投资组合（`portfolio`） | 9 | 5 |
+| 调仓（`rebalance`） | 7 | 1 |
+| 风险管理（`risk`） | 8 | 3 |
+| 回测（`backtest`） | 7 | — |
+| 交易成本（`costs`） | 7 | 1 |
+| 报告（`report`） | 7 | — |
+| **合计** | **~86** | **~25** |
+
+---
+
 ## Cron 定时任务
 
 ```cron
