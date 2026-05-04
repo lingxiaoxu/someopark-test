@@ -101,8 +101,14 @@ YF_TICKERS = {
 
 # FRED 序列：(series_id, natural_freq)
 FRED_SERIES = {
-    'hy_spread':     ('BAMLH0A0HYM2', 'D'),
-    'ig_spread':     ('BAMLC0A0CM',   'D'),
+    # ICE BofA HY/IG series (BAMLH0A0HYM2 / BAMLC0A0CM) had their FRED history
+    # revoked in 2023 due to ICE licensing changes — data only available 2023-05+.
+    # baa_spread (Moody's Baa-10yr Treasury, BAA10Y, daily since 1986) is kept
+    # as the long-history credit-stress proxy used in SIMILARITY_FEATURES.
+    # hy_spread / ig_spread are retained for monitoring but NOT in SIMILARITY_FEATURES.
+    'baa_spread':    ('BAA10Y',       'D'),   # Moody's Baa-10yr Treasury spread (1986+)
+    'hy_spread':     ('BAMLH0A0HYM2', 'D'),   # ICE BofA HY OAS (2023-05+ only)
+    'ig_spread':     ('BAMLC0A0CM',   'D'),   # ICE BofA IG OAS (2023-05+ only)
     'yield_curve':   ('T10Y2Y',       'D'),
     'effr':          ('EFFR',         'D'),
     'breakeven_10y': ('T10YIE',       'D'),
@@ -131,6 +137,7 @@ FRED_SERIES = {
 #   USREC：FRED 的 USREC 序列基于 NBER 月度分类，实际更新滞后约 45-60 天
 #          （不同于 NBER 官方衰退声明，后者滞后数月至 1 年以上）
 FRED_RELEASE_LAG: dict[str, int] = {
+    'baa_spread':    1,
     'hy_spread':     1,
     'ig_spread':     1,
     'yield_curve':   1,
@@ -167,6 +174,7 @@ STAT_INDICATORS = {
     'uup_20d':   ('yf_ret', 'D'),
     'tnx':       ('yf_raw', 'D'),
     # FRED
+    'baa_spread':    ('fred', 'D'),
     'hy_spread':     ('fred', 'D'),
     'ig_spread':     ('fred', 'D'),
     'yield_curve':   ('fred', 'D'),
@@ -186,7 +194,8 @@ STAT_INDICATORS = {
 SCALAR_INDICATORS = [
     'vix_z',          # VIX 252d rolling z-score
     'move_z',         # MOVE 252d rolling z-score
-    'hy_spread_z',
+    'baa_spread_z',   # Moody's Baa-Treasury spread z-score (1986+, used in SIMILARITY_FEATURES)
+    'hy_spread_z',    # ICE BofA HY OAS z-score (2023+ only, not in SIMILARITY_FEATURES)
     'yield_curve_z',
     'fin_stress_z',
     'effr_yoy',       # EFFR YoY change
@@ -199,7 +208,7 @@ SCALAR_INDICATORS = [
 # MCPS 相似度计算用的核心特征（经 F-ratio + 时间趋势 + 三日区分力分析确定，2026-04-21）
 SIMILARITY_FEATURES = [
     'fin_stress_z',   # 金融压力 z-score（F=0.95，无趋势，关键压力区分）
-    'hy_spread_z',    # 高收益利差 z-score（F=0.86，无趋势，信用条件）
+    'baa_spread_z',   # Moody's Baa-Treasury spread z-score（替代 hy_spread_z，1986+ 完整历史）
     'xlk_spy_z',      # 科技/成长相对强度（F=3.78，最有效 SIGNAL）
     'vix_z',          # 波动率制度（F=0.64，last30 捕捉高 vol 环境）
     'breakeven_10y',  # 通胀盈亏平衡（F=2.45，日频，通胀预期）
@@ -605,6 +614,7 @@ class MacroStateStore:
             cutoff = ts - pd.Timedelta(days=lag)
             return s[s.index <= cutoff].dropna()
 
+        baa_s  = _fred_pit('baa_spread')
         hy_s   = _fred_pit('hy_spread')
         yc_s   = _fred_pit('yield_curve')
         fs_s   = _fred_pit('fin_stress')
@@ -612,6 +622,7 @@ class MacroStateStore:
 
         row['vix_z']         = _z_at(vix_s)
         row['move_z']        = _z_at(move_s)
+        row['baa_spread_z']  = _z_at(baa_s)
         row['hy_spread_z']   = _z_at(hy_s)
         row['yield_curve_z'] = _z_at(yc_s)
         row['fin_stress_z']  = _z_at(fs_s)

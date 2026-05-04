@@ -6,7 +6,7 @@ SectorRotationStrategyRuns.py through the backtest engine and
 collects results into a ranked summary table.
 
 Data is loaded ONCE and shared across all runs for efficiency.
-A single full backtest run takes ~5-10 s; 55 sets ≈ 5-10 min total.
+A single full backtest run takes ~5-10 s; 59 sets ≈ 5-10 min total.
 
 Usage
 -----
@@ -143,7 +143,7 @@ def _extract_metrics(result) -> dict:
         n_pos = (result.weights_history > 0.001).sum(axis=1)
         row["avg_positions"] = float(n_pos.mean())
 
-    # Recent 12-month Sharpe (last 252 trading days) — OOS proxy for --select
+    # Recent 12-month Sharpe (last 252 trading days) — OOS proxy / fallback for --select
     row["recent_sharpe_12m"] = float("nan")
     if result.equity_curve is not None and len(result.equity_curve) > 63:
         ec_tail = result.equity_curve.tail(252)
@@ -152,6 +152,66 @@ def _extract_metrics(result) -> dict:
             row["recent_sharpe_12m"] = float(rets.mean() / rets.std() * (252 ** 0.5))
 
     return row
+
+
+# ---------------------------------------------------------------------------
+# Macro-conditioned Sharpe (used by --select when MacroStateStore is available)
+# ---------------------------------------------------------------------------
+
+def _macro_cond_sharpe(
+    equity: pd.Series,
+    macro_df: pd.DataFrame,
+    today_vec: dict,
+    features: list,
+    min_overlap: int = 60,
+) -> float:
+    """
+    Gaussian-kernel-weighted Sharpe ratio for macro-conditioned param selection.
+
+    For each historical trading day t, weight w_t = exp(-||v_today - v_t||² / 2σ²)
+    where σ = median(||v_today - v_t||) across all valid days.
+    Days whose macro state is similar to today's contribute more to the Sharpe.
+
+    Returns nan when overlap < min_overlap or today's vector has missing features.
+    """
+    avail = [f for f in features if f in macro_df.columns]
+    if not avail:
+        return float("nan")
+
+    rets = equity.pct_change().dropna()
+    sub  = macro_df[avail].dropna(how="any")   # only rows with full feature set
+    rets = rets.reindex(sub.index).dropna()
+    sub  = sub.reindex(rets.index)
+
+    if len(rets) < min_overlap:
+        return float("nan")
+
+    # Today's vector must be complete (no None / NaN features)
+    today_v = [today_vec.get(f) for f in avail]
+    if any(v is None or (isinstance(v, float) and v != v) for v in today_v):
+        return float("nan")
+    today_arr = np.array([float(v) for v in today_v])
+
+    macro_mat = sub.values                            # (n_days, n_features)
+    diffs     = macro_mat - today_arr                 # broadcast subtract today
+    dists     = np.sqrt((diffs ** 2).sum(axis=1))     # Euclidean distance per day
+
+    # Adaptive σ = median distance from today to all historical points
+    sigma = float(np.median(dists))
+    sigma = max(sigma, 1e-3)
+
+    weights = np.exp(-(dists ** 2) / (2.0 * sigma ** 2))
+    total_w = float(weights.sum())
+    if total_w <= 0:
+        return float("nan")
+
+    rets_arr = rets.values
+    wmean = float((weights @ rets_arr) / total_w)
+    wvar  = float((weights @ (rets_arr - wmean) ** 2) / total_w)
+    if wvar <= 0:
+        return float("nan")
+
+    return float(wmean / np.sqrt(wvar) * np.sqrt(252))
 
 
 # ---------------------------------------------------------------------------
@@ -466,7 +526,7 @@ def main() -> None:
         desc_short = _PARAM_SET_DESCRIPTIONS.get(name, name)[:55]
         print(f"  [{i:>2}/{len(run_sets)}] {name:<28} {desc_short}", end="", flush=True)
 
-        if args.save_equity:
+        if args.save_equity or args.select:
             row, eq = _run_one_with_equity(name, base_cfg, prices, macro)
             if not eq.empty:
                 equity_frames.append(eq)
@@ -532,30 +592,88 @@ def main() -> None:
     # ── Select best param set for production (--select) ──────────────────────
     if args.select and not ok.empty:
         import json as _json
-        ok_sel = ok.dropna(subset=["recent_sharpe_12m"])
-        if ok_sel.empty:
-            print("\n  [SELECT] No recent_sharpe_12m data — skipping selection.")
+        import math as _math
+
+        _best_ps:   "str | None"           = None
+        _best_row:  "pd.Series | None"     = None
+        _sel_method                        = "recent_sharpe_12m"
+        _sel_val                           = float("nan")
+        _macro_cond: "dict[str, float]"    = {}
+        _macro_df                          = pd.DataFrame()
+
+        # ── Attempt macro-conditioned Sharpe ──────────────────────────────────
+        try:
+            if str(_PROJECT_DIR) not in sys.path:
+                sys.path.insert(0, str(_PROJECT_DIR))
+            from MacroStateStore import MacroStateStore as _MSS          # type: ignore
+            from MacroStateStore import SIMILARITY_FEATURES as _SF       # type: ignore
+            _store   = _MSS()
+            _today_v = _store.get(datetime.now().date())
+            if any(v is not None for v in _today_v.values()):
+                _bs = base_cfg.get("backtest", {}).get("start_date", "2018-07-01")
+                _macro_df = _store.load(_bs)
+                if not _macro_df.empty:
+                    _eq_map = {s.name: s for s in equity_frames if not s.empty}
+                    for _ps, _eq in _eq_map.items():
+                        _macro_cond[_ps] = _macro_cond_sharpe(
+                            _eq, _macro_df, _today_v, _SF
+                        )
+        except Exception as _e:
+            log.warning(f"[SELECT] MacroStateStore unavailable: {_e}")
+
+        _valid_mcs = {k: v for k, v in _macro_cond.items() if not _math.isnan(v)}
+
+        if len(_valid_mcs) >= 3:
+            # Primary path: macro-conditioned Sharpe
+            _best_ps    = max(_valid_mcs, key=_valid_mcs.get)
+            _best_row   = ok[ok["param_set"] == _best_ps].iloc[0]
+            _sel_method = "macro_cond_sharpe"
+            _sel_val    = round(_valid_mcs[_best_ps], 4)
         else:
-            best_sel = ok_sel.loc[ok_sel["recent_sharpe_12m"].idxmax()]
+            # Fallback: best recent 12m Sharpe
+            _ok_r = ok.dropna(subset=["recent_sharpe_12m"])
+            if not _ok_r.empty:
+                _best_row   = _ok_r.loc[_ok_r["recent_sharpe_12m"].idxmax()]
+                _best_ps    = _best_row["param_set"]
+                _sel_method = "recent_sharpe_12m"
+                _sel_val    = round(float(_best_row["recent_sharpe_12m"]), 4)
+
+        if _best_ps is None:
+            print("\n  [SELECT] No valid selection possible — skipping.")
+        else:
+            _n_macro = len(_macro_df)
+            # Include recent_sharpe_12m for reference even when MCPS is active
+            _ref_r = ok[ok["param_set"] == _best_ps]["recent_sharpe_12m"]
+            _recent_sr_ref = round(float(_ref_r.iloc[0]), 4) if not _ref_r.empty else None
+
             sel_info = {
-                "param_set":          best_sel["param_set"],
-                "recent_sharpe_12m":  round(float(best_sel["recent_sharpe_12m"]), 4),
-                "full_period_sharpe": round(float(best_sel["sharpe"]), 4),
-                "full_period_calmar": round(float(best_sel["calmar"]), 4),
+                "param_set":          _best_ps,
+                "selection_method":   _sel_method,
+                _sel_method:          _sel_val,
+                "recent_sharpe_12m":  _recent_sr_ref,
+                "full_period_sharpe": round(float(_best_row["sharpe"]), 4),
+                "full_period_calmar": round(float(_best_row["calmar"]), 4),
                 "selected_at":        datetime.now().strftime("%Y-%m-%d"),
-                "n_candidates":       int(len(ok_sel)),
+                "n_candidates":       int(len(_valid_mcs) if _valid_mcs else len(ok)),
+                "macro_data_days":    _n_macro,
             }
             # Write to backtest_results/ (archive) AND sector_rotation/ (production)
             archive_path = out_dir / "selected_param_set.json"
             prod_path    = _THIS_DIR / "selected_param_set.json"
             for p in (archive_path, prod_path):
                 p.write_text(_json.dumps(sel_info, indent=2))
+
             print(f"\n{'═'*60}")
-            print(f"  [SELECT] Best param set (recent 12m Sharpe ranking):")
-            print(f"  Param set  : {sel_info['param_set']}")
-            print(f"  Recent SR  : {sel_info['recent_sharpe_12m']:.3f}  "
-                  f"(full-period: {sel_info['full_period_sharpe']:.3f})")
-            print(f"  Candidates : {sel_info['n_candidates']}")
+            print(f"  [SELECT] Best param set  : {_best_ps}")
+            print(f"  Method     : {_sel_method}  = {_sel_val:.3f}")
+            if _sel_method == "macro_cond_sharpe":
+                _mc0 = _macro_df.index[0].date() if _n_macro else "?"
+                _mc1 = _macro_df.index[-1].date() if _n_macro else "?"
+                print(f"  Macro days : {_n_macro}  ({_mc0} → {_mc1})")
+            else:
+                print(f"  Macro days : {_n_macro}  (insufficient for MCPS — "
+                      f"run 'MacroStateStore.py --init --start 2017-01-01')")
+            print(f"  Full-period Sharpe : {sel_info['full_period_sharpe']:.3f}")
             print(f"  Written to : {prod_path}")
             print(f"  → DailySignal will use this param set on next run")
             print(f"{'═'*60}\n")
