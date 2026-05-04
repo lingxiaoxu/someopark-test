@@ -1,8 +1,11 @@
 {
-  "param_set": "ultra_selective",
-  "recent_sharpe_12m": 2.2088,
-  "full_period_sharpe": 0.9526,
-  "full_period_calmar": 0.5986,
+  "param_set": "tight_beta_tracker",
+  "selection_method": "macro_cond_sharpe",
+  "macro_cond_sharpe": 1.0971,
+  "recent_sharpe_12m": 1.9651,
+  "full_period_sharpe": 1.0196,
+  "full_period_calmar": 0.653,
   "selected_at": "2026-05-04",
-  "n_candidates": 59
+  "n_candidates": 59,
+  "macro_data_days": 1970
 }
