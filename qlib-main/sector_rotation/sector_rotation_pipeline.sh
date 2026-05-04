@@ -22,6 +22,11 @@
 #                 e.g.: bash ... eps-symbols XOM CVX AAPL NVDA
 #   backtest      Full IS/OOS historical backtest (2018-07-01 → today)
 #   sensitivity   Parameter sensitivity sweep (top_n_sectors etc., via sensitivity.py)
+#   batch         Run all 59 named param sets (SectorRotationBatchRun.py) → CSV + Excel
+#                 Options: --group A B L  --sets default momentum_heavy  --sort-by calmar
+#                          --save-equity  --no-excel  --select
+#   select        batch --select shorthand: run all 59 sets + write selected_param_set.json
+#                 → DailySignal picks this param set on next daily/weekly/monthly run
 #   regime        Regime analysis report — 4-state labels + summary (regime.py)
 #   tearsheet     Backtest + generate multi-page PDF performance tearsheet
 #   test          Run pytest suite (95 tests, fully network-free synthetic data)
@@ -51,6 +56,10 @@
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh eps-update
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh eps-symbols XOM CVX AAPL MSFT
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh backtest
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --group L
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --sets default tech_bull_2023 crisis_defense
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --save-equity --sort-by calmar
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh sensitivity
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh regime
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
@@ -434,6 +443,44 @@ sensitivity)
     ;;
 
 # ─────────────────────────────────────────────────────────────────────────────
+# BATCH — Run all 59 named parameter sets and produce ranked summary
+# Passes all remaining args directly to SectorRotationBatchRun.py:
+#   --group A B L    run only those groups
+#   --sets name ...  run only named sets
+#   --sort-by calmar sort results by calmar instead of sharpe
+#   --save-equity    also save all 59 daily equity curves
+#   --no-excel       skip Excel export (faster)
+#   --select         also write selected_param_set.json for production use
+# Output: backtest_results/sr_batch_summary_<timestamp>.csv + .xlsx
+# ─────────────────────────────────────────────────────────────────────────────
+batch)
+    log "Mode: BATCH  (59 param sets via SectorRotationBatchRun.py  args: $*)"
+    set -a && source "$REPO/.env" && set +a
+    PYTHONPATH="$REPO/qlib-main" $CONDA_QLIB python \
+        qlib-main/sector_rotation/SectorRotationBatchRun.py "$@" \
+        2>&1 | tee -a "$LOGFILE"
+    RC=${PIPESTATUS[0]}
+    if [[ $RC -ne 0 ]]; then log_fail "STEP 1 (SectorRotationBatchRun) exit=$RC"; exit $RC; fi
+    log_section "BATCH RUN COMPLETE — see backtest_results/ for CSV + Excel"
+    ;;
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SELECT — Run all 59 param sets + select best by recent 12m Sharpe
+# Writes sector_rotation/selected_param_set.json consumed by DailySignal.
+# Run quarterly (or after major market regime shifts) to keep production current.
+# ─────────────────────────────────────────────────────────────────────────────
+select)
+    log "Mode: SELECT  (59 param sets → select best → selected_param_set.json)"
+    set -a && source "$REPO/.env" && set +a
+    PYTHONPATH="$REPO/qlib-main" $CONDA_QLIB python \
+        qlib-main/sector_rotation/SectorRotationBatchRun.py --select "$@" \
+        2>&1 | tee -a "$LOGFILE"
+    RC=${PIPESTATUS[0]}
+    if [[ $RC -ne 0 ]]; then log_fail "STEP 1 (SectorRotationBatchRun --select) exit=$RC"; exit $RC; fi
+    log_section "SELECT COMPLETE — selected_param_set.json updated"
+    ;;
+
+# ─────────────────────────────────────────────────────────────────────────────
 # REGIME — Print current and historical regime analysis
 # Runs regime.py standalone: computes 4-state regime labels, prints summary.
 # Useful for debugging regime detection or reviewing regime history.
@@ -667,7 +714,7 @@ help)
     echo "Unknown mode: $MODE"
     echo ""
     echo "Available: daily | weekly | monthly | eps-update | eps-full | eps-symbols |"
-    echo "           backtest | sensitivity | regime | tearsheet | test |"
+    echo "           backtest | batch | select | sensitivity | regime | tearsheet | test |"
     echo "           dry-run | status | signal-raw | help"
     exit 1
     ;;

@@ -1,0 +1,8 @@
+{
+  "param_set": "ultra_selective",
+  "recent_sharpe_12m": 2.2088,
+  "full_period_sharpe": 0.9526,
+  "full_period_calmar": 0.5986,
+  "selected_at": "2026-05-04",
+  "n_candidates": 59
+}

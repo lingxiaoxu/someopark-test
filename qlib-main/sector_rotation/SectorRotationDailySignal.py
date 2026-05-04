@@ -604,6 +604,32 @@ def run_daily_signal(
 
     # ── 1. Load config ────────────────────────────────────────────
     cfg = load_config(config_path or CONFIG_PATH)
+
+    # ── 1b. Apply selected param set (written by SectorRotationBatchRun --select)
+    _sel_path = CONFIG_PATH.parent / "selected_param_set.json"
+    if _sel_path.exists():
+        try:
+            from sector_rotation.SectorRotationStrategyRuns import (
+                PARAM_SETS as _PARAM_SETS,
+                apply_param_set as _apply_param_set,
+            )
+            _sel = json.loads(_sel_path.read_text())
+            _ps_name = _sel.get("param_set")
+            if _ps_name and _ps_name in _PARAM_SETS:
+                cfg = _apply_param_set(cfg, _PARAM_SETS[_ps_name])
+                log.info(
+                    f"[PARAM SELECT] Active: {_ps_name} | "
+                    f"recent_sr12m={_sel.get('recent_sharpe_12m', '?')} | "
+                    f"selected={_sel.get('selected_at', '?')}"
+                )
+            else:
+                log.warning(
+                    f"[PARAM SELECT] Unknown param set '{_ps_name}' in "
+                    f"selected_param_set.json — using config.yaml defaults"
+                )
+        except Exception as _e:
+            log.warning(f"[PARAM SELECT] Failed to apply selected_param_set.json: {_e}")
+
     etf_tickers = cfg["universe"]["etfs"]           # e.g. ["XLE", "XLB", ...]
     benchmark   = cfg["universe"]["benchmark"]      # "SPY"
     port_cfg    = cfg.get("portfolio", {})

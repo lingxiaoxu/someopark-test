@@ -69,3 +69,4 @@ mlruns/
 # Sector rotation: generated outputs
 qlib-main/sector_rotation/report/output/
 qlib-main/sector_rotation/logs/
+qlib-main/sector_rotation/backtest_results/
