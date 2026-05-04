@@ -579,22 +579,45 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
             s2_leg = build_leg_dict(s2, s2_shares, s2_price if not np.isnan(s2_price) else None)
         return {'leg_s1': s1_leg, 'leg_s2': s2_leg}
 
+    # ── Compute unrealized PnL for CLOSE actions using real inventory prices ──
+    def _compute_close_upnl(direction: str) -> tuple:
+        """Return (unrealized_pnl, unrealized_pnl_pct) for a closing position."""
+        open_p1 = inv_pair.get('open_s1_price')
+        open_p2 = inv_pair.get('open_s2_price')
+        inv_s1  = inv_pair.get('s1_shares', 0)
+        inv_s2  = inv_pair.get('s2_shares', 0)
+        if not (open_p1 and open_p2 and not np.isnan(s1_price) and not np.isnan(s2_price)):
+            return None, None
+        if direction == 'long':
+            upnl = (s1_price - open_p1) * abs(inv_s1) - (s2_price - open_p2) * abs(inv_s2)
+        else:
+            upnl = (open_p1 - s1_price) * abs(inv_s1) + (s2_price - open_p2) * abs(inv_s2)
+        cost_basis = open_p1 * abs(inv_s1) + open_p2 * abs(inv_s2)
+        upnl_pct = round(upnl / cost_basis * 100, 3) if cost_basis > 0 else None
+        return round(upnl * scale_factor, 2), upnl_pct
+
     # CLOSE (stop loss)
     if stop_triggered and (in_long or in_short) and inv_direction:
+        upnl, upnl_pct = _compute_close_upnl(inv_direction)
         d = {**base, 'action': 'CLOSE_STOP', 'direction': inv_direction,
              'exit_threshold': ext,
              's1_shares': s1_shares, 's2_shares': s2_shares,
              'days_held': days_held,
+             'unrealized_pnl': upnl,
+             'unrealized_pnl_pct': upnl_pct,
              'note': f'Stop loss — close {inv_direction}'}
         d.update(_legs(inv_direction))
         return d
 
     # CLOSE (normal exit)
     if not in_long and not in_short and inv_direction:
+        upnl, upnl_pct = _compute_close_upnl(inv_direction)
         d = {**base, 'action': 'CLOSE', 'direction': inv_direction,
              'exit_threshold': ext,
              's1_shares': s1_shares, 's2_shares': s2_shares,
              'days_held': days_held,
+             'unrealized_pnl': upnl,
+             'unrealized_pnl_pct': upnl_pct,
              'note': f'signal={sv} passed exit threshold {ext} — close {inv_direction}'}
         d.update(_legs(inv_direction))
         return d

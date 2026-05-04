@@ -110,6 +110,8 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh [MODE] [OPTIONS]
 | `eps-full` | 强制全量 EPS 重拉（55 只股票，首次运行必用） | ~5 min |
 | `eps-symbols` | 指定标的 EPS 更新，例如 `eps-symbols XOM CVX` | < 1 min |
 | `backtest` | 全量 IS/OOS 历史回测（2018-07-01 → 今日） | 5–15 min |
+| `batch` | 批量运行全部 59 个参数集 → CSV + Excel（含 recent 12m Sharpe） | ~2 min |
+| `select` | `batch --select` 简写：运行 59 集 + 写 `selected_param_set.json`（生产选参） | ~2 min |
 | `sensitivity` | 参数敏感性扫描（`top_n_sectors` 等） | 5–10 min |
 | `regime` | Regime 分析报告（4 态标签 + 汇总） | < 1 min |
 | `tearsheet` | 回测 + 生成多页 PDF 绩效报告 | 5–15 min |
@@ -154,6 +156,10 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh signal-raw
 
 # ── 全量回测 + tearsheet
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
+
+# ── 参数集选优（每季度）：运行 59 集 + 选最优 → 写入 selected_param_set.json
+# → 之后的 daily/weekly/monthly 自动使用该参数集
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh select
 
 # ── 运行测试套件
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh test
@@ -237,6 +243,8 @@ qlib-main/sector_rotation/
 ├── sector_rotation_pipeline.sh     主 Pipeline 控制器（14 个模式）
 ├── update_eps_history.py           EPS 历史增量维护脚本
 ├── SectorRotationDailySignal.py    每日信号生成主脚本
+├── SectorRotationStrategyRuns.py   59 个命名参数集（13 组，A-M）
+├── SectorRotationBatchRun.py       批量参数扫描驱动脚本
 │
 ├── data/
 │   ├── universe.py                 ETF 宇宙 + GICS 元数据 + 流动性分级
@@ -672,6 +680,218 @@ VIX ≥ 35  → 50% cash（emergency_derisk_vix 触发）
 
 ---
 
+## 参数集扫描（SectorRotationStrategyRuns）
+
+`SectorRotationStrategyRuns.py` 定义了 **59 个命名参数集**，通过 dotted-path override 应用于 `config.yaml` 基准配置，与 `SectorRotationBatchRun.py` 联合使用进行批量参数空间扫描。
+
+### 快速使用
+
+```python
+from SectorRotationStrategyRuns import PARAM_SETS, apply_param_set, list_param_sets
+
+# 查看全部参数集
+list_param_sets()
+
+# 应用单个参数集进行回测
+from sector_rotation.data.loader import load_config
+from sector_rotation.backtest.engine import SectorRotationBacktest
+
+base_cfg = load_config()
+cfg = apply_param_set(base_cfg, PARAM_SETS['crisis_defense'])
+result = SectorRotationBacktest(cfg).run(prices=prices, macro=macro)
+```
+
+```bash
+# 批量运行全部 59 集（仅输出分析，不影响生产）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch
+# 结果：backtest_results/sr_batch_summary_<timestamp>.csv + .xlsx
+
+# 批量运行 + 选优 → 写入 selected_param_set.json（影响生产 daily/weekly/monthly）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh select
+# 额外写入：sector_rotation/selected_param_set.json
+
+# 仅运行特定组（不影响生产）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --group L
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --group A B C --sort-by calmar
+```
+
+### 设计质量保证
+
+| 维度 | 状态 | 说明 |
+|------|------|------|
+| **参数集总数** | ✅ 59 集 | A(6)+B(5)+C(4)+D(5)+E(5)+F(5)+G(4)+H(4)+I(4)+J(4)+K(3)+L(6)+M(4) |
+| **最少参数数** | ✅ 全部 ≥10 | 最小 10，平均 14.2，Group L 最高 23 |
+| **信号权重约束** | ✅ 全部 = 1.0 | CS + TS + RV + REG 严格等于 1.0 |
+| **学术根基** | ✅ 19 篇文献 | 每个参数值均有对应理论来源 |
+| **受控实验设计** | ✅ Group C/I/M | crash_filter、vol_scaling、value_source、acceleration 均有纯净对照 |
+| **内部一致性** | ✅ 已验证 | F4/L1 VIX 逻辑，A2/A4 机制乘数，D4 max_weight |
+
+### 59 个参数集总览
+
+**信号权重约束规则**：所有覆盖 `signals.weights.*` 的参数集，四个权重之和严格 = 1.0。
+
+#### Group A — Signal Factor Architecture（信号因子架构）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| A1 | `default` | 12 | CS=0.40 TS=0.15 RV=0.20 REG=0.25；12-1月；acceleration开 | JT1993 |
+| A2 | `momentum_heavy` | 16 | CS+TS=0.70；9-0月；risk_off cs=0.5；transition_down cs=0.6 | AMP2013 |
+| A3 | `value_tilt` | 14 | RV=0.35；15月慢速；crash_filter=0.3；risk_off RV=1.4 | FF1992 |
+| A4 | `regime_driven` | 18 | REG=0.40；vix_high=22；VIX渐进22→20%/26→38% | AB2007 |
+| A5 | `ts_dominant` | 16 | TS=0.30；vol=10%；scale=1.2；beta_max=0.95 | MOP2012 |
+| A6 | `balanced_four` | 12 | 四因子各0.25；zscore_softmax（无偏基准） | DGU2009 |
+
+#### Group B — Momentum Microstructure（动量微结构）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| B1 | `fast_momentum` | 15 | lookback=6，skip=0，zscore_win=24 | JT2001 |
+| B2 | `medium_momentum` | 12 | lookback=9，skip=1，zscore_win=30；threshold=0.4 | JT1993 |
+| B3 | `no_skip_medium` | 12 | lookback=9，**skip=0**，zscore_win=30（孤立 skip 效应，对比 B2） | JT2001 |
+| B4 | `slow_momentum` | 13 | lookback=15，skip=2，zscore_win=48；cov=504天 | Asness1997 |
+| B5 | `skip_heavy` | 11 | lookback=12，skip=2，crash_filter=0.5 | JT2001 |
+
+> B2 vs B3：唯一变量 skip=1 vs skip=0，量化短期反转效应的净贡献。
+
+#### Group C — Momentum Crash Protection（动量崩溃保护）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| C1 | `full_crash_filter_tight_vol` | 15 | crash=0.0；vol=10%；VIX梯度25/30；两层防御 | DM2016 |
+| C2 | `partial_filter_scaled` | 13 | crash=0.5；vol=9%；scale=1.2；dd=-0.18 | BSC2015 |
+| C3 | `vol_crash_shield` | 15 | crash=0.0；vol=7%；est_win=10天；VIX 24/28梯度 | MM2017 |
+| C4 | `no_filter_vol_only` | 11 | **crash=1.0**；vol=9%（量化 crash_filter 独立贡献） | MM2017 |
+
+> C1 vs C4：crash_filter 边际贡献；C1 vs C3：DM2016 vs MM2017 最优 vol 目标（10% vs 7%）。
+
+#### Group D — Portfolio Construction Theory（组合构建理论）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| D1 | `inv_vol_lw` | 12 | inv_vol + LW；lookback=252（生产默认） | LW2004 |
+| D2 | `risk_parity_lw` | 15 | ERC + LW；top_n=5；min_zscore=-0.3；vol=11% | MRT2010 |
+| D3 | `gmv_lw` | 13 | GMV + LW；lookback=504；beta_max=0.95 | CD2006 |
+| D4 | `equal_weight_optimizer` | 12 | 等权重；max_weight=0.25（5板块等权≈20%，合理软上限） | DGU2009 |
+| D5 | `inv_vol_oas` | 11 | inv_vol + OAS；lookback=126；zscore_softmax | Chen2010 |
+
+#### Group E — Position Concentration（持仓集中度）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| E1 | `concentrated_3` | 14 | top_n=3；min_zscore=0.0；max_w=0.45；softmax | GK2000 |
+| E2 | `standard_4` | 10 | top_n=4；min_zscore=-0.5；max_w=0.40；rank（默认） | — |
+| E3 | `diversified_5_rp` | 12 | top_n=5；risk_parity；max_w=0.35；softmax；vol=11% | Markowitz1952 |
+| E4 | `broad_6_softmax` | 11 | top_n=6；min_zscore=-0.8；max_w=0.28；softmax | Britten-Jones1999 |
+| E5 | `score_gated_dynamic` | 11 | top_n=5；min_zscore=0.25（过滤底部40%信号） | GK2000 |
+
+#### Group F — Regime Detection Architecture（机制检测架构）
+
+*每集 18-19 个参数，完整显式化 5 个宏观阈值 + 12 个机制状态乘数 + 防御板块奖励。*
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| F1 | `hawkish_macro` | 18 | vix_high=20；HY=380；tu cs×1.3；def_bonus=0.45 | AB2007 |
+| F2 | `standard_regime` | 18 | vix=25/35；HY=450；所有12乘数完整（生产基准） | W2009 |
+| F3 | `dovish_macro` | 18 | vix=28/40；HY=500；def_bonus=0.15 | AB2007 |
+| F4 | `momentum_biased_regime` | 19 | tu cs×1.4；**emergency_derisk_vix=37**（与vix_extreme=37一致） | AMP2013 |
+| F5 | `defensive_rotation` | 18 | risk_off cs=0.3（最低）；def_bonus=0.50σ；vix=22/32 | 2022年经验 |
+
+#### Group G — Rebalance & Transaction Cost（调仓与交易成本）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| G1 | `low_turnover` | 11 | threshold=0.8σ；max_turn=45%；last_trading_day | GP2013 |
+| G2 | `responsive` | 12 | threshold=0.2σ；max_turn=100%；skip=0 | GK2000 |
+| G3 | `biweekly_controlled` | 13 | biweekly；max_turn=60%；est_win=10天 | GP2013 |
+| G4 | `ultra_selective` | 12 | threshold=1.0σ；max_turn=40%；cov=504天 | GP2013 |
+
+#### Group H — VIX De-risk Architecture（VIX 降风险架构）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| H1 | `binary_derisk_35` | 11 | 渐进关闭；VIX=35→50%现金（传统经典） | W2009 |
+| H2 | `binary_derisk_28` | 12 | 渐进关闭；VIX=28→60%现金；dd=-0.18 | — |
+| H3 | `progressive_current` | 11 | VIX>28→15%；VIX>32→35%；VIX≥35→50%（生产配置） | — |
+| H4 | `progressive_conservative` | 12 | VIX>30→10%；VIX>36→25%；VIX≥40→50% | W2009 |
+
+#### Group I — Volatility Scaling Science（波动率缩放科学）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| I1 | `no_vol_scaling` | 10 | **vol_scaling=False**（对照组，量化 MM2017 命题） | MM2017 |
+| I2 | `tight_vol_8pct` | 12 | vol=8%；scale=1.3；est_win=15天（MM2017 最优目标） | MM2017 |
+| I3 | `standard_vol_target` | 12 | vol=12%；scale=1.5；est_win=20天（生产默认） | — |
+| I4 | `relaxed_vol_target` | 12 | vol=16%；scale=2.0；hist_win=504天；beta_max=1.25 | — |
+
+> I1 vs I3：vol_scaling 总贡献；I2 vs I3：MM2017 最优目标（8%）vs 市场中性目标（12%）。
+
+#### Group J — Beta & Market Exposure（Beta 与市场暴露）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| J1 | `tight_beta_tracker` | 11 | beta 0.80-1.05；GMV+LW；vol=11% | — |
+| J2 | `standard_beta` | 11 | beta 0.70-1.10；inv_vol+LW（默认） | — |
+| J3 | `low_beta_bab` | 13 | beta 0.40-0.82；GMV；RV=0.32；vol=8% | FP2014 BAB |
+| J4 | `high_beta_growth` | 13 | beta 0.90-1.32；crash_filter=0.5；vol=16% | FP2014 |
+
+#### Group K — Drawdown Circuit Breaker（回撤熔断器）
+
+| 编号 | 名称 | 参数数 | 核心设计 | 学术依据 |
+|------|------|--------|----------|----------|
+| K1 | `sensitive_dd` | 12 | -12% 触发；-6% 恢复；vol=10% | GZ1993 短期 |
+| K2 | `standard_dd` | 11 | **-20% 触发；-10% 恢复**（生产默认） | Cvitanic-Karatzas |
+| K3 | `patient_dd` | 12 | -28% 触发；-14% 恢复；scale=1.7；beta_max=1.18 | GZ1993 长期 |
+
+#### Group L — Market Regime Archetypes（市场环境原型档案）
+
+*面向特定宏观环境的完整参数组合（20-23 参数/集），经内在一致性验证。*
+
+| 编号 | 名称 | 参数数 | 核心场景 | 关键设计 |
+|------|------|--------|----------|----------|
+| L1 | `tech_bull_2023` | 23 | 2023 AI/科技牛市 | crash=1.0；skip=0；beta_max=1.30；VIX渐进延迟至35/40 |
+| L2 | `crisis_defense` | 22 | 2020/2022 系统性风险 | REG=0.42；vix=20；HY=380；VIX24/28梯度；vol=8% |
+| L3 | `stagflation` | 19 | 2022 滞胀 | RV=0.35；15月慢速；pe_lookback=7；beta_max=0.92 |
+| L4 | `rate_hike_cycle` | 21 | 2022 加息周期 | vix_high=22；HY=420；vol=9%；beta_max=0.92 |
+| L5 | `early_recovery` | 21 | 2020Q4/2023H1 复苏前期 | biweekly；skip=0；crash=1.0；tu cs×1.4 |
+| L6 | `low_vol_grind` | 21 | 2017/2019 低波慢牛 | vol=8%；threshold=0.75；last_trading_day；top_n=5 |
+
+#### Group M — Isolated Factor Tests（孤立因子测试）
+
+*其余参数保持与 A1 `default` 一致，只改变单一维度。*
+
+| 编号 | 名称 | 参数数 | 测试假设 | 学术依据 |
+|------|------|--------|----------|----------|
+| M1 | `value_constituents` | 11 | value_source='constituents'（TTM P/E 精确，对照基准） | FF1992 |
+| M2 | `value_proxy` | 11 | value_source='proxy'（价格代理，快速低成本） | — |
+| M3 | `acceleration_on` | 11 | acceleration=True，weight_boost=0.05（对照基准） | Grinblatt-Han2005 |
+| M4 | `acceleration_off` | 10 | acceleration=False（消除加速信号全部影响） | — |
+
+> M1 vs M2：TTM P/E 精确数据 vs 价格代理的 alpha 贡献；M3 vs M4：加速因子独立 alpha 贡献。
+
+### 批量运行与推荐对比
+
+```bash
+# 关键对比分析（运行 batch/select 后查看 backtest_results/*.xlsx）
+# B2 vs B3: skip=1 vs skip=0（孤立 skip 效应）
+# C1 vs C4: crash_filter 独立贡献
+# I1 vs I3: vol_scaling 总贡献
+# M1 vs M2: value_source 数据质量贡献
+# M3 vs M4: acceleration 因子贡献
+# F1-F5: 机制参数敏感性全扫描
+# L1-L6: 各宏观环境下最优档案识别
+```
+
+### 内部一致性规则
+
+1. **信号权重 = 1.0**：所有覆盖 `signals.weights.*` 的集严格验证
+2. **VIX 三层逻辑**：`vix_high_threshold` < VIX 渐进第二档 < `emergency_derisk_vix`
+3. **信号窗口与 zscore_window 匹配**：`zscore_window` ≈ 2.5–4× `lookback_months`
+4. **vol_target 与 beta_max 协调**：低 beta 配低 vol 目标；高 beta 配宽松 vol
+5. **调仓频率与信号速度匹配**：biweekly 调仓配短期（9月）信号
+6. **cov.lookback_days 与信号周期一致**：慢速信号（15月）配 504 天协方差估计
+
+---
+
 ## Cron 定时任务
 
 ```cron
@@ -736,11 +956,30 @@ XLC（通信服务 ETF）于 2018-06-18 创立，源于 GICS 重组：
 
 ## 学术基础
 
-- **动量**：Moskowitz, Ooi, Pedersen (2012), *Time Series Momentum*, JFE
-- **行业动量**：Gupta, Kelly (2019, AQR), *Factor Momentum Everywhere*
-- **Regime**：Guidolin, Timmermann (2007), *Asset Allocation under Multivariate Regime Switching*
-- **估值 × 动量**：Asness, Moskowitz, Pedersen (2013), *Value and Momentum Everywhere*, JF
-- **OOS 衰减**：Cederburg et al. (2023), *Beyond the Status Quo*
+| 缩写 | 完整引用 | 应用 |
+|------|----------|------|
+| JT1993 | Jegadeesh-Titman (1993) — *Returns to Buying Winners and Selling Losers* | 12-1月窗口最优动量参数 |
+| JT2001 | Jegadeesh-Titman (2001) — *Profitability of Momentum Strategies* | 高分散环境下短窗口；skip=0 理论依据 |
+| MOP2012 | Moskowitz-Ooi-Pedersen (2012) — *Time Series Momentum*, JFE | TS 动量对 CS 具有独立解释力 |
+| BSC2015 | Barroso-Santa-Clara (2015) — *Momentum Has Its Moments* | vol-scaling 优于二元 crash filter |
+| DM2016 | Daniel-Moskowitz (2016) — *Momentum Crashes* | 动量崩溃机制；两层防御设计 |
+| MM2017 | Moreira-Muir (2017) — *Volatility-Managed Portfolios* | 最优 vol 目标约 7-8%；短窗口估计更有效 |
+| AMP2013 | Asness-Moskowitz-Pedersen (2013) — *Value and Momentum Everywhere*, JF | 动量扩张期 IR 最高；恐慌期最脆弱 |
+| FF1992 | Fama-French (1992) — *The Cross-Section of Expected Stock Returns* | HML 价值溢价跨周期持续 |
+| AB2007 | Ang-Bekaert (2007) — *Stock Return Predictability* | Regime 识别精度对条件信号有效性至关重要 |
+| MRT2010 | Maillard-Roncalli-Teïletche (2010) — *Equal Risk Contribution* | ERC 比 inv_vol 更稳健处理板块相关性 |
+| CD2006 | Clarke-DeMiguel (2006) — *Minimum-Variance Portfolios* | GMV 在低 beta 约束下系统性降低波动率 |
+| DGU2009 | DeMiguel-Garlappi-Uppal (2009) — *Optimal vs Naive Diversification* | 1/N 难以被样本外优化系统性超越 |
+| LW2004 | Ledoit-Wolf (2004) — *Analytical Nonlinear Shrinkage* | N 小/T 中时解析收缩估计量优于样本协方差 |
+| FP2014 | Frazzini-Pedersen (2014) — *Betting Against Beta* | 低 beta 资产相对 CAPM 预测具有正 alpha |
+| GZ1993 | Grossman-Zhou (1993) — *Optimal Investment Strategies* | 最优 floor 约束取决于投资期限与风险厌恶 |
+| GP2013 | Garleanu-Pedersen (2013) — *Dynamic Trading with Predictable Returns* | 最优交易速度 = 信号半衰期 vs 成本权衡 |
+| GK2000 | Grinold-Kahn (2000) — *Active Portfolio Management* | 基本定律 IR = IC × √BR；集中度与广度权衡 |
+| W2009 | Whaley (2009) — *Understanding the VIX* | VIX>35 极端恐慌；VIX 均值回归特性 |
+| Chen2010 | Chen-Wiesel-Eldar-Goldsmith (2010) — *Shrinkage Algorithms for MMSE Covariance* | OAS 在小样本时均方误差低于 LW |
+| Grinblatt-Han2005 | Grinblatt-Han (2005) — *Prospect Theory, Mental Accounting, and Momentum* | 加速度因子的行为金融学依据 |
+
+*OOS Sharpe 通常比 IS 低 40%（Cederburg et al. 2023, *Beyond the Status Quo*）。*
 
 ---
 

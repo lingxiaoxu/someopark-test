@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-05-01",
+  "as_of": "2026-04-30",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -333,7 +333,90 @@
       "direction": null
     },
     "CSX/AIG": {
-      "direction": null
+      "strategy": "mtfs",
+      "param_set": "sensitive_reversal",
+      "direction": "long",
+      "s1_shares": 2216,
+      "s2_shares": -3573,
+      "open_date": "2026-04-30",
+      "open_s1_price": 44.68,
+      "open_s2_price": 73.79,
+      "open_hedge_ratio": 0.6055021005556308,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.548,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260501_013159.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "short_term_beta_neutral",
+            "train_end": "2025-09-08",
+            "test_start": "2025-09-09",
+            "test_end": "2025-10-15",
+            "oos_sharpe": 2.9813,
+            "oos_pnl": 9553.17
+          },
+          "W2": {
+            "param_set": "short_term_beta_neutral",
+            "train_end": "2025-10-15",
+            "test_start": "2025-10-16",
+            "test_end": "2025-11-21",
+            "oos_sharpe": 3.4297,
+            "oos_pnl": 11287.2
+          },
+          "W3": {
+            "param_set": "short_term_beta_neutral",
+            "train_end": "2025-11-21",
+            "test_start": "2025-11-24",
+            "test_end": "2026-01-02",
+            "oos_sharpe": -4.7777,
+            "oos_pnl": -9728.77
+          },
+          "W4": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2026-01-02",
+            "test_start": "2026-01-05",
+            "test_end": "2026-02-11",
+            "oos_sharpe": -0.9359,
+            "oos_pnl": -2243.38
+          },
+          "W5": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2026-02-11",
+            "test_start": "2026-02-12",
+            "test_end": "2026-03-23",
+            "oos_sharpe": -3.2945,
+            "oos_pnl": -6344.22
+          },
+          "W6": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2026-03-23",
+            "test_start": "2026-03-24",
+            "test_end": "2026-04-30",
+            "oos_sharpe": 2.3225,
+            "oos_pnl": 5796.3
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": [
+        {
+          "date": "2026-05-01",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.519,
+          "exit_threshold": 0.404,
+          "unrealized_pnl": -1915.58,
+          "unrealized_pnl_pct": -0.537,
+          "note": "Holding long, signal=0.519, exit at 0.404"
+        }
+      ]
     },
     "STT/C": {
       "strategy": "mtfs",
@@ -458,7 +541,7 @@
       "open_s2_price": 73.79,
       "open_hedge_ratio": 0.25489875869339096,
       "open_price_level_stop": null,
-      "days_held": 1,
+      "days_held": 0,
       "open_signal": {
         "momentum_spread": 0.432,
         "entry_threshold": 0.287,
@@ -531,8 +614,7 @@
           "unrealized_pnl_pct": 0.2,
           "note": "Holding long, signal=0.426, exit at 0.311"
         }
-      ],
-      "last_updated": "2026-05-01"
+      ]
     },
     "PEP/AIG": {
       "strategy": "mtfs",

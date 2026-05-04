@@ -1,0 +1,211 @@
+{
+  "generated_at": "2026-05-02T18:40:08.396998",
+  "signal_date": "2026-05-01",
+  "capital": 1000000.0,
+  "dry_run": true,
+  "regime": {
+    "label": "transition_up",
+    "vix": 16.889999,
+    "hy_spread_bps": 282.0,
+    "yield_curve_pct": 0.5,
+    "fin_stress": -0.6782,
+    "nfci": -0.518,
+    "effr": 3.64,
+    "breakeven_10y": 2.46
+  },
+  "rebalance_decision": {
+    "rebalance": true,
+    "reason": "monthly_rebalance"
+  },
+  "risk_flags": "RiskFlags(date=Timestamp('2026-04-30 00:00:00'), vol_scaling_triggered=False, vix_emergency_triggered=False, dd_circuit_triggered=False, beta_adjusted=True, realized_vol_annual=0.09631010675581123, historical_vol_annual=0.09977235223984218, current_vix=16.889999389648438, portfolio_beta=0.6178248466797138, current_dd_pct=nan, cash_pct=0.0, notes=['Beta adjusted: 0.618 \u2192 target ~1.00'])",
+  "cash_weight": 0.0,
+  "signals": [
+    {
+      "ticker": "XLB",
+      "action": "HOLD",
+      "target_weight": 0.250236,
+      "current_weight": 0.246093,
+      "delta_weight": 0.004143,
+      "target_shares": 4861,
+      "current_shares": 4739,
+      "price": 51.47,
+      "composite_score": 1.4036,
+      "cs_mom": 1.53,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLC",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 116.51,
+      "composite_score": -1.7933,
+      "cs_mom": -2.3379,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLE",
+      "action": "HOLD",
+      "target_weight": 0.224154,
+      "current_weight": 0.220443,
+      "delta_weight": 0.003711,
+      "target_shares": 3757,
+      "current_shares": 3876,
+      "price": 59.65,
+      "composite_score": 1.6539,
+      "cs_mom": 2.1557,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLF",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 52.13,
+      "composite_score": -1.183,
+      "cs_mom": -1.792,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLI",
+      "action": "HOLD",
+      "target_weight": 0.263504,
+      "current_weight": 0.259142,
+      "delta_weight": 0.004362,
+      "target_shares": 1509,
+      "current_shares": 1502,
+      "price": 174.58,
+      "composite_score": 0.2193,
+      "cs_mom": 0.9925,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLK",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 159.5,
+      "composite_score": -0.2036,
+      "cs_mom": 0.2509,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLP",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 84.31,
+      "composite_score": 0.0399,
+      "cs_mom": -0.7444,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLRE",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 44.4,
+      "composite_score": -0.2343,
+      "cs_mom": -0.6258,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLU",
+      "action": "EXIT",
+      "target_weight": 0.0,
+      "current_weight": 0.274322,
+      "delta_weight": -0.274322,
+      "target_shares": 0,
+      "current_shares": 5940,
+      "price": 46.85,
+      "composite_score": -0.0606,
+      "cs_mom": 0.5251,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLV",
+      "action": "ENTER",
+      "target_weight": 0.262107,
+      "current_weight": 0.0,
+      "delta_weight": 0.262107,
+      "target_shares": 1795,
+      "current_shares": 0,
+      "price": 145.99,
+      "composite_score": 0.5874,
+      "cs_mom": -0.6239,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLY",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 118.35,
+      "composite_score": -0.4293,
+      "cs_mom": -0.6127,
+      "ts_mult": 1.0
+    }
+  ],
+  "trades": [
+    {
+      "ticker": "XLU",
+      "action": "EXIT",
+      "side": "SELL",
+      "delta_shares": 5940,
+      "current_shares": 5940,
+      "target_shares": 0,
+      "price": 46.85,
+      "est_value": 278288.99,
+      "est_cost_bps": null
+    },
+    {
+      "ticker": "XLV",
+      "action": "ENTER",
+      "side": "BUY",
+      "delta_shares": 1795,
+      "current_shares": 0,
+      "target_shares": 1795,
+      "price": 145.99,
+      "est_value": 262052.06,
+      "est_cost_bps": null
+    }
+  ],
+  "transaction_costs": {
+    "total_cost_usd": 221.158539,
+    "total_cost_bps": 2.211585,
+    "turnover_pct": 27.4322,
+    "cost_by_ticker": {
+      "XLE": 1.113225,
+      "XLB": 2.07126,
+      "XLI": 2.181088,
+      "XLU": 137.161,
+      "XLY": 0.0,
+      "XLP": 0.0,
+      "XLV": 78.631966,
+      "XLF": 0.0
+    }
+  },
+  "holdings_summary": {
+    "n_positions": 4,
+    "invested_pct": 100.0,
+    "cash_pct": 0.0
+  }
+}

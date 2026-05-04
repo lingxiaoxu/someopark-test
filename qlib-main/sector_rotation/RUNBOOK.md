@@ -41,6 +41,8 @@ set -a && source .env && set +a && conda run -n qlib_run --no-capture-output pyt
 | 月末强制再平衡 | `bash qlib-main/sector_rotation/sector_rotation_pipeline.sh monthly` |
 | 首次 EPS 全量获取 | `bash qlib-main/sector_rotation/sector_rotation_pipeline.sh eps-full` |
 | 运行历史回测 | `bash qlib-main/sector_rotation/sector_rotation_pipeline.sh backtest` |
+| 批量参数扫描（仅分析） | `bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch` |
+| **参数选优 → 写入生产** | `bash qlib-main/sector_rotation/sector_rotation_pipeline.sh select` |
 | 参数敏感性扫描 | `bash qlib-main/sector_rotation/sector_rotation_pipeline.sh sensitivity` |
 | Regime 历史分析 | `bash qlib-main/sector_rotation/sector_rotation_pipeline.sh regime` |
 | 生成 PDF 报告 | `bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet` |
@@ -70,10 +72,9 @@ crontab -e
 # 冬令时 EST = UTC-5 / 夏令时 EDT = UTC-4
 # ──────────────────────────────────────────────────────────────────────
 
-# 【每日】工作日 17:20 ET = 22:20 UTC（冬）/ 21:20 UTC（夏）
-# 在 someopark DailySignal（~01:15 UTC）写入 MacroStateStore 之后执行
+# 【每日】工作日 17:15 ET = 21:15 UTC（冬）/ 17:15 ET = 21:15 UTC（夏）
 # 脚本自动检测 NYSE 休市并 exit 0（不计入失败）
-20 22 * * 1-5  cd /Users/xuling/code/someopark-test && \
+15 21 * * 1-5  cd /Users/xuling/code/someopark-test && \
                bash qlib-main/sector_rotation/sector_rotation_pipeline.sh daily \
                >> qlib-main/sector_rotation/logs/cron_sr_daily.log 2>&1
 
@@ -89,7 +90,7 @@ crontab -e
 
 ### 每日运行（工作日，自动）
 
-**触发时间**：每个工作日 17:20 ET（收盘后约 80 分钟）
+**触发时间**：每个工作日 17:15 ET（收盘后约 75 分钟）
 
 **内部步骤**：
 
@@ -191,14 +192,18 @@ grep -i "error\|fail\|traceback" qlib-main/sector_rotation/logs/cron_sr_weekly.l
 # 1. EPS 全量刷新（约 5 分钟，Polygon，55 个成分股完整历史）
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh eps-full
 
-# 2. 完整回测（约 10–20 分钟，2018-07-01 → 今日）
+# 2. 参数选优（约 2 分钟）：运行全部 59 个参数集，按近期 12m Sharpe 选最优
+#    → 写入 selected_param_set.json，下次 daily/weekly/monthly 自动生效
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh select
+
+# 3. 完整回测（约 10–20 分钟，2018-07-01 → 今日，验证选中参数集表现）
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh backtest
 # 结果写入 MLflow: mlruns/mlflow.db (experiment: sector_rotation_backtest)
 
-# 3. 参数敏感性分析（约 15–30 分钟）
+# 4. 参数敏感性分析（约 15–30 分钟）
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh sensitivity
 
-# 4. PDF tearsheet（约 10–15 分钟）
+# 5. PDF tearsheet（约 10–15 分钟）
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
 ```
 
@@ -206,18 +211,21 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
 
 | 指标 | 目标 | 行动 |
 |------|------|------|
-| Sharpe（扣费后） | 0.40–0.60 | 低于 0.35 → 考虑调整 `top_n_sectors` / `optimizer` |
+| `select` 输出参数集 | 近期 12m Sharpe 最优 | 审阅选中参数集是否符合当前市场环境直觉 |
+| Sharpe（扣费后） | 0.40–0.60 | 低于 0.35 → 重新运行 `select` 或手动指定参数集 |
 | 最大回撤 | < 20% | 超过 25% → 检查 `max_weight` / `vol_scaling` 参数 |
 | Regime 分布 | risk_on 占比 > 50%（正常市） | 长期 risk_off 主导 → 检查 VIX 阈值设置 |
 | Sensitivity sweep | 无明显单点最优 | 若结果高度集中于某一参数值 → 可能过拟合 |
 
 ---
 
-### 紧急情况（VIX > 35，随时）
+### 紧急情况（VIX > 32，随时）
 
 **自动检测**：`daily` 运行时 `should_emergency_rebalance()` 自动检查，无需额外触发。
 
 **触发结果**：报告中 `Rebalance: YES (emergency_vix)`，目标持仓 → 50% 现金 + 50% 防御板块（XLU / XLP / XLV）
+
+> VIX 完整阶梯（生产配置）：VIX < 28 → 0% 现金；VIX ≥ 28 → 15% 现金；VIX ≥ 32 → 35% 现金；VIX ≥ 35 → 50% 现金（emergency_derisk_vix）
 
 **人工流程**：
 1. 收到 daily 报告，确认 `emergency_vix` 触发
@@ -358,11 +366,11 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh dry-run --skip-holida
 
 | 频率 | 时间（ET） | 命令 | 预计耗时 | 人工操作 |
 |------|-----------|------|---------|---------|
-| 每个工作日 | 17:20 PM（cron） | `daily` | 3–5 分钟 | 月首：审阅交易清单 + 次日执行 |
+| 每个工作日 | 17:15 PM（cron） | `daily` | 3–5 分钟 | 月首：审阅交易清单 + 次日执行 |
 | 每周日 | 01:00 AM（cron） | `weekly` | 5–15 分钟 | 无 |
 | 每月底（可选） | 任意 | `tearsheet` | 10–15 分钟 | 无 |
-| 每季度末 | 任意（手动） | `eps-full` → `backtest` → `sensitivity` | 30–60 分钟 | 审阅绩效 + 参数稳健性 |
-| VIX > 35 | daily 自动触发 | （含在 daily 内） | — | 确认后当日 / 次日执行 emergency de-risk |
+| 每季度末 | 任意（手动） | `eps-full` → **`select`** → `backtest` → `sensitivity` | 30–60 分钟 | 审阅 selected_param_set.json + 绩效稳健性 |
+| VIX > 32 | daily 自动触发 | （含在 daily 内） | — | 确认后当日 / 次日执行 emergency de-risk |
 
 ---
 
@@ -533,7 +541,7 @@ set -a && source .env && set +a && conda run -n qlib_run --no-capture-output \
 | `rebalance.frequency` | `monthly` | 再平衡频率 |
 | `rebalance.rebalance_day` | `first_trading_day` | 月首还是月末交易日 |
 | `rebalance.zscore_change_threshold` | `0.5` | Z-score 变化低于此值 → 不再平衡该 sector |
-| `rebalance.emergency_derisk_vix` | `35.0` | VIX 超过此值 → 紧急 de-risk（移至 50% 现金）|
+| `rebalance.emergency_derisk_vix` | `32.0` | VIX 超过此值 → 紧急 de-risk（移至 50% 现金）|
 | `rebalance.emergency_cash_pct` | `0.50` | 紧急 de-risk 现金比例 |
 
 ---
@@ -593,6 +601,95 @@ print(mom['ts_mult'].tail(3).round(2).to_string())
 ---
 
 ## 六、历史回测与研究分析（Historical Backtest & Research）
+
+### 批量参数扫描与生产选参
+
+#### 架构说明
+
+```
+每季度：
+  select  →  运行 59 集回测  →  按近期 12m Sharpe 选最优
+           →  写 selected_param_set.json
+                    ↓（自动）
+每日/每周/每月：
+  daily / weekly / monthly
+           →  SectorRotationDailySignal
+           →  step 1b: 检测 selected_param_set.json
+           →  apply 参数集 overrides（覆盖 config.yaml 默认值）
+           →  生成信号 / 调仓
+```
+
+**selected_param_set.json 不存在** → 静默跳过，使用 `config.yaml` 默认参数，行为不变。
+
+#### 常用命令
+
+```bash
+# 【推荐，每季度】运行 59 集 + 选优 + 写入生产
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh select
+
+# 仅批量分析（不影响生产）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch
+
+# 仅运行特定组（分析用）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --group L
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --group A B C --sort-by calmar
+
+# 结果输出：backtest_results/sr_batch_summary_<timestamp>.csv + .xlsx
+#   - sharpe:             全期 Sharpe（2018-07-01 → 今）
+#   - recent_sharpe_12m:  近期 12 个月 Sharpe（select 的选参依据）
+#   - calmar, max_drawdown, annual_turnover 等
+
+# 查看当前全部参数集列表
+conda run -n qlib_run python -c "
+import sys; sys.path.insert(0, 'qlib-main/sector_rotation')
+from SectorRotationStrategyRuns import list_param_sets
+list_param_sets()
+"
+```
+
+#### selected_param_set.json 管理
+
+```bash
+# 查看当前选中的参数集
+cat qlib-main/sector_rotation/selected_param_set.json
+# 示例输出：
+# {
+#   "param_set": "ultra_selective",
+#   "recent_sharpe_12m": 2.2088,
+#   "full_period_sharpe": 0.9526,
+#   "selected_at": "2026-05-04",
+#   "n_candidates": 59
+# }
+
+# 验证 DailySignal 确实 pick up 了该参数集（日志中查找）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh dry-run 2>&1 | grep "PARAM SELECT"
+# 预期：INFO [PARAM SELECT] Active: ultra_selective | recent_sr12m=2.2088 | selected=2026-05-04
+
+# 手动覆盖（临时指定特定参数集，绕过 select 结果）
+python3 -c "
+import json
+from pathlib import Path
+sel = {
+    'param_set': 'partial_filter_scaled',
+    'recent_sharpe_12m': 1.095,
+    'full_period_sharpe': 1.095,
+    'selected_at': '$(date +%Y-%m-%d)',
+    'n_candidates': 1,
+}
+Path('qlib-main/sector_rotation/selected_param_set.json').write_text(json.dumps(sel, indent=2))
+print('Done:', sel['param_set'])
+"
+
+# 回退到 config.yaml 默认参数（删除 selected_param_set.json）
+rm qlib-main/sector_rotation/selected_param_set.json
+# → 下次 daily 运行自动使用 config.yaml 默认值
+```
+
+> 参数集设计详情见 README.md「参数集扫描」章节，涵盖 13 组 59 集的核心设计与学术依据。
+
+---
+
+### 单策略回测
 
 ```bash
 # 标准全量回测（config.yaml backtest 节参数，2018-07-01 → 最新）
@@ -718,17 +815,17 @@ crontab -e
 # 所有时间为 UTC。NYSE: UTC-5 (EST) / UTC-4 (EDT)
 # ──────────────────────────────────────────────────────────────────────────────
 
-# 每日信号：周一至周五 17:15 ET after close (21:15 UTC winter / 21:15 UTC summer)
+# 每日信号：周一至周五 17:15 ET (21:15 UTC)
 # 自动跳过 NYSE 节假日
 15 21 * * 1-5   cd /Users/xuling/code/someopark-test && \
     bash qlib-main/sector_rotation/sector_rotation_pipeline.sh daily \
-    >> qlib-main/sector_rotation/logs/cron_daily.log 2>&1
+    >> qlib-main/sector_rotation/logs/cron_sr_daily.log 2>&1
 
-# 每周 EPS 维护：周日 06:00 UTC (01:00 ET / 02:00 EDT)
+# 每周 EPS 维护：周日 06:00 UTC (01:00 ET)
 # 增量更新 55 个股票的 EPS + 验证 dry-run
 0 6 * * 0   cd /Users/xuling/code/someopark-test && \
     bash qlib-main/sector_rotation/sector_rotation_pipeline.sh weekly \
-    >> qlib-main/sector_rotation/logs/cron_weekly.log 2>&1
+    >> qlib-main/sector_rotation/logs/cron_sr_weekly.log 2>&1
 ```
 
 > **注意**：月首交易日的 rebalance 由 `daily` 模式自动检测触发，无需单独 cron。
@@ -738,7 +835,7 @@ crontab -e
 
 ```bash
 # 查看最近 cron 日志
-tail -50 qlib-main/sector_rotation/logs/cron_daily.log
+tail -50 qlib-main/sector_rotation/logs/cron_sr_daily.log
 
 # 查看当天 daily 日志
 tail -100 qlib-main/sector_rotation/logs/sr_daily_$(date +%Y%m%d).log
