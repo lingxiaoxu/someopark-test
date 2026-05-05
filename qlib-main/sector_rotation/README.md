@@ -109,12 +109,15 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh [MODE] [OPTIONS]
 | `eps-update` | 增量 EPS 更新（跳过 ≤7 天内已刷新的标的） | 1–3 min |
 | `eps-full` | 强制全量 EPS 重拉（55 只股票，首次运行必用） | ~5 min |
 | `eps-symbols` | 指定标的 EPS 更新，例如 `eps-symbols XOM CVX` | < 1 min |
-| `backtest` | 全量 IS/OOS 历史回测（2018-07-01 → 今日） | 5–15 min |
-| `batch` | 批量运行全部 59 个参数集 → CSV + Excel（含 recent 12m Sharpe） | ~2 min |
-| `select` | `batch --select` 简写：运行 59 集 + 写 `selected_param_set.json`（生产选参） | ~2 min |
+| `backtest` | 用 selected_param_set.json 参数跑全时期回测 | 5–15 min |
+| `backtest --walk-forward` | 全量 59 参数集 Walk-Forward IS/OOS（73 折） | 3–5 min |
+| `batch` | 批量运行全部 59 个参数集 → CSV + Excel | ~2 min |
+| `batch --oos-validate` | batch + 追加 WF IS/OOS 验证（anchored + rolling） | 5–8 min |
+| `select` | batch + WF OOS 过滤 + MCPS 选参 → 写 `selected_param_set.json` | 5–8 min |
+| `wf` | 独立 Walk-Forward 分析（anchored + rolling），输出 CSV | 3–5 min |
 | `sensitivity` | 参数敏感性扫描（`top_n_sectors` 等） | 5–10 min |
 | `regime` | Regime 分析报告（4 态标签 + 汇总） | < 1 min |
-| `tearsheet` | 回测 + 生成多页 PDF 绩效报告 | 5–15 min |
+| `tearsheet` | 回测 + WF IS/OOS + 59组比较 + 13页 PDF | 10–15 min |
 | `test` | 运行 pytest 套件（95 个测试，纯合成数据，无网络） | 1–2 min |
 | `dry-run` | 只读每日信号，不写 inventory，随时可运行 | 1–2 min |
 | `status` | 打印当前持仓状态 + 最新信号文件摘要 | < 5 sec |
@@ -154,12 +157,21 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh status
 # ── 查看原始 z-score 信号
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh signal-raw
 
-# ── 全量回测 + tearsheet
+# ── 全量回测 + WF IS/OOS + 13页 PDF tearsheet
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
 
-# ── 参数集选优（每季度）：运行 59 集 + 选最优 → 写入 selected_param_set.json
+# ── 参数选优（每月）：batch + WF OOS过滤 + MCPS → selected_param_set.json
 # → 之后的 daily/weekly/monthly 自动使用该参数集
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh select
+
+# ── 独立 Walk-Forward IS/OOS 分析（anchored + rolling → CSV）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh wf
+
+# ── 回测指定参数集（不依赖 selected_param_set.json）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh backtest --param-set value_tilt
+
+# ── 回测 + Walk-Forward IS/OOS（73折，完整验证）
+bash qlib-main/sector_rotation/sector_rotation_pipeline.sh backtest --walk-forward
 
 # ── 运行测试套件
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh test
@@ -544,10 +556,93 @@ VIX ≥ 35  → 50% cash（emergency_derisk_vix 触发）
 | `start_date` | `"2018-07-01"` | 回测起始日（不能早于 XLC 上市日，否则 11 板块宇宙不完整） | `backtest/engine.py` |
 | `end_date` | `null` | 回测截止日，`null` = 最新可用数据 | `backtest/engine.py` |
 | `initial_capital` | `1_000_000.0` | 初始资本（美元） | `backtest/engine.py`、`SectorRotationDailySignal.py` |
-| `is_years` | `3` | Walk-forward 中样本期长度（年） | `backtest/engine.py` |
-| `oos_months` | `12` | Walk-forward 样本外评估期（月） | `backtest/engine.py` |
-| `walk_forward.enabled` | `false` | 是否启用 walk-forward 验证 | `backtest/engine.py` |
-| `walk_forward.step_months` | `6` | Walk-forward 窗口每次滚动步长（月） | `backtest/engine.py` |
+| `is_years` | `3` | Walk-forward 最短 IS 期（年），anchored 模式下逐折扩展 | `walk_forward.py` |
+| `oos_months` | `6` | Walk-forward OOS 评估窗口（月） | `walk_forward.py` |
+
+### 七.1、Walk-Forward IS/OOS 框架
+
+**理论基础**：
+
+| 方法 | 来源 | 应用 |
+|---|---|---|
+| Walk-Forward Optimization (WFO) | Pardo (2008) | IS 训练 / OOS 评估的时间切分 |
+| Deflated Sharpe Ratio (DSR) | Bailey & López de Prado (2014) | 59 组多重测试校正 |
+| Combinatorial Purged CV (CPCV) | López de Prado (2018) | 净化/禁运防止信息泄露 |
+| Conditional Parameter Optimization | Chan, Belov & Ciobanu (2021) | 宏观状态条件选参数 |
+
+**架构**：
+
+```
+                ┌──────────────────────────────────────────┐
+                │      WalkForwardAnalyzer (核心类)         │
+                │  qlib-main/sector_rotation/walk_forward.py│
+                └───────┬───────────┬──────────┬───────────┘
+                        │           │          │
+                 ┌──────┴──┐  ┌─────┴───┐  ┌──┴──────┐
+                 │backtest │  │batch/sel │  │tearsheet│
+                 │  mode   │  │  mode    │  │  mode   │
+                 └─────────┘  └─────────┘  └─────────┘
+                        │           │          │
+                        ▼           ▼          ▼
+                 同一 API → 同一结果（相同参数+起始日期）
+```
+
+**默认参数**：
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `is_years_min` | `3` | IS 最短 3 年（anchored 模式逐折扩展到 3→7 年） |
+| `oos_months` | `6` | 每折 OOS 窗口 6 个月（~126 交易日） |
+| `step_days` | `15` | 每 15 个交易日（~3 周）向前滚动一步 |
+| `embargo_days` | `5` | IS 与 OOS 之间隔 5 个交易日（防止信号溢出） |
+| `mode` | `"anchored"` | IS 从固定起点扩展；`"rolling"` 为固定宽度 IS 窗口 |
+
+**时间切分示意（anchored 模式，step=15d，oos=6m）**：
+
+```
+                     IS (expanding from 2018-07)  [5d]  OOS (6 months)
+Fold  1: [2018-07 ──────────── 2021-07-01] [emb] [2021-07-08 ─── 2022-01-06]
+Fold  2: [2018-07 ──────────── 2021-07-22] [emb] [2021-07-29 ─── 2022-01-27]
+Fold  3: [2018-07 ──────────── 2021-08-12] [emb] [2021-08-19 ─── 2022-02-18]
+   ...         (每 15 个交易日前移一步，OOS 窗口高度重叠 ~88%)
+Fold 73: [2018-07 ──────────── 2025-01-31] [emb] [2025-02-10 ─── 2026-05-04]
+```
+
+产生 **~73 折**，充分覆盖 2021-07 至 2026-05 的每一段时间。
+
+**每折选参数流程**：
+
+```
+1. 对 59 个参数集，切 IS 段 equity → 计算 IS 指标
+2. 取 IS 最后 30 交易日的宏观状态均值 → is_macro_vector
+3. 调用 MCPS.macro_cond_sharpe(equity_is, macro_is, is_macro_vector)
+   → 高斯核加权 Sharpe（宏观相似的历史日权重更高）
+4. DSR 过滤（Bailey & López de Prado 2014，N=59 校正）
+5. 选出最高分参数 → OOS 评估
+6. 计算 WFE = OOS_Sharpe / IS_Sharpe（Walk-Forward Efficiency）
+```
+
+**合成 OOS 跑道**：将所有折的 OOS 段拼接成一条无重叠的 synthetic equity curve，代表"如果一直用 WF 选参数"的真实 OOS 历史表现。
+
+**核心数据结构**（`walk_forward.py`）：
+
+| 类 | 用途 |
+|---|---|
+| `WFFold` | 单折时间边界（is_start, is_end, embargo_end, oos_start, oos_end） |
+| `WFFoldResult` | 单折完整结果（IS 指标、选择方法、OOS equity/metrics、WFE） |
+| `WFResult` | 聚合结果（synthetic_equity、dsr_aggregate、fold_summary_df、param_oos_stats） |
+
+**典型全量结果（59 参数集 × 73 折）**：
+
+```
+Synthetic OOS Sharpe : 0.487
+Synthetic OOS CAGR   : 5.9%
+Synthetic OOS MaxDD  : -17.9%
+DSR (N=59)           : 依运行时数据而定
+Mean WFE             : 0.64
+OOS 幸存者（mean OOS Sharpe > 0）: 4/59
+  → value_tilt, tight_beta_tracker, concentrated_3, skip_heavy
+```
 
 ---
 

@@ -1,11 +1,16 @@
 {
   "param_set": "tight_beta_tracker",
-  "selection_method": "macro_cond_sharpe",
-  "macro_cond_sharpe": 1.0971,
+  "selection_method": "mcps_oos_filtered",
+  "mcps_oos_filtered": 1.0934,
   "recent_sharpe_12m": 1.9651,
   "full_period_sharpe": 1.0196,
   "full_period_calmar": 0.653,
   "selected_at": "2026-05-04",
-  "n_candidates": 59,
+  "n_candidates": 4,
+  "n_oos_survivors": 4,
+  "oos_filter_applied": true,
+  "oos_mean_sharpe": 1.3652,
+  "oos_n_selected": 8,
+  "wf_mean_wfe": 0.6395,
   "macro_data_days": 1970
 }
