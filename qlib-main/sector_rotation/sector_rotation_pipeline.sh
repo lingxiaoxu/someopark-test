@@ -420,10 +420,11 @@ eps-symbols)
 # Config from config.yaml backtest section.
 # ─────────────────────────────────────────────────────────────────────────────
 backtest)
-    log "Mode: BACKTEST  (2018-07-01 → today)"
+    log "Mode: BACKTEST  (default: selected param set; pass --param-set NAME to override)"
+    log "  args: $*"
     set -a && source "$REPO/.env" && set +a
     PYTHONPATH="$REPO/qlib-main" $CONDA_QLIB python -m sector_rotation.backtest.engine \
-        >> "$LOGFILE" 2>&1
+        "$@" >> "$LOGFILE" 2>&1
     RC=$?
     if [[ $RC -ne 0 ]]; then log_fail "STEP 1 (SectorRotationBacktest engine) exit=$RC"; exit $RC; fi
     log "→ STEP 1 OK: SectorRotationBacktest engine"
@@ -493,28 +494,103 @@ regime)
     ;;
 
 # ─────────────────────────────────────────────────────────────────────────────
+# WF — Walk-Forward IS/OOS analysis (standalone, no PDF)
+# Runs 59 param sets × ~45 folds (anchored + rolling), outputs CSV summary.
+# Pass --mode anchored|rolling to run only one mode.
+# ─────────────────────────────────────────────────────────────────────────────
+wf)
+    log "Mode: WF  (Walk-Forward IS/OOS analysis  args: $*)"
+    set -a && source "$REPO/.env" && set +a
+    PYTHONPATH="$REPO/qlib-main:$REPO" $CONDA_QLIB python \
+        qlib-main/sector_rotation/walk_forward.py "$@" \
+        2>&1 | tee -a "$LOGFILE"
+    RC=${PIPESTATUS[0]}
+    if [[ $RC -ne 0 ]]; then log_fail "STEP 1 (walk_forward.py) exit=$RC"; exit $RC; fi
+    log_section "WALK-FORWARD ANALYSIS COMPLETE — see backtest_results/ for CSV"
+    ;;
+
+# ─────────────────────────────────────────────────────────────────────────────
 # TEARSHEET — Backtest + PDF tearsheet generation
 # Output: report/output/sector_rotation_tearsheet.pdf
 # ─────────────────────────────────────────────────────────────────────────────
 tearsheet)
-    log "Mode: TEARSHEET  (backtest + PDF)"
+    log "Mode: TEARSHEET  (backtest + batch-59 + WF IS/OOS + PDF)"
     set -a && source "$REPO/.env" && set +a
     $CONDA_QLIB python - >> "$LOGFILE" 2>&1 <<'PYEOF'
-import sys, pathlib, logging
-sys.path.insert(0, str(pathlib.Path('qlib-main').resolve()))
+import sys, json, pathlib, logging
+import pandas as pd
+_here = pathlib.Path('qlib-main').resolve()
+sys.path.insert(0, str(_here))
+sys.path.insert(0, str(_here.parent))  # for MacroStateStore
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
+log = logging.getLogger(__name__)
 
 from sector_rotation.data.loader import load_all, load_config
 from sector_rotation.backtest.engine import SectorRotationBacktest
 from sector_rotation.report.tearsheet import generate_tearsheet
+from sector_rotation.SectorRotationStrategyRuns import PARAM_SETS, apply_param_set
+from sector_rotation.SectorRotationBatchRun import _run_one_with_equity
+from sector_rotation.walk_forward import WalkForwardAnalyzer
 
-cfg = load_config()
-prices, macro = load_all(config=cfg)
-bt = SectorRotationBacktest(cfg)
+# ── Load config + data ───────────────────────────────────────────────────────
+base_cfg = load_config()
+prices, macro = load_all(config=base_cfg)
+
+# ── Apply selected param set (if available) ──────────────────────────────────
+sel_json = pathlib.Path('qlib-main/sector_rotation/selected_param_set.json')
+param_set_name = None
+active_cfg = base_cfg
+if sel_json.exists():
+    with open(sel_json) as f:
+        sel = json.load(f)
+    param_set_name = sel.get('param_set')
+    if param_set_name and param_set_name in PARAM_SETS:
+        active_cfg = apply_param_set(base_cfg, PARAM_SETS[param_set_name])
+        log.info(f"Tearsheet: using selected param set '{param_set_name}'")
+    else:
+        log.warning(f"Tearsheet: selected param set '{param_set_name}' not found, using base_cfg")
+        param_set_name = None
+
+# ── Run main backtest with active param set ───────────────────────────────────
+log.info("Running main backtest...")
+bt = SectorRotationBacktest(active_cfg)
 result = bt.run(prices, macro)
 print(result.summary())
-generate_tearsheet(result, prices=prices)
-print("Tearsheet saved to report/output/sector_rotation_tearsheet.pdf")
+
+# ── Run all 59 param sets for comparison page (P11) ──────────────────────────
+log.info("Running all 59 param sets for batch comparison...")
+rows = []
+for name in PARAM_SETS:
+    row, _eq = _run_one_with_equity(name, base_cfg, prices, macro)
+    rows.append(row)
+batch_df = pd.DataFrame(rows)
+ok_count = len(batch_df[batch_df['status'] == 'ok'])
+log.info(f"Batch complete: {ok_count}/{len(rows)} successful")
+
+# ── Walk-Forward IS/OOS analysis (P12 + P13) ─────────────────────────────────
+log.info("Running Walk-Forward IS/OOS analysis (anchored)...")
+wf_analyzer = WalkForwardAnalyzer(
+    base_cfg=base_cfg,
+    prices=prices,
+    macro=macro,
+    mode="anchored",
+    is_years_min=base_cfg.get("backtest", {}).get("is_years", 3),
+    oos_months=6,
+    step_days=15,
+    embargo_days=5,
+)
+wf_result = wf_analyzer.run()
+print(wf_result.summary())
+
+# ── Generate tearsheet PDF ───────────────────────────────────────────────────
+out_path = generate_tearsheet(
+    result,
+    prices=prices,
+    batch_df=batch_df,
+    wf_result=wf_result if wf_result.folds else None,
+    param_set_name=param_set_name,
+)
+print(f"Tearsheet saved → {out_path}")
 PYEOF
     RC=$?
     if [[ $RC -ne 0 ]]; then
@@ -714,7 +790,7 @@ help)
     echo "Unknown mode: $MODE"
     echo ""
     echo "Available: daily | weekly | monthly | eps-update | eps-full | eps-symbols |"
-    echo "           backtest | batch | select | sensitivity | regime | tearsheet | test |"
+    echo "           backtest | batch | select | wf | sensitivity | regime | tearsheet | test |"
     echo "           dry-run | status | signal-raw | help"
     exit 1
     ;;

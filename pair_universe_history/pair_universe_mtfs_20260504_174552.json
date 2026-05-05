@@ -1,25 +1,19 @@
 [
   {
-    "s1": "VTRS",
-    "s2": "WMT",
-    "sector": "food",
-    "spread_col": "Momentum_Spread_food"
-  },
-  {
     "s1": "CSCO",
     "s2": "HST",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "CSX",
-    "s2": "AIG",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
+    "s1": "VTRS",
+    "s2": "WMT",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
   },
   {
-    "s1": "AIG",
-    "s2": "GILD",
+    "s1": "CSX",
+    "s2": "AIG",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -30,8 +24,14 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "AME",
-    "s2": "MAR",
+    "s1": "WELL",
+    "s2": "AIG",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "MAR",
+    "s2": "AME",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
   },

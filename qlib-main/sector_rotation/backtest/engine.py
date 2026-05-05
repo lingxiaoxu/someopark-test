@@ -986,21 +986,90 @@ if __name__ == "__main__":
     parser.add_argument("--config", default=None, help="Path to config.yaml")
     parser.add_argument("--start", default=None, help="Override backtest start date")
     parser.add_argument("--end", default=None, help="Override backtest end date")
-    parser.add_argument("--walk-forward", action="store_true", help="Run walk-forward")
+    parser.add_argument("--walk-forward", action="store_true",
+                        help="Run full walk-forward IS/OOS analysis (all 59 param sets)")
+    parser.add_argument("--wf-mode", default="both", choices=["anchored", "rolling", "both"],
+                        help="Walk-forward IS mode (default: both)")
+    parser.add_argument("--wf-step-days", type=int, default=15,
+                        help="WF step size in trading days (default: 10 ≈ 2 weeks)")
+    parser.add_argument("--wf-oos-months", type=int, default=6,
+                        help="WF OOS window in months (default: 12)")
     parser.add_argument("--force-refresh", action="store_true", help="Skip data cache")
+    parser.add_argument(
+        "--param-set", default="selected", metavar="NAME",
+        help=(
+            "Named param set to apply on top of config.yaml. "
+            "Default='selected' reads selected_param_set.json. "
+            "Use 'none' to run config.yaml defaults as-is. "
+            "Use 'list' to print all 59 names and exit."
+        ),
+    )
     args = parser.parse_args()
 
+    import json
+    import sys
     from pathlib import Path
-    cfg = load_config(Path(args.config) if args.config else None)
+    from sector_rotation.SectorRotationStrategyRuns import PARAM_SETS, apply_param_set
 
-    prices, macro = load_all(config=cfg, force_refresh=args.force_refresh)
+    if args.param_set == "list":
+        print("Available param sets:")
+        for name in sorted(PARAM_SETS):
+            print(f"  {name}")
+        sys.exit(0)
+
+    # base_cfg: used for load_all (data/universe keys — never changed by param sets)
+    # active_cfg: used for SectorRotationBacktest (strategy keys — overridden by param set)
+    # This mirrors batch/select/tearsheet exactly: load_all always sees base_cfg.
+    base_cfg = load_config(Path(args.config) if args.config else None)
+    active_cfg = base_cfg
+
+    # ── Resolve param set ────────────────────────────────────────────────────
+    _sel_json = Path(__file__).parent.parent / "selected_param_set.json"
+
+    if args.param_set == "none":
+        print("Using config.yaml defaults (no param set applied)")
+    elif args.param_set == "selected":
+        if _sel_json.exists():
+            with open(_sel_json) as _f:
+                _sel = json.load(_f)
+            _ps_name = _sel.get("param_set")
+            if _ps_name and _ps_name in PARAM_SETS:
+                active_cfg = apply_param_set(base_cfg, PARAM_SETS[_ps_name])
+                print(f"Using param set: {_ps_name} (from selected_param_set.json)")
+            else:
+                print(f"WARN: selected_param_set.json has unknown param set '{_ps_name}', using config.yaml defaults")
+        else:
+            print("WARN: selected_param_set.json not found, using config.yaml defaults")
+    elif args.param_set in PARAM_SETS:
+        active_cfg = apply_param_set(base_cfg, PARAM_SETS[args.param_set])
+        print(f"Using param set: {args.param_set}")
+    else:
+        print(f"ERROR: unknown param set '{args.param_set}'. Use --param-set list to see all.", file=sys.stderr)
+        sys.exit(1)
+
+    # load_all uses base_cfg (data/universe settings) — same as batch/tearsheet
+    prices, macro = load_all(config=base_cfg, force_refresh=args.force_refresh)
 
     if args.walk_forward:
-        results = run_walk_forward(cfg, prices, macro)
-        for i, r in enumerate(results):
-            print(f"\n--- Fold {i + 1} OOS ---")
-            print(r.summary())
+        from sector_rotation.walk_forward import WalkForwardAnalyzer, run_dual_mode
+        wf_kwargs = dict(
+            is_years_min=base_cfg.get("backtest", {}).get("is_years", 3),
+            oos_months=args.wf_oos_months,
+            step_days=args.wf_step_days,
+            embargo_days=5,
+        )
+        if args.wf_mode == "both":
+            wf_results = run_dual_mode(base_cfg, prices, macro, **wf_kwargs)
+            for mode_name, wf_r in wf_results.items():
+                print(wf_r.summary())
+        else:
+            analyzer = WalkForwardAnalyzer(
+                base_cfg=base_cfg, prices=prices, macro=macro,
+                mode=args.wf_mode, **wf_kwargs,
+            )
+            wf_r = analyzer.run()
+            print(wf_r.summary())
     else:
-        engine = SectorRotationBacktest(cfg)
+        engine = SectorRotationBacktest(active_cfg)
         result = engine.run(prices, macro, start=args.start, end=args.end)
         print(result.summary())

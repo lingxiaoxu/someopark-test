@@ -852,6 +852,11 @@ def generate_tearsheet(
     output_path: Optional[str] = None,
     prices: Optional[pd.DataFrame] = None,
     daily_report_dir: Optional[str] = None,
+    batch_df: Optional[pd.DataFrame] = None,
+    mcps_equity: Optional[pd.Series] = None,
+    sel_log: Optional[list] = None,
+    param_set_name: Optional[str] = None,
+    wf_result=None,
 ) -> Path:
     """
     Generate a professional PDF tearsheet from a BacktestResult.
@@ -863,6 +868,15 @@ def generate_tearsheet(
     prices            : Raw prices DataFrame (for correlation page)
     daily_report_dir  : Directory containing sr_daily_report_*.json files
                         (defaults to <repo>/trading_signals/)
+    batch_df          : DataFrame from SectorRotationBatchRun (all 59 param sets)
+                        — if provided, adds P11 parameter comparison page
+    mcps_equity       : MCPS rolling equity Series from compute_mcps_rolling_equity()
+                        — if provided together with sel_log, adds P12 MCPS comparison
+    sel_log           : Selection log list from compute_mcps_rolling_equity()
+    param_set_name    : Name of currently selected param set (for gold highlight)
+    wf_result         : WFResult from WalkForwardAnalyzer — if provided, P12 uses
+                        synthetic OOS equity instead of MCPS rolling, and adds P13
+                        fold-by-fold breakdown table
     """
     from .plots import (
         equity_curve_plot, drawdown_plot, rolling_sharpe_plot,
@@ -1088,6 +1102,38 @@ def generate_tearsheet(
         # ── P10: Rebalance History ────────────────────────────────────────────
         _add_rebalance_history_page(pdf, result)
 
+        # ── P11: Parameter set comparison (all 59) ────────────────────────────
+        if batch_df is not None and not batch_df.empty:
+            _add_param_comparison_page(
+                pdf, batch_df,
+                selected_name=param_set_name or "",
+            )
+
+        # ── P12: Walk-forward OOS equity (preferred) or MCPS rolling ─────────
+        if wf_result is not None and not wf_result.synthetic_equity.empty:
+            _add_mcps_comparison_page(
+                pdf,
+                mcps_equity=wf_result.synthetic_equity,
+                static_equity=equity,
+                bench_equity=bench_eq,
+                sel_log=wf_result.selection_log,
+                selected_name=param_set_name or "",
+            )
+        elif (mcps_equity is not None and not mcps_equity.empty
+                and sel_log is not None):
+            _add_mcps_comparison_page(
+                pdf,
+                mcps_equity=mcps_equity,
+                static_equity=equity,
+                bench_equity=bench_eq,
+                sel_log=sel_log,
+                selected_name=param_set_name or "",
+            )
+
+        # ── P13: Walk-forward fold breakdown table ────────────────────────────
+        if wf_result is not None and not wf_result.fold_summary_df.empty:
+            _add_wf_fold_table_page(pdf, wf_result)
+
         # PDF metadata
         d = pdf.infodict()
         d["Title"]        = "Sector Rotation Strategy — Performance Tearsheet"
@@ -1098,6 +1144,521 @@ def generate_tearsheet(
 
     logger.info(f"Tearsheet saved → {output_path}")
     return output_path
+
+
+# ---------------------------------------------------------------------------
+# P11 — 59-set parameter comparison
+# ---------------------------------------------------------------------------
+
+def _add_param_comparison_page(
+    pdf: PdfPages,
+    batch_df: pd.DataFrame,
+    selected_name: str,
+) -> None:
+    """
+    Bar chart of all param sets ranked by full-period Sharpe, with the
+    currently-selected set highlighted in gold.
+    """
+    ok = batch_df[batch_df["status"] == "ok"].copy()
+    if ok.empty:
+        return
+    ok = ok.sort_values("sharpe", ascending=True)
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, max(8, len(ok) * 0.22 + 2)))
+    fig.patch.set_facecolor(PALETTE["bg"])
+    fig.suptitle(
+        "Parameter Set Comparison — All 59 Configurations",
+        fontsize=13, fontweight="bold", color=PALETTE["header_mid"], y=1.005,
+    )
+
+    # Use full-period Sharpe for both panels if recent_sharpe_12m not available
+    metric2 = "recent_sharpe_12m" if "recent_sharpe_12m" in ok.columns else "sharpe"
+    title2  = "Recent 12-Month Sharpe (MCPS proxy)" if metric2 == "recent_sharpe_12m" else "Full-Period Sharpe (fallback)"
+    for ax, metric, title in [
+        (axes[0], "sharpe", "Full-Period Sharpe Ratio"),
+        (axes[1], metric2,  title2),
+    ]:
+        col = ok[metric].fillna(0)
+        colors = [
+            PALETTE["gold"] if n == selected_name
+            else PALETTE["strategy"] if v >= 0
+            else PALETTE["negative"]
+            for n, v in zip(ok["param_set"], col)
+        ]
+        bars = ax.barh(ok["param_set"], col, color=colors,
+                       edgecolor="none", height=0.72)
+        # Label selected — use integer row index (categorical axes + annotate = bug)
+        if selected_name in ok["param_set"].values:
+            sel_val  = float(ok.loc[ok["param_set"] == selected_name, metric].iloc[0])
+            sel_idx  = list(ok["param_set"].values).index(selected_name)
+            ax.text(sel_val + 0.02, sel_idx,
+                    f"◀ selected ({sel_val:.2f})",
+                    fontsize=7, color=PALETTE["gold"], va="center")
+        ax.axvline(0, color=PALETTE["border"], linewidth=0.8)
+        med = col.median()
+        ax.axvline(med, color=PALETTE["neutral"], linewidth=0.9, linestyle="--",
+                   alpha=0.7, label=f"Median={med:.2f}")
+        ax.set_title(title, fontsize=10, fontweight="bold", color=PALETTE["header_mid"])
+        ax.set_xlabel("Sharpe Ratio", fontsize=8)
+        ax.set_facecolor(PALETTE["surface"])
+        ax.tick_params(axis="y", labelsize=6.5)
+        ax.tick_params(axis="x", labelsize=8)
+        for sp in ax.spines.values():
+            sp.set_edgecolor(PALETTE["border"]); sp.set_linewidth(0.6)
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.grid(axis="x", color=PALETTE["grid"], alpha=0.8, linewidth=0.5)
+        ax.legend(fontsize=7)
+
+    # Calmar inset table (top-10)
+    top10 = ok.sort_values("sharpe", ascending=False).head(10)
+    col_labels = ["Param Set", "Sharpe", "Calmar", "MaxDD", "Ann Ret"]
+    rows = [
+        [
+            r["param_set"],
+            f"{r['sharpe']:.3f}",
+            f"{r['calmar']:.3f}",
+            f"{r['max_drawdown']:.1%}",
+            f"{r['annual_return']:.1%}",
+        ]
+        for _, r in top10.iterrows()
+    ]
+
+    fig.tight_layout(rect=[0, 0.08, 1, 1])
+    tbl_ax = fig.add_axes([0.05, 0.01, 0.90, 0.08])
+    tbl_ax.axis("off")
+    tbl_ax.set_facecolor(PALETTE["bg"])
+    tbl = tbl_ax.table(
+        cellText=rows, colLabels=col_labels,
+        cellLoc="center", loc="center",
+    )
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(7)
+    tbl.scale(1, 1.3)
+    for (r, c), cell in tbl.get_celld().items():
+        if r == 0:
+            cell.set_facecolor(PALETTE["header_dark"])
+            cell.set_text_props(color="white", fontweight="bold")
+        elif rows[r - 1][0] == selected_name:
+            cell.set_facecolor("#3D2E00")
+            cell.set_text_props(color=PALETTE["gold"])
+        else:
+            cell.set_facecolor(PALETTE["surface"])
+            cell.set_text_props(color=PALETTE["neutral"])
+        cell.set_edgecolor(PALETTE["border"])
+
+    pdf.savefig(fig, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# MCPS quarterly rolling simulation
+# ---------------------------------------------------------------------------
+
+def compute_mcps_rolling_equity(
+    prices: pd.DataFrame,
+    macro: pd.DataFrame,
+    base_cfg: dict,
+    macro_store_base_dir=None,
+    reselect_months: int = 3,
+) -> tuple[pd.Series, list[dict]]:
+    """
+    Simulate MCPS quarterly param selection over the full backtest history.
+
+    For each quarter boundary, use macro state up to that date to compute
+    macro-conditioned Sharpe for all 59 param sets, select the best one,
+    and run the strategy forward until the next quarter boundary.
+    Stitches equity curves together into a single MCPS equity series.
+
+    Returns
+    -------
+    equity  : pd.Series — daily equity curve (base 1.0) for MCPS strategy
+    log     : list[dict] — selection log per period
+    """
+    import sys
+    from pathlib import Path as _Path
+    _proj = _Path(__file__).parent.parent.parent.parent
+    if str(_proj) not in sys.path:
+        sys.path.insert(0, str(_proj))
+
+    try:
+        from sector_rotation.SectorRotationStrategyRuns import PARAM_SETS, apply_param_set
+        from sector_rotation.backtest.engine import SectorRotationBacktest
+        from MacroStateStore import MacroStateStore, SIMILARITY_FEATURES
+    except Exception as e:
+        logger.warning(f"compute_mcps_rolling_equity: import failed ({e})")
+        return pd.Series(dtype=float), []
+
+    # All 59 sets we'll iterate over
+    set_names = list(PARAM_SETS.keys())
+    n_sets    = len(set_names)
+
+    # Rebalance quarter starts from the backtest start
+    backtest_start = pd.Timestamp(base_cfg.get("backtest", {}).get("start_date", "2018-07-01"))
+    all_dates      = prices.index
+    all_dates      = all_dates[all_dates >= backtest_start]
+    if all_dates.empty:
+        return pd.Series(dtype=float), []
+
+    # Quarter-start offsets
+    quarter_starts = pd.date_range(
+        start=backtest_start, end=all_dates[-1], freq=f"{reselect_months}ME"
+    ).normalize()
+    # Add actual backtest start and end
+    boundaries = sorted(set(
+        [backtest_start] + list(quarter_starts) + [all_dates[-1] + pd.Timedelta(days=1)]
+    ))
+
+    store = MacroStateStore() if macro_store_base_dir is None else MacroStateStore(macro_store_base_dir)
+
+    # Pre-run all 59 backtests ONCE to get daily equity curves
+    logger.info(f"MCPS sim: pre-running {n_sets} backtests for equity curves...")
+    eq_map: dict[str, pd.Series] = {}
+    for name in set_names:
+        try:
+            cfg = apply_param_set(base_cfg, PARAM_SETS[name])
+            res = SectorRotationBacktest(cfg).run(prices=prices, macro=macro)
+            if res.equity_curve is not None and not res.equity_curve.empty:
+                eq_map[name] = res.equity_curve
+        except Exception as exc:
+            logger.debug(f"MCPS sim: {name} failed ({exc})")
+
+    if not eq_map:
+        return pd.Series(dtype=float), []
+
+    # Load full macro df once
+    macro_df = store.load(str(backtest_start.date()))
+    if macro_df.empty:
+        logger.warning("MCPS sim: MacroStateStore empty, returning first param set equity")
+        first_eq = next(iter(eq_map.values()))
+        return first_eq / first_eq.iloc[0], []
+
+    # Build MCPS equity by period
+    segments:  list[pd.Series] = []
+    sel_log:   list[dict]      = []
+    base_value = 1.0
+
+    for i in range(len(boundaries) - 1):
+        period_start = boundaries[i]
+        period_end   = boundaries[i + 1] - pd.Timedelta(days=1)
+
+        # Macro state up to period_start (avoid lookahead)
+        macro_to_date = macro_df[macro_df.index < period_start]
+        avail_sf = [f for f in SIMILARITY_FEATURES if f in macro_df.columns]
+
+        # Select best param set using macro-conditioned Sharpe
+        best_name: str | None = None
+        best_score = float("-inf")
+
+        if len(macro_to_date) >= 60:
+            today_vec = {f: float(macro_to_date[f].iloc[-1])
+                         if f in macro_to_date.columns and not pd.isna(macro_to_date[f].iloc[-1])
+                         else None
+                         for f in avail_sf}
+
+            for name, eq in eq_map.items():
+                # Use equity up to period_start to compute macro-cond Sharpe
+                eq_to = eq[eq.index < period_start]
+                if len(eq_to) < 60:
+                    continue
+                rets    = eq_to.pct_change().dropna()
+                sub_mac = macro_to_date[avail_sf].dropna(how="any")
+                rets    = rets.reindex(sub_mac.index).dropna()
+                sub_mac = sub_mac.reindex(rets.index)
+                if len(rets) < 60:
+                    continue
+
+                today_v = [today_vec.get(f) for f in avail_sf]
+                if any(v is None for v in today_v):
+                    continue
+                today_arr = np.array([float(v) for v in today_v])
+                macro_mat = sub_mac.values
+                diffs     = macro_mat - today_arr
+                dists     = np.sqrt((diffs ** 2).sum(axis=1))
+                sigma     = max(float(np.median(dists)), 1e-3)
+                weights   = np.exp(-(dists ** 2) / (2.0 * sigma ** 2))
+                total_w   = float(weights.sum())
+                if total_w <= 0:
+                    continue
+                rets_arr  = rets.values
+                wmean = float((weights @ rets_arr) / total_w)
+                wvar  = float((weights @ (rets_arr - wmean) ** 2) / total_w)
+                if wvar <= 0:
+                    continue
+                score = wmean / np.sqrt(wvar) * np.sqrt(252)
+                if score > best_score:
+                    best_score = score
+                    best_name  = name
+
+        # Fallback: highest recent 12m Sharpe
+        if best_name is None:
+            for name, eq in eq_map.items():
+                eq_to = eq[eq.index < period_start].tail(252)
+                if len(eq_to) < 20:
+                    continue
+                r   = eq_to.pct_change().dropna()
+                sr  = float(r.mean() / r.std() * np.sqrt(252)) if r.std() > 0 else 0
+                if sr > best_score:
+                    best_score = sr
+                    best_name  = name
+
+        if best_name is None:
+            best_name = set_names[0]
+
+        # Slice this period's equity
+        eq_full = eq_map[best_name]
+        seg = eq_full[(eq_full.index >= period_start) & (eq_full.index <= period_end)]
+        if seg.empty:
+            continue
+
+        # Chain: scale segment to continue from previous base_value
+        seg_norm = seg / seg.iloc[0] * base_value
+        base_value = float(seg_norm.iloc[-1])
+        segments.append(seg_norm)
+
+        sel_log.append({
+            "period_start": str(period_start.date()),
+            "period_end":   str(period_end.date()),
+            "selected":     best_name,
+            "mcps_score":   round(best_score, 4),
+            "n_trading_days": len(seg),
+        })
+        logger.info(f"  MCPS [{period_start.date()} → {period_end.date()}]: {best_name} (score={best_score:.3f})")
+
+    if not segments:
+        return pd.Series(dtype=float), sel_log
+
+    mcps_eq = pd.concat(segments)
+    mcps_eq = mcps_eq[~mcps_eq.index.duplicated(keep="last")].sort_index()
+    return mcps_eq, sel_log
+
+
+# ---------------------------------------------------------------------------
+# P12 — MCPS rolling equity comparison
+# ---------------------------------------------------------------------------
+
+def _add_mcps_comparison_page(
+    pdf: PdfPages,
+    mcps_equity: pd.Series,
+    static_equity: pd.Series,
+    bench_equity: pd.Series | None,
+    sel_log: list[dict],
+    selected_name: str,
+) -> None:
+    """
+    Compare MCPS rolling equity vs static selected param set vs SPY.
+    Bottom panel shows selected param set over time.
+    """
+    if mcps_equity.empty or static_equity.empty:
+        return
+
+    fig, axes = plt.subplots(3, 1, figsize=(14, 12),
+                             gridspec_kw={"height_ratios": [3, 1.5, 1.2]})
+    fig.patch.set_facecolor(PALETTE["bg"])
+    fig.suptitle(
+        "MCPS Quarterly Rolling Param Selection — Strategy Comparison",
+        fontsize=13, fontweight="bold", color=PALETTE["header_mid"], y=1.002,
+    )
+
+    # ── P12a: Cumulative equity ───────────────────────────────────────────────
+    ax0 = axes[0]
+    ax0.set_facecolor(PALETTE["surface"])
+
+    # Align all to common index
+    idx  = mcps_equity.index.intersection(static_equity.index)
+    me   = (mcps_equity.reindex(idx) / mcps_equity.reindex(idx).iloc[0] * 100)
+    se   = (static_equity.reindex(idx) / static_equity.reindex(idx).iloc[0] * 100)
+
+    ax0.fill_between(me.index, me.values, 100, alpha=0.08, color=PALETTE["gold"])
+    ax0.plot(me.index, me.values, color=PALETTE["gold"], linewidth=2.2,
+             label="MCPS Rolling", zorder=3)
+    ax0.plot(se.index, se.values, color=PALETTE["strategy"], linewidth=1.8,
+             linestyle="--", label=f"Static: {selected_name}", alpha=0.85)
+    if bench_equity is not None and not bench_equity.empty:
+        be = (bench_equity.reindex(idx, method="ffill") /
+              bench_equity.reindex(idx, method="ffill").iloc[0] * 100)
+        ax0.plot(be.index, be.values, color=PALETTE["benchmark"], linewidth=1.4,
+                 linestyle=":", alpha=0.7, label="SPY")
+
+    # Annotate quarter boundaries
+    for entry in sel_log:
+        ax0.axvline(pd.Timestamp(entry["period_start"]), color=PALETTE["gold"],
+                    linewidth=0.6, alpha=0.35, linestyle=":")
+
+    ax0.axhline(100, color=PALETTE["border"], linewidth=0.7)
+    ax0.set_title("Cumulative Return (Base = 100)", fontsize=10, fontweight="bold",
+                  color=PALETTE["header_mid"])
+    ax0.set_ylabel("Portfolio Value", fontsize=9)
+    ax0.legend(fontsize=9, loc="upper left")
+    ax0.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.0f"))
+
+    # ── P12b: Relative performance (MCPS / Static) ────────────────────────────
+    ax1 = axes[1]
+    ax1.set_facecolor(PALETTE["surface"])
+    rel = me / se
+    ax1.fill_between(rel.index, rel.values, 1.0,
+                     where=(rel >= 1), alpha=0.18, color=PALETTE["positive"], interpolate=True)
+    ax1.fill_between(rel.index, rel.values, 1.0,
+                     where=(rel < 1),  alpha=0.18, color=PALETTE["negative"], interpolate=True)
+    ax1.plot(rel.index, rel.values, color=PALETTE["strategy"], linewidth=1.4)
+    ax1.axhline(1.0, color=PALETTE["border"], linewidth=0.9)
+    ax1.set_title("MCPS / Static Relative Performance (>1 = MCPS outperforms)", fontsize=9,
+                  fontweight="bold", color=PALETTE["header_mid"])
+    ax1.set_ylabel("Ratio", fontsize=9)
+    ax1.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
+
+    # ── P12c: Selected param set per quarter (text timeline) ─────────────────
+    ax2 = axes[2]
+    ax2.set_facecolor(PALETTE["surface"])
+    ax2.set_xlim(ax0.get_xlim())
+    ax2.set_ylim(0, 1)
+    ax2.axis("off")
+    ax2.set_title("MCPS Quarterly Selection Log", fontsize=9, fontweight="bold",
+                  color=PALETTE["header_mid"])
+
+    palette_cycle = [PALETTE["strategy"], PALETTE["gold"], PALETTE["ew"],
+                     PALETTE["positive"], PALETTE["negative"]]
+    unique_names  = list(dict.fromkeys(e["selected"] for e in sel_log))
+    name_color    = {n: palette_cycle[i % len(palette_cycle)]
+                     for i, n in enumerate(unique_names)}
+
+    xlim = ax0.get_xlim()
+    total_span = xlim[1] - xlim[0]
+
+    for entry in sel_log:
+        ps  = pd.Timestamp(entry["period_start"])
+        pe  = pd.Timestamp(entry["period_end"])
+        col = name_color.get(entry["selected"], PALETTE["strategy"])
+        x0  = (ps.timestamp() - xlim[0]) / total_span
+        x1  = (pe.timestamp() - xlim[0]) / total_span
+        x0  = max(0.0, min(1.0, x0))
+        x1  = max(0.0, min(1.0, x1))
+        if x1 <= x0:
+            continue
+        rect = Rectangle((x0, 0.35), x1 - x0, 0.45,
+                          facecolor=col, alpha=0.5, edgecolor="none",
+                          transform=ax2.transAxes)
+        ax2.add_patch(rect)
+        mid = (x0 + x1) / 2
+        if x1 - x0 > 0.04:
+            ax2.text(mid, 0.62, entry["selected"], ha="center", va="bottom",
+                     fontsize=5.5, color="white", fontweight="bold",
+                     transform=ax2.transAxes, rotation=45)
+
+    # Stats box
+    if sel_log:
+        n_changes = sum(
+            1 for j in range(1, len(sel_log))
+            if sel_log[j]["selected"] != sel_log[j - 1]["selected"]
+        )
+        mcps_sr  = float(me.pct_change().dropna().mean() /
+                         me.pct_change().dropna().std() * np.sqrt(252))
+        stat_sr  = float(se.pct_change().dropna().mean() /
+                         se.pct_change().dropna().std() * np.sqrt(252))
+        txt = (f"Quarters: {len(sel_log)}  |  Param switches: {n_changes}  |  "
+               f"MCPS Sharpe: {mcps_sr:.3f}  |  Static Sharpe: {stat_sr:.3f}  |  "
+               f"MCPS vs Static: {mcps_sr - stat_sr:+.3f}")
+        ax2.text(0.5, 0.08, txt, ha="center", va="center",
+                 fontsize=7.5, color=PALETTE["neutral"],
+                 transform=ax2.transAxes)
+
+    for ax_ in axes[:2]:
+        for sp in ax_.spines.values():
+            sp.set_edgecolor(PALETTE["border"]); sp.set_linewidth(0.7)
+        ax_.spines["top"].set_visible(False)
+        ax_.spines["right"].set_visible(False)
+        ax_.grid(color=PALETTE["grid"], alpha=0.7, linewidth=0.5)
+        ax_.tick_params(labelsize=8)
+
+    fig.tight_layout(rect=[0, 0, 1, 0.99])
+    pdf.savefig(fig, bbox_inches="tight")
+    plt.close(fig)
+
+
+# ---------------------------------------------------------------------------
+# P13 — Walk-forward fold breakdown table
+# ---------------------------------------------------------------------------
+
+def _add_wf_fold_table_page(pdf: PdfPages, wf_result) -> None:
+    """
+    Tabular page showing per-fold walk-forward results:
+    fold, IS period, OOS period, selected param, IS Sharpe, OOS Sharpe,
+    OOS return, OOS MaxDD, WFE, DSR p-value, regime.
+    """
+    df = wf_result.fold_summary_df
+    if df.empty:
+        return
+
+    fig = plt.figure(figsize=(16, max(8, len(df) * 0.28 + 3)))
+    fig.patch.set_facecolor(PALETTE["bg"])
+    ax = fig.add_subplot(111)
+    ax.axis("off")
+    ax.set_facecolor(PALETTE["bg"])
+
+    # Title
+    sm = wf_result.synthetic_metrics
+    title = (f"Walk-Forward IS/OOS Analysis — {wf_result.mode.upper()} "
+             f"({len(df)} folds × {wf_result.n_param_sets} param sets)")
+    subtitle = (f"Synthetic OOS Sharpe: {sm.get('sharpe', float('nan')):.3f}  |  "
+                f"DSR: {wf_result.dsr_aggregate:.3f}  |  "
+                f"Mean WFE: {wf_result.mean_wfe:.3f}")
+    ax.text(0.5, 1.02, title, ha="center", va="bottom",
+            fontsize=12, fontweight="bold", color=PALETTE["header_mid"],
+            transform=ax.transAxes)
+    ax.text(0.5, 0.98, subtitle, ha="center", va="top",
+            fontsize=9, color=PALETTE["neutral"], transform=ax.transAxes)
+
+    # Prepare table data
+    col_labels = ["Fold", "IS Period", "OOS Period", "Selected",
+                  "Method", "IS SR", "OOS SR", "OOS Ret", "OOS MaxDD",
+                  "WFE", "DSR p", "Regime"]
+    rows = []
+    for _, r in df.iterrows():
+        rows.append([
+            f"{int(r['fold']) + 1}",
+            f"{r['is_start']}→{r['is_end']}",
+            f"{r['oos_start']}→{r['oos_end']}",
+            str(r.get("selected", "")),
+            str(r.get("method", "")),
+            f"{r.get('is_sharpe', float('nan')):.2f}" if r.get("is_sharpe") is not None else "",
+            f"{r.get('oos_sharpe', float('nan')):.2f}" if r.get("oos_sharpe") is not None else "",
+            f"{r.get('oos_return', float('nan')):.1%}" if r.get("oos_return") is not None else "",
+            f"{r.get('oos_maxdd', float('nan')):.1%}" if r.get("oos_maxdd") is not None else "",
+            f"{r.get('wfe', float('nan')):.2f}" if r.get("wfe") is not None else "",
+            f"{r.get('dsr_pvalue', 0):.2f}" if r.get("dsr_pvalue") is not None else "",
+            str(r.get("oos_regime", "")),
+        ])
+
+    tbl = ax.table(
+        cellText=rows, colLabels=col_labels,
+        cellLoc="center", loc="upper center",
+    )
+    tbl.auto_set_font_size(False)
+    tbl.set_fontsize(5.5)
+    tbl.scale(1, 1.2)
+
+    for (r, c), cell in tbl.get_celld().items():
+        if r == 0:
+            cell.set_facecolor(PALETTE["header_dark"])
+            cell.set_text_props(color="white", fontweight="bold", fontsize=6)
+        else:
+            # Color OOS Sharpe: green if > 0, red if < 0
+            oos_sr_str = rows[r - 1][6] if r - 1 < len(rows) else ""
+            try:
+                oos_sr_val = float(oos_sr_str)
+                if oos_sr_val > 0.5:
+                    cell.set_facecolor(PALETTE["pos_light"])
+                elif oos_sr_val < 0:
+                    cell.set_facecolor(PALETTE["neg_light"])
+                else:
+                    cell.set_facecolor(PALETTE["surface"])
+            except (ValueError, TypeError):
+                cell.set_facecolor(PALETTE["surface"])
+            cell.set_text_props(color=PALETTE["header_mid"])
+        cell.set_edgecolor(PALETTE["border"])
+
+    pdf.savefig(fig, bbox_inches="tight")
+    plt.close(fig)
 
 
 if __name__ == "__main__":

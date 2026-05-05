@@ -156,6 +156,7 @@ def _extract_metrics(result) -> dict:
 
 # ---------------------------------------------------------------------------
 # Macro-conditioned Sharpe (used by --select when MacroStateStore is available)
+# Delegates to MCPS.macro_cond_sharpe() — single source of truth.
 # ---------------------------------------------------------------------------
 
 def _macro_cond_sharpe(
@@ -167,51 +168,27 @@ def _macro_cond_sharpe(
 ) -> float:
     """
     Gaussian-kernel-weighted Sharpe ratio for macro-conditioned param selection.
-
-    For each historical trading day t, weight w_t = exp(-||v_today - v_t||² / 2σ²)
-    where σ = median(||v_today - v_t||) across all valid days.
-    Days whose macro state is similar to today's contribute more to the Sharpe.
-
-    Returns nan when overlap < min_overlap or today's vector has missing features.
+    Delegates to MCPS.macro_cond_sharpe() for unified implementation.
     """
-    avail = [f for f in features if f in macro_df.columns]
-    if not avail:
-        return float("nan")
+    try:
+        if str(_PROJECT_DIR) not in sys.path:
+            sys.path.insert(0, str(_PROJECT_DIR))
+        from MCPS import macro_cond_sharpe
+    except ImportError:
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "MCPS", str(_PROJECT_DIR / "MCPS.py"))
+        _mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(_mod)
+        macro_cond_sharpe = _mod.macro_cond_sharpe
 
-    rets = equity.pct_change().dropna()
-    sub  = macro_df[avail].dropna(how="any")   # only rows with full feature set
-    rets = rets.reindex(sub.index).dropna()
-    sub  = sub.reindex(rets.index)
-
-    if len(rets) < min_overlap:
-        return float("nan")
-
-    # Today's vector must be complete (no None / NaN features)
-    today_v = [today_vec.get(f) for f in avail]
-    if any(v is None or (isinstance(v, float) and v != v) for v in today_v):
-        return float("nan")
-    today_arr = np.array([float(v) for v in today_v])
-
-    macro_mat = sub.values                            # (n_days, n_features)
-    diffs     = macro_mat - today_arr                 # broadcast subtract today
-    dists     = np.sqrt((diffs ** 2).sum(axis=1))     # Euclidean distance per day
-
-    # Adaptive σ = median distance from today to all historical points
-    sigma = float(np.median(dists))
-    sigma = max(sigma, 1e-3)
-
-    weights = np.exp(-(dists ** 2) / (2.0 * sigma ** 2))
-    total_w = float(weights.sum())
-    if total_w <= 0:
-        return float("nan")
-
-    rets_arr = rets.values
-    wmean = float((weights @ rets_arr) / total_w)
-    wvar  = float((weights @ (rets_arr - wmean) ** 2) / total_w)
-    if wvar <= 0:
-        return float("nan")
-
-    return float(wmean / np.sqrt(wvar) * np.sqrt(252))
+    return macro_cond_sharpe(
+        equity=equity,
+        macro_df=macro_df,
+        today_vec=today_vec,
+        features=features,
+        min_overlap=min_overlap,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -475,6 +452,14 @@ def main() -> None:
         "--verbose", action="store_true",
         help="Enable INFO-level logging during backtest runs.",
     )
+    parser.add_argument(
+        "--oos-validate", action="store_true",
+        help=(
+            "After batch run, run full walk-forward IS/OOS validation "
+            "(anchored + rolling) using WalkForwardAnalyzer. "
+            "Reports synthetic OOS Sharpe, DSR, and WFE for all 59 param sets."
+        ),
+    )
     args = parser.parse_args()
 
     if args.verbose:
@@ -590,6 +575,10 @@ def main() -> None:
         print(f"  {len(errs)} run(s) failed — check error column in CSV.")
 
     # ── Select best param set for production (--select) ──────────────────────
+    # Three-stage selection:
+    #   Stage 1: WF OOS validation → filter out param sets with poor OOS performance
+    #   Stage 2: Macro-conditioned Sharpe on surviving candidates
+    #   Stage 3: Fallback to recent_sharpe_12m if MCPS unavailable
     if args.select and not ok.empty:
         import json as _json
         import math as _math
@@ -600,8 +589,46 @@ def main() -> None:
         _sel_val                           = float("nan")
         _macro_cond: "dict[str, float]"    = {}
         _macro_df                          = pd.DataFrame()
+        _oos_filter_applied                = False
+        _n_survivors                       = len(ok)
+        _wf_mean_wfe                       = float("nan")
 
-        # ── Attempt macro-conditioned Sharpe ──────────────────────────────────
+        # ── Stage 1: WF OOS filter (run WF, exclude overfitting params) ──────
+        _oos_qualified: "set[str] | None" = None  # None = no filter (WF failed)
+        try:
+            from sector_rotation.walk_forward import WalkForwardAnalyzer
+            print(f"\n  [SELECT] Stage 1: Walk-Forward OOS validation...")
+            _wf = WalkForwardAnalyzer(
+                base_cfg=base_cfg, prices=prices, macro=macro,
+                mode="anchored",
+                is_years_min=base_cfg.get("backtest", {}).get("is_years", 3),
+                oos_months=6, step_days=15, embargo_days=5,
+            )
+            _wf_result = _wf.run()
+            _wf_mean_wfe = _wf_result.mean_wfe
+
+            # Criteria: param set must have been selected ≥1 time AND
+            # have mean OOS Sharpe > 0 when selected
+            _oos_qualified = set()
+            for _ps_name, _stats in _wf_result.param_oos_stats.items():
+                if (_stats.get("mean_oos_sharpe", float("-inf")) > 0.0
+                        and _stats.get("n_selected", 0) >= 1):
+                    _oos_qualified.add(_ps_name)
+
+            if _oos_qualified:
+                _oos_filter_applied = True
+                _n_survivors = len(_oos_qualified)
+                print(f"    OOS filter: {_n_survivors}/{len(ok)} param sets survive "
+                      f"(mean OOS Sharpe > 0)")
+            else:
+                # All failed OOS → don't filter (use full set with warning)
+                print(f"    WARN: No param sets with OOS Sharpe > 0 — skipping OOS filter")
+                _oos_qualified = None
+        except Exception as _wf_e:
+            log.warning(f"[SELECT] WF validation failed ({_wf_e}) — skipping OOS filter")
+            _oos_qualified = None
+
+        # ── Stage 2: Macro-conditioned Sharpe (on OOS-qualified survivors) ────
         try:
             if str(_PROJECT_DIR) not in sys.path:
                 sys.path.insert(0, str(_PROJECT_DIR))
@@ -615,6 +642,9 @@ def main() -> None:
                 if not _macro_df.empty:
                     _eq_map = {s.name: s for s in equity_frames if not s.empty}
                     for _ps, _eq in _eq_map.items():
+                        # Skip if OOS filter active and this param didn't pass
+                        if _oos_qualified is not None and _ps not in _oos_qualified:
+                            continue
                         _macro_cond[_ps] = _macro_cond_sharpe(
                             _eq, _macro_df, _today_v, _SF
                         )
@@ -624,14 +654,17 @@ def main() -> None:
         _valid_mcs = {k: v for k, v in _macro_cond.items() if not _math.isnan(v)}
 
         if len(_valid_mcs) >= 3:
-            # Primary path: macro-conditioned Sharpe
+            # Primary path: macro-conditioned Sharpe (on OOS-qualified set)
             _best_ps    = max(_valid_mcs, key=_valid_mcs.get)
             _best_row   = ok[ok["param_set"] == _best_ps].iloc[0]
-            _sel_method = "macro_cond_sharpe"
+            _sel_method = "mcps_oos_filtered" if _oos_filter_applied else "macro_cond_sharpe"
             _sel_val    = round(_valid_mcs[_best_ps], 4)
         else:
-            # Fallback: best recent 12m Sharpe
-            _ok_r = ok.dropna(subset=["recent_sharpe_12m"])
+            # ── Stage 3: Fallback — best recent 12m Sharpe ────────────────────
+            _candidates = ok
+            if _oos_qualified is not None and _oos_qualified:
+                _candidates = ok[ok["param_set"].isin(_oos_qualified)]
+            _ok_r = _candidates.dropna(subset=["recent_sharpe_12m"])
             if not _ok_r.empty:
                 _best_row   = _ok_r.loc[_ok_r["recent_sharpe_12m"].idxmax()]
                 _best_ps    = _best_row["param_set"]
@@ -646,6 +679,11 @@ def main() -> None:
             _ref_r = ok[ok["param_set"] == _best_ps]["recent_sharpe_12m"]
             _recent_sr_ref = round(float(_ref_r.iloc[0]), 4) if not _ref_r.empty else None
 
+            # OOS stats for selected param (if available from WF)
+            _oos_stats = {}
+            if _oos_filter_applied and hasattr(_wf_result, "param_oos_stats"):
+                _oos_stats = _wf_result.param_oos_stats.get(_best_ps, {})
+
             sel_info = {
                 "param_set":          _best_ps,
                 "selection_method":   _sel_method,
@@ -655,6 +693,12 @@ def main() -> None:
                 "full_period_calmar": round(float(_best_row["calmar"]), 4),
                 "selected_at":        datetime.now().strftime("%Y-%m-%d"),
                 "n_candidates":       int(len(_valid_mcs) if _valid_mcs else len(ok)),
+                "n_oos_survivors":    _n_survivors,
+                "oos_filter_applied": _oos_filter_applied,
+                "oos_mean_sharpe":    round(_oos_stats.get("mean_oos_sharpe", float("nan")), 4)
+                                      if _oos_stats else None,
+                "oos_n_selected":     _oos_stats.get("n_selected") if _oos_stats else None,
+                "wf_mean_wfe":        round(_wf_mean_wfe, 4) if not _math.isnan(_wf_mean_wfe) else None,
                 "macro_data_days":    _n_macro,
             }
             # Write to backtest_results/ (archive) AND sector_rotation/ (production)
@@ -666,7 +710,13 @@ def main() -> None:
             print(f"\n{'═'*60}")
             print(f"  [SELECT] Best param set  : {_best_ps}")
             print(f"  Method     : {_sel_method}  = {_sel_val:.3f}")
-            if _sel_method == "macro_cond_sharpe":
+            if _oos_filter_applied:
+                print(f"  OOS filter : {_n_survivors} survivors (mean OOS Sharpe > 0)")
+                if _oos_stats:
+                    print(f"  OOS record : selected {_oos_stats.get('n_selected', '?')} times, "
+                          f"mean OOS Sharpe={_oos_stats.get('mean_oos_sharpe', '?'):.3f}")
+                print(f"  WF mean WFE: {_wf_mean_wfe:.3f}")
+            if "macro_cond" in _sel_method or _sel_method == "mcps_oos_filtered":
                 _mc0 = _macro_df.index[0].date() if _n_macro else "?"
                 _mc1 = _macro_df.index[-1].date() if _n_macro else "?"
                 print(f"  Macro days : {_n_macro}  ({_mc0} → {_mc1})")
@@ -677,6 +727,27 @@ def main() -> None:
             print(f"  Written to : {prod_path}")
             print(f"  → DailySignal will use this param set on next run")
             print(f"{'═'*60}\n")
+
+    # ── OOS Validation via WalkForwardAnalyzer ───────────────────────────
+    if args.oos_validate:
+        print(f"\n{'═'*60}")
+        print(f"  OOS VALIDATION — Walk-Forward Analysis (anchored + rolling)")
+        print(f"{'═'*60}\n")
+        from sector_rotation.walk_forward import run_dual_mode
+        wf_results = run_dual_mode(
+            base_cfg=base_cfg,
+            prices=prices,
+            macro=macro,
+            is_years_min=base_cfg.get("backtest", {}).get("is_years", 3),
+            oos_months=6,
+            step_days=15,
+            embargo_days=5,
+        )
+        for mode_name, wf_r in wf_results.items():
+            print(wf_r.summary())
+            csv_path = Path(args.output_dir) / f"wf_{mode_name}_fold_summary_{ts}.csv"
+            wf_r.fold_summary_df.to_csv(csv_path, index=False)
+            print(f"  Fold summary → {csv_path}")
 
 
 if __name__ == "__main__":

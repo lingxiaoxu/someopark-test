@@ -18,20 +18,8 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "FSLR",
-    "s2": "RSG",
-    "sector": "industrial",
-    "z_col": "Z_industrial"
-  },
-  {
     "s1": "ALB",
     "s2": "YUM",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
-    "s1": "HRL",
-    "s2": "MKC",
     "sector": "food",
     "z_col": "Z_food"
   },
@@ -42,22 +30,34 @@
     "z_col": "Z_energy"
   },
   {
-    "s1": "CI",
-    "s2": "LVS",
-    "sector": "health",
-    "z_col": "Z_health"
-  },
-  {
-    "s1": "CI",
-    "s2": "MTD",
-    "sector": "health",
-    "z_col": "Z_health"
+    "s1": "HRL",
+    "s2": "MKC",
+    "sector": "food",
+    "z_col": "Z_food"
   },
   {
     "s1": "CHD",
     "s2": "HON",
     "sector": "industrial",
     "z_col": "Z_industrial"
+  },
+  {
+    "s1": "CI",
+    "s2": "LVS",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
+    "s1": "AKAM",
+    "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "CI",
+    "s2": "MTD",
+    "sector": "health",
+    "z_col": "Z_health"
   },
   {
     "s1": "AON",
@@ -78,15 +78,15 @@
     "z_col": "Z_industrial"
   },
   {
-    "s1": "AKAM",
-    "s2": "YUM",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "BAX",
     "s2": "IDXX",
     "sector": "health",
     "z_col": "Z_health"
+  },
+  {
+    "s1": "IEX",
+    "s2": "MSFT",
+    "sector": "tech",
+    "z_col": "Z_tech"
   }
 ]
