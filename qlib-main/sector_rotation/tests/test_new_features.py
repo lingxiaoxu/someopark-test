@@ -282,10 +282,10 @@ def _make_wf_analyzer(param_sets=None, n_days=1500, is_years_min=2,
 
 class TestSelectionMethods(unittest.TestCase):
     """
-    Verifies all four selection_method paths:
+    Verifies all five selection_method paths:
       fallback          — IS data insufficient (< 60 bars)
-      is_sharpe         — macro data unavailable, fall back to best IS Sharpe
-      mcps              — IS MCPS (< _OOS_RETRO_MIN_FOLDS prior folds)
+      is_sharpe         — IS 60-79 bars (stability filter needs ≥ 80); plain IS Sharpe
+      is_stability      — warmup: stability-filtered IS Sharpe (mean - 0.5*std sub-periods)
       oos_retrospective — enough prior folds with oos_macro_vec + all_oos_sharpes
 
     Also verifies IS + OOS plumbing:
@@ -335,11 +335,12 @@ class TestSelectionMethods(unittest.TestCase):
         self.assertEqual(fr.selection_method, "fallback",
                          f"Expected fallback, got {fr.selection_method}")
 
-    # ── is_sharpe: no macro data ──────────────────────────────────────────────
+    # ── is_stability: no macro data, IS long enough for sub-windows ─────────────
 
     def test_is_sharpe_when_no_macro(self):
-        """No macro data + no features → selection_method='is_sharpe'.
-        Injects synthetic eq_map directly to bypass backtest engine dependency."""
+        """No macro features + sufficient IS data → selection_method='is_stability'.
+        Stability filter (sub-period Sharpe) runs regardless of macro availability.
+        Injects synthetic eq_map to bypass backtest engine dependency."""
         from sector_rotation.walk_forward import WalkForwardAnalyzer
         import pandas as pd
 
@@ -350,7 +351,7 @@ class TestSelectionMethods(unittest.TestCase):
             is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
             param_sets=self._tiny_param_sets(),
         )
-        analyzer._similarity_features = []  # no macro features → forces is_sharpe path
+        analyzer._similarity_features = []  # no macro features → no OOS retro
 
         # Build eq_map from synthetic equity (bypass backtest engine)
         np.random.seed(42)
@@ -366,15 +367,16 @@ class TestSelectionMethods(unittest.TestCase):
         self.assertGreater(len(folds), 0)
 
         fr = analyzer._evaluate_fold(folds[0], eq_map, pd.DataFrame(), prior_folds=[])
-        self.assertEqual(fr.selection_method, "is_sharpe",
-                         f"Expected is_sharpe, got {fr.selection_method}")
+        # is_stability: stability filter runs when IS >= 80 bars (no macro needed)
+        self.assertIn(fr.selection_method, ("is_stability", "is_sharpe"),
+                      f"Expected is_stability or is_sharpe, got {fr.selection_method}")
 
-    # ── mcps: macro available, < MIN_FOLDS prior ────────────────────────────
+    # ── is_stability: macro available, < MIN_FOLDS prior ──────────────────────
 
     def test_mcps_when_few_prior_folds(self):
-        """With macro data but fewer than _OOS_RETRO_MIN_FOLDS prior folds
-        → selection_method should be 'mcps' (or 'is_sharpe' if MCPS scores
-        all NaN — acceptable either way, never 'oos_retrospective')."""
+        """With 0 prior folds → must NOT use oos_retrospective.
+        Warmup now uses stability-filtered IS Sharpe ('is_stability')
+        instead of IS MCPS — never 'oos_retrospective'."""
         from sector_rotation.walk_forward import WalkForwardAnalyzer
         import pandas as pd
 
@@ -399,7 +401,7 @@ class TestSelectionMethods(unittest.TestCase):
         fr = analyzer._evaluate_fold(folds[0], eq_map, macro, prior_folds=[])
         self.assertNotEqual(fr.selection_method, "oos_retrospective",
                             "Should not use oos_retrospective with 0 prior folds")
-        self.assertIn(fr.selection_method, ("mcps", "is_sharpe"),
+        self.assertIn(fr.selection_method, ("is_stability", "is_sharpe"),
                       f"Unexpected method: {fr.selection_method}")
 
     # ── oos_retrospective: enough prior folds ───────────────────────────────
@@ -587,7 +589,7 @@ class TestSelectionMethods(unittest.TestCase):
         )
         result = analyzer.run()
 
-        valid_methods = {"oos_retrospective", "mcps", "is_sharpe", "fallback"}
+        valid_methods = {"oos_retrospective", "is_stability", "is_sharpe", "fallback"}
         for entry in result.selection_log:
             self.assertIn(entry["method"], valid_methods,
                           f"Unknown selection_method in log: {entry['method']}")

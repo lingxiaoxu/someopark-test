@@ -538,9 +538,10 @@ class WalkForwardAnalyzer:
     #  Evaluate one fold
     # ──────────────────────────────────────────────────────────────────────
 
-    # Minimum completed folds before switching from MCPS → OOS retrospective.
-    # First _OOS_RETRO_MIN_FOLDS folds use IS-based MCPS as warm-up.
-    _OOS_RETRO_MIN_FOLDS: int = 8
+    # Minimum completed folds before switching to OOS retrospective matching.
+    # First _OOS_RETRO_MIN_FOLDS folds use stability-filtered IS Sharpe as warm-up.
+    # 4 prior folds provide enough macro diversity to anchor the Gaussian kernel.
+    _OOS_RETRO_MIN_FOLDS: int = 4
 
     def _evaluate_fold(
         self,
@@ -620,7 +621,7 @@ class WalkForwardAnalyzer:
                     all_oos_sharpes[name] = sr
 
         # ── Selection ─────────────────────────────────────────────────────
-        # Priority: OOS retrospective → IS MCPS → IS Sharpe fallback
+        # Priority: OOS retrospective → IS stability → IS Sharpe fallback
         n_trials = len(is_metrics)
         best_name: str = ""
         best_score: float = float("nan")
@@ -643,33 +644,16 @@ class WalkForwardAnalyzer:
                 best_score = retro_score
                 selection_method = "oos_retrospective"
 
-        # 2. IS MCPS fallback (when OOS retrospective not yet available)
-        if not best_name and is_macro_vec and not macro_df.empty and features:
-            macro_is_df = macro_df[(macro_df.index >= fold.is_start) &
-                                   (macro_df.index <= fold.is_end)]
-            mcs_scores: Dict[str, float] = {}
-            for name, eq in eq_map.items():
-                if name not in is_metrics:
-                    continue
-                eq_is = eq[(eq.index >= fold.is_start) & (eq.index <= fold.is_end)]
-                score = _macro_cond_sharpe_is(eq_is, macro_is_df, is_macro_vec, features)
-                if not np.isnan(score):
-                    mcs_scores[name] = score
-
-            if len(mcs_scores) >= 3:
-                all_scores = list(mcs_scores.values())
-                score_var = float(np.var(all_scores)) if len(all_scores) > 1 else 0.01
-                sr_0 = expected_max_sharpe(n_trials, score_var)
-                best_name  = max(mcs_scores, key=mcs_scores.get)
-                best_score = mcs_scores[best_name]
-                best_is_m  = is_metrics.get(best_name, {})
-                dsr_p = deflated_sharpe_ratio(
-                    sr_obs=best_score, sr_0=sr_0,
-                    T=int(best_is_m.get("n_days", 252)),
-                    skew=best_is_m.get("skew", 0.0),
-                    kurt=best_is_m.get("kurt", 3.0),
-                )
-                selection_method = "mcps"
+        # 2. Stability-filtered IS Sharpe (when OOS retrospective not yet available)
+        # Splits IS into n_splits sub-windows; score = mean_sub_sharpe - 0.5 * std.
+        # Prevents overfit params (high IS SR, unstable sub-period) from dominating
+        # warmup folds before oos_retrospective accumulates enough evidence.
+        if not best_name:
+            stab_name, stab_score = self._stable_is_select(is_metrics, eq_map, fold)
+            if stab_name:
+                best_name = stab_name
+                best_score = stab_score
+                selection_method = "is_stability"
 
         # 3. IS Sharpe fallback
         if not best_name:
@@ -745,6 +729,72 @@ class WalkForwardAnalyzer:
             all_oos_sharpes=all_oos_sharpes,
             oos_macro_vec=oos_macro_vec,
         )
+
+    def _stable_is_select(
+        self,
+        is_metrics: Dict[str, Dict[str, float]],
+        eq_map: Dict[str, pd.Series],
+        fold: "WFFold",
+        n_splits: int = 4,
+        stability_weight: float = 0.5,
+    ) -> tuple:
+        """
+        Select param set with best stability-penalized IS Sharpe.
+
+        Splits IS window into n_splits sub-periods.  Each param set is scored:
+            score = mean_sub_period_sharpe - stability_weight * std_sub_period_sharpe
+
+        This prevents overfit strategies (high overall IS SR but wildly variable
+        sub-period performance) from being selected during the warmup phase before
+        oos_retrospective accumulates enough prior-fold evidence.
+
+        Falls back to overall IS Sharpe when sub-window computation fails.
+        Returns (best_name, score) or ("", nan).
+        """
+        is_dates = self.prices.loc[fold.is_start:fold.is_end].index
+        n_days = len(is_dates)
+        if n_days < n_splits * 20:
+            return "", float("nan")
+
+        # Build sub-window boundaries
+        split_size = n_days // n_splits
+        windows: List[tuple] = []
+        for i in range(n_splits):
+            w_start = is_dates[i * split_size]
+            w_end = is_dates[(i + 1) * split_size - 1] if i < n_splits - 1 else is_dates[-1]
+            windows.append((w_start, w_end))
+
+        stability_scores: Dict[str, float] = {}
+        for name, m in is_metrics.items():
+            if name not in eq_map:
+                continue
+            eq_full = eq_map[name]
+            sub_sharpes: List[float] = []
+            for w_start, w_end in windows:
+                seg = eq_full[(eq_full.index >= w_start) & (eq_full.index <= w_end)]
+                if len(seg) < 15:
+                    continue
+                seg_norm = seg / seg.iloc[0]
+                sub_m = _compute_metrics_from_equity(seg_norm)
+                sr = sub_m.get("sharpe", float("nan"))
+                if not np.isnan(sr):
+                    sub_sharpes.append(sr)
+
+            if len(sub_sharpes) >= 2:
+                mean_sr = float(np.mean(sub_sharpes))
+                std_sr = float(np.std(sub_sharpes))
+                stability_scores[name] = mean_sr - stability_weight * std_sr
+            else:
+                # Fallback to overall IS Sharpe when too few sub-windows
+                overall_sr = m.get("sharpe", float("-inf"))
+                if not np.isnan(overall_sr):
+                    stability_scores[name] = overall_sr
+
+        if not stability_scores:
+            return "", float("nan")
+
+        best_name = max(stability_scores, key=stability_scores.get)
+        return best_name, stability_scores[best_name]
 
     def _make_fallback_fold(
         self, fold: WFFold, name: str, eq_map: Dict[str, pd.Series]
