@@ -250,6 +250,34 @@ class SectorRotationBacktest:
         value_source = self.sig_cfg.get("value_source", "constituents")
         value_cache_dir = self.cfg.get("data", {}).get("cache_dir")
 
+        # Build signal_kwargs for new bonus signals
+        stm_cfg = self.sig_cfg.get("short_term_momentum", {})
+        erm_cfg = self.sig_cfg.get("earnings_revision", {})
+        rsb_cfg = self.sig_cfg.get("relative_strength_breakout", {})
+        signal_kwargs = {
+            "stm_enabled": stm_cfg.get("enabled", False),
+            "stm_lookback": stm_cfg.get("lookback_months", 6),
+            "stm_skip": stm_cfg.get("skip_months", 1),
+            "stm_zscore_window": stm_cfg.get("zscore_window", 24),
+            "erm_enabled": erm_cfg.get("enabled", False),
+            "erm_lookback_quarters": erm_cfg.get("lookback_quarters", 4),
+            "rsb_enabled": rsb_cfg.get("enabled", False),
+            "rsb_lookback_days": rsb_cfg.get("lookback_days", 63),
+        }
+
+        # Inject bonus weights into signal weights dict
+        if sig_weights is None:
+            sig_weights = {}
+        sig_weights.setdefault("short_term_momentum_bonus",
+                               stm_cfg.get("weight_bonus", 0.0))
+        sig_weights.setdefault("earnings_revision_bonus",
+                               erm_cfg.get("weight_bonus", 0.0))
+        sig_weights.setdefault("rs_breakout_bonus",
+                               rsb_cfg.get("weight_bonus", 0.0))
+
+        # Benchmark prices for RS breakout signal
+        bench_series = bench_prices.iloc[:, 0] if bench_prices is not None else None
+
         composite, regime_monthly, components = compute_composite_signals(
             etf_prices,
             macro,
@@ -258,6 +286,8 @@ class SectorRotationBacktest:
             value_source=value_source,
             value_cache_dir=value_cache_dir,
             regime_kwargs=regime_kwargs,
+            signal_kwargs=signal_kwargs,
+            benchmark_prices=bench_series,
         )
 
         # ---------------------------------------------------------------

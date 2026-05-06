@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-05-02T18:43:23.907103",
-  "signal_date": "2026-05-01",
-  "capital": 1000000.0,
-  "dry_run": false,
+  "generated_at": "2026-05-05T17:01:59.563822",
+  "signal_date": "2026-05-05",
+  "capital": 1000000,
+  "dry_run": true,
   "regime": {
-    "label": "transition_up",
-    "vix": 16.889999,
-    "hy_spread_bps": 282.0,
-    "yield_curve_pct": 0.5,
+    "label": "risk_on",
+    "vix": 18.290001,
+    "hy_spread_bps": 277.0,
+    "yield_curve_pct": 0.51,
     "fin_stress": -0.6782,
     "nfci": -0.518,
     "effr": 3.64,
-    "breakeven_10y": 2.46
+    "breakeven_10y": 2.48
   },
   "rebalance_decision": {
-    "rebalance": true,
-    "reason": "monthly_rebalance"
+    "rebalance": false,
+    "reason": "no_rebalance"
   },
-  "risk_flags": "RiskFlags(date=Timestamp('2026-04-30 00:00:00'), vol_scaling_triggered=False, vix_emergency_triggered=False, dd_circuit_triggered=False, beta_adjusted=True, realized_vol_annual=0.09631010675581123, historical_vol_annual=0.09977235223984218, current_vix=16.889999389648438, portfolio_beta=0.6178248466797138, current_dd_pct=nan, cash_pct=0.0, notes=['Beta adjusted: 0.618 \u2192 target ~1.00'])",
+  "risk_flags": "RiskFlags(date=Timestamp('2026-05-04 00:00:00'), vol_scaling_triggered=False, vix_emergency_triggered=False, dd_circuit_triggered=False, beta_adjusted=True, realized_vol_annual=0.10110826452634368, historical_vol_annual=0.09998289014414419, current_vix=18.290000915527344, portfolio_beta=0.5319537433029926, current_dd_pct=nan, cash_pct=0.0, notes=['Beta adjusted: 0.532 \u2192 target ~1.00'])",
   "cash_weight": 0.0,
   "signals": [
     {
@@ -25,12 +25,12 @@
       "action": "HOLD",
       "target_weight": 0.250236,
       "current_weight": 0.250236,
-      "delta_weight": -0.0,
+      "delta_weight": 0.0,
       "target_shares": 4861,
       "current_shares": 4861,
-      "price": 51.47,
-      "composite_score": 1.4036,
-      "cs_mom": 1.53,
+      "price": 50.65,
+      "composite_score": 1.2578,
+      "cs_mom": 1.0592,
       "ts_mult": 1.0
     },
     {
@@ -41,9 +41,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 116.51,
-      "composite_score": -1.7933,
-      "cs_mom": -2.3379,
+      "price": 116.1,
+      "composite_score": -2.0668,
+      "cs_mom": -2.5938,
       "ts_mult": 1.0
     },
     {
@@ -51,12 +51,12 @@
       "action": "HOLD",
       "target_weight": 0.224154,
       "current_weight": 0.224154,
-      "delta_weight": -0.0,
+      "delta_weight": 0.0,
       "target_shares": 3757,
       "current_shares": 3757,
-      "price": 59.65,
-      "composite_score": 1.6539,
-      "cs_mom": 2.1557,
+      "price": 59.39,
+      "composite_score": 1.5333,
+      "cs_mom": 2.2165,
       "ts_mult": 1.0
     },
     {
@@ -67,9 +67,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 52.13,
-      "composite_score": -1.183,
-      "cs_mom": -1.792,
+      "price": 51.58,
+      "composite_score": -0.0819,
+      "cs_mom": -1.4537,
       "ts_mult": 1.0
     },
     {
@@ -77,12 +77,12 @@
       "action": "HOLD",
       "target_weight": 0.263504,
       "current_weight": 0.263504,
-      "delta_weight": -0.0,
+      "delta_weight": 0.0,
       "target_shares": 1509,
       "current_shares": 1509,
-      "price": 174.58,
-      "composite_score": 0.2193,
-      "cs_mom": 0.9925,
+      "price": 170.98,
+      "composite_score": 0.2096,
+      "cs_mom": 0.4678,
       "ts_mult": 1.0
     },
     {
@@ -93,9 +93,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 159.5,
-      "composite_score": -0.2036,
-      "cs_mom": 0.2509,
+      "price": 162.05,
+      "composite_score": -0.097,
+      "cs_mom": 0.8184,
       "ts_mult": 1.0
     },
     {
@@ -106,9 +106,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 84.31,
-      "composite_score": 0.0399,
-      "cs_mom": -0.7444,
+      "price": 83.54,
+      "composite_score": -1.1784,
+      "cs_mom": -0.9728,
       "ts_mult": 1.0
     },
     {
@@ -119,9 +119,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 44.4,
-      "composite_score": -0.2343,
-      "cs_mom": -0.6258,
+      "price": 44.08,
+      "composite_score": 0.2913,
+      "cs_mom": -0.0774,
       "ts_mult": 1.0
     },
     {
@@ -132,9 +132,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 46.85,
-      "composite_score": -0.0606,
-      "cs_mom": 0.5251,
+      "price": 46.37,
+      "composite_score": 0.1986,
+      "cs_mom": -0.0165,
       "ts_mult": 1.0
     },
     {
@@ -142,12 +142,12 @@
       "action": "HOLD",
       "target_weight": 0.262107,
       "current_weight": 0.262107,
-      "delta_weight": -0.0,
+      "delta_weight": 0.0,
       "target_shares": 1795,
       "current_shares": 1795,
-      "price": 145.99,
-      "composite_score": 0.5874,
-      "cs_mom": -0.6239,
+      "price": 144.73,
+      "composite_score": -0.3648,
+      "cs_mom": -0.6622,
       "ts_mult": 1.0
     },
     {
@@ -158,9 +158,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 118.35,
-      "composite_score": -0.4293,
-      "cs_mom": -0.6127,
+      "price": 117.72,
+      "composite_score": 0.2983,
+      "cs_mom": -0.5057,
       "ts_mult": 1.0
     }
   ],
@@ -168,7 +168,7 @@
   "transaction_costs": {
     "total_cost_usd": 0.0,
     "total_cost_bps": 0.0,
-    "turnover_pct": 5e-05,
+    "turnover_pct": 0.0,
     "cost_by_ticker": {
       "XLE": 0.0,
       "XLB": 0.0,

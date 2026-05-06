@@ -929,6 +929,60 @@ def build_report_data(start: str, end: str) -> dict:
             'ss_notional':    ss_notional,
         })
 
+    # Add HOLD pairs from daily_report that load_positions missed.
+    # These are same-day opens not yet in inventory_history.
+    # Use un-scaled PnL (matching curve overlay口径).
+    existing_pairs = {r['pair'] for r in rows}
+    if hold_pnl:
+        # Find latest daily_report to get scale_factors and pair details
+        _hold_report = None
+        for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
+            day, full = _parse_ts(fpath)
+            if day is None:
+                continue
+            if day > end_ts + pd.Timedelta(days=2):
+                continue
+            with open(fpath) as f:
+                _dr = json.load(f)
+            sig_date = pd.Timestamp(_dr.get('signal_date', str(day.date())))
+            if sig_date > end_ts:
+                continue
+            if full > pd.Timestamp('1970-01-01'):
+                _hold_report = _dr
+
+        if _hold_report:
+            _pm = _hold_report.get('position_monitor', {})
+            for strat in ('mrpt', 'mtfs'):
+                sf = _hold_report.get(strat, {}).get('scale_factor') or 1.0
+                for e in _pm.get(strat, []):
+                    if not isinstance(e, dict):
+                        continue
+                    pair = e.get('pair')
+                    if not pair or pair in existing_pairs:
+                        continue
+                    if e.get('action') != 'HOLD':
+                        continue
+                    upnl = e.get('unrealized_pnl', 0) or 0
+                    raw_upnl = round(upnl / sf, 2) if sf != 1.0 else upnl
+                    s1, s2 = pair.split('/', 1)
+                    rows.append({
+                        'pair':           pair,
+                        'strategy':       strat,
+                        's1':             s1, 's2': s2,
+                        'direction':      e.get('direction', '?'),
+                        'param_set':      e.get('param_set', '—'),
+                        'open_date':      e.get('open_date', '?'),
+                        'is_open':        True,
+                        'action':         'HOLD',
+                        'exit_date':      _hold_report.get('signal_date', end),
+                        'reason':         '',
+                        'sys_pnl':        raw_upnl,
+                        'prior_pnl':      prior_lifecycle_pnl.get(pair, 0),
+                        'yf_pnl':         None,
+                        'gross_notional': None,
+                        'ss_notional':    None,
+                    })
+
     # Compute totals (include prior lifecycle PnL in realized)
     totals = {}
     for strat in ('mrpt', 'mtfs'):

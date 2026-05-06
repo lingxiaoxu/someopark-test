@@ -150,6 +150,7 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.acceleration.enabled':                True,
         'signals.acceleration.lookback_months':        3,
         'signals.acceleration.weight_boost':           0.05,
+        'portfolio.top_n_sectors':                     5,
     },
 
     # A2: 动量超配。
@@ -175,6 +176,12 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.regime.regime_weights.transition_up.cross_sectional_momentum':  1.3,
         'signals.regime.regime_weights.risk_off.cross_sectional_momentum':       0.5,
         'signals.regime.regime_weights.transition_down.cross_sectional_momentum': 0.6,
+        'portfolio.constraints.beta_max':              1.40,
+        'portfolio.constraints.max_weight':            0.45,
+        'portfolio.top_n_sectors':                     5,
+        # STM: 动量超配策略用6月STM补充9月回看的中期盲区
+        'signals.short_term_momentum.enabled':         True,
+        'signals.short_term_momentum.weight_bonus':    0.06,
     },
 
     # A3: 价值倾斜。
@@ -199,6 +206,9 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.regime.regime_weights.risk_off.relative_value':  1.4,
         'signals.regime.regime_weights.risk_on.relative_value':   0.8,
         'signals.regime.defensive_bonus_risk_off':     0.25,
+        # ERM: value-heavy策略补充动态盈利趋势(FF1992: earnings momentum ⊥ value)
+        'signals.earnings_revision.enabled':           True,
+        'signals.earnings_revision.weight_bonus':      0.05,
     },
 
     # A4: 机制驱动。
@@ -272,6 +282,7 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.acceleration.enabled':                True,
         'signals.acceleration.weight_boost':           0.04,
         'portfolio.weight_scheme':                     'zscore_softmax',
+        'portfolio.top_n_sectors':                     5,
     },
 
     # ════════════════════════════════════════════════════════════════════════
@@ -303,6 +314,11 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'rebalance.zscore_change_threshold':           0.3,
         'risk.vol_scaling.estimation_window':          10,
         'portfolio.top_n_sectors':                     4,
+        'portfolio.constraints.beta_max':              1.40,
+        'portfolio.constraints.max_weight':            0.45,
+        # STM: 快速动量(6m回看)已经很短，再加6m STM作为确认信号
+        'signals.short_term_momentum.enabled':         True,
+        'signals.short_term_momentum.weight_bonus':    0.06,
     },
 
     # B2: 中速信号。
@@ -369,6 +385,9 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'rebalance.zscore_change_threshold':           0.7,
         'portfolio.cov.lookback_days':                 504,
         'portfolio.constraints.beta_min':              0.65,
+        # STM: 15月慢动量的盲区由6月STM补充(Asness1997: intermediate momentum)
+        'signals.short_term_momentum.enabled':         True,
+        'signals.short_term_momentum.weight_bonus':    0.06,
     },
 
     # B5: 强反转过滤。
@@ -390,6 +409,9 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.acceleration.enabled':                False,
         'signals.value_source':                        'proxy',
         'portfolio.weight_scheme':                     'rank',
+        # STM: acceleration关闭的替代，6月动量捕捉中期趋势(JT2001补充)
+        'signals.short_term_momentum.enabled':         True,
+        'signals.short_term_momentum.weight_bonus':    0.05,
     },
 
     # ════════════════════════════════════════════════════════════════════════
@@ -580,7 +602,7 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'portfolio.optimizer':                         'equal_weight',
         'portfolio.constraints.max_weight':            0.25,
         'portfolio.constraints.beta_min':              0.60,
-        'portfolio.constraints.beta_max':              1.15,
+        'portfolio.constraints.beta_max':              1.4,
         'portfolio.top_n_sectors':                     5,
         'portfolio.min_zscore':                        -0.3,
         'portfolio.weight_scheme':                     'rank',
@@ -631,10 +653,13 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'portfolio.min_zscore':                        0.0,
         'portfolio.constraints.max_weight':            0.45,
         'portfolio.constraints.beta_min':              0.70,
-        'portfolio.constraints.beta_max':              1.15,
+        'portfolio.constraints.beta_max':              1.40,
         'portfolio.weight_scheme':                     'zscore_softmax',
         'risk.vol_scaling.target_vol_annual':          0.12,
         'risk.drawdown.cumulative_dd_halve':           -0.18,
+        # RSB: 集中3板块时，RSB识别正在breakout的sector(GK2000: 高IC+集中)
+        'signals.relative_strength_breakout.enabled':  True,
+        'signals.relative_strength_breakout.weight_bonus': 0.06,
     },
 
     # E2: 标准四板块（默认）。
@@ -711,7 +736,7 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'portfolio.min_zscore':                        0.25,
         'portfolio.constraints.max_weight':            0.40,
         'portfolio.constraints.beta_min':              0.68,
-        'portfolio.constraints.beta_max':              1.12,
+        'portfolio.constraints.beta_max':              1.45,
         'portfolio.weight_scheme':                     'rank',
     },
 
@@ -1108,7 +1133,7 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'risk.vol_scaling.scale_threshold':            2.0,
         'risk.vol_scaling.historical_window':          504,
         'portfolio.constraints.beta_min':              0.75,
-        'portfolio.constraints.beta_max':              1.25,
+        'portfolio.constraints.beta_max':              1.4,
         'risk.drawdown.cumulative_dd_halve':           -0.22,
     },
 
@@ -1191,8 +1216,8 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'portfolio.optimizer':                         'inv_vol',
         'portfolio.cov.method':                        'ledoit_wolf',
         'portfolio.constraints.beta_min':              0.90,
-        'portfolio.constraints.beta_max':              1.32,
-        'portfolio.constraints.max_weight':            0.42,
+        'portfolio.constraints.beta_max':              1.52,
+        'portfolio.constraints.max_weight':            0.45,
         'signals.ts_momentum.crash_filter_multiplier': 0.5,
         'risk.vol_scaling.target_vol_annual':          0.16,
         'risk.vol_scaling.scale_threshold':            2.0,
@@ -1294,7 +1319,8 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.regime.regime_weights.transition_up.cross_sectional_momentum': 1.4,
         'signals.regime.regime_weights.transition_up.ts_momentum':              1.2,
         'portfolio.constraints.beta_min':              0.85,
-        'portfolio.constraints.beta_max':              1.30,
+        'portfolio.constraints.beta_max':              1.50,
+        'portfolio.constraints.max_weight':            0.45,
         'portfolio.top_n_sectors':                     4,
         'risk.vol_scaling.target_vol_annual':          0.16,
         'risk.vol_scaling.scale_threshold':            2.0,
@@ -1302,6 +1328,9 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'risk.vix_progressive_derisk.enabled':         True,
         'risk.vix_progressive_derisk.tiers':           [{'vix_above': 35, 'cash_pct': 0.10},
                                                         {'vix_above': 40, 'cash_pct': 0.25}],
+        # STM: 6月中期动量补充9月回看的盲区，提前捕捉板块轮换
+        'signals.short_term_momentum.enabled':         True,
+        'signals.short_term_momentum.weight_bonus':    0.06,
     },
 
     # L2: 危机避险档案（2020 / 2022 型系统性风险）。
@@ -1368,6 +1397,9 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'portfolio.constraints.beta_min':              0.50,
         'portfolio.constraints.beta_max':              0.92,
         'portfolio.top_n_sectors':                     5,
+        # ERM: 滞胀期盈利分化大，ERM识别抗滞胀板块(能源/材料EPS逆势增长)
+        'signals.earnings_revision.enabled':           True,
+        'signals.earnings_revision.weight_bonus':      0.05,
     },
 
     # L4: 加息周期档案（2022 型：史上最快 Fed 加息）。
@@ -1431,8 +1463,12 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'rebalance.frequency':                         'biweekly',
         'rebalance.zscore_change_threshold':           0.25,
         'portfolio.constraints.beta_min':              0.75,
-        'portfolio.constraints.beta_max':              1.30,
+        'portfolio.constraints.beta_max':              1.40,
+        'portfolio.top_n_sectors':                     5,
         'risk.vol_scaling.target_vol_annual':          0.15,
+        # STM: 复苏期快速追涨，6月中期动量识别板块轮换
+        'signals.short_term_momentum.enabled':         True,
+        'signals.short_term_momentum.weight_bonus':    0.06,
     },
 
     # L6: 低波动慢牛档案（2017 / 2019 型：VIX<15 长期低波）。
@@ -1547,7 +1583,11 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.ts_momentum.crash_filter_multiplier': 0.0,
         'signals.acceleration.enabled':                False,
         'portfolio.top_n_sectors':                     4,
+        # STM: acceleration关闭时，STM作为更强的中期动量替代(Grinblatt-Han2005)
+        'signals.short_term_momentum.enabled':         True,
+        'signals.short_term_momentum.weight_bonus':    0.05,
     },
+
 }
 
 

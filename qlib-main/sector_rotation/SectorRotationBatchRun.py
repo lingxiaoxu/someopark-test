@@ -594,9 +594,13 @@ def main() -> None:
         _wf_mean_wfe                       = float("nan")
 
         # ── Stage 1: WF OOS filter (run WF, exclude overfitting params) ──────
+        # Evaluate ALL param sets across ALL OOS folds (not just when selected).
+        # This gives every param set a fair OOS score regardless of MCPS selection.
         _oos_qualified: "set[str] | None" = None  # None = no filter (WF failed)
         try:
-            from sector_rotation.walk_forward import WalkForwardAnalyzer
+            from sector_rotation.walk_forward import (
+                WalkForwardAnalyzer, _compute_metrics_from_equity
+            )
             print(f"\n  [SELECT] Stage 1: Walk-Forward OOS validation...")
             _wf = WalkForwardAnalyzer(
                 base_cfg=base_cfg, prices=prices, macro=macro,
@@ -607,13 +611,25 @@ def main() -> None:
             _wf_result = _wf.run()
             _wf_mean_wfe = _wf_result.mean_wfe
 
-            # Criteria: param set must have been selected ≥1 time AND
-            # have mean OOS Sharpe > 0 when selected
+            # Compute OOS Sharpe for ALL params across ALL folds
+            # (not just folds where param was MCPS-selected)
+            _eq_map = {s.name: s for s in equity_frames if not s.empty}
+            _folds = _wf.generate_folds()
             _oos_qualified = set()
-            for _ps_name, _stats in _wf_result.param_oos_stats.items():
-                if (_stats.get("mean_oos_sharpe", float("-inf")) > 0.0
-                        and _stats.get("n_selected", 0) >= 1):
-                    _oos_qualified.add(_ps_name)
+            _oos_sharpe_threshold = 0.5  # top ~95% of params survive
+
+            for _ps_name, _eq in _eq_map.items():
+                _fold_sharpes = []
+                for _fold in _folds:
+                    _seg = _eq[(_eq.index >= _fold.oos_start) & (_eq.index <= _fold.oos_end)]
+                    if len(_seg) >= 60:
+                        _m = _compute_metrics_from_equity(_seg / _seg.iloc[0])
+                        if not np.isnan(_m.get("sharpe", float("nan"))):
+                            _fold_sharpes.append(_m["sharpe"])
+                if _fold_sharpes:
+                    _mean_oos = float(np.mean(_fold_sharpes))
+                    if _mean_oos > _oos_sharpe_threshold:
+                        _oos_qualified.add(_ps_name)
 
             if _oos_qualified:
                 _oos_filter_applied = True

@@ -1480,10 +1480,13 @@ def _add_mcps_comparison_page(
         ax0.plot(be.index, be.values, color=PALETTE["benchmark"], linewidth=1.4,
                  linestyle=":", alpha=0.7, label="SPY")
 
-    # Annotate quarter boundaries
+    # Annotate quarter/fold boundaries
     for entry in sel_log:
-        ax0.axvline(pd.Timestamp(entry["period_start"]), color=PALETTE["gold"],
-                    linewidth=0.6, alpha=0.35, linestyle=":")
+        # Support both WF log (oos_start) and old MCPS log (period_start)
+        ps = entry.get("oos_start") or entry.get("period_start")
+        if ps:
+            ax0.axvline(pd.Timestamp(ps), color=PALETTE["gold"],
+                        linewidth=0.6, alpha=0.35, linestyle=":")
 
     ax0.axhline(100, color=PALETTE["border"], linewidth=0.7)
     ax0.set_title("Cumulative Return (Base = 100)", fontsize=10, fontweight="bold",
@@ -1526,9 +1529,9 @@ def _add_mcps_comparison_page(
     total_span = xlim[1] - xlim[0]
 
     for entry in sel_log:
-        ps  = pd.Timestamp(entry["period_start"])
-        pe  = pd.Timestamp(entry["period_end"])
-        col = name_color.get(entry["selected"], PALETTE["strategy"])
+        ps  = pd.Timestamp(entry.get("oos_start") or entry.get("period_start"))
+        pe  = pd.Timestamp(entry.get("oos_end") or entry.get("period_end"))
+        col = name_color.get(entry.get("selected", ""), PALETTE["strategy"])
         x0  = (ps.timestamp() - xlim[0]) / total_span
         x1  = (pe.timestamp() - xlim[0]) / total_span
         x0  = max(0.0, min(1.0, x0))
@@ -1549,7 +1552,7 @@ def _add_mcps_comparison_page(
     if sel_log:
         n_changes = sum(
             1 for j in range(1, len(sel_log))
-            if sel_log[j]["selected"] != sel_log[j - 1]["selected"]
+            if sel_log[j].get("selected") != sel_log[j - 1].get("selected")
         )
         mcps_sr  = float(me.pct_change().dropna().mean() /
                          me.pct_change().dropna().std() * np.sqrt(252))

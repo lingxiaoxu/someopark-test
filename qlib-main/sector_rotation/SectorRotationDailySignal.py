@@ -682,10 +682,37 @@ def run_daily_signal(
 
     polygon_api_key = os.environ.get("POLYGON_API_KEY") if value_source == "polygon" else None
 
+    # Build signal_kwargs for new bonus signals
+    stm_cfg = sig_cfg.get("short_term_momentum", {})
+    erm_cfg = sig_cfg.get("earnings_revision", {})
+    rsb_cfg = sig_cfg.get("relative_strength_breakout", {})
+    _signal_kwargs = {
+        "stm_enabled": stm_cfg.get("enabled", False),
+        "stm_lookback": stm_cfg.get("lookback_months", 6),
+        "stm_skip": stm_cfg.get("skip_months", 1),
+        "stm_zscore_window": stm_cfg.get("zscore_window", 24),
+        "erm_enabled": erm_cfg.get("enabled", False),
+        "erm_lookback_quarters": erm_cfg.get("lookback_quarters", 4),
+        "rsb_enabled": rsb_cfg.get("enabled", False),
+        "rsb_lookback_days": rsb_cfg.get("lookback_days", 63),
+    }
+
+    # Inject bonus weights
+    _sig_weights = sig_cfg.get("weights") or {}
+    _sig_weights.setdefault("short_term_momentum_bonus",
+                            stm_cfg.get("weight_bonus", 0.0))
+    _sig_weights.setdefault("earnings_revision_bonus",
+                            erm_cfg.get("weight_bonus", 0.0))
+    _sig_weights.setdefault("rs_breakout_bonus",
+                            rsb_cfg.get("weight_bonus", 0.0))
+
+    # Benchmark for RS breakout
+    _bench_series = prices_all[benchmark].squeeze() if benchmark in prices_all.columns else None
+
     composite, regime_monthly, components = compute_composite_signals(
         prices=etf_prices,
         macro=macro,
-        weights=sig_cfg.get("weights"),
+        weights=_sig_weights,
         regime_multipliers=regime_multipliers,
         defensive_tickers=defensive_tickers,
         defensive_bonus=defensive_bonus,
@@ -694,6 +721,8 @@ def run_daily_signal(
         value_cache_dir=CACHE_DIR,
         polygon_api_key=polygon_api_key,
         regime_kwargs=regime_kwargs,
+        signal_kwargs=_signal_kwargs,
+        benchmark_prices=_bench_series,
     )
 
     # Latest month-end composite scores

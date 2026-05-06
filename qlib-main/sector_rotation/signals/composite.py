@@ -98,6 +98,7 @@ def compute_composite_signals(
     polygon_api_key: Optional[str] = None,
     regime_kwargs: Optional[dict] = None,
     signal_kwargs: Optional[dict] = None,
+    benchmark_prices: Optional[pd.Series] = None,
 ) -> Tuple[pd.DataFrame, pd.Series, Dict[str, pd.DataFrame]]:
     """
     Compute regime-conditioned composite signals for all sector ETFs.
@@ -182,6 +183,27 @@ def compute_composite_signals(
     # Align value to monthly index of cs_mom
     value_aligned = _align_to_monthly_index(value_sig, cs_mom.index)
 
+    # New bonus signals (short-term momentum, earnings revision, RS breakout)
+    logger.info("Computing new bonus signals...")
+    from .new_signals import compute_all_new_signals
+    new_sig = compute_all_new_signals(
+        sector_prices=prices,
+        benchmark_prices=benchmark_prices,
+        etf_tickers=tickers,
+        stm_enabled=signal_kwargs.get("stm_enabled", False),
+        stm_lookback=signal_kwargs.get("stm_lookback", 6),
+        stm_skip=signal_kwargs.get("stm_skip", 1),
+        stm_zscore_window=signal_kwargs.get("stm_zscore_window", 24),
+        erm_enabled=signal_kwargs.get("erm_enabled", False),
+        erm_lookback_quarters=signal_kwargs.get("erm_lookback_quarters", 4),
+        rsb_enabled=signal_kwargs.get("rsb_enabled", False),
+        rsb_lookback_days=signal_kwargs.get("rsb_lookback_days", 63),
+        monthly_index=cs_mom.index,
+    )
+    short_term_mom = new_sig["short_term_mom"]
+    earnings_revision = new_sig["earnings_revision"]
+    rs_breakout = new_sig["rs_breakout"]
+
     logger.info("Computing regime...")
     regime_daily = compute_regime(macro, method=regime_method, **regime_kwargs)
     regime_monthly = regime_to_monthly(regime_daily)
@@ -240,6 +262,24 @@ def compute_composite_signals(
             accel_row = accel.loc[dt]
             score += accel_row * weights.get("acceleration_bonus", 0.05)
 
+        # Short-term momentum bonus
+        stm_w = weights.get("short_term_momentum_bonus", 0.0)
+        if stm_w > 0 and short_term_mom is not None and dt in short_term_mom.index:
+            stm_row = short_term_mom.loc[dt].reindex(tickers, fill_value=0.0)
+            score += stm_row * stm_w
+
+        # Earnings revision bonus
+        erm_w = weights.get("earnings_revision_bonus", 0.0)
+        if erm_w > 0 and earnings_revision is not None and dt in earnings_revision.index:
+            erm_row = earnings_revision.loc[dt].reindex(tickers, fill_value=0.0)
+            score += erm_row * erm_w
+
+        # Relative strength breakout bonus
+        rsb_w = weights.get("rs_breakout_bonus", 0.0)
+        if rsb_w > 0 and rs_breakout is not None and dt in rs_breakout.index:
+            rsb_row = rs_breakout.loc[dt].reindex(tickers, fill_value=0.0)
+            score += rsb_row * rsb_w
+
         # Regime-conditional defensive bonus
         if regime == RISK_OFF:
             for def_tick in defensive_tickers:
@@ -267,6 +307,9 @@ def compute_composite_signals(
         "ts_mult": ts_mult,
         "value": value_aligned,
         "accel": accel,
+        "short_term_mom": short_term_mom,
+        "earnings_revision": earnings_revision,
+        "rs_breakout": rs_breakout,
         "regime_daily": regime_daily,
     }
 
@@ -278,12 +321,21 @@ def compute_composite_signals(
     return composite, regime_monthly, components
 
 
+_BONUS_WEIGHT_KEYS = {
+    "acceleration_bonus",
+    "short_term_momentum_bonus",
+    "earnings_revision_bonus",
+    "rs_breakout_bonus",
+}
+
+
 def _validate_weights(weights: Dict[str, float]) -> None:
-    """Check that signal weights are non-negative and sum to approximately 1."""
-    total = sum(weights.values())
-    if abs(total - 1.0) > 0.01:
+    """Check that core signal weights are non-negative and sum to approximately 1.
+    Bonus weights (acceleration, new signals) are excluded from the sum check."""
+    core_total = sum(v for k, v in weights.items() if k not in _BONUS_WEIGHT_KEYS)
+    if abs(core_total - 1.0) > 0.01:
         logger.warning(
-            f"Signal weights sum to {total:.3f} (expected 1.0). "
+            f"Core signal weights sum to {core_total:.3f} (expected 1.0). "
             "Check config.yaml signals.weights."
         )
     for k, v in weights.items():

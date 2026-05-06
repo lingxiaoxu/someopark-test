@@ -63,7 +63,9 @@ sys.path.insert(0, str(_THIS_DIR.parent))  # sector_rotation.* imports
 
 from sector_rotation.signals.value import SECTOR_REPRESENTATIVES
 
-# All unique constituent stocks (55 stocks across 11 sectors)
+# All unique constituent stocks (110 stocks across 11 sectors)
+# Note: FB (pre-2022 META) history is already in eps_history.json and frozen —
+# no need to re-fetch since FB ticker will never have new filings.
 ALL_STOCKS: list[str] = list(dict.fromkeys(
     s for stocks in SECTOR_REPRESENTATIVES.values() for s in stocks
 ))

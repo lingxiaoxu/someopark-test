@@ -8,12 +8,12 @@
       "param_set": "default",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -21,15 +21,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -74,12 +74,12 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -87,15 +87,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -140,12 +140,12 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -153,15 +153,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -206,12 +206,12 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -219,15 +219,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -272,12 +272,12 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -285,15 +285,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -338,12 +338,12 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -351,15 +351,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -404,12 +404,12 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -417,15 +417,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -470,12 +470,12 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -483,15 +483,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -536,12 +536,12 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -549,15 +549,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -602,12 +602,12 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -615,15 +615,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -668,12 +668,12 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -681,15 +681,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -734,12 +734,12 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -747,15 +747,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -800,12 +800,12 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -813,15 +813,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -866,12 +866,12 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -879,15 +879,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -932,12 +932,12 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -945,15 +945,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -998,12 +998,12 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1011,15 +1011,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1064,12 +1064,12 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1077,15 +1077,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1130,12 +1130,12 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1143,15 +1143,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1196,12 +1196,12 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1209,15 +1209,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1262,12 +1262,12 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1275,15 +1275,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1328,12 +1328,12 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1341,15 +1341,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1394,12 +1394,12 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1407,15 +1407,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1460,12 +1460,12 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1473,15 +1473,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1526,12 +1526,12 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1539,15 +1539,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1592,12 +1592,12 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1605,15 +1605,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1658,12 +1658,12 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1671,15 +1671,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1724,12 +1724,12 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1737,15 +1737,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1790,12 +1790,12 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1803,15 +1803,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1856,12 +1856,12 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1869,15 +1869,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1922,12 +1922,12 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1935,15 +1935,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
@@ -1988,12 +1988,12 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "CSCO",
-          "HST"
-        ],
-        [
           "VTRS",
           "WMT"
+        ],
+        [
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -2001,15 +2001,15 @@
         ],
         [
           "AIG",
+          "GILD"
+        ],
+        [
+          "AIG",
           "PEP"
         ],
         [
-          "WELL",
-          "AIG"
-        ],
-        [
-          "MAR",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "MNST",
