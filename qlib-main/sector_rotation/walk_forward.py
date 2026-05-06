@@ -658,14 +658,21 @@ class WalkForwardAnalyzer:
         synthetic_metrics = _compute_metrics_from_equity(synthetic_eq)
 
         # ── Aggregate DSR on synthetic track ──────────────────────────────
+        # DSR uses variance of per-PARAM-SET IS Sharpes (not per-fold OOS Sharpes).
+        # Per-fold OOS variance is huge (~1.0) due to different market conditions
+        # across folds, making sr_0 unrealistically high and DSR always 0.
+        # Per-param IS Sharpe variance is the correct input: it measures how
+        # much the 59 strategies differ from each other (selection bias).
         n_sets = len(self.param_sets)
-        all_oos_sharpes = [
-            fr.oos_metrics.get("sharpe", float("nan")) for fr in fold_results
-        ]
-        valid_oos_sharpes = [s for s in all_oos_sharpes if not np.isnan(s)]
+        all_is_sharpes = []
+        for fr in fold_results:
+            for name, m in fr.is_metrics.items():
+                sr = m.get("sharpe", float("nan"))
+                if not np.isnan(sr):
+                    all_is_sharpes.append(sr)
         dsr_agg = 0.0
-        if valid_oos_sharpes and not np.isnan(synthetic_metrics.get("sharpe", float("nan"))):
-            var_s = float(np.var(valid_oos_sharpes)) if len(valid_oos_sharpes) > 1 else 0.01
+        if all_is_sharpes and not np.isnan(synthetic_metrics.get("sharpe", float("nan"))):
+            var_s = float(np.var(all_is_sharpes)) if len(all_is_sharpes) > 1 else 0.01
             sr_0 = expected_max_sharpe(n_sets, var_s)
             dsr_agg = deflated_sharpe_ratio(
                 sr_obs=synthetic_metrics["sharpe"],
