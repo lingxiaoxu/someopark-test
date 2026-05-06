@@ -80,6 +80,8 @@ def macro_cond_sharpe(
     today_vec: dict,
     features: list[str] | None = None,
     min_overlap: int = 60,
+    normalize: bool = True,
+    similarity_method: str | None = "autoencoder",
 ) -> float:
     """
     Gaussian-kernel-weighted Sharpe ratio — 宏观条件化夏普比率。
@@ -106,6 +108,16 @@ def macro_cond_sharpe(
     today_vec: dict — current macro state {feature: float}
     features : list[str] — which columns to use (default: SIMILARITY_FEATURES)
     min_overlap : int — minimum aligned (equity ∩ macro) days required
+    normalize : bool — z-score normalize RAW features before distance calc (default True).
+                Only normalizes features that are NOT already z-scored (i.e. name does
+                not end with '_z'). This prevents features with large raw ranges
+                (e.g. consumer_sent 50-100) from dominating z-scored features (±3).
+                MacroStateStore and SIMILARITY_FEATURES are NOT modified.
+    similarity_method : str or None — which SimilarityEngine method to use.
+                "autoencoder" (default) = 23 macro features → 12-dim latent space.
+                "euclidean" = 6 SIMILARITY_FEATURES, Gaussian kernel on raw distance.
+                "ensemble" = average of euclidean + autoencoder.
+                None = inline Euclidean (legacy fast path, no SimilarityEngine).
 
     Returns
     -------
@@ -114,6 +126,31 @@ def macro_cond_sharpe(
     import numpy as np
     import pandas as pd
 
+    # ── Delegate to SimilarityEngine if requested ─────────────────────
+    if similarity_method is not None:
+        from SimilarityEngine import SimilarityEngine
+        engine = SimilarityEngine(method=similarity_method, normalize=normalize)
+        weights, w_index = engine.compute_weights(macro_df, today_vec, features)
+        if len(weights) == 0:
+            return float("nan")
+
+        rets = equity.pct_change().dropna()
+        rets = rets.reindex(w_index).dropna()
+        weights = weights[np.isin(w_index, rets.index)]
+        if len(rets) < min_overlap:
+            return float("nan")
+
+        total_w = float(weights.sum())
+        if total_w <= 0:
+            return float("nan")
+        rets_arr = rets.values
+        wmean = float((weights @ rets_arr) / total_w)
+        wvar = float((weights @ (rets_arr - wmean) ** 2) / total_w)
+        if wvar <= 0:
+            return float("nan")
+        return float(wmean / math.sqrt(wvar) * math.sqrt(252))
+
+    # ── Inline Euclidean (default, fastest path) ──────────────────────
     feats = features or FEATURES
     avail = [f for f in feats if f in macro_df.columns]
     if not avail:
@@ -138,6 +175,17 @@ def macro_cond_sharpe(
 
     # Distances from today to each historical day
     macro_mat = sub.values                            # (T, n_features)
+
+    if normalize:
+        for i, f in enumerate(avail):
+            if not f.endswith('_z'):
+                col = macro_mat[:, i]
+                mu = float(col.mean())
+                sd = float(col.std())
+                if sd > 0:
+                    macro_mat[:, i] = (col - mu) / sd
+                    today_arr[i] = (today_arr[i] - mu) / sd
+
     diffs = macro_mat - today_arr                     # broadcast
     dists = np.sqrt((diffs ** 2).sum(axis=1))         # (T,) Euclidean
 

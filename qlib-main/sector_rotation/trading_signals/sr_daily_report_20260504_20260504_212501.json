@@ -1,36 +1,36 @@
 {
-  "generated_at": "2026-04-27T23:46:49.317575",
-  "signal_date": "2026-04-27",
+  "generated_at": "2026-05-04T21:25:01.906459",
+  "signal_date": "2026-05-04",
   "capital": 1000000,
-  "dry_run": false,
+  "dry_run": true,
   "regime": {
-    "label": "transition_up",
-    "vix": 18.709999,
-    "hy_spread_bps": 286.0,
-    "yield_curve_pct": 0.51,
-    "fin_stress": -0.7584,
-    "nfci": -0.497,
+    "label": "risk_on",
+    "vix": 16.99,
+    "hy_spread_bps": 283.0,
+    "yield_curve_pct": 0.52,
+    "fin_stress": -0.6782,
+    "nfci": -0.518,
     "effr": 3.64,
-    "breakeven_10y": 2.42
+    "breakeven_10y": 2.46
   },
   "rebalance_decision": {
     "rebalance": false,
     "reason": "no_rebalance"
   },
-  "risk_flags": "RiskFlags(date=Timestamp('2026-04-24 00:00:00'), vol_scaling_triggered=False, vix_emergency_triggered=False, dd_circuit_triggered=False, beta_adjusted=True, realized_vol_annual=0.10864236526257787, historical_vol_annual=0.0998325146924981, current_vix=18.709999084472656, portfolio_beta=0.52672811387829, current_dd_pct=nan, cash_pct=0.0, notes=['Beta adjusted: 0.527 \u2192 target ~1.00'])",
+  "risk_flags": "RiskFlags(date=Timestamp('2026-05-01 00:00:00'), vol_scaling_triggered=False, vix_emergency_triggered=False, dd_circuit_triggered=False, beta_adjusted=True, realized_vol_annual=0.09784434858424651, historical_vol_annual=0.09981810293015635, current_vix=16.989999771118164, portfolio_beta=0.532329283585723, current_dd_pct=nan, cash_pct=0.0, notes=['Beta adjusted: 0.532 \u2192 target ~1.00'])",
   "cash_weight": 0.0,
   "signals": [
     {
       "ticker": "XLB",
       "action": "HOLD",
-      "target_weight": 0.246093,
-      "current_weight": 0.246093,
+      "target_weight": 0.250236,
+      "current_weight": 0.250236,
       "delta_weight": 0.0,
-      "target_shares": 4739,
-      "current_shares": 4739,
-      "price": 51.92,
-      "composite_score": 1.5045,
-      "cs_mom": 1.53,
+      "target_shares": 4861,
+      "current_shares": 4861,
+      "price": 51.35,
+      "composite_score": 1.2578,
+      "cs_mom": 1.0592,
       "ts_mult": 1.0
     },
     {
@@ -41,22 +41,22 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 115.54,
-      "composite_score": -1.7571,
-      "cs_mom": -2.3379,
+      "price": 116.72,
+      "composite_score": -2.0668,
+      "cs_mom": -2.5938,
       "ts_mult": 1.0
     },
     {
       "ticker": "XLE",
       "action": "HOLD",
-      "target_weight": 0.220443,
-      "current_weight": 0.220443,
+      "target_weight": 0.224154,
+      "current_weight": 0.224154,
       "delta_weight": 0.0,
-      "target_shares": 3876,
-      "current_shares": 3876,
-      "price": 56.87,
-      "composite_score": 1.5968,
-      "cs_mom": 2.1557,
+      "target_shares": 3757,
+      "current_shares": 3757,
+      "price": 58.85,
+      "composite_score": 1.5333,
+      "cs_mom": 2.2165,
       "ts_mult": 1.0
     },
     {
@@ -67,22 +67,22 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 51.42,
-      "composite_score": -0.4763,
-      "cs_mom": -1.792,
+      "price": 51.92,
+      "composite_score": -0.0819,
+      "cs_mom": -1.4537,
       "ts_mult": 1.0
     },
     {
       "ticker": "XLI",
       "action": "HOLD",
-      "target_weight": 0.259142,
-      "current_weight": 0.259142,
+      "target_weight": 0.263504,
+      "current_weight": 0.263504,
       "delta_weight": 0.0,
-      "target_shares": 1502,
-      "current_shares": 1502,
-      "price": 172.47,
-      "composite_score": 0.5686,
-      "cs_mom": 0.9925,
+      "target_shares": 1509,
+      "current_shares": 1509,
+      "price": 172.96,
+      "composite_score": 0.2096,
+      "cs_mom": 0.4678,
       "ts_mult": 1.0
     },
     {
@@ -93,9 +93,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 160.22,
-      "composite_score": -0.5881,
-      "cs_mom": 0.2509,
+      "price": 161.87,
+      "composite_score": -0.097,
+      "cs_mom": 0.8184,
       "ts_mult": 1.0
     },
     {
@@ -106,9 +106,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 83.23,
-      "composite_score": -0.8724,
-      "cs_mom": -0.7444,
+      "price": 84.17,
+      "composite_score": -1.1784,
+      "cs_mom": -0.9728,
       "ts_mult": 1.0
     },
     {
@@ -119,35 +119,35 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 43.83,
-      "composite_score": -0.2068,
-      "cs_mom": -0.6258,
+      "price": 44.32,
+      "composite_score": 0.2913,
+      "cs_mom": -0.0774,
       "ts_mult": 1.0
     },
     {
       "ticker": "XLU",
-      "action": "HOLD",
-      "target_weight": 0.274322,
-      "current_weight": 0.274322,
-      "delta_weight": 0.0,
-      "target_shares": 5940,
-      "current_shares": 5940,
-      "price": 46.18,
-      "composite_score": 0.5164,
-      "cs_mom": 0.5251,
-      "ts_mult": 1.0
-    },
-    {
-      "ticker": "XLV",
       "action": "FLAT",
       "target_weight": 0.0,
       "current_weight": 0.0,
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 144.18,
-      "composite_score": -0.3575,
-      "cs_mom": -0.6239,
+      "price": 46.55,
+      "composite_score": 0.1986,
+      "cs_mom": -0.0165,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLV",
+      "action": "HOLD",
+      "target_weight": 0.262107,
+      "current_weight": 0.262107,
+      "delta_weight": 0.0,
+      "target_shares": 1795,
+      "current_shares": 1795,
+      "price": 145.16,
+      "composite_score": -0.3648,
+      "cs_mom": -0.6622,
       "ts_mult": 1.0
     },
     {
@@ -158,9 +158,9 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 118.69,
-      "composite_score": 0.0718,
-      "cs_mom": -0.6127,
+      "price": 118.63,
+      "composite_score": 0.2983,
+      "cs_mom": -0.5057,
       "ts_mult": 1.0
     }
   ],
@@ -173,7 +173,7 @@
       "XLE": 0.0,
       "XLB": 0.0,
       "XLI": 0.0,
-      "XLU": 0.0
+      "XLV": 0.0
     }
   },
   "holdings_summary": {

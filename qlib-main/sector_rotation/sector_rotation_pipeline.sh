@@ -20,15 +20,20 @@
 #   eps-full      Force full EPS re-fetch all 55 symbols (~5 min, first-run setup)
 #   eps-symbols   Targeted EPS update for specific tickers (pass after mode name)
 #                 e.g.: bash ... eps-symbols XOM CVX AAPL NVDA
-#   backtest      Full IS/OOS historical backtest (2018-07-01 → today)
+#   backtest      Run backtest with selected param set (default from selected_param_set.json)
+#                 Options: --param-set NAME|selected|none|list  --walk-forward
+#                          --wf-mode anchored|rolling|both  --wf-step-days N  --wf-oos-months N
 #   sensitivity   Parameter sensitivity sweep (top_n_sectors etc., via sensitivity.py)
 #   batch         Run all 59 named param sets (SectorRotationBatchRun.py) → CSV + Excel
 #                 Options: --group A B L  --sets default momentum_heavy  --sort-by calmar
-#                          --save-equity  --no-excel  --select
-#   select        batch --select shorthand: run all 59 sets + write selected_param_set.json
+#                          --save-equity  --no-excel  --select  --oos-validate
+#   select        batch --select: 59 sets + WF OOS filter + MCPS → selected_param_set.json
 #                 → DailySignal picks this param set on next daily/weekly/monthly run
+#   wf            Walk-Forward IS/OOS analysis (59 sets × ~73 folds, anchored + rolling)
+#                 Options: --mode anchored|rolling|both  --step-days N  --oos-months N
+#                 Output: backtest_results/wf_<mode>_fold_summary_<ts>.csv
 #   regime        Regime analysis report — 4-state labels + summary (regime.py)
-#   tearsheet     Backtest + generate multi-page PDF performance tearsheet
+#   tearsheet     Backtest + batch-59 + WF IS/OOS + 13-page PDF tearsheet
 #   test          Run pytest suite (95 tests, fully network-free synthetic data)
 #   dry-run       Read-only daily signal — no inventory write, safe to run anytime
 #   status        Print current portfolio state + latest signal file summary
@@ -60,6 +65,12 @@
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --group L
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --sets default tech_bull_2023 crisis_defense
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --save-equity --sort-by calmar
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --oos-validate
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh select
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh wf
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh wf --mode anchored --step-days 10
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh backtest --walk-forward
+#   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh backtest --param-set value_tilt
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh sensitivity
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh regime
 #   bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
@@ -122,6 +133,12 @@ while [[ $# -gt 0 ]]; do
         --skip-holiday)     SKIP_HOLIDAY=1;         shift ;;
         --no-eps-check)     NO_EPS_CHECK=1;         shift ;;
         --force)            EXTRA_FORCE="--force";  shift ;;
+        --param-set)        PARAM_SET="$2";         shift 2 ;;
+        --walk-forward)     WALK_FORWARD=1;         shift ;;
+        --wf-mode)          WF_MODE="$2";           shift 2 ;;
+        --wf-step-days)     WF_STEP="$2";           shift 2 ;;
+        --wf-oos-months)    WF_OOS="$2";            shift 2 ;;
+        --oos-validate)     OOS_VALIDATE=1;         shift ;;
         help|--help|-h)     MODE="help";            shift ;;
         -*)
             echo "ERROR: Unknown option: $1" >&2
@@ -420,11 +437,18 @@ eps-symbols)
 # Config from config.yaml backtest section.
 # ─────────────────────────────────────────────────────────────────────────────
 backtest)
-    log "Mode: BACKTEST  (default: selected param set; pass --param-set NAME to override)"
-    log "  args: $*"
+    # Build engine args from parsed options
+    ENGINE_ARGS=()
+    [[ -n "${PARAM_SET:-}" ]]     && ENGINE_ARGS+=(--param-set "$PARAM_SET")
+    [[ "${WALK_FORWARD:-0}" -eq 1 ]] && ENGINE_ARGS+=(--walk-forward)
+    [[ -n "${WF_MODE:-}" ]]       && ENGINE_ARGS+=(--wf-mode "$WF_MODE")
+    [[ -n "${WF_STEP:-}" ]]       && ENGINE_ARGS+=(--wf-step-days "$WF_STEP")
+    [[ -n "${WF_OOS:-}" ]]        && ENGINE_ARGS+=(--wf-oos-months "$WF_OOS")
+    ENGINE_ARGS+=("$@")
+    log "Mode: BACKTEST  (param-set=${PARAM_SET:-selected}  walk-forward=${WALK_FORWARD:-0})"
     set -a && source "$REPO/.env" && set +a
     PYTHONPATH="$REPO/qlib-main" $CONDA_QLIB python -m sector_rotation.backtest.engine \
-        "$@" >> "$LOGFILE" 2>&1
+        "${ENGINE_ARGS[@]}" >> "$LOGFILE" 2>&1
     RC=$?
     if [[ $RC -ne 0 ]]; then log_fail "STEP 1 (SectorRotationBacktest engine) exit=$RC"; exit $RC; fi
     log "→ STEP 1 OK: SectorRotationBacktest engine"
@@ -455,10 +479,12 @@ sensitivity)
 # Output: backtest_results/sr_batch_summary_<timestamp>.csv + .xlsx
 # ─────────────────────────────────────────────────────────────────────────────
 batch)
-    log "Mode: BATCH  (59 param sets via SectorRotationBatchRun.py  args: $*)"
+    BATCH_ARGS=("$@")
+    [[ "${OOS_VALIDATE:-0}" -eq 1 ]] && BATCH_ARGS+=(--oos-validate)
+    log "Mode: BATCH  (param sets via SectorRotationBatchRun.py  oos-validate=${OOS_VALIDATE:-0})"
     set -a && source "$REPO/.env" && set +a
     PYTHONPATH="$REPO/qlib-main" $CONDA_QLIB python \
-        qlib-main/sector_rotation/SectorRotationBatchRun.py "$@" \
+        qlib-main/sector_rotation/SectorRotationBatchRun.py "${BATCH_ARGS[@]}" \
         2>&1 | tee -a "$LOGFILE"
     RC=${PIPESTATUS[0]}
     if [[ $RC -ne 0 ]]; then log_fail "STEP 1 (SectorRotationBatchRun) exit=$RC"; exit $RC; fi
@@ -615,6 +641,22 @@ test)
     fi
     log "All tests passed."
     log_section "TEST RUN COMPLETE"
+    ;;
+
+# ─────────────────────────────────────────────────────────────────────────────
+# INTEGRATION-TEST — Full pipeline integration test (all 21 modes, real data)
+# Runs every mode end-to-end and checks cross-entry consistency.
+# Takes 20-40 minutes. Run monthly or after major code changes.
+# ─────────────────────────────────────────────────────────────────────────────
+integration-test)
+    log "Mode: INTEGRATION-TEST  (all pipeline modes, real data)"
+    bash "$SR_DIR/tests/test_pipeline_integration.sh" 2>&1 | tee -a "$LOGFILE"
+    RC=${PIPESTATUS[0]}
+    if [[ $RC -ne 0 ]]; then
+        log_fail "integration tests returned exit=$RC"
+        exit $RC
+    fi
+    log_section "INTEGRATION TEST COMPLETE"
     ;;
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -790,8 +832,8 @@ help)
     echo "Unknown mode: $MODE"
     echo ""
     echo "Available: daily | weekly | monthly | eps-update | eps-full | eps-symbols |"
-    echo "           backtest | batch | select | wf | sensitivity | regime | tearsheet | test |"
-    echo "           dry-run | status | signal-raw | help"
+    echo "           backtest | batch | select | wf | sensitivity | regime | tearsheet |"
+    echo "           test | integration-test | dry-run | status | signal-raw | help"
     exit 1
     ;;
 esac

@@ -123,20 +123,26 @@ def _load_eps_from_store(stock: str, path: Optional[Path] = None) -> pd.Series:
 # ---------------------------------------------------------------------------
 
 # Top 5 representative large-cap stocks per SPDR sector ETF.
-# These are the largest, most liquid names that collectively account for
-# a substantial fraction of each sector ETF's weight.
+# Top-10 representative large-caps per SPDR sector ETF (by weight).
+# All verified to have diluted_eps on Polygon.io API.
+# Ticker notes:
+#   BRK-B → GS, V → AXP, CRM → INTU (originals lack EPS on Polygon)
+#   META+FB: handled by new_signals.py merge logic (FB=pre-2022, META=post-2022)
+# value.py uses top-5 ([:5]) for P/E computation;
+# new_signals.py uses all 10 for earnings revision signal;
+# update_eps_history.py fetches EPS for ALL stocks listed here.
 SECTOR_REPRESENTATIVES: Dict[str, List[str]] = {
-    "XLK":  ["AAPL", "MSFT", "NVDA", "AVGO", "ORCL"],    # Info Technology
-    "XLF":  ["BRK-B", "JPM", "V", "MA", "BAC"],           # Financials
-    "XLE":  ["XOM", "CVX", "COP", "SLB", "EOG"],           # Energy
-    "XLV":  ["LLY", "UNH", "JNJ", "ABBV", "MRK"],          # Health Care
-    "XLU":  ["NEE", "DUK", "SO", "AEP", "EXC"],            # Utilities
-    "XLI":  ["GE", "CAT", "RTX", "HON", "UPS"],            # Industrials
-    "XLY":  ["AMZN", "TSLA", "HD", "MCD", "NKE"],          # Consumer Discretionary
-    "XLP":  ["PG", "KO", "PEP", "COST", "WMT"],            # Consumer Staples
-    "XLB":  ["LIN", "APD", "SHW", "FCX", "NEM"],           # Materials
-    "XLC":  ["GOOGL", "META", "NFLX", "DIS", "VZ"],        # Communication Services
-    "XLRE": ["AMT", "PLD", "EQIX", "CCI", "PSA"],          # Real Estate
+    "XLK":  ["AAPL", "MSFT", "NVDA", "AVGO", "ORCL", "CSCO", "AMD", "ADBE", "ACN", "INTU"],
+    "XLF":  ["JPM", "GS", "BAC", "MA", "AXP", "WFC", "MS", "SPGI", "BLK", "C"],
+    "XLE":  ["XOM", "CVX", "COP", "SLB", "EOG", "MPC", "WMB", "PSX", "VLO", "OKE"],
+    "XLV":  ["LLY", "UNH", "JNJ", "ABBV", "MRK", "TMO", "ABT", "ISRG", "DHR", "PFE"],
+    "XLU":  ["NEE", "DUK", "SO", "AEP", "EXC", "SRE", "D", "ED", "PEG", "XEL"],
+    "XLI":  ["GE", "CAT", "RTX", "HON", "UPS", "ETN", "DE", "UNP", "BA", "LMT"],
+    "XLY":  ["AMZN", "TSLA", "HD", "MCD", "NKE", "LOW", "SBUX", "TJX", "BKNG", "ORLY"],
+    "XLP":  ["PG", "KO", "PEP", "COST", "WMT", "PM", "MDLZ", "MO", "CL", "TGT"],
+    "XLB":  ["LIN", "APD", "SHW", "FCX", "NEM", "ECL", "DD", "NUE", "DOW", "VMC"],
+    "XLC":  ["GOOGL", "META", "NFLX", "DIS", "VZ", "T", "CMCSA", "EA", "CHTR", "TMUS"],
+    "XLRE": ["AMT", "PLD", "EQIX", "CCI", "PSA", "SPG", "O", "WELL", "DLR", "VICI"],
 }
 
 

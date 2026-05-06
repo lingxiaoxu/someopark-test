@@ -85,6 +85,26 @@ signals:
     lookback_months: 3
     weight_boost: 0.05            # Added to composite score for top-acceleration sectors
 
+  # Short-term momentum (6-month independent factor — catches trend reversals earlier)
+  short_term_momentum:
+    enabled: false                # Default off for backwards compatibility
+    lookback_months: 6
+    skip_months: 1
+    zscore_window: 24
+    weight_bonus: 0.0             # Bonus weight (additive, not part of core weight sum)
+
+  # Earnings revision momentum (YoY EPS growth trend per sector, from eps_history.json)
+  earnings_revision:
+    enabled: false
+    lookback_quarters: 4
+    weight_bonus: 0.0
+
+  # Relative strength breakout (sector/SPY ratio hitting N-day high)
+  relative_strength_breakout:
+    enabled: false
+    lookback_days: 63             # ~3 months for breakout detection
+    weight_bonus: 0.0
+
   # Regime conditioning
   regime:
     method: "rules"               # "rules" | "hmm" (HMM requires hmmlearn)
@@ -116,7 +136,7 @@ signals:
 
     # Defensive sector bonus in risk-off regime
     defensive_sectors: ["XLU", "XLP", "XLV"]
-    defensive_bonus_risk_off: 0.3       # Add to z-score in risk-off
+    defensive_bonus_risk_off: 0.30      # z-score bonus for defensives in risk-off
 
 # ---------------------------------------------------------------------------
 # Portfolio
@@ -133,11 +153,11 @@ portfolio:
 
   # Position constraints
   constraints:
-    max_weight: 0.40              # Single sector max (prevent Tech dominance)
+    max_weight: 0.40              # Single sector max
     min_weight: 0.00              # Allow zero allocation
     max_cash: 0.50                # Max cash (only during emergency de-risk)
-    beta_min: 0.70                # relaxed from 0.85; allow optimizer more freedom
-    beta_max: 1.10                # tightened from 1.15; avoid excess market exposure
+    beta_min: 0.60                # relaxed: allow defensive portfolios in risk-off
+    beta_max: 1.30                # relaxed from 1.10: allow high-beta sectors (XLK ~1.2) to enter
 
   # Number of "core" sectors (top N get positive allocation)
   top_n_sectors: 4

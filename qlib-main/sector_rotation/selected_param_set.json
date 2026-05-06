@@ -1,16 +1,16 @@
 {
   "param_set": "tight_beta_tracker",
   "selection_method": "mcps_oos_filtered",
-  "mcps_oos_filtered": 1.0934,
-  "recent_sharpe_12m": 1.9651,
-  "full_period_sharpe": 1.0196,
-  "full_period_calmar": 0.653,
-  "selected_at": "2026-05-04",
-  "n_candidates": 4,
-  "n_oos_survivors": 4,
+  "mcps_oos_filtered": 1.4266,
+  "recent_sharpe_12m": 2.0362,
+  "full_period_sharpe": 1.024,
+  "full_period_calmar": 0.6558,
+  "selected_at": "2026-05-05",
+  "n_candidates": 55,
+  "n_oos_survivors": 55,
   "oos_filter_applied": true,
-  "oos_mean_sharpe": 1.3652,
+  "oos_mean_sharpe": 1.1027,
   "oos_n_selected": 8,
-  "wf_mean_wfe": 0.6395,
-  "macro_data_days": 1970
+  "wf_mean_wfe": 0.7187,
+  "macro_data_days": 1971
 }

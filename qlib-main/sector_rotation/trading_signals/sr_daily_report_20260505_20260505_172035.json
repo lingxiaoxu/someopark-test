@@ -1,0 +1,184 @@
+{
+  "generated_at": "2026-05-05T17:20:35.720228",
+  "signal_date": "2026-05-05",
+  "capital": 1000000,
+  "dry_run": false,
+  "regime": {
+    "label": "risk_on",
+    "vix": 18.290001,
+    "hy_spread_bps": 277.0,
+    "yield_curve_pct": 0.51,
+    "fin_stress": -0.6782,
+    "nfci": -0.518,
+    "effr": 3.64,
+    "breakeven_10y": 2.48
+  },
+  "rebalance_decision": {
+    "rebalance": false,
+    "reason": "no_rebalance"
+  },
+  "risk_flags": "RiskFlags(date=Timestamp('2026-05-04 00:00:00'), vol_scaling_triggered=False, vix_emergency_triggered=False, dd_circuit_triggered=False, beta_adjusted=True, realized_vol_annual=0.10110826452634368, historical_vol_annual=0.09998289014414419, current_vix=18.290000915527344, portfolio_beta=0.5319537433029926, current_dd_pct=nan, cash_pct=0.0, notes=['Beta adjusted: 0.532 \u2192 target ~1.00'])",
+  "cash_weight": 0.0,
+  "signals": [
+    {
+      "ticker": "XLB",
+      "action": "HOLD",
+      "target_weight": 0.250236,
+      "current_weight": 0.250236,
+      "delta_weight": 0.0,
+      "target_shares": 4861,
+      "current_shares": 4861,
+      "price": 50.65,
+      "composite_score": 1.2578,
+      "cs_mom": 1.0592,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLC",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 116.1,
+      "composite_score": -2.0668,
+      "cs_mom": -2.5938,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLE",
+      "action": "HOLD",
+      "target_weight": 0.224154,
+      "current_weight": 0.224154,
+      "delta_weight": 0.0,
+      "target_shares": 3757,
+      "current_shares": 3757,
+      "price": 59.39,
+      "composite_score": 1.5333,
+      "cs_mom": 2.2165,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLF",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 51.58,
+      "composite_score": -0.0819,
+      "cs_mom": -1.4537,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLI",
+      "action": "HOLD",
+      "target_weight": 0.263504,
+      "current_weight": 0.263504,
+      "delta_weight": 0.0,
+      "target_shares": 1509,
+      "current_shares": 1509,
+      "price": 170.98,
+      "composite_score": 0.2096,
+      "cs_mom": 0.4678,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLK",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 162.05,
+      "composite_score": -0.097,
+      "cs_mom": 0.8184,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLP",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 83.54,
+      "composite_score": -1.1784,
+      "cs_mom": -0.9728,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLRE",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 44.08,
+      "composite_score": 0.2913,
+      "cs_mom": -0.0774,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLU",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 46.37,
+      "composite_score": 0.1986,
+      "cs_mom": -0.0165,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLV",
+      "action": "HOLD",
+      "target_weight": 0.262107,
+      "current_weight": 0.262107,
+      "delta_weight": 0.0,
+      "target_shares": 1795,
+      "current_shares": 1795,
+      "price": 144.73,
+      "composite_score": -0.3648,
+      "cs_mom": -0.6622,
+      "ts_mult": 1.0
+    },
+    {
+      "ticker": "XLY",
+      "action": "FLAT",
+      "target_weight": 0.0,
+      "current_weight": 0.0,
+      "delta_weight": 0.0,
+      "target_shares": 0,
+      "current_shares": 0,
+      "price": 117.72,
+      "composite_score": 0.2983,
+      "cs_mom": -0.5057,
+      "ts_mult": 1.0
+    }
+  ],
+  "trades": [],
+  "transaction_costs": {
+    "total_cost_usd": 0.0,
+    "total_cost_bps": 0.0,
+    "turnover_pct": 0.0,
+    "cost_by_ticker": {
+      "XLE": 0.0,
+      "XLB": 0.0,
+      "XLI": 0.0,
+      "XLV": 0.0
+    }
+  },
+  "holdings_summary": {
+    "n_positions": 4,
+    "invested_pct": 100.0,
+    "cash_pct": 0.0
+  }
+}
