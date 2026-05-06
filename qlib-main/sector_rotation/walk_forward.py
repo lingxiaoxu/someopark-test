@@ -77,7 +77,7 @@ class WFFoldResult:
     is_best_name: str                          # selected param set
     is_best_sharpe: float                      # IS Sharpe of selected set
     is_macro_vector: Dict[str, float]          # IS-period last-30d mean SIMILARITY_FEATURES
-    selection_method: str                      # "mcps" | "is_sharpe" | "fallback"
+    selection_method: str                      # "oos_retrospective" | "mcps" | "is_sharpe" | "fallback"
     mcps_score: float                          # macro-cond Sharpe of selected set (nan if fallback)
     dsr_pvalue: float                          # DSR p-value of selected (adjusted for N=59)
 
@@ -89,6 +89,12 @@ class WFFoldResult:
 
     # ── Efficiency ────────────────────────────────────────────────────────
     wfe: float                                 # Walk-Forward Efficiency = OOS_SR / IS_SR
+
+    # ── OOS retrospective data (populated for all folds, used by later folds) ──
+    all_oos_sharpes: Dict[str, float] = field(default_factory=dict)
+    # ^ OOS Sharpe for every param set over this fold's OOS window (not just selected)
+    oos_macro_vec: Dict[str, float] = field(default_factory=dict)
+    # ^ mean macro feature values during this fold's OOS period (query target for future folds)
 
 
 @dataclass
@@ -253,6 +259,101 @@ def _macro_cond_sharpe_is(
         features=features,
         min_overlap=min_overlap,
     )
+
+
+def _oos_retrospective_select(
+    today_vec: Dict[str, float],
+    prior_folds: List["WFFoldResult"],
+    features: List[str],
+) -> tuple:
+    """
+    OOS fold retrospective matching — select param set by matching today's macro
+    vector against the macro environment of prior completed OOS folds.
+
+    For each prior fold we know:
+      - oos_macro_vec: mean macro state DURING that OOS period
+      - all_oos_sharpes: actual OOS Sharpe of every param set in that window
+
+    We find prior OOS windows whose macro resembled our current conditions
+    (IS-tail macro = best proxy for upcoming OOS), then use Gaussian-kernel-
+    weighted average OOS Sharpe to rank param sets.
+
+    This is superior to IS-based MCPS because it uses *actual OOS outcomes*,
+    not IS simulations.
+
+    Parameters
+    ----------
+    today_vec : dict — IS-tail macro vector (proxy for upcoming OOS conditions)
+    prior_folds : list[WFFoldResult] — completed folds with oos_macro_vec populated
+    features : list[str] — which macro features to use for distance
+
+    Returns
+    -------
+    (best_name: str, best_score: float)  — empty string if insufficient data
+    """
+    import math
+
+    # Only use folds that have valid oos_macro_vec and all_oos_sharpes
+    valid: List[tuple] = []
+    for pf in prior_folds:
+        if not pf.oos_macro_vec or not pf.all_oos_sharpes:
+            continue
+        vec = np.array([pf.oos_macro_vec.get(f, np.nan) for f in features],
+                       dtype=float)
+        if np.any(np.isnan(vec)):
+            continue
+        valid.append((vec, pf.all_oos_sharpes))
+
+    if not valid:
+        return "", float("nan")
+
+    today_arr = np.array([today_vec.get(f, np.nan) for f in features], dtype=float)
+    if np.any(np.isnan(today_arr)):
+        return "", float("nan")
+
+    # Normalize features (z-score using prior fold vectors as reference)
+    mat = np.stack([v for v, _ in valid], axis=0)  # (N_prior, n_features)
+    col_mean = mat.mean(axis=0)
+    col_std  = mat.std(axis=0)
+    col_std  = np.where(col_std < 1e-8, 1.0, col_std)
+    mat_z        = (mat - col_mean) / col_std
+    today_z      = (today_arr - col_mean) / col_std
+
+    # Gaussian kernel weights: σ = median distance
+    diffs = mat_z - today_z          # (N_prior, n_features)
+    dists = np.sqrt((diffs ** 2).sum(axis=1))   # (N_prior,)
+    sigma = float(np.median(dists))
+    sigma = max(sigma, 1e-6)
+    weights = np.exp(-(dists ** 2) / (2.0 * sigma ** 2))  # (N_prior,)
+    total_w = float(weights.sum())
+    if total_w < 1e-12:
+        return "", float("nan")
+    weights /= total_w
+
+    # Collect all candidate param names
+    all_params: set = set()
+    for _, oos_srs in valid:
+        all_params.update(oos_srs.keys())
+
+    # Weighted average OOS Sharpe per param
+    param_scores: Dict[str, float] = {}
+    for param in all_params:
+        w_sum = 0.0
+        ws_sum = 0.0
+        for j, (_, oos_srs) in enumerate(valid):
+            sr = oos_srs.get(param, np.nan)
+            if not np.isnan(sr):
+                w_sum  += weights[j] * sr
+                ws_sum += weights[j]
+        if ws_sum > 1e-12:
+            param_scores[param] = w_sum / ws_sum
+
+    if not param_scores:
+        return "", float("nan")
+
+    best_name  = max(param_scores, key=param_scores.get)
+    best_score = param_scores[best_name]
+    return best_name, float(best_score)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -437,14 +538,32 @@ class WalkForwardAnalyzer:
     #  Evaluate one fold
     # ──────────────────────────────────────────────────────────────────────
 
+    # Minimum completed folds before switching from MCPS → OOS retrospective.
+    # First _OOS_RETRO_MIN_FOLDS folds use IS-based MCPS as warm-up.
+    _OOS_RETRO_MIN_FOLDS: int = 8
+
     def _evaluate_fold(
         self,
         fold: WFFold,
         eq_map: Dict[str, pd.Series],
         macro_df: pd.DataFrame,
-    ) -> WFFoldResult:
-        """Run IS selection + OOS evaluation for a single fold."""
+        prior_folds: Optional[List["WFFoldResult"]] = None,
+    ) -> "WFFoldResult":
+        """
+        Run IS selection + OOS evaluation for a single fold.
+
+        Selection priority:
+          1. OOS retrospective matching (if >= _OOS_RETRO_MIN_FOLDS prior folds)
+             — uses actual OOS Sharpes of prior folds weighted by macro similarity
+          2. MCPS on IS data (IS macro-conditioned Sharpe)
+          3. Fallback: best IS Sharpe
+
+        prior_folds : completed folds so far (fold i uses folds 0..i-1).
+                      Each prior fold must have oos_macro_vec and all_oos_sharpes
+                      populated (done in this method).
+        """
         features = self._similarity_features
+        prior_folds = prior_folds or []
 
         # ── IS metrics for all param sets ─────────────────────────────────
         is_metrics: Dict[str, Dict[str, float]] = {}
@@ -455,11 +574,11 @@ class WalkForwardAnalyzer:
             is_metrics[name] = _compute_metrics_from_equity(eq_is)
 
         if not is_metrics:
-            # Fallback: return empty fold with first param set
             fallback_name = self._set_names[0]
             return self._make_fallback_fold(fold, fallback_name, eq_map)
 
         # ── IS macro vector (last 30 trading days of IS) ─────────────────
+        # Used as "today_vec" — best no-leakage proxy for upcoming OOS macro.
         is_macro_vec: Dict[str, float] = {}
         if not macro_df.empty and features:
             macro_is = macro_df[(macro_df.index >= fold.is_start) &
@@ -472,69 +591,109 @@ class WalkForwardAnalyzer:
                     for f in features
                 }
 
-        # ── Macro-conditioned Sharpe (MCPS) on IS data ───────────────────
-        mcs_scores: Dict[str, float] = {}
+        # ── OOS macro vector for THIS fold (stored for future folds) ─────
+        # Mean macro state across the full OOS window — used as the
+        # "fingerprint" of what actually happened during OOS.
+        oos_macro_vec: Dict[str, float] = {}
+        if not macro_df.empty and features:
+            macro_oos = macro_df[(macro_df.index >= fold.oos_start) &
+                                 (macro_df.index <= fold.oos_end)]
+            if len(macro_oos) >= 10:
+                oos_mean = macro_oos[features].mean()
+                oos_macro_vec = {
+                    f: float(oos_mean[f]) if f in oos_mean.index and not pd.isna(oos_mean[f])
+                    else None
+                    for f in features
+                }
+
+        # ── All param sets' OOS Sharpe (stored for future folds) ─────────
+        # Slicing pre-computed equity curves is fast; no additional backtests.
+        all_oos_sharpes: Dict[str, float] = {}
+        for name, eq_full in eq_map.items():
+            seg = eq_full[(eq_full.index >= fold.oos_start) &
+                          (eq_full.index <= fold.oos_end)]
+            if len(seg) >= 20:
+                seg_norm = seg / seg.iloc[0]
+                m = _compute_metrics_from_equity(seg_norm)
+                sr = m.get("sharpe", float("nan"))
+                if not np.isnan(sr):
+                    all_oos_sharpes[name] = sr
+
+        # ── Selection ─────────────────────────────────────────────────────
+        # Priority: OOS retrospective → IS MCPS → IS Sharpe fallback
+        n_trials = len(is_metrics)
+        best_name: str = ""
+        best_score: float = float("nan")
+        dsr_p: float = 0.0
         selection_method = "is_sharpe"
 
-        if is_macro_vec and not macro_df.empty and features:
+        # 1. OOS retrospective matching (requires enough completed prior folds)
+        retro_candidates = [
+            pf for pf in prior_folds
+            if pf.oos_macro_vec and pf.all_oos_sharpes
+        ]
+        if len(retro_candidates) >= self._OOS_RETRO_MIN_FOLDS and is_macro_vec:
+            retro_name, retro_score = _oos_retrospective_select(
+                today_vec=is_macro_vec,
+                prior_folds=retro_candidates,
+                features=features,
+            )
+            if retro_name and not np.isnan(retro_score):
+                best_name = retro_name
+                best_score = retro_score
+                selection_method = "oos_retrospective"
+
+        # 2. IS MCPS fallback (when OOS retrospective not yet available)
+        if not best_name and is_macro_vec and not macro_df.empty and features:
             macro_is_df = macro_df[(macro_df.index >= fold.is_start) &
                                    (macro_df.index <= fold.is_end)]
+            mcs_scores: Dict[str, float] = {}
             for name, eq in eq_map.items():
                 if name not in is_metrics:
                     continue
                 eq_is = eq[(eq.index >= fold.is_start) & (eq.index <= fold.is_end)]
-                score = _macro_cond_sharpe_is(
-                    eq_is, macro_is_df, is_macro_vec, features
-                )
+                score = _macro_cond_sharpe_is(eq_is, macro_is_df, is_macro_vec, features)
                 if not np.isnan(score):
                     mcs_scores[name] = score
 
             if len(mcs_scores) >= 3:
+                all_scores = list(mcs_scores.values())
+                score_var = float(np.var(all_scores)) if len(all_scores) > 1 else 0.01
+                sr_0 = expected_max_sharpe(n_trials, score_var)
+                best_name  = max(mcs_scores, key=mcs_scores.get)
+                best_score = mcs_scores[best_name]
+                best_is_m  = is_metrics.get(best_name, {})
+                dsr_p = deflated_sharpe_ratio(
+                    sr_obs=best_score, sr_0=sr_0,
+                    T=int(best_is_m.get("n_days", 252)),
+                    skew=best_is_m.get("skew", 0.0),
+                    kurt=best_is_m.get("kurt", 3.0),
+                )
                 selection_method = "mcps"
 
-        # ── DSR filter + selection ────────────────────────────────────────
-        n_trials = len(is_metrics)
-
-        if selection_method == "mcps":
-            all_scores = list(mcs_scores.values())
-            score_var = float(np.var(all_scores)) if len(all_scores) > 1 else 0.01
-            sr_0 = expected_max_sharpe(n_trials, score_var)
-
-            best_name = max(mcs_scores, key=mcs_scores.get)
-            best_score = mcs_scores[best_name]
-            best_is_m = is_metrics.get(best_name, {})
-            dsr_p = deflated_sharpe_ratio(
-                sr_obs=best_score,
-                sr_0=sr_0,
-                T=int(best_is_m.get("n_days", 252)),
-                skew=best_is_m.get("skew", 0.0),
-                kurt=best_is_m.get("kurt", 3.0),
-            )
-        else:
-            # Fallback: select by IS Sharpe
+        # 3. IS Sharpe fallback
+        if not best_name:
             all_sharpes = {n: m.get("sharpe", float("-inf"))
                           for n, m in is_metrics.items()
                           if not np.isnan(m.get("sharpe", float("nan")))}
             if not all_sharpes:
-                best_name = self._set_names[0]
+                best_name  = self._set_names[0]
                 best_score = float("nan")
-                dsr_p = 0.0
+                dsr_p      = 0.0
             else:
                 score_var = float(np.var(list(all_sharpes.values()))) if len(all_sharpes) > 1 else 0.01
                 sr_0 = expected_max_sharpe(n_trials, score_var)
-
-                best_name = max(all_sharpes, key=all_sharpes.get)
+                best_name  = max(all_sharpes, key=all_sharpes.get)
                 best_score = all_sharpes[best_name]
-                best_is_m = is_metrics.get(best_name, {})
+                best_is_m  = is_metrics.get(best_name, {})
                 dsr_p = deflated_sharpe_ratio(
-                    sr_obs=best_score,
-                    sr_0=sr_0,
+                    sr_obs=best_score, sr_0=sr_0,
                     T=int(best_is_m.get("n_days", 252)),
                     skew=best_is_m.get("skew", 0.0),
                     kurt=best_is_m.get("kurt", 3.0),
                 )
 
-        # ── OOS evaluation ────────────────────────────────────────────────
+        # ── OOS evaluation (selected param set only) ──────────────────────
         oos_eq = pd.Series(dtype=float)
         oos_metrics: Dict[str, float] = {}
 
@@ -543,7 +702,7 @@ class WalkForwardAnalyzer:
             seg = eq_full[(eq_full.index >= fold.oos_start) &
                           (eq_full.index <= fold.oos_end)]
             if not seg.empty:
-                oos_eq = seg / seg.iloc[0]  # normalize to base 1.0
+                oos_eq = seg / seg.iloc[0]
                 oos_metrics = _compute_metrics_from_equity(oos_eq)
 
         # ── OOS dominant regime ───────────────────────────────────────────
@@ -583,6 +742,8 @@ class WalkForwardAnalyzer:
             oos_metrics=oos_metrics,
             oos_regime=oos_regime,
             wfe=wfe,
+            all_oos_sharpes=all_oos_sharpes,
+            oos_macro_vec=oos_macro_vec,
         )
 
     def _make_fallback_fold(
@@ -632,15 +793,19 @@ class WalkForwardAnalyzer:
 
         macro_df = self._load_macro_df()
 
-        # ── Evaluate each fold ────────────────────────────────────────────
+        # ── Evaluate each fold (sequential: fold i sees folds 0..i-1) ─────
         fold_results: List[WFFoldResult] = []
         for i, fold in enumerate(folds):
+            n_retro = sum(
+                1 for pf in fold_results if pf.oos_macro_vec and pf.all_oos_sharpes
+            )
             logger.info(
                 f"  Fold {fold.fold_id + 1}/{len(folds)}: "
                 f"IS=[{fold.is_start.date()}→{fold.is_end.date()}] "
-                f"OOS=[{fold.oos_start.date()}→{fold.oos_end.date()}]"
+                f"OOS=[{fold.oos_start.date()}→{fold.oos_end.date()}] "
+                f"(retro_pool={n_retro})"
             )
-            fr = self._evaluate_fold(fold, eq_map, macro_df)
+            fr = self._evaluate_fold(fold, eq_map, macro_df, prior_folds=fold_results)
             fold_results.append(fr)
             logger.info(
                 f"    → selected={fr.is_best_name} "
