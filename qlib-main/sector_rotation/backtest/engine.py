@@ -255,6 +255,7 @@ class SectorRotationBacktest:
         erm_cfg = self.sig_cfg.get("earnings_revision", {})
         rsb_cfg = self.sig_cfg.get("relative_strength_breakout", {})
         signal_kwargs = {
+            "signal_version": self.sig_cfg.get("signal_version", "v1"),
             "stm_enabled": stm_cfg.get("enabled", False),
             "stm_lookback": stm_cfg.get("lookback_months", 6),
             "stm_skip": stm_cfg.get("skip_months", 1),
@@ -345,6 +346,7 @@ class SectorRotationBacktest:
                 initial_capital=initial_capital,
                 bench_daily_ret=bench_daily_ret,
                 etf_daily_ret=etf_daily_ret,
+                signal_kwargs=signal_kwargs,
             )
 
         # ---------------------------------------------------------------
@@ -509,11 +511,14 @@ class SectorRotationBacktest:
         initial_capital: float,
         bench_daily_ret: Optional[pd.DataFrame],
         etf_daily_ret: pd.DataFrame,
+        signal_kwargs: Optional[dict] = None,
     ) -> BacktestResult:
         """
         Pure-Python weight-based backtest (fallback when qlib unavailable).
         Uses qlib Order/OrderDir for trade representation if available.
         """
+        signal_kwargs = signal_kwargs or {}
+        bench_series = bench_prices.iloc[:, 0] if bench_prices is not None else None
         portfolio_value = initial_capital
         current_weights = pd.Series(0.0, index=etf_tickers)
         prev_scores = pd.Series(0.0, index=etf_tickers)
@@ -607,6 +612,21 @@ class SectorRotationBacktest:
                         max_weight=self.port_cfg.get("constraints", {}).get("max_weight", 0.40),
                         vix_progressive_tiers=prog_tiers,
                     )
+
+                    # ── Risk Overlay (v2): entry/exit gate + optional market/DD multipliers
+                    if signal_kwargs.get("signal_version") == "v2":
+                        risk_overlay_cfg = self.cfg.get("risk_overlay", {})
+                        if risk_overlay_cfg.get("enabled", True):
+                            from ..signals.risk_overlay import apply_risk_overlay
+                            adj_weights = apply_risk_overlay(
+                                target_weights=adj_weights,
+                                sector_prices=etf_prices,
+                                benchmark_prices=bench_series,
+                                portfolio_equity=ec_so_far if len(ec_so_far) > 0 else None,
+                                vix=macro.get("vix") if "vix" in macro.columns else None,
+                                rebalance_date=dt,
+                                config=risk_overlay_cfg,
+                            )
 
                     cost_result = compute_transaction_costs(
                         current_weights, adj_weights, portfolio_value

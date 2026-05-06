@@ -50,7 +50,12 @@ universe:
 # Signals
 # ---------------------------------------------------------------------------
 signals:
-  # Signal weights (must sum to 1.0)
+  # Signal architecture version:
+  #   "v1" = legacy (4 factors + bonus, regime as fixed 25% weight)
+  #   "v2" = dynamic (7 primary factors, regime as weight matrix switch)
+  signal_version: "v1"             # "v1"=production stable; "v2"=experimental (7-factor + risk overlay)
+
+  # V1 signal weights (used when signal_version=v1, must sum to 1.0)
   weights:
     cross_sectional_momentum: 0.40   # restored to 0.40; reduces regime over-coverage of momentum
     ts_momentum:              0.15
@@ -214,6 +219,26 @@ risk:
       - {vix_above: 28, cash_pct: 0.15}   # elevated stress: 15% cash (raised from 25 — VIX 25 fires too often)
       - {vix_above: 32, cash_pct: 0.35}   # high stress: 35% cash
       # VIX ≥ 35 → handled by rebalance.emergency_derisk_vix (50% cash)
+
+# ---------------------------------------------------------------------------
+# Risk Overlay (v2 only) — independent position multiplier layer
+# Applied AFTER scoring and existing risk controls (vol scaling, VIX de-risk)
+# ---------------------------------------------------------------------------
+risk_overlay:
+  enabled: true
+  # Entry gate: sector must pass trend filter to receive allocation
+  entry_ma_short: 30              # relaxed from 50: avoid filtering too aggressively
+  entry_ma_long: 100
+  # Exit gate: force exit if trend destroyed
+  exit_ma: 150                    # relaxed from 100: give more room before exit
+  exit_max_dd: -0.12             # sector drawdown from 3m high triggers exit
+  # Market risk multiplier
+  market_ma_medium: 100
+  market_ma_long: 200
+  # Portfolio drawdown protection
+  dd_cautious: -0.10             # relaxed from -0.05: avoid early reduction
+  dd_defensive: -0.14
+  dd_crisis: -0.18
 
 # ---------------------------------------------------------------------------
 # Backtest
