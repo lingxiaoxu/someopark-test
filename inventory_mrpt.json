@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-05-04",
+  "as_of": "2026-05-05",
   "capital": 500000,
   "pairs": {
     "DG/MOS": {
@@ -72,70 +72,70 @@
       "strategy": "mrpt",
       "param_set": "static_threshold",
       "direction": "short",
-      "s1_shares": -436,
-      "s2_shares": 427,
-      "open_date": "2026-05-04",
-      "open_s1_price": 211.71,
-      "open_s2_price": 206.56,
-      "open_hedge_ratio": 0.9795553734183221,
-      "open_price_level_stop": 14.059563100067066,
+      "s1_shares": -495,
+      "s2_shares": 495,
+      "open_date": "2026-05-05",
+      "open_s1_price": 211.39,
+      "open_s2_price": 206.55,
+      "open_hedge_ratio": 0.9987846007468,
+      "open_price_level_stop": 7.636561073622673,
       "days_held": 0,
       "open_signal": {
-        "z_score": 2.985,
+        "z_score": 1.319,
         "entry_threshold": 1.0,
         "exit_threshold": null
       },
       "wf_source": {
-        "wf_summary_file": "historical_runs/walk_forward/walk_forward_summary_20260504_215749.json",
+        "wf_summary_file": "historical_runs/walk_forward/walk_forward_summary_20260505_215855.json",
         "wf_dir": "historical_runs/walk_forward",
         "windows": {
           "W1": {
             "param_set": "flash_hold",
-            "train_end": "2025-09-26",
-            "test_start": "2025-09-29",
-            "test_end": "2025-10-31",
-            "oos_sharpe": 2.9976,
-            "oos_pnl": 10655.76
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-03",
+            "oos_sharpe": 1.8751,
+            "oos_pnl": 6808.18
           },
           "W2": {
             "param_set": "flash_hold",
-            "train_end": "2025-10-31",
-            "test_start": "2025-11-03",
-            "test_end": "2025-12-08",
-            "oos_sharpe": 0.7866,
-            "oos_pnl": 2191.18
+            "train_end": "2025-11-03",
+            "test_start": "2025-11-04",
+            "test_end": "2025-12-09",
+            "oos_sharpe": 1.0973,
+            "oos_pnl": 3203.82
           },
           "W3": {
             "param_set": "high_turnover",
-            "train_end": "2025-12-08",
-            "test_start": "2025-12-09",
-            "test_end": "2026-01-14",
-            "oos_sharpe": -2.2376,
-            "oos_pnl": -5352.59
+            "train_end": "2025-12-09",
+            "test_start": "2025-12-10",
+            "test_end": "2026-01-15",
+            "oos_sharpe": -2.8611,
+            "oos_pnl": -6324.87
           },
           "W4": {
             "param_set": "static_threshold",
-            "train_end": "2026-01-14",
-            "test_start": "2026-01-15",
-            "test_end": "2026-02-20",
-            "oos_sharpe": 2.2181,
-            "oos_pnl": 11175.03
+            "train_end": "2026-01-15",
+            "test_start": "2026-01-16",
+            "test_end": "2026-02-23",
+            "oos_sharpe": 4.247,
+            "oos_pnl": 17427.39
           },
           "W5": {
             "param_set": "static_threshold",
-            "train_end": "2026-02-20",
-            "test_start": "2026-02-23",
-            "test_end": "2026-03-27",
-            "oos_sharpe": -8.209,
-            "oos_pnl": -17508.12
+            "train_end": "2026-02-23",
+            "test_start": "2026-02-24",
+            "test_end": "2026-03-30",
+            "oos_sharpe": -6.8066,
+            "oos_pnl": -16165.48
           },
           "W6": {
             "param_set": "static_threshold",
-            "train_end": "2026-03-27",
-            "test_start": "2026-03-30",
-            "test_end": "2026-05-04",
-            "oos_sharpe": 0.3777,
-            "oos_pnl": 1275.82
+            "train_end": "2026-03-30",
+            "test_start": "2026-03-31",
+            "test_end": "2026-05-05",
+            "oos_sharpe": -0.7999,
+            "oos_pnl": -3379.52
           }
         },
         "default_window": "W6"
@@ -143,73 +143,76 @@
       "monitor_log": []
     },
     "AON/GEN": {
+      "direction": null
+    },
+    "CHD/HON": {
       "strategy": "mrpt",
-      "param_set": "low_entry",
+      "param_set": "static_threshold",
       "direction": "long",
-      "s1_shares": 292,
-      "s2_shares": -4615,
-      "open_date": "2026-05-04",
-      "open_s1_price": 311.51,
-      "open_s2_price": 19.37,
-      "open_hedge_ratio": 15.768917077417495,
-      "open_price_level_stop": 4.852860968338473,
+      "s1_shares": 1112,
+      "s2_shares": -495,
+      "open_date": "2026-05-05",
+      "open_s1_price": 92.89,
+      "open_s2_price": 209.59,
+      "open_hedge_ratio": 0.446099926952117,
+      "open_price_level_stop": -0.4864669519153608,
       "days_held": 0,
       "open_signal": {
-        "z_score": -2.032,
-        "entry_threshold": 2.0,
+        "z_score": -1.541,
+        "entry_threshold": 1.0,
         "exit_threshold": null
       },
       "wf_source": {
-        "wf_summary_file": "historical_runs/walk_forward/walk_forward_summary_20260504_215749.json",
+        "wf_summary_file": "historical_runs/walk_forward/walk_forward_summary_20260505_215855.json",
         "wf_dir": "historical_runs/walk_forward",
         "windows": {
           "W1": {
             "param_set": "conservative",
-            "train_end": "2025-09-26",
-            "test_start": "2025-09-29",
-            "test_end": "2025-10-31",
-            "oos_sharpe": 2.9976,
-            "oos_pnl": 10655.76
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-03",
+            "oos_sharpe": 1.8751,
+            "oos_pnl": 6808.18
           },
           "W2": {
-            "param_set": "conservative",
-            "train_end": "2025-10-31",
-            "test_start": "2025-11-03",
-            "test_end": "2025-12-08",
-            "oos_sharpe": 0.7866,
-            "oos_pnl": 2191.18
+            "param_set": "deep_entry_quick_exit",
+            "train_end": "2025-11-03",
+            "test_start": "2025-11-04",
+            "test_end": "2025-12-09",
+            "oos_sharpe": 1.0973,
+            "oos_pnl": 3203.82
           },
           "W3": {
             "param_set": "conservative",
-            "train_end": "2025-12-08",
-            "test_start": "2025-12-09",
-            "test_end": "2026-01-14",
-            "oos_sharpe": -2.2376,
-            "oos_pnl": -5352.59
+            "train_end": "2025-12-09",
+            "test_start": "2025-12-10",
+            "test_end": "2026-01-15",
+            "oos_sharpe": -2.8611,
+            "oos_pnl": -6324.87
           },
           "W4": {
-            "param_set": "conservative",
-            "train_end": "2026-01-14",
-            "test_start": "2026-01-15",
-            "test_end": "2026-02-20",
-            "oos_sharpe": 2.2181,
-            "oos_pnl": 11175.03
+            "param_set": "static_threshold",
+            "train_end": "2026-01-15",
+            "test_start": "2026-01-16",
+            "test_end": "2026-02-23",
+            "oos_sharpe": 4.247,
+            "oos_pnl": 17427.39
           },
           "W5": {
-            "param_set": "low_entry",
-            "train_end": "2026-02-20",
-            "test_start": "2026-02-23",
-            "test_end": "2026-03-27",
-            "oos_sharpe": -8.209,
-            "oos_pnl": -17508.12
+            "param_set": "static_threshold",
+            "train_end": "2026-02-23",
+            "test_start": "2026-02-24",
+            "test_end": "2026-03-30",
+            "oos_sharpe": -6.8066,
+            "oos_pnl": -16165.48
           },
           "W6": {
-            "param_set": "low_entry",
-            "train_end": "2026-03-27",
-            "test_start": "2026-03-30",
-            "test_end": "2026-05-04",
-            "oos_sharpe": 0.3777,
-            "oos_pnl": 1275.82
+            "param_set": "static_threshold",
+            "train_end": "2026-03-30",
+            "test_start": "2026-03-31",
+            "test_end": "2026-05-05",
+            "oos_sharpe": -0.7999,
+            "oos_pnl": -3379.52
           }
         },
         "default_window": "W6"
