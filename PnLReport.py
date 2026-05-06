@@ -783,7 +783,20 @@ def build_report_data(start: str, end: str) -> dict:
 
         if close_ev:
             is_open    = False
-            sys_pnl    = close_ev['pnl']
+            # Use inventory shares × MongoDB close price on signal_date for PnL
+            # (same口径 as equity curve), falling back to daily_report PnL.
+            mtm_pnl = None
+            if s1_sh and s2_sh and op1 and op2:
+                try:
+                    close_dt = pd.Timestamp(close_ev.get('signal_date', close_ev['report_date']))
+                    cp1 = prices[s1].loc[:close_dt].dropna().iloc[-1] if s1 in prices.columns else None
+                    cp2 = prices[s2].loc[:close_dt].dropna().iloc[-1] if s2 in prices.columns else None
+                    if cp1 is not None and cp2 is not None:
+                        mtm_pnl = (s1_sh * float(cp1) + s2_sh * float(cp2)) - (s1_sh * op1 + s2_sh * op2)
+                        mtm_pnl = round(mtm_pnl, 2)
+                except Exception:
+                    pass
+            sys_pnl    = mtm_pnl if mtm_pnl is not None else close_ev['pnl']
             exit_dt    = close_ev['report_date']
             action     = close_ev['action']
             close_note = close_ev['note']
@@ -798,7 +811,19 @@ def build_report_data(start: str, end: str) -> dict:
             close_note = 'Closed by signal (no monitor event)'
         elif hold_ev:
             is_open    = True
-            sys_pnl    = hold_ev['pnl']
+            # Use inventory shares × MongoDB close price for PnL (same口径
+            # as equity curve MTM), falling back to daily_report PnL.
+            mtm_pnl = None
+            if s1_sh and s2_sh and op1 and op2:
+                try:
+                    cp1 = prices[s1].dropna().iloc[-1] if s1 in prices.columns else None
+                    cp2 = prices[s2].dropna().iloc[-1] if s2 in prices.columns else None
+                    if cp1 is not None and cp2 is not None:
+                        mtm_pnl = (s1_sh * float(cp1) + s2_sh * float(cp2)) - (s1_sh * op1 + s2_sh * op2)
+                        mtm_pnl = round(mtm_pnl, 2)
+                except Exception:
+                    pass
+            sys_pnl    = mtm_pnl if mtm_pnl is not None else hold_ev['pnl']
             exit_dt    = hold_ev['report_date']
             action     = 'HOLD'
             close_note = ''
