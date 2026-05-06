@@ -533,14 +533,28 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
     #   (b) Step 2 re-opening a position that Step 1 just closed, leading to
     #       consecutive CLOSEs on different dates with no HOLD in between
     _all_close_ev: list[tuple] = []   # (pair, signal_date, ts, pnl, file_date_str)
+    # Also collect HOLD positions per signal_date for overlay (positions that
+    # inventory snapshots may miss because Step 2 backup is pre-write).
+    # Store raw (un-scaled) PnL so overlay matches inventory MTM口径.
+    _hold_by_sigdate: dict[str, dict[str, float]] = defaultdict(dict)  # signal_date -> {pair: raw_upnl}
     for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
         day, full = _parse_ts(fpath)
-        if day is None or day < start_ts or day > end_ts:
+        if day is None:
+            continue
+        if day < start_ts - pd.Timedelta(days=2) or day > end_ts + pd.Timedelta(days=2):
             continue
         with open(fpath) as f:
             dr = json.load(f)
         signal_date_str = dr.get('signal_date', str(day.date()))
+        sig_date = pd.Timestamp(signal_date_str)
+        if sig_date < start_ts or sig_date > end_ts:
+            continue
         file_date_str = str(day.date())
+        # Collect per-strategy scale_factor for un-scaling
+        _scale = {}
+        for strat in ('mrpt', 'mtfs'):
+            sf = dr.get(strat, {}).get('scale_factor')
+            _scale[strat] = sf if sf and sf > 0 else 1.0
         pm = dr.get('position_monitor', {})
         for strat in ('mrpt', 'mtfs'):
             for e in pm.get(strat, []):
@@ -553,6 +567,11 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
                 if action in ('CLOSE', 'CLOSE_STOP'):
                     pnl = e.get('unrealized_pnl', 0) or 0
                     _all_close_ev.append((pair, signal_date_str, full, pnl, file_date_str))
+                elif action == 'HOLD':
+                    upnl = e.get('unrealized_pnl', 0) or 0
+                    # Remove scale_factor to match raw inventory MTM
+                    raw_upnl = upnl / _scale[strat]
+                    _hold_by_sigdate[signal_date_str][pair] = raw_upnl
 
     # Group by (pair, signal_date) and keep only the latest CLOSE per group
     _close_by_pair_date: dict[tuple, list] = {}  # (pair, signal_date) -> [(ts, pnl, file_date)]
@@ -560,31 +579,17 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
         _close_by_pair_date.setdefault((pair, sig_date), []).append((ts, pnl, fdate))
 
     realized_by_date: dict[str, float] = defaultdict(float)
-    _seen_close: set[tuple] = set()  # (pair, exec_date) for MTM guard
-
-    # Helper: map signal_date → execution_date.
-    # - Same-day run  (file_date == signal_date): close already executed and
-    #   inventory updated on signal_date → exec_date = signal_date.
-    # - Overnight run (file_date >  signal_date): close signal generated after
-    #   signal_date's close, execution on next trading day → exec_date = T+1.
-    _td_strs = sorted(set(str(td.date()) for td in trade_days))
-    def _next_td(sig_date_str: str) -> str | None:
-        for t in _td_strs:
-            if t > sig_date_str:
-                return t
-        return None
+    # Track close signal_dates per pair for MTM guard.
+    # A position in inventory should be skipped if its open_date <= a close's
+    # signal_date <= current trade_day (meaning this lifecycle was closed).
+    _close_sig_dates: dict[str, set[str]] = defaultdict(set)  # pair -> {signal_dates}
 
     for (pair, sig_date), entries in _close_by_pair_date.items():
         best_ts, best_pnl, best_fdate = max(entries, key=lambda x: x[0])
-        if best_fdate == sig_date:
-            # Same-day run: close already reflected in inventory on signal_date
-            exec_date = sig_date
-        else:
-            # Overnight run: execution happens next trading day
-            exec_date = _next_td(sig_date)
-            if exec_date is None:
-                continue  # close is beyond report range → stay MTM
-        _seen_close.add((pair, exec_date))
+        # Lock realized PnL on signal_date (the close decision is based on
+        # signal_date's closing prices, regardless of when the run executed).
+        exec_date = sig_date
+        _close_sig_dates[pair].add(exec_date)
         realized_by_date[exec_date] += best_pnl
 
     # ── Step 2: Daily portfolio PnL = cum_realized + open_positions_mtm ──
@@ -606,6 +611,7 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
         # Mark-to-market all currently open positions
         total_mtm = 0.0
         has_pos = False
+        _inv_pairs_today: set = set()  # pairs already counted from inventory
 
         for snap_map in (mrpt_snap, mtfs_snap):
             fpath = get_snap_on_or_before(snap_map, td_str)
@@ -617,10 +623,15 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
                 if not pos.get('direction') or '/' not in pair_name:
                     continue
 
-                # Skip positions that closed on this date — their PnL is
-                # already captured in realized_by_date (avoid double-counting).
-                if (pair_name, td_str) in _seen_close:
+                # Skip positions whose lifecycle was closed: if any close
+                # signal_date falls between the position's open_date and
+                # current trade_day, this position is already realized.
+                open_dt = pos.get('open_date', '')
+                close_dates = _close_sig_dates.get(pair_name, set())
+                if any(cd <= td_str and cd >= open_dt for cd in close_dates):
                     continue
+
+                _inv_pairs_today.add(pair_name)
 
                 s1, s2 = pair_name.split('/', 1)
                 s1_sh = pos.get('s1_shares', 0)
@@ -638,6 +649,21 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
                     pair_pnl = (s1_sh * float(cp1) + s2_sh * float(cp2)) - (s1_sh * op1 + s2_sh * op2)
                     total_mtm += pair_pnl
                     has_pos = True
+
+        # Overlay: positions in daily_report HOLD but missing from inventory snap.
+        # Same-day opens are not in inventory_history (Step 2 backup is pre-write).
+        # For these, use the daily_report unrealized_pnl directly. While this
+        # value includes DailySignal's scale_factor (small ~2% deviation from
+        # raw MTM), it is better than omitting the position entirely.
+        dr_holds = _hold_by_sigdate.get(td_str, {})
+        for pair_name, upnl in dr_holds.items():
+            if pair_name in _inv_pairs_today:
+                continue  # already counted from inventory MTM
+            close_dates = _close_sig_dates.get(pair_name, set())
+            if any(cd <= td_str for cd in close_dates):
+                continue  # closed on or before this date
+            total_mtm += upnl
+            has_pos = True
 
         # Total PnL = locked realized + current unrealized
         total_pnl = cum_realized + total_mtm
