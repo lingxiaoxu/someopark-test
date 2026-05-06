@@ -79,22 +79,22 @@ REGIME_WEIGHT_MATRICES_V2 = {
         "low_volatility":           0.05,
     },
     TRANSITION_DOWN: {
-        "cross_sectional_momentum": 0.25,
+        "cross_sectional_momentum": 0.30,
         "short_term_momentum":      0.15,
-        "momentum_3m":              0.10,
-        "relative_strength":        0.10,
+        "momentum_3m":              0.05,   # suppress fast signal in downtrend
+        "relative_strength":        0.05,   # suppress: RSB gives false breakouts in bear
         "relative_value":           0.15,
         "earnings_revision":        0.05,
-        "low_volatility":           0.20,
+        "low_volatility":           0.25,   # defensive tilt
     },
     RISK_OFF: {
-        "cross_sectional_momentum": 0.15,
+        "cross_sectional_momentum": 0.20,
         "short_term_momentum":      0.10,
-        "momentum_3m":              0.05,
-        "relative_strength":        0.10,
+        "momentum_3m":              0.00,   # OFF: 3m momentum is pure noise in crash
+        "relative_strength":        0.00,   # OFF: no breakouts in crash
         "relative_value":           0.15,
         "earnings_revision":        0.05,
-        "low_volatility":           0.40,
+        "low_volatility":           0.50,   # max defensive
     },
 }
 
