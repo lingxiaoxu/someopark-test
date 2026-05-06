@@ -1605,10 +1605,10 @@ def _add_wf_fold_table_page(pdf: PdfPages, wf_result) -> None:
     subtitle = (f"Synthetic OOS Sharpe: {sm.get('sharpe', float('nan')):.3f}  |  "
                 f"DSR: {wf_result.dsr_aggregate:.3f}  |  "
                 f"Mean WFE: {wf_result.mean_wfe:.3f}")
-    ax.text(0.5, 1.02, title, ha="center", va="bottom",
+    ax.text(0.5, 1.06, title, ha="center", va="bottom",
             fontsize=12, fontweight="bold", color=PALETTE["header_mid"],
             transform=ax.transAxes)
-    ax.text(0.5, 0.98, subtitle, ha="center", va="top",
+    ax.text(0.5, 1.02, subtitle, ha="center", va="top",
             fontsize=9, color=PALETTE["neutral"], transform=ax.transAxes)
 
     # Prepare table data

@@ -213,9 +213,27 @@ def equity_curve_plot(
     ew_label: str = "Equal Weight",
     figsize: Tuple = (14, 5),
 ) -> plt.Figure:
-    """Cumulative return chart (normalized to 100 at start)."""
+    """Cumulative return chart (normalized to 100 at first active trade).
+
+    Detects the warmup period (flat equity) and rebases both strategy
+    and benchmark from the first date with non-zero returns, so the
+    comparison is fair (no 12-month warmup flat vs SPY gaining 10%).
+    """
     fig, ax = plt.subplots(figsize=figsize)
     fig.patch.set_facecolor(PALETTE["bg"])
+
+    # Find first active date (skip warmup flat period)
+    rets = equity.pct_change()
+    active_mask = rets.abs() > 1e-6
+    if active_mask.any():
+        first_active = active_mask.idxmax()
+        # Start 1 day before first trade for base=100
+        active_start_idx = max(0, equity.index.get_loc(first_active) - 1)
+        equity = equity.iloc[active_start_idx:]
+        if benchmark is not None:
+            benchmark = benchmark.reindex(equity.index, method="ffill")
+        if equal_weight is not None:
+            equal_weight = equal_weight.reindex(equity.index, method="ffill")
 
     norm = equity / equity.iloc[0] * 100
 
