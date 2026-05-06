@@ -292,7 +292,95 @@ def compute_relative_strength_breakout(
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-#  Convenience: compute all three in one call
+#  Signal 4: 3-Month Momentum (fastest trend signal)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def compute_momentum_3m(
+    prices: pd.DataFrame,
+    skip_months: int = 0,
+    zscore_window: int = 18,
+) -> pd.DataFrame:
+    """
+    3-month momentum with no skip. The fastest trend signal.
+
+    Catches sector rotations 9 months before CS_MOM_12_1.
+    Critical for detecting the start of rallies (e.g., XLK Jan 2023)
+    when 12-1 month momentum is still negative from prior year's decline.
+
+    No skip_months (=0) because at 3-month horizon, the 1-month reversal
+    effect is minimal in ETFs (Jegadeesh & Titman 2001).
+
+    Returns
+    -------
+    pd.DataFrame — month-end, cross-sectional z-scored, columns = tickers
+    """
+    monthly = prices.resample("ME").last()
+    monthly_ret = monthly.pct_change()
+    lookback = 3
+
+    if len(monthly_ret) < lookback + skip_months + 1:
+        logger.warning(f"Momentum 3m: insufficient data")
+        return pd.DataFrame()
+
+    cum_ret = pd.DataFrame(index=monthly_ret.index, columns=monthly_ret.columns,
+                           dtype=float)
+    for i in range(lookback + skip_months, len(monthly_ret)):
+        window = monthly_ret.iloc[i - lookback: i - skip_months + 1] if skip_months > 0 \
+                 else monthly_ret.iloc[i - lookback + 1: i + 1]
+        cum_ret.iloc[i] = (1 + window).prod() - 1
+
+    cum_ret = cum_ret.dropna(how="all")
+    mom_z = _cs_zscore(cum_ret)
+
+    # Rolling time-series z-score normalization
+    if zscore_window > 0 and len(mom_z) > zscore_window:
+        roll_mu = mom_z.rolling(zscore_window, min_periods=zscore_window // 2).mean()
+        roll_sd = mom_z.rolling(zscore_window, min_periods=zscore_window // 2).std()
+        mom_z = (mom_z - roll_mu) / roll_sd.replace(0, np.nan)
+
+    return mom_z
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Signal 5: Low Volatility (defensive quality)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def compute_low_volatility(
+    prices: pd.DataFrame,
+    lookback_days: int = 63,
+) -> pd.DataFrame:
+    """
+    Low-volatility factor: sectors with lower realized volatility score higher.
+
+    In risk-off environments, low-vol sectors (XLU, XLP, XLV) outperform.
+    This provides a defensive tilt without explicitly naming sectors —
+    the signal naturally rewards whatever is least volatile at the time.
+
+    Based on Baker, Bradley & Wurgler (2011) "Benchmarks as Limits to
+    Arbitrage" — low-volatility anomaly persists because benchmarked
+    investors are forced to hold high-beta securities.
+
+    Returns
+    -------
+    pd.DataFrame — month-end, cross-sectional z-scored, columns = tickers
+                   Higher = lower volatility = more defensive
+    """
+    daily_ret = prices.pct_change()
+    # Annualized realized volatility
+    daily_vol = daily_ret.rolling(lookback_days, min_periods=lookback_days // 2).std() * np.sqrt(252)
+
+    # Resample to month-end
+    monthly_vol = daily_vol.resample("ME").last()
+
+    # Invert: low vol → high score (negative vol = good)
+    inv_vol = -monthly_vol
+
+    # Cross-sectional z-score
+    return _cs_zscore(inv_vol)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+#  Convenience: compute all new signals in one call
 # ═══════════════════════════════════════════════════════════════════════════
 
 def compute_all_new_signals(
@@ -309,16 +397,20 @@ def compute_all_new_signals(
     rsb_lookback_days: int = 63,
     eps_store_path: Optional[Path] = None,
     monthly_index: Optional[pd.DatetimeIndex] = None,
+    signal_kwargs: Optional[Dict] = None,
 ) -> Dict[str, Optional[pd.DataFrame]]:
     """
-    Compute all three new signals. Returns dict with keys:
-      "short_term_mom", "earnings_revision", "rs_breakout"
+    Compute all new signals. Returns dict with keys:
+      "short_term_mom", "earnings_revision", "rs_breakout", "momentum_3m", "low_volatility"
     Each value is a z-scored DataFrame or None if disabled/failed.
     """
+    signal_kwargs = signal_kwargs or {}
     result: Dict[str, Optional[pd.DataFrame]] = {
         "short_term_mom": None,
         "earnings_revision": None,
         "rs_breakout": None,
+        "momentum_3m": None,
+        "low_volatility": None,
     }
     tickers = etf_tickers or list(sector_prices.columns)
 
@@ -354,5 +446,32 @@ def compute_all_new_signals(
                             f"{result['rs_breakout'].shape[1]} tickers")
         except Exception as e:
             logger.warning(f"RS breakout failed: {e}")
+
+    # MOM_3m: always compute (it's a primary factor in v2, not optional)
+    if signal_kwargs.get("mom3m_enabled", True):
+        try:
+            result["momentum_3m"] = compute_momentum_3m(
+                sector_prices,
+                skip_months=signal_kwargs.get("mom3m_skip", 0),
+                zscore_window=signal_kwargs.get("mom3m_zscore_window", 18),
+            )
+            if result["momentum_3m"] is not None and not result["momentum_3m"].empty:
+                logger.info(f"Momentum 3m: {len(result['momentum_3m'])} months, "
+                            f"{result['momentum_3m'].shape[1]} tickers")
+        except Exception as e:
+            logger.warning(f"Momentum 3m failed: {e}")
+
+    # Low Volatility: always compute
+    if signal_kwargs.get("lowvol_enabled", True):
+        try:
+            result["low_volatility"] = compute_low_volatility(
+                sector_prices,
+                lookback_days=signal_kwargs.get("lowvol_lookback_days", 63),
+            )
+            if result["low_volatility"] is not None and not result["low_volatility"].empty:
+                logger.info(f"Low volatility: {len(result['low_volatility'])} months, "
+                            f"{result['low_volatility'].shape[1]} tickers")
+        except Exception as e:
+            logger.warning(f"Low volatility failed: {e}")
 
     return result

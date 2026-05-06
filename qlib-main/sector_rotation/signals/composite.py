@@ -44,7 +44,62 @@ from .regime import compute_regime, regime_to_monthly, RISK_OFF, RISK_ON, TRANSI
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Default signal weights (can be overridden via config)
+# V2 Signal Weights — Regime acts as dynamic weight matrix
+# 7 primary factors, regime selects which weight vector to use
+# ---------------------------------------------------------------------------
+
+DEFAULT_WEIGHTS_V2 = {
+    "cross_sectional_momentum": 0.25,   # 12-1 month trend quality
+    "short_term_momentum":      0.20,   # 6-1 month intermediate trend
+    "momentum_3m":              0.15,   # 3-0 month fast trend
+    "relative_strength":        0.20,   # 63-day sector/SPY breakout
+    "relative_value":           0.10,   # P/E percentile
+    "earnings_revision":        0.05,   # EPS growth trend
+    "low_volatility":           0.05,   # reward low-vol sectors
+}
+
+# Regime-conditional weight matrices: regime switches factor importance
+REGIME_WEIGHT_MATRICES_V2 = {
+    RISK_ON: {
+        "cross_sectional_momentum": 0.20,
+        "short_term_momentum":      0.25,
+        "momentum_3m":              0.20,
+        "relative_strength":        0.25,
+        "relative_value":           0.05,
+        "earnings_revision":        0.05,
+        "low_volatility":           0.00,
+    },
+    TRANSITION_UP: {
+        "cross_sectional_momentum": 0.15,
+        "short_term_momentum":      0.20,
+        "momentum_3m":              0.25,
+        "relative_strength":        0.25,
+        "relative_value":           0.05,
+        "earnings_revision":        0.05,
+        "low_volatility":           0.05,
+    },
+    TRANSITION_DOWN: {
+        "cross_sectional_momentum": 0.25,
+        "short_term_momentum":      0.15,
+        "momentum_3m":              0.10,
+        "relative_strength":        0.10,
+        "relative_value":           0.15,
+        "earnings_revision":        0.05,
+        "low_volatility":           0.20,
+    },
+    RISK_OFF: {
+        "cross_sectional_momentum": 0.15,
+        "short_term_momentum":      0.10,
+        "momentum_3m":              0.05,
+        "relative_strength":        0.10,
+        "relative_value":           0.15,
+        "earnings_revision":        0.05,
+        "low_volatility":           0.40,
+    },
+}
+
+# ---------------------------------------------------------------------------
+# V1 Signal Weights (legacy, for backwards compatibility)
 # ---------------------------------------------------------------------------
 
 DEFAULT_WEIGHTS = {
@@ -78,7 +133,7 @@ DEFAULT_REGIME_WEIGHT_MULTIPLIERS = {
 }
 
 DEFENSIVE_TICKERS = ["XLU", "XLP", "XLV"]
-DEFENSIVE_BONUS_RISK_OFF = 0.30   # Added to composite z-score in RISK_OFF
+DEFENSIVE_BONUS_RISK_OFF = 0.30   # Added to composite z-score in RISK_OFF (v1 only)
 
 
 # ---------------------------------------------------------------------------
@@ -183,26 +238,35 @@ def compute_composite_signals(
     # Align value to monthly index of cs_mom
     value_aligned = _align_to_monthly_index(value_sig, cs_mom.index)
 
-    # New bonus signals (short-term momentum, earnings revision, RS breakout)
-    logger.info("Computing new bonus signals...")
+    # New signals (short-term momentum, earnings revision, RS breakout, MOM_3m, LowVol)
+    logger.info("Computing new signals...")
     from .new_signals import compute_all_new_signals
+    # Determine signal version: v2 always computes all signals
+    _signal_version = signal_kwargs.get("signal_version", "v1")
+    _stm_on = signal_kwargs.get("stm_enabled", False) or _signal_version == "v2"
+    _erm_on = signal_kwargs.get("erm_enabled", False) or _signal_version == "v2"
+    _rsb_on = signal_kwargs.get("rsb_enabled", False) or _signal_version == "v2"
+
     new_sig = compute_all_new_signals(
         sector_prices=prices,
         benchmark_prices=benchmark_prices,
         etf_tickers=tickers,
-        stm_enabled=signal_kwargs.get("stm_enabled", False),
+        stm_enabled=_stm_on,
         stm_lookback=signal_kwargs.get("stm_lookback", 6),
         stm_skip=signal_kwargs.get("stm_skip", 1),
         stm_zscore_window=signal_kwargs.get("stm_zscore_window", 24),
-        erm_enabled=signal_kwargs.get("erm_enabled", False),
+        erm_enabled=_erm_on,
         erm_lookback_quarters=signal_kwargs.get("erm_lookback_quarters", 4),
-        rsb_enabled=signal_kwargs.get("rsb_enabled", False),
+        rsb_enabled=_rsb_on,
         rsb_lookback_days=signal_kwargs.get("rsb_lookback_days", 63),
         monthly_index=cs_mom.index,
+        signal_kwargs=signal_kwargs,
     )
     short_term_mom = new_sig["short_term_mom"]
     earnings_revision = new_sig["earnings_revision"]
     rs_breakout = new_sig["rs_breakout"]
+    momentum_3m = new_sig["momentum_3m"]
+    low_volatility = new_sig["low_volatility"]
 
     logger.info("Computing regime...")
     regime_daily = compute_regime(macro, method=regime_method, **regime_kwargs)
@@ -215,6 +279,86 @@ def compute_composite_signals(
     # -------------------------------------------------------------------------
     composite = pd.DataFrame(index=cs_mom.index, columns=tickers, dtype=float)
 
+    # ═══ V2 SCORING: Regime as weight matrix, 7 primary factors ═══════════
+    if _signal_version == "v2":
+        # Get regime weight matrices (user can override via config)
+        rwm = signal_kwargs.get("regime_weight_matrices") or REGIME_WEIGHT_MATRICES_V2
+
+        for dt in cs_mom.index:
+            regime = regime_monthly.get(dt, RISK_ON)
+            # Select weight vector for this regime
+            wvec = rwm.get(regime, rwm.get(RISK_ON, DEFAULT_WEIGHTS_V2))
+
+            # Collect all signal values at this date
+            score = pd.Series(0.0, index=tickers)
+
+            # 1. CS Momentum (12-1 month)
+            if dt in cs_mom.index:
+                row = cs_mom.loc[dt].reindex(tickers, fill_value=0.0)
+                score += row * wvec.get("cross_sectional_momentum", 0.25)
+
+            # 2. Short-Term Momentum (6 month)
+            if short_term_mom is not None and dt in short_term_mom.index:
+                row = short_term_mom.loc[dt].reindex(tickers, fill_value=0.0)
+                score += row * wvec.get("short_term_momentum", 0.20)
+
+            # 3. Momentum 3m (fastest)
+            if momentum_3m is not None and dt in momentum_3m.index:
+                row = momentum_3m.loc[dt].reindex(tickers, fill_value=0.0)
+                score += row * wvec.get("momentum_3m", 0.15)
+
+            # 4. Relative Strength Breakout
+            if rs_breakout is not None and dt in rs_breakout.index:
+                row = rs_breakout.loc[dt].reindex(tickers, fill_value=0.0)
+                score += row * wvec.get("relative_strength", 0.20)
+
+            # 5. Relative Value
+            if dt in value_aligned.index:
+                row = value_aligned.loc[dt].reindex(tickers, fill_value=0.0)
+                score += row * wvec.get("relative_value", 0.10)
+
+            # 6. Earnings Revision
+            if earnings_revision is not None and dt in earnings_revision.index:
+                row = earnings_revision.loc[dt].reindex(tickers, fill_value=0.0)
+                score += row * wvec.get("earnings_revision", 0.05)
+
+            # 7. Low Volatility
+            if low_volatility is not None and dt in low_volatility.index:
+                row = low_volatility.loc[dt].reindex(tickers, fill_value=0.0)
+                score += row * wvec.get("low_volatility", 0.05)
+
+            # Final cross-sectional z-score
+            valid = score.dropna()
+            if len(valid) >= 2:
+                mu, sigma = valid.mean(), valid.std()
+                if sigma > 0:
+                    score = (score - mu) / sigma
+
+            composite.loc[dt] = score.values
+
+        composite.columns = tickers
+        composite = composite.astype(float)
+
+        components = {
+            "cs_mom": cs_mom,
+            "ts_mult": ts_mult,
+            "value": value_aligned,
+            "accel": accel,
+            "short_term_mom": short_term_mom,
+            "earnings_revision": earnings_revision,
+            "rs_breakout": rs_breakout,
+            "momentum_3m": momentum_3m,
+            "low_volatility": low_volatility,
+            "regime_daily": regime_daily,
+        }
+
+        logger.info(
+            f"Composite signals (v2) computed: {composite.dropna(how='all').shape[0]} months, "
+            f"{composite.shape[1]} tickers, regime={regime_monthly.iloc[-1] if not regime_monthly.empty else '?'}"
+        )
+        return composite, regime_monthly, components
+
+    # ═══ V1 SCORING (legacy): fixed weights + bonus signals ════════════════
     w_cs = weights.get("cross_sectional_momentum", 0.40)
     w_ts = weights.get("ts_momentum", 0.15)
     w_val = weights.get("relative_value", 0.20)
