@@ -305,13 +305,40 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
                     if full > hold_ts.get(pair, pd.Timestamp('1970-01-01')):
                         hold_ts[pair] = full
 
+    # Prior lifecycle PnL: compute from ALL close events BEFORE hold-filtering.
+    # Group by (pair, signal_date), keep latest per group — same as curve logic.
+    _best_close: dict[tuple, float] = {}  # (pair, signal_date) -> pnl
+    for pair, evs in all_ev.items():
+        by_sig: dict[str, list] = {}
+        for ev in evs:
+            by_sig.setdefault(ev.get('signal_date', ''), []).append(ev)
+        for sd, sd_evs in by_sig.items():
+            best = max(sd_evs, key=lambda e: e['_ts'])
+            _best_close[(pair, sd)] = best.get('pnl') or 0
+
+    # Now apply hold-filtering for the summary table (latest close per pair)
     result: dict[str, dict] = {}
     for pair, evs in all_ev.items():
         latest_hold = hold_ts.get(pair, pd.Timestamp('1970-01-01'))
         valid = [ev for ev in evs if ev['_ts'] > latest_hold]
         if valid:
             result[pair] = max(valid, key=lambda e: e['_ts'])
-    return result
+
+    # All-lifecycle total per pair (sum of all close events across all signal_dates)
+    all_lifecycle_total: dict[str, float] = {}
+    all_closed_pairs = set(p for (p, _) in _best_close)
+    for pair in all_closed_pairs:
+        all_lifecycle_total[pair] = sum(pnl for (p, _), pnl in _best_close.items() if p == pair)
+
+    # prior_pnl = total of ALL lifecycle close PnL - the one shown in summary table
+    prior_pnl: dict[str, float] = {}
+    for pair in all_closed_pairs:
+        shown_pnl = (result[pair].get('pnl') or 0) if pair in result else 0
+        prior = round(all_lifecycle_total[pair] - shown_pnl, 2)
+        if abs(prior) > 0.01:
+            prior_pnl[pair] = prior
+
+    return result, prior_pnl, all_lifecycle_total
 
 
 def load_hold_pnl(end_ts) -> dict[str, dict]:
@@ -751,7 +778,7 @@ def build_report_data(start: str, end: str) -> dict:
     end_ts   = pd.Timestamp(end)
 
     positions   = load_positions(start_ts, end_ts)
-    close_evs   = load_close_events(start_ts, end_ts)
+    close_evs, prior_lifecycle_pnl, all_lifecycle_total = load_close_events(start_ts, end_ts)
     hold_pnl    = load_hold_pnl(end_ts)
 
     if not positions:
@@ -783,29 +810,23 @@ def build_report_data(start: str, end: str) -> dict:
 
         if close_ev:
             is_open    = False
-            # Use inventory shares × MongoDB close price on signal_date for PnL
-            # (same口径 as equity curve), falling back to daily_report PnL.
-            mtm_pnl = None
-            if s1_sh and s2_sh and op1 and op2:
-                try:
-                    close_dt = pd.Timestamp(close_ev.get('signal_date', close_ev['report_date']))
-                    cp1 = prices[s1].loc[:close_dt].dropna().iloc[-1] if s1 in prices.columns else None
-                    cp2 = prices[s2].loc[:close_dt].dropna().iloc[-1] if s2 in prices.columns else None
-                    if cp1 is not None and cp2 is not None:
-                        mtm_pnl = (s1_sh * float(cp1) + s2_sh * float(cp2)) - (s1_sh * op1 + s2_sh * op2)
-                        mtm_pnl = round(mtm_pnl, 2)
-                except Exception:
-                    pass
-            sys_pnl    = mtm_pnl if mtm_pnl is not None else close_ev['pnl']
+            sys_pnl    = close_ev['pnl']
             exit_dt    = close_ev['report_date']
             action     = close_ev['action']
             close_note = close_ev['note']
         elif p.get('_closed_in_snapshot'):
             # Pair was closed in inventory (direction→null) but no monitor
             # close event was recorded (orphan close from Step 1 signal).
-            # Treat as closed with last known PnL from monitor_log.
+            # Use all-lifecycle total if available (matches curve logic).
+            # If no CLOSE events exist at all, use 0 (curve also has no
+            # realized PnL for this pair — it just disappears from MTM).
             is_open    = False
-            sys_pnl    = p['last_pnl']
+            if pair in all_lifecycle_total:
+                sys_pnl = all_lifecycle_total[pair]
+                # Clear prior_pnl since sys_pnl already covers all lifecycles
+                prior_lifecycle_pnl.pop(pair, None)
+            else:
+                sys_pnl = 0
             exit_dt    = p['last_pnl_date'] or end
             action     = 'CLOSE'
             close_note = 'Closed by signal (no monitor event)'
@@ -902,15 +923,17 @@ def build_report_data(start: str, end: str) -> dict:
             'exit_date':      exit_dt,
             'reason':         reason,
             'sys_pnl':        sys_pnl,
+            'prior_pnl':      prior_lifecycle_pnl.get(pair, 0),
             'yf_pnl':         yf_pnl,
             'gross_notional': gross_notional,
             'ss_notional':    ss_notional,
         })
 
-    # Compute totals
+    # Compute totals (include prior lifecycle PnL in realized)
     totals = {}
     for strat in ('mrpt', 'mtfs'):
         r      = sum(x['sys_pnl'] or 0 for x in rows if x['strategy'] == strat and not x['is_open'])
+        r     += sum(x['prior_pnl'] or 0 for x in rows if x['strategy'] == strat)
         u      = sum(x['sys_pnl'] or 0 for x in rows if x['strategy'] == strat and x['is_open'])
         ss_c   = sum(x['ss_notional'] or 0 for x in rows if x['strategy'] == strat and not x['is_open'])
         ss_o   = sum(x['ss_notional'] or 0 for x in rows if x['strategy'] == strat and x['is_open'])
