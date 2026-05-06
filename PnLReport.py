@@ -655,7 +655,7 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
                 # current trade_day, this position is already realized.
                 open_dt = pos.get('open_date', '')
                 close_dates = _close_sig_dates.get(pair_name, set())
-                if any(cd <= td_str and cd >= open_dt for cd in close_dates):
+                if any(cd <= td_str and cd > open_dt for cd in close_dates):
                     continue
 
                 _inv_pairs_today.add(pair_name)
