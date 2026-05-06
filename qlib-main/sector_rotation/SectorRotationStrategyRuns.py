@@ -150,7 +150,6 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.acceleration.enabled':                True,
         'signals.acceleration.lookback_months':        3,
         'signals.acceleration.weight_boost':           0.05,
-        'portfolio.top_n_sectors':                     5,
     },
 
     # A2: 动量超配。
@@ -282,7 +281,6 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.acceleration.enabled':                True,
         'signals.acceleration.weight_boost':           0.04,
         'portfolio.weight_scheme':                     'zscore_softmax',
-        'portfolio.top_n_sectors':                     5,
     },
 
     # ════════════════════════════════════════════════════════════════════════
