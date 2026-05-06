@@ -251,6 +251,378 @@ class TestFoldGeneration(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+#  2b. Selection method tests: oos_retrospective | mcps | is_sharpe | fallback
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _make_wf_analyzer(param_sets=None, n_days=1500, is_years_min=2,
+                      step_days=120, oos_months=6):
+    """Helper: build a WalkForwardAnalyzer with synthetic data and tiny param_sets."""
+    prices = _make_prices(n_days=n_days)
+    macro = _make_macro(prices)
+    cfg = {
+        "backtest": {"start_date": "2018-07-01"},
+        "signals": {
+            "weights": {
+                "cross_sectional_momentum": 0.60,
+                "relative_strength": 0.20,
+                "relative_value": 0.10,
+                "low_volatility": 0.10,
+            },
+        },
+        "portfolio": {},
+    }
+    from sector_rotation.walk_forward import WalkForwardAnalyzer
+    return WalkForwardAnalyzer(
+        base_cfg=cfg, prices=prices, macro=macro,
+        is_years_min=is_years_min, oos_months=oos_months,
+        step_days=step_days, embargo_days=5, mode="anchored",
+        param_sets=param_sets,
+    )
+
+
+class TestSelectionMethods(unittest.TestCase):
+    """
+    Verifies all four selection_method paths:
+      fallback          — IS data insufficient (< 60 bars)
+      is_sharpe         — macro data unavailable, fall back to best IS Sharpe
+      mcps              — IS MCPS (< _OOS_RETRO_MIN_FOLDS prior folds)
+      oos_retrospective — enough prior folds with oos_macro_vec + all_oos_sharpes
+
+    Also verifies IS + OOS plumbing:
+      - all_oos_sharpes populated for every completed fold
+      - oos_macro_vec populated when macro data available
+      - synthetic OOS equity covers expected date range
+    """
+
+    def _tiny_param_sets(self):
+        """2 minimal param sets — empty overrides so base cfg drives the backtest.
+        Using real PARAM_SETS entries fails in qlib_run env with synthetic data
+        because complex signal configs (STM/ERM/RSB) produce empty equity."""
+        return {"p1": {}, "p2": {"portfolio.top_n_sectors": 3}}
+
+    # ── fallback: IS window too short ────────────────────────────────────────
+
+    def test_fallback_when_is_too_short(self):
+        """fold with < 60 IS bars → selection_method='fallback'."""
+        from sector_rotation.walk_forward import (
+            WalkForwardAnalyzer, _compute_metrics_from_equity, WFFold,
+        )
+        import pandas as pd, numpy as np
+
+        prices = _make_prices(n_days=1500)
+        macro = _make_macro(prices)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {}, "portfolio": {}}
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=macro,
+            is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
+            param_sets=self._tiny_param_sets(),
+        )
+
+        # Build a fold whose IS window is only 5 days (too short)
+        trading_dates = prices.index
+        short_fold = WFFold(
+            fold_id=0,
+            is_start=trading_dates[0],
+            is_end=trading_dates[4],          # 5 days IS
+            embargo_end=trading_dates[9],
+            oos_start=trading_dates[10],
+            oos_end=trading_dates[136],
+        )
+        eq_map = analyzer._prerun_all()
+        macro_df = analyzer._load_macro_df()
+
+        fr = analyzer._evaluate_fold(short_fold, eq_map, macro_df, prior_folds=[])
+        self.assertEqual(fr.selection_method, "fallback",
+                         f"Expected fallback, got {fr.selection_method}")
+
+    # ── is_sharpe: no macro data ──────────────────────────────────────────────
+
+    def test_is_sharpe_when_no_macro(self):
+        """No macro data + no features → selection_method='is_sharpe'.
+        Injects synthetic eq_map directly to bypass backtest engine dependency."""
+        from sector_rotation.walk_forward import WalkForwardAnalyzer
+        import pandas as pd
+
+        prices = _make_prices(n_days=1500)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {}, "portfolio": {}}
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=pd.DataFrame(),
+            is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
+            param_sets=self._tiny_param_sets(),
+        )
+        analyzer._similarity_features = []  # no macro features → forces is_sharpe path
+
+        # Build eq_map from synthetic equity (bypass backtest engine)
+        np.random.seed(42)
+        eq_map = {
+            name: pd.Series(
+                np.exp(np.cumsum(np.random.normal(0.0003 * (i + 1), 0.01, len(prices)))),
+                index=prices.index,
+            )
+            for i, name in enumerate(self._tiny_param_sets())
+        }
+
+        folds = analyzer.generate_folds()
+        self.assertGreater(len(folds), 0)
+
+        fr = analyzer._evaluate_fold(folds[0], eq_map, pd.DataFrame(), prior_folds=[])
+        self.assertEqual(fr.selection_method, "is_sharpe",
+                         f"Expected is_sharpe, got {fr.selection_method}")
+
+    # ── mcps: macro available, < MIN_FOLDS prior ────────────────────────────
+
+    def test_mcps_when_few_prior_folds(self):
+        """With macro data but fewer than _OOS_RETRO_MIN_FOLDS prior folds
+        → selection_method should be 'mcps' (or 'is_sharpe' if MCPS scores
+        all NaN — acceptable either way, never 'oos_retrospective')."""
+        from sector_rotation.walk_forward import WalkForwardAnalyzer
+        import pandas as pd
+
+        prices = _make_prices(n_days=1500)
+        macro = _make_macro(prices)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {
+            "weights": {"cross_sectional_momentum": 1.0}}, "portfolio": {}}
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=macro,
+            is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
+            param_sets=self._tiny_param_sets(),
+        )
+        # Give it a few synthetic similarity features from the macro columns
+        analyzer._similarity_features = ["vix", "yield_curve", "hy_spread",
+                                          "fin_stress", "breakeven_10y", "consumer_sent"]
+
+        eq_map = analyzer._prerun_all()
+        folds = analyzer.generate_folds()
+        self.assertGreater(len(folds), 0)
+
+        # Pass 0 prior folds → must NOT use oos_retrospective
+        fr = analyzer._evaluate_fold(folds[0], eq_map, macro, prior_folds=[])
+        self.assertNotEqual(fr.selection_method, "oos_retrospective",
+                            "Should not use oos_retrospective with 0 prior folds")
+        self.assertIn(fr.selection_method, ("mcps", "is_sharpe"),
+                      f"Unexpected method: {fr.selection_method}")
+
+    # ── oos_retrospective: enough prior folds ───────────────────────────────
+
+    def test_oos_retrospective_activates(self):
+        """After _OOS_RETRO_MIN_FOLDS completed folds → switches to oos_retrospective."""
+        from sector_rotation.walk_forward import WalkForwardAnalyzer, WFFoldResult, WFFold
+        import pandas as pd, numpy as np
+
+        prices = _make_prices(n_days=1500)
+        macro = _make_macro(prices)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {
+            "weights": {"cross_sectional_momentum": 1.0}}, "portfolio": {}}
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=macro,
+            is_years_min=2, oos_months=6, step_days=60, embargo_days=5,
+            param_sets=self._tiny_param_sets(),
+        )
+        feats = ["vix", "yield_curve", "hy_spread", "fin_stress",
+                 "breakeven_10y", "consumer_sent"]
+        analyzer._similarity_features = feats
+
+        # Build eq_map from synthetic equity (bypass backtest engine)
+        np.random.seed(13)
+        param_names = list(self._tiny_param_sets().keys())
+        eq_map = {
+            name: pd.Series(
+                np.exp(np.cumsum(np.random.normal(0.0003 * (i + 1), 0.01, len(prices)))),
+                index=prices.index,
+            )
+            for i, name in enumerate(param_names)
+        }
+
+        folds = analyzer.generate_folds()
+        self.assertGreater(len(folds), analyzer._OOS_RETRO_MIN_FOLDS,
+                           f"Need > {analyzer._OOS_RETRO_MIN_FOLDS} folds, got {len(folds)}. "
+                           f"Reduce step_days or increase n_days.")
+
+        min_f = analyzer._OOS_RETRO_MIN_FOLDS
+        # Build synthetic prior folds with valid oos_macro_vec + all_oos_sharpes
+        param_names = list(self._tiny_param_sets().keys())
+        prior = []
+        for i in range(min_f):
+            pf_oos_macro = {f: float(macro[f].iloc[i * 20:i * 20 + 20].mean())
+                            for f in feats if f in macro.columns}
+            pf_oos_sharpes = {n: float(np.random.uniform(0.5, 1.5)) for n in param_names}
+            # Minimal WFFoldResult with just the retrospective fields populated
+            dummy_fold = folds[i]
+            fr = WFFoldResult(
+                fold=dummy_fold,
+                is_metrics={}, is_best_name=param_names[0], is_best_sharpe=1.0,
+                is_macro_vector={}, selection_method="is_sharpe",
+                mcps_score=float("nan"), dsr_pvalue=0.0,
+                oos_name=param_names[0], oos_equity=pd.Series(dtype=float),
+                oos_metrics={}, oos_regime="risk_on", wfe=float("nan"),
+                all_oos_sharpes=pf_oos_sharpes,
+                oos_macro_vec=pf_oos_macro,
+            )
+            prior.append(fr)
+
+        # Evaluate the next fold with sufficient prior folds
+        next_fold = folds[min_f]
+        fr_next = analyzer._evaluate_fold(next_fold, eq_map, macro, prior_folds=prior)
+        self.assertEqual(fr_next.selection_method, "oos_retrospective",
+                         f"Expected oos_retrospective, got {fr_next.selection_method}")
+
+    # ── OOS plumbing: all_oos_sharpes + oos_macro_vec populated ─────────────
+
+    def test_all_oos_sharpes_populated(self):
+        """Every fold result should have all_oos_sharpes for all param sets.
+        Injects synthetic eq_map directly to bypass backtest engine dependency."""
+        from sector_rotation.walk_forward import WalkForwardAnalyzer
+        import pandas as pd
+
+        prices = _make_prices(n_days=1500)
+        macro = _make_macro(prices)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {
+            "weights": {"cross_sectional_momentum": 1.0}}, "portfolio": {}}
+        param_sets = self._tiny_param_sets()
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=macro,
+            is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
+            param_sets=param_sets,
+        )
+        feats = ["vix", "yield_curve", "hy_spread", "fin_stress",
+                 "breakeven_10y", "consumer_sent"]
+        analyzer._similarity_features = feats
+
+        # Build eq_map from synthetic equity (bypass backtest engine)
+        np.random.seed(7)
+        eq_map = {
+            name: pd.Series(
+                np.exp(np.cumsum(np.random.normal(0.0003 * (i + 1), 0.01, len(prices)))),
+                index=prices.index,
+            )
+            for i, name in enumerate(param_sets)
+        }
+
+        folds = analyzer.generate_folds()
+        fr = analyzer._evaluate_fold(folds[0], eq_map, macro, prior_folds=[])
+
+        # all_oos_sharpes should have an entry for every param set that had OOS data
+        self.assertGreater(len(fr.all_oos_sharpes), 0,
+                           "all_oos_sharpes should be populated")
+        for name in fr.all_oos_sharpes:
+            self.assertIn(name, param_sets,
+                          f"Unknown param set in all_oos_sharpes: {name}")
+
+    def test_oos_macro_vec_populated(self):
+        """With macro data, oos_macro_vec should be populated for each fold."""
+        from sector_rotation.walk_forward import WalkForwardAnalyzer
+        import pandas as pd
+
+        prices = _make_prices(n_days=1500)
+        macro = _make_macro(prices)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {
+            "weights": {"cross_sectional_momentum": 1.0}}, "portfolio": {}}
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=macro,
+            is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
+            param_sets=self._tiny_param_sets(),
+        )
+        feats = ["vix", "yield_curve", "hy_spread"]
+        analyzer._similarity_features = feats
+
+        # Build eq_map from synthetic equity (bypass backtest engine)
+        np.random.seed(21)
+        eq_map = {
+            name: pd.Series(
+                np.exp(np.cumsum(np.random.normal(0.0003 * (i + 1), 0.01, len(prices)))),
+                index=prices.index,
+            )
+            for i, name in enumerate(self._tiny_param_sets())
+        }
+
+        folds = analyzer.generate_folds()
+        fr = analyzer._evaluate_fold(folds[0], eq_map, macro, prior_folds=[])
+
+        self.assertGreater(len(fr.oos_macro_vec), 0,
+                           "oos_macro_vec should be populated with macro data")
+        for f in feats:
+            self.assertIn(f, fr.oos_macro_vec,
+                          f"Feature {f} missing from oos_macro_vec")
+
+    # ── IS + OOS backtest: synthetic OOS equity covers expected range ────────
+
+    def test_synthetic_oos_equity_date_range(self):
+        """Full WF run: synthetic OOS equity should span fold start → end."""
+        from sector_rotation.walk_forward import WalkForwardAnalyzer
+        import pandas as pd
+
+        prices = _make_prices(n_days=1500)
+        macro = _make_macro(prices)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {
+            "weights": {"cross_sectional_momentum": 1.0}}, "portfolio": {}}
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=macro,
+            is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
+            param_sets=self._tiny_param_sets(),
+        )
+        result = analyzer.run()
+
+        self.assertFalse(result.synthetic_equity.empty,
+                         "Synthetic OOS equity should not be empty")
+        # Synthetic equity should start at or after the first OOS start
+        first_fold_oos = result.folds[0].fold.oos_start
+        self.assertGreaterEqual(result.synthetic_equity.index[0], first_fold_oos)
+        # Should have reasonable Sharpe (not NaN)
+        # We only check it's finite (synthetic data has no signal)
+        sr = result.synthetic_metrics.get("sharpe", float("nan"))
+        self.assertFalse(pd.isna(sr), "Synthetic OOS Sharpe should not be NaN")
+
+    def test_selection_method_logged_in_selection_log(self):
+        """selection_log should record which method was used per fold."""
+        from sector_rotation.walk_forward import WalkForwardAnalyzer
+
+        prices = _make_prices(n_days=1500)
+        macro = _make_macro(prices)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {
+            "weights": {"cross_sectional_momentum": 1.0}}, "portfolio": {}}
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=macro,
+            is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
+            param_sets=self._tiny_param_sets(),
+        )
+        result = analyzer.run()
+
+        valid_methods = {"oos_retrospective", "mcps", "is_sharpe", "fallback"}
+        for entry in result.selection_log:
+            self.assertIn(entry["method"], valid_methods,
+                          f"Unknown selection_method in log: {entry['method']}")
+
+    def test_oos_retrospective_triggered_in_full_run(self):
+        """In a full WF run with enough folds, later folds should use oos_retrospective."""
+        from sector_rotation.walk_forward import WalkForwardAnalyzer
+
+        prices = _make_prices(n_days=1500)
+        macro = _make_macro(prices)
+        cfg = {"backtest": {"start_date": "2018-07-01"}, "signals": {
+            "weights": {"cross_sectional_momentum": 1.0}}, "portfolio": {}}
+        analyzer = WalkForwardAnalyzer(
+            base_cfg=cfg, prices=prices, macro=macro,
+            is_years_min=2, oos_months=6, step_days=120, embargo_days=5,
+            param_sets=self._tiny_param_sets(),
+        )
+        # Inject features so macro-based selection is possible
+        analyzer._similarity_features = ["vix", "yield_curve", "hy_spread",
+                                          "fin_stress", "breakeven_10y", "consumer_sent"]
+        result = analyzer.run()
+
+        methods_used = {e["method"] for e in result.selection_log}
+        n_folds = len(result.folds)
+        if n_folds > analyzer._OOS_RETRO_MIN_FOLDS:
+            # At least some later folds should have triggered retrospective
+            retro_count = sum(
+                1 for e in result.selection_log if e["method"] == "oos_retrospective"
+            )
+            self.assertGreater(retro_count, 0,
+                               f"Expected oos_retrospective in later folds. "
+                               f"Methods used: {methods_used}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 #  3. composite.py bonus signal integration
 # ═══════════════════════════════════════════════════════════════════════════
 
@@ -455,8 +827,8 @@ class TestParamSets(unittest.TestCase):
                     if ps.get("signals.earnings_revision.enabled", False)]
         rsb_sets = [n for n, ps in PARAM_SETS.items()
                     if ps.get("signals.relative_strength_breakout.enabled", False)]
-        # Only a few sets (≤5 each) should have new signals enabled
-        self.assertLessEqual(len(stm_sets), 5,
+        # STM enabled in up to 10 sets (momentum-oriented groups)
+        self.assertLessEqual(len(stm_sets), 10,
                              f"Too many STM sets: {stm_sets}")
         self.assertLessEqual(len(erm_sets), 5,
                              f"Too many ERM sets: {erm_sets}")
