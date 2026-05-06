@@ -295,7 +295,21 @@ class SectorRotationBacktest:
         # 3. Get rebalance schedule
         # ---------------------------------------------------------------
         rebalance_dates = get_monthly_rebalance_dates(bt_start, bt_end)
-        logger.info(f"Backtest: {bt_start} → {bt_end}, {len(rebalance_dates)} rebalance dates")
+
+        # V2 bimonthly: add mid-month rebalance (15th trading day of each month)
+        if signal_kwargs.get("signal_version") == "v2":
+            trading_dates = prices.loc[bt_start:bt_end].index
+            mid_month_dates = []
+            for yr in range(trading_dates[0].year, trading_dates[-1].year + 1):
+                for mo in range(1, 13):
+                    month_days = trading_dates[(trading_dates.year == yr) & (trading_dates.month == mo)]
+                    if len(month_days) >= 15:
+                        mid_month_dates.append(month_days[14])  # 15th trading day
+            rebalance_dates = sorted(set(rebalance_dates + mid_month_dates))
+            logger.info(f"V2 bimonthly: {len(rebalance_dates)} rebalance dates "
+                        f"(monthly + mid-month)")
+        else:
+            logger.info(f"Backtest: {bt_start} → {bt_end}, {len(rebalance_dates)} rebalance dates")
 
         # Daily returns (pre-computed for both paths)
         daily_ret = load_returns(prices)
