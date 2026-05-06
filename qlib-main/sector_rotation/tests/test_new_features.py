@@ -282,10 +282,11 @@ def _make_wf_analyzer(param_sets=None, n_days=1500, is_years_min=2,
 
 class TestSelectionMethods(unittest.TestCase):
     """
-    Verifies all five selection_method paths:
+    Verifies all selection_method paths:
       fallback          — IS data insufficient (< 60 bars)
-      is_sharpe         — IS 60-79 bars (stability filter needs ≥ 80); plain IS Sharpe
+      is_sharpe         — IS Sharpe + DSR (final fallback when stability/MCPS fail)
       is_stability      — warmup: stability-filtered IS Sharpe (mean - 0.5*std sub-periods)
+      mcps              — warmup: IS macro-conditioned Sharpe (autoencoder/Gaussian kernel)
       oos_retrospective — enough prior folds with oos_macro_vec + all_oos_sharpes
 
     Also verifies IS + OOS plumbing:
@@ -375,8 +376,7 @@ class TestSelectionMethods(unittest.TestCase):
 
     def test_mcps_when_few_prior_folds(self):
         """With 0 prior folds → must NOT use oos_retrospective.
-        Warmup now uses stability-filtered IS Sharpe ('is_stability')
-        instead of IS MCPS — never 'oos_retrospective'."""
+        Warmup uses is_stability → mcps → is_sharpe chain."""
         from sector_rotation.walk_forward import WalkForwardAnalyzer
         import pandas as pd
 
@@ -401,7 +401,7 @@ class TestSelectionMethods(unittest.TestCase):
         fr = analyzer._evaluate_fold(folds[0], eq_map, macro, prior_folds=[])
         self.assertNotEqual(fr.selection_method, "oos_retrospective",
                             "Should not use oos_retrospective with 0 prior folds")
-        self.assertIn(fr.selection_method, ("is_stability", "is_sharpe"),
+        self.assertIn(fr.selection_method, ("is_stability", "mcps", "is_sharpe"),
                       f"Unexpected method: {fr.selection_method}")
 
     # ── oos_retrospective: enough prior folds ───────────────────────────────
@@ -589,7 +589,7 @@ class TestSelectionMethods(unittest.TestCase):
         )
         result = analyzer.run()
 
-        valid_methods = {"oos_retrospective", "is_stability", "is_sharpe", "fallback"}
+        valid_methods = {"oos_retrospective", "is_stability", "mcps", "is_sharpe", "fallback"}
         for entry in result.selection_log:
             self.assertIn(entry["method"], valid_methods,
                           f"Unknown selection_method in log: {entry['method']}")

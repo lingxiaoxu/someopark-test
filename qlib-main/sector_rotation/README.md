@@ -559,7 +559,320 @@ VIX ≥ 35  → 50% cash（emergency_derisk_vix 触发）
 | `is_years` | `3` | Walk-forward 最短 IS 期（年），anchored 模式下逐折扩展 | `walk_forward.py` |
 | `oos_months` | `6` | Walk-forward OOS 评估窗口（月） | `walk_forward.py` |
 
-### 七.1、Walk-Forward IS/OOS 框架
+### 七.1、回测框架全景图
+
+本系统有 **五个入口**，共享同一组回测引擎和选参逻辑：
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                       Sector Rotation 回测框架全景                          │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  入口 A: SectorRotationBatchRun.py (默认模式)                               │
+│  ──────────────────────────────────────────────                             │
+│  · 跑全部 59 个参数集 × 全周期回测                                           │
+│  · 纯 IS 模式（无 OOS 验证，无选参逻辑）                                     │
+│  · 输出: CSV 指标汇总 + Excel                                               │
+│  · 用途: 快速查看所有参数集在整个回测期的表现                                 │
+│                                                                             │
+│  入口 B: SectorRotationBatchRun.py --select                                │
+│  ──────────────────────────────────────────────                             │
+│  · 三阶段生产选参（详见下方"生产选参流程"）:                                  │
+│    Stage 1: WF OOS 验证 → 过滤过拟合参数                                    │
+│    Stage 2: MCPS（全周期 equity + 今天的宏观向量）→ 排名                      │
+│    Stage 3: 兜底用近 12 个月 Sharpe                                         │
+│  · 输出: selected_param_set.json → DailySignal 自动加载                      │
+│  · 用途: 生产环境参数选优（每月运行一次）                                     │
+│                                                                             │
+│  入口 C: SectorRotationBatchRun.py --oos-validate                          │
+│  ──────────────────────────────────────────────                             │
+│  · 调用 walk_forward.run_dual_mode()（anchored + rolling）                  │
+│  · 等同于入口 D 的双模式运行                                                │
+│                                                                             │
+│  入口 D: walk_forward.py CLI                                               │
+│  ──────────────────────────────────────────────                             │
+│  · IS/OOS 滚动窗口回测（Walk-Forward Analysis）                              │
+│  · 每个 fold 内部有独立的五层选参逻辑（详见下方"WF 选参优先级链"）             │
+│  · 输出: fold 汇总 CSV, DSR, WFE, 合成 OOS 净值                             │
+│  · 用途: 验证选参策略在历史上的 OOS 表现                                      │
+│                                                                             │
+│  入口 E: tearsheet.py                                                       │
+│  ──────────────────────────────────────────────                             │
+│  · compute_mcps_rolling_equity(): 按季度滚动 MCPS 选参                      │
+│  · 如果提供 wf_result 则直接使用 WF 合成净值替代 MCPS 模拟                    │
+│  · 输出: 多页 PDF 绩效报告                                                  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 七.2、IS-only vs IS-OOS 的区别
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                IS-only（入口 A: 默认 batch run）                     │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  |◄────────────────── 全周期数据 ───────────────────►|               │
+│  |              IS（训练 + 评估）                     |               │
+│                                                                      │
+│  · 所有数据都用来训练和评估，无"未见数据"验证                          │
+│  · Sharpe 可能偏高（过拟合风险，N=59 参数集的多重测试偏差）             │
+│  · 无法判断策略在未来数据上是否依然有效                                │
+│  · 用途: 快速筛选、查看全局表现、建立参数集基线                        │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│            IS-OOS Walk-Forward（入口 D: WF 回测）                    │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Fold 1: |◄──── IS ────►|[emb]|◄─ OOS ─►|                           │
+│  Fold 2:    |◄──── IS ────►|[emb]|◄─ OOS ─►|                        │
+│  Fold 3:       |◄──── IS ────►|[emb]|◄─ OOS ─►|                     │
+│  ...                                                                 │
+│  Fold N:                   |◄──── IS ────►|[emb]|◄─ OOS ─►|         │
+│                                                                      │
+│  · 每个 fold: 在 IS 上选参 → embargo 隔离 → 在 OOS 上验证            │
+│  · OOS 是"未来数据"，策略从未见过（防止前视偏差）                      │
+│  · 合成 OOS 净值 = 拼接所有 fold 的 OOS 段（无重叠）                  │
+│  · WFE = OOS_Sharpe / IS_Sharpe（Walk-Forward Efficiency，理想 ≈ 1.0）│
+│  · 用途: 检验选参策略是否真的能持续选到好参数                          │
+│                                                                      │
+│  核心挑战: warmup 问题                                               │
+│  ─────────────────────────────                                       │
+│  前 N 个 fold（warmup 阶段）没有历史 OOS 数据可用,                    │
+│  只能依赖 IS 数据选参。选参优先级链（见下方）通过                      │
+│  is_stability → MCPS → is_sharpe 逐级降级来缓解。                    │
+│  当积累 ≥ _OOS_RETRO_MIN_FOLDS (=4) 个历史 fold 后,                  │
+│  切换到 oos_retrospective（用真实 OOS 结果 + 宏观相似度）。            │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────┐
+│           生产选参（入口 B: --select）                                │
+├──────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Stage 1: WF OOS 过滤                                                │
+│     └─ 用 WF 结果淘汰 OOS 表现差的参数集                             │
+│                                                                      │
+│  Stage 2: MCPS（全周期 equity + 今天的宏观向量）                      │
+│     └─ 对存活参数做 MCPS 评分                                        │
+│     └─ 核心问题："今天的宏观状态最像历史哪些时候？                     │
+│         那些时候哪个参数表现最好？"                                    │
+│     └─ 使用 SimilarityEngine（autoencoder/euclidean）计算宏观相似度   │
+│                                                                      │
+│  Stage 3: 兜底（近 12 个月 Sharpe）                                   │
+│                                                                      │
+│  输出 → selected_param_set.json → DailySignal.py 自动加载             │
+│                                                                      │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+### 七.3、Walk-Forward 选参优先级链
+
+`walk_forward.py` → `_evaluate_fold()` 中的五层选参逻辑：
+
+```
+_evaluate_fold(fold_i, eq_map, macro_df, prior_folds=[fold_0..fold_{i-1}])
+│
+│  准备阶段:
+│  ├─ 对 59 个参数集，切 IS 段 equity → 计算 IS 指标（Sharpe/Calmar/MaxDD...）
+│  ├─ 取 IS 最后 30 交易日宏观状态均值 → is_macro_vec（不泄露 OOS 信息）
+│  ├─ 计算 OOS 段所有参数的实际 Sharpe → all_oos_sharpes（存储供后续 fold 使用）
+│  └─ 计算 OOS 段宏观状态均值 → oos_macro_vec（存储供后续 fold 使用）
+│
+│  选参优先级链（从高到低，命中即停）:
+│
+├─ 0. IS 天数 < 60？
+│   └─ YES → selection_method = "fallback"（使用第一个参数集，数据不足以分析）
+│
+├─ 1. OOS Retrospective（有 ≥4 个历史 fold 的完整 OOS 数据时启用）
+│   │  函数: _oos_retrospective_select()
+│   │
+│   │  原理: 用真实 OOS 结果代替 IS 模拟
+│   │  ┌─────────────────────────────────────────────────────────┐
+│   │  │ 输入:                                                    │
+│   │  │   · is_macro_vec: 当前 fold IS 尾部宏观状态（代理 OOS）  │
+│   │  │   · prior_folds[].oos_macro_vec: 历史每折 OOS 期宏观均值 │
+│   │  │   · prior_folds[].all_oos_sharpes: 历史每折 OOS 真实结果 │
+│   │  │                                                          │
+│   │  │ 算法:                                                    │
+│   │  │   1. 计算 is_macro_vec 与每个历史 fold 的 oos_macro_vec  │
+│   │  │      之间的欧式距离                                      │
+│   │  │   2. σ = median(所有距离)                                │
+│   │  │   3. 高斯核权重: w = exp(-d²/2σ²)                       │
+│   │  │   4. 对每个参数集: 加权平均 OOS Sharpe                   │
+│   │  │   5. 选加权 OOS Sharpe 最高的参数                        │
+│   │  │                                                          │
+│   │  │ 优势: 使用**真实 OOS 表现**而非 IS 模拟                  │
+│   │  └─────────────────────────────────────────────────────────┘
+│   └─ selection_method = "oos_retrospective"
+│
+├─ 2. IS Stability Filter（warmup 阶段第一层）
+│   │  函数: _stable_is_select()
+│   │
+│   │  原理: 惩罚子段表现不稳定的参数（防过拟合）
+│   │  ┌─────────────────────────────────────────────────────────┐
+│   │  │ 算法:                                                    │
+│   │  │   1. 将 IS 窗口等分为 4 个子段                           │
+│   │  │   2. 每个参数集在每个子段独立计算 Sharpe                 │
+│   │  │   3. score = mean(子段 Sharpe) - 0.5 × std(子段 Sharpe) │
+│   │  │   4. 选 score 最高的参数                                 │
+│   │  │                                                          │
+│   │  │ 前置条件: IS ≥ 80 天（4 × 20 天最小子段）               │
+│   │  │ 优势: 过滤掉"整体 IS Sharpe 高但靠某一段极端表现撑起"   │
+│   │  │       的过拟合参数                                       │
+│   │  └─────────────────────────────────────────────────────────┘
+│   └─ selection_method = "is_stability"
+│
+├─ 3. MCPS IS（warmup 阶段第二层，IS 宏观条件 Sharpe）
+│   │  函数: _macro_cond_sharpe_is() → 委托 MCPS.macro_cond_sharpe()
+│   │
+│   │  原理: "当前宏观状态下，哪个参数历史 IS 表现最好？"
+│   │  ┌─────────────────────────────────────────────────────────────────┐
+│   │  │ 输入:                                                            │
+│   │  │   · equity_is: 参数集在 IS 段的净值曲线                          │
+│   │  │   · macro_is: IS 段的宏观 DataFrame                              │
+│   │  │   · is_macro_vec: IS 尾部 30 天宏观均值（"今天的宏观"代理）       │
+│   │  │   · features: 相似度特征列表                                     │
+│   │  │                                                                  │
+│   │  │ 宏观相似度计算（SimilarityEngine）:                               │
+│   │  │                                                                  │
+│   │  │   方法 A — Autoencoder（默认，23 维 → 12 维潜在空间）            │
+│   │  │   ┌───────────────────────────────────────────────────────┐      │
+│   │  │   │ 特征（AUTOENCODER_FEATURES，23 维）:                   │      │
+│   │  │   │   fin_stress_z, baa_spread_z, xlk_spy_z, vix_z,      │      │
+│   │  │   │   move_z, yield_curve_z, iwm_spy_z, qqq_spy_z,       │      │
+│   │  │   │   breakeven_10y, consumer_sent, effr, effr_yoy,       │      │
+│   │  │   │   unrate, vix, yield_curve, nfci,                     │      │
+│   │  │   │   gld_spy_corr20, spy_20d, tnx,                      │      │
+│   │  │   │   nvda_20d, soxx_20d, uso_20d, uup_20d               │      │
+│   │  │   │                                                       │      │
+│   │  │   │ 网络: Input(23) → Dense(32) → Latent(12) → Dense(32) │      │
+│   │  │   │       → Output(23)  [MSE loss, Adam lr=0.003]         │      │
+│   │  │   │                                                       │      │
+│   │  │   │ 推理: encoder(历史每日宏观) → 12 维向量               │      │
+│   │  │   │       encoder(is_macro_vec)  → 12 维向量               │      │
+│   │  │   │       在潜在空间中计算高斯核相似度                     │      │
+│   │  │   └───────────────────────────────────────────────────────┘      │
+│   │  │                                                                  │
+│   │  │   方法 B — Euclidean（6 维原始特征空间）                         │
+│   │  │   ┌───────────────────────────────────────────────────────┐      │
+│   │  │   │ 特征（SIMILARITY_FEATURES，6 维）:                     │      │
+│   │  │   │   fin_stress_z, baa_spread_z, xlk_spy_z,              │      │
+│   │  │   │   vix_z, breakeven_10y, consumer_sent                 │      │
+│   │  │   │                                                       │      │
+│   │  │   │ 直接在原始/Z-score 空间计算欧式距离 + 高斯核          │      │
+│   │  │   └───────────────────────────────────────────────────────┘      │
+│   │  │                                                                  │
+│   │  │   方法 C — Ensemble（A + B 的加权平均）                          │
+│   │  │                                                                  │
+│   │  │ 核心公式（方法 A/B 共用）:                                       │
+│   │  │   d_t = ||latent(macro_t) - latent(today_vec)||₂                 │
+│   │  │   σ = median(所有 d_t)   ← 自适应，对异常值鲁棒                  │
+│   │  │   w_t = exp(-d_t² / 2σ²) ← 高斯核权重                           │
+│   │  │   wmean = Σ(w_t × r_t) / Σw_t                                   │
+│   │  │   wvar  = Σ(w_t × (r_t - wmean)²) / Σw_t                        │
+│   │  │   MCPS score = wmean / √wvar × √252  ← 年化加权 Sharpe          │
+│   │  └─────────────────────────────────────────────────────────────────┘
+│   │
+│   │  前置条件: is_macro_vec 非空 + macro_df 非空
+│   └─ selection_method = "mcps"
+│
+├─ 4. IS Sharpe + DSR（最终数值兜底）
+│   │  原理: 取 max(IS Sharpe)，用 DSR 校正多重测试偏差
+│   │  ┌─────────────────────────────────────────────────────────┐
+│   │  │ DSR (Deflated Sharpe Ratio, Bailey & López de Prado 2014)│
+│   │  │   · sr_0 = expected_max_sharpe(N=59, var=IS Sharpe 方差) │
+│   │  │   · dsr_p = P(obs_SR > sr_0 | skew, kurt, T)            │
+│   │  │   · 校正 59 个参数集的数据窥探偏差                       │
+│   │  └─────────────────────────────────────────────────────────┘
+│   └─ selection_method = "is_sharpe"
+│
+└─ 5. Fallback → selection_method = "fallback"（使用第一个参数集）
+
+选出参数后:
+  ├─ 切 OOS 段净值 → 计算 OOS 指标（Sharpe, Calmar, MaxDD...）
+  ├─ WFE = OOS_Sharpe / IS_Sharpe
+  └─ 存储 all_oos_sharpes + oos_macro_vec → 供后续 fold 使用
+```
+
+### 七.4、宏观相似度引擎（SimilarityEngine）
+
+MCPS 和 OOS Retrospective 都依赖宏观相似度计算。核心组件分布如下：
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                      宏观相似度计算全链路                               │
+├────────────────────────────────────────────────────────────────────────┤
+│                                                                        │
+│  数据层                                                                │
+│  ──────                                                                │
+│  MacroStateStore.py (someopark-test/)                                  │
+│  ├─ 每日计算 40+ 宏观指标的 Z-score 和衍生值                           │
+│  ├─ SIMILARITY_FEATURES (6 维): 用于 Euclidean 方法                    │
+│  │   fin_stress_z, baa_spread_z, xlk_spy_z,                           │
+│  │   vix_z, breakeven_10y, consumer_sent                               │
+│  └─ AUTOENCODER_FEATURES (23 维): 用于 Autoencoder 方法                │
+│      fin_stress_z, baa_spread_z, xlk_spy_z, vix_z,                    │
+│      move_z, yield_curve_z, iwm_spy_z, qqq_spy_z,                     │
+│      breakeven_10y, consumer_sent, effr, effr_yoy,                     │
+│      unrate, vix, yield_curve, nfci,                                   │
+│      gld_spy_corr20, spy_20d, tnx,                                    │
+│      nvda_20d, soxx_20d, uso_20d, uup_20d                             │
+│                                                                        │
+│  计算层                                                                │
+│  ──────                                                                │
+│  SimilarityEngine.py (someopark-test/)                                 │
+│  ├─ class SimilarityEngine: 统一接口                                   │
+│  │   · method="autoencoder" | "euclidean" | "ensemble"                 │
+│  │   · compute_weights(macro_df, today_vec, features) → weights        │
+│  │                                                                     │
+│  ├─ class AutoencoderMethod:                                           │
+│  │   · 训练: 23 维 → 32 → 12(latent) → 32 → 23 (MSE, Adam)           │
+│  │   · 推理: encoder(macro_t) → 12 维潜在向量                         │
+│  │   · 权重: 在 12 维潜在空间中计算高斯核 w = exp(-d²/2σ²)            │
+│  │   · 降维优势: 自动发现共变特征，避免高维空间中欧式距离失效           │
+│  │   · PCA fallback: 无 PyTorch 时用 sklearn PCA 替代                  │
+│  │                                                                     │
+│  └─ class EuclideanMethod:                                             │
+│      · 在 6 维 Z-score 空间直接计算高斯核                              │
+│      · 更简单、更快，但特征空间有限                                    │
+│                                                                        │
+│  应用层                                                                │
+│  ──────                                                                │
+│  MCPS.py (someopark-test/)                                             │
+│  ├─ macro_cond_sharpe(): 高斯核加权 Sharpe 计算                        │
+│  │   · 接收 SimilarityEngine 返回的 weights                            │
+│  │   · 计算: wmean/√wvar × √252 → 年化加权 Sharpe                     │
+│  │                                                                     │
+│  └─ select_param(): 根据今天宏观选参                                   │
+│      · 用于生产选参（SectorRotationBatchRun.py --select）              │
+│      · 计算候选参数的 IS 宏观向量与今天的高斯相似度 × score             │
+│                                                                        │
+│  调用关系:                                                             │
+│  ──────                                                                │
+│  walk_forward.py                                                       │
+│  ├─ _macro_cond_sharpe_is() → MCPS.macro_cond_sharpe()                │
+│  │   → SimilarityEngine.compute_weights()                              │
+│  │   用于: WF 选参优先级第 3 层 (mcps)                                 │
+│  │                                                                     │
+│  ├─ _oos_retrospective_select()                                        │
+│  │   内置简化版高斯核（不经 SimilarityEngine，直接欧式距离）           │
+│  │   用于: WF 选参优先级第 1 层 (oos_retrospective)                    │
+│  │                                                                     │
+│  SectorRotationBatchRun.py                                             │
+│  └─ _macro_cond_sharpe() → MCPS.macro_cond_sharpe()                   │
+│      → SimilarityEngine.compute_weights()                              │
+│      用于: 生产选参 Stage 2                                            │
+│                                                                        │
+│  tearsheet.py                                                          │
+│  └─ compute_mcps_rolling_equity() → MCPS 按季度滚动选参               │
+│                                                                        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 七.5、Walk-Forward 理论基础与参数
 
 **理论基础**：
 
@@ -570,23 +883,6 @@ VIX ≥ 35  → 50% cash（emergency_derisk_vix 触发）
 | Combinatorial Purged CV (CPCV) | López de Prado (2018) | 净化/禁运防止信息泄露 |
 | Conditional Parameter Optimization | Chan, Belov & Ciobanu (2021) | 宏观状态条件选参数 |
 
-**架构**：
-
-```
-                ┌──────────────────────────────────────────┐
-                │      WalkForwardAnalyzer (核心类)         │
-                │  qlib-main/sector_rotation/walk_forward.py│
-                └───────┬───────────┬──────────┬───────────┘
-                        │           │          │
-                 ┌──────┴──┐  ┌─────┴───┐  ┌──┴──────┐
-                 │backtest │  │batch/sel │  │tearsheet│
-                 │  mode   │  │  mode    │  │  mode   │
-                 └─────────┘  └─────────┘  └─────────┘
-                        │           │          │
-                        ▼           ▼          ▼
-                 同一 API → 同一结果（相同参数+起始日期）
-```
-
 **默认参数**：
 
 | 参数 | 默认值 | 说明 |
@@ -596,6 +892,7 @@ VIX ≥ 35  → 50% cash（emergency_derisk_vix 触发）
 | `step_days` | `15` | 每 15 个交易日（~3 周）向前滚动一步 |
 | `embargo_days` | `5` | IS 与 OOS 之间隔 5 个交易日（防止信号溢出） |
 | `mode` | `"anchored"` | IS 从固定起点扩展；`"rolling"` 为固定宽度 IS 窗口 |
+| `_OOS_RETRO_MIN_FOLDS` | `4` | OOS Retrospective 启用所需最少历史折数 |
 
 **时间切分示意（anchored 模式，step=15d，oos=6m）**：
 
@@ -610,18 +907,6 @@ Fold 73: [2018-07 ──────────── 2025-01-31] [emb] [2025-0
 
 产生 **~73 折**，充分覆盖 2021-07 至 2026-05 的每一段时间。
 
-**每折选参数流程**：
-
-```
-1. 对 59 个参数集，切 IS 段 equity → 计算 IS 指标
-2. 取 IS 最后 30 交易日的宏观状态均值 → is_macro_vector
-3. 调用 MCPS.macro_cond_sharpe(equity_is, macro_is, is_macro_vector)
-   → 高斯核加权 Sharpe（宏观相似的历史日权重更高）
-4. DSR 过滤（Bailey & López de Prado 2014，N=59 校正）
-5. 选出最高分参数 → OOS 评估
-6. 计算 WFE = OOS_Sharpe / IS_Sharpe（Walk-Forward Efficiency）
-```
-
 **合成 OOS 跑道**：将所有折的 OOS 段拼接成一条无重叠的 synthetic equity curve，代表"如果一直用 WF 选参数"的真实 OOS 历史表现。
 
 **核心数据结构**（`walk_forward.py`）：
@@ -629,20 +914,8 @@ Fold 73: [2018-07 ──────────── 2025-01-31] [emb] [2025-0
 | 类 | 用途 |
 |---|---|
 | `WFFold` | 单折时间边界（is_start, is_end, embargo_end, oos_start, oos_end） |
-| `WFFoldResult` | 单折完整结果（IS 指标、选择方法、OOS equity/metrics、WFE） |
+| `WFFoldResult` | 单折完整结果（IS 指标、选择方法、OOS equity/metrics、WFE、all_oos_sharpes、oos_macro_vec） |
 | `WFResult` | 聚合结果（synthetic_equity、dsr_aggregate、fold_summary_df、param_oos_stats） |
-
-**典型全量结果（59 参数集 × 73 折）**：
-
-```
-Synthetic OOS Sharpe : 0.487
-Synthetic OOS CAGR   : 5.9%
-Synthetic OOS MaxDD  : -17.9%
-DSR (N=59)           : 依运行时数据而定
-Mean WFE             : 0.64
-OOS 幸存者（mean OOS Sharpe > 0）: 4/59
-  → value_tilt, tight_beta_tracker, concentrated_3, skip_heavy
-```
 
 ---
 

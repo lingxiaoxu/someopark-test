@@ -539,7 +539,7 @@ class WalkForwardAnalyzer:
     # ──────────────────────────────────────────────────────────────────────
 
     # Minimum completed folds before switching to OOS retrospective matching.
-    # First _OOS_RETRO_MIN_FOLDS folds use stability-filtered IS Sharpe as warm-up.
+    # First _OOS_RETRO_MIN_FOLDS folds use IS stability → MCPS → IS Sharpe as warm-up.
     # 4 prior folds provide enough macro diversity to anchor the Gaussian kernel.
     _OOS_RETRO_MIN_FOLDS: int = 4
 
@@ -556,8 +556,10 @@ class WalkForwardAnalyzer:
         Selection priority:
           1. OOS retrospective matching (if >= _OOS_RETRO_MIN_FOLDS prior folds)
              — uses actual OOS Sharpes of prior folds weighted by macro similarity
-          2. MCPS on IS data (IS macro-conditioned Sharpe)
-          3. Fallback: best IS Sharpe
+          2. IS stability filter (sub-period consistency check)
+          3. MCPS on IS data (IS macro-conditioned Sharpe via SimilarityEngine)
+          4. IS Sharpe fallback + DSR adjustment
+          5. Fallback: first param set (IS < 60 days)
 
         prior_folds : completed folds so far (fold i uses folds 0..i-1).
                       Each prior fold must have oos_macro_vec and all_oos_sharpes
@@ -621,7 +623,7 @@ class WalkForwardAnalyzer:
                     all_oos_sharpes[name] = sr
 
         # ── Selection ─────────────────────────────────────────────────────
-        # Priority: OOS retrospective → IS stability → IS Sharpe fallback
+        # Priority: OOS retrospective → IS stability → MCPS → IS Sharpe → fallback
         n_trials = len(is_metrics)
         best_name: str = ""
         best_score: float = float("nan")
@@ -655,7 +657,37 @@ class WalkForwardAnalyzer:
                 best_score = stab_score
                 selection_method = "is_stability"
 
-        # 3. IS Sharpe fallback
+        # 3. MCPS on IS data (macro-conditioned Sharpe via SimilarityEngine)
+        # Uses autoencoder (23 macro features → 12-dim latent) or Euclidean
+        # Gaussian-kernel to weight IS days by macro similarity to IS-tail.
+        if not best_name and is_macro_vec and not macro_df.empty:
+            macro_is = macro_df[(macro_df.index >= fold.is_start) &
+                                (macro_df.index <= fold.is_end)]
+            mcps_scores: Dict[str, float] = {}
+            for name in is_metrics:
+                if name not in eq_map:
+                    continue
+                eq_is = eq_map[name][(eq_map[name].index >= fold.is_start) &
+                                     (eq_map[name].index <= fold.is_end)]
+                if len(eq_is) < 60:
+                    continue
+                try:
+                    sc = _macro_cond_sharpe_is(
+                        equity_is=eq_is,
+                        macro_is=macro_is,
+                        today_vec=is_macro_vec,
+                        features=features,
+                    )
+                    if not np.isnan(sc):
+                        mcps_scores[name] = sc
+                except Exception:
+                    pass
+            if mcps_scores:
+                best_name = max(mcps_scores, key=mcps_scores.get)
+                best_score = mcps_scores[best_name]
+                selection_method = "mcps"
+
+        # 4. IS Sharpe fallback
         if not best_name:
             all_sharpes = {n: m.get("sharpe", float("-inf"))
                           for n, m in is_metrics.items()
