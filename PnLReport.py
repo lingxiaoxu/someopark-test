@@ -271,11 +271,17 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
 
     for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
         day, full = _parse_ts(fpath)
-        if day is None or day < start_ts or day > end_ts:
+        if day is None:
+            continue
+        # Loose pre-filter by file date (±2 days) to avoid reading too many files
+        if day < start_ts - pd.Timedelta(days=2) or day > end_ts + pd.Timedelta(days=2):
             continue
         with open(fpath) as f:
             data = json.load(f)
         signal_date_str = data.get('signal_date', str(day.date()))
+        sig_date = pd.Timestamp(signal_date_str)
+        if sig_date < start_ts or sig_date > end_ts:
+            continue
         pm = data.get('position_monitor', {})
         for strat in ('mrpt', 'mtfs'):
             for e in pm.get(strat, []):
@@ -290,7 +296,7 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
                         'action':      action,
                         'pnl':         e.get('unrealized_pnl'),
                         'note':        e.get('note', ''),
-                        'report_date': str(day.date()),
+                        'report_date': signal_date_str,
                         'signal_date': signal_date_str,
                         '_ts':         full,
                     }
@@ -309,27 +315,32 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
 
 
 def load_hold_pnl(end_ts) -> dict[str, dict]:
-    """HOLD PnL from the latest daily_report within range."""
-    best_f, best_ts = None, pd.Timestamp('1970-01-01')
+    """HOLD PnL from the latest daily_report whose signal_date <= end_ts."""
+    best_f, best_ts, best_data = None, pd.Timestamp('1970-01-01'), None
     for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
         day, full = _parse_ts(fpath)
-        if day is None or day > end_ts:
+        if day is None:
+            continue
+        if day > end_ts + pd.Timedelta(days=2):  # loose pre-filter
+            continue
+        with open(fpath) as f:
+            data = json.load(f)
+        sig_date = pd.Timestamp(data.get('signal_date', str(day.date())))
+        if sig_date > end_ts:
             continue
         if full > best_ts:
-            best_ts, best_f = full, fpath
+            best_ts, best_f, best_data = full, fpath, data
     if not best_f:
         return {}
-    with open(best_f) as f:
-        data = json.load(f)
-    signal_date_str = data.get('signal_date', str(best_ts.date()))
+    signal_date_str = best_data.get('signal_date', str(best_ts.date()))
     result: dict[str, dict] = {}
-    pm = data.get('position_monitor', {})
+    pm = best_data.get('position_monitor', {})
     for strat in ('mrpt', 'mtfs'):
         for e in pm.get(strat, []):
             if isinstance(e, dict) and e.get('action') == 'HOLD' and e.get('pair'):
                 result[e['pair']] = {
                     'pnl':         e.get('unrealized_pnl'),
-                    'report_date': str(best_ts.date()),
+                    'report_date': signal_date_str,
                     'signal_date': signal_date_str,
                 }
     return result
@@ -882,6 +893,14 @@ def build_report_data(start: str, end: str) -> dict:
         metrics_prices = prices
     port_metrics = _compute_portfolio_metrics(start_ts, end_ts, positions, metrics_prices)
     totals['portfolio'] = port_metrics
+
+    # Sanity check: summary grand total vs equity curve end value
+    if port_metrics and 'total_pnl' in port_metrics:
+        delta = abs(totals['grand'] - port_metrics['total_pnl'])
+        if delta > 5000:
+            print(f"  [WARN] Summary/Curve PnL mismatch: "
+                  f"summary={totals['grand']:+,.0f}  curve={port_metrics['total_pnl']:+,.0f}  "
+                  f"delta={delta:,.0f}")
 
     return {
         'start':  start,
