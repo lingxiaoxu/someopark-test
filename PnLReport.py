@@ -932,7 +932,23 @@ def build_report_data(start: str, end: str) -> dict:
     # Add HOLD pairs from daily_report that load_positions missed.
     # These are same-day opens not yet in inventory_history.
     # Use un-scaled PnL (matching curve overlay口径).
+    # Supplement shares/open_price from inventory main files.
     existing_pairs = {r['pair'] for r in rows}
+
+    # Load inventory main files for position details
+    _inv_main: dict[str, dict] = {}  # pair -> position dict
+    for inv_f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
+                  os.path.join(BASE_DIR, 'inventory_mtfs.json')):
+        if os.path.exists(inv_f):
+            try:
+                with open(inv_f) as f:
+                    inv_d = json.load(f)
+                for pname, pv in inv_d.get('pairs', {}).items():
+                    if isinstance(pv, dict) and pv.get('s1_shares'):
+                        _inv_main[pname] = pv
+            except Exception:
+                pass
+
     if hold_pnl:
         # Find latest daily_report to get scale_factors and pair details
         _hold_report = None
@@ -965,22 +981,43 @@ def build_report_data(start: str, end: str) -> dict:
                     upnl = e.get('unrealized_pnl', 0) or 0
                     raw_upnl = round(upnl / sf, 2) if sf != 1.0 else upnl
                     s1, s2 = pair.split('/', 1)
+                    inv_pos = _inv_main.get(pair, {})
+                    s1_sh = inv_pos.get('s1_shares', 0)
+                    s2_sh = inv_pos.get('s2_shares', 0)
+                    op1 = inv_pos.get('open_s1_price', 0)
+                    op2 = inv_pos.get('open_s2_price', 0)
+                    gross = abs(s1_sh * op1) + abs(s2_sh * op2) if (op1 and op2) else None
+                    ss = gross / 2 if gross else None
+                    # Compute yf_pnl for HOLD: use Close price on end_date
+                    _yf = None
+                    if s1_sh and s2_sh and op1 and op2:
+                        try:
+                            _ep1 = get_price(prices, s1, end) if s1 in prices.columns else None
+                            _ep2 = get_price(prices, s2, end) if s2 in prices.columns else None
+                            if _ep1 and _ep2:
+                                _yf = (s1_sh * _ep1 + s2_sh * _ep2) - (s1_sh * op1 + s2_sh * op2)
+                        except Exception:
+                            pass
                     rows.append({
                         'pair':           pair,
                         'strategy':       strat,
                         's1':             s1, 's2': s2,
-                        'direction':      e.get('direction', '?'),
-                        'param_set':      e.get('param_set', '—'),
-                        'open_date':      e.get('open_date', '?'),
+                        's1_shares':      s1_sh,
+                        's2_shares':      s2_sh,
+                        'open_s1_price':  op1,
+                        'open_s2_price':  op2,
+                        'direction':      e.get('direction') or inv_pos.get('direction', '?'),
+                        'param_set':      e.get('param_set') or inv_pos.get('param_set', '—'),
+                        'open_date':      e.get('open_date') or inv_pos.get('open_date', '?'),
                         'is_open':        True,
                         'action':         'HOLD',
                         'exit_date':      _hold_report.get('signal_date', end),
                         'reason':         '',
                         'sys_pnl':        raw_upnl,
                         'prior_pnl':      prior_lifecycle_pnl.get(pair, 0),
-                        'yf_pnl':         None,
-                        'gross_notional': None,
-                        'ss_notional':    None,
+                        'yf_pnl':         _yf,
+                        'gross_notional': gross,
+                        'ss_notional':    ss,
                     })
 
     # Compute totals (include prior lifecycle PnL in realized)
@@ -1444,7 +1481,7 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
         _yf_s = ParagraphStyle('_yf', fontName=FONT, fontSize=7, leading=9.5)
         hdr_yf = [H('仓位'), H('结算日'), H('系统\n成交价PnL','RIGHT'), H('参考\n执行价PnL','RIGHT'), H('差异\n(系统−参考)','RIGHT'), H('说明')]
         data_yf = [hdr_yf]
-        valid_yf = [r for r in rows if not (r['sys_pnl'] is None and r['yf_pnl'] is None)]
+        valid_yf = [r for r in rows if r['sys_pnl'] is not None and r['yf_pnl'] is not None]
         tot_sys = tot_yf = tot_diff = 0.0
         has_sys = has_yf = has_diff = True
         for r in valid_yf:
