@@ -12,6 +12,12 @@
     "z_col": "Z_health"
   },
   {
+    "s1": "PFG",
+    "s2": "WMT",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
     "s1": "FSLR",
     "s2": "RSG",
     "sector": "industrial",
@@ -30,16 +36,10 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "AON",
-    "s2": "GEN",
-    "sector": "other",
-    "z_col": "Z_other"
-  },
-  {
-    "s1": "AON",
-    "s2": "MCK",
-    "sector": "health",
-    "z_col": "Z_health"
+    "s1": "CL",
+    "s2": "WST",
+    "sector": "energy",
+    "z_col": "Z_energy"
   },
   {
     "s1": "CI",
@@ -54,14 +54,26 @@
     "z_col": "Z_health"
   },
   {
-    "s1": "EFX",
-    "s2": "MMM",
+    "s1": "CHD",
+    "s2": "HON",
     "sector": "industrial",
     "z_col": "Z_industrial"
   },
   {
-    "s1": "CHD",
-    "s2": "HON",
+    "s1": "AON",
+    "s2": "GEN",
+    "sector": "other",
+    "z_col": "Z_other"
+  },
+  {
+    "s1": "AON",
+    "s2": "MCK",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
+    "s1": "EFX",
+    "s2": "MMM",
     "sector": "industrial",
     "z_col": "Z_industrial"
   },
@@ -72,21 +84,9 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "CL",
-    "s2": "WST",
-    "sector": "energy",
-    "z_col": "Z_energy"
-  },
-  {
     "s1": "BAX",
     "s2": "IDXX",
     "sector": "health",
     "z_col": "Z_health"
-  },
-  {
-    "s1": "AVB",
-    "s2": "INCY",
-    "sector": "realestate",
-    "z_col": "Z_realestate"
   }
 ]

@@ -520,8 +520,11 @@ def select_pairs_with_dsr(summary_csv, window, n_trials=32):
 
     df = pd.DataFrame(records)
 
+    MAX_TICKER_IN_SELECTION = 2  # max times a single ticker can appear in selected pairs
+
     log.info(f'\n  ── Pair selection (DSR filter) ──')
-    selected = []
+    # Phase 1: find best param_set per pair
+    candidates = []  # [(s1, s2, best_row)]
     excluded = []
 
     for s1, s2 in ALL_PAIRS:
@@ -549,14 +552,32 @@ def select_pairs_with_dsr(summary_csv, window, n_trials=32):
             excluded.append(pair_key)
             continue
 
-        # Pick highest pair_sharpe among DSR-passing rows (more robust than raw PnL)
         best = eligible.sort_values(['pair_sharpe', 'dsr_pvalue'], ascending=False).iloc[0]
+        candidates.append((s1, s2, best))
+
+    # Phase 2: sort by pair_sharpe descending, apply ticker concentration limit
+    from collections import Counter
+    candidates.sort(key=lambda x: (-x[2]['pair_sharpe'], -x[2]['dsr_pvalue']))
+    ticker_count = Counter()
+    selected = []
+
+    for s1, s2, best in candidates:
+        pair_key = f'{s1}/{s2}'
+        over = [t for t in (s1, s2) if ticker_count[t] >= MAX_TICKER_IN_SELECTION]
+        if over:
+            log.info(f'    {pair_key:<12s}  TICKER_LIMIT '
+                     f'({", ".join(over)} already in {MAX_TICKER_IN_SELECTION} pairs)  '
+                     f'pairSR={best["pair_sharpe"]:.2f}')
+            excluded.append(pair_key)
+            continue
         log.info(f'    {pair_key:<12s}  {best["param_set"]:<35s}  '
                  f'PnL={best["pair_pnl"]:+,.0f}  '
                  f'pairSR={best["pair_sharpe"]:.2f}  '
                  f'DSR={best["dsr_pvalue"]:.3f}  '
                  f'trades={int(best["n_trades"])}')
         selected.append([s1, s2, best['param_set']])
+        ticker_count[s1] += 1
+        ticker_count[s2] += 1
 
     log.info(f'  Selected: {len(selected)}  Excluded: {len(excluded)}')
     return selected, df

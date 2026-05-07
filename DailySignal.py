@@ -739,6 +739,8 @@ def _compute_vix_term_slope_chg(signal_date) -> float | None:
 _MTFS_SLOPE_CHG_THRESHOLD = 1.5   # VIX term slope 5d change threshold for MTFS gate
 
 
+_MAX_TICKER_EXPOSURE = 2   # max times a single ticker can appear across open positions
+
 def extract_signals(context, pair_configs, signal_ts, inventory,
                     prices_today, strategy, scale_factor: float = 1.0) -> list:
     # ── MTFS macro gate: compute once for all pairs ───────────────────────
@@ -758,6 +760,15 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
             else:
                 log.info(f"[MACRO_GATE] MTFS gate clear — vix_term_slope_5d_chg={slope_5d_chg:.2f} "
                          f"(threshold={_MTFS_SLOPE_CHG_THRESHOLD})")
+
+    # ── Ticker exposure counter: count each ticker across existing positions ──
+    from collections import Counter
+    ticker_count = Counter()
+    for pair_name, pos in inventory.get('pairs', {}).items():
+        if isinstance(pos, dict) and pos.get('direction') and '/' in pair_name:
+            t1, t2 = pair_name.split('/', 1)
+            ticker_count[t1] += 1
+            ticker_count[t2] += 1
 
     signals = []
     for s1, s2, _ in pair_configs:
@@ -780,6 +791,25 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
             sig['macro_gate'] = macro_gate
             sig['note'] = macro_gate['block_reason']
             log.info(f"[MACRO_GATE] {pair_key}: vetoed {original_action}")
+
+        # Apply concentration gate: veto if either ticker already at max exposure
+        if sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
+            over = [t for t in (s1, s2) if ticker_count[t] >= _MAX_TICKER_EXPOSURE]
+            if over:
+                original_action = sig['action']
+                sig['action'] = 'MACRO_VETO'
+                sig['original_action'] = original_action
+                tickers_str = ', '.join(over)
+                sig['note'] = (
+                    f"Concentration limit — {tickers_str} already in "
+                    f"{max(ticker_count[t] for t in over)} pair(s) "
+                    f"(max {_MAX_TICKER_EXPOSURE})"
+                )
+                log.info(f"[CONCENTRATION] {pair_key}: vetoed {original_action} — {sig['note']}")
+            else:
+                # Accept this open: update ticker counts for subsequent checks
+                ticker_count[s1] += 1
+                ticker_count[s2] += 1
 
         signals.append(sig)
     return signals
