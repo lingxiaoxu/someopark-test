@@ -592,6 +592,37 @@ def main() -> None:
     if not errs.empty:
         print(f"  {len(errs)} run(s) failed — check error column in CSV.")
 
+    # ── Generate portfolio Excel for all param sets (--save-equity) ──────────
+    if args.save_equity and not ok.empty and not args.select:
+        try:
+            from sector_rotation.portfolio_record import SectorRotationRecord
+            _rec_cfg = base_cfg.get("portfolio_record", {})
+            _n_excel = 0
+            print(f"\n[4/4] Generating portfolio Excel for {len(ok)} param sets...")
+            for _, _row in ok.iterrows():
+                _pname = _row["param_set"]
+                try:
+                    _pcfg = apply_param_set(base_cfg, PARAM_SETS[_pname])
+                    if args.signal_version:
+                        _pcfg.setdefault("signals", {})["signal_version"] = args.signal_version
+                    _pbt = SectorRotationBacktest(_pcfg)
+                    _presult = _pbt.run(prices=prices, macro=macro)
+                    _prec = SectorRotationRecord(
+                        result=_presult, prices=prices, macro=macro,
+                        param_set=_pname,
+                        signal_version=args.signal_version or "v1",
+                        leverage_ratio=_rec_cfg.get("leverage_ratio", 0.0),
+                        interest_rate=_rec_cfg.get("interest_rate", 0.05),
+                    )
+                    _prec.export_portfolio_excel()
+                    _n_excel += 1
+                    print(f"  [{_n_excel}/{len(ok)}] {_pname} ✓")
+                except Exception as _exc:
+                    log.warning(f"  [{_pname}] Excel failed: {_exc}")
+            print(f"  → {_n_excel} portfolio Excel files in historical_runs/sector_rotation/")
+        except ImportError as _ie:
+            log.warning(f"portfolio_record not available: {_ie}")
+
     # ── Select best param set for production (--select) ──────────────────────
     # Three-stage selection:
     #   Stage 1: WF OOS validation → filter out param sets with poor OOS performance
@@ -911,6 +942,37 @@ def main() -> None:
             print(f"  Written to : {prod_path}")
             print(f"  → DailySignal will use this param set on next run")
             print(f"{'═'*60}\n")
+
+            # ── Portfolio History Excel (26 sheets) for best param set ───
+            try:
+                from sector_rotation.portfolio_record import (
+                    SectorRotationRecord, export_wf_diagnostic_excel,
+                )
+                _rec_cfg = base_cfg.get("portfolio_record", {})
+                _best_eq = {s.name: s for s in equity_frames if not s.empty}.get(_best_ps)
+                if _best_eq is not None:
+                    # Re-run best param to get full BacktestResult
+                    _best_cfg = apply_param_set(base_cfg, PARAM_SETS[_best_ps])
+                    if args.signal_version:
+                        _best_cfg.setdefault("signals", {})["signal_version"] = args.signal_version
+                    _best_bt = SectorRotationBacktest(_best_cfg)
+                    _best_result = _best_bt.run(prices=prices, macro=macro)
+                    _record = SectorRotationRecord(
+                        result=_best_result,
+                        prices=prices,
+                        macro=macro,
+                        param_set=_best_ps,
+                        signal_version=args.signal_version or "v1",
+                        leverage_ratio=_rec_cfg.get("leverage_ratio", 0.0),
+                        interest_rate=_rec_cfg.get("interest_rate", 0.05),
+                    )
+                    _record.export_portfolio_excel()
+
+                # WF Diagnostic Excel
+                if _oos_filter_applied:
+                    export_wf_diagnostic_excel(_wf_result)
+            except Exception as _excel_e:
+                log.warning(f"[EXCEL] Portfolio record failed: {_excel_e}")
 
     # ── OOS Validation via WalkForwardAnalyzer ───────────────────────────
     if args.oos_validate:

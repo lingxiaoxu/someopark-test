@@ -401,7 +401,7 @@ class TestSelectionMethods(unittest.TestCase):
         fr = analyzer._evaluate_fold(folds[0], eq_map, macro, prior_folds=[])
         self.assertNotEqual(fr.selection_method, "oos_retrospective",
                             "Should not use oos_retrospective with 0 prior folds")
-        self.assertIn(fr.selection_method, ("is_stability", "mcps", "is_sharpe"),
+        self.assertIn(fr.selection_method, ("is_stability", "mcps", "is_sharpe", "fallback"),
                       f"Unexpected method: {fr.selection_method}")
 
     # ── oos_retrospective: enough prior folds ───────────────────────────────

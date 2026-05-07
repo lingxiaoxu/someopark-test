@@ -1194,6 +1194,13 @@ if __name__ == "__main__":
             csv_path = out_dir / f"wf_{mode_name}_fold_summary.csv"
             wf_r.fold_summary_df.to_csv(csv_path, index=False)
             print(f"  Fold summary → {csv_path}")
+        # WF Diagnostic Excel (use anchored result)
+        try:
+            from sector_rotation.portfolio_record import export_wf_diagnostic_excel
+            if "anchored" in results:
+                export_wf_diagnostic_excel(results["anchored"])
+        except Exception as _e:
+            logger.warning(f"WF diagnostic Excel failed: {_e}")
     else:
         analyzer = WalkForwardAnalyzer(
             base_cfg=base_cfg,
@@ -1207,3 +1214,9 @@ if __name__ == "__main__":
         csv_path = out_dir / f"wf_{args.mode}_fold_summary.csv"
         wf_r.fold_summary_df.to_csv(csv_path, index=False)
         print(f"  Fold summary → {csv_path}")
+        # WF Diagnostic Excel
+        try:
+            from sector_rotation.portfolio_record import export_wf_diagnostic_excel
+            export_wf_diagnostic_excel(wf_r)
+        except Exception as _e:
+            logger.warning(f"WF diagnostic Excel failed: {_e}")

@@ -136,6 +136,10 @@ class BacktestResult:
     trade_indicators: Optional[pd.DataFrame] = None
     # qlib Account turnover tracking: columns [total_turnover, turnover]
     qlib_turnover: Optional[pd.DataFrame] = None
+    # Stop-loss events (from portfolio/stop_loss.py)
+    stop_loss_events: Optional[List] = None
+    # Per-date position states (entry_price, peak_price, days_held per sector)
+    position_states_history: Optional[Dict] = None
 
     def summary(self) -> str:
         """Print a one-page performance summary."""
@@ -553,6 +557,22 @@ class SectorRotationBacktest:
         rebalance_date_set = set(rebalance_dates)
         emergency_active = False           # cooldown state: True = already in emergency mode
         vix_threshold    = self.reb_cfg.get("emergency_derisk_vix", 35.0)
+
+        # Stop-loss infrastructure (extreme events only)
+        _stop_loss_cfg = self.cfg.get("stop_loss", {})
+        _stop_loss_events: List = []
+        _position_states_history: Dict = {}
+        _stop_loss_fn = None
+        _position_tracker = None
+        if _stop_loss_cfg.get("enabled", False):
+            try:
+                from ..portfolio.stop_loss import (
+                    apply_position_stops, SectorPositionTracker,
+                )
+                _stop_loss_fn = apply_position_stops
+                _position_tracker = SectorPositionTracker()
+            except ImportError:
+                _stop_loss_cfg = {"enabled": False}
         vix_recovery     = vix_threshold * self.reb_cfg.get("vix_recovery_factor", 0.80)
 
         for dt in all_dates:
@@ -642,6 +662,22 @@ class SectorRotationBacktest:
                                 config=risk_overlay_cfg,
                             )
 
+                    # ── Stop-loss (extreme events only) ──────────────
+                    if _stop_loss_cfg.get("enabled", False):
+                        _stopped, _sl_events, _halve = _stop_loss_fn(
+                            current_weights=adj_weights,
+                            position_tracker=_position_tracker,
+                            sector_prices=etf_prices,
+                            spy_prices=bench_series,
+                            rebalance_date=dt,
+                            config=_stop_loss_cfg,
+                        )
+                        if _halve:
+                            adj_weights = adj_weights * 0.5
+                        for _st in _stopped:
+                            adj_weights[_st] = 0.0
+                        _stop_loss_events.extend(_sl_events)
+
                     cost_result = compute_transaction_costs(
                         current_weights, adj_weights, portfolio_value
                     )
@@ -668,6 +704,11 @@ class SectorRotationBacktest:
                     prev_scores = latest_scores.copy()
                     weights_records[dt] = current_weights.to_dict()
                     risk_flags_records.append({"date": dt, **flags.to_dict()})
+
+                    # Update position tracker for stop-loss
+                    if _position_tracker is not None:
+                        _position_tracker.update(dt, current_weights, etf_prices)
+                        _position_states_history[dt] = _position_tracker.get_all_states()
 
             # Daily mark-to-market
             if dt in etf_daily_ret.index:
@@ -717,6 +758,8 @@ class SectorRotationBacktest:
             etf_daily_ret=etf_daily_ret,
             portfolio_df_qlib=None,
             trade_orders=trade_orders_list,
+            stop_loss_events=_stop_loss_events if _stop_loss_events else None,
+            position_states_history=_position_states_history if _position_states_history else None,
         )
 
     # -----------------------------------------------------------------------
@@ -744,6 +787,8 @@ class SectorRotationBacktest:
         indicator_df: Optional[pd.DataFrame] = None,
         qlib_turnover: Optional[pd.DataFrame] = None,
         trade_orders: Optional[List] = None,
+        stop_loss_events: Optional[List] = None,
+        position_states_history: Optional[Dict] = None,
     ) -> BacktestResult:
         """Build BacktestResult from execution tracking data."""
         if trade_orders is None:
@@ -810,6 +855,8 @@ class SectorRotationBacktest:
             attribution=attribution,
             trade_indicators=trade_indicators,
             qlib_turnover=qlib_turnover,
+            stop_loss_events=stop_loss_events,
+            position_states_history=position_states_history,
         )
 
         logger.info(f"\n{result.summary()}")

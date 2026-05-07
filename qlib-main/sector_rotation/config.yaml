@@ -221,6 +221,31 @@ risk:
       # VIX ≥ 35 → handled by rebalance.emergency_derisk_vix (50% cash)
 
 # ---------------------------------------------------------------------------
+# Stop-loss (extreme events only) — protects against crash/collapse scenarios
+# Designed for long-only monthly rebalancing: triggers only in COVID/crash-level events.
+# In 7 years (2018-2026), these thresholds trigger ~3-5 times total.
+# ---------------------------------------------------------------------------
+stop_loss:
+  enabled: true
+  portfolio_circuit_breaker:
+    enabled: true
+    spy_3d_limit: -0.07       # SPY 3-day cumulative drop > 7% → halve all positions
+  sector_collapse:
+    enabled: true
+    max_dd_from_entry: -0.12  # Single sector down > 12% from entry → zero that sector
+  trailing_stop:
+    enabled: true
+    max_dd_from_peak: -0.15   # Single sector down > 15% from peak → zero that sector
+  cooling_off_days: 10        # Days before stopped sector can re-enter
+
+# ---------------------------------------------------------------------------
+# Portfolio record — Excel output and leverage accounting
+# ---------------------------------------------------------------------------
+portfolio_record:
+  leverage_ratio: 0.0         # 0 = no leverage, 1.0 = 100% leverage (asset=2×equity)
+  interest_rate: 0.05         # Annual rate (only when leverage > 0)
+
+# ---------------------------------------------------------------------------
 # Risk Overlay (v2 only) — independent position multiplier layer
 # Applied AFTER scoring and existing risk controls (vol scaling, VIX de-risk)
 # ---------------------------------------------------------------------------

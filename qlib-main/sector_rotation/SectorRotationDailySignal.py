@@ -1085,6 +1085,28 @@ def run_daily_signal(
     _write_report_json(report, signal_date)
     _write_report_txt(report, signal_date)
 
+    # ── 14. Monitor Excel (on rebalance days only) ────────────────
+    if will_rebalance and not dry_run:
+        try:
+            from sector_rotation.portfolio_record import SectorRotationRecord
+            _ps_name = _smart_result.get("param_set", "") if _smart_result else \
+                       _sel.get("param_set", "")
+            _ps_ver = cfg.get("signals", {}).get("signal_version", "v1")
+            _rec = SectorRotationRecord(
+                result=type("R", (), {"risk_flags": [], "signals_history": pd.DataFrame(),
+                                      "regime_history": pd.Series(), "config": cfg,
+                                      "weights_history": pd.DataFrame(), "equity_curve": pd.Series(),
+                                      "daily_returns": pd.Series(), "metrics": {},
+                                      "stop_loss_events": None, "position_states_history": None})(),
+                prices=prices_all,
+                macro=macro,
+                param_set=_ps_name,
+                signal_version=_ps_ver,
+            )
+            _rec.export_monitor_excel(signal_date, report)
+        except Exception as _mon_e:
+            log.debug(f"[MONITOR] Excel export skipped: {_mon_e}")
+
     return report
 
 
