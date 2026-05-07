@@ -1,16 +1,94 @@
 {
   "param_set": "tight_beta_tracker",
+  "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "mcps_oos_filtered": 1.4266,
-  "recent_sharpe_12m": 2.0362,
-  "full_period_sharpe": 1.024,
-  "full_period_calmar": 0.6558,
-  "selected_at": "2026-05-05",
+  "selected_at": "2026-05-07",
+  "last_updated": "2026-05-07",
+  "mcps_oos_filtered": 1.4179,
+  "recent_sharpe_12m": 1.8617,
+  "full_period_sharpe": 1.0014,
+  "full_period_calmar": 0.6381,
+  "top_candidates": [
+    {
+      "name": "tight_beta_tracker",
+      "version": "v1",
+      "composite": 1.6067,
+      "mcps_score": 1.0546
+    },
+    {
+      "name": "value_tilt",
+      "version": "v1",
+      "composite": 0.7199,
+      "mcps_score": 1.0506
+    },
+    {
+      "name": "defensive_rotation",
+      "version": "v1",
+      "composite": 0.5939,
+      "mcps_score": 1.0401
+    },
+    {
+      "name": "hawkish_macro",
+      "version": "v1",
+      "composite": -0.0399,
+      "mcps_score": 1.0166
+    },
+    {
+      "name": "default",
+      "version": "v1",
+      "composite": -0.3865,
+      "mcps_score": 1.0104
+    },
+    {
+      "name": "inv_vol_lw",
+      "version": "v1",
+      "composite": -0.3865,
+      "mcps_score": 1.0104
+    },
+    {
+      "name": "standard_4",
+      "version": "v1",
+      "composite": -0.3865,
+      "mcps_score": 1.0104
+    },
+    {
+      "name": "inv_vol_oas",
+      "version": "v1",
+      "composite": -0.3973,
+      "mcps_score": 1.0133
+    },
+    {
+      "name": "patient_dd",
+      "version": "v1",
+      "composite": -0.4139,
+      "mcps_score": 1.0218
+    },
+    {
+      "name": "low_turnover",
+      "version": "v1",
+      "composite": -0.91,
+      "mcps_score": 0.9925
+    }
+  ],
   "n_candidates": 55,
   "n_oos_survivors": 55,
   "oos_filter_applied": true,
-  "oos_mean_sharpe": 1.1027,
-  "oos_n_selected": 8,
-  "wf_mean_wfe": 0.7187,
-  "macro_data_days": 1971
+  "oos_mean_sharpe": 1.139,
+  "oos_n_selected": 4,
+  "wf_mean_wfe": 0.9494,
+  "macro_data_days": 1972,
+  "switch_history": [],
+  "health": {
+    "days_since_switch": 1,
+    "current_rank": 1,
+    "anomaly_detected": false,
+    "_consecutive_best_days": 1,
+    "_prev_best_param": "tight_beta_tracker"
+  },
+  "mcps_score": 1.0546,
+  "composite_score": 1.6067,
+  "version_selector": {
+    "recommended": "v1",
+    "v1_confidence": 0.925
+  }
 }

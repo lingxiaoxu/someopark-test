@@ -353,9 +353,21 @@ weekly)
     run_python 1 "EPS incremental update (55 symbols, skips fresh)" \
         qlib-main/sector_rotation/update_eps_history.py
 
-    # Step 2: Dry-run to confirm full pipeline is healthy (no inventory write)
+    # Step 2: Weekly review (P7): multi-horizon backtest + drift + regime analysis
+    set -a && source "$REPO/.env" && set +a
+    PYTHONPATH="$REPO/qlib-main:$REPO" $CONDA_QLIB python \
+        qlib-main/sector_rotation/weekly_review.py "$@" \
+        2>&1 | tee -a "$LOGFILE"
+    RC=${PIPESTATUS[0]}
+    if [[ $RC -ne 0 ]]; then
+        log "  WARN: Weekly review failed (RC=$RC) — continuing with dry-run"
+    else
+        log "  STEP 2 OK: Weekly review complete"
+    fi
+
+    # Step 3: Dry-run to confirm full pipeline is healthy (no inventory write)
     SIGNAL_ARGS="$(build_signal_args) --dry-run"
-    run_python 2 "DailySignal dry-run validation ($SIGNAL_ARGS)" \
+    run_python 3 "DailySignal dry-run validation ($SIGNAL_ARGS)" \
         qlib-main/sector_rotation/SectorRotationDailySignal.py $SIGNAL_ARGS
 
     log_section "WEEKLY MAINTENANCE COMPLETE"
@@ -374,12 +386,26 @@ monthly)
     run_python 1 "EPS incremental update (pre-rebalance)" \
         qlib-main/sector_rotation/update_eps_history.py
 
-    # Step 2: Force-rebalance daily signal
+    # Step 2: Full batch select — refresh all P0 cached data
+    #   (59 param sets × WF + MCPS → equity cache, OOS-by-regime, centroids, top_candidates)
+    log "→ STEP 2 START: Full batch select (refresh P0 data + selected_param_set.json)"
+    set -a && source "$REPO/.env" && set +a
+    PYTHONPATH="$REPO/qlib-main:$REPO" $CONDA_QLIB python \
+        qlib-main/sector_rotation/SectorRotationBatchRun.py --select --save-equity "$@" \
+        2>&1 | tee -a "$LOGFILE"
+    RC=${PIPESTATUS[0]}
+    if [[ $RC -ne 0 ]]; then
+        log "  WARN: Batch select failed (RC=$RC) — continuing with existing param set"
+    else
+        log "  STEP 2 OK: Batch select complete — P0 data refreshed"
+    fi
+
+    # Step 3: Force-rebalance daily signal (uses smart_select with fresh P0 data)
     SIGNAL_ARGS="$(build_signal_args) --force-rebalance"
-    run_python 2 "DailySignal force-rebalance ($SIGNAL_ARGS)" \
+    run_python 3 "DailySignal force-rebalance ($SIGNAL_ARGS)" \
         qlib-main/sector_rotation/SectorRotationDailySignal.py $SIGNAL_ARGS
 
-    log_section "MONTHLY REBALANCE COMPLETE"
+    log_section "MONTHLY REBALANCE COMPLETE (P0 data refreshed + rebalance executed)"
     ;;
 
 # ─────────────────────────────────────────────────────────────────────────────

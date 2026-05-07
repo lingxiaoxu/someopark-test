@@ -153,6 +153,65 @@ class WFResult:
         lines.append(f"{'═' * 70}\n")
         return "\n".join(lines)
 
+    def to_detail_dict(self) -> Dict[str, Any]:
+        """Serialize full fold-level detail for persistence (P0)."""
+        def _r(v, d=4):
+            return round(v, d) if not np.isnan(v) else None
+
+        return {
+            "mode": self.mode,
+            "n_folds": len(self.folds),
+            "n_param_sets": self.n_param_sets,
+            "mean_wfe": _r(self.mean_wfe),
+            "dsr_aggregate": _r(self.dsr_aggregate),
+            "synthetic_metrics": {k: _r(v) for k, v in self.synthetic_metrics.items()},
+            "param_oos_stats": self.param_oos_stats,
+            "selection_log": self.selection_log,
+            "folds": [
+                {
+                    "fold_id": fr.fold.fold_id,
+                    "is_start": str(fr.fold.is_start.date()),
+                    "is_end": str(fr.fold.is_end.date()),
+                    "oos_start": str(fr.fold.oos_start.date()),
+                    "oos_end": str(fr.fold.oos_end.date()),
+                    "selected": fr.is_best_name,
+                    "method": fr.selection_method,
+                    "is_sharpe": _r(fr.is_best_sharpe),
+                    "mcps_score": _r(fr.mcps_score),
+                    "dsr_pvalue": _r(fr.dsr_pvalue),
+                    "oos_metrics": {k: _r(v) for k, v in fr.oos_metrics.items()},
+                    "oos_regime": fr.oos_regime,
+                    "wfe": _r(fr.wfe),
+                    "all_oos_sharpes": {k: _r(v) for k, v in fr.all_oos_sharpes.items()},
+                    "oos_macro_vec": {
+                        k: round(v, 4) if v is not None else None
+                        for k, v in fr.oos_macro_vec.items()
+                    },
+                }
+                for fr in self.folds
+            ],
+        }
+
+    def param_oos_by_regime(self) -> Dict[str, Dict[str, Dict[str, float]]]:
+        """Aggregate OOS Sharpe by (param_set, regime) across all folds."""
+        from collections import defaultdict
+        buckets: Dict[str, Dict[str, list]] = defaultdict(lambda: defaultdict(list))
+        for fr in self.folds:
+            regime = fr.oos_regime
+            for ps_name, oos_sr in fr.all_oos_sharpes.items():
+                if not np.isnan(oos_sr):
+                    buckets[ps_name][regime].append(oos_sr)
+        result = {}
+        for ps_name, regimes in buckets.items():
+            result[ps_name] = {
+                regime: {
+                    "mean_oos_sharpe": round(float(np.mean(srs)), 4),
+                    "n_folds": len(srs),
+                }
+                for regime, srs in regimes.items()
+            }
+        return result
+
 
 # ═══════════════════════════════════════════════════════════════════════════
 #  Statistical utilities
@@ -399,6 +458,7 @@ class WalkForwardAnalyzer:
         embargo_days: int = 5,
         mode: str = "anchored",
         param_sets: Optional[Dict[str, dict]] = None,
+        signal_version: str = None,
     ):
         self.base_cfg = base_cfg
         self.prices = prices
@@ -408,6 +468,7 @@ class WalkForwardAnalyzer:
         self.step_days = step_days
         self.embargo_days = embargo_days
         self.mode = mode
+        self.signal_version = signal_version  # None = use config default
         self.param_sets = param_sets or PARAM_SETS
         self._set_names = list(self.param_sets.keys())
 
@@ -507,6 +568,8 @@ class WalkForwardAnalyzer:
         for i, name in enumerate(self._set_names):
             try:
                 cfg = apply_param_set(self.base_cfg, self.param_sets[name])
+                if self.signal_version:
+                    cfg.setdefault("signals", {})["signal_version"] = self.signal_version
                 engine = SectorRotationBacktest(cfg)
                 result = engine.run(prices=self.prices, macro=self.macro)
                 if result.equity_curve is not None and not result.equity_curve.empty:
@@ -1106,6 +1169,8 @@ if __name__ == "__main__":
                         help="Embargo days between IS and OOS (default: 5)")
     parser.add_argument("--output-dir", default=None,
                         help="Directory for CSV output (default: backtest_results/)")
+    parser.add_argument("--signal-version", default=None, choices=["v1", "v2"],
+                        help="Override signal version (v1=4-factor, v2=7-factor)")
     args = parser.parse_args()
 
     base_cfg = load_config()
@@ -1119,6 +1184,7 @@ if __name__ == "__main__":
         oos_months=args.oos_months,
         step_days=args.step_days,
         embargo_days=args.embargo_days,
+        signal_version=args.signal_version,
     )
 
     if args.mode == "both":

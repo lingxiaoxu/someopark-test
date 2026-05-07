@@ -103,9 +103,9 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh [MODE] [OPTIONS]
 
 | MODE | 说明 | 典型耗时 |
 |---|---|---|
-| `daily` | 标准每日运行：节假日检查 → EPS 自动刷新 → 信号生成 | 1–3 min |
-| `weekly` | 每周维护：EPS 增量更新 + dry-run 验证 | 3–5 min |
-| `monthly` | 月初强制再平衡（节假日感知，EPS 预刷新） | 2–4 min |
+| `daily` | smart_select (P2) → 信号生成 → macro tilt (P3) → 调仓 | 4–6 min |
+| `weekly` | EPS 更新 + **Weekly Review (P7)** + dry-run | 8–20 min |
+| `monthly` | EPS 更新 + **Full batch select (P0刷新)** + force-rebalance | 10–15 min |
 | `eps-update` | 增量 EPS 更新（跳过 ≤7 天内已刷新的标的） | 1–3 min |
 | `eps-full` | 强制全量 EPS 重拉（55 只股票，首次运行必用） | ~5 min |
 | `eps-symbols` | 指定标的 EPS 更新，例如 `eps-symbols XOM CVX` | < 1 min |
@@ -135,6 +135,7 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh [MODE] [OPTIONS]
 | `--no-eps-check` | 跳过每日 EPS 自动刷新 | 关 |
 | `--force` | 与 `eps-update` 配合，强制全量重拉 | 关 |
 | `--config PATH` | 指定 config.yaml 路径 | `sector_rotation/config.yaml` |
+| `--signal-version v1\|v2` | 信号版本（V1=4因子, V2=7因子），用于 batch/select/wf | `v1`（config 默认） |
 
 ---
 
@@ -254,9 +255,12 @@ qlib-main/sector_rotation/
 ├── config.yaml                     所有可调参数
 ├── sector_rotation_pipeline.sh     主 Pipeline 控制器（14 个模式）
 ├── update_eps_history.py           EPS 历史增量维护脚本
-├── SectorRotationDailySignal.py    每日信号生成主脚本
+├── SectorRotationDailySignal.py    每日信号生成主脚本（含 smart_select 集成）
 ├── SectorRotationStrategyRuns.py   59 个命名参数集（13 组，A-M）
-├── SectorRotationBatchRun.py       批量参数扫描驱动脚本
+├── SectorRotationBatchRun.py       批量参数扫描 + P0 持久化 + --signal-version
+├── smart_select.py                 每日智能选参引擎（P2/P3/P5）
+├── multi_horizon_backtest.py       多时期回测（P4: 6m/1y/3y/full）
+├── weekly_review.py                周报生成（P7: 漂移 + regime + 多时期）
 │
 ├── data/
 │   ├── universe.py                 ETF 宇宙 + GICS 元数据 + 流动性分级
@@ -309,11 +313,17 @@ qlib-main/sector_rotation/
 | `price_data/macro/*.parquet` | 宏观指标 parquets | **只读**（由 someopark 主 pipeline 写入） |
 | `qlib-main/sector_rotation/inventory_sector_rotation.json` | 当前持仓快照 | 读写（`SectorRotationDailySignal.py`） |
 | `qlib-main/sector_rotation/inventory_history/` | 每次 inventory 变更时的快照备份 | 写 |
-| `qlib-main/sector_rotation/trading_signals/` | 每日信号 JSON / 报告 | 写 |
+| `qlib-main/sector_rotation/selected_param_set.json` | 动态选参状态（P6: 含 smart_select 元数据） | 读写（`select` / `smart_select`） |
+| `qlib-main/sector_rotation/trading_signals/` | 每日信号 JSON / 报告（含 smart_select 字段） | 写 |
 | `qlib-main/sector_rotation/report/output/` | Tearsheet PDF 输出（`tearsheet` 模式） | 写 |
+| `qlib-main/sector_rotation/backtest_results/batch_equity_cache.parquet` | P0: 59 参数集完整 equity curves（供 daily MCPS 评分） | 读写 |
+| `qlib-main/sector_rotation/backtest_results/param_oos_by_regime.json` | P0: 每参数 × 每 regime 的 OOS Sharpe | 读写 |
+| `qlib-main/sector_rotation/backtest_results/macro_latent_centroids.npy` | P0: autoencoder latent 聚类中心 | 读写 |
+| `qlib-main/sector_rotation/backtest_results/multi_horizon_results.json` | P4: 多时期回测结果（weekly 生成，daily 读取） | 读写 |
+| `qlib-main/sector_rotation/backtest_results/weekly_review.json` | P7: 周报（漂移 + regime + 版本偏好） | 写 |
 | `qlib-main/sector_rotation/logs/` | Pipeline 日志 | 写 |
 | `qlib-main/sector_rotation/pipeline_state/` | Pipeline 状态标记 | 写 |
-| `qlib-main/mlruns/mlflow.db` | MLflow 实验追踪 SQLite（backtest / sensitivity run 历史） | 读写（`backtest/engine.py`） |
+| `qlib-main/mlruns/mlflow.db` | MLflow 实验追踪 SQLite | 读写（`backtest/engine.py`） |
 
 ---
 

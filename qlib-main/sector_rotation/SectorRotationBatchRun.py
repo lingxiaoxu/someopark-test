@@ -200,6 +200,7 @@ def _run_one(
     base_cfg: dict,
     prices: pd.DataFrame,
     macro: pd.DataFrame,
+    signal_version: str = None,
 ) -> dict:
     t0 = time.time()
     row = {"param_set": name, "group": _group_of(name) or "?",
@@ -207,6 +208,8 @@ def _run_one(
            "status": "ok", "error": "", "elapsed_s": float("nan")}
     try:
         cfg = apply_param_set(base_cfg, PARAM_SETS[name])
+        if signal_version:
+            cfg.setdefault("signals", {})["signal_version"] = signal_version
         engine = SectorRotationBacktest(cfg)
         result = engine.run(prices=prices, macro=macro)
         row.update(_extract_metrics(result))
@@ -229,6 +232,7 @@ def _run_one_with_equity(
     base_cfg: dict,
     prices: pd.DataFrame,
     macro: pd.DataFrame,
+    signal_version: str = None,
 ) -> tuple:
     """Returns (metrics_row, equity_series)."""
     t0 = time.time()
@@ -238,6 +242,8 @@ def _run_one_with_equity(
     equity = pd.Series(dtype=float, name=name)
     try:
         cfg = apply_param_set(base_cfg, PARAM_SETS[name])
+        if signal_version:
+            cfg.setdefault("signals", {})["signal_version"] = signal_version
         engine = SectorRotationBacktest(cfg)
         result = engine.run(prices=prices, macro=macro)
         row.update(_extract_metrics(result))
@@ -460,6 +466,14 @@ def main() -> None:
             "Reports synthetic OOS Sharpe, DSR, and WFE for all 59 param sets."
         ),
     )
+    parser.add_argument(
+        "--signal-version", default=None, choices=["v1", "v2"],
+        help=(
+            "Override signal version for all backtests (v1=4-factor, v2=7-factor). "
+            "If not specified, uses config.yaml default (v1). "
+            "V2 ignores param-set signal weights but uses portfolio/risk params."
+        ),
+    )
     args = parser.parse_args()
 
     if args.verbose:
@@ -486,9 +500,11 @@ def main() -> None:
     else:
         run_sets = list(PARAM_SETS.keys())
 
+    _sv = args.signal_version or "v1 (default)"
     print(f"\n{'═'*60}")
     print(f"  SECTOR ROTATION BATCH RUN")
     print(f"  Sets to run : {len(run_sets)}")
+    print(f"  Signal ver  : {_sv}")
     print(f"  Output dir  : {args.output_dir}")
     if args.select:
         print(f"  --select    : ON  → will write selected_param_set.json")
@@ -512,11 +528,13 @@ def main() -> None:
         print(f"  [{i:>2}/{len(run_sets)}] {name:<28} {desc_short}", end="", flush=True)
 
         if args.save_equity or args.select:
-            row, eq = _run_one_with_equity(name, base_cfg, prices, macro)
+            row, eq = _run_one_with_equity(name, base_cfg, prices, macro,
+                                           signal_version=args.signal_version)
             if not eq.empty:
                 equity_frames.append(eq)
         else:
-            row = _run_one(name, base_cfg, prices, macro)
+            row = _run_one(name, base_cfg, prices, macro,
+                           signal_version=args.signal_version)
 
         status_str = f"  ✓ {row['elapsed_s']:.0f}s  sharpe={row.get('sharpe', float('nan')):.3f}"
         if row["status"] == "error":
@@ -607,6 +625,7 @@ def main() -> None:
                 mode="anchored",
                 is_years_min=base_cfg.get("backtest", {}).get("is_years", 3),
                 oos_months=6, step_days=15, embargo_days=5,
+                signal_version=args.signal_version,
             )
             _wf_result = _wf.run()
             _wf_mean_wfe = _wf_result.mean_wfe
@@ -700,14 +719,42 @@ def main() -> None:
             if _oos_filter_applied and hasattr(_wf_result, "param_oos_stats"):
                 _oos_stats = _wf_result.param_oos_stats.get(_best_ps, {})
 
+            # Build top candidates list (used in sel_info + P0 persistence)
+            _top_n = 10
+            if _valid_mcs:
+                _sorted_top = sorted(_valid_mcs.items(), key=lambda x: x[1], reverse=True)[:_top_n]
+            else:
+                _ok_top = ok.dropna(subset=["recent_sharpe_12m"]).nlargest(_top_n, "recent_sharpe_12m")
+                _sorted_top = [(r["param_set"], float(r["recent_sharpe_12m"])) for _, r in _ok_top.iterrows()]
+            _top_list = []
+            for _cn, _cs in _sorted_top:
+                _cr = ok[ok["param_set"] == _cn]
+                _top_list.append({
+                    "name": _cn,
+                    "version": args.signal_version or "v1",
+                    "mcps_score": round(_cs, 4),
+                    "full_period_sharpe": round(float(_cr.iloc[0]["sharpe"]), 4) if not _cr.empty else None,
+                    "recent_sharpe_12m": round(float(_cr.iloc[0]["recent_sharpe_12m"]), 4)
+                                         if not _cr.empty and not pd.isna(_cr.iloc[0]["recent_sharpe_12m"]) else None,
+                })
+
             sel_info = {
                 "param_set":          _best_ps,
+                "signal_version":     args.signal_version or "v1",
                 "selection_method":   _sel_method,
+                "selected_at":        datetime.now().strftime("%Y-%m-%d"),
+                "last_updated":       datetime.now().strftime("%Y-%m-%d"),
+
+                # Selection scores
                 _sel_method:          _sel_val,
                 "recent_sharpe_12m":  _recent_sr_ref,
                 "full_period_sharpe": round(float(_best_row["sharpe"]), 4),
                 "full_period_calmar": round(float(_best_row["calmar"]), 4),
-                "selected_at":        datetime.now().strftime("%Y-%m-%d"),
+
+                # Top candidates (for daily smart-select P2)
+                "top_candidates":     _top_list,
+
+                # WF / OOS metadata
                 "n_candidates":       int(len(_valid_mcs) if _valid_mcs else len(ok)),
                 "n_oos_survivors":    _n_survivors,
                 "oos_filter_applied": _oos_filter_applied,
@@ -716,12 +763,133 @@ def main() -> None:
                 "oos_n_selected":     _oos_stats.get("n_selected") if _oos_stats else None,
                 "wf_mean_wfe":        round(_wf_mean_wfe, 4) if not _math.isnan(_wf_mean_wfe) else None,
                 "macro_data_days":    _n_macro,
+
+                # Daily smart-select fields (populated by P2 daily runs)
+                "switch_history":     [],
+                "health": {
+                    "days_since_switch": 0,
+                    "current_rank": 1,
+                    "anomaly_detected": False,
+                },
             }
             # Write to backtest_results/ (archive) AND sector_rotation/ (production)
             archive_path = out_dir / "selected_param_set.json"
             prod_path    = _THIS_DIR / "selected_param_set.json"
             for p in (archive_path, prod_path):
                 p.write_text(_json.dumps(sel_info, indent=2))
+
+            # ── P0: Persist batch data for daily smart-select ─────────
+            _ver_tag = args.signal_version or "v1"  # for dual-version file naming
+
+            # (a) Equity cache — all param sets' full-period curves
+            if equity_frames:
+                _eq_df = pd.concat(equity_frames, axis=1)
+                # Write both unversioned (backward-compat) and versioned copy
+                _eq_path = out_dir / "batch_equity_cache.parquet"
+                _eq_df.to_parquet(_eq_path)
+                _eq_df.to_parquet(out_dir / f"batch_equity_cache_{_ver_tag}.parquet")
+                print(f"  [P0] Equity cache ({len(equity_frames)} sets) → {_eq_path} (+{_ver_tag})")
+
+            # (b) WF fold detail + param OOS by regime
+            if _oos_filter_applied:
+                try:
+                    _wf_detail_path = out_dir / "wf_fold_detail.json"
+                    _wf_detail_data = _json.dumps(
+                        _wf_result.to_detail_dict(), indent=2, default=str)
+                    _wf_detail_path.write_text(_wf_detail_data)
+                    (out_dir / f"wf_fold_detail_{_ver_tag}.json").write_text(_wf_detail_data)
+                    print(f"  [P0] WF fold detail → {_wf_detail_path}")
+
+                    _regime_data = _wf_result.param_oos_by_regime()
+                    _regime_json = _json.dumps(_regime_data, indent=2)
+                    _regime_path = out_dir / "param_oos_by_regime.json"
+                    _regime_path.write_text(_regime_json)
+                    (out_dir / f"param_oos_by_regime_{_ver_tag}.json").write_text(_regime_json)
+                    print(f"  [P0] OOS by regime ({len(_regime_data)} params) → {_regime_path} (+{_ver_tag})")
+                except Exception as _p0e:
+                    log.warning(f"[P0] WF detail persistence failed: {_p0e}")
+
+            # (c) Macro latent centroids + param OOS by macro cluster
+            if _oos_filter_applied and not _macro_df.empty:
+                try:
+                    sys_path_added = False
+                    if str(_PROJECT_DIR) not in sys.path:
+                        sys.path.insert(0, str(_PROJECT_DIR))
+                        sys_path_added = True
+                    from SimilarityEngine import SimilarityEngine as _SE
+                    from SimilarityEngine import AUTOENCODER_FEATURES as _AE_FEATS
+                    from sklearn.cluster import KMeans as _KMeans
+
+                    # Collect OOS macro vectors
+                    _oos_vecs_raw = []
+                    _oos_fold_idx = []
+                    for _i, _fr in enumerate(_wf_result.folds):
+                        if _fr.oos_macro_vec:
+                            _oos_vecs_raw.append(_fr.oos_macro_vec)
+                            _oos_fold_idx.append(_i)
+
+                    if len(_oos_vecs_raw) >= 4:
+                        # Build OOS macro matrix using AUTOENCODER_FEATURES from macro_df
+                        _ae_avail = [f for f in _AE_FEATS if f in _macro_df.columns]
+                        _ae_sub = _macro_df[_ae_avail].dropna(how="any")
+                        if len(_ae_sub) >= 60 and len(_ae_avail) >= 6:
+                            _ae_engine = _SE(method="autoencoder")
+                            # Compute weights to trigger training, then encode OOS vecs
+                            _today_dummy = {f: float(_ae_sub[f].iloc[-1]) for f in _ae_avail}
+                            _ae_engine.compute_weights(_ae_sub, _today_dummy, _ae_avail)
+
+                            # Encode each fold's OOS period macro to latent space
+                            _oos_latents = []
+                            for _ov in _oos_vecs_raw:
+                                _vec_arr = np.array([_ov.get(f, 0.0) or 0.0 for f in _ae_avail],
+                                                    dtype=np.float32).reshape(1, -1)
+                                _method = _ae_engine._methods[0]
+                                _enc = _method._encode(_vec_arr)
+                                _oos_latents.append(_enc.flatten())
+                            _oos_latents = np.array(_oos_latents)
+
+                            _n_clusters = min(6, len(_oos_latents))
+                            _km = _KMeans(n_clusters=_n_clusters, random_state=42, n_init=10)
+                            _km.fit(_oos_latents)
+
+                            np.save(str(out_dir / "macro_latent_centroids.npy"), _km.cluster_centers_)
+                            print(f"  [P0] Macro centroids ({_n_clusters} clusters) → "
+                                  f"{out_dir / 'macro_latent_centroids.npy'}")
+
+                            # Build param_oos_by_macro_cluster
+                            from collections import defaultdict as _ddict
+                            _cluster_buckets = _ddict(lambda: _ddict(list))
+                            for _idx_pos, _fold_i in enumerate(_oos_fold_idx):
+                                _cl = int(_km.labels_[_idx_pos])
+                                _fr = _wf_result.folds[_fold_i]
+                                for _ps_name, _oos_sr in _fr.all_oos_sharpes.items():
+                                    if not np.isnan(_oos_sr):
+                                        _cluster_buckets[_ps_name][f"cluster_{_cl}"].append(_oos_sr)
+
+                            _cluster_oos = {}
+                            for _ps_name, _clusters in _cluster_buckets.items():
+                                _cluster_oos[_ps_name] = {
+                                    cl: {
+                                        "mean_oos_sharpe": round(float(np.mean(srs)), 4),
+                                        "n_folds": len(srs),
+                                    }
+                                    for cl, srs in _clusters.items()
+                                }
+                            _cl_path = out_dir / "param_oos_by_macro_cluster.json"
+                            _cl_path.write_text(_json.dumps(_cluster_oos, indent=2))
+                            print(f"  [P0] OOS by macro cluster → {_cl_path}")
+                except Exception as _p0e:
+                    log.warning(f"[P0] Macro cluster persistence failed: {_p0e}")
+
+            # (d) Top candidates (reuse _top_list computed above)
+            _top_path = out_dir / "top_candidates.json"
+            _top_path.write_text(_json.dumps({
+                "generated_at": datetime.now().isoformat(),
+                "signal_version": args.signal_version or "v1",
+                "n_total_candidates": int(len(_valid_mcs) if _valid_mcs else len(ok)),
+                "top": _top_list,
+            }, indent=2))
+            print(f"  [P0] Top {len(_top_list)} candidates → {_top_path}")
 
             print(f"\n{'═'*60}")
             print(f"  [SELECT] Best param set  : {_best_ps}")

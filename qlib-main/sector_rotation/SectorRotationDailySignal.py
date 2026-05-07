@@ -605,30 +605,96 @@ def run_daily_signal(
     # ── 1. Load config ────────────────────────────────────────────
     cfg = load_config(config_path or CONFIG_PATH)
 
-    # ── 1b. Apply selected param set (written by SectorRotationBatchRun --select)
+    # ── 1b. Smart param select (P2) or static fallback ──────────
     _sel_path = CONFIG_PATH.parent / "selected_param_set.json"
+    _smart_result = None  # will be set if smart_select succeeds
+    _sel = {}
     if _sel_path.exists():
+        _sel = json.loads(_sel_path.read_text())
+
+    try:
+        from sector_rotation.SectorRotationStrategyRuns import (
+            PARAM_SETS as _PARAM_SETS,
+            apply_param_set as _apply_param_set,
+        )
+
+        # Attempt smart param selection (P2) — needs cached batch data
+        _smart_available = False
         try:
-            from sector_rotation.SectorRotationStrategyRuns import (
-                PARAM_SETS as _PARAM_SETS,
-                apply_param_set as _apply_param_set,
-            )
-            _sel = json.loads(_sel_path.read_text())
-            _ps_name = _sel.get("param_set")
+            from sector_rotation.smart_select import smart_param_select, save_state
+            # Load macro early for smart_select (will be reloaded properly in step 3)
+            _macro_early = pd.DataFrame()
+            try:
+                _macro_early = load_macro(
+                    start=cfg.get("data", {}).get("price_start", "2017-01-01"),
+                    end=signal_date.strftime("%Y-%m-%d"),
+                )
+            except Exception:
+                pass
+
+            if not _macro_early.empty:
+                _smart_result = smart_param_select(
+                    signal_date=signal_date,
+                    macro_df=_macro_early,
+                    current_state=_sel,
+                )
+                _smart_available = _smart_result.get("smart_select_available", False)
+        except Exception as _se:
+            log.debug(f"[SMART SELECT] Unavailable ({_se}) — falling back to static JSON")
+
+        if _smart_available and _smart_result:
+            _ps_name = _smart_result["param_set"]
+            _ps_ver = _smart_result["signal_version"]
+            _switched = _smart_result.get("switched", False)
+
             if _ps_name and _ps_name in _PARAM_SETS:
                 cfg = _apply_param_set(cfg, _PARAM_SETS[_ps_name])
+                if _ps_ver:
+                    cfg.setdefault("signals", {})["signal_version"] = _ps_ver
+
+                _rank = _smart_result.get("current_rank", "?")
+                _mcps = _smart_result.get("mcps_scores", {}).get(_ps_name, "?")
+                _switch_msg = " [SWITCHED!]" if _switched else ""
                 log.info(
-                    f"[PARAM SELECT] Active: {_ps_name} | "
-                    f"recent_sr12m={_sel.get('recent_sharpe_12m', '?')} | "
+                    f"[SMART SELECT] Active: {_ps_name} (ver={_ps_ver}) "
+                    f"rank={_rank} mcps={_mcps}{_switch_msg}"
+                )
+
+                if _switched:
+                    log.info(
+                        f"[SMART SELECT] Switch: {_sel.get('param_set')} → {_ps_name} "
+                        f"reason={_smart_result.get('switch_reason')}"
+                    )
+
+                # Persist updated state
+                try:
+                    _smart_result["signal_date"] = signal_date
+                    save_state(_sel, _smart_result)
+                except Exception:
+                    pass
+            else:
+                log.warning(f"[SMART SELECT] Unknown param '{_ps_name}' — static fallback")
+                _smart_available = False
+
+        # Static fallback: read selected_param_set.json as before
+        if not _smart_available and _sel:
+            _ps_name = _sel.get("param_set")
+            _ps_ver = _sel.get("signal_version")
+            if _ps_name and _ps_name in _PARAM_SETS:
+                cfg = _apply_param_set(cfg, _PARAM_SETS[_ps_name])
+                if _ps_ver:
+                    cfg.setdefault("signals", {})["signal_version"] = _ps_ver
+                log.info(
+                    f"[PARAM SELECT] Static fallback: {_ps_name} (ver={_ps_ver or 'v1'}) | "
                     f"selected={_sel.get('selected_at', '?')}"
                 )
-            else:
+            elif _ps_name:
                 log.warning(
-                    f"[PARAM SELECT] Unknown param set '{_ps_name}' in "
-                    f"selected_param_set.json — using config.yaml defaults"
+                    f"[PARAM SELECT] Unknown param set '{_ps_name}' — using config defaults"
                 )
-        except Exception as _e:
-            log.warning(f"[PARAM SELECT] Failed to apply selected_param_set.json: {_e}")
+
+    except Exception as _e:
+        log.warning(f"[PARAM SELECT] Failed: {_e}")
 
     etf_tickers = cfg["universe"]["etfs"]           # e.g. ["XLE", "XLB", ...]
     benchmark   = cfg["universe"]["benchmark"]      # "SPY"
@@ -687,6 +753,7 @@ def run_daily_signal(
     erm_cfg = sig_cfg.get("earnings_revision", {})
     rsb_cfg = sig_cfg.get("relative_strength_breakout", {})
     _signal_kwargs = {
+        "signal_version": sig_cfg.get("signal_version", "v1"),
         "stm_enabled": stm_cfg.get("enabled", False),
         "stm_lookback": stm_cfg.get("lookback_months", 6),
         "stm_skip": stm_cfg.get("skip_months", 1),
@@ -752,6 +819,16 @@ def run_daily_signal(
         min_weight=port_cfg.get("constraints", {}).get("min_weight", 0.0),
     )
 
+    # ── 5b. Macro-conditioned weight tilt (P3) ───────────────────
+    if _smart_result and _smart_result.get("smart_select_available"):
+        try:
+            from sector_rotation.smart_select import macro_weight_tilt
+            target_weights_raw = macro_weight_tilt(
+                target_weights_raw, macro, signal_date, max_tilt=0.05)
+            log.info("[P3] Applied macro-conditioned weight tilt (±5%)")
+        except Exception as _tilt_e:
+            log.debug(f"[P3] Weight tilt skipped: {_tilt_e}")
+
     # ── 6. Apply risk controls ─────────────────────────────────────
     log.info("Applying risk controls...")
     # Approximate portfolio returns: equal-weight sector basket
@@ -783,12 +860,35 @@ def run_daily_signal(
         vix_progressive_tiers=prog_tiers,
     )
 
+    # ── 6b. Macro anomaly auto-conservative (P3) ────────────────
+    if (_smart_result and _smart_result.get("macro_positioning", {}).get("anomaly")):
+        # Novel macro environment → reduce all positions by 20%
+        _anomaly_scale = 0.80
+        target_weights = target_weights * _anomaly_scale
+        cash_weight = 1.0 - float(target_weights.sum())
+        risk_flags = str(risk_flags) + " | macro_anomaly_conservative"
+        log.warning(
+            f"[P3] Macro anomaly detected — positions reduced by 20%. "
+            f"Cluster dist={_smart_result['macro_positioning'].get('cluster_distance')}"
+        )
+
     log.info(f"Target weights (post-risk):\n{target_weights.round(3).to_string()}")
     log.info(f"Cash allocation: {cash_weight:.1%}  Risk flags: {risk_flags}")
 
     # ── 7. Rebalance decision ──────────────────────────────────────
     inv = load_inventory()
     inv["capital"] = capital
+
+    # P5: If smart-select triggered a version switch, force full rebalance
+    if (_smart_result and _smart_result.get("switched") and
+            _smart_result.get("signal_version") != inv.get("signal_version")):
+        inv["prev_composite_scores"] = {}  # V1↔V2 z-scores not comparable
+        force_rebalance = True
+        inv["signal_version"] = _smart_result["signal_version"]
+        log.info(
+            f"[P5] Version switch detected → clearing prev_composite_scores, "
+            f"forcing full rebalance"
+        )
 
     # VIX emergency cooldown: read persisted state, clear if VIX has recovered
     vix_threshold    = float(cfg.get("rebalance", {}).get("emergency_derisk_vix", 35.0))
@@ -964,6 +1064,22 @@ def run_daily_signal(
             "cash_pct":     round(cash_weight * 100, 2),
         },
     }
+
+    # Add smart-select metadata to report (P2/P3/P5)
+    if _smart_result and _smart_result.get("smart_select_available"):
+        report["smart_select"] = {
+            "param_set": _smart_result.get("param_set"),
+            "signal_version": _smart_result.get("signal_version"),
+            "switched": _smart_result.get("switched", False),
+            "switch_reason": _smart_result.get("switch_reason"),
+            "current_rank": _smart_result.get("current_rank"),
+            "mcps_score": _smart_result.get("mcps_scores", {}).get(
+                _smart_result.get("param_set")),
+            "best_candidate": _smart_result.get("best_candidate"),
+            "version_selector": _smart_result.get("version_selector"),
+            "anomaly_detected": _smart_result.get("macro_positioning", {}).get("anomaly"),
+            "nearest_cluster": _smart_result.get("macro_positioning", {}).get("nearest_cluster"),
+        }
 
     # ── 13. Write reports ──────────────────────────────────────────
     _write_report_json(report, signal_date)
