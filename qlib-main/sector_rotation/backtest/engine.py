@@ -662,6 +662,10 @@ class SectorRotationBacktest:
                                 config=risk_overlay_cfg,
                             )
 
+                    # ── Update position tracker BEFORE stop-loss check ──
+                    if _position_tracker is not None:
+                        _position_tracker.update(dt, adj_weights, etf_prices)
+
                     # ── Stop-loss (extreme events only) ──────────────
                     if _stop_loss_cfg.get("enabled", False):
                         _stopped, _sl_events, _halve = _stop_loss_fn(
@@ -705,8 +709,9 @@ class SectorRotationBacktest:
                     weights_records[dt] = current_weights.to_dict()
                     risk_flags_records.append({"date": dt, **flags.to_dict()})
 
-                    # Update position tracker for stop-loss
+                    # Record position states after stop-loss adjustments
                     if _position_tracker is not None:
+                        # Re-update with final weights (after stops may have zeroed some)
                         _position_tracker.update(dt, current_weights, etf_prices)
                         _position_states_history[dt] = _position_tracker.get_all_states()
 

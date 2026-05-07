@@ -304,26 +304,161 @@ qlib-main/sector_rotation/
 └── trading_signals/                信号输出目录（gitignore）
 ```
 
-### 关键数据路径（项目根目录）
+### 输出文件完整参考
 
-| 路径 | 内容 | 读/写 |
+#### 目录结构总览
+
+```
+someopark-test/                                          项目根目录
+├── price_data/sector_etfs/
+│   ├── eps_history.json                                 EPS 季度数据（eps-update/eps-full）
+│   └── *.pkl                                            ETF 价格缓存（data/loader.py）
+│
+├── price_data/macro/*.parquet                           宏观 parquets（只读，主 pipeline 写入）
+│
+├── historical_runs/sector_rotation/                     回测输出 Excel（gitignored）
+│   ├── sr_portfolio_history_{param}_{ts}.xlsx            26-sheet 完整回测记录
+│   ├── wf_diagnostic_sr_{ts}.xlsx                       5-sheet WF 诊断
+│   └── monitor_sr_{param}_{ts}.xlsx                     5-sheet 调仓快照
+│
+└── qlib-main/sector_rotation/
+    ├── selected_param_set.json                          生产参数（daily 动态更新）
+    ├── inventory_sector_rotation.json                   当前持仓（daily 调仓时更新）
+    │
+    ├── inventory_history/
+    │   └── inventory_sector_rotation_{ts}.json          持仓变更快照
+    │
+    ├── trading_signals/
+    │   ├── sr_daily_report_{date}_{ts}.json             完整日报（含 smart_select）
+    │   └── sr_daily_report_{date}_{ts}.txt              人可读摘要
+    │
+    ├── backtest_results/
+    │   ├── selected_param_set.json                      选参存档
+    │   ├── sr_batch_summary_{ts}.csv                    59 集 batch 汇总
+    │   ├── sr_batch_summary_{ts}.xlsx                   同上 Excel 版
+    │   ├── sr_batch_equity_{ts}.csv                     59 集 equity curves
+    │   ├── wf_{mode}_fold_summary_{ts}.csv              WF 逐折明细
+    │   ├── batch_equity_cache.parquet                   P0: daily MCPS 用
+    │   ├── batch_equity_cache_{v1|v2}.parquet           P0: 版本标记
+    │   ├── wf_fold_detail.json                          P0: WF 折详情
+    │   ├── wf_fold_detail_{v1|v2}.json                  P0: 版本标记
+    │   ├── param_oos_by_regime.json                     P0: regime 维度 OOS
+    │   ├── param_oos_by_regime_{v1|v2}.json             P0: 版本标记
+    │   ├── param_oos_by_macro_cluster.json              P0: macro cluster 维度 OOS
+    │   ├── macro_latent_centroids.npy                   P0: autoencoder 聚类中心
+    │   ├── top_candidates.json                          P0: MCPS 前 10 候选
+    │   ├── multi_horizon_results.json                   P4: 多时期回测（weekly 产出）
+    │   └── weekly_review.json                           P7: 周报（weekly 产出）
+    │
+    ├── report/output/
+    │   └── *.pdf                                        Tearsheet PDF（13+ 页）
+    │
+    ├── logs/
+    │   └── sr_{mode}_{YYYYMMDD}.log                     运行日志
+    │
+    └── pipeline_state/
+        └── sr_status_{mode}                             模式状态文件
+```
+
+#### 命名规则
+
+| 占位符 | 格式 | 示例 |
 |---|---|---|
-| `price_data/sector_etfs/eps_history.json` | 55 只 GICS 成分股季度 EPS 历史 | 读写（`update_eps_history.py`） |
-| `price_data/sector_etfs/*.parquet` | ETF 日线 OHLCV 缓存 | 读写（`data/loader.py`） |
-| `price_data/macro/*.parquet` | 宏观指标 parquets | **只读**（由 someopark 主 pipeline 写入） |
-| `qlib-main/sector_rotation/inventory_sector_rotation.json` | 当前持仓快照 | 读写（`SectorRotationDailySignal.py`） |
-| `qlib-main/sector_rotation/inventory_history/` | 每次 inventory 变更时的快照备份 | 写 |
-| `qlib-main/sector_rotation/selected_param_set.json` | 动态选参状态（P6: 含 smart_select 元数据） | 读写（`select` / `smart_select`） |
-| `qlib-main/sector_rotation/trading_signals/` | 每日信号 JSON / 报告（含 smart_select 字段） | 写 |
-| `qlib-main/sector_rotation/report/output/` | Tearsheet PDF 输出（`tearsheet` 模式） | 写 |
-| `qlib-main/sector_rotation/backtest_results/batch_equity_cache.parquet` | P0: 59 参数集完整 equity curves（供 daily MCPS 评分） | 读写 |
-| `qlib-main/sector_rotation/backtest_results/param_oos_by_regime.json` | P0: 每参数 × 每 regime 的 OOS Sharpe | 读写 |
-| `qlib-main/sector_rotation/backtest_results/macro_latent_centroids.npy` | P0: autoencoder latent 聚类中心 | 读写 |
-| `qlib-main/sector_rotation/backtest_results/multi_horizon_results.json` | P4: 多时期回测结果（weekly 生成，daily 读取） | 读写 |
-| `qlib-main/sector_rotation/backtest_results/weekly_review.json` | P7: 周报（漂移 + regime + 版本偏好） | 写 |
-| `qlib-main/sector_rotation/logs/` | Pipeline 日志 | 写 |
-| `qlib-main/sector_rotation/pipeline_state/` | Pipeline 状态标记 | 写 |
-| `qlib-main/mlruns/mlflow.db` | MLflow 实验追踪 SQLite | 读写（`backtest/engine.py`） |
+| `{ts}` | `YYYYMMDD_HHMMSS` | `20260507_172045` |
+| `{date}` | `YYYYMMDD` | `20260507` |
+| `{param}` | 参数集名（lowercase_snake） | `tight_beta_tracker` |
+| `{v1\|v2}` | 信号版本 | `v1` 或 `v2` |
+| `{mode}` | Pipeline 模式 | `daily`, `weekly`, `select` 等 |
+
+#### 各 Pipeline Mode 输出文件矩阵
+
+| Mode | 信号/报告 | 回测/分析 | Excel 记录 | 备注 |
+|---|---|---|---|---|
+| **daily** | `trading_signals/` JSON+TXT, `inventory_*` | — | `monitor_sr_*.xlsx` (调仓日) | `selected_param_set.json` 每日更新 |
+| **dry-run** | `trading_signals/` JSON+TXT | — | — | 不写 inventory |
+| **weekly** | — | `weekly_review.json`, `multi_horizon_results.json` | — | P4/P7 缓存供 daily 使用 |
+| **monthly** | = daily 调仓 | = select 全部 | = select + daily monitor | 两步合一 |
+| **batch** | — | `sr_batch_summary_*.csv/.xlsx`, `sr_batch_equity_*.csv` | — | 59 集汇总 |
+| **batch --save-equity** | — | 同 batch | `sr_portfolio_history_*.xlsx` ×59 | 26 sheets 每组 |
+| **select** | — | P0 缓存(7 文件), `selected_param_set.json` | `sr_portfolio_history_*.xlsx`(最优), `wf_diagnostic_*.xlsx` | 生产选参 |
+| **wf** | — | `wf_*_fold_summary_*.csv` | `wf_diagnostic_*.xlsx` | IS/OOS 分析 |
+| **backtest** | — | MLflow 记录 | — | 单参数集回测 |
+| **tearsheet** | — | — | — | PDF 输出到 `report/output/` |
+| **sensitivity** | — | console 输出 | — | 无持久文件 |
+| **regime** | — | console 输出 | — | 无持久文件 |
+| **eps-update/full/symbols** | — | — | — | 更新 `eps_history.json` |
+| **test** | — | — | — | pytest 输出 |
+| **status / signal-raw / help** | — | — | — | 只读/显示 |
+
+#### 文件生命周期与清理策略
+
+| 目录 | 增长速度 | 清理策略 | gitignored? |
+|---|---|---|---|
+| `trading_signals/` | ~2 文件/工作日 | 保留近 90 天，可定期归档 | ✅ |
+| `inventory_history/` | ~1 文件/调仓日 | 保留近 12 个月 | ✅ |
+| `backtest_results/` | 按需（select/batch） | 仅保留最新一组；`selected_param_set.json` 永久保留 | ✅ |
+| `historical_runs/sector_rotation/` | 按需（batch --save-equity） | 59×1.2MB ≈ 70MB/次；保留最近 2 次 | ✅ |
+| `report/output/` | 按需（tearsheet） | 保留近 3 个月 | ✅ |
+| `logs/` | ~1 文件/天 | 保留近 30 天 | ✅ |
+
+#### Portfolio History Excel (26 Sheets) 详细结构
+
+`historical_runs/sector_rotation/sr_portfolio_history_{param}_{ts}.xlsx`
+
+| # | Sheet | 频率 | 行数 | 内容 |
+|---|---|---|---|---|
+| 1 | summary | 单行 | 12 | Sharpe, Calmar, MaxDD, CAGR, param_set, signal_version |
+| 2 | portfolio_history | 日频 | ~1973 | date, equity, asset, liability, daily_pnl, cum_pnl, drawdown_pct |
+| 3 | asset_history | 日频 | ~1973 | total_asset (= equity × (1+leverage)) |
+| 4 | liability_history | 日频 | ~1973 | total_liability (无杠杆=0) |
+| 5 | equity_history | 日频 | ~1973 | net_equity |
+| 6 | asset_cash_history | 日频 | ~1973 | cash = equity × cash_weight |
+| 7 | sector_prices | 日频 | ~1973 | 11 ETF 日线价格 |
+| 8 | share_history | 日频 | ~1973 | 11 ETF 持股数（无仓位=0） |
+| 9 | sector_weights | 调仓日 | 94/176 | 11 ETF 目标权重 + cash（V1~94, V2~176） |
+| 10 | sector_weight_pct | 日频 | ~1973 | 11 ETF 漂移后实际占比 |
+| 11 | cost_basis | 日频 | ~1973 | 11 ETF 进入价格（加权均价，无仓位=0） |
+| 12 | sector_ratio_matrix | 调仓日 | 94×13 | 11×11 权重互比矩阵 |
+| 13 | sector_pnl_acc | 日频 | ~1973 | 11 sector 累计 PnL ($) |
+| 14 | sector_pnl_daily | 日频 | ~1973 | 11 sector 日度 PnL ($) |
+| 15 | sector_contribution | 日频 | ~1973 | sector 对总收益贡献 (%) |
+| 16 | daily_pnl | 日频 | ~1973 | 总 PnL ($) + 累计 |
+| 17 | interest_expense | 日频 | ~1973 | 每日利息（leverage=0 时全零） |
+| 18 | acc_interest | 日频 | ~1973 | 累计利息 |
+| 19 | realized_pnl | 按 sector | 11 | 每 sector 已实现 PnL |
+| 20 | total_notional | 按 sector | 11 | 每 sector 累计名义投入 |
+| 21 | drawdown_history | 日频 | ~1973 | (date, dd_dollar, dd_pct) |
+| 22 | rebalance_trades | 按交易 | ~260/332 | date, sector, direction, old/new weight, shares, price, cost |
+| 23 | regime_indicators | 日频 | ~1973 | VIX, yield_curve, hy_spread, fin_stress, NFCI + regime |
+| 24 | strategy_vars | 调仓日 | 94/176 | 全部 config 参数 + composite scores + risk flags |
+| 25 | stop_loss_history | 按事件 | 4-16 | date, sector, type, reason, entry/current price, threshold, pnl |
+| 26 | config | 参数表 | ~136 | 完整 config.yaml 快照 |
+
+> V1 月度调仓 ~94 次；V2 semimonthly ~176 次。日频 sheets 始终 ~1973 行。
+
+#### WF Diagnostic Excel (5 Sheets)
+
+`historical_runs/sector_rotation/wf_diagnostic_sr_{ts}.xlsx`
+
+| # | Sheet | 内容 |
+|---|---|---|
+| 1 | fold_summary | 73 折 × (IS/OOS dates, selected, method, IS_SR, OOS_SR, WFE, regime) |
+| 2 | param_oos_matrix | 59 param × 73 fold 的 OOS Sharpe 矩阵 |
+| 3 | param_by_regime | 59 param × regime 的 mean OOS Sharpe |
+| 4 | synthetic_equity | 合成 OOS 净值曲线 (daily) |
+| 5 | selection_log | 每折选参决策记录 |
+
+#### Monitor Excel (5 Sheets)
+
+`historical_runs/sector_rotation/monitor_sr_{param}_{ts}.xlsx`
+
+| # | Sheet | 内容 |
+|---|---|---|
+| 1 | snapshot | equity, regime, VIX, cash, n_positions, param_set, signal_version |
+| 2 | holdings | 11 ETF × (weight, shares, price, cost_basis, pnl, composite_score) |
+| 3 | signals | 11 ETF × (cs_mom, ts_mult, composite 等信号分量) |
+| 4 | smart_select | MCPS score, rank, candidates, version_selector, anomaly |
+| 5 | risk_flags | vol_scaling, vix_emergency, dd_circuit, beta_adj + thresholds |
 
 ---
 
