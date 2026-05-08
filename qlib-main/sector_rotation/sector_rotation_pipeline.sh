@@ -610,14 +610,32 @@ result = bt.run(prices, macro)
 print(result.summary())
 
 # ── Run all 59 param sets for comparison page (P11) ──────────────────────────
-log.info("Running all 59 param sets for batch comparison...")
+log.info("Running all 59 param sets for batch comparison + portfolio Excel...")
 rows = []
+_sig_ver = active_cfg.get("signals", {}).get("signal_version", "v1")
+_rec_cfg = base_cfg.get("portfolio_record", {})
+_n_excel = 0
 for name in PARAM_SETS:
     row, _eq = _run_one_with_equity(name, base_cfg, prices, macro)
     rows.append(row)
+    # Generate portfolio Excel for each param set
+    if row["status"] == "ok":
+        try:
+            from sector_rotation.portfolio_record import SectorRotationRecord as _SRR
+            _pcfg = apply_param_set(base_cfg, PARAM_SETS[name])
+            _pbt = SectorRotationBacktest(_pcfg)
+            _presult = _pbt.run(prices=prices, macro=macro)
+            _prec = _SRR(result=_presult, prices=prices, macro=macro,
+                         param_set=name, signal_version=_sig_ver,
+                         leverage_ratio=_rec_cfg.get("leverage_ratio", 0.0),
+                         interest_rate=_rec_cfg.get("interest_rate", 0.05))
+            _prec.export_portfolio_excel(mode="tearsheet", span="IS")
+            _n_excel += 1
+        except Exception as _e:
+            log.debug(f"  [{name}] Excel failed: {_e}")
 batch_df = pd.DataFrame(rows)
 ok_count = len(batch_df[batch_df['status'] == 'ok'])
-log.info(f"Batch complete: {ok_count}/{len(rows)} successful")
+log.info(f"Batch complete: {ok_count}/{len(rows)} successful, {_n_excel} portfolio Excel")
 
 # ── Walk-Forward IS/OOS analysis (P12 + P13) ─────────────────────────────────
 log.info("Running Walk-Forward IS/OOS analysis (anchored)...")
