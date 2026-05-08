@@ -117,7 +117,7 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh [MODE] [OPTIONS]
 | `wf` | 独立 Walk-Forward 分析（anchored + rolling），输出 CSV | 3–5 min |
 | `sensitivity` | 参数敏感性扫描（`top_n_sectors` 等） | 5–10 min |
 | `regime` | Regime 分析报告（4 态标签 + 汇总） | < 1 min |
-| `tearsheet` | 回测 + WF IS/OOS + 59组比较 + 13页 PDF | 10–15 min |
+| `tearsheet` | 回测 + 59组 batch + WF IS/OOS + 59 portfolio Excel + PDF | 20–30 min |
 | `test` | 运行 pytest 套件（95 个测试，纯合成数据，无网络） | 1–2 min |
 | `dry-run` | 只读每日信号，不写 inventory，随时可运行 | 1–2 min |
 | `status` | 打印当前持仓状态 + 最新信号文件摘要 | < 5 sec |
@@ -383,7 +383,7 @@ someopark-test/                                          项目根目录
 | **select** | — | P0 缓存(7 文件), `selected_param_set.json` | `sr_portfolio_history_*.xlsx`(最优), `wf_diagnostic_*.xlsx` | 生产选参 |
 | **wf** | — | `wf_*_fold_summary_*.csv` | `wf_diagnostic_*.xlsx` | IS/OOS 分析 |
 | **backtest** | — | MLflow 记录 | — | 单参数集回测 |
-| **tearsheet** | — | — | — | PDF 输出到 `report/output/` |
+| **tearsheet** | — | 59 IS-OOS portfolio Excel + PDF | `wf_diagnostic_*.xlsx` | 62 文件总产出（见下方 tearsheet 流程） |
 | **sensitivity** | — | console 输出 | — | 无持久文件 |
 | **regime** | — | console 输出 | — | 无持久文件 |
 | **eps-update/full/symbols** | — | — | — | 更新 `eps_history.json` |
@@ -442,6 +442,32 @@ Portfolio:  sr_portfolio_(.+)_(v[12])_(IS(?:-OOS)?)_(batch|select|tearsheet|back
 WF Diag:   wf_diagnostic_sr_(v[12])_(IS-OOS)_(anchored|rolling)_(wf|select|tearsheet)_(\d{8}_\d{6})\.xlsx
 Monitor:   monitor_sr_(.+)_(v[12])_daily_(\d{8}_\d{6})\.xlsx
 ```
+
+#### Tearsheet 模式完整流程
+
+`tearsheet` 模式是最全面的回测+报告入口，执行以下 7 步并产出 62 个文件：
+
+```
+步骤 1: 跑最优参数 full backtest        → result (BacktestResult)
+步骤 2: 跑全部 59 组 batch              → batch_df + 缓存 59 个 BacktestResult
+步骤 3: 跑 WF IS-OOS (59 组 × 73 折)  → wf_result (OOS 验证全部 59 组)
+步骤 4: 生成 59 个 portfolio Excel      → IS-OOS 标记（WF 已验证全部 59 组）
+步骤 5: 生成 PDF tearsheet              → 含 P11 批量比较 + P12-P13 WF 分析
+步骤 6: 生成最优参数 IS-OOS Excel       → 单独一份（与步骤 4 的 59 个独立）
+步骤 7: 生成 WF diagnostic Excel        → 5 sheets
+```
+
+**产出文件**：
+
+| 文件 | 数量 | 命名 |
+|---|---|---|
+| IS-OOS Portfolio Excel (59 组) | 59 | `sr_portfolio_{param}_{ver}_IS-OOS_tearsheet_{ts}.xlsx` |
+| IS-OOS Portfolio Excel (最优参数) | 1 | `sr_portfolio_{param}_{ver}_IS-OOS_tearsheet_{ts}.xlsx` |
+| WF Diagnostic | 1 | `wf_diagnostic_sr_{ver}_IS-OOS_anchored_tearsheet_{ts}.xlsx` |
+| PDF Tearsheet | 1 | `tearsheet_{param}_{ver}_IS-OOS_{ts}.pdf` |
+| **总计** | **62 文件** | 全部标记 `IS-OOS` + `tearsheet` |
+
+**预计耗时**：20–30 分钟（59 组 batch ×2 + WF 73 折 + 59 Excel 生成）
 
 #### Portfolio History Excel (26 Sheets) 详细结构
 
