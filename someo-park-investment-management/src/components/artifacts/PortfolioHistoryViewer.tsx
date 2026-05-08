@@ -64,7 +64,9 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
     if (!selectedFile) return;
     getMonitorHistorySheets(selectedFile, params?.strategy)
       .then(s => {
-        const filtered = s.filter((n: string) => n.toLowerCase() !== 'sheet1');
+        // Sheets can be strings or objects {name, rowCount}
+        const names = s.map((n: any) => typeof n === 'string' ? n : n.name);
+        const filtered = names.filter((n: string) => n && n.toLowerCase() !== 'sheet1');
         setSheets(filtered);
         if (filtered.length > 0) setActiveSheet(filtered[0]);
       })
@@ -110,7 +112,9 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
           className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1.5 text-xs focus:outline-none focus:border-[var(--accent-primary)] text-[var(--text-primary)] max-w-[300px] truncate"
         >
           {fileList.map((f: any) => (
-            <option key={f.filename} value={f.filename}>{f.pair} ({f.strategy}) - {f.timestamp}</option>
+            <option key={f.filename} value={f.filename}>
+              {f.pair ? `${f.pair} (${f.strategy})` : `${f.param} [${f.version} ${f.span} ${f.mode}]`} - {f.timestamp}
+            </option>
           ))}
         </select>
       </div>
