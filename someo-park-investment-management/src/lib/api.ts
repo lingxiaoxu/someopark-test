@@ -23,8 +23,13 @@ async function fetchText(path: string): Promise<string> {
   return res.text();
 }
 
-// Inventory — try Express API first, fallback to static snapshot for Firebase Hosting
+// ═══════════════════════════════════════════════════════════════════════
+// Inventory
+// MRPT/MTFS: /api/inventory/{strategy}
+// SR:        /api/sr/inventory
+// ═══════════════════════════════════════════════════════════════════════
 export const getInventory = async (strategy: string) => {
+  if (strategy === 'sr') return fetchApi<any>('/api/sr/inventory');
   try {
     return await fetchApi<any>(`/api/inventory/${strategy}`);
   } catch {
@@ -32,72 +37,145 @@ export const getInventory = async (strategy: string) => {
   }
 };
 export const getInventoryHistory = (strategy: string) =>
-  fetchApi<any[]>(`/api/inventory/history/${strategy}`);
+  strategy === 'sr'
+    ? fetchApi<any[]>('/api/sr/inventory/history')
+    : fetchApi<any[]>(`/api/inventory/history/${strategy}`);
 export const getInventorySnapshot = (strategy: string, filename: string) =>
-  fetchApi<any>(`/api/inventory/history/${strategy}/${filename}`);
+  strategy === 'sr'
+    ? fetchApi<any>(`/api/sr/inventory/history/${filename}`)
+    : fetchApi<any>(`/api/inventory/history/${strategy}/${filename}`);
 
+// ═══════════════════════════════════════════════════════════════════════
 // Signals
+// ═══════════════════════════════════════════════════════════════════════
 export const getLatestSignals = (strategy: string) =>
-  fetchApi<any>(`/api/signals/latest/${strategy}`);
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/signals/latest')
+    : fetchApi<any>(`/api/signals/latest/${strategy}`);
 export const getLatestCombinedSignals = () =>
   fetchApi<any>(`/api/signals/combined/latest`);
 
+// ═══════════════════════════════════════════════════════════════════════
 // Daily Report
-export const getLatestDailyReport = () =>
-  fetchApi<any>(`/api/daily-report/latest`);
-export const getLatestDailyReportTxt = () =>
-  fetchText(`/api/daily-report/latest/txt`);
+// ═══════════════════════════════════════════════════════════════════════
+export const getLatestDailyReport = (strategy?: string) =>
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/daily-report/latest')
+    : fetchApi<any>('/api/daily-report/latest');
+export const getLatestDailyReportTxt = (strategy?: string) =>
+  strategy === 'sr'
+    ? fetchText('/api/sr/daily-report/latest/txt')
+    : fetchText('/api/daily-report/latest/txt');
 
+// ═══════════════════════════════════════════════════════════════════════
 // Regime
-export const getLatestRegime = () =>
-  fetchApi<any>(`/api/regime/latest`);
+// ═══════════════════════════════════════════════════════════════════════
+export const getLatestRegime = (strategy?: string) =>
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/regime/latest')
+    : fetchApi<any>('/api/regime/latest');
 
+// ═══════════════════════════════════════════════════════════════════════
 // Walk-Forward
+// ═══════════════════════════════════════════════════════════════════════
 export const getWFSummary = (strategy: string) =>
-  fetchApi<any>(`/api/wf/summary/${strategy}`);
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/wf/summary')
+    : fetchApi<any>(`/api/wf/summary/${strategy}`);
 export const getOOSEquityCurve = (strategy: string) =>
-  fetchApi<any[]>(`/api/wf/equity-curve/${strategy}`);
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/equity-curve')
+    : fetchApi<any[]>(`/api/wf/equity-curve/${strategy}`);
 export const getOOSPairSummary = (strategy: string) =>
-  fetchApi<any[]>(`/api/wf/pair-summary/${strategy}`);
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/wf/param-oos')
+    : fetchApi<any[]>(`/api/wf/pair-summary/${strategy}`);
 export const getDSRLog = (strategy: string) =>
-  fetchApi<any[]>(`/api/wf/dsr-log/${strategy}`);
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/wf/fold-grid')
+    : fetchApi<any[]>(`/api/wf/dsr-log/${strategy}`);
 
-// Pair Universe
+// ═══════════════════════════════════════════════════════════════════════
+// Pair Universe / Sector Universe
+// ═══════════════════════════════════════════════════════════════════════
 export const getPairUniverse = (strategy: string) =>
-  fetchApi<any>(`/api/pairs/${strategy}`);
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/sector-universe')
+    : fetchApi<any>(`/api/pairs/${strategy}`);
 export const getPairDb = (collection: string) =>
   fetchApi<any>(`/api/pairs/db/${collection}`);
 
-// WF xlsx viewer
+// ═══════════════════════════════════════════════════════════════════════
+// WF xlsx viewer / File Structure
+// ═══════════════════════════════════════════════════════════════════════
 export const getWFXlsxList = (strategy: string) =>
-  fetchApi<string[]>(`/api/wf/xlsx/list?strategy=${strategy}`);
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/files/list')
+    : fetchApi<string[]>(`/api/wf/xlsx/list?strategy=${strategy}`);
 export const getWFXlsxSheets = (strategy: string, relPath: string) =>
-  fetchApi<any>(`/api/wf/xlsx/sheets?strategy=${strategy}&path=${encodeURIComponent(relPath)}`);
+  strategy === 'sr'
+    ? fetchApi<any>(`/api/sr/portfolio-history/${encodeURIComponent(relPath)}/sheets`)
+    : fetchApi<any>(`/api/wf/xlsx/sheets?strategy=${strategy}&path=${encodeURIComponent(relPath)}`);
 export const getWFXlsxSheet = (strategy: string, relPath: string, sheet: string) =>
-  fetchApi<any>(`/api/wf/xlsx/sheet?strategy=${strategy}&path=${encodeURIComponent(relPath)}&sheet=${encodeURIComponent(sheet)}`);
+  strategy === 'sr'
+    ? fetchApi<any>(`/api/sr/portfolio-history/${encodeURIComponent(relPath)}/${encodeURIComponent(sheet)}`)
+    : fetchApi<any>(`/api/wf/xlsx/sheet?strategy=${strategy}&path=${encodeURIComponent(relPath)}&sheet=${encodeURIComponent(sheet)}`);
 
+// ═══════════════════════════════════════════════════════════════════════
 // Diagnostic
-export const getDiagnosticSheets = () =>
-  fetchApi<any>(`/api/diagnostic/latest`);
-export const getDiagnosticSheet = (sheet: string) =>
-  fetchApi<any>(`/api/diagnostic/latest/${encodeURIComponent(sheet)}`);
+// ═══════════════════════════════════════════════════════════════════════
+export const getDiagnosticSheets = (strategy?: string) =>
+  strategy === 'sr'
+    ? fetchApi<any>('/api/sr/diagnostic/latest')
+    : fetchApi<any>('/api/diagnostic/latest');
+export const getDiagnosticSheet = (sheet: string, strategy?: string) =>
+  strategy === 'sr'
+    ? fetchApi<any>(`/api/sr/diagnostic/latest/${encodeURIComponent(sheet)}`)
+    : fetchApi<any>(`/api/diagnostic/latest/${encodeURIComponent(sheet)}`);
 
-// PnL Report
-export const getPnlReportList = () =>
-  fetchApi<{ date: string; filename: string }[]>(`/api/pnl-report`);
-export const getPnlReportUrl = (date?: string) => {
-  const path = date ? `/api/pnl-report/${date}` : `/api/pnl-report/latest`;
+// ═══════════════════════════════════════════════════════════════════════
+// PnL Report / Tearsheet
+// ═══════════════════════════════════════════════════════════════════════
+export const getPnlReportList = (strategy?: string) =>
+  strategy === 'sr'
+    ? fetchApi<any[]>('/api/sr/tearsheet/list')
+    : fetchApi<{ date: string; filename: string }[]>('/api/pnl-report');
+export const getPnlReportUrl = (date?: string, strategy?: string) => {
+  if (strategy === 'sr') {
+    const p = date ? `/api/sr/tearsheet/${date}` : '/api/sr/tearsheet/list';
+    const keyParam = API_KEY ? `?key=${API_KEY}` : '';
+    return `${API_BASE}${p}${keyParam}`;
+  }
+  const p = date ? `/api/pnl-report/${date}` : '/api/pnl-report/latest';
   const keyParam = API_KEY ? `?key=${API_KEY}` : '';
-  return `${API_BASE}${path}${keyParam}`;
+  return `${API_BASE}${p}${keyParam}`;
 };
 
+// ═══════════════════════════════════════════════════════════════════════
 // Monitor / Portfolio History
-export const getMonitorHistoryList = () =>
-  fetchApi<any[]>(`/api/monitor-history/list`);
-export const getMonitorHistorySheets = (filename: string) =>
-  fetchApi<string[]>(`/api/monitor-history/${encodeURIComponent(filename)}/sheets`);
-export const getMonitorHistorySheet = (filename: string, sheet: string) =>
-  fetchApi<any>(`/api/monitor-history/${encodeURIComponent(filename)}/${encodeURIComponent(sheet)}`);
+// ═══════════════════════════════════════════════════════════════════════
+export const getMonitorHistoryList = (strategy?: string) =>
+  strategy === 'sr'
+    ? fetchApi<any[]>('/api/sr/portfolio-history/list')
+    : fetchApi<any[]>('/api/monitor-history/list');
+export const getMonitorHistorySheets = (filename: string, strategy?: string) =>
+  strategy === 'sr'
+    ? fetchApi<string[]>(`/api/sr/portfolio-history/${encodeURIComponent(filename)}/sheets`)
+    : fetchApi<string[]>(`/api/monitor-history/${encodeURIComponent(filename)}/sheets`);
+export const getMonitorHistorySheet = (filename: string, sheet: string, strategy?: string) =>
+  strategy === 'sr'
+    ? fetchApi<any>(`/api/sr/portfolio-history/${encodeURIComponent(filename)}/${encodeURIComponent(sheet)}`)
+    : fetchApi<any>(`/api/monitor-history/${encodeURIComponent(filename)}/${encodeURIComponent(sheet)}`);
+
+// ═══════════════════════════════════════════════════════════════════════
+// SR-only: Smart Select + Strategy Performance + Params list
+// ═══════════════════════════════════════════════════════════════════════
+export const getSRSmartSelect = () =>
+  fetchApi<any>('/api/sr/smart-select');
+export const getSRStrategyPerformance = () =>
+  fetchApi<any>('/api/sr/strategy-performance');
+export const getSRParamsList = () =>
+  fetchApi<string[]>('/api/sr/params/list');
 
 // === Someo Agent SSE streaming ===
 export async function* callAgent(

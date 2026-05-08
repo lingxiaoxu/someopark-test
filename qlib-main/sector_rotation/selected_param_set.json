@@ -1,94 +1,96 @@
 {
-  "param_set": "tight_beta_tracker",
-  "signal_version": "v1",
+  "param_set": "stagflation",
+  "signal_version": "v2",
   "selection_method": "mcps_oos_filtered",
   "selected_at": "2026-05-07",
   "last_updated": "2026-05-07",
-  "mcps_oos_filtered": 1.4179,
-  "recent_sharpe_12m": 1.8617,
-  "full_period_sharpe": 1.0014,
-  "full_period_calmar": 0.6381,
+  "mcps_oos_filtered": 1.1615,
+  "recent_sharpe_12m": 1.0518,
+  "full_period_sharpe": 0.8942,
+  "full_period_calmar": 0.775,
   "top_candidates": [
     {
-      "name": "tight_beta_tracker",
-      "version": "v1",
-      "composite": 1.6067,
-      "mcps_score": 1.0546
+      "name": "stagflation",
+      "version": "v2",
+      "mcps_score": 1.1615,
+      "full_period_sharpe": 0.8942,
+      "recent_sharpe_12m": 1.0518
     },
     {
-      "name": "value_tilt",
-      "version": "v1",
-      "composite": 0.7199,
-      "mcps_score": 1.0506
+      "name": "early_recovery",
+      "version": "v2",
+      "mcps_score": 1.1565,
+      "full_period_sharpe": 0.9653,
+      "recent_sharpe_12m": 1.2913
     },
     {
-      "name": "defensive_rotation",
-      "version": "v1",
-      "composite": 0.5939,
-      "mcps_score": 1.0401
+      "name": "risk_parity_lw",
+      "version": "v2",
+      "mcps_score": 1.141,
+      "full_period_sharpe": 0.8839,
+      "recent_sharpe_12m": 1.0145
     },
     {
-      "name": "hawkish_macro",
-      "version": "v1",
-      "composite": -0.0399,
-      "mcps_score": 1.0166
+      "name": "diversified_5_rp",
+      "version": "v2",
+      "mcps_score": 1.1303,
+      "full_period_sharpe": 0.8749,
+      "recent_sharpe_12m": 1.0065
     },
     {
-      "name": "default",
-      "version": "v1",
-      "composite": -0.3865,
-      "mcps_score": 1.0104
+      "name": "dovish_macro",
+      "version": "v2",
+      "mcps_score": 1.1265,
+      "full_period_sharpe": 0.8913,
+      "recent_sharpe_12m": 1.4795
     },
     {
-      "name": "inv_vol_lw",
-      "version": "v1",
-      "composite": -0.3865,
-      "mcps_score": 1.0104
+      "name": "rate_hike_cycle",
+      "version": "v2",
+      "mcps_score": 1.1175,
+      "full_period_sharpe": 0.8658,
+      "recent_sharpe_12m": 0.9331
     },
     {
-      "name": "standard_4",
-      "version": "v1",
-      "composite": -0.3865,
-      "mcps_score": 1.0104
+      "name": "momentum_heavy",
+      "version": "v2",
+      "mcps_score": 1.1082,
+      "full_period_sharpe": 0.8575,
+      "recent_sharpe_12m": 1.1074
     },
     {
-      "name": "inv_vol_oas",
-      "version": "v1",
-      "composite": -0.3973,
-      "mcps_score": 1.0133
+      "name": "equal_weight_optimizer",
+      "version": "v2",
+      "mcps_score": 1.0936,
+      "full_period_sharpe": 0.8418,
+      "recent_sharpe_12m": 1.2422
     },
     {
-      "name": "patient_dd",
-      "version": "v1",
-      "composite": -0.4139,
-      "mcps_score": 1.0218
+      "name": "responsive",
+      "version": "v2",
+      "mcps_score": 1.0839,
+      "full_period_sharpe": 0.9113,
+      "recent_sharpe_12m": 1.6112
     },
     {
-      "name": "low_turnover",
-      "version": "v1",
-      "composite": -0.91,
-      "mcps_score": 0.9925
+      "name": "fast_momentum",
+      "version": "v2",
+      "mcps_score": 1.0668,
+      "full_period_sharpe": 0.8861,
+      "recent_sharpe_12m": 1.5245
     }
   ],
-  "n_candidates": 55,
-  "n_oos_survivors": 55,
+  "n_candidates": 45,
+  "n_oos_survivors": 45,
   "oos_filter_applied": true,
-  "oos_mean_sharpe": 1.139,
-  "oos_n_selected": 4,
-  "wf_mean_wfe": 0.9494,
-  "macro_data_days": 1972,
+  "oos_mean_sharpe": 1.14,
+  "oos_n_selected": 29,
+  "wf_mean_wfe": 0.8335,
+  "macro_data_days": 1973,
   "switch_history": [],
   "health": {
-    "days_since_switch": 1,
+    "days_since_switch": 0,
     "current_rank": 1,
-    "anomaly_detected": false,
-    "_consecutive_best_days": 1,
-    "_prev_best_param": "tight_beta_tracker"
-  },
-  "mcps_score": 1.0546,
-  "composite_score": 1.6067,
-  "version_selector": {
-    "recommended": "v1",
-    "v1_confidence": 0.925
+    "anomaly_detected": false
   }
 }

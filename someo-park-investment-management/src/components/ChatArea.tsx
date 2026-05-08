@@ -137,7 +137,7 @@ export default function ChatArea({
   const [errorMessage, setErrorMessage] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [currentStanseAgent, setCurrentStanseAgent] = useState<DeepPartial<StanseAgentSchema> | null>(null)
-  const [selectedStrategy, setSelectedStrategy] = useState<'mrpt' | 'mtfs'>('mrpt')
+  const [selectedStrategy, setSelectedStrategy] = useState<'mrpt' | 'mtfs' | 'sr'>('mrpt')
   // Gate all artifact/chat interactions behind login
   const guardedSetArtifact = useCallback((a: any) => {
     if (!session) { onSignInClick?.(); return }
@@ -156,8 +156,11 @@ export default function ChatArea({
 
   const { data: mrptInv } = useApi(() => getInventory('mrpt'), [])
   const { data: mtfsInv } = useApi(() => getInventory('mtfs'), [])
-  const currentInv = selectedStrategy === 'mrpt' ? mrptInv : mtfsInv
-  const activePairs = currentInv ? Object.entries(currentInv.pairs || {}).filter(([, p]: any) => (p as any).direction !== null) : []
+  const { data: srInv } = useApi(() => getInventory('sr'), [])
+  const currentInv = selectedStrategy === 'sr' ? srInv : (selectedStrategy === 'mrpt' ? mrptInv : mtfsInv)
+  const activePairs = selectedStrategy === 'sr'
+    ? (currentInv ? Object.entries(currentInv.holdings || {}).filter(([, h]: any) => (h as any).weight > 0.01).map(([ticker, h]: any) => [ticker, { direction: 'long', ticker }]) : [])
+    : (currentInv ? Object.entries(currentInv.pairs || {}).filter(([, p]: any) => (p as any).direction !== null) : [])
 
   const models = modelList as LLMModel[]
   const currentModel = models.find(m => m.id === languageModel.model) || models[0]
@@ -634,38 +637,28 @@ export default function ChatArea({
                   <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#111', fontFamily: 'var(--font-mono)' }}>{t('chat.activePairs')} <span style={{ color: '#00cc66' }}>({activePairs.length})</span></div>
                   {/* Strategy toggle */}
                   <div className="flex overflow-hidden" style={{ border: '2px solid #111' }}>
-                    <button
-                      onClick={() => setSelectedStrategy('mrpt')}
-                      style={{
-                        padding: '3px 12px',
-                        fontSize: '10px',
-                        fontFamily: 'var(--font-mono)',
-                        fontWeight: 700,
-                        letterSpacing: '.06em',
-                        textTransform: 'uppercase',
-                        transition: 'all .1s',
-                        background: selectedStrategy === 'mrpt' ? '#111' : '#fff',
-                        color: selectedStrategy === 'mrpt' ? '#fff' : '#555',
-                        border: 'none',
-                        cursor: 'pointer',
-                      }}
-                    >MRPT</button>
-                    <button
-                      onClick={() => setSelectedStrategy('mtfs')}
-                      style={{
-                        padding: '3px 12px',
-                        fontSize: '10px',
-                        fontFamily: 'var(--font-mono)',
-                        fontWeight: 700,
-                        letterSpacing: '.06em',
-                        textTransform: 'uppercase',
-                        transition: 'all .1s',
-                        background: selectedStrategy === 'mtfs' ? '#111' : '#fff',
-                        color: selectedStrategy === 'mtfs' ? '#fff' : '#555',
-                        borderLeft: '2px solid #111',
-                        cursor: 'pointer',
-                      }}
-                    >MTFS</button>
+                    {(['mrpt', 'mtfs', 'sr'] as const).map((s, i) => (
+                      <button
+                        key={s}
+                        onClick={() => setSelectedStrategy(s)}
+                        style={{
+                          padding: '3px 12px',
+                          fontSize: '10px',
+                          fontFamily: 'var(--font-mono)',
+                          fontWeight: 700,
+                          letterSpacing: '.06em',
+                          textTransform: 'uppercase' as const,
+                          transition: 'all .1s',
+                          background: selectedStrategy === s ? '#111' : '#fff',
+                          color: selectedStrategy === s ? '#fff' : '#555',
+                          borderTop: 'none',
+                          borderBottom: 'none',
+                          borderRight: 'none',
+                          borderLeft: i > 0 ? '2px solid #111' : 'none',
+                          cursor: 'pointer',
+                        }}
+                      >{s.toUpperCase()}</button>
+                    ))}
                   </div>
                 </div>
                 {activePairs.length > 0 ? (

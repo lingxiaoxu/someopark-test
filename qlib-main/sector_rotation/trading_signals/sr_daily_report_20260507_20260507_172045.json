@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-05-04T01:29:03.519150",
-  "signal_date": "2026-05-04",
+  "generated_at": "2026-05-07T17:20:45.012984",
+  "signal_date": "2026-05-07",
   "capital": 1000000,
-  "dry_run": true,
+  "dry_run": false,
   "regime": {
     "label": "risk_on",
-    "vix": 16.809999,
-    "hy_spread_bps": 283.0,
-    "yield_curve_pct": 0.52,
-    "fin_stress": -0.6782,
-    "nfci": -0.518,
+    "vix": 17.389999,
+    "hy_spread_bps": 277.0,
+    "yield_curve_pct": 0.5,
+    "fin_stress": -0.6702,
+    "nfci": -0.51,
     "effr": 3.64,
-    "breakeven_10y": 2.46
+    "breakeven_10y": 2.47
   },
   "rebalance_decision": {
     "rebalance": false,
     "reason": "no_rebalance"
   },
-  "risk_flags": "RiskFlags(date=Timestamp('2026-05-01 00:00:00'), vol_scaling_triggered=False, vix_emergency_triggered=False, dd_circuit_triggered=False, beta_adjusted=True, realized_vol_annual=0.09784434858424651, historical_vol_annual=0.09981810923121916, current_vix=16.809999465942383, portfolio_beta=0.38190723852593883, current_dd_pct=nan, cash_pct=0.0, notes=['Beta adjusted: 0.382 \u2192 target ~1.00'])",
+  "risk_flags": "RiskFlags(date=Timestamp('2026-05-06 00:00:00'), vol_scaling_triggered=False, vix_emergency_triggered=False, dd_circuit_triggered=False, beta_adjusted=True, realized_vol_annual=0.08135089585663831, historical_vol_annual=0.0991478584742042, current_vix=17.389999389648438, portfolio_beta=0.5173426486110195, current_dd_pct=nan, cash_pct=0.0, notes=['Beta adjusted: 0.517 \u2192 target ~1.00'])",
   "cash_weight": 0.0,
   "signals": [
     {
@@ -28,8 +28,8 @@
       "delta_weight": 0.0,
       "target_shares": 4861,
       "current_shares": 4861,
-      "price": 51.35,
-      "composite_score": 1.06,
+      "price": 52.41,
+      "composite_score": 1.2578,
       "cs_mom": 1.0592,
       "ts_mult": 1.0
     },
@@ -41,8 +41,8 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 116.72,
-      "composite_score": -1.8655,
+      "price": 117.35,
+      "composite_score": -2.0668,
       "cs_mom": -2.5938,
       "ts_mult": 1.0
     },
@@ -54,8 +54,8 @@
       "delta_weight": 0.0,
       "target_shares": 3757,
       "current_shares": 3757,
-      "price": 58.85,
-      "composite_score": 1.3241,
+      "price": 57.0,
+      "composite_score": 1.5333,
       "cs_mom": 2.2165,
       "ts_mult": 1.0
     },
@@ -67,8 +67,8 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 51.92,
-      "composite_score": -0.6754,
+      "price": 51.84,
+      "composite_score": -0.0819,
       "cs_mom": -1.4537,
       "ts_mult": 1.0
     },
@@ -80,8 +80,8 @@
       "delta_weight": 0.0,
       "target_shares": 1509,
       "current_shares": 1509,
-      "price": 172.96,
-      "composite_score": -0.6962,
+      "price": 176.87,
+      "composite_score": 0.2096,
       "cs_mom": 0.4678,
       "ts_mult": 1.0
     },
@@ -93,8 +93,8 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 161.87,
-      "composite_score": -0.007,
+      "price": 170.03,
+      "composite_score": -0.097,
       "cs_mom": 0.8184,
       "ts_mult": 1.0
     },
@@ -106,8 +106,8 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 84.17,
-      "composite_score": 0.3089,
+      "price": 84.24,
+      "composite_score": -1.1784,
       "cs_mom": -0.9728,
       "ts_mult": 1.0
     },
@@ -119,8 +119,8 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 44.32,
-      "composite_score": 0.2433,
+      "price": 44.74,
+      "composite_score": 0.2913,
       "cs_mom": -0.0774,
       "ts_mult": 1.0
     },
@@ -132,8 +132,8 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 46.55,
-      "composite_score": -0.7975,
+      "price": 45.71,
+      "composite_score": 0.1986,
       "cs_mom": -0.0165,
       "ts_mult": 1.0
     },
@@ -145,8 +145,8 @@
       "delta_weight": 0.0,
       "target_shares": 1795,
       "current_shares": 1795,
-      "price": 145.16,
-      "composite_score": 1.3591,
+      "price": 145.4,
+      "composite_score": -0.3648,
       "cs_mom": -0.6622,
       "ts_mult": 1.0
     },
@@ -158,8 +158,8 @@
       "delta_weight": 0.0,
       "target_shares": 0,
       "current_shares": 0,
-      "price": 118.63,
-      "composite_score": -0.2538,
+      "price": 119.87,
+      "composite_score": 0.2983,
       "cs_mom": -0.5057,
       "ts_mult": 1.0
     }
@@ -180,5 +180,20 @@
     "n_positions": 4,
     "invested_pct": 100.0,
     "cash_pct": 0.0
+  },
+  "smart_select": {
+    "param_set": "tight_beta_tracker",
+    "signal_version": "v1",
+    "switched": false,
+    "switch_reason": null,
+    "current_rank": 1,
+    "mcps_score": 1.0546,
+    "best_candidate": "tight_beta_tracker",
+    "version_selector": {
+      "recommended": "v1",
+      "v1_confidence": 0.925
+    },
+    "anomaly_detected": false,
+    "nearest_cluster": 0
   }
 }

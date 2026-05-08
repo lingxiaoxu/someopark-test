@@ -1,9 +1,9 @@
 ================================================================
-  SECTOR ROTATION DAILY SIGNAL  —  2026-05-06
+  SECTOR ROTATION DAILY SIGNAL  —  2026-05-07
 ================================================================
 
   Regime : RISK_ON
-  VIX    : 17.4  HY=278bps  Curve=+0.50%  FSI=-0.678  NFCI=-0.518
+  VIX    : 17.4  HY=277bps  Curve=+0.50%  FSI=-0.670  NFCI=-0.510
 
   Rebalance : NO  (no_rebalance)
   → No trades today. Showing current holdings for reference.

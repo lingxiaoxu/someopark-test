@@ -21,6 +21,7 @@ import sandboxRoutes from './routes/sandbox.js';
 import publishRoutes from './routes/publish.js';
 import pnlReportRoutes from './routes/pnlReport.js';
 import agentRoutes from './routes/agent.js';
+import sectorRotationRoutes from './routes/sectorRotation.js';
 import { registerAllTools } from './tools/index.js';
 
 const app = express();
@@ -55,6 +56,7 @@ app.use('/api/morph-chat', morphChatRoutes);
 app.use('/api/sandbox', sandboxRoutes);
 app.use('/api/publish', publishRoutes);
 app.use('/api/pnl-report', pnlReportRoutes);
+app.use('/api/sr', sectorRotationRoutes);
 app.use('/api/agent', agentRoutes);
 
 // Register Someo Agent tools

@@ -6,8 +6,8 @@
     "spread_col": "Momentum_Spread_food"
   },
   {
-    "s1": "HST",
-    "s2": "CSCO",
+    "s1": "CSCO",
+    "s2": "HST",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
@@ -60,6 +60,12 @@
     "spread_col": "Momentum_Spread_industrial"
   },
   {
+    "s1": "AME",
+    "s2": "WMT",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
     "s1": "CINF",
     "s2": "AWK",
     "sector": "utilities",
@@ -82,11 +88,5 @@
     "s2": "CINF",
     "sector": "food",
     "spread_col": "Momentum_Spread_food"
-  },
-  {
-    "s1": "DE",
-    "s2": "CME",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
   }
 ]

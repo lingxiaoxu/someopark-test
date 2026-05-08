@@ -12,32 +12,20 @@
     "z_col": "Z_health"
   },
   {
-    "s1": "HRL",
-    "s2": "MKC",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
-    "s1": "DLR",
-    "s2": "PRU",
-    "sector": "realestate",
-    "z_col": "Z_realestate"
-  },
-  {
     "s1": "FSLR",
     "s2": "RSG",
     "sector": "industrial",
     "z_col": "Z_industrial"
   },
   {
-    "s1": "TXT",
-    "s2": "YUM",
-    "sector": "industrial",
-    "z_col": "Z_industrial"
-  },
-  {
     "s1": "ALB",
     "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "HRL",
+    "s2": "MKC",
     "sector": "food",
     "z_col": "Z_food"
   },
@@ -78,15 +66,27 @@
     "z_col": "Z_industrial"
   },
   {
-    "s1": "BAX",
-    "s2": "IDXX",
-    "sector": "health",
-    "z_col": "Z_health"
+    "s1": "AKAM",
+    "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
   },
   {
     "s1": "CL",
     "s2": "WST",
     "sector": "energy",
     "z_col": "Z_energy"
+  },
+  {
+    "s1": "BAX",
+    "s2": "IDXX",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
+    "s1": "AVB",
+    "s2": "INCY",
+    "sector": "realestate",
+    "z_col": "Z_realestate"
   }
 ]

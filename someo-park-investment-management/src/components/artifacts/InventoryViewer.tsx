@@ -28,7 +28,7 @@ export default function InventoryViewer({ params }: { params?: any }) {
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('inventory.title', { strategy: strategy.toUpperCase() })}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs'].map(s => (
+          {['mrpt', 'mtfs', 'sr'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>
