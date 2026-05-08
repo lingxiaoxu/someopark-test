@@ -36,7 +36,7 @@ export default function SignalTable({ params }: { params?: any }) {
           </div>
         </div>
         <div className="text-[10px] text-[var(--text-muted)] mb-2 shrink-0">
-          Signal Date: {data.signal_date} | Regime: {data.regime?.toUpperCase() || '—'}
+          Signal Date: {data.signal_date} | Regime: {typeof data.regime === 'string' ? data.regime.toUpperCase() : (data.regime?.regime_label || '—').toUpperCase()}
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">

@@ -122,8 +122,13 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
     });
   }
 
+  const heldCount = (srSectors?.sectors || []).filter((s: any) => s.held).length;
   const tabs = isSR ? [
-    { id: 'sector_etf', label: `Sector ETF (${(srSectors?.sectors || []).filter((s: any) => s.weight > 0.01).length})` },
+    { id: 'selected', label: t('pairUniverse.selected', { count: 0 }), disabled: true },
+    { id: 'coint', label: t('pairUniverse.cointegrated', { count: '—' }), disabled: true },
+    { id: 'similar', label: t('pairUniverse.similar', { count: '—' }), disabled: true },
+    { id: 'pca', label: t('pairUniverse.pca', { count: '—' }), disabled: true },
+    { id: 'sector_etf', label: `Sector ETF (${heldCount}/11)` },
   ] : [
     { id: 'selected', label: t('pairUniverse.selected', { count: (mrptPairs || []).length + (mtfsPairs || []).length }) },
     { id: 'coint', label: t('pairUniverse.cointegrated', { count: cointData?.total || '...' }) },
@@ -134,11 +139,16 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   return (
     <div className="flex flex-col h-full">
       <div className="flex gap-2 mb-4 overflow-x-auto shrink-0">
-        {tabs.map(tab => (
+        {tabs.map((tab: any) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${activeTab === tab.id ? 'bg-[var(--accent-primary)] text-white' : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)]'}`}
+            onClick={() => !tab.disabled && setActiveTab(tab.id)}
+            disabled={tab.disabled}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
+              tab.disabled ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed border border-[var(--border-subtle)]' :
+              activeTab === tab.id ? 'bg-[var(--accent-primary)] text-white' :
+              'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)]'
+            }`}
           >
             {tab.label}
           </button>
