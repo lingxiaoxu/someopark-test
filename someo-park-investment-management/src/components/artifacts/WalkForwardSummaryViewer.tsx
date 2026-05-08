@@ -16,6 +16,50 @@ export default function WalkForwardSummaryViewer({ params }: { params?: any }) {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data) return null;
 
+  // ══ SR MODE: synthetic OOS stats ══
+  if (strategy === 'sr' && data.available !== false) {
+    const sm = data.synthetic_metrics || {};
+    return (
+      <div className="flex flex-col h-full space-y-4">
+        <div className="flex items-center justify-between shrink-0">
+          <div className="text-sm font-medium text-[var(--text-primary)]">Walk-Forward Summary — SR ({data.n_folds} folds × {data.n_param_sets} params)</div>
+          <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
+            {['mrpt', 'mtfs', 'sr'].map(s => (
+              <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 shrink-0">
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+            <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">Synthetic OOS Sharpe</div>
+            <div className={`text-sm font-mono ${(sm.sharpe || 0) >= 0 ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>{sm.sharpe?.toFixed(3) || '—'}</div>
+          </div>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+            <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">OOS Max Drawdown</div>
+            <div className="text-sm font-mono text-[var(--error)]">{sm.maxdd ? (sm.maxdd * 100).toFixed(1) + '%' : '—'}</div>
+          </div>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+            <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">Mean WFE</div>
+            <div className="text-sm font-mono text-[var(--text-primary)]">{data.mean_wfe?.toFixed(3) || '—'}</div>
+          </div>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+            <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">OOS CAGR</div>
+            <div className="text-sm font-mono text-[var(--success)]">{sm.ann_ret ? (sm.ann_ret * 100).toFixed(1) + '%' : '—'}</div>
+          </div>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+            <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">OOS Calmar</div>
+            <div className="text-sm font-mono text-[var(--text-primary)]">{sm.calmar?.toFixed(3) || '—'}</div>
+          </div>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+            <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">DSR Aggregate</div>
+            <div className="text-sm font-mono text-[var(--text-primary)]">{data.dsr_aggregate?.toFixed(3) || '—'}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ══ MRPT/MTFS MODE — unchanged ══
   const windows = data.windows || [];
   const oosStats = data.oos_stats || {};
 

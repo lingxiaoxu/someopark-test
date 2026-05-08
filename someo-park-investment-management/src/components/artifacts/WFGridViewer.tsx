@@ -16,6 +16,54 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
 
   const { data: rawData, loading, error, refetch } = useApi(() => getDSRLog(strategy), [strategy]);
 
+  // ══ SR MODE: 73 fold grid instead of pair×window grid ══
+  if (!loading && !error && strategy === 'sr' && rawData) {
+    const folds = rawData.folds || rawData || [];
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div className="text-sm font-medium text-[var(--text-primary)]">Walk-Forward Fold Grid ({folds.length} folds)</div>
+          <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
+            {['mrpt', 'mtfs', 'sr'].map(s => (
+              <button key={s} onClick={() => { setStrategy(s); resetFilters(); }} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
+          <table className="w-full text-sm text-left">
+            <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
+              <tr>
+                <th className="px-3 py-2 font-medium">Fold</th>
+                <th className="px-3 py-2 font-medium">IS Period</th>
+                <th className="px-3 py-2 font-medium">OOS Period</th>
+                <th className="px-3 py-2 font-medium">Selected</th>
+                <th className="px-3 py-2 font-medium">Method</th>
+                <th className="px-3 py-2 font-medium text-right">IS SR</th>
+                <th className="px-3 py-2 font-medium text-right">OOS SR</th>
+                <th className="px-3 py-2 font-medium text-right">WFE</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]">
+              {folds.map((f: any) => (
+                <tr key={f.fold_id} className="hover:bg-[var(--bg-secondary)] text-xs">
+                  <td className="px-3 py-2 font-mono">{f.fold_id}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{f.is_start?.slice(0,10)} → {f.is_end?.slice(0,10)}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{f.oos_start?.slice(0,10)} → {f.oos_end?.slice(0,10)}</td>
+                  <td className="px-3 py-2 font-mono font-medium">{f.selected}</td>
+                  <td className="px-3 py-2"><span className="px-1.5 py-0.5 rounded text-[9px] bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]">{f.method}</span></td>
+                  <td className="px-3 py-2 font-mono text-right">{f.is_sharpe?.toFixed(2) ?? '—'}</td>
+                  <td className="px-3 py-2 font-mono text-right" style={{ color: (f.oos_sharpe ?? 0) > 0 ? 'var(--success)' : 'var(--error)' }}>{f.oos_sharpe?.toFixed(2) ?? '—'}</td>
+                  <td className="px-3 py-2 font-mono text-right">{f.wfe?.toFixed(2) ?? '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+  // ══ MRPT/MTFS MODE continues below ══
+
   const pairKeys = useMemo(() => {
     if (!rawData) return ['ALL'];
     const unique = [...new Set(rawData.map((r: any) => r.pair_key))];

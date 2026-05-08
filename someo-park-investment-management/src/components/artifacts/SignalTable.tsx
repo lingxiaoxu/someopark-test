@@ -15,7 +15,76 @@ export default function SignalTable({ params }: { params?: any }) {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data) return null;
 
-  // Signal file uses flat `signals` array with action field, or legacy active_signals/flat_signals
+  // ══════════════════════════════════════════════════════════════
+  // SR MODE: Sector ETF signals with V1/V2 selector
+  // ══════════════════════════════════════════════════════════════
+  if (strategy === 'sr') {
+    const srSignals: any[] = data.signals || [];
+    const activeETFs = srSignals.filter((s: any) => s.target_weight > 0.01);
+    const flatETFs = srSignals.filter((s: any) => !s.target_weight || s.target_weight <= 0.01);
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div className="text-sm font-medium text-[var(--text-primary)]">Trading Signals — SR</div>
+          <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
+            {['mrpt', 'mtfs', 'sr'].map(s => (
+              <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+                {s.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="text-[10px] text-[var(--text-muted)] mb-2 shrink-0">
+          Signal Date: {data.signal_date} | Regime: {data.regime?.toUpperCase() || '—'}
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-[var(--bg-tertiary)] border-b border-[var(--border-subtle)] text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
+                <tr>
+                  <th className="px-4 py-3 font-medium">Sector</th>
+                  <th className="px-4 py-3 font-medium">Action</th>
+                  <th className="px-4 py-3 font-medium text-right">Weight</th>
+                  <th className="px-4 py-3 font-medium text-right">Score</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {activeETFs.map((sig: any, idx: number) => (
+                  <tr key={idx} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                    <td className="px-4 py-3 font-mono font-medium">{sig.ticker}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide ${
+                        sig.action === 'HOLD' ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]' :
+                        sig.action?.includes('ENTER') || sig.action?.includes('BUY') ? 'bg-[var(--success)]/10 text-[var(--success)]' :
+                        sig.action?.includes('EXIT') || sig.action?.includes('SELL') ? 'bg-[var(--error)]/10 text-[var(--error)]' :
+                        'bg-[var(--text-muted)]/10 text-[var(--text-muted)]'
+                      }`}>{sig.action}</span>
+                    </td>
+                    <td className="px-4 py-3 font-mono text-xs text-right">{(sig.target_weight * 100).toFixed(1)}%</td>
+                    <td className="px-4 py-3 font-mono text-xs text-right" style={{ color: sig.composite_score > 0 ? 'var(--success)' : 'var(--error)' }}>
+                      {sig.composite_score?.toFixed(3)}
+                    </td>
+                  </tr>
+                ))}
+                {flatETFs.map((sig: any, idx: number) => (
+                  <tr key={`flat-${idx}`} className="hover:bg-[var(--bg-secondary)] transition-colors opacity-40">
+                    <td className="px-4 py-3 font-mono">{sig.ticker}</td>
+                    <td className="px-4 py-3"><span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide bg-[var(--text-muted)]/10 text-[var(--text-muted)]">FLAT</span></td>
+                    <td className="px-4 py-3 font-mono text-xs text-right">0%</td>
+                    <td className="px-4 py-3 font-mono text-xs text-right">{sig.composite_score?.toFixed(3) || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // MRPT/MTFS MODE — original code unchanged below
+  // ══════════════════════════════════════════════════════════════
   const allSignals: any[] = data.signals || [];
   const activeSignals = data.active_signals || allSignals.filter((s: any) => s.action && s.action !== 'FLAT' && s.action !== 'HOLD');
   const flatSignals = data.flat_signals || allSignals.filter((s: any) => s.action === 'FLAT' || s.action === 'HOLD');

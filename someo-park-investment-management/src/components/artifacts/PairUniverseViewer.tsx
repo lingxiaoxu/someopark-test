@@ -9,7 +9,8 @@ import PairBadge from '../PairBadge';
 
 export default function PairUniverseViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState('selected');
+  const isSR = params?.strategy === 'sr';
+  const [activeTab, setActiveTab] = useState(isSR ? 'sector_etf' : 'selected');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
@@ -23,21 +24,69 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   const sortArrow = (key: string) => sortKey === key ? (sortAsc ? ' ↑' : ' ↓') : '';
 
   // Selected pairs from JSON
-  const { data: mrptPairs, loading: loadingMrpt } = useApi(() => getPairUniverse('mrpt'), []);
-  const { data: mtfsPairs, loading: loadingMtfs } = useApi(() => getPairUniverse('mtfs'), []);
+  const { data: mrptPairs, loading: loadingMrpt } = useApi(() => isSR ? Promise.resolve([]) : getPairUniverse('mrpt'), [isSR]);
+  const { data: mtfsPairs, loading: loadingMtfs } = useApi(() => isSR ? Promise.resolve([]) : getPairUniverse('mtfs'), [isSR]);
+  // SR: sector ETF holdings
+  const { data: srSectors, loading: loadingSR } = useApi(() => isSR ? getPairUniverse('sr') : Promise.resolve(null), [isSR]);
 
   // DB pairs (loaded when tab clicked)
   const { data: cointData, loading: loadingCoint, error: errorCoint, refetch: refetchCoint } = useApi(() => getPairDb('coint'), []);
   const { data: similarData, loading: loadingSimilar } = useApi(() => getPairDb('similar'), []);
   const { data: pcaData, loading: loadingPca } = useApi(() => getPairDb('pca'), []);
 
-  const isLoading = activeTab === 'selected' ? (loadingMrpt || loadingMtfs) :
+  const isLoading = activeTab === 'sector_etf' ? loadingSR :
+    activeTab === 'selected' ? (loadingMrpt || loadingMtfs) :
     activeTab === 'coint' ? loadingCoint :
     activeTab === 'similar' ? loadingSimilar : loadingPca;
 
   if (isLoading) return <LoadingState />;
 
-  // Build current tab data
+  // SR: Sector ETF tab — show currently held sector ETFs
+  if (activeTab === 'sector_etf' && isSR) {
+    const sectors = (srSectors?.sectors || []).filter((s: any) => s.weight > 0.01);
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex gap-2 mb-4 overflow-x-auto shrink-0">
+          {[{ id: 'sector_etf', label: `Sector ETF (${sectors.length})` }].map(tab => (
+            <button key={tab.id} className="px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap bg-[var(--accent-primary)] text-white">
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="text-xs text-[var(--text-muted)] mb-3">
+          Param: {srSectors?.param_set || '—'} | Version: {srSectors?.signal_version || 'v1'}
+        </div>
+        <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
+          <table className="w-full text-sm text-left">
+            <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
+              <tr>
+                <th className="px-4 py-3 font-medium">ETF</th>
+                <th className="px-4 py-3 font-medium text-right">Weight</th>
+                <th className="px-4 py-3 font-medium">Entry Date</th>
+                <th className="px-4 py-3 font-medium text-right">Cost Basis</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]">
+              {sectors.map((s: any) => (
+                <tr key={s.ticker} className="hover:bg-[var(--bg-secondary)] bg-[var(--accent-primary)]/5">
+                  <td className="px-4 py-3 font-mono font-medium text-[var(--text-primary)]">{s.ticker}</td>
+                  <td className="px-4 py-3 text-right font-mono">{(s.weight * 100).toFixed(1)}%</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{s.entry_date || '—'}</td>
+                  <td className="px-4 py-3 text-right font-mono">${s.cost_basis?.toFixed(2) || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">LONG</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+
+  // Build current tab data (MRPT/MTFS — unchanged)
   let currentPairs: any[] = [];
   if (activeTab === 'selected') {
     const mrpt = (mrptPairs || []).map((p: any) => ({ ...p, pair: `${p.s1}/${p.s2}`, strategy: 'MRPT', selected: true }));
@@ -68,7 +117,9 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
     });
   }
 
-  const tabs = [
+  const tabs = isSR ? [
+    { id: 'sector_etf', label: `Sector ETF (${(srSectors?.sectors || []).filter((s: any) => s.weight > 0.01).length})` },
+  ] : [
     { id: 'selected', label: t('pairUniverse.selected', { count: (mrptPairs || []).length + (mtfsPairs || []).length }) },
     { id: 'coint', label: t('pairUniverse.cointegrated', { count: cointData?.total || '...' }) },
     { id: 'similar', label: t('pairUniverse.similar', { count: similarData?.total || '...' }) },

@@ -15,6 +15,53 @@ export default function InventoryViewer({ params }: { params?: any }) {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data) return null;
 
+  // ══ SR MODE ══
+  if (strategy === 'sr') {
+    const holdings = Object.entries(data.holdings || {}).filter(([, h]: any) => (h as any).weight > 0.01);
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div className="text-sm font-medium text-[var(--text-primary)]">Current Inventory — SR</div>
+          <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
+            {['mrpt', 'mtfs', 'sr'].map(s => (
+              <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
+            ))}
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mb-4 shrink-0">
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+            <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">As Of</div>
+            <div className="text-sm font-mono text-[var(--text-primary)]">{data.as_of}</div>
+          </div>
+          <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+            <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">Capital</div>
+            <div className="text-sm font-mono text-[var(--text-primary)]">${Number(data.capital).toLocaleString()}</div>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto space-y-3">
+          {holdings.map(([ticker, h]: any) => (
+            <div key={ticker} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="font-mono font-bold text-[var(--text-primary)]">{ticker}</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--success)]/10 text-[var(--success)]">LONG</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div><span className="text-[var(--text-muted)]">Weight</span><br/><span className="font-mono">{(h.weight * 100).toFixed(1)}%</span></div>
+                <div><span className="text-[var(--text-muted)]">Shares</span><br/><span className="font-mono">{h.shares?.toLocaleString()}</span></div>
+                <div><span className="text-[var(--text-muted)]">Price</span><br/><span className="font-mono">${h.last_price?.toFixed(2)}</span></div>
+                <div><span className="text-[var(--text-muted)]">Cost Basis</span><br/><span className="font-mono">${h.cost_basis?.toFixed(2)}</span></div>
+                <div><span className="text-[var(--text-muted)]">Entry</span><br/><span className="font-mono">{h.entry_date}</span></div>
+                <div><span className="text-[var(--text-muted)]">Days Held</span><br/><span className="font-mono">{h.days_held}</span></div>
+              </div>
+            </div>
+          ))}
+          {holdings.length === 0 && <div className="text-center text-[var(--text-muted)] py-8">No open positions</div>}
+        </div>
+      </div>
+    );
+  }
+
+  // ══ MRPT/MTFS MODE — unchanged ══
   const activePairs = Object.entries(data.pairs || {}).filter(([, p]: any) => (p as any).direction !== null);
 
   const calcDaysHeld = (openDate: string) => {
