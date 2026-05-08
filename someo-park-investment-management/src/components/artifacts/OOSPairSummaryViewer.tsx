@@ -68,6 +68,9 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
   }
   // ══ MRPT/MTFS MODE — unchanged below ══
 
+  // Guard: rawPairs must be an array for MRPT/MTFS (SR returns object)
+  if (!Array.isArray(rawPairs)) return <LoadingState />;
+
   const pairs = [...rawPairs].sort((a: any, b: any) => {
     const va = Number(a[sortKey]) || 0;
     const vb = Number(b[sortKey]) || 0;
