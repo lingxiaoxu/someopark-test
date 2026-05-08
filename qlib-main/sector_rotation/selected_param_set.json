@@ -1,6 +1,6 @@
 {
-  "param_set": "sensitive_dd",
-  "signal_version": "v1",
+  "param_set": "stagflation",
+  "signal_version": "v2",
   "selection_method": "mcps_oos_filtered",
   "selected_at": "2026-05-08",
   "last_updated": "2026-05-08",

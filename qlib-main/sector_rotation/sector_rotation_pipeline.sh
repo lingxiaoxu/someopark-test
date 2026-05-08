@@ -596,9 +596,13 @@ if sel_json.exists():
     with open(sel_json) as f:
         sel = json.load(f)
     param_set_name = sel.get('param_set')
+    _sel_ver = sel.get('signal_version')
     if param_set_name and param_set_name in PARAM_SETS:
         active_cfg = apply_param_set(base_cfg, PARAM_SETS[param_set_name])
-        log.info(f"Tearsheet: using selected param set '{param_set_name}'")
+        # Apply signal_version from selected_param_set.json (v1 or v2)
+        if _sel_ver:
+            active_cfg.setdefault("signals", {})["signal_version"] = _sel_ver
+        log.info(f"Tearsheet: using selected param set '{param_set_name}' (ver={_sel_ver or 'v1'})")
     else:
         log.warning(f"Tearsheet: selected param set '{param_set_name}' not found, using base_cfg")
         param_set_name = None
@@ -616,12 +620,14 @@ _sig_ver = active_cfg.get("signals", {}).get("signal_version", "v1")
 _rec_cfg = base_cfg.get("portfolio_record", {})
 _batch_results = {}  # name → BacktestResult (for Excel after WF)
 for name in PARAM_SETS:
-    row, _eq = _run_one_with_equity(name, base_cfg, prices, macro)
+    row, _eq = _run_one_with_equity(name, base_cfg, prices, macro, signal_version=_sig_ver if _sig_ver != 'v1' else None)
     rows.append(row)
     # Store result for Excel generation after WF completes
     if row["status"] == "ok":
         try:
             _pcfg = apply_param_set(base_cfg, PARAM_SETS[name])
+            if _sig_ver and _sig_ver != 'v1':
+                _pcfg.setdefault("signals", {})["signal_version"] = _sig_ver
             _pbt = SectorRotationBacktest(_pcfg)
             _batch_results[name] = _pbt.run(prices=prices, macro=macro)
         except Exception:
@@ -641,6 +647,7 @@ wf_analyzer = WalkForwardAnalyzer(
     oos_months=6,
     step_days=15,
     embargo_days=5,
+    signal_version=_sig_ver if _sig_ver != 'v1' else None,
 )
 wf_result = wf_analyzer.run()
 print(wf_result.summary())
