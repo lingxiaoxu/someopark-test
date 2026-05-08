@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
@@ -9,13 +9,7 @@ import PairBadge from '../PairBadge';
 
 export default function PairUniverseViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const isSR = params?.strategy === 'sr';
-  const [activeTab, setActiveTab] = useState(isSR ? 'sector_etf' : 'selected');
-
-  // Sync activeTab when strategy changes
-  useEffect(() => {
-    setActiveTab(isSR ? 'sector_etf' : 'selected');
-  }, [isSR]);
+  const [activeTab, setActiveTab] = useState('selected');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
@@ -29,10 +23,10 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   const sortArrow = (key: string) => sortKey === key ? (sortAsc ? ' ↑' : ' ↓') : '';
 
   // Selected pairs from JSON
-  const { data: mrptPairs, loading: loadingMrpt } = useApi(() => isSR ? Promise.resolve([]) : getPairUniverse('mrpt'), [isSR]);
-  const { data: mtfsPairs, loading: loadingMtfs } = useApi(() => isSR ? Promise.resolve([]) : getPairUniverse('mtfs'), [isSR]);
-  // SR: sector ETF holdings
-  const { data: srSectors, loading: loadingSR } = useApi(() => isSR ? getPairUniverse('sr') : Promise.resolve(null), [isSR]);
+  const { data: mrptPairs, loading: loadingMrpt } = useApi(() => getPairUniverse('mrpt'), []);
+  const { data: mtfsPairs, loading: loadingMtfs } = useApi(() => getPairUniverse('mtfs'), []);
+  // SR: sector ETF holdings (always loaded for Sector ETF tab)
+  const { data: srSectors, loading: loadingSR } = useApi(() => getPairUniverse('sr'), []);
 
   // DB pairs (loaded when tab clicked)
   const { data: cointData, loading: loadingCoint, error: errorCoint, refetch: refetchCoint } = useApi(() => getPairDb('coint'), []);
@@ -40,14 +34,14 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   const { data: pcaData, loading: loadingPca } = useApi(() => getPairDb('pca'), []);
 
   const isLoading = activeTab === 'sector_etf' ? loadingSR :
-    activeTab === 'selected' ? (loadingMrpt || loadingMtfs) :
+    activeTab === 'selected' ? (loadingMrpt || loadingMtfs || loadingSR) :
     activeTab === 'coint' ? loadingCoint :
     activeTab === 'similar' ? loadingSimilar : loadingPca;
 
   if (isLoading) return <LoadingState />;
 
-  // SR: Sector ETF tab — show ALL 11 sector ETFs, highlight held ones
-  if (activeTab === 'sector_etf' && isSR) {
+  // Sector ETF tab — show ALL 11 sector ETFs, highlight held ones
+  if (activeTab === 'sector_etf') {
     const allSectors = srSectors?.sectors || [];
     const heldCount = allSectors.filter((s: any) => s.held).length;
     return (
@@ -128,17 +122,12 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   }
 
   const heldCount = (srSectors?.sectors || []).filter((s: any) => s.held).length;
-  const tabs = isSR ? [
-    { id: 'selected', label: t('pairUniverse.selected', { count: 0 }), disabled: true },
-    { id: 'coint', label: t('pairUniverse.cointegrated', { count: '—' }), disabled: true },
-    { id: 'similar', label: t('pairUniverse.similar', { count: '—' }), disabled: true },
-    { id: 'pca', label: t('pairUniverse.pca', { count: '—' }), disabled: true },
-    { id: 'sector_etf', label: `Sector ETF (${heldCount}/11)` },
-  ] : [
+  const tabs = [
     { id: 'selected', label: t('pairUniverse.selected', { count: (mrptPairs || []).length + (mtfsPairs || []).length }) },
     { id: 'coint', label: t('pairUniverse.cointegrated', { count: cointData?.total || '...' }) },
     { id: 'similar', label: t('pairUniverse.similar', { count: similarData?.total || '...' }) },
     { id: 'pca', label: t('pairUniverse.pca', { count: pcaData?.total || '...' }) },
+    { id: 'sector_etf', label: `Sector ETF (${heldCount}/11)` },
   ];
 
   return (
@@ -147,10 +136,8 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
         {tabs.map((tab: any) => (
           <button
             key={tab.id}
-            onClick={() => !tab.disabled && setActiveTab(tab.id)}
-            disabled={tab.disabled}
+            onClick={() => setActiveTab(tab.id)}
             className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
-              tab.disabled ? 'bg-[var(--bg-tertiary)] text-[var(--text-muted)] opacity-40 cursor-not-allowed border border-[var(--border-subtle)]' :
               activeTab === tab.id ? 'bg-[var(--accent-primary)] text-white' :
               'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)]'
             }`}
