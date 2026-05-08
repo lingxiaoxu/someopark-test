@@ -52,6 +52,10 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   const [activeSheet, setActiveSheet] = useState<string>('');
   const [sheetData, setSheetData] = useState<any>(null);
   const [sheetLoading, setSheetLoading] = useState(false);
+  // SR filters
+  const [filterVersion, setFilterVersion] = useState<string>('all');
+  const [filterSpan, setFilterSpan] = useState<string>('all');
+  const [filterMode, setFilterMode] = useState<string>('all');
 
   // Reset file selection when strategy changes
   useEffect(() => {
@@ -112,22 +116,9 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Strategy switcher + File selector */}
-      <div className="flex items-center justify-between mb-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-muted)]">{t('portfolioHistory.file')}</span>
-          <select
-            value={selectedFile}
-            onChange={e => setSelectedFile(e.target.value)}
-            className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1.5 text-xs focus:outline-none focus:border-[var(--accent-primary)] text-[var(--text-primary)] max-w-[300px] truncate"
-          >
-            {fileList.map((f: any) => (
-              <option key={f.filename} value={f.filename}>
-                {f.pair ? `${f.pair} (${f.strategy})` : `${f.param} [${f.version} ${f.span} ${f.mode}]`} - {f.timestamp}
-              </option>
-            ))}
-          </select>
-        </div>
+      {/* Strategy switcher + filters + File selector */}
+      <div className="flex items-center justify-between mb-2 shrink-0">
+        <div className="text-xs font-medium text-[var(--text-primary)]">Portfolio History</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
           <button onClick={() => setStrategy('mrpt')}
             className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
@@ -138,6 +129,61 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
             SR
           </button>
         </div>
+      </div>
+
+      {/* SR filter row */}
+      {strategy === 'sr' && fileList.length > 0 && (() => {
+        const versions = [...new Set(fileList.map((f: any) => f.version).filter(Boolean))];
+        const spans = [...new Set(fileList.map((f: any) => f.span).filter(Boolean))];
+        const modes = [...new Set(fileList.map((f: any) => f.mode).filter(Boolean))];
+        return (
+          <div className="flex items-center gap-2 mb-2 shrink-0 flex-wrap">
+            <select value={filterVersion} onChange={e => { setFilterVersion(e.target.value); setSelectedFile(''); }}
+              className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1 text-[10px]">
+              <option value="all">Version: All</option>
+              {versions.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+            <select value={filterSpan} onChange={e => { setFilterSpan(e.target.value); setSelectedFile(''); }}
+              className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1 text-[10px]">
+              <option value="all">Scope: All</option>
+              {spans.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <select value={filterMode} onChange={e => { setFilterMode(e.target.value); setSelectedFile(''); }}
+              className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1 text-[10px]">
+              <option value="all">Source: All</option>
+              {modes.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <span className="text-[10px] text-[var(--text-muted)]">
+              {fileList.filter((f: any) =>
+                (filterVersion === 'all' || f.version === filterVersion) &&
+                (filterSpan === 'all' || f.span === filterSpan) &&
+                (filterMode === 'all' || f.mode === filterMode)
+              ).length} / {fileList.length} files
+            </span>
+          </div>
+        );
+      })()}
+
+      {/* File selector dropdown */}
+      <div className="flex items-center gap-2 mb-3 shrink-0">
+        <span className="text-xs text-[var(--text-muted)]">{t('portfolioHistory.file')}</span>
+        <select
+          value={selectedFile}
+          onChange={e => setSelectedFile(e.target.value)}
+          className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1.5 text-xs focus:outline-none focus:border-[var(--accent-primary)] text-[var(--text-primary)] flex-1 max-w-[450px]"
+        >
+          {(strategy === 'sr'
+            ? fileList.filter((f: any) =>
+                (filterVersion === 'all' || f.version === filterVersion) &&
+                (filterSpan === 'all' || f.span === filterSpan) &&
+                (filterMode === 'all' || f.mode === filterMode))
+            : fileList
+          ).map((f: any) => (
+            <option key={f.filename} value={f.filename}>
+              {f.pair ? `${f.pair} (${f.strategy})` : `${f.param} [${f.version} ${f.span} ${f.mode}]`} - {f.timestamp}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Sheet tabs - show ALL sheets */}

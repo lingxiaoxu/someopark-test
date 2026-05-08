@@ -87,7 +87,7 @@ export default function PnlReportViewer({ params }: { params?: any }) {
         <select
           value={selectedItem}
           onChange={e => setSelectedItem(e.target.value)}
-          className="text-xs font-mono bg-[var(--bg-primary)] border border-[var(--border-subtle)] px-2 py-1.5 text-[var(--text-primary)] max-w-[350px] truncate"
+          className="text-xs font-mono bg-[var(--bg-primary)] border border-[var(--border-subtle)] px-2 py-1.5 text-[var(--text-primary)] max-w-[450px]"
         >
           {strategy === 'sr' ? (
             dates.map((f: any) => (

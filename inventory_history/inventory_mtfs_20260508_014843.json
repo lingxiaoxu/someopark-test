@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-05-07",
+  "as_of": "2026-05-06",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -199,17 +199,6 @@
           "unrealized_pnl": 706.28,
           "unrealized_pnl_pct": 0.42,
           "note": "Holding long, signal=0.014, exit at 0.3"
-        },
-        {
-          "date": "2026-05-07",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.005,
-          "exit_threshold": 0.314,
-          "unrealized_pnl": 257.04,
-          "unrealized_pnl_pct": 0.153,
-          "note": "Holding long, signal=0.005, exit at 0.314"
         }
       ],
       "last_updated": "2026-04-30"
@@ -396,17 +385,6 @@
           "unrealized_pnl": 1251.83,
           "unrealized_pnl_pct": 0.38,
           "note": "Holding long, signal=0.019, exit at 0.208"
-        },
-        {
-          "date": "2026-05-07",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.043,
-          "exit_threshold": 0.208,
-          "unrealized_pnl": 1648.31,
-          "unrealized_pnl_pct": 0.501,
-          "note": "Holding long, signal=0.043, exit at 0.208"
         }
       ],
       "last_updated": "2026-04-30"
@@ -545,17 +523,6 @@
           "unrealized_pnl": -16485.74,
           "unrealized_pnl_pct": -4.116,
           "note": "Holding long, signal=0.073, exit at 0.228"
-        },
-        {
-          "date": "2026-05-07",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": null,
-          "momentum_spread": 0.05,
-          "exit_threshold": 0.217,
-          "unrealized_pnl": -12921.94,
-          "unrealized_pnl_pct": -3.226,
-          "note": "Holding long, signal=0.05, exit at 0.217"
         }
       ]
     },
@@ -642,17 +609,6 @@
           "unrealized_pnl": -2345.71,
           "unrealized_pnl_pct": -0.715,
           "note": "Holding short, signal=-0.158, exit at 0.336"
-        },
-        {
-          "date": "2026-05-07",
-          "action": "HOLD",
-          "direction": "short",
-          "z_score": null,
-          "momentum_spread": -0.135,
-          "exit_threshold": 0.26,
-          "unrealized_pnl": -8105.41,
-          "unrealized_pnl_pct": -2.472,
-          "note": "Holding short, signal=-0.135, exit at 0.26"
         }
       ]
     }
