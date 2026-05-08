@@ -212,12 +212,22 @@ class SectorRotationRecord:
     #  Portfolio History Excel (26 sheets)
     # ──────────────────────────────────────────────────────────────
 
-    def export_portfolio_excel(self, output_path: Path = None) -> Path:
-        """Export 26-sheet portfolio history Excel."""
+    def export_portfolio_excel(self, output_path: Path = None,
+                              mode: str = "batch",
+                              span: str = "IS") -> Path:
+        """
+        Export 26-sheet portfolio history Excel.
+
+        Parameters
+        ----------
+        mode : entry point identifier — "batch" | "select" | "tearsheet" | "backtest"
+        span : data scope — "IS" (full-period in-sample) | "IS-OOS" (walk-forward validated)
+        """
         if output_path is None:
             _HIST_DIR.mkdir(parents=True, exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = _HIST_DIR / f"sr_portfolio_history_{self.param_set}_{ts}.xlsx"
+            ver = self.signal_version
+            output_path = _HIST_DIR / f"sr_portfolio_{self.param_set}_{ver}_{span}_{mode}_{ts}.xlsx"
 
         from openpyxl import Workbook
         wb = Workbook()
@@ -677,7 +687,8 @@ class SectorRotationRecord:
         if output_path is None:
             _HIST_DIR.mkdir(parents=True, exist_ok=True)
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_path = _HIST_DIR / f"monitor_sr_{self.param_set}_{ts}.xlsx"
+            ver = self.signal_version
+            output_path = _HIST_DIR / f"monitor_sr_{self.param_set}_{ver}_daily_{ts}.xlsx"
 
         from openpyxl import Workbook
         wb = Workbook()
@@ -747,12 +758,22 @@ class SectorRotationRecord:
 def export_wf_diagnostic_excel(
     wf_result,
     output_path: Path = None,
+    mode: str = "wf",
+    signal_version: str = "v1",
 ) -> Path:
-    """Export WF diagnostic Excel (5 sheets)."""
+    """
+    Export WF diagnostic Excel (5 sheets).
+
+    Parameters
+    ----------
+    mode : entry point — "wf" | "select" | "tearsheet" | "batch_oos"
+    signal_version : "v1" | "v2"
+    """
     if output_path is None:
         _HIST_DIR.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_path = _HIST_DIR / f"wf_diagnostic_sr_{ts}.xlsx"
+        wf_mode = wf_result.mode if hasattr(wf_result, 'mode') else "anchored"
+        output_path = _HIST_DIR / f"wf_diagnostic_sr_{signal_version}_IS-OOS_{wf_mode}_{mode}_{ts}.xlsx"
 
     from openpyxl import Workbook
     wb = Workbook()

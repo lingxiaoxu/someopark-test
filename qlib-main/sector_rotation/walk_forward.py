@@ -1198,7 +1198,9 @@ if __name__ == "__main__":
         try:
             from sector_rotation.portfolio_record import export_wf_diagnostic_excel
             if "anchored" in results:
-                export_wf_diagnostic_excel(results["anchored"])
+                export_wf_diagnostic_excel(
+                    results["anchored"], mode="wf",
+                    signal_version=args.signal_version or "v1")
         except Exception as _e:
             logger.warning(f"WF diagnostic Excel failed: {_e}")
     else:
@@ -1217,6 +1219,8 @@ if __name__ == "__main__":
         # WF Diagnostic Excel
         try:
             from sector_rotation.portfolio_record import export_wf_diagnostic_excel
-            export_wf_diagnostic_excel(wf_r)
+            export_wf_diagnostic_excel(
+                wf_r, mode="wf",
+                signal_version=args.signal_version or "v1")
         except Exception as _e:
             logger.warning(f"WF diagnostic Excel failed: {_e}")

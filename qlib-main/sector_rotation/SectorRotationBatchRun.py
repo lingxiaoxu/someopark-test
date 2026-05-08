@@ -614,7 +614,7 @@ def main() -> None:
                         leverage_ratio=_rec_cfg.get("leverage_ratio", 0.0),
                         interest_rate=_rec_cfg.get("interest_rate", 0.05),
                     )
-                    _prec.export_portfolio_excel()
+                    _prec.export_portfolio_excel(mode="batch", span="IS")
                     _n_excel += 1
                     print(f"  [{_n_excel}/{len(ok)}] {_pname} ✓")
                 except Exception as _exc:
@@ -966,11 +966,13 @@ def main() -> None:
                         leverage_ratio=_rec_cfg.get("leverage_ratio", 0.0),
                         interest_rate=_rec_cfg.get("interest_rate", 0.05),
                     )
-                    _record.export_portfolio_excel()
+                    _record.export_portfolio_excel(mode="select", span="IS-OOS")
 
                 # WF Diagnostic Excel
                 if _oos_filter_applied:
-                    export_wf_diagnostic_excel(_wf_result)
+                    export_wf_diagnostic_excel(
+                        _wf_result, mode="select",
+                        signal_version=args.signal_version or "v1")
             except Exception as _excel_e:
                 log.warning(f"[EXCEL] Portfolio record failed: {_excel_e}")
 
