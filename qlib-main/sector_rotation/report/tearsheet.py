@@ -896,7 +896,11 @@ def generate_tearsheet(
             out_dir = Path(__file__).parent / "output"
         out_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_path = out_dir / f"sector_rotation_tearsheet_{ts}.pdf"
+        # Include param_set and signal_version in filename for disambiguation
+        _ps = param_set_name or "default"
+        _sv = result.config.get("signals", {}).get("signal_version", "v1")
+        _has_wf = "IS-OOS" if wf_result else "IS"
+        output_path = out_dir / f"tearsheet_{_ps}_{_sv}_{_has_wf}_{ts}.pdf"
     else:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)

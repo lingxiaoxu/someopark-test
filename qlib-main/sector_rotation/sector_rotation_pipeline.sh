@@ -643,6 +643,26 @@ out_path = generate_tearsheet(
     param_set_name=param_set_name,
 )
 print(f"Tearsheet saved → {out_path}")
+
+# ── Generate portfolio Excel + WF diagnostic Excel ──────────────────────────
+try:
+    from sector_rotation.portfolio_record import SectorRotationRecord, export_wf_diagnostic_excel
+    _sig_ver = active_cfg.get("signals", {}).get("signal_version", "v1")
+    _rec_cfg = base_cfg.get("portfolio_record", {})
+    _record = SectorRotationRecord(
+        result=result, prices=prices, macro=macro,
+        param_set=param_set_name or "default",
+        signal_version=_sig_ver,
+        leverage_ratio=_rec_cfg.get("leverage_ratio", 0.0),
+        interest_rate=_rec_cfg.get("interest_rate", 0.05),
+    )
+    _excel_path = _record.export_portfolio_excel(mode="tearsheet", span="IS-OOS" if wf_result and wf_result.folds else "IS")
+    print(f"Portfolio Excel → {_excel_path}")
+    if wf_result and wf_result.folds:
+        _wf_path = export_wf_diagnostic_excel(wf_result, mode="tearsheet", signal_version=_sig_ver)
+        print(f"WF Diagnostic → {_wf_path}")
+except Exception as _e:
+    log.warning(f"Portfolio Excel export failed: {_e}")
 PYEOF
     RC=$?
     if [[ $RC -ne 0 ]]; then
