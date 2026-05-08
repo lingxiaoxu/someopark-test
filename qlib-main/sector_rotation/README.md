@@ -253,7 +253,7 @@ qlib-main/sector_rotation/
 ├── README.md                       本文件
 ├── RUNBOOK.md                      运维操作手册（首次/日常/月度/回测/故障排查）
 ├── config.yaml                     所有可调参数
-├── sector_rotation_pipeline.sh     主 Pipeline 控制器（14 个模式）
+├── sector_rotation_pipeline.sh     主 Pipeline 控制器（18 个模式）
 ├── update_eps_history.py           EPS 历史增量维护脚本
 ├── SectorRotationDailySignal.py    每日信号生成主脚本（含 smart_select 集成）
 ├── SectorRotationStrategyRuns.py   59 个命名参数集（13 组，A-M）
@@ -276,7 +276,9 @@ qlib-main/sector_rotation/
 ├── portfolio/
 │   ├── optimizer.py                逆波动率 / 风险平价 / GMV + Ledoit-Wolf 协方差
 │   ├── risk.py                     波动率缩放 + VIX 应急 + 回撤断路器 + beta
-│   └── rebalance.py                月度调度 + 阈值过滤 + 换手率上限
+│   ├── rebalance.py                月度调度 + 阈值过滤 + 换手率上限
+│   └── stop_loss.py                极端止损（circuit breaker + sector collapse + trailing）
+├── portfolio_record.py             26-sheet Excel + 5-sheet monitor + WF diagnostic 导出
 │
 ├── backtest/
 │   ├── engine.py                   事件驱动月度回测 + walk-forward 支持
@@ -1153,10 +1155,34 @@ Fold 73: [2018-07 ──────────── 2025-01-31] [emb] [2025-0
 | `output_dir` | `"report/output"` | Tearsheet PDF 输出目录 |
 | `figsize` | `[14, 8]` | 图表尺寸（英寸） |
 | `dpi` | `150` | 图表分辨率 |
-| `pdf_filename` | `"sector_rotation_tearsheet.pdf"` | PDF 报告文件名 |
+| `pdf_filename` | `"tearsheet_{param}_{ver}_{span}_{ts}.pdf"` | PDF 报告文件名（自动生成，含参数/版本/范围/时间戳） |
 | `strategy_color` | `"#1f77b4"` | 策略曲线颜色 |
 | `benchmark_color` | `"#ff7f0e"` | 基准曲线颜色 |
 | `ew_color` | `"#2ca02c"` | 等权基准曲线颜色 |
+
+---
+
+### 九.1、止损参数 `stop_loss`（极端事件专用）
+
+> 仅在股灾/熔断级别事件触发（2018-2026 历史触发 3-5 次）。正常市场永远不触发。
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `stop_loss.enabled` | `true` | 是否启用止损 |
+| `stop_loss.portfolio_circuit_breaker.enabled` | `true` | Portfolio circuit breaker |
+| `stop_loss.portfolio_circuit_breaker.spy_3d_limit` | `-0.07` | SPY 3 天累计跌 > 7% → 全组合仓位减半 |
+| `stop_loss.sector_collapse.enabled` | `true` | 单板块崩溃止损 |
+| `stop_loss.sector_collapse.max_dd_from_entry` | `-0.12` | 单 ETF 从入场跌 > 12% → 清仓该板块 |
+| `stop_loss.trailing_stop.enabled` | `true` | 追踪止损 |
+| `stop_loss.trailing_stop.max_dd_from_peak` | `-0.15` | 单 ETF 从峰值回撤 > 15% → 清仓该板块 |
+| `stop_loss.cooling_off_days` | `10` | 被止损板块 10 天内不允许重入 |
+
+### 九.2、Portfolio 记录参数 `portfolio_record`
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `portfolio_record.leverage_ratio` | `0.0` | 杠杆比率（0=无杠杆，1.0=100% 杠杆） |
+| `portfolio_record.interest_rate` | `0.05` | 年化利率（仅 leverage > 0 时生效） |
 
 ---
 
