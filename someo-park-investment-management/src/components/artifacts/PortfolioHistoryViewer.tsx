@@ -86,15 +86,16 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
       .catch(() => setSheets([]));
   }, [selectedFile]);
 
-  // Load sheet data when sheet selected
+  // Load sheet data when sheet or file selected
   useEffect(() => {
     if (!selectedFile || !activeSheet) return;
     setSheetLoading(true);
+    setSheetData(null);  // clear old data immediately
     getMonitorHistorySheet(selectedFile, activeSheet, strategy === 'sr' ? 'sr' : undefined)
       .then(setSheetData)
       .catch(() => setSheetData(null))
       .finally(() => setSheetLoading(false));
-  }, [selectedFile, activeSheet]);
+  }, [selectedFile, activeSheet, strategy]);
 
   if (loadingList) return <LoadingState />;
   if (errorList) return <ErrorState message={errorList} onRetry={refetch} />;
@@ -200,7 +201,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
       </div>
 
       {/* Content */}
-      <div className="flex-1 min-h-0 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-4">
         {sheetLoading ? (
           <LoadingState />
         ) : !sheetData ? (
