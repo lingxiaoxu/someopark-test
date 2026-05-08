@@ -45,12 +45,21 @@ function GenericTable({ headers, rows }: { headers: string[]; rows: any[] }) {
 
 export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const { data: fileList, loading: loadingList, error: errorList, refetch } = useApi(() => getMonitorHistoryList(params?.strategy), []);
+  const [strategy, setStrategy] = useState(params?.strategy || 'mrpt');
+  const { data: fileList, loading: loadingList, error: errorList, refetch } = useApi(() => getMonitorHistoryList(strategy === 'sr' ? 'sr' : undefined), [strategy]);
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [sheets, setSheets] = useState<string[]>([]);
   const [activeSheet, setActiveSheet] = useState<string>('');
   const [sheetData, setSheetData] = useState<any>(null);
   const [sheetLoading, setSheetLoading] = useState(false);
+
+  // Reset file selection when strategy changes
+  useEffect(() => {
+    setSelectedFile('');
+    setSheets([]);
+    setActiveSheet('');
+    setSheetData(null);
+  }, [strategy]);
 
   // Auto-select first file
   useEffect(() => {
@@ -62,7 +71,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   // Load sheets when file selected, skip empty Sheet1
   useEffect(() => {
     if (!selectedFile) return;
-    getMonitorHistorySheets(selectedFile, params?.strategy)
+    getMonitorHistorySheets(selectedFile, strategy === 'sr' ? 'sr' : undefined)
       .then(s => {
         // Sheets can be strings or objects {name, rowCount}
         const names = s.map((n: any) => typeof n === 'string' ? n : n.name);
@@ -77,7 +86,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   useEffect(() => {
     if (!selectedFile || !activeSheet) return;
     setSheetLoading(true);
-    getMonitorHistorySheet(selectedFile, activeSheet, params?.strategy)
+    getMonitorHistorySheet(selectedFile, activeSheet, strategy === 'sr' ? 'sr' : undefined)
       .then(setSheetData)
       .catch(() => setSheetData(null))
       .finally(() => setSheetLoading(false));
@@ -103,20 +112,32 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* File selector */}
-      <div className="flex items-center gap-2 mb-3 shrink-0">
-        <span className="text-xs text-[var(--text-muted)]">{t('portfolioHistory.file')}</span>
-        <select
-          value={selectedFile}
-          onChange={e => setSelectedFile(e.target.value)}
-          className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1.5 text-xs focus:outline-none focus:border-[var(--accent-primary)] text-[var(--text-primary)] max-w-[300px] truncate"
-        >
-          {fileList.map((f: any) => (
-            <option key={f.filename} value={f.filename}>
-              {f.pair ? `${f.pair} (${f.strategy})` : `${f.param} [${f.version} ${f.span} ${f.mode}]`} - {f.timestamp}
-            </option>
-          ))}
-        </select>
+      {/* Strategy switcher + File selector */}
+      <div className="flex items-center justify-between mb-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-[var(--text-muted)]">{t('portfolioHistory.file')}</span>
+          <select
+            value={selectedFile}
+            onChange={e => setSelectedFile(e.target.value)}
+            className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1.5 text-xs focus:outline-none focus:border-[var(--accent-primary)] text-[var(--text-primary)] max-w-[300px] truncate"
+          >
+            {fileList.map((f: any) => (
+              <option key={f.filename} value={f.filename}>
+                {f.pair ? `${f.pair} (${f.strategy})` : `${f.param} [${f.version} ${f.span} ${f.mode}]`} - {f.timestamp}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
+          <button onClick={() => setStrategy('mrpt')}
+            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            MRPT/MTFS
+          </button>
+          <button onClick={() => setStrategy('sr')}
+            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            SR
+          </button>
+        </div>
       </div>
 
       {/* Sheet tabs - show ALL sheets */}
