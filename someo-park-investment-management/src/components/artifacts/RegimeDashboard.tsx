@@ -155,9 +155,9 @@ function IndicatorCard({ name, ind, t }: { name: string; ind: any; key?: any; t:
   );
 }
 
-export default function RegimeDashboard() {
+export default function RegimeDashboard({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const { data: regime, loading, error, refetch } = useApi(() => getLatestRegime(), []);
+  const { data: regime, loading, error, refetch } = useApi(() => getLatestRegime(params?.strategy), []);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
   const groupedIndicators = useMemo(() => {

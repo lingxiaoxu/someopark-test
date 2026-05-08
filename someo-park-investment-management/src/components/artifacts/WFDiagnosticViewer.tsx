@@ -423,9 +423,9 @@ function DailyReportSnapshotTable({ rows }: { rows: any[] }) {
   );
 }
 
-export default function WFDiagnosticViewer() {
+export default function WFDiagnosticViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const { data: sheetsInfo, loading: loadingSheets, error: errorSheets, refetch } = useApi(() => getDiagnosticSheets(), []);
+  const { data: sheetsInfo, loading: loadingSheets, error: errorSheets, refetch } = useApi(() => getDiagnosticSheets(params?.strategy), []);
   const [activeTab, setActiveTab] = useState<string>('');
   const [sheetData, setSheetData] = useState<any>(null);
   const [sheetLoading, setSheetLoading] = useState(false);
@@ -441,7 +441,7 @@ export default function WFDiagnosticViewer() {
   useEffect(() => {
     if (!activeTab) return;
     setSheetLoading(true);
-    getDiagnosticSheet(activeTab)
+    getDiagnosticSheet(activeTab, params?.strategy)
       .then(setSheetData)
       .catch(() => setSheetData(null))
       .finally(() => setSheetLoading(false));

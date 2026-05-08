@@ -147,19 +147,19 @@ export default function RightPanel({ artifact, onClose, onMaximize, isMaximized 
       <div className="flex-1 overflow-y-auto p-4">
         {artifact.type === 'chart'             && <EquityChart params={params} />}
         {artifact.type === 'table'             && <SignalTable params={params} />}
-        {artifact.type === 'dashboard'         && <RegimeDashboard />}
+        {artifact.type === 'dashboard'         && <RegimeDashboard params={params} />}
         {artifact.type === 'pair_universe'     && <PairUniverseViewer params={params} />}
         {artifact.type === 'wf_grid'           && <WFGridViewer params={params} />}
         {artifact.type === 'portfolio_history' && <PortfolioHistoryViewer params={params} />}
-        {artifact.type === 'wf_diagnostic'     && <WFDiagnosticViewer />}
+        {artifact.type === 'wf_diagnostic'     && <WFDiagnosticViewer params={params} />}
         {artifact.type === 'wf_summary'        && <WalkForwardSummaryViewer params={params} />}
         {artifact.type === 'oos_pair_summary'  && <OOSPairSummaryViewer params={params} />}
-        {artifact.type === 'daily_report'      && <DailyReportViewer />}
+        {artifact.type === 'daily_report'      && <DailyReportViewer params={params} />}
         {artifact.type === 'inventory'         && <InventoryViewer params={params} />}
         {artifact.type === 'inventory_history' && <InventoryHistoryViewer params={params} />}
-        {artifact.type === 'wf_structure'      && <WFStructureViewer data={artifact.data} />}
-        {artifact.type === 'pnl_report'        && <PnlReportViewer />}
-        {artifact.type === 'strategy_performance' && <StrategyPerformanceViewer />}
+        {artifact.type === 'wf_structure'      && <WFStructureViewer data={artifact.data} params={params} />}
+        {artifact.type === 'pnl_report'        && <PnlReportViewer params={params} />}
+        {artifact.type === 'strategy_performance' && <StrategyPerformanceViewer params={params} />}
       </div>
     </div>
   );

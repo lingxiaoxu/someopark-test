@@ -18,6 +18,56 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!rawPairs) return null;
 
+  // ══ SR MODE: param × regime OOS table ══
+  if (strategy === 'sr' && rawPairs.data) {
+    const regimeData = rawPairs.data;
+    const paramNames = Object.keys(regimeData).sort();
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between mb-4 shrink-0">
+          <div className="text-sm font-medium text-[var(--text-primary)]">OOS Param Summary — SR ({paramNames.length} params)</div>
+          <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
+            {['mrpt', 'mtfs', 'sr'].map(s => (
+              <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
+          <table className="w-full text-sm text-left">
+            <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
+              <tr>
+                <th className="px-3 py-2 font-medium">Param Set</th>
+                <th className="px-3 py-2 font-medium text-right">Risk On SR</th>
+                <th className="px-3 py-2 font-medium text-right">Transition SR</th>
+                <th className="px-3 py-2 font-medium text-right">Risk Off SR</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[var(--border-subtle)]">
+              {paramNames.map(p => {
+                const d = regimeData[p] || {};
+                return (
+                  <tr key={p} className="hover:bg-[var(--bg-secondary)] text-xs">
+                    <td className="px-3 py-2 font-mono font-medium">{p}</td>
+                    <td className="px-3 py-2 font-mono text-right" style={{ color: (d.risk_on?.mean_oos_sharpe ?? 0) > 0 ? 'var(--success)' : 'var(--error)' }}>
+                      {d.risk_on?.mean_oos_sharpe?.toFixed(3) ?? '—'} <span className="text-[var(--text-muted)]">({d.risk_on?.n_folds ?? 0})</span>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-right" style={{ color: (d.transition?.mean_oos_sharpe ?? 0) > 0 ? 'var(--success)' : 'var(--error)' }}>
+                      {d.transition?.mean_oos_sharpe?.toFixed(3) ?? '—'} <span className="text-[var(--text-muted)]">({d.transition?.n_folds ?? 0})</span>
+                    </td>
+                    <td className="px-3 py-2 font-mono text-right" style={{ color: (d.risk_off?.mean_oos_sharpe ?? 0) > 0 ? 'var(--success)' : 'var(--error)' }}>
+                      {d.risk_off?.mean_oos_sharpe?.toFixed(3) ?? '—'} <span className="text-[var(--text-muted)]">({d.risk_off?.n_folds ?? 0})</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
+  // ══ MRPT/MTFS MODE — unchanged below ══
+
   const pairs = [...rawPairs].sort((a: any, b: any) => {
     const va = Number(a[sortKey]) || 0;
     const vb = Number(b[sortKey]) || 0;

@@ -45,7 +45,7 @@ function GenericTable({ headers, rows }: { headers: string[]; rows: any[] }) {
 
 export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const { data: fileList, loading: loadingList, error: errorList, refetch } = useApi(() => getMonitorHistoryList(), []);
+  const { data: fileList, loading: loadingList, error: errorList, refetch } = useApi(() => getMonitorHistoryList(params?.strategy), []);
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [sheets, setSheets] = useState<string[]>([]);
   const [activeSheet, setActiveSheet] = useState<string>('');
@@ -62,7 +62,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   // Load sheets when file selected, skip empty Sheet1
   useEffect(() => {
     if (!selectedFile) return;
-    getMonitorHistorySheets(selectedFile)
+    getMonitorHistorySheets(selectedFile, params?.strategy)
       .then(s => {
         const filtered = s.filter((n: string) => n.toLowerCase() !== 'sheet1');
         setSheets(filtered);
@@ -75,7 +75,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   useEffect(() => {
     if (!selectedFile || !activeSheet) return;
     setSheetLoading(true);
-    getMonitorHistorySheet(selectedFile, activeSheet)
+    getMonitorHistorySheet(selectedFile, activeSheet, params?.strategy)
       .then(setSheetData)
       .catch(() => setSheetData(null))
       .finally(() => setSheetLoading(false));

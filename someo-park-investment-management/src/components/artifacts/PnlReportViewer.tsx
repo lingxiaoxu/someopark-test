@@ -5,7 +5,7 @@ import { getPnlReportList, getPnlReportUrl } from '../../lib/api';
 import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 
-export default function PnlReportViewer() {
+export default function PnlReportViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
   const [dates, setDates] = useState<{ date: string; filename: string }[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -13,7 +13,7 @@ export default function PnlReportViewer() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getPnlReportList()
+    getPnlReportList(params?.strategy)
       .then(list => {
         setDates(list);
         if (list.length > 0) setSelectedDate(list[0].date);
@@ -27,7 +27,7 @@ export default function PnlReportViewer() {
 
   const handleDownload = () => {
     if (!selectedDate) return;
-    const url = getPnlReportUrl(selectedDate);
+    const url = getPnlReportUrl(selectedDate, params?.strategy);
     const a = document.createElement('a');
     a.href = url;
     a.download = `pnl_report_${selectedDate}.pdf`;
@@ -43,7 +43,7 @@ export default function PnlReportViewer() {
   if (error) return <ErrorState message={error} onRetry={() => window.location.reload()} />;
   if (dates.length === 0) return <div className="text-sm text-[var(--text-muted)] p-4">{t('pnlReport.noReports')}</div>;
 
-  const pdfUrl = selectedDate ? getPnlReportUrl(selectedDate) : '';
+  const pdfUrl = selectedDate ? getPnlReportUrl(selectedDate, params?.strategy) : '';
 
   return (
     <div className="flex flex-col h-full gap-3">

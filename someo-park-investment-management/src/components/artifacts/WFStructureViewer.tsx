@@ -486,8 +486,48 @@ function FileTreeNode({ node, level, onSelect, selectedNode }: { node: FileNode,
 const MRPT_PARAM_SETS = mrptParams.split(', ');
 const MTFS_PARAM_SETS = mtfsParams.split(', ');
 
-export default function WFStructureViewer({ data }: { data?: any }) {
+export default function WFStructureViewer({ data, params }: { data?: any; params?: any }) {
   const { t } = useTranslation();
+
+  // ══ SR MODE: flat file list grouped by param ══
+  if (params?.strategy === 'sr') {
+    const [srFiles, setSrFiles] = React.useState<any>(null);
+    const [srLoading, setSrLoading] = React.useState(true);
+    React.useEffect(() => {
+      import('../../lib/api').then(({ default: _, ...api }) => {
+        (api as any).getWFXlsxList('sr').then((d: any) => { setSrFiles(d); setSrLoading(false); }).catch(() => setSrLoading(false));
+      });
+    }, []);
+    if (srLoading) return <LoadingState />;
+    const groups = srFiles?.groups || {};
+    return (
+      <div className="flex flex-col h-full">
+        <div className="text-sm font-medium text-[var(--text-primary)] mb-4">Backtesting Files — SR</div>
+        <div className="flex-1 overflow-y-auto space-y-3">
+          {Object.entries(groups).map(([param, files]: any) => (
+            <div key={param} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">
+              <div className="font-mono font-medium text-[var(--text-primary)] mb-2">{param}</div>
+              <div className="space-y-1">
+                {(files || []).map((f: any, i: number) => (
+                  <div key={i} className="text-xs text-[var(--text-muted)] font-mono flex gap-3">
+                    <span className={f.span === 'IS-OOS' ? 'text-[var(--success)]' : ''}>{f.span || ''}</span>
+                    <span>{f.version || ''}</span>
+                    <span>{f.mode || ''}</span>
+                    <span>{f.timestamp || f.filename || ''}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          {Object.keys(groups).length === 0 && (
+            <div className="text-center text-[var(--text-muted)] py-8">No SR backtest files found. Run: bash sector_rotation_pipeline.sh batch --save-equity</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  // ══ MRPT/MTFS MODE — unchanged below ══
+
   const [viewMode, setViewMode] = useState<'inspector' | 'explorer'>('inspector');
   const [selectedNode, setSelectedNode] = useState<FileNode | null>(fileSystem[0]);
 

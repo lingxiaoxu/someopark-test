@@ -28,8 +28,26 @@ const COLORS = {
 };
 
 
-export default function StrategyPerformanceViewer() {
+export default function StrategyPerformanceViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
+
+  // ══ SR MODE: V1 vs V2 performance comparison ══
+  if (params?.strategy === 'sr') {
+    return (
+      <div className="flex flex-col h-full p-4">
+        <div className="text-sm font-medium text-[var(--text-primary)] mb-4">Strategy Performance — SR (V1 vs V2)</div>
+        <div className="text-xs text-[var(--text-muted)] mb-4">
+          V1 (4-factor monthly) vs V2 (7-factor semimonthly) equity curve comparison.
+          Data from portfolio Excel files in historical_runs/sector_rotation/.
+        </div>
+        <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-4 text-center text-[var(--text-muted)]">
+          Use the Portfolio History viewer to browse V1 and V2 Excel files for detailed comparison.
+        </div>
+      </div>
+    );
+  }
+  // ══ MRPT/MTFS MODE — unchanged below ══
+
   const [data, setData] = useState<DayData[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

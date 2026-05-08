@@ -7,11 +7,11 @@ import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 import PairBadge from '../PairBadge';
 
-export default function DailyReportViewer() {
+export default function DailyReportViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
   const [view, setView] = useState<'ui' | 'txt' | 'json'>('ui');
-  const { data: report, loading, error, refetch } = useApi(() => getLatestDailyReport(), []);
-  const { data: txtReport } = useApi(() => getLatestDailyReportTxt(), []);
+  const { data: report, loading, error, refetch } = useApi(() => getLatestDailyReport(params?.strategy), []);
+  const { data: txtReport } = useApi(() => getLatestDailyReportTxt(params?.strategy), []);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
