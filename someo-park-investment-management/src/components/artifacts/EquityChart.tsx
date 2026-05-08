@@ -28,9 +28,14 @@ export default function EquityChart({ params }: { params?: any }) {
   // Add return % to each data point
   const enrichedData = useMemo(() => {
     if (!chartData) return [];
-    return chartData.map((d: any) => {
-      const eq = d.Equity_Chained || d.OOS_Equity_Chained || d.Equity || startEquity;
-      return { ...d, Date: formatDate(d.Date), _equity: eq, _returnPct: ((eq - startEquity) / startEquity) * 100 };
+    // SR API returns {available, param, data: [...]} — extract array
+    const rows = Array.isArray(chartData) ? chartData : (chartData.data || []);
+    const srMode = strategy === 'sr';
+    const base = srMode ? 1000000 : startEquity;
+    return rows.map((d: any) => {
+      const eq = srMode ? (d.value || d.Equity || base) : (d.Equity_Chained || d.OOS_Equity_Chained || d.Equity || startEquity);
+      const dt = srMode ? (d.date || d.Date) : d.Date;
+      return { ...d, Date: formatDate(dt), _equity: eq, _returnPct: ((eq - base) / base) * 100 };
     });
   }, [chartData]);
 

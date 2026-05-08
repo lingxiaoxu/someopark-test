@@ -41,13 +41,14 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
 
   if (isLoading) return <LoadingState />;
 
-  // SR: Sector ETF tab — show currently held sector ETFs
+  // SR: Sector ETF tab — show ALL 11 sector ETFs, highlight held ones
   if (activeTab === 'sector_etf' && isSR) {
-    const sectors = (srSectors?.sectors || []).filter((s: any) => s.weight > 0.01);
+    const allSectors = srSectors?.sectors || [];
+    const heldCount = allSectors.filter((s: any) => s.held).length;
     return (
       <div className="flex flex-col h-full">
         <div className="flex gap-2 mb-4 overflow-x-auto shrink-0">
-          {[{ id: 'sector_etf', label: `Sector ETF (${sectors.length})` }].map(tab => (
+          {[{ id: 'sector_etf', label: `Sector ETF (${heldCount} held / ${allSectors.length} total)` }].map(tab => (
             <button key={tab.id} className="px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap bg-[var(--accent-primary)] text-white">
               {tab.label}
             </button>
@@ -68,14 +69,18 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
-              {sectors.map((s: any) => (
-                <tr key={s.ticker} className="hover:bg-[var(--bg-secondary)] bg-[var(--accent-primary)]/5">
+              {allSectors.map((s: any) => (
+                <tr key={s.ticker} className={`hover:bg-[var(--bg-secondary)] ${s.held ? 'bg-[var(--accent-primary)]/5' : 'opacity-50'}`}>
                   <td className="px-4 py-3 font-mono font-medium text-[var(--text-primary)]">{s.ticker}</td>
-                  <td className="px-4 py-3 text-right font-mono">{(s.weight * 100).toFixed(1)}%</td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{s.entry_date || '—'}</td>
-                  <td className="px-4 py-3 text-right font-mono">${s.cost_basis?.toFixed(2) || '—'}</td>
+                  <td className="px-4 py-3 text-right font-mono">{s.held ? (s.weight * 100).toFixed(1) + '%' : '—'}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{s.held ? (s.entry_date || '—') : '—'}</td>
+                  <td className="px-4 py-3 text-right font-mono">{s.held ? '$' + (s.cost_basis?.toFixed(2) || '—') : '—'}</td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">LONG</span>
+                    {s.held ? (
+                      <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">LONG</span>
+                    ) : (
+                      <span className="px-2 py-1 text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)]">—</span>
+                    )}
                   </td>
                 </tr>
               ))}

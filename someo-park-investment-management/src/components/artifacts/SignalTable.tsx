@@ -12,6 +12,7 @@ export default function SignalTable({ params }: { params?: any }) {
   const { data, loading, error, refetch } = useApi(() => getLatestSignals(strategy), [strategy]);
 
   if (loading) return <LoadingState />;
+  if (error && strategy === 'sr') return <ErrorState message="SR signals require Express backend running. Start: npm run dev" onRetry={refetch} />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data) return null;
 

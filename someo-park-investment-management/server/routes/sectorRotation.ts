@@ -150,17 +150,26 @@ router.get('/sector-universe', async (_req, res) => {
     const filePath = path.join(SR_DIR(), 'inventory_sector_rotation.json');
     const data = await readJsonFile(filePath);
     const holdings = data.holdings || {};
-    const sectors = Object.entries(holdings).map(([ticker, info]: [string, any]) => ({
-      ticker,
-      weight: info.weight || 0,
-      entry_date: info.entry_date || '',
-      cost_basis: info.cost_basis || 0,
-    }));
+    // All 11 GICS sector ETFs — show all, mark held ones
+    const ALL_ETFS = ['XLE','XLB','XLI','XLY','XLP','XLV','XLF','XLK','XLC','XLU','XLRE'];
+    const sectors = ALL_ETFS.map(ticker => {
+      const info = holdings[ticker] || {};
+      return {
+        ticker,
+        weight: info.weight || 0,
+        entry_date: info.entry_date || '',
+        cost_basis: info.cost_basis || 0,
+        shares: info.shares || 0,
+        last_price: info.last_price || 0,
+        days_held: info.days_held || 0,
+        held: (info.weight || 0) > 0.01,
+      };
+    });
     res.json({
       available: true,
       param_set: data.param_set || '',
       signal_version: data.signal_version || 'v1',
-      n_positions: sectors.filter(s => s.weight > 0).length,
+      n_positions: sectors.filter(s => s.held).length,
       sectors,
     });
   } catch (err: any) {

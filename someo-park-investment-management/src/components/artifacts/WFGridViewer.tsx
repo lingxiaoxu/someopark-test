@@ -17,7 +17,10 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
   const { data: rawData, loading, error, refetch } = useApi(() => getDSRLog(strategy), [strategy]);
 
   // ══ SR MODE: 73 fold grid instead of pair×window grid ══
-  if (!loading && !error && strategy === 'sr' && rawData) {
+  // Note: must be BEFORE the useMemo hooks that depend on MRPT data format.
+  // We use a different approach: compute useMemo with dummy data for SR.
+  const isSR = strategy === 'sr';
+  if (!loading && !error && isSR && rawData) {
     const folds = rawData.folds || rawData || [];
     return (
       <div className="flex flex-col h-full">
@@ -65,19 +68,19 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
   // ══ MRPT/MTFS MODE continues below ══
 
   const pairKeys = useMemo(() => {
-    if (!rawData) return ['ALL'];
+    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
     const unique = [...new Set(rawData.map((r: any) => r.pair_key))];
     return ['ALL', ...unique.sort()];
   }, [rawData]);
 
   const windowKeys = useMemo(() => {
-    if (!rawData) return ['ALL'];
+    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
     const unique = [...new Set(rawData.map((r: any) => r.window_idx))].sort((a: number, b: number) => a - b);
     return ['ALL', ...unique.map(String)];
   }, [rawData]);
 
   const paramSetKeys = useMemo(() => {
-    if (!rawData) return ['ALL'];
+    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
     const unique = [...new Set(rawData.map((r: any) => r.param_set))];
     return ['ALL', ...unique.sort()];
   }, [rawData]);
