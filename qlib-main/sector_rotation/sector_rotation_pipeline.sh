@@ -610,32 +610,25 @@ result = bt.run(prices, macro)
 print(result.summary())
 
 # ── Run all 59 param sets for comparison page (P11) ──────────────────────────
-log.info("Running all 59 param sets for batch comparison + portfolio Excel...")
+log.info("Running all 59 param sets for batch comparison...")
 rows = []
 _sig_ver = active_cfg.get("signals", {}).get("signal_version", "v1")
 _rec_cfg = base_cfg.get("portfolio_record", {})
-_n_excel = 0
+_batch_results = {}  # name → BacktestResult (for Excel after WF)
 for name in PARAM_SETS:
     row, _eq = _run_one_with_equity(name, base_cfg, prices, macro)
     rows.append(row)
-    # Generate portfolio Excel for each param set
+    # Store result for Excel generation after WF completes
     if row["status"] == "ok":
         try:
-            from sector_rotation.portfolio_record import SectorRotationRecord as _SRR
             _pcfg = apply_param_set(base_cfg, PARAM_SETS[name])
             _pbt = SectorRotationBacktest(_pcfg)
-            _presult = _pbt.run(prices=prices, macro=macro)
-            _prec = _SRR(result=_presult, prices=prices, macro=macro,
-                         param_set=name, signal_version=_sig_ver,
-                         leverage_ratio=_rec_cfg.get("leverage_ratio", 0.0),
-                         interest_rate=_rec_cfg.get("interest_rate", 0.05))
-            _prec.export_portfolio_excel(mode="tearsheet", span="IS")
-            _n_excel += 1
-        except Exception as _e:
-            log.debug(f"  [{name}] Excel failed: {_e}")
+            _batch_results[name] = _pbt.run(prices=prices, macro=macro)
+        except Exception:
+            pass
 batch_df = pd.DataFrame(rows)
 ok_count = len(batch_df[batch_df['status'] == 'ok'])
-log.info(f"Batch complete: {ok_count}/{len(rows)} successful, {_n_excel} portfolio Excel")
+log.info(f"Batch complete: {ok_count}/{len(rows)} successful")
 
 # ── Walk-Forward IS/OOS analysis (P12 + P13) ─────────────────────────────────
 log.info("Running Walk-Forward IS/OOS analysis (anchored)...")
@@ -651,6 +644,22 @@ wf_analyzer = WalkForwardAnalyzer(
 )
 wf_result = wf_analyzer.run()
 print(wf_result.summary())
+
+# ── Generate 59 portfolio Excel (IS-OOS since WF validates all 59) ───────────
+log.info(f"Generating {len(_batch_results)} portfolio Excel files (IS-OOS tearsheet)...")
+_n_excel = 0
+from sector_rotation.portfolio_record import SectorRotationRecord as _SRR
+for name, _presult in _batch_results.items():
+    try:
+        _prec = _SRR(result=_presult, prices=prices, macro=macro,
+                     param_set=name, signal_version=_sig_ver,
+                     leverage_ratio=_rec_cfg.get("leverage_ratio", 0.0),
+                     interest_rate=_rec_cfg.get("interest_rate", 0.05))
+        _prec.export_portfolio_excel(mode="tearsheet", span="IS-OOS")
+        _n_excel += 1
+    except Exception as _e:
+        log.debug(f"  [{name}] Excel failed: {_e}")
+log.info(f"Portfolio Excel: {_n_excel}/{len(_batch_results)} generated")
 
 # ── Generate tearsheet PDF ───────────────────────────────────────────────────
 out_path = generate_tearsheet(
