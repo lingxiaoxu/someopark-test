@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
@@ -11,6 +11,11 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
   const isSR = params?.strategy === 'sr';
   const [activeTab, setActiveTab] = useState(isSR ? 'sector_etf' : 'selected');
+
+  // Sync activeTab when strategy changes
+  useEffect(() => {
+    setActiveTab(isSR ? 'sector_etf' : 'selected');
+  }, [isSR]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortAsc, setSortAsc] = useState(true);
