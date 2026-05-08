@@ -40,57 +40,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
 
   if (isLoading) return <LoadingState />;
 
-  // Sector ETF tab — show ALL 11 sector ETFs, highlight held ones
-  if (activeTab === 'sector_etf') {
-    const allSectors = srSectors?.sectors || [];
-    const heldCount = allSectors.filter((s: any) => s.held).length;
-    return (
-      <div className="flex flex-col h-full">
-        <div className="flex gap-2 mb-4 overflow-x-auto shrink-0">
-          {[{ id: 'sector_etf', label: `Sector ETF (${heldCount} held / ${allSectors.length} total)` }].map(tab => (
-            <button key={tab.id} className="px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap bg-[var(--accent-primary)] text-white">
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <div className="text-xs text-[var(--text-muted)] mb-3">
-          Param: {srSectors?.param_set || '—'} | Version: {srSectors?.signal_version || 'v1'}
-        </div>
-        <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
-          <table className="w-full text-sm text-left">
-            <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
-              <tr>
-                <th className="px-4 py-3 font-medium">ETF</th>
-                <th className="px-4 py-3 font-medium text-right">Weight</th>
-                <th className="px-4 py-3 font-medium">Entry Date</th>
-                <th className="px-4 py-3 font-medium text-right">Cost Basis</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)]">
-              {allSectors.map((s: any) => (
-                <tr key={s.ticker} className={`hover:bg-[var(--bg-secondary)] ${s.held ? 'bg-[var(--accent-primary)]/5' : 'opacity-50'}`}>
-                  <td className="px-4 py-3 font-mono font-medium text-[var(--text-primary)]">{s.ticker}</td>
-                  <td className="px-4 py-3 text-right font-mono">{s.held ? (s.weight * 100).toFixed(1) + '%' : '—'}</td>
-                  <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{s.held ? (s.entry_date || '—') : '—'}</td>
-                  <td className="px-4 py-3 text-right font-mono">{s.held ? '$' + (s.cost_basis?.toFixed(2) || '—') : '—'}</td>
-                  <td className="px-4 py-3">
-                    {s.held ? (
-                      <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">LONG</span>
-                    ) : (
-                      <span className="px-2 py-1 text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)]">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  }
-
-  // Build current tab data (MRPT/MTFS — unchanged)
+  // Build current tab data
   let currentPairs: any[] = [];
   if (activeTab === 'selected') {
     const mrpt = (mrptPairs || []).map((p: any) => ({ ...p, pair: `${p.s1}/${p.s2}`, strategy: 'MRPT', selected: true }));
@@ -147,52 +97,87 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
         ))}
       </div>
 
-      <div className="relative mb-4 shrink-0">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
-        <input
-          type="text"
-          placeholder={t('pairUniverse.searchPairs')}
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="w-full bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] transition-colors text-[var(--text-primary)]"
-        />
-      </div>
-
-      <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
-        <table className="w-full text-sm text-left">
-          <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
-            <tr>
-              <th className="px-4 py-3 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('pair')}>{t('common.pair')}{sortArrow('pair')}</th>
-              {activeTab === 'selected' && <th className="px-4 py-3 font-medium">{t('common.strategy')}</th>}
-              {activeTab === 'selected' && <th className="px-4 py-3 font-medium">{t('common.sector')}</th>}
-              <th className="px-4 py-3 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('selected')}>{t('common.status')}{sortArrow('selected')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[var(--border-subtle)]">
-            {filteredPairs.map((p: any, i: number) => (
-              <tr key={i} className={`hover:bg-[var(--bg-secondary)] transition-colors ${p.selected ? 'bg-[var(--accent-primary)]/5' : ''}`}>
-                <td className="px-4 py-3"><PairBadge s1={p.s1} s2={p.s2} strategy={p.strategy?.toLowerCase()} compact /></td>
-                {activeTab === 'selected' && <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{p.strategy}</td>}
-                {activeTab === 'selected' && <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{p.sector || '—'}</td>}
-                <td className="px-4 py-3">
-                  {p.selected ? (
-                    <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">{t('common.selected')}</span>
-                  ) : (
-                    <span className="px-2 py-1 text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)]">{t('common.available')}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {filteredPairs.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)] text-sm">
-                  {searchTerm ? `No pairs found matching "${searchTerm}"` : t('common.noDataAvailable')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {activeTab === 'sector_etf' ? (
+        /* ── Sector ETF tab content ── */
+        <>
+          <div className="text-xs text-[var(--text-muted)] mb-3 shrink-0">
+            Param: {srSectors?.param_set || '—'} | Version: {srSectors?.signal_version || 'v1'}
+          </div>
+          <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
+            <table className="w-full text-sm text-left">
+              <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 font-medium">ETF</th>
+                  <th className="px-4 py-3 font-medium text-right">Weight</th>
+                  <th className="px-4 py-3 font-medium">Entry Date</th>
+                  <th className="px-4 py-3 font-medium text-right">Cost Basis</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {(srSectors?.sectors || []).map((s: any) => (
+                  <tr key={s.ticker} className={`hover:bg-[var(--bg-secondary)] ${s.held ? 'bg-[var(--accent-primary)]/5' : 'opacity-50'}`}>
+                    <td className="px-4 py-3 font-mono font-medium text-[var(--text-primary)]">{s.ticker}</td>
+                    <td className="px-4 py-3 text-right font-mono">{s.held ? (s.weight * 100).toFixed(1) + '%' : '—'}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{s.held ? (s.entry_date || '—') : '—'}</td>
+                    <td className="px-4 py-3 text-right font-mono">{s.held ? '$' + (s.cost_basis?.toFixed(2) || '—') : '—'}</td>
+                    <td className="px-4 py-3">
+                      {s.held ? (
+                        <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">LONG</span>
+                      ) : (
+                        <span className="px-2 py-1 text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)]">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        /* ── Pair tabs content (Selected/Coint/Similar/PCA) ── */
+        <>
+          <div className="relative mb-4 shrink-0">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+            <input type="text" placeholder={t('pairUniverse.searchPairs')} value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-[var(--accent-primary)] transition-colors text-[var(--text-primary)]" />
+          </div>
+          <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
+            <table className="w-full text-sm text-left">
+              <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('pair')}>{t('common.pair')}{sortArrow('pair')}</th>
+                  {activeTab === 'selected' && <th className="px-4 py-3 font-medium">{t('common.strategy')}</th>}
+                  {activeTab === 'selected' && <th className="px-4 py-3 font-medium">{t('common.sector')}</th>}
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('selected')}>{t('common.status')}{sortArrow('selected')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {filteredPairs.map((p: any, i: number) => (
+                  <tr key={i} className={`hover:bg-[var(--bg-secondary)] transition-colors ${p.selected ? 'bg-[var(--accent-primary)]/5' : ''}`}>
+                    <td className="px-4 py-3"><PairBadge s1={p.s1} s2={p.s2} strategy={p.strategy?.toLowerCase()} compact /></td>
+                    {activeTab === 'selected' && <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{p.strategy}</td>}
+                    {activeTab === 'selected' && <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{p.sector || '—'}</td>}
+                    <td className="px-4 py-3">
+                      {p.selected ? (
+                        <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">{t('common.selected')}</span>
+                      ) : (
+                        <span className="px-2 py-1 text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)]">{t('common.available')}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {filteredPairs.length === 0 && (
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-[var(--text-muted)] text-sm">
+                    {searchTerm ? `No pairs found matching "${searchTerm}"` : t('common.noDataAvailable')}
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   );
 }
