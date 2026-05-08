@@ -401,9 +401,51 @@ someopark-test/                                          项目根目录
 | `report/output/` | 按需（tearsheet） | 保留近 3 个月 | ✅ |
 | `logs/` | ~1 文件/天 | 保留近 30 天 | ✅ |
 
+#### 回测输出文件命名规则
+
+**命名模板**：
+```
+sr_portfolio_{param_set}_{v1|v2}_{IS|IS-OOS}_{batch|select|tearsheet}_{YYYYMMDD_HHMMSS}.xlsx
+wf_diagnostic_sr_{v1|v2}_IS-OOS_{anchored|rolling}_{wf|select|tearsheet}_{YYYYMMDD_HHMMSS}.xlsx
+monitor_sr_{param_set}_{v1|v2}_daily_{YYYYMMDD_HHMMSS}.xlsx
+```
+
+**文件名各段含义**：
+
+| 段 | 含义 | 可能值 |
+|---|---|---|
+| `{param_set}` | 参数集名 | `tight_beta_tracker`, `sensitive_dd`, `stagflation` 等 59 个 |
+| `{v1\|v2}` | 信号版本 | `v1` (4 因子 monthly) / `v2` (7 因子 semimonthly) |
+| `{IS\|IS-OOS}` | 数据范围 | `IS` = 纯 in-sample 全期回测 / `IS-OOS` = Walk-Forward OOS 验证 |
+| `{batch\|select\|...}` | 入口模式 | `batch` / `select` / `wf` / `tearsheet` / `backtest` |
+| `{anchored\|rolling}` | WF 模式 | 仅 WF diagnostic 文件有此段 |
+| `{YYYYMMDD_HHMMSS}` | 生成时间戳 | 如 `20260507_203055` |
+
+**实际产出清单（全量运行 59 参数 × V1/V2）**：
+
+| 类型 | V1 | V2 | 命名标识 | 说明 |
+|---|---|---|---|---|
+| IS-only batch (26 sheets × 59) | 59 | 59 | `_v1_IS_batch_` / `_v2_IS_batch_` | 纯 in-sample 全期回测 |
+| IS-OOS select (26 sheets × 最优) | 1 | 1 | `_v1_IS-OOS_select_` / `_v2_IS-OOS_select_` | WF 验证后 MCPS 选出最优参数 |
+| WF Diagnostic (5 sheets) | 1 | 1 | `wf_diagnostic_sr_v1_IS-OOS_anchored_select_` | 73 折 Walk-Forward 诊断 |
+| **合计** | 61 | 61 | | **122 文件, ~246 MB** |
+
+**前端通过文件名区分所有维度**：
+- **版本**: `_v1_` vs `_v2_`
+- **范围**: `_IS_` (纯 in-sample) vs `_IS-OOS_` (walk-forward 验证)
+- **入口**: `_batch_` (批量扫描) vs `_select_` (生产选参) vs `_wf_` (独立 WF) vs `_tearsheet_`
+- **参数**: 文件名含完整参数集名（如 `tight_beta_tracker`）
+
+**文件名解析正则**：
+```
+Portfolio:  sr_portfolio_(.+)_(v[12])_(IS(?:-OOS)?)_(batch|select|tearsheet|backtest)_(\d{8}_\d{6})\.xlsx
+WF Diag:   wf_diagnostic_sr_(v[12])_(IS-OOS)_(anchored|rolling)_(wf|select|tearsheet)_(\d{8}_\d{6})\.xlsx
+Monitor:   monitor_sr_(.+)_(v[12])_daily_(\d{8}_\d{6})\.xlsx
+```
+
 #### Portfolio History Excel (26 Sheets) 详细结构
 
-`historical_runs/sector_rotation/sr_portfolio_history_{param}_{ts}.xlsx`
+`historical_runs/sector_rotation/sr_portfolio_{param}_{version}_{span}_{mode}_{ts}.xlsx`
 
 | # | Sheet | 频率 | 行数 | 内容 |
 |---|---|---|---|---|
