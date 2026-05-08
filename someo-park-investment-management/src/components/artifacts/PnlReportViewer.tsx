@@ -54,6 +54,7 @@ export default function PnlReportViewer({ params }: { params?: any }) {
   };
 
   const formatDateLabel = (d: string) => {
+    if (!d) return '—';
     if (d.length === 8) return `${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}`;
     return d;
   };
