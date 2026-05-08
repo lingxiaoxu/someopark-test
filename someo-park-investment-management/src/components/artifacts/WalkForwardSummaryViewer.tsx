@@ -55,6 +55,42 @@ export default function WalkForwardSummaryViewer({ params }: { params?: any }) {
             <div className="text-sm font-mono text-[var(--text-primary)]">{data.dsr_aggregate?.toFixed(3) || '—'}</div>
           </div>
         </div>
+
+        {/* Per-param OOS stats */}
+        {data.param_oos_stats && (
+          <div className="flex-1 overflow-y-auto">
+            <div className="text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider mb-2">Per-Param OOS Performance (when selected by WF)</div>
+            <div className="border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
+              <table className="w-full text-xs text-left">
+                <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0">
+                  <tr>
+                    <th className="px-3 py-2 font-medium">Param Set</th>
+                    <th className="px-3 py-2 font-medium text-right">Times Selected</th>
+                    <th className="px-3 py-2 font-medium text-right">Mean OOS Sharpe</th>
+                    <th className="px-3 py-2 font-medium text-right">Mean OOS Return</th>
+                    <th className="px-3 py-2 font-medium text-right">Mean OOS MaxDD</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-subtle)]">
+                  {Object.entries(data.param_oos_stats)
+                    .filter(([, s]: any) => s.n_selected > 0)
+                    .sort(([, a]: any, [, b]: any) => (b.mean_oos_sharpe || 0) - (a.mean_oos_sharpe || 0))
+                    .map(([name, s]: any) => (
+                    <tr key={name} className="hover:bg-[var(--bg-secondary)]">
+                      <td className="px-3 py-2 font-mono font-medium">{name}</td>
+                      <td className="px-3 py-2 font-mono text-right">{s.n_selected}</td>
+                      <td className="px-3 py-2 font-mono text-right" style={{ color: (s.mean_oos_sharpe || 0) > 0 ? 'var(--success)' : 'var(--error)' }}>
+                        {s.mean_oos_sharpe?.toFixed(3) ?? '—'}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-right">{s.mean_oos_return ? (s.mean_oos_return * 100).toFixed(1) + '%' : '—'}</td>
+                      <td className="px-3 py-2 font-mono text-right text-[var(--error)]">{s.mean_oos_maxdd ? (s.mean_oos_maxdd * 100).toFixed(1) + '%' : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

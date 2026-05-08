@@ -16,12 +16,36 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
 
   const { data: rawData, loading, error, refetch } = useApi(() => getDSRLog(strategy), [strategy]);
 
-  // ══ SR MODE: 73 fold grid instead of pair×window grid ══
-  // Note: must be BEFORE the useMemo hooks that depend on MRPT data format.
-  // We use a different approach: compute useMemo with dummy data for SR.
-  const isSR = strategy === 'sr';
-  if (!loading && !error && isSR && rawData) {
-    const folds = rawData.folds || rawData || [];
+  // All hooks MUST be called unconditionally (React rules of hooks)
+  const pairKeys = useMemo(() => {
+    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
+    const unique = [...new Set(rawData.map((r: any) => r.pair_key))];
+    return ['ALL', ...unique.sort()];
+  }, [rawData]);
+
+  const windowKeys = useMemo(() => {
+    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
+    const unique = [...new Set(rawData.map((r: any) => r.window_idx))].sort((a: number, b: number) => a - b);
+    return ['ALL', ...unique.map(String)];
+  }, [rawData]);
+
+  const paramSetKeys = useMemo(() => {
+    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
+    const unique = [...new Set(rawData.map((r: any) => r.param_set))];
+    return ['ALL', ...unique.sort()];
+  }, [rawData]);
+
+  const resetFilters = () => { setSelectedPair('ALL'); setSelectedWindow('ALL'); setSelectedParamSet('ALL'); };
+
+  if (loading) return <LoadingState />;
+  if (error) return <ErrorState message={error} onRetry={refetch} />;
+  if (!rawData) return null;
+
+  // ══════════════════════════════════════════════════════════════
+  // SR MODE: 73 fold grid (completely different view)
+  // ══════════════════════════════════════════════════════════════
+  if (strategy === 'sr') {
+    const folds = rawData.folds || [];
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
@@ -44,6 +68,7 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
                 <th className="px-3 py-2 font-medium text-right">IS SR</th>
                 <th className="px-3 py-2 font-medium text-right">OOS SR</th>
                 <th className="px-3 py-2 font-medium text-right">WFE</th>
+                <th className="px-3 py-2 font-medium">Regime</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -57,6 +82,7 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
                   <td className="px-3 py-2 font-mono text-right">{f.is_sharpe?.toFixed(2) ?? '—'}</td>
                   <td className="px-3 py-2 font-mono text-right" style={{ color: (f.oos_sharpe ?? 0) > 0 ? 'var(--success)' : 'var(--error)' }}>{f.oos_sharpe?.toFixed(2) ?? '—'}</td>
                   <td className="px-3 py-2 font-mono text-right">{f.wfe?.toFixed(2) ?? '—'}</td>
+                  <td className="px-3 py-2 text-[var(--text-muted)]">{f.oos_regime}</td>
                 </tr>
               ))}
             </tbody>
@@ -65,38 +91,16 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
       </div>
     );
   }
-  // ══ MRPT/MTFS MODE continues below ══
 
-  const pairKeys = useMemo(() => {
-    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
-    const unique = [...new Set(rawData.map((r: any) => r.pair_key))];
-    return ['ALL', ...unique.sort()];
-  }, [rawData]);
-
-  const windowKeys = useMemo(() => {
-    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
-    const unique = [...new Set(rawData.map((r: any) => r.window_idx))].sort((a: number, b: number) => a - b);
-    return ['ALL', ...unique.map(String)];
-  }, [rawData]);
-
-  const paramSetKeys = useMemo(() => {
-    if (!rawData || !Array.isArray(rawData)) return ['ALL'];
-    const unique = [...new Set(rawData.map((r: any) => r.param_set))];
-    return ['ALL', ...unique.sort()];
-  }, [rawData]);
-
-  if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={refetch} />;
-  if (!rawData) return null;
-
+  // ══════════════════════════════════════════════════════════════
+  // MRPT/MTFS MODE — original code unchanged
+  // ══════════════════════════════════════════════════════════════
   const filteredData = rawData.filter((r: any) => {
     if (selectedPair !== 'ALL' && r.pair_key !== selectedPair) return false;
     if (selectedWindow !== 'ALL' && String(r.window_idx) !== selectedWindow) return false;
     if (selectedParamSet !== 'ALL' && r.param_set !== selectedParamSet) return false;
     return true;
   });
-
-  const resetFilters = () => { setSelectedPair('ALL'); setSelectedWindow('ALL'); setSelectedParamSet('ALL'); };
 
   return (
     <div className="flex flex-col h-full">
