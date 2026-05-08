@@ -95,6 +95,8 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
   // ══════════════════════════════════════════════════════════════
   // MRPT/MTFS MODE — original code unchanged
   // ══════════════════════════════════════════════════════════════
+  if (!Array.isArray(rawData)) return <LoadingState />;
+
   const filteredData = rawData.filter((r: any) => {
     if (selectedPair !== 'ALL' && r.pair_key !== selectedPair) return false;
     if (selectedWindow !== 'ALL' && String(r.window_idx) !== selectedWindow) return false;
