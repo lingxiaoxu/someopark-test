@@ -6,11 +6,12 @@ Runs every Sunday as part of weekly pipeline. Generates a comprehensive
 review of parameter health, regime trends, and smart-select diagnostics.
 
 Steps:
-  1. Multi-horizon backtest (P4): top 10 × 4 periods
-  2. Parameter drift analysis: rolling Sharpe trends
+  1. Multi-horizon backtest (P4): top 10 × 4 periods (uses current signal_version)
+  2. Parameter drift analysis: rolling Sharpe from versioned equity cache
   3. Regime trend analysis: this week vs last week
-  4. MCPS trend: recent 5d vs 20d
-  5. Version preference trend
+  4. P0 cache health: verify MCPS data freshness (centroids, cluster OOS, fold detail)
+  5. Stop-loss proximity: check current holdings for trailing/sector/circuit breaker risk
+  6. Version preference trend
 
 Output: backtest_results/weekly_review.json
 
@@ -79,12 +80,20 @@ def run_weekly_review(
         "signal_date": str(date.today()),
     }
 
+    # ── Load state ─────────────────────────────────────────────────
+    state = _load_selected_state(out_dir)
+    current_param = state.get("param_set", "")
+    current_version = state.get("signal_version", "v1")
+
     # ── 1. Multi-horizon backtest (P4) ─────────────────────────────
-    print("  [1/4] Multi-horizon backtest...")
+    print(f"  [1/6] Multi-horizon backtest (version={current_version})...")
     try:
         from sector_rotation.multi_horizon_backtest import run_multi_horizon
-        mh_results = run_multi_horizon(top_n=top_n, output_dir=out_dir)
+        mh_results = run_multi_horizon(
+            top_n=top_n, signal_version=current_version, output_dir=out_dir,
+        )
         review["multi_horizon"] = {
+            "signal_version": current_version,
             "top_5": mh_results.get("ranking", [])[:5],
             "composite_scores": mh_results.get("composite_scores", {}),
         }
@@ -93,12 +102,14 @@ def run_weekly_review(
         review["multi_horizon"] = {"error": str(e)}
 
     # ── 2. Parameter drift analysis ────────────────────────────────
-    print("\n  [2/4] Parameter drift analysis...")
-    state = _load_selected_state(out_dir)
-    current_param = state.get("param_set", "")
+    print(f"\n  [2/6] Parameter drift analysis ({current_param}, {current_version})...")
 
-    eq_path = out_dir / "batch_equity_cache.parquet"
-    drift_report = {"current_param": current_param}
+    # Prefer versioned equity cache, fall back to unversioned
+    eq_path = out_dir / f"batch_equity_cache_{current_version}.parquet"
+    if not eq_path.exists():
+        eq_path = out_dir / "batch_equity_cache.parquet"
+
+    drift_report = {"current_param": current_param, "signal_version": current_version}
     if eq_path.exists() and current_param:
         try:
             eq_cache = pd.read_parquet(eq_path)
@@ -127,12 +138,18 @@ def run_weekly_review(
 
     review["param_drift"] = drift_report
 
-    # ── 3. Regime trend analysis ───────────────────────────────────
-    print("\n  [3/4] Regime trend analysis...")
-    regime_report = {}
+    # ── Load prices & macro (shared by steps 3 and 5) ───────────
+    prices, macro = pd.DataFrame(), pd.DataFrame()
     try:
         base_cfg = load_config()
         prices, macro = load_all(config=base_cfg)
+    except Exception as e:
+        log.warning(f"Failed to load prices/macro: {e}")
+
+    # ── 3. Regime trend analysis ───────────────────────────────────
+    print("\n  [3/6] Regime trend analysis...")
+    regime_report = {}
+    try:
 
         if not macro.empty and "vix" in macro.columns:
             vix = macro["vix"].dropna()
@@ -173,8 +190,94 @@ def run_weekly_review(
 
     review["regime_trend"] = regime_report
 
-    # ── 4. Version preference trend ────────────────────────────────
-    print("\n  [4/4] Version preference...")
+    # ── 4. P0 cache health check ─────────────────────────────────
+    print(f"\n  [4/6] P0 cache health ({current_version})...")
+    p0_health = {}
+    p0_files = {
+        "batch_equity_cache": out_dir / f"batch_equity_cache_{current_version}.parquet",
+        "wf_fold_detail": out_dir / f"wf_fold_detail_{current_version}.json",
+        "param_oos_by_regime": out_dir / f"param_oos_by_regime_{current_version}.json",
+        "macro_latent_centroids": out_dir / "macro_latent_centroids.npy",
+        "top_candidates": out_dir / "top_candidates.json",
+    }
+    for name, p in p0_files.items():
+        if p.exists():
+            import os
+            stat = os.stat(p)
+            age_days = (time.time() - stat.st_mtime) / 86400
+            p0_health[name] = {
+                "exists": True,
+                "age_days": round(age_days, 1),
+                "stale": age_days > 7,
+                "size_kb": round(stat.st_size / 1024, 1),
+            }
+        else:
+            # Try unversioned fallback
+            fallback = out_dir / p.name.replace(f"_{current_version}", "")
+            if fallback.exists() and fallback != p:
+                stat = os.stat(fallback)
+                age_days = (time.time() - stat.st_mtime) / 86400
+                p0_health[name] = {"exists": True, "age_days": round(age_days, 1),
+                                   "stale": age_days > 7, "note": "unversioned fallback"}
+            else:
+                p0_health[name] = {"exists": False, "stale": True}
+
+    n_stale = sum(1 for v in p0_health.values() if v.get("stale"))
+    n_missing = sum(1 for v in p0_health.values() if not v.get("exists"))
+    p0_health["summary"] = {
+        "n_stale": n_stale, "n_missing": n_missing,
+        "healthy": n_stale == 0 and n_missing == 0,
+    }
+    print(f"    {len(p0_files)} files checked: {n_missing} missing, {n_stale} stale (>7d)")
+    review["p0_cache_health"] = p0_health
+
+    # ── 5. Stop-loss proximity check ──────────────────────────────
+    print("\n  [5/6] Stop-loss proximity...")
+    sl_report = {}
+    try:
+        inv_path = _THIS_DIR / "inventory_sector_rotation.json"
+        inv = _load_json(inv_path) if inv_path.exists() else {}
+        holdings = inv.get("holdings", {})
+
+        if holdings and not macro.empty:
+            # SPY circuit breaker check: 3-day SPY return
+            if "SPY" in prices.columns:
+                spy = prices["SPY"].dropna()
+                if len(spy) >= 4:
+                    spy_3d_ret = float((spy.iloc[-1] / spy.iloc[-4]) - 1)
+                    sl_report["spy_3d_return"] = round(spy_3d_ret * 100, 2)
+                    sl_report["spy_circuit_breaker_threshold"] = -7.0
+                    sl_report["spy_circuit_breaker_risk"] = "HIGH" if spy_3d_ret < -0.05 else \
+                                                             "MEDIUM" if spy_3d_ret < -0.03 else "LOW"
+
+            # Per-sector trailing stop proximity
+            sector_risk = {}
+            for ticker, h in holdings.items():
+                if h.get("weight", 0) < 0.01:
+                    continue
+                if ticker in prices.columns:
+                    px = prices[ticker].dropna()
+                    if len(px) >= 20:
+                        peak = float(px.tail(60).max())
+                        current = float(px.iloc[-1])
+                        drawdown_from_peak = (current - peak) / peak
+                        sector_risk[ticker] = {
+                            "current": round(current, 2),
+                            "peak_60d": round(peak, 2),
+                            "dd_from_peak_pct": round(drawdown_from_peak * 100, 1),
+                            "trailing_stop_threshold": -15.0,
+                            "risk": "HIGH" if drawdown_from_peak < -0.10 else \
+                                    "MEDIUM" if drawdown_from_peak < -0.05 else "LOW",
+                        }
+            sl_report["sectors"] = sector_risk
+            print(f"    SPY 3d: {sl_report.get('spy_3d_return', '?')}%, "
+                  f"sectors checked: {len(sector_risk)}")
+    except Exception as e:
+        sl_report["error"] = str(e)
+    review["stop_loss_proximity"] = sl_report
+
+    # ── 6. Version preference trend ────────────────────────────────
+    print("\n  [6/6] Version preference...")
     version_report = {
         "current_version": state.get("signal_version", "v1"),
         "switch_history": state.get("switch_history", []),
@@ -200,13 +303,23 @@ def run_weekly_review(
     review["version_preference"] = version_report
 
     # ── Summary & output ───────────────────────────────────────────
-    review_path = out_dir / "weekly_review.json"
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    review["signal_version"] = current_version
+    review["param_set"] = current_param
+
+    review_path = out_dir / f"weekly_review_{ts}.json"
     review_path.write_text(json.dumps(review, indent=2, default=str))
+
+    # Symlink latest for stable reads (tools, frontend)
+    latest_link = out_dir / "weekly_review_latest.json"
+    latest_link.unlink(missing_ok=True)
+    latest_link.symlink_to(review_path.name)
 
     elapsed = time.time() - t0
     print(f"\n{'═'*60}")
     print(f"  WEEKLY REVIEW COMPLETE ({elapsed:.0f}s)")
     print(f"  Output → {review_path}")
+    print(f"  Latest → {latest_link}")
     print(f"{'═'*60}\n")
 
     return review

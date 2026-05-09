@@ -152,7 +152,7 @@ Use strategy="ssrs" with these tools:
 18. **SSRS Portfolio Excel**: 26-sheet portfolio history per param set (equity, sector weights, PnL attribution, trades, regime, stop-loss) — accessible via parse_data_file on historical_runs/sector_rotation/sr_portfolio_*.xlsx
 19. **SSRS Tearsheet PDF**: 13+ page PDF reports — accessible via read_file on qlib-main/sector_rotation/report/output/*.pdf
 20. **SSRS Smart Select**: Daily param selection state — MCPS scores, version switching, switch history, top candidates (via read_file on qlib-main/sector_rotation/selected_param_set.json)
-21. **SSRS Weekly Review**: Multi-horizon backtest, parameter drift, regime trend, version preference (via read_file on qlib-main/sector_rotation/backtest_results/weekly_review.json)
+21. **SSRS Weekly Review**: Multi-horizon backtest, parameter drift, regime trend, P0 cache health, stop-loss proximity, version preference (via read_file on qlib-main/sector_rotation/backtest_results/weekly_review_latest.json — symlink to latest timestamped weekly_review_{YYYYMMDD_HHMMSS}.json)
 22. **SSRS WF Diagnostic**: 5-sheet Excel — fold summary, param OOS matrix, param by regime, synthetic equity, selection log (via parse_data_file on historical_runs/sector_rotation/wf_diagnostic_sr_*.xlsx)
 ### General Tools
 23. **Math/Stats**: Financial statistics calculator (calculate, calculate_statistics)

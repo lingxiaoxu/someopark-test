@@ -350,7 +350,8 @@ someopark-test/                                          项目根目录
     │   ├── macro_latent_centroids.npy                   P0: autoencoder 聚类中心
     │   ├── top_candidates.json                          P0: MCPS 前 10 候选
     │   ├── multi_horizon_results.json                   P4: 多时期回测（weekly 产出）
-    │   └── weekly_review.json                           P7: 周报（weekly 产出）
+    │   ├── weekly_review_{ts}.json                      P7: 周报（带时间戳）
+    │   └── weekly_review_latest.json → 最新周报 symlink
     │
     ├── report/output/
     │   └── *.pdf                                        Tearsheet PDF（13+ 页）
@@ -378,7 +379,7 @@ someopark-test/                                          项目根目录
 |---|---|---|---|---|
 | **daily** | `trading_signals/` JSON+TXT, `inventory_*` | — | `monitor_sr_*.xlsx` (调仓日) | `selected_param_set.json` 每日更新 |
 | **dry-run** | `trading_signals/` JSON+TXT | — | — | 不写 inventory |
-| **weekly** | — | `weekly_review.json`, `multi_horizon_results.json` | — | P4/P7 缓存供 daily 使用 |
+| **weekly** | — | `weekly_review_{ts}.json` + `_latest` symlink, `multi_horizon_results.json` | — | P4/P7 缓存供 daily 使用 |
 | **monthly** | = daily 调仓 | = select 全部 | = select + daily monitor | 两步合一 |
 | **batch** | — | `sr_batch_summary_*.csv/.xlsx`, `sr_batch_equity_*.csv` | — | 59 集汇总 |
 | **batch --save-equity** | — | 同 batch | `sr_portfolio_history_*.xlsx` ×59 | 26 sheets 每组 |
