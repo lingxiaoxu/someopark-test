@@ -137,7 +137,7 @@ export default function ChatArea({
   const [errorMessage, setErrorMessage] = useState('')
   const [files, setFiles] = useState<File[]>([])
   const [currentStanseAgent, setCurrentStanseAgent] = useState<DeepPartial<StanseAgentSchema> | null>(null)
-  const [selectedStrategy, setSelectedStrategy] = useState<'mrpt' | 'mtfs' | 'sr'>('mrpt')
+  const [selectedStrategy, setSelectedStrategy] = useState<'mrpt' | 'mtfs' | 'ssrs'>('mrpt')
   // Gate all artifact/chat interactions behind login
   const guardedSetArtifact = useCallback((a: any) => {
     if (!session) { onSignInClick?.(); return }
@@ -156,9 +156,9 @@ export default function ChatArea({
 
   const { data: mrptInv } = useApi(() => getInventory('mrpt'), [])
   const { data: mtfsInv } = useApi(() => getInventory('mtfs'), [])
-  const { data: srInv } = useApi(() => getInventory('sr'), [])
-  const currentInv = selectedStrategy === 'sr' ? srInv : (selectedStrategy === 'mrpt' ? mrptInv : mtfsInv)
-  const activePairs = selectedStrategy === 'sr'
+  const { data: srInv } = useApi(() => getInventory('ssrs'), [])
+  const currentInv = selectedStrategy === 'ssrs' ? srInv : (selectedStrategy === 'mrpt' ? mrptInv : mtfsInv)
+  const activePairs = selectedStrategy === 'ssrs'
     ? (currentInv ? Object.entries(currentInv.holdings || {}).filter(([, h]: any) => (h as any).weight > 0.01).map(([ticker, h]: any) => [ticker, { direction: 'long', ticker }]) : [])
     : (currentInv ? Object.entries(currentInv.pairs || {}).filter(([, p]: any) => (p as any).direction !== null) : [])
 
@@ -634,10 +634,10 @@ export default function ChatArea({
                 <div style={{ position: 'absolute', bottom: -2, left: -2, width: 6, height: 6, background: '#111' }} />
                 <div style={{ position: 'absolute', bottom: -2, right: -2, width: 6, height: 6, background: '#111' }} />
                 <div className="flex items-center justify-between mb-3">
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#111', fontFamily: 'var(--font-mono)' }}>{selectedStrategy === 'sr' ? 'ACTIVE POSITIONS' : t('chat.activePairs')} <span style={{ color: '#00cc66' }}>({activePairs.length})</span></div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#111', fontFamily: 'var(--font-mono)' }}>{selectedStrategy === 'ssrs' ? 'ACTIVE POSITIONS' : t('chat.activePairs')} <span style={{ color: '#00cc66' }}>({activePairs.length})</span></div>
                   {/* Strategy toggle */}
                   <div className="flex overflow-hidden" style={{ border: '2px solid #111' }}>
-                    {(['mrpt', 'mtfs', 'sr'] as const).map((s, i) => (
+                    {(['mrpt', 'mtfs', 'ssrs'] as const).map((s, i) => (
                       <button
                         key={s}
                         onClick={() => setSelectedStrategy(s)}

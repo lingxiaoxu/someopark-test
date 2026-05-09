@@ -26,7 +26,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   const { data: mrptPairs, loading: loadingMrpt } = useApi(() => getPairUniverse('mrpt'), []);
   const { data: mtfsPairs, loading: loadingMtfs } = useApi(() => getPairUniverse('mtfs'), []);
   // SR: sector ETF holdings (always loaded for Sector ETF tab)
-  const { data: srSectors, loading: loadingSR } = useApi(() => getPairUniverse('sr'), []);
+  const { data: srSectors, loading: loadingSR } = useApi(() => getPairUniverse('ssrs'), []);
 
   // DB pairs (loaded when tab clicked)
   const { data: cointData, loading: loadingCoint, error: errorCoint, refetch: refetchCoint } = useApi(() => getPairDb('coint'), []);

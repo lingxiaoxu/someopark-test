@@ -1,4 +1,4 @@
-# Sector Rotation Strategy — Runbook
+# Smart Sector Rotation Strategy (SSRS) — Runbook
 
 所有命令必须在 `/Users/xuling/code/someopark-test/` 目录下运行。
 
@@ -75,7 +75,7 @@ crontab -e
 
 ```cron
 # ──────────────────────────────────────────────────────────────────────
-# SECTOR ROTATION — 调度（所有时间 UTC）
+# SSRS — 调度（所有时间 UTC）
 # 冬令时 EST = UTC-5 / 夏令时 EDT = UTC-4
 # ──────────────────────────────────────────────────────────────────────
 
@@ -362,7 +362,7 @@ set -a && source .env && set +a && echo "Key: ${POLYGON_API_KEY:0:8}..."
 **现象**：日志含 `MacroStateStore load failed` 或 `Falling back to FRED API`
 
 **处理**：
-- macro parquets 由 **someopark 主 pipeline** 维护，sector rotation 不负责更新
+- macro parquets 由 **someopark 主 pipeline** 维护，SSRS 不负责更新
 - 若 MacroStateStore 不可用，regime 信号自动降级为仅用实时 VIX（yfinance），可接受
 - 若完全无数据，FRED fallback 自动触发，需要 `FRED_API_KEY` 有效
 - 确认主 pipeline 当日已运行；恢复后次日数据自动更新
@@ -995,7 +995,7 @@ crontab -e
 
 ```cron
 # ──────────────────────────────────────────────────────────────────────────────
-# SECTOR ROTATION — 自动化调度
+# SSRS — 自动化调度
 # 所有时间为 UTC。NYSE: UTC-5 (EST) / UTC-4 (EDT)
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -1183,7 +1183,7 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh daily --value-source 
 **Q: regime 始终是 RISK_ON / MacroStateStore 数据陈旧**
 
 `price_data/macro/` parquets 由 someopark 主 pipeline（`pre_pipeline.sh` step 3）负责更新。
-sector rotation 只读取这些文件，**不更新它们**。
+SSRS 只读取这些文件，**不更新它们**。
 
 若主 pipeline 今天没有运行，检查宏观数据时间戳：
 ```bash
@@ -1193,12 +1193,12 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh status
 
 若需要手动更新 MacroStateStore，使用**主 pipeline 的方式**（在主 pipeline 会话中）：
 ```bash
-# 这是 someopark 主 pipeline 的命令，不属于 sector rotation 的职责
+# 这是 someopark 主 pipeline 的命令，不属于 SSRS 的职责
 set -a && source .env && set +a && \
 conda run -n someopark_run --no-capture-output python MacroStateStore.py --update
 ```
 
-若 MacroStateStore 数据陈旧，sector rotation 会自动降级：regime 仅用实时 VIX（yfinance）
+若 MacroStateStore 数据陈旧，SSRS 会自动降级：regime 仅用实时 VIX（yfinance）
 而不用完整宏观因子，信号仍然有效，只是 regime 精度略低。
 
 ---
@@ -1287,10 +1287,10 @@ set -a && source .env && set +a
 | Inventory | `inventory_mrpt.json` etc. | `inventory_sector_rotation.json` |
 | Pipeline 脚本 | `pre_pipeline.sh` / `pipeline_runner.sh` | `sector_rotation_pipeline.sh` |
 
-**`price_data/macro/` — 只读共享（sector rotation 不写）：**
+**`price_data/macro/` — 只读共享（SSRS 不写）：**
 - 由 `someopark_run` 的 `MacroStateStore.py --update` 维护（在 `pre_pipeline.sh` 中）
 - `sector_rotation_pipeline.sh` 和 `SectorRotationDailySignal.py` **只读取** 这些 parquets
-- 两者不存在写冲突，sector rotation 永远不会修改这些文件
+- 两者不存在写冲突，SSRS 永远不会修改这些文件
 - 若 macro parquets 陈旧 > 2 天，`status` 模式会显示警告，但不会阻止运行
 
 **调用顺序建议（两个 pipeline 都需要当天运行时）：**
@@ -1301,5 +1301,5 @@ sector_rotation_pipeline.sh daily (qlib_run)                       ← 独立，
 顺序无依赖，可任意顺序或并行，不会相互干扰。
 
 **未来集成路径（规划中）：**
-1. Regime 信号共享：sector rotation regime → someopark 资本分配（只读接口）
+1. Regime 信号共享：SSRS regime → someopark 资本分配（只读接口）
 2. 组合级风险预算：跨策略 beta/vol 控制

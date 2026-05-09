@@ -56,7 +56,7 @@ app.use('/api/morph-chat', morphChatRoutes);
 app.use('/api/sandbox', sandboxRoutes);
 app.use('/api/publish', publishRoutes);
 app.use('/api/pnl-report', pnlReportRoutes);
-app.use('/api/sr', sectorRotationRoutes);
+app.use('/api/ssrs', sectorRotationRoutes);
 app.use('/api/agent', agentRoutes);
 
 // Register Someo Agent tools

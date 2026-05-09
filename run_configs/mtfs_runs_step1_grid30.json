@@ -8,12 +8,8 @@
       "param_set": "default",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -28,24 +24,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -57,6 +45,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -64,8 +56,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -74,12 +74,8 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -94,24 +90,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -123,6 +111,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -130,8 +122,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -140,12 +140,8 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -160,24 +156,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -189,6 +177,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -196,8 +188,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -206,12 +206,8 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -226,24 +222,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -255,6 +243,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -262,8 +254,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -272,12 +272,8 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -292,24 +288,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -321,6 +309,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -328,8 +320,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -338,12 +338,8 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -358,24 +354,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -387,6 +375,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -394,8 +386,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -404,12 +404,8 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -424,24 +420,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -453,6 +441,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -460,8 +452,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -470,12 +470,8 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -490,24 +486,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -519,6 +507,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -526,8 +518,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -536,12 +536,8 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -556,24 +552,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -585,6 +573,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -592,8 +584,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -602,12 +602,8 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -622,24 +618,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -651,6 +639,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -658,8 +650,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -668,12 +668,8 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -688,24 +684,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -717,6 +705,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -724,8 +716,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -734,12 +734,8 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -754,24 +750,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -783,6 +771,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -790,8 +782,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -800,12 +800,8 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -820,24 +816,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -849,6 +837,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -856,8 +848,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -866,12 +866,8 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -886,24 +882,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -915,6 +903,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -922,8 +914,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -932,12 +932,8 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -952,24 +948,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -981,6 +969,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -988,8 +980,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -998,12 +998,8 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1018,24 +1014,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1047,6 +1035,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1054,8 +1046,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1064,12 +1064,8 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1084,24 +1080,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1113,6 +1101,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1120,8 +1112,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1130,12 +1130,8 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1150,24 +1146,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1179,6 +1167,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1186,8 +1178,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1196,12 +1196,8 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1216,24 +1212,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1245,6 +1233,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1252,8 +1244,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1262,12 +1262,8 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1282,24 +1278,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1311,6 +1299,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1318,8 +1310,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1328,12 +1328,8 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1348,24 +1344,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1377,6 +1365,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1384,8 +1376,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1394,12 +1394,8 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1414,24 +1410,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1443,6 +1431,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1450,8 +1442,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1460,12 +1460,8 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1480,24 +1476,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1509,6 +1497,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1516,8 +1508,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1526,12 +1526,8 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1546,24 +1542,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1575,6 +1563,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1582,8 +1574,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1592,12 +1592,8 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1612,24 +1608,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1641,6 +1629,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1648,8 +1640,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1658,12 +1658,8 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1678,24 +1674,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1707,6 +1695,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1714,8 +1706,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1724,12 +1724,8 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1744,24 +1740,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1773,6 +1761,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1780,8 +1772,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1790,12 +1790,8 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1810,24 +1806,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1839,6 +1827,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1846,8 +1838,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1856,12 +1856,8 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1876,24 +1872,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1905,6 +1893,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1912,8 +1904,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1922,12 +1922,8 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -1942,24 +1938,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -1971,6 +1959,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -1978,8 +1970,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     },
@@ -1988,12 +1988,8 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "VTRS",
-          "WMT"
-        ],
-        [
-          "HST",
-          "CSCO"
+          "CSCO",
+          "HST"
         ],
         [
           "CSX",
@@ -2008,24 +2004,16 @@
           "JNJ"
         ],
         [
-          "AME",
-          "MAR"
-        ],
-        [
-          "MNST",
-          "AWK"
-        ],
-        [
           "YUM",
           "ACGL"
         ],
         [
-          "AEE",
-          "CNP"
+          "CNP",
+          "AEE"
         ],
         [
-          "VTRS",
-          "AME"
+          "AME",
+          "MAR"
         ],
         [
           "CINF",
@@ -2037,6 +2025,10 @@
         ],
         [
           "INCY",
+          "AWK"
+        ],
+        [
+          "INCY",
           "CINF"
         ],
         [
@@ -2044,8 +2036,16 @@
           "CINF"
         ],
         [
-          "DE",
-          "CME"
+          "CME",
+          "DE"
+        ],
+        [
+          "WMB",
+          "DGX"
+        ],
+        [
+          "PRU",
+          "DTE"
         ]
       ]
     }

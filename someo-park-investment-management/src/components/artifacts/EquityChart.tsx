@@ -30,7 +30,7 @@ export default function EquityChart({ params }: { params?: any }) {
     if (!chartData) return [];
     // SR API returns {available, param, data: [...]} — extract array
     const rows = Array.isArray(chartData) ? chartData : (chartData.data || []);
-    const srMode = strategy === 'sr';
+    const srMode = strategy === 'ssrs';
     const base = srMode ? 1000000 : startEquity;
     return rows.map((d: any) => {
       const eq = srMode ? (d.value || d.Equity || base) : (d.Equity_Chained || d.OOS_Equity_Chained || d.Equity || startEquity);
@@ -62,7 +62,7 @@ export default function EquityChart({ params }: { params?: any }) {
       <div className="flex items-center justify-between shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('equity.title')}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'sr'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

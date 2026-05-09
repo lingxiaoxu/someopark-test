@@ -32,10 +32,10 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
   const { t } = useTranslation();
 
   // ══ SR MODE: V1 vs V2 performance comparison ══
-  if (params?.strategy === 'sr') {
+  if (params?.strategy === 'ssrs') {
     return (
       <div className="flex flex-col h-full p-4">
-        <div className="text-sm font-medium text-[var(--text-primary)] mb-4">Strategy Performance — SR (V1 vs V2)</div>
+        <div className="text-sm font-medium text-[var(--text-primary)] mb-4">Strategy Performance — SSRS (V1 vs V2)</div>
         <div className="text-xs text-[var(--text-muted)] mb-4">
           V1 (4-factor monthly) vs V2 (7-factor semimonthly) equity curve comparison.
           Data from portfolio Excel files in historical_runs/sector_rotation/.

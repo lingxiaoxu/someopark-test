@@ -7,7 +7,7 @@ import ErrorState from '../ErrorState';
 
 export default function PnlReportViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
-  const [strategy, setStrategy] = useState(params?.strategy === 'sr' ? 'sr' : 'mrpt');
+  const [strategy, setStrategy] = useState(params?.strategy === 'ssrs' ? 'ssrs' : 'mrpt');
   const [dates, setDates] = useState<any[]>([]);
   const [selectedItem, setSelectedItem] = useState<string>('');
   const [loading, setLoading] = useState(true);
@@ -18,12 +18,12 @@ export default function PnlReportViewer({ params }: { params?: any }) {
     setLoading(true);
     setError(null);
     setSelectedItem('');
-    getPnlReportList(strategy === 'sr' ? 'sr' : undefined)
+    getPnlReportList(strategy === 'ssrs' ? 'ssrs' : undefined)
       .then(list => {
         setDates(list || []);
         if (list && list.length > 0) {
           // MRPT/MTFS: select by date; SR: select by filename
-          setSelectedItem(strategy === 'sr' ? list[0].filename : list[0].date);
+          setSelectedItem(strategy === 'ssrs' ? list[0].filename : list[0].date);
         }
         setLoading(false);
       })
@@ -35,12 +35,12 @@ export default function PnlReportViewer({ params }: { params?: any }) {
 
   const handleDownload = () => {
     if (!selectedItem) return;
-    const url = strategy === 'sr'
-      ? `${API_BASE}/api/sr/tearsheet/${selectedItem}${apiHeaders()['x-api-key'] ? '?key=' + apiHeaders()['x-api-key'] : ''}`
+    const url = strategy === 'ssrs'
+      ? `${API_BASE}/api/ssrs/tearsheet/${selectedItem}${apiHeaders()['x-api-key'] ? '?key=' + apiHeaders()['x-api-key'] : ''}`
       : getPnlReportUrl(selectedItem);
     const a = document.createElement('a');
     a.href = url;
-    a.download = strategy === 'sr' ? selectedItem : `pnl_report_${selectedItem}.pdf`;
+    a.download = strategy === 'ssrs' ? selectedItem : `pnl_report_${selectedItem}.pdf`;
     a.click();
   };
 
@@ -60,13 +60,13 @@ export default function PnlReportViewer({ params }: { params?: any }) {
   };
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={() => { setError(null); setLoading(true); getPnlReportList(strategy === 'sr' ? 'sr' : undefined).then(l => { setDates(l || []); setLoading(false); }).catch(e => { setError(e.message); setLoading(false); }); }} />;
+  if (error) return <ErrorState message={error} onRetry={() => { setError(null); setLoading(true); getPnlReportList(strategy === 'ssrs' ? 'ssrs' : undefined).then(l => { setDates(l || []); setLoading(false); }).catch(e => { setError(e.message); setLoading(false); }); }} />;
   if (dates.length === 0) return (
     <div className="flex flex-col h-full">
       <div className="flex justify-end mb-3 shrink-0">
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          <button onClick={() => setStrategy('mrpt')} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)]'}`}>MRPT/MTFS</button>
-          <button onClick={() => setStrategy('sr')} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)]'}`}>SR</button>
+          <button onClick={() => setStrategy('mrpt')} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'ssrs' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)]'}`}>MRPT/MTFS</button>
+          <button onClick={() => setStrategy('ssrs')} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'ssrs' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)]'}`}>SR</button>
         </div>
       </div>
       <div className="text-sm text-[var(--text-muted)] p-4 text-center">{t('pnlReport.noReports')}</div>
@@ -75,8 +75,8 @@ export default function PnlReportViewer({ params }: { params?: any }) {
 
   // Build PDF URL
   const pdfUrl = selectedItem
-    ? (strategy === 'sr'
-      ? `${API_BASE}/api/sr/tearsheet/${encodeURIComponent(selectedItem)}${apiHeaders()['x-api-key'] ? '?key=' + apiHeaders()['x-api-key'] : ''}`
+    ? (strategy === 'ssrs'
+      ? `${API_BASE}/api/ssrs/tearsheet/${encodeURIComponent(selectedItem)}${apiHeaders()['x-api-key'] ? '?key=' + apiHeaders()['x-api-key'] : ''}`
       : getPnlReportUrl(selectedItem))
     : '';
 
@@ -89,7 +89,7 @@ export default function PnlReportViewer({ params }: { params?: any }) {
           onChange={e => setSelectedItem(e.target.value)}
           className="text-xs font-mono bg-[var(--bg-primary)] border border-[var(--border-subtle)] px-2 py-1.5 text-[var(--text-primary)] max-w-[450px]"
         >
-          {strategy === 'sr' ? (
+          {strategy === 'ssrs' ? (
             dates.map((f: any) => (
               <option key={f.filename} value={f.filename}>{formatSRLabel(f)}</option>
             ))
@@ -102,8 +102,8 @@ export default function PnlReportViewer({ params }: { params?: any }) {
 
         <div className="flex items-center gap-2">
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            <button onClick={() => setStrategy('mrpt')} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>MRPT/MTFS</button>
-            <button onClick={() => setStrategy('sr')} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>SR</button>
+            <button onClick={() => setStrategy('mrpt')} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'ssrs' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>MRPT/MTFS</button>
+            <button onClick={() => setStrategy('ssrs')} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'ssrs' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>SR</button>
           </div>
           <button onClick={handleDownload} className="p-1.5 hover:bg-[var(--bg-tertiary)] transition-colors" title="Download">
             <Download className="w-4 h-4 text-[var(--text-muted)]" />
@@ -118,7 +118,7 @@ export default function PnlReportViewer({ params }: { params?: any }) {
           src={pdfUrl}
           className="w-full h-full"
           style={{ border: 'none', minHeight: '100%' }}
-          title={strategy === 'sr' ? 'SR Tearsheet' : 'PnL Report'}
+          title={strategy === 'ssrs' ? 'SSRS Tearsheet' : 'PnL Report'}
         />
       </div>
     </div>

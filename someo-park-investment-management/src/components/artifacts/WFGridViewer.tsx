@@ -44,14 +44,14 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
   // ══════════════════════════════════════════════════════════════
   // SR MODE: 73 fold grid (completely different view)
   // ══════════════════════════════════════════════════════════════
-  if (strategy === 'sr') {
+  if (strategy === 'ssrs') {
     const folds = rawData.folds || [];
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
           <div className="text-sm font-medium text-[var(--text-primary)]">Walk-Forward Fold Grid ({folds.length} folds)</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'sr'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs'].map(s => (
               <button key={s} onClick={() => { setStrategy(s); resetFilters(); }} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
             ))}
           </div>
@@ -109,7 +109,7 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('wfGrid.title', { count: rawData.length })}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'sr'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs'].map(s => (
             <button key={s} onClick={() => { setStrategy(s); resetFilters(); }} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

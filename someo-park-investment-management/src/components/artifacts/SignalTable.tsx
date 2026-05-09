@@ -12,23 +12,23 @@ export default function SignalTable({ params }: { params?: any }) {
   const { data, loading, error, refetch } = useApi(() => getLatestSignals(strategy), [strategy]);
 
   if (loading) return <LoadingState />;
-  if (error && strategy === 'sr') return <ErrorState message="SR signals require Express backend running. Start: npm run dev" onRetry={refetch} />;
+  if (error && strategy === 'ssrs') return <ErrorState message="SR signals require Express backend running. Start: npm run dev" onRetry={refetch} />;
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!data) return null;
 
   // ══════════════════════════════════════════════════════════════
   // SR MODE: Sector ETF signals with V1/V2 selector
   // ══════════════════════════════════════════════════════════════
-  if (strategy === 'sr') {
+  if (strategy === 'ssrs') {
     const srSignals: any[] = data.signals || [];
     const activeETFs = srSignals.filter((s: any) => s.target_weight > 0.01);
     const flatETFs = srSignals.filter((s: any) => !s.target_weight || s.target_weight <= 0.01);
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">Trading Signals — SR</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">Trading Signals — SSRS</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'sr'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
                 {s.toUpperCase()}
               </button>
@@ -96,7 +96,7 @@ export default function SignalTable({ params }: { params?: any }) {
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('signals.title', { strategy: strategy.toUpperCase() })}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'sr'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

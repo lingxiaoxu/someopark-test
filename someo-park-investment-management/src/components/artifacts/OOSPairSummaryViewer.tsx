@@ -19,15 +19,15 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
   if (!rawPairs) return null;
 
   // ══ SR MODE: param × regime OOS table ══
-  if (strategy === 'sr' && rawPairs.data) {
+  if (strategy === 'ssrs' && rawPairs.data) {
     const regimeData = rawPairs.data;
     const paramNames = Object.keys(regimeData).sort();
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">OOS Param Summary — SR ({paramNames.length} params)</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">OOS Param Summary — SSRS ({paramNames.length} params)</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'sr'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
             ))}
           </div>
@@ -89,7 +89,7 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('oosPairSummary.title')}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'sr'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

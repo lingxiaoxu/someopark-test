@@ -2,7 +2,7 @@
   <img src="../../public/SOMEO PARK矢量源文件 Big Square.svg" alt="Someopark" width="120"/>
 </p>
 
-<h1 align="center">Sector Rotation Strategy</h1>
+<h1 align="center">Smart Sector Rotation Strategy (SSRS)</h1>
 <p align="center"><b>Institutional-grade GICS sector ETF rotation — powered by qlib</b></p>
 
 <p align="center">
@@ -780,7 +780,7 @@ VIX ≥ 35  → 50% cash（emergency_derisk_vix 触发）
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                       Sector Rotation 回测框架全景                          │
+│                       SSRS 回测框架全景                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
 │  入口 A: SectorRotationBatchRun.py (默认模式)                               │

@@ -17,14 +17,14 @@ export default function WalkForwardSummaryViewer({ params }: { params?: any }) {
   if (!data) return null;
 
   // ══ SR MODE: synthetic OOS stats ══
-  if (strategy === 'sr' && data.available !== false) {
+  if (strategy === 'ssrs' && data.available !== false) {
     const sm = data.synthetic_metrics || {};
     return (
       <div className="flex flex-col h-full space-y-4">
         <div className="flex items-center justify-between shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">Walk-Forward Summary — SR ({data.n_folds} folds × {data.n_param_sets} params)</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">Walk-Forward Summary — SSRS ({data.n_folds} folds × {data.n_param_sets} params)</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-            {['mrpt', 'mtfs', 'sr'].map(s => (
+            {['mrpt', 'mtfs', 'ssrs'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
             ))}
           </div>
@@ -104,7 +104,7 @@ export default function WalkForwardSummaryViewer({ params }: { params?: any }) {
       <div className="flex items-center justify-between shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('wfSummary.title', { count: windows.length })}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'sr'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs'].map(s => (
             <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>

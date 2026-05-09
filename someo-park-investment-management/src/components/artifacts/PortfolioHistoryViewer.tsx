@@ -46,7 +46,7 @@ function GenericTable({ headers, rows }: { headers: string[]; rows: any[] }) {
 export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
   const [strategy, setStrategy] = useState(params?.strategy || 'mrpt');
-  const { data: fileList, loading: loadingList, error: errorList, refetch } = useApi(() => getMonitorHistoryList(strategy === 'sr' ? 'sr' : undefined), [strategy]);
+  const { data: fileList, loading: loadingList, error: errorList, refetch } = useApi(() => getMonitorHistoryList(strategy === 'ssrs' ? 'ssrs' : undefined), [strategy]);
   const [selectedFile, setSelectedFile] = useState<string>('');
   const [sheets, setSheets] = useState<string[]>([]);
   const [activeSheet, setActiveSheet] = useState<string>('');
@@ -75,7 +75,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
   // Load sheets when file selected, skip empty Sheet1
   useEffect(() => {
     if (!selectedFile) return;
-    getMonitorHistorySheets(selectedFile, strategy === 'sr' ? 'sr' : undefined)
+    getMonitorHistorySheets(selectedFile, strategy === 'ssrs' ? 'ssrs' : undefined)
       .then(s => {
         // Sheets can be strings or objects {name, rowCount}
         const names = s.map((n: any) => typeof n === 'string' ? n : n.name);
@@ -91,7 +91,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
     if (!selectedFile || !activeSheet) return;
     setSheetLoading(true);
     setSheetData(null);  // clear old data immediately
-    getMonitorHistorySheet(selectedFile, activeSheet, strategy === 'sr' ? 'sr' : undefined)
+    getMonitorHistorySheet(selectedFile, activeSheet, strategy === 'ssrs' ? 'ssrs' : undefined)
       .then(setSheetData)
       .catch(() => setSheetData(null))
       .finally(() => setSheetLoading(false));
@@ -122,18 +122,18 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
         <div className="text-xs font-medium text-[var(--text-primary)]">Portfolio History</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
           <button onClick={() => setStrategy('mrpt')}
-            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'ssrs' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
             MRPT/MTFS
           </button>
-          <button onClick={() => setStrategy('sr')}
-            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'sr' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
+          <button onClick={() => setStrategy('ssrs')}
+            className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === 'ssrs' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
             SR
           </button>
         </div>
       </div>
 
       {/* SR filter row */}
-      {strategy === 'sr' && fileList.length > 0 && (() => {
+      {strategy === 'ssrs' && fileList.length > 0 && (() => {
         const versions = [...new Set(fileList.map((f: any) => f.version).filter(Boolean))];
         const spans = [...new Set(fileList.map((f: any) => f.span).filter(Boolean))];
         const modes = [...new Set(fileList.map((f: any) => f.mode).filter(Boolean))];
@@ -173,7 +173,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
           onChange={e => setSelectedFile(e.target.value)}
           className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1.5 text-xs focus:outline-none focus:border-[var(--accent-primary)] text-[var(--text-primary)] flex-1 max-w-[450px]"
         >
-          {(strategy === 'sr'
+          {(strategy === 'ssrs'
             ? fileList.filter((f: any) =>
                 (filterVersion === 'all' || f.version === filterVersion) &&
                 (filterSpan === 'all' || f.span === filterSpan) &&
