@@ -169,6 +169,59 @@ print('as_of:', d.get('as_of'), '  last_updated:', d.get('last_updated'))
 
 ---
 
+### 每日回测（工作日，收盘后）
+
+**触发时间**：每个工作日 18:00 ET（daily signal 之后，约 45 分钟间隔）
+
+**运行命令**：
+```bash
+bash qlib-main/sector_rotation/daily_backtest.sh
+```
+
+**6 步流程**：
+
+| 步骤 | 内容 | 耗时 | selected_param_set.json |
+|------|------|------|------------------------|
+| ① V1 Select | 59 参数 WF IS-OOS + MCPS → V1 最优参数 | 5–8 min | 写入 V1 → 备份 |
+| ② V2 Select | 同上，signal_version=v2 | 5–8 min | 写入 V2 → 备份 → **恢复 V1** |
+| ③ V1 Batch | 59 参数 × V1 → 59 IS-only Excel (26 sheets each) | 8–12 min | 不读写 |
+| ④ V2 Batch | 59 参数 × V2 → 59 IS-only Excel | 10–15 min | 不读写 |
+| ⑤ V1 Tearsheet | 59 IS-OOS Excel + PDF + WF diagnostic | 15–20 min | 读取 V1 ✅ |
+| ⑥ V2 Tearsheet | 同上，临时切 V2 → 完成后**恢复 V1** | 15–20 min | 临时 V2 → 恢复 V1 ✅ |
+
+**总耗时**：60–90 分钟
+
+**每日产出**：
+
+| 文件 | V1 | V2 | 命名标识 |
+|------|----|----|---------|
+| P0 缓存 (select) | 7 | 7 | `batch_equity_cache_v1.parquet` 等 |
+| IS-only Excel (batch) | 59 | 59 | `_v1_IS_batch_` / `_v2_IS_batch_` |
+| IS-OOS Excel (tearsheet) | 60 | 60 | `_v1_IS-OOS_tearsheet_` / `_v2_IS-OOS_tearsheet_` |
+| PDF Tearsheet | 1 | 1 | `tearsheet_{param}_v1_IS-OOS_` / `_v2_` |
+| WF Diagnostic | 1 | 1 | `wf_diagnostic_sr_v1_IS-OOS_anchored_tearsheet_` |
+| **每日总计** | ~128 | ~128 | **~256 文件** |
+
+**`selected_param_set.json` 安全控制**：
+```
+Step 1 → 写入 V1 → 备份
+Step 2 → 写入 V2 → 备份 → 恢复 V1 ✅
+Step 3-4 → 不读写（batch 用 --signal-version 参数）
+Step 5 → 读取 V1 ✅
+Step 6 → 临时切 V2 → 完成后恢复 V1 ✅
+最终状态: 始终为 V1 生产参数
+```
+
+**智能选参联动**：Step 1+2 的 P0 缓存使 daily smart_select 的 `version_selector()` 能在 V1/V2 间做数据驱动的自动判断（v1_confidence 评分）。
+
+**验证**：
+```bash
+tail -20 qlib-main/sector_rotation/logs/daily_backtest_$(date +%Y%m%d).log
+# 预期末行: ══ SSRS DAILY BACKTEST COMPLETE
+```
+
+---
+
 ### 月首交易日（每月，含在每日 cron 内）
 
 **无需额外操作**。`daily` 脚本自动识别月首交易日并触发 `monthly_rebalance`。
@@ -178,10 +231,12 @@ print('as_of:', d.get('as_of'), '  last_updated:', d.get('last_updated'))
 2. 确认 regime 状态和持仓权重合理
 3. **次日开盘按清单执行交易**（若对接实盘在此步下单）
 
-**月底可选**：生成月度绩效 tearsheet（约 10–15 分钟）
+**月底可选**：生成月度绩效 tearsheet（含在 daily_backtest.sh 中，或单独运行）
 ```bash
+# 已含在每日回测 daily_backtest.sh 的 Step 5-6 中
+# 或单独运行（仅当前 selected_param_set 版本）：
 bash qlib-main/sector_rotation/sector_rotation_pipeline.sh tearsheet
-# 输出：qlib-main/sector_rotation/report/output/sector_rotation_tearsheet.pdf
+# 输出：qlib-main/sector_rotation/report/output/tearsheet_{param}_{ver}_IS-OOS_{ts}.pdf
 ```
 
 **手动补跑**（若 daily cron 当日未运行）：
@@ -439,10 +494,9 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh dry-run --skip-holida
 | 频率 | 时间（ET） | 命令 | 预计耗时 | 人工操作 |
 |------|-----------|------|---------|---------|
 | 每个工作日 | 17:15 PM（cron） | `daily` | 4–6 分钟 | 月首：审阅交易清单 + 次日执行 |
+| **每个工作日** | **18:00 PM（cron）** | **`daily_backtest.sh`** | **60–90 分钟** | **审阅日志（可选）** |
 | 每周日 | 01:00 AM（cron） | `weekly` | 8–20 分钟 | 审阅 weekly_review.json（可选） |
 | **每月首交易日** | monthly（自动） | **`monthly`** | 10–15 分钟 | 审阅 selected_param_set.json + 交易清单 |
-| 每月（可选） | 任意 | `tearsheet` | 10–15 分钟 | 审阅 PDF（P11-P13 含 WF 结果） |
-| 每月（可选） | 任意 | `wf` / `wf --signal-version v2` | 3–5 分钟 | 审阅 CSV（逐折 IS/OOS 明细） |
 | 每季度末 | 任意 | `eps-full` | 5 分钟 | 无 |
 | VIX > 32 | daily 自动触发 | （含在 daily 内） | — | 确认后当日 / 次日执行 emergency de-risk |
 | 参数切换 | daily 自动 | smart_select (P2) | — | 日报中 `switched: true` 时审阅 |
