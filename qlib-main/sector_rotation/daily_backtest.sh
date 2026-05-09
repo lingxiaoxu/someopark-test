@@ -24,6 +24,29 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
 
+CONDA_QLIB="conda run -n qlib_run --no-capture-output"
+
+# ── NYSE Holiday Check (skip on non-trading days) ────────────────────
+NYSE_STATUS=$($CONDA_QLIB python3 -c "
+import sys
+from datetime import datetime
+try:
+    import pytz, pandas_market_calendars as mcal
+    nyc_date = datetime.now(pytz.timezone('America/New_York')).strftime('%Y-%m-%d')
+    nyse = mcal.get_calendar('NYSE')
+    schedule = nyse.schedule(start_date=nyc_date, end_date=nyc_date)
+    print('OPEN' if not schedule.empty else 'CLOSED:' + nyc_date)
+except Exception:
+    from datetime import date
+    today = date.today()
+    print('CLOSED:weekend' if today.weekday() >= 5 else 'OPEN')
+" 2>/dev/null) || NYSE_STATUS="OPEN"
+
+if [[ "$NYSE_STATUS" == CLOSED* ]]; then
+    echo "[$(date +%H:%M:%S)] NYSE closed (${NYSE_STATUS#CLOSED:}) — skipping daily backtest"
+    exit 0
+fi
+
 SR_DIR="qlib-main/sector_rotation"
 SEL_JSON="$SR_DIR/selected_param_set.json"
 BACKUP_V1="/tmp/ssrs_selected_v1_backup.json"
