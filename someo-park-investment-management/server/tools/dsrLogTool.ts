@@ -1,7 +1,7 @@
 // server/tools/dsrLogTool.ts
 // Data source: server/routes/walkForward.ts — GET /api/wf/dsr-log/:strategy
 
-import { findLatestFile } from '../utils/fileUtils.js'
+import { findLatestFile, readJsonFile } from '../utils/fileUtils.js'
 import { parseCsvFile } from '../utils/csvParser.js'
 import { getBackendPath } from '../config.js'
 import type { AgentTool } from './index.js'
@@ -15,14 +15,14 @@ function getWfDir(strategy: string): string {
 export const dsrLogTool: AgentTool = {
   definition: {
     name: 'get_dsr_log',
-    description: 'Get DSR (Dynamic Selection Ratio) parameter selection log. Shows which parameters were selected for each walk-forward window and pair.',
+    description: 'MRPT/MTFS: DSR selection log. SSRS: WF fold selection detail (73 folds, per-fold selected param and method).',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt" or "mtfs"',
-          enum: ['mrpt', 'mtfs']
+          description: 'Strategy: "mrpt", "mtfs", or "ssrs"',
+          enum: ['mrpt', 'mtfs', 'ssrs']
         },
         pair: {
           type: 'string',
@@ -35,6 +35,11 @@ export const dsrLogTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy, pair }) {
+    if (strategy === 'ssrs') {
+      const filePath = getBackendPath('qlib-main/sector_rotation/backtest_results/wf_fold_detail.json')
+      const data = await readJsonFile(filePath)
+      return { folds: data.folds, n_folds: data.n_folds, n_param_sets: data.n_param_sets }
+    }
     const dir = getWfDir(strategy)
     const filePath = await findLatestFile(dir, 'dsr_selection_log_*.csv')
     const rows = await parseCsvFile(filePath)

@@ -16,7 +16,7 @@ function getWfDir(s: string) {
 export const pairStatsTool: AgentTool = {
   definition: {
     name: 'get_pair_stats',
-    description: `Get comprehensive stats for a specific trading pair:
+    description: `MRPT/MTFS: comprehensive pair stats. SSRS: sector ETF stats from inventory and daily report.
 - OOS performance (pnl, sharpe, max_dd, n_trades from walk-forward)
 - DSR selection history (how many WF windows this pair was selected)
 - Current inventory (in position, days held, entry prices)
@@ -25,7 +25,7 @@ export const pairStatsTool: AgentTool = {
       type: 'object',
       properties: {
         pair: { type: 'string', description: 'e.g. "DG_MOS" or "DG/MOS"' },
-        strategy: { type: 'string', enum: ['mrpt', 'mtfs'] }
+        strategy: { type: 'string', enum: ['mrpt', 'mtfs', 'ssrs'] }
       },
       required: ['pair', 'strategy']
     }
@@ -33,6 +33,23 @@ export const pairStatsTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ pair, strategy }) {
+    if (strategy === 'ssrs') {
+      const inv = await readJsonFile(getBackendPath('qlib-main/sector_rotation/inventory_sector_rotation.json'))
+      const holding = inv?.holdings?.[pair] || null
+      const signalDir = getBackendPath('qlib-main/sector_rotation/trading_signals')
+      let latestReport = null
+      try {
+        const reportFile = await findLatestFile(signalDir, 'sr_daily_report_*.json')
+        latestReport = await readJsonFile(reportFile)
+      } catch {}
+      return {
+        sector: pair,
+        holding,
+        composite_score: latestReport?.signals?.find((s: any) => s.sector === pair)?.composite_score ?? null,
+        regime: latestReport?.regime?.label ?? null,
+        as_of: inv?.as_of,
+      }
+    }
     const pairKey = normPair(pair)
     const dir = getWfDir(strategy)
     const result: Record<string, any> = { pair: pairKey, strategy }

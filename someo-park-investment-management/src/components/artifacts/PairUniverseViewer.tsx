@@ -77,7 +77,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
     { id: 'coint', label: t('pairUniverse.cointegrated', { count: cointData?.total || '...' }) },
     { id: 'similar', label: t('pairUniverse.similar', { count: similarData?.total || '...' }) },
     { id: 'pca', label: t('pairUniverse.pca', { count: pcaData?.total || '...' }) },
-    { id: 'sector_etf', label: `Sector ETF (${heldCount}/11)` },
+    { id: 'sector_etf', label: t('ssrs.sectorEtf', { held: heldCount }) },
   ];
 
   return (
@@ -101,17 +101,17 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
         /* ── Sector ETF tab content ── */
         <>
           <div className="text-xs text-[var(--text-muted)] mb-3 shrink-0">
-            Param: {srSectors?.param_set || '—'} | Version: {srSectors?.signal_version || 'v1'}
+            {t('ssrs.paramVersion', { param: srSectors?.param_set || '—', version: srSectors?.signal_version || 'v1' })}
           </div>
           <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
             <table className="w-full text-sm text-left">
               <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 font-medium">ETF</th>
-                  <th className="px-4 py-3 font-medium text-right">Weight</th>
-                  <th className="px-4 py-3 font-medium">Entry Date</th>
-                  <th className="px-4 py-3 font-medium text-right">Cost Basis</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">{t('ssrs.etf')}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.weight')}</th>
+                  <th className="px-4 py-3 font-medium">{t('ssrs.entryDate')}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.costBasis')}</th>
+                  <th className="px-4 py-3 font-medium">{t('common.status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
@@ -123,7 +123,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
                     <td className="px-4 py-3 text-right font-mono">{s.held ? '$' + (s.cost_basis?.toFixed(2) || '—') : '—'}</td>
                     <td className="px-4 py-3">
                       {s.held ? (
-                        <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">LONG</span>
+                        <span className="px-2 py-1 text-[10px] font-medium bg-[var(--success)]/10 text-[var(--success)] rounded border border-[var(--success)]/20">{t('common.long')}</span>
                       ) : (
                         <span className="px-2 py-1 text-[10px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)]">—</span>
                       )}

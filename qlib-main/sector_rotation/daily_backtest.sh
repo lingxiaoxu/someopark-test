@@ -6,15 +6,20 @@
 # Runs the full 6-step V1+V2 backtest suite after market close.
 # Manages selected_param_set.json safely (backup → switch → restore).
 #
+# ⚠️  IMPORTANT: This script uses ONLY the qlib_run conda environment.
+#     NEVER use someopark_run — it lacks required packages (qlib, etc).
+#     All Python calls go through: conda run -n qlib_run --no-capture-output
+#
 # Usage:
+#   cd /Users/xuling/code/someopark-test
 #   bash qlib-main/sector_rotation/daily_backtest.sh
 #
 # Must be run from someopark-test/ root directory.
-# Requires: conda env qlib_run, .env with API keys
+# Requires: conda env qlib_run, .env with POLYGON_API_KEY & FRED_API_KEY
 #
 # Output:
-#   historical_runs/sector_rotation/  — 240+ Excel files per run
-#   qlib-main/sector_rotation/report/output/  — 2 PDF tearsheets
+#   historical_runs/sector_rotation/  — ~256 Excel files per run
+#   qlib-main/sector_rotation/report/output/  — 2 PDF tearsheets (V1 + V2)
 #   qlib-main/sector_rotation/backtest_results/  — P0 cache files
 #
 # ═══════════════════════════════════════════════════════════════════════

@@ -8,14 +8,14 @@ import type { AgentTool } from './index.js'
 export const signalsTool: AgentTool = {
   definition: {
     name: 'get_signals',
-    description: 'Get latest trading signals for a strategy. Returns active_signals (pairs with entry/exit signals), flat_signals (no signal), excluded_pairs, and signal_date.',
+    description: 'Get latest trading signals for a strategy. MRPT/MTFS: active_signals, flat_signals, excluded_pairs. SSRS: sector composite scores, weights, regime, rebalance actions.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: '"mrpt", "mtfs", or "combined" for merged signals',
-          enum: ['mrpt', 'mtfs', 'combined']
+          description: '"mrpt", "mtfs", "combined", or "ssrs" (Sector Rotation)',
+          enum: ['mrpt', 'mtfs', 'combined', 'ssrs']
         }
       },
       required: ['strategy']
@@ -24,6 +24,11 @@ export const signalsTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy }) {
+    if (strategy === 'ssrs') {
+      const dir = getBackendPath('qlib-main/sector_rotation/trading_signals')
+      const filePath = await findLatestFile(dir, 'sr_daily_report_*.json')
+      return readJsonFile(filePath)
+    }
     const dir = getBackendPath('trading_signals')
     const pattern = strategy === 'combined'
       ? 'combined_signals_*.json'

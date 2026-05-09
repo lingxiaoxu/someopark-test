@@ -16,7 +16,6 @@
     "pnlReport": "PnL Report",
     "strategyPerformance": "Strategy Performance"
   },
-
   "common": {
     "loading": "Loading data...",
     "failedToLoad": "Failed to load data",
@@ -50,7 +49,6 @@
     "language": "Language",
     "selectSheet": "Select a sheet to view data"
   },
-
   "connection": {
     "title": "Connect Your OpenClaw",
     "agentConfig": "Agent Configuration",
@@ -72,7 +70,6 @@
     "verifyConnection": "Verify Connection",
     "startUsing": "Start Using SomeoClaw"
   },
-
   "equity": {
     "title": "OOS Equity Curve",
     "totalReturn": "Total Return",
@@ -81,18 +78,15 @@
     "equity": "Equity",
     "return": "Return"
   },
-
   "pnlReport": {
     "noReports": "No PnL reports available."
   },
-
   "signals": {
     "title": "Trading Signals ({{strategy}})",
     "signalDate": "Signal Date: {{date}} | Generated: {{time}}",
     "zScore": "Z-Score",
     "excluded": "Excluded Pairs"
   },
-
   "regime": {
     "title": "Macro Regime Status",
     "mrptMtfsWeight": "MRPT / MTFS Weight",
@@ -111,7 +105,6 @@
     "catStrategyVol": "Strategy & Vol",
     "history90d": "90d: {{value}}"
   },
-
   "inventory": {
     "title": "Inventory Status ({{strategy}})",
     "asOfDate": "As Of Date",
@@ -125,7 +118,6 @@
     "zScoreEntry": "Z-Score at Entry",
     "wfSource": "WF Source"
   },
-
   "inventoryHistory": {
     "title": "Inventory History Snapshots",
     "activePairs": "active pairs",
@@ -140,7 +132,6 @@
     "pnlPct": "PnL%",
     "noHistory": "No history snapshots found"
   },
-
   "dailyReport": {
     "title": "Daily Report",
     "dailyQuantReport": "Daily Quant Report",
@@ -153,7 +144,6 @@
     "signal": "Signal",
     "loadingTxt": "Loading TXT report..."
   },
-
   "wfSummary": {
     "title": "Walk-Forward Summary ({{count}} Windows)",
     "oosTotalPnl": "OOS Total PnL",
@@ -167,7 +157,6 @@
     "selectedPairs": "Selected Pairs:",
     "nMore": "+{{count}} more"
   },
-
   "oosPairSummary": {
     "title": "OOS Pair Summary",
     "oosPnl": "OOS PnL",
@@ -175,7 +164,6 @@
     "maxDdPct": "MaxDD%",
     "winRate": "WinRate"
   },
-
   "wfGrid": {
     "title": "DSR Selection Log ({{count}} rows)",
     "pairAll": "Pair: ALL",
@@ -185,16 +173,13 @@
     "pairSharpe": "Pair Sharpe",
     "dsrPval": "DSR p-val"
   },
-
   "wfDiagnostic": {
     "title": "WF Diagnostic ({{file}})"
   },
-
   "portfolioHistory": {
     "file": "File:",
     "noFiles": "No monitor history files found"
   },
-
   "pairBadge": {
     "quickLinks": "Quick Links",
     "currentInventory": "Current Inventory",
@@ -205,7 +190,6 @@
     "entry": "Entry",
     "held": "Held"
   },
-
   "pairUniverse": {
     "selected": "Selected ({{count}})",
     "cointegrated": "Cointegrated ({{count}})",
@@ -213,7 +197,6 @@
     "pca": "PCA ({{count}})",
     "searchPairs": "Search pairs..."
   },
-
   "wfStructure": {
     "title": "Backtesting Analysis Viewer",
     "runInspector": "Run Inspector",
@@ -344,7 +327,6 @@
       "recorded_vars": "Strategy recorded variables"
     }
   },
-
   "financial": {
     "zScore": "Z-score:",
     "pnl": "PnL:",
@@ -353,7 +335,6 @@
     "windowN": "Window {{n}}",
     "sr": "SR:"
   },
-
   "settingsPage": {
     "title": "Settings",
     "languageLabel": "Display Language",
@@ -363,7 +344,6 @@
     "dark": "Dark",
     "light": "Light"
   },
-
   "auth": {
     "email": "Email address",
     "password": "Password",
@@ -383,7 +363,6 @@
     "checkEmailReset": "Check your email for password reset instructions.",
     "passwordUpdated": "Password updated successfully."
   },
-
   "sidebar": {
     "appName": "Someo Park",
     "agentRuntime": "Agent Runtime",
@@ -408,7 +387,7 @@
     "aboutTitle": "About Someo Park",
     "aboutParkAI": "Default chat mode. Ask questions about strategies, signals, inventory, and performance using natural language. Powered by LLM with access to all data views. Can also generate code, preview, and deploy to sandbox to create custom tools.",
     "aboutAgent": "Advanced autonomous agent mode. Uses multi-step tool calls (web search, Python execution, data queries) to research, analyze, and answer complex questions independently.",
-    "aboutClaw": "Full AI-powered investment research agent built on Someo Park's quantitative infrastructure. Connects to walk-forward strategies (MRPT & MTFS), live inventory, signals, and diagnostics.",
+    "aboutClaw": "Full AI-powered investment research agent built on Someo Park's quantitative infrastructure. Connects to walk-forward strategies (MRPT, MTFS & SSRS), live inventory, signals, and diagnostics.",
     "aboutClawCloud": "Cloud VPS",
     "aboutClawCloudDesc": "Hosted by Someo Park",
     "aboutClawLocal": "Local",
@@ -416,7 +395,6 @@
     "aboutDevTitle": "About Developer",
     "aboutDevBio": "Lingxiao was a Senior Quantitative Strategist, Vice President (VP) at Goldman Sachs, holds an MBA degree from Yale University's School of Management and graduated from the Columbia School of Engineering's Department of IEOR. Prior to this role, Lingxiao managed trades in the Equity Structured Derivatives Group at UBS Investment Bank and has also worked with Bank of America Merrill Lynch Group. Lingxiao is the Champion Winner of the Goldman Sachs Global Engineering Hackathon in 2024 and has been awarded at the GDPS 2026 (2026 Global Developer Pioneer Conference, Shanghai) Global Hackathon for an AI Agentic App."
   },
-
   "chat": {
     "currentRuntime": "Current Runtime:",
     "cloudVpsLabel": "SomeoClaw (Cloud VPS)",
@@ -465,19 +443,17 @@
     "welcomeTitle": "Welcome to SomeoClaw",
     "welcomeDesc": "Ask me anything about your trading strategies, or explore the data views below.",
     "activePairs": "Active Pairs",
+    "activePositions": "Active Positions",
     "clickToPreview": "Click to see preview"
   },
-
   "chatInput": {
     "placeholder": "Ask SomeoClaw anything...",
     "tryAgain": "Try again"
   },
-
   "chatPicker": {
     "persona": "Persona",
     "selectModel": "Select model"
   },
-
   "chatSettings": {
     "title": "LLM Settings",
     "morphApply": "Use Morph Apply",
@@ -490,7 +466,6 @@
     "frequencyPenalty": "Frequency penalty",
     "presencePenalty": "Presence penalty"
   },
-
   "codePreview": {
     "code": "Code",
     "preview": "Preview",
@@ -507,7 +482,6 @@
     "deploying": "Deploying...",
     "confirmDeploy": "Confirm Deploy"
   },
-
   "strategyPerf": {
     "mrpt": "MRPT",
     "mtfs": "MTFS",
@@ -523,5 +497,58 @@
     "drawdownTitle": "Drawdown (% and $)",
     "dailyPnLTitle": "Daily P&L ($ and %)",
     "footer": "Inception: Nov 11, 2025 · {{days}} Trading Days · $1M Initial Capital · {{mrptPct}}/{{mtfsPct}} MRPT/MTFS Weighting"
+  },
+  "ssrs": {
+    "title": "SSRS",
+    "inventoryTitle": "Current Inventory — SSRS",
+    "signalsTitle": "Trading Signals — SSRS",
+    "wfSummaryTitle": "Walk-Forward Summary — SSRS ({{folds}} folds × {{params}} params)",
+    "wfGridTitle": "Walk-Forward Fold Grid ({{count}} folds)",
+    "oosParamTitle": "OOS Param Summary — SSRS ({{count}} params)",
+    "syntheticOosSharpe": "Synthetic OOS Sharpe",
+    "oosMaxDrawdown": "OOS Max Drawdown",
+    "meanWfe": "Mean WFE",
+    "oosCagr": "OOS CAGR",
+    "oosCalmar": "OOS Calmar",
+    "dsrAggregate": "DSR Aggregate",
+    "perParamOos": "Per-Param OOS Performance (when selected by WF)",
+    "paramSet": "Param Set",
+    "timesSelected": "Times Selected",
+    "meanOosSharpe": "Mean OOS Sharpe",
+    "meanOosReturn": "Mean OOS Return",
+    "meanOosMaxdd": "Mean OOS MaxDD",
+    "fold": "Fold",
+    "isPeriod": "IS Period",
+    "oosPeriod": "OOS Period",
+    "selected": "Selected",
+    "method": "Method",
+    "isSr": "IS SR",
+    "oosSr": "OOS SR",
+    "wfe": "WFE",
+    "regime": "Regime",
+    "weight": "Weight",
+    "shares": "Shares",
+    "price": "Price",
+    "costBasis": "Cost Basis",
+    "entry": "Entry",
+    "daysHeld": "Days Held",
+    "noPositions": "No open positions",
+    "sectorEtf": "Sector ETF ({{held}}/11)",
+    "paramVersion": "Param: {{param}} | Version: {{version}}",
+    "etf": "ETF",
+    "entryDate": "Entry Date",
+    "riskOnSr": "Risk On SR",
+    "transitionSr": "Transition SR",
+    "riskOffSr": "Risk Off SR",
+    "rebalanceHistory": "Rebalance History",
+    "notHeld": "Not held",
+    "cash": "Cash",
+    "emergencyMode": "EMERGENCY MODE",
+    "signalDate": "Signal Date: {{date}} | Regime: {{regime}}",
+    "score": "Score",
+    "portfolioHistory": "Portfolio History",
+    "versionAll": "Version: All",
+    "scopeAll": "Scope: All",
+    "sourceAll": "Source: All"
   }
 }

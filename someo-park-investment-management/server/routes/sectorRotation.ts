@@ -53,11 +53,15 @@ router.get('/inventory/history', async (_req, res) => {
     const files = await listFiles(SR_INV_HISTORY(), 'inventory_sector_rotation_*.json');
     const result = await Promise.all(files.map(async (f) => {
       const data = await readJsonSafe(f);
+      const stats = await fs.stat(f).catch(() => null);
+      const holdings = data?.holdings || {};
+      const activeCount = Object.values(holdings).filter((h: any) => (h.weight || 0) > 0.01).length;
       return {
         filename: path.basename(f),
         timestamp: extractTimestamp(f),
         as_of: data?.as_of || '',
-        n_positions: Object.keys(data?.holdings || {}).length,
+        activePairs: activeCount,
+        size: stats?.size || 0,
       };
     }));
     res.json(result);

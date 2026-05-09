@@ -25,7 +25,7 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">OOS Param Summary — SSRS ({paramNames.length} params)</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">{t('ssrs.oosParamTitle', { count: paramNames.length })}</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
             {['mrpt', 'mtfs', 'ssrs'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
@@ -36,10 +36,10 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
           <table className="w-full text-sm text-left">
             <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2 font-medium">Param Set</th>
-                <th className="px-3 py-2 font-medium text-right">Risk On SR</th>
-                <th className="px-3 py-2 font-medium text-right">Transition SR</th>
-                <th className="px-3 py-2 font-medium text-right">Risk Off SR</th>
+                <th className="px-3 py-2 font-medium">{t('ssrs.paramSet')}</th>
+                <th className="px-3 py-2 font-medium text-right">{t('ssrs.riskOnSr')}</th>
+                <th className="px-3 py-2 font-medium text-right">{t('ssrs.transitionSr')}</th>
+                <th className="px-3 py-2 font-medium text-right">{t('ssrs.riskOffSr')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">

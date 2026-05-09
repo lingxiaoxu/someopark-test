@@ -634,7 +634,7 @@ export default function ChatArea({
                 <div style={{ position: 'absolute', bottom: -2, left: -2, width: 6, height: 6, background: '#111' }} />
                 <div style={{ position: 'absolute', bottom: -2, right: -2, width: 6, height: 6, background: '#111' }} />
                 <div className="flex items-center justify-between mb-3">
-                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#111', fontFamily: 'var(--font-mono)' }}>{selectedStrategy === 'ssrs' ? 'ACTIVE POSITIONS' : t('chat.activePairs')} <span style={{ color: '#00cc66' }}>({activePairs.length})</span></div>
+                  <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: '#111', fontFamily: 'var(--font-mono)' }}>{selectedStrategy === 'ssrs' ? t('chat.activePositions') : t('chat.activePairs')} <span style={{ color: '#00cc66' }}>({activePairs.length})</span></div>
                   {/* Strategy toggle */}
                   <div className="flex overflow-hidden" style={{ border: '2px solid #111' }}>
                     {(['mrpt', 'mtfs', 'ssrs'] as const).map((s, i) => (

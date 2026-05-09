@@ -23,14 +23,14 @@ async function findXlsx(base: string): Promise<string[]> {
 export const wfStructureTool: AgentTool = {
   definition: {
     name: 'get_wf_structure',
-    description: 'List all XLSX files in the walk-forward directory tree. Useful to discover available diagnostic data.',
+    description: 'List all XLSX files in the walk-forward directory tree. Useful to discover available diagnostic data. SSRS: lists sector rotation portfolio Excel and diagnostic files.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt" or "mtfs"',
-          enum: ['mrpt', 'mtfs']
+          description: 'Strategy: "mrpt", "mtfs", or "ssrs"',
+          enum: ['mrpt', 'mtfs', 'ssrs']
         }
       },
       required: ['strategy']
@@ -39,6 +39,14 @@ export const wfStructureTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy }) {
+    if (strategy === 'ssrs') {
+      const dir = getBackendPath('historical_runs/sector_rotation')
+      const files = await findXlsx(dir)
+      return files.map(f => ({
+        path: path.relative(dir, f),
+        filename: path.basename(f),
+      }))
+    }
     const dir = strategy === 'mtfs'
       ? getBackendPath('historical_runs/walk_forward_mtfs')
       : getBackendPath('historical_runs/walk_forward')

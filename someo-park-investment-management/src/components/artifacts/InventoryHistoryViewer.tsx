@@ -33,6 +33,111 @@ function PnlBadge({ pnl, pct }: { pnl?: number; pct?: number }) {
   );
 }
 
+// ══ SSRS Sector Holding Detail ══
+function SectorDetail({ ticker, holding, asOf }: { ticker: string; holding: any; asOf?: string; key?: any }) {
+  const { t } = useTranslation();
+  const pnlPerShare = (holding.last_price || 0) - (holding.cost_basis || 0);
+  const totalPnl = pnlPerShare * (holding.shares || 0);
+  const pnlPct = holding.cost_basis ? (pnlPerShare / holding.cost_basis) * 100 : 0;
+  const daysHeld = calcDaysHeld(holding.entry_date, asOf);
+
+  return (
+    <div className="bg-[var(--bg-secondary)] rounded-lg p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold text-[var(--text-primary)] bg-[var(--accent-primary)]/10 px-2 py-0.5 rounded">{ticker}</span>
+          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+            holding.action_today === 'ENTER' ? 'bg-green-500/10 text-green-400' :
+            holding.action_today === 'EXIT' ? 'bg-[var(--error)]/10 text-[var(--error)]' :
+            'bg-blue-500/10 text-blue-400'
+          }`}>{holding.action_today || 'HOLD'}</span>
+          <span className="text-[10px] text-[var(--text-muted)]">{(holding.weight * 100).toFixed(1)}% weight</span>
+        </div>
+        <PnlBadge pnl={totalPnl} pct={pnlPct} />
+      </div>
+      <div className="grid grid-cols-5 gap-2 text-[10px]">
+        <div>
+          <div className="text-[var(--text-muted)] uppercase">{t('ssrs.shares')}</div>
+          <div className="text-[var(--text-primary)] font-mono">{(holding.shares || 0).toLocaleString()}</div>
+        </div>
+        <div>
+          <div className="text-[var(--text-muted)] uppercase">{t('ssrs.costBasis')}</div>
+          <div className="text-[var(--text-primary)] font-mono">${fmtNum(holding.cost_basis)}</div>
+        </div>
+        <div>
+          <div className="text-[var(--text-muted)] uppercase">{t('ssrs.price')}</div>
+          <div className="text-[var(--text-primary)] font-mono">${fmtNum(holding.last_price)}</div>
+        </div>
+        <div>
+          <div className="text-[var(--text-muted)] uppercase">{t('ssrs.entry')}</div>
+          <div className="text-[var(--text-primary)] font-mono">{holding.entry_date || '—'}</div>
+        </div>
+        <div>
+          <div className="text-[var(--text-muted)] uppercase">{t('ssrs.daysHeld')}</div>
+          <div className="text-[var(--text-primary)] font-mono">{daysHeld}d</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══ SSRS Snapshot Expanded View ══
+function SsrsSnapshotDetail({ data }: { data: any }) {
+  const { t } = useTranslation();
+  const holdings = data.holdings || {};
+  const activeHoldings = Object.entries(holdings).filter(([, h]: any) => (h as any).weight > 0.01);
+  const inactiveETFs = Object.entries(holdings).filter(([, h]: any) => (h as any).weight <= 0.01);
+
+  // Calculate total portfolio value & PnL
+  const totalValue = activeHoldings.reduce((sum, [, h]: any) => sum + (h.shares || 0) * (h.last_price || 0), 0);
+  const totalCost = activeHoldings.reduce((sum, [, h]: any) => sum + (h.shares || 0) * (h.cost_basis || 0), 0);
+  const totalPnl = totalValue - totalCost;
+  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+
+  return (
+    <div className="space-y-3">
+      {/* Summary row */}
+      <div className="flex items-center gap-4 text-[11px] text-[var(--text-muted)] flex-wrap">
+        <span>{t('inventoryHistory.asOf')} <span className="font-mono text-[var(--text-primary)]">{data.as_of}</span></span>
+        <span>{t('inventoryHistory.capital')} <span className="font-mono text-[var(--text-primary)]">${Number(data.capital).toLocaleString()}</span></span>
+        <span>{t('ssrs.cash')}: <span className="font-mono text-[var(--text-primary)]">{((data.cash_weight || 0) * 100).toFixed(1)}%</span></span>
+        <span>{t('ssrs.regime')}: <span className="font-mono text-[var(--text-primary)]">{data.rebalance_history?.[data.rebalance_history.length - 1]?.regime || '—'}</span></span>
+        {data.emergency_mode_active && <span className="text-[var(--error)] font-bold">{t('ssrs.emergencyMode')}</span>}
+        <PnlBadge pnl={totalPnl} pct={totalPnlPct} />
+      </div>
+
+      {/* Active holdings */}
+      {activeHoldings
+        .sort(([, a]: any, [, b]: any) => (b as any).weight - (a as any).weight)
+        .map(([ticker, h]: any) => (
+          <SectorDetail key={ticker} ticker={ticker} holding={h} asOf={data.as_of} />
+        ))}
+
+      {/* Inactive ETFs */}
+      {inactiveETFs.length > 0 && (
+        <div className="text-[10px] text-[var(--text-muted)] pt-1 flex flex-wrap items-center gap-1">
+          <span>{t('ssrs.notHeld')}:</span>
+          {inactiveETFs.map(([k]) => (
+            <span key={k} className="px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] text-[var(--text-muted)] font-mono">{k}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Rebalance history */}
+      {data.rebalance_history?.length > 0 && (
+        <div className="text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
+          <span className="uppercase tracking-wider">{t('ssrs.rebalanceHistory')}: </span>
+          {data.rebalance_history.map((r: any, i: number) => (
+            <span key={i} className="font-mono">
+              {r.date} ({r.reason}){i < data.rebalance_history.length - 1 ? ' → ' : ''}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PairDetail({ pair, pos, asOf }: { pair: string; pos: any; asOf?: string; key?: any }) {
   const { t } = useTranslation();
   const [showLog, setShowLog] = useState(false);
@@ -220,6 +325,9 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
                 {snapshotLoading ? (
                   <div className="text-[var(--text-muted)] text-center py-4 text-xs">{t('inventoryHistory.loadingSnapshot')}</div>
                 ) : snapshotData ? (
+                  strategy === 'ssrs' ? (
+                    <SsrsSnapshotDetail data={snapshotData} />
+                  ) : (
                   <div className="space-y-3">
                     <div className="flex items-center gap-4 text-[11px] text-[var(--text-muted)]">
                       <span>{t('inventoryHistory.asOf')} <span className="font-mono text-[var(--text-primary)]">{snapshotData.as_of}</span></span>
@@ -240,6 +348,7 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
                       </div>
                     )}
                   </div>
+                  )
                 ) : (
                   <div className="text-[var(--text-muted)] text-center text-xs">{t('inventoryHistory.failedSnapshot')}</div>
                 )}

@@ -15,8 +15,8 @@ export const inventoryHistoryTool: AgentTool = {
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt" or "mtfs"',
-          enum: ['mrpt', 'mtfs']
+          description: '"mrpt", "mtfs", or "ssrs" (Sector Rotation)',
+          enum: ['mrpt', 'mtfs', 'ssrs']
         },
         limit: {
           type: 'number',
@@ -33,14 +33,18 @@ export const inventoryHistoryTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy, limit = 10, filename }) {
-    const dir = getBackendPath('inventory_history')
+    const dir = strategy === 'ssrs'
+      ? getBackendPath('qlib-main/sector_rotation/inventory_history')
+      : getBackendPath('inventory_history')
 
     if (filename) {
       const filePath = path.join(dir, path.basename(filename))
       return readJsonFile(filePath)
     }
 
-    const pattern = `inventory_${strategy}_*.json`
+    const pattern = strategy === 'ssrs'
+      ? 'inventory_sector_rotation_*.json'
+      : `inventory_${strategy}_*.json`
     const files = await listFiles(dir, pattern)
     const sliced = files.slice(0, limit)
 

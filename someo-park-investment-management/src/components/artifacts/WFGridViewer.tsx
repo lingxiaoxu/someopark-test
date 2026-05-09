@@ -49,7 +49,7 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">Walk-Forward Fold Grid ({folds.length} folds)</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">{t('ssrs.wfGridTitle', { count: folds.length })}</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
             {['mrpt', 'mtfs', 'ssrs'].map(s => (
               <button key={s} onClick={() => { setStrategy(s); resetFilters(); }} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
@@ -60,15 +60,15 @@ export default function WFGridViewer({ params: viewParams }: { params?: any }) {
           <table className="w-full text-sm text-left">
             <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2 font-medium">Fold</th>
-                <th className="px-3 py-2 font-medium">IS Period</th>
-                <th className="px-3 py-2 font-medium">OOS Period</th>
-                <th className="px-3 py-2 font-medium">Selected</th>
-                <th className="px-3 py-2 font-medium">Method</th>
-                <th className="px-3 py-2 font-medium text-right">IS SR</th>
-                <th className="px-3 py-2 font-medium text-right">OOS SR</th>
-                <th className="px-3 py-2 font-medium text-right">WFE</th>
-                <th className="px-3 py-2 font-medium">Regime</th>
+                <th className="px-3 py-2 font-medium">{t('ssrs.fold')}</th>
+                <th className="px-3 py-2 font-medium">{t('ssrs.isPeriod')}</th>
+                <th className="px-3 py-2 font-medium">{t('ssrs.oosPeriod')}</th>
+                <th className="px-3 py-2 font-medium">{t('ssrs.selected')}</th>
+                <th className="px-3 py-2 font-medium">{t('ssrs.method')}</th>
+                <th className="px-3 py-2 font-medium text-right">{t('ssrs.isSr')}</th>
+                <th className="px-3 py-2 font-medium text-right">{t('ssrs.oosSr')}</th>
+                <th className="px-3 py-2 font-medium text-right">{t('ssrs.wfe')}</th>
+                <th className="px-3 py-2 font-medium">{t('ssrs.regime')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--border-subtle)]">

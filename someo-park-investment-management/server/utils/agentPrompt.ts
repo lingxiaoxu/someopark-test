@@ -74,6 +74,22 @@ async function getRecentContext(): Promise<string> {
     }
   } catch { /* skip if files missing */ }
 
+  // SSRS context
+  try {
+    const srDir = getBackendPath('qlib-main/sector_rotation')
+    const srInv = await readJsonFile(`${srDir}/inventory_sector_rotation.json`)
+    if (srInv) {
+      const holdings = srInv.holdings || {}
+      const active = Object.entries(holdings).filter(([, h]: any) => (h as any).weight > 0.01)
+      const sectors = active.map(([k, h]: any) => `${k}(${(h.weight * 100).toFixed(0)}%)`).join(', ')
+      ctx += `\n\n## SSRS Current State (auto-injected)
+- Sectors held: ${sectors || 'None'}
+- Capital: $${(srInv.capital || 0).toLocaleString()}
+- As of: ${srInv.as_of ?? 'N/A'}
+- Emergency mode: ${srInv.emergency_mode_active ? 'YES' : 'no'}`
+    }
+  } catch { /* skip if SR not available */ }
+
   recentContextCache.value = ctx
   recentContextCache.ts = Date.now()
   return ctx
@@ -107,15 +123,18 @@ status, analyze performance, and make data-driven decisions.
 ## Strategies
 - **MRPT** (Mean Reversion Pair Trading): Cointegration-based pairs, Z-score signals
 - **MTFS** (Multi-Timeframe Strategy): Momentum-based pairs, multi-timeframe signals
-- Walk-forward testing runs periodic re-optimization windows
-- Regime detection (Risk-On/Off) influences capital allocation between strategies
+- **SSRS** (Smart Sector Rotation Strategy): 11 GICS sector ETFs (XLE, XLB, XLI, XLY, XLP, XLV, XLF, XLK, XLC, XLU, XLRE), composite factor scoring (momentum, value, quality, volatility), monthly rebalance with top-N sector allocation. V1 (4-factor monthly) and V2 (7-factor semimonthly) signal versions. 59 named parameter sets evaluated via walk-forward (73 folds). Smart select (MCPS + macro regime) picks the best param daily.
+- Walk-forward testing runs periodic re-optimization windows (MRPT/MTFS: 6 windows; SSRS: 73 folds)
+- Regime detection (Risk-On/Off) influences capital allocation between MRPT/MTFS, and sector weight tilts in SSRS
 
 ## Available Data (via tools)
-1. **Inventory**: Current open positions (get_inventory)
-2. **Signals**: Latest entry/exit signals (get_signals)
-3. **Regime**: Market regime status (get_regime)
+All tools below accept strategy="mrpt", "mtfs", or "ssrs" where applicable.
+### MRPT / MTFS (Pair Trading)
+1. **Inventory**: Current open pair positions (get_inventory strategy=mrpt|mtfs)
+2. **Signals**: Latest entry/exit signals (get_signals strategy=mrpt|mtfs|combined)
+3. **Regime**: Market regime status + MRPT/MTFS weights (get_regime)
 4. **Daily Report**: Full daily analysis JSON/text (get_daily_report / get_daily_report_text)
-5. **Walk-Forward**: OOS stats, equity curves, pair summaries, DSR logs
+5. **Walk-Forward**: OOS stats, equity curves, pair summaries, DSR logs (get_wf_summary, get_equity_curve, get_oos_pair_summary, get_dsr_log)
 6. **Pair Universe**: Active and candidate pairs (get_pair_universe)
 7. **Monitor History**: XLSX monitoring data (get_monitor_history)
 8. **Diagnostics**: Walk-forward diagnostic XLSX (get_wf_diagnostic)
@@ -123,8 +142,21 @@ status, analyze performance, and make data-driven decisions.
 10. **Strategy Performance**: Daily equity time series (get_strategy_performance)
 11. **Compare Strategies**: Side-by-side MRPT vs MTFS (compare_strategies)
 12. **Pair Stats**: Comprehensive single-pair analysis (get_pair_stats)
-13. **Math/Stats**: Financial statistics calculator (calculate, calculate_statistics)
-14. **Data Tools**: read_file, list_files, query_json, query_mongodb, http_request, parse_data_file
+### SSRS (Sector Rotation)
+Use strategy="ssrs" with these tools:
+13. **SSRS Inventory**: Sector ETF holdings — weights, shares, cost basis, entry dates, rebalance history, emergency mode (get_inventory strategy=ssrs)
+14. **SSRS Signals**: Daily report — composite scores for 11 sectors, regime, smart_select decision, rebalance actions, macro positioning (get_signals strategy=ssrs)
+15. **SSRS WF Summary**: 73-fold walk-forward stats — synthetic OOS Sharpe/CAGR/MaxDD, WFE, per-param OOS performance by regime (get_wf_summary strategy=ssrs)
+16. **SSRS Inventory History**: Position snapshots with holdings, weights, rebalance history (get_inventory_history strategy=ssrs)
+17. **SSRS Backtest Results**: 59 named param sets × V1/V2, batch summary CSV, equity curves, selected_param_set.json, top_candidates.json, param_oos_by_regime.json, macro_latent_centroids — accessible via read_file / list_files on qlib-main/sector_rotation/backtest_results/
+18. **SSRS Portfolio Excel**: 26-sheet portfolio history per param set (equity, sector weights, PnL attribution, trades, regime, stop-loss) — accessible via parse_data_file on historical_runs/sector_rotation/sr_portfolio_*.xlsx
+19. **SSRS Tearsheet PDF**: 13+ page PDF reports — accessible via read_file on qlib-main/sector_rotation/report/output/*.pdf
+20. **SSRS Smart Select**: Daily param selection state — MCPS scores, version switching, switch history, top candidates (via read_file on qlib-main/sector_rotation/selected_param_set.json)
+21. **SSRS Weekly Review**: Multi-horizon backtest, parameter drift, regime trend, version preference (via read_file on qlib-main/sector_rotation/backtest_results/weekly_review.json)
+22. **SSRS WF Diagnostic**: 5-sheet Excel — fold summary, param OOS matrix, param by regime, synthetic equity, selection log (via parse_data_file on historical_runs/sector_rotation/wf_diagnostic_sr_*.xlsx)
+### General Tools
+23. **Math/Stats**: Financial statistics calculator (calculate, calculate_statistics)
+24. **Data Tools**: read_file, list_files, query_json, query_mongodb, http_request, parse_data_file
 15. **Search**: web_search (web), search_content (ripgrep file search)
 16. **Notebook**: read_notebook (.ipynb files)
 17. **Python**: run_python (E2B sandbox), get_task_output, stop_task

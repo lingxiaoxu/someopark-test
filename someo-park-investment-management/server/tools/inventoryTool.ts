@@ -8,14 +8,14 @@ import type { AgentTool } from './index.js'
 export const inventoryTool: AgentTool = {
   definition: {
     name: 'get_inventory',
-    description: 'Get current open positions (inventory) for MRPT or MTFS strategy. Returns pair names, entry dates, entry prices, hedge ratios, shares, days held, allocated capital.',
+    description: 'Get current open positions (inventory) for a strategy. MRPT/MTFS: pair names, entry dates, prices, hedge ratios, shares. SSRS: sector ETF holdings with weights, shares, cost basis, rebalance history.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt" (Mean Reversion Pair Trading) or "mtfs" (Multi-Timeframe Strategy)',
-          enum: ['mrpt', 'mtfs']
+          description: '"mrpt" (Mean Reversion), "mtfs" (Momentum), or "ssrs" (Sector Rotation)',
+          enum: ['mrpt', 'mtfs', 'ssrs']
         }
       },
       required: ['strategy']
@@ -24,7 +24,9 @@ export const inventoryTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy }) {
-    const filePath = getBackendPath(`inventory_${strategy}.json`)
+    const filePath = strategy === 'ssrs'
+      ? getBackendPath('qlib-main/sector_rotation/inventory_sector_rotation.json')
+      : getBackendPath(`inventory_${strategy}.json`)
     return readJsonFile(filePath)
   }
 }

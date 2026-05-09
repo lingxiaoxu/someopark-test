@@ -17,7 +17,7 @@ export const monitorHistoryTool: AgentTool = {
     input_schema: {
       type: 'object',
       properties: {
-        strategy: { type: 'string', description: 'Filter by strategy: "mrpt" or "mtfs"', enum: ['mrpt', 'mtfs'] },
+        strategy: { type: 'string', description: 'Filter by strategy: "mrpt", "mtfs", or "ssrs"', enum: ['mrpt', 'mtfs', 'ssrs'] },
         pair: { type: 'string', description: 'Filter by pair (e.g. "AWK_FOX")' },
         filename: { type: 'string', description: 'Specific XLSX filename to read' },
         sheet: { type: 'string', description: 'Sheet name within the XLSX file' },
@@ -29,7 +29,9 @@ export const monitorHistoryTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy, pair, filename, sheet, limit = 20 }) {
-    const dir = getBackendPath('trading_signals/monitor_history')
+    const dir = strategy === 'ssrs'
+      ? getBackendPath('historical_runs/sector_rotation')
+      : getBackendPath('trading_signals/monitor_history')
 
     if (filename) {
       const filePath = path.join(dir, path.basename(filename))
@@ -40,8 +42,13 @@ export const monitorHistoryTool: AgentTool = {
     }
 
     let pattern = 'monitor_*.xlsx'
-    if (strategy && pair) pattern = `monitor_${strategy}_${pair}_*.xlsx`
-    else if (strategy) pattern = `monitor_${strategy}_*.xlsx`
+    if (strategy === 'ssrs') {
+      pattern = 'monitor_sr_*.xlsx'
+    } else if (strategy && pair) {
+      pattern = `monitor_${strategy}_${pair}_*.xlsx`
+    } else if (strategy) {
+      pattern = `monitor_${strategy}_*.xlsx`
+    }
 
     const files = await listFiles(dir, pattern)
     const deduped = deduplicateLatest(files)

@@ -14,14 +14,14 @@ function getWfDir(strategy: string): string {
 export const wfSummaryTool: AgentTool = {
   definition: {
     name: 'get_wf_summary',
-    description: 'Get walk-forward summary: OOS stats (total_pnl, sharpe, max_dd_pct) and window details for a strategy.',
+    description: 'Get walk-forward summary. MRPT/MTFS: OOS stats (total_pnl, sharpe, max_dd_pct) and window details. SSRS: 73-fold WF stats, synthetic OOS metrics, param OOS performance, WFE.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt" or "mtfs"',
-          enum: ['mrpt', 'mtfs']
+          description: '"mrpt", "mtfs", or "ssrs" (Sector Rotation)',
+          enum: ['mrpt', 'mtfs', 'ssrs']
         }
       },
       required: ['strategy']
@@ -30,6 +30,10 @@ export const wfSummaryTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy }) {
+    if (strategy === 'ssrs') {
+      const filePath = getBackendPath('qlib-main/sector_rotation/backtest_results/wf_fold_detail.json')
+      return readJsonFile(filePath)
+    }
     const dir = getWfDir(strategy)
     const filePath = await findLatestFile(dir, 'walk_forward_summary_*.json')
     return readJsonFile(filePath)

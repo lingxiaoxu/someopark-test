@@ -16,7 +16,6 @@
     "pnlReport": "PnLレポート",
     "strategyPerformance": "戦略パフォーマンス"
   },
-
   "common": {
     "loading": "データを読み込み中...",
     "failedToLoad": "データの読み込みに失敗しました",
@@ -50,7 +49,6 @@
     "language": "言語",
     "selectSheet": "シートを選択してデータを表示"
   },
-
   "sidebar": {
     "appName": "Someo Park",
     "agentRuntime": "エージェント実行環境",
@@ -75,7 +73,7 @@
     "aboutTitle": "Someo Park について",
     "aboutParkAI": "デフォルトのチャットモード。自然言語で戦略、シグナル、ポジション、パフォーマンスを照会できます。LLM を搭載し、全データビューにアクセス可能。コード生成・プレビュー・サンドボックスへのデプロイでカスタムツールの作成も可能。",
     "aboutAgent": "高度な自律エージェントモード。マルチステップツール呼び出し（Web 検索、Python 実行、データクエリ）を使い、複雑な質問を自主的に調査・分析・回答します。",
-    "aboutClaw": "Someo Park の定量インフラ上に構築されたフル機能の AI 投資リサーチエージェント。Walk-Forward 戦略（MRPT & MTFS）、リアルタイムポジション、シグナル、診断に接続します。",
+    "aboutClaw": "Someo Park の定量インフラ上に構築されたフル機能の AI 投資リサーチエージェント。Walk-Forward 戦略（MRPT, MTFS & SSRS）、リアルタイムポジション、シグナル、診断に接続します。",
     "aboutClawCloud": "クラウド VPS",
     "aboutClawCloudDesc": "Someo Park ホスティング",
     "aboutClawLocal": "ローカル",
@@ -83,7 +81,6 @@
     "aboutDevTitle": "開発者について",
     "aboutDevBio": "Lingxiao はゴールドマン・サックスのシニア・クオンツ・ストラテジスト、ヴァイスプレジデント（VP）を務め、イェール大学経営大学院で MBA を取得し、コロンビア大学工学部 IEOR 学科を卒業。以前は UBS 投資銀行の株式ストラクチャード・デリバティブ・グループでトレードを管理し、バンク・オブ・アメリカ・メリルリンチでも勤務。2024 年ゴールドマン・サックス・グローバル・エンジニアリング・ハッカソンのチャンピオンであり、GDPS 2026（2026 グローバル・デベロッパー・パイオニア・カンファレンス、上海）グローバル・ハッカソンで AI Agentic App により受賞。"
   },
-
   "chat": {
     "currentRuntime": "現在の実行環境：",
     "cloudVpsLabel": "SomeoClaw（クラウド VPS）",
@@ -132,9 +129,9 @@
     "welcomeTitle": "SomeoClaw へようこそ",
     "welcomeDesc": "トレーディング戦略について質問するか、以下のデータビューを探索してください。",
     "activePairs": "アクティブペア",
+    "activePositions": "アクティブポジション",
     "clickToPreview": "クリックしてプレビュー"
   },
-
   "connection": {
     "title": "OpenClaw を接続",
     "agentConfig": "エージェント設定",
@@ -156,7 +153,6 @@
     "verifyConnection": "接続を確認",
     "startUsing": "SomeoClaw を使い始める"
   },
-
   "equity": {
     "title": "OOS エクイティカーブ",
     "totalReturn": "トータルリターン",
@@ -165,18 +161,15 @@
     "equity": "エクイティ",
     "return": "リターン"
   },
-
   "pnlReport": {
     "noReports": "PnLレポートがありません。"
   },
-
   "signals": {
     "title": "トレーディングシグナル（{{strategy}}）",
     "signalDate": "シグナル日：{{date}} | 生成：{{time}}",
     "zScore": "Z-Score",
     "excluded": "除外ペア"
   },
-
   "regime": {
     "title": "マクロレジームステータス",
     "mrptMtfsWeight": "MRPT / MTFS ウェイト",
@@ -195,7 +188,6 @@
     "catStrategyVol": "戦略・ボラティリティ",
     "history90d": "90日：{{value}}"
   },
-
   "inventory": {
     "title": "ポジション状況（{{strategy}}）",
     "asOfDate": "基準日",
@@ -209,7 +201,6 @@
     "zScoreEntry": "エントリー時 Z-Score",
     "wfSource": "WF ソース"
   },
-
   "inventoryHistory": {
     "title": "ポジション履歴スナップショット",
     "activePairs": "アクティブペア",
@@ -224,7 +215,6 @@
     "pnlPct": "損益%",
     "noHistory": "履歴スナップショットがありません"
   },
-
   "dailyReport": {
     "title": "デイリーレポート",
     "dailyQuantReport": "デイリークオンツレポート",
@@ -237,7 +227,6 @@
     "signal": "シグナル",
     "loadingTxt": "TXT レポートを読み込み中..."
   },
-
   "wfSummary": {
     "title": "Walk-Forward サマリー（{{count}} ウィンドウ）",
     "oosTotalPnl": "OOS 総損益",
@@ -251,7 +240,6 @@
     "selectedPairs": "選択ペア：",
     "nMore": "+{{count}} 件追加"
   },
-
   "oosPairSummary": {
     "title": "OOS ペアサマリー",
     "oosPnl": "OOS 損益",
@@ -259,7 +247,6 @@
     "maxDdPct": "最大DD%",
     "winRate": "勝率"
   },
-
   "wfGrid": {
     "title": "DSR 選択ログ（{{count}} 行）",
     "pairAll": "ペア：すべて",
@@ -269,16 +256,13 @@
     "pairSharpe": "ペア Sharpe",
     "dsrPval": "DSR p値"
   },
-
   "wfDiagnostic": {
     "title": "WF 診断（{{file}}）"
   },
-
   "portfolioHistory": {
     "file": "ファイル：",
     "noFiles": "モニター履歴ファイルが見つかりません"
   },
-
   "pairBadge": {
     "quickLinks": "クイックリンク",
     "currentInventory": "現在のポジション",
@@ -289,7 +273,6 @@
     "entry": "エントリー",
     "held": "保有"
   },
-
   "pairUniverse": {
     "selected": "選択済み（{{count}}）",
     "cointegrated": "共和分（{{count}}）",
@@ -297,7 +280,6 @@
     "pca": "PCA（{{count}}）",
     "searchPairs": "ペアを検索..."
   },
-
   "wfStructure": {
     "title": "バックテスト分析ビューア",
     "runInspector": "ラン検査",
@@ -428,7 +410,6 @@
       "recorded_vars": "戦略記録変数"
     }
   },
-
   "financial": {
     "zScore": "Z-score：",
     "pnl": "損益：",
@@ -437,7 +418,6 @@
     "windowN": "ウィンドウ {{n}}",
     "sr": "SR："
   },
-
   "settingsPage": {
     "title": "設定",
     "languageLabel": "表示言語",
@@ -447,7 +427,6 @@
     "dark": "ダーク",
     "light": "ライト"
   },
-
   "auth": {
     "email": "メールアドレス",
     "password": "パスワード",
@@ -503,7 +482,6 @@
     "deploying": "デプロイ中...",
     "confirmDeploy": "デプロイ確認"
   },
-
   "strategyPerf": {
     "mrpt": "MRPT",
     "mtfs": "MTFS",
@@ -519,5 +497,58 @@
     "drawdownTitle": "ドローダウン (% and $)",
     "dailyPnLTitle": "日次損益 ($ and %)",
     "footer": "開始日：2025年11月11日 · {{days}} 取引日 · 初期資金 $1M · MRPT/MTFS ウェイト {{mrptPct}}/{{mtfsPct}}"
+  },
+  "ssrs": {
+    "title": "SSRS",
+    "inventoryTitle": "現在の保有 — SSRS",
+    "signalsTitle": "トレーディングシグナル — SSRS",
+    "wfSummaryTitle": "Walk-Forward サマリー — SSRS（{{folds}} フォールド × {{params}} パラメータ）",
+    "wfGridTitle": "Walk-Forward フォールドグリッド（{{count}} フォールド）",
+    "oosParamTitle": "OOS パラメータサマリー — SSRS（{{count}} パラメータ）",
+    "syntheticOosSharpe": "合成 OOS Sharpe",
+    "oosMaxDrawdown": "OOS 最大ドローダウン",
+    "meanWfe": "平均 WFE",
+    "oosCagr": "OOS CAGR",
+    "oosCalmar": "OOS Calmar",
+    "dsrAggregate": "DSR 総合値",
+    "perParamOos": "パラメータ別 OOS パフォーマンス（WF 選択時）",
+    "paramSet": "パラメータセット",
+    "timesSelected": "選択回数",
+    "meanOosSharpe": "平均 OOS Sharpe",
+    "meanOosReturn": "平均 OOS リターン",
+    "meanOosMaxdd": "平均 OOS 最大DD",
+    "fold": "フォールド",
+    "isPeriod": "IS 期間",
+    "oosPeriod": "OOS 期間",
+    "selected": "選択済み",
+    "method": "メソッド",
+    "isSr": "IS SR",
+    "oosSr": "OOS SR",
+    "wfe": "WFE",
+    "regime": "レジーム",
+    "weight": "ウェイト",
+    "shares": "株数",
+    "price": "価格",
+    "costBasis": "コストベース",
+    "entry": "エントリー",
+    "daysHeld": "保有日数",
+    "noPositions": "ポジションなし",
+    "sectorEtf": "セクター ETF（{{held}}/11）",
+    "paramVersion": "パラメータ：{{param}} | バージョン：{{version}}",
+    "etf": "ETF",
+    "entryDate": "エントリー日",
+    "riskOnSr": "Risk On SR",
+    "transitionSr": "トランジション SR",
+    "riskOffSr": "Risk Off SR",
+    "rebalanceHistory": "リバランス履歴",
+    "notHeld": "未保有",
+    "cash": "キャッシュ",
+    "emergencyMode": "緊急モード",
+    "signalDate": "シグナル日：{{date}} | レジーム：{{regime}}",
+    "score": "スコア",
+    "portfolioHistory": "ポートフォリオ履歴",
+    "versionAll": "バージョン：すべて",
+    "scopeAll": "スコープ：すべて",
+    "sourceAll": "ソース：すべて"
   }
 }

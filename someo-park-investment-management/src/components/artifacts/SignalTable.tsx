@@ -26,7 +26,7 @@ export default function SignalTable({ params }: { params?: any }) {
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">Trading Signals — SSRS</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">{t('ssrs.signalsTitle')}</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
             {['mrpt', 'mtfs', 'ssrs'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
@@ -36,17 +36,17 @@ export default function SignalTable({ params }: { params?: any }) {
           </div>
         </div>
         <div className="text-[10px] text-[var(--text-muted)] mb-2 shrink-0">
-          Signal Date: {data.signal_date} | Regime: {typeof data.regime === 'string' ? data.regime.toUpperCase() : (data.regime?.regime_label || '—').toUpperCase()}
+          {t('ssrs.signalDate', { date: data.signal_date, regime: typeof data.regime === 'string' ? data.regime.toUpperCase() : (data.regime?.regime_label || '—').toUpperCase() })}
         </div>
         <div className="flex-1 overflow-y-auto">
           <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl overflow-hidden">
             <table className="w-full text-left text-sm">
               <thead className="bg-[var(--bg-tertiary)] border-b border-[var(--border-subtle)] text-[10px] uppercase tracking-wider text-[var(--text-muted)]">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Sector</th>
-                  <th className="px-4 py-3 font-medium">Action</th>
-                  <th className="px-4 py-3 font-medium text-right">Weight</th>
-                  <th className="px-4 py-3 font-medium text-right">Score</th>
+                  <th className="px-4 py-3 font-medium">{t('common.sector')}</th>
+                  <th className="px-4 py-3 font-medium">{t('common.action')}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.weight')}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.score')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">

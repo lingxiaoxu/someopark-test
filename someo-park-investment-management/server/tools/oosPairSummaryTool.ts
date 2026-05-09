@@ -1,7 +1,7 @@
 // server/tools/oosPairSummaryTool.ts
 // Data source: server/routes/walkForward.ts — GET /api/wf/pair-summary/:strategy
 
-import { findLatestFile } from '../utils/fileUtils.js'
+import { findLatestFile, readJsonFile } from '../utils/fileUtils.js'
 import { parseCsvFile } from '../utils/csvParser.js'
 import { getBackendPath } from '../config.js'
 import type { AgentTool } from './index.js'
@@ -15,14 +15,14 @@ function getWfDir(strategy: string): string {
 export const oosPairSummaryTool: AgentTool = {
   definition: {
     name: 'get_oos_pair_summary',
-    description: 'Get per-pair OOS performance summary. Returns [{pair, pnl, sharpe, max_dd_pct, win_rate, n_trades, n_days}] for all pairs in the walk-forward.',
+    description: 'MRPT/MTFS: per-pair OOS stats. SSRS: per-param OOS performance by regime. Returns [{pair, pnl, sharpe, max_dd_pct, win_rate, n_trades, n_days}] for MRPT/MTFS.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt" or "mtfs"',
-          enum: ['mrpt', 'mtfs']
+          description: 'Strategy: "mrpt", "mtfs", or "ssrs"',
+          enum: ['mrpt', 'mtfs', 'ssrs']
         }
       },
       required: ['strategy']
@@ -31,6 +31,10 @@ export const oosPairSummaryTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy }) {
+    if (strategy === 'ssrs') {
+      const filePath = getBackendPath('qlib-main/sector_rotation/backtest_results/param_oos_by_regime.json')
+      return readJsonFile(filePath)
+    }
     const dir = getWfDir(strategy)
     const filePath = await findLatestFile(dir, 'oos_pair_summary_*.csv')
     return parseCsvFile(filePath)

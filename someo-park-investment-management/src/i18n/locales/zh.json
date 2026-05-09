@@ -16,7 +16,6 @@
     "pnlReport": "盈亏报告",
     "strategyPerformance": "策略表现"
   },
-
   "common": {
     "loading": "加载数据中...",
     "failedToLoad": "数据加载失败",
@@ -50,7 +49,6 @@
     "language": "语言",
     "selectSheet": "选择一个工作表以查看数据"
   },
-
   "sidebar": {
     "appName": "Someo Park",
     "agentRuntime": "代理运行环境",
@@ -75,7 +73,7 @@
     "aboutTitle": "关于 Someo Park",
     "aboutParkAI": "默认对话模式。通过自然语言查询策略、信号、持仓和表现等数据。由 LLM 驱动，可访问所有数据视图。还可生成代码、预览并部署到沙盒来创建自定义工具。",
     "aboutAgent": "高级自主代理模式。使用多步工具调用（网页搜索、Python 执行、数据查询）自主研究、分析和回答复杂问题。",
-    "aboutClaw": "基于 Someo Park 量化基础设施构建的全功能 AI 投资研究代理。连接 Walk-Forward 策略（MRPT & MTFS）、实时持仓、信号和诊断功能。",
+    "aboutClaw": "基于 Someo Park 量化基础设施构建的全功能 AI 投资研究代理。连接 Walk-Forward 策略（MRPT, MTFS & SSRS）、实时持仓、信号和诊断功能。",
     "aboutClawCloud": "云端 VPS",
     "aboutClawCloudDesc": "Someo Park 托管",
     "aboutClawLocal": "本地",
@@ -83,7 +81,6 @@
     "aboutDevTitle": "关于开发者",
     "aboutDevBio": "Lingxiao 曾任高盛（Goldman Sachs）高级量化策略师、副总裁（VP），持有耶鲁大学管理学院 MBA 学位，本科毕业于哥伦比亚大学工程学院工业工程与运筹学系（IEOR）。此前，Lingxiao 在瑞银投资银行（UBS）股票结构化衍生品部门管理交易，也曾供职于美银美林集团（Bank of America Merrill Lynch）。Lingxiao 是 2024 年高盛全球工程黑客马拉松冠军得主，并在 GDPS 2026（2026 全球开发者先锋大会，上海）全球黑客马拉松中凭借 AI Agentic App 获奖。"
   },
-
   "chat": {
     "currentRuntime": "当前运行环境：",
     "cloudVpsLabel": "SomeoClaw（云端 VPS）",
@@ -132,9 +129,9 @@
     "welcomeTitle": "欢迎使用 SomeoClaw",
     "welcomeDesc": "询问交易策略相关问题，或探索下方的数据视图。",
     "activePairs": "活跃交易对",
+    "activePositions": "当前活跃仓位",
     "clickToPreview": "点击查看预览"
   },
-
   "connection": {
     "title": "连接你的 OpenClaw",
     "agentConfig": "代理配置",
@@ -156,7 +153,6 @@
     "verifyConnection": "验证连接",
     "startUsing": "开始使用 SomeoClaw"
   },
-
   "equity": {
     "title": "OOS 权益曲线",
     "totalReturn": "总回报",
@@ -165,18 +161,15 @@
     "equity": "权益",
     "return": "回报"
   },
-
   "pnlReport": {
     "noReports": "暂无盈亏报告。"
   },
-
   "signals": {
     "title": "交易信号（{{strategy}}）",
     "signalDate": "信号日期：{{date}} | 生成时间：{{time}}",
     "zScore": "Z-Score",
     "excluded": "排除配对"
   },
-
   "regime": {
     "title": "宏观状态",
     "mrptMtfsWeight": "MRPT / MTFS 权重",
@@ -195,7 +188,6 @@
     "catStrategyVol": "策略与波动",
     "history90d": "90天：{{value}}"
   },
-
   "inventory": {
     "title": "持仓状态（{{strategy}}）",
     "asOfDate": "截止日期",
@@ -209,7 +201,6 @@
     "zScoreEntry": "入场 Z-Score",
     "wfSource": "WF 来源"
   },
-
   "inventoryHistory": {
     "title": "持仓历史快照",
     "activePairs": "活跃配对",
@@ -224,7 +215,6 @@
     "pnlPct": "盈亏%",
     "noHistory": "暂无历史快照"
   },
-
   "dailyReport": {
     "title": "每日报告",
     "dailyQuantReport": "每日量化报告",
@@ -237,7 +227,6 @@
     "signal": "信号",
     "loadingTxt": "加载 TXT 报告中..."
   },
-
   "wfSummary": {
     "title": "Walk-Forward 汇总（{{count}} 个窗口）",
     "oosTotalPnl": "OOS 总盈亏",
@@ -251,7 +240,6 @@
     "selectedPairs": "已选配对：",
     "nMore": "+{{count}} 更多"
   },
-
   "oosPairSummary": {
     "title": "OOS 配对汇总",
     "oosPnl": "OOS 盈亏",
@@ -259,7 +247,6 @@
     "maxDdPct": "最大回撤%",
     "winRate": "胜率"
   },
-
   "wfGrid": {
     "title": "DSR 选择日志（{{count}} 行）",
     "pairAll": "配对：全部",
@@ -269,16 +256,13 @@
     "pairSharpe": "配对 Sharpe",
     "dsrPval": "DSR p 值"
   },
-
   "wfDiagnostic": {
     "title": "WF 诊断（{{file}}）"
   },
-
   "portfolioHistory": {
     "file": "文件：",
     "noFiles": "未找到监控历史文件"
   },
-
   "pairBadge": {
     "quickLinks": "快速链接",
     "currentInventory": "当前持仓",
@@ -289,7 +273,6 @@
     "entry": "入场",
     "held": "持有"
   },
-
   "pairUniverse": {
     "selected": "已选（{{count}}）",
     "cointegrated": "协整（{{count}}）",
@@ -297,7 +280,6 @@
     "pca": "PCA（{{count}}）",
     "searchPairs": "搜索配对..."
   },
-
   "wfStructure": {
     "title": "回测分析浏览",
     "runInspector": "运行检查器",
@@ -428,7 +410,6 @@
       "recorded_vars": "策略记录变量"
     }
   },
-
   "financial": {
     "zScore": "Z-score：",
     "pnl": "盈亏：",
@@ -437,7 +418,6 @@
     "windowN": "窗口 {{n}}",
     "sr": "夏普比率："
   },
-
   "settingsPage": {
     "title": "设置",
     "languageLabel": "显示语言",
@@ -447,7 +427,6 @@
     "dark": "暗色",
     "light": "浅色"
   },
-
   "auth": {
     "email": "邮箱地址",
     "password": "密码",
@@ -467,17 +446,14 @@
     "checkEmailReset": "请查看您的邮箱以获取密码重置说明。",
     "passwordUpdated": "密码更新成功。"
   },
-
   "chatInput": {
     "placeholder": "向 SomeoClaw 提问...",
     "tryAgain": "重试"
   },
-
   "chatPicker": {
     "persona": "角色",
     "selectModel": "选择模型"
   },
-
   "chatSettings": {
     "title": "LLM 设置",
     "morphApply": "使用 Morph Apply",
@@ -490,7 +466,6 @@
     "frequencyPenalty": "频率惩罚",
     "presencePenalty": "存在惩罚"
   },
-
   "codePreview": {
     "code": "代码",
     "preview": "预览",
@@ -507,7 +482,6 @@
     "deploying": "部署中...",
     "confirmDeploy": "确认部署"
   },
-
   "strategyPerf": {
     "mrpt": "MRPT",
     "mtfs": "MTFS",
@@ -523,5 +497,58 @@
     "drawdownTitle": "回撤 (% and $)",
     "dailyPnLTitle": "每日盈亏 ($ and %)",
     "footer": "起始日期：2025年11月11日 · {{days}} 个交易日 · 初始资金 $1M · MRPT/MTFS 权重 {{mrptPct}}/{{mtfsPct}}"
+  },
+  "ssrs": {
+    "title": "SSRS",
+    "inventoryTitle": "当前持仓 — SSRS",
+    "signalsTitle": "交易信号 — SSRS",
+    "wfSummaryTitle": "Walk-Forward 汇总 — SSRS（{{folds}} 折叠 × {{params}} 参数集）",
+    "wfGridTitle": "Walk-Forward 折叠网格（{{count}} 折叠）",
+    "oosParamTitle": "OOS 参数汇总 — SSRS（{{count}} 参数集）",
+    "syntheticOosSharpe": "合成 OOS Sharpe",
+    "oosMaxDrawdown": "OOS 最大回撤",
+    "meanWfe": "平均 WFE",
+    "oosCagr": "OOS 年化收益",
+    "oosCalmar": "OOS Calmar",
+    "dsrAggregate": "DSR 综合值",
+    "perParamOos": "各参数集 OOS 表现（被 WF 选中时）",
+    "paramSet": "参数集",
+    "timesSelected": "选中次数",
+    "meanOosSharpe": "平均 OOS Sharpe",
+    "meanOosReturn": "平均 OOS 收益",
+    "meanOosMaxdd": "平均 OOS 最大回撤",
+    "fold": "折叠",
+    "isPeriod": "IS 期间",
+    "oosPeriod": "OOS 期间",
+    "selected": "已选中",
+    "method": "方法",
+    "isSr": "IS SR",
+    "oosSr": "OOS SR",
+    "wfe": "WFE",
+    "regime": "宏观状态",
+    "weight": "权重",
+    "shares": "股数",
+    "price": "价格",
+    "costBasis": "成本基础",
+    "entry": "入场",
+    "daysHeld": "持有天数",
+    "noPositions": "无持仓",
+    "sectorEtf": "板块 ETF（{{held}}/11）",
+    "paramVersion": "参数：{{param}} | 版本：{{version}}",
+    "etf": "ETF",
+    "entryDate": "入场日期",
+    "riskOnSr": "Risk On SR",
+    "transitionSr": "过渡 SR",
+    "riskOffSr": "Risk Off SR",
+    "rebalanceHistory": "再平衡历史",
+    "notHeld": "未持有",
+    "cash": "现金",
+    "emergencyMode": "紧急模式",
+    "signalDate": "信号日期：{{date}} | 宏观状态：{{regime}}",
+    "score": "得分",
+    "portfolioHistory": "组合历史",
+    "versionAll": "版本：全部",
+    "scopeAll": "范围：全部",
+    "sourceAll": "来源：全部"
   }
 }

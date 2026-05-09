@@ -119,7 +119,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
     <div className="flex flex-col h-full">
       {/* Strategy switcher + filters + File selector */}
       <div className="flex items-center justify-between mb-2 shrink-0">
-        <div className="text-xs font-medium text-[var(--text-primary)]">Portfolio History</div>
+        <div className="text-xs font-medium text-[var(--text-primary)]">{t('ssrs.portfolioHistory')}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
           <button onClick={() => setStrategy('mrpt')}
             className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy !== 'ssrs' ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
@@ -141,17 +141,17 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
           <div className="flex items-center gap-2 mb-2 shrink-0 flex-wrap">
             <select value={filterVersion} onChange={e => { setFilterVersion(e.target.value); setSelectedFile(''); }}
               className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1 text-[10px]">
-              <option value="all">Version: All</option>
+              <option value="all">{t('ssrs.versionAll')}</option>
               {versions.map(v => <option key={v} value={v}>{v}</option>)}
             </select>
             <select value={filterSpan} onChange={e => { setFilterSpan(e.target.value); setSelectedFile(''); }}
               className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1 text-[10px]">
-              <option value="all">Scope: All</option>
+              <option value="all">{t('ssrs.scopeAll')}</option>
               {spans.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <select value={filterMode} onChange={e => { setFilterMode(e.target.value); setSelectedFile(''); }}
               className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2 py-1 text-[10px]">
-              <option value="all">Source: All</option>
+              <option value="all">{t('ssrs.sourceAll')}</option>
               {modes.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
             <span className="text-[10px] text-[var(--text-muted)]">

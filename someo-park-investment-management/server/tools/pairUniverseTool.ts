@@ -13,14 +13,15 @@ export const pairUniverseTool: AgentTool = {
 1. source="selected" (default): pairs currently active (from pair_universe_{strategy}.json)
 2. source="coint"|"similar"|"pca": candidate pools from MongoDB pairs_day_select
 For selected: returns list with s1, s2, hedge_ratio, coint_pvalue.
-For candidates: returns latest snapshot with selected/unselected marked.`,
+For candidates: returns latest snapshot with selected/unselected marked.
+SSRS: 11 GICS sector ETFs with current weights and holdings.`,
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt" or "mtfs"',
-          enum: ['mrpt', 'mtfs']
+          description: 'Strategy: "mrpt", "mtfs", or "ssrs"',
+          enum: ['mrpt', 'mtfs', 'ssrs']
         },
         source: {
           type: 'string',
@@ -34,6 +35,20 @@ For candidates: returns latest snapshot with selected/unselected marked.`,
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy, source = 'selected' }) {
+    if (strategy === 'ssrs') {
+      const filePath = getBackendPath('qlib-main/sector_rotation/inventory_sector_rotation.json')
+      const data = await readJsonFile(filePath)
+      const ALL_ETFS = ['XLE','XLB','XLI','XLY','XLP','XLV','XLF','XLK','XLC','XLU','XLRE']
+      const holdings = data.holdings || {}
+      return ALL_ETFS.map(ticker => ({
+        ticker,
+        weight: holdings[ticker]?.weight || 0,
+        shares: holdings[ticker]?.shares || 0,
+        entry_date: holdings[ticker]?.entry_date || '',
+        cost_basis: holdings[ticker]?.cost_basis || 0,
+        held: (holdings[ticker]?.weight || 0) > 0.01,
+      }))
+    }
     if (source === 'selected') {
       const filePath = getBackendPath(`pair_universe_${strategy}.json`)
       return readJsonFile(filePath)

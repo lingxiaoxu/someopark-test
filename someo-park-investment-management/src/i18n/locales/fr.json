@@ -16,7 +16,6 @@
     "pnlReport": "Rapport PnL",
     "strategyPerformance": "Performance de la stratégie"
   },
-
   "common": {
     "loading": "Chargement des données...",
     "failedToLoad": "Échec du chargement des données",
@@ -50,7 +49,6 @@
     "language": "Langue",
     "selectSheet": "Sélectionnez une feuille pour afficher les données"
   },
-
   "sidebar": {
     "appName": "Someo Park",
     "agentRuntime": "Environnement d'exécution",
@@ -75,7 +73,7 @@
     "aboutTitle": "A propos de Someo Park",
     "aboutParkAI": "Mode chat par defaut. Interrogez strategies, signaux, positions et performances en langage naturel. Alimente par LLM avec acces a toutes les vues de donnees. Peut aussi generer du code, previsualiser et deployer dans un sandbox pour creer des outils personnalises.",
     "aboutAgent": "Mode agent autonome avance. Utilise des appels d'outils multi-etapes (recherche web, execution Python, requetes de donnees) pour rechercher, analyser et repondre de maniere autonome.",
-    "aboutClaw": "Agent de recherche d'investissement IA complet, construit sur l'infrastructure quantitative de Someo Park. Se connecte aux strategies walk-forward (MRPT & MTFS), positions en temps reel, signaux et diagnostics.",
+    "aboutClaw": "Agent de recherche d'investissement IA complet, construit sur l'infrastructure quantitative de Someo Park. Se connecte aux strategies walk-forward (MRPT, MTFS & SSRS), positions en temps reel, signaux et diagnostics.",
     "aboutClawCloud": "Cloud VPS",
     "aboutClawCloudDesc": "Heberge par Someo Park",
     "aboutClawLocal": "Local",
@@ -83,7 +81,6 @@
     "aboutDevTitle": "À propos du développeur",
     "aboutDevBio": "Lingxiao était Stratégiste Quantitatif Senior, Vice-Président (VP) chez Goldman Sachs, titulaire d'un MBA de la Yale School of Management et diplômé du département IEOR de la Columbia School of Engineering. Auparavant, Lingxiao a géré des opérations au sein du groupe Equity Structured Derivatives chez UBS Investment Bank et a également travaillé chez Bank of America Merrill Lynch. Lingxiao est le Champion du Goldman Sachs Global Engineering Hackathon en 2024 et a été récompensé au GDPS 2026 (Conférence mondiale des pionniers du développement 2026, Shanghai) lors du hackathon mondial pour une application AI Agentic."
   },
-
   "chat": {
     "currentRuntime": "Environnement actuel :",
     "cloudVpsLabel": "SomeoClaw (Cloud VPS)",
@@ -132,9 +129,9 @@
     "welcomeTitle": "Bienvenue sur SomeoClaw",
     "welcomeDesc": "Posez des questions sur vos strategies de trading ou explorez les vues de donnees ci-dessous.",
     "activePairs": "Paires actives",
+    "activePositions": "Positions actives",
     "clickToPreview": "Cliquer pour previsualiser"
   },
-
   "connection": {
     "title": "Connecter votre OpenClaw",
     "agentConfig": "Configuration de l'agent",
@@ -156,7 +153,6 @@
     "verifyConnection": "Vérifier la connexion",
     "startUsing": "Commencer à utiliser SomeoClaw"
   },
-
   "equity": {
     "title": "Courbe d'équité OOS",
     "totalReturn": "Rendement total",
@@ -165,18 +161,15 @@
     "equity": "Équité",
     "return": "Rendement"
   },
-
   "pnlReport": {
     "noReports": "Aucun rapport PnL disponible."
   },
-
   "signals": {
     "title": "Signaux de trading ({{strategy}})",
     "signalDate": "Date du signal : {{date}} | Généré : {{time}}",
     "zScore": "Z-Score",
     "excluded": "Paires exclues"
   },
-
   "regime": {
     "title": "Statut du régime macro",
     "mrptMtfsWeight": "Poids MRPT / MTFS",
@@ -195,7 +188,6 @@
     "catStrategyVol": "Strategie et volatilite",
     "history90d": "90j : {{value}}"
   },
-
   "inventory": {
     "title": "Statut des positions ({{strategy}})",
     "asOfDate": "Date de référence",
@@ -209,7 +201,6 @@
     "zScoreEntry": "Z-Score à l'entrée",
     "wfSource": "Source WF"
   },
-
   "inventoryHistory": {
     "title": "Historique des positions",
     "activePairs": "paires actives",
@@ -224,7 +215,6 @@
     "pnlPct": "P&L%",
     "noHistory": "Aucun historique trouvé"
   },
-
   "dailyReport": {
     "title": "Rapport quotidien",
     "dailyQuantReport": "Rapport quantitatif quotidien",
@@ -237,7 +227,6 @@
     "signal": "Signal",
     "loadingTxt": "Chargement du rapport TXT..."
   },
-
   "wfSummary": {
     "title": "Résumé Walk-Forward ({{count}} fenêtres)",
     "oosTotalPnl": "P&L total OOS",
@@ -251,7 +240,6 @@
     "selectedPairs": "Paires sélectionnées :",
     "nMore": "+{{count}} autres"
   },
-
   "oosPairSummary": {
     "title": "Résumé des paires OOS",
     "oosPnl": "P&L OOS",
@@ -259,7 +247,6 @@
     "maxDdPct": "DD max%",
     "winRate": "Taux de réussite"
   },
-
   "wfGrid": {
     "title": "Journal de sélection DSR ({{count}} lignes)",
     "pairAll": "Paire : TOUT",
@@ -269,16 +256,13 @@
     "pairSharpe": "Sharpe paire",
     "dsrPval": "p-val DSR"
   },
-
   "wfDiagnostic": {
     "title": "Diagnostic WF ({{file}})"
   },
-
   "portfolioHistory": {
     "file": "Fichier :",
     "noFiles": "Aucun fichier d'historique de suivi trouvé"
   },
-
   "pairBadge": {
     "quickLinks": "Liens rapides",
     "currentInventory": "Positions actuelles",
@@ -289,7 +273,6 @@
     "entry": "Entrée",
     "held": "Détenu"
   },
-
   "pairUniverse": {
     "selected": "Sélectionnées ({{count}})",
     "cointegrated": "Cointégrées ({{count}})",
@@ -297,7 +280,6 @@
     "pca": "PCA ({{count}})",
     "searchPairs": "Rechercher des paires..."
   },
-
   "wfStructure": {
     "title": "Visualiseur d'analyse de backtest",
     "runInspector": "Inspecteur d'exécution",
@@ -428,7 +410,6 @@
       "recorded_vars": "Variables enregistrées de la stratégie"
     }
   },
-
   "financial": {
     "zScore": "Z-score :",
     "pnl": "P&L :",
@@ -437,7 +418,6 @@
     "windowN": "Fenêtre {{n}}",
     "sr": "SR :"
   },
-
   "settingsPage": {
     "title": "Paramètres",
     "languageLabel": "Langue d'affichage",
@@ -447,7 +427,6 @@
     "dark": "Sombre",
     "light": "Clair"
   },
-
   "auth": {
     "email": "Adresse email",
     "password": "Mot de passe",
@@ -503,7 +482,6 @@
     "deploying": "Deploiement...",
     "confirmDeploy": "Confirmer le deploiement"
   },
-
   "strategyPerf": {
     "mrpt": "MRPT",
     "mtfs": "MTFS",
@@ -519,5 +497,58 @@
     "drawdownTitle": "Drawdown (% et $)",
     "dailyPnLTitle": "PnL quotidien ($ et %)",
     "footer": "Debut : 11 nov. 2025 · {{days}} jours de trading · Capital initial $1M · Ponderation MRPT/MTFS {{mrptPct}}/{{mtfsPct}}"
+  },
+  "ssrs": {
+    "title": "SSRS",
+    "inventoryTitle": "Inventaire actuel — SSRS",
+    "signalsTitle": "Signaux de trading — SSRS",
+    "wfSummaryTitle": "Résumé Walk-Forward — SSRS ({{folds}} plis × {{params}} params)",
+    "wfGridTitle": "Grille de plis Walk-Forward ({{count}} plis)",
+    "oosParamTitle": "Résumé des paramètres OOS — SSRS ({{count}} params)",
+    "syntheticOosSharpe": "Sharpe OOS synthétique",
+    "oosMaxDrawdown": "Drawdown max OOS",
+    "meanWfe": "WFE moyen",
+    "oosCagr": "CAGR OOS",
+    "oosCalmar": "Calmar OOS",
+    "dsrAggregate": "DSR agrégé",
+    "perParamOos": "Performance OOS par paramètre (lors de la sélection WF)",
+    "paramSet": "Jeu de paramètres",
+    "timesSelected": "Fois sélectionné",
+    "meanOosSharpe": "Sharpe OOS moyen",
+    "meanOosReturn": "Rendement OOS moyen",
+    "meanOosMaxdd": "DD max OOS moyen",
+    "fold": "Pli",
+    "isPeriod": "Période IS",
+    "oosPeriod": "Période OOS",
+    "selected": "Sélectionné",
+    "method": "Méthode",
+    "isSr": "SR IS",
+    "oosSr": "SR OOS",
+    "wfe": "WFE",
+    "regime": "Régime",
+    "weight": "Poids",
+    "shares": "Actions",
+    "price": "Prix",
+    "costBasis": "Coût de base",
+    "entry": "Entrée",
+    "daysHeld": "Jours détenus",
+    "noPositions": "Aucune position ouverte",
+    "sectorEtf": "ETF sectoriel ({{held}}/11)",
+    "paramVersion": "Param : {{param}} | Version : {{version}}",
+    "etf": "ETF",
+    "entryDate": "Date d'entrée",
+    "riskOnSr": "SR Risk On",
+    "transitionSr": "SR Transition",
+    "riskOffSr": "SR Risk Off",
+    "rebalanceHistory": "Historique de rééquilibrage",
+    "notHeld": "Non détenu",
+    "cash": "Liquidités",
+    "emergencyMode": "MODE URGENCE",
+    "signalDate": "Date du signal : {{date}} | Régime : {{regime}}",
+    "score": "Score",
+    "portfolioHistory": "Historique du portefeuille",
+    "versionAll": "Version : Tout",
+    "scopeAll": "Portée : Tout",
+    "sourceAll": "Source : Tout"
   }
 }
