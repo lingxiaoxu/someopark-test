@@ -31,8 +31,13 @@ Requires E2B_API_KEY environment variable.`,
 
     const timeoutMs = Math.min(timeout, 120) * 1000
 
-    // Common packages needed by agent code — pre-install once per sandbox
-    const PREINSTALL = 'pip install -q yfinance pandas numpy requests 2>/dev/null'
+    // Common packages + CJK font for Chinese chart labels
+    const PREINSTALL = [
+      'pip install -q yfinance pandas numpy requests seaborn plotly kaleido scipy 2>/dev/null',
+      'apt-get update -qq && apt-get install -y -qq fonts-noto-cjk 2>/dev/null || true',
+      // Rebuild matplotlib font cache so it picks up the new font
+      'python -c "import matplotlib; matplotlib.font_manager._load_fontmanager(try_read_cache=False)" 2>/dev/null || true',
+    ].join(' && ')
 
     if (!background) {
       // Synchronous mode
@@ -44,12 +49,21 @@ Requires E2B_API_KEY environment variable.`,
         const result = await sandbox.runCode(code)
         const stdout = (result.logs?.stdout ?? []).join('\n')
         const stderr = (result.logs?.stderr ?? []).join('\n')
+        // Extract base64 images from E2B results (matplotlib plots, etc.)
+        const images: string[] = []
+        if (result.results) {
+          for (const r of result.results) {
+            if (r.png) images.push(r.png)
+          }
+        }
         updateTaskStatus(task.id, 'completed', { stdout, stderr })
         await sandbox.kill().catch(() => {})
         return {
           task_id: task.id,
           status: 'completed',
-          stdout,
+          stdout: images.length > 0
+            ? stdout + '\n' + images.map((img, i) => `![Chart ${i+1}](data:image/png;base64,${img})`).join('\n')
+            : stdout,
           stderr,
           error: result.error?.value || null,
         }
@@ -68,8 +82,14 @@ Requires E2B_API_KEY environment variable.`,
           if (state) state.sandbox = sandbox
           await sandbox.runCode(`import subprocess; subprocess.run("${PREINSTALL}", shell=True, capture_output=True)`)
           const result = await sandbox.runCode(code)
-          const stdout = (result.logs?.stdout ?? []).join('\n')
+          let stdout = (result.logs?.stdout ?? []).join('\n')
           const stderr = (result.logs?.stderr ?? []).join('\n')
+          // Extract base64 images from E2B results
+          if (result.results) {
+            for (const r of result.results) {
+              if (r.png) stdout += `\n![Chart](data:image/png;base64,${r.png})`
+            }
+          }
           updateTaskStatus(task.id, 'completed', { stdout, stderr })
         } catch (err: any) {
           updateTaskStatus(task.id, 'failed', { stderr: err.message })

@@ -112,6 +112,28 @@ import { stopTaskTool } from './stopTaskTool.js'
 import { sleepTool } from './sleepTool.js'
 import { configTool } from './configTool.js'
 
+// Private Credit — Excel template models (7 tools)
+import { pcListModelsTool } from './pcListModelsTool.js'
+import { pcReadModelTool } from './pcReadModelTool.js'
+import { pcComputeTool } from './pcComputeTool.js'
+import { pcSensitivityTool } from './pcSensitivityTool.js'
+import { pcCompareScenariosTool } from './pcCompareScenariosTool.js'
+import { pcCustomCashflowTool } from './pcCustomCashflowTool.js'
+import { pcExcelRawTool } from './pcExcelRawTool.js'
+
+// Private Credit — Python portfolio engine (6 tools)
+import { portfolioGenerateCashflowsTool } from './portfolioGenerateCashflowsTool.js'
+import { portfolioCreditRiskTool } from './portfolioCreditRiskTool.js'
+import { portfolioForwardRatesTool } from './portfolioForwardRatesTool.js'
+import { portfolioStressTestTool } from './portfolioStressTestTool.js'
+import { portfolioAnalyzeDealTool } from './portfolioAnalyzeDealTool.js'
+import { portfolioRunExistingTool } from './portfolioRunExistingTool.js'
+
+// Knowledge Base (3 tools)
+import { kbSearchTool } from './kbSearchTool.js'
+import { kbReadTool } from './kbReadTool.js'
+import { kbListTool } from './kbListTool.js'
+
 export function registerAllTools() {
   const allTools: AgentTool[] = [
     // Financial (16 including text variant)
@@ -126,6 +148,15 @@ export function registerAllTools() {
     // Phase 2 tools (8)
     webSearchTool, searchContentTool, readNotebookTool, runPythonTool,
     taskOutputTool, stopTaskTool, sleepTool, configTool,
+    // Private Credit — Excel template models (7)
+    pcListModelsTool, pcReadModelTool, pcComputeTool, pcSensitivityTool,
+    pcCompareScenariosTool, pcCustomCashflowTool, pcExcelRawTool,
+    // Private Credit — Python portfolio engine (6)
+    portfolioGenerateCashflowsTool, portfolioCreditRiskTool,
+    portfolioForwardRatesTool, portfolioStressTestTool,
+    portfolioAnalyzeDealTool, portfolioRunExistingTool,
+    // Knowledge Base (3)
+    kbSearchTool, kbReadTool, kbListTool,
     // Note: ask_user, manage_tasks, send_message are stateful factories
     // created per-request in agent.ts (not registered here)
   ]

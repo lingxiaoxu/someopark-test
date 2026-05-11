@@ -18,14 +18,31 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!rawPairs) return null;
 
-  // ══ SR MODE: param × regime OOS table ══
-  if (strategy === 'ssrs' && rawPairs.data) {
-    const regimeData = rawPairs.data;
-    const paramNames = Object.keys(regimeData).sort();
+  // ══ SR MODE: param performance table (batch summary + regime breakdown) ══
+  if (strategy === 'ssrs' && rawPairs.rows) {
+    const batchRows = [...(rawPairs.rows as any[])].filter((r: any) => r.status === 'ok');
+    const regimeData = rawPairs.regimeData || {};
+
+    // Sort by sortKey
+    const srSortKey = sortKey === 'OOS_PnL' ? 'sharpe' : sortKey;  // default remap
+    batchRows.sort((a: any, b: any) => {
+      const va = Number(a[srSortKey]) || 0;
+      const vb = Number(b[srSortKey]) || 0;
+      return sortAsc ? va - vb : vb - va;
+    });
+
+    const srHandleSort = (key: string) => {
+      if (sortKey === key) setSortAsc(!sortAsc);
+      else { setSortKey(key); setSortAsc(false); }
+    };
+
+    const srFmtPct = (v: number) => `${(v * 100).toFixed(2)}%`;
+    const srColor = (v: number) => v >= 0 ? 'var(--success)' : 'var(--error)';
+
     return (
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between mb-4 shrink-0">
-          <div className="text-sm font-medium text-[var(--text-primary)]">{t('ssrs.oosParamTitle', { count: paramNames.length })}</div>
+          <div className="text-sm font-medium text-[var(--text-primary)]">OOS Param Summary — SSRS ({batchRows.length} params)</div>
           <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
             {['mrpt', 'mtfs', 'ssrs'].map(s => (
               <button key={s} onClick={() => setStrategy(s)} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>{s.toUpperCase()}</button>
@@ -33,29 +50,40 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
           </div>
         </div>
         <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-sm text-left whitespace-nowrap">
             <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
               <tr>
-                <th className="px-3 py-2 font-medium">{t('ssrs.paramSet')}</th>
-                <th className="px-3 py-2 font-medium text-right">{t('ssrs.riskOnSr')}</th>
-                <th className="px-3 py-2 font-medium text-right">{t('ssrs.transitionSr')}</th>
-                <th className="px-3 py-2 font-medium text-right">{t('ssrs.riskOffSr')}</th>
+                <th className="px-3 py-2 font-medium">Param Set</th>
+                <th className="px-3 py-2 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => srHandleSort('sharpe')}>Sharpe {sortKey === 'sharpe' ? (sortAsc ? '↑' : '↓') : ''}</th>
+                <th className="px-3 py-2 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => srHandleSort('calmar')}>Calmar {sortKey === 'calmar' ? (sortAsc ? '↑' : '↓') : ''}</th>
+                <th className="px-3 py-2 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => srHandleSort('total_return')}>Total Ret {sortKey === 'total_return' ? (sortAsc ? '↑' : '↓') : ''}</th>
+                <th className="px-3 py-2 font-medium">Max DD</th>
+                <th className="px-3 py-2 font-medium">Win Rate</th>
+                <th className="px-3 py-2 font-medium">Risk On SR</th>
+                <th className="px-3 py-2 font-medium">Trans SR</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--border-subtle)]">
-              {paramNames.map(p => {
-                const d = regimeData[p] || {};
+            <tbody className="divide-y divide-[var(--border-subtle)] text-xs">
+              {batchRows.map((r: any, i: number) => {
+                const sharpe = Number(r.sharpe) || 0;
+                const calmar = Number(r.calmar) || 0;
+                const totalRet = Number(r.total_return) || 0;
+                const maxDD = Number(r.max_drawdown) || 0;
+                const winRate = Number(r.monthly_win_rate) || 0;
+                const rd = regimeData[r.param_set] || {};
                 return (
-                  <tr key={p} className="hover:bg-[var(--bg-secondary)] text-xs">
-                    <td className="px-3 py-2 font-mono font-medium">{p}</td>
-                    <td className="px-3 py-2 font-mono text-right" style={{ color: (d.risk_on?.mean_oos_sharpe ?? 0) > 0 ? 'var(--success)' : 'var(--error)' }}>
-                      {d.risk_on?.mean_oos_sharpe?.toFixed(3) ?? '—'} <span className="text-[var(--text-muted)]">({d.risk_on?.n_folds ?? 0})</span>
+                  <tr key={i} className="hover:bg-[var(--bg-secondary)] transition-colors">
+                    <td className="px-3 py-2 font-mono font-medium">{r.param_set}</td>
+                    <td className="px-3 py-2 font-mono" style={{ color: srColor(sharpe) }}>{sharpe.toFixed(3)}</td>
+                    <td className="px-3 py-2 font-mono" style={{ color: srColor(calmar) }}>{calmar.toFixed(3)}</td>
+                    <td className="px-3 py-2 font-mono" style={{ color: srColor(totalRet) }}>{srFmtPct(totalRet)}</td>
+                    <td className="px-3 py-2 font-mono text-[var(--error)]">{srFmtPct(maxDD)}</td>
+                    <td className="px-3 py-2 font-mono text-[var(--text-secondary)]">{srFmtPct(winRate)}</td>
+                    <td className="px-3 py-2 font-mono text-right" style={{ color: srColor(rd.risk_on?.mean_oos_sharpe ?? 0) }}>
+                      {rd.risk_on?.mean_oos_sharpe?.toFixed(3) ?? '—'}
                     </td>
-                    <td className="px-3 py-2 font-mono text-right" style={{ color: (d.transition?.mean_oos_sharpe ?? 0) > 0 ? 'var(--success)' : 'var(--error)' }}>
-                      {d.transition?.mean_oos_sharpe?.toFixed(3) ?? '—'} <span className="text-[var(--text-muted)]">({d.transition?.n_folds ?? 0})</span>
-                    </td>
-                    <td className="px-3 py-2 font-mono text-right" style={{ color: (d.risk_off?.mean_oos_sharpe ?? 0) > 0 ? 'var(--success)' : 'var(--error)' }}>
-                      {d.risk_off?.mean_oos_sharpe?.toFixed(3) ?? '—'} <span className="text-[var(--text-muted)]">({d.risk_off?.n_folds ?? 0})</span>
+                    <td className="px-3 py-2 font-mono text-right" style={{ color: srColor(rd.transition?.mean_oos_sharpe ?? 0) }}>
+                      {rd.transition?.mean_oos_sharpe?.toFixed(3) ?? '—'}
                     </td>
                   </tr>
                 );

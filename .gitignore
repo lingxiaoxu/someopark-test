@@ -5,6 +5,9 @@ someo-park-investment-management/.env
 # Claude Code
 .claude/
 
+# Onboarding guide (contains env-specific paths, not for version control)
+ONBOARDING.md
+
 # macOS
 .DS_Store
 

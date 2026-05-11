@@ -8,7 +8,8 @@ import { Router } from 'express';
 import path from 'path';
 import fs from 'fs/promises';
 import { getBackendPath } from '../config.js';
-import { readJsonFile, listFiles, extractTimestamp } from '../utils/fileUtils.js';
+import { readJsonFile, listFiles, extractTimestamp, findLatestFile } from '../utils/fileUtils.js';
+import { parseCsvFile } from '../utils/csvParser.js';
 
 const router = Router();
 
@@ -232,9 +233,16 @@ router.get('/wf/fold-grid', async (_req, res) => {
 // GET /api/sr/wf/param-oos
 router.get('/wf/param-oos', async (_req, res) => {
   try {
-    const filePath = path.join(SR_BACKTEST(), 'param_oos_by_regime.json');
-    const data = await readJsonFile(filePath);
-    res.json({ available: true, data });
+    // Return batch summary CSV as array (matches MRPT/MTFS pair-summary format)
+    const batchFile = await findLatestFile(SR_BACKTEST(), 'sr_batch_summary_*.csv');
+    const rows = await parseCsvFile(batchFile);
+    // Also include regime data for the regime columns
+    let regimeData: Record<string, any> = {};
+    try {
+      const regimePath = path.join(SR_BACKTEST(), 'param_oos_by_regime.json');
+      regimeData = await readJsonFile(regimePath) as Record<string, any>;
+    } catch { /* ignore if missing */ }
+    res.json({ available: true, rows, regimeData });
   } catch (err: any) {
     res.status(500).json({ error: err.message, available: false });
   }

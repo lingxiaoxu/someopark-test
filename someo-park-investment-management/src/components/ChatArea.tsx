@@ -11,6 +11,33 @@ import { ChatSettings } from './ChatSettings'
 import { DeepPartial } from 'ai'
 import templates from '../lib/templates'
 
+/** Clickable image with fullscreen lightbox */
+function ChatImage({ src, alt, ...rest }: { src: string; alt: string; [key: string]: any }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <img
+        src={src} alt={alt}
+        onClick={() => setOpen(true)}
+        style={{ maxWidth: '100%', borderRadius: '8px', margin: '8px 0', cursor: 'zoom-in' }}
+      />
+      {open && (
+        <div
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out', padding: '20px',
+          }}
+        >
+          <img src={src} alt={alt} style={{ maxWidth: '95vw', maxHeight: '95vh', borderRadius: '8px', objectFit: 'contain' }} />
+        </div>
+      )}
+    </>
+  )
+}
+
 /** Lightweight Markdown-to-JSX renderer for chat messages */
 function renderMarkdown(text: string): React.ReactNode[] {
   const lines = text.split('\n')
@@ -26,22 +53,109 @@ function renderMarkdown(text: string): React.ReactNode[] {
     }
   }
 
-  const inlineBold = (s: string): React.ReactNode[] => {
+  const inlineFormat = (s: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = []
-    const re = /\*\*(.+?)\*\*/g
+    // Match bold, inline code, images, and links
+    const re = /\*\*(.+?)\*\*|`([^`]+)`|!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)/g
     let last = 0
     let m: RegExpExecArray | null
     while ((m = re.exec(s)) !== null) {
       if (m.index > last) parts.push(s.slice(last, m.index))
-      parts.push(<strong key={m.index}>{m[1]}</strong>)
+      if (m[1]) {
+        parts.push(<strong key={m.index}>{m[1]}</strong>)
+      } else if (m[2]) {
+        parts.push(<code key={m.index} style={{ background: 'var(--bg-tertiary)', padding: '1px 4px', borderRadius: '3px', fontSize: '0.9em' }}>{m[2]}</code>)
+      } else if (m[4]) {
+        parts.push(<img key={m.index} src={m[4]} alt={m[3] || ''} style={{ maxWidth: '100%', borderRadius: '8px', margin: '4px 0' }} />)
+      } else if (m[5] && m[6]) {
+        parts.push(<a key={m.index} href={m[6]} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>{m[5]}</a>)
+      }
       last = m.index + m[0].length
     }
     if (last < s.length) parts.push(s.slice(last))
     return parts
   }
+  // Backward compat alias
+  const inlineBold = inlineFormat
+
+  let inCodeBlock = false
+  let codeBlockLines: string[] = []
+  let codeBlockLang = ''
+
+  // Table state
+  let tableRows: string[][] = []
+  const flushTable = () => {
+    if (tableRows.length > 0) {
+      result.push(
+        <div key={`tbl-${result.length}`} style={{ overflowX: 'auto', margin: '8px 0' }}>
+          <table style={{ borderCollapse: 'collapse', fontSize: '12px', width: '100%' }}>
+            <thead>
+              <tr>{tableRows[0].map((h, j) => <th key={j} style={{ border: '1px solid var(--border-subtle)', padding: '4px 8px', background: 'var(--bg-tertiary)', fontWeight: 600, textAlign: 'left' }}>{h}</th>)}</tr>
+            </thead>
+            <tbody>
+              {tableRows.slice(1).map((row, ri) => (
+                <tr key={ri}>{row.map((cell, ci) => <td key={ci} style={{ border: '1px solid var(--border-subtle)', padding: '4px 8px' }}>{cell}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )
+      tableRows = []
+    }
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
+
+    // Code blocks: ```
+    if (line.trim().startsWith('```')) {
+      if (!inCodeBlock) {
+        flushList()
+        flushTable()
+        inCodeBlock = true
+        codeBlockLang = line.trim().slice(3).trim()
+        codeBlockLines = []
+      } else {
+        inCodeBlock = false
+        result.push(
+          <pre key={`code-${i}`} style={{ background: 'var(--bg-tertiary)', padding: '8px 12px', borderRadius: '6px', fontSize: '12px', overflowX: 'auto', margin: '4px 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            <code>{codeBlockLines.join('\n')}</code>
+          </pre>
+        )
+      }
+      continue
+    }
+    if (inCodeBlock) {
+      codeBlockLines.push(line)
+      continue
+    }
+
+    // Table rows: | col | col |
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      // Skip separator rows (|---|---|)
+      if (/^\|[\s\-:|]+\|$/.test(line.trim())) continue
+      flushList()
+      const cells = line.trim().slice(1, -1).split('|').map(c => c.trim())
+      tableRows.push(cells)
+      continue
+    } else {
+      flushTable()
+    }
+
+    // Image: ![alt](url) — including base64 data URIs which can be 30K+ chars
+    if (line.includes('![') && (line.includes('data:image/') || line.includes('http'))) {
+      flushList()
+      // Fast extraction without expensive regex on huge strings
+      const altStart = line.indexOf('![')
+      const altEnd = line.indexOf('](', altStart)
+      const urlEnd = line.lastIndexOf(')')
+      if (altStart >= 0 && altEnd > altStart && urlEnd > altEnd) {
+        const alt = line.substring(altStart + 2, altEnd)
+        const src = line.substring(altEnd + 2, urlEnd)
+        result.push(<ChatImage key={`img-${i}`} src={src} alt={alt} />)
+        continue
+      }
+    }
 
     // Headings: # ## ###
     const hMatch = line.match(/^(#{1,3})\s+(.+)$/)
@@ -55,6 +169,13 @@ function renderMarkdown(text: string): React.ReactNode[] {
           {inlineBold(hMatch[2])}
         </div>
       )
+      continue
+    }
+
+    // Horizontal rule: --- or ***
+    if (/^[-*]{3,}\s*$/.test(line.trim())) {
+      flushList()
+      result.push(<hr key={`hr-${i}`} style={{ border: 'none', borderTop: '1px solid var(--border-subtle)', margin: '8px 0' }} />)
       continue
     }
 

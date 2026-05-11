@@ -96,6 +96,10 @@ function normalizeMessagesForAPI(messages: Anthropic.MessageParam[]): Anthropic.
 const MAX_TOOL_RESULT_CHARS = 8000
 
 function truncateResult(result: string, toolName: string): string {
+  // Don't truncate results containing base64 images — they need full content to render
+  if (result.includes('data:image/png;base64,') || result.includes('data:image/jpeg;base64,')) {
+    return result
+  }
   if (result.length <= MAX_TOOL_RESULT_CHARS) return result
   const omitted = result.length - MAX_TOOL_RESULT_CHARS
   return result.slice(0, MAX_TOOL_RESULT_CHARS) +
@@ -401,14 +405,34 @@ router.post('/', async (req, res) => {
           isError = true
         }
 
-        // Truncate large results
-        result = truncateResult(result, toolUse.name)
+        // Extract base64 images before truncation — send them separately to frontend
+        const imageRegex = /!\[([^\]]*)\]\((data:image\/(?:png|jpeg);base64,[A-Za-z0-9+/=]+)\)/g
+        const images: Array<{ alt: string; dataUri: string }> = []
+        let imageMatch
+        while ((imageMatch = imageRegex.exec(result)) !== null) {
+          images.push({ alt: imageMatch[1], dataUri: imageMatch[2] })
+        }
+        // For Anthropic API: strip base64 images to save tokens, keep placeholder
+        let apiResult = result
+        if (images.length > 0) {
+          apiResult = result.replace(imageRegex, '![Chart generated — displayed to user]')
+        }
 
+        // Truncate for API (sans images)
+        apiResult = truncateResult(apiResult, toolUse.name)
+
+        // Send full result (with images) to frontend via SSE
         send({ type: 'tool_result', toolName: toolUse.name, toolResult: result, isError, toolUseId: toolUse.id })
+
+        // Send images as separate SSE events so frontend can render them
+        for (const img of images) {
+          send({ type: 'text', text: `\n![${img.alt}](${img.dataUri})\n` })
+        }
+
         toolResultContent.push({
           type: 'tool_result',
           tool_use_id: toolUse.id,
-          content: result,
+          content: apiResult,
           is_error: isError,
         })
       }
