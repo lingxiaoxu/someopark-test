@@ -42,8 +42,8 @@ export default function InventoryViewer({ params }: { params?: any }) {
           {holdings.map(([ticker, h]: any) => (
             <div key={ticker} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-mono font-bold text-[var(--text-primary)]">{ticker}</span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[var(--success)]/10 text-[var(--success)]">{t('common.long')}</span>
+                <PairBadge pair={ticker} direction="long" strategy="ssrs" compact
+                  details={{ weight: h.weight, shares: h.shares, costBasis: h.cost_basis, lastPrice: h.last_price, openDate: h.entry_date, daysHeld: h.days_held }} />
               </div>
               <div className="grid grid-cols-3 gap-2 text-xs">
                 <div><span className="text-[var(--text-muted)]">{t('ssrs.weight')}</span><br/><span className="font-mono">{(h.weight * 100).toFixed(1)}%</span></div>

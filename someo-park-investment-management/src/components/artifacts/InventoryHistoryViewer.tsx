@@ -45,7 +45,8 @@ function SectorDetail({ ticker, holding, asOf }: { ticker: string; holding: any;
     <div className="bg-[var(--bg-secondary)] rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-[var(--text-primary)] bg-[var(--accent-primary)]/10 px-2 py-0.5 rounded">{ticker}</span>
+          <PairBadge pair={ticker} direction="long" strategy="ssrs" compact
+            details={{ weight: holding.weight, shares: holding.shares, costBasis: holding.cost_basis, lastPrice: holding.last_price, openDate: holding.entry_date, daysHeld: daysHeld, unrealizedPnl: totalPnl, unrealizedPnlPct: pnlPct }} />
           <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
             holding.action_today === 'ENTER' ? 'bg-green-500/10 text-green-400' :
             holding.action_today === 'EXIT' ? 'bg-[var(--error)]/10 text-[var(--error)]' :
@@ -118,7 +119,7 @@ function SsrsSnapshotDetail({ data }: { data: any }) {
         <div className="text-[10px] text-[var(--text-muted)] pt-1 flex flex-wrap items-center gap-1">
           <span>{t('ssrs.notHeld')}:</span>
           {inactiveETFs.map(([k]) => (
-            <span key={k} className="px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] text-[var(--text-muted)] font-mono">{k}</span>
+            <span key={k}><PairBadge pair={k} strategy="ssrs" compact noPopover /></span>
           ))}
         </div>
       )}

@@ -243,13 +243,17 @@ router.get('/wf/param-oos', async (_req, res) => {
 // GET /api/sr/equity-curve?param=X
 router.get('/equity-curve', async (req, res) => {
   try {
-    // Read from selected_param_set.json to get current param
+    // Read from selected_param_set.json to get current param + version
     const selPath = path.join(SR_DIR(), 'selected_param_set.json');
     const sel = await readJsonSafe(selPath);
     const param = (req.query.param as string) || sel?.param_set || 'tight_beta_tracker';
+    const ver = (req.query.version as string) || sel?.signal_version || 'v1';
 
-    // Try to find the portfolio file for this param
-    const files = await listFiles(SR_HISTORY(), `sr_portfolio_${param}_*.xlsx`);
+    // Prefer IS-OOS (walk-forward validated) over IS-only
+    let files = await listFiles(SR_HISTORY(), `sr_portfolio_${param}_${ver}_IS-OOS_*.xlsx`);
+    if (files.length === 0) {
+      files = await listFiles(SR_HISTORY(), `sr_portfolio_${param}_*.xlsx`);
+    }
     if (files.length === 0) {
       return res.json({ available: false, message: `No portfolio file for ${param}` });
     }
@@ -257,11 +261,36 @@ router.get('/equity-curve', async (req, res) => {
     const { parseXlsxSheet } = await import('../utils/xlsxParser.js');
     const latestFile = files[files.length - 1];
     const sheetData = await parseXlsxSheet(latestFile, 'equity_history');
-    const equityCurve = sheetData.rows.map((r: any) => ({
-      date: r[0],
-      value: r[1],
+    const allRows = sheetData.rows.map((r: any) => ({
+      date: r.Date || r.date || r[0],
+      value: r.Net_Equity || r.net_equity || r.value || r[1],
     }));
-    res.json({ available: true, param, data: equityCurve });
+
+    // For OOS-only: find earliest OOS start from wf_fold_detail
+    let oosStart: string | null = null;
+    try {
+      const wfPath = path.join(SR_BACKTEST(), `wf_fold_detail_${ver}.json`);
+      const wfData = await readJsonSafe(wfPath) || await readJsonSafe(path.join(SR_BACKTEST(), 'wf_fold_detail.json'));
+      if (wfData?.folds?.length) {
+        const oosStarts = wfData.folds.map((f: any) => f.oos_start).filter(Boolean).sort();
+        oosStart = oosStarts[0]?.slice(0, 10) || null;
+      }
+    } catch { /* skip */ }
+
+    // Filter to OOS period only; re-base equity to start at first OOS value
+    let equityCurve = allRows;
+    if (oosStart) {
+      const oosRows = allRows.filter((r: any) => r.date >= oosStart);
+      if (oosRows.length > 0) {
+        const baseValue = oosRows[0].value;
+        equityCurve = oosRows.map((r: any) => ({
+          ...r,
+          value_rebased: baseValue ? (r.value / baseValue) * 1000000 : r.value,
+        }));
+      }
+    }
+
+    res.json({ available: true, param, version: ver, file: path.basename(latestFile), oos_start: oosStart, data: equityCurve });
   } catch (err: any) {
     res.status(500).json({ error: err.message, available: false });
   }

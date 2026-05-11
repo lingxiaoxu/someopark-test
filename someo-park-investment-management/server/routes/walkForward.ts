@@ -24,6 +24,20 @@ router.get('/summary/:strategy', async (req, res) => {
     const dir = getWfDir(strategy);
     const latestFile = await findLatestFile(dir, 'walk_forward_summary_*.json');
     const data = await readJsonFile(latestFile);
+
+    // Enrich with param/pair counts from DSR log (for title display)
+    if (!data.n_param_sets || !data.n_pairs) {
+      try {
+        const dsrFile = await findLatestFile(dir, 'dsr_selection_log_*.csv');
+        const dsrData = await parseCsvFile(dsrFile);
+        const paramSets = new Set(dsrData.map((r: any) => r.param_set));
+        const pairs = new Set(dsrData.map((r: any) => r.pair_key));
+        data.n_param_sets = paramSets.size;
+        data.n_pairs = pairs.size;
+        data.n_windows = data.oos_windows || data.windows?.length || 0;
+      } catch { /* DSR log not available */ }
+    }
+
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

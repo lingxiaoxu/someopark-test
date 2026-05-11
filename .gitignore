@@ -70,3 +70,10 @@ mlruns/
 qlib-main/sector_rotation/report/output/
 qlib-main/sector_rotation/logs/
 qlib-main/sector_rotation/backtest_results/
+
+# Private Credit module & public docs (large files, managed locally)
+portfolio_of_private_credit_deals/
+public/
+
+# Zip archives
+*.zip

@@ -238,7 +238,8 @@
     "trainPeriod": "Período de entrenamiento",
     "testPeriod": "Período de prueba (OOS)",
     "selectedPairs": "Pares seleccionados:",
-    "nMore": "+{{count}} más"
+    "nMore": "+{{count}} más",
+    "titleFull": "Resumen Walk-Forward — {{strategy}} ({{windows}} ventanas × {{pairs}} pares × {{params}} conjuntos de params)"
   },
   "oosPairSummary": {
     "title": "Resumen de pares OOS",
@@ -502,7 +503,7 @@
     "title": "SSRS",
     "inventoryTitle": "Inventario actual — SSRS",
     "signalsTitle": "Señales de trading — SSRS",
-    "wfSummaryTitle": "Resumen Walk-Forward — SSRS ({{folds}} pliegues × {{params}} params)",
+    "wfSummaryTitle": "Resumen Walk-Forward — SSRS ({{folds}} pliegues × {{etfs}} ETF sectoriales × {{params}} conjuntos de params)",
     "wfGridTitle": "Cuadrícula de pliegues Walk-Forward ({{count}} pliegues)",
     "oosParamTitle": "Resumen de parámetros OOS — SSRS ({{count}} params)",
     "syntheticOosSharpe": "Sharpe OOS sintético",

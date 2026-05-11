@@ -117,7 +117,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {(srSectors?.sectors || []).map((s: any) => (
                   <tr key={s.ticker} className={`hover:bg-[var(--bg-secondary)] ${s.held ? 'bg-[var(--accent-primary)]/5' : 'opacity-50'}`}>
-                    <td className="px-4 py-3 font-mono font-medium text-[var(--text-primary)]">{s.ticker}</td>
+                    <td className="px-4 py-3"><PairBadge pair={s.ticker} direction={s.held ? 'long' : null} strategy="ssrs" compact details={s.held ? { weight: s.weight, shares: s.shares, costBasis: s.cost_basis, openDate: s.entry_date } : undefined} /></td>
                     <td className="px-4 py-3 text-right font-mono">{s.held ? (s.weight * 100).toFixed(1) + '%' : '—'}</td>
                     <td className="px-4 py-3 text-[var(--text-secondary)] text-xs">{s.held ? (s.entry_date || '—') : '—'}</td>
                     <td className="px-4 py-3 text-right font-mono">{s.held ? '$' + (s.cost_basis?.toFixed(2) || '—') : '—'}</td>

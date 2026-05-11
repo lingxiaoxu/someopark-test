@@ -128,7 +128,7 @@
     "footerLocal": "正在通过 Bridge 连接使用本地 OpenClaw 代理。",
     "welcomeTitle": "欢迎使用 SomeoClaw",
     "welcomeDesc": "询问交易策略相关问题，或探索下方的数据视图。",
-    "activePairs": "活跃交易对",
+    "activePairs": "当前活跃交易对",
     "activePositions": "当前活跃仓位",
     "clickToPreview": "点击查看预览"
   },
@@ -238,7 +238,8 @@
     "trainPeriod": "训练期",
     "testPeriod": "测试（OOS）期",
     "selectedPairs": "已选配对：",
-    "nMore": "+{{count}} 更多"
+    "nMore": "+{{count}} 更多",
+    "titleFull": "Walk-Forward 汇总 — {{strategy}}（{{windows}} 窗口 × {{pairs}} 配对 × {{params}} 参数集）"
   },
   "oosPairSummary": {
     "title": "OOS 配对汇总",
@@ -502,7 +503,7 @@
     "title": "SSRS",
     "inventoryTitle": "当前持仓 — SSRS",
     "signalsTitle": "交易信号 — SSRS",
-    "wfSummaryTitle": "Walk-Forward 汇总 — SSRS（{{folds}} 折叠 × {{params}} 参数集）",
+    "wfSummaryTitle": "Walk-Forward 汇总 — SSRS（{{folds}} 折叠 × {{etfs}} 板块ETF × {{params}} 参数集）",
     "wfGridTitle": "Walk-Forward 折叠网格（{{count}} 折叠）",
     "oosParamTitle": "OOS 参数汇总 — SSRS（{{count}} 参数集）",
     "syntheticOosSharpe": "合成 OOS Sharpe",

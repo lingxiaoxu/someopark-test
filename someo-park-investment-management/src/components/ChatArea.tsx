@@ -159,7 +159,7 @@ export default function ChatArea({
   const { data: srInv } = useApi(() => getInventory('ssrs'), [])
   const currentInv = selectedStrategy === 'ssrs' ? srInv : (selectedStrategy === 'mrpt' ? mrptInv : mtfsInv)
   const activePairs = selectedStrategy === 'ssrs'
-    ? (currentInv ? Object.entries(currentInv.holdings || {}).filter(([, h]: any) => (h as any).weight > 0.01).map(([ticker, h]: any) => [ticker, { direction: 'long', ticker }]) : [])
+    ? (currentInv ? Object.entries(currentInv.holdings || {}).filter(([, h]: any) => (h as any).weight > 0.01).map(([ticker, h]: any) => [ticker, { ...h, direction: 'long' }]) : [])
     : (currentInv ? Object.entries(currentInv.pairs || {}).filter(([, p]: any) => (p as any).direction !== null) : [])
 
   const models = modelList as LLMModel[]
@@ -666,7 +666,16 @@ export default function ChatArea({
                     {activePairs.map(([key, pos]: any) => (
                       <span key={key}>
                         <PairBadge pair={key} direction={pos.direction} strategy={selectedStrategy}
-                          details={{ s1Shares: pos.s1_shares, s2Shares: pos.s2_shares, s1Price: pos.open_s1_price, s2Price: pos.open_s2_price, openDate: pos.open_date, hedgeRatio: pos.open_hedge_ratio, paramSet: pos.param_set, zScore: pos.open_signal?.z_score }} />
+                          details={selectedStrategy === 'ssrs' ? {
+                            weight: pos.weight, shares: pos.shares, costBasis: pos.cost_basis,
+                            lastPrice: pos.last_price, openDate: pos.entry_date, daysHeld: pos.days_held,
+                            unrealizedPnl: pos.shares && pos.last_price && pos.cost_basis ? (pos.last_price - pos.cost_basis) * pos.shares : undefined,
+                            unrealizedPnlPct: pos.cost_basis ? ((pos.last_price - pos.cost_basis) / pos.cost_basis) * 100 : undefined,
+                          } : {
+                            s1Shares: pos.s1_shares, s2Shares: pos.s2_shares, s1Price: pos.open_s1_price,
+                            s2Price: pos.open_s2_price, openDate: pos.open_date, hedgeRatio: pos.open_hedge_ratio,
+                            paramSet: pos.param_set, zScore: pos.open_signal?.z_score,
+                          }} />
                       </span>
                     ))}
                   </div>

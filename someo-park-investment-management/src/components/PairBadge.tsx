@@ -5,13 +5,13 @@ import { ArrowRightLeft, TrendingUp, TrendingDown, ExternalLink } from 'lucide-r
 import { useSetArtifact } from '../contexts/ArtifactContext';
 
 export interface PairBadgeProps {
-  /** Full pair key like "MSFT/AAPL" or separate s1/s2 */
+  /** Full pair key like "MSFT/AAPL" or separate s1/s2. For SSRS: single ticker like "XLE" */
   pair?: string;
   s1?: string;
   s2?: string;
   /** "long" = s1 long, s2 short. "short" = s1 short, s2 long. null/undefined = neutral */
   direction?: 'long' | 'short' | null;
-  /** Strategy for navigation: mrpt or mtfs */
+  /** Strategy for navigation: mrpt, mtfs, or ssrs */
   strategy?: string;
   /** Optional detail fields shown in popover */
   details?: {
@@ -27,6 +27,11 @@ export interface PairBadgeProps {
     momentumSpread?: number;
     unrealizedPnl?: number;
     unrealizedPnlPct?: number;
+    // SSRS sector-specific fields
+    weight?: number;
+    shares?: number;
+    costBasis?: number;
+    lastPrice?: number;
   };
   /** Compact mode for table cells */
   compact?: boolean;
@@ -48,8 +53,9 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
   const setActiveArtifact = useSetArtifact();
 
   // Parse pair key
+  const isSsrs = strategy?.toLowerCase() === 'ssrs';
   const ticker1 = s1 || pair?.split('/')[0] || '?';
-  const ticker2 = s2 || pair?.split('/')[1] || '?';
+  const ticker2 = isSsrs ? '' : (s2 || pair?.split('/')[1] || '?');
 
   // Direction-based colors
   const s1Long = direction === 'long';
@@ -103,7 +109,7 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
     setShowPopover(false);
   };
 
-  const pairKey = `${ticker1}/${ticker2}`;
+  const pairKey = isSsrs ? ticker1 : `${ticker1}/${ticker2}`;
   const strat = strategy?.toLowerCase() || 'mrpt';
 
   return (
@@ -120,26 +126,30 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
       >
         {/* S1 ticker */}
         <span className={`font-mono font-semibold ${compact ? 'text-[11px]' : 'text-xs'}`} style={{
-          color: hasDirection ? (s1Long ? 'var(--success)' : 'var(--error)') : 'var(--text-primary)'
+          color: isSsrs ? 'var(--text-primary)' : hasDirection ? (s1Long ? 'var(--success)' : 'var(--error)') : 'var(--text-primary)'
         }}>
           {ticker1}
         </span>
 
-        {/* Direction arrow */}
-        <span className={`mx-1 flex items-center ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
-          {hasDirection ? (
-            <ArrowRightLeft className={`${compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-[var(--text-muted)]`} />
-          ) : (
-            <span className="text-[var(--text-muted)]">/</span>
-          )}
-        </span>
+        {/* Direction arrow / separator — skip for SSRS single ticker */}
+        {!isSsrs && (
+          <span className={`mx-1 flex items-center ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
+            {hasDirection ? (
+              <ArrowRightLeft className={`${compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} text-[var(--text-muted)]`} />
+            ) : (
+              <span className="text-[var(--text-muted)]">/</span>
+            )}
+          </span>
+        )}
 
-        {/* S2 ticker */}
-        <span className={`font-mono font-semibold ${compact ? 'text-[11px]' : 'text-xs'}`} style={{
-          color: hasDirection ? (s1Long ? 'var(--error)' : 'var(--success)') : 'var(--text-primary)'
-        }}>
-          {ticker2}
-        </span>
+        {/* S2 ticker — skip for SSRS single ticker */}
+        {!isSsrs && (
+          <span className={`font-mono font-semibold ${compact ? 'text-[11px]' : 'text-xs'}`} style={{
+            color: hasDirection ? (s1Long ? 'var(--error)' : 'var(--success)') : 'var(--text-primary)'
+          }}>
+            {ticker2}
+          </span>
+        )}
 
         {/* Direction micro-label */}
         {hasDirection && (
@@ -155,6 +165,13 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
             {!compact && (direction === 'long' ? t('common.long') : t('common.short'))}
           </span>
         )}
+
+        {/* SSRS weight label */}
+        {isSsrs && details?.weight != null && (
+          <span className={`ml-1 font-mono ${compact ? 'text-[8px]' : 'text-[9px]'} text-[var(--text-muted)]`}>
+            {(details.weight * 100).toFixed(0)}%
+          </span>
+        )}
       </button>
 
       {/* Popover via Portal — avoids overflow clipping from parent tables */}
@@ -167,7 +184,7 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
           {/* Popover Header */}
           <div className="px-3 py-2.5 bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <PairBadge pair={pairKey} direction={direction} compact noPopover />
+              <PairBadge pair={isSsrs ? ticker1 : pairKey} direction={direction} strategy={strategy} compact noPopover />
               {strategy && <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase">{strategy}</span>}
             </div>
             {details?.paramSet && (
@@ -177,8 +194,52 @@ export default function PairBadge({ pair, s1, s2, direction, strategy, details, 
             )}
           </div>
 
-          {/* Position Details */}
-          {details && (
+          {/* Position Details — SSRS single-ticker mode */}
+          {details && isSsrs && (
+            <div className="px-3 py-2.5 space-y-2 border-b border-[var(--border-subtle)]">
+              <div className="bg-[var(--bg-secondary)] rounded px-2 py-1.5 text-[10px]">
+                <div className="text-[var(--text-muted)] uppercase mb-0.5">
+                  {ticker1} <span style={{ color: 'var(--success)' }}>{t('common.long')}</span>
+                </div>
+                <div className="font-mono text-[var(--text-primary)]">
+                  {details.shares != null ? `${details.shares.toLocaleString()} ${t('common.shares')}` : '—'}
+                </div>
+                {details.weight != null && (
+                  <div className="font-mono text-[var(--text-muted)]">{(details.weight * 100).toFixed(1)}% weight</div>
+                )}
+              </div>
+              <div className="flex items-center gap-3 text-[10px] flex-wrap">
+                {details.costBasis != null && (
+                  <div><span className="text-[var(--text-muted)]">Cost </span><span className="font-mono text-[var(--text-primary)]">${fmtNum(details.costBasis)}</span></div>
+                )}
+                {details.lastPrice != null && (
+                  <div><span className="text-[var(--text-muted)]">Price </span><span className="font-mono text-[var(--text-primary)]">${fmtNum(details.lastPrice)}</span></div>
+                )}
+                {details.openDate && (
+                  <div><span className="text-[var(--text-muted)]">{t('pairBadge.entry')} </span><span className="font-mono text-[var(--text-primary)]">{details.openDate}</span></div>
+                )}
+                {details.daysHeld != null && (
+                  <div><span className="text-[var(--text-muted)]">{t('pairBadge.held')} </span><span className="font-mono text-[var(--text-primary)]">{details.daysHeld}d</span></div>
+                )}
+              </div>
+              {details.unrealizedPnl != null && (
+                <div className="flex items-center gap-2 text-[10px]">
+                  <span className="text-[var(--text-muted)]">{t('pairBadge.unrealizedPnl')}</span>
+                  <span className="font-mono font-semibold" style={{ color: details.unrealizedPnl >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                    {details.unrealizedPnl >= 0 ? '+' : ''}${fmtNum(details.unrealizedPnl)}
+                  </span>
+                  {details.unrealizedPnlPct != null && (
+                    <span className="font-mono" style={{ color: details.unrealizedPnlPct >= 0 ? 'var(--success)' : 'var(--error)' }}>
+                      ({details.unrealizedPnlPct >= 0 ? '+' : ''}{fmtNum(details.unrealizedPnlPct)}%)
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Position Details — MRPT/MTFS pair mode */}
+          {details && !isSsrs && (
             <div className="px-3 py-2.5 space-y-2 border-b border-[var(--border-subtle)]">
               {/* Position Roles */}
               <div className="grid grid-cols-2 gap-2 text-[10px]">

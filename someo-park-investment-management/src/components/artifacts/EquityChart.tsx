@@ -33,7 +33,7 @@ export default function EquityChart({ params }: { params?: any }) {
     const srMode = strategy === 'ssrs';
     const base = srMode ? 1000000 : startEquity;
     return rows.map((d: any) => {
-      const eq = srMode ? (d.value || d.Equity || base) : (d.Equity_Chained || d.OOS_Equity_Chained || d.Equity || startEquity);
+      const eq = srMode ? (d.value_rebased || d.value || d.Equity || base) : (d.Equity_Chained || d.OOS_Equity_Chained || d.Equity || startEquity);
       const dt = srMode ? (d.date || d.Date) : d.Date;
       return { ...d, Date: formatDate(dt), _equity: eq, _returnPct: ((eq - base) / base) * 100 };
     });
@@ -53,9 +53,13 @@ export default function EquityChart({ params }: { params?: any }) {
   if (error) return <ErrorState message={error} onRetry={refetch} />;
   if (!enrichedData || enrichedData.length === 0) return null;
 
-  const oosStats = wfSummary?.oos_stats || {};
-  const endEquity = enrichedData[enrichedData.length - 1]?._equity || startEquity;
-  const totalReturn = ((endEquity - startEquity) / startEquity * 100).toFixed(2);
+  const srMode = strategy === 'ssrs';
+  const base = srMode ? 1000000 : startEquity;
+  const oosStats = srMode ? (wfSummary?.synthetic_metrics || {}) : (wfSummary?.oos_stats || {});
+  const endEquity = enrichedData[enrichedData.length - 1]?._equity || base;
+  const totalReturn = ((endEquity - base) / base * 100).toFixed(2);
+  const sharpe = srMode ? oosStats.sharpe : oosStats.oos_sharpe;
+  const maxDD = srMode ? oosStats.maxdd : oosStats.oos_max_dd_pct;
 
   return (
     <div className="flex flex-col gap-4 h-full">
@@ -79,11 +83,11 @@ export default function EquityChart({ params }: { params?: any }) {
         </div>
         <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-3">
           <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('equity.sharpeRatio')}</div>
-          <div className="text-lg font-semibold text-[var(--text-primary)]">{oosStats.oos_sharpe?.toFixed(2) ?? '—'}</div>
+          <div className="text-lg font-semibold text-[var(--text-primary)]">{sharpe?.toFixed(2) ?? '—'}</div>
         </div>
         <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-3">
           <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-wider mb-1">{t('equity.maxDrawdown')}</div>
-          <div className="text-lg font-semibold text-[var(--error)]">{oosStats.oos_max_dd_pct != null ? `${(oosStats.oos_max_dd_pct * 100).toFixed(2)}%` : '—'}</div>
+          <div className="text-lg font-semibold text-[var(--error)]">{maxDD != null ? `${(maxDD * 100).toFixed(2)}%` : '—'}</div>
         </div>
       </div>
 
@@ -101,7 +105,7 @@ export default function EquityChart({ params }: { params?: any }) {
             <YAxis
               yAxisId="right"
               orientation="right"
-              domain={[((yMin - startEquity) / startEquity) * 100, ((yMax - startEquity) / startEquity) * 100]}
+              domain={[((yMin - base) / base) * 100, ((yMax - base) / base) * 100]}
               stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false}
               tickFormatter={(val) => `${val >= 0 ? '+' : ''}${val.toFixed(1)}%`}
             />

@@ -52,7 +52,8 @@ export default function SignalTable({ params }: { params?: any }) {
               <tbody className="divide-y divide-[var(--border-subtle)]">
                 {activeETFs.map((sig: any, idx: number) => (
                   <tr key={idx} className="hover:bg-[var(--bg-secondary)] transition-colors">
-                    <td className="px-4 py-3 font-mono font-medium">{sig.ticker}</td>
+                    <td className="px-4 py-3"><PairBadge pair={sig.ticker} direction={sig.target_weight > 0.01 ? 'long' : null} strategy="ssrs" compact
+                      details={{ weight: sig.target_weight, shares: sig.current_shares || sig.target_shares, lastPrice: sig.price }} /></td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide ${
                         sig.action === 'HOLD' ? 'bg-[var(--accent-primary)]/10 text-[var(--accent-primary)]' :
@@ -69,7 +70,7 @@ export default function SignalTable({ params }: { params?: any }) {
                 ))}
                 {flatETFs.map((sig: any, idx: number) => (
                   <tr key={`flat-${idx}`} className="hover:bg-[var(--bg-secondary)] transition-colors opacity-40">
-                    <td className="px-4 py-3 font-mono">{sig.ticker}</td>
+                    <td className="px-4 py-3"><PairBadge pair={sig.ticker} strategy="ssrs" compact /></td>
                     <td className="px-4 py-3"><span className="px-2 py-0.5 rounded text-[10px] font-bold tracking-wide bg-[var(--text-muted)]/10 text-[var(--text-muted)]">FLAT</span></td>
                     <td className="px-4 py-3 font-mono text-xs text-right">0%</td>
                     <td className="px-4 py-3 font-mono text-xs text-right">{sig.composite_score?.toFixed(3) || '—'}</td>

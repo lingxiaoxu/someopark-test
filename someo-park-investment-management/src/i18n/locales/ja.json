@@ -238,7 +238,8 @@
     "trainPeriod": "トレーニング期間",
     "testPeriod": "テスト（OOS）期間",
     "selectedPairs": "選択ペア：",
-    "nMore": "+{{count}} 件追加"
+    "nMore": "+{{count}} 件追加",
+    "titleFull": "Walk-Forward サマリー — {{strategy}}（{{windows}} ウィンドウ × {{pairs}} ペア × {{params}} パラメータセット）"
   },
   "oosPairSummary": {
     "title": "OOS ペアサマリー",
@@ -502,7 +503,7 @@
     "title": "SSRS",
     "inventoryTitle": "現在の保有 — SSRS",
     "signalsTitle": "トレーディングシグナル — SSRS",
-    "wfSummaryTitle": "Walk-Forward サマリー — SSRS（{{folds}} フォールド × {{params}} パラメータ）",
+    "wfSummaryTitle": "Walk-Forward サマリー — SSRS（{{folds}} フォールド × {{etfs}} セクターETF × {{params}} パラメータセット）",
     "wfGridTitle": "Walk-Forward フォールドグリッド（{{count}} フォールド）",
     "oosParamTitle": "OOS パラメータサマリー — SSRS（{{count}} パラメータ）",
     "syntheticOosSharpe": "合成 OOS Sharpe",
