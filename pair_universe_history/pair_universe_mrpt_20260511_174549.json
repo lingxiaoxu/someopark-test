@@ -24,14 +24,14 @@
     "z_col": "Z_realestate"
   },
   {
-    "s1": "TXT",
-    "s2": "YUM",
+    "s1": "FSLR",
+    "s2": "RSG",
     "sector": "industrial",
     "z_col": "Z_industrial"
   },
   {
-    "s1": "FSLR",
-    "s2": "RSG",
+    "s1": "TXT",
+    "s2": "YUM",
     "sector": "industrial",
     "z_col": "Z_industrial"
   },
@@ -84,9 +84,9 @@
     "z_col": "Z_industrial"
   },
   {
-    "s1": "CSCO",
-    "s2": "PAYC",
-    "sector": "tech",
-    "z_col": "Z_tech"
+    "s1": "BAX",
+    "s2": "IDXX",
+    "sector": "health",
+    "z_col": "Z_health"
   }
 ]

@@ -24,8 +24,8 @@
     "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "ACGL",
-    "s2": "YUM",
+    "s1": "YUM",
+    "s2": "ACGL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -36,20 +36,8 @@
     "spread_col": "Momentum_Spread_other"
   },
   {
-    "s1": "AFL",
-    "s2": "SPG",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
     "s1": "AME",
     "s2": "MAR",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "AME",
-    "s2": "SNA",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
   },
@@ -84,9 +72,21 @@
     "spread_col": "Momentum_Spread_food"
   },
   {
-    "s1": "DE",
-    "s2": "CME",
+    "s1": "CME",
+    "s2": "DE",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "WMB",
+    "s2": "DGX",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "PRU",
+    "s2": "DTE",
+    "sector": "utilities",
+    "spread_col": "Momentum_Spread_utilities"
   }
 ]

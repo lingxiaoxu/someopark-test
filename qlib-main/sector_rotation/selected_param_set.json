@@ -2,72 +2,72 @@
   "param_set": "sensitive_dd",
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "selected_at": "2026-05-08",
-  "last_updated": "2026-05-08",
+  "selected_at": "2026-05-11",
+  "last_updated": "2026-05-11",
   "mcps_oos_filtered": 1.456,
-  "recent_sharpe_12m": 1.5963,
-  "full_period_sharpe": 1.162,
-  "full_period_calmar": 0.8278,
+  "recent_sharpe_12m": 1.6644,
+  "full_period_sharpe": 1.1762,
+  "full_period_calmar": 0.8388,
   "top_candidates": [
     {
       "name": "equal_weight_optimizer",
       "version": "v1",
-      "composite": 0.8066,
-      "mcps_score": 0.9743
+      "composite": 0.8196,
+      "mcps_score": 0.9748
     },
     {
       "name": "dovish_macro",
       "version": "v1",
-      "composite": 0.783,
+      "composite": 0.7899,
       "mcps_score": 0.9583
     },
     {
       "name": "fast_momentum",
       "version": "v1",
-      "composite": 0.5387,
+      "composite": 0.5409,
       "mcps_score": 0.9352
     },
     {
       "name": "responsive",
       "version": "v1",
-      "composite": 0.2228,
+      "composite": 0.2091,
       "mcps_score": 0.9252
     },
     {
       "name": "stagflation",
       "version": "v1",
-      "composite": 0.0482,
-      "mcps_score": 0.914
+      "composite": 0.0393,
+      "mcps_score": 0.9149
     },
     {
       "name": "risk_parity_lw",
       "version": "v1",
-      "composite": -0.2332,
-      "mcps_score": 0.9358
+      "composite": -0.2248,
+      "mcps_score": 0.9368
     },
     {
       "name": "rate_hike_cycle",
       "version": "v1",
-      "composite": -0.2586,
+      "composite": -0.2383,
       "mcps_score": 0.9218
     },
     {
       "name": "early_recovery",
       "version": "v1",
-      "composite": -0.2885,
+      "composite": -0.3025,
       "mcps_score": 0.9354
     },
     {
       "name": "diversified_5_rp",
       "version": "v1",
-      "composite": -0.3958,
-      "mcps_score": 0.9305
+      "composite": -0.3862,
+      "mcps_score": 0.9316
     },
     {
       "name": "momentum_heavy",
       "version": "v1",
-      "composite": -1.2232,
-      "mcps_score": 0.8886
+      "composite": -1.247,
+      "mcps_score": 0.8894
     }
   ],
   "n_candidates": 52,
