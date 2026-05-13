@@ -285,7 +285,7 @@
       "open_s2_price": 125.05,
       "open_hedge_ratio": 0.09603712082271851,
       "open_price_level_stop": null,
-      "days_held": 1,
+      "days_held": 0,
       "open_signal": {
         "momentum_spread": 0.372,
         "entry_threshold": 0.182,
@@ -358,8 +358,7 @@
           "unrealized_pnl_pct": 1.587,
           "note": "Holding long, signal=0.342, exit at 0.37"
         }
-      ],
-      "last_updated": "2026-05-12"
+      ]
     }
   }
 }

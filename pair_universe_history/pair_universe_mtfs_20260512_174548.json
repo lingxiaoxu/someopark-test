@@ -6,6 +6,12 @@
     "spread_col": "Momentum_Spread_tech"
   },
   {
+    "s1": "CSX",
+    "s2": "AIG",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
     "s1": "AIG",
     "s2": "GILD",
     "sector": "finance",
@@ -14,12 +20,6 @@
   {
     "s1": "AIG",
     "s2": "JNJ",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "DOV",
-    "s2": "ACGL",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -38,12 +38,6 @@
   {
     "s1": "AFL",
     "s2": "SPG",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "AIG",
-    "s2": "ATO",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
@@ -88,5 +82,11 @@
     "s2": "CINF",
     "sector": "food",
     "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "DE",
+    "s2": "CME",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
   }
 ]

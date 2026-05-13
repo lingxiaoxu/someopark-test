@@ -24,7 +24,10 @@
 #
 # ═══════════════════════════════════════════════════════════════════════
 
-set -euo pipefail
+set -uo pipefail
+# NOTE: intentionally NOT using set -e here.
+# Each step has its own error handling. We don't want a failed file count
+# or tearsheet sub-pipeline to abort the remaining steps (V2 still needs to run).
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$REPO_ROOT"
@@ -75,9 +78,13 @@ log ""
 
 # ── Step 1: V1 Select ────────────────────────────────────────────────
 log "Step 1/6: V1 Select (WF OOS + MCPS → best V1 param)"
-run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --select --save-equity --signal-version v1 >> "$LOG" 2>&1
-V1_PARAM=$(get_param)
-log "  ✅ V1 selected: $V1_PARAM"
+if run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --select --save-equity --signal-version v1 >> "$LOG" 2>&1; then
+    V1_PARAM=$(get_param)
+    log "  ✅ V1 selected: $V1_PARAM"
+else
+    V1_PARAM="FAILED"
+    log "  ⚠️ V1 select failed (RC=$?)"
+fi
 
 # Backup V1
 cp "$SEL_JSON" "$BACKUP_V1"
@@ -85,9 +92,13 @@ cp "$SEL_JSON" "$BACKUP_V1"
 # ── Step 2: V2 Select ────────────────────────────────────────────────
 log ""
 log "Step 2/6: V2 Select (WF OOS + MCPS → best V2 param)"
-run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --select --save-equity --signal-version v2 >> "$LOG" 2>&1
-V2_PARAM=$(get_param)
-log "  ✅ V2 selected: $V2_PARAM"
+if run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --select --save-equity --signal-version v2 >> "$LOG" 2>&1; then
+    V2_PARAM=$(get_param)
+    log "  ✅ V2 selected: $V2_PARAM"
+else
+    V2_PARAM="FAILED"
+    log "  ⚠️ V2 select failed (RC=$?)"
+fi
 
 # Backup V2, restore V1
 cp "$SEL_JSON" "$BACKUP_V2"
@@ -97,25 +108,37 @@ log "  Restored V1: $(get_param)"
 # ── Step 3: V1 Batch (59 IS-only Excel) ──────────────────────────────
 log ""
 log "Step 3/6: V1 Batch --save-equity (59 IS-only portfolio Excel)"
-run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --save-equity --signal-version v1 >> "$LOG" 2>&1
-V1_BATCH=$(ls historical_runs/sector_rotation/sr_portfolio_*_v1_IS_batch_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
-log "  ✅ V1 batch: $V1_BATCH Excel files"
+if run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --save-equity --signal-version v1 >> "$LOG" 2>&1; then
+    V1_BATCH=$(ls historical_runs/sector_rotation/sr_portfolio_*_v1_IS_batch_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
+    log "  ✅ V1 batch: $V1_BATCH Excel files"
+else
+    V1_BATCH=0
+    log "  ⚠️ V1 batch failed (RC=$?)"
+fi
 
 # ── Step 4: V2 Batch (59 IS-only Excel) ──────────────────────────────
 log ""
 log "Step 4/6: V2 Batch --save-equity (59 IS-only portfolio Excel)"
-run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --save-equity --signal-version v2 >> "$LOG" 2>&1
-V2_BATCH=$(ls historical_runs/sector_rotation/sr_portfolio_*_v2_IS_batch_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
-log "  ✅ V2 batch: $V2_BATCH Excel files"
+if run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --save-equity --signal-version v2 >> "$LOG" 2>&1; then
+    V2_BATCH=$(ls historical_runs/sector_rotation/sr_portfolio_*_v2_IS_batch_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
+    log "  ✅ V2 batch: $V2_BATCH Excel files"
+else
+    V2_BATCH=0
+    log "  ⚠️ V2 batch failed (RC=$?)"
+fi
 
 # ── Step 5: V1 Tearsheet (59 IS-OOS Excel + PDF) ────────────────────
 log ""
 log "Step 5/6: V1 Tearsheet (param=$V1_PARAM, 59 IS-OOS Excel + PDF)"
 # selected_param_set.json already has V1
-run_qlib bash "$SR_DIR/sector_rotation_pipeline.sh" tearsheet >> "$LOG" 2>&1
-V1_TS_EXCEL=$(ls historical_runs/sector_rotation/sr_portfolio_*_v1_IS-OOS_tearsheet_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
-V1_TS_PDF=$(ls "$SR_DIR/report/output/tearsheet_*v1*${DATE}*.pdf" 2>/dev/null | wc -l | tr -d ' ')
-log "  ✅ V1 tearsheet: $V1_TS_EXCEL Excel + $V1_TS_PDF PDF"
+if run_qlib bash "$SR_DIR/sector_rotation_pipeline.sh" tearsheet >> "$LOG" 2>&1; then
+    V1_TS_EXCEL=$(ls historical_runs/sector_rotation/sr_portfolio_*_v1_IS-OOS_tearsheet_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
+    V1_TS_PDF=$(ls "$SR_DIR/report/output/tearsheet_*v1*${DATE}*.pdf" 2>/dev/null | wc -l | tr -d ' ')
+    log "  ✅ V1 tearsheet: $V1_TS_EXCEL Excel + $V1_TS_PDF PDF"
+else
+    log "  ⚠️ V1 tearsheet failed (RC=$?) — continuing to V2"
+    V1_TS_EXCEL=0; V1_TS_PDF=0
+fi
 
 # ── Step 6: V2 Tearsheet (59 IS-OOS Excel + PDF) ────────────────────
 log ""
@@ -124,10 +147,14 @@ log "Step 6/6: V2 Tearsheet (param=$V2_PARAM, 59 IS-OOS Excel + PDF)"
 cp "$BACKUP_V2" "$SEL_JSON"
 log "  Switched to V2: $(get_param) ($(get_ver))"
 
-run_qlib bash "$SR_DIR/sector_rotation_pipeline.sh" tearsheet >> "$LOG" 2>&1
-V2_TS_EXCEL=$(ls historical_runs/sector_rotation/sr_portfolio_*_v2_IS-OOS_tearsheet_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
-V2_TS_PDF=$(ls "$SR_DIR/report/output/tearsheet_*v2*${DATE}*.pdf" 2>/dev/null | wc -l | tr -d ' ')
-log "  ✅ V2 tearsheet: $V2_TS_EXCEL Excel + $V2_TS_PDF PDF"
+if run_qlib bash "$SR_DIR/sector_rotation_pipeline.sh" tearsheet >> "$LOG" 2>&1; then
+    V2_TS_EXCEL=$(ls historical_runs/sector_rotation/sr_portfolio_*_v2_IS-OOS_tearsheet_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
+    V2_TS_PDF=$(ls "$SR_DIR/report/output/tearsheet_*v2*${DATE}*.pdf" 2>/dev/null | wc -l | tr -d ' ')
+    log "  ✅ V2 tearsheet: $V2_TS_EXCEL Excel + $V2_TS_PDF PDF"
+else
+    log "  ⚠️ V2 tearsheet failed (RC=$?) — continuing to restore"
+    V2_TS_EXCEL=0; V2_TS_PDF=0
+fi
 
 # ── Restore V1 production param ──────────────────────────────────────
 cp "$BACKUP_V1" "$SEL_JSON"

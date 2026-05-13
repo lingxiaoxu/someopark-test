@@ -8,10 +8,6 @@
       "param_set": "default",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -24,16 +20,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -52,20 +52,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -74,10 +74,6 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -90,16 +86,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -118,20 +118,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -140,10 +140,6 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -156,16 +152,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -184,20 +184,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -206,10 +206,6 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -222,16 +218,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -250,20 +250,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -272,10 +272,6 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -288,16 +284,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -316,20 +316,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -338,10 +338,6 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -354,16 +350,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -382,20 +382,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -404,10 +404,6 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -420,16 +416,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -448,20 +448,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -470,10 +470,6 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -486,16 +482,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -514,20 +514,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -536,10 +536,6 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -552,16 +548,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -580,20 +580,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -602,10 +602,6 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -618,16 +614,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -646,20 +646,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -668,10 +668,6 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -684,16 +680,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -712,20 +712,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -734,10 +734,6 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -750,16 +746,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -778,20 +778,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -800,10 +800,6 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -816,16 +812,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -844,20 +844,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -866,10 +866,6 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -882,16 +878,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -910,20 +910,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -932,10 +932,6 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -948,16 +944,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -976,20 +976,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -998,10 +998,6 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1014,16 +1010,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1042,20 +1042,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1064,10 +1064,6 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1080,16 +1076,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1108,20 +1108,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1130,10 +1130,6 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1146,16 +1142,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1174,20 +1174,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1196,10 +1196,6 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1212,16 +1208,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1240,20 +1240,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1262,10 +1262,6 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1278,16 +1274,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1306,20 +1306,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1328,10 +1328,6 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1344,16 +1340,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1372,20 +1372,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1394,10 +1394,6 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1410,16 +1406,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1438,20 +1438,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1460,10 +1460,6 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1476,16 +1472,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1504,20 +1504,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1526,10 +1526,6 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1542,16 +1538,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1570,20 +1570,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1592,10 +1592,6 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1608,16 +1604,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1636,20 +1636,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1658,10 +1658,6 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1674,16 +1670,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1702,20 +1702,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1724,10 +1724,6 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1740,16 +1736,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1768,20 +1768,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1790,10 +1790,6 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1806,16 +1802,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1834,20 +1834,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1856,10 +1856,6 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1872,16 +1868,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1900,20 +1900,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1922,10 +1922,6 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -1938,16 +1934,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -1966,20 +1966,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -1988,10 +1988,6 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -2004,16 +2000,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -2032,20 +2032,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     },
@@ -2054,10 +2054,6 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "PFG",
-          "YUM"
-        ],
-        [
           "HAS",
           "PFE"
         ],
@@ -2070,16 +2066,20 @@
           "PRU"
         ],
         [
+          "PFG",
+          "YUM"
+        ],
+        [
           "TXT",
           "YUM"
         ],
         [
-          "FSLR",
-          "RSG"
-        ],
-        [
           "CINF",
           "FMC"
+        ],
+        [
+          "FSLR",
+          "RSG"
         ],
         [
           "AON",
@@ -2098,20 +2098,20 @@
           "YUM"
         ],
         [
-          "CI",
-          "MTD"
-        ],
-        [
           "CHD",
           "HON"
+        ],
+        [
+          "CI",
+          "MTD"
         ],
         [
           "EFX",
           "MMM"
         ],
         [
-          "CSCO",
-          "PAYC"
+          "EPAM",
+          "MSCI"
         ]
       ]
     }

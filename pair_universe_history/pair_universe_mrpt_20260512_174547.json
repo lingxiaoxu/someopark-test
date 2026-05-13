@@ -1,5 +1,11 @@
 [
   {
+    "s1": "PFG",
+    "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
     "s1": "HAS",
     "s2": "PFE",
     "sector": "health",
@@ -18,14 +24,14 @@
     "z_col": "Z_realestate"
   },
   {
-    "s1": "PFG",
-    "s2": "YUM",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "TXT",
     "s2": "YUM",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
+    "s1": "FSLR",
+    "s2": "RSG",
     "sector": "industrial",
     "z_col": "Z_industrial"
   },
@@ -34,12 +40,6 @@
     "s2": "FMC",
     "sector": "food",
     "z_col": "Z_food"
-  },
-  {
-    "s1": "FSLR",
-    "s2": "RSG",
-    "sector": "industrial",
-    "z_col": "Z_industrial"
   },
   {
     "s1": "AON",
@@ -66,16 +66,16 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "CHD",
-    "s2": "HON",
-    "sector": "industrial",
-    "z_col": "Z_industrial"
-  },
-  {
     "s1": "CI",
     "s2": "MTD",
     "sector": "health",
     "z_col": "Z_health"
+  },
+  {
+    "s1": "CHD",
+    "s2": "HON",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
   },
   {
     "s1": "EFX",
@@ -84,9 +84,9 @@
     "z_col": "Z_industrial"
   },
   {
-    "s1": "EPAM",
-    "s2": "MSCI",
-    "sector": "finance",
-    "z_col": "Z_finance"
+    "s1": "CSCO",
+    "s2": "PAYC",
+    "sector": "tech",
+    "z_col": "Z_tech"
   }
 ]

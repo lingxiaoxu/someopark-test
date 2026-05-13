@@ -45,7 +45,7 @@ const LABELS: Record<string, string> = {
   combined: 'COMBINED 3 AI ENABLED SYSTEMATIC STRATEGIES',
   master: 'MASTER AI PORTFOLIO WITH GLOBAL ALLOCATIONS',
 };
-const STRAT_KEYS = ['mrpt', 'mtfs', 'combined'];
+const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'combined'];
 const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'soxx', 'master'];
 
 
@@ -59,7 +59,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
   const [loading, setLoading] = useState(true);
   const [masterLoading, setMasterLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'combined']));
+  const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'sr', 'combined']));
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -84,8 +84,9 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
       .finally(() => setMasterLoading(false));
   }, []);
 
-  // Active data source based on viewMode
-  const data = viewMode === 'master' && masterData ? masterData : stratData;
+  // Both modes use masterData (it has all fields: mrpt, mtfs, sr, soxx, combined, master)
+  // Fall back to stratData only if masterData hasn't loaded yet
+  const data = masterData || stratData;
 
   const toggle = (key: string) => {
     setActiveStrategies(prev => {
