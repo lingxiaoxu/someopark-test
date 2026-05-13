@@ -19,55 +19,73 @@ interface DayData {
   mrpt_dd: number;
   mtfs_dd: number;
   combined_dd: number;
+  // Master mode fields (optional — only in master_portfolio_performance.json)
+  sr_equity?: number;
+  soxx_equity?: number;
+  master_equity?: number;
+  sr_pnl?: number;
+  soxx_pnl?: number;
+  master_pnl?: number;
+  sr_dd?: number;
+  soxx_dd?: number;
+  master_dd?: number;
+  [key: string]: any;
 }
 
-const COLORS = {
+const COLORS: Record<string, string> = {
   mrpt: '#2563eb',
   mtfs: '#f59e0b',
+  sr: '#16a34a',
+  soxx: '#a855f7',
   combined: '#111',
+  master: '#111',
 };
+const LABELS: Record<string, string> = {
+  mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', soxx: 'SOXX',
+  combined: 'COMBINED 3 AI ENABLED SYSTEMATIC STRATEGIES',
+  master: 'MASTER AI PORTFOLIO WITH GLOBAL ALLOCATIONS',
+};
+const STRAT_KEYS = ['mrpt', 'mtfs', 'combined'];
+const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'soxx', 'master'];
 
 
 export default function StrategyPerformanceViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
 
-  // ══ SR MODE: V1 vs V2 performance comparison ══
-  if (params?.strategy === 'ssrs') {
-    return (
-      <div className="flex flex-col h-full p-4">
-        <div className="text-sm font-medium text-[var(--text-primary)] mb-4">Strategy Performance — SSRS (V1 vs V2)</div>
-        <div className="text-xs text-[var(--text-muted)] mb-4">
-          V1 (4-factor monthly) vs V2 (7-factor semimonthly) equity curve comparison.
-          Data from portfolio Excel files in historical_runs/sector_rotation/.
-        </div>
-        <div className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-4 text-center text-[var(--text-muted)]">
-          Use the Portfolio History viewer to browse V1 and V2 Excel files for detailed comparison.
-        </div>
-      </div>
-    );
-  }
-  // ══ MRPT/MTFS MODE — unchanged below ══
-
-  const [data, setData] = useState<DayData[] | null>(null);
+  // ALL hooks declared unconditionally at the top
+  const [viewMode, setViewMode] = useState<'strategies' | 'master'>('strategies');
+  const [stratData, setStratData] = useState<DayData[] | null>(null);
+  const [masterData, setMasterData] = useState<DayData[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [masterLoading, setMasterLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'combined']));
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
+  // Load strategy_performance.json
   useEffect(() => {
     fetch(`${API_BASE}/data/strategy_performance.json`, { headers: apiHeaders() })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((d: DayData[]) => {
-        setData(d);
-        if (d.length > 0) {
-          setStartDate(d[0].date);
-          setEndDate(d[d.length - 1].date);
-        }
+        setStratData(d);
+        if (d.length > 0) { setStartDate(d[0].date); setEndDate(d[d.length - 1].date); }
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
+
+  // Load master_portfolio_performance.json
+  useEffect(() => {
+    fetch(`${API_BASE}/data/master_portfolio_performance.json`, { headers: apiHeaders() })
+      .then(r => { if (!r.ok) throw new Error(`master HTTP ${r.status}`); return r.json(); })
+      .then((d: DayData[]) => setMasterData(d))
+      .catch(() => {}) // silently fail — master mode just won't be available
+      .finally(() => setMasterLoading(false));
+  }, []);
+
+  // Active data source based on viewMode
+  const data = viewMode === 'master' && masterData ? masterData : stratData;
 
   const toggle = (key: string) => {
     setActiveStrategies(prev => {
@@ -90,57 +108,48 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
     return { min: data[0].date, max: data[data.length - 1].date };
   }, [data]);
 
-  // Recompute drawdown relative to filtered window
+  // Active keys based on mode
+  const activeKeys = viewMode === 'master' ? MASTER_KEYS : STRAT_KEYS;
+  // The "total" key (for right axis $ scale)
+  const totalKey = viewMode === 'master' ? 'master' : 'combined';
+
+  // Recompute drawdown relative to filtered window — dynamic for all keys
   const windowData = useMemo(() => {
     if (filteredData.length === 0) return [];
     const first = filteredData[0];
+    const peaks: Record<string, number> = {};
+    for (const k of activeKeys) peaks[k] = (first as any)[`${k}_equity`] || 0;
 
-    // Track peaks within the window for DD
-    let mrptPeak = first.mrpt_equity;
-    let mtfsPeak = first.mtfs_equity;
-    let combPeak = first.combined_equity;
-
-    return filteredData.map((d, i) => {
-      if (d.mrpt_equity > mrptPeak) mrptPeak = d.mrpt_equity;
-      if (d.mtfs_equity > mtfsPeak) mtfsPeak = d.mtfs_equity;
-      if (d.combined_equity > combPeak) combPeak = d.combined_equity;
-
-      const prevEq = i > 0 ? filteredData[i - 1].combined_equity : d.combined_equity;
-      return {
-        ...d,
-        mrpt_ret: ((d.mrpt_equity - first.mrpt_equity) / first.mrpt_equity) * 100,
-        mtfs_ret: ((d.mtfs_equity - first.mtfs_equity) / first.mtfs_equity) * 100,
-        combined_ret: ((d.combined_equity - first.combined_equity) / first.combined_equity) * 100,
-        // Drawdown recomputed for this window
-        mrpt_dd_w: (d.mrpt_equity - mrptPeak) / mrptPeak * 100,
-        mtfs_dd_w: (d.mtfs_equity - mtfsPeak) / mtfsPeak * 100,
-        combined_dd_w: (d.combined_equity - combPeak) / combPeak * 100,
-        // DD $ from peak
-        mrpt_dd_dollar: d.mrpt_equity - mrptPeak,
-        mtfs_dd_dollar: d.mtfs_equity - mtfsPeak,
-        combined_dd_dollar: d.combined_equity - combPeak,
-        // PnL
-        mrpt_pnl_w: i > 0 ? d.mrpt_equity - filteredData[i - 1].mrpt_equity : 0,
-        mtfs_pnl_w: i > 0 ? d.mtfs_equity - filteredData[i - 1].mtfs_equity : 0,
-        combined_pnl_w: i > 0 ? d.combined_equity - filteredData[i - 1].combined_equity : 0,
-        // PnL %
-        mrpt_pnl_pct: i > 0 ? ((d.mrpt_equity - filteredData[i - 1].mrpt_equity) / filteredData[i - 1].mrpt_equity) * 100 : 0,
-        mtfs_pnl_pct: i > 0 ? ((d.mtfs_equity - filteredData[i - 1].mtfs_equity) / filteredData[i - 1].mtfs_equity) * 100 : 0,
-        combined_pnl_pct: i > 0 ? (d.combined_pnl / prevEq) * 100 : 0,
-        combined_dd_eq: d.combined_equity,
-        label: d.date.slice(5), // MM-DD
-      };
+    return filteredData.map((d: any, i: number) => {
+      const row: any = { ...d, label: d.date.slice(5) };
+      for (const k of activeKeys) {
+        const eq = d[`${k}_equity`] || 0;
+        const firstEq = (first as any)[`${k}_equity`] || 1;
+        if (eq > peaks[k]) peaks[k] = eq;
+        row[`${k}_ret`] = ((eq - firstEq) / firstEq) * 100;
+        row[`${k}_dd_w`] = peaks[k] > 0 ? (eq - peaks[k]) / peaks[k] * 100 : 0;
+        row[`${k}_dd_dollar`] = eq - peaks[k];
+        if (i > 0) {
+          const prevEq = (filteredData[i - 1] as any)[`${k}_equity`] || 1;
+          row[`${k}_pnl_w`] = eq - prevEq;
+          row[`${k}_pnl_pct`] = prevEq > 0 ? ((eq - prevEq) / prevEq) * 100 : 0;
+        } else {
+          row[`${k}_pnl_w`] = 0;
+          row[`${k}_pnl_pct`] = 0;
+        }
+      }
+      return row;
     });
-  }, [filteredData]);
+  }, [filteredData, viewMode]);
 
   // Auto-fit Y domain for return %
   const [retYMin, retYMax] = useMemo(() => {
     if (windowData.length === 0) return [-3, 15];
     const vals: number[] = [];
     for (const d of windowData) {
-      if (activeStrategies.has('mrpt')) vals.push(d.mrpt_ret);
-      if (activeStrategies.has('mtfs')) vals.push(d.mtfs_ret);
-      if (activeStrategies.has('combined')) vals.push(d.combined_ret);
+      for (const k of activeKeys) {
+        if (activeStrategies.has(k)) vals.push(d[`${k}_ret`] ?? 0);
+      }
     }
     if (vals.length === 0) return [-3, 15];
     const min = Math.min(...vals);
@@ -148,59 +157,52 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
     const range = max - min || 5;
     const pad = range * 0.15;
     return [Math.floor((min - pad) * 2) / 2, Math.ceil((max + pad) * 2) / 2];
-  }, [windowData, activeStrategies]);
+  }, [windowData, activeStrategies, viewMode]);
 
-  // Right axis: combined equity $
-  const firstRow0 = filteredData?.[0];
-  const combEqMin = firstRow0 ? firstRow0.combined_equity * (1 + retYMin / 100) : 880000;
-  const combEqMax = firstRow0 ? firstRow0.combined_equity * (1 + retYMax / 100) : 1020000;
+  // Right axis: total equity $
+  const firstRow0 = filteredData?.[0] as any;
+  const totalEqStart = firstRow0 ? (firstRow0[`${totalKey}_equity`] || 1000000) : 1000000;
+  const combEqMin = totalEqStart * (1 + retYMin / 100);
+  const combEqMax = totalEqStart * (1 + retYMax / 100);
 
-  // Current weight ratio (from latest data point in window)
+  // Current weight % for each component (from latest data)
   const weightPcts = useMemo(() => {
-    if (filteredData.length === 0) return { mrpt: 50, mtfs: 50 };
-    const last = filteredData[filteredData.length - 1];
-    const total = last.mrpt_equity + last.mtfs_equity;
-    const mrpt = Math.round(last.mrpt_equity / total * 100);
-    return { mrpt, mtfs: 100 - mrpt };
-  }, [filteredData]);
+    if (filteredData.length === 0) return {} as Record<string, number>;
+    const last = filteredData[filteredData.length - 1] as any;
+    const total = last[`${totalKey}_equity`] || 1;
+    const w: Record<string, number> = {};
+    for (const k of activeKeys) {
+      if (k !== totalKey) w[k] = Math.round((last[`${k}_equity`] || 0) / total * 100);
+    }
+    return w;
+  }, [filteredData, viewMode]);
 
-  // Scorecard stats (computed over filtered window)
+  // Scorecard stats (computed over filtered window) — dynamic keys
   const stats = useMemo(() => {
     if (filteredData.length === 0) return null;
-    const last = filteredData[filteredData.length - 1];
-    const firstRow = filteredData[0];
+    const last = filteredData[filteredData.length - 1] as any;
+    const firstRow = filteredData[0] as any;
+    const result: Record<string, any> = {};
 
-    const calcStats = (eqKey: keyof DayData, ddKey: string) => {
-      const startEq = firstRow[eqKey] as number;
-      const ret = ((last[eqKey] as number) - startEq) / startEq * 100;
-      // Use window-recomputed DD
-      const maxDD = Math.min(...windowData.map(d => (d as Record<string, number>)[ddKey] ?? 0));
-      const dailyReturns = filteredData.map((d, i) => {
+    for (const k of activeKeys) {
+      const startEq = firstRow[`${k}_equity`] || 1;
+      const endEq = last[`${k}_equity`] || 0;
+      const ret = ((endEq - startEq) / startEq) * 100;
+      const maxDD = Math.min(...windowData.map((d: any) => d[`${k}_dd_w`] ?? 0));
+      const dailyReturns = filteredData.map((d: any, i: number) => {
         if (i === 0) return 0;
-        const prev = filteredData[i - 1][eqKey] as number;
-        return ((d[eqKey] as number) - prev) / prev;
+        const prev = (filteredData[i - 1] as any)[`${k}_equity`] || 1;
+        return ((d[`${k}_equity`] || 0) - prev) / prev;
       }).slice(1);
-      const mean = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length;
-      const std = Math.sqrt(dailyReturns.reduce((a, b) => a + (b - mean) ** 2, 0) / dailyReturns.length);
+      const mean = dailyReturns.reduce((a: number, b: number) => a + b, 0) / dailyReturns.length;
+      const std = Math.sqrt(dailyReturns.reduce((a: number, b: number) => a + (b - mean) ** 2, 0) / dailyReturns.length);
       const sharpe = std > 0 ? (mean / std) * Math.sqrt(252) : 0;
-      const winDays = dailyReturns.filter(r => r > 0).length;
+      const winDays = dailyReturns.filter((r: number) => r > 0).length;
       const winRate = dailyReturns.length > 0 ? (winDays / dailyReturns.length) * 100 : 0;
-      return {
-        totalReturn: ret,
-        maxDD,
-        sharpe,
-        winRate,
-        finalEquity: last[eqKey] as number,
-        totalPnL: (last[eqKey] as number) - startEq,
-      };
-    };
-
-    return {
-      mrpt: calcStats('mrpt_equity', 'mrpt_dd_w'),
-      mtfs: calcStats('mtfs_equity', 'mtfs_dd_w'),
-      combined: calcStats('combined_equity', 'combined_dd_w'),
-    };
-  }, [filteredData, windowData]);
+      result[k] = { totalReturn: ret, maxDD, sharpe, winRate, totalPnL: endEq - startEq };
+    }
+    return result;
+  }, [filteredData, windowData, viewMode]);
 
   if (loading) return <LoadingState />;
   if (error) return <ErrorState message={error} />;
@@ -222,15 +224,33 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
   return (
     <div className="flex flex-col gap-5" style={{ fontFamily: 'var(--font-mono)' }}>
 
-      {/* Strategy toggles + date range */}
+      {/* Mode switch + Strategy toggles + date range */}
       <div className="flex items-center gap-2 shrink-0 flex-wrap">
-        {(['mrpt', 'mtfs', 'combined'] as const).map(key => (
+        {/* STRATEGIES / MASTER mode toggle */}
+        <div style={{ display: 'flex', border: '2px solid #111', marginRight: '6px' }}>
+          {(['strategies', 'master'] as const).map(m => (
+            <button key={m} onClick={() => {
+              setViewMode(m);
+              setActiveStrategies(new Set(m === 'strategies' ? STRAT_KEYS : MASTER_KEYS));
+              // Reset date range from new data source
+              const d = m === 'master' && masterData ? masterData : stratData;
+              if (d && d.length > 0) { setStartDate(d[0].date); setEndDate(d[d.length - 1].date); }
+            }} style={{
+              padding: '4px 10px', fontSize: '10px', fontWeight: 700, letterSpacing: '.06em',
+              background: viewMode === m ? '#111' : 'transparent',
+              color: viewMode === m ? '#fff' : '#111',
+              border: 'none', borderLeft: m === 'master' ? '1px solid #111' : 'none', cursor: 'pointer',
+            }}>{m.toUpperCase()}</button>
+          ))}
+        </div>
+        {/* Strategy toggles (dynamic based on mode) */}
+        {(viewMode === 'master' ? MASTER_KEYS : STRAT_KEYS).map(key => (
           <button
             key={key}
             onClick={() => toggle(key)}
             style={{
-              padding: '4px 12px',
-              fontSize: '11px',
+              padding: '4px 10px',
+              fontSize: '10px',
               fontWeight: 700,
               letterSpacing: '.06em',
               textTransform: 'uppercase',
@@ -241,7 +261,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
               transition: 'all .15s',
             }}
           >
-            {key === 'combined' ? `${t('strategyPerf.combined')} (${weightPcts.mrpt}/${weightPcts.mtfs})` : t(`strategyPerf.${key}`)}
+            {LABELS[key] || key.toUpperCase()}
           </button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -266,33 +286,35 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
       </div>
 
       {/* Scorecard */}
-      <div className="grid grid-cols-3 gap-3 shrink-0">
-        {(['mrpt', 'mtfs', 'combined'] as const).filter(k => activeStrategies.has(k)).map(key => {
-          const s = stats[key];
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(activeKeys.filter(k => activeStrategies.has(k)).length, 5)}, 1fr)`, gap: '10px' }} className="shrink-0">
+        {activeKeys.filter(k => activeStrategies.has(k)).map(key => {
+          const s = stats?.[key];
+          if (!s) return null;
           return (
             <div key={key} style={{ background: '#fff', border: '2px solid #111', padding: '12px' }}>
-              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COLORS[key], marginBottom: '8px' }}>
-                {t(`strategyPerf.${key}`)}
+              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: COLORS[key], marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                <span>{LABELS[key] || key.toUpperCase()}</span>
+                {weightPcts[key] != null && <span style={{ fontSize: '9px', color: '#888', fontWeight: 500 }}>{weightPcts[key]}%</span>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '11px' }}>
                 <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.return')}</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>RETURN</div>
                   <div style={{ fontWeight: 700, color: s.totalReturn >= 0 ? '#16a34a' : '#dc2626' }}>{fmtPct(s.totalReturn)}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.sharpe')}</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>SHARPE</div>
                   <div style={{ fontWeight: 700 }}>{s.sharpe.toFixed(2)}</div>
                 </div>
                 <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.maxDD')}</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>MAX DD</div>
                   <div style={{ fontWeight: 700, color: '#dc2626' }}>{s.maxDD.toFixed(2)}%</div>
                 </div>
                 <div>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.winRate')}</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>WIN RATE</div>
                   <div style={{ fontWeight: 700 }}>{s.winRate.toFixed(0)}%</div>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>{t('strategyPerf.netPnL')}</div>
+                  <div style={{ color: '#888', fontSize: '9px', textTransform: 'uppercase' }}>NET PnL</div>
                   <div style={{ fontWeight: 700, color: s.totalPnL >= 0 ? '#16a34a' : '#dc2626' }}>{fmtMoney(s.totalPnL)}</div>
                 </div>
               </div>
@@ -329,18 +351,18 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
                 formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
                   const strat = name.replace('_ret', '');
-                  const label = strat.toUpperCase();
                   const eq = props.payload?.[`${strat}_equity`];
                   const eqStr = eq != null ? ` (${fmtMoney(eq)})` : '';
-                  return [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%${eqStr}`, label];
+                  return [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%${eqStr}`, LABELS[strat] || strat.toUpperCase()];
                 }}
-                labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
+                labelFormatter={(label: string) => `Date: ${label}`}
               />
               <ReferenceLine yAxisId="ret" y={0} stroke="#ccc" strokeDasharray="4 4" />
-              {activeStrategies.has('mrpt') && <Line yAxisId="ret" type="monotone" dataKey="mrpt_ret" stroke={COLORS.mrpt} strokeWidth={2} dot={false} name="mrpt_ret" />}
-              {activeStrategies.has('mtfs') && <Line yAxisId="ret" type="monotone" dataKey="mtfs_ret" stroke={COLORS.mtfs} strokeWidth={2} dot={false} name="mtfs_ret" />}
-              {activeStrategies.has('combined') && <Line yAxisId="ret" type="monotone" dataKey="combined_ret" stroke={COLORS.combined} strokeWidth={2.5} dot={false} name="combined_ret" />}
-              <Line yAxisId="eq" type="monotone" dataKey="combined_equity" stroke="transparent" strokeWidth={0} dot={false} />
+              {activeKeys.filter(k => activeStrategies.has(k)).map(k => (
+                <Line key={k} yAxisId="ret" type="monotone" dataKey={`${k}_ret`}
+                  stroke={COLORS[k]} strokeWidth={k === totalKey ? 2.5 : 2} dot={false} name={`${k}_ret`} />
+              ))}
+              <Line yAxisId="eq" type="monotone" dataKey={`${totalKey}_equity`} stroke="transparent" strokeWidth={0} dot={false} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -362,20 +384,21 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
               <Tooltip
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
                 formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
-                  if (name === 'combined_dd_dollar') return null;
+                  if (name.endsWith('_dd_dollar')) return null;
                   const strat = name.replace('_dd_w', '');
-                  const label = strat.toUpperCase();
                   const dollar = props.payload?.[`${strat}_dd_dollar`];
                   const dollarStr = dollar != null ? ` (${fmtMoney(dollar)})` : '';
-                  return [`${val.toFixed(2)}%${dollarStr}`, label];
+                  return [`${val.toFixed(2)}%${dollarStr}`, LABELS[strat] || strat.toUpperCase()];
                 }}
-                labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
+                labelFormatter={(label: string) => `Date: ${label}`}
               />
               <ReferenceLine yAxisId="left" y={0} stroke="#111" strokeWidth={1} />
-              {activeStrategies.has('mrpt') && <Area yAxisId="left" type="monotone" dataKey="mrpt_dd_w" stroke={COLORS.mrpt} fill={COLORS.mrpt} fillOpacity={0.1} strokeWidth={1.5} dot={false} name="mrpt_dd_w" />}
-              {activeStrategies.has('mtfs') && <Area yAxisId="left" type="monotone" dataKey="mtfs_dd_w" stroke={COLORS.mtfs} fill={COLORS.mtfs} fillOpacity={0.1} strokeWidth={1.5} dot={false} name="mtfs_dd_w" />}
-              {activeStrategies.has('combined') && <Area yAxisId="left" type="monotone" dataKey="combined_dd_w" stroke={COLORS.combined} fill={COLORS.combined} fillOpacity={0.08} strokeWidth={2} dot={false} name="combined_dd_w" />}
-              <Area yAxisId="right" type="monotone" dataKey="combined_dd_dollar" stroke="transparent" fill="transparent" dot={false} name="combined_dd_dollar" />
+              {activeKeys.filter(k => activeStrategies.has(k)).map(k => (
+                <Area key={k} yAxisId="left" type="monotone" dataKey={`${k}_dd_w`}
+                  stroke={COLORS[k]} fill={COLORS[k]} fillOpacity={k === totalKey ? 0.08 : 0.1}
+                  strokeWidth={k === totalKey ? 2 : 1.5} dot={false} name={`${k}_dd_w`} />
+              ))}
+              <Area yAxisId="right" type="monotone" dataKey={`${totalKey}_dd_dollar`} stroke="transparent" fill="transparent" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -397,20 +420,21 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
               <Tooltip
                 contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
                 formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
-                  if (name === 'combined_pnl_pct') return null;
+                  if (name.endsWith('_pnl_pct')) return null;
                   const strat = name.replace('_pnl_w', '');
-                  const label = strat.toUpperCase();
                   const pct = props.payload?.[`${strat}_pnl_pct`];
                   const pctStr = pct != null ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)` : '';
-                  return [`${fmtMoney(val)}${pctStr}`, label];
+                  return [`${fmtMoney(val)}${pctStr}`, LABELS[strat] || strat.toUpperCase()];
                 }}
-                labelFormatter={(label: string) => `${t('strategyPerf.date')}: ${label}`}
+                labelFormatter={(label: string) => `Date: ${label}`}
               />
               <ReferenceLine yAxisId="left" y={0} stroke="#111" strokeWidth={1} />
-              {activeStrategies.has('combined') && <Area yAxisId="left" type="stepAfter" dataKey="combined_pnl_w" stroke={COLORS.combined} fill={COLORS.combined} fillOpacity={0.08} strokeWidth={1.5} dot={false} name="combined_pnl_w" />}
-              {activeStrategies.has('mrpt') && <Area yAxisId="left" type="stepAfter" dataKey="mrpt_pnl_w" stroke={COLORS.mrpt} fill={COLORS.mrpt} fillOpacity={0.08} strokeWidth={1} dot={false} name="mrpt_pnl_w" />}
-              {activeStrategies.has('mtfs') && <Area yAxisId="left" type="stepAfter" dataKey="mtfs_pnl_w" stroke={COLORS.mtfs} fill={COLORS.mtfs} fillOpacity={0.08} strokeWidth={1} dot={false} name="mtfs_pnl_w" />}
-              <Area yAxisId="right" type="stepAfter" dataKey="combined_pnl_pct" stroke="transparent" fill="transparent" dot={false} name="combined_pnl_pct" />
+              {activeKeys.filter(k => activeStrategies.has(k)).map(k => (
+                <Area key={k} yAxisId="left" type="stepAfter" dataKey={`${k}_pnl_w`}
+                  stroke={COLORS[k]} fill={COLORS[k]} fillOpacity={0.08}
+                  strokeWidth={k === totalKey ? 1.5 : 1} dot={false} name={`${k}_pnl_w`} />
+              ))}
+              <Area yAxisId="right" type="stepAfter" dataKey={`${totalKey}_pnl_pct`} stroke="transparent" fill="transparent" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -418,7 +442,10 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
 
       {/* Footer metadata */}
       <div style={{ fontSize: '9px', color: '#999', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-        {t('strategyPerf.footer', { days: filteredData.length, mrptPct: weightPcts.mrpt, mtfsPct: weightPcts.mtfs })}
+        {viewMode === 'strategies'
+          ? `${filteredData.length} Trading Days · MRPT + MTFS + SSRS Strategies`
+          : `${filteredData.length} Trading Days · Master AI Portfolio · Equal 1/3 (Strategies / SSRS / SOXX)`
+        }
       </div>
     </div>
   );
