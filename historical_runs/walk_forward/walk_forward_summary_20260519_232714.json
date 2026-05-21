@@ -1,0 +1,504 @@
+{
+  "generated_at": "2026-05-19T23:27:14.348677",
+  "mode": "expanding",
+  "train_start": "2024-04-12",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 150,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-04-12",
+      "train_end": "2025-10-13",
+      "test_start": "2025-10-14",
+      "test_end": "2025-11-17",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "AON",
+          "MCK",
+          "high_vol_specialist"
+        ],
+        [
+          "AON",
+          "GEN",
+          "conservative"
+        ],
+        [
+          "DXCM",
+          "UDR",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "PFG",
+          "YUM",
+          "quick_exit"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "high_entry"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "flash_hold"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "conservative"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "long_z_short_v"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "AME",
+          "WMT",
+          "conservative"
+        ],
+        [
+          "CI",
+          "LVS",
+          "long_z_short_v"
+        ],
+        [
+          "DLR",
+          "PRU",
+          "low_vol_specialist"
+        ]
+      ],
+      "oos_sharpe": -6.225492387696649,
+      "oos_pnl": -15488.779634583218
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-04-12",
+      "train_end": "2025-11-17",
+      "test_start": "2025-11-18",
+      "test_end": "2025-12-23",
+      "n_selected_pairs": 13,
+      "selected_pairs": [
+        [
+          "AON",
+          "MCK",
+          "high_vol_specialist"
+        ],
+        [
+          "AON",
+          "GEN",
+          "conservative"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "DXCM",
+          "UDR",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "PFG",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "flash_hold"
+        ],
+        [
+          "AME",
+          "WMT",
+          "conservative"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "conservative"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "flash_hold"
+        ],
+        [
+          "CI",
+          "LVS",
+          "flash_hold"
+        ]
+      ],
+      "oos_sharpe": -0.31542958993935044,
+      "oos_pnl": -1065.068223781127
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-04-12",
+      "train_end": "2025-12-23",
+      "test_start": "2025-12-24",
+      "test_end": "2026-01-30",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "AON",
+          "MCK",
+          "high_vol_specialist"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "DXCM",
+          "UDR",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "AON",
+          "GEN",
+          "vol_agnostic"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "PFG",
+          "YUM",
+          "fast_reentry"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "AME",
+          "WMT",
+          "conservative"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "flash_hold"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "slow_reentry"
+        ],
+        [
+          "DVN",
+          "YUM",
+          "vol_adaptive"
+        ],
+        [
+          "CI",
+          "LVS",
+          "low_vol_specialist"
+        ],
+        [
+          "DLR",
+          "PRU",
+          "low_vol_specialist"
+        ]
+      ],
+      "oos_sharpe": -1.5537830729785038,
+      "oos_pnl": -3451.9752531494014
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-04-12",
+      "train_end": "2026-01-30",
+      "test_start": "2026-02-02",
+      "test_end": "2026-03-09",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "AON",
+          "MCK",
+          "high_vol_specialist"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "DXCM",
+          "UDR",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "AON",
+          "GEN",
+          "conservative"
+        ],
+        [
+          "PFG",
+          "YUM",
+          "fast_reentry"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "AME",
+          "WMT",
+          "conservative"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "long_z_short_v"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "slow_reentry"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "flash_hold"
+        ],
+        [
+          "DVN",
+          "YUM",
+          "vol_adaptive"
+        ],
+        [
+          "CI",
+          "LVS",
+          "high_entry"
+        ],
+        [
+          "DLR",
+          "PRU",
+          "high_turnover"
+        ]
+      ],
+      "oos_sharpe": 8.868942131216505,
+      "oos_pnl": 40070.59173232515
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-04-12",
+      "train_end": "2026-03-09",
+      "test_start": "2026-03-10",
+      "test_end": "2026-04-14",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "AON",
+          "MCK",
+          "high_vol_specialist"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "DXCM",
+          "UDR",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "AME",
+          "WMT",
+          "conservative"
+        ],
+        [
+          "PFG",
+          "YUM",
+          "fast_reentry"
+        ],
+        [
+          "AON",
+          "GEN",
+          "low_entry"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "flash_hold"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "slow_reentry"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "CI",
+          "LVS",
+          "high_entry"
+        ],
+        [
+          "DLR",
+          "PRU",
+          "high_turnover"
+        ]
+      ],
+      "oos_sharpe": 1.8437839675274847,
+      "oos_pnl": 7111.811829572776
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-04-12",
+      "train_end": "2026-04-14",
+      "test_start": "2026-04-15",
+      "test_end": "2026-05-19",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "AON",
+          "MCK",
+          "high_vol_specialist"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "DXCM",
+          "UDR",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "slow_reentry"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "AON",
+          "GEN",
+          "low_vol_specialist"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "flash_hold"
+        ],
+        [
+          "AME",
+          "WMT",
+          "conservative"
+        ],
+        [
+          "PFG",
+          "YUM",
+          "fast_reentry"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "slow_signal"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "CI",
+          "LVS",
+          "high_entry"
+        ],
+        [
+          "DLR",
+          "PRU",
+          "low_vol_specialist"
+        ]
+      ],
+      "oos_sharpe": -0.6764968946357496,
+      "oos_pnl": -2729.490329920147
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": 24858.049024574342,
+    "oos_trading_days": 144,
+    "oos_sharpe": 1.1307968547819611,
+    "oos_max_dd_dollar": -27968.41532050172,
+    "oos_max_dd_pct": -0.055714207748624824
+  }
+}

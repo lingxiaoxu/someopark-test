@@ -45,6 +45,267 @@ def fetch_pair_records(days: int = 30):
 
 
 # ---------------------------------------------------------------------------
+# 1b. Latest-day signal boost: 协整/因子强度检验
+# ---------------------------------------------------------------------------
+
+def fetch_prices_bulk(tickers: list, lookback_days: int = 252) -> dict:
+    """从 stock_data 批量拉取 ticker 的日收盘价。
+    返回 {ticker: pd.Series(index=datetime, values=close)}。
+    """
+    import pandas as pd
+    db = get_main_db()
+    col = db["stock_data"]
+    since_ms = int((time.time() - lookback_days * 1.5 * 86400) * 1000)  # 1.5x for weekends
+
+    prices = {}
+    for ticker in tickers:
+        docs = list(
+            col.find(
+                {"symbol": ticker, "t": {"$gte": since_ms}},
+                {"c": 1, "t": 1, "_id": 0}
+            ).sort("t", 1)
+        )
+        if len(docs) < 60:  # need at least 60 data points
+            continue
+        dates = [datetime.fromtimestamp(d["t"] / 1000) for d in docs]
+        closes = [float(d["c"]) for d in docs]
+        s = pd.Series(closes, index=pd.DatetimeIndex(dates), name=ticker)
+        s = s[~s.index.duplicated(keep='last')]  # dedup
+        prices[ticker] = s.tail(lookback_days)
+    return prices
+
+
+def _compute_halflife(residuals) -> float:
+    """OLS 残差的 AR(1) 半衰期（天）。"""
+    import numpy as np
+    res = np.array(residuals)
+    lag = res[:-1]
+    delta = np.diff(res)
+    if len(lag) < 10 or np.std(lag) < 1e-10:
+        return 999.0
+    beta = np.polyfit(lag, delta, 1)[0]
+    if beta >= 0:
+        return 999.0  # no mean reversion
+    return -np.log(2) / beta
+
+
+def compute_coint_strength(s1_prices, s2_prices):
+    """双方法协整检验 + 半衰期。
+    返回 (combined_pvalue, halflife, strength_score)。
+    strength_score ∈ [0, 1]。
+    """
+    import numpy as np
+    from statsmodels.tsa.stattools import coint
+    from statsmodels.tsa.vector_ar.vecm import coint_johansen
+
+    n = min(len(s1_prices), len(s2_prices))
+    if n < 60:
+        return 1.0, 999.0, 0.0
+
+    x = np.array(s1_prices[-n:], dtype=float)
+    y = np.array(s2_prices[-n:], dtype=float)
+
+    # Engle-Granger (both directions, take better p-value)
+    try:
+        _, p_xy, _ = coint(x, y)
+        _, p_yx, _ = coint(y, x)
+        eg_pval = min(p_xy, p_yx)
+    except Exception:
+        eg_pval = 1.0
+
+    # Johansen trace test
+    try:
+        data = np.column_stack([x, y])
+        jres = coint_johansen(data, det_order=0, k_ar_diff=1)
+        # trace stat vs 5% critical for r=0 (no cointegration)
+        j_reject = bool(jres.lr1[0] > jres.cvt[0, 1])
+        # Approximate p-value from trace stat ratio
+        j_pval = 0.01 if j_reject and jres.lr1[0] > jres.cvt[0, 2] else \
+                 0.05 if j_reject else 0.20
+    except Exception:
+        j_pval = 1.0
+
+    combined_pval = min(eg_pval, j_pval)
+
+    # Halflife from OLS residuals
+    try:
+        beta = np.polyfit(x, y, 1)[0]
+        residuals = y - beta * x
+        halflife = _compute_halflife(residuals)
+    except Exception:
+        halflife = 999.0
+
+    # Strength score
+    coint_s = max(0.0, (0.05 - combined_pval) / 0.05)
+    hl_s = max(0.0, (30.0 - halflife) / 30.0) if halflife < 999 else 0.0
+    strength = coint_s * 0.7 + hl_s * 0.3
+
+    return combined_pval, halflife, strength
+
+
+def compute_factor_score(s1_prices, s2_prices):
+    """PCA pair 的因子关联强度（用于 MTFS boost）。
+    返回 (correlation, non_coint_pval, factor_score)。
+    factor_score ∈ [-1, 1]。正值 = 好的 MTFS 候选，负值 = 惩罚。
+    """
+    import numpy as np
+
+    n = min(len(s1_prices), len(s2_prices))
+    if n < 60:
+        return 0.0, 1.0, 0.0
+
+    x = np.array(s1_prices[-n:], dtype=float)
+    y = np.array(s2_prices[-n:], dtype=float)
+
+    # 60d trailing correlation (on returns, not prices)
+    rx = np.diff(np.log(np.maximum(x, 0.01)))
+    ry = np.diff(np.log(np.maximum(y, 0.01)))
+    if len(rx) >= 60:
+        corr = float(np.corrcoef(rx[-60:], ry[-60:])[0, 1])
+    else:
+        corr = float(np.corrcoef(rx, ry)[0, 1])
+
+    # Cointegration p-value (MTFS wants high p = NOT cointegrated)
+    _, _, coint_strength = compute_coint_strength(x, y)
+
+    # Factor score: ideal corr for MTFS is 0.1~0.4
+    # corr=0.25 → peak, tapering to 0 at corr<-0.10 or corr>0.60
+    if -0.10 <= corr <= 0.60:
+        factor_s = max(0.0, 1.0 - abs(corr - 0.25) / 0.35)
+    else:
+        factor_s = 0.0
+
+    # Non-cointegration bonus: coint_strength high → bad for MTFS
+    non_coint_s = max(0.0, 1.0 - coint_strength)
+
+    # Combined
+    score = factor_s * 0.5 + non_coint_s * 0.5
+
+    # Penalty: if strongly cointegrated today, penalize
+    if coint_strength > 0.8:
+        score = -0.5
+
+    return corr, coint_strength, score
+
+
+def boost_latest_day_signals(latest_record, coint_freq, similar_freq, pca_freq,
+                              boost_weight: float = 3.0):
+    """对最新一天的候选 pair 做协整/因子强度检验，将 boost 加到频率 dict 上。
+
+    两个价格窗口：
+      - 1 年 (252d)：和 pairs_day_select 的检验窗口一致
+      - 4 个月 (80d)：近期关系强度，权重更高
+
+    权重分配：1 年 × 0.4 + 4 个月 × 0.6
+    """
+    import pandas as pd
+
+    day = latest_record.get("day", "?")
+    coint_pairs = [normalize_pair(p) for p in (latest_record.get("coint_pairs") or []) if normalize_pair(p)]
+    similar_pairs = [normalize_pair(p) for p in (latest_record.get("similar_pairs") or []) if normalize_pair(p)]
+    pca_pairs_raw = [normalize_pair(p) for p in (latest_record.get("pca_pairs") or []) if normalize_pair(p)]
+
+    # Collect all tickers needed
+    all_tickers = set()
+    for pool in [coint_pairs, similar_pairs, pca_pairs_raw]:
+        for pair in pool:
+            all_tickers.add(pair[0])
+            all_tickers.add(pair[1])
+
+    if not all_tickers:
+        print(f"  [boost] 最新一天 ({day}) 无候选 pair，跳过")
+        return
+
+    print(f"\n--- Latest-day signal boost ({day}) ---")
+    print(f"  协整={len(coint_pairs)} 相似={len(similar_pairs)} PCA={len(pca_pairs_raw)} ticker总数={len(all_tickers)}")
+
+    # Fetch 1-year prices for all tickers
+    prices = fetch_prices_bulk(list(all_tickers), lookback_days=252)
+    print(f"  价格获取: {len(prices)}/{len(all_tickers)} tickers OK")
+
+    def _dual_window_score(s1_prices, s2_prices, compute_fn):
+        """在 1 年和 4 个月窗口上分别计算，加权合并。"""
+        # 1-year window
+        result_1yr = compute_fn(s1_prices, s2_prices)
+        # 4-month window (tail 80 points)
+        s1_4mo = s1_prices[-80:] if len(s1_prices) >= 80 else s1_prices
+        s2_4mo = s2_prices[-80:] if len(s2_prices) >= 80 else s2_prices
+        result_4mo = compute_fn(s1_4mo, s2_4mo)
+        return result_1yr, result_4mo
+
+    # ── Boost coint_pairs (MRPT) ──
+    boosted_coint = 0
+    for pair in coint_pairs:
+        s1, s2 = pair
+        if s1 not in prices or s2 not in prices:
+            continue
+        common_idx = prices[s1].index.intersection(prices[s2].index)
+        if len(common_idx) < 60:
+            continue
+        p1 = prices[s1].loc[common_idx].values
+        p2 = prices[s2].loc[common_idx].values
+
+        r_1yr, r_4mo = _dual_window_score(p1, p2,
+            lambda a, b: compute_coint_strength(a, b))
+        pval_1yr, hl_1yr, score_1yr = r_1yr
+        pval_4mo, hl_4mo, score_4mo = r_4mo
+
+        boost = (score_1yr * 0.4 + score_4mo * 0.6) * boost_weight
+        if boost > 0.01:
+            coint_freq[pair] += boost
+            boosted_coint += 1
+
+    # ── Boost similar_pairs ──
+    boosted_similar = 0
+    for pair in similar_pairs:
+        s1, s2 = pair
+        if s1 not in prices or s2 not in prices:
+            continue
+        common_idx = prices[s1].index.intersection(prices[s2].index)
+        if len(common_idx) < 60:
+            continue
+        p1 = prices[s1].loc[common_idx].values
+        p2 = prices[s2].loc[common_idx].values
+
+        r_1yr, r_4mo = _dual_window_score(p1, p2,
+            lambda a, b: compute_coint_strength(a, b))
+        _, _, score_1yr = r_1yr
+        _, _, score_4mo = r_4mo
+
+        boost = (score_1yr * 0.4 + score_4mo * 0.6) * boost_weight
+        if boost > 0.01:
+            similar_freq[pair] += boost
+            boosted_similar += 1
+
+    # ── Boost pca_pairs (MTFS) ──
+    boosted_pca = 0
+    penalized_pca = 0
+    for pair in pca_pairs_raw:
+        s1, s2 = pair
+        if s1 not in prices or s2 not in prices:
+            continue
+        common_idx = prices[s1].index.intersection(prices[s2].index)
+        if len(common_idx) < 60:
+            continue
+        p1 = prices[s1].loc[common_idx].values
+        p2 = prices[s2].loc[common_idx].values
+
+        r_1yr, r_4mo = _dual_window_score(p1, p2,
+            lambda a, b: compute_factor_score(a, b))
+        _, _, score_1yr = r_1yr
+        _, _, score_4mo = r_4mo
+
+        boost = (score_1yr * 0.4 + score_4mo * 0.6) * boost_weight
+        pca_freq[pair] += boost  # can be negative (penalty)
+        if boost > 0.01:
+            boosted_pca += 1
+        elif boost < -0.01:
+            penalized_pca += 1
+
+    print(f"  Boost 结果: 协整+{boosted_coint} 相似+{boosted_similar} PCA+{boosted_pca} PCA惩罚-{penalized_pca}")
+
+
+# ---------------------------------------------------------------------------
 # 近期动量：从 stock_data 查收盘价，计算 return 决定 s1/s2 方向
 # ---------------------------------------------------------------------------
 
@@ -109,37 +370,48 @@ def normalize_pair(pair) -> tuple:
 # 2. 统计每对配对的跨天出现频率
 # ---------------------------------------------------------------------------
 
-def build_frequency_stats(records):
+def build_frequency_stats(records, decay_rate: float = 0.05):
     """返回三个 dict: coint_freq, similar_freq, pca_freq
-    每个 dict: { (A, B): count_of_days }
-    以及 total_days 数。
-    """
-    coint_freq = Counter()
-    similar_freq = Counter()
-    pca_freq = Counter()
-    total_days = len(records)
+    每个 dict: { (A, B): weighted_score }
+    以及 total_weight (sum of all day weights, replaces total_days for rate calc).
 
-    for rec in records:
+    Recency weighting: records[0] is the most recent day (weight=1.0).
+    Each older day decays by `decay_rate`:
+      weight(i) = 1 / (1 + i * decay_rate)
+      i=0 → 1.00,  i=5 → 0.80,  i=10 → 0.67,  i=20 → 0.50,  i=29 → 0.41
+
+    This ensures recently-appearing pairs score higher than pairs that were
+    active weeks ago but have since disappeared (stale cointegration / PCA).
+    """
+    coint_freq = defaultdict(float)
+    similar_freq = defaultdict(float)
+    pca_freq = defaultdict(float)
+
+    total_weight = 0.0
+    for i, rec in enumerate(records):  # records sorted by day desc
+        w = 1.0 / (1.0 + i * decay_rate)
+        total_weight += w
+
         for pair in (rec.get("coint_pairs") or []):
             key = normalize_pair(pair)
             if key:
-                coint_freq[key] += 1
+                coint_freq[key] += w
 
         for pair in (rec.get("similar_pairs") or []):
             key = normalize_pair(pair)
             if key:
-                similar_freq[key] += 1
+                similar_freq[key] += w
 
         for pair in (rec.get("pca_pairs") or []):
             key = normalize_pair(pair)
             if key:
-                pca_freq[key] += 1
+                pca_freq[key] += w
 
-    print(f"总天数: {total_days}")
+    print(f"总天数: {len(records)}  (加权总权重: {total_weight:.1f}, decay_rate={decay_rate})")
     print(f"协整配对去重: {len(coint_freq)} 对")
     print(f"相似配对去重: {len(similar_freq)} 对")
     print(f"PCA配对去重:  {len(pca_freq)} 对")
-    return coint_freq, similar_freq, pca_freq, total_days
+    return coint_freq, similar_freq, pca_freq, total_weight
 
 
 # ---------------------------------------------------------------------------
@@ -278,6 +550,357 @@ def select_mtfs(coint_freq, similar_freq, pca_freq, total_days, n=15):
         if len(selected) >= n:
             break
 
+    return selected
+
+
+# ---------------------------------------------------------------------------
+# 4b. MTFS v2: 动量排序 + 跨行业配对 + 反向过滤
+# ---------------------------------------------------------------------------
+
+def _fetch_price_matrix(tickers: list, lookback_days: int = 180):
+    """从 stock_data 批量拉取 ticker 的日收盘价和成交量。
+    返回 {ticker: {'close': pd.Series, 'volume': pd.Series}}。
+    """
+    import pandas as pd
+    db = get_main_db()
+    col = db["stock_data"]
+    since_ms = int((time.time() - lookback_days * 1.5 * 86400) * 1000)
+
+    result = {}
+    for ticker in tickers:
+        docs = list(
+            col.find(
+                {"symbol": ticker, "t": {"$gte": since_ms}},
+                {"c": 1, "v": 1, "t": 1, "_id": 0}
+            ).sort("t", 1)
+        )
+        if len(docs) < 60:
+            continue
+        dates = [datetime.fromtimestamp(d["t"] / 1000) for d in docs]
+        closes = [float(d["c"]) for d in docs]
+        volumes = [float(d.get("v", 0)) for d in docs]
+        idx = pd.DatetimeIndex(dates)
+        cs = pd.Series(closes, index=idx, name=ticker)
+        vs = pd.Series(volumes, index=idx, name=ticker)
+        cs = cs[~cs.index.duplicated(keep='last')].tail(lookback_days)
+        vs = vs[~vs.index.duplicated(keep='last')].tail(lookback_days)
+        result[ticker] = {'close': cs, 'volume': vs}
+    return result
+
+
+def _compute_momentum_score(closes):
+    """复合动量分: 40d return × 0.6 + 120d return × 0.4。
+    返回 (score, ret_40d, ret_120d) 或 None。
+    """
+    import numpy as np
+    n = len(closes)
+    if n < 40:
+        return None
+
+    vals = closes.values if hasattr(closes, 'values') else np.array(closes, dtype=float)
+
+    # Sanity: current price must be positive
+    if vals[-1] <= 0:
+        return None
+
+    # 40d return
+    if n >= 41 and vals[-41] > 1.0:  # >$1 to avoid penny stock noise
+        ret_40d = (vals[-1] - vals[-41]) / vals[-41]
+    else:
+        ret_40d = 0.0
+
+    # 120d return (if available, else use all data)
+    lookback = min(120, n - 1)
+    if lookback >= 60 and vals[-(lookback + 1)] > 1.0:
+        ret_120d = (vals[-1] - vals[-(lookback + 1)]) / vals[-(lookback + 1)]
+    else:
+        ret_120d = ret_40d  # fallback
+
+    # Cap extreme returns (>200% or <-90% likely data error)
+    ret_40d = max(-0.9, min(2.0, ret_40d))
+    ret_120d = max(-0.9, min(3.0, ret_120d))
+
+    score = ret_40d * 0.6 + ret_120d * 0.4
+    return score, ret_40d, ret_120d
+
+
+def _quality_filter_long(closes):
+    """做多候选的质量过滤:
+    - 过去 15 个交易日至少 5 天上涨
+    - 上涨日的平均涨幅 > 0.3%
+    - MACD 柱状图为正（短期动量加速）
+    - RSI 14 在 40~80 之间（有动量但不过度超买）
+    返回 (pass, details_dict)。
+    """
+    import numpy as np
+    vals = closes.values if hasattr(closes, 'values') else np.array(closes, dtype=float)
+    if len(vals) < 30:
+        return False, {}
+
+    # --- 15d up days ---
+    last15 = vals[-16:]  # need 16 points for 15 daily returns
+    daily_rets = np.diff(last15) / last15[:-1]
+    up_days = np.sum(daily_rets > 0)
+    avg_up_mag = float(np.mean(daily_rets[daily_rets > 0])) if np.any(daily_rets > 0) else 0.0
+
+    if up_days < 5:
+        return False, {'up_days': int(up_days), 'reason': 'up_days<5'}
+    if avg_up_mag < 0.003:
+        return False, {'up_days': int(up_days), 'avg_up_mag': avg_up_mag, 'reason': 'weak_up_mag'}
+
+    # --- MACD (12, 26, 9) ---
+    ema12 = _ema(vals, 12)
+    ema26 = _ema(vals, 26)
+    macd_line = ema12 - ema26
+    signal_line = _ema(macd_line[-30:], 9)  # signal on recent portion
+    macd_hist = macd_line[-1] - signal_line[-1]
+
+    if macd_hist < 0:
+        return False, {'macd_hist': float(macd_hist), 'reason': 'macd_negative'}
+
+    # --- RSI 14 ---
+    rsi = _rsi(vals, 14)
+    if rsi < 35 or rsi > 85:
+        return False, {'rsi': float(rsi), 'reason': f'rsi_out_of_range({rsi:.1f})'}
+
+    return True, {
+        'up_days': int(up_days), 'avg_up_mag': round(avg_up_mag, 4),
+        'macd_hist': round(float(macd_hist), 4), 'rsi': round(float(rsi), 1),
+    }
+
+
+def _quality_filter_short(closes):
+    """做空候选的质量过滤（做多的镜像）:
+    - 过去 15 个交易日至少 5 天下跌
+    - 下跌日的平均跌幅 > 0.3%
+    - MACD 柱状图为负（短期动量减速）
+    - RSI 14 在 20~60 之间（有弱势但不过度超卖）
+    返回 (pass, details_dict)。
+    """
+    import numpy as np
+    vals = closes.values if hasattr(closes, 'values') else np.array(closes, dtype=float)
+    if len(vals) < 30:
+        return False, {}
+
+    # --- 15d down days ---
+    last15 = vals[-16:]
+    daily_rets = np.diff(last15) / last15[:-1]
+    down_days = np.sum(daily_rets < 0)
+    avg_down_mag = float(np.mean(np.abs(daily_rets[daily_rets < 0]))) if np.any(daily_rets < 0) else 0.0
+
+    if down_days < 5:
+        return False, {'down_days': int(down_days), 'reason': 'down_days<5'}
+    if avg_down_mag < 0.003:
+        return False, {'down_days': int(down_days), 'avg_down_mag': avg_down_mag, 'reason': 'weak_down_mag'}
+
+    # --- MACD (12, 26, 9) ---
+    ema12 = _ema(vals, 12)
+    ema26 = _ema(vals, 26)
+    macd_line = ema12 - ema26
+    signal_line = _ema(macd_line[-30:], 9)
+    macd_hist = macd_line[-1] - signal_line[-1]
+
+    if macd_hist > 0:
+        return False, {'macd_hist': float(macd_hist), 'reason': 'macd_positive'}
+
+    # --- RSI 14 ---
+    rsi = _rsi(vals, 14)
+    if rsi < 15 or rsi > 65:
+        return False, {'rsi': float(rsi), 'reason': f'rsi_out_of_range({rsi:.1f})'}
+
+    return True, {
+        'down_days': int(down_days), 'avg_down_mag': round(avg_down_mag, 4),
+        'macd_hist': round(float(macd_hist), 4), 'rsi': round(float(rsi), 1),
+    }
+
+
+def _ema(vals, period):
+    """Exponential moving average."""
+    import numpy as np
+    arr = np.array(vals, dtype=float)
+    out = np.empty_like(arr)
+    out[0] = arr[0]
+    alpha = 2.0 / (period + 1)
+    for i in range(1, len(arr)):
+        out[i] = alpha * arr[i] + (1 - alpha) * out[i - 1]
+    return out
+
+
+def _rsi(vals, period=14):
+    """RSI (Relative Strength Index)."""
+    import numpy as np
+    arr = np.array(vals, dtype=float)
+    deltas = np.diff(arr)
+    gains = np.where(deltas > 0, deltas, 0.0)
+    losses = np.where(deltas < 0, -deltas, 0.0)
+    avg_gain = np.mean(gains[-period:])
+    avg_loss = np.mean(losses[-period:])
+    if avg_loss < 1e-10:
+        return 100.0
+    rs = avg_gain / avg_loss
+    return 100.0 - (100.0 / (1.0 + rs))
+
+
+# Minimum average daily volume (shares) — filters out illiquid micro-caps
+_MIN_AVG_DAILY_VOLUME = 300_000
+
+
+def select_mtfs_v2(records, coint_freq, pca_freq, total_weight,
+                    mrpt_pairs: set = None, n: int = 15):
+    """MTFS v2: 动量排序 + 质量过滤 + 跨行业配对 + 协整/PCA 反向过滤。
+
+    1. 从 30 天的 coint/similar/pca 池提取所有 ticker
+    2. 拉取 120d+ 价格和成交量
+    3. 复合动量分 (40d×0.6 + 120d×0.4)
+    4. 做多候选: TOP 20% + 质量过滤 (up_days, MACD+, RSI 40-80)
+    5. 做空候选: BOTTOM 20% + 质量过滤 (down_days, MACD-, RSI 20-60)
+    6. 跨行业配对 + 排除协整/PCA 强关联对
+    """
+
+    # ── Step 1: ticker universe ──
+    all_tickers = set()
+    for rec in records:
+        for pool in ['coint_pairs', 'similar_pairs', 'pca_pairs']:
+            for p in (rec.get(pool) or []):
+                key = normalize_pair(p)
+                if key:
+                    all_tickers.add(key[0])
+                    all_tickers.add(key[1])
+
+    print(f"\n--- MTFS v2 动量选对 ---")
+    print(f"  Ticker 宇宙: {len(all_tickers)} 个")
+
+    # ── Step 2: fetch prices + volume ──
+    price_data = _fetch_price_matrix(list(all_tickers), lookback_days=180)
+    print(f"  价格获取: {len(price_data)}/{len(all_tickers)} tickers OK")
+
+    # ── Step 3: volume filter + momentum scoring ──
+    scored = []
+    vol_filtered = 0
+    for ticker, data in price_data.items():
+        avg_vol = float(data['volume'].mean()) if len(data['volume']) > 0 else 0
+        if avg_vol < _MIN_AVG_DAILY_VOLUME:
+            vol_filtered += 1
+            continue
+
+        result = _compute_momentum_score(data['close'])
+        if result is None:
+            continue
+        score, ret_40d, ret_120d = result
+        scored.append({
+            'ticker': ticker,
+            'score': score,
+            'ret_40d': ret_40d,
+            'ret_120d': ret_120d,
+            'avg_vol': avg_vol,
+            'sector': guess_sector(ticker),
+        })
+
+    scored.sort(key=lambda x: -x['score'])
+    print(f"  动量评分: {len(scored)} tickers (volume 过滤掉 {vol_filtered})")
+
+    # ── Step 4: TOP / BOTTOM pools + quality filters ──
+    cutoff_top = max(5, len(scored) // 5)      # top 20%
+    cutoff_bot = max(5, len(scored) // 5)      # bottom 20%
+
+    top_candidates = scored[:cutoff_top]
+    bottom_candidates = scored[-cutoff_bot:]
+
+    top_pool = []
+    top_rejected = 0
+    for c in top_candidates:
+        passed, details = _quality_filter_long(price_data[c['ticker']]['close'])
+        if passed:
+            c['quality'] = details
+            top_pool.append(c)
+        else:
+            top_rejected += 1
+
+    bottom_pool = []
+    bottom_rejected = 0
+    for c in bottom_candidates:
+        passed, details = _quality_filter_short(price_data[c['ticker']]['close'])
+        if passed:
+            c['quality'] = details
+            bottom_pool.append(c)
+        else:
+            bottom_rejected += 1
+
+    # Bottom pool: sort by score ascending (weakest first)
+    bottom_pool.sort(key=lambda x: x['score'])
+
+    print(f"  TOP pool: {len(top_pool)}/{cutoff_top} (quality 过滤掉 {top_rejected})")
+    print(f"  BOTTOM pool: {len(bottom_pool)}/{cutoff_bot} (quality 过滤掉 {bottom_rejected})")
+
+    if len(top_pool) < 3 or len(bottom_pool) < 3:
+        print(f"  ⚠ 候选不足，降级到旧 select_mtfs 逻辑")
+        return None  # caller falls back to old method
+
+    # ── Step 5: cross-sector pairing + reverse filters ──
+    if mrpt_pairs is None:
+        mrpt_pairs = set()
+
+    selected = []
+    ticker_count = Counter()
+    used_top = set()
+    used_bottom = set()
+
+    for top in top_pool:
+        if top['ticker'] in used_top:
+            continue
+        for bot in bottom_pool:
+            if bot['ticker'] in used_bottom:
+                continue
+
+            # Same sector → skip (momentum spread too small)
+            if top['sector'] == bot['sector'] and top['sector'] != 'other':
+                continue
+
+            # Ticker diversity: max 2 appearances per ticker
+            if ticker_count[top['ticker']] >= 2 or ticker_count[bot['ticker']] >= 2:
+                continue
+
+            # Reverse filter: exclude cointegrated pairs
+            pair_key = normalize_pair([top['ticker'], bot['ticker']])
+            if pair_key and coint_freq.get(pair_key, 0) / total_weight > 0.30:
+                continue
+
+            # Reverse filter: exclude strong PCA pairs
+            if pair_key and pca_freq.get(pair_key, 0) / total_weight > 0.50:
+                continue
+
+            # Exclude MRPT overlap
+            if pair_key and pair_key in mrpt_pairs:
+                continue
+
+            # ✓ Select this pair
+            sector = guess_pair_sector(top['ticker'], bot['ticker'])
+            spread = top['score'] - bot['score']
+
+            selected.append({
+                'pair': pair_key,
+                's1': top['ticker'],      # winner (long)
+                's2': bot['ticker'],      # loser (short)
+                'sector': sector,
+                'score': round(spread, 4),
+                'top_momentum': round(top['score'], 4),
+                'bot_momentum': round(bot['score'], 4),
+                'top_ret_40d': round(top['ret_40d'], 4),
+                'bot_ret_40d': round(bot['ret_40d'], 4),
+                'top_quality': top.get('quality', {}),
+                'bot_quality': bot.get('quality', {}),
+            })
+            ticker_count[top['ticker']] += 1
+            ticker_count[bot['ticker']] += 1
+            used_top.add(top['ticker'])
+            used_bottom.add(bot['ticker'])
+
+            if len(selected) >= n:
+                break
+        if len(selected) >= n:
+            break
+
+    print(f"  配对结果: {len(selected)}/{n}")
     return selected
 
 
@@ -496,6 +1119,11 @@ def main():
     # 构建频率统计
     coint_freq, similar_freq, pca_freq, total_days = build_frequency_stats(records)
 
+    # Latest-day signal boost: 对最新一天的候选做协整/因子强度检验
+    if records:
+        boost_latest_day_signals(records[0], coint_freq, similar_freq, pca_freq,
+                                  boost_weight=3.0)
+
     # MRPT 筛选
     mrpt_selected = select_mrpt(coint_freq, similar_freq, pca_freq, total_days, n=args.n)
     print_table(f"MRPT 推荐配对 (均值回归) — Top {args.n}", mrpt_selected, "mrpt")
@@ -503,33 +1131,66 @@ def main():
     if len(mrpt_selected) < args.n:
         print(f"\n⚠ MRPT 仅筛出 {len(mrpt_selected)} 对 (目标 {args.n})，可尝试 --days 60 扩大样本")
 
-    # MTFS 筛选 (先去重)
-    mtfs_selected = select_mtfs(coint_freq, similar_freq, pca_freq, total_days, n=args.n + 5)
-    mtfs_selected = remove_overlap(mrpt_selected, mtfs_selected)
-    mtfs_selected = mtfs_selected[:args.n]
+    # MTFS v2: 动量排序 + 质量过滤 + 跨行业配对
+    mrpt_pair_set = {c["pair"] for c in mrpt_selected}
+    mtfs_v2 = select_mtfs_v2(records, coint_freq, pca_freq, total_days,
+                              mrpt_pairs=mrpt_pair_set, n=args.n)
 
-    # 获取近期 return，决定 s1/s2 方向
-    all_mtfs_tickers = list({t for c in mtfs_selected for t in c["pair"]})
-    print(f"\n查询 {len(all_mtfs_tickers)} 个 ticker 的近期收益率...")
-    returns = fetch_returns(all_mtfs_tickers, lookback_days=30)
-    print(f"获取到 {len(returns)}/{len(all_mtfs_tickers)} 个 ticker 的收益数据")
-
-    print_table(f"MTFS 推荐配对 (动量分化) — Top {args.n}", mtfs_selected, "mtfs", returns=returns)
+    if mtfs_v2 is not None:
+        mtfs_selected = mtfs_v2
+        # Print v2 table
+        print(f"\n{'='*90}")
+        print(f"  MTFS v2 推荐配对 (动量排序 + 跨行业配对) — Top {args.n}")
+        print(f"{'='*90}")
+        header = f"{'排名':>4}  {'s1(做多)→s2(做空)':<24} {'行业':<12} {'spread':>7} {'s1_40d':>7} {'s2_40d':>7} {'s1_MACD':>8} {'s2_MACD':>8} {'s1_RSI':>7} {'s2_RSI':>7}"
+        print(header)
+        print("-" * 100)
+        for i, c in enumerate(mtfs_selected, 1):
+            tq = c.get('top_quality', {})
+            bq = c.get('bot_quality', {})
+            print(f"{i:>4}  {c['s1']+'→'+c['s2']:<24} {c['sector']:<12} "
+                  f"{c['score']:>+7.3f} {c.get('top_ret_40d',0):>+6.1%} {c.get('bot_ret_40d',0):>+6.1%} "
+                  f"{tq.get('macd_hist',0):>+8.3f} {bq.get('macd_hist',0):>+8.3f} "
+                  f"{tq.get('rsi',0):>7.1f} {bq.get('rsi',0):>7.1f}")
+    else:
+        # Fallback to old method
+        print("\n⚠ MTFS v2 候选不足，降级到旧方法")
+        mtfs_selected = select_mtfs(coint_freq, similar_freq, pca_freq, total_days, n=args.n + 5)
+        mtfs_selected = remove_overlap(mrpt_selected, mtfs_selected)
+        mtfs_selected = mtfs_selected[:args.n]
+        all_mtfs_tickers = list({t for c in mtfs_selected for t in c["pair"]})
+        returns = fetch_returns(all_mtfs_tickers, lookback_days=30)
+        print_table(f"MTFS 推荐配对 (旧方法 fallback) — Top {args.n}", mtfs_selected, "mtfs", returns=returns)
 
     if len(mtfs_selected) < args.n:
-        print(f"\n⚠ MTFS 仅筛出 {len(mtfs_selected)} 对 (目标 {args.n})，可尝试 --days 60 或降低 pca_rate 阈值")
+        print(f"\n⚠ MTFS 仅筛出 {len(mtfs_selected)} 对 (目标 {args.n})")
 
     # 重叠检查
-    mrpt_set = {c["pair"] for c in mrpt_selected}
-    mtfs_set = {c["pair"] for c in mtfs_selected}
-    overlap = mrpt_set & mtfs_set
+    mtfs_pair_set = {c.get("pair") or normalize_pair([c["s1"], c["s2"]]) for c in mtfs_selected}
+    overlap = mrpt_pair_set & mtfs_pair_set
     print(f"\n两策略重叠配对: {len(overlap)} 对")
 
     # 保存
     if args.save:
         base = os.path.dirname(os.path.abspath(__file__))
         mrpt_json = format_mrpt_json(mrpt_selected)
-        mtfs_json = format_mtfs_json(mtfs_selected, returns)
+
+        # MTFS v2 already has s1/s2 oriented (s1=winner, s2=loser)
+        if mtfs_v2 is not None:
+            mtfs_json = []
+            for c in mtfs_selected:
+                sector = c.get('sector', guess_pair_sector(c['s1'], c['s2']))
+                mtfs_json.append({
+                    "s1": c['s1'],
+                    "s2": c['s2'],
+                    "sector": sector,
+                    "spread_col": f"Momentum_Spread_{sector}",
+                })
+        else:
+            all_mtfs_tickers_fb = list({t for c in mtfs_selected for t in c["pair"]})
+            returns_fb = fetch_returns(all_mtfs_tickers_fb, lookback_days=30)
+            mtfs_json = format_mtfs_json(mtfs_selected, returns_fb)
+
         save_json(mrpt_json, os.path.join(base, "pair_universe_mrpt.json"))
         save_json(mtfs_json, os.path.join(base, "pair_universe_mtfs.json"))
         print("\n✓ pair_universe_mrpt.json 和 pair_universe_mtfs.json 已更新")

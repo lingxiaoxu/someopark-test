@@ -174,6 +174,7 @@ router.get('/sector-universe', async (_req, res) => {
       available: true,
       param_set: data.param_set || '',
       signal_version: data.signal_version || 'v1',
+      updated_at: data.last_daily_update || data.as_of || '',
       n_positions: sectors.filter(s => s.held).length,
       sectors,
     });

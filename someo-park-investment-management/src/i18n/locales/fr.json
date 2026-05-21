@@ -275,11 +275,13 @@
     "held": "Détenu"
   },
   "pairUniverse": {
-    "selected": "Sélectionnées ({{count}})",
-    "cointegrated": "Cointégrées ({{count}})",
-    "similar": "Similaires ({{count}})",
-    "pca": "PCA ({{count}})",
-    "searchPairs": "Rechercher des paires..."
+    "tabLabel": "Sélectionnées ({{count}})",
+    "cointTab": "Cointégrées ({{selected}}/{{total}})",
+    "similarTab": "Similaires ({{selected}}/{{total}})",
+    "pcaTab": "PCA ({{selected}}/{{total}})",
+    "sectorEtfTab": "Secteur ETF ({{selected}}/{{total}})",
+    "searchPairs": "Rechercher des paires...",
+    "updatedAt": "Mis à jour :"
   },
   "wfStructure": {
     "title": "Visualiseur d'analyse de backtest",

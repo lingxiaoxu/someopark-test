@@ -192,11 +192,13 @@
     "held": "Held"
   },
   "pairUniverse": {
-    "selected": "Selected ({{count}})",
-    "cointegrated": "Cointegrated ({{count}})",
-    "similar": "Similar ({{count}})",
-    "pca": "PCA ({{count}})",
-    "searchPairs": "Search pairs..."
+    "tabLabel": "Selected ({{count}})",
+    "cointTab": "Cointegrated ({{selected}}/{{total}})",
+    "similarTab": "Similar ({{selected}}/{{total}})",
+    "pcaTab": "PCA ({{selected}}/{{total}})",
+    "sectorEtfTab": "Sector ETF ({{selected}}/{{total}})",
+    "searchPairs": "Search pairs...",
+    "updatedAt": "Updated:"
   },
   "wfStructure": {
     "title": "Backtesting Analysis Viewer",

@@ -7,6 +7,18 @@ import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 import PairBadge from '../PairBadge';
 
+/** Format an ISO timestamp or date string to compact local display */
+/** Format to date-only YYYY-MM-DD (no hours/minutes) */
+function fmtDate(raw: string | undefined | null): string {
+  if (!raw) return '';
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return raw;
+    return d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  } catch { return raw; }
+}
+
 export default function PairUniverseViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('selected');
@@ -22,9 +34,11 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   };
   const sortArrow = (key: string) => sortKey === key ? (sortAsc ? ' ↑' : ' ↓') : '';
 
-  // Selected pairs from JSON
-  const { data: mrptPairs, loading: loadingMrpt } = useApi(() => getPairUniverse('mrpt'), []);
-  const { data: mtfsPairs, loading: loadingMtfs } = useApi(() => getPairUniverse('mtfs'), []);
+  // Selected pairs from JSON (new format: { pairs, updated_at })
+  const { data: mrptData, loading: loadingMrpt } = useApi(() => getPairUniverse('mrpt'), []);
+  const { data: mtfsData, loading: loadingMtfs } = useApi(() => getPairUniverse('mtfs'), []);
+  const mrptPairs = mrptData?.pairs ?? (Array.isArray(mrptData) ? mrptData : []);
+  const mtfsPairs = mtfsData?.pairs ?? (Array.isArray(mtfsData) ? mtfsData : []);
   // SR: sector ETF holdings (always loaded for Sector ETF tab)
   const { data: srSectors, loading: loadingSR } = useApi(() => getPairUniverse('ssrs'), []);
 
@@ -71,18 +85,43 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
     });
   }
 
+  // Count selected/total for each tab
+  const selCount = mrptPairs.length + mtfsPairs.length;
+  const cointSelCount = (cointData?.pairs || []).filter((p: any) => p.selected).length;
+  const similarSelCount = (similarData?.pairs || []).filter((p: any) => p.selected).length;
+  const pcaSelCount = (pcaData?.pairs || []).filter((p: any) => p.selected).length;
   const heldCount = (srSectors?.sectors || []).filter((s: any) => s.held).length;
+  const totalEtfs = (srSectors?.sectors || []).length || 11;
+
+  // Resolve updated_at for selected tab: use the older of mrpt/mtfs
+  const selectedUpdatedAt = (() => {
+    const a = mrptData?.updated_at;
+    const b = mtfsData?.updated_at;
+    if (!a && !b) return '';
+    if (!a) return b;
+    if (!b) return a;
+    return a < b ? a : b;
+  })();
+
+  const tabMeta: Record<string, string> = {
+    selected: fmtDate(selectedUpdatedAt),
+    coint: fmtDate(cointData?.day),
+    similar: fmtDate(similarData?.day),
+    pca: fmtDate(pcaData?.day),
+    sector_etf: fmtDate(srSectors?.updated_at),
+  };
+
   const tabs = [
-    { id: 'selected', label: t('pairUniverse.selected', { count: (mrptPairs || []).length + (mtfsPairs || []).length }) },
-    { id: 'coint', label: t('pairUniverse.cointegrated', { count: cointData?.total || '...' }) },
-    { id: 'similar', label: t('pairUniverse.similar', { count: similarData?.total || '...' }) },
-    { id: 'pca', label: t('pairUniverse.pca', { count: pcaData?.total || '...' }) },
-    { id: 'sector_etf', label: t('ssrs.sectorEtf', { held: heldCount }) },
+    { id: 'selected', label: t('pairUniverse.tabLabel', { count: selCount }) },
+    { id: 'coint', label: t('pairUniverse.cointTab', { selected: cointSelCount, total: cointData?.total || '...' }) },
+    { id: 'similar', label: t('pairUniverse.similarTab', { selected: similarSelCount, total: similarData?.total || '...' }) },
+    { id: 'pca', label: t('pairUniverse.pcaTab', { selected: pcaSelCount, total: pcaData?.total || '...' }) },
+    { id: 'sector_etf', label: t('pairUniverse.sectorEtfTab', { selected: heldCount, total: totalEtfs }) },
   ];
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex gap-2 mb-4 overflow-x-auto shrink-0">
+      <div className="flex gap-2 mb-2 overflow-x-auto shrink-0">
         {tabs.map((tab: any) => (
           <button
             key={tab.id}
@@ -96,13 +135,20 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
           </button>
         ))}
       </div>
+      {tabMeta[activeTab] && (
+        <div className="text-[10px] text-[var(--text-muted)] mb-3 shrink-0 font-mono">
+          {t('pairUniverse.updatedAt')} {tabMeta[activeTab]}
+        </div>
+      )}
 
       {activeTab === 'sector_etf' ? (
         /* ── Sector ETF tab content ── */
         <>
-          <div className="text-xs text-[var(--text-muted)] mb-3 shrink-0">
-            {t('ssrs.paramVersion', { param: srSectors?.param_set || '—', version: srSectors?.signal_version || 'v1' })}
-          </div>
+          {srSectors?.param_set && (
+            <div className="text-xs text-[var(--text-muted)] mb-3 shrink-0">
+              {t('ssrs.paramVersion', { param: srSectors.param_set, version: srSectors?.signal_version || 'v1' })}
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
             <table className="w-full text-sm text-left">
               <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">

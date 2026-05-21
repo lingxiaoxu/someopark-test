@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import fs from 'fs';
 import { readJsonFile } from '../utils/fileUtils.js';
 import { getBackendPath } from '../config.js';
 import { getMongoDb } from '../utils/mongoClient.js';
@@ -14,7 +15,8 @@ router.get('/:strategy', async (req, res) => {
     }
     const filePath = getBackendPath(`pair_universe_${strategy}.json`);
     const data = await readJsonFile(filePath);
-    res.json(data);
+    const stat = await fs.promises.stat(filePath);
+    res.json({ pairs: data, updated_at: stat.mtime.toISOString() });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

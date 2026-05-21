@@ -275,11 +275,13 @@
     "held": "持有"
   },
   "pairUniverse": {
-    "selected": "已选（{{count}}）",
-    "cointegrated": "协整（{{count}}）",
-    "similar": "相似（{{count}}）",
-    "pca": "PCA（{{count}}）",
-    "searchPairs": "搜索配对..."
+    "tabLabel": "已选（{{count}}）",
+    "cointTab": "协整（{{selected}}/{{total}}）",
+    "similarTab": "相似（{{selected}}/{{total}}）",
+    "pcaTab": "PCA（{{selected}}/{{total}}）",
+    "sectorEtfTab": "板块 ETF（{{selected}}/{{total}}）",
+    "searchPairs": "搜索配对...",
+    "updatedAt": "更新于："
   },
   "wfStructure": {
     "title": "回测分析浏览",

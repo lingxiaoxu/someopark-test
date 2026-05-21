@@ -275,11 +275,13 @@
     "held": "保有"
   },
   "pairUniverse": {
-    "selected": "選択済み（{{count}}）",
-    "cointegrated": "共和分（{{count}}）",
-    "similar": "類似（{{count}}）",
-    "pca": "PCA（{{count}}）",
-    "searchPairs": "ペアを検索..."
+    "tabLabel": "選択済み（{{count}}）",
+    "cointTab": "共和分（{{selected}}/{{total}}）",
+    "similarTab": "類似（{{selected}}/{{total}}）",
+    "pcaTab": "PCA（{{selected}}/{{total}}）",
+    "sectorEtfTab": "セクター ETF（{{selected}}/{{total}}）",
+    "searchPairs": "ペアを検索...",
+    "updatedAt": "更新："
   },
   "wfStructure": {
     "title": "バックテスト分析ビューア",

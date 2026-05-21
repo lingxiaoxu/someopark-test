@@ -37,16 +37,17 @@ const COLORS: Record<string, string> = {
   mtfs: '#f59e0b',
   sr: '#16a34a',
   soxx: '#a855f7',
+  bdc: '#e11d48',
   combined: '#111',
   master: '#111',
 };
 const LABELS: Record<string, string> = {
-  mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', soxx: 'SOXX',
+  mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', soxx: 'SOXX', bdc: 'PC BDC',
   combined: 'COMBINED 3 AI ENABLED SYSTEMATIC STRATEGIES',
   master: 'MASTER AI PORTFOLIO WITH GLOBAL ALLOCATIONS',
 };
 const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'combined'];
-const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'soxx', 'master'];
+const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'soxx', 'bdc', 'master'];
 
 
 export default function StrategyPerformanceViewer({ params }: { params?: any }) {
