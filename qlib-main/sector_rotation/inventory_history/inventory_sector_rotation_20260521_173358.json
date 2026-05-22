@@ -1,47 +1,47 @@
 {
-  "as_of": "2026-05-22",
+  "as_of": "2026-05-21",
   "last_updated": "2026-05-01",
-  "last_daily_update": "2026-05-22",
+  "last_daily_update": "2026-05-21",
   "capital": 1000000,
   "holdings": {
     "XLE": {
       "weight": 0.224154,
       "shares": 3757,
-      "last_price": 59.13,
+      "last_price": 59.8,
       "cost_basis": 56.87,
       "entry_date": "2026-04-27",
       "last_rebalance_date": "2026-05-01",
-      "days_held": 15,
+      "days_held": 14,
       "action_today": "HOLD"
     },
     "XLB": {
       "weight": 0.250236,
       "shares": 4861,
-      "last_price": 50.02,
+      "last_price": 49.72,
       "cost_basis": 51.92,
       "entry_date": "2026-04-27",
       "last_rebalance_date": "2026-05-01",
-      "days_held": 15,
+      "days_held": 14,
       "action_today": "HOLD"
     },
     "XLI": {
       "weight": 0.263504,
       "shares": 1509,
-      "last_price": 170.53,
+      "last_price": 170.73,
       "cost_basis": 172.47,
       "entry_date": "2026-04-27",
       "last_rebalance_date": "2026-05-01",
-      "days_held": 15,
+      "days_held": 14,
       "action_today": "HOLD"
     },
     "XLV": {
       "weight": 0.262107,
       "shares": 1795,
-      "last_price": 148.15,
+      "last_price": 147.13,
       "cost_basis": 145.99,
       "entry_date": "2026-05-01",
       "last_rebalance_date": "2026-05-01",
-      "days_held": 14,
+      "days_held": 13,
       "action_today": "ENTER"
     }
   },

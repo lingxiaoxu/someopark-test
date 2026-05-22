@@ -16,8 +16,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -28,44 +40,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -82,8 +82,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -94,44 +106,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -148,8 +148,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -160,44 +172,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -214,8 +214,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -226,44 +238,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -280,8 +280,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -292,44 +304,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -346,8 +346,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -358,44 +370,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -412,8 +412,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -424,44 +436,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -478,8 +478,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -490,44 +502,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -544,8 +544,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -556,44 +568,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -610,8 +610,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -622,44 +634,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -676,8 +676,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -688,44 +700,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -742,8 +742,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -754,44 +766,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -808,8 +808,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -820,44 +832,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -874,8 +874,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -886,44 +898,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -940,8 +940,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -952,44 +964,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1006,8 +1006,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1018,44 +1030,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1072,8 +1072,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1084,44 +1096,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1138,8 +1138,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1150,44 +1162,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1204,8 +1204,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1216,44 +1228,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1270,8 +1270,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1282,44 +1294,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1336,8 +1336,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1348,44 +1360,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1402,8 +1402,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1414,44 +1426,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1468,8 +1468,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1480,44 +1492,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1534,8 +1534,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1546,44 +1558,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1600,8 +1600,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1612,44 +1624,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1666,8 +1666,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1678,44 +1690,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1732,8 +1732,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1744,44 +1756,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1798,8 +1798,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1810,44 +1822,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1864,8 +1864,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1876,44 +1888,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1930,8 +1930,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -1942,44 +1954,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -1996,8 +1996,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -2008,44 +2020,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     },
@@ -2062,8 +2062,20 @@
           "PFE"
         ],
         [
+          "AME",
+          "WMT"
+        ],
+        [
+          "AON",
+          "GEN"
+        ],
+        [
           "DLR",
           "PRU"
+        ],
+        [
+          "BSX",
+          "WMB"
         ],
         [
           "HRL",
@@ -2074,44 +2086,32 @@
           "FMC"
         ],
         [
-          "AME",
-          "WMT"
-        ],
-        [
-          "FSLR",
-          "RSG"
-        ],
-        [
-          "PFG",
+          "PFE",
           "YUM"
         ],
         [
-          "AON",
-          "GEN"
-        ],
-        [
-          "BSX",
-          "WMB"
+          "GPN",
+          "PTC"
         ],
         [
           "AON",
-          "MCK"
-        ],
-        [
-          "DXCM",
-          "UDR"
-        ],
-        [
-          "CI",
-          "LVS"
+          "BG"
         ],
         [
           "CSCO",
           "PAYC"
         ],
         [
-          "DVN",
+          "VTRS",
           "YUM"
+        ],
+        [
+          "FSLR",
+          "RSG"
+        ],
+        [
+          "DXCM",
+          "UDR"
         ]
       ]
     }

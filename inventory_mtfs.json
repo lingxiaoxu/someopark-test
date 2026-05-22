@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-05-19",
+  "as_of": "2026-05-21",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -180,8 +180,825 @@
           "unrealized_pnl": 4447.83,
           "unrealized_pnl_pct": 0.703,
           "note": "Holding long, signal=0.379, exit at 0.44"
+        },
+        {
+          "date": "2026-05-21",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.391,
+          "exit_threshold": 0.25,
+          "unrealized_pnl": 17758.57,
+          "unrealized_pnl_pct": 2.76,
+          "note": "Holding long, signal=0.391, exit at 0.25"
         }
       ]
+    },
+    "CBOE/TYL": {
+      "strategy": "mtfs",
+      "param_set": "long_term_kalman",
+      "direction": "long",
+      "s1_shares": 152,
+      "s2_shares": -174,
+      "open_date": "2026-05-21",
+      "open_s1_price": 362.71,
+      "open_s2_price": 315.98,
+      "open_hedge_ratio": 1.1419757078798962,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.796,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "let_profits_run",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "let_profits_run",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "aggressive",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "let_profits_run",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "long_term_kalman",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "CSCO/LULU": {
+      "strategy": "mtfs",
+      "param_set": "long_term_tilt",
+      "direction": "long",
+      "s1_shares": 959,
+      "s2_shares": -444,
+      "open_date": "2026-05-21",
+      "open_s1_price": 114.77,
+      "open_s2_price": 123.95,
+      "open_hedge_ratio": 0.925937878176684,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.722,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "long_term_tilt",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "long_term_tilt",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "long_term_tilt",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "long_term_tilt",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "long_term_tilt",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "long_term_tilt",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "DVA/TRMB": {
+      "strategy": "mtfs",
+      "param_set": "kalman_aggressive",
+      "direction": "long",
+      "s1_shares": 714,
+      "s2_shares": -1430,
+      "open_date": "2026-05-21",
+      "open_s1_price": 197.69,
+      "open_s2_price": 55.33,
+      "open_hedge_ratio": 3.2870515596962737,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.546,
+        "entry_threshold": 0.0,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "kalman_aggressive",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "aggressive",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "kalman_aggressive",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "kalman_aggressive",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "kalman_aggressive",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "kalman_aggressive",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "SLB/XYL": {
+      "strategy": "mtfs",
+      "param_set": "long_term_kalman",
+      "direction": "long",
+      "s1_shares": 1940,
+      "s2_shares": -504,
+      "open_date": "2026-05-21",
+      "open_s1_price": 57.13,
+      "open_s2_price": 107.69,
+      "open_hedge_ratio": 0.5166443762161863,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 1.251,
+        "entry_threshold": 0.007,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "short_term_beta_neutral",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "short_term_beta_neutral",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "short_term_beta_neutral",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "long_term_kalman",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "long_term_kalman",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "long_term_kalman",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "TRGP/ROP": {
+      "strategy": "mtfs",
+      "param_set": "no_skip_month",
+      "direction": "long",
+      "s1_shares": 508,
+      "s2_shares": -171,
+      "open_date": "2026-05-21",
+      "open_s1_price": 270.37,
+      "open_s2_price": 322.25,
+      "open_hedge_ratio": 0.8390069821567107,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 1.248,
+        "entry_threshold": 0.215,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "no_skip_month",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "no_skip_month",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "no_skip_month",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "no_skip_month",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "let_profits_run",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "no_skip_month",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "SLB/ALLE": {
+      "strategy": "mtfs",
+      "param_set": "weekly_aligned_windows",
+      "direction": "long",
+      "s1_shares": 1940,
+      "s2_shares": -429,
+      "open_date": "2026-05-21",
+      "open_s1_price": 57.13,
+      "open_s2_price": 128.45,
+      "open_hedge_ratio": 0.4447644998053718,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.569,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "aggressive",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W3": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "CSCO/BLDR": {
+      "strategy": "mtfs",
+      "param_set": "no_reversal_protection",
+      "direction": "long",
+      "s1_shares": 959,
+      "s2_shares": -780,
+      "open_date": "2026-05-21",
+      "open_s1_price": 114.77,
+      "open_s2_price": 70.55,
+      "open_hedge_ratio": 1.626789510985117,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.746,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "no_reversal_protection",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "no_reversal_protection",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "slow_rebalance",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "slow_rebalance",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "slow_rebalance",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "no_reversal_protection",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "NVDA/REGN": {
+      "strategy": "mtfs",
+      "param_set": "monthly_aligned_windows",
+      "direction": "long",
+      "s1_shares": 245,
+      "s2_shares": -85,
+      "open_date": "2026-05-21",
+      "open_s1_price": 224.15,
+      "open_s2_price": 645.66,
+      "open_hedge_ratio": 0.3471641421181427,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.965,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "monthly_aligned_windows",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "monthly_aligned_windows",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "monthly_aligned_windows",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "monthly_aligned_windows",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "monthly_aligned_windows",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "monthly_aligned_windows",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "DVA/PNR": {
+      "strategy": "mtfs",
+      "param_set": "sensitive_reversal",
+      "direction": "long",
+      "s1_shares": 714,
+      "s2_shares": -743,
+      "open_date": "2026-05-21",
+      "open_s1_price": 197.69,
+      "open_s2_price": 74.08,
+      "open_hedge_ratio": 2.6686015118790496,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.596,
+        "entry_threshold": 0.085,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "raw_momentum",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "kalman_aggressive",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "TRGP/NCLH": {
+      "strategy": "mtfs",
+      "param_set": "aggressive",
+      "direction": "long",
+      "s1_shares": 508,
+      "s2_shares": -5130,
+      "open_date": "2026-05-21",
+      "open_s1_price": 270.37,
+      "open_s2_price": 16.1,
+      "open_hedge_ratio": 16.793167701863354,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.881,
+        "entry_threshold": 0.026,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "monthly_aligned_windows",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "aggressive",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "fast_rebalance",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "fast_rebalance",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "aggressive",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "aggressive",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
+    },
+    "ODFL/MKTX": {
+      "strategy": "mtfs",
+      "param_set": "sensitive_reversal",
+      "direction": "long",
+      "s1_shares": 262,
+      "s2_shares": -396,
+      "open_date": "2026-05-21",
+      "open_s1_price": 209.63,
+      "open_s2_price": 139.14,
+      "open_hedge_ratio": 1.5066120454218774,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "open_signal": {
+        "momentum_spread": 0.662,
+        "entry_threshold": 0.029,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260522_013528.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "aggressive",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-11-05",
+            "oos_sharpe": -0.7569,
+            "oos_pnl": -4910.2
+          },
+          "W2": {
+            "param_set": "aggressive",
+            "train_end": "2025-11-05",
+            "test_start": "2025-11-06",
+            "test_end": "2025-12-15",
+            "oos_sharpe": -4.0649,
+            "oos_pnl": -40487.51
+          },
+          "W3": {
+            "param_set": "aggressive",
+            "train_end": "2025-12-15",
+            "test_start": "2025-12-16",
+            "test_end": "2026-01-26",
+            "oos_sharpe": 4.3932,
+            "oos_pnl": 18561.14
+          },
+          "W4": {
+            "param_set": "aggressive",
+            "train_end": "2026-01-26",
+            "test_start": "2026-01-27",
+            "test_end": "2026-03-05",
+            "oos_sharpe": 3.2385,
+            "oos_pnl": 30703.8
+          },
+          "W5": {
+            "param_set": "aggressive",
+            "train_end": "2026-03-05",
+            "test_start": "2026-03-06",
+            "test_end": "2026-04-14",
+            "oos_sharpe": 0.2052,
+            "oos_pnl": 959.56
+          },
+          "W6": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2026-04-14",
+            "test_start": "2026-04-15",
+            "test_end": "2026-05-21",
+            "oos_sharpe": 12.0613,
+            "oos_pnl": 148418.14
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
     }
   }
 }
