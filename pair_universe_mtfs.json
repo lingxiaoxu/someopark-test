@@ -1,92 +1,92 @@
 [
   {
     "s1": "CSCO",
-    "s2": "LULU",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "CSCO",
     "s2": "BLDR",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "DVA",
-    "s2": "TRMB",
-    "sector": "other",
-    "spread_col": "Momentum_Spread_other"
-  },
-  {
-    "s1": "DVA",
+    "s1": "CSCO",
     "s2": "PNR",
-    "sector": "other",
-    "spread_col": "Momentum_Spread_other"
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "AKAM",
-    "s2": "HCA",
+    "s1": "DVA",
+    "s2": "INTU",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "DVA",
+    "s2": "TYL",
     "sector": "health",
     "spread_col": "Momentum_Spread_health"
   },
   {
     "s1": "AKAM",
-    "s2": "CDW",
-    "sector": "other",
-    "spread_col": "Momentum_Spread_other"
+    "s2": "HCA",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "AKAM",
+    "s2": "POOL",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "CBOE",
-    "s2": "IP",
+    "s2": "MKTX",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
   {
     "s1": "CBOE",
-    "s2": "TYL",
+    "s2": "CDW",
     "sector": "finance",
     "spread_col": "Momentum_Spread_finance"
   },
   {
     "s1": "SLB",
-    "s2": "ALLE",
+    "s2": "LVS",
     "sector": "energy",
     "spread_col": "Momentum_Spread_energy"
   },
   {
     "s1": "SLB",
+    "s2": "REGN",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "TRGP",
     "s2": "XYL",
     "sector": "energy",
     "spread_col": "Momentum_Spread_energy"
   },
   {
-    "s1": "ODFL",
-    "s2": "MKTX",
-    "sector": "other",
-    "spread_col": "Momentum_Spread_other"
-  },
-  {
-    "s1": "ODFL",
-    "s2": "LVS",
-    "sector": "other",
-    "spread_col": "Momentum_Spread_other"
-  },
-  {
     "s1": "TRGP",
+    "s2": "ALLE",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "ODFL",
     "s2": "NCLH",
-    "sector": "other",
-    "spread_col": "Momentum_Spread_other"
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
   },
   {
-    "s1": "TRGP",
-    "s2": "ROP",
-    "sector": "other",
-    "spread_col": "Momentum_Spread_other"
+    "s1": "ODFL",
+    "s2": "JKHY",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
   },
   {
-    "s1": "NVDA",
-    "s2": "REGN",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "BWA",
+    "s2": "MOS",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
   }
 ]
