@@ -923,8 +923,8 @@ def remove_overlap(mrpt_selected, mtfs_selected):
 # ---------------------------------------------------------------------------
 
 SECTOR_MAP = {
-    # GICS-based sector mapping — covers S&P 500 + common traded tickers
-    # Updated 2026-05 to eliminate "other" for all DB pool tickers
+    # GICS-based sector mapping — covers full S&P 500 + common traded tickers
+    # Updated 2026-05-23: full S&P 500 coverage (503 tickers + extras)
     "tech": {"AAPL", "META", "MSFT", "GOOGL", "GOOG", "NVDA", "AMD",
              "INTC", "CRM", "ORCL", "ADBE", "CSCO", "AVGO", "TXN", "QCOM",
              "MCHP", "ANET", "NOW", "SNPS", "CDNS", "KLAC", "LRCX", "MRVL",
@@ -932,10 +932,13 @@ SECTOR_MAP = {
              "SNOW", "PLTR", "PYPL", "INTU", "WDAY", "VEEV", "HUBS",
              "BILL", "MDB", "CFLT", "ESTC", "ZM", "DOCU", "OKTA",
              "FIVN", "APPN", "PATH",
-             # S&P 500 IT additions
-             "ADI", "AKAM", "APH", "CDW", "CTSH", "EPAM", "FFIV", "FICO",
-             "FSLR", "GDDY", "GEN", "GLW", "HPQ", "KEYS", "MKTX", "MSI",
-             "PAYC", "PTC", "TYL", "VRSN",
+             # S&P 500 Information Technology
+             "ACN", "ADI", "ADSK", "AKAM", "AMAT", "APH", "APP", "CDW",
+             "CIEN", "COHR", "CTSH", "DELL", "EPAM", "FFIV", "FICO", "FSLR",
+             "GDDY", "GEN", "GLW", "HPE", "HPQ", "IBM", "IT", "JBL", "KEYS",
+             "LITE", "MKTX", "MPWR", "MSI", "NTAP", "PAYC", "PTC", "Q", "ROP",
+             "SMCI", "SNDK", "STX", "SWKS", "TEL", "TER", "TYL", "VRSN",
+             "WDC", "ZBRA",
              },
     "finance": {"GS", "MS", "JPM", "BAC", "WFC", "C", "BLK", "BX", "KKR",
                 "APO", "ARES", "CG", "OWL", "BN", "ALLY", "SCHW", "IBKR",
@@ -944,18 +947,19 @@ SECTOR_MAP = {
                 "ACGL", "PGR", "ALL", "TRV", "AIG", "MET", "PRU", "AFL",
                 "AMG", "BEN", "TROW", "IVZ", "EV", "UBS", "DB", "HSBC",
                 "BCS", "RY", "TD", "BMO", "CM",
-                # S&P 500 Financials additions
-                "AIZ", "AJG", "AMP", "AON", "BK", "BR", "BRO", "CB", "CFG", "EG",
-                "CINF", "FITB", "GL", "HBAN", "HIG", "JKHY", "KEY", "L",
-                "MTB", "NTRS", "PFG", "PNC", "RF", "RJF", "STT", "TFC",
-                "USB", "WRB", "WTW",
+                # S&P 500 Financials
+                "AIZ", "AJG", "AMP", "AON", "BK", "BNY", "BR", "BRK-B", "BRO",
+                "CB", "CFG", "CINF", "COIN", "CPAY", "EG", "ERIE", "FDS",
+                "FITB", "GL", "HBAN", "HIG", "HOOD", "JKHY", "KEY", "L",
+                "MRSH", "MTB", "NTRS", "PFG", "PNC", "RF", "RJF", "STT",
+                "TFC", "USB", "WRB", "WTW", "XYZ",
                 },
     "energy": {"XOM", "CVX", "COP", "SLB", "EOG", "MPC", "PSX", "VLO",
                "PXD", "HES", "OXY", "DVN", "HAL", "BKR", "FANG", "APA",
                "MRO", "CTRA", "AR", "EQT", "USO", "XLE", "OIH", "AMLP",
                "WMB", "OKE", "KMI", "ET", "ENB", "TRP", "LNG",
-               # S&P 500 Energy additions
-               "TRGP",
+               # S&P 500 Energy
+               "EXE", "TPL", "TRGP",
                },
     "food": {# Consumer Staples (GICS) — food, beverage, household, retail staples
              "MCD", "YUM", "SBUX", "CMG", "DPZ", "QSR", "WEN", "JACK",
@@ -964,19 +968,21 @@ SECTOR_MAP = {
              "KO", "PEP", "MNST", "KDP", "STZ", "SAM", "DEO", "BUD",
              "HSY", "MDLZ", "GIS", "K", "SJM", "CAG", "CPB", "HRL",
              "TSN", "PPC", "CALM", "SAFM",
-             # S&P 500 Consumer Staples additions
-             "CHD", "CL", "CLX", "KHC", "KMB", "KVUE", "MKC", "MO",
-             "PG", "PM", "TAP",
+             # S&P 500 Consumer Staples
+             "BF-B", "CASY", "CHD", "CL", "CLX", "EL", "KHC", "KMB",
+             "KVUE", "MKC", "MO", "PG", "PM", "TAP",
              # Consumer Discretionary (GICS) — restaurants, retail, leisure
              "AMZN", "BKNG", "ABNB", "DASH", "CART", "UBER", "LYFT",
-             "COIN", "SQ", "NFLX", "SPOT", "RBLX", "SHOP", "TEAM",
+             "SQ", "NFLX", "SPOT", "RBLX", "SHOP", "TEAM",
              "TWLO", "TTD", "PINS", "SNAP", "U", "SE", "MELI",
              "DKNG", "ROKU",
-             # S&P 500 Consumer Discretionary additions
-             "BBY", "EXPE", "F", "HAS", "HLT", "LOW", "LULU", "LVS",
-             "MAR", "MGM", "MHK", "NCLH", "NVR", "PHM", "POOL",
-             "RL", "TJX", "TSCO", "TSLA", "TTWO", "ULTA", "WYNN",
-             "DRI", "MTCH",
+             # S&P 500 Consumer Discretionary
+             "APTV", "AZO", "BBY", "CCL", "CVNA", "DECK", "DHI", "DRI",
+             "EBAY", "EXPE", "F", "GM", "GPC", "GRMN", "HAS", "HD", "HLT",
+             "LEN", "LOW", "LULU", "LVS", "MAR", "MGM", "MHK", "MTCH",
+             "NCLH", "NKE", "NVR", "ORLY", "PHM", "POOL", "RCL", "RL",
+             "ROST", "TJX", "TPR", "TSCO", "TSLA", "TTWO", "ULTA",
+             "WSM", "WYNN",
              },
     "health": {"UNH", "JNJ", "PFE", "ABBV", "MRK", "LLY", "TMO", "ABT",
                "DHR", "AMGN", "GILD", "BMY", "ISRG", "SYK", "BDX", "MDT",
@@ -984,10 +990,11 @@ SECTOR_MAP = {
                "HUM", "CI", "ELV", "CVS", "WBA", "MCK", "CAH", "ABC",
                "A", "IQV", "CRL", "ALGN", "HOLX", "IDXX", "DXCM",
                "TDOC", "DOCS", "DGX",
-               # S&P 500 Health Care additions
+               # S&P 500 Health Care
                "BAX", "BIIB", "COO", "COR", "DVA", "GEHC", "HSIC", "INCY",
-               "LH", "MRNA", "MTD", "PODD", "REGN", "RMD", "STE", "TFX",
-               "VLTO", "VRTX", "VTRS", "WAT",
+               "LH", "MRNA", "MTD", "PODD", "REGN", "RMD", "RVTY", "SOLV",
+               "STE", "TECH", "TFX", "VLTO", "VRTX", "VTRS", "WAT", "WST",
+               "ZTS",
                },
     "industrial": {"CAT", "DE", "HON", "MMM", "GE", "BA", "LMT", "RTX",
                    "NOC", "GD", "TDG", "HWM", "TXT", "LHX", "HII",
@@ -996,39 +1003,41 @@ SECTOR_MAP = {
                    "WM", "RSG", "WCN", "CLH", "EMR", "ROK", "AME",
                    "ETN", "PH", "ITW", "SWK", "IR", "CARR", "TT",
                    "JCI", "LII", "GNRC", "PWR", "FAST", "GWW", "WSO",
-                   # S&P 500 Industrials additions
-                   "AOS", "ALLE", "AXON", "BLDR", "BWA", "CHRW", "CMI", "CPRT",
-                   "CTAS", "DOV", "EFX", "EXPD", "HUBB", "IEX", "LDOS",
-                   "MAS", "NDSN", "ODFL", "PAYX", "PCAR", "PNR", "SNA",
-                   "TDY", "TRMB", "WAB", "XYL",
+                   # S&P 500 Industrials
+                   "ADP", "AOS", "ALLE", "AXON", "BLDR", "BWA", "CHRW",
+                   "CMI", "CPRT", "CTAS", "DOV", "EFX", "EME", "EXPD",
+                   "FIX", "FTV", "GEV", "HUBB", "IEX", "J", "LDOS",
+                   "MAS", "NDSN", "ODFL", "OTIS", "PAYX", "PCAR", "PNR",
+                   "ROL", "SNA", "TDY", "TRMB", "URI", "VRSK", "VRT",
+                   "WAB", "XYL",
                    },
     "realestate": {"AMT", "PLD", "CCI", "EQIX", "SPG", "O", "VICI",
                    "PSA", "EXR", "DLR", "AVB", "EQR", "MAA", "UDR",
                    "CPT", "ARE", "BXP", "SLG", "VNO", "KIM", "REG",
                    "FRT", "NNN", "WPC", "ADC", "STAG",
-                   # S&P 500 Real Estate additions
+                   # S&P 500 Real Estate
                    "CBRE", "CSGP", "DOC", "ESS", "HST", "INVH", "IRM",
-                   "VTR", "WELL",
+                   "SBAC", "VTR", "WELL",
                    },
     "materials": {"LIN", "APD", "SHW", "ECL", "DD", "DOW", "LYB",
                   "PPG", "NEM", "FCX", "SCCO", "AA", "NUE", "STLD",
                   "CLF", "X", "RS", "VMC", "MLM", "CX", "EXP", "SUM",
                   "IP", "PKG", "SEE", "BLL", "AVY", "SON", "GPK",
-                  # S&P 500 Materials additions
-                  "AMCR", "BALL", "CTVA", "EMN", "WY",
+                  # S&P 500 Materials
+                  "ALB", "AMCR", "BALL", "CRH", "CTVA", "EMN", "SW", "WY",
                   },
     "utilities": {"NEE", "DUK", "SO", "AEP", "SRE", "ED", "EXC",
                   "XEL", "WEC", "ES", "AWK", "ATO", "NI", "CMS",
                   "DTE", "FE", "PEG", "PPL", "ETR", "AES",
-                  # S&P 500 Utilities additions
-                  "AEE", "CNP", "D", "EIX", "EVRG", "LNT", "NRG",
-                  "PCG", "PNW",
+                  # S&P 500 Utilities
+                  "AEE", "CEG", "CNP", "D", "EIX", "EVRG", "LNT", "NRG",
+                  "PCG", "PNW", "VST",
                   },
     "telecom": {"T", "VZ", "TMUS", "CHTR", "CMCSA", "LUMN", "FYBR",
                 "ATUS", "SATS", "DISH",
-                # S&P 500 Communication Services additions
+                # S&P 500 Communication Services
                 "DIS", "EA", "FOX", "FOXA", "LYV", "NWSA", "NWS",
-                "OMC", "WBD",
+                "OMC", "PSKY", "TKO", "WBD",
                 },
 }
 

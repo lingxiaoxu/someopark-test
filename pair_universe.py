@@ -84,11 +84,24 @@ def mtfs_sector_map() -> dict:
 
 
 def all_symbols() -> list[str]:
-    """Deduplicated sorted list of all tickers across MRPT universe (for MRPTFetchEarnings)"""
+    """Deduplicated sorted list of all tickers across MRPT + MTFS universes."""
     syms = set()
     for p in load_mrpt():
         syms.add(p['s1'])
         syms.add(p['s2'])
+    for p in load_mtfs():
+        syms.add(p['s1'])
+        syms.add(p['s2'])
+    return sorted(syms)
+
+
+def all_sp500_symbols() -> list[str]:
+    """Full S&P 500 + extras from SelectPairs.SECTOR_MAP (621 tickers).
+    Used by MRPTFetchEarnings for comprehensive earnings coverage."""
+    from SelectPairs import SECTOR_MAP
+    syms = set()
+    for tickers in SECTOR_MAP.values():
+        syms.update(tickers)
     return sorted(syms)
 
 

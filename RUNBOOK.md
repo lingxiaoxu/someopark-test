@@ -126,6 +126,37 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 4b. MRPTFetchEarnings.py — 财报日期缓存
+
+**从 Polygon 拉取 S&P 500 全量财报日期，缓存到 `price_data/earnings_cache.json`。MRPT + MTFS 的 Earnings Blackout 依赖此缓存。**
+
+```bash
+# 全量 S&P 500 (~621 tickers，首次运行或换配对后)
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTFetchEarnings.py --full
+
+# 增量（只查可能有新 filing 的 ticker，cache 3 天内 fetch 过则跳过）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTFetchEarnings.py --incremental
+
+# 仅当前 pair universe
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTFetchEarnings.py
+
+# 指定 ticker
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTFetchEarnings.py MSCI NVDA
+```
+
+**日常运行无需手动执行**：DailySignal.py 每次运行时自动调用 `update_earnings_incremental()`，如果 cache 在 3 天内已更新过则跳过（零 API 调用、零延迟）。
+
+**数据缓存说明**：
+
+| 缓存文件 | 内容 | 更新方式 | 更新时机 |
+|---------|------|---------|---------|
+| `price_data/earnings_cache.json` | S&P 500 财报日期（~598 symbols，含 release_timing） | `MRPTFetchEarnings.py` + DailySignal 增量 | 每 3 天自动增量；换配对后 `--full` |
+| `price_data/dividends_cache.json` | 分红记录（按 symbol 存储所有历史分红） | `PriceDataStore._fetch_dividends()` 按需 | 加载价格数据时自动检查并增量拉取 |
+
+> 分红缓存不需要手动维护——每次 DailySignal 或 WalkForward 加载价格数据时，`PriceDataStore` 自动检查每个 symbol 的 `fetched_through` 是否覆盖请求的日期范围，不覆盖则从 Polygon 增量拉取。
+
+---
+
 ## 5. MRPTUpdateConfigs.py — 更新 MRPT Step2/Step3 config
 
 从 Step 1 的 CSV 汇总结果中，按 DSR 选出每对最佳 param_set，更新 step2/step3 的 JSON config。
@@ -384,14 +415,24 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python DailySignal.py --strategy both --date 2026-03-12
 ```
 
-**Position Monitor 行为：**
+**Position Monitor 行为（Step 1）：**
 - 对 `inventory_mrpt.json` / `inventory_mtfs.json` 中所有开仓记录，从 `open_date` 模拟至今（或 `--date` 指定日期），每日检测止损条件
 - 使用开仓时记录的 `param_set` + `open_hedge_ratio`，与实盘参数完全一致
 - MRPT 止损：波动率止损（spread vs mean±2.5σ）、价格止损（spread × 0.8/1.5）、时间止损（max_holding_period）、z-score 自然回归
 - MTFS 止损：动量衰减/反转（exit_on_momentum_decay + SMA 穿越）、配对 PnL 止损（-3%）、波动率止损（价格比率）、时间止损
-- 输出：HOLD（继续持仓）/ CLOSE（自然平仓）/ CLOSE_STOP（止损触发，含触发日期和原因）
+- MTFS 止盈：信号衰竭止盈（|ms| 衰减到入场值 30% 以下且盈利）、利润追踪止盈（利润从峰值回撤超过分级阈值且仍盈利）
+- 输出：HOLD（继续持仓）/ CLOSE（自然平仓 / 止盈平仓）/ CLOSE_STOP（止损触发，含触发日期和原因）
 - 每对模拟 Excel 保存至 `trading_signals/monitor_history/monitor_<strategy>_<pair>_<ts>.xlsx`
 - 每次运行前自动将 inventory 备份到 `inventory_history/`（按 as_of 日期保留唯一快照）
+
+**信号质量门控（Step 2 新信号生成）：**
+- 财报黑名单（MRPT + MTFS）：财报日附近不开新仓（`BLACKOUT` action）
+- VIX 宏观门控（MTFS）：VIX term slope 急变时暂停新开仓（`MACRO_VETO`）
+- Ticker 集中度（MRPT + MTFS）：单 ticker 最多出现在 2 个持仓中（`MACRO_VETO`）
+- 相关性过滤（MRPT + MTFS）：60 日 daily return 相关性 < 0.20 拒绝开仓（`MACRO_VETO`）
+- 亏损防重开（MRPT + MTFS）：Step 1 亏损关仓的 pair，Step 2 当天不重开（`MACRO_VETO`）
+- 弱信号拦截（MTFS）：|momentum_spread| < 0.05 拒绝开仓（`MACRO_VETO`）
+- 详见 README.md「信号质量门控」章节
 
 输出：`trading_signals/mrpt_signals_<date>.json`，`trading_signals/mtfs_signals_<date>.json`，`trading_signals/combined_signals_<date>.json`，`trading_signals/daily_report_<date>.txt`，`trading_signals/monitor_history/monitor_*.xlsx`
 
@@ -711,6 +752,7 @@ inventory_mtfs.json   — MTFS 当前开仓记录
 | `pairs.<key>.open_signal` | 开仓时的信号值（MRPT: z_score；MTFS: momentum_spread） |
 | `pairs.<key>.wf_source` | 来源 Walk-Forward 文件（`walk_forward_summary_*.json`） |
 | `pairs.<key>.open_price_level_stop` | 开仓时的价格止损水位（MRPT 专属，null 表示未设置） |
+| `pairs.<key>.peak_unrealized_pnl` | 持仓期间最高未实现盈利（MTFS 专属，Trailing Profit Stop 用此追踪利润峰值） |
 | `pairs.<key>.monitor_log` | 最近一次 Position Monitor 输出摘要（action / days_held / upnl） |
 
 > **注意**：`days_held` 基于日历天数，每天只递增一次（通过 `last_updated` 保证 re-run 幂等）。持仓期间 shares 固定不变，不随 regime 调整。inventory 每次运行前自动备份至 `inventory_history/`，按 `as_of` 日期去重保留唯一快照。

@@ -552,6 +552,19 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
         exit_thr       = today_rv.get('Exit_Threshold', 0.0)
         signal_label   = 'momentum_spread'
 
+        # MTFS earnings blackout (same logic as MRPT, data from PortfolioMTFSRun recorded_vars)
+        blackout        = today_rv.get('earnings_blackout', False)
+        blackout_reason = today_rv.get('earnings_blackout_reason', '')
+        if blackout and not in_long and not in_short:
+            return {
+                'pair': pair_key, 'action': 'BLACKOUT',
+                signal_label: _r(signal_value),
+                'entry_threshold': _r(entry_thr),
+                's1': s1, 's2': s2,
+                's1_price': _r(s1_price, 4), 's2_price': _r(s2_price, 4),
+                'note': f'Earnings blackout: {blackout_reason}',
+            }
+
     sv  = _r(signal_value)
     et  = _r(entry_thr)
     ext = _r(exit_thr)
@@ -621,6 +634,64 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
              'note': f'signal={sv} passed exit threshold {ext} — close {inv_direction}'}
         d.update(_legs(inv_direction))
         return d
+
+    # ── Fix 6B: MTFS signal decay close — before HOLD ──────────────────────
+    if strategy == 'mtfs' and (in_long or in_short) and inv_direction:
+        ms_entry = inv_pair.get('open_signal', {}).get('momentum_spread', 0)
+        if ms_entry != 0:
+            decay_ratio = abs(signal_value) / abs(ms_entry) if not np.isnan(signal_value) else 1.0
+            _upnl_6b, _upnl_pct_6b = _compute_close_upnl(inv_direction)
+            if decay_ratio < 0.30 and _upnl_6b is not None and _upnl_6b > 0:
+                d = {**base, 'action': 'CLOSE', 'direction': inv_direction,
+                     signal_label: sv, 'entry_threshold': et, 'exit_threshold': ext,
+                     's1_shares': s1_shares, 's2_shares': s2_shares,
+                     'days_held': days_held,
+                     'unrealized_pnl': _upnl_6b,
+                     'unrealized_pnl_pct': _upnl_pct_6b,
+                     'note': f'Profit-taking: signal exhausted '
+                             f'(ms={signal_value:.3f}, {decay_ratio:.0%} of entry {ms_entry:.3f})'}
+                d.update(_legs(inv_direction))
+                log.info(f"[PROFIT_TAKING] {pair_key}: signal decay close — "
+                         f"ms={signal_value:.3f} ({decay_ratio:.0%} of entry {ms_entry:.3f}), "
+                         f"upnl=${_upnl_6b:,.0f}")
+                return d
+
+    # ── Fix 6C: MTFS trailing profit stop — before HOLD ──────────────────
+    if strategy == 'mtfs' and (in_long or in_short) and inv_direction:
+        _peak = inv_pair.get('peak_unrealized_pnl', 0)
+        _upnl_6c, _upnl_pct_6c = _compute_close_upnl(inv_direction)
+        if _upnl_6c is not None:
+            # Update peak in-flight (will be persisted by monitor_existing_positions)
+            if _upnl_6c > _peak:
+                _peak = _upnl_6c
+            # Compute notional-aware thresholds
+            _notional = (abs(inv_pair.get('s1_shares', 0) * inv_pair.get('open_s1_price', 0))
+                       + abs(inv_pair.get('s2_shares', 0) * inv_pair.get('open_s2_price', 0)))
+            _act = max(_PT_ACTIVATION_USD, _notional * _PT_ACTIVATION_PCT)
+            _lg  = max(_PT_LARGE_GAIN_USD, _notional * _PT_LARGE_GAIN_PCT)
+            _mg  = max(_PT_MEGA_GAIN_USD,  _notional * _PT_MEGA_GAIN_PCT)
+            if _peak > _act:
+                if _peak >= _mg:
+                    _retain = _PT_RETAIN_MEGA
+                elif _peak >= _lg:
+                    _retain = _PT_RETAIN_LARGE
+                else:
+                    _retain = _PT_RETAIN_SMALL
+                _floor = _peak * _retain
+                if _upnl_6c < _floor and _upnl_6c > 0:
+                    d = {**base, 'action': 'CLOSE', 'direction': inv_direction,
+                         signal_label: sv, 'entry_threshold': et, 'exit_threshold': ext,
+                         's1_shares': s1_shares, 's2_shares': s2_shares,
+                         'days_held': days_held,
+                         'unrealized_pnl': _upnl_6c,
+                         'unrealized_pnl_pct': _upnl_pct_6c,
+                         'note': f'Profit-taking: trailing stop '
+                                 f'(peak=${_peak:,.0f}, floor=${_floor:,.0f}, '
+                                 f'current=${_upnl_6c:,.0f}, retain={_retain:.0%})'}
+                    d.update(_legs(inv_direction))
+                    log.info(f"[PROFIT_TAKING] {pair_key}: trailing stop — "
+                             f"peak=${_peak:,.0f} floor=${_floor:,.0f} current=${_upnl_6c:,.0f}")
+                    return d
 
     # Values at open time — stored in inventory for accurate monitor restoration.
     # open_hedge_ratio: OLS hedge on open day (informational).
@@ -741,8 +812,28 @@ _MTFS_SLOPE_CHG_THRESHOLD = 1.5   # VIX term slope 5d change threshold for MTFS 
 
 _MAX_TICKER_EXPOSURE = 2   # max times a single ticker can appear across open positions
 
+# Fix 1: Correlation Gate — min 60-day daily return correlation to allow OPEN
+_MIN_PAIR_CORRELATION = 0.20
+_CORR_LOOKBACK_DAYS = 60
+
+# Fix 6A: Min Signal Guard — min MTFS momentum signal strength to allow OPEN
+_MIN_MTFS_SIGNAL = 0.05
+
+# Fix 6C: Trailing Profit Stop — MTFS only
+_PT_ACTIVATION_USD = 1000       # peak > this to activate
+_PT_LARGE_GAIN_USD = 5000       # large gain boundary
+_PT_MEGA_GAIN_USD  = 15000      # mega gain boundary
+_PT_ACTIVATION_PCT = 0.005      # 0.5% of notional
+_PT_LARGE_GAIN_PCT = 0.02       # 2% of notional
+_PT_MEGA_GAIN_PCT  = 0.05       # 5% of notional
+_PT_RETAIN_SMALL = 0.20         # small gain: retain at least 20%
+_PT_RETAIN_LARGE = 0.50         # large gain: retain at least 50%
+_PT_RETAIN_MEGA  = 0.65         # mega gain: retain at least 65%
+
 def extract_signals(context, pair_configs, signal_ts, inventory,
-                    prices_today, strategy, scale_factor: float = 1.0) -> list:
+                    prices_today, strategy, scale_factor: float = 1.0,
+                    pair_correlations: dict = None,
+                    churn_blocked_pairs: set = None) -> list:
     # ── MTFS macro gate: compute once for all pairs ───────────────────────
     macro_gate: dict = {}
     if strategy == 'mtfs':
@@ -810,6 +901,44 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
                 # Accept this open: update ticker counts for subsequent checks
                 ticker_count[s1] += 1
                 ticker_count[s2] += 1
+
+        # Fix 1: Correlation gate — veto if pair correlation too low
+        if sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT') and pair_correlations:
+            corr = pair_correlations.get(pair_key)
+            if corr is not None and corr < _MIN_PAIR_CORRELATION:
+                original_action = sig['action']
+                sig['action'] = 'MACRO_VETO'
+                sig['original_action'] = original_action
+                sig['note'] = (
+                    f"Low correlation — {s1}/{s2} corr={corr:.3f} "
+                    f"< {_MIN_PAIR_CORRELATION} ({_CORR_LOOKBACK_DAYS}d daily returns)"
+                )
+                log.info(f"[CORRELATION] {pair_key}: vetoed {original_action} — corr={corr:.3f}")
+
+        # Fix 2: Anti-churn guard — don't re-open pairs closed at loss by Step 1
+        if sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT') and churn_blocked_pairs:
+            if pair_key in churn_blocked_pairs:
+                original_action = sig['action']
+                sig['action'] = 'MACRO_VETO'
+                sig['original_action'] = original_action
+                sig['note'] = (
+                    f"Anti-churn — {pair_key} was closed at loss today, "
+                    f"cooling period active"
+                )
+                log.info(f"[ANTI_CHURN] {pair_key}: vetoed {original_action}")
+
+        # Fix 6A: Min signal guard — MTFS only, veto if |ms| too weak
+        if strategy == 'mtfs' and sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
+            ms_val = sig.get('momentum_spread', 0) or 0
+            if abs(ms_val) < _MIN_MTFS_SIGNAL:
+                original_action = sig['action']
+                sig['action'] = 'MACRO_VETO'
+                sig['original_action'] = original_action
+                sig['note'] = (
+                    f"Weak signal — |ms|={abs(ms_val):.3f} "
+                    f"< {_MIN_MTFS_SIGNAL} (no directional conviction)"
+                )
+                log.info(f"[WEAK_SIGNAL] {pair_key}: vetoed {original_action} — |ms|={abs(ms_val):.3f}")
 
         signals.append(sig)
     return signals
@@ -971,6 +1100,7 @@ def update_inventory_from_signals(
                 'open_hedge_ratio':     sig.get('open_hedge_ratio'),
                 'open_price_level_stop': sig.get('open_price_level_stop'),
                 'days_held':            0,
+                'peak_unrealized_pnl':  0.0,   # Fix 6C: track peak upnl for trailing stop
                 'open_signal':          open_signal,
                 'wf_source':            _build_wf_source_for_pair(pair, strategy),
                 'monitor_log':          [],
@@ -1511,6 +1641,14 @@ def monitor_existing_positions(
                 if date_str not in existing_dates:
                     inv_updated['pairs'][pk]['monitor_log'].append(log_entry)
 
+                # Fix 6C: Update peak_unrealized_pnl for MTFS trailing profit stop
+                if strategy == 'mtfs':
+                    upnl = sig.get('unrealized_pnl')
+                    if upnl is not None:
+                        current_peak = inv_updated['pairs'][pk].get('peak_unrealized_pnl', 0)
+                        if upnl > current_peak:
+                            inv_updated['pairs'][pk]['peak_unrealized_pnl'] = upnl
+
             # Apply monitor CLOSE signals to inventory.
             # days_held is incremented once per day by _run_single (Step 2).
             close_sigs = [s for s in result[strategy]
@@ -1785,6 +1923,25 @@ def run_daily_signal(
     """
     os.makedirs(SIGNALS_DIR, exist_ok=True)
 
+    # ── Earnings cache incremental update ────────────────────────────────
+    if not dry_run:
+        try:
+            from MRPTFetchEarnings import update_earnings_incremental
+            ec_result = update_earnings_incremental(quiet=True)
+            if ec_result.get('status') == 'ok':
+                log.info(f"[EARNINGS_CACHE] incremental update: "
+                         f"checked={ec_result['symbols_checked']}, "
+                         f"updated={ec_result['symbols_updated']}, "
+                         f"failed={ec_result['symbols_failed']}, "
+                         f"total_cached={ec_result['total_cached']}")
+            elif ec_result.get('status') == 'skip':
+                log.info(f"[EARNINGS_CACHE] skip: {ec_result.get('reason', 'up to date')} "
+                         f"(total_cached={ec_result.get('total_cached', '?')})")
+            else:
+                log.warning(f"[EARNINGS_CACHE] unexpected result: {ec_result}")
+        except Exception as e:
+            log.warning(f"[EARNINGS_CACHE] incremental update failed (non-fatal): {e}")
+
     # ── Regime detection ──────────────────────────────────────────────────
     regime = None
     if strategy == 'both' or (strategy in ('mrpt', 'mtfs') and not skip_regime):
@@ -1825,6 +1982,17 @@ def run_daily_signal(
         )
         _print_monitor_summary(monitor, signal_date)
 
+        # Fix 2: Collect pairs closed at a loss by Step 1 (anti-churn guard)
+        churn_blocked: dict[str, set] = {'mrpt': set(), 'mtfs': set()}
+        for strat in ('mrpt', 'mtfs'):
+            for sig in monitor.get(strat, []):
+                if isinstance(sig, dict) and sig.get('action') in ('CLOSE', 'CLOSE_STOP'):
+                    upnl = sig.get('unrealized_pnl', 0) or 0
+                    if upnl < 0:
+                        churn_blocked[strat].add(sig.get('pair'))
+                        log.info(f"[ANTI_CHURN] {sig.get('pair')}: blocked re-open "
+                                 f"(closed at loss ${upnl:+,.0f})")
+
         # ── Step 2: New signal selection (completely independent) ───────────
         mrpt_out = _run_single(
             strategy='mrpt',
@@ -1832,6 +2000,7 @@ def run_daily_signal(
             dry_run=dry_run,
             capital=mrpt_cap,
             regime=regime,
+            churn_blocked_pairs=churn_blocked['mrpt'],
         )
         mtfs_out = _run_single(
             strategy='mtfs',
@@ -1839,6 +2008,7 @@ def run_daily_signal(
             dry_run=dry_run,
             capital=mtfs_cap,
             regime=regime,
+            churn_blocked_pairs=churn_blocked['mtfs'],
         )
 
         # Merge Step 1 orphan closes into monitor so PnLReport can track them
@@ -1907,12 +2077,23 @@ def run_daily_signal(
     )
     _print_monitor_summary(monitor, signal_date)
 
+    # Fix 2: Collect pairs closed at a loss by Step 1 (anti-churn guard) — single mode
+    churn_blocked_pairs = set()
+    for sig in monitor.get(strategy, []):
+        if isinstance(sig, dict) and sig.get('action') in ('CLOSE', 'CLOSE_STOP'):
+            upnl = sig.get('unrealized_pnl', 0) or 0
+            if upnl < 0:
+                churn_blocked_pairs.add(sig.get('pair'))
+                log.info(f"[ANTI_CHURN] {sig.get('pair')}: blocked re-open "
+                         f"(closed at loss ${upnl:+,.0f})")
+
     single_out = _run_single(
         strategy=strategy,
         signal_date=signal_date,
         dry_run=dry_run,
         capital=capital,
         regime=regime,
+        churn_blocked_pairs=churn_blocked_pairs,
     )
 
     # Merge Step 1 orphan closes into monitor
@@ -1946,7 +2127,8 @@ def run_daily_signal(
 
 
 def _run_single(strategy: str, signal_date: date, dry_run: bool,
-                capital: float, regime: dict | None) -> dict:
+                capital: float, regime: dict | None,
+                churn_blocked_pairs: set | None = None) -> dict:
     """Run one strategy, return output dict."""
     pair_configs = get_pair_configs_mrpt() if strategy == 'mrpt' else get_pair_configs_mtfs()
     inventory    = load_inventory(strategy)
@@ -1966,9 +2148,26 @@ def _run_single(strategy: str, signal_date: date, dry_run: bool,
         if ph:
             prices_today[sym] = ph[-1][1]
 
+    # Fix 1: Pre-compute pair correlations for correlation gate
+    pair_correlations = {}
+    for s1, s2, _ in pair_configs:
+        pair_key = f"{s1}/{s2}"
+        ph1 = context.portfolio.price_history.get(s1)
+        ph2 = context.portfolio.price_history.get(s2)
+        if ph1 and ph2 and len(ph1) > 20 and len(ph2) > 20:
+            n = min(len(ph1), len(ph2), _CORR_LOOKBACK_DAYS + 1)
+            p1 = np.array([p for _, p in ph1[-n:]])
+            p2 = np.array([p for _, p in ph2[-n:]])
+            r1 = np.diff(p1) / p1[:-1]
+            r2 = np.diff(p2) / p2[:-1]
+            if len(r1) >= 15:
+                pair_correlations[pair_key] = float(np.corrcoef(r1, r2)[0, 1])
+
     signals = extract_signals(
         context, pair_configs, signal_ts, inventory,
-        prices_today, strategy, scale_factor=scale_factor)
+        prices_today, strategy, scale_factor=scale_factor,
+        pair_correlations=pair_correlations,
+        churn_blocked_pairs=churn_blocked_pairs)
 
     _print_signals(signals, signal_date, strategy, dry_run,
                    capital=capital, scale_factor=scale_factor, regime=regime)

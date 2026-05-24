@@ -111,13 +111,13 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `MRPTWalkForward.py` | Walk-forward 优化：6 窗口 × 27 OOS 交易日，DSR 选参 |
 | `MRPTWalkForwardReport.py` | 读取最近一次 walk-forward 结果，生成完整 OOS 报告 |
 | `MRPTGenerateReport.py` | 生成回测 vs 验证期对比报告 |
-| `MRPTFetchEarnings.py` | 从 Polygon 拉取并缓存财报日期 |
+| `MRPTFetchEarnings.py` | 从 Polygon 拉取并缓存 S&P 500 全量财报日期（`--full` / `--incremental`），DailySignal 每日自动增量更新 |
 
 ### MTFS 策略
 
 | 文件 | 说明 |
 |------|------|
-| `PortfolioMTFSRun.py` | MTFS 策略主逻辑（动量评分 + SMA 趋势 + 动量止损） |
+| `PortfolioMTFSRun.py` | MTFS 策略主逻辑（动量评分 + SMA 趋势 + 动量止损 + 财报黑名单） |
 | `PortfolioMTFSStrategyRuns.py` | JSON 驱动的批量回测入口，含全部 31 个 param_set 定义 |
 | `MTFSUpdateConfigs.py` | 读取 Step 1 结果，DSR 过滤后生成 Step 2 / Step 3 config |
 | `MTFSWalkForward.py` | Walk-forward 优化：6 窗口 × 27 OOS 交易日，DSR 选参 |
@@ -173,10 +173,22 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 ### 准备：更新财报日期缓存
 
 ```bash
+# 全量：S&P 500 + SECTOR_MAP 全部 ~621 个 ticker（换配对后或首次运行时）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTFetchEarnings.py --full
+
+# 增量：只查可能有新 filing 的 ticker（日常维护，cache 3 天内 fetch 过则自动跳过）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTFetchEarnings.py --incremental
+
+# 仅当前 pair universe（默认模式）
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTFetchEarnings.py
+
+# 指定 ticker
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTFetchEarnings.py MSCI NVDA
 ```
 
-输出：`price_data/earnings_cache.json`
+输出：`price_data/earnings_cache.json`（~598 symbols，含 release_timing 信息）
+
+> **日常运行无需手动执行**：DailySignal.py 每次运行时自动调用增量更新（`update_earnings_incremental()`），如果 cache 在 3 天内已更新过则跳过，不产生任何 API 调用。
 
 ---
 
@@ -607,18 +619,76 @@ MTFS 策略包含四类止损，在 `MTFSWalkForwardReport.py` 中会按类型�
 
 ---
 
-## 财报黑名单过滤（MRPT 专属）
+## 信号质量门控（Signal Quality Gates）
 
-MRPT 策略在以下情况下**不开新仓**（已有仓位的平仓和止损不受影响）：
+DailySignal.py 在每日信号生成过程中设置了多层质量检查，防止低质量信号进入交易执行。所有 gate 分为三类：
 
-| 财报时间 | 屏蔽日 |
-|---------|--------|
-| AMC（盘后） | 财报日前一天 + 财报日当天 |
-| BMO（盘前） | 财报日当天 |
-| INTRADAY | 财报日当天 |
-| UNKNOWN（年报等） | 同 AMC |
+### 1. BLACKOUT — 财报黑名单
 
-财报数据来源：`price_data/earnings_cache.json`（由 `MRPTFetchEarnings.py` 维护）。
+在 `_build_signal()` 层拦截，返回 `BLACKOUT` action。阻止在财报发布前后开新仓（已有仓位的平仓和止损不受影响）。MRPT 和 MTFS 均支持。
+
+| 财报时间 | 屏蔽日 | 说明 |
+|---------|--------|------|
+| AMC（盘后） | 财报日前一天 + 当天 | 盘后发布 → 次日开盘跳空，前一天开仓会被 gap out |
+| BMO（盘前） | 财报日当天 | 盘前发布 → 当天开盘已跳空 |
+| INTRADAY | 财报日当天 | 盘中发布 |
+| UNKNOWN（年报等） | 同 AMC | 保守处理 |
+
+财报数据来源：`price_data/earnings_cache.json`（由 `MRPTFetchEarnings.py` 维护），包含 release_timing 信息，支持精确的 timing-aware 窗口。`PortfolioMRPTRun._is_earnings_blackout()` 函数在两个策略中共享。
+
+### 2. MACRO_VETO — 开仓信号否决链
+
+在 `extract_signals()` 循环内，对每个 OPEN_LONG / OPEN_SHORT 信号按顺序逐个检查。前一个 gate 否决后 `sig['action'] == 'MACRO_VETO'`，后续 gate 自动跳过（不重复判断）。所有否决信号在控制台、JSON 报告、TXT 报告中均显示 `⊘ MACRO VETO` + 否决原因。
+
+| 顺序 | Gate | 适用策略 | 触发条件 | 日志标签 |
+|------|------|---------|---------|---------|
+| 1 | **Macro Gate** | MTFS | VIX term slope 5 日变化 > 1.5pt（恐慌→平静过渡期，动量信号不可靠） | `[MACRO_GATE]` |
+| 2 | **Concentration Gate** | MRPT + MTFS | 单个 ticker 已出现在 ≥ 2 个持仓 pair 中（防集中度风险） | `[CONCENTRATION]` |
+| 3 | **Correlation Gate** | MRPT + MTFS | 60 日 daily return 相关性 < 0.20（pair 不构成有效配对） | `[CORRELATION]` |
+| 4 | **Anti-Churn Guard** | MRPT + MTFS | pair 今天被 Step 1 monitor 亏损关仓（upnl < 0），阻止 Step 2 同日重开 | `[ANTI_CHURN]` |
+| 5 | **Min Signal Guard** | MTFS | |momentum_spread| < 0.05（信号太弱，无方向性信息） | `[WEAK_SIGNAL]` |
+
+**Concentration Gate 的双层架构**：除 DailySignal 运行时层外，WalkForward DSR pair selection 阶段也有 `MAX_TICKER_IN_SELECTION = 2` 限制（在 `MRPTWalkForward.py` / `MTFSWalkForward.py` 的 `select_pairs_with_dsr` 中）。
+
+**Anti-Churn 只拦截亏损关仓**：盈利关仓（包括止盈平仓）允许 Step 2 重开——"锁定利润 + 重新评估"而非"锁定利润 + 走人"。
+
+### 3. Profit-Taking — MTFS 止盈机制
+
+在 `_build_signal()` 层，将原本的 HOLD 信号改为 CLOSE（止盈平仓）。仅对 MTFS 生效——MRPT 的 z-score 退出足够快（0-3 天），不需要额外止盈。
+
+MTFS 需要止盈的根因：momentum_spread 是 slow-moving 的长周期指标，exit_threshold 会在模拟中动态重算甚至突变。当 PnL 受日间价格波动剧烈回撤时，ms 可能完全没衰减（信号说"继续持有"但利润已经蒸发）。
+
+| 规则 | 触发条件 | 覆盖场景 | 日志标签 |
+|------|---------|---------|---------|
+| **Signal Decay Close** | |ms_current| / |ms_entry| < 30% 且 upnl > 0 | 弱-中等入场信号逐渐衰竭到接近零 | `[PROFIT_TAKING]` |
+| **Trailing Profit Stop** | peak_upnl > 激活门槛 且 current_upnl < peak × retain 且 > 0 | 好 pair + 好信号但利润从峰值崩塌（PnL 与信号脱钩） | `[PROFIT_TAKING]` |
+
+**Trailing Profit Stop 分级保护**（门槛取 `max(固定金额, notional × 百分比)`）：
+
+| 级别 | 固定门槛 | Notional 比例 | Retain | 允许回撤 |
+|------|---------|-------------|--------|---------|
+| Small | $1,000 | 0.5% | 20% | 80% |
+| Large | $5,000 | 2% | 50% | 50% |
+| Mega | $15,000 | 5% | 65% | 35% |
+
+止盈平仓后允许 Step 2 重开（不加入 anti-churn blocked set），因为信号可能仍然有效——新仓位以新价格入场，peak 从零开始，全新的风险管理周期。
+
+### 信号处理优先级（完整流程）
+
+```
+_build_signal() 层（每个 pair 独立判断）：
+  ① CLOSE_STOP      波动率/价格止损
+  ② CLOSE           正常信号退出（ms 穿越 exit_thr）
+  ③ BLACKOUT        财报黑名单（MRPT + MTFS）
+  ④ Signal Decay    MTFS 信号衰竭止盈
+  ⑤ Trailing Stop   MTFS 利润追踪止盈
+  ⑥ OPEN            新开仓信号
+  ⑦ HOLD            继续持有
+  ⑧ FLAT            无仓位、无信号
+
+extract_signals() 层（对 ⑥ 产生的 OPEN 信号做否决链）：
+  Macro Gate → Concentration → Correlation → Anti-Churn → Min Signal
+```
 
 ---
 
@@ -632,6 +702,8 @@ MRPT 策略在以下情况下**不开新仓**（已有仓位的平仓和止损�
 | `historical_runs/walk_forward/` | MRPT walk-forward 优化结果 |
 | `historical_runs/walk_forward_mtfs/` | MTFS walk-forward 优化结果 |
 | `historical_runs/vix_chronos2/` | VIXForecast 输出：fine-tune checkpoint（`ft_ckpt_full/`、`ft_ckpt_fomc/`）、推理缓存（`vix_forecast_cache.json`） |
+| `price_data/earnings_cache.json` | S&P 500 财报日期缓存（~598 symbols，含 fiscal_period / release_timing / earnings_date，`MRPTFetchEarnings.py` 维护，DailySignal 每日增量更新） |
+| `price_data/dividends_cache.json` | 分红记录缓存（按需增量，`PriceDataStore._fetch_dividends()` 在加载价格数据时自动更新，用于计算 Adj Close） |
 | `price_data/macro/fomc/` | FOMC 会议日期 JSON（按年：`fomc_2006.json` ~ `fomc_2026.json`，共 171 个决策日，含 4 次紧急会议） |
 | `run_configs/` | MRPT / MTFS 回测配置 JSON 文件 |
 | `trading_signals/` | 每日信号 JSON、TXT 报告（`DailySignal.py` 输出，不提交到 git） |

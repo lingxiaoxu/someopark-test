@@ -28,6 +28,8 @@ import os
 import requests
 import time as time_module
 import sys
+
+from PortfolioMRPTRun import _is_earnings_blackout
 from PriceDataStore import PriceDataStore
 
 import matplotlib.pyplot as plt
@@ -118,6 +120,21 @@ def initialize(context, pairs=None, params=None, pair_params=None):
 
     # Per-pair rebalance counters (each pair tracks independently)
     context.pair_days_since_rebalance = {}
+
+    # Load earnings blackout dates (reuse MRPT's earnings_cache.json)
+    _ec_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'price_data', 'earnings_cache.json')
+    context.earnings_dates = {}
+    if os.path.exists(_ec_path):
+        import json as _json
+        _ec = _json.load(open(_ec_path))
+        for _sym, _entries in _ec.get('symbols', {}).items():
+            context.earnings_dates[_sym] = sorted(
+                (e['earnings_date'], e.get('release_timing', 'UNKNOWN'))
+                for e in _entries
+            )
+        log.info(f"MTFS Earnings blackout filter loaded: {len(context.earnings_dates)} symbols")
+    else:
+        log.warning("price_data/earnings_cache.json not found — MTFS earnings blackout disabled")
 
     log.info("MTFS Algorithm initialized")
 
@@ -410,6 +427,26 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
         return [stock_1, stock_2,
                 {'in_short': in_short, 'in_long': in_long,
                  'momentum_history': momentum_history}]
+
+    # ── Earnings blackout: skip opening NEW positions near earnings date ──
+    # Reuses MRPT's _is_earnings_blackout() — same timing-aware logic.
+    # Closes and stop-losses above are unaffected. Stateless — checked fresh each day.
+    if not in_long and not in_short:
+        if _is_earnings_blackout(context, stock_1, stock_2, context.portfolio.current_date):
+            log.debug(f"MTFS Earnings blackout: skipping {pair_key} open on {context.portfolio.current_date.date()}")
+            _blackout_syms = []
+            for _sym in (stock_1, stock_2):
+                for ed_str, timing in context.earnings_dates.get(_sym, []):
+                    ed = pd.Timestamp(ed_str).date()
+                    d  = context.portfolio.current_date.date()
+                    if ed == d or (timing in ('AMC', 'UNKNOWN') and ed == d + pd.Timedelta(days=1).to_pytimedelta().__class__(days=1)):
+                        _blackout_syms.append(f"{_sym} {ed_str}")
+            record_vars(context, Y_pct=0, X_pct=0, in_long=in_long, in_short=in_short,
+                        action='BLACKOUT', earnings_blackout=True,
+                        earnings_blackout_reason=', '.join(_blackout_syms) if _blackout_syms else 'earnings window')
+            return [stock_1, stock_2,
+                    {'in_short': in_short, 'in_long': in_long,
+                     'momentum_history': momentum_history}]
 
     # ── Entry logic ───────────────────────────────────────────────────────
     # In MTFS, the pairs are pre-ranked: stock_1 = winner, stock_2 = loser
