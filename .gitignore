@@ -5,6 +5,9 @@ someo-park-investment-management/.env
 # Claude Code
 .claude/
 
+# VS Code
+.vscode/
+
 # Onboarding guide (contains env-specific paths, not for version control)
 ONBOARDING.md
 
@@ -65,6 +68,7 @@ factsheet_generator/
 
 # Backup files
 *_backup.json
+*.bak
 
 # MLflow tracking database (runtime, not for version control)
 mlruns/
@@ -73,6 +77,8 @@ mlruns/
 qlib-main/sector_rotation/report/output/
 qlib-main/sector_rotation/logs/
 qlib-main/sector_rotation/backtest_results/
+qlib-main/sector_rotation/inventory_history/
+qlib-main/sector_rotation/trading_signals/
 
 # Private Credit module & public docs (large files, managed locally)
 portfolio_of_private_credit_deals/
