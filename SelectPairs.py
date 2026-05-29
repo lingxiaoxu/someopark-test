@@ -919,10 +919,59 @@ def remove_overlap(mrpt_selected, mtfs_selected):
 
 
 # ---------------------------------------------------------------------------
-# 6. 输出 & 保存
+# 6. Sector mapping — loaded from sp500_sectors.json (single source of truth)
 # ---------------------------------------------------------------------------
 
-SECTOR_MAP = {
+def _load_sector_map() -> dict[str, set[str]]:
+    """Load sector→tickers mapping from price_data/sp500_sectors.json.
+
+    Returns dict[str, set[str]] — same format as the old hardcoded SECTOR_MAP.
+    Falls back to hardcoded _SECTOR_MAP_FALLBACK if JSON is missing/corrupt.
+    """
+    _path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                         'price_data', 'sp500_sectors.json')
+    # Try multiple path resolutions for robustness
+    candidates = [
+        _path,
+        os.path.join(os.getcwd(), 'price_data', 'sp500_sectors.json'),
+    ]
+    for p in candidates:
+        if os.path.isfile(p):
+            _path = p
+            break
+
+    try:
+        with open(_path) as f:
+            data = json.load(f)
+        if 'sectors' not in data:
+            raise KeyError("Missing 'sectors' key in sp500_sectors.json")
+        result = {sector: set(tickers) for sector, tickers in data['sectors'].items()}
+        total = sum(len(t) for t in result.values())
+        if total < 100:
+            raise ValueError(f"sp500_sectors.json has only {total} tickers — likely corrupt")
+        return result
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(
+            f"CRITICAL: sp500_sectors.json load FAILED — {e}. "
+            f"Searched: {candidates}. "
+            f"SECTOR_MAP will be EMPTY. Fix immediately."
+        )
+        import warnings
+        warnings.warn(
+            f"sp500_sectors.json load failed: {e}. "
+            f"SECTOR_MAP is empty — all tickers will be classified as 'other'!",
+            RuntimeWarning, stacklevel=2,
+        )
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# Historical reference — the canonical data is now in price_data/sp500_sectors.json.
+# This block is kept commented out as documentation only. Do NOT uncomment.
+# To update sectors: edit sp500_sectors.json directly.
+# ---------------------------------------------------------------------------
+_SECTOR_MAP_REFERENCE = {  # noqa: F841 — intentionally unused, documentation only
     # GICS-based sector mapping — covers full S&P 500 + common traded tickers
     # Updated 2026-05-23: full S&P 500 coverage (503 tickers + extras)
     "tech": {"AAPL", "META", "MSFT", "GOOGL", "GOOG", "NVDA", "AMD",
@@ -1040,6 +1089,9 @@ SECTOR_MAP = {
                 "OMC", "PSKY", "TKO", "WBD",
                 },
 }
+
+# Load from sp500_sectors.json — single source of truth
+SECTOR_MAP = _load_sector_map()
 
 
 def guess_sector(ticker: str) -> str:

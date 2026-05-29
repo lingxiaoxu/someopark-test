@@ -90,11 +90,11 @@ function renderMarkdown(text: string): React.ReactNode[] {
         <div key={`tbl-${result.length}`} style={{ overflowX: 'auto', margin: '8px 0' }}>
           <table style={{ borderCollapse: 'collapse', fontSize: '12px', width: '100%' }}>
             <thead>
-              <tr>{tableRows[0].map((h, j) => <th key={j} style={{ border: '1px solid var(--border-subtle)', padding: '4px 8px', background: 'var(--bg-tertiary)', fontWeight: 600, textAlign: 'left' }}>{h}</th>)}</tr>
+              <tr>{tableRows[0].map((h, j) => <th key={j} style={{ border: '1px solid var(--border-subtle)', padding: '4px 8px', background: 'var(--bg-tertiary)', fontWeight: 600, textAlign: 'left' }}>{inlineFormat(h)}</th>)}</tr>
             </thead>
             <tbody>
               {tableRows.slice(1).map((row, ri) => (
-                <tr key={ri}>{row.map((cell, ci) => <td key={ci} style={{ border: '1px solid var(--border-subtle)', padding: '4px 8px' }}>{cell}</td>)}</tr>
+                <tr key={ri}>{row.map((cell, ci) => <td key={ci} style={{ border: '1px solid var(--border-subtle)', padding: '4px 8px' }}>{inlineFormat(cell)}</td>)}</tr>
               ))}
             </tbody>
           </table>
@@ -157,13 +157,13 @@ function renderMarkdown(text: string): React.ReactNode[] {
       }
     }
 
-    // Headings: # ## ###
-    const hMatch = line.match(/^(#{1,3})\s+(.+)$/)
+    // Headings: # ## ### ####
+    const hMatch = line.match(/^(#{1,4})\s+(.+)$/)
     if (hMatch) {
       flushList()
       const level = hMatch[1].length
-      const sizes = { 1: '16px', 2: '14px', 3: '13px' } as Record<number, string>
-      const weights = { 1: 800, 2: 700, 3: 600 } as Record<number, number>
+      const sizes = { 1: '16px', 2: '14px', 3: '13px', 4: '12px' } as Record<number, string>
+      const weights = { 1: 800, 2: 700, 3: 600, 4: 600 } as Record<number, number>
       result.push(
         <div key={`h-${i}`} style={{ fontSize: sizes[level], fontWeight: weights[level], margin: '8px 0 4px', lineHeight: 1.4 }}>
           {inlineBold(hMatch[2])}
@@ -300,9 +300,16 @@ export default function ChatArea({
 
   // Reset messages when chatKey changes (new chat or switching chat)
   useEffect(() => {
+    // Abort any in-flight agent stream before switching
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort()
+      abortControllerRef.current = null
+    }
+    sessionIdRef.current = crypto.randomUUID()
     setMessages(initialMessages || [])
     setInput('')
     setIsLoading(false)
+    setIsAgentRunning(false)
     setIsErrored(false)
     setCurrentStanseAgent(null)
   }, [chatKey])
@@ -394,14 +401,18 @@ export default function ChatArea({
       }))
 
       const steps: AgentStep[] = []
-      let finalText = ''
       let usageData: any = null
+      // Segments: interleaved text + images in stream arrival order
+      // Images inline where generated; same-label images replace in-place (fix/retry)
+      const segments: Array<{ type: 'text'; text: string } | { type: 'image'; alt: string; src: string }> = []
+      const segmentsToString = () => segments.map(s =>
+        s.type === 'text' ? s.text : `\n![${s.alt}](${s.src})\n`
+      ).join('')
 
       for await (const evt of callAgent(apiMessages, { id: languageModel.model }, sessionIdRef.current)) {
         if (evt.type === 'thinking') {
           steps.push({ type: 'thinking', text: evt.text })
         } else if (evt.type === 'tool_call') {
-          // Match by toolUseId (CC pattern: unique per tool_use block)
           const existing = steps.find(
             s => s.type === 'tool_call' && (s as any).toolUseId === evt.toolUseId
           ) as any
@@ -413,16 +424,29 @@ export default function ChatArea({
             steps.push({ type: 'tool_call', toolName: evt.toolName, toolInput: evt.toolInput || {}, status: 'pending', toolUseId: evt.toolUseId })
           }
         } else if (evt.type === 'tool_result') {
-          // Match tool_call by toolUseId (exact, no ambiguity)
           const pending = steps.find(
             s => s.type === 'tool_call' && (s as any).toolUseId === evt.toolUseId
           ) as any
           if (pending) pending.status = evt.isError ? 'error' : 'completed'
           steps.push({ type: 'tool_result', toolName: evt.toolName, toolResult: evt.toolResult, isError: !!evt.isError, toolUseId: evt.toolUseId })
         } else if (evt.type === 'text') {
-          finalText += evt.text
+          // Append to last text segment or create new one
+          const last = segments[segments.length - 1]
+          if (last?.type === 'text') {
+            last.text += evt.text
+          } else {
+            segments.push({ type: 'text', text: evt.text })
+          }
+        } else if (evt.type === 'image') {
+          // Same label → replace in-place (fix/retry keeps original position)
+          // New label → append at current position (inline with text flow)
+          const existingIdx = segments.findIndex(s => s.type === 'image' && s.alt === evt.alt)
+          if (existingIdx >= 0) {
+            segments[existingIdx] = { type: 'image', alt: evt.alt, src: evt.src }
+          } else {
+            segments.push({ type: 'image', alt: evt.alt, src: evt.src })
+          }
         } else if (evt.type === 'task_update') {
-          // Replace last task_update instead of pushing duplicate
           let lastTaskIdx = -1
           for (let j = steps.length - 1; j >= 0; j--) {
             if (steps[j].type === 'task_update') { lastTaskIdx = j; break }
@@ -434,21 +458,26 @@ export default function ChatArea({
           }
         } else if (evt.type === 'ask_user') {
           steps.push({ type: 'ask_user', question: evt.question, options: evt.options })
+        } else if (evt.type === 'brief') {
+          steps.push({ type: 'brief', text: evt.text })
+        } else if (evt.type === 'error') {
+          segments.push({ type: 'text', text: (segments.length > 0 ? '\n\n' : '') + `⚠️ ${evt.text || 'Unknown error'}` })
         } else if (evt.type === 'usage') {
           usageData = evt
         } else if (evt.type === 'done') {
-          // Explicit done signal
           break
         }
-        updateLastAgentMsg(m => ({ ...m, agentSteps: [...steps], agentFinalText: finalText, agentUsage: usageData }))
+        const combined = segmentsToString()
+        updateLastAgentMsg(m => ({ ...m, agentSteps: [...steps], agentFinalText: combined, agentUsage: usageData }))
       }
 
+      const finalCombined = segmentsToString()
       updateLastAgentMsg(m => ({
         ...m,
         agentSteps: steps,
-        agentFinalText: finalText,
+        agentFinalText: finalCombined,
         agentUsage: usageData,
-        content: [{ type: 'text', text: finalText }],
+        content: [{ type: 'text', text: finalCombined }],
       }))
     } catch (err: any) {
       if (err.name !== 'AbortError') {

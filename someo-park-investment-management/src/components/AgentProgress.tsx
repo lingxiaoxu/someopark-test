@@ -62,8 +62,8 @@ function ToolCard({ call, result }: {
   result?: Extract<AgentStep, { type: 'tool_result' }>
 }) {
   const [open, setOpen] = useState(false)
-  const done = result !== undefined
-  const err = result?.isError
+  const done = result !== undefined || call.status === 'completed' || call.status === 'error'
+  const err = result?.isError || call.status === 'error'
 
   return (
     <div style={{
@@ -251,6 +251,20 @@ export function AgentProgress({ steps, isRunning, onAskUserAnswer, usage }: Prop
       rendered.push(
         <div key={`au${i}`}><AskUserCard question={s.question} options={s.options}
           onAnswer={onAskUserAnswer || (() => { })} /></div>
+      )
+    } else if (s.type === 'brief') {
+      // Show spinner only if this is the last brief and agent is still running
+      const isLastBrief = !steps.slice(i + 1).some(x => x.type === 'brief')
+      const showSpinner = isRunning && isLastBrief
+      rendered.push(
+        <div key={`br${i}`} style={{
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: '12px', color: showSpinner ? '#8b5cf6' : '#999', fontFamily: 'var(--font-mono)',
+          padding: '6px 8px', background: showSpinner ? '#f5f3ff' : '#fafafa', border: '2px solid #e5e5e5',
+        }}>
+          {showSpinner ? <SpinnerIcon /> : <CheckIcon />}
+          <span>{s.text}</span>
+        </div>
       )
     }
   }

@@ -33,7 +33,9 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((pre
   const setValue = useCallback((value: T | ((prev: T) => T)) => {
     setStoredValue(prev => {
       const nextValue = value instanceof Function ? value(prev) : value;
-      localStorage.setItem(key, JSON.stringify(nextValue));
+      try {
+        localStorage.setItem(key, JSON.stringify(nextValue));
+      } catch { /* quota exceeded — ignore */ }
       return nextValue;
     });
   }, [key]);
@@ -45,12 +47,62 @@ function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T | ((pre
 function loadChatMessages(chatId: number): Message[] {
   try {
     const raw = localStorage.getItem(`sp-chat-${chatId}`);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const msgs: Message[] = JSON.parse(raw);
+    // Sanitize agent messages loaded from history:
+    // - Fix pending tool_calls (no matching result → mark interrupted so spinner stops)
+    // - Ensure content reflects agentFinalText if content is empty
+    return msgs.map(msg => {
+      if (!msg.isAgentMessage || !msg.agentSteps || msg.agentSteps.length === 0) return msg;
+
+      const steps = msg.agentSteps.map(step => {
+        if (step.type !== 'tool_call') return step;
+        if (step.status === 'pending') {
+          const hasResult = msg.agentSteps!.some(
+            s => s.type === 'tool_result' && (s as any).toolUseId === (step as any).toolUseId
+          );
+          return { ...step, status: (hasResult ? 'completed' : 'error') as 'completed' | 'error' };
+        }
+        return step;
+      });
+
+      let content = msg.content;
+      const first = content[0];
+      if (msg.agentFinalText && first && first.type === 'text' && !first.text) {
+        content = [{ type: 'text' as const, text: msg.agentFinalText }, ...content.slice(1)];
+      }
+
+      return { ...msg, agentSteps: steps, content };
+    });
   } catch { return []; }
+}
+// Strip base64 image data from messages before saving to avoid blowing localStorage quota
+function stripBase64ForStorage(messages: Message[]): Message[] {
+  const b64re = /!\[.*?\]\(data:image\/[^)]+\)/g;
+  const b64placeholder = '![Chart](image stripped for storage)';
+  return messages.map(msg => {
+    if (!msg.isAgentMessage) return msg;
+    let changed = false;
+    const steps = msg.agentSteps?.map(step => {
+      if (step.type === 'tool_result' && b64re.test(step.toolResult)) {
+        changed = true;
+        return { ...step, toolResult: step.toolResult.replace(b64re, b64placeholder) };
+      }
+      return step;
+    });
+    const content = msg.content.map(c => {
+      if (c.type === 'text' && 'text' in c && b64re.test(c.text)) {
+        changed = true;
+        return { ...c, text: c.text.replace(b64re, b64placeholder) };
+      }
+      return c;
+    });
+    return changed ? { ...msg, agentSteps: steps, content } : msg;
+  });
 }
 function saveChatMessages(chatId: number, messages: Message[]) {
   try {
-    localStorage.setItem(`sp-chat-${chatId}`, JSON.stringify(messages));
+    localStorage.setItem(`sp-chat-${chatId}`, JSON.stringify(stripBase64ForStorage(messages)));
   } catch { /* quota exceeded — silently fail */ }
 }
 function deleteChatMessages(chatId: number) {

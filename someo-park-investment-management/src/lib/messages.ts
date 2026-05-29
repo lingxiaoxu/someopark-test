@@ -46,6 +46,7 @@ export type AgentStep =
   | { type: 'text'; text: string }
   | { type: 'task_update'; tasks: TaskItem[] }
   | { type: 'ask_user'; question: string; options?: string[] }
+  | { type: 'brief'; text: string }
   | { type: 'usage'; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number; cost_usd: number; iterations: number }
 
 export interface TaskItem {

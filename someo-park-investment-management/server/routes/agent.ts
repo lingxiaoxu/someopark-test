@@ -56,7 +56,7 @@ function getModelCost(modelId: string): ModelCosts {
 
 // === SSE event types ===
 interface AgentSSEEvent {
-  type: 'thinking' | 'tool_call' | 'tool_result' | 'text' |
+  type: 'thinking' | 'tool_call' | 'tool_result' | 'text' | 'image' |
     'task_update' | 'ask_user' | 'error' | 'done' | 'usage' | 'brief'
   [key: string]: any
 }
@@ -200,7 +200,7 @@ Best practice: call "write" upfront with all planned tasks, "update" as you comp
 }
 
 // === Max iterations ===
-const MAX_ITERATIONS = 10
+const MAX_ITERATIONS = 18
 
 // === Main agent endpoint ===
 router.post('/', async (req, res) => {
@@ -256,6 +256,7 @@ router.post('/', async (req, res) => {
     // Prepare conversation messages
     const conversationMessages: Anthropic.MessageParam[] = [...messages]
     let iterations = 0
+    let globalChartIndex = 0 // Global counter so images from different run_python calls get unique names
 
     // Token usage tracking (reference: CC src/cost-tracker.ts)
     const modelId = model?.id || 'claude-sonnet-4-5-20250929'
@@ -278,6 +279,14 @@ router.post('/', async (req, res) => {
       // CC src/utils/messages.js: normalizeMessagesForAPI() before each API call
       const normalizedMessages = normalizeMessagesForAPI(conversationMessages)
       console.log(`[Agent] Iteration ${iterations}, calling ${modelId} with ${normalizedMessages.length} messages, ${allToolDefs.length} tools`)
+
+      // Send brief progress event so frontend shows status during TTFT wait
+      if (iterations > 1) {
+        const toolCount = normalizedMessages
+          .filter(m => m.role === 'user' && Array.isArray(m.content))
+          .reduce((n, m) => n + (m.content as any[]).filter((b: any) => b.type === 'tool_result').length, 0)
+        send({ type: 'brief', text: `正在整合 ${toolCount} 个工具结果生成分析报告...` })
+      }
 
       // Use create() with stream:true for raw SSE events
       const stream = await anthropic.messages.create({
@@ -424,9 +433,20 @@ router.post('/', async (req, res) => {
         // Send full result (with images) to frontend via SSE
         send({ type: 'tool_result', toolName: toolUse.name, toolResult: result, isError, toolUseId: toolUse.id })
 
-        // Send images as separate SSE events so frontend can render them
+        // Smart image dispatch:
+        // - Agent-labeled charts (descriptive name): send as-is → Map dedup by label
+        //   (same label = overwrite/fix, different label = new chart)
+        // - Auto-named "Chart N" fallback: use global counter to prevent collision
+        //   across multiple run_python calls
         for (const img of images) {
-          send({ type: 'text', text: `\n![${img.alt}](${img.dataUri})\n` })
+          if (/^Chart \d+$/.test(img.alt)) {
+            // Unlabeled fallback — assign globally unique name
+            globalChartIndex++
+            send({ type: 'image', alt: `Chart ${globalChartIndex}`, src: img.dataUri })
+          } else {
+            // Agent-labeled — use as-is for semantic dedup
+            send({ type: 'image', alt: img.alt, src: img.dataUri })
+          }
         }
 
         toolResultContent.push({
@@ -446,7 +466,7 @@ router.post('/', async (req, res) => {
     }
 
     if (iterations >= MAX_ITERATIONS) {
-      send({ type: 'error', text: 'Reached maximum iteration limit (10). Please ask a more specific question.' })
+      send({ type: 'error', text: `Reached maximum iteration limit (${MAX_ITERATIONS}). Please ask a more specific question.` })
     }
 
     // Send usage stats (reference: CC cost-tracker formatTotalCost + modelCost.ts calculateCost)
