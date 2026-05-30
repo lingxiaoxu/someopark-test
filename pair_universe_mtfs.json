@@ -1,7 +1,7 @@
 [
   {
     "s1": "ON",
-    "s2": "UHS",
+    "s2": "BSX",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
@@ -19,7 +19,7 @@
   },
   {
     "s1": "LRCX",
-    "s2": "CAG",
+    "s2": "REGN",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
@@ -31,62 +31,62 @@
   },
   {
     "s1": "CSCO",
-    "s2": "REGN",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "STLD",
-    "s2": "INTU",
-    "sector": "materials",
-    "spread_col": "Momentum_Spread_materials"
-  },
-  {
-    "s1": "STLD",
-    "s2": "TYL",
-    "sector": "materials",
-    "spread_col": "Momentum_Spread_materials"
-  },
-  {
-    "s1": "KLAC",
     "s2": "ISRG",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "KLAC",
-    "s2": "LVS",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "NUE",
+    "s2": "INTU",
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
   },
   {
-    "s1": "PANW",
-    "s2": "IQV",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "NUE",
+    "s2": "TYL",
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
   },
   {
-    "s1": "PANW",
-    "s2": "KR",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "STLD",
+    "s2": "MKTX",
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
   },
   {
-    "s1": "FFIV",
-    "s2": "CBRE",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "FFIV",
-    "s2": "LOW",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "STLD",
+    "s2": "ROP",
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
   },
   {
     "s1": "BWA",
-    "s2": "MKTX",
+    "s2": "PYPL",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "BWA",
+    "s2": "EQT",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "FFIV",
+    "s2": "VLTO",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "FFIV",
+    "s2": "UBER",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "KLAC",
+    "s2": "LOW",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
   }
 ]
