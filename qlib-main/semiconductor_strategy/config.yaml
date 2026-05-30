@@ -1,0 +1,276 @@
+# =============================================================================
+# AISS — AI Infra & Semiconductor Strategy Configuration
+# Twin of the SSRS (sector_rotation) config, retuned for an 8-subsector
+# semiconductor universe.  The strategy's tradeable "assets" are the 8
+# subsectors (synthetic 80/15/5 baskets); benchmarks are SOXX / SMH / SPY.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+data:
+  cache_dir: "../../price_data/semi_strategy/cache"   # macro pickle cache
+  price_dir: "../../price_data/semi_strategy/prices"     # 24 stocks + SOXX/SMH/SPY (parquet)
+  industry_dir: "../../price_data/semi_strategy/industry" # TSMC / ASML / DRAM
+  company_dir: "../../price_data/semi_strategy/company"   # CapEx pulse / MU DIO
+  macro_dir: "../../price_data/macro"                    # shared MacroStateStore (read-only)
+  price_source: "store"             # AISS isolated parquet store (Polygon-backed)
+  price_start: "2016-01-01"         # well before backtest start for warm-up
+  price_end: null                   # null = today
+  macro_source: "fred"
+  fred_api_key_env: "FRED_API_KEY"
+
+# ---------------------------------------------------------------------------
+# Universe (8 subsectors x 3 tiers = 24 stock slots; assets = subsectors)
+# ---------------------------------------------------------------------------
+universe:
+  # The strategy's tradeable assets (basket names) — read by engine/signals as
+  # cfg["universe"]["etfs"] (kept that key name for SSRS compatibility).
+  etfs:
+    - "ai_gpu"
+    - "custom_asic"
+    - "equipment"
+    - "memory_hbm"
+    - "foundry"
+    - "analog_defense"
+    - "logic_cpu"
+    - "rf_edge"
+  benchmark: "SPY"                  # broad-market benchmark for beta / info ratio
+  benchmarks: ["SOXX", "SMH", "SPY"]  # SOXX & SMH are the WIN hurdle (beat both)
+  subsectors:
+    ai_gpu:         ["NVDA", "ALAB", "ARM"]
+    custom_asic:    ["AVGO", "MRVL", "CRDO"]
+    equipment:      ["KLAC", "LRCX", "AMAT"]
+    memory_hbm:     ["MU",   "WDC",  "SIMO"]
+    foundry:        ["TSM",  "UMC",  "GFS"]
+    analog_defense: ["TXN",  "ADI",  "MCHP"]
+    logic_cpu:      ["AMD",  "INTC", "ARM"]
+    rf_edge:        ["QCOM", "SWKS", "QRVO"]
+  subsector_tier_weights: [0.80, 0.15, 0.05]
+  min_history_months: 24            # backup tier needs this much history to enter basket
+  basket_base_value: 100.0
+  universe_start: "2019-01-01"
+
+# ---------------------------------------------------------------------------
+# Signals — AISS 4-factor architecture
+# ---------------------------------------------------------------------------
+signals:
+  signal_version: "v1"
+
+  # Must sum to 1.0
+  weights:
+    cs_momentum:   0.30   # cross-sectional 12-1m momentum of subsector baskets
+    supply_chain:  0.35   # knowledge-graph propagation score (core AISS alpha)
+    capex_pulse:   0.25   # hyperscaler AI-CapEx pulse (MSFT/GOOGL/META/AMZN 3M z)
+    cycle_regime:  0.10   # VIX 22/28 regime + CapEx regime tilt
+
+  cs_momentum:
+    lookback_months: 12
+    skip_months: 1
+    zscore_window: 36
+
+  supply_chain:
+    graph_version: "v1"
+    use_external_macro: true      # use TSMC/ASML/MU-DIO/DRAM when PIT-available, else price-proxy
+    lag_decay: 0.0                # 0 = hard lag; >0 = exponential decay around the lag (V2)
+
+  capex_pulse:
+    tickers: ["MSFT", "GOOGL", "META", "AMZN"]
+    lookback_months: 3
+    zscore_window: 24
+
+  # ── V1 / V2 signal versions ──────────────────────────────────────────────
+  # V1 (default, production): monthly rebalance, 12-1 momentum.  Empirically the
+  #   stronger version for semis (they trend on monthly+ horizons).
+  # V2: semi-monthly rebalance (1st trading day + ~mid-month) with the SAME robust
+  #   4-factor / 12-1 signal — a faster-cadence variant, NOT SSRS-style gating.
+  #   It reacts to drift/regime sooner at the cost of more turnover; the engine
+  #   adds the mid-month rebalance when signal_version == "v2".  `smart_select`
+  #   chooses V1 vs V2 from per-version OOS history (V1 currently dominates).
+  #   NOTE: faster momentum (e.g. 6-0) was tested and HURT — semis whipsaw —
+  #   so V2 keeps the 12-1 signal; this block exists for tuning, default = V1's.
+  v2:
+    weights:
+      cs_momentum:   0.30
+      supply_chain:  0.35
+      capex_pulse:   0.25
+      cycle_regime:  0.10
+    cs_momentum:
+      lookback_months: 12
+      skip_months: 1
+      zscore_window: 36
+
+  # Regime conditioning (SSRS 4-state machinery, AISS-tightened VIX thresholds)
+  regime:
+    method: "rules"
+    vix_high_threshold: 25.0       # regime caution (cycle_regime factor is only 10% weight)
+    vix_extreme_threshold: 32.0    # regime risk-off
+    hy_spread_high_bps: 450
+    yield_curve_inversion: -0.10
+    ism_expansion: 50.0
+    capex_strong_zscore: 1.0
+    capex_weak_zscore: -1.0
+
+    # Regime-conditional signal-weight multipliers (AISS 4-factor keys)
+    regime_weights:
+      risk_on:
+        cs_momentum: 1.1
+        supply_chain: 1.1
+        capex_pulse: 1.2
+        cycle_regime: 0.8
+      transition_up:
+        cs_momentum: 1.1
+        supply_chain: 1.1
+        capex_pulse: 1.1
+        cycle_regime: 0.9
+      transition_down:
+        cs_momentum: 0.8
+        supply_chain: 0.9
+        capex_pulse: 0.7
+        cycle_regime: 1.3
+      risk_off:
+        cs_momentum: 0.5
+        supply_chain: 0.5
+        capex_pulse: 0.3
+        cycle_regime: 1.8
+
+    defensive_sectors: ["analog_defense"]   # defensive subsector
+    defensive_bonus_risk_off: 0.40          # higher Beta needs a stronger defensive pull
+
+# ---------------------------------------------------------------------------
+# Portfolio
+# ---------------------------------------------------------------------------
+portfolio:
+  optimizer: "inv_vol"
+  cov:
+    method: "ledoit_wolf"
+    lookback_days: 252
+    min_periods: 63
+  constraints:
+    max_weight: 0.55               # concentrate in the winning subsector (beat SOXX/SMH mandate)
+    min_weight: 0.00
+    max_cash: 0.50
+    beta_min: 0.40                 # allow defensive low-beta tilt
+    beta_max: 3.00                 # AISS is an explicitly high-beta semis satellite
+                                    # (the validated win-criterion book runs beta ~2.5);
+                                    # do NOT fight it back toward 1.0
+
+  top_n_sectors: 3                 # high-conviction concentration
+  min_zscore: -0.30
+  weight_scheme: "rank"
+
+# ---------------------------------------------------------------------------
+# Rebalancing
+# ---------------------------------------------------------------------------
+rebalance:
+  frequency: "monthly"
+  rebalance_day: "first_trading_day"
+  zscore_change_threshold: 0.5
+  emergency_derisk_vix: 36.0       # only true crises (semis chop ≠ exit the bull)
+  emergency_cash_pct: 0.45
+  max_monthly_turnover: 0.80
+
+# ---------------------------------------------------------------------------
+# Risk Management
+# ---------------------------------------------------------------------------
+risk:
+  vol_scaling:
+    enabled: true
+    target_vol_annual: 0.30        # let the book run near semi-benchmark vol (beat SOXX/SMH)
+    estimation_window: 20
+    scale_threshold: 1.5           # only scale down when realized > 1.5x historical
+    historical_window: 252
+  drawdown:
+    monthly_dd_alert: -0.10
+    cumulative_dd_halve: -0.25     # semis routinely draw 20%+; only halve in true crashes
+    cumulative_dd_recovery: -0.12
+  vix_progressive_derisk:
+    enabled: true
+    tiers:
+      - {vix_above: 28, cash_pct: 0.10}
+      - {vix_above: 32, cash_pct: 0.25}
+
+# ---------------------------------------------------------------------------
+# Stop-loss (extreme events only)
+# ---------------------------------------------------------------------------
+stop_loss:
+  enabled: true
+  portfolio_circuit_breaker:
+    enabled: true
+    spy_3d_limit: -0.07
+  sector_collapse:
+    enabled: true
+    max_dd_from_entry: -0.15       # single semis names swing more than ETFs
+  trailing_stop:
+    enabled: true
+    max_dd_from_peak: -0.18
+  cooling_off_days: 10
+
+# ---------------------------------------------------------------------------
+# Portfolio record
+# ---------------------------------------------------------------------------
+portfolio_record:
+  leverage_ratio: 0.0
+  interest_rate: 0.05
+
+# ---------------------------------------------------------------------------
+# Risk Overlay (v2 only)
+# ---------------------------------------------------------------------------
+risk_overlay:
+  # OFF for AISS: the SSRS v2 entry/exit MA gate sits in cash and caps the
+  # high-beta exposure that drives AISS returns. AISS V2 = semi-monthly cadence
+  # only (same 4-factor signal + risk controls as V1), not SSRS-style gating.
+  enabled: false
+  entry_ma_short: 30
+  entry_ma_long: 100
+  exit_ma: 150
+  exit_max_dd: -0.15
+  market_ma_medium: 100
+  market_ma_long: 200
+  dd_cautious: -0.10
+  dd_defensive: -0.14
+  dd_crisis: -0.18
+
+# ---------------------------------------------------------------------------
+# Backtest
+# ---------------------------------------------------------------------------
+backtest:
+  start_date: "2019-01-01"
+  end_date: null
+  initial_capital: 1_000_000.0
+  is_years: 3
+  oos_months: 6
+  walk_forward:
+    enabled: false
+    step_months: 6
+
+# ---------------------------------------------------------------------------
+# Transaction Costs (per-stock tiers; engine uses the 80/15/5 subsector blend)
+# ---------------------------------------------------------------------------
+costs:
+  tier_1_tickers: ["NVDA", "AVGO", "AMD", "QCOM", "TSM", "MU", "TXN", "INTC"]  # 3 bps
+  tier_2_tickers: ["KLAC", "LRCX", "AMAT", "WDC", "ARM", "ADI"]               # 5 bps
+  tier_3_tickers: ["ALAB", "MRVL", "CRDO", "MCHP", "UMC", "GFS", "SIMO", "SWKS", "QRVO"]  # 8 bps
+  tier_1_cost_bps: 3
+  tier_2_cost_bps: 5
+  tier_3_cost_bps: 8
+  annual_fee_bps: 0                # individual stocks: no fund management fee
+
+# ---------------------------------------------------------------------------
+# Report
+# ---------------------------------------------------------------------------
+report:
+  output_dir: "report/output"
+  figsize: [14, 8]
+  dpi: 150
+  pdf_filename: "aiss_tearsheet.pdf"
+  strategy_color: "#1f77b4"
+  benchmark_color: "#ff7f0e"
+  ew_color: "#2ca02c"
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging:
+  level: "INFO"
+  log_dir: "semiconductor_strategy/logs"

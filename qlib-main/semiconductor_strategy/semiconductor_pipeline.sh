@@ -1,0 +1,150 @@
+#!/bin/bash
+# =============================================================================
+# semiconductor_pipeline.sh — AISS (AI Infra & Semiconductor Strategy) pipeline
+# =============================================================================
+# Single production entrypoint for the AISS strategy.  Mirrors SSRS's pipeline
+# but is purpose-built for AISS: individual-stock data, no EPS/value modes.
+#
+# Usage (run from the repo root or anywhere; paths are resolved absolutely):
+#     bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh <MODE> [opts]
+#
+# Modes:
+#     update_data   Incremental data refresh (prices + capex + dram + slow PIT checks)
+#     daily         Generate today's AISS signal + update inventory
+#     dry-run       Daily signal WITHOUT writing inventory (safe any time)
+#     backtest      Single full backtest of the active/selected param set
+#     batch         Backtest all param sets -> ranked CSV/Excel
+#     select        Batch + walk-forward OOS selection -> selected_param_set.json
+#                   (add --signal-version v1|v2 to select per version)
+#     daily_backtest V1+V2 select + validate + tearsheet suite (refreshes the
+#                   per-version P0 caches smart_select uses to pick V1 vs V2)
+#     walk-forward  Walk-forward IS/OOS robustness (anchored + rolling)
+#     validate      Backtest + compare vs SOXX/SMH/SPY (win criterion)
+#                   (add --signal-version v1|v2)
+#
+# Signal versions: V1 = monthly rebalance (production default, strongest);
+#                  V2 = semi-monthly (1st + ~mid-month) with the same 12-1 signal.
+#                  Most modes accept `--signal-version v1|v2`; daily auto-picks
+#                  via smart_select unless you pass --signal-version.
+#     tearsheet     Full PDF tearsheet (vs SOXX/SMH/SPY)
+#     test          Run the pytest suite (offline, synthetic data)
+#     status        Print current inventory + latest signal summary
+#     help          This message
+#
+# Environment: ALWAYS conda env `qlib_run` + `.env` (POLYGON_API_KEY, FRED_API_KEY).
+# All outputs stay inside this strategy dir (and additive data under price_data/).
+# =============================================================================
+
+set -uo pipefail
+
+# --- resolve paths (script may be invoked from anywhere) ---------------------
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"     # .../semiconductor_strategy
+SELF="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"            # absolute path to this script
+QLIB_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"                       # .../qlib-main
+REPO_ROOT="$(cd "$QLIB_DIR/.." && pwd)"                        # .../someopark-test
+PKG="semiconductor_strategy"
+LOG_DIR="$SCRIPT_DIR/logs"
+mkdir -p "$LOG_DIR"
+TS="$(date +%Y%m%d_%H%M%S)"
+
+CONDA_ENV="qlib_run"
+PY() { conda run -n "$CONDA_ENV" --no-capture-output python "$@"; }
+
+# --- load .env (only the keys we need; avoids the & job-control noise) -------
+if [ -f "$REPO_ROOT/.env" ]; then
+    export POLYGON_API_KEY="$(grep -E '^POLYGON_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
+    export FRED_API_KEY="$(grep -E '^FRED_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
+fi
+
+MODE="${1:-help}"; shift || true
+cd "$QLIB_DIR"   # so `python -m semiconductor_strategy.*` resolves
+
+# Clear stale __pycache__ (prevents bytecode bugs after code edits)
+find "$SCRIPT_DIR" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+
+log() { echo "[$(date '+%H:%M:%S')] $*"; }
+hr()  { echo "══════════════════════════════════════════════════════════════════"; }
+
+run_update_data() {
+    hr; log "AISS update_data — incremental refresh"; hr
+    log "1/5 prices (Polygon incremental)…"
+    PY -m $PKG.data.aiss_fetch_prices --update            "$@"
+    log "2/5 CapEx pulse (yfinance)…"
+    PY -m $PKG.data.company_signals  --update-capex        "$@"
+    log "3/5 MU DIO (SEC XBRL)…"
+    PY -m $PKG.data.company_signals  --check-mu-dio        "$@"
+    log "4/5 TSMC / ASML (TWSE + SEC, PIT)…"
+    PY -m $PKG.data.industry_signals --check-tsmc --check-asml "$@"
+    log "5/5 DRAM proxy (computed)…"
+    PY -m $PKG.data.industry_signals --update-dram         "$@"
+    log "update_data complete."
+}
+
+case "$MODE" in
+    update_data|update-data)
+        run_update_data "$@" 2>&1 | tee "$LOG_DIR/aiss_update_data_$TS.log"
+        ;;
+
+    daily)
+        hr; log "AISS daily signal"; hr
+        PY -m $PKG.AISSdailySignal "$@" 2>&1 | tee "$LOG_DIR/aiss_daily_$TS.log"
+        ;;
+
+    dry-run|dryrun)
+        PY -m $PKG.AISSdailySignal --dry-run "$@" 2>&1 | tee "$LOG_DIR/aiss_dryrun_$TS.log"
+        ;;
+
+    backtest)
+        hr; log "AISS single backtest"; hr
+        PY -m $PKG.backtest.engine "$@" 2>&1 | tee "$LOG_DIR/aiss_backtest_$TS.log"
+        ;;
+
+    batch)
+        hr; log "AISS batch (all param sets)"; hr
+        PY -m $PKG.AISSBatchRun "$@" 2>&1 | tee "$LOG_DIR/aiss_batch_$TS.log"
+        ;;
+
+    select)
+        hr; log "AISS production param selection (batch + WF OOS + MCPS)"; hr
+        PY -m $PKG.AISSBatchRun --select --save-equity "$@" 2>&1 | tee "$LOG_DIR/aiss_select_$TS.log"
+        ;;
+
+    walk-forward|wf)
+        hr; log "AISS walk-forward IS/OOS"; hr
+        PY -m $PKG.walk_forward "$@" 2>&1 | tee "$LOG_DIR/aiss_wf_$TS.log"
+        ;;
+
+    daily_backtest|daily-backtest)
+        hr; log "AISS V1+V2 backtest/selection suite"; hr
+        bash "$SCRIPT_DIR/daily_backtest.sh" "$@"
+        ;;
+
+    validate)
+        hr; log "AISS validation vs SOXX / SMH / SPY (win criterion)"; hr
+        PY -m $PKG.validate "$@" 2>&1 | tee "$LOG_DIR/aiss_validate_$TS.log"
+        ;;
+
+    tearsheet)
+        hr; log "AISS tearsheet (PDF, vs SOXX/SMH/SPY)"; hr
+        PY -m $PKG.report.tearsheet "$@" 2>&1 | tee "$LOG_DIR/aiss_tearsheet_$TS.log"
+        ;;
+
+    test)
+        hr; log "AISS test suite"; hr
+        PY -m pytest "$SCRIPT_DIR/tests/" -v --tb=short "$@"
+        ;;
+
+    status)
+        PY -m $PKG.AISSdailySignal --dry-run --status-only 2>/dev/null || \
+          PY -c "import json,glob,os; \
+d=json.load(open('$SCRIPT_DIR/inventory_aiss.json')) if os.path.exists('$SCRIPT_DIR/inventory_aiss.json') else {}; \
+print('inventory as_of:', d.get('as_of')); print('holdings:', d.get('holdings'))"
+        ;;
+
+    help|--help|-h|"")
+        sed -n '2,40p' "$SELF" | sed 's/^# \{0,1\}//'
+        ;;
+
+    *)
+        echo "Unknown mode: $MODE"; echo "Run: bash semiconductor_pipeline.sh help"; exit 2 ;;
+esac

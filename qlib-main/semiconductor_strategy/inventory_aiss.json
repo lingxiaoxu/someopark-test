@@ -1,0 +1,88 @@
+{
+  "as_of": "2026-05-29",
+  "last_updated": "2026-05-29",
+  "capital": 1000000,
+  "holdings": {
+    "equipment": {
+      "weight": 0.333333,
+      "shares": 104,
+      "last_price": 3198.5256,
+      "cost_basis": 3198.5256,
+      "entry_date": "2026-05-29",
+      "last_rebalance_date": "2026-05-29",
+      "days_held": 1,
+      "action_today": "ENTER"
+    },
+    "memory_hbm": {
+      "weight": 0.333333,
+      "shares": 79,
+      "last_price": 4182.5476,
+      "cost_basis": 4182.5476,
+      "entry_date": "2026-05-29",
+      "last_rebalance_date": "2026-05-29",
+      "days_held": 1,
+      "action_today": "ENTER"
+    },
+    "logic_cpu": {
+      "weight": 0.333333,
+      "shares": 92,
+      "last_price": 3593.0108,
+      "cost_basis": 3593.0108,
+      "entry_date": "2026-05-29",
+      "last_rebalance_date": "2026-05-29",
+      "days_held": 1,
+      "action_today": "ENTER"
+    }
+  },
+  "cash_weight": 0.0,
+  "prev_weights": {
+    "ai_gpu": 0.0,
+    "custom_asic": 0.0,
+    "equipment": 0.333333,
+    "memory_hbm": 0.333333,
+    "foundry": 0.0,
+    "analog_defense": 0.0,
+    "logic_cpu": 0.333333,
+    "rf_edge": 0.0
+  },
+  "prev_composite_scores": {
+    "ai_gpu": -0.2213,
+    "custom_asic": -0.1391,
+    "equipment": 1.6774,
+    "memory_hbm": 1.1241,
+    "foundry": -1.0382,
+    "analog_defense": -0.916,
+    "logic_cpu": 0.3965,
+    "rf_edge": -0.8834
+  },
+  "rebalance_history": [
+    {
+      "date": "2026-05-29",
+      "reason": "forced",
+      "regime": "risk_on",
+      "weights": {
+        "ai_gpu": 0.0,
+        "custom_asic": 0.0,
+        "equipment": 0.333333,
+        "memory_hbm": 0.333333,
+        "foundry": 0.0,
+        "analog_defense": 0.0,
+        "logic_cpu": 0.333333,
+        "rf_edge": 0.0
+      },
+      "cash_weight": 0.0,
+      "composite_scores": {
+        "ai_gpu": -0.2213,
+        "custom_asic": -0.1391,
+        "equipment": 1.6774,
+        "memory_hbm": 1.1241,
+        "foundry": -1.0382,
+        "analog_defense": -0.916,
+        "logic_cpu": 0.3965,
+        "rf_edge": -0.8834
+      }
+    }
+  ],
+  "emergency_mode_active": false,
+  "last_daily_update": "2026-05-29"
+}

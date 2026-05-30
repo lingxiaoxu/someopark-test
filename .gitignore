@@ -18,9 +18,10 @@ ONBOARDING.md
 chronos-forecasting-main/
 chronos-2-finetuned/
 
-# Qlib — ignore everything except sector_rotation and env export files
+# Qlib — ignore everything except sector_rotation, semiconductor_strategy, and env export files
 qlib-main/*
 !qlib-main/sector_rotation
+!qlib-main/semiconductor_strategy
 !qlib-main/qlib_run_conda_export.txt
 !qlib-main/qlib_run_env.yml
 !qlib-main/qlib_run_requirements.txt
@@ -79,6 +80,17 @@ qlib-main/sector_rotation/logs/
 qlib-main/sector_rotation/backtest_results/
 qlib-main/sector_rotation/inventory_history/
 qlib-main/sector_rotation/trading_signals/
+qlib-main/sector_rotation/pipeline_state/
+qlib-main/sector_rotation/notebooks/
+
+# Semiconductor strategy: generated outputs (mirror sector_rotation exclusions)
+qlib-main/semiconductor_strategy/report/output/
+qlib-main/semiconductor_strategy/logs/
+qlib-main/semiconductor_strategy/backtest_results/
+qlib-main/semiconductor_strategy/inventory_history/
+qlib-main/semiconductor_strategy/trading_signals/
+qlib-main/semiconductor_strategy/pipeline_state/
+qlib-main/semiconductor_strategy/notebooks/
 
 # Private Credit module & public docs (large files, managed locally)
 portfolio_of_private_credit_deals/

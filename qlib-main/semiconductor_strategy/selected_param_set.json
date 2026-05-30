@@ -1,0 +1,96 @@
+{
+  "param_set": "opt_equal_weight",
+  "signal_version": "v1",
+  "selection_method": "mcps_oos_filtered",
+  "selected_at": "2026-05-30",
+  "last_updated": "2026-05-30",
+  "mcps_oos_filtered": 1.9752,
+  "recent_sharpe_12m": 3.3348,
+  "full_period_sharpe": 1.7548,
+  "full_period_calmar": 1.2916,
+  "top_candidates": [
+    {
+      "name": "opt_equal_weight",
+      "version": "v1",
+      "mcps_score": 1.9752,
+      "full_period_sharpe": 1.7548,
+      "recent_sharpe_12m": 3.3348
+    },
+    {
+      "name": "derisk_tight",
+      "version": "v1",
+      "mcps_score": 1.9655,
+      "full_period_sharpe": 1.8626,
+      "recent_sharpe_12m": 3.2492
+    },
+    {
+      "name": "opt_risk_parity",
+      "version": "v1",
+      "mcps_score": 1.9362,
+      "full_period_sharpe": 1.7579,
+      "recent_sharpe_12m": 3.2418
+    },
+    {
+      "name": "default",
+      "version": "v1",
+      "mcps_score": 1.9343,
+      "full_period_sharpe": 1.7563,
+      "recent_sharpe_12m": 3.2492
+    },
+    {
+      "name": "standard_3",
+      "version": "v1",
+      "mcps_score": 1.9343,
+      "full_period_sharpe": 1.7563,
+      "recent_sharpe_12m": 3.2492
+    },
+    {
+      "name": "vol_target_30",
+      "version": "v1",
+      "mcps_score": 1.9343,
+      "full_period_sharpe": 1.7563,
+      "recent_sharpe_12m": 3.2492
+    },
+    {
+      "name": "standard_momentum",
+      "version": "v1",
+      "mcps_score": 1.9343,
+      "full_period_sharpe": 1.7563,
+      "recent_sharpe_12m": 3.2492
+    },
+    {
+      "name": "external_on",
+      "version": "v1",
+      "mcps_score": 1.9343,
+      "full_period_sharpe": 1.7563,
+      "recent_sharpe_12m": 3.2492
+    },
+    {
+      "name": "opt_inv_vol",
+      "version": "v1",
+      "mcps_score": 1.9343,
+      "full_period_sharpe": 1.7563,
+      "recent_sharpe_12m": 3.2492
+    },
+    {
+      "name": "derisk_loose",
+      "version": "v1",
+      "mcps_score": 1.9204,
+      "full_period_sharpe": 1.7529,
+      "recent_sharpe_12m": 3.2492
+    }
+  ],
+  "n_candidates": 33,
+  "n_oos_survivors": 33,
+  "oos_filter_applied": true,
+  "oos_mean_sharpe": 2.315,
+  "oos_n_selected": 8,
+  "wf_mean_wfe": 1.0602,
+  "macro_data_days": 1860,
+  "switch_history": [],
+  "health": {
+    "days_since_switch": 0,
+    "current_rank": 1,
+    "anomaly_detected": false
+  }
+}
