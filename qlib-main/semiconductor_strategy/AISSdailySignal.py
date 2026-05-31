@@ -1057,6 +1057,15 @@ def run_daily_signal(
             inv["as_of"] = today_str
             inv["last_daily_update"] = today_str
 
+    # Record the active param set + signal version on the inventory (auditability:
+    # which config generated these positions). smart_select pick > static
+    # selected_param_set > "default". signal_version reflects the resolved cfg.
+    inv["param_set"] = (
+        (_smart_result.get("param_set") if _smart_result else None)
+        or _sel.get("param_set") or "default"
+    )
+    inv["signal_version"] = cfg.get("signals", {}).get("signal_version", "v1")
+
     save_inventory(inv, dry_run=dry_run)
 
     # ── 11. Get macro snapshot for report ─────────────────────────
