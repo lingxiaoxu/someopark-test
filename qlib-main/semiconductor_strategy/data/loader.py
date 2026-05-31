@@ -369,6 +369,25 @@ def load_macro_data(
         if _spread in result.columns:
             result[_spread] = result[_spread] * 100  # pct -> bps
 
+    # ── PIT FREEZE (append-only): FRED revises recent data, which flips the
+    #    regime classification on refresh → non-reproducible backtest.  Keep an
+    #    immutable frozen macro store: historical rows never change; only dates
+    #    newer than the frozen tail are appended.  Seeded from the first run.
+    if cache_dir:
+        try:
+            frozen_path = Path(cache_dir) / "macro_frozen.parquet"
+            if frozen_path.exists():
+                frozen = pd.read_parquet(frozen_path)
+                frozen.index = pd.to_datetime(frozen.index)
+                frozen = frozen.reindex(columns=result.columns)
+                last_frozen = frozen.index.max()
+                new_rows = result[result.index > last_frozen]
+                result = pd.concat([frozen, new_rows])
+                result = result[~result.index.duplicated(keep="first")].sort_index()
+            result.to_parquet(frozen_path)
+        except Exception as _fe:  # noqa: BLE001
+            logger.warning("macro PIT-freeze skipped (%s); using fresh FRED frame", _fe)
+
     if cache_dir:
         _save_cache(_cache_path(cache_dir, cache_key), result)
     return result

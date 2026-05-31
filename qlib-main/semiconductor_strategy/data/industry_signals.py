@@ -324,8 +324,9 @@ def asml_value_at(as_of_date) -> Optional[dict]:
 # DRAM spot proxy (MU vs SOXX relative strength from the price store)
 # ===========================================================================
 
-def update_dram_proxy(end_date: Optional[str] = None, start: str = "2016-01-01") -> int:
-    """Compute MU 20-day relative strength vs SOXX, z-scored, store daily series."""
+def update_dram_proxy(end_date: Optional[str] = None, start: str = "2016-01-01",
+                      refreeze: bool = False) -> int:
+    """Compute MU 20-day relative strength vs SOXX, z-scored; store append-only/frozen."""
     pit.ensure_dirs()
     wide = fp.load_prices_wide(["MU", "SOXX"], start=start, end=end_date, field="AdjClose")
     if wide.empty or "MU" not in wide or "SOXX" not in wide:
@@ -337,16 +338,23 @@ def update_dram_proxy(end_date: Optional[str] = None, start: str = "2016-01-01")
     z = (rs - rs.rolling(DRAM_Z_WINDOW, min_periods=DRAM_Z_WINDOW // 2).mean()) / \
         rs.rolling(DRAM_Z_WINDOW, min_periods=DRAM_Z_WINDOW // 2).std().replace(0, np.nan)
     z = z.dropna()
+    fresh = {d.date().isoformat(): float(v) for d, v in z.items()}
+    # PIT FREEZE (append-only): MU/SOXX price re-adjustment would otherwise rewrite
+    # the whole z-score history each refresh → non-reproducible backtest.
+    existing = {} if refreeze else pit.load_json(DRAM_PATH, default={}).get("series", {})
+    series = pit.merge_frozen(existing, fresh)
     payload = {
         "meta": {"rs_window": DRAM_RS_WINDOW, "z_window": DRAM_Z_WINDOW,
-                 "updated_at": date.today().isoformat(), "n": int(len(z)),
-                 "last_value": float(z.iloc[-1]) if len(z) else None},
-        "series": {d.date().isoformat(): float(v) for d, v in z.items()},
+                 "updated_at": date.today().isoformat(), "frozen_append_only": True,
+                 "n": len(series), "last_date": max(series) if series else None,
+                 "last_value": series[max(series)] if series else None},
+        "series": series,
     }
     pit.save_json(DRAM_PATH, payload)
-    log.info("DRAM proxy: %d pts %s→%s (last z=%.2f)", len(z),
-             z.index[0].date(), z.index[-1].date(), z.iloc[-1])
-    return len(z)
+    log.info("DRAM proxy (frozen append-only): %d pts, last %s z=%.2f (%d fresh merged)",
+             len(series), payload["meta"]["last_date"], payload["meta"]["last_value"] or 0.0,
+             max(0, len(series) - len(existing)))
+    return len(series)
 
 
 def load_dram_proxy(start: Optional[str] = None, end: Optional[str] = None) -> pd.Series:

@@ -164,6 +164,26 @@ def pit_series(
     return s
 
 
+def merge_frozen(existing: dict, fresh: dict) -> dict:
+    """Append-only PIT merge for {iso_date: value} signal stores.
+
+    Keeps every existing (already-recorded) value immutable and appends ONLY
+    fresh dates strictly newer than the latest existing date.  This freezes the
+    history so re-fetching / recomputing a price-derived or revised signal
+    (capex pulse, DRAM proxy, FRED macro) never alters past values — making the
+    backtest reproducible across data refreshes.  Pass an empty ``existing`` on
+    the first run to seed the frozen baseline with the full fresh series.
+    """
+    if not existing:
+        return dict(fresh)
+    last = max(existing.keys())          # ISO dates sort lexicographically
+    merged = dict(existing)
+    for d, v in fresh.items():
+        if d > last:
+            merged[d] = v
+    return merged
+
+
 def reindex_pit_daily(
     avail_series: pd.Series,
     start: Optional[str] = None,

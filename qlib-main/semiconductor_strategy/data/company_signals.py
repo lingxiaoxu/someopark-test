@@ -96,30 +96,40 @@ def compute_capex_pulse(close: pd.DataFrame) -> pd.Series:
     return z.dropna()
 
 
-def update_capex_pulse(end_date: Optional[str] = None, start: str = CAPEX_HISTORY_START) -> int:
-    """Recompute the full CapEx-pulse z-score series and persist it."""
+def update_capex_pulse(end_date: Optional[str] = None, start: str = CAPEX_HISTORY_START,
+                       refreeze: bool = False) -> int:
+    """Recompute the CapEx-pulse z-score series and persist it (append-only/frozen)."""
     pit.ensure_dirs()
     close = _download_capex_prices(start, end_date)
     if close.empty:
         log.error("CapEx pulse: no hyperscaler prices downloaded")
         return 0
     z = compute_capex_pulse(close)
+    fresh = {d.date().isoformat(): float(v) for d, v in z.items()}
+    # PIT FREEZE (append-only): keep already-recorded values immutable, append
+    # only newer dates.  The rolling z-score would otherwise rewrite history on
+    # every refresh (yfinance adj-prices drift with dividends) → non-reproducible
+    # backtest.  Pass --refreeze to reseed the frozen baseline from scratch.
+    existing = {} if refreeze else pit.load_json(CAPEX_PATH, default={}).get("series", {})
+    series = pit.merge_frozen(existing, fresh)
     payload = {
         "meta": {
             "tickers": CAPEX_TICKERS,
             "lookback_days": CAPEX_LOOKBACK_DAYS,
             "zscore_window": CAPEX_ZSCORE_WINDOW,
             "updated_at": date.today().isoformat(),
-            "n": int(len(z)),
-            "last_date": z.index[-1].date().isoformat() if len(z) else None,
-            "last_value": float(z.iloc[-1]) if len(z) else None,
+            "frozen_append_only": True,
+            "n": len(series),
+            "last_date": max(series) if series else None,
+            "last_value": series[max(series)] if series else None,
         },
-        "series": {d.date().isoformat(): float(v) for d, v in z.items()},
+        "series": series,
     }
     pit.save_json(CAPEX_PATH, payload)
-    log.info("CapEx pulse: %d points %s→%s (last z=%.2f)", len(z),
-             z.index[0].date(), z.index[-1].date(), z.iloc[-1])
-    return len(z)
+    log.info("CapEx pulse (frozen append-only): %d points, last %s z=%.2f (%d fresh dates merged)",
+             len(series), payload["meta"]["last_date"], payload["meta"]["last_value"] or 0.0,
+             max(0, len(series) - len(existing)))
+    return len(series)
 
 
 def load_capex_pulse(start: Optional[str] = None, end: Optional[str] = None) -> pd.Series:
