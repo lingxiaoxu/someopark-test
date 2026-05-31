@@ -11,6 +11,8 @@
 # Modes:
 #     update_data   Incremental data refresh (prices + capex + dram + slow PIT checks)
 #     daily         Generate today's AISS signal + update inventory
+#     weekly        Data/PIT health + weekly_review (drift/regime/multi-horizon) + dry-run
+#     monthly       Refresh P0 (V1+V2 select via daily_backtest, restore V1) + force-rebalance
 #     dry-run       Daily signal WITHOUT writing inventory (safe any time)
 #     backtest      Single full backtest of the active/selected param set
 #     batch         Backtest all param sets -> ranked CSV/Excel
@@ -141,8 +143,38 @@ d=json.load(open('$SCRIPT_DIR/inventory_aiss.json')) if os.path.exists('$SCRIPT_
 print('inventory as_of:', d.get('as_of')); print('holdings:', d.get('holdings'))"
         ;;
 
+    weekly)
+        # Mirrors SSRS 'weekly': data/PIT health + weekly_review + dry-run validation.
+        # (AISS has no EPS step; SSRS's EPS refresh is replaced by data/PIT health checks.)
+        WK_LOG="$LOG_DIR/aiss_weekly_$TS.log"
+        hr; log "AISS WEEKLY maintenance (data/PIT health + weekly review + dry-run)"; hr
+        log "1/3 data + PIT health checks (prices / company / industry coverage)…"
+        PY -m $PKG.data.aiss_fetch_prices --verify 2>&1 | tee -a "$WK_LOG" || true
+        PY -m $PKG.data.company_signals  --verify 2>&1 | tee -a "$WK_LOG" || true
+        PY -m $PKG.data.industry_signals --verify 2>&1 | tee -a "$WK_LOG" || true
+        log "2/3 weekly review (multi-horizon + param drift + regime trend + P0-cache health)…"
+        PY -m $PKG.weekly_review "$@" 2>&1 | tee -a "$WK_LOG" \
+          || log "  WARN: weekly_review failed — continuing with dry-run"
+        log "3/3 dry-run validation (full pipeline healthy, no inventory write)…"
+        PY -m $PKG.AISSdailySignal --dry-run 2>&1 | tee -a "$WK_LOG"
+        log "WEEKLY MAINTENANCE COMPLETE  (log: $WK_LOG)"
+        ;;
+
+    monthly)
+        # Mirrors SSRS 'monthly': refresh all P0 selection data + force-rebalance.
+        # AISS refreshes P0 via daily_backtest (V1+V2 select → restore V1), which
+        # encompasses the per-version 'select'; then a force-rebalance daily signal.
+        MO_LOG="$LOG_DIR/aiss_monthly_$TS.log"
+        hr; log "AISS MONTHLY (V1+V2 select suite + restore V1 + force-rebalance)"; hr
+        log "1/2 daily_backtest: V1+V2 batch + WF-OOS select → refresh P0 caches → restore V1"
+        bash "$SCRIPT_DIR/daily_backtest.sh" 2>&1 | tee -a "$MO_LOG"
+        log "2/2 force-rebalance daily signal (smart_select with fresh P0 caches)…"
+        PY -m $PKG.AISSdailySignal --force-rebalance "$@" 2>&1 | tee -a "$MO_LOG"
+        log "MONTHLY REBALANCE COMPLETE  (log: $MO_LOG)"
+        ;;
+
     help|--help|-h|"")
-        sed -n '2,40p' "$SELF" | sed 's/^# \{0,1\}//'
+        sed -n '2,42p' "$SELF" | sed 's/^# \{0,1\}//'
         ;;
 
     *)
