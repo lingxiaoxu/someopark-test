@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -66,6 +67,22 @@ CAPEX_HISTORY_START = "2015-01-01"             # gives z-scores from ~2017
 MU_CIK = 723125
 DIO_TIGHT = 100.0   # < -> +1 bullish memory
 DIO_GLUT = 150.0    # > -> -1 bearish memory
+
+# --- N1: Hyperscaler ACTUAL quarterly CapEx (SEC XBRL) ---------------------
+# Precise quarterly CapEx from 10-Q/10-K filings — augments the daily price-proxy
+# capex_pulse with the real spend figure (PIT = SEC ``filed`` date).
+# CIKs + XBRL concepts verified live 2026-05-30 (companyconcept API).  AMZN uses
+# PaymentsToAcquireProductiveAssets (its PP&E tag stops in 2017).
+HYPERSCALER_CAPEX_PATH = pit.COMPANY_DIR / "hyperscaler_capex_actual.json"
+HYPERSCALER_CAPEX = {
+    "MSFT":  (789019,  "PaymentsToAcquirePropertyPlantAndEquipment"),   # 2009+
+    "GOOGL": (1652044, "PaymentsToAcquirePropertyPlantAndEquipment"),   # 2015+
+    "META":  (1326801, "PaymentsToAcquirePropertyPlantAndEquipment"),   # 2012+
+    "AMZN":  (1018724, "PaymentsToAcquireProductiveAssets"),            # 2018+
+}
+_FRAME_Q = re.compile(r"^CY\d{4}Q[1-4]$")     # SEC calendar-quarter standardized frame
+HYPERSCALER_MIN_COMPANIES = 3                  # need >=3 of 4 for a meaningful aggregate
+HYPERSCALER_Z_WINDOW = 12                      # quarters for YoY z-score
 
 
 # ===========================================================================
@@ -250,6 +267,171 @@ def mu_dio_value_at(as_of_date) -> Optional[dict]:
 
 
 # ===========================================================================
+# N1: Hyperscaler ACTUAL quarterly CapEx (SEC XBRL)
+# ===========================================================================
+
+def _raw_quarterly_capex(facts: dict, concept: str) -> dict:
+    """Decumulate YTD CapEx → standalone calendar-quarter values.
+
+    CapEx is a cumulative-duration flow: most filers (e.g. META) tag only the
+    fiscal-YTD figure, so a 3-month-duration filter would miss Q2/Q3/Q4.  Instead
+    we group facts by fiscal year, isolate the YTD chain (facts sharing the FY
+    start date), and difference consecutive YTDs:
+        Q1 = YTD(Q1);  Q2 = YTD(Q2) - YTD(Q1);  Q3 = YTD(Q3) - YTD(Q2);  Q4 = FY - YTD(Q3).
+    Each standalone quarter is bucketed by the CALENDAR quarter of its ``end``
+    (aligning the 4 firms' differing fiscal years) with the EARLIEST filing date
+    for PIT correctness.  Returns {calendar_frame: {val, filed, end}}.
+    """
+    node = facts.get("facts", {}).get("us-gaap", {}).get(concept)
+    if not node:
+        return {}
+    # 1) collect duration facts, dedup by (start,end) keeping EARLIEST filed
+    by_se: dict = {}
+    for item in node.get("units", {}).get("USD", []):
+        if item.get("form") not in ("10-Q", "10-K"):
+            continue
+        s, e, val, fy, fp = (item.get("start"), item.get("end"), item.get("val"),
+                             item.get("fy"), item.get("fp"))
+        if not s or not e or val is None or fy is None:
+            continue
+        try:
+            days = (date.fromisoformat(e) - date.fromisoformat(s)).days
+        except Exception:
+            continue
+        if days < 60 or days > 380:
+            continue  # keep quarterly..annual durations; drop instants & odd ranges
+        filed = item.get("filed") or ""
+        key = (s, e)
+        prev = by_se.get(key)
+        if prev is None or (filed and filed < (prev["filed"] or "9999")):
+            by_se[key] = {"start": s, "end": e, "val": float(val), "filed": filed,
+                          "fy": fy, "fp": fp, "days": days}
+
+    # 2) group by fiscal year, isolate the YTD chain, decumulate
+    from collections import defaultdict
+    by_fy: dict = defaultdict(list)
+    for rec in by_se.values():
+        by_fy[rec["fy"]].append(rec)
+
+    out: dict = {}
+    for fy, recs in by_fy.items():
+        # fy_start = start of the true first fiscal quarter (fp=Q1, ~90d) — NOT
+        # min(start), which would catch trailing-12-month facts (e.g. AMZN's TTM
+        # start a year earlier).  Fall back to the shortest-duration fact's start.
+        q1 = [r for r in recs if r.get("fp") == "Q1" and 80 <= r["days"] <= 100]
+        if q1:
+            fy_start = min(r["start"] for r in q1)
+        else:
+            shortq = [r for r in recs if 80 <= r["days"] <= 100]
+            fy_start = min(r["start"] for r in (shortq or recs))
+        # YTD chain = facts sharing fy_start, durations increasing (~3/6/9/12mo)
+        ytd = sorted([r for r in recs if r["start"] == fy_start and r["days"] <= 370],
+                     key=lambda r: r["end"])
+        prev_val = 0.0
+        for r in ytd:
+            qv = r["val"] - prev_val
+            prev_val = r["val"]
+            try:
+                edt = date.fromisoformat(r["end"])
+            except Exception:
+                continue
+            frame = f"CY{edt.year}Q{(edt.month - 1) // 3 + 1}"
+            filed = r["filed"]
+            prev = out.get(frame)
+            if prev is None or (filed and filed < (prev.get("filed") or "9999")):
+                out[frame] = {"val": float(qv), "filed": filed, "end": r["end"]}
+    return out
+
+
+def compute_hyperscaler_capex() -> dict:
+    """Aggregate the 4 hyperscalers' real quarterly CapEx by calendar quarter.
+
+    For each calendar quarter we sum the companies that reported a clean single
+    quarter (require >=HYPERSCALER_MIN_COMPANIES), record the *availability* date
+    as the latest ``filed`` among them (conservative / PIT-safe), and compute YoY
+    vs the same quarter a year earlier.  Returns {frame: record}.
+    """
+    per_frame: dict = {}      # frame -> {ticker: {"val","filed","end"}}
+    for tk, (cik, concept) in HYPERSCALER_CAPEX.items():
+        try:
+            facts = sec.fetch_company_facts(int(cik))
+        except Exception as e:  # noqa: BLE001
+            log.warning("Hyperscaler CapEx: %s (CIK %s) fetch failed: %s", tk, cik, e)
+            continue
+        for fr, rec in _raw_quarterly_capex(facts, concept).items():
+            per_frame.setdefault(fr, {})[tk] = rec
+
+    sums: dict = {}
+    records: dict = {}
+    for fr in sorted(per_frame):
+        comp = per_frame[fr]
+        if len(comp) < HYPERSCALER_MIN_COMPANIES:
+            continue
+        total = sum(c["val"] for c in comp.values())
+        filed = max((c["filed"] or "") for c in comp.values())
+        end = max((c["end"] or "") for c in comp.values())
+        sums[fr] = total
+        records[fr] = {
+            "period_end": end,
+            "filed_date": filed,            # PIT availability = last of the 4 filings
+            "capex_usd_mn": round(total / 1e6, 1),
+            "n_companies": len(comp),
+            "companies_mn": {t: round(c["val"] / 1e6, 1) for t, c in comp.items()},
+        }
+
+    # YoY% vs same calendar quarter a year earlier
+    for fr in records:
+        yr, q = int(fr[2:6]), int(fr[7])
+        prev = f"CY{yr - 1}Q{q}"
+        if prev in sums and sums[prev] > 0:
+            records[fr]["capex_yoy_pct"] = round((sums[fr] / sums[prev] - 1.0) * 100.0, 1)
+        else:
+            records[fr]["capex_yoy_pct"] = None
+    return records
+
+
+def update_hyperscaler_capex() -> int:
+    pit.ensure_dirs()
+    records = compute_hyperscaler_capex()
+    if not records:
+        log.error("Hyperscaler CapEx: no records computed")
+        return 0
+    payload = {
+        "meta": {
+            "ciks": {t: c for t, (c, _) in HYPERSCALER_CAPEX.items()},
+            "min_companies": HYPERSCALER_MIN_COMPANIES,
+            "updated_at": date.today().isoformat(),
+            "n": len(records),
+        },
+        "records": records,
+    }
+    pit.save_json(HYPERSCALER_CAPEX_PATH, payload)
+    latest = sorted(records.values(), key=lambda r: r["period_end"])[-1]
+    log.info("Hyperscaler CapEx: %d quarters; latest %s sum=$%.1fB YoY=%s filed=%s",
+             len(records), latest["period_end"], latest["capex_usd_mn"] / 1e3,
+             latest["capex_yoy_pct"], latest["filed_date"])
+    return len(records)
+
+
+def load_hyperscaler_capex_yoy(start: Optional[str] = None, end: Optional[str] = None) -> pd.Series:
+    """PIT-correct daily series of aggregate hyperscaler CapEx YoY% (ffilled from filed)."""
+    payload = pit.load_json(HYPERSCALER_CAPEX_PATH, default={})
+    records = {k: v for k, v in payload.get("records", {}).items()
+               if v.get("capex_yoy_pct") is not None}
+    if not records:
+        return pd.Series(dtype="float64", name="hyperscaler_capex_yoy")
+    avail = pit.pit_series(records, value_field="capex_yoy_pct", date_field="filed_date")
+    daily = pit.reindex_pit_daily(avail, start=start, end=end)
+    daily.name = "hyperscaler_capex_yoy"
+    return daily
+
+
+def hyperscaler_capex_value_at(as_of_date) -> Optional[dict]:
+    payload = pit.load_json(HYPERSCALER_CAPEX_PATH, default={})
+    return pit.get_latest_available(payload.get("records", {}), as_of_date, "filed_date")
+
+
+# ===========================================================================
 # Snapshot (industry + company merged) — used by smart_select / reports
 # ===========================================================================
 
@@ -261,6 +443,9 @@ def get_aiss_signals_snapshot(as_of_date) -> dict:
     mu = mu_dio_value_at(as_of_date)
     snap["mu_dio_signal"] = (mu or {}).get("signal")
     snap["mu_dio_days"] = (mu or {}).get("dio_days")
+    hc = hyperscaler_capex_value_at(as_of_date)
+    snap["hyperscaler_capex_usd_mn"] = (hc or {}).get("capex_usd_mn")
+    snap["hyperscaler_capex_yoy_pct"] = (hc or {}).get("capex_yoy_pct")
     # industry layer (imported lazily to avoid a hard cycle)
     try:
         from semiconductor_strategy.data import industry_signals as ind
@@ -295,6 +480,15 @@ def verify() -> bool:
               f"DIO={latest['dio_days']} sig={latest['signal']:+d} filed={latest['filed_date']}")
     else:
         print("  mu_dio      : MISSING"); ok = False
+    hpayload = pit.load_json(HYPERSCALER_CAPEX_PATH, default={})
+    hrecs = hpayload.get("records", {})
+    if hrecs:
+        latest = sorted(hrecs.values(), key=lambda r: r["period_end"])[-1]
+        first = sorted(hrecs.values(), key=lambda r: r["period_end"])[0]
+        print(f"  hyperscaler_capex: {len(hrecs):3} quarters {first['period_end']}→{latest['period_end']}, "
+              f"latest sum=${latest['capex_usd_mn']/1e3:.1f}B YoY={latest['capex_yoy_pct']}% filed={latest['filed_date']}")
+    else:
+        print("  hyperscaler_capex: MISSING (run --update-hyperscaler-capex)")  # not fatal for V1
     print("=" * 70)
     print("RESULT:", "OK" if ok else "INCOMPLETE")
     return ok
@@ -307,6 +501,8 @@ def main() -> None:
     ap.add_argument("--init", action="store_true")
     ap.add_argument("--update-capex", action="store_true")
     ap.add_argument("--check-mu-dio", action="store_true")
+    ap.add_argument("--update-hyperscaler-capex", "--init-hyperscaler-capex",
+                    dest="hyperscaler_capex", action="store_true")
     ap.add_argument("--verify", action="store_true")
     ap.add_argument("--end", default=None)
     args = ap.parse_args()
@@ -316,10 +512,13 @@ def main() -> None:
         update_capex_pulse(end_date=args.end); did = True
     if args.init or args.check_mu_dio:
         update_mu_dio_proxy(); did = True
+    if args.init or args.hyperscaler_capex:
+        update_hyperscaler_capex(); did = True
     if args.verify or did:
         verify()
     if not did and not args.verify:
-        print("Nothing to do. Use --init / --update-capex / --check-mu-dio / --verify.")
+        print("Nothing to do. Use --init / --update-capex / --check-mu-dio / "
+              "--update-hyperscaler-capex / --verify.")
 
 
 if __name__ == "__main__":
