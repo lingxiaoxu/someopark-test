@@ -14,6 +14,20 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh <MODE> [opts]
 ```
 (The pipeline auto-loads the two API keys from `.env` and selects `qlib_run`.)
 
+**15 modes:** `update_data` · `daily` · `weekly` · `monthly` · `dry-run` ·
+`backtest` · `batch` · `select` · `daily_backtest` · `walk-forward` · `validate`
+· `tearsheet` · `test` · `status` · `help`.
+
+**NYSE holiday check:** `daily`, `monthly`, `daily_backtest` skip work + `exit 0`
+on weekends/holidays (normal success, via `pandas_market_calendars`); `weekly` /
+`dry-run` always run. Pass `--skip-holiday` to bypass (backfill / manual runs).
+
+**V1 / V2:** V1 = monthly (production default, strongest); V2 = semi-monthly
+(1st + ~mid-month) with the same 4-factor / 12-1 signal. `daily` auto-picks V1 vs
+V2 via `smart_select`'s `version_selector` unless you pass `--signal-version
+v1|v2`. The chosen `param_set` + `signal_version` are recorded in both
+`selected_param_set.json` and `inventory_aiss.json` for auditability.
+
 ---
 
 ## 0. First-time initialization (once)
@@ -37,33 +51,55 @@ $ENV.data.industry_signals  --verify
 
 ---
 
-## 1. Daily production (cron, after US close)
+## 1. Production cadence (daily / weekly / monthly)
+
+Mirrors SSRS's daily / weekly / monthly structure. All three production cadences
+are NYSE-holiday-aware where it matters.
 
 ```bash
+# ── DAILY (after US close) ──────────────────────────────────────────────
 # (a) refresh data incrementally  (~1-3 min; skips sources updated recently)
 bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh update_data
-
-# (b) generate today's signal + update inventory_aiss.json
+# (b) generate today's signal + update inventory_aiss.json  (NYSE-aware)
 bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh daily
+
+# ── DAILY BACKTEST (refresh smart_select's per-version P0 caches) ────────
+# V1 select → V2 select → restore V1 as production + validate both.  (NYSE-aware)
+bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh daily_backtest
+
+# ── WEEKLY (data/PIT health + Weekly Review + dry-run) ──────────────────
+bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh weekly
+
+# ── MONTHLY (daily_backtest → restore V1 → force-rebalance) ─────────────
+bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh monthly   # NYSE-aware
 ```
 
-Suggested crontab (times in UTC; adjust to your close):
-```cron
-30 21 * * 1-5  cd /Users/xuling/code/someopark-test && bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh update_data >> qlib-main/semiconductor_strategy/logs/cron.log 2>&1
-45 21 * * 1-5  cd /Users/xuling/code/someopark-test && bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh daily       >> qlib-main/semiconductor_strategy/logs/cron.log 2>&1
-0  6  1 * *    cd /Users/xuling/code/someopark-test && bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh select      >> qlib-main/semiconductor_strategy/logs/cron.log 2>&1
-```
+**OpenClaw cron tasks** (run in isolated sessions, report to Telegram, alert on
+failure). Staggered after SSRS (16:40 / 17:20 / Sun 01:00 ET) to avoid CPU
+contention:
+
+| Task | Schedule (ET) | Command |
+|---|---|---|
+| `aiss-daily-backtest` | weekdays 18:40 | `bash …/daily_backtest.sh` |
+| `aiss-daily` | weekdays 19:20 | `bash …/semiconductor_pipeline.sh daily` |
+| `aiss-weekly` | Sun 02:00 | `bash …/semiconductor_pipeline.sh weekly` |
+
+> The benign `qlib backtest execution failed …, falling back to native loop`
+> warning appears on every backtest in **both** AISS and SSRS — native is the
+> production engine by design. It must **not** be counted as success-degraded.
 
 **Outputs (all inside the package):**
 ```
 trading_signals/aiss_daily_report_<date>_<ts>.{json,txt}
-inventory_aiss.json                 (+ inventory_history/ snapshots)
-selected_param_set.json             (updated by `select`)
+inventory_aiss.json                 (+ inventory_history/ snapshots; records param_set/signal_version)
+selected_param_set.json             (updated by select / daily_backtest; restored to V1)
+logs/aiss_<mode>_<YYYYMMDD_HHMMSS>.log   (timestamped — find latest with ls -t)
 ```
 
 Dry-run any time (no inventory write):
 ```bash
 bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh dry-run --force-rebalance
+bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh status   # current holdings
 ```
 
 ---
@@ -155,6 +191,8 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh test
 | Price gaps / stale | `aiss_fetch_prices --update` (or `--init --force` to refetch) |
 | TSMC has 1 month only | expected — TWSE forward-only; supply_chain uses foundry price proxy |
 | `validate` FAIL | re-run `select` to refresh `selected_param_set.json`, or inspect `batch` ranking |
+| `qlib backtest execution failed … falling back to native loop` | **Benign / expected** — native is the production engine (same as SSRS). Do NOT treat as failure or degraded. |
+| V2 win-criterion FAIL | Expected — semi-monthly V2 is weaker than V1; production runs V1 (PASS). Not an error. |
 | Regime always risk_on / macro stale | `price_data/macro/` is maintained by the someopark main pipeline; AISS falls back to live VIX |
 
 ---
