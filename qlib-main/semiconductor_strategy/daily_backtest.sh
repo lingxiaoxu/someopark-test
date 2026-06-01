@@ -35,6 +35,31 @@ PY() { conda run -n qlib_run --no-capture-output python "$@"; }
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 getp() { PY -c "import json;print(json.load(open('$SEL')).get('param_set','?'),json.load(open('$SEL')).get('signal_version','?'))" 2>/dev/null; }
 
+# NYSE holiday check (mirrors SSRS): skip + exit 0 on weekends/holidays.
+# Pass --skip-holiday to bypass (backfill / manual runs).
+SKIP_HOLIDAY=0; for _a in "$@"; do [ "$_a" = "--skip-holiday" ] && SKIP_HOLIDAY=1; done
+if [ "$SKIP_HOLIDAY" -eq 0 ]; then
+    NYSE_STATUS=$(PY -c "
+import sys
+from datetime import datetime
+try:
+    import pytz, pandas_market_calendars as mcal
+    nyc_date = datetime.now(pytz.timezone('America/New_York')).strftime('%Y-%m-%d')
+    sched = mcal.get_calendar('NYSE').schedule(start_date=nyc_date, end_date=nyc_date)
+    print('OPEN' if not sched.empty else 'CLOSED:' + nyc_date); sys.exit(0)
+except ImportError: pass
+except Exception as e: print('WARN:' + str(e)[:60], file=sys.stderr)
+from datetime import date
+t = date.today()
+print('CLOSED:' + str(t) + '-weekend' if t.weekday() >= 5 else 'OPEN-WEEKDAY')
+" 2>/dev/null) || NYSE_STATUS="OPEN-FALLBACK"
+    if [[ "$NYSE_STATUS" == CLOSED* ]]; then
+        log "NYSE 休市 (${NYSE_STATUS#CLOSED:}) — skip daily_backtest, exit 0"
+        exit 0
+    fi
+    log "NYSE status: $NYSE_STATUS — proceeding"
+fi
+
 log "══ AISS DAILY BACKTEST — V1 + V2 full suite ══"
 
 # Each --select --save-equity --tearsheet run produces, for that version:

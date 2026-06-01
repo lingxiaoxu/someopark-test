@@ -10,9 +10,9 @@
 #
 # Modes:
 #     update_data   Incremental data refresh (prices + capex + dram + slow PIT checks)
-#     daily         Generate today's AISS signal + update inventory
+#     daily         Generate today's AISS signal + update inventory  (NYSE holiday-aware)
 #     weekly        Data/PIT health + weekly_review (drift/regime/multi-horizon) + dry-run
-#     monthly       Refresh P0 (V1+V2 select via daily_backtest, restore V1) + force-rebalance
+#     monthly       Refresh P0 (V1+V2 select via daily_backtest, restore V1) + force-rebalance  (holiday-aware)
 #     dry-run       Daily signal WITHOUT writing inventory (safe any time)
 #     backtest      Single full backtest of the active/selected param set
 #     batch         Backtest all param sets -> ranked CSV/Excel
@@ -32,6 +32,10 @@
 #     test          Run the pytest suite (offline, synthetic data)
 #     status        Print current inventory + latest signal summary
 #     help          This message
+#
+# Flags: --skip-holiday  bypass the NYSE holiday check (backfill / manual runs).
+#        daily_backtest.sh also honors --skip-holiday. daily/monthly/daily_backtest
+#        skip + exit 0 on weekends/holidays (normal success); weekly + dry-run always run.
 #
 # Environment: ALWAYS conda env `qlib_run` + `.env` (POLYGON_API_KEY, FRED_API_KEY).
 # All outputs stay inside this strategy dir (and additive data under price_data/).
@@ -59,6 +63,19 @@ if [ -f "$REPO_ROOT/.env" ]; then
 fi
 
 MODE="${1:-help}"; shift || true
+
+# Extract --skip-holiday (bypass NYSE check; for backfill/manual runs) so it is
+# NOT forwarded to the python entrypoints, which don't accept it.
+SKIP_HOLIDAY=0
+_NEWARGS=()
+for _a in "$@"; do
+    case "$_a" in
+        --skip-holiday) SKIP_HOLIDAY=1 ;;
+        *) _NEWARGS+=("$_a") ;;
+    esac
+done
+set -- ${_NEWARGS[@]+"${_NEWARGS[@]}"}
+
 cd "$QLIB_DIR"   # so `python -m semiconductor_strategy.*` resolves
 
 # Clear stale __pycache__ (prevents bytecode bugs after code edits)
@@ -66,6 +83,36 @@ find "$SCRIPT_DIR" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || 
 
 log() { echo "[$(date '+%H:%M:%S')] $*"; }
 hr()  { echo "══════════════════════════════════════════════════════════════════"; }
+
+# ── NYSE holiday check (mirrors SSRS) ─────────────────────────────────────────
+# Skips work + exits 0 on weekends/holidays (normal success, not failure).
+# Uses pandas_market_calendars in qlib_run; falls back to a weekday-only check.
+check_nyse_open() {
+    if [ "$SKIP_HOLIDAY" -eq 1 ]; then log "Holiday check skipped (--skip-holiday)"; return 0; fi
+    local NYSE_STATUS
+    NYSE_STATUS=$(PY -c "
+import sys
+from datetime import datetime
+try:
+    import pytz
+    import pandas_market_calendars as mcal
+    nyc_date = datetime.now(pytz.timezone('America/New_York')).strftime('%Y-%m-%d')
+    sched = mcal.get_calendar('NYSE').schedule(start_date=nyc_date, end_date=nyc_date)
+    print('OPEN' if not sched.empty else 'CLOSED:' + nyc_date); sys.exit(0)
+except ImportError:
+    pass
+except Exception as e:
+    print('WARN:' + str(e)[:60], file=sys.stderr)
+from datetime import date
+t = date.today()
+print('CLOSED:' + str(t) + '-weekend' if t.weekday() >= 5 else 'OPEN-WEEKDAY')
+" 2>/dev/null) || NYSE_STATUS="OPEN-FALLBACK"
+    if [[ "$NYSE_STATUS" == CLOSED* ]]; then
+        hr; log "NYSE 休市 (${NYSE_STATUS#CLOSED:}) — pipeline skip, exit 0"; hr
+        exit 0
+    fi
+    log "NYSE status: $NYSE_STATUS — proceeding"
+}
 
 run_update_data() {
     hr; log "AISS update_data — incremental refresh"; hr
@@ -88,6 +135,7 @@ case "$MODE" in
         ;;
 
     daily)
+        check_nyse_open
         hr; log "AISS daily signal"; hr
         PY -m $PKG.AISSdailySignal "$@" 2>&1 | tee "$LOG_DIR/aiss_daily_$TS.log"
         ;;
@@ -164,6 +212,7 @@ print('inventory as_of:', d.get('as_of')); print('holdings:', d.get('holdings'))
         # Mirrors SSRS 'monthly': refresh all P0 selection data + force-rebalance.
         # AISS refreshes P0 via daily_backtest (V1+V2 select → restore V1), which
         # encompasses the per-version 'select'; then a force-rebalance daily signal.
+        check_nyse_open
         MO_LOG="$LOG_DIR/aiss_monthly_$TS.log"
         hr; log "AISS MONTHLY (V1+V2 select suite + restore V1 + force-rebalance)"; hr
         log "1/2 daily_backtest: V1+V2 batch + WF-OOS select → refresh P0 caches → restore V1"
@@ -174,7 +223,7 @@ print('inventory as_of:', d.get('as_of')); print('holdings:', d.get('holdings'))
         ;;
 
     help|--help|-h|"")
-        sed -n '2,42p' "$SELF" | sed 's/^# \{0,1\}//'
+        sed -n '2,46p' "$SELF" | sed 's/^# \{0,1\}//'
         ;;
 
     *)
