@@ -1,269 +1,173 @@
 #!/bin/bash
 # =============================================================================
-# test_pipeline_integration.sh
-# Sector Rotation — Full Pipeline Integration Test
+# test_pipeline_integration.sh — AISS COMPREHENSIVE QA
 # =============================================================================
-# Tests all 18+ pipeline modes end-to-end with real data.
-# Run from repo root: bash qlib-main/sector_rotation/tests/test_pipeline_integration.sh
+# Full deep test + verification of the AI Infra & Semiconductor Strategy, in
+# the exact shape used for manual QA:
 #
-# Prerequisites:
-#   - .env with POLYGON_API_KEY and FRED_API_KEY
-#   - qlib_run conda environment
-#   - price_data/ caches populated (auto-downloaded on first run)
-#   - eps_history.json populated (run eps-full first if missing)
+#   Phase 1  Light smoke   — every pipeline entrypoint (status / dry-run V1+V2 /
+#                            validate V1+V2 / backtest / batch / walk-forward /
+#                            weekly / update_data / pytest)
+#   Phase 2  Matrix        — 33 param sets × {V1,V2}: backtest + validate
+#                            (tests/aiss_matrix.py)
+#   Phase 3  Heavy suite   — daily_backtest.sh (V1+V2 batch IS + WF IS-OOS +
+#                            PDF + select + validate; regenerates all Excel/PDF)
+#   Phase 4  Deep verify   — EVERY sheet of EVERY Excel + computation
+#                            cross-checks (tests/aiss_verify_excel.py):
+#                              · Sharpe(qlib-ci)/CAGR/MaxDD recompute vs summary
+#                              · drawdown == equity/cummax-1 (2 sheets)
+#                              · cum_pnl == cumsum(daily_pnl)
+#                              · sector_pnl_acc == cumsum(sector_pnl_daily)
+#                              · daily_pnl total == Σ(sector_pnl_daily)
+#                              · stock_decomp reconciles to parent subsector
+#                              · asset==equity, liability==0, interest==0
+#                              · weights row-sum==1, regime labels valid
+#                              · no empty/missing sheets, equity>0, cadence
+#   Phase 5  PDF           — tearsheet PDFs valid + multi-page
+#   Phase 6  Logs          — scan for real tracebacks/errors (benign qlib
+#                            native-loop fallback warning is expected, ignored)
 #
-# Exit codes:
-#   0 = all tests passed
-#   1 = one or more tests failed
+# Usage (from repo root):
+#   bash qlib-main/semiconductor_strategy/tests/test_pipeline_integration.sh [--quick]
+#     --quick : skip the heavy suite (Phase 3) + deep verify (Phase 4) + PDF;
+#               runs light smoke + matrix + pytest only (~5 min).  Default =
+#               FULL (everything; ~40 min; regenerates ~1.8 GB of Excel).
+#
+# Exit: 0 = all phases passed, 1 = one or more failed.
+# Env : qlib_run conda env + .env (POLYGON_API_KEY, FRED_API_KEY). AISS isolation.
 # =============================================================================
 
-set -a && source .env && set +a 2>/dev/null
+set -uo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REPO="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+QUICK=0
+for a in "$@"; do [ "$a" = "--quick" ] && QUICK=1; done
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"          # .../semiconductor_strategy/tests
+SD="$(cd "$SCRIPT_DIR/.." && pwd)"                    # .../semiconductor_strategy
+REPO="$(cd "$SD/../.." && pwd)"                       # someopark-test/
 cd "$REPO" || exit 1
 
-PIPELINE="bash qlib-main/sector_rotation/sector_rotation_pipeline.sh"
-PASS=0
-FAIL=0
-SKIP=0
-TOTAL=0
-FAILURES=""
+PIPE="bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh"
+PY="conda run -n qlib_run --no-capture-output python"
+PKG="semiconductor_strategy"
+TODAY="$(date +%Y%m%d)"
+QA_LOG_DIR="$SD/logs/qa"; mkdir -p "$QA_LOG_DIR"
 
-# ── Colors ────────────────────────────────────────────────────────────────
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m'
+# load only the keys we need (AISS convention: grep, don't `source .env`)
+if [ -f "$REPO/.env" ]; then
+    export POLYGON_API_KEY="$(grep -E '^POLYGON_API_KEY=' "$REPO/.env" | cut -d= -f2- | tr -d '"')"
+    export FRED_API_KEY="$(grep -E '^FRED_API_KEY=' "$REPO/.env" | cut -d= -f2- | tr -d '"')"
+fi
+# qlib-main on the path so `python -m semiconductor_strategy.*` resolves from REPO root
+# (the pipeline.sh cd's into qlib-main itself; our direct $PY -m calls need this).
+export PYTHONPATH="$REPO/qlib-main${PYTHONPATH:+:$PYTHONPATH}"
 
-# ── Test runner ───────────────────────────────────────────────────────────
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[0;33m'; NC='\033[0m'
+PASS=0; FAIL=0; TOTAL=0; FAILURES=""
+
 run_test() {
-    local id="$1"
-    local desc="$2"
-    shift 2
+    local desc="$1"; shift
     TOTAL=$((TOTAL + 1))
-
-    printf "  [%2d] %-55s " "$id" "$desc"
-
-    # Run with timeout (5 min per test, tearsheet gets 10 min)
-    local timeout_sec=300
-    if [[ "$desc" == *"tearsheet"* ]] || [[ "$desc" == *"walk-forward"* ]] || [[ "$desc" == *"select"* ]]; then
-        timeout_sec=600
-    fi
-
-    local output
-    output=$(timeout "$timeout_sec" "$@" 2>&1)
-    local rc=$?
-
-    if [[ $rc -eq 0 ]]; then
-        printf "${GREEN}PASS${NC}\n"
-        PASS=$((PASS + 1))
-    elif [[ $rc -eq 124 ]]; then
-        printf "${YELLOW}TIMEOUT${NC} (>${timeout_sec}s)\n"
-        FAIL=$((FAIL + 1))
-        FAILURES="$FAILURES\n  [$id] $desc — TIMEOUT"
+    printf "  [%2d] %-52s " "$TOTAL" "$desc"
+    local log="$QA_LOG_DIR/qa_$(echo "$desc" | tr -c 'A-Za-z0-9' '_' | cut -c1-40).log"
+    if "$@" > "$log" 2>&1; then
+        printf "${GREEN}PASS${NC}\n"; PASS=$((PASS + 1))
     else
-        printf "${RED}FAIL${NC} (exit=$rc)\n"
-        FAIL=$((FAIL + 1))
-        FAILURES="$FAILURES\n  [$id] $desc — exit=$rc"
-        # Show last 3 lines of output for debugging
-        echo "$output" | tail -3 | sed 's/^/       /'
+        local rc=$?
+        printf "${RED}FAIL${NC} (exit=$rc)\n"; FAIL=$((FAIL + 1))
+        FAILURES="$FAILURES\n  [$TOTAL] $desc — exit=$rc (log: $log)"
+        tail -4 "$log" | sed 's/^/       /'
     fi
 }
 
-# ── Verify prerequisites ─────────────────────────────────────────────────
 echo ""
 echo "════════════════════════════════════════════════════════════════"
-echo "  SECTOR ROTATION — Pipeline Integration Tests"
-echo "  $(date '+%Y-%m-%d %H:%M:%S')"
+echo "  AISS COMPREHENSIVE QA   ($([ "$QUICK" -eq 1 ] && echo 'QUICK' || echo 'FULL'))   $(date '+%Y-%m-%d %H:%M:%S')"
 echo "════════════════════════════════════════════════════════════════"
-echo ""
-
-if [[ ! -f ".env" ]]; then
-    echo "ERROR: .env not found. Run from repo root." >&2
-    exit 1
-fi
 
 if ! conda run -n qlib_run python -c "import qlib" 2>/dev/null; then
-    echo "ERROR: qlib_run conda env not available." >&2
-    exit 1
+    echo "ERROR: qlib_run conda env not available." >&2; exit 1
 fi
 
-echo "  Prerequisites OK. Starting tests..."
-echo ""
+# ── Phase 1: Light smoke — every entrypoint ────────────────────────────────
+echo ""; echo "── Phase 1: Light smoke (every entrypoint) ──────────────────────"
+# NOTE: `validate` exits 1 when the win-criterion is NOT met (e.g. V2 vs SOXX/SMH
+# — an expected, correct verdict, not a crash).  The smoke therefore checks that
+# validate RAN TO COMPLETION (printed "WIN CRITERION" with no traceback), not the
+# verdict itself.  The win-criterion PASS tally lives in Phase 2 (matrix).
+ran_ok() {  # $1 = description, rest = command; pass iff "WIN CRITERION" printed & no traceback
+    local desc="$1"; shift
+    TOTAL=$((TOTAL + 1)); printf "  [%2d] %-52s " "$TOTAL" "$desc"
+    local log="$QA_LOG_DIR/qa_$(echo "$desc" | tr -c 'A-Za-z0-9' '_' | cut -c1-40).log"
+    "$@" > "$log" 2>&1 || true
+    if grep -q "WIN CRITERION" "$log" && ! grep -qE "Traceback \(most recent|Error:" "$log"; then
+        local verdict; verdict=$(grep -oE "PASS|FAIL" "$log" | tail -1)
+        printf "${GREEN}PASS${NC} (ran; verdict=%s)\n" "$verdict"; PASS=$((PASS + 1))
+    else
+        printf "${RED}FAIL${NC} (did not complete)\n"; FAIL=$((FAIL + 1))
+        FAILURES="$FAILURES\n  [$TOTAL] $desc — did not complete (log: $log)"; tail -4 "$log" | sed 's/^/       /'
+    fi
+}
 
-# ═══════════════════════════════════════════════════════════════════════════
-#  Group A: Backtest modes
-# ═══════════════════════════════════════════════════════════════════════════
-echo "── Group A: Backtest ──────────────────────────────────────────"
+run_test "status"                       $PIPE status
+run_test "dry-run (V1, stock layer)"    $PIPE dry-run
+run_test "dry-run --signal-version v2"  $PIPE dry-run --signal-version v2
+ran_ok   "validate V1 (completes)"      $PIPE validate
+ran_ok   "validate V2 (completes)"      $PIPE validate --signal-version v2
+run_test "backtest (active param set)"  $PIPE backtest
+run_test "batch (33 param sets)"        $PIPE batch
+run_test "walk-forward (IS/OOS)"        $PIPE walk-forward
+run_test "weekly (PIT health + review)" $PIPE weekly
+run_test "update_data (incremental)"    $PIPE update_data
+run_test "test (pytest, 107 synthetic)" $PIPE test
 
-run_test 1 "backtest (selected param set)" \
-    $PIPELINE backtest
+# ── Phase 2: 33×V1/V2 matrix ───────────────────────────────────────────────
+echo ""; echo "── Phase 2: 33×V1/V2 matrix (backtest + validate) ───────────────"
+run_test "matrix 33×V1/V2 (66 bt + 66 validate)"  $PY -m $PKG.tests.aiss_matrix
 
-run_test 2 "backtest --param-set default" \
-    $PIPELINE backtest --param-set default
+if [ "$QUICK" -eq 1 ]; then
+    echo ""; echo "  [--quick] skipping Phase 3 (heavy) + Phase 4 (deep verify) + Phase 5 (PDF)."
+else
+    # ── Phase 3: Heavy suite (regenerates all Excel/PDF) ───────────────────
+    echo ""; echo "── Phase 3: Heavy suite (daily_backtest V1+V2, all 33) ──────────"
+    run_test "daily_backtest.sh (V1+V2 full suite)"  bash "$SD/daily_backtest.sh" --skip-holiday
 
-run_test 3 "backtest --param-set value_tilt" \
-    $PIPELINE backtest --param-set value_tilt
+    # ── Phase 4: Deep per-sheet verification ───────────────────────────────
+    echo ""; echo "── Phase 4: Deep per-sheet verification (every sheet) ───────────"
+    run_test "deep verify Excel (all 33×V1/V2 IS + IS-OOS)"  $PY -m $PKG.tests.aiss_verify_excel "$TODAY"
 
-run_test 4 "backtest --param-set erm_partial_filter (new signal)" \
-    $PIPELINE backtest --param-set erm_partial_filter
+    # ── Phase 5: PDF validity ──────────────────────────────────────────────
+    echo ""; echo "── Phase 5: PDF tearsheet validity ──────────────────────────────"
+    run_test "PDF tearsheets valid + multi-page"  bash -c '
+        SD="'"$SD"'"; bad=0; n=0
+        for f in "$SD"/report/output/*.pdf; do
+            [ -f "$f" ] || continue; n=$((n+1))
+            hdr=$(head -c4 "$f"); pages=$(grep -ac "/Type[[:space:]]*/Page" "$f")
+            [ "$hdr" = "%PDF" ] || { echo "INVALID header: $f"; bad=1; }
+            [ "$pages" -ge 1 ] || { echo "0 pages: $f"; bad=1; }
+        done
+        [ "$n" -ge 1 ] || { echo "no PDFs found"; bad=1; }
+        echo "checked $n PDF(s)"; exit $bad'
+fi
 
-run_test 5 "backtest --param-set none (config.yaml defaults)" \
-    $PIPELINE backtest --param-set none
+# ── Phase 6: Log error scan ────────────────────────────────────────────────
+echo ""; echo "── Phase 6: Log error scan (real tracebacks/errors) ─────────────"
+run_test "no tracebacks in logs (benign fallback OK)"  bash -c '
+    SD="'"$SD"'"
+    hits=$(grep -rlE "Traceback \(most recent|^[A-Za-z._]+Error:|FAILED:|Exception:" "$SD"/logs/ 2>/dev/null | grep -v "/qa/" || true)
+    if [ -n "$hits" ]; then echo "logs with real errors:"; echo "$hits"; exit 1; fi
+    echo "no real errors in logs"'
 
-run_test 6 "backtest --param-set list" \
-    $PIPELINE backtest --param-set list
-
-run_test 7 "backtest --walk-forward --wf-mode anchored" \
-    $PIPELINE backtest --walk-forward --wf-mode anchored
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  Group B: Batch / Select / WF modes
-# ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "── Group B: Batch / Select / WF ──────────────────────────────"
-
-run_test 8 "batch (full 64 param sets)" \
-    $PIPELINE batch
-
-run_test 9 "batch --oos-validate" \
-    $PIPELINE batch --oos-validate
-
-run_test 10 "select (batch + WF OOS filter + MCPS)" \
-    $PIPELINE select
-
-run_test 11 "wf (standalone walk-forward)" \
-    $PIPELINE wf
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  Group C: Signal / Analysis modes
-# ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "── Group C: Signal / Analysis ────────────────────────────────"
-
-run_test 12 "sensitivity" \
-    $PIPELINE sensitivity
-
-run_test 13 "regime" \
-    $PIPELINE regime
-
-run_test 14 "signal-raw" \
-    $PIPELINE signal-raw
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  Group D: Daily operations
-# ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "── Group D: Daily operations ─────────────────────────────────"
-
-run_test 15 "dry-run (read-only signal)" \
-    $PIPELINE dry-run
-
-run_test 16 "daily --skip-holiday" \
-    $PIPELINE daily --skip-holiday
-
-run_test 17 "status" \
-    $PIPELINE status
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  Group E: Reports
-# ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "── Group E: Reports ──────────────────────────────────────────"
-
-run_test 18 "tearsheet (13-page PDF + WF)" \
-    $PIPELINE tearsheet
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  Group F: Unit tests
-# ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "── Group F: Unit tests ───────────────────────────────────────"
-
-run_test 19 "pytest suite (synthetic data, no network)" \
-    $PIPELINE test
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  Group G: Cross-entry consistency (same params → same results)
-# ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "── Group G: Cross-entry consistency ──────────────────────────"
-
-run_test 20 "3-entry consistency (backtest=batch=tearsheet)" \
-    bash -c "
-set -a && source .env && set +a
-PYTHONPATH='qlib-main:.' conda run -n qlib_run --no-capture-output python -c \"
-import logging; logging.basicConfig(level=logging.WARNING)
-from sector_rotation.data.loader import load_all, load_config
-from sector_rotation.SectorRotationStrategyRuns import PARAM_SETS, apply_param_set
-from sector_rotation.backtest.engine import SectorRotationBacktest
-from sector_rotation.SectorRotationBatchRun import _run_one_with_equity
-
-base_cfg = load_config()
-prices, macro = load_all(config=base_cfg)
-
-# backtest entry
-cfg = apply_param_set(base_cfg, PARAM_SETS['default'])
-r1 = SectorRotationBacktest(cfg).run(prices=prices, macro=macro)
-sr1 = round(r1.metrics['sharpe'], 6)
-
-# batch entry
-row, _ = _run_one_with_equity('default', base_cfg, prices, macro)
-sr2 = round(row['sharpe'], 6)
-
-assert sr1 == sr2, f'MISMATCH: backtest={sr1} vs batch={sr2}'
-print(f'Sharpe={sr1} — identical across entries')
-\"
-"
-
-run_test 21 "MCPS single source (3 call sites identical)" \
-    bash -c "
-set -a && source .env && set +a
-PYTHONPATH='qlib-main:.' conda run -n qlib_run --no-capture-output python -c \"
-import logging; logging.basicConfig(level=logging.WARNING)
-from sector_rotation.data.loader import load_all, load_config
-from sector_rotation.SectorRotationStrategyRuns import PARAM_SETS, apply_param_set
-from sector_rotation.backtest.engine import SectorRotationBacktest
-from sector_rotation.SectorRotationBatchRun import _macro_cond_sharpe
-from sector_rotation.walk_forward import _macro_cond_sharpe_is
-from MCPS import macro_cond_sharpe
-from MacroStateStore import MacroStateStore, SIMILARITY_FEATURES
-import pandas as pd
-
-base_cfg = load_config()
-prices, macro = load_all(config=base_cfg)
-cfg = apply_param_set(base_cfg, PARAM_SETS['default'])
-eq = SectorRotationBacktest(cfg).run(prices=prices, macro=macro).equity_curve
-
-store = MacroStateStore()
-macro_df = store.load('2018-07-01')
-tv = {f: float(macro_df[f].iloc[-1]) for f in SIMILARITY_FEATURES
-      if f in macro_df.columns and not pd.isna(macro_df[f].iloc[-1])}
-
-s1 = macro_cond_sharpe(eq, macro_df, tv, SIMILARITY_FEATURES)
-s2 = _macro_cond_sharpe(eq, macro_df, tv, SIMILARITY_FEATURES)
-s3 = _macro_cond_sharpe_is(eq, macro_df, tv, SIMILARITY_FEATURES)
-
-assert abs(s1-s2) < 1e-10 and abs(s1-s3) < 1e-10, f'MISMATCH: {s1}/{s2}/{s3}'
-print(f'Score={s1:.6f} — identical across 3 call sites')
-\"
-"
-
-# ═══════════════════════════════════════════════════════════════════════════
-#  Summary
-# ═══════════════════════════════════════════════════════════════════════════
+# ── Summary ────────────────────────────────────────────────────────────────
 echo ""
 echo "════════════════════════════════════════════════════════════════"
-echo "  RESULTS:  ${GREEN}${PASS} PASS${NC}  ${RED}${FAIL} FAIL${NC}  ${YELLOW}${SKIP} SKIP${NC}  / ${TOTAL} total"
+echo -e "  RESULTS:  ${GREEN}${PASS} PASS${NC}  ${RED}${FAIL} FAIL${NC}  / ${TOTAL} total"
 echo "════════════════════════════════════════════════════════════════"
-
-if [[ $FAIL -gt 0 ]]; then
+if [ "$FAIL" -gt 0 ]; then
     echo -e "  FAILURES:${FAILURES}"
     echo "════════════════════════════════════════════════════════════════"
     exit 1
-else
-    echo "  All tests passed."
-    echo "════════════════════════════════════════════════════════════════"
-    exit 0
 fi
+echo "  All phases passed."
+echo "════════════════════════════════════════════════════════════════"
+exit 0
