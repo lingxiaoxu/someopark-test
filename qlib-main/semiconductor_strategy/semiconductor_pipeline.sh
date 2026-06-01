@@ -62,19 +62,28 @@ if [ -f "$REPO_ROOT/.env" ]; then
     export FRED_API_KEY="$(grep -E '^FRED_API_KEY=' "$REPO_ROOT/.env" | cut -d= -f2- | tr -d '"' )"
 fi
 
-MODE="${1:-help}"; shift || true
+# ── Mode parsing (first positional arg, default: help) ───────────────────────
+MODE="${1:-help}"
+[[ $# -gt 0 ]] && shift
 
-# Extract --skip-holiday (bypass NYSE check; for backfill/manual runs) so it is
-# NOT forwarded to the python entrypoints, which don't accept it.
+# ── Option defaults ───────────────────────────────────────────────────────────
 SKIP_HOLIDAY=0
-_NEWARGS=()
-for _a in "$@"; do
-    case "$_a" in
-        --skip-holiday) SKIP_HOLIDAY=1 ;;
-        *) _NEWARGS+=("$_a") ;;
+PASS_ARGS=()           # everything except --skip-holiday is forwarded to python
+
+# ── Option parsing (mirrors SSRS while/case style) ────────────────────────────
+# AISS handles --skip-holiday in the shell (the NYSE check is a shell concern)
+# and forwards every other flag verbatim to the python entrypoints, which self-
+# parse their own flags (--signal-version / --param-set / --date /
+# --force-rebalance / --dry-run / etc.).  Hence the catch-all collects rather
+# than errors on `-*`, the one deliberate deviation from SSRS's parser.
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-holiday)   SKIP_HOLIDAY=1;       shift ;;
+        help|--help|-h)   MODE="help";          shift ;;
+        *)                PASS_ARGS+=("$1");     shift ;;
     esac
 done
-set -- ${_NEWARGS[@]+"${_NEWARGS[@]}"}
+set -- ${PASS_ARGS[@]+"${PASS_ARGS[@]}"}
 
 cd "$QLIB_DIR"   # so `python -m semiconductor_strategy.*` resolves
 

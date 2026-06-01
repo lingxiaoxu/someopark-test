@@ -37,7 +37,14 @@ getp() { PY -c "import json;print(json.load(open('$SEL')).get('param_set','?'),j
 
 # NYSE holiday check (mirrors SSRS): skip + exit 0 on weekends/holidays.
 # Pass --skip-holiday to bypass (backfill / manual runs).
-SKIP_HOLIDAY=0; for _a in "$@"; do [ "$_a" = "--skip-holiday" ] && SKIP_HOLIDAY=1; done
+# ── Option parsing (mirrors SSRS while/case style) ────────────────────────────
+SKIP_HOLIDAY=0
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --skip-holiday)   SKIP_HOLIDAY=1;   shift ;;
+        *)                shift ;;
+    esac
+done
 if [ "$SKIP_HOLIDAY" -eq 0 ]; then
     NYSE_STATUS=$(PY -c "
 import sys
