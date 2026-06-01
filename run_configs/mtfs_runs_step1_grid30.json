@@ -8,28 +8,20 @@
       "param_set": "default",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -37,35 +29,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -74,28 +74,20 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -103,35 +95,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -140,28 +140,20 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -169,35 +161,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -206,28 +206,20 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -235,35 +227,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -272,28 +272,20 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -301,35 +293,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -338,28 +338,20 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -367,35 +359,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -404,28 +404,20 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -433,35 +425,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -470,28 +470,20 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -499,35 +491,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -536,28 +536,20 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -565,35 +557,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -602,28 +602,20 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -631,35 +623,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -668,28 +668,20 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -697,35 +689,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -734,28 +734,20 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -763,35 +755,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -800,28 +800,20 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -829,35 +821,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -866,28 +866,20 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -895,35 +887,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -932,28 +932,20 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -961,35 +953,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -998,28 +998,20 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1027,35 +1019,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1064,28 +1064,20 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1093,35 +1085,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1130,28 +1130,20 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1159,35 +1151,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1196,28 +1196,20 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1225,35 +1217,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1262,28 +1262,20 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1291,35 +1283,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1328,28 +1328,20 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1357,35 +1349,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1394,28 +1394,20 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1423,35 +1415,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1460,28 +1460,20 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1489,35 +1481,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1526,28 +1526,20 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1555,35 +1547,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1592,28 +1592,20 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1621,35 +1613,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1658,28 +1658,20 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1687,35 +1679,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1724,28 +1724,20 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1753,35 +1745,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1790,28 +1790,20 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1819,35 +1811,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1856,28 +1856,20 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1885,35 +1877,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1922,28 +1922,20 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -1951,35 +1943,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     },
@@ -1988,28 +1988,20 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "ON",
+          "LRCX",
           "BSX"
         ],
         [
-          "ON",
-          "TRMB"
+          "LRCX",
+          "RMD"
         ],
         [
-          "LRCX",
-          "HCA"
-        ],
-        [
-          "LRCX",
+          "CSCO",
           "REGN"
         ],
         [
           "CSCO",
-          "JKHY"
-        ],
-        [
-          "CSCO",
-          "ISRG"
+          "CAG"
         ],
         [
           "NUE",
@@ -2017,35 +2009,43 @@
         ],
         [
           "NUE",
-          "TYL"
-        ],
-        [
-          "STLD",
           "MKTX"
         ],
         [
           "STLD",
-          "ROP"
+          "ISRG"
+        ],
+        [
+          "STLD",
+          "HII"
+        ],
+        [
+          "ORCL",
+          "LOW"
+        ],
+        [
+          "ORCL",
+          "TAP"
         ],
         [
           "BWA",
-          "PYPL"
+          "CME"
         ],
         [
           "BWA",
-          "EQT"
-        ],
-        [
-          "FFIV",
           "VLTO"
         ],
         [
-          "FFIV",
-          "UBER"
+          "KLAC",
+          "AWK"
         ],
         [
           "KLAC",
-          "LOW"
+          "ICE"
+        ],
+        [
+          "FSLR",
+          "KR"
         ]
       ]
     }

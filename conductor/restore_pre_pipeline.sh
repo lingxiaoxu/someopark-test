@@ -1,7 +1,7 @@
 #!/bin/bash
 # restore_pre_pipeline.sh
 # Restores yesterday's final pair universe files from history back to the main directory,
-# so that pre_pipeline.sh (Step 1+2) can be re-run cleanly.
+# so that conductor/pre_pipeline.sh (Step 1+2) can be re-run cleanly.
 #
 # Logic:
 #   - In pair_universe_history/, find the files with TODAY's date prefix
@@ -9,7 +9,8 @@
 #   - Copy them back to the main directory as pair_universe_mrpt.json / pair_universe_mtfs.json
 #   - Delete the current pair_universe_mrpt.json / pair_universe_mtfs.json in main dir first
 
-REPO=/Users/xuling/code/someopark-test
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 HISTORY=$REPO/pair_universe_history
 TODAY=$(date '+%Y%m%d')
 
@@ -44,4 +45,4 @@ echo "[$(date '+%H:%M:%S')] Done. Restored:"
 echo "  $REPO/pair_universe_mrpt.json (from $(basename $MRPT_FILE))"
 echo "  $REPO/pair_universe_mtfs.json (from $(basename $MTFS_FILE))"
 echo ""
-echo "[$(date '+%H:%M:%S')] You can now run: bash pre_pipeline.sh"
+echo "[$(date '+%H:%M:%S')] You can now run: bash conductor/pre_pipeline.sh"

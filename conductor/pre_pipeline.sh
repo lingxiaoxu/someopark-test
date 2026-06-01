@@ -2,9 +2,10 @@
 # pre_pipeline.sh
 # Runs Step 1 (SelectPairs.py) and Step 2 (UpdateStep1Configs.py)
 # This is the standard first stage of the daily pipeline.
-# After this completes, run pipeline_runner.sh for Steps 3-9.
+# After this completes, run conductor/pipeline_runner.sh for Steps 3-9.
 
-REPO=/Users/xuling/code/someopark-test
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 PIPEDIR=$REPO/pipeline_state
 LOGFILE=$PIPEDIR/logs/pre_pipeline_current.log
 
@@ -19,7 +20,7 @@ set -a && source "$REPO/.env" && set +a
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOGFILE"; }
 
 # === NYSE Holiday Check (BEFORE writing any status files) ===
-# Get NYSE date in New York time (cron runs at UTC 21:45 = NY 17:45 = same NYSE trading day)
+# Get NYSE date in New York time (cron runs at 19:15 America/New_York on weekdays)
 NYSE_STATUS=$(conda run -n someopark_run --no-capture-output python3 -c "
 import pandas_market_calendars as mcal
 from datetime import datetime
@@ -59,5 +60,5 @@ run_step 1 "SelectPairs.py --save" "SelectPairs"
 run_step 2 "UpdateStep1Configs.py" "UpdateStep1Configs"
 run_step 3 "MacroStateStore.py --update" "MacroStateStore_update"
 
-log "=== PRE-PIPELINE COMPLETE — ready to run pipeline_runner.sh ==="
+log "=== PRE-PIPELINE COMPLETE — ready to run conductor/pipeline_runner.sh ==="
 echo "ALL_DONE" >> "$PIPEDIR/pre_status"

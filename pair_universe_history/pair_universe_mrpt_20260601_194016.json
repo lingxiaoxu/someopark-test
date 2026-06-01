@@ -1,11 +1,5 @@
 [
   {
-    "s1": "HAS",
-    "s2": "YUM",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "TXT",
     "s2": "YUM",
     "sector": "industrial",
@@ -18,10 +12,10 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "CSCO",
-    "s2": "PAYC",
-    "sector": "tech",
-    "z_col": "Z_tech"
+    "s1": "DLR",
+    "s2": "PRU",
+    "sector": "realestate",
+    "z_col": "Z_realestate"
   },
   {
     "s1": "HRL",
@@ -34,6 +28,12 @@
     "s2": "WMT",
     "sector": "industrial",
     "z_col": "Z_industrial"
+  },
+  {
+    "s1": "CSCO",
+    "s2": "PAYC",
+    "sector": "tech",
+    "z_col": "Z_tech"
   },
   {
     "s1": "CINF",
@@ -84,9 +84,9 @@
     "z_col": "Z_finance"
   },
   {
-    "s1": "AKAM",
-    "s2": "KEYS",
-    "sector": "tech",
-    "z_col": "Z_tech"
+    "s1": "AON",
+    "s2": "MCK",
+    "sector": "finance",
+    "z_col": "Z_finance"
   }
 ]

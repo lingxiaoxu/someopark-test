@@ -1,6 +1,7 @@
 #!/bin/bash
-REPO=/Users/xuling/code/someopark-test
-PIPEDIR=/Users/xuling/code/someopark-test/pipeline_state
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
+PIPEDIR=$REPO/pipeline_state
 LOGFILE=$PIPEDIR/logs/pipeline_current.log
 
 mkdir -p "$PIPEDIR/logs"
