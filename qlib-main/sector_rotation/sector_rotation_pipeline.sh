@@ -853,7 +853,7 @@ if macro_p.exists():
         print(f"\n  Macro data    : last updated {int(age.total_seconds()/3600)}h ago "
               f"({newest.parent.name}/{newest.name})")
         if age.total_seconds() > 86400 * 2:
-            print("                  Stale >2 days — someopark pre_pipeline.sh should update MacroStateStore")
+            print("                  Stale >2 days — someopark conductor/pre_pipeline.sh should update MacroStateStore")
     else:
         print("\n  Macro data    : parquets not found in price_data/macro/")
 else:

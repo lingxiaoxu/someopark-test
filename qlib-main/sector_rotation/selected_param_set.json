@@ -2,88 +2,88 @@
   "param_set": "sensitive_dd",
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "selected_at": "2026-05-29",
-  "last_updated": "2026-05-29",
-  "mcps_oos_filtered": 1.4635,
-  "recent_sharpe_12m": 1.5305,
-  "full_period_sharpe": 1.1632,
-  "full_period_calmar": 0.8312,
+  "selected_at": "2026-06-01",
+  "last_updated": "2026-06-01",
+  "mcps_oos_filtered": 1.4654,
+  "recent_sharpe_12m": 1.3791,
+  "full_period_sharpe": 1.1481,
+  "full_period_calmar": 0.8077,
   "top_candidates": [
-    {
-      "name": "dovish_macro",
-      "version": "v1",
-      "composite": 1.0845,
-      "mcps_score": 0.9808
-    },
     {
       "name": "equal_weight_optimizer",
       "version": "v1",
-      "composite": 1.0197,
-      "mcps_score": 1.007
-    },
-    {
-      "name": "rate_hike_cycle",
-      "version": "v1",
-      "composite": 0.2384,
-      "mcps_score": 0.9687
-    },
-    {
-      "name": "stagflation",
-      "version": "v1",
-      "composite": 0.0314,
-      "mcps_score": 0.9293
-    },
-    {
-      "name": "responsive",
-      "version": "v1",
-      "composite": -0.1077,
-      "mcps_score": 0.9121
+      "composite": 0.9512,
+      "mcps_score": 1.1251
     },
     {
       "name": "score_gated_dynamic",
       "version": "v1",
-      "composite": -0.1696,
-      "mcps_score": 0.9349
+      "composite": 0.9072,
+      "mcps_score": 1.0835
     },
     {
-      "name": "diversified_5_rp",
+      "name": "dovish_macro",
       "version": "v1",
-      "composite": -0.1761,
-      "mcps_score": 0.9562
+      "composite": 0.7531,
+      "mcps_score": 1.0262
+    },
+    {
+      "name": "low_turnover",
+      "version": "v1",
+      "composite": 0.2461,
+      "mcps_score": 1.0206
+    },
+    {
+      "name": "stagflation",
+      "version": "v1",
+      "composite": 0.0202,
+      "mcps_score": 0.997
     },
     {
       "name": "risk_parity_lw",
       "version": "v1",
-      "composite": -0.2708,
-      "mcps_score": 0.9527
+      "composite": -0.0154,
+      "mcps_score": 1.0293
     },
     {
-      "name": "early_recovery",
+      "name": "diversified_5_rp",
       "version": "v1",
-      "composite": -0.3161,
-      "mcps_score": 0.9507
+      "composite": -0.0312,
+      "mcps_score": 1.0305
     },
     {
       "name": "momentum_heavy",
       "version": "v1",
-      "composite": -1.3336,
-      "mcps_score": 0.8978
+      "composite": -0.5818,
+      "mcps_score": 0.9842
+    },
+    {
+      "name": "early_recovery",
+      "version": "v1",
+      "composite": -0.8521,
+      "mcps_score": 0.9425
+    },
+    {
+      "name": "broad_6_softmax",
+      "version": "v1",
+      "composite": -1.3974,
+      "mcps_score": 0.9291
     }
   ],
-  "n_candidates": 51,
-  "n_oos_survivors": 51,
+  "n_candidates": 56,
+  "n_oos_survivors": 56,
   "oos_filter_applied": true,
-  "oos_mean_sharpe": 1.4078,
-  "oos_n_selected": 27,
-  "wf_mean_wfe": 0.9485,
-  "macro_data_days": 1985,
+  "oos_mean_sharpe": 0.5466,
+  "oos_n_selected": 1,
+  "wf_mean_wfe": 0.8833,
+  "macro_data_days": 1986,
   "switch_history": [],
   "health": {
     "days_since_switch": 1,
     "current_rank": 0,
     "anomaly_detected": false,
     "_consecutive_best_days": 1,
-    "_prev_best_param": "dovish_macro"
+    "_prev_best_param": "equal_weight_optimizer"
   },
   "mcps_score": null,
   "composite_score": null,

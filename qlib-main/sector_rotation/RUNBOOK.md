@@ -19,7 +19,7 @@ set -a && source .env && set +a && conda run -n qlib_run --no-capture-output pyt
 > | | someopark 主 pipeline | sector_rotation |
 > |---|---|---|
 > | Conda 环境 | `someopark_run` | `qlib_run` |
-> | Pipeline 脚本 | `pre_pipeline.sh` | `sector_rotation_pipeline.sh` |
+> | Pipeline 脚本 | `conductor/pre_pipeline.sh` | `sector_rotation_pipeline.sh` |
 > | 状态文件 | `pipeline_state/` (root) | `sector_rotation/pipeline_state/` |
 > | Inventory | `inventory_mrpt.json` etc. | `inventory_sector_rotation.json` |
 > | 信号输出 | `trading_signals/` (root) | `sector_rotation/trading_signals/` |
@@ -1236,7 +1236,7 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh daily --value-source 
 
 **Q: regime 始终是 RISK_ON / MacroStateStore 数据陈旧**
 
-`price_data/macro/` parquets 由 someopark 主 pipeline（`pre_pipeline.sh` step 3）负责更新。
+`price_data/macro/` parquets 由 someopark 主 pipeline（`conductor/pre_pipeline.sh` step 3）负责更新。
 SSRS 只读取这些文件，**不更新它们**。
 
 若主 pipeline 今天没有运行，检查宏观数据时间戳：
@@ -1339,17 +1339,17 @@ set -a && source .env && set +a
 | 方向 | 市场中性 | 纯多头 |
 | Signal 文件 | `trading_signals/` (root) | `sector_rotation/trading_signals/` |
 | Inventory | `inventory_mrpt.json` etc. | `inventory_sector_rotation.json` |
-| Pipeline 脚本 | `pre_pipeline.sh` / `pipeline_runner.sh` | `sector_rotation_pipeline.sh` |
+| Pipeline 脚本 | `conductor/pre_pipeline.sh` / `conductor/pipeline_runner.sh` | `sector_rotation_pipeline.sh` |
 
 **`price_data/macro/` — 只读共享（SSRS 不写）：**
-- 由 `someopark_run` 的 `MacroStateStore.py --update` 维护（在 `pre_pipeline.sh` 中）
+- 由 `someopark_run` 的 `MacroStateStore.py --update` 维护（在 `conductor/pre_pipeline.sh` 中）
 - `sector_rotation_pipeline.sh` 和 `SectorRotationDailySignal.py` **只读取** 这些 parquets
 - 两者不存在写冲突，SSRS 永远不会修改这些文件
 - 若 macro parquets 陈旧 > 2 天，`status` 模式会显示警告，但不会阻止运行
 
 **调用顺序建议（两个 pipeline 都需要当天运行时）：**
 ```
-pre_pipeline.sh (someopark_run) → DailySignal.py (someopark_run)  ← 独立
+conductor/pre_pipeline.sh (someopark_run) → DailySignal.py (someopark_run)  ← 独立
 sector_rotation_pipeline.sh daily (qlib_run)                       ← 独立，读 macro parquets
 ```
 顺序无依赖，可任意顺序或并行，不会相互干扰。
