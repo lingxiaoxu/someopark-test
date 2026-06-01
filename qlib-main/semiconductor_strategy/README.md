@@ -40,6 +40,8 @@
 
 跨 8 个半导体**子板块**进行多因子轮动。每个子板块是一个固定 **80 / 15 / 5** 的三只股票合成篮子（总收益篮子），可交易资产是子板块本身——引擎按月在子板块**之间**轮动，篮子**内部**保持固定比例。共 23 只独立股票 + SOXX / SMH / SPY 基准。
 
+> **比 SSRS 多一层（个股执行层）**：SSRS 直接交易 11 个 ETF，日度信号停在 ETF 层即可。AISS 的"ETF 层"是 subsector（合成篮子，不可直接下单），所以日度信号**多一步**——把 subsector 目标权重按 80/15/5（PIT 正确，晚期 IPO 自动剔除并重归一）分解到**真实个股持仓/订单**,并**按 ticker 跨子板块聚合**(如 ARM 同属 ai_gpu 与 logic_cpu → 合并成一个订单)。回测端对应 Excel 的 7 个 `*_stock_decomp` sheet,实盘端对应日报的股票层 + inventory 的 `stock_holdings`(见"输出"与 `stock_decompose.py`)。
+
 | 维度 | 设计 |
 |---|---|
 | 标的池 | 8 子板块：ai_gpu · custom_asic · equipment · memory_hbm · foundry · analog_defense · logic_cpu · rf_edge |
@@ -141,7 +143,7 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh [MODE] [OPTIONS]
 | MODE | 说明 | 典型耗时 |
 |---|---|---|
 | `update_data` | 增量刷新全部数据源（prices + capex + mu-dio + tsmc/asml + dram + PIT） | 1–3 min |
-| `daily` | 生成当日信号 + 更新 `inventory_aiss.json`（**NYSE 节假日感知**） | 1–2 min |
+| `daily` | 生成当日信号（subsector + **个股订单**）+ 更新 `inventory_aiss.json`（**NYSE 节假日感知**） | 1–2 min |
 | `weekly` | 数据/PIT 健康检查 + **Weekly Review** + dry-run | 5–15 min |
 | `monthly` | `daily_backtest`（V1+V2 选参刷新 P0，恢复 V1）+ force-rebalance（**节假日感知**） | 20–40 min |
 | `dry-run` | 只读每日信号，不写 inventory，随时可运行 | 1–2 min |
@@ -272,7 +274,8 @@ qlib-main/semiconductor_strategy/
 ├── semiconductor_pipeline.sh       主 Pipeline 控制器（15 个模式）
 ├── daily_backtest.sh               V1+V2 全套回测/选参（被 daily_backtest/monthly 调用）
 ├── validate.py                     胜负门槛裁决（vs SOXX/SMH）
-├── AISSdailySignal.py              每日信号生成 + inventory（含 smart_select 集成）
+├── AISSdailySignal.py              每日信号生成 + inventory（含 smart_select + 个股分解）
+├── stock_decompose.py              subsector 权重 → 个股持仓/订单（PIT，按 ticker 聚合）
 ├── AISSStrategyRuns.py             33 个命名参数集（组 A–H, M）
 ├── AISSBatchRun.py                 批量参数扫描 + P0 持久化 + --signal-version
 ├── smart_select.py                 每日宏观条件选参引擎（MCPS + version_selector）
@@ -341,9 +344,9 @@ someopark-test/                                            项目根目录
 │
 └── qlib-main/semiconductor_strategy/
     ├── selected_param_set.json                            生产参数（含 signal_version）
-    ├── inventory_aiss.json                                当前持仓（含 param_set/signal_version）
+    ├── inventory_aiss.json                                当前持仓（subsector `holdings` + 个股 `stock_holdings` + param_set/signal_version）
     ├── inventory_history/inventory_aiss_{ts}.json         持仓变更快照（ENTER/CLOSE 各一次/日）
-    ├── trading_signals/aiss_daily_report_{date}_{ts}.{json,txt}   日报
+    ├── trading_signals/aiss_daily_report_{date}_{ts}.{json,txt}   日报（subsector 层 + 个股层 stock_holdings/stock_breakdown/stock_trades）
     ├── backtest_results/
     │   ├── aiss_batch_summary_{ts}.csv                    33 集 batch 汇总
     │   ├── param_oos_by_regime{,_v1,_v2}.json             P0: smart_select 缓存（含版本标记）
@@ -591,6 +594,18 @@ Tier 1（NVDA/AVGO/AMD/QCOM/TSM/MU/TXN/INTC）3 bps · Tier 2（KLAC/LRCX/AMAT/W
 
 - **IS-only**（默认 batch）：全周期既训练又评估，无"未见数据"验证，Sharpe 可能偏高（33 参数集多重测试偏差），用于快速筛选/建立基线。
 - **IS-OOS Walk-Forward**：每折在 IS 上选参 → embargo 隔离 → 在 OOS（未来数据）上验证；合成 OOS 净值 = 拼接各折 OOS 段（无重叠、无前视）。`daily_backtest` / `walk-forward` / `tearsheet` 产出。
+
+### 日度信号的两层输出（subsector → 个股）
+
+`daily` / `dry-run` 的信号输出有**两层**，由 `stock_decompose.py` 衔接：
+
+1. **subsector 层(决策层,= SSRS 的 ETF 层)**:8 个子板块的目标权重 / 信号分 / 动作 + subsector 级 inventory `holdings`。
+2. **个股层(执行层,AISS 独有的多出一层)**:把每个持有 subsector 的目标权重按 80/15/5 分解到底层个股 ——
+   - `decompose_to_stocks()` 用 `universe.effective_weights`(PIT)算篮子内权重,组合权重 = subsector_w × within_w,股数 = floor(组合权重 × 资金 / 个股价);
+   - **按 ticker 跨子板块聚合**(ARM 同属 ai_gpu+logic_cpu → 合并成一个订单);
+   - `build_stock_trades()` 对比上次 inventory 的 `stock_holdings` 产出逐股 BUY/SELL。
+
+输出落点:日报 TXT 的 `STOCK-LEVEL TARGET HOLDINGS` + `STOCK TRADES` 段、日报 JSON 的 `stock_holdings`/`stock_breakdown`/`stock_trades`、inventory 的 `stock_holdings`。这与回测端的 `*_stock_decomp` Excel sheet 是同一套逻辑的两端。
 
 ### smart_select + MCPS + version_selector
 

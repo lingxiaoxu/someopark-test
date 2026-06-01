@@ -90,11 +90,21 @@ contention:
 
 **Outputs (all inside the package):**
 ```
-trading_signals/aiss_daily_report_<date>_<ts>.{json,txt}
-inventory_aiss.json                 (+ inventory_history/ snapshots; records param_set/signal_version)
+trading_signals/aiss_daily_report_<date>_<ts>.{json,txt}   (subsector layer + stock layer)
+inventory_aiss.json                 (+ inventory_history/ snapshots; records param_set/signal_version + stock_holdings)
 selected_param_set.json             (updated by select / daily_backtest; restored to V1)
 logs/aiss_<mode>_<YYYYMMDD_HHMMSS>.log   (timestamped — find latest with ls -t)
 ```
+
+**Two-layer signal (one level deeper than SSRS):** SSRS trades 11 ETFs, so its
+signal stops at the ETF level. AISS's "ETF level" is the **subsector** (a
+synthetic 80/15/5 basket), so each `daily`/`dry-run` also emits the **individual-
+stock execution layer** (`stock_decompose.py`): the report TXT gains
+`STOCK-LEVEL TARGET HOLDINGS` + `STOCK TRADES` sections, the report JSON gains
+`stock_holdings`/`stock_breakdown`/`stock_trades`, and the inventory gains
+`stock_holdings`. PIT-correct (late-IPO tiers gated) and aggregated per ticker
+(ARM in two subsectors → one order). Same logic as the backtest `*_stock_decomp`
+Excel sheets.
 
 Dry-run any time (no inventory write):
 ```bash
@@ -201,5 +211,8 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh test
 
 AISS is a `qlib_run` twin of `sector_rotation` (SSRS): same engine architecture,
 different universe (semi subsectors vs GICS ETFs), different core signal
-(supply-chain propagation vs P/E value), and an explicit hurdle (beat SOXX & SMH).
+(supply-chain propagation vs P/E value), an explicit hurdle (beat SOXX & SMH),
+and **one extra layer**: because the subsector is a synthetic basket (not a
+directly-tradeable ETF), AISS adds an individual-stock execution layer
+(`stock_decompose.py`) to its daily signal + inventory + backtest Excel.
 SSRS-only files unused by AISS V1 were removed — see `DELETED_FILES.md`.

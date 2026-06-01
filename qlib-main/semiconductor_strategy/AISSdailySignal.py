@@ -52,8 +52,13 @@ sys.path.insert(0, str(_QLIB_DIR))      # semiconductor_strategy.* imports
 sys.path.insert(0, str(_PROJECT_DIR))   # MacroStateStore
 
 # ── Sector-rotation module imports ───────────────────────────────────────────
-from semiconductor_strategy.data.loader import load_config, load_prices
-from semiconductor_strategy.data.universe import get_tickers
+from semiconductor_strategy.data.loader import load_config, load_prices, load_stock_prices
+from semiconductor_strategy.data.universe import get_tickers, all_tickers
+from semiconductor_strategy.stock_decompose import (
+    decompose_to_stocks,
+    build_stock_trades,
+    stock_holdings_from_by_ticker,
+)
 from semiconductor_strategy.signals.composite import compute_composite_signals
 from semiconductor_strategy.portfolio.optimizer import optimize_weights
 from semiconductor_strategy.portfolio.risk import apply_risk_controls
@@ -565,6 +570,40 @@ def _write_report_txt(report: dict, signal_date: date) -> Path:
             lines.append(f"  Est. transaction cost: ${costs.get('total_cost_usd', 0):,.0f} "
                          f"({costs.get('total_cost_bps', 0):.1f} bps)")
 
+    # ── Stock-level execution layer (below subsectors) ───────────
+    breakdown = report.get("stock_breakdown", [])
+    if breakdown:
+        lines.append("")
+        lines.append("  STOCK-LEVEL TARGET HOLDINGS  (executable layer below subsectors)")
+        lines.append("  " + "-" * 72)
+        lines.append(f"  {'SUBSECTOR':<15} {'STOCK':<6} {'TIER':<8} {'WITHIN%':>8} {'PORT%':>7} {'SHARES':>7} {'PRICE':>9}")
+        # group rows by subsector, ordered by descending subsector port weight
+        from collections import OrderedDict as _OD
+        _by_sub = _OD()
+        for r in breakdown:
+            _by_sub.setdefault(r["subsector"], []).append(r)
+        _sub_order = sorted(_by_sub, key=lambda s: -sum(x["portfolio_weight"] for x in _by_sub[s]))
+        for sub in _sub_order:
+            for r in _by_sub[sub]:
+                lines.append(
+                    f"  {sub:<15} {r['ticker']:<6} {r.get('tier_role',''):<8} "
+                    f"{r['within_weight']*100:>7.1f}% {r['portfolio_weight']*100:>6.1f}% "
+                    f"{r['target_shares']:>7} ${r['price']:>8.2f}"
+                )
+
+    stock_trades = report.get("stock_trades", [])
+    if stock_trades:
+        capital = report.get("capital", 0)
+        lines.append("")
+        lines.append(f"  STOCK TRADES  (actual orders @ ${capital:,.0f})")
+        lines.append("  " + "-" * 60)
+        for tr in stock_trades:
+            lines.append(
+                f"  {tr['ticker']:<6} {tr['side']:<4} {tr['delta_shares']:>6} sh "
+                f"@ ${tr['price']:>8.2f}  = ${tr['est_value']:>11,.0f}  "
+                f"({tr['current_shares']}→{tr['target_shares']})"
+            )
+
     # ── Signal components ─────────────────────────────────────────
     lines.append("")
     lines.append(f"  {'SECTOR':<6} {'CS_MOM':>8} {'TS_MULT':>8} {'COMPOSITE':>10}")
@@ -741,6 +780,20 @@ def run_daily_signal(
 
     # Prices as of signal_date
     prices_today = prices_all.iloc[-1]  # last available row
+
+    # ── 2b. Individual-stock prices (for the stock-decomposition layer) ──
+    # AISS's tradeable "asset" is the subsector basket; the executable layer is
+    # one level below — the real single stocks.  Load their prices + first-trade
+    # dates so the daily signal can decompose subsector weights into stock orders.
+    try:
+        _stock_universe = all_tickers(include_benchmark=False)
+        stock_prices_all = load_stock_prices(_stock_universe, start=PRICE_START, end=end_date_str)
+        stock_prices_today = stock_prices_all.iloc[-1] if not stock_prices_all.empty else pd.Series(dtype=float)
+        stock_first_avail = {t: stock_prices_all[t].first_valid_index() for t in stock_prices_all.columns}
+    except Exception as _sp_e:
+        log.warning(f"Stock-price load failed ({_sp_e}); stock decomposition will be skipped.")
+        stock_prices_today = pd.Series(dtype=float)
+        stock_first_avail = {}
 
     # ── 3. Load macro ──────────────────────────────────────────────
     log.info("Loading macro data...")
@@ -951,6 +1004,9 @@ def run_daily_signal(
     current_shares: Dict[str, int] = {
         t: int(d.get("shares", 0)) for t, d in inv.get("holdings", {}).items()
     }
+    # Previous stock-level holdings (for stock-order deltas) — captured BEFORE
+    # the inventory is overwritten below.
+    prev_stock_holdings: Dict[str, dict] = dict(inv.get("stock_holdings", {}) or {})
 
     # If no rebalance today: keep current weights, only update prices
     if not will_rebalance:
@@ -1001,6 +1057,29 @@ def run_daily_signal(
         f"Transaction cost: ${cost_info['total_cost_usd']:,.0f} "
         f"({cost_info['total_cost_bps']:.1f} bps), "
         f"turnover={cost_info['turnover_pct']:.1f}%"
+    )
+
+    # ── 8b. Stock-decomposition layer (one level below subsectors) ──
+    # SSRS trades 11 ETFs directly; AISS's subsector is a synthetic basket, so the
+    # executable layer is the underlying single stocks.  Decompose the final
+    # subsector weights into PIT-correct per-stock holdings + orders.
+    _held_subsector_w = {
+        t: float(effective_weights.get(t, 0.0))
+        for t in effective_weights.index
+        if float(effective_weights.get(t, 0.0)) > 0
+    }
+    stock_decomp = decompose_to_stocks(
+        subsector_weights=_held_subsector_w,
+        capital=capital,
+        as_of_date=signal_date,
+        stock_prices_today=stock_prices_today,
+        first_available=stock_first_avail,
+        min_history_months=int(cfg.get("universe", {}).get("min_history_months", 24)),
+    )
+    stock_trades = build_stock_trades(stock_decomp["by_ticker"], prev_stock_holdings) if will_rebalance else []
+    log.info(
+        f"Stock layer: {len(stock_decomp['by_ticker'])} stocks across "
+        f"{len(_held_subsector_w)} subsectors; {len(stock_trades)} stock trades"
     )
 
     # ── 9. Assemble signal list ────────────────────────────────────
@@ -1066,6 +1145,18 @@ def run_daily_signal(
     )
     inv["signal_version"] = cfg.get("signals", {}).get("signal_version", "v1")
 
+    # Stock-level holdings (executable layer below subsectors). On rebalance,
+    # store the fresh decomposition; otherwise keep prior shares and refresh price.
+    if will_rebalance:
+        inv["stock_holdings"] = stock_holdings_from_by_ticker(stock_decomp["by_ticker"])
+    else:
+        _sh = dict(prev_stock_holdings)
+        for _tk, _h in _sh.items():
+            _p = float(stock_prices_today.get(_tk, _h.get("last_price", 0.0))) if not stock_prices_today.empty else _h.get("last_price", 0.0)
+            if _p and _p > 0:
+                _h["last_price"] = round(_p, 4)
+        inv["stock_holdings"] = _sh
+
     save_inventory(inv, dry_run=dry_run)
 
     # ── 11. Get macro snapshot for report ─────────────────────────
@@ -1096,6 +1187,9 @@ def run_daily_signal(
         "signals":             signal_list,
         "trades":              trades,
         "transaction_costs":   cost_info,
+        "stock_holdings":      stock_decomp["by_ticker"],   # executable per-stock layer
+        "stock_breakdown":     stock_decomp["breakdown"],   # per (subsector, stock)
+        "stock_trades":        stock_trades,                # per-stock orders (rebalance)
         "holdings_summary": {
             "n_positions": sum(1 for s in signal_list if s["target_weight"] > 0),
             "invested_pct": round(sum(s["target_weight"] for s in signal_list) * 100, 2),
