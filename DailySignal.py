@@ -902,8 +902,11 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
                 ticker_count[s1] += 1
                 ticker_count[s2] += 1
 
-        # Fix 1: Correlation gate — veto if pair correlation too low
-        if sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT') and pair_correlations:
+        # Fix 1: Correlation gate — veto if pair correlation too low (MRPT only)
+        # MTFS v2 pairs are cross-sector momentum divergence by design — low/negative
+        # corr is expected. MTFS low-corr losses are covered by Fix 3 (Earnings Blackout)
+        # and Fix 6A (Min Signal Guard) instead.
+        if strategy == 'mrpt' and sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT') and pair_correlations:
             corr = pair_correlations.get(pair_key)
             if corr is not None and corr < _MIN_PAIR_CORRELATION:
                 original_action = sig['action']

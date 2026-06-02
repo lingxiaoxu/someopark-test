@@ -644,7 +644,7 @@ DailySignal.py 在每日信号生成过程中设置了多层质量检查，防�
 |------|------|---------|---------|---------|
 | 1 | **Macro Gate** | MTFS | VIX term slope 5 日变化 > 1.5pt（恐慌→平静过渡期，动量信号不可靠） | `[MACRO_GATE]` |
 | 2 | **Concentration Gate** | MRPT + MTFS | 单个 ticker 已出现在 ≥ 2 个持仓 pair 中（防集中度风险） | `[CONCENTRATION]` |
-| 3 | **Correlation Gate** | MRPT + MTFS | 60 日 daily return 相关性 < 0.20（pair 不构成有效配对） | `[CORRELATION]` |
+| 3 | **Correlation Gate** | MRPT | 60 日 daily return 相关性 < 0.20（pair 不构成有效配对）。不适用 MTFS——MTFS v2 pair 是跨行业动量分化设计，低 corr 是预期行为 | `[CORRELATION]` |
 | 4 | **Anti-Churn Guard** | MRPT + MTFS | pair 今天被 Step 1 monitor 亏损关仓（upnl < 0），阻止 Step 2 同日重开 | `[ANTI_CHURN]` |
 | 5 | **Min Signal Guard** | MTFS | |momentum_spread| < 0.05（信号太弱，无方向性信息） | `[WEAK_SIGNAL]` |
 

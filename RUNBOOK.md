@@ -429,7 +429,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 - 财报黑名单（MRPT + MTFS）：财报日附近不开新仓（`BLACKOUT` action）
 - VIX 宏观门控（MTFS）：VIX term slope 急变时暂停新开仓（`MACRO_VETO`）
 - Ticker 集中度（MRPT + MTFS）：单 ticker 最多出现在 2 个持仓中（`MACRO_VETO`）
-- 相关性过滤（MRPT + MTFS）：60 日 daily return 相关性 < 0.20 拒绝开仓（`MACRO_VETO`）
+- 相关性过滤（MRPT）：60 日 daily return 相关性 < 0.20 拒绝开仓（`MACRO_VETO`，不适用 MTFS——跨行业动量分化设计）
 - 亏损防重开（MRPT + MTFS）：Step 1 亏损关仓的 pair，Step 2 当天不重开（`MACRO_VETO`）
 - 弱信号拦截（MTFS）：|momentum_spread| < 0.05 拒绝开仓（`MACRO_VETO`）
 - 详见 README.md「信号质量门控」章节
