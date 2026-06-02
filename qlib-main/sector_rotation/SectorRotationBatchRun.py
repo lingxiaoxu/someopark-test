@@ -831,6 +831,18 @@ def main() -> None:
                     (out_dir / f"wf_fold_detail_{_ver_tag}.json").write_text(_wf_detail_data)
                     print(f"  [P0] WF fold detail → {_wf_detail_path}")
 
+                    # Oracle ceiling + 3-layer comparison (dynamic-selection analysis)
+                    if hasattr(_wf_result, "to_oracle_dict"):
+                        _oracle_data = _json.dumps(
+                            _wf_result.to_oracle_dict(), indent=2, default=str)
+                        _oracle_path = out_dir / "oracle_ceiling_analysis.json"
+                        _oracle_path.write_text(_oracle_data)
+                        (out_dir / f"oracle_ceiling_analysis_{_ver_tag}.json").write_text(_oracle_data)
+                        _cmp = _wf_result.comparison or {}
+                        print(f"  [P0] Oracle ceiling → {_oracle_path}  "
+                              f"(capture SR={_cmp.get('capture_ratio_sharpe')}, "
+                              f"oracle SR={_cmp.get('oracle', {}).get('sharpe')})")
+
                     _regime_data = _wf_result.param_oos_by_regime()
                     _regime_json = _json.dumps(_regime_data, indent=2)
                     _regime_path = out_dir / "param_oos_by_regime.json"

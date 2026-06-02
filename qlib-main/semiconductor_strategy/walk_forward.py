@@ -119,6 +119,23 @@ class WFResult:
     # ── Per-param aggregate OOS stats ─────────────────────────────────────
     param_oos_stats: Dict[str, Dict[str, float]]  # avg OOS when param was selected
 
+    # ── Dynamic-selection analysis: oracle ceiling + static baseline ──────
+    # (all defaulted → backward-compatible with old constructors / _empty_result)
+    # oracle_equity   : per-fold argmax(OOS Sharpe) param stitched (theoretical
+    #                   OOS ceiling — hindsight; what ANY per-fold selector could
+    #                   at best achieve over the SAME fold partition as synthetic).
+    # static_best_*   : single full-period best param (the "no dynamic selection"
+    #                   baseline; IS/full-period optimistic, NOT an OOS number).
+    # comparison      : 3-layer roll-up {static_best, synthetic, oracle} + capture
+    #                   ratios + mean per-fold regret.
+    oracle_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    oracle_metrics: Dict[str, float] = field(default_factory=dict)
+    oracle_selection_log: List[Dict[str, Any]] = field(default_factory=list)
+    static_best_equity: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    static_best_metrics: Dict[str, float] = field(default_factory=dict)
+    static_best_name: str = ""
+    comparison: Dict[str, Any] = field(default_factory=dict)
+
     def summary(self) -> str:
         """Human-readable multi-line summary."""
         lines = [
@@ -149,6 +166,25 @@ class WFResult:
         if wfes:
             lines.append(f"  WFE distribution: min={min(wfes):.2f}  "
                          f"median={np.median(wfes):.2f}  max={max(wfes):.2f}")
+
+        # ── Oracle ceiling vs realizable vs static (dynamic-selection analysis) ──
+        cmp = getattr(self, "comparison", None)
+        if cmp:
+            sb, sy, orc = cmp.get("static_best", {}), cmp.get("synthetic", {}), cmp.get("oracle", {})
+            lines.append(f"{'─' * 70}")
+            lines.append("  DYNAMIC SELECTION — oracle ceiling vs realizable vs static")
+            lines.append(f"    {'layer':<26}{'Sharpe':>9}{'CAGR':>9}{'MaxDD':>9}")
+            lines.append(f"    {'static best (IS, full)':<26}{sb.get('sharpe', float('nan')):>9.2f}"
+                         f"{sb.get('cagr', float('nan')):>9.1%}{sb.get('maxdd', float('nan')):>9.1%}"
+                         f"   [{self.static_best_name}]")
+            lines.append(f"    {'realizable synthetic OOS':<26}{sy.get('sharpe', float('nan')):>9.2f}"
+                         f"{sy.get('cagr', float('nan')):>9.1%}{sy.get('maxdd', float('nan')):>9.1%}")
+            lines.append(f"    {'oracle ceiling OOS':<26}{orc.get('sharpe', float('nan')):>9.2f}"
+                         f"{orc.get('cagr', float('nan')):>9.1%}{orc.get('maxdd', float('nan')):>9.1%}")
+            lines.append(f"    capture ratio (SR/CAGR): {cmp.get('capture_ratio_sharpe', float('nan')):.2f}"
+                         f" / {cmp.get('capture_ratio_cagr', float('nan')):.2f}"
+                         f"   mean regret={cmp.get('mean_regret_sharpe', float('nan')):.2f} SR"
+                         f"   optimal picks={cmp.get('n_folds_optimal', 0)}/{len(self.folds)}")
 
         lines.append(f"{'═' * 70}\n")
         return "\n".join(lines)
@@ -190,6 +226,35 @@ class WFResult:
                 }
                 for fr in self.folds
             ],
+        }
+
+    def to_oracle_dict(self) -> Dict[str, Any]:
+        """Serialize the oracle-ceiling / 3-layer comparison for P0 persistence."""
+        def _r(v, d=4):
+            try:
+                return round(float(v), d) if v is not None and not np.isnan(float(v)) else None
+            except (TypeError, ValueError):
+                return v
+
+        def _clean(obj):  # recursive nan→None so the comparison dict is valid JSON
+            if isinstance(obj, dict):
+                return {k: _clean(v) for k, v in obj.items()}
+            if isinstance(obj, (list, tuple)):
+                return [_clean(v) for v in obj]
+            if isinstance(obj, float):
+                return None if np.isnan(obj) else round(obj, 4)
+            return obj
+
+        return {
+            "mode": self.mode,
+            "n_folds": len(self.folds),
+            "n_param_sets": self.n_param_sets,
+            "comparison": _clean(self.comparison),
+            "static_best_name": self.static_best_name,
+            "static_best_metrics": {k: _r(v) for k, v in self.static_best_metrics.items()},
+            "oracle_metrics": {k: _r(v) for k, v in self.oracle_metrics.items()},
+            "synthetic_metrics": {k: _r(v) for k, v in self.synthetic_metrics.items()},
+            "oracle_selection_log": self.oracle_selection_log,
         }
 
     def param_oos_by_regime(self) -> Dict[str, Dict[str, Dict[str, float]]]:
@@ -459,6 +524,7 @@ class WalkForwardAnalyzer:
         mode: str = "anchored",
         param_sets: Optional[Dict[str, dict]] = None,
         signal_version: str = None,
+        selection_method: str = "legacy",
     ):
         self.base_cfg = base_cfg
         self.prices = prices
@@ -469,6 +535,11 @@ class WalkForwardAnalyzer:
         self.embargo_days = embargo_days
         self.mode = mode
         self.signal_version = signal_version  # None = use config default
+        # Per-fold param-selection method (Stage 2 bake-off).  "legacy" reproduces
+        # the original priority chain byte-for-byte; new methods (trailing_oos /
+        # wfe_weighted / regime_ensemble) are causal (use ONLY prior folds) and
+        # fall through to the legacy chain when they have insufficient evidence.
+        self.selection_method = selection_method
         self.param_sets = param_sets or PARAM_SETS
         self._set_names = list(self.param_sets.keys())
 
@@ -693,12 +764,24 @@ class WalkForwardAnalyzer:
         dsr_p: float = 0.0
         selection_method = "is_sharpe"
 
+        # 0. Stage 2 bake-off: a non-legacy method gets first attempt.  It is
+        # causal (uses only prior folds' realized OOS) and returns "" when it has
+        # too little evidence, falling through to the legacy chain below.  In
+        # "legacy" mode this hook is skipped → behaviour is byte-identical.
+        if self.selection_method != "legacy":
+            nm_name, nm_score = self._select_param_new(
+                fold, eq_map, macro_df, prior_folds, is_metrics, is_macro_vec, features)
+            if nm_name:
+                best_name = nm_name
+                best_score = nm_score
+                selection_method = self.selection_method
+
         # 1. OOS retrospective matching (requires enough completed prior folds)
         retro_candidates = [
             pf for pf in prior_folds
             if pf.oos_macro_vec and pf.all_oos_sharpes
         ]
-        if len(retro_candidates) >= self._OOS_RETRO_MIN_FOLDS and is_macro_vec:
+        if not best_name and len(retro_candidates) >= self._OOS_RETRO_MIN_FOLDS and is_macro_vec:
             retro_name, retro_score = _oos_retrospective_select(
                 today_vec=is_macro_vec,
                 prior_folds=retro_candidates,
@@ -824,6 +907,97 @@ class WalkForwardAnalyzer:
             all_oos_sharpes=all_oos_sharpes,
             oos_macro_vec=oos_macro_vec,
         )
+
+    # ──────────────────────────────────────────────────────────────────────
+    #  Stage 2 candidate selectors (causal — only prior folds' realized OOS)
+    # ──────────────────────────────────────────────────────────────────────
+
+    _TRAILING_K: int = 6      # trailing window of prior folds
+    _MIN_PRIORS: int = 3      # min prior folds before a new method engages
+
+    def _is_regime(self, fold: "WFFold", macro_df: pd.DataFrame) -> str:
+        """IS-tail (~3m) dominant regime, mirroring the oos_regime VIX buckets."""
+        if macro_df is None or macro_df.empty or "vix" not in macro_df.columns:
+            return "unknown"
+        vix_is = macro_df.loc[(macro_df.index >= fold.is_start) &
+                              (macro_df.index <= fold.is_end), "vix"].dropna()
+        if vix_is.empty:
+            return "unknown"
+        mv = float(vix_is.tail(63).mean())
+        if mv > 30:
+            return "risk_off"
+        if mv > 20:
+            return "transition"
+        return "risk_on"
+
+    def _select_param_new(self, fold, eq_map, macro_df, prior_folds,
+                          is_metrics, is_macro_vec, features) -> tuple:
+        """
+        Candidate per-fold selectors that directly target the oracle regret using
+        ONLY information available at decision time (prior folds' realized OOS).
+        Returns (name, score) or ("", nan) → fall through to the legacy chain when
+        evidence is insufficient (warmup folds).
+        """
+        method = self.selection_method
+        priors = [pf for pf in prior_folds if pf.all_oos_sharpes]
+        if len(priors) < self._MIN_PRIORS:
+            return "", float("nan")
+        recent = priors[-self._TRAILING_K:]
+        cands = list(is_metrics.keys())
+
+        def _trailing_mean(name: str) -> float:
+            vals = [pf.all_oos_sharpes.get(name) for pf in recent
+                    if pf.all_oos_sharpes.get(name) is not None
+                    and not np.isnan(pf.all_oos_sharpes.get(name))]
+            return float(np.mean(vals)) if vals else float("nan")
+
+        def _argmax(scored: Dict[str, float]) -> tuple:
+            scored = {n: v for n, v in scored.items()
+                      if v is not None and not np.isnan(v)}
+            if not scored:
+                return "", float("nan")
+            best = max(scored, key=scored.get)
+            return best, scored[best]
+
+        if method == "trailing_oos":
+            return _argmax({n: _trailing_mean(n) for n in cands})
+
+        if method == "wfe_weighted":
+            scored: Dict[str, float] = {}
+            for n in cands:
+                tm = _trailing_mean(n)
+                if np.isnan(tm):
+                    continue
+                wfes = []
+                for pf in recent:
+                    osr = pf.all_oos_sharpes.get(n)
+                    isr = pf.is_metrics.get(n, {}).get("sharpe") if pf.is_metrics else None
+                    if (osr is not None and isr is not None
+                            and not np.isnan(osr) and not np.isnan(isr) and abs(isr) > 1e-6):
+                        wfes.append(osr / isr)
+                stab = 1.0 / (1.0 + float(np.var(wfes))) if len(wfes) >= 2 else 0.5
+                scored[n] = tm * stab
+            return _argmax(scored)
+
+        if method == "regime_ensemble":
+            is_reg = self._is_regime(fold, macro_df)
+            n_in_regime = sum(1 for pf in priors if pf.oos_regime == is_reg)
+            if is_reg != "unknown" and n_in_regime >= 2:
+                scored = {}
+                for n in cands:
+                    vals = [pf.all_oos_sharpes.get(n) for pf in priors
+                            if pf.oos_regime == is_reg
+                            and pf.all_oos_sharpes.get(n) is not None
+                            and not np.isnan(pf.all_oos_sharpes.get(n))]
+                    if vals:
+                        scored[n] = float(np.mean(vals))
+                name, score = _argmax(scored)
+                if name:
+                    return name, score
+            # regime bucket too thin → fall back to trailing_oos
+            return _argmax({n: _trailing_mean(n) for n in cands})
+
+        return "", float("nan")
 
     def _stable_is_select(
         self,
@@ -1039,6 +1213,35 @@ class WalkForwardAnalyzer:
                                                   for m in metric_list])),
             }
 
+        # ── Dynamic-selection analysis: oracle ceiling + static baseline ──
+        # Reuses the already-computed eq_map (NO extra backtests).
+        oracle_eq, oracle_metrics, oracle_log = self._compute_oracle(fold_results, eq_map)
+        static_name, static_eq, static_metrics = self._compute_static_best(eq_map)
+
+        def _layer(m: Dict[str, float]) -> Dict[str, float]:
+            return {
+                "sharpe": float(m.get("sharpe", float("nan"))),
+                "cagr":   float(m.get("ann_ret", float("nan"))),
+                "maxdd":  float(m.get("maxdd", float("nan"))),
+                "calmar": float(m.get("calmar", float("nan"))),
+            }
+        orc_sr   = oracle_metrics.get("sharpe", float("nan"))
+        orc_cagr = oracle_metrics.get("ann_ret", float("nan"))
+        syn_sr   = synthetic_metrics.get("sharpe", float("nan"))
+        syn_cagr = synthetic_metrics.get("ann_ret", float("nan"))
+        cap_sr   = (syn_sr / orc_sr) if (not np.isnan(orc_sr) and orc_sr > 0) else float("nan")
+        cap_cagr = (syn_cagr / orc_cagr) if (not np.isnan(orc_cagr) and orc_cagr > 0) else float("nan")
+        regrets  = [d["regret"] for d in oracle_log if d.get("regret") is not None]
+        comparison = {
+            "static_best": _layer(static_metrics),
+            "synthetic":   _layer(synthetic_metrics),
+            "oracle":      _layer(oracle_metrics),
+            "capture_ratio_sharpe": cap_sr,
+            "capture_ratio_cagr":   cap_cagr,
+            "mean_regret_sharpe":   float(np.mean(regrets)) if regrets else float("nan"),
+            "n_folds_optimal":      sum(1 for d in oracle_log if d.get("optimal")),
+        }
+
         return WFResult(
             folds=fold_results,
             mode=self.mode,
@@ -1050,48 +1253,115 @@ class WalkForwardAnalyzer:
             selection_log=selection_log,
             fold_summary_df=fold_summary_df,
             param_oos_stats=param_oos_stats,
+            oracle_equity=oracle_eq,
+            oracle_metrics=oracle_metrics,
+            oracle_selection_log=oracle_log,
+            static_best_equity=static_eq,
+            static_best_metrics=static_metrics,
+            static_best_name=static_name,
+            comparison=comparison,
         )
 
     # ──────────────────────────────────────────────────────────────────────
     #  Stitch OOS segments into synthetic track record
     # ──────────────────────────────────────────────────────────────────────
 
-    def _stitch_oos(self, fold_results: List[WFFoldResult]) -> pd.Series:
+    def _stitch_equity_segments(self, equity_segments: List[pd.Series]) -> pd.Series:
         """
-        Build synthetic OOS equity from non-overlapping segments.
+        Stitch a list of per-fold OOS equity curves (in fold order) into one
+        synthetic equity, assigning each date to the EARLIEST fold covering it
+        (avoids double-counting under dense stepping).
 
-        When folds overlap (dense stepping), we partition the timeline so
-        each calendar date belongs to exactly one fold — the EARLIEST fold
-        whose OOS window covers that date. This avoids double-counting and
-        produces a proper out-of-sample track record.
+        Shared by the realizable synthetic curve (selected param per fold) and
+        the oracle ceiling curve (best-OOS param per fold) so both use the
+        IDENTICAL date partition — guaranteeing an apples-to-apples comparison.
         """
-        if not fold_results:
-            return pd.Series(dtype=float)
-
-        # Collect all (date, return) pairs, assigning each date to earliest fold
         claimed_dates: set = set()
         segments: List[pd.Series] = []
-
-        for fr in fold_results:
-            if fr.oos_equity.empty:
+        for eq in equity_segments:
+            if eq is None or eq.empty:
                 continue
-            # Daily returns from this fold's OOS equity
-            rets = fr.oos_equity.pct_change().dropna()
-            # Keep only dates not yet claimed by earlier folds
+            rets = eq.pct_change().dropna()
             new_rets = rets[~rets.index.isin(claimed_dates)]
             if not new_rets.empty:
                 segments.append(new_rets)
                 claimed_dates.update(new_rets.index)
-
         if not segments:
             return pd.Series(dtype=float)
-
         all_rets = pd.concat(segments).sort_index()
-        # Remove any remaining duplicates (safety)
         all_rets = all_rets[~all_rets.index.duplicated(keep="first")]
-        # Build equity curve
-        synthetic = (1 + all_rets).cumprod()
-        return synthetic
+        return (1 + all_rets).cumprod()
+
+    def _stitch_oos(self, fold_results: List[WFFoldResult]) -> pd.Series:
+        """Realizable synthetic OOS equity from the SELECTED param per fold."""
+        if not fold_results:
+            return pd.Series(dtype=float)
+        return self._stitch_equity_segments([fr.oos_equity for fr in fold_results])
+
+    # ──────────────────────────────────────────────────────────────────────
+    #  Oracle ceiling + static baseline (dynamic-selection analysis)
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _compute_oracle(self, fold_results: List[WFFoldResult], eq_map):
+        """
+        Oracle ceiling: per fold, pick argmax(all_oos_sharpes) (hindsight), slice
+        that param's OOS segment from eq_map (same slice as the selected param at
+        lines ~779-785), and stitch with the SAME partition as the realizable
+        synthetic. This is the theoretical OOS ceiling any per-fold selector could
+        reach over the same folds.  Returns (oracle_equity, oracle_metrics, log).
+        """
+        oracle_segments: List[pd.Series] = []
+        oracle_log: List[Dict[str, Any]] = []
+        for fr in fold_results:
+            sel_name = fr.is_best_name
+            sel_sr = fr.all_oos_sharpes.get(sel_name, float("nan")) if fr.all_oos_sharpes else float("nan")
+            if fr.all_oos_sharpes:
+                orc_name = max(fr.all_oos_sharpes, key=fr.all_oos_sharpes.get)
+                orc_sr = fr.all_oos_sharpes[orc_name]
+            else:
+                orc_name, orc_sr = sel_name, float("nan")  # empty fold → keep selected
+            seg = pd.Series(dtype=float)
+            if orc_name in eq_map:
+                eq_full = eq_map[orc_name]
+                s = eq_full[(eq_full.index >= fr.fold.oos_start) &
+                            (eq_full.index <= fr.fold.oos_end)]
+                if not s.empty:
+                    seg = s / s.iloc[0]
+            oracle_segments.append(seg)
+            regret = (orc_sr - sel_sr) if (not np.isnan(orc_sr) and not np.isnan(sel_sr)) else float("nan")
+            oracle_log.append({
+                "fold": fr.fold.fold_id,
+                "oos_start": str(fr.fold.oos_start.date()),
+                "oos_end": str(fr.fold.oos_end.date()),
+                "oracle_param": orc_name,
+                "oracle_oos_sharpe": round(orc_sr, 4) if not np.isnan(orc_sr) else None,
+                "selected_param": sel_name,
+                "selected_oos_sharpe": round(sel_sr, 4) if not np.isnan(sel_sr) else None,
+                "regret": round(regret, 4) if not np.isnan(regret) else None,
+                "optimal": bool(orc_name == sel_name),
+            })
+        oracle_eq = self._stitch_equity_segments(oracle_segments)
+        oracle_metrics = _compute_metrics_from_equity(oracle_eq)
+        return oracle_eq, oracle_metrics, oracle_log
+
+    def _compute_static_best(self, eq_map):
+        """
+        Single full-period best param ("no dynamic selection" baseline).  This
+        peeks at the whole period → IS/full-period OPTIMISTIC (not an OOS number);
+        it represents what you'd get holding one fixed param.  Returns
+        (name, equity, metrics).
+        """
+        best_name, best_sr = "", float("-inf")
+        best_eq, best_m = pd.Series(dtype=float), {}
+        for name, eq in eq_map.items():
+            if eq is None or eq.empty or len(eq) < 60:
+                continue
+            eq_n = eq / eq.iloc[0]
+            m = _compute_metrics_from_equity(eq_n)
+            sr = m.get("sharpe", float("nan"))
+            if not np.isnan(sr) and sr > best_sr:
+                best_sr, best_name, best_eq, best_m = sr, name, eq_n, m
+        return best_name, best_eq, best_m
 
     # ──────────────────────────────────────────────────────────────────────
     #  Empty result helper
@@ -1171,6 +1441,9 @@ if __name__ == "__main__":
                         help="Directory for CSV output (default: backtest_results/)")
     parser.add_argument("--signal-version", default=None, choices=["v1", "v2"],
                         help="Override signal version (v1=4-factor, v2=7-factor)")
+    parser.add_argument("--selection-method", default="legacy",
+                        choices=["legacy", "trailing_oos", "wfe_weighted", "regime_ensemble"],
+                        help="Per-fold param selection method (default: legacy)")
     args = parser.parse_args()
 
     base_cfg = load_config()
@@ -1185,6 +1458,7 @@ if __name__ == "__main__":
         step_days=args.step_days,
         embargo_days=args.embargo_days,
         signal_version=args.signal_version,
+        selection_method=args.selection_method,
     )
 
     if args.mode == "both":

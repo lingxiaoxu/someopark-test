@@ -821,12 +821,18 @@ def export_wf_diagnostic_excel(
         for regime, stats in sorted(regimes.items()):
             ws.append([param, regime, stats["mean_oos_sharpe"], stats["n_folds"]])
 
-    # 4. synthetic_equity
+    # 4. synthetic_equity (+ oracle / static-best columns when available)
     ws = wb.create_sheet("synthetic_equity")
-    ws.append(["Date", "Value"])
     se = wf_result.synthetic_equity
+    oracle_eq = getattr(wf_result, "oracle_equity", None)
+    static_eq = getattr(wf_result, "static_best_equity", None)
+    _orc = oracle_eq.reindex(se.index) if oracle_eq is not None and not oracle_eq.empty else None
+    _sta = static_eq.reindex(se.index) if static_eq is not None and not static_eq.empty else None
+    ws.append(["Date", "Synthetic_Value", "Oracle_Value", "Static_Best_Value"])
     for dt in se.index:
-        ws.append([str(dt.date()), round(float(se[dt]), 4)])
+        ov = "" if _orc is None or pd.isna(_orc.get(dt)) else round(float(_orc[dt]), 4)
+        sv = "" if _sta is None or pd.isna(_sta.get(dt)) else round(float(_sta[dt]), 4)
+        ws.append([str(dt.date()), round(float(se[dt]), 4), ov, sv])
 
     # 5. selection_log
     ws = wb.create_sheet("selection_log")
@@ -835,6 +841,38 @@ def export_wf_diagnostic_excel(
         ws.append(keys)
         for entry in wf_result.selection_log:
             ws.append([str(entry.get(k, "")) for k in keys])
+
+    # 6. oracle_vs_realized — 3-layer comparison + per-fold regret (when available)
+    cmp = getattr(wf_result, "comparison", None)
+    if cmp:
+        ws = wb.create_sheet("oracle_vs_realized")
+        ws.append(["Layer", "Sharpe", "CAGR", "MaxDD", "Calmar", "Note"])
+        _note = {
+            "static_best": f"single full-period best param [{getattr(wf_result,'static_best_name','')}] — IS/full (optimistic)",
+            "synthetic":   "realizable dynamic selection (OOS)",
+            "oracle":      "theoretical ceiling: best-OOS param per fold (hindsight)",
+        }
+        for layer in ("static_best", "synthetic", "oracle"):
+            d = cmp.get(layer, {})
+            def _f(x):
+                return "" if x is None or (isinstance(x, float) and np.isnan(x)) else round(float(x), 4)
+            ws.append([layer, _f(d.get("sharpe")), _f(d.get("cagr")),
+                       _f(d.get("maxdd")), _f(d.get("calmar")), _note.get(layer, "")])
+        ws.append([])
+        ws.append(["capture_ratio_sharpe", cmp.get("capture_ratio_sharpe")])
+        ws.append(["capture_ratio_cagr", cmp.get("capture_ratio_cagr")])
+        ws.append(["mean_regret_sharpe", cmp.get("mean_regret_sharpe")])
+        ws.append(["n_folds_optimal", cmp.get("n_folds_optimal"), f"of {len(folds)} folds"])
+        ws.append([])
+        olog = getattr(wf_result, "oracle_selection_log", []) or []
+        if olog:
+            ws.append(["Fold", "OOS_Start", "OOS_End", "Oracle_Param", "Oracle_OOS_SR",
+                       "Selected_Param", "Selected_OOS_SR", "Regret", "Optimal"])
+            for e in olog:
+                ws.append([e.get("fold"), e.get("oos_start"), e.get("oos_end"),
+                           e.get("oracle_param"), e.get("oracle_oos_sharpe"),
+                           e.get("selected_param"), e.get("selected_oos_sharpe"),
+                           e.get("regret"), "Y" if e.get("optimal") else ""])
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(str(output_path))
