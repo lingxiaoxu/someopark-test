@@ -1,54 +1,59 @@
 {
-  "as_of": "2026-06-01",
-  "last_updated": "2026-06-01",
+  "as_of": "2026-06-02",
+  "last_updated": "2026-06-02",
   "capital": 1000000,
   "holdings": {
     "equipment": {
-      "weight": 0.333333,
-      "shares": 104,
-      "last_price": 3198.5256,
+      "weight": 0.39495,
+      "shares": 116,
+      "last_price": 3386.3798,
       "cost_basis": 3198.5256,
       "entry_date": "2026-05-29",
-      "last_rebalance_date": "2026-06-01",
-      "days_held": 2,
-      "action_today": "HOLD"
+      "last_rebalance_date": "2026-06-02",
+      "days_held": 4,
+      "action_today": "INCREASE"
     },
     "memory_hbm": {
-      "weight": 0.333333,
-      "shares": 79,
-      "last_price": 4182.5476,
+      "weight": 0.298007,
+      "shares": 65,
+      "last_price": 4554.5138,
       "cost_basis": 4182.5476,
       "entry_date": "2026-05-29",
-      "last_rebalance_date": "2026-06-01",
-      "days_held": 2,
-      "action_today": "HOLD"
+      "last_rebalance_date": "2026-06-02",
+      "days_held": 4,
+      "action_today": "DECREASE"
     },
     "logic_cpu": {
-      "weight": 0.333333,
-      "shares": 92,
-      "last_price": 3593.0108,
+      "weight": 0.307043,
+      "shares": 85,
+      "last_price": 3596.0794,
       "cost_basis": 3593.0108,
       "entry_date": "2026-05-29",
-      "last_rebalance_date": "2026-06-01",
-      "days_held": 2,
+      "last_rebalance_date": "2026-06-02",
+      "days_held": 4,
       "action_today": "HOLD"
     }
   },
   "cash_weight": 0.0,
   "prev_weights": {
-    "equipment": 0.333333,
-    "memory_hbm": 0.333333,
-    "logic_cpu": 0.333333
+    "ai_gpu": 0.0,
+    "custom_asic": 0.0,
+    "equipment": 0.39495,
+    "memory_hbm": 0.298007,
+    "foundry": 0.0,
+    "analog_defense": 0.0,
+    "logic_cpu": 0.307043,
+    "rf_edge": 0.0
   },
   "prev_composite_scores": {
-    "ai_gpu": -0.2213,
-    "custom_asic": -0.1391,
-    "equipment": 1.6774,
-    "memory_hbm": 1.1241,
-    "foundry": -1.0382,
-    "analog_defense": -0.916,
-    "logic_cpu": 0.3965,
-    "rf_edge": -0.8834
+    "ai_gpu": 0.0945,
+    "custom_asic": -0.022,
+    "equipment": 1.793,
+    "memory_hbm": 0.7715,
+    "foundry": -1.0824,
+    "analog_defense": -1.3364,
+    "logic_cpu": 0.2066,
+    "rf_edge": -0.4247
   },
   "rebalance_history": [
     {
@@ -97,10 +102,36 @@
         "logic_cpu": 0.3965,
         "rf_edge": -0.8834
       }
+    },
+    {
+      "date": "2026-06-02",
+      "reason": "forced",
+      "regime": "risk_on",
+      "weights": {
+        "ai_gpu": 0.0,
+        "custom_asic": 0.0,
+        "equipment": 0.39495,
+        "memory_hbm": 0.298007,
+        "foundry": 0.0,
+        "analog_defense": 0.0,
+        "logic_cpu": 0.307043,
+        "rf_edge": 0.0
+      },
+      "cash_weight": 0.0,
+      "composite_scores": {
+        "ai_gpu": 0.0945,
+        "custom_asic": -0.022,
+        "equipment": 1.793,
+        "memory_hbm": 0.7715,
+        "foundry": -1.0824,
+        "analog_defense": -1.3364,
+        "logic_cpu": 0.2066,
+        "rf_edge": -0.4247
+      }
     }
   ],
   "emergency_mode_active": false,
-  "last_daily_update": "2026-06-01",
+  "last_daily_update": "2026-06-02",
   "param_set": "balanced_four",
   "signal_version": "v1",
   "stock_holdings": {
@@ -108,82 +139,82 @@
       "subsectors": [
         "equipment"
       ],
-      "portfolio_weight": 0.266667,
-      "shares": 137,
-      "last_price": 1940.04,
-      "target_value": 266666.67
+      "portfolio_weight": 0.31596,
+      "shares": 155,
+      "last_price": 2036.64,
+      "target_value": 315959.84
     },
     "LRCX": {
       "subsectors": [
         "equipment"
       ],
-      "portfolio_weight": 0.05,
-      "shares": 157,
-      "last_price": 316.86,
-      "target_value": 50000.0
+      "portfolio_weight": 0.059242,
+      "shares": 178,
+      "last_price": 332.745,
+      "target_value": 59242.47
     },
     "AMAT": {
       "subsectors": [
         "equipment"
       ],
-      "portfolio_weight": 0.016667,
-      "shares": 36,
-      "last_price": 458.17,
-      "target_value": 16666.67
+      "portfolio_weight": 0.019747,
+      "shares": 40,
+      "last_price": 485.18,
+      "target_value": 19747.49
     },
     "MU": {
       "subsectors": [
         "memory_hbm"
       ],
-      "portfolio_weight": 0.266667,
-      "shares": 257,
-      "last_price": 1035.5,
-      "target_value": 266666.67
+      "portfolio_weight": 0.238406,
+      "shares": 224,
+      "last_price": 1061.4301,
+      "target_value": 238405.56
     },
     "WDC": {
       "subsectors": [
         "memory_hbm"
       ],
-      "portfolio_weight": 0.05,
-      "shares": 91,
-      "last_price": 546.05,
-      "target_value": 50000.0
+      "portfolio_weight": 0.044701,
+      "shares": 78,
+      "last_price": 568.037,
+      "target_value": 44701.04
     },
     "SIMO": {
       "subsectors": [
         "memory_hbm"
       ],
-      "portfolio_weight": 0.016667,
-      "shares": 62,
-      "last_price": 267.55,
-      "target_value": 16666.67
+      "portfolio_weight": 0.0149,
+      "shares": 50,
+      "last_price": 296.12,
+      "target_value": 14900.35
     },
     "AMD": {
       "subsectors": [
         "logic_cpu"
       ],
-      "portfolio_weight": 0.266667,
-      "shares": 522,
-      "last_price": 510.13,
-      "target_value": 266666.67
+      "portfolio_weight": 0.245635,
+      "shares": 474,
+      "last_price": 517.915,
+      "target_value": 245634.6
     },
     "INTC": {
       "subsectors": [
         "logic_cpu"
       ],
-      "portfolio_weight": 0.05,
-      "shares": 457,
-      "last_price": 109.33,
-      "target_value": 50000.0
+      "portfolio_weight": 0.046056,
+      "shares": 428,
+      "last_price": 107.39,
+      "target_value": 46056.49
     },
     "ARM": {
       "subsectors": [
         "logic_cpu"
       ],
-      "portfolio_weight": 0.016667,
-      "shares": 40,
-      "last_price": 408.85,
-      "target_value": 16666.67
+      "portfolio_weight": 0.015352,
+      "shares": 37,
+      "last_price": 407.0,
+      "target_value": 15352.16
     }
   }
 }

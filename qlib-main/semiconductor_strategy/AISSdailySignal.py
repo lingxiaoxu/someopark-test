@@ -961,16 +961,32 @@ def run_daily_signal(
     inv = load_inventory()
     inv["capital"] = capital
 
-    # P5: If smart-select triggered a version switch, force full rebalance
-    if (_smart_result and _smart_result.get("switched") and
-            _smart_result.get("signal_version") != inv.get("signal_version")):
-        inv["prev_composite_scores"] = {}  # V1↔V2 z-scores not comparable
-        force_rebalance = True
-        inv["signal_version"] = _smart_result["signal_version"]
-        log.info(
-            f"[P5] Version switch detected → clearing prev_composite_scores, "
-            f"forcing full rebalance"
-        )
+    # P5: If smart-select switched the signal VERSION *or* the PARAM SET, force a
+    # full rebalance and clear prev_composite_scores.  Clearing prev scores makes
+    # the rebalance bypass the zscore-threshold filter (which keeps prior weights
+    # when per-subsector scores are stable) so the NEW param's optimizer weights
+    # are actually adopted.  Without this, a param/optimizer switch (e.g.
+    # opt_equal_weight → balanced_four) would leave the book stuck on the old
+    # allocation whenever signals move < threshold.  (inv["param_set"]/
+    # ["signal_version"] still hold the PREVIOUS run's values at this point — set
+    # at end of run — so this compares new-vs-previous.)
+    if _smart_result and _smart_result.get("switched"):
+        _new_ver   = _smart_result.get("signal_version")
+        _new_param = _smart_result.get("param_set")
+        _ver_switch   = bool(_new_ver) and _new_ver != inv.get("signal_version")
+        _param_switch = bool(_new_param) and _new_param != inv.get("param_set")
+        if _ver_switch or _param_switch:
+            inv["prev_composite_scores"] = {}   # bypass threshold filter → adopt new weights
+            force_rebalance = True
+            if _new_ver:
+                inv["signal_version"] = _new_ver
+            _what = []
+            if _ver_switch:   _what.append(f"version→{_new_ver}")
+            if _param_switch: _what.append(f"param→{_new_param}")
+            log.info(
+                f"[P5] Switch detected ({', '.join(_what)}) → clearing "
+                f"prev_composite_scores, forcing full rebalance"
+            )
 
     # VIX emergency cooldown: read persisted state, clear if VIX has recovered
     vix_threshold    = float(cfg.get("rebalance", {}).get("emergency_derisk_vix", 35.0))
