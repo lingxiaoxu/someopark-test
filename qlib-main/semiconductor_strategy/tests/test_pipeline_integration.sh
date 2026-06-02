@@ -150,13 +150,15 @@ else
         echo "checked $n PDF(s)"; exit $bad'
 fi
 
-# ── Phase 6: Log error scan ────────────────────────────────────────────────
-echo ""; echo "── Phase 6: Log error scan (real tracebacks/errors) ─────────────"
-run_test "no tracebacks in logs (benign fallback OK)"  bash -c '
-    SD="'"$SD"'"
-    hits=$(grep -rlE "Traceback \(most recent|^[A-Za-z._]+Error:|FAILED:|Exception:" "$SD"/logs/ 2>/dev/null | grep -v "/qa/" || true)
-    if [ -n "$hits" ]; then echo "logs with real errors:"; echo "$hits"; exit 1; fi
-    echo "no real errors in logs"'
+# ── Phase 6: Log error scan (THIS run's dated logs only) ───────────────────
+echo ""; echo "── Phase 6: Log error scan (today's logs only; benign fallback OK) ──"
+run_test "no tracebacks in today's logs"  bash -c '
+    SD="'"$SD"'"; TODAY="'"$TODAY"'"
+    # Only this run'"'"'s dated logs (aiss_<mode>_<YYYYMMDD>_*.log) — NOT old logs
+    # or accumulating cron_*.log, which would false-flag stale historical errors.
+    hits=$(grep -lE "Traceback \(most recent|^[A-Za-z._]+Error:|FAILED:|Exception:" "$SD"/logs/*"$TODAY"*.log 2>/dev/null || true)
+    if [ -n "$hits" ]; then echo "today logs with real errors:"; echo "$hits"; exit 1; fi
+    echo "no real errors in today logs"'
 
 # ── Summary ────────────────────────────────────────────────────────────────
 echo ""
