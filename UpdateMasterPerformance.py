@@ -3,10 +3,11 @@
 Generate master_portfolio_performance.json combining three 1/3 components:
   1. MRPT + MTFS — raw equity from strategy_performance.json (no normalization)
   2. Sector Rotation (SSRS) — normalized to match MRPT+MTFS combined start
-  3. AI/Chips (SOXX ETF) — buy-and-hold, normalized to match MRPT+MTFS combined start
+  3. AI Infra & Semiconductor Strategy (AISS) — normalized to match MRPT+MTFS combined start
 
-Master = MRPT + MTFS + SR + SOXX. Each of the 3 components starts at same equity.
+Master = MRPT + MTFS + SR + AISS. Each of the 3 components starts at same equity.
 MRPT and MTFS are shown separately (not merged as "pairs").
+BDC is an additional overlay.
 
 Usage:
     python UpdateMasterPerformance.py
@@ -30,12 +31,18 @@ PERF_JSON = os.path.join(BASE_DIR, 'someo-park-investment-management', 'public',
                          'strategy_performance.json')
 MASTER_JSON = os.path.join(BASE_DIR, 'someo-park-investment-management', 'public', 'data',
                            'master_portfolio_performance.json')
+
+# ── SR (Sector Rotation) ───────────────────────────────────────────────────
 SR_EQUITY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'sector_rotation', 'backtest_results')
 SR_INVENTORY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'sector_rotation', 'inventory_history')
-
-# Date when SR live trading starts (use live inventory instead of backtest)
 SR_LIVE_START = '2026-05-08'
 SR_PARAM = 'sensitive_dd'
+
+# ── AISS (AI Infra & Semiconductor Strategy) ───────────────────────────────
+AISS_EQUITY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'semiconductor_strategy', 'backtest_results')
+AISS_INVENTORY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'semiconductor_strategy', 'inventory_history')
+AISS_LIVE_START = '2026-06-01'
+AISS_PARAM = 'balanced_four'
 
 
 def load_pairs_equity() -> tuple[pd.Series, pd.Series, float]:
@@ -62,17 +69,21 @@ def load_sr_equity_backtest() -> pd.Series:
     return df[SR_PARAM].dropna()
 
 
-def load_sr_equity_live(backtest_normalized: pd.Series,
-                        trading_days: pd.DatetimeIndex) -> pd.Series:
-    """Load SR equity from live inventory snapshots + real prices.
+def _load_live_equity_from_inventory(
+    inv_dir: str, inv_prefix: str, holdings_key: str,
+    live_start: str, backtest_normalized: pd.Series,
+    trading_days: pd.DatetimeIndex, label: str,
+) -> pd.Series:
+    """Generic live equity loader from inventory snapshots + yfinance prices.
+    Works for both SR (holdings = ETFs) and AISS (stock_holdings = individual stocks).
     Chains daily returns from backtest last day to ensure price continuity.
     """
-    live_start = pd.Timestamp(SR_LIVE_START)
-    live_days = trading_days[trading_days >= live_start]
+    live_start_ts = pd.Timestamp(live_start)
+    live_days = trading_days[trading_days >= live_start_ts]
     if len(live_days) == 0:
         return pd.Series(dtype=float)
 
-    inv_files = sorted(glob.glob(os.path.join(SR_INVENTORY_DIR, 'inventory_sector_rotation_*.json')))
+    inv_files = sorted(glob.glob(os.path.join(inv_dir, f'{inv_prefix}_*.json')))
     snap_map = {}
     all_tickers = set()
     for fpath in inv_files:
@@ -81,23 +92,25 @@ def load_sr_equity_live(backtest_normalized: pd.Series,
         as_of = inv.get('as_of', inv.get('date', ''))
         if as_of:
             snap_map[as_of] = fpath
-        for ticker in inv.get('holdings', {}):
+        for ticker in inv.get(holdings_key, {}):
             all_tickers.add(ticker)
 
     if not all_tickers:
-        print('  [WARN] No SR holdings found in inventory_history')
+        print(f'  [WARN] No {label} holdings found in {inv_dir}')
         return pd.Series(dtype=float)
 
-    price_start = (live_start - pd.Timedelta(days=10)).strftime('%Y-%m-%d')
+    price_start = (live_start_ts - pd.Timedelta(days=10)).strftime('%Y-%m-%d')
     price_end = (live_days[-1] + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
     try:
         prices_raw = yf.download(sorted(all_tickers), start=price_start, end=price_end,
                                  auto_adjust=True, progress=False)
-        prices = prices_raw['Close'] if len(all_tickers) > 1 else prices_raw[['Close']]
-        if len(all_tickers) == 1:
+        if len(all_tickers) > 1:
+            prices = prices_raw['Close']
+        else:
+            prices = prices_raw[['Close']]
             prices.columns = list(all_tickers)
     except Exception as e:
-        print(f'  [WARN] Failed to download SR ticker prices: {e}')
+        print(f'  [WARN] Failed to download {label} ticker prices: {e}')
         return pd.Series(dtype=float)
 
     # Compute raw MTM for each live day
@@ -110,7 +123,7 @@ def load_sr_equity_live(backtest_normalized: pd.Series,
         with open(snap_map[candidates[-1]]) as f:
             inv = json.load(f)
         total = 0.0
-        for ticker, holding in inv.get('holdings', {}).items():
+        for ticker, holding in inv.get(holdings_key, {}).items():
             shares = holding.get('shares', 0)
             if shares == 0 or ticker not in prices.columns:
                 continue
@@ -137,11 +150,52 @@ def load_sr_equity_live(backtest_normalized: pd.Series,
         if prev_raw is not None:
             daily_ret = (raw_mtm[d] - prev_raw) / prev_raw
             current_equity = current_equity * (1 + daily_ret)
-        # First live day: keep bt_last_equity (return = 0 for stitching day)
         prev_raw = raw_mtm[d]
         results[d] = round(current_equity, 2)
 
-    return pd.Series(results, name='sr')
+    return pd.Series(results, name=label)
+
+
+def load_sr_equity_live(backtest_normalized: pd.Series,
+                        trading_days: pd.DatetimeIndex) -> pd.Series:
+    """Load SR equity from live inventory snapshots + real ETF prices."""
+    return _load_live_equity_from_inventory(
+        inv_dir=SR_INVENTORY_DIR,
+        inv_prefix='inventory_sector_rotation',
+        holdings_key='holdings',
+        live_start=SR_LIVE_START,
+        backtest_normalized=backtest_normalized,
+        trading_days=trading_days,
+        label='sr',
+    )
+
+
+def load_aiss_equity_backtest() -> pd.Series:
+    """Load AISS equity from backtest CSV (balanced_four column)."""
+    files = sorted(glob.glob(os.path.join(AISS_EQUITY_DIR, 'aiss_batch_equity_*.csv')))
+    if not files:
+        sys.exit('[ERROR] No aiss_batch_equity CSV found')
+    df = pd.read_csv(files[-1], index_col=0, parse_dates=True)
+    if AISS_PARAM not in df.columns:
+        sys.exit(f'[ERROR] Column {AISS_PARAM} not found in {files[-1]}')
+    return df[AISS_PARAM].dropna()
+
+
+def load_aiss_equity_live(backtest_normalized: pd.Series,
+                          trading_days: pd.DatetimeIndex) -> pd.Series:
+    """Load AISS equity from live inventory snapshots + real stock prices.
+    AISS inventory uses 'stock_holdings' (individual stocks, 80/15/5 decomposed
+    and cross-subsector aggregated by ticker).
+    """
+    return _load_live_equity_from_inventory(
+        inv_dir=AISS_INVENTORY_DIR,
+        inv_prefix='inventory_aiss',
+        holdings_key='stock_holdings',
+        live_start=AISS_LIVE_START,
+        backtest_normalized=backtest_normalized,
+        trading_days=trading_days,
+        label='aiss',
+    )
 
 
 BDC_JSON = os.path.join(BASE_DIR, 'someo-park-investment-management', 'public', 'data',
@@ -159,24 +213,6 @@ def load_bdc_equity() -> pd.Series:
     return equity
 
 
-def load_soxx_equity(inception_date: str, target_start: float) -> pd.Series:
-    """Load SOXX buy-and-hold equity, normalized to target_start at inception."""
-    end_date = (datetime.now() + pd.Timedelta(days=2)).strftime('%Y-%m-%d')
-    soxx_raw = yf.download('SOXX', start=inception_date, end=end_date,
-                           auto_adjust=True, progress=False)
-    soxx = soxx_raw['Close'].squeeze().dropna()
-    if len(soxx) == 0:
-        sys.exit('[ERROR] No SOXX data downloaded')
-
-    # Buy shares at inception to get target_start equity
-    inception_price = float(soxx.iloc[0])
-    shares = target_start / inception_price
-    equity = (soxx * shares).round(2)
-    equity.index = pd.DatetimeIndex([d.strftime('%Y-%m-%d') for d in equity.index])
-    equity.name = 'soxx'
-    return equity
-
-
 def main():
     parser = argparse.ArgumentParser(description='Generate master_portfolio_performance.json')
     parser.add_argument('--dry-run', action='store_true', help='Print results without writing')
@@ -189,11 +225,12 @@ def main():
     inception_date = str(mrpt.index[0].date())
     print(f'  MRPT: {len(mrpt)} days, start=${mrpt.iloc[0]:,.0f} end=${mrpt.iloc[-1]:,.0f}')
     print(f'  MTFS: {len(mtfs)} days, start=${mtfs.iloc[0]:,.0f} end=${mtfs.iloc[-1]:,.0f}')
-    print(f'  Combined start: ${combined_start:,.0f} (SR and SOXX each normalize to this)')
+    print(f'  Combined start: ${combined_start:,.0f} (SR and AISS each normalize to this)')
+
+    inception_ts = pd.Timestamp(inception_date)
 
     # 2. SR (backtest + live), normalized to combined_start
     sr_bt = load_sr_equity_backtest()
-    inception_ts = pd.Timestamp(inception_date)
     sr_bt_from_inception = sr_bt[sr_bt.index >= inception_ts]
     sr_scale = combined_start / float(sr_bt_from_inception.iloc[0])
 
@@ -215,29 +252,69 @@ def main():
     sr.index = pd.DatetimeIndex(sr.index)
     print(f'  SR total: {len(sr)} days')
 
-    # 3. SOXX, normalized to combined_start
-    soxx = load_soxx_equity(inception_date, combined_start)
-    soxx.index = pd.DatetimeIndex(soxx.index)
-    print(f'  SOXX: {len(soxx)} days, start=${soxx.iloc[0]:,.0f} end=${soxx.iloc[-1]:,.0f}')
+    # 3. AISS (backtest + live), normalized to combined_start
+    aiss_bt = load_aiss_equity_backtest()
+    aiss_bt_from_inception = aiss_bt[aiss_bt.index >= inception_ts]
+    aiss_scale = combined_start / float(aiss_bt_from_inception.iloc[0])
+
+    aiss_bt_portion = aiss_bt_from_inception[aiss_bt_from_inception.index < pd.Timestamp(AISS_LIVE_START)]
+    aiss_bt_normalized = (aiss_bt_portion * aiss_scale).round(2)
+    aiss_bt_normalized.name = 'aiss'
+    print(f'  AISS backtest: {len(aiss_bt_normalized)} days, scale={aiss_scale:.6f}, '
+          f'start=${aiss_bt_normalized.iloc[0]:,.0f} end=${aiss_bt_normalized.iloc[-1]:,.0f}')
+
+    aiss_live = load_aiss_equity_live(aiss_bt_normalized, mrpt.index)
+    if len(aiss_live) > 0:
+        print(f'  AISS live: {len(aiss_live)} days, '
+              f'start=${aiss_live.iloc[0]:,.0f} end=${aiss_live.iloc[-1]:,.0f}')
+        aiss = pd.concat([aiss_bt_normalized, aiss_live])
+    else:
+        aiss = aiss_bt_normalized
+        print('  AISS live: no live data yet')
+
+    aiss.index = pd.DatetimeIndex(aiss.index)
+    print(f'  AISS total: {len(aiss)} days')
 
     # 4. BDC Private Credit (from private_credit_bdc_performance.json)
     bdc = load_bdc_equity()
     print(f'  BDC: {len(bdc)} days, start=${bdc.iloc[0]:,.0f} end=${bdc.iloc[-1]:,.0f}')
 
-    # 5. Merge on common dates
-    df = pd.DataFrame({'mrpt': mrpt, 'mtfs': mtfs, 'sr': sr, 'soxx': soxx, 'bdc': bdc})
+    # 5. Benchmarks (SPY, SMH) — buy-and-hold, normalized to combined_start
+    benchmarks = {}
+    for ticker in ('SPY', 'SMH'):
+        try:
+            bm_end = (datetime.now() + pd.Timedelta(days=2)).strftime('%Y-%m-%d')
+            raw = yf.download(ticker, start=inception_date, end=bm_end,
+                              auto_adjust=True, progress=False)
+            close = raw['Close'].squeeze().dropna()
+            if len(close) > 0:
+                shares = combined_start / float(close.iloc[0])
+                eq = (close * shares).round(2)
+                eq.index = pd.DatetimeIndex([d.strftime('%Y-%m-%d') for d in eq.index])
+                eq.name = ticker.lower()
+                benchmarks[ticker.lower()] = eq
+                print(f'  {ticker}: {len(eq)} days, start=${eq.iloc[0]:,.0f} end=${eq.iloc[-1]:,.0f}')
+        except Exception as e:
+            print(f'  [WARN] {ticker} download failed: {e}')
+
+    # 6. Merge on common dates
+    df = pd.DataFrame({'mrpt': mrpt, 'mtfs': mtfs, 'sr': sr, 'aiss': aiss, 'bdc': bdc})
+    for bm_key, bm_eq in benchmarks.items():
+        df[bm_key] = bm_eq
     df['sr'] = df['sr'].ffill()
-    df['soxx'] = df['soxx'].ffill()
+    df['aiss'] = df['aiss'].ffill()
     df['bdc'] = df['bdc'].ffill()
+    for bm_key in benchmarks:
+        df[bm_key] = df[bm_key].ffill()
     df = df.dropna()
 
     print(f'\n  Merged: {len(df)} trading days ({df.index[0].date()} -> {df.index[-1].date()})')
 
-    # 6. Compute combined (3 AI strategies) and master (all incl SOXX + BDC)
-    df['combined'] = df['mrpt'] + df['mtfs'] + df['sr']
-    df['master'] = df['combined'] + df['soxx'] + df['bdc']
+    # 6. Compute combined (4 AI strategies) and master (all incl BDC)
+    df['combined'] = df['mrpt'] + df['mtfs'] + df['sr'] + df['aiss']
+    df['master'] = df['combined'] + df['bdc']
 
-    components = ['mrpt', 'mtfs', 'sr', 'soxx', 'bdc', 'combined', 'master']
+    components = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'combined', 'master']
     records = []
     peaks = {c: float(df[c].iloc[0]) for c in components}
 
@@ -250,6 +327,9 @@ def main():
             if eq > peaks[comp]:
                 peaks[comp] = eq
             rec[f'{comp}_dd'] = round((eq - peaks[comp]) / peaks[comp] * 100, 2) if peaks[comp] > 0 else 0.0
+        # Benchmarks (equity only — used as dashed reference lines)
+        for bm_key in benchmarks:
+            rec[f'{bm_key}_equity'] = round(float(row[bm_key]), 2)
         records.append(rec)
 
     # Print summary

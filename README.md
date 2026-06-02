@@ -643,10 +643,11 @@ DailySignal.py 在每日信号生成过程中设置了多层质量检查，防�
 | 顺序 | Gate | 适用策略 | 触发条件 | 日志标签 |
 |------|------|---------|---------|---------|
 | 1 | **Macro Gate** | MTFS | VIX term slope 5 日变化 > 1.5pt（恐慌→平静过渡期，动量信号不可靠） | `[MACRO_GATE]` |
-| 2 | **Concentration Gate** | MRPT + MTFS | 单个 ticker 已出现在 ≥ 2 个持仓 pair 中（防集中度风险） | `[CONCENTRATION]` |
-| 3 | **Correlation Gate** | MRPT | 60 日 daily return 相关性 < 0.20（pair 不构成有效配对）。不适用 MTFS——MTFS v2 pair 是跨行业动量分化设计，低 corr 是预期行为 | `[CORRELATION]` |
-| 4 | **Anti-Churn Guard** | MRPT + MTFS | pair 今天被 Step 1 monitor 亏损关仓（upnl < 0），阻止 Step 2 同日重开 | `[ANTI_CHURN]` |
-| 5 | **Min Signal Guard** | MTFS | |momentum_spread| < 0.05（信号太弱，无方向性信息） | `[WEAK_SIGNAL]` |
+| 2 | **Capacity Gate** | MRPT + MTFS | 同时持仓 pair 数已达上限（MRPT/MTFS 各 8 对），等现有仓位退出后才允许新开仓 | `[CAPACITY]` |
+| 3 | **Concentration Gate** | MRPT + MTFS | 单个 ticker 已出现在 ≥ 2 个持仓 pair 中（防集中度风险） | `[CONCENTRATION]` |
+| 4 | **Correlation Gate** | MRPT | 60 日 daily return 相关性 < 0.20（pair 不构成有效配对）。不适用 MTFS——MTFS v2 pair 是跨行业动量分化设计，低 corr 是预期行为 | `[CORRELATION]` |
+| 5 | **Anti-Churn Guard** | MRPT + MTFS | pair 今天被 Step 1 monitor 亏损关仓（upnl < 0），阻止 Step 2 同日重开 | `[ANTI_CHURN]` |
+| 6 | **Min Signal Guard** | MTFS | |momentum_spread| < 0.05（信号太弱，无方向性信息） | `[WEAK_SIGNAL]` |
 
 **Concentration Gate 的双层架构**：除 DailySignal 运行时层外，WalkForward DSR pair selection 阶段也有 `MAX_TICKER_IN_SELECTION = 2` 限制（在 `MRPTWalkForward.py` / `MTFSWalkForward.py` 的 `select_pairs_with_dsr` 中）。
 
@@ -687,7 +688,7 @@ _build_signal() 层（每个 pair 独立判断）：
   ⑧ FLAT            无仓位、无信号
 
 extract_signals() 层（对 ⑥ 产生的 OPEN 信号做否决链）：
-  Macro Gate → Concentration → Correlation → Anti-Churn → Min Signal
+  Macro Gate → Capacity → Concentration → Correlation → Anti-Churn → Min Signal
 ```
 
 ---

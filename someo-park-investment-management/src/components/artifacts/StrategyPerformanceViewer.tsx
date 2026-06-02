@@ -21,13 +21,13 @@ interface DayData {
   combined_dd: number;
   // Master mode fields (optional — only in master_portfolio_performance.json)
   sr_equity?: number;
-  soxx_equity?: number;
+  aiss_equity?: number;
   master_equity?: number;
   sr_pnl?: number;
-  soxx_pnl?: number;
+  aiss_pnl?: number;
   master_pnl?: number;
   sr_dd?: number;
-  soxx_dd?: number;
+  aiss_dd?: number;
   master_dd?: number;
   [key: string]: any;
 }
@@ -36,18 +36,22 @@ const COLORS: Record<string, string> = {
   mrpt: '#2563eb',
   mtfs: '#f59e0b',
   sr: '#16a34a',
-  soxx: '#a855f7',
+  aiss: '#a855f7',
   bdc: '#e11d48',
   combined: '#111',
   master: '#111',
+  spy: '#9ca3af',
+  smh: '#6b7280',
 };
 const LABELS: Record<string, string> = {
-  mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', soxx: 'SOXX', bdc: 'PC BDC',
-  combined: 'COMBINED 3 AI ENABLED SYSTEMATIC STRATEGIES',
+  mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', aiss: 'AISS', bdc: 'PC BDC',
+  combined: 'COMBINED 4 AI ENABLED SYSTEMATIC STRATEGIES',
   master: 'MASTER AI PORTFOLIO WITH GLOBAL ALLOCATIONS',
+  spy: 'SPY', smh: 'SMH',
 };
-const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'combined'];
-const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'soxx', 'bdc', 'master'];
+const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'combined'];
+const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'master'];
+const BENCHMARK_KEYS = ['spy', 'smh'];  // dashed reference lines in Master mode
 
 
 export default function StrategyPerformanceViewer({ params }: { params?: any }) {
@@ -60,7 +64,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
   const [loading, setLoading] = useState(true);
   const [masterLoading, setMasterLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'sr', 'combined']));
+  const [activeStrategies, setActiveStrategies] = useState<Set<string>>(new Set(['mrpt', 'mtfs', 'sr', 'aiss', 'combined']));
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
 
@@ -85,7 +89,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
       .finally(() => setMasterLoading(false));
   }, []);
 
-  // Both modes use masterData (it has all fields: mrpt, mtfs, sr, soxx, combined, master)
+  // Both modes use masterData (it has all fields: mrpt, mtfs, sr, aiss, combined, master)
   // Fall back to stratData only if masterData hasn't loaded yet
   const data = masterData || stratData;
 
@@ -140,6 +144,14 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
           row[`${k}_pnl_pct`] = 0;
         }
       }
+      // Benchmark return % (for dashed reference lines in Master mode)
+      for (const bm of BENCHMARK_KEYS) {
+        const eq = d[`${bm}_equity`] || 0;
+        const firstEq = (first as any)[`${bm}_equity`] || 1;
+        if (firstEq > 0 && eq > 0) {
+          row[`${bm}_ret`] = ((eq - firstEq) / firstEq) * 100;
+        }
+      }
       return row;
     });
   }, [filteredData, viewMode]);
@@ -151,6 +163,12 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
     for (const d of windowData) {
       for (const k of activeKeys) {
         if (activeStrategies.has(k)) vals.push(d[`${k}_ret`] ?? 0);
+      }
+      // Include visible benchmarks in Y range
+      if (viewMode === 'master') {
+        for (const bm of BENCHMARK_KEYS) {
+          if (activeStrategies.has(bm)) vals.push(d[`${bm}_ret`] ?? 0);
+        }
       }
     }
     if (vals.length === 0) return [-3, 15];
@@ -266,6 +284,26 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
             {LABELS[key] || key.toUpperCase()}
           </button>
         ))}
+        {viewMode === 'master' && BENCHMARK_KEYS.map(bm => (
+          <button
+            key={bm}
+            onClick={() => toggle(bm)}
+            style={{
+              padding: '4px 10px',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '.06em',
+              textTransform: 'uppercase',
+              border: `2px dashed ${COLORS[bm]}`,
+              background: activeStrategies.has(bm) ? COLORS[bm] : 'transparent',
+              color: activeStrategies.has(bm) ? '#fff' : COLORS[bm],
+              cursor: 'pointer',
+              transition: 'all .15s',
+            }}
+          >
+            {LABELS[bm]}
+          </button>
+        ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <input
             type="date"
@@ -364,6 +402,10 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
                 <Line key={k} yAxisId="ret" type="monotone" dataKey={`${k}_ret`}
                   stroke={COLORS[k]} strokeWidth={k === totalKey ? 2.5 : 2} dot={false} name={`${k}_ret`} />
               ))}
+              {viewMode === 'master' && BENCHMARK_KEYS.filter(bm => activeStrategies.has(bm)).map(bm => (
+                <Line key={bm} yAxisId="ret" type="monotone" dataKey={`${bm}_ret`}
+                  stroke={COLORS[bm]} strokeWidth={1.5} strokeDasharray="6 3" dot={false} name={`${bm}_ret`} />
+              ))}
               <Line yAxisId="eq" type="monotone" dataKey={`${totalKey}_equity`} stroke="transparent" strokeWidth={0} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -446,7 +488,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
       <div style={{ fontSize: '9px', color: '#999', letterSpacing: '.04em', textTransform: 'uppercase' }}>
         {viewMode === 'strategies'
           ? `${filteredData.length} Trading Days · MRPT + MTFS + SSRS Strategies`
-          : `${filteredData.length} Trading Days · Master AI Portfolio · Equal 1/3 (Strategies / SSRS / SOXX)`
+          : `${filteredData.length} Trading Days · Master AI Portfolio · Equal 1/3 (Strategies / SSRS / AISS)`
         }
       </div>
     </div>

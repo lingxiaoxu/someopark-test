@@ -811,6 +811,8 @@ _MTFS_SLOPE_CHG_THRESHOLD = 1.5   # VIX term slope 5d change threshold for MTFS 
 
 
 _MAX_TICKER_EXPOSURE = 2   # max times a single ticker can appear across open positions
+_MAX_OPEN_PAIRS_MRPT = 8   # max simultaneous open pairs for MRPT
+_MAX_OPEN_PAIRS_MTFS = 8   # max simultaneous open pairs for MTFS
 
 # Fix 1: Correlation Gate — min 60-day daily return correlation to allow OPEN
 _MIN_PAIR_CORRELATION = 0.20
@@ -852,14 +854,18 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
                 log.info(f"[MACRO_GATE] MTFS gate clear — vix_term_slope_5d_chg={slope_5d_chg:.2f} "
                          f"(threshold={_MTFS_SLOPE_CHG_THRESHOLD})")
 
-    # ── Ticker exposure counter: count each ticker across existing positions ──
+    # ── Position count & ticker exposure: count across existing positions ──
     from collections import Counter
     ticker_count = Counter()
+    open_pair_count = 0
     for pair_name, pos in inventory.get('pairs', {}).items():
         if isinstance(pos, dict) and pos.get('direction') and '/' in pair_name:
+            open_pair_count += 1
             t1, t2 = pair_name.split('/', 1)
             ticker_count[t1] += 1
             ticker_count[t2] += 1
+
+    max_open_pairs = _MAX_OPEN_PAIRS_MTFS if strategy == 'mtfs' else _MAX_OPEN_PAIRS_MRPT
 
     signals = []
     for s1, s2, _ in pair_configs:
@@ -882,6 +888,21 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
             sig['macro_gate'] = macro_gate
             sig['note'] = macro_gate['block_reason']
             log.info(f"[MACRO_GATE] {pair_key}: vetoed {original_action}")
+
+        # Apply capacity gate: veto if already at max simultaneous open pairs
+        if sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
+            if open_pair_count >= max_open_pairs:
+                original_action = sig['action']
+                sig['action'] = 'MACRO_VETO'
+                sig['original_action'] = original_action
+                sig['note'] = (
+                    f"Capacity limit — {open_pair_count} pairs already open "
+                    f"(max {max_open_pairs})"
+                )
+                log.info(f"[CAPACITY] {pair_key}: vetoed {original_action} — "
+                         f"{open_pair_count}/{max_open_pairs} pairs open")
+            else:
+                open_pair_count += 1  # reserve slot for this accepted open
 
         # Apply concentration gate: veto if either ticker already at max exposure
         if sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
