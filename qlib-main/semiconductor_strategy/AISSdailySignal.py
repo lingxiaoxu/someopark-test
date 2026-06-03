@@ -403,14 +403,18 @@ def _update_inventory(
     rebalance_reason: str,
     composite_scores: pd.Series,
     capital: float,
+    force: bool = False,
 ) -> dict:
     """
     Update inventory with today's positions.
-    幂等：若 last_updated == signal_date，跳过更新。
+    幂等：若 last_updated == signal_date，跳过更新——除非 force=True（强制调仓）。
+    A forced rebalance must persist even on a same-day re-run (e.g. an operator
+    applying a new graph after the daily cron already ran), so it bypasses the
+    idempotency guard.
     """
     today_str = signal_date.isoformat()
 
-    if inv.get("last_updated") == today_str:
+    if inv.get("last_updated") == today_str and not force:
         log.info(f"Inventory already up to date for {today_str} — skipping.")
         return inv
 
@@ -1035,8 +1039,15 @@ def run_daily_signal(
         # Apply zscore threshold filter (only rebalance sectors with significant change)
         from semiconductor_strategy.portfolio.rebalance import apply_zscore_threshold_filter
         prev_scores = pd.Series(inv.get("prev_composite_scores", {}), dtype=float)
-        # First run or no prev scores: skip threshold filter (all positions are new)
-        if prev_scores.empty:
+        # Skip the threshold filter when: first run / no prev scores (all new), OR a
+        # force-rebalance was requested.  A forced rebalance means "adopt the current
+        # optimizer target now" — so it bypasses the stability filter that would
+        # otherwise keep prior weights on small score moves (which silently froze
+        # forced rebalances, e.g. applying a new supply-chain graph version).
+        # NOTE: the monthly pipeline mode also passes --force-rebalance, so monthly
+        # now fully realigns to the target each month (turnover slightly higher) by
+        # design, rather than being damped by the threshold filter.
+        if prev_scores.empty or force_rebalance:
             filtered_weights, rebalanced, held = target_weights, list(target_weights.index), []
         else:
             filtered_weights, rebalanced, held = apply_zscore_threshold_filter(
@@ -1139,6 +1150,7 @@ def run_daily_signal(
             rebalance_reason=rebalance_reason,
             composite_scores=scores_today,
             capital=capital,
+            force=force_rebalance,
         )
     else:
         # Non-rebalance day: update last_price + increment days_held (idempotent via last_daily_update)
@@ -1308,7 +1320,9 @@ Examples:
     )
     parser.add_argument(
         "--force-rebalance", action="store_true",
-        help="Force rebalance even if today is not a scheduled date",
+        help="Force a full rebalance now: bypasses the schedule, the zscore "
+             "threshold filter (adopts the optimizer target), AND the same-day "
+             "idempotency guard. Use to apply a new graph/param immediately.",
     )
     parser.add_argument(
         "--value-source", choices=["proxy", "constituents", "external", "polygon"],
