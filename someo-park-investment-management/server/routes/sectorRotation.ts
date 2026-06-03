@@ -24,7 +24,10 @@ const SR_INV_HISTORY = () => path.join(SR_DIR(), 'inventory_history');
 async function getLatestFile(dir: string, pattern: string): Promise<string | null> {
   try {
     const files = await listFiles(dir, pattern);
-    return files.length > 0 ? files[files.length - 1] : null;
+    // listFiles() sorts DESCENDING (newest first), so the latest is files[0].
+    // (Was files[files.length - 1] = OLDEST → served the earliest sr_daily_report,
+    //  e.g. 2026-04-27, instead of today's signal.)
+    return files.length > 0 ? files[0] : null;
   } catch { return null; }
 }
 
@@ -268,7 +271,7 @@ router.get('/equity-curve', async (req, res) => {
     }
     // Read equity from the latest portfolio xlsx (sheet: equity_history)
     const { parseXlsxSheet } = await import('../utils/xlsxParser.js');
-    const latestFile = files[files.length - 1];
+    const latestFile = files[0];   // listFiles() is descending → newest first
     const sheetData = await parseXlsxSheet(latestFile, 'equity_history');
     const allRows = sheetData.rows.map((r: any) => ({
       date: r.Date || r.date || r[0],
@@ -367,7 +370,7 @@ router.get('/diagnostic/latest', async (_req, res) => {
   try {
     const files = await listFiles(SR_HISTORY(), 'wf_diagnostic_sr_*.xlsx');
     if (files.length === 0) return res.json({ available: false });
-    const latest = files[files.length - 1];
+    const latest = files[0];   // listFiles() is descending → newest first
     const { listXlsxSheets } = await import('../utils/xlsxParser.js');
     const sheets = await listXlsxSheets(latest);
     res.json({ available: true, filename: path.basename(latest), sheets });
@@ -381,7 +384,7 @@ router.get('/diagnostic/latest/:sheet', async (req, res) => {
   try {
     const files = await listFiles(SR_HISTORY(), 'wf_diagnostic_sr_*.xlsx');
     if (files.length === 0) return res.json({ available: false });
-    const latest = files[files.length - 1];
+    const latest = files[0];   // listFiles() is descending → newest first
     const { parseXlsxSheet } = await import('../utils/xlsxParser.js');
     const data = await parseXlsxSheet(latest, req.params.sheet);
     res.json(data);
@@ -499,12 +502,12 @@ router.get('/strategy-performance', async (_req, res) => {
 
     if (v1Files.length > 0) {
       const { parseXlsxSheet } = await import('../utils/xlsxParser.js');
-      const data = await parseXlsxSheet(v1Files[v1Files.length - 1], 'equity_history');
+      const data = await parseXlsxSheet(v1Files[0], 'equity_history');   // descending → newest
       result.v1 = data.rows.map((r: any) => ({ date: r[0], value: r[1] }));
     }
     if (v2Files.length > 0) {
       const { parseXlsxSheet } = await import('../utils/xlsxParser.js');
-      const data = await parseXlsxSheet(v2Files[v2Files.length - 1], 'equity_history');
+      const data = await parseXlsxSheet(v2Files[0], 'equity_history');   // descending → newest
       result.v2 = data.rows.map((r: any) => ({ date: r[0], value: r[1] }));
     }
 
