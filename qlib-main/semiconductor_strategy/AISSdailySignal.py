@@ -1197,6 +1197,46 @@ def run_daily_signal(
                 _h["last_price"] = round(_p, 4)
         inv["stock_holdings"] = _sh
 
+    # Per-STOCK cost basis / entry date / days held (executable layer). Mirrors the
+    # subsector accounting: ENTER resets, otherwise carry forward. Legacy positions
+    # (opened before this field existed) are backfilled — cost basis = the stock's
+    # price on its subsector's entry date (from history), entry/days inherited from
+    # the subsector. The displayed current price stays the live per-stock last_price.
+    _today_str = signal_date.isoformat()
+    _already = (inv.get("last_daily_update") == _today_str)
+    _sub_holdings = inv.get("holdings", {}) or {}
+    for _tk, _h in inv.get("stock_holdings", {}).items():
+        _sub = (_h.get("subsectors") or [None])[0]
+        _act = actions.get(_sub, ACTION_HOLD) if _sub else ACTION_HOLD
+        _prev = prev_stock_holdings.get(_tk, {})
+        _px = float(_h.get("last_price", 0.0) or 0.0)
+        if will_rebalance and _act == ACTION_ENTER:
+            _h["cost_basis"] = round(_px, 4)
+            _h["entry_date"] = _today_str
+            _h["days_held"]  = 1
+        elif _prev.get("cost_basis") is not None:
+            _h["cost_basis"] = _prev["cost_basis"]
+            _h["entry_date"] = _prev.get("entry_date", _today_str)
+            # increment once per calendar day (idempotent on same-day re-runs)
+            _h["days_held"]  = _prev.get("days_held", 0) + (0 if _already else 1)
+        else:
+            # backfill legacy: inherit subsector entry/days; cost = price on entry date
+            _subh = _sub_holdings.get(_sub, {}) if _sub else {}
+            _ed = _subh.get("entry_date", _today_str)
+            _cb = _px
+            try:
+                if _tk in stock_prices_all.columns:
+                    _col = stock_prices_all[_tk].dropna()
+                    _asof = _col[_col.index <= pd.Timestamp(_ed)]
+                    if len(_asof):
+                        _cb = float(_asof.iloc[-1])
+            except Exception:
+                pass
+            _h["cost_basis"] = round(_cb, 4)
+            _h["entry_date"] = _ed
+            _h["days_held"]  = int(_subh.get("days_held", 1))
+        _h["action_today"] = _act
+
     save_inventory(inv, dry_run=dry_run)
 
     # ── 11. Get macro snapshot for report ─────────────────────────

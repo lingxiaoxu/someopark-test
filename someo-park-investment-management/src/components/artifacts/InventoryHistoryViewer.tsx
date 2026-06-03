@@ -140,14 +140,40 @@ function SsrsSnapshotDetail({ data }: { data: any }) {
 }
 
 // AISS snapshot: stock-level grouped by subsector (subsector = grouping label only)
-// ══ AISS subsector holding card (mirrors SSRS SectorDetail, with stock rows) ══
-function AissSubsectorCard({ sub, holding, stocks, asOf }: { sub: string; holding: any; stocks: any[]; asOf?: string }) {
+// ══ AISS subsector card: header = subsector (action/weight/total PnL);
+//    each STOCK is a SectorDetail-style row with its own cost basis / price /
+//    entry / days held / PnL (all stock-level). ══
+function AissStockRow({ s, asOf }: { s: any; asOf?: string }) {
   const { t } = useTranslation();
-  const pnlPerShare = (holding.last_price || 0) - (holding.cost_basis || 0);
-  const totalPnl = pnlPerShare * (holding.shares || 0);
-  const pnlPct = holding.cost_basis ? (pnlPerShare / holding.cost_basis) * 100 : 0;
-  const daysHeld = holding.days_held ?? calcDaysHeld(holding.entry_date, asOf);
+  const pnlPerShare = (s.last_price || 0) - (s.cost_basis || 0);
+  const totalPnl = pnlPerShare * (s.shares || 0);
+  const pnlPct = s.cost_basis ? (pnlPerShare / s.cost_basis) * 100 : 0;
+  const daysHeld = s.days_held ?? calcDaysHeld(s.entry_date, asOf);
+  return (
+    <div className="bg-[var(--bg-primary)] rounded-md p-2 space-y-1.5 border border-[var(--border-subtle)]">
+      <div className="flex items-center justify-between">
+        <PairBadge pair={s.ticker} direction="long" strategy="aiss" compact
+          details={{ weight: s.weight, shares: s.shares, costBasis: s.cost_basis, lastPrice: s.last_price, openDate: s.entry_date, daysHeld, unrealizedPnl: totalPnl, unrealizedPnlPct: pnlPct }} />
+        <PnlBadge pnl={totalPnl} pct={pnlPct} />
+      </div>
+      <div className="grid grid-cols-6 gap-2 text-[10px]">
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.shares')}</div><div className="text-[var(--text-primary)] font-mono">{(s.shares || 0).toLocaleString()}</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.weight')}</div><div className="text-[var(--text-primary)] font-mono">{((s.weight || 0) * 100).toFixed(1)}%</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.costBasis')}</div><div className="text-[var(--text-primary)] font-mono">${fmtNum(s.cost_basis)}</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.price')}</div><div className="text-[var(--text-primary)] font-mono">${fmtNum(s.last_price)}</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.entry')}</div><div className="text-[var(--text-primary)] font-mono">{s.entry_date || '—'}</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.daysHeld')}</div><div className="text-[var(--text-primary)] font-mono">{daysHeld}d</div></div>
+      </div>
+    </div>
+  );
+}
+
+function AissSubsectorCard({ sub, holding, stocks, asOf }: { sub: string; holding: any; stocks: any[]; asOf?: string }) {
   const act = holding.action_today || 'HOLD';
+  // subsector total PnL = sum of per-stock PnL
+  const totalPnl = stocks.reduce((acc: number, s: any) => acc + ((s.last_price || 0) - (s.cost_basis || 0)) * (s.shares || 0), 0);
+  const totalCost = stocks.reduce((acc: number, s: any) => acc + (s.cost_basis || 0) * (s.shares || 0), 0);
+  const pnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
   return (
     <div className="bg-[var(--bg-secondary)] rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between">
@@ -162,27 +188,9 @@ function AissSubsectorCard({ sub, holding, stocks, asOf }: { sub: string; holdin
         </div>
         <PnlBadge pnl={totalPnl} pct={pnlPct} />
       </div>
-      <div className="grid grid-cols-5 gap-2 text-[10px]">
-        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.costBasis')}</div><div className="text-[var(--text-primary)] font-mono">${fmtNum(holding.cost_basis)}</div></div>
-        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.price')}</div><div className="text-[var(--text-primary)] font-mono">${fmtNum(holding.last_price)}</div></div>
-        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.entry')}</div><div className="text-[var(--text-primary)] font-mono">{holding.entry_date || '—'}</div></div>
-        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.daysHeld')}</div><div className="text-[var(--text-primary)] font-mono">{daysHeld}d</div></div>
-        <div><div className="text-[var(--text-muted)] uppercase">{t('aiss.colStock')}</div><div className="text-[var(--text-primary)] font-mono">{stocks.length}</div></div>
-      </div>
-      {/* individual stocks within the subsector */}
-      <div className="border-t border-[var(--border-subtle)] pt-2 space-y-1">
-        {stocks.map((s: any) => (
-          <div key={s.ticker} className="flex items-center justify-between text-[10px]">
-            <PairBadge pair={s.ticker} direction="long" strategy="aiss" compact
-              details={{ weight: s.weight, shares: s.shares, lastPrice: s.last_price }} />
-            <div className="flex items-center gap-4 font-mono text-[var(--text-secondary)]">
-              <span>{(s.shares || 0).toLocaleString()} sh</span>
-              <span>{((s.weight || 0) * 100).toFixed(1)}%</span>
-              <span>${fmtNum(s.last_price)}</span>
-              <span className="text-[var(--text-primary)]">${fmtNum(s.target_value, 0)}</span>
-            </div>
-          </div>
-        ))}
+      {/* each individual stock: full cost-basis / price / entry / days / PnL detail */}
+      <div className="space-y-1.5">
+        {stocks.map((s: any) => <AissStockRow key={s.ticker} s={s} asOf={asOf} />)}
       </div>
     </div>
   );

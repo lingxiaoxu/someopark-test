@@ -56,6 +56,7 @@ function buildStockView(data: any) {
   const stocks: any[] = [];
   for (const [ticker, info] of Object.entries(stockHoldings) as any) {
     const sub = (info.subsectors && info.subsectors[0]) || 'other';
+    const subH = (data?.holdings || {})[sub] || {};
     const row = {
       ticker,
       subsector: sub,
@@ -63,6 +64,13 @@ function buildStockView(data: any) {
       shares: info.shares || 0,
       last_price: info.last_price || 0,
       target_value: info.target_value || 0,
+      // per-stock cost tracking; legacy snapshots lacking it inherit entry/days from
+      // the subsector and use the stock's own price as a neutral cost fallback
+      // (real per-stock cost is populated by the daily signal going forward).
+      cost_basis: info.cost_basis ?? info.last_price ?? 0,
+      entry_date: info.entry_date ?? subH.entry_date ?? '',
+      days_held: info.days_held ?? subH.days_held ?? 0,
+      action_today: info.action_today ?? subH.action_today ?? 'HOLD',
     };
     stocks.push(row);
     if (!groups[sub]) groups[sub] = { subsector: sub, weight: 0, stocks: [] };

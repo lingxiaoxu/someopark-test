@@ -286,7 +286,7 @@ export default function ChatArea({
     ? (currentInv ? Object.entries(currentInv.holdings || {}).filter(([, h]: any) => (h as any).weight > 0.01).map(([ticker, h]: any) => [ticker, { ...h, direction: 'long' }]) : [])
     : selectedStrategy === 'aiss'
     // AISS: show tradable individual stocks (stock_holdings), NOT subsectors
-    ? (currentInv ? Object.entries(currentInv.stock_holdings || {}).map(([ticker, h]: any) => [ticker, { direction: 'long', weight: (h as any).portfolio_weight, shares: (h as any).shares, last_price: (h as any).last_price, subsector: (h as any).subsectors?.[0] }]) : [])
+    ? (currentInv ? Object.entries(currentInv.stock_holdings || {}).map(([ticker, h]: any) => [ticker, { direction: 'long', weight: (h as any).portfolio_weight, shares: (h as any).shares, last_price: (h as any).last_price, cost_basis: (h as any).cost_basis, entry_date: (h as any).entry_date, days_held: (h as any).days_held, subsector: (h as any).subsectors?.[0] }]) : [])
     : (currentInv ? Object.entries(currentInv.pairs || {}).filter(([, p]: any) => (p as any).direction !== null) : [])
 
   const models = modelList as LLMModel[]
@@ -823,7 +823,10 @@ export default function ChatArea({
                       <span key={key}>
                         <PairBadge pair={key} direction={pos.direction} strategy={selectedStrategy}
                           details={selectedStrategy === 'aiss' ? {
-                            weight: pos.weight, shares: pos.shares, lastPrice: pos.last_price,
+                            weight: pos.weight, shares: pos.shares, costBasis: pos.cost_basis,
+                            lastPrice: pos.last_price, openDate: pos.entry_date, daysHeld: pos.days_held,
+                            unrealizedPnl: pos.shares && pos.last_price && pos.cost_basis ? (pos.last_price - pos.cost_basis) * pos.shares : undefined,
+                            unrealizedPnlPct: pos.cost_basis ? ((pos.last_price - pos.cost_basis) / pos.cost_basis) * 100 : undefined,
                           } : selectedStrategy === 'ssrs' ? {
                             weight: pos.weight, shares: pos.shares, costBasis: pos.cost_basis,
                             lastPrice: pos.last_price, openDate: pos.entry_date, daysHeld: pos.days_held,
