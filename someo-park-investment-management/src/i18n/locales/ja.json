@@ -14,7 +14,8 @@
     "inventoryHistory": "保有履歴",
     "wfStructure": "バックテストファイル構造",
     "pnlReport": "PnLレポート",
-    "strategyPerformance": "戦略パフォーマンス"
+    "strategyPerformance": "戦略パフォーマンス",
+    "riskReport": "リスクレポート"
   },
   "common": {
     "loading": "データを読み込み中...",
@@ -130,7 +131,8 @@
     "welcomeDesc": "トレーディング戦略について質問するか、以下のデータビューを探索してください。",
     "activePairs": "アクティブペア",
     "activePositions": "アクティブポジション",
-    "clickToPreview": "クリックしてプレビュー"
+    "clickToPreview": "クリックしてプレビュー",
+    "btnRiskReport": "ポートフォリオのリスク管理レポートを表示して。"
   },
   "connection": {
     "title": "OpenClaw を接続",
@@ -553,5 +555,8 @@
     "versionAll": "バージョン：すべて",
     "scopeAll": "スコープ：すべて",
     "sourceAll": "ソース：すべて"
+  },
+  "riskReport": {
+    "noReports": "リスクレポートはありません。"
   }
 }

@@ -72,7 +72,7 @@ export function assembleToolPoolWithMCP(mcpTools: AgentTool[] = []): AgentTool[]
 
 // === ESM imports — ordered by usage frequency for prompt cache stability ===
 
-// Financial domain tools (16)
+// Financial domain tools (17)
 import { inventoryTool } from './inventoryTool.js'
 import { signalsTool } from './signalsTool.js'
 import { regimeTool } from './regimeTool.js'
@@ -87,6 +87,7 @@ import { diagnosticTool } from './diagnosticTool.js'
 import { wfStructureTool } from './wfStructureTool.js'
 import { strategyPerformanceTool } from './strategyPerformanceTool.js'
 import { pnlReportsTool } from './pnlReportTool.js'
+import { riskReportsTool } from './riskReportTool.js'
 import { inventoryHistoryTool } from './inventoryHistoryTool.js'
 
 // General-purpose data tools
@@ -136,11 +137,12 @@ import { kbListTool } from './kbListTool.js'
 
 export function registerAllTools() {
   const allTools: AgentTool[] = [
-    // Financial (16 including text variant)
+    // Financial (17 including text variant)
     inventoryTool, signalsTool, regimeTool, dailyReportTool,
     wfSummaryTool, equityCurveTool, oosPairSummaryTool, dsrLogTool,
     pairUniverseTool, dailyReportTextTool, monitorHistoryTool, diagnosticTool,
-    wfStructureTool, strategyPerformanceTool, pnlReportsTool, inventoryHistoryTool,
+    wfStructureTool, strategyPerformanceTool, pnlReportsTool, riskReportsTool,
+    inventoryHistoryTool,
     // General-purpose data (11)
     mongodbTool, calculatorTool, statisticsTool, readFileTool,
     parseXlsxTool, listFilesTool, queryJsonTool, httpRequestTool,

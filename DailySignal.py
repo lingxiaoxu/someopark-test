@@ -2083,6 +2083,24 @@ def run_daily_signal(
         print(f"\n  详细报告: {rpt_json_path}")
         print(f"  文字报告: {rpt_txt_path}")
 
+        # ── Risk report (non-fatal, read-only; deep in-memory data transfer) ──
+        if not dry_run:
+            try:
+                from RiskManager import generate_risk_report
+                rr = generate_risk_report(
+                    signal_date=signal_date, total_capital=T,
+                    mrpt_capital=mrpt_cap, mtfs_capital=mtfs_cap,
+                    regime=regime, monitor=monitor,
+                    mrpt_out=mrpt_out, mtfs_out=mtfs_out, ts_str=ts_str)
+                rs = rr.get('summary', {})
+                log.info(f"[RISK] workbook → {rr.get('xlsx_path')} | pdf → {rr.get('pdf_path')} | "
+                         f"NAV=${(rs.get('nav') or 0):,.0f} gross={rs.get('gross_leverage')}x "
+                         f"net_beta={rs.get('net_beta')} VaR95=${(rs.get('var_95_1d') or 0):,.0f} "
+                         f"breaches={rs.get('n_breaches')}")
+                print(f"  风险报告: {rr.get('pdf_path')}")
+            except Exception as e:
+                log.warning(f"[RISK] risk report failed (non-fatal): {e}")
+
         return combined_out
 
     # ── Single strategy mode ──────────────────────────────────────────────
@@ -2146,6 +2164,27 @@ def run_daily_signal(
     write_report_txt(report, rpt_txt_path)
     print(f"\n  详细报告: {rpt_json_path}")
     print(f"  文字报告: {rpt_txt_path}")
+
+    # ── Risk report (non-fatal, read-only; deep in-memory data transfer) ──
+    if not dry_run:
+        try:
+            from RiskManager import generate_risk_report
+            rr = generate_risk_report(
+                signal_date=signal_date, total_capital=capital,
+                mrpt_capital=capital if strategy == 'mrpt' else 0.0,
+                mtfs_capital=capital if strategy == 'mtfs' else 0.0,
+                regime=regime, monitor=monitor,
+                mrpt_out=single_out if strategy == 'mrpt' else None,
+                mtfs_out=single_out if strategy == 'mtfs' else None,
+                ts_str=ts_str)
+            rs = rr.get('summary', {})
+            log.info(f"[RISK] workbook → {rr.get('xlsx_path')} | pdf → {rr.get('pdf_path')} | "
+                     f"NAV=${(rs.get('nav') or 0):,.0f} gross={rs.get('gross_leverage')}x "
+                     f"net_beta={rs.get('net_beta')} VaR95=${(rs.get('var_95_1d') or 0):,.0f} "
+                     f"breaches={rs.get('n_breaches')}")
+            print(f"  风险报告: {rr.get('pdf_path')}")
+        except Exception as e:
+            log.warning(f"[RISK] risk report failed (non-fatal): {e}")
 
     return single_out
 

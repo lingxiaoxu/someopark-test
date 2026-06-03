@@ -21,6 +21,7 @@ const TOOL_DISPLAY: Record<string, string> = {
   get_wf_structure: '获取 WF 结构',
   get_strategy_performance: '查询策略业绩',
   get_pnl_reports: '查询 PnL 报告',
+  get_risk_reports: '查询风控报告',
   get_inventory_history: '查询历史持仓',
   query_mongodb: '查询 MongoDB',
   calculate: '数学计算',

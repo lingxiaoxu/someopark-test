@@ -4,7 +4,7 @@ export interface ArtifactTrigger {
   params?: Record<string, any>
 }
 
-// Keywords mapping for all 13 artifact types, supporting EN + ZH
+// Keywords mapping for all 14 artifact types, supporting EN + ZH
 const ARTIFACT_PATTERNS: Array<{
   type: string
   title: string
@@ -88,6 +88,11 @@ const ARTIFACT_PATTERNS: Array<{
     type: 'strategy_performance',
     title: 'Strategy Performance',
     keywords: ['strategy performance', 'overall performance', 'performance curve', 'inception', '策略表现', '策略曲线', '整体表现', '净值曲线总览'],
+  },
+  {
+    type: 'risk_report',
+    title: 'Risk Report',
+    keywords: ['risk report', 'risk management report', 'risk pack', 'var report', 'leverage report', 'exposure report', '风险报告', '风控报告', '风险管理报告'],
   },
 ]
 

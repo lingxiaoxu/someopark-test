@@ -15,6 +15,7 @@ import InventoryViewer from './artifacts/InventoryViewer';
 import InventoryHistoryViewer from './artifacts/InventoryHistoryViewer';
 import WFStructureViewer from './artifacts/WFStructureViewer';
 import PnlReportViewer from './artifacts/PnlReportViewer';
+import RiskReportViewer from './artifacts/RiskReportViewer';
 import StrategyPerformanceViewer from './artifacts/StrategyPerformanceViewer';
 
 // Artifact type → i18n title key mapping
@@ -159,6 +160,7 @@ export default function RightPanel({ artifact, onClose, onMaximize, isMaximized 
         {artifact.type === 'inventory_history' && <InventoryHistoryViewer params={params} />}
         {artifact.type === 'wf_structure'      && <WFStructureViewer data={artifact.data} params={params} />}
         {artifact.type === 'pnl_report'        && <PnlReportViewer params={params} />}
+        {artifact.type === 'risk_report'       && <RiskReportViewer params={params} />}
         {artifact.type === 'strategy_performance' && <StrategyPerformanceViewer params={params} />}
       </div>
     </div>

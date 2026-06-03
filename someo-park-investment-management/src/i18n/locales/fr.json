@@ -14,7 +14,8 @@
     "inventoryHistory": "Historique d'inventaire",
     "wfStructure": "Structure des fichiers de backtest",
     "pnlReport": "Rapport PnL",
-    "strategyPerformance": "Performance de la stratégie"
+    "strategyPerformance": "Performance de la stratégie",
+    "riskReport": "Rapport de risque"
   },
   "common": {
     "loading": "Chargement des données...",
@@ -130,7 +131,8 @@
     "welcomeDesc": "Posez des questions sur vos strategies de trading ou explorez les vues de donnees ci-dessous.",
     "activePairs": "Paires actives",
     "activePositions": "Positions actives",
-    "clickToPreview": "Cliquer pour previsualiser"
+    "clickToPreview": "Cliquer pour previsualiser",
+    "btnRiskReport": "Affiche le rapport de gestion des risques du portefeuille."
   },
   "connection": {
     "title": "Connecter votre OpenClaw",
@@ -553,5 +555,8 @@
     "versionAll": "Version : Tout",
     "scopeAll": "Portée : Tout",
     "sourceAll": "Source : Tout"
+  },
+  "riskReport": {
+    "noReports": "Aucun rapport de risque disponible."
   }
 }

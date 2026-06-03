@@ -14,7 +14,8 @@
     "inventoryHistory": "Inventory History",
     "wfStructure": "Backtesting Files Structure",
     "pnlReport": "PnL Report",
-    "strategyPerformance": "Strategy Performance"
+    "strategyPerformance": "Strategy Performance",
+    "riskReport": "Risk Report"
   },
   "common": {
     "loading": "Loading data...",
@@ -447,7 +448,8 @@
     "welcomeDesc": "Ask me anything about your trading strategies, or explore the data views below.",
     "activePairs": "Active Pairs",
     "activePositions": "Active Positions",
-    "clickToPreview": "Click to see preview"
+    "clickToPreview": "Click to see preview",
+    "btnRiskReport": "Show the portfolio risk management report."
   },
   "chatInput": {
     "placeholder": "Ask SomeoClaw anything...",
@@ -553,5 +555,8 @@
     "versionAll": "Version: All",
     "scopeAll": "Scope: All",
     "sourceAll": "Source: All"
+  },
+  "riskReport": {
+    "noReports": "No risk reports available."
   }
 }

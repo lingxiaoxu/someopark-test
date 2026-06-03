@@ -14,7 +14,8 @@
     "inventoryHistory": "持仓历史",
     "wfStructure": "回测文件结构图",
     "pnlReport": "盈亏报告",
-    "strategyPerformance": "策略表现"
+    "strategyPerformance": "策略表现",
+    "riskReport": "风险报告"
   },
   "common": {
     "loading": "加载数据中...",
@@ -130,7 +131,8 @@
     "welcomeDesc": "询问交易策略相关问题，或探索下方的数据视图。",
     "activePairs": "当前活跃交易对",
     "activePositions": "当前活跃仓位",
-    "clickToPreview": "点击查看预览"
+    "clickToPreview": "点击查看预览",
+    "btnRiskReport": "查看组合风险管理报告。"
   },
   "connection": {
     "title": "连接你的 OpenClaw",
@@ -553,5 +555,8 @@
     "versionAll": "版本：全部",
     "scopeAll": "范围：全部",
     "sourceAll": "来源：全部"
+  },
+  "riskReport": {
+    "noReports": "暂无风险报告。"
   }
 }

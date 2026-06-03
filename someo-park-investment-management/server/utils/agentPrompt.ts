@@ -139,21 +139,22 @@ All tools below accept strategy="mrpt", "mtfs", or "ssrs" where applicable.
 7. **Monitor History**: XLSX monitoring data (get_monitor_history)
 8. **Diagnostics**: Walk-forward diagnostic XLSX (get_wf_diagnostic)
 9. **PnL Reports**: Available PDF report dates (get_pnl_reports)
-10. **Strategy Performance**: Daily equity time series (get_strategy_performance)
-11. **Compare Strategies**: Side-by-side MRPT vs MTFS (compare_strategies)
-12. **Pair Stats**: Comprehensive single-pair analysis (get_pair_stats)
+10. **Risk Report**: Institutional risk pack PDF/JSON/XLSX — exposure, leverage, VaR/CVaR, concentration, factor/beta, stress, limits + balance/income/capital/cash-flow statements + theory diagnostics (risk contribution, FF5+UMD attribution, fat-tail, PSR/DSR, CDaR, Kelly). List via get_risk_reports; read exact numbers via read_file on trading_signals/risk_management/risk_report_<ts>.json
+11. **Strategy Performance**: Daily equity time series (get_strategy_performance)
+12. **Compare Strategies**: Side-by-side MRPT vs MTFS (compare_strategies)
+13. **Pair Stats**: Comprehensive single-pair analysis (get_pair_stats)
 ### SSRS (Sector Rotation)
 Use strategy="ssrs" with these tools:
-13. **SSRS Inventory**: Sector ETF holdings — weights, shares, cost basis, entry dates, rebalance history, emergency mode (get_inventory strategy=ssrs)
-14. **SSRS Signals**: Daily report — composite scores for 11 sectors, regime, smart_select decision, rebalance actions, macro positioning (get_signals strategy=ssrs)
-15. **SSRS WF Summary**: 73-fold walk-forward stats — synthetic OOS Sharpe/CAGR/MaxDD, WFE, per-param OOS performance by regime (get_wf_summary strategy=ssrs)
-16. **SSRS Inventory History**: Position snapshots with holdings, weights, rebalance history (get_inventory_history strategy=ssrs)
-17. **SSRS Backtest Results**: 59 named param sets × V1/V2, batch summary CSV, equity curves, selected_param_set.json, top_candidates.json, param_oos_by_regime.json, macro_latent_centroids — accessible via read_file / list_files on qlib-main/sector_rotation/backtest_results/
-18. **SSRS Portfolio Excel**: 26-sheet portfolio history per param set (equity, sector weights, PnL attribution, trades, regime, stop-loss) — accessible via parse_data_file on historical_runs/sector_rotation/sr_portfolio_*.xlsx
-19. **SSRS Tearsheet PDF**: 13+ page PDF reports — accessible via read_file on qlib-main/sector_rotation/report/output/*.pdf
-20. **SSRS Smart Select**: Daily param selection state — MCPS scores, version switching, switch history, top candidates (via read_file on qlib-main/sector_rotation/selected_param_set.json)
-21. **SSRS Weekly Review**: Multi-horizon backtest, parameter drift, regime trend, P0 cache health, stop-loss proximity, version preference (via read_file on qlib-main/sector_rotation/backtest_results/weekly_review_latest.json — symlink to latest timestamped weekly_review_{YYYYMMDD_HHMMSS}.json)
-22. **SSRS WF Diagnostic**: 5-sheet Excel — fold summary, param OOS matrix, param by regime, synthetic equity, selection log (via parse_data_file on historical_runs/sector_rotation/wf_diagnostic_sr_*.xlsx)
+14. **SSRS Inventory**: Sector ETF holdings — weights, shares, cost basis, entry dates, rebalance history, emergency mode (get_inventory strategy=ssrs)
+15. **SSRS Signals**: Daily report — composite scores for 11 sectors, regime, smart_select decision, rebalance actions, macro positioning (get_signals strategy=ssrs)
+16. **SSRS WF Summary**: 73-fold walk-forward stats — synthetic OOS Sharpe/CAGR/MaxDD, WFE, per-param OOS performance by regime (get_wf_summary strategy=ssrs)
+17. **SSRS Inventory History**: Position snapshots with holdings, weights, rebalance history (get_inventory_history strategy=ssrs)
+18. **SSRS Backtest Results**: 59 named param sets × V1/V2, batch summary CSV, equity curves, selected_param_set.json, top_candidates.json, param_oos_by_regime.json, macro_latent_centroids — accessible via read_file / list_files on qlib-main/sector_rotation/backtest_results/
+19. **SSRS Portfolio Excel**: 26-sheet portfolio history per param set (equity, sector weights, PnL attribution, trades, regime, stop-loss) — accessible via parse_data_file on historical_runs/sector_rotation/sr_portfolio_*.xlsx
+20. **SSRS Tearsheet PDF**: 13+ page PDF reports — accessible via read_file on qlib-main/sector_rotation/report/output/*.pdf
+21. **SSRS Smart Select**: Daily param selection state — MCPS scores, version switching, switch history, top candidates (via read_file on qlib-main/sector_rotation/selected_param_set.json)
+22. **SSRS Weekly Review**: Multi-horizon backtest, parameter drift, regime trend, P0 cache health, stop-loss proximity, version preference (via read_file on qlib-main/sector_rotation/backtest_results/weekly_review_latest.json — symlink to latest timestamped weekly_review_{YYYYMMDD_HHMMSS}.json)
+23. **SSRS WF Diagnostic**: 5-sheet Excel — fold summary, param OOS matrix, param by regime, synthetic equity, selection log (via parse_data_file on historical_runs/sector_rotation/wf_diagnostic_sr_*.xlsx)
 ### Private Credit — Excel Template Models (pc_* tools)
 19 audited models from IGPC/UBP/VCOP Excel template (v4). Two routes for modeling:
 - **pc_list_models**: Browse all 19 models (VCOP: Secondary+NAV, DualTrack, FairNAV, LTV Trigger, RAROC; IGPC: BBB Callable, Infra Amort, Generic Callable; UBP: Structured Mezz, Secondary Loan, Warrant; General: LP Stakes, CVs, Direct Portfolio, NAV Loan, Hybrid Facility, Preferred Equity, Portfolio HHI, Euro Waterfall)
@@ -188,13 +189,13 @@ Institutional-quality fixed income analytics with FRED data, Nelson-Siegel forwa
 For factual questions about private credit, ALWAYS search the knowledge base first. Cite sources: "According to KB-26..."
 
 ### General Tools
-23. **Math/Stats**: Financial statistics calculator (calculate, calculate_statistics)
-24. **Data Tools**: read_file, list_files, query_json, query_mongodb, http_request, parse_data_file
-25. **Search**: web_search (web), search_content (ripgrep file search)
-26. **Notebook**: read_notebook (.ipynb files)
-27. **Python**: run_python (E2B sandbox), get_task_output, stop_task
-28. **Config**: get_set_config (agent settings)
-29. **Interaction**: ask_user, manage_tasks, send_message, sleep
+24. **Math/Stats**: Financial statistics calculator (calculate, calculate_statistics)
+25. **Data Tools**: read_file, list_files, query_json, query_mongodb, http_request, parse_data_file
+26. **Search**: web_search (web), search_content (ripgrep file search)
+27. **Notebook**: read_notebook (.ipynb files)
+28. **Python**: run_python (E2B sandbox), get_task_output, stop_task
+29. **Config**: get_set_config (agent settings)
+30. **Interaction**: ask_user, manage_tasks, send_message, sleep
 
 ## How to Work
 1. **Always use tools for real data** — never guess at numbers, positions, or dates

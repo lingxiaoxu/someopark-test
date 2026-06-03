@@ -152,6 +152,17 @@ export const getPnlReportUrl = (date?: string, strategy?: string) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════
+// Risk Management Report
+// ═══════════════════════════════════════════════════════════════════════
+export const getRiskReportList = () =>
+  fetchApi<{ date: string; timestamp: string; filename: string }[]>('/api/risk-report');
+export const getRiskReportUrl = (ts?: string) => {
+  const p = ts ? `/api/risk-report/${ts}` : '/api/risk-report/latest';
+  const keyParam = API_KEY ? `?key=${API_KEY}` : '';
+  return `${API_BASE}${p}${keyParam}`;
+};
+
+// ═══════════════════════════════════════════════════════════════════════
 // Monitor / Portfolio History
 // ═══════════════════════════════════════════════════════════════════════
 export const getMonitorHistoryList = (strategy?: string) =>
