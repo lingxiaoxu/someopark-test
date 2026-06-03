@@ -38,7 +38,7 @@
 
 ## 策略概览
 
-跨 8 个半导体**子板块**进行多因子轮动。每个子板块是一个固定 **80 / 15 / 5** 的三只股票合成篮子（总收益篮子），可交易资产是子板块本身——引擎按月在子板块**之间**轮动，篮子**内部**保持固定比例。共 23 只独立股票 + SOXX / SMH / SPY 基准。
+跨 8 个半导体**子板块**进行多因子轮动。每个子板块是一个固定 **80 / 15 / 5** 的三只股票合成篮子（总收益篮子），可交易资产是子板块本身——引擎按月在子板块**之间**轮动，篮子**内部**保持固定比例。共 23 只独立股票（带权）+ 每板块 1 只 0% 储备股（+6 新增 = 29 只入库）+ SOXX / SMH / SPY 基准。
 
 > **比 SSRS 多一层（个股执行层）**：SSRS 直接交易 11 个 ETF，日度信号停在 ETF 层即可。AISS 的"ETF 层"是 subsector（合成篮子，不可直接下单），所以日度信号**多一步**——把 subsector 目标权重按 80/15/5（PIT 正确，晚期 IPO 自动剔除并重归一）分解到**真实个股持仓/订单**,并**按 ticker 跨子板块聚合**(如 ARM 同属 ai_gpu 与 logic_cpu → 合并成一个订单)。回测端对应 Excel 的 7 个 `*_stock_decomp` sheet,实盘端对应日报的股票层 + inventory 的 `stock_holdings`(见"输出"与 `stock_decompose.py`)。
 
@@ -51,20 +51,22 @@
 | 方向 | 纯多头，无做空，基础配置无杠杆 |
 | 胜负门槛 | 在 Sharpe **且** CAGR 上同时跑赢 SOXX **和** SMH |
 
-### 子板块篮子（80 / 15 / 5）
+### 子板块篮子（80 / 15 / 5 + 0% 储备）
 
-| 子板块 | primary 80% | backup1 15% | backup2 5% | 周期角色 |
-|---|---|---|---|---|
-| AI / GPU | NVDA | ALAB | ARM | AI-capex 直接受益 |
-| Custom ASIC / Net | AVGO | MRVL | CRDO | 滞后 GPU 1–3 月 |
-| Equipment | KLAC | LRCX | AMAT | 领先周期 9–18 月 |
-| Memory / HBM | MU | WDC | SIMO | 库存周期 |
-| Foundry | TSM | UMC | GFS | 领先 fabless 6–12 月 |
-| Analog / Defensive | TXN | ADI | MCHP | 晚周期防御 |
-| Logic / CPU | AMD | INTC | ARM | AI-server，滞后 GPU |
-| RF / Edge | QCOM | SWKS | QRVO | 消费电子，AI-无关 |
+| 子板块 | primary 80% | backup1 15% | backup2 5% | reserve 0% | 周期角色 |
+|---|---|---|---|---|---|
+| AI / GPU | NVDA | ALAB | ARM | AMD | AI-capex 直接受益 |
+| Custom ASIC / Net | AVGO | MRVL | CRDO | ANET | 滞后 GPU 1–3 月 |
+| Equipment | KLAC | LRCX | AMAT | ASML | 领先周期 9–18 月 |
+| Memory / HBM | MU | WDC | SIMO | STX | 库存周期 |
+| Foundry | TSM | UMC | GFS | TSEM | 领先 fabless 6–12 月 |
+| Analog / Defensive | TXN | ADI | MCHP | NXPI | 晚周期防御 |
+| Logic / CPU | AMD | INTC | ARM | MRVL | AI-server，滞后 GPU |
+| RF / Edge | QCOM | SWKS | QRVO | MTSI | 消费电子，AI-无关 |
 
-> 晚期 IPO（ARM 2023、ALAB 2024、CRDO 2022、GFS 2021）只有在累计 24 个月历史后才并入篮子（PIT 正确；在此之前由 primary 锚定）。
+> **储备股（第 4 只，0% 配比）**：经相关性/流动性筛选的"数据就绪备胎",平时**不买**(篮子常规为 3 只 80/15/5)。仅当 3 只里某只**不能用了**——往前 10 个交易日无有效价(停牌/退市/数据断流)——其权重才**自动级联给储备股**(若储备股当时可用),否则回退到剩余存活档按比例分。短暂 1–2 天跳空不触发;储备股本身受 24 月历史门槛约束。机制见 `universe.effective_weights(unavailable=)` + `loader.build_subsector_prices` + `stock_decompose.recently_unavailable`。储备股与主篮子不重复时(AMD/MRVL 跨子板块复用,机制允许,如 ARM)。
+>
+> 晚期 IPO（ARM 2023、ALAB 2024、CRDO 2022、GFS 2021）只有在累计 24 个月历史后才并入篮子（PIT 正确；在此之前由 primary 锚定）。IPO 缺口**不是**"意外",不触发储备股。
 
 ### 信号架构（4 因子，月度，Regime 条件）
 
@@ -165,7 +167,7 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh [MODE] [OPTIONS]
 | `--signal-version v1\|v2` | 信号版本（V1=月度, V2=半月度），用于 daily/backtest/batch/select/wf/validate/tearsheet | smart_select 自动选；config 默认 v1 |
 | `--param-set NAME` | 指定参数集（不依赖 selected_param_set.json） | selected / default |
 | `--date YYYY-MM-DD` | 覆盖信号日期 | 最近交易日 |
-| `--force-rebalance` | 强制再平衡（忽略月度调度） | 关 |
+| `--force-rebalance` | 强制全额再平衡：绕过月度调度 + zscore 阈值过滤（直接采用优化器目标）+ 同日幂等护栏。用于立即应用新图谱/参数 | 关 |
 | `--skip-holiday` | 跳过 NYSE 节假日检查（回填 / 手动运行） | 关 |
 | `--dry-run` | 不写 inventory | 关 |
 
@@ -575,7 +577,7 @@ VIX 完整阶梯：`< 28` 全仓 → `≥ 28` 10% cash → `≥ 32` 25% cash →
 
 ### 八、交易成本 `costs`（3 tier）
 
-Tier 1（NVDA/AVGO/AMD/QCOM/TSM/MU/TXN/INTC）3 bps · Tier 2（KLAC/LRCX/AMAT/WDC/ARM/ADI）5 bps · Tier 3（其余）8 bps。引擎按 80/15/5 篮子混合各 tier。`annual_fee_bps` 0（个股无管理费）。
+Tier 1（NVDA/AVGO/AMD/QCOM/TSM/MU/TXN/INTC/ASML）3 bps · Tier 2（KLAC/LRCX/AMAT/WDC/ARM/ADI/NXPI/ANET/STX）5 bps · Tier 3（其余，含 TSEM/MTSI）8 bps。引擎按 80/15/5 篮子混合各 tier（储备股 0% 不计成本，除非被顶替）。`annual_fee_bps` 0（个股无管理费）。
 
 ### 九、回测 `backtest`
 

@@ -8,64 +8,64 @@
       "param_set": "default",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -74,64 +74,64 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -140,64 +140,64 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -206,64 +206,64 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -272,64 +272,64 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -338,64 +338,64 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -404,64 +404,64 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -470,64 +470,64 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -536,64 +536,64 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -602,64 +602,64 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -668,64 +668,64 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -734,64 +734,64 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -800,64 +800,64 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -866,64 +866,64 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -932,64 +932,64 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -998,64 +998,64 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1064,64 +1064,64 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1130,64 +1130,64 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1196,64 +1196,64 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1262,64 +1262,64 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1328,64 +1328,64 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1394,64 +1394,64 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1460,64 +1460,64 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1526,64 +1526,64 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1592,64 +1592,64 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1658,64 +1658,64 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1724,64 +1724,64 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1790,64 +1790,64 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1856,64 +1856,64 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1922,64 +1922,64 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     },
@@ -1988,64 +1988,64 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "LRCX",
+          "ON",
           "BSX"
         ],
         [
-          "LRCX",
+          "ON",
           "RMD"
         ],
         [
-          "CSCO",
-          "REGN"
-        ],
-        [
-          "CSCO",
+          "LRCX",
           "CAG"
         ],
         [
-          "NUE",
-          "INTU"
+          "LRCX",
+          "HII"
         ],
         [
-          "NUE",
-          "MKTX"
+          "CSCO",
+          "MDT"
         ],
         [
-          "STLD",
+          "CSCO",
           "ISRG"
         ],
         [
           "STLD",
-          "HII"
+          "INTU"
         ],
         [
-          "ORCL",
-          "LOW"
+          "STLD",
+          "MKTX"
         ],
         [
-          "ORCL",
-          "TAP"
+          "NUE",
+          "NFLX"
         ],
         [
-          "BWA",
+          "NUE",
           "CME"
         ],
         [
           "BWA",
-          "VLTO"
+          "TAP"
+        ],
+        [
+          "BWA",
+          "SYK"
         ],
         [
           "KLAC",
-          "AWK"
+          "LOW"
         ],
         [
           "KLAC",
           "ICE"
         ],
         [
-          "FSLR",
-          "KR"
+          "FFIV",
+          "CPRT"
         ]
       ]
     }
