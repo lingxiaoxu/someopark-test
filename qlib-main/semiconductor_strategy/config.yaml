@@ -70,9 +70,37 @@ signals:
     zscore_window: 36
 
   supply_chain:
-    graph_version: "v1"
+    graph_version: "v2"           # v1 = hardcoded SUPPLY_CHAIN_GRAPH; v2 = graph_config below
     use_external_macro: true      # use TSMC/ASML/MU-DIO/DRAM when PIT-available, else price-proxy
-    lag_decay: 0.0                # 0 = hard lag; >0 = exponential decay around the lag (V2)
+    lag_decay: 0.0                # 0 = hard lag; >0 = exponential decay e^{-λk} around the lag
+                                  #   (Hong-Stein gradual diffusion; half-life ≈ ln2/λ months,
+                                  #    e.g. 0.10 ≈ 7-month half-life). Left 0 = pure calibrated lag.
+    # ── V2 knowledge graph ───────────────────────────────────────────────────
+    # Lags empirically calibrated on factor-RESIDUAL monthly returns (common semi
+    # beta removed) — IC-maximising lag per edge (signals/graph_calibration.py;
+    # report at backtest_results/graph_calibration_report.json).  Edge weights are
+    # economic-link strengths (unchanged from V1).  Structural fixes vs V1:
+    #   • pmi_proxy → analog_defense now driven by real FRED IPMAN-YoY (was 0)
+    #   • logic_cpu gains 3 inbound edges (V1 had none → its score was always 0)
+    graph_config:
+      nodes:
+        pmi_proxy: {series: "IPMAN", transform: "yoy_z"}   # FRED Industrial Production: Manufacturing
+      edges:
+        - {source: ai_capex_proxy, target: ai_gpu,        weight: 1.0,  lag_months: 0,  desc: "4 hyperscalers 3M momentum"}
+        - {source: ai_gpu,         target: custom_asic,   weight: 0.6,  lag_months: 7,  desc: "NVDA relative strength"}
+        - {source: ai_gpu,         target: memory_hbm,    weight: 0.8,  lag_months: 10, desc: "NVDA shipments -> MU"}
+        - {source: ai_gpu,         target: foundry,       weight: 0.8,  lag_months: 5,  desc: "TSMC monthly revenue YoY"}
+        - {source: foundry,        target: equipment,     weight: 0.9,  lag_months: 4,  desc: "KLAC/LRCX strength (V1 proxy)"}
+        - {source: memory_hbm,     target: equipment,     weight: 0.7,  lag_months: 1,  desc: "MU inventory days change"}
+        - {source: equipment,      target: foundry,       weight: 0.5,  lag_months: 0,  desc: "ASML net bookings (feedback)"}
+        - {source: foundry,        target: custom_asic,   weight: 0.6,  lag_months: 11, desc: "CoWoS tightness"}
+        - {source: logic_cpu,      target: ai_gpu,        weight: -0.2, lag_months: 6,  desc: "AMD share (negative competition)"}
+        - {source: consumer_demand_proxy, target: rf_edge, weight: 0.8, lag_months: 0,  desc: "Apple/IDC PC demand"}
+        - {source: pmi_proxy,      target: analog_defense, weight: 0.5, lag_months: 11, desc: "IPMAN manufacturing trend (IC +0.12)"}
+        # logic_cpu inbound (calibrated, kept |IC|>=0.05):
+        - {source: foundry,               target: logic_cpu, weight: 0.5, lag_months: 10, desc: "AMD/ARM fabless on TSMC; capacity leads (IC +0.20)"}
+        - {source: consumer_demand_proxy, target: logic_cpu, weight: 0.6, lag_months: 9,  desc: "PC/client CPU demand (IC +0.14)"}
+        - {source: ai_capex_proxy,        target: logic_cpu, weight: 0.4, lag_months: 9,  desc: "server-CPU datacenter attach (IC +0.11)"}
 
   capex_pulse:
     tickers: ["MSFT", "GOOGL", "META", "AMZN"]

@@ -842,6 +842,8 @@ def run_daily_signal(
         "erm_lookback_quarters": erm_cfg.get("lookback_quarters", 4),
         "rsb_enabled": rsb_cfg.get("enabled", False),
         "rsb_lookback_days": rsb_cfg.get("lookback_days", 63),
+        "use_external_macro": sig_cfg.get("supply_chain", {}).get("use_external_macro", True),
+        "supply_chain": sig_cfg.get("supply_chain", {}),
     }
 
     # Inject bonus weights

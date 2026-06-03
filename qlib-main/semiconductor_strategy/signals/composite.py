@@ -30,7 +30,7 @@ import pandas as pd
 
 from .momentum import compute_all_momentum
 from .regime import compute_regime, regime_to_monthly, RISK_ON, RISK_OFF, TRANSITION_UP, TRANSITION_DOWN
-from .supply_chain import compute_supply_chain_scores
+from .supply_chain import compute_supply_chain_scores, load_graph_from_config
 
 try:
     from ..data import universe as U
@@ -88,7 +88,7 @@ def _cs_zscore(df: pd.DataFrame) -> pd.DataFrame:
 def _load_aux_signals(prices: pd.DataFrame, signal_kwargs: dict) -> dict:
     """Load CapEx pulse + external PIT series bounded to the price window."""
     end = prices.index[-1].strftime("%Y-%m-%d") if len(prices) else None
-    out = {"capex": None, "tsmc": None, "asml": None, "dram": None, "mu_dio": None}
+    out = {"capex": None, "tsmc": None, "asml": None, "dram": None, "mu_dio": None, "pmi": None}
     try:
         from ..data import company_signals as comp
         from ..data import industry_signals as ind
@@ -104,6 +104,7 @@ def _load_aux_signals(prices: pd.DataFrame, signal_kwargs: dict) -> dict:
         out["tsmc"] = ind.load_tsmc_monthly(end=end)
         out["asml"] = ind.load_asml_orders(end=end)
         out["dram"] = ind.load_dram_proxy(end=end)
+        out["pmi"] = ind.load_pmi_series(end=end)
     except Exception as e:  # noqa: BLE001
         logger.warning("Aux signal load issue (%s); falling back to price proxies", e)
     return out
@@ -213,12 +214,21 @@ def compute_composite_signals(
     capex_m = _capex_monthly(aux["capex"], monthly_index)
 
     # --- Factor 2: supply-chain propagation (CS z) ---
+    # V2: config-built graph (calibrated lags + logic_cpu inbound + real PMI) and
+    # optional exponential lag-decay.  Absent/v1 config → hardcoded V1 graph, λ=0,
+    # PMI source neutral (0) → byte-identical to the pre-V2 behaviour.
+    sc_cfg = signal_kwargs.get("supply_chain", {}) or {}
+    sc_graph = load_graph_from_config(sc_cfg)
+    sc_lag_decay = float(sc_cfg.get("lag_decay", 0.0) or 0.0)
+    sc_pmi = aux["pmi"] if str(sc_cfg.get("graph_version", "v1")).lower() == "v2" else None
     supply_chain = compute_supply_chain_scores(
         prices, aux["capex"], macro.get("vix") if macro is not None else None,
         monthly_index,
         tsmc_yoy=aux["tsmc"], asml_orders=aux["asml"],
         dram_proxy=aux["dram"], mu_dio=aux["mu_dio"],
+        pmi_series=sc_pmi,
         use_external_macro=signal_kwargs.get("use_external_macro", True),
+        graph=sc_graph, lag_decay=sc_lag_decay,
     ).reindex(index=monthly_index, columns=subs).fillna(0.0)
 
     # --- Factor 3: CapEx pulse tilt (CS z) ---
@@ -304,7 +314,8 @@ def get_current_signals(config: Optional[dict] = None, as_of: Optional[str] = No
         regime_method=sig.get("regime", {}).get("method", "rules"),
         regime_kwargs=regime_kwargs,
         signal_kwargs={"signal_version": sig.get("signal_version", "v1"),
-                       "use_external_macro": sig.get("supply_chain", {}).get("use_external_macro", True)},
+                       "use_external_macro": sig.get("supply_chain", {}).get("use_external_macro", True),
+                       "supply_chain": sig.get("supply_chain", {})},
     )
     last = composite.dropna(how="all").index[-1]
     return {

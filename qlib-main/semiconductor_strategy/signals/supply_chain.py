@@ -78,6 +78,8 @@ _EXTERNAL_TILT_WEIGHT = 0.30
 # Rolling window (months) for z-scoring momentum / external series across time.
 _TS_Z_WINDOW = 36
 _TS_Z_MIN = 12
+# Forward months summed under exponential lag-decay (λ>0); 6 ≈ negligible tail.
+_DECAY_WINDOW = 6
 
 
 # ---------------------------------------------------------------------------
@@ -111,6 +113,26 @@ def _ts_zscore_df(df: pd.DataFrame) -> pd.DataFrame:
     return df.apply(_ts_zscore, axis=0)
 
 
+def _lagged_with_decay(s: pd.Series, lag: int, lam: float,
+                       window: int = _DECAY_WINDOW) -> pd.Series:
+    """Geometric-decay weighted lag (Hong-Stein gradual information diffusion).
+
+    Returns Σ_{k=0..window} d^k · s.shift(lag+k) / Σ_{k} d^k  with d = e^{-λ}.
+    At λ→0 the weights collapse to k=0 (≡ a hard ``s.shift(lag)``), so callers
+    must only invoke this when ``lam > 0`` (the caller keeps the exact V1 path
+    for λ=0 to guarantee byte-identical regression).
+    """
+    d = float(np.exp(-lam))
+    num = None
+    denom = 0.0
+    for k in range(window + 1):
+        wk = d ** k
+        term = s.shift(lag + k) * wk
+        num = term if num is None else num.add(term, fill_value=0.0)
+        denom += wk
+    return num / denom if denom > 0 else s.shift(lag)
+
+
 # ---------------------------------------------------------------------------
 # Core
 # ---------------------------------------------------------------------------
@@ -124,8 +146,10 @@ def compute_supply_chain_scores(
     asml_orders: Optional[pd.Series] = None,
     dram_proxy: Optional[pd.Series] = None,
     mu_dio: Optional[pd.Series] = None,
+    pmi_series: Optional[pd.Series] = None,
     use_external_macro: bool = True,
     graph: Optional[dict] = None,
+    lag_decay: float = 0.0,
 ) -> pd.DataFrame:
     """Compute the (month × subsector) supply-chain propagation z-scores.
 
@@ -136,8 +160,14 @@ def compute_supply_chain_scores(
     vix : daily VIX (unused in V1 propagation; regime tilt handled in composite)
     monthly_index : month-end index to produce scores on (== cs_mom.index)
     tsmc_yoy / asml_orders / dram_proxy / mu_dio : optional daily PIT series
+    pmi_series : optional daily PIT manufacturing-trend proxy (IPMAN YoY); drives
+        the ``pmi_proxy`` source node.  None/empty → that source contributes 0
+        (V1 behaviour).  V2 feeds the real FRED IPMAN series.
     use_external_macro : blend external confirmation tilts when available
-    graph : optional override of SUPPLY_CHAIN_GRAPH
+    graph : optional override of SUPPLY_CHAIN_GRAPH (V2 passes a config-built dict)
+    lag_decay : λ ≥ 0.  0 = hard lag (V1, byte-identical).  >0 applies a geometric
+        decay e^{-λk} over a forward window from each edge's lag (Hong-Stein gradual
+        information diffusion); half-life ≈ ln2/λ months.
 
     Returns
     -------
@@ -155,7 +185,10 @@ def compute_supply_chain_scores(
         if capex_pulse is not None else pd.Series(0.0, index=monthly_index)
     # CapEx pulse is already a z-score; re-z over months keeps it comparable, harmless.
     consumer_m = mom_z["rf_edge"] if "rf_edge" in mom_z else pd.Series(0.0, index=monthly_index)
-    pmi_m = pd.Series(0.0, index=monthly_index)   # V1: PMI proxy neutral (no free source)
+    # PMI proxy: real FRED IPMAN-YoY when supplied (V2), else neutral 0 (V1).
+    pmi_m = _ts_zscore(_to_monthly(pmi_series, monthly_index)).fillna(0.0) \
+        if pmi_series is not None and not pmi_series.empty \
+        else pd.Series(0.0, index=monthly_index)
 
     def _source_series(node: str) -> pd.Series:
         if node == NODE_AI_CAPEX:
@@ -172,7 +205,11 @@ def compute_supply_chain_scores(
     for (src, tgt), (w, lag, _desc) in graph.items():
         if tgt not in score.columns:
             continue
-        src_series = _source_series(src).shift(lag).reindex(monthly_index).fillna(0.0)
+        base = _source_series(src)
+        if lag_decay and lag_decay > 0:
+            src_series = _lagged_with_decay(base, lag, lag_decay).reindex(monthly_index).fillna(0.0)
+        else:
+            src_series = base.shift(lag).reindex(monthly_index).fillna(0.0)
         score[tgt] = score[tgt] + w * src_series
 
     # --- external confirmation tilts (PIT; already lagged by the data layer) ---
@@ -202,6 +239,38 @@ def _cross_sectional_zscore(df: pd.DataFrame) -> pd.DataFrame:
     sd = df.std(axis=1).replace(0, np.nan)
     z = df.sub(mu, axis=0).div(sd, axis=0)
     return z.fillna(0.0)
+
+
+def load_graph_from_config(sc_cfg: Optional[dict]) -> dict:
+    """Build the propagation graph dict from a ``signals.supply_chain`` config block.
+
+    Returns the hardcoded V1 ``SUPPLY_CHAIN_GRAPH`` unless ``graph_version == "v2"``
+    AND a non-empty ``graph_config.edges`` list is present — so any caller that
+    doesn't pass a V2 config (or sets v1) gets byte-identical V1 behaviour.
+
+    V2 edge schema (config.yaml):
+        graph_config:
+          edges:
+            - {source: ai_capex_proxy, target: ai_gpu, weight: 1.0, lag_months: 0, desc: "..."}
+    """
+    if not sc_cfg or str(sc_cfg.get("graph_version", "v1")).lower() != "v2":
+        return SUPPLY_CHAIN_GRAPH
+    gc = sc_cfg.get("graph_config") or {}
+    edges = gc.get("edges") or []
+    if not edges:
+        logger.warning("supply_chain.graph_version=v2 but no graph_config.edges; using V1 graph")
+        return SUPPLY_CHAIN_GRAPH
+    out: Dict[Tuple[str, str], Tuple[float, int, str]] = {}
+    for e in edges:
+        try:
+            src, tgt = e["source"], e["target"]
+        except (KeyError, TypeError):
+            logger.warning("skipping malformed supply-chain edge: %r", e)
+            continue
+        out[(src, tgt)] = (float(e.get("weight", 0.0)),
+                           int(e.get("lag_months", 0)),
+                           str(e.get("desc", "")))
+    return out or SUPPLY_CHAIN_GRAPH
 
 
 def build_propagation_matrix(graph: Optional[dict] = None) -> pd.DataFrame:

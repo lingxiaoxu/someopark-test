@@ -461,7 +461,9 @@ wf_diagnostic_aiss_{v1|v2}_IS-OOS_{anchored|rolling}_{select|wf|tearsheet}_{ts}.
 |---|---|---|---|
 | `signals.weights` | cs_momentum / supply_chain / capex_pulse / cycle_regime | 0.30 / 0.35 / 0.25 / 0.10 | 四因子权重，和必须 = 1.0 |
 | `signals` | signal_version | `"v1"` | V1 月度 / V2 半月度 |
-| `signals.supply_chain` | use_external_macro | `true` | TSMC/ASML/DRAM/MU-DIO 可得时用，否则价格代理 |
+| `signals.supply_chain` | graph_version | `"v2"` | v2=校准图谱(`graph_config.edges`) / v1=硬编码图谱 |
+| `signals.supply_chain` | use_external_macro | `true` | TSMC/ASML/DRAM/MU-DIO/PMI 可得时用，否则价格代理 |
+| `signals.supply_chain` | lag_decay | `0.0` | 0=硬滞后；>0=指数衰减 e^{-λk}(半衰期≈ln2/λ 月) |
 | `portfolio` | optimizer | `"inv_vol"` | inv_vol / risk_parity / gmv / equal_weight |
 | `portfolio` | top_n_sectors | `3` | 高信念集中 |
 | `portfolio.constraints` | max_weight | `0.55` | 单子板块上限 |
@@ -510,8 +512,15 @@ wf_diagnostic_aiss_{v1|v2}_IS-OOS_{anchored|rolling}_{select|wf|tearsheet}_{ts}.
 #### 3.2 横截面动量 `cs_momentum`
 `lookback_months` 12 · `skip_months` 1 · `zscore_window` 36（12-1 动量）
 
-#### 3.3 供应链 `supply_chain`
-`graph_version` `"v1"` · `use_external_macro` `true`（PIT 可得时用 TSMC/ASML/MU-DIO/DRAM，否则 foundry 价格代理）· `lag_decay` 0.0（0=硬滞后，>0=指数衰减，V2）
+#### 3.3 供应链 `supply_chain`（核心 alpha，知识图谱传播）
+`graph_version` `"v2"` · `use_external_macro` `true`（PIT 可得时用 TSMC/ASML/MU-DIO/DRAM，否则 foundry 价格代理）· `lag_decay` 0.0（0=硬滞后，>0=指数衰减 e^{-λk}，Hong-Stein 渐进扩散，半衰期≈ln2/λ 月）
+
+**V2 知识图谱**（`graph_config.edges`，可在 config 直接编辑）相对 V1 的改进：
+- **滞后实证标定**：每条边的传导滞后由 `signals/graph_calibration.py` 在**因子残差收益**（剔除半导体共同 beta）上取 IC 最高的 lag 得到（报告 `backtest_results/graph_calibration_report.json`），不再是手设的 0/2/4/12 圆整值。理论依据：Cohen-Frazzini(2008)/Menzly-Ozbas(2010)/Shahrur(2010) 的供应链滞后收益可预测性（须用因子残差测领先）。
+- **补结构空洞**：① `pmi_proxy→analog_defense` 现由**真实 FRED IPMAN（工业生产:制造业）YoY** 驱动（V1 恒为 0）；② `logic_cpu` 新增 3 条入边（V1 只有出边、分恒为 0）：`foundry→`(IC+0.20)、`consumer_demand_proxy→`(IC+0.14)、`ai_capex_proxy→`(IC+0.11)。
+- **边权**沿用经济链强度（未改）；网络中心性（Ahern 2013）仅作参考打印。GNN 学习权重在 8 节点×~120 月数据上过拟合风险高（Feng 2019 / López de Prado），留作 V3。
+- 切回 V1：`graph_version: "v1"` 即用回硬编码图谱（代码逐位兼容）。
+- **注意（IS 回测）**：V2 校准图谱在全样本 IS 上 Sharpe/CAGR 略低于 V1、MaxDD 更低（IC≈0.1–0.3，符合文献"效应已衰减"），属诚实负向；若偏好 IS 表现可一行切回 v1。
 
 #### 3.4 CapEx 脉冲 `capex_pulse`
 `tickers` `[MSFT, GOOGL, META, AMZN]` · `lookback_months` 3 · `zscore_window` 24

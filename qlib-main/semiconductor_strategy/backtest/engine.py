@@ -289,6 +289,9 @@ class AISSBacktest:
 
         _regime_cfg = self.sig_cfg.get("regime", {})
         signal_kwargs["use_external_macro"] = self.sig_cfg.get("supply_chain", {}).get("use_external_macro", True)
+        # Full supply_chain block (graph_version / graph_config / lag_decay) so the
+        # composite can build the V2 graph; absent/v1 → hardcoded V1 graph (no-op).
+        signal_kwargs["supply_chain"] = self.sig_cfg.get("supply_chain", {})
 
         # ── V2 = semi-monthly cadence + signal overrides from signals.v2 ──
         # (the mid-month rebalance itself is added below in the rebalance schedule)

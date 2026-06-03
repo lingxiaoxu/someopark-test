@@ -40,8 +40,8 @@ ENV="conda run -n qlib_run --no-capture-output python -m semiconductor_strategy"
 $ENV.data.aiss_fetch_prices --init --start 2016-01-01
 # Company layer: CapEx pulse (yfinance) + MU DIO (SEC XBRL)
 $ENV.data.company_signals  --init
-# Industry layer: TSMC (TWSE), ASML 6-K bookings (SEC), DRAM proxy
-$ENV.data.industry_signals --init
+# Industry layer: TSMC (TWSE), ASML 6-K bookings (SEC), DRAM proxy, PMI (FRED IPMAN YoY)
+$ENV.data.industry_signals --init   # --init includes --update-pmi (needs FRED_API_KEY)
 
 # Verify coverage (must be OK for 2019+ backtest window)
 $ENV.data.aiss_fetch_prices --verify
@@ -161,6 +161,16 @@ $ENV.data.company_signals   --check-mu-dio           # new MU 10-Q?
 $ENV.data.industry_signals  --check-tsmc             # new TWSE month?
 $ENV.data.industry_signals  --check-asml             # new ASML 6-K?
 $ENV.data.industry_signals  --update-dram            # recompute DRAM proxy
+$ENV.data.industry_signals  --update-pmi             # new FRED IPMAN month (V2 graph pmi_proxy)
+```
+
+**V2 供应链图谱滞后标定**（手设滞后改为实证）：
+```bash
+# 在因子残差收益上重标定每条边的传导滞后 + 评估 logic_cpu 入边；
+# 产出 backtest_results/graph_calibration_report.json + 可粘贴的 graph_config.edges
+$ENV.signals.graph_calibration
+# 采用：把报告里的 v2_graph_edges 写进 config.yaml 的 signals.supply_chain.graph_config.edges
+# 回退：signals.supply_chain.graph_version: "v1"（用回硬编码图谱，代码逐位兼容）
 ```
 
 PIT rule: every slow source stores its **availability date** (`filed_date` /

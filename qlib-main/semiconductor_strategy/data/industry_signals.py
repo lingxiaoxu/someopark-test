@@ -25,12 +25,20 @@ Semiconductor supply-chain industry data, stored under
      Source: the AISS price store — MU 20-day relative strength vs SOXX, z-scored.
      Pure computation, daily.  (V2 can swap in TrendForce weekly spot data.)
 
+  4. Manufacturing-trend PMI proxy  (pmi_series.json)   [V2 supply-chain graph]
+     Source: FRED ``IPMAN`` (Industrial Production: Manufacturing), 12-month YoY.
+     ISM Manufacturing PMI is no longer free on FRED (licensing, post-2016), so
+     IPMAN serves as the manufacturing-trend proxy that drives the ``pmi_proxy``
+     → analog_defense edge.  PIT availability = month-end + ~20d (G.17 release).
+     Missing data → the edge contributes 0 (graceful fallback, as in V1).
+
 CLI
 ---
     python -m semiconductor_strategy.data.industry_signals --init
     python -m semiconductor_strategy.data.industry_signals --check-tsmc
     python -m semiconductor_strategy.data.industry_signals --check-asml
     python -m semiconductor_strategy.data.industry_signals --update-dram
+    python -m semiconductor_strategy.data.industry_signals --update-pmi
     python -m semiconductor_strategy.data.industry_signals --verify
 """
 
@@ -69,6 +77,7 @@ log = logging.getLogger("aiss.industry")
 TSMC_PATH = pit.INDUSTRY_DIR / "tsmc_monthly_revenue.json"
 ASML_PATH = pit.INDUSTRY_DIR / "asml_quarterly_orders.json"
 DRAM_PATH = pit.INDUSTRY_DIR / "dram_spot_proxy.json"
+PMI_PATH = pit.INDUSTRY_DIR / "pmi_series.json"
 
 ASML_CIK = 937966
 TSMC_CO_ID = "2330"
@@ -76,6 +85,17 @@ TWSE_MR_URL = "https://openapi.twse.com.tw/v1/opendata/t187ap05_L"
 
 DRAM_RS_WINDOW = 20
 DRAM_Z_WINDOW = 252
+
+# Manufacturing-trend proxy (supply-chain graph node ``pmi_proxy`` → analog_defense).
+# ISM Manufacturing PMI is NOT free on FRED post-2016 (licensing), so we use
+# Industrial Production: Manufacturing (FRED ``IPMAN``, monthly, 1939+, free) as
+# the manufacturing-trend proxy; analog/industrial/defense chips (TXN/ADI/MCHP)
+# track industrial production.  We store the 12-month YoY change.
+FRED_PMI_SERIES = "IPMAN"
+PMI_START = "2010-01-01"
+# IPMAN (G.17) for month M is released ~mid-M+1; +20d from month-end is a
+# conservative (never look-ahead) availability date.
+PMI_RELEASE_LAG_DAYS = 20
 
 
 # ===========================================================================
@@ -372,6 +392,91 @@ def load_dram_proxy(start: Optional[str] = None, end: Optional[str] = None) -> p
 
 
 # ===========================================================================
+# Manufacturing-trend PMI proxy (FRED IPMAN YoY)
+# ===========================================================================
+
+def _fred_client():
+    """Return a fredapi.Fred client, or None if unavailable (graceful fallback)."""
+    import os
+    key = os.environ.get("FRED_API_KEY")
+    if not key:
+        log.warning("FRED_API_KEY not set; PMI series cannot be updated")
+        return None
+    try:
+        from fredapi import Fred
+    except Exception as e:  # noqa: BLE001
+        log.warning("fredapi unavailable (%s); PMI series cannot be updated", e)
+        return None
+    return Fred(api_key=key)
+
+
+def update_pmi_series(start: str = PMI_START, refreeze: bool = False) -> int:
+    """Append IPMAN YoY monthly datapoints with PIT release dates (append-only freeze).
+
+    Like the DRAM/TSMC stores, history is frozen on first sight: a month's value
+    is never rewritten once recorded (revisions ignored) so the backtest stays
+    reproducible.  ``refreeze=True`` rebuilds from the current FRED vintage.
+    Returns the number of records after the update.
+    """
+    pit.ensure_dirs()
+    payload = pit.load_json(PMI_PATH, default={"meta": {}, "records": {}})
+    records = payload.setdefault("records", {})
+    fred = _fred_client()
+    if fred is None:
+        return len(records)
+    try:
+        lvl = fred.get_series(FRED_PMI_SERIES, observation_start=start).dropna()
+    except Exception as e:  # noqa: BLE001
+        log.warning("FRED %s fetch failed (%s); keeping %d records", FRED_PMI_SERIES, e, len(records))
+        return len(records)
+    if lvl.empty:
+        log.warning("FRED %s returned no data", FRED_PMI_SERIES)
+        return len(records)
+
+    yoy = (lvl / lvl.shift(12) - 1.0).dropna()
+    added = 0
+    for ts, v in yoy.items():
+        ts = pd.Timestamp(ts)
+        period = f"{ts.year:04d}-{ts.month:02d}"
+        if period in records and not refreeze:
+            continue
+        release = (ts + pd.offsets.MonthEnd(0) + pd.Timedelta(days=PMI_RELEASE_LAG_DAYS)).date().isoformat()
+        records[period] = {
+            "period_month": period,
+            "release_date": release,
+            "ipman_yoy": round(float(v), 5),
+            "ipman": round(float(lvl.loc[ts]), 4),
+        }
+        added += 1
+
+    payload["meta"] = {"source": f"fred_{FRED_PMI_SERIES}_yoy", "series": FRED_PMI_SERIES,
+                       "release_lag_days": PMI_RELEASE_LAG_DAYS, "frozen_append_only": True,
+                       "updated_at": date.today().isoformat(), "n": len(records),
+                       "note": "IPMAN YoY; manufacturing-trend proxy (ISM PMI not free on FRED)"}
+    pit.save_json(PMI_PATH, payload)
+    log.info("PMI (IPMAN YoY, frozen append-only): %d months (%d new), latest %s",
+             len(records), added, max(records) if records else None)
+    return len(records)
+
+
+def load_pmi_series(start: Optional[str] = None, end: Optional[str] = None) -> pd.Series:
+    """PIT-correct daily IPMAN-YoY series (ffilled from release_date)."""
+    payload = pit.load_json(PMI_PATH, default={})
+    recs = payload.get("records", {})
+    if not recs:
+        return pd.Series(dtype="float64", name="pmi")
+    avail = pit.pit_series(recs, value_field="ipman_yoy", date_field="release_date")
+    s = pit.reindex_pit_daily(avail, start=start, end=end)
+    s.name = "pmi"
+    return s
+
+
+def pmi_value_at(as_of_date) -> Optional[dict]:
+    payload = pit.load_json(PMI_PATH, default={})
+    return pit.get_latest_available(payload.get("records", {}), as_of_date, "release_date")
+
+
+# ===========================================================================
 # Verify
 # ===========================================================================
 
@@ -402,6 +507,13 @@ def verify() -> bool:
               f"last z={dram.iloc[-1]:+.2f}")
     else:
         print("  dram_proxy   : MISSING"); ok = False
+    pm = pit.load_json(PMI_PATH, default={}).get("records", {})
+    if pm:
+        latest = sorted(pm.values(), key=lambda r: r["period_month"])[-1]
+        print(f"  pmi (IPMAN)  : {len(pm):4} months, latest {latest['period_month']} "
+              f"YoY={latest['ipman_yoy']*100:+.1f}% release={latest['release_date']}")
+    else:
+        print("  pmi (IPMAN)  : EMPTY (analog_defense pmi edge contributes 0 → fallback)")
     print("=" * 72)
     print("RESULT:", "OK" if ok else "PARTIAL (price-proxy fallbacks cover gaps)")
     return ok
@@ -415,6 +527,7 @@ def main() -> None:
     ap.add_argument("--check-tsmc", action="store_true")
     ap.add_argument("--check-asml", action="store_true")
     ap.add_argument("--update-dram", action="store_true")
+    ap.add_argument("--update-pmi", action="store_true")
     ap.add_argument("--verify", action="store_true")
     ap.add_argument("--end", default=None)
     args = ap.parse_args()
@@ -426,10 +539,12 @@ def main() -> None:
         update_asml_orders(full_history=args.init); did = True
     if args.init or args.update_dram:
         update_dram_proxy(end_date=args.end); did = True
+    if args.init or args.update_pmi:
+        update_pmi_series(refreeze=args.init); did = True
     if args.verify or did:
         verify()
     if not did and not args.verify:
-        print("Nothing to do. Use --init / --check-tsmc / --check-asml / --update-dram / --verify.")
+        print("Nothing to do. Use --init / --check-tsmc / --check-asml / --update-dram / --update-pmi / --verify.")
 
 
 if __name__ == "__main__":
