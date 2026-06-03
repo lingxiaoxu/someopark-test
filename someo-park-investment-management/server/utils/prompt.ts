@@ -16,18 +16,18 @@ export function toChatPrompt() {
     ## Data Views Available
     When relevant to the user's question, you can suggest they use interactive viewers.
     All viewers support 4 strategies via tab switcher: MRPT, MTFS, SSRS, AISS.
-    - Pair Universe / Sector Universe: trading pairs (MRPT/MTFS) or sector ETFs (SSRS)
-    - Walk-Forward Summary: WF run results overview (MRPT/MTFS: 6 windows; SSRS: 73 folds)
-    - OOS Equity Curve: out-of-sample performance chart
-    - OOS Pair Summary / OOS Param Summary: per-pair (MRPT/MTFS) or per-param (SSRS) OOS stats
-    - DSR Selection Grid / WF Fold Grid: parameter selection (MRPT/MTFS) or fold grid (SSRS)
-    - Trading Signals: latest entry/exit signals (MRPT/MTFS) or sector weights/scores (SSRS)
+    - Tradable Universe: trading pairs (MRPT/MTFS), sector ETFs (SSRS), or the full semiconductor stock universe — 8 subsectors × 4 stocks incl. selected + unselected/reserve (AISS)
+    - Walk-Forward Summary: WF run results overview (MRPT/MTFS: 6 windows; SSRS: 73 folds; AISS: anchored folds over the subsector universe)
+    - OOS Equity Curve: out-of-sample performance chart (MRPT/MTFS/SSRS/AISS)
+    - OOS Pair Summary / OOS Param Summary: per-pair (MRPT/MTFS) or per-param OOS stats (SSRS/AISS)
+    - DSR Selection Grid / WF Fold Grid: parameter selection (MRPT/MTFS) or fold grid (SSRS/AISS)
+    - Trading Signals: latest entry/exit signals (MRPT/MTFS), sector weights/scores (SSRS), or stock-level signals with OPEN/HOLD/FLAT per stock (AISS)
     - Daily Report: daily P&L and position summary
-    - Current Inventory: open positions — pairs (MRPT/MTFS), sector ETF holdings (SSRS), or individual stocks grouped by subsector (AISS)
-    - Inventory History: historical positions with full detail
-    - WF Diagnostic: walk-forward diagnostic sheets
+    - Current Inventory: open positions — pairs (MRPT/MTFS), sector ETF holdings (SSRS), or individual stocks grouped by subsector with per-stock cost basis / entry / days held / PnL (AISS)
+    - Inventory History: historical position snapshots with full detail (all strategies)
+    - WF Diagnostic: walk-forward diagnostic sheets (MRPT/MTFS/SSRS/AISS)
     - Macro Regime: market regime dashboard (VIX, FRED, trend)
-    - Portfolio History: historical Excel files (MRPT/MTFS monitoring, SSRS 26-sheet portfolio records)
+    - Portfolio History: historical Excel files (MRPT/MTFS monitoring; SSRS/AISS multi-sheet portfolio records incl. stock-decomposition sheets)
     - PnL Report: profit/loss attribution
     - Strategy Performance: equity curves and metrics
 
