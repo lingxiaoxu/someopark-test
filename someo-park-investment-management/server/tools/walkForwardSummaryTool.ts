@@ -14,14 +14,14 @@ function getWfDir(strategy: string): string {
 export const wfSummaryTool: AgentTool = {
   definition: {
     name: 'get_wf_summary',
-    description: 'Get walk-forward summary. MRPT/MTFS: OOS stats (total_pnl, sharpe, max_dd_pct) and window details. SSRS: 73-fold WF stats, synthetic OOS metrics, param OOS performance, WFE.',
+    description: 'Get walk-forward summary. MRPT/MTFS: OOS stats (total_pnl, sharpe, max_dd_pct) and window details. SSRS: 73-fold WF stats, synthetic OOS metrics, param OOS performance, WFE. AISS: anchored WF folds, synthetic OOS metrics, MCPS/DSR per fold, param OOS performance.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: '"mrpt", "mtfs", or "ssrs" (Sector Rotation)',
-          enum: ['mrpt', 'mtfs', 'ssrs']
+          description: '"mrpt", "mtfs", "ssrs" (Sector Rotation), or "aiss" (AI Semiconductor)',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss']
         }
       },
       required: ['strategy']
@@ -32,6 +32,10 @@ export const wfSummaryTool: AgentTool = {
   async execute({ strategy }) {
     if (strategy === 'ssrs') {
       const filePath = getBackendPath('qlib-main/sector_rotation/backtest_results/wf_fold_detail.json')
+      return readJsonFile(filePath)
+    }
+    if (strategy === 'aiss') {
+      const filePath = getBackendPath('qlib-main/semiconductor_strategy/backtest_results/wf_fold_detail.json')
       return readJsonFile(filePath)
     }
     const dir = getWfDir(strategy)

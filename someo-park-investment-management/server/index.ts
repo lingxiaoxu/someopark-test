@@ -23,6 +23,7 @@ import pnlReportRoutes from './routes/pnlReport.js';
 import riskReportRoutes from './routes/riskReport.js';
 import agentRoutes from './routes/agent.js';
 import sectorRotationRoutes from './routes/sectorRotation.js';
+import semiconductorRoutes from './routes/semiconductor.js';
 import { registerAllTools } from './tools/index.js';
 
 const app = express();
@@ -59,6 +60,7 @@ app.use('/api/publish', publishRoutes);
 app.use('/api/pnl-report', pnlReportRoutes);
 app.use('/api/risk-report', riskReportRoutes);
 app.use('/api/ssrs', sectorRotationRoutes);
+app.use('/api/aiss', semiconductorRoutes);
 app.use('/api/agent', agentRoutes);
 
 // Register Someo Agent tools

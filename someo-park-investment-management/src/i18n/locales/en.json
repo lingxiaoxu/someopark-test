@@ -3,7 +3,7 @@
     "equityCurve": "OOS Equity Curve",
     "signals": "Trading Signals",
     "regime": "Macro Regime Status",
-    "pairUniverse": "Pair Universe",
+    "pairUniverse": "Tradable Universe",
     "wfGrid": "Walk-Forward Grid",
     "portfolioHistory": "Portfolio History",
     "wfDiagnostic": "WF Diagnostic Report",
@@ -415,7 +415,7 @@
     "section3": "3. Daily Signal Outputs",
     "section4": "4. Inventory Status",
     "section5": "5. WF Diagnostic",
-    "btnPairUniverse": "Which pairs are we trading?",
+    "btnPairUniverse": "What's in our tradable universe?",
     "btnWfSummary": "How did the out of sample forward looking run hold up?",
     "btnDsrGrid": "Show me the parameter sweep records.",
     "btnOosEquity": "Plot the out of sample run's performance curve.",
@@ -558,5 +558,17 @@
   },
   "riskReport": {
     "noReports": "No risk reports available."
+  },
+  "aiss": {
+    "stocksTab": "Semiconductor Stocks ({{count}})",
+    "colStock": "Stock",
+    "colSubsector": "Subsector",
+    "colLastPrice": "Last Price",
+    "colMarketValue": "Market Value",
+    "colValue": "Value",
+    "subsectorLabel": "subsector",
+    "signalsTitle": "AISS Signals — stock level",
+    "holdingsTitle": "AISS Holdings — stock level",
+    "wfSummaryTitle": "Walk-Forward Summary — AISS ({{folds}} Folds × {{subsectors}} Subsectors / {{stocks}} Semiconductor Stocks × {{params}} Param Sets)"
   }
 }

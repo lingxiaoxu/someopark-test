@@ -17,7 +17,7 @@ export const monitorHistoryTool: AgentTool = {
     input_schema: {
       type: 'object',
       properties: {
-        strategy: { type: 'string', description: 'Filter by strategy: "mrpt", "mtfs", or "ssrs"', enum: ['mrpt', 'mtfs', 'ssrs'] },
+        strategy: { type: 'string', description: 'Filter by strategy: "mrpt", "mtfs", "ssrs", or "aiss"', enum: ['mrpt', 'mtfs', 'ssrs', 'aiss'] },
         pair: { type: 'string', description: 'Filter by pair (e.g. "AWK_FOX")' },
         filename: { type: 'string', description: 'Specific XLSX filename to read' },
         sheet: { type: 'string', description: 'Sheet name within the XLSX file' },
@@ -31,6 +31,8 @@ export const monitorHistoryTool: AgentTool = {
   async execute({ strategy, pair, filename, sheet, limit = 20 }) {
     const dir = strategy === 'ssrs'
       ? getBackendPath('historical_runs/sector_rotation')
+      : strategy === 'aiss'
+      ? getBackendPath('historical_runs/semiconductor_strategy')
       : getBackendPath('trading_signals/monitor_history')
 
     if (filename) {
@@ -44,6 +46,8 @@ export const monitorHistoryTool: AgentTool = {
     let pattern = 'monitor_*.xlsx'
     if (strategy === 'ssrs') {
       pattern = 'monitor_sr_*.xlsx'
+    } else if (strategy === 'aiss') {
+      pattern = 'aiss_portfolio_*.xlsx'
     } else if (strategy && pair) {
       pattern = `monitor_${strategy}_${pair}_*.xlsx`
     } else if (strategy) {

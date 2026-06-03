@@ -489,20 +489,21 @@ const MTFS_PARAM_SETS = mtfsParams.split(', ');
 export default function WFStructureViewer({ data, params }: { data?: any; params?: any }) {
   const { t } = useTranslation();
 
-  // ══ SR MODE: flat file list grouped by param ══
-  if (params?.strategy === 'ssrs') {
+  // ══ SR / AISS MODE: flat file list grouped by param ══
+  if (params?.strategy === 'ssrs' || params?.strategy === 'aiss') {
+    const qlibStrat = params.strategy as string;
     const [srFiles, setSrFiles] = React.useState<any>(null);
     const [srLoading, setSrLoading] = React.useState(true);
     React.useEffect(() => {
       import('../../lib/api').then(({ default: _, ...api }) => {
-        (api as any).getWFXlsxList('ssrs').then((d: any) => { setSrFiles(d); setSrLoading(false); }).catch(() => setSrLoading(false));
+        (api as any).getWFXlsxList(qlibStrat).then((d: any) => { setSrFiles(d); setSrLoading(false); }).catch(() => setSrLoading(false));
       });
     }, []);
     if (srLoading) return <LoadingState />;
     const groups = srFiles?.groups || {};
     return (
       <div className="flex flex-col h-full">
-        <div className="text-sm font-medium text-[var(--text-primary)] mb-4">Backtesting Files — SSRS</div>
+        <div className="text-sm font-medium text-[var(--text-primary)] mb-4">Backtesting Files — {qlibStrat.toUpperCase()}</div>
         <div className="flex-1 overflow-y-auto space-y-3">
           {Object.entries(groups).map(([param, files]: any) => (
             <div key={param} className="bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg p-3">

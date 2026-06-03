@@ -28,8 +28,12 @@ async function fetchText(path: string): Promise<string> {
 // MRPT/MTFS: /api/inventory/{strategy}
 // SSRS:      /api/ssrs/inventory
 // ═══════════════════════════════════════════════════════════════════════
+// qlib-based strategies (SSRS sector rotation, AISS AI-semiconductor) share an
+// identical route shape under /api/{strategy}/...; MRPT/MTFS use the legacy paths.
+const QLIB = (s?: string): s is 'ssrs' | 'aiss' => s === 'ssrs' || s === 'aiss';
+
 export const getInventory = async (strategy: string) => {
-  if (strategy === 'ssrs') return fetchApi<any>('/api/ssrs/inventory');
+  if (QLIB(strategy)) return fetchApi<any>(`/api/${strategy}/inventory`);
   try {
     return await fetchApi<any>(`/api/inventory/${strategy}`);
   } catch {
@@ -37,20 +41,20 @@ export const getInventory = async (strategy: string) => {
   }
 };
 export const getInventoryHistory = (strategy: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any[]>('/api/ssrs/inventory/history')
+  QLIB(strategy)
+    ? fetchApi<any[]>(`/api/${strategy}/inventory/history`)
     : fetchApi<any[]>(`/api/inventory/history/${strategy}`);
 export const getInventorySnapshot = (strategy: string, filename: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>(`/api/ssrs/inventory/history/${filename}`)
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/inventory/history/${filename}`)
     : fetchApi<any>(`/api/inventory/history/${strategy}/${filename}`);
 
 // ═══════════════════════════════════════════════════════════════════════
 // Signals
 // ═══════════════════════════════════════════════════════════════════════
 export const getLatestSignals = (strategy: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/signals/latest')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/signals/latest`)
     : fetchApi<any>(`/api/signals/latest/${strategy}`);
 export const getLatestCombinedSignals = () =>
   fetchApi<any>(`/api/signals/combined/latest`);
@@ -59,48 +63,51 @@ export const getLatestCombinedSignals = () =>
 // Daily Report
 // ═══════════════════════════════════════════════════════════════════════
 export const getLatestDailyReport = (strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/daily-report/latest')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/daily-report/latest`)
     : fetchApi<any>('/api/daily-report/latest');
 export const getLatestDailyReportTxt = (strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchText('/api/ssrs/daily-report/latest/txt')
+  QLIB(strategy)
+    ? fetchText(`/api/${strategy}/daily-report/latest/txt`)
     : fetchText('/api/daily-report/latest/txt');
 
 // ═══════════════════════════════════════════════════════════════════════
 // Regime
 // ═══════════════════════════════════════════════════════════════════════
 export const getLatestRegime = (strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/regime/latest')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/regime/latest`)
     : fetchApi<any>('/api/regime/latest');
 
 // ═══════════════════════════════════════════════════════════════════════
 // Walk-Forward
 // ═══════════════════════════════════════════════════════════════════════
 export const getWFSummary = (strategy: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/wf/summary')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/wf/summary`)
     : fetchApi<any>(`/api/wf/summary/${strategy}`);
 export const getOOSEquityCurve = (strategy: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/equity-curve')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/equity-curve`)
     : fetchApi<any[]>(`/api/wf/equity-curve/${strategy}`);
 export const getOOSPairSummary = (strategy: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/wf/param-oos')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/wf/param-oos`)
     : fetchApi<any[]>(`/api/wf/pair-summary/${strategy}`);
 export const getDSRLog = (strategy: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/wf/fold-grid')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/wf/fold-grid`)
     : fetchApi<any[]>(`/api/wf/dsr-log/${strategy}`);
 
 // ═══════════════════════════════════════════════════════════════════════
-// Pair Universe / Sector Universe
+// Pair Universe / Sector Universe / Stock Universe
+// SSRS → sector-universe (ETFs); AISS → stock-universe (individual stocks)
 // ═══════════════════════════════════════════════════════════════════════
 export const getPairUniverse = (strategy: string) =>
   strategy === 'ssrs'
     ? fetchApi<any>('/api/ssrs/sector-universe')
+    : strategy === 'aiss'
+    ? fetchApi<any>('/api/aiss/stock-universe')
     : fetchApi<any>(`/api/pairs/${strategy}`);
 export const getPairDb = (collection: string) =>
   fetchApi<any>(`/api/pairs/db/${collection}`);
@@ -109,40 +116,40 @@ export const getPairDb = (collection: string) =>
 // WF xlsx viewer / File Structure
 // ═══════════════════════════════════════════════════════════════════════
 export const getWFXlsxList = (strategy: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/files/list')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/files/list`)
     : fetchApi<string[]>(`/api/wf/xlsx/list?strategy=${strategy}`);
 export const getWFXlsxSheets = (strategy: string, relPath: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>(`/api/ssrs/portfolio-history/${encodeURIComponent(relPath)}/sheets`)
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/portfolio-history/${encodeURIComponent(relPath)}/sheets`)
     : fetchApi<any>(`/api/wf/xlsx/sheets?strategy=${strategy}&path=${encodeURIComponent(relPath)}`);
 export const getWFXlsxSheet = (strategy: string, relPath: string, sheet: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>(`/api/ssrs/portfolio-history/${encodeURIComponent(relPath)}/${encodeURIComponent(sheet)}`)
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/portfolio-history/${encodeURIComponent(relPath)}/${encodeURIComponent(sheet)}`)
     : fetchApi<any>(`/api/wf/xlsx/sheet?strategy=${strategy}&path=${encodeURIComponent(relPath)}&sheet=${encodeURIComponent(sheet)}`);
 
 // ═══════════════════════════════════════════════════════════════════════
 // Diagnostic
 // ═══════════════════════════════════════════════════════════════════════
 export const getDiagnosticSheets = (strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>('/api/ssrs/diagnostic/latest')
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/diagnostic/latest`)
     : fetchApi<any>('/api/diagnostic/latest');
 export const getDiagnosticSheet = (sheet: string, strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>(`/api/ssrs/diagnostic/latest/${encodeURIComponent(sheet)}`)
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/diagnostic/latest/${encodeURIComponent(sheet)}`)
     : fetchApi<any>(`/api/diagnostic/latest/${encodeURIComponent(sheet)}`);
 
 // ═══════════════════════════════════════════════════════════════════════
 // PnL Report / Tearsheet
 // ═══════════════════════════════════════════════════════════════════════
 export const getPnlReportList = (strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any[]>('/api/ssrs/tearsheet/list')
+  QLIB(strategy)
+    ? fetchApi<any[]>(`/api/${strategy}/tearsheet/list`)
     : fetchApi<{ date: string; filename: string }[]>('/api/pnl-report');
 export const getPnlReportUrl = (date?: string, strategy?: string) => {
-  if (strategy === 'ssrs') {
-    const p = date ? `/api/ssrs/tearsheet/${date}` : '/api/ssrs/tearsheet/list';
+  if (QLIB(strategy)) {
+    const p = date ? `/api/${strategy}/tearsheet/${date}` : `/api/${strategy}/tearsheet/list`;
     const keyParam = API_KEY ? `?key=${API_KEY}` : '';
     return `${API_BASE}${p}${keyParam}`;
   }
@@ -166,27 +173,28 @@ export const getRiskReportUrl = (ts?: string) => {
 // Monitor / Portfolio History
 // ═══════════════════════════════════════════════════════════════════════
 export const getMonitorHistoryList = (strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any[]>('/api/ssrs/portfolio-history/list')
+  QLIB(strategy)
+    ? fetchApi<any[]>(`/api/${strategy}/portfolio-history/list`)
     : fetchApi<any[]>('/api/monitor-history/list');
 export const getMonitorHistorySheets = (filename: string, strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<string[]>(`/api/ssrs/portfolio-history/${encodeURIComponent(filename)}/sheets`)
+  QLIB(strategy)
+    ? fetchApi<string[]>(`/api/${strategy}/portfolio-history/${encodeURIComponent(filename)}/sheets`)
     : fetchApi<string[]>(`/api/monitor-history/${encodeURIComponent(filename)}/sheets`);
 export const getMonitorHistorySheet = (filename: string, sheet: string, strategy?: string) =>
-  strategy === 'ssrs'
-    ? fetchApi<any>(`/api/ssrs/portfolio-history/${encodeURIComponent(filename)}/${encodeURIComponent(sheet)}`)
+  QLIB(strategy)
+    ? fetchApi<any>(`/api/${strategy}/portfolio-history/${encodeURIComponent(filename)}/${encodeURIComponent(sheet)}`)
     : fetchApi<any>(`/api/monitor-history/${encodeURIComponent(filename)}/${encodeURIComponent(sheet)}`);
 
 // ═══════════════════════════════════════════════════════════════════════
-// SSRS-only: Smart Select + Strategy Performance + Params list
+// SSRS / AISS: Smart Select + Strategy Performance + Params list
+// (strategy defaults to ssrs for backward compatibility)
 // ═══════════════════════════════════════════════════════════════════════
-export const getSRSmartSelect = () =>
-  fetchApi<any>('/api/ssrs/smart-select');
-export const getSRStrategyPerformance = () =>
-  fetchApi<any>('/api/ssrs/strategy-performance');
-export const getSRParamsList = () =>
-  fetchApi<string[]>('/api/ssrs/params/list');
+export const getSRSmartSelect = (strategy: string = 'ssrs') =>
+  fetchApi<any>(`/api/${strategy}/smart-select`);
+export const getSRStrategyPerformance = (strategy: string = 'ssrs') =>
+  fetchApi<any>(`/api/${strategy}/strategy-performance`);
+export const getSRParamsList = (strategy: string = 'ssrs') =>
+  fetchApi<string[]>(`/api/${strategy}/params/list`);
 
 // === Someo Agent SSE streaming ===
 export async function* callAgent(

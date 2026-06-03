@@ -3,7 +3,7 @@
     "equityCurve": "OOS エクイティカーブ",
     "signals": "トレーディングシグナル",
     "regime": "マクロ経済レジーム",
-    "pairUniverse": "ペアユニバース",
+    "pairUniverse": "取引可能ユニバース",
     "wfGrid": "Walk-Forward グリッド",
     "portfolioHistory": "ポートフォリオ履歴",
     "wfDiagnostic": "WF 診断レポート",
@@ -98,7 +98,7 @@
     "section3": "3. デイリーシグナル出力",
     "section4": "4. ポジション状況",
     "section5": "5. WF 診断",
-    "btnPairUniverse": "どのペアを取引しているの？",
+    "btnPairUniverse": "取引可能ユニバースには何がありますか？",
     "btnWfSummary": "サンプル外フォワードテストはどうだった？",
     "btnDsrGrid": "パラメータスキャンの記録を見せて。",
     "btnOosEquity": "サンプル外のパフォーマンス曲線を描いて。",
@@ -558,5 +558,17 @@
   },
   "riskReport": {
     "noReports": "リスクレポートはありません。"
+  },
+  "aiss": {
+    "stocksTab": "半導体銘柄 ({{count}})",
+    "colStock": "銘柄",
+    "colSubsector": "サブセクター",
+    "colLastPrice": "終値",
+    "colMarketValue": "時価",
+    "colValue": "時価",
+    "subsectorLabel": "サブセクター",
+    "signalsTitle": "AISS シグナル — 銘柄レベル",
+    "holdingsTitle": "AISS 保有 — 銘柄レベル",
+    "wfSummaryTitle": "ウォークフォワード集計 — AISS（{{folds}} フォールド × {{subsectors}} サブセクター / {{stocks}} 半導体銘柄 × {{params}} パラメータセット）"
   }
 }

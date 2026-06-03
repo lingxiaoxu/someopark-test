@@ -41,6 +41,8 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   const mtfsPairs = mtfsData?.pairs ?? (Array.isArray(mtfsData) ? mtfsData : []);
   // SR: sector ETF holdings (always loaded for Sector ETF tab)
   const { data: srSectors, loading: loadingSR } = useApi(() => getPairUniverse('ssrs'), []);
+  // AISS: stock-level holdings grouped by subsector (subsector is grouping only, not tradable)
+  const { data: aissStocks, loading: loadingAiss } = useApi(() => getPairUniverse('aiss'), []);
 
   // DB pairs (loaded when tab clicked)
   const { data: cointData, loading: loadingCoint, error: errorCoint, refetch: refetchCoint } = useApi(() => getPairDb('coint'), []);
@@ -48,6 +50,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
   const { data: pcaData, loading: loadingPca } = useApi(() => getPairDb('pca'), []);
 
   const isLoading = activeTab === 'sector_etf' ? loadingSR :
+    activeTab === 'aiss_stock' ? loadingAiss :
     activeTab === 'selected' ? (loadingMrpt || loadingMtfs || loadingSR) :
     activeTab === 'coint' ? loadingCoint :
     activeTab === 'similar' ? loadingSimilar : loadingPca;
@@ -109,6 +112,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
     similar: fmtDate(similarData?.day),
     pca: fmtDate(pcaData?.day),
     sector_etf: fmtDate(srSectors?.updated_at),
+    aiss_stock: fmtDate(aissStocks?.updated_at),
   };
 
   const tabs = [
@@ -117,6 +121,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
     { id: 'similar', label: t('pairUniverse.similarTab', { selected: similarSelCount, total: similarData?.total || '...' }) },
     { id: 'pca', label: t('pairUniverse.pcaTab', { selected: pcaSelCount, total: pcaData?.total || '...' }) },
     { id: 'sector_etf', label: t('pairUniverse.sectorEtfTab', { selected: heldCount, total: totalEtfs }) },
+    { id: 'aiss_stock', label: t('aiss.stocksTab', { count: aissStocks?.n_stocks || 0 }) },
   ];
 
   return (
@@ -141,7 +146,59 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
         </div>
       )}
 
-      {activeTab === 'sector_etf' ? (
+      {activeTab === 'aiss_stock' ? (
+        /* ── AISS stock content: subsector group header + tradable stock rows ── */
+        <>
+          {aissStocks?.param_set && (
+            <div className="text-xs text-[var(--text-muted)] mb-3 shrink-0">
+              {t('ssrs.paramVersion', { param: aissStocks.param_set, version: aissStocks?.signal_version || 'v1' })}
+            </div>
+          )}
+          <div className="flex-1 overflow-y-auto border border-[var(--border-subtle)] rounded-md bg-[var(--bg-primary)]">
+            <table className="w-full text-sm text-left">
+              <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
+                <tr>
+                  <th className="px-4 py-3 font-medium">{t('aiss.colStock')}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.shares')}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.weight')}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t('aiss.colLastPrice')}</th>
+                  <th className="px-4 py-3 font-medium text-right">{t('aiss.colMarketValue')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-subtle)]">
+                {(aissStocks?.subsectors || []).map((grp: any) => [
+                  /* subsector group header (grouping label + weight; NOT a tradable row) */
+                  <tr key={`grp-${grp.subsector}`} className="bg-[var(--bg-secondary)]">
+                    <td className="px-4 py-2 font-mono text-xs font-bold text-[var(--text-primary)]" colSpan={2}>
+                      {grp.display || grp.subsector}
+                      {!grp.held && <span className="ml-2 px-1.5 py-0.5 text-[9px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)] uppercase tracking-wider">{t('common.available')}</span>}
+                    </td>
+                    <td className={`px-4 py-2 text-right font-mono text-xs font-bold ${grp.held ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`} colSpan={3}>
+                      {(grp.weight * 100).toFixed(1)}% {t('aiss.subsectorLabel')}
+                    </td>
+                  </tr>,
+                  /* tradable individual stocks within the subsector (reserve / 0% dimmed) */
+                  ...(grp.stocks || []).map((s: any) => (
+                    <tr key={`${grp.subsector}-${s.ticker}`} className={`hover:bg-[var(--bg-secondary)] ${s.weight > 0.0001 ? '' : 'opacity-45'}`}>
+                      <td className="px-4 py-3 pl-8">
+                        <PairBadge pair={s.ticker} direction={s.weight > 0.0001 ? 'long' : null} strategy="aiss" compact details={{ weight: s.weight, shares: s.shares }} />
+                        {s.tier_role === 'reserve' && <span className="ml-2 text-[9px] font-mono text-[var(--text-muted)] uppercase">reserve</span>}
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono">{s.shares || '—'}</td>
+                      <td className="px-4 py-3 text-right font-mono">{(s.weight * 100).toFixed(1)}%</td>
+                      <td className="px-4 py-3 text-right font-mono">${s.last_price?.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-mono">{s.target_value ? '$' + Math.round(s.target_value).toLocaleString() : '—'}</td>
+                    </tr>
+                  ))
+                ])}
+                {(!aissStocks?.subsectors || aissStocks.subsectors.length === 0) && (
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-[var(--text-muted)] text-sm">{t('common.noDataAvailable')}</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : activeTab === 'sector_etf' ? (
         /* ── Sector ETF tab content ── */
         <>
           {srSectors?.param_set && (

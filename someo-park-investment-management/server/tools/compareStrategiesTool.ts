@@ -15,25 +15,26 @@ function getWfDir(s: string) {
 export const compareStrategiesTool: AgentTool = {
   definition: {
     name: 'compare_strategies',
-    description: 'Compare MRPT vs MTFS vs SSRS OOS performance side by side. Returns metrics: total_pnl, sharpe, max_dd_pct, win_rate_pct, pair_count, windows.',
+    description: 'Compare MRPT vs MTFS vs SSRS vs AISS OOS performance side by side. Returns metrics: total_pnl, sharpe, max_dd_pct, win_rate_pct, pair_count, windows.',
     input_schema: { type: 'object', properties: {}, required: [] }
   },
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute() {
     const results: Record<string, any> = {}
-    for (const strategy of ['mrpt', 'mtfs', 'ssrs']) {
-      if (strategy === 'ssrs') {
+    for (const strategy of ['mrpt', 'mtfs', 'ssrs', 'aiss']) {
+      if (strategy === 'ssrs' || strategy === 'aiss') {
+        const base = strategy === 'ssrs' ? 'qlib-main/sector_rotation' : 'qlib-main/semiconductor_strategy'
         try {
-          const filePath = getBackendPath('qlib-main/sector_rotation/backtest_results/wf_fold_detail.json')
+          const filePath = getBackendPath(`${base}/backtest_results/wf_fold_detail.json`)
           const data = await readJsonFile(filePath)
-          results.ssrs = {
+          results[strategy] = {
             ...data.synthetic_metrics,
             n_folds: data.n_folds,
             mean_wfe: data.mean_wfe,
           }
         } catch (err: any) {
-          results.ssrs = { error: err.message }
+          results[strategy] = { error: err.message }
         }
         continue
       }
@@ -54,10 +55,10 @@ export const compareStrategiesTool: AgentTool = {
         results[strategy] = { error: err.message }
       }
     }
-    const allKeys = Array.from(new Set([...Object.keys(results.mrpt || {}), ...Object.keys(results.mtfs || {}), ...Object.keys(results.ssrs || {})]))
+    const allKeys = Array.from(new Set([...Object.keys(results.mrpt || {}), ...Object.keys(results.mtfs || {}), ...Object.keys(results.ssrs || {}), ...Object.keys(results.aiss || {})]))
     return {
       as_of: new Date().toLocaleDateString('en-CA'),
-      comparison: allKeys.map(k => ({ metric: k, mrpt: results.mrpt?.[k] ?? 'N/A', mtfs: results.mtfs?.[k] ?? 'N/A', ssrs: results.ssrs?.[k] ?? 'N/A' }))
+      comparison: allKeys.map(k => ({ metric: k, mrpt: results.mrpt?.[k] ?? 'N/A', mtfs: results.mtfs?.[k] ?? 'N/A', ssrs: results.ssrs?.[k] ?? 'N/A', aiss: results.aiss?.[k] ?? 'N/A' }))
     }
   }
 }

@@ -1203,6 +1203,41 @@ def run_daily_signal(
     macro_last = macro_recent.iloc[-1] if not macro_recent.empty else pd.Series(dtype=float)
 
     # ── 12. Assemble full report ───────────────────────────────────
+    # ── Full tradable universe: ALL 8 subsectors × (3 weighted tiers + 0%-reserve
+    #    4th stock), including UNSELECTED subsectors at 0%, for the frontend
+    #    "Tradable Universe" view. Stock weight = subsector_weight × within-tier weight. ──
+    from semiconductor_strategy.data import universe as _UNIV
+    _TIER_ROLES = ["primary", "backup1", "backup2"]
+    stock_universe = []
+    for _sub in _UNIV.subsector_names():
+        _subw = float(effective_weights.get(_sub, 0.0))
+        _within = _UNIV.subsector_weights(_sub)        # {ticker: within_weight} (3 tiers, 0.8/0.15/0.05)
+        _stocks = []
+        for _i, (_tk, _w) in enumerate(_within.items()):
+            _px = float(stock_prices_today.get(_tk, 0.0)) if hasattr(stock_prices_today, "get") else 0.0
+            _stocks.append({
+                "ticker": _tk,
+                "tier_role": _TIER_ROLES[_i] if _i < len(_TIER_ROLES) else f"tier{_i}",
+                "within_weight": round(_w, 6),
+                "portfolio_weight": round(_subw * _w, 6),
+                "price": round(_px, 2),
+            })
+        _res = _UNIV.subsector_reserve(_sub)            # 0%-reserve 4th stock (promoted only on accident)
+        if _res:
+            _pxr = float(stock_prices_today.get(_res, 0.0)) if hasattr(stock_prices_today, "get") else 0.0
+            _stocks.append({
+                "ticker": _res, "tier_role": "reserve",
+                "within_weight": 0.0, "portfolio_weight": 0.0, "price": round(_pxr, 2),
+            })
+        stock_universe.append({
+            "subsector":        _sub,
+            "display":          _UNIV.subsector_display(_sub),
+            "subsector_weight": round(_subw, 6),
+            "held":             _subw > 0.001,
+            "composite_score":  round(float(scores_today.get(_sub, float("nan"))), 4) if hasattr(scores_today, "get") else None,
+            "stocks":           _stocks,
+        })
+
     report = {
         "generated_at":  datetime.now().isoformat(),
         "signal_date":   signal_date.isoformat(),
@@ -1229,6 +1264,7 @@ def run_daily_signal(
         "transaction_costs":   cost_info,
         "stock_holdings":      stock_decomp["by_ticker"],   # executable per-stock layer
         "stock_breakdown":     stock_decomp["breakdown"],   # per (subsector, stock)
+        "stock_universe":      stock_universe,              # ALL 8 subsectors × 4 stocks (incl unselected/reserve 0%)
         "stock_trades":        stock_trades,                # per-stock orders (rebalance)
         "holdings_summary": {
             "n_positions": sum(1 for s in signal_list if s["target_weight"] > 0),

@@ -3,7 +3,7 @@
     "equityCurve": "Courbe d'équité OOS",
     "signals": "Signaux de trading",
     "regime": "Régime macro-économique",
-    "pairUniverse": "Univers de paires",
+    "pairUniverse": "Univers négociable",
     "wfGrid": "Grille Walk-Forward",
     "portfolioHistory": "Historique du portefeuille",
     "wfDiagnostic": "Rapport diagnostic WF",
@@ -98,7 +98,7 @@
     "section3": "3. Sorties des signaux quotidiens",
     "section4": "4. Statut des positions",
     "section5": "5. Diagnostic WF",
-    "btnPairUniverse": "Quelles paires tradons-nous ?",
+    "btnPairUniverse": "Que contient notre univers négociable ?",
     "btnWfSummary": "Comment s'est passé le run forward hors échantillon ?",
     "btnDsrGrid": "Montre-moi les enregistrements du balayage.",
     "btnOosEquity": "Trace la courbe de perf hors échantillon.",
@@ -558,5 +558,17 @@
   },
   "riskReport": {
     "noReports": "Aucun rapport de risque disponible."
+  },
+  "aiss": {
+    "stocksTab": "Actions semi-conducteurs ({{count}})",
+    "colStock": "Action",
+    "colSubsector": "Sous-secteur",
+    "colLastPrice": "Dernier prix",
+    "colMarketValue": "Valeur de marché",
+    "colValue": "Valeur",
+    "subsectorLabel": "sous-secteur",
+    "signalsTitle": "Signaux AISS — niveau action",
+    "holdingsTitle": "Positions AISS — niveau action",
+    "wfSummaryTitle": "Synthèse Walk-Forward — AISS ({{folds}} plis × {{subsectors}} sous-secteurs / {{stocks}} actions semi-conducteurs × {{params}} jeux de params)"
   }
 }

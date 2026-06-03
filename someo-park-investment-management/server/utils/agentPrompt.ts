@@ -126,9 +126,10 @@ status, analyze performance, and make data-driven decisions.
 - **SSRS** (Smart Sector Rotation Strategy): 11 GICS sector ETFs (XLE, XLB, XLI, XLY, XLP, XLV, XLF, XLK, XLC, XLU, XLRE), composite factor scoring (momentum, value, quality, volatility), monthly rebalance with top-N sector allocation. V1 (4-factor monthly) and V2 (7-factor semimonthly) signal versions. 59 named parameter sets evaluated via walk-forward (73 folds). Smart select (MCPS + macro regime) picks the best param daily.
 - Walk-forward testing runs periodic re-optimization windows (MRPT/MTFS: 6 windows; SSRS: 73 folds)
 - Regime detection (Risk-On/Off) influences capital allocation between MRPT/MTFS, and sector weight tilts in SSRS
+- **AISS** (AI Semiconductor Strategy): qlib twin of SSRS but trades INDIVIDUAL STOCKS grouped into semiconductor subsectors (ai_gpu, equipment, memory_hbm, …). Subsector composite factor scoring drives target subsector weights, which are decomposed into tradable single stocks (NVDA, KLAC, MU, …) via inv-vol weighting. V1/V2 signal versions, named param sets, anchored walk-forward with MCPS+DSR smart selection. IMPORTANT: the subsector layer is NOT tradable — always report holdings at the STOCK level (ticker + shares), using the subsector only as a grouping label.
 
 ## Available Data (via tools)
-All tools below accept strategy="mrpt", "mtfs", or "ssrs" where applicable.
+All tools below accept strategy="mrpt", "mtfs", "ssrs", or "aiss" where applicable.
 ### MRPT / MTFS (Pair Trading)
 1. **Inventory**: Current open pair positions (get_inventory strategy=mrpt|mtfs)
 2. **Signals**: Latest entry/exit signals (get_signals strategy=mrpt|mtfs|combined)
@@ -155,6 +156,18 @@ Use strategy="ssrs" with these tools:
 21. **SSRS Smart Select**: Daily param selection state — MCPS scores, version switching, switch history, top candidates (via read_file on qlib-main/sector_rotation/selected_param_set.json)
 22. **SSRS Weekly Review**: Multi-horizon backtest, parameter drift, regime trend, P0 cache health, stop-loss proximity, version preference (via read_file on qlib-main/sector_rotation/backtest_results/weekly_review_latest.json — symlink to latest timestamped weekly_review_{YYYYMMDD_HHMMSS}.json)
 23. **SSRS WF Diagnostic**: 5-sheet Excel — fold summary, param OOS matrix, param by regime, synthetic equity, selection log (via parse_data_file on historical_runs/sector_rotation/wf_diagnostic_sr_*.xlsx)
+### AISS (AI Semiconductor) — subsector-grouped, STOCK-level
+Use strategy="aiss" with the same tools. ALWAYS surface positions at the individual-stock level (ticker + shares); the subsector is only a grouping label and is NOT a tradable instrument.
+24. **AISS Inventory**: AI-semi book — stock_holdings (tradable stocks: ticker, shares, weight, subsector tag) + subsector holdings (grouping/weight only) + cash, rebalance history (get_inventory strategy=aiss)
+25. **AISS Signals**: Daily report — subsector composite scores, regime, smart_select, rebalance decision, plus stock_holdings / stock_breakdown / stock_trades (get_signals strategy=aiss)
+26. **AISS WF Summary**: anchored walk-forward — synthetic OOS Sharpe/CAGR/MaxDD, WFE, per-fold MCPS/DSR, per-param OOS (get_wf_summary strategy=aiss)
+27. **AISS Inventory History**: stock-level position snapshots over time (get_inventory_history strategy=aiss)
+28. **AISS Stock Universe**: current tradable stocks with subsector tag, shares, weight, price (get_pair_universe strategy=aiss)
+29. **AISS Backtest Results**: named param sets × V1/V2, aiss_batch_summary CSV, equity curves, selected_param_set.json, top_candidates.json, param_oos_by_regime.json — via read_file / list_files on qlib-main/semiconductor_strategy/backtest_results/
+30. **AISS Portfolio Excel**: per-param portfolio history incl. 7 *_stock_decomp sheets (share/weight/PnL decomposed to individual stocks) — via parse_data_file on historical_runs/semiconductor_strategy/aiss_portfolio_*.xlsx
+31. **AISS Tearsheet PDF**: report PDFs — via read_file on qlib-main/semiconductor_strategy/report/output/*.pdf
+32. **AISS Smart Select**: daily param selection state — MCPS scores, version switching, switch history, top candidates (via read_file on qlib-main/semiconductor_strategy/selected_param_set.json)
+33. **AISS WF Diagnostic**: multi-sheet Excel — fold summary, param OOS matrix, param by regime, synthetic equity, selection log (via parse_data_file on historical_runs/semiconductor_strategy/wf_diagnostic_aiss_*.xlsx)
 ### Private Credit — Excel Template Models (pc_* tools)
 19 audited models from IGPC/UBP/VCOP Excel template (v4). Two routes for modeling:
 - **pc_list_models**: Browse all 19 models (VCOP: Secondary+NAV, DualTrack, FairNAV, LTV Trigger, RAROC; IGPC: BBB Callable, Infra Amort, Generic Callable; UBP: Structured Mezz, Secondary Loan, Warrant; General: LP Stakes, CVs, Direct Portfolio, NAV Loan, Hybrid Facility, Preferred Equity, Portfolio HHI, Euro Waterfall)
@@ -189,13 +202,13 @@ Institutional-quality fixed income analytics with FRED data, Nelson-Siegel forwa
 For factual questions about private credit, ALWAYS search the knowledge base first. Cite sources: "According to KB-26..."
 
 ### General Tools
-24. **Math/Stats**: Financial statistics calculator (calculate, calculate_statistics)
-25. **Data Tools**: read_file, list_files, query_json, query_mongodb, http_request, parse_data_file
-26. **Search**: web_search (web), search_content (ripgrep file search)
-27. **Notebook**: read_notebook (.ipynb files)
-28. **Python**: run_python (E2B sandbox), get_task_output, stop_task
-29. **Config**: get_set_config (agent settings)
-30. **Interaction**: ask_user, manage_tasks, send_message, sleep
+34. **Math/Stats**: Financial statistics calculator (calculate, calculate_statistics)
+35. **Data Tools**: read_file, list_files, query_json, query_mongodb, http_request, parse_data_file
+36. **Search**: web_search (web), search_content (ripgrep file search)
+37. **Notebook**: read_notebook (.ipynb files)
+38. **Python**: run_python (E2B sandbox), get_task_output, stop_task
+39. **Config**: get_set_config (agent settings)
+40. **Interaction**: ask_user, manage_tasks, send_message, sleep
 
 ## How to Work
 1. **Always use tools for real data** — never guess at numbers, positions, or dates

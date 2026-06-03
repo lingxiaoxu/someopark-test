@@ -94,6 +94,12 @@ const ARTIFACT_PATTERNS: Array<{
     title: 'Risk Report',
     keywords: ['risk report', 'risk management report', 'risk pack', 'var report', 'leverage report', 'exposure report', '风险报告', '风控报告', '风险管理报告'],
   },
+  {
+    type: 'inventory',
+    title: 'AISS Holdings',
+    keywords: ['aiss', 'ai semiconductor', 'semiconductor strategy', 'ai chip', 'ai-chips', '半导体策略', 'ai半导体', '芯片策略'],
+    params: { strategy: 'aiss' },
+  },
 ]
 
 export function detectArtifacts(message: string): ArtifactTrigger[] {

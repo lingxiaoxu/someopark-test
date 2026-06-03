@@ -21,8 +21,8 @@ export const oosPairSummaryTool: AgentTool = {
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt", "mtfs", or "ssrs"',
-          enum: ['mrpt', 'mtfs', 'ssrs']
+          description: 'Strategy: "mrpt", "mtfs", "ssrs", or "aiss"',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss']
         }
       },
       required: ['strategy']
@@ -33,6 +33,10 @@ export const oosPairSummaryTool: AgentTool = {
   async execute({ strategy }) {
     if (strategy === 'ssrs') {
       const filePath = getBackendPath('qlib-main/sector_rotation/backtest_results/param_oos_by_regime.json')
+      return readJsonFile(filePath)
+    }
+    if (strategy === 'aiss') {
+      const filePath = getBackendPath('qlib-main/semiconductor_strategy/backtest_results/param_oos_by_regime.json')
       return readJsonFile(filePath)
     }
     const dir = getWfDir(strategy)

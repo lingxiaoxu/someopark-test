@@ -139,6 +139,103 @@ function SsrsSnapshotDetail({ data }: { data: any }) {
   );
 }
 
+// AISS snapshot: stock-level grouped by subsector (subsector = grouping label only)
+// ══ AISS subsector holding card (mirrors SSRS SectorDetail, with stock rows) ══
+function AissSubsectorCard({ sub, holding, stocks, asOf }: { sub: string; holding: any; stocks: any[]; asOf?: string }) {
+  const { t } = useTranslation();
+  const pnlPerShare = (holding.last_price || 0) - (holding.cost_basis || 0);
+  const totalPnl = pnlPerShare * (holding.shares || 0);
+  const pnlPct = holding.cost_basis ? (pnlPerShare / holding.cost_basis) * 100 : 0;
+  const daysHeld = holding.days_held ?? calcDaysHeld(holding.entry_date, asOf);
+  const act = holding.action_today || 'HOLD';
+  return (
+    <div className="bg-[var(--bg-secondary)] rounded-lg p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)]">{sub}</span>
+          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
+            act === 'ENTER' ? 'bg-green-500/10 text-green-400' :
+            act === 'EXIT' ? 'bg-[var(--error)]/10 text-[var(--error)]' :
+            'bg-blue-500/10 text-blue-400'
+          }`}>{act}</span>
+          <span className="text-[10px] text-[var(--text-muted)]">{((holding.weight || 0) * 100).toFixed(1)}% weight</span>
+        </div>
+        <PnlBadge pnl={totalPnl} pct={pnlPct} />
+      </div>
+      <div className="grid grid-cols-5 gap-2 text-[10px]">
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.costBasis')}</div><div className="text-[var(--text-primary)] font-mono">${fmtNum(holding.cost_basis)}</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.price')}</div><div className="text-[var(--text-primary)] font-mono">${fmtNum(holding.last_price)}</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.entry')}</div><div className="text-[var(--text-primary)] font-mono">{holding.entry_date || '—'}</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('ssrs.daysHeld')}</div><div className="text-[var(--text-primary)] font-mono">{daysHeld}d</div></div>
+        <div><div className="text-[var(--text-muted)] uppercase">{t('aiss.colStock')}</div><div className="text-[var(--text-primary)] font-mono">{stocks.length}</div></div>
+      </div>
+      {/* individual stocks within the subsector */}
+      <div className="border-t border-[var(--border-subtle)] pt-2 space-y-1">
+        {stocks.map((s: any) => (
+          <div key={s.ticker} className="flex items-center justify-between text-[10px]">
+            <PairBadge pair={s.ticker} direction="long" strategy="aiss" compact
+              details={{ weight: s.weight, shares: s.shares, lastPrice: s.last_price }} />
+            <div className="flex items-center gap-4 font-mono text-[var(--text-secondary)]">
+              <span>{(s.shares || 0).toLocaleString()} sh</span>
+              <span>{((s.weight || 0) * 100).toFixed(1)}%</span>
+              <span>${fmtNum(s.last_price)}</span>
+              <span className="text-[var(--text-primary)]">${fmtNum(s.target_value, 0)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ══ AISS Snapshot Expanded View (mirrors SSRS, stock-level inside subsector cards) ══
+function AissSnapshotDetail({ data }: { data: any }) {
+  const { t } = useTranslation();
+  const holdings = data.holdings || {};                 // subsector → rich fields
+  const view = data.stock_view || { subsectors: [] };
+  const stocksBySub: Record<string, any[]> = {};
+  (view.subsectors || []).forEach((g: any) => { stocksBySub[g.subsector] = g.stocks || []; });
+
+  const active = Object.entries(holdings).filter(([, h]: any) => (h as any).weight > 0.01);
+  const totalValue = active.reduce((s, [, h]: any) => s + (h.shares || 0) * (h.last_price || 0), 0);
+  const totalCost = active.reduce((s, [, h]: any) => s + (h.shares || 0) * (h.cost_basis || 0), 0);
+  const totalPnl = totalValue - totalCost;
+  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+
+  return (
+    <div className="space-y-3">
+      {/* Summary row */}
+      <div className="flex items-center gap-4 text-[11px] text-[var(--text-muted)] flex-wrap">
+        <span>{t('inventoryHistory.asOf')} <span className="font-mono text-[var(--text-primary)]">{data.as_of}</span></span>
+        <span>{t('inventoryHistory.capital')} <span className="font-mono text-[var(--text-primary)]">${Number(data.capital).toLocaleString()}</span></span>
+        <span>{t('ssrs.cash')}: <span className="font-mono text-[var(--text-primary)]">{((data.cash_weight || 0) * 100).toFixed(1)}%</span></span>
+        <span>{t('ssrs.regime')}: <span className="font-mono text-[var(--text-primary)]">{data.rebalance_history?.[data.rebalance_history.length - 1]?.regime || '—'}</span></span>
+        <PnlBadge pnl={totalPnl} pct={totalPnlPct} />
+      </div>
+
+      {/* Held subsector cards (sorted by weight) */}
+      {active
+        .sort(([, a]: any, [, b]: any) => (b as any).weight - (a as any).weight)
+        .map(([sub, h]: any) => (
+          <AissSubsectorCard key={sub} sub={sub} holding={h} stocks={stocksBySub[sub] || []} asOf={data.as_of} />
+        ))}
+      {active.length === 0 && (
+        <div className="text-[10px] text-[var(--text-muted)] py-4 text-center">{t('common.noDataAvailable')}</div>
+      )}
+
+      {/* Rebalance history */}
+      {data.rebalance_history?.length > 0 && (
+        <div className="text-[10px] text-[var(--text-muted)] pt-1 border-t border-[var(--border-subtle)]">
+          <span className="uppercase tracking-wider">{t('ssrs.rebalanceHistory')}: </span>
+          {data.rebalance_history.map((r: any, i: number) => (
+            <span key={i} className="font-mono">{r.date} ({r.reason}){i < data.rebalance_history.length - 1 ? ' → ' : ''}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PairDetail({ pair, pos, asOf }: { pair: string; pos: any; asOf?: string; key?: any }) {
   const { t } = useTranslation();
   const [showLog, setShowLog] = useState(false);
@@ -296,7 +393,7 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="text-sm font-medium text-[var(--text-primary)]">{t('inventoryHistory.title')}</div>
         <div className="flex bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md p-0.5">
-          {['mrpt', 'mtfs', 'ssrs'].map(s => (
+          {['mrpt', 'mtfs', 'ssrs', 'aiss'].map(s => (
             <button key={s} onClick={() => { setStrategy(s); setExpandedFile(null); }} className={`px-2.5 py-1 text-xs rounded-sm transition-colors ${strategy === s ? 'bg-[var(--accent-primary)] text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}>
               {s.toUpperCase()}
             </button>
@@ -326,7 +423,9 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
                 {snapshotLoading ? (
                   <div className="text-[var(--text-muted)] text-center py-4 text-xs">{t('inventoryHistory.loadingSnapshot')}</div>
                 ) : snapshotData ? (
-                  strategy === 'ssrs' ? (
+                  strategy === 'aiss' ? (
+                    <AissSnapshotDetail data={snapshotData} />
+                  ) : strategy === 'ssrs' ? (
                     <SsrsSnapshotDetail data={snapshotData} />
                   ) : (
                   <div className="space-y-3">

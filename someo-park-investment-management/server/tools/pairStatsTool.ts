@@ -16,7 +16,7 @@ function getWfDir(s: string) {
 export const pairStatsTool: AgentTool = {
   definition: {
     name: 'get_pair_stats',
-    description: `MRPT/MTFS: comprehensive pair stats. SSRS: sector ETF stats from inventory and daily report.
+    description: `MRPT/MTFS: comprehensive pair stats. SSRS: sector ETF stats from inventory and daily report. AISS: individual stock stats (pass a ticker like "NVDA") from stock_holdings + daily report.
 - OOS performance (pnl, sharpe, max_dd, n_trades from walk-forward)
 - DSR selection history (how many WF windows this pair was selected)
 - Current inventory (in position, days held, entry prices)
@@ -24,8 +24,8 @@ export const pairStatsTool: AgentTool = {
     input_schema: {
       type: 'object',
       properties: {
-        pair: { type: 'string', description: 'e.g. "DG_MOS" or "DG/MOS"' },
-        strategy: { type: 'string', enum: ['mrpt', 'mtfs', 'ssrs'] }
+        pair: { type: 'string', description: 'e.g. "DG_MOS" / "DG/MOS" (MRPT/MTFS), a sector ETF (SSRS), or a stock ticker like "NVDA" (AISS)' },
+        strategy: { type: 'string', enum: ['mrpt', 'mtfs', 'ssrs', 'aiss'] }
       },
       required: ['pair', 'strategy']
     }
@@ -33,6 +33,26 @@ export const pairStatsTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ pair, strategy }) {
+    if (strategy === 'aiss') {
+      const inv = await readJsonFile(getBackendPath('qlib-main/semiconductor_strategy/inventory_aiss.json'))
+      const stock = inv?.stock_holdings?.[pair] || null
+      const signalDir = getBackendPath('qlib-main/semiconductor_strategy/trading_signals')
+      let latestReport = null
+      try {
+        const reportFile = await findLatestFile(signalDir, 'aiss_daily_report_*.json')
+        latestReport = await readJsonFile(reportFile)
+      } catch {}
+      const subsector = stock?.subsectors?.[0] ?? null
+      return {
+        ticker: pair,
+        subsector,
+        holding: stock,                                   // shares, weight, last_price, target_value
+        subsector_weight: subsector ? (inv?.holdings?.[subsector]?.weight ?? null) : null,
+        stock_breakdown: latestReport?.stock_breakdown?.[pair] ?? null,
+        regime: latestReport?.regime?.label ?? null,
+        as_of: inv?.as_of,
+      }
+    }
     if (strategy === 'ssrs') {
       const inv = await readJsonFile(getBackendPath('qlib-main/sector_rotation/inventory_sector_rotation.json'))
       const holding = inv?.holdings?.[pair] || null

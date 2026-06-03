@@ -3,7 +3,7 @@
     "equityCurve": "OOS 权益曲线",
     "signals": "交易信号",
     "regime": "宏观经济状态",
-    "pairUniverse": "配对宇宙",
+    "pairUniverse": "可交易宇宙",
     "wfGrid": "Walk-Forward 网格",
     "portfolioHistory": "组合历史",
     "wfDiagnostic": "WF 诊断报告",
@@ -98,7 +98,7 @@
     "section3": "3. 每日信号输出",
     "section4": "4. 持仓状态",
     "section5": "5. WF 诊断",
-    "btnPairUniverse": "我们在交易哪些配对？",
+    "btnPairUniverse": "我们的可交易宇宙里有哪些标的？",
     "btnWfSummary": "样本外前向测试跑得怎么样？",
     "btnDsrGrid": "给我看参数扫描记录。",
     "btnOosEquity": "画出样本外运行的表现曲线。",
@@ -558,5 +558,17 @@
   },
   "riskReport": {
     "noReports": "暂无风险报告。"
+  },
+  "aiss": {
+    "stocksTab": "半导体个股 ({{count}})",
+    "colStock": "个股",
+    "colSubsector": "子板块",
+    "colLastPrice": "最新价",
+    "colMarketValue": "市值",
+    "colValue": "市值",
+    "subsectorLabel": "子板块",
+    "signalsTitle": "AISS 信号 — 个股层面",
+    "holdingsTitle": "AISS 持仓 — 个股层面",
+    "wfSummaryTitle": "Walk-Forward 汇总 — AISS（{{folds}} 折叠 × {{subsectors}} 子板块 / {{stocks}} 半导体个股 × {{params}} 参数集）"
   }
 }

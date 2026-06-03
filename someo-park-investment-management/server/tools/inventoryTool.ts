@@ -8,14 +8,14 @@ import type { AgentTool } from './index.js'
 export const inventoryTool: AgentTool = {
   definition: {
     name: 'get_inventory',
-    description: 'Get current open positions (inventory) for a strategy. MRPT/MTFS: pair names, entry dates, prices, hedge ratios, shares. SSRS: sector ETF holdings with weights, shares, cost basis, rebalance history.',
+    description: 'Get current open positions (inventory) for a strategy. MRPT/MTFS: pair names, entry dates, prices, hedge ratios, shares. SSRS: sector ETF holdings with weights, shares, cost basis, rebalance history. AISS: AI-semiconductor book — use the stock_holdings field (tradable individual stocks: ticker, shares, weight, subsector tag); the subsector-level holdings are only a grouping, NOT tradable.',
     input_schema: {
       type: 'object',
       properties: {
         strategy: {
           type: 'string',
-          description: '"mrpt" (Mean Reversion), "mtfs" (Momentum), or "ssrs" (Sector Rotation)',
-          enum: ['mrpt', 'mtfs', 'ssrs']
+          description: '"mrpt" (Mean Reversion), "mtfs" (Momentum), "ssrs" (Sector Rotation), or "aiss" (AI Semiconductor)',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss']
         }
       },
       required: ['strategy']
@@ -24,9 +24,10 @@ export const inventoryTool: AgentTool = {
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
   async execute({ strategy }) {
-    const filePath = strategy === 'ssrs'
-      ? getBackendPath('qlib-main/sector_rotation/inventory_sector_rotation.json')
-      : getBackendPath(`inventory_${strategy}.json`)
-    return readJsonFile(filePath)
+    if (strategy === 'ssrs')
+      return readJsonFile(getBackendPath('qlib-main/sector_rotation/inventory_sector_rotation.json'))
+    if (strategy === 'aiss')
+      return readJsonFile(getBackendPath('qlib-main/semiconductor_strategy/inventory_aiss.json'))
+    return readJsonFile(getBackendPath(`inventory_${strategy}.json`))
   }
 }

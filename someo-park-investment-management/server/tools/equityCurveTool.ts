@@ -21,8 +21,8 @@ export const equityCurveTool: AgentTool = {
       properties: {
         strategy: {
           type: 'string',
-          description: 'Strategy: "mrpt", "mtfs", or "ssrs"',
-          enum: ['mrpt', 'mtfs', 'ssrs']
+          description: 'Strategy: "mrpt", "mtfs", "ssrs", or "aiss"',
+          enum: ['mrpt', 'mtfs', 'ssrs', 'aiss']
         },
         tail: {
           type: 'number',
@@ -39,6 +39,11 @@ export const equityCurveTool: AgentTool = {
       const filePath = getBackendPath('qlib-main/sector_rotation/backtest_results/wf_fold_detail.json')
       const data = await readJsonFile(filePath)
       return { strategy: 'ssrs', synthetic_metrics: data.synthetic_metrics, n_folds: data.n_folds, mean_wfe: data.mean_wfe }
+    }
+    if (strategy === 'aiss') {
+      const filePath = getBackendPath('qlib-main/semiconductor_strategy/backtest_results/wf_fold_detail.json')
+      const data = await readJsonFile(filePath)
+      return { strategy: 'aiss', synthetic_metrics: data.synthetic_metrics, n_folds: data.n_folds, mean_wfe: data.mean_wfe }
     }
     const dir = getWfDir(strategy)
     const filePath = await findLatestFile(dir, 'oos_equity_curve_*.csv')
