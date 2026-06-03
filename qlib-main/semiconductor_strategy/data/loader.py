@@ -125,6 +125,7 @@ def build_subsector_prices(
     stock_prices: pd.DataFrame,
     min_history_months: int = 24,
     base_value: float = 100.0,
+    stale_days: int = 10,
 ) -> pd.DataFrame:
     """Build 8 synthetic 80/15/5 subsector total-return price indices.
 
@@ -136,6 +137,13 @@ def build_subsector_prices(
         The primary tier is never gated (it anchors the basket).
     base_value : float
         Starting index level for every basket.
+    stale_days : int
+        A weighted tier (primary/backup1/backup2) that was active but has had NO
+        valid price for the trailing ``stale_days`` trading days is treated as
+        unusable (halt / delisting / data outage); its weight is handed to the
+        subsector's 0%-reserve stock (mechanism B) when the reserve is itself live.
+        Short 1–2 day gaps never trigger.  When nothing goes stale, the reserve
+        stays at 0% and basket returns are identical to the 3-tier construction.
 
     Returns
     -------
@@ -147,29 +155,46 @@ def build_subsector_prices(
     idx = stock_prices.index
     rets = stock_prices.pct_change()
     first_avail = {t: stock_prices[t].first_valid_index() for t in stock_prices.columns}
+    # "live" = at least one valid price within the trailing stale_days window.
+    live_mask = (stock_prices.notna().rolling(stale_days, min_periods=1).sum() > 0)
+
+    def _active_from(t: str, primary: str) -> pd.Timestamp:
+        fa = pd.Timestamp(first_avail[t])
+        return fa if t == primary else fa + pd.DateOffset(months=min_history_months)
 
     basket_returns: Dict[str, pd.Series] = {}
     for s in U.subsector_names():
         base_w = U.subsector_weights(s)                  # {ticker: 0.80/0.15/0.05}
         primary = U.subsector_tickers(s)[0]
+        reserve = U.subsector_reserve(s)
         cols = [t for t in base_w if t in stock_prices.columns and first_avail.get(t) is not None]
         if primary not in cols:
             logger.warning("Subsector %s: primary %s has no price data; skipping", s, primary)
             continue
+        has_reserve = (reserve is not None and reserve in stock_prices.columns
+                       and first_avail.get(reserve) is not None)
+        all_cols = cols + ([reserve] if has_reserve else [])
 
-        W = pd.DataFrame(0.0, index=idx, columns=cols)
+        W = pd.DataFrame(0.0, index=idx, columns=all_cols)
+        accident = pd.Series(0.0, index=idx)              # weight freed by stale tiers
         for t in cols:
-            fa = pd.Timestamp(first_avail[t])
-            if t == primary:
-                active_from = fa                          # primary anchors from day 1
-            else:
-                active_from = fa + pd.DateOffset(months=min_history_months)
-            W.loc[W.index >= active_from, t] = base_w[t]
+            active = (idx >= _active_from(t, primary))    # boolean array over idx
+            liveT = live_mask[t].reindex(idx).fillna(False).to_numpy()
+            on = active & liveT
+            W.loc[on, t] = base_w[t]
+            # active but not live = accident → its weight cascades to the reserve
+            accident.loc[active & ~liveT] += base_w[t]
+
+        if has_reserve:
+            live_r = live_mask[reserve].reindex(idx).fillna(False).to_numpy()
+            res_on = (idx >= _active_from(reserve, primary)) & live_r & (accident.to_numpy() > 0)
+            W[reserve] = np.where(res_on, accident.to_numpy(), 0.0)
 
         row_sum = W.sum(axis=1)
-        # Where only-primary-has-data but its base weight already set; renormalise rows.
+        # Renormalise rows (covers IPO phase-in AND any accident weight the reserve
+        # couldn't absorb → falls back to the surviving live tiers).
         Wn = W.div(row_sum.where(row_sum > 0), axis=0).fillna(0.0)
-        br = (Wn * rets[cols]).sum(axis=1)
+        br = (Wn * rets[all_cols]).sum(axis=1)
         br = br.where(row_sum > 0)                         # undefined before primary exists
         basket_returns[s] = br
 

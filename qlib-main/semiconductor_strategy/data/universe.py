@@ -84,8 +84,14 @@ IPO_DATES: Dict[str, date] = {
 
 
 # ---------------------------------------------------------------------------
-# Subsector definitions (8 subsectors x 3 tiers = 24 stock slots, 22 unique)
+# Subsector definitions (8 subsectors x 3 weighted tiers = 24 slots, 22 unique)
 # ARM appears in BOTH ai_gpu(backup2) and logic_cpu(backup2) by design.
+#
+# Each subsector also has a 4th "reserve" slot at 0% weight — a vetted, data-ready
+# spare (chosen by correlation/liquidity to the basket). It is NOT in _TIER_ORDER,
+# so the normal 3-tier basket is unchanged; it is promoted ONLY when one of the
+# three weighted tiers becomes unusable (halt/delisting/data outage) — see
+# effective_weights(unavailable=...) and loader.build_subsector_prices.
 # ---------------------------------------------------------------------------
 
 SUBSECTORS: Dict[str, dict] = {
@@ -93,6 +99,7 @@ SUBSECTORS: Dict[str, dict] = {
         "primary":  ("NVDA", 0.80),
         "backup1":  ("ALAB", 0.15),
         "backup2":  ("ARM",  0.05),
+        "reserve":  ("AMD",  0.00),   # 0% spare; promoted only on accident (dup: logic_cpu primary)
         "cycle":    "ai_capex_direct",
         "lead_lag": 0,    # months relative to AI-Capex signal (+lag / -lead)
         "display":  "AI / GPU",
@@ -101,6 +108,7 @@ SUBSECTORS: Dict[str, dict] = {
         "primary":  ("AVGO", 0.80),
         "backup1":  ("MRVL", 0.15),
         "backup2":  ("CRDO", 0.05),
+        "reserve":  ("ANET", 0.00),   # 0% spare; promoted only on accident
         "cycle":    "ai_capex_derived",
         "lead_lag": 2,
         "display":  "Custom ASIC / Networking",
@@ -109,6 +117,7 @@ SUBSECTORS: Dict[str, dict] = {
         "primary":  ("KLAC", 0.80),
         "backup1":  ("LRCX", 0.15),
         "backup2":  ("AMAT", 0.05),
+        "reserve":  ("ASML", 0.00),   # 0% spare; promoted only on accident
         "cycle":    "foundry_orders",
         "lead_lag": -12,  # leads the chip cycle ~12 months
         "display":  "Equipment",
@@ -117,6 +126,7 @@ SUBSECTORS: Dict[str, dict] = {
         "primary":  ("MU",   0.80),
         "backup1":  ("WDC",  0.15),
         "backup2":  ("SIMO", 0.05),
+        "reserve":  ("STX",  0.00),   # 0% spare; promoted only on accident
         "cycle":    "inventory_driven",
         "lead_lag": 4,
         "display":  "Memory / HBM",
@@ -125,6 +135,7 @@ SUBSECTORS: Dict[str, dict] = {
         "primary":  ("TSM",  0.80),
         "backup1":  ("UMC",  0.15),
         "backup2":  ("GFS",  0.05),
+        "reserve":  ("TSEM", 0.00),   # 0% spare; promoted only on accident
         "cycle":    "capex_to_capacity",
         "lead_lag": -9,   # leads fabless ~9 months
         "display":  "Foundry",
@@ -133,6 +144,7 @@ SUBSECTORS: Dict[str, dict] = {
         "primary":  ("TXN",  0.80),
         "backup1":  ("ADI",  0.15),
         "backup2":  ("MCHP", 0.05),
+        "reserve":  ("NXPI", 0.00),   # 0% spare; promoted only on accident
         "cycle":    "defensive_late_cycle",
         "lead_lag": 8,
         "display":  "Analog / Defensive",
@@ -141,6 +153,7 @@ SUBSECTORS: Dict[str, dict] = {
         "primary":  ("AMD",  0.80),
         "backup1":  ("INTC", 0.15),
         "backup2":  ("ARM",  0.05),
+        "reserve":  ("MRVL", 0.00),   # 0% spare; promoted only on accident (dup: custom_asic backup1)
         "cycle":    "ai_server_competition",
         "lead_lag": 4,
         "display":  "Logic / CPU",
@@ -149,6 +162,7 @@ SUBSECTORS: Dict[str, dict] = {
         "primary":  ("QCOM", 0.80),
         "backup1":  ("SWKS", 0.15),
         "backup2":  ("QRVO", 0.05),
+        "reserve":  ("MTSI", 0.00),   # 0% spare; promoted only on accident
         "cycle":    "consumer_independent",
         "lead_lag": 0,
         "display":  "RF / Edge",
@@ -170,11 +184,13 @@ AI_CYCLE_SUBSECTORS: List[str] = ["ai_gpu", "custom_asic", "equipment"]
 STOCK_TIER: Dict[str, int] = {
     # Tier 1 (3 bps) — mega-cap, deepest liquidity
     "NVDA": 1, "AVGO": 1, "AMD": 1, "QCOM": 1, "TSM": 1, "MU": 1, "TXN": 1, "INTC": 1,
+    "ASML": 1,
     # Tier 2 (5 bps) — large-cap
     "KLAC": 2, "LRCX": 2, "AMAT": 2, "WDC": 2, "ARM": 2, "ADI": 2,
+    "NXPI": 2, "ANET": 2, "STX": 2,
     # Tier 3 (8 bps) — mid/small-cap or recent IPO
     "ALAB": 3, "MRVL": 3, "CRDO": 3, "MCHP": 3, "UMC": 3, "GFS": 3,
-    "SIMO": 3, "SWKS": 3, "QRVO": 3,
+    "SIMO": 3, "SWKS": 3, "QRVO": 3, "TSEM": 3, "MTSI": 3,
 }
 TIER_COST_BPS: Dict[int, int] = {1: 3, 2: 5, 3: 8}
 
@@ -234,24 +250,60 @@ def subsector_weights(subsector: str) -> Dict[str, float]:
     return {d[t][0]: d[t][1] for t in _TIER_ORDER}
 
 
-def subsector_of(ticker: str) -> List[str]:
-    """Return the subsector(s) a ticker belongs to (ARM is in two)."""
+def subsector_reserve(subsector: str) -> Optional[str]:
+    """Return the 0%-weight reserve ticker for a subsector (None if undefined).
+
+    The reserve is a vetted, data-ready spare that carries 0% normally and is only
+    promoted into the basket when one of the three weighted tiers (primary/backup1/
+    backup2) becomes unusable (halt / delisting / data outage).  It is deliberately
+    kept OUT of ``_TIER_ORDER`` so the 3-tier API (subsector_tickers / _weights /
+    _meta) and basket returns are unchanged in the normal case.
+    """
+    d = SUBSECTORS[subsector]
+    r = d.get("reserve")
+    return r[0] if r else None
+
+
+def reserve_tickers() -> List[str]:
+    """All reserve tickers (de-duped, subsector order)."""
+    seen: List[str] = []
+    for s in SUBSECTORS:
+        r = subsector_reserve(s)
+        if r and r not in seen:
+            seen.append(r)
+    return seen
+
+
+def subsector_of(ticker: str, include_reserve: bool = True) -> List[str]:
+    """Return the subsector(s) a ticker belongs to (ARM is in two).
+
+    With ``include_reserve`` also matches reserve slots (so a promoted reserve such
+    as ASML resolves to its subsector during stock aggregation).
+    """
     hits = [s for s in SUBSECTORS if ticker in subsector_tickers(s)]
+    if include_reserve:
+        hits += [s for s in SUBSECTORS if subsector_reserve(s) == ticker and s not in hits]
     if not hits:
         raise KeyError(f"Ticker {ticker!r} is not in the AISS universe.")
     return hits
 
 
-def all_tickers(include_benchmark: bool = False) -> List[str]:
-    """All unique single-stock tickers in the 24-slot universe (ARM de-duped).
+def all_tickers(include_benchmark: bool = False, include_reserve: bool = True) -> List[str]:
+    """All unique single-stock tickers in the universe (ARM de-duped).
 
     Deterministically ordered: subsector order, tier order, first occurrence.
+    ``include_reserve`` appends the 0%-weight reserve tickers (so their prices are
+    downloaded and the spare is data-ready); they never affect the normal basket.
     """
     seen: List[str] = []
     for s in SUBSECTORS:
         for t in subsector_tickers(s):
             if t not in seen:
                 seen.append(t)
+    if include_reserve:
+        for r in reserve_tickers():
+            if r not in seen:
+                seen.append(r)
     if include_benchmark:
         for b in BENCHMARK_TICKERS:
             if b not in seen:
@@ -341,6 +393,7 @@ def effective_weights(
     as_of_date,
     min_history_months: int = 24,
     first_available: Optional[Dict[str, date]] = None,
+    unavailable: Optional[set] = None,
 ) -> Dict[str, float]:
     """Return PIT-correct {ticker: weight} for a subsector on ``as_of_date``.
 
@@ -365,11 +418,31 @@ def effective_weights(
         Weights summing to 1.0 over the surviving tickers (empty -> {primary:1}).
     """
     as_of = pd.Timestamp(as_of_date).date() if not isinstance(as_of_date, date) else as_of_date
-    raw = subsector_weights(subsector)  # {ticker: 0.80/0.15/0.05}
-    surviving = {
-        t: w for t, w in raw.items()
-        if _ticker_available(t, as_of, min_history_months, first_available)
-    }
+    unavailable = set(unavailable or ())
+    raw = subsector_weights(subsector)  # {ticker: 0.80/0.15/0.05} (3 weighted tiers)
+
+    def _avail(t: str) -> bool:
+        return (_ticker_available(t, as_of, min_history_months, first_available)
+                and t not in unavailable)
+
+    surviving = {t: w for t, w in raw.items() if _avail(t)}
+
+    # ACCIDENT cascade (mechanism B): a weighted tier that HAD enough history but is
+    # now in ``unavailable`` (halt / delisting / data outage) hands its weight to the
+    # 0%-reserve, if the reserve is itself available.  IPO-history gaps are NOT
+    # accidents — they keep the existing proportional-redistribution behaviour (they
+    # never reach the reserve).  When ``unavailable`` is empty this whole block is a
+    # no-op and the result is byte-identical to the pre-reserve implementation.
+    accident_weight = sum(
+        w for t, w in raw.items()
+        if t in unavailable
+        and _ticker_available(t, as_of, min_history_months, first_available)
+    )
+    if accident_weight > 0:
+        reserve = subsector_reserve(subsector)
+        if reserve and _avail(reserve):
+            surviving[reserve] = surviving.get(reserve, 0.0) + accident_weight
+
     if not surviving:
         # Degenerate (very early date): force the primary even if short — the
         # caller's price availability check will still gate actual usage.

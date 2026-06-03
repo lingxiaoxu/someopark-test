@@ -58,6 +58,7 @@ from semiconductor_strategy.stock_decompose import (
     decompose_to_stocks,
     build_stock_trades,
     stock_holdings_from_by_ticker,
+    recently_unavailable,
 )
 from semiconductor_strategy.signals.composite import compute_composite_signals
 from semiconductor_strategy.portfolio.optimizer import optimize_weights
@@ -796,6 +797,7 @@ def run_daily_signal(
         stock_first_avail = {t: stock_prices_all[t].first_valid_index() for t in stock_prices_all.columns}
     except Exception as _sp_e:
         log.warning(f"Stock-price load failed ({_sp_e}); stock decomposition will be skipped.")
+        stock_prices_all = pd.DataFrame()
         stock_prices_today = pd.Series(dtype=float)
         stock_first_avail = {}
 
@@ -1097,6 +1099,13 @@ def run_daily_signal(
         for t in effective_weights.index
         if float(effective_weights.get(t, 0.0)) > 0
     }
+    # Accident detection: any universe stock with no valid price in the trailing
+    # 10 trading days (halt/delisting/data outage) → its subsector's weight routes
+    # to the 0%-reserve inside effective_weights.  Normally empty → 3-stock baskets.
+    _unavailable = recently_unavailable(stock_prices_all, signal_date, stale_days=10) \
+        if not stock_prices_all.empty else set()
+    if _unavailable:
+        log.warning("Stale/unavailable stocks (reserve will be promoted): %s", sorted(_unavailable))
     stock_decomp = decompose_to_stocks(
         subsector_weights=_held_subsector_w,
         capital=capital,
@@ -1104,6 +1113,7 @@ def run_daily_signal(
         stock_prices_today=stock_prices_today,
         first_available=stock_first_avail,
         min_history_months=int(cfg.get("universe", {}).get("min_history_months", 24)),
+        unavailable=_unavailable,
     )
     stock_trades = build_stock_trades(stock_decomp["by_ticker"], prev_stock_holdings) if will_rebalance else []
     log.info(

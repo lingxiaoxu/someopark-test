@@ -40,6 +40,23 @@ from semiconductor_strategy.data import universe as U
 _TIER_ROLES = ["primary", "backup1", "backup2"]
 
 
+def recently_unavailable(stock_prices: pd.DataFrame, as_of_date,
+                         stale_days: int = 10) -> set:
+    """Tickers with NO valid price in the trailing ``stale_days`` window as of date.
+
+    Detects halts / delistings / data outages (an "accident") so the caller can
+    route the affected subsector's weight to its 0%-reserve.  Short 1–2 day gaps
+    do not trigger.  Mirrors the live-mask rule in ``loader.build_subsector_prices``.
+    """
+    if stock_prices is None or stock_prices.empty:
+        return set()
+    as_of = pd.Timestamp(as_of_date)
+    window = stock_prices.loc[:as_of].tail(stale_days)
+    if window.empty:
+        return set()
+    return {t for t in window.columns if window[t].notna().sum() == 0}
+
+
 def decompose_to_stocks(
     subsector_weights: Dict[str, float],
     capital: float,
@@ -47,6 +64,7 @@ def decompose_to_stocks(
     stock_prices_today: pd.Series,
     first_available: Optional[Dict[str, date]] = None,
     min_history_months: int = 24,
+    unavailable: Optional[set] = None,
 ) -> dict:
     """Decompose held-subsector target weights into individual-stock holdings.
 
@@ -96,11 +114,15 @@ def decompose_to_stocks(
             sub, as_of_date,
             min_history_months=min_history_months,
             first_available=first_available,
+            unavailable=unavailable,
         )
-        # tier role (primary/backup1/backup2) for display, in basket order
+        # tier role (primary/backup1/backup2/reserve) for display, in basket order
         base_order = list(U.subsector_weights(sub).keys())
         role = {tk: (_TIER_ROLES[i] if i < len(_TIER_ROLES) else f"tier{i+1}")
                 for i, tk in enumerate(base_order)}
+        _res = U.subsector_reserve(sub)
+        if _res:
+            role[_res] = "reserve"
 
         for tk, within in eff.items():
             port_w = sub_w * within

@@ -16,12 +16,34 @@ class TestUniverse(unittest.TestCase):
         self.assertEqual(len(U.subsector_names()), 8)
 
     def test_unique_tickers(self):
-        # 8x3 = 24 slots but ARM is shared → 23 unique
-        tickers = U.all_tickers()
-        self.assertEqual(len(tickers), 23)
-        self.assertEqual(len(set(tickers)), 23)  # truly unique
-        self.assertIn("NVDA", tickers)
-        self.assertIn("ARM", tickers)
+        # Weighted universe: 8x3 = 24 slots but ARM is shared → 23 unique
+        weighted = U.all_tickers(include_reserve=False)
+        self.assertEqual(len(weighted), 23)
+        self.assertEqual(len(set(weighted)), 23)  # truly unique
+        self.assertIn("NVDA", weighted)
+        self.assertIn("ARM", weighted)
+        # With reserves: +6 unique (ANET/ASML/STX/TSEM/NXPI/MTSI; AMD/MRVL already in)
+        full = U.all_tickers()  # include_reserve=True by default
+        self.assertEqual(len(full), 29)
+        self.assertEqual(len(set(full)), 29)
+        for r in ("ASML", "ANET", "STX", "TSEM", "NXPI", "MTSI"):
+            self.assertIn(r, full)
+
+    def test_reserves(self):
+        # Each subsector has a 0%-weight reserve, not in the 3 weighted tiers.
+        for s in U.subsector_names():
+            r = U.subsector_reserve(s)
+            self.assertIsNotNone(r)
+            self.assertNotIn(r, U.subsector_tickers(s))  # reserve is separate
+        # Accident cascade: a stale primary hands its weight to the reserve.
+        ew = U.effective_weights("equipment", "2026-06-02", unavailable={"KLAC"})
+        self.assertIn("ASML", ew)
+        self.assertNotIn("KLAC", ew)
+        self.assertAlmostEqual(sum(ew.values()), 1.0, places=9)
+        # Normal case: no reserve present.
+        ew0 = U.effective_weights("equipment", "2026-06-02")
+        self.assertNotIn("ASML", ew0)
+        self.assertEqual(set(ew0), {"KLAC", "LRCX", "AMAT"})
 
     def test_arm_dedup_across_subsectors(self):
         subs = U.subsector_of("ARM")
