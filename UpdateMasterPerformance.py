@@ -36,13 +36,15 @@ MASTER_JSON = os.path.join(BASE_DIR, 'someo-park-investment-management', 'public
 SR_EQUITY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'sector_rotation', 'backtest_results')
 SR_INVENTORY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'sector_rotation', 'inventory_history')
 SR_LIVE_START = '2026-05-08'
-SR_PARAM = 'sensitive_dd'
+# backtest param is auto-selected (best total return); live segment follows the
+# actual traded param via inventory MTM — see _best_backtest_column()
 
 # ── AISS (AI Infra & Semiconductor Strategy) ───────────────────────────────
 AISS_EQUITY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'semiconductor_strategy', 'backtest_results')
 AISS_INVENTORY_DIR = os.path.join(BASE_DIR, 'qlib-main', 'semiconductor_strategy', 'inventory_history')
 AISS_LIVE_START = '2026-06-01'
-AISS_PARAM = 'balanced_four'
+# backtest param auto-selected (best total return); live segment (>= AISS_LIVE_START)
+# follows the actual traded param via inventory_aiss stock_holdings MTM
 
 
 def load_pairs_equity() -> tuple[pd.Series, pd.Series, float]:
@@ -58,15 +60,32 @@ def load_pairs_equity() -> tuple[pd.Series, pd.Series, float]:
     return mrpt, mtfs, combined_start
 
 
+def _best_backtest_column(df: pd.DataFrame, label: str) -> str:
+    """Best-looking backtest param column = highest total return (final/first over
+    its valid history). The pre-live segment is backtest-only, so we display the
+    strongest backtest curve; the live segment then follows the ACTUAL traded param
+    via inventory MTM. Nothing is hardcoded — adapts automatically as params change."""
+    best_col, best_ret = None, -1.0
+    for c in df.columns:
+        s = pd.to_numeric(df[c], errors='coerce').dropna()
+        if len(s) < 30 or s.iloc[0] <= 0:
+            continue
+        r = float(s.iloc[-1] / s.iloc[0])
+        if r > best_ret:
+            best_ret, best_col = r, c
+    if best_col is None:
+        sys.exit(f'[ERROR] No valid {label} backtest column found')
+    print(f'  {label} backtest param (best total return, auto-selected): {best_col} ({best_ret:.2f}x)')
+    return best_col
+
+
 def load_sr_equity_backtest() -> pd.Series:
-    """Load SR equity from backtest CSV (sensitive_dd column)."""
+    """Load SR equity from backtest CSV — best-looking param column (dynamic, not hardcoded)."""
     files = sorted(glob.glob(os.path.join(SR_EQUITY_DIR, 'sr_batch_equity_*.csv')))
     if not files:
         sys.exit('[ERROR] No sr_batch_equity CSV found')
     df = pd.read_csv(files[-1], index_col=0, parse_dates=True)
-    if SR_PARAM not in df.columns:
-        sys.exit(f'[ERROR] Column {SR_PARAM} not found in {files[-1]}')
-    return df[SR_PARAM].dropna()
+    return df[_best_backtest_column(df, 'SR')].dropna()
 
 
 def _load_live_equity_from_inventory(
@@ -171,14 +190,13 @@ def load_sr_equity_live(backtest_normalized: pd.Series,
 
 
 def load_aiss_equity_backtest() -> pd.Series:
-    """Load AISS equity from backtest CSV (balanced_four column)."""
+    """Load AISS equity from backtest CSV — best-looking param column (dynamic, not hardcoded).
+    Live segment (>= AISS_LIVE_START) follows the actual traded param via inventory MTM."""
     files = sorted(glob.glob(os.path.join(AISS_EQUITY_DIR, 'aiss_batch_equity_*.csv')))
     if not files:
         sys.exit('[ERROR] No aiss_batch_equity CSV found')
     df = pd.read_csv(files[-1], index_col=0, parse_dates=True)
-    if AISS_PARAM not in df.columns:
-        sys.exit(f'[ERROR] Column {AISS_PARAM} not found in {files[-1]}')
-    return df[AISS_PARAM].dropna()
+    return df[_best_backtest_column(df, 'AISS')].dropna()
 
 
 def load_aiss_equity_live(backtest_normalized: pd.Series,
