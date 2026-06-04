@@ -1,4 +1,14 @@
 {
+  "subsectors": {
+    "ai_gpu": "IA / GPU",
+    "custom_asic": "ASIC personnalisé / Réseau",
+    "equipment": "Équipement",
+    "memory_hbm": "Mémoire / HBM",
+    "foundry": "Fonderie",
+    "analog_defense": "Analogique / Défensif",
+    "logic_cpu": "Logique / CPU",
+    "rf_edge": "RF / Périphérie"
+  },
   "artifactTitles": {
     "equityCurve": "Courbe d'équité OOS",
     "signals": "Signaux de trading",
@@ -215,7 +225,8 @@
     "zMom": "Z/Mom",
     "pnl": "P&L",
     "pnlPct": "P&L%",
-    "noHistory": "Aucun historique trouvé"
+    "noHistory": "Aucun historique trouvé",
+    "activeHoldings": "Positions actives"
   },
   "dailyReport": {
     "title": "Rapport quotidien",

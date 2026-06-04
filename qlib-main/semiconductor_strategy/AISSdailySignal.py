@@ -968,6 +968,12 @@ def run_daily_signal(
     # ── 7. Rebalance decision ──────────────────────────────────────
     inv = load_inventory()
     inv["capital"] = capital
+    # Whether the per-calendar-day update already ran today — captured ONCE here,
+    # before any branch mutates inv["last_daily_update"], so the subsector AND the
+    # stock-level days_held increments use the same flag.  (Bug fix: the stock block
+    # used to recompute this AFTER the subsector branch had set last_daily_update,
+    # so _already was always True there → stock days_held never incremented on HOLD.)
+    _already_today = (inv.get("last_daily_update") == signal_date.isoformat())
 
     # P5: If smart-select switched the signal VERSION *or* the PARAM SET, force a
     # full rebalance and clear prev_composite_scores.  Clearing prev scores makes
@@ -1165,7 +1171,7 @@ def run_daily_signal(
     else:
         # Non-rebalance day: update last_price + increment days_held (idempotent via last_daily_update)
         today_str = signal_date.isoformat()
-        already_updated = inv.get("last_daily_update") == today_str
+        already_updated = _already_today
         for t, holding in inv.get("holdings", {}).items():
             p = float(prices_today.get(t, holding.get("last_price", 0.0)))
             if p > 0:
@@ -1203,7 +1209,7 @@ def run_daily_signal(
     # price on its subsector's entry date (from history), entry/days inherited from
     # the subsector. The displayed current price stays the live per-stock last_price.
     _today_str = signal_date.isoformat()
-    _already = (inv.get("last_daily_update") == _today_str)
+    _already = _already_today   # captured before last_daily_update was set this run
     _sub_holdings = inv.get("holdings", {}) or {}
     for _tk, _h in inv.get("stock_holdings", {}).items():
         _sub = (_h.get("subsectors") or [None])[0]

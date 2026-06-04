@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { subsectorName } from '../../i18n/subsectors';
 import { useApi } from '../../hooks/useApi';
 import { getLatestSignals } from '../../lib/api';
 import LoadingState from '../LoadingState';
@@ -92,7 +93,7 @@ export default function SignalTable({ params }: { params?: any }) {
                       <PairBadge pair={r.ticker} direction={held ? 'long' : null} strategy="aiss" compact details={{ weight: r.weight, shares: r.shares, lastPrice: r.price }} />
                       {r.tier_role === 'reserve' && <span className="ml-2 text-[9px] font-mono text-[var(--text-muted)] uppercase">reserve</span>}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{r.subsector}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-[var(--text-muted)]">{subsectorName(r.subsector, t)}</td>
                     <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide ${actClass}`}>{r.action}</span></td>
                     <td className="px-4 py-3 font-mono text-xs text-right">{(r.weight * 100).toFixed(1)}%</td>
                     <td className="px-4 py-3 font-mono text-xs text-right">{held ? r.shares?.toLocaleString() : '0'}</td>

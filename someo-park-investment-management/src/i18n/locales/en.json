@@ -1,4 +1,14 @@
 {
+  "subsectors": {
+    "ai_gpu": "AI / GPU",
+    "custom_asic": "Custom ASIC / Networking",
+    "equipment": "Equipment",
+    "memory_hbm": "Memory / HBM",
+    "foundry": "Foundry",
+    "analog_defense": "Analog / Defensive",
+    "logic_cpu": "Logic / CPU",
+    "rf_edge": "RF / Edge"
+  },
   "artifactTitles": {
     "equityCurve": "OOS Equity Curve",
     "signals": "Trading Signals",

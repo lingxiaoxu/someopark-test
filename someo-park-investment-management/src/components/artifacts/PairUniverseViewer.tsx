@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { subsectorName } from '../../i18n/subsectors';
 import { useApi } from '../../hooks/useApi';
 import { getPairUniverse, getPairDb } from '../../lib/api';
 import LoadingState from '../LoadingState';
@@ -170,7 +171,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
                   /* subsector group header (grouping label + weight; NOT a tradable row) */
                   <tr key={`grp-${grp.subsector}`} className="bg-[var(--bg-secondary)]">
                     <td className="px-4 py-2 font-mono text-xs font-bold text-[var(--text-primary)]" colSpan={2}>
-                      {grp.display || grp.subsector}
+                      {subsectorName(grp.subsector, t) || grp.display}
                       {!grp.held && <span className="ml-2 px-1.5 py-0.5 text-[9px] font-medium bg-[var(--bg-tertiary)] text-[var(--text-muted)] rounded border border-[var(--border-subtle)] uppercase tracking-wider">{t('common.available')}</span>}
                     </td>
                     <td className={`px-4 py-2 text-right font-mono text-xs font-bold ${grp.held ? 'text-[var(--accent-primary)]' : 'text-[var(--text-muted)]'}`} colSpan={3}>

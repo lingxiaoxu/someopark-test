@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { subsectorName } from '../../i18n/subsectors';
 import { useApi } from '../../hooks/useApi';
 import { getInventory } from '../../lib/api';
 import LoadingState from '../LoadingState';
@@ -49,7 +50,7 @@ export default function InventoryViewer({ params }: { params?: any }) {
           {orderedSubs.map(sub => (
             <div key={sub}>
               <div className="flex items-center justify-between mb-2 px-1">
-                <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">{sub}</span>
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">{subsectorName(sub, t)}</span>
                 <span className="font-mono text-xs font-bold text-[var(--accent-primary)]">{((subWeights[sub]?.weight || 0) * 100).toFixed(1)}% {t('aiss.subsectorLabel')}</span>
               </div>
               <div className="space-y-2">

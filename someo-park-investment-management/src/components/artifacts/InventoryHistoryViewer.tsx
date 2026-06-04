@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { subsectorName } from '../../i18n/subsectors';
 import { Clock, ChevronDown, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { getInventoryHistory, getInventorySnapshot } from '../../lib/api';
@@ -169,6 +170,7 @@ function AissStockRow({ s, asOf }: { s: any; asOf?: string }) {
 }
 
 function AissSubsectorCard({ sub, holding, stocks, asOf }: { sub: string; holding: any; stocks: any[]; asOf?: string }) {
+  const { t } = useTranslation();
   const act = holding.action_today || 'HOLD';
   // subsector total PnL = sum of per-stock PnL
   const totalPnl = stocks.reduce((acc: number, s: any) => acc + ((s.last_price || 0) - (s.cost_basis || 0)) * (s.shares || 0), 0);
@@ -178,7 +180,7 @@ function AissSubsectorCard({ sub, holding, stocks, asOf }: { sub: string; holdin
     <div className="bg-[var(--bg-secondary)] rounded-lg p-3 space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)]">{sub}</span>
+          <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)]">{subsectorName(sub, t)}</span>
           <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${
             act === 'ENTER' ? 'bg-green-500/10 text-green-400' :
             act === 'EXIT' ? 'bg-[var(--error)]/10 text-[var(--error)]' :

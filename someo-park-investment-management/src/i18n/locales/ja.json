@@ -1,4 +1,14 @@
 {
+  "subsectors": {
+    "ai_gpu": "AI / GPU",
+    "custom_asic": "カスタムASIC / ネットワーク",
+    "equipment": "製造装置",
+    "memory_hbm": "メモリ / HBM",
+    "foundry": "ファウンドリ",
+    "analog_defense": "アナログ / ディフェンシブ",
+    "logic_cpu": "ロジック / CPU",
+    "rf_edge": "RF / エッジ"
+  },
   "artifactTitles": {
     "equityCurve": "OOS エクイティカーブ",
     "signals": "トレーディングシグナル",
@@ -215,7 +225,8 @@
     "zMom": "Z/モメンタム",
     "pnl": "損益",
     "pnlPct": "損益%",
-    "noHistory": "履歴スナップショットがありません"
+    "noHistory": "履歴スナップショットがありません",
+    "activeHoldings": "アクティブ保有"
   },
   "dailyReport": {
     "title": "デイリーレポート",

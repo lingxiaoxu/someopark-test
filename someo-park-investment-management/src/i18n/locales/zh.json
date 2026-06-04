@@ -1,4 +1,14 @@
 {
+  "subsectors": {
+    "ai_gpu": "AI / GPU",
+    "custom_asic": "定制 ASIC / 网络",
+    "equipment": "半导体设备",
+    "memory_hbm": "存储 / HBM",
+    "foundry": "晶圆代工",
+    "analog_defense": "模拟 / 防御",
+    "logic_cpu": "逻辑 / CPU",
+    "rf_edge": "射频 / 边缘"
+  },
   "artifactTitles": {
     "equityCurve": "OOS 权益曲线",
     "signals": "交易信号",
@@ -215,7 +225,8 @@
     "zMom": "Z/动量",
     "pnl": "盈亏",
     "pnlPct": "盈亏%",
-    "noHistory": "暂无历史快照"
+    "noHistory": "暂无历史快照",
+    "activeHoldings": "活跃持仓"
   },
   "dailyReport": {
     "title": "每日报告",
