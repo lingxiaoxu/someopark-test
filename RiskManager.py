@@ -104,13 +104,18 @@ def _round(x, n=2):
 class _DataLayer:
     """Loads & caches everything the risk/financial engines need (read-only)."""
 
-    def __init__(self, signal_date, capital_map, regime, monitor, strat_out):
+    def __init__(self, signal_date, capital_map, regime, monitor, strat_out,
+                 as_of_positions=False):
         """
         signal_date  : date — the as-of date (T).
         capital_map  : {'mrpt': cap, 'mtfs': cap, 'total': T} regime-allocated capital.
         regime       : full regime dict (in-memory, authoritative weights + indicators).
         monitor      : position_monitor dict {'mrpt':[...], 'mtfs':[...]} (real-price MTM).
         strat_out    : {'mrpt': mrpt_out, 'mtfs': mtfs_out} _run_single outputs.
+        as_of_positions : if True, source positions from the inventory_history
+                          snapshot on/before signal_date (for historical backfill)
+                          instead of the current inventory_*.json. Default False
+                          keeps the production (DailySignal hook) behaviour unchanged.
         """
         self.signal_date = signal_date if isinstance(signal_date, date) else \
             pd.Timestamp(signal_date).date()
@@ -118,6 +123,7 @@ class _DataLayer:
         self.regime = regime or {}
         self.monitor = monitor or {'mrpt': [], 'mtfs': []}
         self.strat_out = strat_out or {}
+        self.as_of_positions = bool(as_of_positions)
 
         self._prices = None          # MultiIndex DataFrame (Adj Close + Volume)
         self._adj_close = None       # DataFrame columns=tickers
@@ -127,11 +133,31 @@ class _DataLayer:
         self._master = None          # master_portfolio_performance list
 
         self.positions = self._collect_positions()
-        self.tickers = sorted({leg['ticker'] for p in self.positions for leg in p['legs']})
+        # Collect tickers from current + historical positions (for price loading)
+        all_tickers = {leg['ticker'] for p in self.positions for leg in p['legs']}
+        # Also collect from T-1D/T-1W/T-1M inventory snapshots so historical
+        # balance sheets can mark positions to market
+        for lookback_days in (2, 7, 30):
+            hist_date = (pd.Timestamp(self.signal_date) - pd.Timedelta(days=lookback_days)).date()
+            try:
+                hist_pos, _ = self.positions_on(hist_date)
+                for p in hist_pos:
+                    for leg in p['legs']:
+                        all_tickers.add(leg['ticker'])
+            except Exception:
+                pass
+        self.tickers = sorted(all_tickers)
 
     # ── positions (current final inventory) ─────────────────────────────────
     def _collect_positions(self):
-        """Read final inventory for MRPT+MTFS → list of position dicts (active only)."""
+        """Read final inventory for MRPT+MTFS → list of position dicts (active only).
+        In as-of mode (historical backfill) positions come from the inventory_history
+        snapshot ≤ signal_date instead of the current inventory."""
+        if self.as_of_positions:
+            pos, used = self.positions_on(self.signal_date)
+            log.info(f"[RISK] as-of positions @ {self.signal_date}: "
+                     f"{len(pos)} positions (snapshots {used})")
+            return pos
         import DailySignal as DS
         from SelectPairs import guess_sector
         positions = []
@@ -239,28 +265,44 @@ class _DataLayer:
         if self._perf is None:
             try:
                 with open(PERF_JSON) as f:
-                    self._perf = json.load(f)
+                    rows = json.load(f)
             except Exception as e:
                 log.warning(f"[RISK] strategy_performance load failed: {e}")
-                self._perf = []
+                rows = []
+            self._perf = self._clip_to_asof(rows)
         return self._perf
+
+    def _clip_to_asof(self, rows):
+        """Point-in-time guard: in as-of mode drop any equity rows dated AFTER
+        signal_date so no future information leaks into the historical report."""
+        if not self.as_of_positions or not rows:
+            return rows
+        cutoff = pd.Timestamp(self.signal_date)
+        out = [r for r in rows if r.get('date') and pd.Timestamp(r['date']) <= cutoff]
+        log.info(f"[RISK] as-of clip: {len(out)}/{len(rows)} equity rows ≤ {self.signal_date}")
+        return out
 
     def master(self):
         if self._master is None:
             try:
                 with open(MASTER_JSON) as f:
-                    self._master = json.load(f)
+                    rows = json.load(f)
             except Exception as e:
                 log.warning(f"[RISK] master_performance load failed: {e}")
-                self._master = []
+                rows = []
+            self._master = self._clip_to_asof(rows)
         return self._master
 
     def nav(self, strategy, as_of=None):
-        """Authoritative NAV from strategy_performance. strategy in mrpt/mtfs/combined."""
+        """Authoritative NAV from strategy_performance. strategy in mrpt/mtfs/combined.
+        In as-of (backfill) mode an unspecified as_of defaults to signal_date so the
+        NAV is the historical value, not the latest."""
         rows = self.perf()
         if not rows:
             return None
         key = f'{strategy}_equity'
+        if as_of is None and self.as_of_positions:
+            as_of = self.signal_date
         if as_of is None:
             for r in reversed(rows):
                 if key in r:
@@ -322,6 +364,10 @@ class _DataLayer:
                 out.append({
                     'strategy': strategy, 'pair': pair_key, 's1': s1, 's2': s2,
                     'direction': p.get('direction'),
+                    'days_held': p.get('days_held', 0),
+                    'param_set': p.get('param_set', ''),
+                    'open_date': p.get('open_date', ''),
+                    'peak_unrealized_pnl': p.get('peak_unrealized_pnl'),
                     'legs': [
                         {'ticker': s1, 'shares': p.get('s1_shares', 0) or 0,
                          'open_price': p.get('open_s1_price'), 'sector': guess_sector(s1)},
@@ -362,23 +408,159 @@ class FinancialStatements:
         return {'long': L, 'short': S, 'gross': L + S, 'net': L - S}
 
     def _balance_sheet_one(self, positions, nav, as_of=None, strategy=None):
-        """Prime-broker identity: M=max(0,L-E), Cash=E+M+S-L, TA-TL=E."""
+        """Dual-view balance sheet: BS Method (总账) + Long/Short Book (绩效归因).
+
+        ═══ View 1: Balance Sheet Method (资产负债表法 — 总账) ═══
+
+        Assets:
+          Free Cash       = residual after all positions funded
+          Restricted Cash  = short sale proceeds held as collateral
+          Long Securities  = long positions at market value
+        Liabilities:
+          Short Securities = obligation to return borrowed shares (at market value)
+          Margin Loan      = borrowing when longs exceed equity + short proceeds
+          Accrued Costs    = financing interest + borrow fees (estimated)
+        NAV = Total Assets - Total Liabilities
+
+        Cash logic (no margin case, typical for pairs book):
+          Short sale → restricted cash ↑, short liability ↑
+          Buy long   → free cash ↓, long MV ↑
+          Restricted Cash = Short MV (proceeds held as collateral)
+          Free Cash = NAV - Long MV + Short MV - Margin Loan
+                    = NAV - Net Exposure - Margin Loan
+          Total Cash = Free Cash + Restricted Cash = NAV + Short MV - Long MV + Margin Loan
+
+        ═══ View 2: Long/Short Book (双账户法 — 绩效归因) ═══
+
+        Long Book:
+          Allocated Capital = NAV × (Long MV / Gross MV)   [pro-rata allocation]
+          Long Cash = Allocated Capital - Long MV + Long Margin
+          Long MV = long positions at market
+          Long Margin = max(0, Long MV - Allocated Capital)
+          Long Book NAV = Long Cash + Long MV - Long Margin = Allocated Capital
+          Long Financing = Long Margin × annual_rate × days / 365
+          Long Book P&L = Long MV change (unrealized) + realized - financing
+
+        Short Book:
+          Allocated Capital = NAV × (Short MV / Gross MV)  [pro-rata allocation]
+          Short Collateral = Allocated Capital
+          Short Proceeds = Short MV (restricted, held as collateral)
+          Short MV = short positions at market (liability)
+          Short Book NAV = Short Collateral + Short Proceeds - Short MV = Allocated Capital
+          Short Borrow Fee = 0.0 (placeholder, not tracked)
+          Short Rebate = 0.0 (placeholder)
+          Short Book P&L = Short MV decrease (unrealized) + realized - borrow fee + rebate
+
+        Total NAV = Long Book NAV + Short Book NAV + Unallocated Cash
+        (must equal BS Method NAV)
+
+        Parameters: ANNUAL_FINANCING_RATE = 0.05, BORROW_FEE_RATE = 0.0 (placeholder)
+        """
+        ANNUAL_FINANCING_RATE = 0.05
+        BORROW_FEE_RATE = 0.0   # placeholder — interface preserved for future
+
         exp = self._mtm_exposure(positions, as_of, strategy)
         L, S = exp['long'], exp['short']
         E = nav if nav is not None else 0.0
-        M = max(0.0, L - E)
-        cash = E + M + S - L
+        G = L + S   # gross exposure
+
+        SHORT_COLLATERAL_RATIO = 1.02    # PB requires 102% collateral on shorts
+        PORTFOLIO_MARGIN_PCT = 0.20      # Portfolio Margin: ~20% of gross
+
+        # ── View 1: Balance Sheet Method ──────────────────────────────────
+        # Professional long-short fund: short proceeds are RESTRICTED by PB.
+        # Longs funded by: equity + margin loan (NOT short proceeds).
+        M = max(0.0, L - E)              # margin loan: PB lends when L > equity
+        free_cash = E - L + M            # = max(0, E - L) = 0 when leveraged
+        restricted_cash = S * SHORT_COLLATERAL_RATIO  # 102% of short MV held by PB
+        short_collateral_due = S * (SHORT_COLLATERAL_RATIO - 1.0)  # excess 2%
+        # Assets = Free Cash + Restricted Cash + Long Securities
+        # Liabilities = Short Obligation + Short Collateral Due + Margin Loan
+        # Identity: (E-L+M) + 1.02S + L - S - 0.02S - M = E ✓
+        total_assets = free_cash + restricted_cash + L
+        total_liabilities = S + short_collateral_due + M
+        # Accrued costs (daily estimates)
+        accrued_financing = M * ANNUAL_FINANCING_RATE / 365
+        accrued_borrow_fee = S * BORROW_FEE_RATE / 365
+        accrued_costs = accrued_financing + accrued_borrow_fee
+        balance_check = total_assets - total_liabilities - E
+        # Margin requirements (Portfolio Margin estimate)
+        pm_requirement = G * PORTFOLIO_MARGIN_PCT
+        excess_liquidity = E - pm_requirement
+
+        # ── View 2: Long/Short Book ───────────────────────────────────────
+        if G > 0:
+            long_alloc  = E * (L / G)     # pro-rata capital allocation
+            short_alloc = E * (S / G)
+            unalloc_cash = E - long_alloc - short_alloc  # rounding residual ≈ 0
+        else:
+            long_alloc = short_alloc = 0.0
+            unalloc_cash = E
+
+        # Long Book
+        long_margin = max(0.0, L - long_alloc)
+        long_cash = long_alloc - L + long_margin   # = 0 when fully invested
+        long_financing = long_margin * ANNUAL_FINANCING_RATE / 365
+        long_book_nav = long_cash + L - long_margin  # = long_alloc
+
+        # Short Book
+        short_collateral = short_alloc
+        short_proceeds = S                # restricted cash from short sales
+        short_borrow_fee = S * BORROW_FEE_RATE / 365
+        short_rebate = 0.0                # placeholder
+        short_book_nav = short_collateral + short_proceeds - S - short_borrow_fee + short_rebate
+        # = short_alloc + S - S - 0 + 0 = short_alloc
+
+        dual_nav = long_book_nav + short_book_nav + unalloc_cash
+        nav_alignment_check = abs(dual_nav - E)  # should be < 0.01
+
         return {
             'as_of': str(as_of) if as_of else str(self.d.signal_date),
-            'cash': _round(cash), 'long_securities': _round(L),
-            'total_assets': _round(cash + L),
-            'short_securities': _round(S), 'margin_loan': _round(M),
-            'total_liabilities': _round(S + M),
+
+            # ── View 1: Balance Sheet (backward-compatible keys) ──
+            'free_cash': _round(free_cash),
+            'restricted_cash': _round(restricted_cash),
+            'cash': _round(free_cash),              # backward compat: "cash" = free cash
+            'long_securities': _round(L),
+            'total_assets': _round(total_assets),
+            'short_securities': _round(S),
+            'short_collateral_due': _round(short_collateral_due),
+            'margin_loan': _round(M),
+            'accrued_financing': _round(accrued_financing),
+            'accrued_borrow_fee': _round(accrued_borrow_fee),
+            'accrued_costs': _round(accrued_costs),
+            'total_liabilities': _round(total_liabilities),
             'nav': _round(E),
+            'balance_check': _round(balance_check, 2),
+            'pm_requirement': _round(pm_requirement),
+            'excess_liquidity': _round(excess_liquidity),
+
+            # ── View 2: Long/Short Book ──
+            'long_book': {
+                'allocated_capital': _round(long_alloc),
+                'cash': _round(long_cash),
+                'market_value': _round(L),
+                'margin_loan': _round(long_margin),
+                'financing_cost_daily': _round(long_financing),
+                'book_nav': _round(long_book_nav),
+            },
+            'short_book': {
+                'allocated_capital': _round(short_alloc),
+                'collateral_cash': _round(short_collateral),
+                'short_proceeds': _round(short_proceeds),
+                'market_value': _round(S),
+                'borrow_fee_daily': _round(short_borrow_fee),
+                'rebate_daily': _round(short_rebate),
+                'book_nav': _round(short_book_nav),
+            },
+            'unallocated_cash': _round(unalloc_cash),
+            'dual_nav': _round(dual_nav),
+            'nav_alignment_check': _round(nav_alignment_check, 4),
+
+            # ── Exposure metrics (backward compat) ──
             'gross': _round(exp['gross']), 'net': _round(exp['net']),
             'gross_leverage': _round(exp['gross'] / E if E else None, 3),
             'net_leverage': _round(exp['net'] / E if E else None, 3),
-            'balance_check': _round(cash + L - (S + M) - E, 2),  # should ≈ 0
         }
 
     def balance_sheet_multi(self):
@@ -1227,7 +1409,7 @@ class RiskWorkbookExporter:
         c.font = self._Font(bold=True, size=13, color='FF1A1A2E')
         c.alignment = self._Align(horizontal='left')
 
-    def _hdr_row(self, ws, row, headers):
+    def _hdr_row(self, ws, row, headers, widths=None):
         for j, h in enumerate(headers, 1):
             c = ws.cell(row, j, h)
             c.font = self._Font(bold=True, size=9, color='FFFFFFFF')
@@ -1235,18 +1417,29 @@ class RiskWorkbookExporter:
             c.alignment = self._Align(horizontal='center', wrap_text=True)
             c.border = self._Border(bottom=self._Side(style='medium', color=self.GOLD))
 
-    def _row(self, ws, row, vals, money_cols=(), pct_cols=(), alt=False, bold_first=False):
+    def _row(self, ws, row, vals, money_cols=(), pct_cols=(), num_cols=(),
+             alt=False, bold_first=False):
+        """Write a data row with professional formatting.
+        money_cols: accounting format $#,##0 with red/green color
+        pct_cols:   percentage 0.00% with red/green color
+        num_cols:   plain number #,##0.00 (shares, ratios, etc.)
+        """
         for j, v in enumerate(vals, 1):
             c = ws.cell(row, j, v)
             c.font = self._Font(size=9, bold=(bold_first and j == 1))
+            c.alignment = self._Align(horizontal='right' if j > 1 else 'left',
+                                       vertical='center')
             if alt:
                 c.fill = self._Fill('solid', fgColor=self.ROW_ALT)
             if j in money_cols and isinstance(v, (int, float)):
-                c.number_format = '#,##0'
-                c.font = self._Font(size=9, color=(self.POS if v >= 0 else self.NEG))
+                c.number_format = '#,##0.00' if abs(v) < 100 else '#,##0'
+                c.font = self._Font(size=9, color=(self.POS if v >= 0 else self.NEG),
+                                     bold=(bold_first and j == 1))
             elif j in pct_cols and isinstance(v, (int, float)):
-                c.number_format = '0.00'
+                c.number_format = '0.00"%"'
                 c.font = self._Font(size=9, color=(self.POS if v >= 0 else self.NEG))
+            elif j in num_cols and isinstance(v, (int, float)):
+                c.number_format = '#,##0.00' if isinstance(v, float) else '#,##0'
 
     def _autofit(self, ws, widths):
         for j, w in enumerate(widths, 1):
@@ -1256,10 +1449,18 @@ class RiskWorkbookExporter:
         r = start_row
         for k, v in kvs:
             ws.cell(r, 1, k).font = self._Font(size=9, bold=True)
+            ws.cell(r, 1).alignment = self._Align(vertical='center')
             cell = ws.cell(r, 2, v)
             cell.font = self._Font(size=9)
+            cell.alignment = self._Align(horizontal='right', vertical='center')
             if isinstance(v, (int, float)):
-                cell.number_format = '#,##0.00'
+                if abs(v) > 1000:
+                    cell.number_format = '#,##0'
+                    cell.font = self._Font(size=9, color=(self.POS if v >= 0 else self.NEG))
+                elif abs(v) > 1:
+                    cell.number_format = '#,##0.00'
+                else:
+                    cell.number_format = '0.0000'
             r += 1
         self._autofit(ws, [label_w, val_w])
         return r
@@ -1296,37 +1497,80 @@ class RiskWorkbookExporter:
     # ── A2 Balance Sheet (T/T-1D/T-1W/T-1M) ─────────────────────────────────
     def _sheet_balance_sheet(self, wb):
         ws = wb.create_sheet('Balance Sheet')
-        self._title(ws, 'BALANCE SHEET — 资产负债表 (prime-broker model; NAV authoritative)', 6)
+        self._title(ws, 'BALANCE SHEET + LONG/SHORT BOOK — 资产负债表 + 双账户法', 6)
         bs = self.report['balance_sheet']
         periods = ['T', 'T_1D', 'T_1W', 'T_1M']
-        line_items = [
-            ('Cash & equivalents', 'cash'),
-            ('Long securities @ FV', 'long_securities'),
-            ('Total Assets', 'total_assets'),
-            ('Securities sold short @ FV', 'short_securities'),
-            ('Margin loan payable', 'margin_loan'),
-            ('Total Liabilities', 'total_liabilities'),
-            ('NAV (Equity)', 'nav'),
-            ('— Gross exposure', 'gross'),
-            ('— Net exposure', 'net'),
-            ('— Gross leverage (x)', 'gross_leverage'),
-            ('— Net leverage (x)', 'net_leverage'),
-            ('— Balance check (≈0)', 'balance_check'),
+        plabels = {'T': 'T (今日)', 'T_1D': 'T-1D (前日)', 'T_1W': 'T-1W (上周)', 'T_1M': 'T-1M (上月)'}
+
+        # View 1: Balance Sheet Method
+        bs_items = [
+            ('Free Cash 自由现金', 'free_cash', True, False),
+            ('Restricted Cash 受限现金 (PB 102%)', 'restricted_cash', True, False),
+            ('Long Securities 多头证券', 'long_securities', True, False),
+            ('Total Assets 总资产', 'total_assets', True, True),
+            ('Short Securities 空头证券 (义务)', 'short_securities', True, False),
+            ('Short Collateral Due 担保差额 2%', 'short_collateral_due', True, False),
+            ('Margin Loan 保证金借款', 'margin_loan', True, False),
+            ('Total Liabilities 总负债', 'total_liabilities', True, True),
+            ('NAV (Equity) 净值 = TA - TL', 'nav', True, True),
+            ('Gross Leverage 总杠杆 (x)', 'gross_leverage', False, False),
+            ('Net Leverage 净杠杆 (x)', 'net_leverage', False, False),
+            ('PM Requirement (20%)', 'pm_requirement', True, False),
+            ('Excess Liquidity 超额流动性', 'excess_liquidity', True, False),
+            ('Balance Check (≈0)', 'balance_check', False, False),
         ]
+
+        # View 2: Long/Short Book
+        book_items = [
+            ('Long Book — Allocated Capital 分配资本', 'long_book.allocated_capital', True, False),
+            ('Long Book — Cash 现金', 'long_book.cash', True, False),
+            ('Long Book — Market Value 市值', 'long_book.market_value', True, False),
+            ('Long Book — Margin Loan 融资', 'long_book.margin_loan', True, False),
+            ('Long Book — NAV', 'long_book.book_nav', True, True),
+            ('Short Book — Allocated Capital 分配资本', 'short_book.allocated_capital', True, False),
+            ('Short Book — Collateral 担保金', 'short_book.collateral_cash', True, False),
+            ('Short Book — Short Proceeds 做空收入', 'short_book.short_proceeds', True, False),
+            ('Short Book — Market Value 市值(负债)', 'short_book.market_value', True, False),
+            ('Short Book — NAV', 'short_book.book_nav', True, True),
+            ('Unallocated Cash 未分配现金', 'unallocated_cash', True, False),
+            ('Dual-View NAV 双账户法NAV', 'dual_nav', True, True),
+            ('NAV Alignment Check (≈0)', 'nav_alignment_check', False, False),
+        ]
+
+        def _resolve(d, dotkey):
+            parts = dotkey.split('.')
+            v = d
+            for part in parts:
+                v = v.get(part) if isinstance(v, dict) else None
+            return v
+
         row = 3
         for scope in ('combined', 'mrpt', 'mtfs'):
-            ws.cell(row, 1, scope.upper()).font = self._Font(bold=True, size=10, color=self.GOLD[2:])
+            # View 1 header
+            ws.cell(row, 1, f'{scope.upper()} — 资产负债表法').font = self._Font(bold=True, size=10, color=self.GOLD[2:])
             row += 1
-            self._hdr_row(ws, row, ['Line item'] + [p.replace('_', '-') for p in periods])
+            self._hdr_row(ws, row, ['Line item'] + [plabels.get(p, p) for p in periods])
             row += 1
-            for i, (label, key) in enumerate(line_items):
+            for i, (label, key, is_money, is_bold) in enumerate(bs_items):
                 vals = [label] + [bs[scope].get(p, {}).get(key) for p in periods]
-                mcols = tuple(range(2, 6)) if ('leverage' not in key and 'check' not in key) else ()
-                self._row(ws, row, vals, money_cols=mcols, alt=(i % 2 == 1),
-                          bold_first=label in ('Total Assets', 'Total Liabilities', 'NAV (Equity)'))
+                mcols = tuple(range(2, 6)) if is_money else ()
+                self._row(ws, row, vals, money_cols=mcols, alt=(i % 2 == 1), bold_first=is_bold)
                 row += 1
             row += 1
-        self._autofit(ws, [30, 18, 18, 18, 18])
+
+            # View 2 header
+            ws.cell(row, 1, f'{scope.upper()} — 双账户法').font = self._Font(bold=True, size=10, color=self.GOLD[2:])
+            row += 1
+            self._hdr_row(ws, row, ['Line item'] + [plabels.get(p, p) for p in periods])
+            row += 1
+            for i, (label, dotkey, is_money, is_bold) in enumerate(book_items):
+                vals = [label] + [_resolve(bs[scope].get(p, {}), dotkey) for p in periods]
+                mcols = tuple(range(2, 6)) if is_money else ()
+                self._row(ws, row, vals, money_cols=mcols, alt=(i % 2 == 1), bold_first=is_bold)
+                row += 1
+            row += 2
+
+        self._autofit(ws, [42, 18, 18, 18, 18])
 
     # ── A3 Income Statement ──────────────────────────────────────────────────
     def _sheet_income(self, wb):
@@ -1419,17 +1663,17 @@ class RiskWorkbookExporter:
     # ── B7 Exposure & Leverage ───────────────────────────────────────────────
     def _sheet_exposure(self, wb):
         ws = wb.create_sheet('Exposure & Leverage')
-        self._title(ws, 'EXPOSURE & LEVERAGE — 敞口与杠杆', 9)
+        self._title(ws, 'EXPOSURE & LEVERAGE — 敞口与杠杆', 11)
         exp = self.risk['exposure']
-        self._hdr_row(ws, 3, ['Scope', 'Capital', 'Long', 'Short', 'Gross', 'Net',
-                              'GrossLev', 'NetLev', 'Deploy%', 'Margin%', 'Pairs'])
+        self._hdr_row(ws, 3, ['Scope', 'Capital ($)', 'Long ($)', 'Short ($)', 'Gross ($)', 'Net ($)',
+                              'Gross Lev (x)', 'Net Lev (x)', 'Deploy %', 'Margin %', 'Pairs'])
         for i, sc in enumerate(('combined', 'mrpt', 'mtfs')):
             e = exp[sc]
             self._row(ws, 4 + i, [sc.upper(), e['capital'], e['long'], e['short'], e['gross'],
                                   e['net'], e['gross_leverage'], e['net_leverage'],
                                   e['deployed_pct'], e['margin_utilization_pct'], e['n_open_pairs']],
-                      money_cols=(2, 3, 4, 5, 6), alt=(i % 2 == 1))
-        self._autofit(ws, [12, 14, 14, 14, 14, 14, 10, 9, 9, 9, 7])
+                      money_cols=(2, 3, 4, 5, 6), num_cols=(7, 8, 9, 10, 11), alt=(i % 2 == 1))
+        self._autofit(ws, [12, 15, 15, 15, 15, 15, 12, 11, 10, 10, 7])
 
     # ── B8 Concentration ─────────────────────────────────────────────────────
     def _sheet_concentration(self, wb):
@@ -1438,11 +1682,11 @@ class RiskWorkbookExporter:
         conc = self.risk['concentration']
         ws.cell(3, 1, f"HHI={conc['hhi']}  ·  effective N pairs={conc['effective_n_pairs']}  "
                       f"·  max pair={conc['max_pair_pct']}% of gross").font = self._Font(size=9, bold=True)
-        self._hdr_row(ws, 5, ['Ticker', 'Gross', 'Net', '% of NAV', '% of Gross', 'N pairs'])
+        self._hdr_row(ws, 5, ['Ticker', 'Gross ($)', 'Net ($)', '% of NAV', '% of Gross', 'N Pairs'])
         for i, sn in enumerate(conc['single_name_top']):
             self._row(ws, 6 + i, [sn['ticker'], sn['gross'], sn['net'], sn['gross_pct_capital'],
                                   sn['pct_of_gross'], sn['n_pairs']],
-                      money_cols=(2, 3), alt=(i % 2 == 1))
+                      money_cols=(2, 3), pct_cols=(4, 5), num_cols=(6,), alt=(i % 2 == 1))
         srow = 6 + len(conc['single_name_top']) + 2
         ws.cell(srow, 1, 'SECTOR NET EXPOSURE').font = self._Font(bold=True, color=self.GOLD[2:])
         self._hdr_row(ws, srow + 1, ['Sector', 'Long', 'Short', 'Net', 'Net % of Gross'])
@@ -1531,27 +1775,27 @@ class RiskWorkbookExporter:
     def _sheet_position_detail(self, wb):
         ws = wb.create_sheet('Position Detail')
         self._title(ws, 'POSITION DETAIL — 逐腿明细', 10)
-        self._hdr_row(ws, 3, ['Strategy', 'Pair', 'Ticker', 'Dir', 'Shares', 'Price',
-                              'Market Value', 'Sector', 'DaysHeld', 'ParamSet'])
+        self._hdr_row(ws, 3, ['Strategy', 'Pair', 'Ticker', 'Dir', 'Shares', 'Price ($)',
+                              'Market Value ($)', 'Sector', 'Days Held', 'Param Set'])
         r = 4
         for p in self.d.positions:
             for leg in p['legs']:
                 px = self.d.current_price(leg['ticker'])
                 mv = (leg['shares'] * px) if px else None
-                leg_dir = 'long' if (leg['shares'] or 0) >= 0 else 'short'  # per-leg, not pair
+                leg_dir = 'long' if (leg['shares'] or 0) >= 0 else 'short'
                 self._row(ws, r, [p['strategy'].upper(), p['pair'], leg['ticker'], leg_dir,
                                   leg['shares'], _round(px), _round(mv), leg['sector'],
                                   p['days_held'], p['param_set']],
-                          money_cols=(7,), alt=(r % 2 == 0))
+                          num_cols=(5,), money_cols=(6, 7), alt=(r % 2 == 0))
                 r += 1
-        self._autofit(ws, [10, 14, 10, 6, 10, 10, 14, 12, 9, 22])
+        self._autofit(ws, [10, 14, 10, 6, 10, 12, 14, 12, 9, 22])
 
     # ── C15 Per-Pair PnL Attribution ───────────────────────────────────────
     def _sheet_pair_attribution(self, wb):
         ws = wb.create_sheet('Pair PnL Attribution')
         self._title(ws, 'PER-PAIR PnL ATTRIBUTION — 配对盈亏归因', 7)
-        self._hdr_row(ws, 3, ['Strategy', 'Pair', 'Unrealized PnL', 'Gross Notional',
-                              'Days Held', 'ParamSet', 'Direction'])
+        self._hdr_row(ws, 3, ['Strategy', 'Pair', 'Unrealized PnL ($)', 'Gross Notional ($)',
+                              'Days Held', 'Param Set', 'Direction'])
         r = 4
         for p in self.d.positions:
             upnl = 0.0; gross = 0.0
@@ -1774,8 +2018,12 @@ class RiskPDFReporter:
         ]))
 
         # 一、Balance sheet
-        story.append(Paragraph('一、资产负债表（T / T-1D / T-1W / T-1M）', self.h1))
-        story.append(self._balance_sheet_table(W))
+        story.append(Paragraph('一、资产负债表 + 双账户法（T 今日 / T-1D 前一交易日 / T-1W 上周 / T-1M 上月）', self.h1))
+        bs_elements = self._balance_sheet_table(W)
+        if isinstance(bs_elements, list):
+            story.extend(bs_elements)
+        else:
+            story.append(bs_elements)
 
         # 二、Income statement
         story.append(Paragraph('二、利润表', self.h1))
@@ -1874,14 +2122,29 @@ class RiskPDFReporter:
     def _balance_sheet_table(self, W):
         bs = self.report['balance_sheet']['combined']
         periods = ['T', 'T_1D', 'T_1W', 'T_1M']
-        items = [('现金及等价物', 'cash', True), ('多头证券', 'long_securities', True),
-                 ('总资产', 'total_assets', True), ('空头证券', 'short_securities', True),
-                 ('保证金借款', 'margin_loan', True), ('总负债', 'total_liabilities', True),
-                 ('NAV（净值）', 'nav', True), ('总 / 净杠杆 (x)', 'gross_leverage', False)]
-        head = [self._P('项目（合并）', header=True)] + \
-               [self._P(p.replace('_', '-'), 'RIGHT', header=True) for p in periods]
+        _period_labels = {
+            'T': 'T (今日)', 'T_1D': 'T-1D (前一交易日)',
+            'T_1W': 'T-1W (上周)', 'T_1M': 'T-1M (上月)',
+        }
+        # ── View 1: Balance Sheet Method (资产负债表法) ──
+        bs_items = [
+            ('自由现金', 'free_cash', True),
+            ('受限现金（PB 做空担保 102%）', 'restricted_cash', True),
+            ('多头证券', 'long_securities', True),
+            ('总资产', 'total_assets', True),
+            ('空头证券（回补义务）', 'short_securities', True),
+            ('空头担保金差额（2%）', 'short_collateral_due', True),
+            ('保证金借款（Long 融资）', 'margin_loan', True),
+            ('总负债', 'total_liabilities', True),
+            ('NAV（净值）= TA - TL', 'nav', True),
+            ('总 / 净杠杆 (x)', 'gross_leverage', False),
+            ('Portfolio Margin 要求（20%）', 'pm_requirement', True),
+            ('超额流动性', 'excess_liquidity', True),
+        ]
+        head = [self._P('资产负债表法（合并）', header=True)] + \
+               [self._P(_period_labels.get(p, p), 'RIGHT', header=True) for p in periods]
         data = [head]
-        for label, key, money in items:
+        for label, key, money in bs_items:
             row = [self._P(label)]
             for p in periods:
                 v = bs.get(p, {}).get(key)
@@ -1891,12 +2154,51 @@ class RiskPDFReporter:
                 else:
                     row.append(self._P(self._money(v), 'RIGHT'))
             data.append(row)
-        return self._styled_table(data, [W * 0.32] + [W * 0.17] * 4)
+        t1 = self._styled_table(data, [W * 0.32] + [W * 0.17] * 4)
+
+        # ── View 2: Long/Short Book (双账户法) ──
+        book_items = [
+            ('Long Book 分配资本', 'long_book.allocated_capital', True),
+            ('Long Book 现金', 'long_book.cash', True),
+            ('Long Book 市值', 'long_book.market_value', True),
+            ('Long Book 融资', 'long_book.margin_loan', True),
+            ('Long Book NAV', 'long_book.book_nav', True),
+            ('Short Book 分配资本', 'short_book.allocated_capital', True),
+            ('Short Book 担保金', 'short_book.collateral_cash', True),
+            ('Short Book 做空收入', 'short_book.short_proceeds', True),
+            ('Short Book 市值（负债）', 'short_book.market_value', True),
+            ('Short Book NAV', 'short_book.book_nav', True),
+            ('未分配现金', 'unallocated_cash', True),
+            ('双账户法 NAV', 'dual_nav', True),
+            ('NAV 对齐误差', 'nav_alignment_check', False),
+        ]
+        head2 = [self._P('双账户法（合并）', header=True)] + \
+                [self._P(_period_labels.get(p, p), 'RIGHT', header=True) for p in periods]
+        data2 = [head2]
+        for label, dotkey, money in book_items:
+            row = [self._P(label)]
+            for p in periods:
+                d = bs.get(p, {})
+                # Support dotted keys like 'long_book.cash'
+                parts = dotkey.split('.')
+                v = d
+                for part in parts:
+                    v = v.get(part) if isinstance(v, dict) else None
+                if dotkey == 'nav_alignment_check':
+                    row.append(self._P(self._num(v, 4) if v is not None else '—', 'RIGHT'))
+                else:
+                    row.append(self._P(self._money(v) if money else self._num(v, 2), 'RIGHT'))
+            data2.append(row)
+        t2 = self._styled_table(data2, [W * 0.32] + [W * 0.17] * 4)
+
+        from reportlab.platypus import Spacer
+        return [t1, Spacer(1, 12), t2]
 
     def _income_table(self, W):
         inc = self.report['income_statement']
         spans = ['1D', '1W', '1M', 'ITD']
-        head = [self._P('合并', header=True)] + [self._P(s, 'RIGHT', header=True) for s in spans]
+        _span_labels = {'1D': '1D (日)', '1W': '1W (周)', '1M': '1M (月)', 'ITD': 'ITD (成立以来)'}
+        head = [self._P('合并', header=True)] + [self._P(_span_labels.get(s, s), 'RIGHT', header=True) for s in spans]
         data = [head]
         c = inc.get('combined', {})
         data.append([self._P('净利润')] +
@@ -1912,7 +2214,8 @@ class RiskPDFReporter:
         cap = self.report['capital_statement'].get('combined', {})
         cf = self.report['cash_flow'].get('1W', {})
         spans = ['1D', '1W', '1M', 'ITD']
-        head = [self._P('资本（合并）', header=True)] + [self._P(s, 'RIGHT', header=True) for s in spans]
+        _span_labels = {'1D': '1D (日)', '1W': '1W (周)', '1M': '1M (月)', 'ITD': 'ITD (成立以来)'}
+        head = [self._P('资本（合并）', header=True)] + [self._P(_span_labels.get(s, s), 'RIGHT', header=True) for s in spans]
         data = [head]
         for label, key, money in [('期初 NAV', 'beginning_nav', True),
                                    ('净利润', 'net_income', True),
@@ -2140,16 +2443,31 @@ def _write_txt(path, report):
     P(f"  Open pairs:         {s['n_open_pairs']}      Limit breaches: {s['n_breaches']}"
       f"  (worst: {s['worst_breach']})")
     P('')
-    # Balance sheet (combined, T)
+    # Balance sheet (combined, T) — View 1
     bs = report['balance_sheet']['combined'].get('T', {})
-    P('── BALANCE SHEET (combined, T) ───────────────────────────────────────────')
-    P(f"  Cash:               ${bs.get('cash', 0):,.0f}")
+    P('── BALANCE SHEET METHOD (资产负债表法, combined, T) ──────────────────────')
+    P(f"  Free cash:          ${bs.get('free_cash', 0):,.0f}")
+    P(f"  Restricted cash:    ${bs.get('restricted_cash', 0):,.0f}  (PB short collateral 102%)")
     P(f"  Long securities:    ${bs.get('long_securities', 0):,.0f}")
     P(f"  Total assets:       ${bs.get('total_assets', 0):,.0f}")
-    P(f"  Short securities:   ${bs.get('short_securities', 0):,.0f}")
-    P(f"  Margin loan:        ${bs.get('margin_loan', 0):,.0f}")
+    P(f"  Short securities:   ${bs.get('short_securities', 0):,.0f}  (repurchase obligation)")
+    P(f"  Short collateral 2%:${bs.get('short_collateral_due', 0):,.0f}")
+    P(f"  Margin loan:        ${bs.get('margin_loan', 0):,.0f}  (PB financing for longs)")
     P(f"  Total liabilities:  ${bs.get('total_liabilities', 0):,.0f}")
     P(f"  NAV (equity):       ${bs.get('nav', 0):,.0f}    (balance check: {bs.get('balance_check')})")
+    P(f"  PM requirement:     ${bs.get('pm_requirement', 0):,.0f}  (20% of gross)")
+    P(f"  Excess liquidity:   ${bs.get('excess_liquidity', 0):,.0f}  {'⚠ MARGIN CALL' if (bs.get('excess_liquidity') or 0) < 0 else 'OK'}")
+    P('')
+    # Long/Short Book (combined, T) — View 2
+    lb = bs.get('long_book', {})
+    sb = bs.get('short_book', {})
+    P('── LONG/SHORT BOOK (双账户法, combined, T) ──────────────────────────────')
+    P(f"  Long Book:  capital=${lb.get('allocated_capital', 0):,.0f}  MV=${lb.get('market_value', 0):,.0f}  "
+      f"margin=${lb.get('margin_loan', 0):,.0f}  NAV=${lb.get('book_nav', 0):,.0f}")
+    P(f"  Short Book: capital=${sb.get('allocated_capital', 0):,.0f}  MV=${sb.get('market_value', 0):,.0f}  "
+      f"collateral=${sb.get('collateral_cash', 0):,.0f}  NAV=${sb.get('book_nav', 0):,.0f}")
+    P(f"  Unallocated cash:   ${bs.get('unallocated_cash', 0):,.0f}")
+    P(f"  Dual-view NAV:      ${bs.get('dual_nav', 0):,.0f}  (alignment check: {bs.get('nav_alignment_check', '?')})")
     P('')
     # Limit monitor
     P('── LIMIT MONITOR ─────────────────────────────────────────────────────────')
@@ -2171,9 +2489,12 @@ def _write_txt(path, report):
 # ═════════════════════════════════════════════════════════════════════════════
 
 def generate_risk_report(signal_date, total_capital, mrpt_capital, mtfs_capital,
-                         regime, monitor, mrpt_out, mtfs_out, ts_str=None):
+                         regime, monitor, mrpt_out, mtfs_out, ts_str=None,
+                         as_of_positions=False):
     """Build the full risk pack. Returns dict with summary + file paths.
-    All inputs are in-memory objects from DailySignal (deep transfer, no file re-read)."""
+    All inputs are in-memory objects from DailySignal (deep transfer, no file re-read).
+    as_of_positions=True sources positions from inventory_history ≤ signal_date
+    (historical backfill); default False = current inventory (production hook)."""
     os.makedirs(RISK_DIR, exist_ok=True)
     if ts_str is None:
         ts_str = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -2181,7 +2502,8 @@ def generate_risk_report(signal_date, total_capital, mrpt_capital, mtfs_capital,
     capital_map = {'mrpt': mrpt_capital, 'mtfs': mtfs_capital, 'total': total_capital}
     strat_out = {'mrpt': mrpt_out or {}, 'mtfs': mtfs_out or {}}
 
-    data = _DataLayer(signal_date, capital_map, regime, monitor, strat_out)
+    data = _DataLayer(signal_date, capital_map, regime, monitor, strat_out,
+                      as_of_positions=as_of_positions)
     fin = FinancialStatements(data)
     engine = RiskManager(data, fin)
 
@@ -2275,11 +2597,20 @@ def main():
     ap = argparse.ArgumentParser(description='Generate institutional risk report (read-only)')
     ap.add_argument('--ts', default=None, help='timestamp suffix (default now; use TESTONLY for tests)')
     ap.add_argument('--combined', default=None, help='specific combined_signals JSON path')
+    ap.add_argument('--as-of', dest='as_of', action='store_true',
+                    help='historical backfill: source positions from inventory_history '
+                         '≤ signal_date instead of current inventory')
     args = ap.parse_args()
 
     kwargs, src = _inputs_from_combined_signals(args.combined)
-    print(f'[RISK] inputs from: {os.path.basename(src)}  signal_date={kwargs["signal_date"]}')
-    rr = generate_risk_report(ts_str=args.ts, **kwargs)
+    # for backfills, default the timestamp to <signal_date>_000000 so files sort by
+    # the date they represent and never collide with real same-day runs
+    ts_str = args.ts
+    if ts_str is None and args.as_of and kwargs.get('signal_date'):
+        ts_str = pd.Timestamp(kwargs['signal_date']).strftime('%Y%m%d') + '_000000'
+    print(f'[RISK] inputs from: {os.path.basename(src)}  signal_date={kwargs["signal_date"]}'
+          f'{"  [AS-OF backfill]" if args.as_of else ""}')
+    rr = generate_risk_report(ts_str=ts_str, as_of_positions=args.as_of, **kwargs)
     s = rr['summary']
     print(f"[RISK] NAV=${s['nav']:,.0f}  gross={s['gross_leverage']}x  net_beta={s['net_beta']}  "
           f"VaR95=${s['var_95_1d']}  breaches={s['n_breaches']} (worst {s['worst_breach']})")

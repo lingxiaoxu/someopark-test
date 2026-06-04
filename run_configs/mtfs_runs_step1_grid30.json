@@ -13,10 +13,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -24,48 +20,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -79,10 +79,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -90,48 +86,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -145,10 +145,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -156,48 +152,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -211,10 +211,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -222,48 +218,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -277,10 +277,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -288,48 +284,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -343,10 +343,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -354,48 +350,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -409,10 +409,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -420,48 +416,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -475,10 +475,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -486,48 +482,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -541,10 +541,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -552,48 +548,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -607,10 +607,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -618,48 +614,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -673,10 +673,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -684,48 +680,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -739,10 +739,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -750,48 +746,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -805,10 +805,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -816,48 +812,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -871,10 +871,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -882,48 +878,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -937,10 +937,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -948,48 +944,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1003,10 +1003,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1014,48 +1010,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1069,10 +1069,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1080,48 +1076,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1135,10 +1135,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1146,48 +1142,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1201,10 +1201,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1212,48 +1208,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1267,10 +1267,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1278,48 +1274,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1333,10 +1333,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1344,48 +1340,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1399,10 +1399,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1410,48 +1406,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1465,10 +1465,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1476,48 +1472,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1531,10 +1531,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1542,48 +1538,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1597,10 +1597,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1608,48 +1604,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1663,10 +1663,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1674,48 +1670,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1729,10 +1729,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1740,48 +1736,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1795,10 +1795,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1806,48 +1802,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1861,10 +1861,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1872,48 +1868,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1927,10 +1927,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -1938,48 +1934,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     },
@@ -1993,10 +1993,6 @@
         ],
         [
           "ON",
-          "RMD"
-        ],
-        [
-          "LRCX",
           "CAG"
         ],
         [
@@ -2004,48 +2000,52 @@
           "HII"
         ],
         [
-          "CSCO",
-          "MDT"
+          "LRCX",
+          "RMD"
         ],
         [
-          "CSCO",
+          "BWA",
+          "INTU"
+        ],
+        [
+          "BWA",
+          "MKTX"
+        ],
+        [
+          "STLD",
           "ISRG"
         ],
         [
           "STLD",
-          "INTU"
+          "NFLX"
         ],
         [
-          "STLD",
-          "MKTX"
+          "AKAM",
+          "ULTA"
+        ],
+        [
+          "AKAM",
+          "REGN"
+        ],
+        [
+          "CSCO",
+          "ICE"
+        ],
+        [
+          "CSCO",
+          "TAP"
         ],
         [
           "NUE",
-          "NFLX"
+          "PYPL"
         ],
         [
           "NUE",
           "CME"
         ],
         [
-          "BWA",
-          "TAP"
-        ],
-        [
-          "BWA",
-          "SYK"
-        ],
-        [
           "KLAC",
-          "LOW"
-        ],
-        [
-          "KLAC",
-          "ICE"
-        ],
-        [
-          "FFIV",
-          "CPRT"
+          "CLX"
         ]
       ]
     }

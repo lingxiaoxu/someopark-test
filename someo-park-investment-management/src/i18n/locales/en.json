@@ -131,7 +131,8 @@
     "zMom": "Z/Mom",
     "pnl": "PnL",
     "pnlPct": "PnL%",
-    "noHistory": "No history snapshots found"
+    "noHistory": "No history snapshots found",
+    "activeHoldings": "Active Holdings"
   },
   "dailyReport": {
     "title": "Daily Report",

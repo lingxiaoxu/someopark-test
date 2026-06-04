@@ -422,7 +422,7 @@ export default function InventoryHistoryViewer({ params }: { params?: any }) {
                 <span className="text-xs font-mono text-[var(--text-primary)]">{h.timestamp?.replace('_', ' ')}</span>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-xs text-[var(--text-secondary)]">{h.activePairs} {t('inventoryHistory.activePairs')}</span>
+                <span className="text-xs text-[var(--text-secondary)]">{h.activePairs} {t((strategy === 'ssrs' || strategy === 'aiss') ? 'inventoryHistory.activeHoldings' : 'inventoryHistory.activePairs')}</span>
                 <span className="text-xs text-[var(--text-muted)]">{(h.size / 1024).toFixed(1)} KB</span>
               </div>
             </div>

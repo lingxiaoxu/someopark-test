@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-06-02",
+  "as_of": "2026-06-04",
   "last_updated": "2026-06-02",
   "capital": 1000000,
   "holdings": {
@@ -10,7 +10,7 @@
       "cost_basis": 17909.139,
       "entry_date": "2026-06-02",
       "last_rebalance_date": "2026-06-02",
-      "days_held": 1,
+      "days_held": 3,
       "action_today": "ENTER"
     },
     "equipment": {
@@ -20,7 +20,7 @@
       "cost_basis": 3198.5256,
       "entry_date": "2026-05-29",
       "last_rebalance_date": "2026-06-02",
-      "days_held": 5,
+      "days_held": 7,
       "action_today": "DECREASE"
     },
     "memory_hbm": {
@@ -30,7 +30,7 @@
       "cost_basis": 4182.5476,
       "entry_date": "2026-05-29",
       "last_rebalance_date": "2026-06-02",
-      "days_held": 5,
+      "days_held": 7,
       "action_today": "DECREASE"
     }
   },
@@ -157,8 +157,8 @@
     }
   ],
   "emergency_mode_active": false,
-  "last_daily_update": "2026-06-02",
-  "param_set": "balanced_four",
+  "last_daily_update": "2026-06-04",
+  "param_set": "supply_chain_heavy",
   "signal_version": "v1",
   "stock_holdings": {
     "NVDA": {

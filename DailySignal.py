@@ -2083,6 +2083,22 @@ def run_daily_signal(
         print(f"\n  详细报告: {rpt_json_path}")
         print(f"  文字报告: {rpt_txt_path}")
 
+        # ── Update strategy & master performance (non-fatal, required before risk report) ──
+        if not dry_run:
+            try:
+                import subprocess
+                _perf_end = signal_date.strftime('%Y-%m-%d')
+                _perf_start = '2026-03-19'
+                _perf_cmd = (f'python UpdateStrategyPerformance.py '
+                             f'--start {_perf_start} --end {_perf_end}')
+                subprocess.run(_perf_cmd.split(), capture_output=True, timeout=120)
+                subprocess.run('python UpdateMasterPerformance.py'.split(),
+                               capture_output=True, timeout=120)
+                log.info(f"[PERF_UPDATE] strategy + master performance updated "
+                         f"(start={_perf_start} end={_perf_end})")
+            except Exception as e:
+                log.warning(f"[PERF_UPDATE] performance update failed (non-fatal): {e}")
+
         # ── Risk report (non-fatal, read-only; deep in-memory data transfer) ──
         if not dry_run:
             try:
@@ -2164,6 +2180,22 @@ def run_daily_signal(
     write_report_txt(report, rpt_txt_path)
     print(f"\n  详细报告: {rpt_json_path}")
     print(f"  文字报告: {rpt_txt_path}")
+
+    # ── Update strategy & master performance (non-fatal, required before risk report) ──
+    if not dry_run:
+        try:
+            import subprocess
+            _perf_end = signal_date.strftime('%Y-%m-%d')
+            _perf_start = '2026-03-19'
+            _perf_cmd = (f'python UpdateStrategyPerformance.py '
+                         f'--start {_perf_start} --end {_perf_end}')
+            subprocess.run(_perf_cmd.split(), capture_output=True, timeout=120)
+            subprocess.run('python UpdateMasterPerformance.py'.split(),
+                           capture_output=True, timeout=120)
+            log.info(f"[PERF_UPDATE] strategy + master performance updated "
+                     f"(start={_perf_start} end={_perf_end})")
+        except Exception as e:
+            log.warning(f"[PERF_UPDATE] performance update failed (non-fatal): {e}")
 
     # ── Risk report (non-fatal, read-only; deep in-memory data transfer) ──
     if not dry_run:

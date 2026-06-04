@@ -3,6 +3,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "$SCRIPT_DIR/.." && pwd)"
 PIPEDIR=$REPO/pipeline_state
 LOGFILE=$PIPEDIR/logs/pipeline_current.log
+LOCKDIR=$PIPEDIR/daily_pipeline.lock
+FINISHED_FILE=$PIPEDIR/runner.finished_at
 
 mkdir -p "$PIPEDIR/logs"
 cd "$REPO" || exit 1
@@ -13,6 +15,58 @@ source /Users/xuling/miniforge3/etc/profile.d/conda.sh
 set -a && source "$REPO/.env" && set +a
 
 log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOGFILE"; }
+
+last_status_line() {
+    if [ -f "$PIPEDIR/status" ]; then
+        tail -1 "$PIPEDIR/status"
+    fi
+}
+
+is_terminal_status() {
+    local status="$1"
+    [[ "$status" == "ALL_DONE" || "$status" == FAIL:* || "$status" == ABORTED:* ]]
+}
+
+cleanup_runner() {
+    local rc=$?
+    local status
+    status=$(last_status_line)
+
+    if ! is_terminal_status "$status"; then
+        if [ "$rc" -eq 143 ] || [ "$rc" -eq 130 ]; then
+            echo "ABORTED:signal:pipeline_runner" > "$PIPEDIR/status"
+        elif [ "$rc" -ne 0 ]; then
+            echo "FAIL:runner:exit:$rc" > "$PIPEDIR/status"
+        fi
+    fi
+
+    date -u '+%Y-%m-%dT%H:%M:%SZ' > "$FINISHED_FILE"
+
+    if [ -d "$LOCKDIR" ]; then
+        lock_runner=$(cat "$LOCKDIR/runner.pid" 2>/dev/null | tr -cd '0-9')
+        if [ "$lock_runner" = "$$" ]; then
+            rm -rf "$LOCKDIR"
+        fi
+    fi
+
+    exit "$rc"
+}
+
+term_handler() {
+    log "=== PIPELINE RECEIVED TERM (PID=$$ PGID=$(ps -o pgid= -p "$$" 2>/dev/null | tr -d ' ')) ==="
+    echo "ABORTED:TERM:pipeline_runner" > "$PIPEDIR/status"
+    exit 143
+}
+
+int_handler() {
+    log "=== PIPELINE RECEIVED INT (PID=$$ PGID=$(ps -o pgid= -p "$$" 2>/dev/null | tr -d ' ')) ==="
+    echo "ABORTED:INT:pipeline_runner" > "$PIPEDIR/status"
+    exit 130
+}
+
+trap cleanup_runner EXIT
+trap term_handler TERM
+trap int_handler INT
 
 run_step() {
     local NUM=$1 CMD=$2 NAME=$3
