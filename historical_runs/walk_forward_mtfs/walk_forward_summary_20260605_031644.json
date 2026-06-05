@@ -1,0 +1,541 @@
+{
+  "generated_at": "2026-06-05T03:16:44.038249",
+  "strategy": "MTFS",
+  "mode": "expanding",
+  "n_param_sets": 31,
+  "train_start": "2024-04-12",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 162,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-04-12",
+      "train_end": "2025-10-10",
+      "test_start": "2025-10-13",
+      "test_end": "2025-11-18",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "LRCX",
+          "CAG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BWA",
+          "MKTX",
+          "beta_neutral_long_term"
+        ],
+        [
+          "CSCO",
+          "GIS",
+          "kalman_aggressive"
+        ],
+        [
+          "NUE",
+          "NFLX",
+          "short_term_beta_neutral"
+        ],
+        [
+          "STLD",
+          "CMCSA",
+          "entry_threshold_strong"
+        ],
+        [
+          "ON",
+          "BSX",
+          "no_reversal_protection"
+        ],
+        [
+          "LRCX",
+          "JKHY",
+          "fast_rebalance"
+        ],
+        [
+          "STLD",
+          "REGN",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AKAM",
+          "ULTA",
+          "fast_strict"
+        ],
+        [
+          "ON",
+          "FMC",
+          "short_term_beta_neutral"
+        ],
+        [
+          "NUE",
+          "PYPL",
+          "beta_neutral"
+        ],
+        [
+          "CSCO",
+          "HII",
+          "monthly_aligned_windows"
+        ],
+        [
+          "KLAC",
+          "ISRG",
+          "long_term_tilt"
+        ],
+        [
+          "BWA",
+          "INTU",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AKAM",
+          "RMD",
+          "kalman_aggressive"
+        ]
+      ],
+      "oos_sharpe": 0.8079375582340679,
+      "oos_pnl": 5044.333181324582
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-04-12",
+      "train_end": "2025-11-18",
+      "test_start": "2025-11-19",
+      "test_end": "2025-12-29",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "LRCX",
+          "CAG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "STLD",
+          "CMCSA",
+          "no_reversal_protection"
+        ],
+        [
+          "BWA",
+          "MKTX",
+          "long_term_tilt"
+        ],
+        [
+          "CSCO",
+          "GIS",
+          "kalman_aggressive"
+        ],
+        [
+          "NUE",
+          "NFLX",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ON",
+          "BSX",
+          "no_reversal_protection"
+        ],
+        [
+          "LRCX",
+          "JKHY",
+          "fast_rebalance"
+        ],
+        [
+          "STLD",
+          "REGN",
+          "monthly_aligned_windows"
+        ],
+        [
+          "NUE",
+          "PYPL",
+          "beta_neutral"
+        ],
+        [
+          "ON",
+          "FMC",
+          "short_term_beta_neutral"
+        ],
+        [
+          "CSCO",
+          "HII",
+          "monthly_aligned_windows"
+        ],
+        [
+          "KLAC",
+          "ISRG",
+          "long_term_tilt"
+        ],
+        [
+          "AKAM",
+          "ULTA",
+          "fast_strict"
+        ],
+        [
+          "BWA",
+          "INTU",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AKAM",
+          "RMD",
+          "fast_strict"
+        ]
+      ],
+      "oos_sharpe": 0.8612824482862296,
+      "oos_pnl": 3803.611839696816
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-04-12",
+      "train_end": "2025-12-29",
+      "test_start": "2025-12-30",
+      "test_end": "2026-02-06",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "LRCX",
+          "CAG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "STLD",
+          "CMCSA",
+          "no_reversal_protection"
+        ],
+        [
+          "BWA",
+          "MKTX",
+          "long_term_tilt"
+        ],
+        [
+          "CSCO",
+          "GIS",
+          "kalman_aggressive"
+        ],
+        [
+          "NUE",
+          "NFLX",
+          "short_term_beta_neutral"
+        ],
+        [
+          "NUE",
+          "PYPL",
+          "no_skip_month"
+        ],
+        [
+          "LRCX",
+          "JKHY",
+          "short_term_tilt"
+        ],
+        [
+          "STLD",
+          "REGN",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ON",
+          "BSX",
+          "no_reversal_protection"
+        ],
+        [
+          "ON",
+          "FMC",
+          "short_term_beta_neutral"
+        ],
+        [
+          "CSCO",
+          "HII",
+          "monthly_aligned_windows"
+        ],
+        [
+          "KLAC",
+          "ISRG",
+          "long_term_tilt"
+        ],
+        [
+          "AKAM",
+          "ULTA",
+          "fast_strict"
+        ],
+        [
+          "BWA",
+          "INTU",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AKAM",
+          "RMD",
+          "fast_strict"
+        ]
+      ],
+      "oos_sharpe": 2.6570908623129927,
+      "oos_pnl": 14122.74114249966
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-04-12",
+      "train_end": "2026-02-06",
+      "test_start": "2026-02-09",
+      "test_end": "2026-03-18",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "LRCX",
+          "CAG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "STLD",
+          "CMCSA",
+          "no_reversal_protection"
+        ],
+        [
+          "NUE",
+          "PYPL",
+          "no_skip_month"
+        ],
+        [
+          "BWA",
+          "MKTX",
+          "long_term_tilt"
+        ],
+        [
+          "CSCO",
+          "GIS",
+          "kalman_aggressive"
+        ],
+        [
+          "NUE",
+          "NFLX",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ON",
+          "BSX",
+          "no_reversal_protection"
+        ],
+        [
+          "BWA",
+          "INTU",
+          "short_term_beta_neutral"
+        ],
+        [
+          "STLD",
+          "REGN",
+          "monthly_aligned_windows"
+        ],
+        [
+          "LRCX",
+          "JKHY",
+          "beta_neutral_long_term"
+        ],
+        [
+          "KLAC",
+          "ISRG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CSCO",
+          "HII",
+          "weekly_aligned_windows"
+        ],
+        [
+          "ON",
+          "FMC",
+          "long_term_tilt"
+        ],
+        [
+          "AKAM",
+          "ULTA",
+          "fast_strict"
+        ],
+        [
+          "AKAM",
+          "RMD",
+          "fast_strict"
+        ]
+      ],
+      "oos_sharpe": -0.7076803138092777,
+      "oos_pnl": -6735.125682065445
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-04-12",
+      "train_end": "2026-03-18",
+      "test_start": "2026-03-19",
+      "test_end": "2026-04-27",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "STLD",
+          "CMCSA",
+          "no_reversal_protection"
+        ],
+        [
+          "NUE",
+          "PYPL",
+          "short_term_beta_neutral"
+        ],
+        [
+          "LRCX",
+          "CAG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BWA",
+          "MKTX",
+          "long_term_tilt"
+        ],
+        [
+          "CSCO",
+          "GIS",
+          "monthly_aligned_windows"
+        ],
+        [
+          "NUE",
+          "NFLX",
+          "short_term_beta_neutral"
+        ],
+        [
+          "ON",
+          "BSX",
+          "no_reversal_protection"
+        ],
+        [
+          "STLD",
+          "REGN",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AKAM",
+          "RMD",
+          "fast_strict"
+        ],
+        [
+          "BWA",
+          "INTU",
+          "fast_strict"
+        ],
+        [
+          "KLAC",
+          "ISRG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "LRCX",
+          "JKHY",
+          "beta_neutral_long_term"
+        ],
+        [
+          "CSCO",
+          "HII",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ON",
+          "FMC",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AKAM",
+          "ULTA",
+          "fast_strict"
+        ]
+      ],
+      "oos_sharpe": 5.199527729900487,
+      "oos_pnl": 42556.48877162515
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-04-12",
+      "train_end": "2026-04-27",
+      "test_start": "2026-04-28",
+      "test_end": "2026-06-04",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "BWA",
+          "MKTX",
+          "long_term_tilt"
+        ],
+        [
+          "CSCO",
+          "GIS",
+          "conservative"
+        ],
+        [
+          "STLD",
+          "CMCSA",
+          "no_reversal_protection"
+        ],
+        [
+          "NUE",
+          "PYPL",
+          "short_term_beta_neutral"
+        ],
+        [
+          "LRCX",
+          "CAG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "ON",
+          "BSX",
+          "no_reversal_protection"
+        ],
+        [
+          "NUE",
+          "NFLX",
+          "short_term_beta_neutral"
+        ],
+        [
+          "KLAC",
+          "ISRG",
+          "monthly_aligned_windows"
+        ],
+        [
+          "LRCX",
+          "JKHY",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AKAM",
+          "RMD",
+          "fast_strict"
+        ],
+        [
+          "STLD",
+          "REGN",
+          "monthly_aligned_windows"
+        ],
+        [
+          "BWA",
+          "INTU",
+          "beta_neutral_long_term"
+        ],
+        [
+          "AKAM",
+          "ULTA",
+          "fast_strict"
+        ],
+        [
+          "ON",
+          "FMC",
+          "beta_neutral_long_term"
+        ],
+        [
+          "CSCO",
+          "HII",
+          "monthly_aligned_windows"
+        ]
+      ],
+      "oos_sharpe": 9.413757411544356,
+      "oos_pnl": 224351.67448077357
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": 283554.68263796385,
+    "oos_trading_days": 156,
+    "oos_sharpe": 3.614514981922142,
+    "oos_max_dd_dollar": -42694.5974368492,
+    "oos_max_dd_pct": -0.0789266581797153
+  }
+}

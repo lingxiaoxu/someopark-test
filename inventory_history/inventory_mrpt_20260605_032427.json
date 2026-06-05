@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-06-04",
+  "as_of": "2026-06-03",
   "capital": 500000,
   "pairs": {
     "DG/MOS": {
@@ -269,17 +269,6 @@
           "unrealized_pnl": 13080.61,
           "unrealized_pnl_pct": 7.055,
           "note": "Holding short, signal=0.023, exit at 0.239"
-        },
-        {
-          "date": "2026-06-04",
-          "action": "HOLD",
-          "direction": "short",
-          "z_score": -0.223,
-          "momentum_spread": null,
-          "exit_threshold": 0.233,
-          "unrealized_pnl": 14145.11,
-          "unrealized_pnl_pct": 7.644,
-          "note": "Holding short, signal=-0.223, exit at 0.233"
         }
       ]
     },
