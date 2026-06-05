@@ -145,13 +145,8 @@ case "$MODE" in
 
     daily)
         check_nyse_open
-        # Refresh the price store FIRST so the daily marks positions to today's
-        # prices.  Without this, last_price stays frozen at the last fetch date →
-        # anything entered on that date shows 0% P&L forever.  Incremental + graceful
-        # (needs POLYGON_API_KEY, loaded from .env above).
-        hr; log "AISS price store refresh (incremental)"; hr
-        PY -m $PKG.data.aiss_fetch_prices --update 2>&1 | tee "$LOG_DIR/aiss_price_update_$TS.log" \
-            || log "price refresh failed — continuing with cached store (marks may be stale)"
+        # AISSdailySignal refreshes the price store itself (incremental, before
+        # marking) so positions mark to today's close regardless of how it's invoked.
         hr; log "AISS daily signal"; hr
         PY -m $PKG.AISSdailySignal "$@" 2>&1 | tee "$LOG_DIR/aiss_daily_$TS.log"
         ;;

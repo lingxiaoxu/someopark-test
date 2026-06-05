@@ -778,6 +778,9 @@ def run_daily_signal(
     end_date_str = signal_date.strftime("%Y-%m-%d")
 
     # ── 2. Load prices ─────────────────────────────────────────────
+    # The price store auto-refreshes stale tickers to ``end`` inside the loader
+    # (data/aiss_fetch_prices.load_prices_wide), so marks are current without any
+    # explicit refresh here — same pattern as SSRS loader.load_prices.
     log.info("Loading ETF prices...")
     prices_all = load_etf_prices(etf_tickers, benchmark, end=end_date_str)
     etf_prices = prices_all[[t for t in etf_tickers if t in prices_all.columns]]

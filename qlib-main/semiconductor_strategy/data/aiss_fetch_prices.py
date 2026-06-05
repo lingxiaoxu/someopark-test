@@ -400,20 +400,35 @@ def load_prices_wide(
 ) -> pd.DataFrame:
     """Return a wide (Date x ticker) DataFrame of ``field`` for the given tickers.
 
-    Reads the isolated per-ticker parquet store.  If a ticker is missing and
-    ``auto_fetch`` is True, it is fetched on demand.
+    Reads the isolated per-ticker parquet store.  When ``auto_fetch`` is True a
+    ticker is (incrementally) fetched if it is MISSING, or if its cached store is
+    STALE for ``end`` — i.e. the store's last date is before ``end`` and it was
+    not already fetched today.  This keeps marks current on a per-load basis,
+    mirroring SSRS ``loader.load_prices`` (which auto-refreshes via its
+    ``cache_max_age_hours``); callers just load prices and never refresh manually.
     """
     cols = {}
     meta = _load_meta()
+    _today = date.today().isoformat()
+    _end_d = pd.Timestamp(end).date() if end else None
+    _changed = False
     for t in tickers:
         df = _read_existing(t)
-        if df is None and auto_fetch:
+        need = df is None
+        if (not need) and auto_fetch and _end_d is not None and len(df):
+            last = df.index[-1].date()
+            fetched = (meta.get(t) or {}).get("fetched_at")
+            if last < _end_d and fetched != _today:   # stale for this signal date
+                need = True
+        if need and auto_fetch:
             df = update_ticker(t, start=start or DEFAULT_INIT_START, end=end, meta=meta)
-            _save_meta(meta)
+            _changed = True
         if df is None or field not in df.columns:
             log.warning("No %s data for %s", field, t)
             continue
         cols[t] = df[field]
+    if _changed:
+        _save_meta(meta)
     if not cols:
         return pd.DataFrame()
     wide = pd.DataFrame(cols).sort_index()
