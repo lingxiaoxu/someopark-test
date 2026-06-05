@@ -815,7 +815,7 @@ _MAX_OPEN_PAIRS_MRPT = 8   # max simultaneous open pairs for MRPT
 _MAX_OPEN_PAIRS_MTFS = 8   # max simultaneous open pairs for MTFS
 
 # Fix 1: Correlation Gate — min 60-day daily return correlation to allow OPEN
-_MIN_PAIR_CORRELATION = 0.20
+_MIN_PAIR_CORRELATION = 0.16   # dev toggle: switch between 0.20 (strict) and 0.16 (relaxed)
 _CORR_LOOKBACK_DAYS = 60
 
 # Fix 6A: Min Signal Guard — min MTFS momentum signal strength to allow OPEN
