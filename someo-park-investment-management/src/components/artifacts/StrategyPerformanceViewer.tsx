@@ -125,6 +125,8 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
     const first = filteredData[0];
     const peaks: Record<string, number> = {};
     for (const k of activeKeys) peaks[k] = (first as any)[`${k}_equity`] || 0;
+    // benchmarks get the same drawdown/PnL treatment as strategies (Master mode)
+    for (const bm of BENCHMARK_KEYS) peaks[bm] = (first as any)[`${bm}_equity`] || 0;
 
     return filteredData.map((d: any, i: number) => {
       const row: any = { ...d, label: d.date.slice(5) };
@@ -144,12 +146,23 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
           row[`${k}_pnl_pct`] = 0;
         }
       }
-      // Benchmark return % (for dashed reference lines in Master mode)
+      // Benchmarks: return %, drawdown, and daily PnL (same as strategies)
       for (const bm of BENCHMARK_KEYS) {
         const eq = d[`${bm}_equity`] || 0;
         const firstEq = (first as any)[`${bm}_equity`] || 1;
         if (firstEq > 0 && eq > 0) {
+          if (eq > peaks[bm]) peaks[bm] = eq;
           row[`${bm}_ret`] = ((eq - firstEq) / firstEq) * 100;
+          row[`${bm}_dd_w`] = peaks[bm] > 0 ? (eq - peaks[bm]) / peaks[bm] * 100 : 0;
+          row[`${bm}_dd_dollar`] = eq - peaks[bm];
+          if (i > 0) {
+            const prevEq = (filteredData[i - 1] as any)[`${bm}_equity`] || 1;
+            row[`${bm}_pnl_w`] = eq - prevEq;
+            row[`${bm}_pnl_pct`] = prevEq > 0 ? ((eq - prevEq) / prevEq) * 100 : 0;
+          } else {
+            row[`${bm}_pnl_w`] = 0;
+            row[`${bm}_pnl_pct`] = 0;
+          }
         }
       }
       return row;
@@ -204,7 +217,8 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
     const firstRow = filteredData[0] as any;
     const result: Record<string, any> = {};
 
-    for (const k of activeKeys) {
+    const statKeys = viewMode === 'master' ? [...activeKeys, ...BENCHMARK_KEYS] : activeKeys;
+    for (const k of statKeys) {
       const startEq = firstRow[`${k}_equity`] || 1;
       const endEq = last[`${k}_equity`] || 0;
       const ret = ((endEq - startEq) / startEq) * 100;
@@ -325,9 +339,10 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
         </div>
       </div>
 
-      {/* Scorecard */}
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(activeKeys.filter(k => activeStrategies.has(k)).length, 5)}, 1fr)`, gap: '10px' }} className="shrink-0">
-        {activeKeys.filter(k => activeStrategies.has(k)).map(key => {
+      {/* Scorecard (strategies + visible benchmarks in Master mode) */}
+      {(() => { const cardKeys = [...activeKeys, ...(viewMode === 'master' ? BENCHMARK_KEYS : [])].filter(k => activeStrategies.has(k)); return (
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(cardKeys.length, 5)}, 1fr)`, gap: '10px' }} className="shrink-0">
+        {cardKeys.map(key => {
           const s = stats?.[key];
           if (!s) return null;
           return (
@@ -362,6 +377,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
           );
         })}
       </div>
+      ); })()}
 
       {/* Equity Curve (% and $) */}
       <div style={{ background: '#fff', border: '2px solid #111', padding: '16px' }}>
@@ -442,6 +458,11 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
                   stroke={COLORS[k]} fill={COLORS[k]} fillOpacity={k === totalKey ? 0.08 : 0.1}
                   strokeWidth={k === totalKey ? 2 : 1.5} dot={false} name={`${k}_dd_w`} />
               ))}
+              {viewMode === 'master' && BENCHMARK_KEYS.filter(bm => activeStrategies.has(bm)).map(bm => (
+                <Area key={bm} yAxisId="left" type="monotone" dataKey={`${bm}_dd_w`}
+                  stroke={COLORS[bm]} strokeDasharray="5 4" fill="transparent"
+                  strokeWidth={1.5} dot={false} name={`${bm}_dd_w`} />
+              ))}
               <Area yAxisId="right" type="monotone" dataKey={`${totalKey}_dd_dollar`} stroke="transparent" fill="transparent" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
@@ -477,6 +498,11 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
                 <Area key={k} yAxisId="left" type="stepAfter" dataKey={`${k}_pnl_w`}
                   stroke={COLORS[k]} fill={COLORS[k]} fillOpacity={0.08}
                   strokeWidth={k === totalKey ? 1.5 : 1} dot={false} name={`${k}_pnl_w`} />
+              ))}
+              {viewMode === 'master' && BENCHMARK_KEYS.filter(bm => activeStrategies.has(bm)).map(bm => (
+                <Area key={bm} yAxisId="left" type="stepAfter" dataKey={`${bm}_pnl_w`}
+                  stroke={COLORS[bm]} strokeDasharray="5 4" fill="transparent"
+                  strokeWidth={1} dot={false} name={`${bm}_pnl_w`} />
               ))}
               <Area yAxisId="right" type="stepAfter" dataKey={`${totalKey}_pnl_pct`} stroke="transparent" fill="transparent" dot={false} />
             </AreaChart>

@@ -12,14 +12,20 @@
     "z_col": "Z_industrial"
   },
   {
+    "s1": "HAS",
+    "s2": "PFE",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
     "s1": "CSCO",
     "s2": "PAYC",
     "sector": "tech",
     "z_col": "Z_tech"
   },
   {
-    "s1": "HAS",
-    "s2": "PFE",
+    "s1": "HRL",
+    "s2": "MKC",
     "sector": "food",
     "z_col": "Z_food"
   },
@@ -30,34 +36,28 @@
     "z_col": "Z_realestate"
   },
   {
-    "s1": "HRL",
-    "s2": "MKC",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
-    "s1": "EVRG",
-    "s2": "PCG",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
-  },
-  {
     "s1": "CINF",
     "s2": "FMC",
     "sector": "finance",
     "z_col": "Z_finance"
   },
   {
-    "s1": "ATO",
-    "s2": "PCG",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
-  },
-  {
     "s1": "AME",
     "s2": "WMT",
     "sector": "industrial",
     "z_col": "Z_industrial"
+  },
+  {
+    "s1": "AON",
+    "s2": "GEN",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "EVRG",
+    "s2": "PCG",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
   },
   {
     "s1": "BSX",
@@ -72,16 +72,16 @@
     "z_col": "Z_tech"
   },
   {
-    "s1": "AIG",
-    "s2": "L",
+    "s1": "GPN",
+    "s2": "PTC",
     "sector": "finance",
     "z_col": "Z_finance"
   },
   {
-    "s1": "AON",
-    "s2": "GEN",
-    "sector": "finance",
-    "z_col": "Z_finance"
+    "s1": "ATO",
+    "s2": "PCG",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
   },
   {
     "s1": "AKAM",

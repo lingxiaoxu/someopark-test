@@ -1,0 +1,539 @@
+{
+  "generated_at": "2026-06-03T14:14:36.615089",
+  "mode": "expanding",
+  "train_start": "2024-04-26",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 150,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-04-26",
+      "train_end": "2025-10-27",
+      "test_start": "2025-10-28",
+      "test_end": "2025-12-02",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "HAS",
+          "YUM",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "AON",
+          "GEN",
+          "conservative"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "AKAM",
+          "KEYS",
+          "low_entry"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "GPN",
+          "PTC",
+          "low_vol_specialist"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "ATO",
+          "PCG",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "AME",
+          "WMT",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "EXR",
+          "WY",
+          "vol_adaptive"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "conservative"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "long_z_short_v"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "EVRG",
+          "PCG",
+          "fast_signal"
+        ]
+      ],
+      "oos_sharpe": -0.7090580472641071,
+      "oos_pnl": -1906.7920635470145
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-04-26",
+      "train_end": "2025-12-02",
+      "test_start": "2025-12-03",
+      "test_end": "2026-01-08",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "HAS",
+          "YUM",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "AKAM",
+          "KEYS",
+          "vol_gated"
+        ],
+        [
+          "AON",
+          "GEN",
+          "vol_agnostic"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "GPN",
+          "PTC",
+          "deep_dislocation"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "AME",
+          "WMT",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "ATO",
+          "PCG",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "EXR",
+          "WY",
+          "high_vol_specialist"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "conservative"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "long_z_short_v"
+        ],
+        [
+          "EVRG",
+          "PCG",
+          "fast_signal"
+        ]
+      ],
+      "oos_sharpe": -1.8604619556788127,
+      "oos_pnl": -3330.657566608228
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-04-26",
+      "train_end": "2026-01-08",
+      "test_start": "2026-01-09",
+      "test_end": "2026-02-13",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "HAS",
+          "YUM",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "AKAM",
+          "KEYS",
+          "vol_gated"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "AON",
+          "GEN",
+          "vol_agnostic"
+        ],
+        [
+          "GPN",
+          "PTC",
+          "high_entry"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "AME",
+          "WMT",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "ATO",
+          "PCG",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "EXR",
+          "WY",
+          "vol_agnostic"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "low_vol_specialist"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "long_z_short_v"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "EVRG",
+          "PCG",
+          "fast_signal"
+        ]
+      ],
+      "oos_sharpe": 2.8873200966662385,
+      "oos_pnl": 15032.558930602674
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-04-26",
+      "train_end": "2026-02-13",
+      "test_start": "2026-02-17",
+      "test_end": "2026-03-23",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "HAS",
+          "YUM",
+          "aggressive"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "GPN",
+          "PTC",
+          "short_z_long_v"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "AON",
+          "GEN",
+          "vol_agnostic"
+        ],
+        [
+          "EXR",
+          "WY",
+          "high_turnover"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "AME",
+          "WMT",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "AKAM",
+          "KEYS",
+          "high_entry"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "quick_exit"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "long_z_short_v"
+        ],
+        [
+          "ATO",
+          "PCG",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "EVRG",
+          "PCG",
+          "symmetric_exit"
+        ]
+      ],
+      "oos_sharpe": 0.18760626417670567,
+      "oos_pnl": 395.1749551900939
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-04-26",
+      "train_end": "2026-03-23",
+      "test_start": "2026-03-24",
+      "test_end": "2026-04-28",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "HAS",
+          "YUM",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "GPN",
+          "PTC",
+          "short_z_long_v"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "AON",
+          "GEN",
+          "vol_agnostic"
+        ],
+        [
+          "AME",
+          "WMT",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "EXR",
+          "WY",
+          "vol_adaptive"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "long_z_short_v"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "tight_stop"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "AKAM",
+          "KEYS",
+          "vol_gated"
+        ],
+        [
+          "ATO",
+          "PCG",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "low_entry"
+        ],
+        [
+          "EVRG",
+          "PCG",
+          "symmetric_exit"
+        ]
+      ],
+      "oos_sharpe": 1.1039263366296048,
+      "oos_pnl": 4749.880722390073
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-04-26",
+      "train_end": "2026-04-28",
+      "test_start": "2026-04-29",
+      "test_end": "2026-06-03",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "HAS",
+          "YUM",
+          "aggressive"
+        ],
+        [
+          "GPN",
+          "PTC",
+          "short_z_long_v"
+        ],
+        [
+          "HAS",
+          "PFE",
+          "low_vol_specialist"
+        ],
+        [
+          "FSLR",
+          "RSG",
+          "static_threshold"
+        ],
+        [
+          "CINF",
+          "FMC",
+          "long_z_short_v"
+        ],
+        [
+          "BSX",
+          "WMB",
+          "tight_stop"
+        ],
+        [
+          "AON",
+          "GEN",
+          "vol_agnostic"
+        ],
+        [
+          "CSCO",
+          "PAYC",
+          "slow_reentry"
+        ],
+        [
+          "AME",
+          "WMT",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "EXR",
+          "WY",
+          "slow_signal"
+        ],
+        [
+          "HRL",
+          "MKC",
+          "low_vol_specialist"
+        ],
+        [
+          "TXT",
+          "YUM",
+          "stable_signal_quick_exit"
+        ],
+        [
+          "ATO",
+          "PCG",
+          "fast_signal_tight_stop"
+        ],
+        [
+          "AKAM",
+          "KEYS",
+          "deep_entry_quick_exit"
+        ],
+        [
+          "EVRG",
+          "PCG",
+          "short_z_long_v"
+        ]
+      ],
+      "oos_sharpe": -4.530707345957831,
+      "oos_pnl": -19686.92863719684
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": -4335.804755059711,
+    "oos_trading_days": 144,
+    "oos_sharpe": -0.2011886138102405,
+    "oos_max_dd_dollar": -23962.113827945315,
+    "oos_max_dd_pct": -0.04612020663265977
+  }
+}

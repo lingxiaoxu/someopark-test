@@ -1,6 +1,7 @@
 #!/bin/bash
-# conductor/daily_pipeline_entry.sh
-# Lifecycle-safe entrypoint for the SomeoPark daily cron.
+# conductor/daily_pipeline_entry_legacy.sh
+# Legacy foreground entrypoint for the SomeoPark daily cron.
+# Deprecated: production cron now uses daily_pipeline_launch_nohup.py.
 # It keeps the long-running pipeline in the foreground of this wrapper while
 # providing an atomic single-flight lock and observable PID metadata.
 

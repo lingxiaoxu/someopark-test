@@ -7,7 +7,7 @@
   },
   {
     "s1": "ON",
-    "s2": "FMC",
+    "s2": "RMD",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
@@ -19,61 +19,31 @@
   },
   {
     "s1": "LRCX",
-    "s2": "JKHY",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "CSCO",
     "s2": "HII",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "CSCO",
-    "s2": "GIS",
+    "s2": "MDT",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "AKAM",
-    "s2": "RMD",
+    "s1": "CSCO",
+    "s2": "ISRG",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "AKAM",
-    "s2": "ULTA",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "BWA",
+    "s1": "STLD",
     "s2": "INTU",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
   },
   {
-    "s1": "BWA",
+    "s1": "STLD",
     "s2": "MKTX",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "STLD",
-    "s2": "REGN",
-    "sector": "materials",
-    "spread_col": "Momentum_Spread_materials"
-  },
-  {
-    "s1": "STLD",
-    "s2": "CMCSA",
-    "sector": "materials",
-    "spread_col": "Momentum_Spread_materials"
-  },
-  {
-    "s1": "NUE",
-    "s2": "PYPL",
     "sector": "materials",
     "spread_col": "Momentum_Spread_materials"
   },
@@ -84,8 +54,38 @@
     "spread_col": "Momentum_Spread_materials"
   },
   {
+    "s1": "NUE",
+    "s2": "CME",
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
+  },
+  {
+    "s1": "BWA",
+    "s2": "TAP",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "BWA",
+    "s2": "SYK",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
     "s1": "KLAC",
-    "s2": "ISRG",
+    "s2": "LOW",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "KLAC",
+    "s2": "ICE",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "FFIV",
+    "s2": "CPRT",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   }
