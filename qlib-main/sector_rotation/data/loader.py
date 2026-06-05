@@ -72,10 +72,28 @@ def _load_cache(path: Path):
         return pickle.load(f)
 
 
+def _prune_old_caches(path: Path) -> None:
+    """Delete older dated caches sharing this key's prefix (the key minus its final
+    end-date segment), keeping only this file + the matching ``...latest`` cache.
+    Stops the per-day price/macro cache files from accumulating unboundedly.
+    No-op when writing the single ``...latest`` cache (it is overwritten in place)."""
+    try:
+        if path.stem.endswith("_latest"):
+            return
+        prefix = path.stem.rsplit("_", 1)[0] + "_"          # strip trailing end-date
+        keep = {path.name, f"{prefix}latest.pkl"}
+        for old in path.parent.glob(f"{prefix}*.pkl"):
+            if old.name not in keep:
+                old.unlink(missing_ok=True)
+    except Exception as e:  # noqa: BLE001
+        logger.debug(f"cache prune skipped: {e}")
+
+
 def _save_cache(path: Path, obj):
     with open(path, "wb") as f:
         pickle.dump(obj, f)
     logger.debug(f"Saved cache: {path}")
+    _prune_old_caches(path)
 
 
 # ---------------------------------------------------------------------------

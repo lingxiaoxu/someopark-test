@@ -86,22 +86,31 @@ _API_DELAY = 0.2
 # Meta helpers
 # ---------------------------------------------------------------------------
 
-def _load_meta() -> dict:
-    if META_PATH.exists():
+def _resolve_dir(prices_dir: Optional[Path]) -> Path:
+    """Store directory for this call — defaults to the AISS semi_strategy store.
+    Pass a different dir to keep a SEPARATE per-ticker Polygon store (e.g. SSRS
+    sector ETFs), so universes don't get mixed into one store."""
+    return Path(prices_dir) if prices_dir else PRICES_DIR
+
+
+def _load_meta(prices_dir: Optional[Path] = None) -> dict:
+    mp = _resolve_dir(prices_dir) / "_fetch_meta.json"
+    if mp.exists():
         try:
-            return json.loads(META_PATH.read_text())
+            return json.loads(mp.read_text())
         except Exception:
             return {}
     return {}
 
 
-def _save_meta(meta: dict) -> None:
-    PRICES_DIR.mkdir(parents=True, exist_ok=True)
-    META_PATH.write_text(json.dumps(meta, indent=2, sort_keys=True))
+def _save_meta(meta: dict, prices_dir: Optional[Path] = None) -> None:
+    d = _resolve_dir(prices_dir)
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "_fetch_meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True))
 
 
-def _parquet_path(ticker: str) -> Path:
-    return PRICES_DIR / f"{ticker}_prices.parquet"
+def _parquet_path(ticker: str, prices_dir: Optional[Path] = None) -> Path:
+    return _resolve_dir(prices_dir) / f"{ticker}_prices.parquet"
 
 
 def _polygon_key() -> Optional[str]:
@@ -256,8 +265,8 @@ def fetch_yfinance_ohlcv(ticker: str, start: str, end: Optional[str]) -> Optiona
 # Per-ticker fetch / merge / persist
 # ---------------------------------------------------------------------------
 
-def _read_existing(ticker: str) -> Optional[pd.DataFrame]:
-    p = _parquet_path(ticker)
+def _read_existing(ticker: str, prices_dir: Optional[Path] = None) -> Optional[pd.DataFrame]:
+    p = _parquet_path(ticker, prices_dir)
     if not p.exists():
         return None
     try:
@@ -269,11 +278,12 @@ def _read_existing(ticker: str) -> Optional[pd.DataFrame]:
         return None
 
 
-def _persist(ticker: str, df: pd.DataFrame, source: str, meta: dict) -> None:
-    PRICES_DIR.mkdir(parents=True, exist_ok=True)
+def _persist(ticker: str, df: pd.DataFrame, source: str, meta: dict,
+             prices_dir: Optional[Path] = None) -> None:
+    _resolve_dir(prices_dir).mkdir(parents=True, exist_ok=True)
     df = df[[c for c in ALL_COLUMNS if c in df.columns]].copy()
     df.index.name = "Date"
-    df.to_parquet(_parquet_path(ticker), engine="pyarrow")
+    df.to_parquet(_parquet_path(ticker, prices_dir), engine="pyarrow")
     meta[ticker] = {
         "source": source,
         "first_date": df.index[0].date().isoformat(),
@@ -290,20 +300,22 @@ def update_ticker(
     api_key: Optional[str] = None,
     force: bool = False,
     meta: Optional[dict] = None,
+    prices_dir: Optional[Path] = None,
 ) -> Optional[pd.DataFrame]:
     """Fetch/refresh a single ticker into its isolated parquet.
 
     Incremental: re-fetches only the missing tail since the last cached date
     (with a small overlap), then recomputes AdjClose over the *full* merged
     series (dividends retro-adjust history).  ``force=True`` does a full refetch.
+    ``prices_dir`` selects the store (default = AISS semi_strategy).
     """
     end = end or date.today().isoformat()
     api_key = api_key or _polygon_key()
     standalone = meta is None
     if meta is None:
-        meta = _load_meta()
+        meta = _load_meta(prices_dir)
 
-    existing = None if force else _read_existing(ticker)
+    existing = None if force else _read_existing(ticker, prices_dir)
     fetch_start = start
     if existing is not None and len(existing) > 0:
         last = existing.index[-1].date()
@@ -355,9 +367,9 @@ def update_ticker(
         else:
             merged["AdjClose"] = merged["Close"]
 
-    _persist(ticker, merged, source, meta)
+    _persist(ticker, merged, source, meta, prices_dir)
     if standalone:
-        _save_meta(meta)
+        _save_meta(meta, prices_dir)
     log.info("%s: %d rows %s→%s (%s)", ticker, len(merged),
              merged.index[0].date(), merged.index[-1].date(), source)
     return merged
@@ -368,22 +380,25 @@ def update_all(
     start: str = DEFAULT_INIT_START,
     end: Optional[str] = None,
     force: bool = False,
+    prices_dir: Optional[Path] = None,
 ) -> Dict[str, bool]:
-    """Fetch/refresh all AISS tickers (universe stocks + benchmarks)."""
+    """Fetch/refresh all AISS tickers (universe stocks + benchmarks).
+    ``prices_dir`` selects the store (default = AISS semi_strategy)."""
     if tickers is None:
         tickers = U.all_tickers(include_benchmark=True)
-    meta = _load_meta()
+    meta = _load_meta(prices_dir)
     results: Dict[str, bool] = {}
     for i, t in enumerate(tickers):
         try:
-            df = update_ticker(t, start=start, end=end, force=force, meta=meta)
+            df = update_ticker(t, start=start, end=end, force=force, meta=meta,
+                               prices_dir=prices_dir)
             results[t] = df is not None and len(df) > 0
         except Exception as e:  # noqa: BLE001
             log.error("update_ticker(%s) raised: %s", t, e)
             results[t] = False
         if (i + 1) % 5 == 0:
-            _save_meta(meta)  # checkpoint
-    _save_meta(meta)
+            _save_meta(meta, prices_dir)  # checkpoint
+    _save_meta(meta, prices_dir)
     return results
 
 
@@ -397,23 +412,25 @@ def load_prices_wide(
     end: Optional[str] = None,
     field: str = "AdjClose",
     auto_fetch: bool = True,
+    prices_dir: Optional[Path] = None,
 ) -> pd.DataFrame:
     """Return a wide (Date x ticker) DataFrame of ``field`` for the given tickers.
 
-    Reads the isolated per-ticker parquet store.  When ``auto_fetch`` is True a
-    ticker is (incrementally) fetched if it is MISSING, or if its cached store is
-    STALE for ``end`` — i.e. the store's last date is before ``end`` and it was
-    not already fetched today.  This keeps marks current on a per-load basis,
-    mirroring SSRS ``loader.load_prices`` (which auto-refreshes via its
-    ``cache_max_age_hours``); callers just load prices and never refresh manually.
+    Reads the isolated per-ticker parquet store (``prices_dir``, default = AISS
+    semi_strategy; pass a different dir for a separate universe such as SSRS sector
+    ETFs).  When ``auto_fetch`` is True a ticker is (incrementally) fetched if it is
+    MISSING, or if its cached store is STALE for ``end`` — i.e. the store's last date
+    is before ``end`` and it was not already fetched today.  This keeps marks current
+    on a per-load basis, mirroring SSRS ``loader.load_prices`` (which auto-refreshes
+    via its ``cache_max_age_hours``); callers just load prices and never refresh.
     """
     cols = {}
-    meta = _load_meta()
+    meta = _load_meta(prices_dir)
     _today = date.today().isoformat()
     _end_d = pd.Timestamp(end).date() if end else None
     _changed = False
     for t in tickers:
-        df = _read_existing(t)
+        df = _read_existing(t, prices_dir)
         need = df is None
         if (not need) and auto_fetch and _end_d is not None and len(df):
             last = df.index[-1].date()
@@ -421,14 +438,15 @@ def load_prices_wide(
             if last < _end_d and fetched != _today:   # stale for this signal date
                 need = True
         if need and auto_fetch:
-            df = update_ticker(t, start=start or DEFAULT_INIT_START, end=end, meta=meta)
+            df = update_ticker(t, start=start or DEFAULT_INIT_START, end=end,
+                               meta=meta, prices_dir=prices_dir)
             _changed = True
         if df is None or field not in df.columns:
             log.warning("No %s data for %s", field, t)
             continue
         cols[t] = df[field]
     if _changed:
-        _save_meta(meta)
+        _save_meta(meta, prices_dir)
     if not cols:
         return pd.DataFrame()
     wide = pd.DataFrame(cols).sort_index()

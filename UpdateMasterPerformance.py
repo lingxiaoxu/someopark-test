@@ -92,9 +92,12 @@ def _load_live_equity_from_inventory(
     inv_dir: str, inv_prefix: str, holdings_key: str,
     live_start: str, backtest_normalized: pd.Series,
     trading_days: pd.DatetimeIndex, label: str,
+    price_loader=None,
 ) -> pd.Series:
-    """Generic live equity loader from inventory snapshots + yfinance prices.
+    """Generic live equity loader from inventory snapshots + real prices.
     Works for both SR (holdings = ETFs) and AISS (stock_holdings = individual stocks).
+    ``price_loader(tickers, start, end) -> wide DataFrame`` overrides the default
+    yfinance download (AISS passes a Polygon-store loader; yfinance is the fallback).
     Chains daily returns from backtest last day to ensure price continuity.
     """
     live_start_ts = pd.Timestamp(live_start)
@@ -120,17 +123,32 @@ def _load_live_equity_from_inventory(
 
     price_start = (live_start_ts - pd.Timedelta(days=10)).strftime('%Y-%m-%d')
     price_end = (live_days[-1] + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
-    try:
-        prices_raw = yf.download(sorted(all_tickers), start=price_start, end=price_end,
-                                 auto_adjust=True, progress=False)
-        if len(all_tickers) > 1:
-            prices = prices_raw['Close']
-        else:
-            prices = prices_raw[['Close']]
-            prices.columns = list(all_tickers)
-    except Exception as e:
-        print(f'  [WARN] Failed to download {label} ticker prices: {e}')
-        return pd.Series(dtype=float)
+    # Preferred source = price_loader (AISS → Polygon store, more stable than
+    # yfinance); fall back to yfinance if it fails or returns nothing.
+    prices = None
+    if price_loader is not None:
+        try:
+            prices = price_loader(sorted(all_tickers), price_start, price_end)
+            if prices is None or prices.empty:
+                _polygon_fallback_alert(label, 'returned no data')
+                prices = None
+            else:
+                print(f'  {label}: live prices via Polygon store ({len(prices.columns)} tickers)')
+        except Exception as e:
+            _polygon_fallback_alert(label, repr(e))
+            prices = None
+    if prices is None:
+        try:
+            prices_raw = yf.download(sorted(all_tickers), start=price_start, end=price_end,
+                                     auto_adjust=True, progress=False)
+            if len(all_tickers) > 1:
+                prices = prices_raw['Close']
+            else:
+                prices = prices_raw[['Close']]
+                prices.columns = list(all_tickers)
+        except Exception as e:
+            print(f'  [WARN] Failed to download {label} ticker prices: {e}')
+            return pd.Series(dtype=float)
 
     # Compute raw MTM for each live day
     raw_mtm = {}
@@ -177,7 +195,8 @@ def _load_live_equity_from_inventory(
 
 def load_sr_equity_live(backtest_normalized: pd.Series,
                         trading_days: pd.DatetimeIndex) -> pd.Series:
-    """Load SR equity from live inventory snapshots + real ETF prices."""
+    """Load SR equity from live inventory snapshots + real ETF prices (Polygon,
+    same source as AISS, yfinance fallback) so SR and AISS live are identical."""
     return _load_live_equity_from_inventory(
         inv_dir=SR_INVENTORY_DIR,
         inv_prefix='inventory_sector_rotation',
@@ -186,6 +205,7 @@ def load_sr_equity_live(backtest_normalized: pd.Series,
         backtest_normalized=backtest_normalized,
         trading_days=trading_days,
         label='sr',
+        price_loader=lambda tk, s, e: _polygon_price_loader(tk, s, e, prices_dir=SR_POLYGON_STORE),
     )
 
 
@@ -199,16 +219,48 @@ def load_aiss_equity_backtest() -> pd.Series:
     return df[_best_backtest_column(df, 'AISS')].dropna()
 
 
+# Separate Polygon parquet store for SSRS sector ETFs (kept OUT of the AISS store
+# so the two universes don't mix). AISS stocks + benchmarks use the default store.
+SR_POLYGON_STORE = os.path.join(BASE_DIR, 'price_data', 'sector_etfs', 'polygon')
+
+
+def _polygon_price_loader(tickers, start, end, prices_dir=None):
+    """Shared Polygon-store price loader for the live segments + benchmarks (more
+    stable than yfinance). Uses aiss_fetch_prices.load_prices_wide, which reads the
+    isolated Polygon parquet store and incrementally refreshes any ticker stale for
+    ``end`` (auto-fetches tickers not yet in the store). ``prices_dir`` selects which
+    store: default = AISS semi_strategy (stocks + SMH/SPY); SR passes its own ETF
+    store so SSRS ETFs are not mixed into the AISS store. Both still go through the
+    same loader, so SR and AISS live are sourced identically."""
+    qlib_dir = os.path.join(BASE_DIR, 'qlib-main')
+    if qlib_dir not in sys.path:
+        sys.path.insert(0, qlib_dir)
+    from semiconductor_strategy.data import aiss_fetch_prices as _fp
+    return _fp.load_prices_wide(list(tickers), start=start, end=end, field='AdjClose',
+                                prices_dir=prices_dir)
+
+
+def _polygon_fallback_alert(label, reason):
+    """Loud alert when the Polygon source fails and we fall back to yfinance — so a
+    silent degradation never hides a Polygon outage. Goes to stderr + stdout."""
+    msg = (f'⚠️  [ALERT] {label}: POLYGON PRICE SOURCE FAILED ({reason}) — '
+           f'FELL BACK TO YFINANCE. Investigate the Polygon store / API.')
+    print(msg, file=sys.stderr)
+    print('  ' + msg)
+
+
 def load_aiss_equity_live(backtest_normalized: pd.Series,
                           trading_days: pd.DatetimeIndex) -> pd.Series:
     """Load AISS equity from live inventory snapshots + real stock prices.
     AISS inventory uses 'stock_holdings' (individual stocks, 80/15/5 decomposed
-    and cross-subsector aggregated by ticker).
+    and cross-subsector aggregated by ticker). Prices come from the Polygon store
+    (aiss_fetch_prices), with yfinance as fallback.
     """
     return _load_live_equity_from_inventory(
         inv_dir=AISS_INVENTORY_DIR,
         inv_prefix='inventory_aiss',
         holdings_key='stock_holdings',
+        price_loader=_polygon_price_loader,
         live_start=AISS_LIVE_START,
         backtest_normalized=backtest_normalized,
         trading_days=trading_days,
@@ -299,12 +351,31 @@ def main():
 
     # 5. Benchmarks (SPY, SMH) — buy-and-hold, normalized to combined_start
     benchmarks = {}
+    bm_end = (datetime.now() + pd.Timedelta(days=2)).strftime('%Y-%m-%d')
+    # Prefer Polygon (SMH/SPY are in the AISS store) so the benchmark is sourced the
+    # same way as AISS/SSRS; yfinance fallback per ticker with a loud alert.
+    bm_prices = None
+    try:
+        bm_prices = _polygon_price_loader(['SPY', 'SMH'], inception_date, bm_end)
+        if bm_prices is None or bm_prices.empty:
+            _polygon_fallback_alert('benchmarks', 'returned no data')
+            bm_prices = None
+        else:
+            print('  benchmarks: prices via Polygon store')
+    except Exception as e:
+        _polygon_fallback_alert('benchmarks', repr(e))
+        bm_prices = None
     for ticker in ('SPY', 'SMH'):
         try:
-            bm_end = (datetime.now() + pd.Timedelta(days=2)).strftime('%Y-%m-%d')
-            raw = yf.download(ticker, start=inception_date, end=bm_end,
-                              auto_adjust=True, progress=False)
-            close = raw['Close'].squeeze().dropna()
+            close = None
+            if bm_prices is not None and ticker in bm_prices.columns:
+                close = bm_prices[ticker].dropna()
+            if close is None or len(close) == 0:
+                if bm_prices is not None:
+                    _polygon_fallback_alert(ticker, 'missing in Polygon store')
+                raw = yf.download(ticker, start=inception_date, end=bm_end,
+                                  auto_adjust=True, progress=False)
+                close = raw['Close'].squeeze().dropna()
             if len(close) > 0:
                 shares = combined_start / float(close.iloc[0])
                 eq = (close * shares).round(2)
