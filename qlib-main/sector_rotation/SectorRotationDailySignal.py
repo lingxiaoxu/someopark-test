@@ -141,6 +141,32 @@ def save_inventory(inv: dict, dry_run: bool = False) -> None:
 # Macro data loading  (MacroStateStore → 不重复下载，直接读 price_data/macro/)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _macro_store_target_date(end) -> pd.Timestamp:
+    """
+    自愈更新的"目标交易日"：min(end, 今天) 当日或之前最近的一个 NYSE 交易日。
+
+    谨慎设计（避免误触发 / 引入未来信息）：
+      • 历史 / as-of 回测（end 在过去）→ 目标落在过去，store 必已覆盖 → 不触发更新。
+      • 周末 / 假日运行（end 非交易日）→ 回退到上一交易日，store 已有 → 不触发。
+      • end 误配为未来 → clamp 到今天，绝不尝试抓取未来数据。
+    返回 normalize 后的 Timestamp。
+    """
+    today = pd.Timestamp(date.today())
+    cap = today if not end else min(pd.Timestamp(end).normalize(), today)
+    try:
+        import pandas_market_calendars as mcal
+        nyse = mcal.get_calendar("NYSE")
+        sched = nyse.schedule(
+            start_date=(cap - pd.Timedelta(days=12)).strftime("%Y-%m-%d"),
+            end_date=cap.strftime("%Y-%m-%d"),
+        )
+        if not sched.empty:
+            return pd.Timestamp(sched.index[-1]).normalize()
+    except Exception:
+        pass
+    return cap
+
+
 def _load_macro_from_store(start: str, end: str) -> Optional[pd.DataFrame]:
     """
     从 MacroStateStore 加载宏观数据（读 price_data/macro/ parquets，无需 API 调用）。
@@ -156,6 +182,33 @@ def _load_macro_from_store(start: str, end: str) -> Optional[pd.DataFrame]:
     try:
         store = _MacroStateStore()
         df = store.load(start, end)
+
+        # ── Self-heal：store 落后于目标交易日时，触发一次与 pre_pipeline 完全相同的
+        #    MacroStateStore.update()（即 `MacroStateStore.py --update`），再重读一次。
+        #    只补一次、绝不循环；补完仍落后就用现有数据并告警（绝不让 signal 失败）。
+        #    目标日设计见 _macro_store_target_date：历史/as-of 回测不会触发（无未来信息）。
+        _target = _macro_store_target_date(end)
+        _store_last = pd.Timestamp(df.index[-1]).normalize() if len(df) else None
+        if _store_last is None or _store_last < _target:
+            log.warning(
+                f"MacroStateStore last="
+                f"{_store_last.date() if _store_last is not None else None} < target "
+                f"{_target.date()} — triggering one-time store.update() "
+                f"(same path as pre_pipeline 'MacroStateStore.py --update')"
+            )
+            try:
+                store.update()
+                df = store.load(start, end)   # 重读一次
+                _store_last = pd.Timestamp(df.index[-1]).normalize() if len(df) else None
+            except Exception as _e:
+                log.warning(f"MacroStateStore.update() failed: {_e}; proceeding with available macro")
+            if _store_last is None or _store_last < _target:
+                log.warning(
+                    f"MacroStateStore still behind after update "
+                    f"(last={_store_last.date() if _store_last is not None else None}, "
+                    f"target={_target.date()}); proceeding with available data"
+                )
+
         if df.empty:
             log.warning("MacroStateStore returned empty DataFrame.")
             return None

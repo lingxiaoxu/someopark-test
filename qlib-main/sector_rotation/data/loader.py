@@ -67,6 +67,20 @@ def _is_cache_fresh(path: Path, max_age_hours: float = 8.0) -> bool:
     return age_hours < max_age_hours
 
 
+def _cache_covers_end(df, end: Optional[str]) -> bool:
+    """True if the cached frame already covers the requested ``end`` date.
+    A cache written by an earlier pre-close fetch may be 'fresh' by mtime yet only
+    hold the prior close; in that case we must re-fetch rather than reuse it."""
+    if end is None:
+        return True
+    try:
+        if df is None or len(df) == 0:
+            return False
+        return pd.Timestamp(df.index[-1]).date() >= pd.Timestamp(end).date()
+    except Exception:
+        return True  # can't determine → don't force an unnecessary re-fetch
+
+
 def _load_cache(path: Path):
     with open(path, "rb") as f:
         return pickle.load(f)
@@ -124,11 +138,15 @@ def _load_prices_yfinance(
     _w.filters.insert(0, ("ignore", None, FutureWarning, None, 0))
     _w._filters_mutated()
 
-    logger.info(f"Downloading prices from yfinance: {tickers}, {start} → {end or 'today'}")
+    # yfinance 'end' is EXCLUSIVE — add one day so the requested end date's close
+    # is included. Without this an end=signal_date run silently drops that day and
+    # returns the PRIOR close (e.g. an after-close 6/5 run would only get 6/4).
+    yf_end = (pd.Timestamp(end) + pd.Timedelta(days=1)).strftime("%Y-%m-%d") if end else None
+    logger.info(f"Downloading prices from yfinance: {tickers}, {start} → {end or 'today'} (yf_end={yf_end})")
     raw = yf.download(
         tickers,
         start=start,
-        end=end,
+        end=yf_end,
         auto_adjust=auto_adjust,
         progress=False,
     )
@@ -242,8 +260,12 @@ def load_prices(
     if cache_dir:
         cp = _cache_path(cache_dir, cache_key)
         if not force_refresh and _is_cache_fresh(cp, cache_max_age_hours):
-            logger.info(f"Loading prices from cache: {cp}")
-            return _load_cache(cp)
+            cached = _load_cache(cp)
+            # target-date-aware: only reuse a fresh cache if it actually reaches ``end``
+            if _cache_covers_end(cached, end):
+                logger.info(f"Loading prices from cache: {cp}")
+                return cached
+            logger.info(f"Cache fresh but does not cover end={end}; re-fetching")
 
     if source == "mongodb":
         try:

@@ -289,7 +289,8 @@ def _persist(ticker: str, df: pd.DataFrame, source: str, meta: dict,
         "first_date": df.index[0].date().isoformat(),
         "last_date": df.index[-1].date().isoformat(),
         "rows": int(len(df)),
-        "fetched_at": date.today().isoformat(),
+        "fetched_at": date.today().isoformat(),                       # legacy (date)
+        "fetched_at_ts": datetime.now().isoformat(timespec="seconds"),  # for staleness throttle
     }
 
 
@@ -406,6 +407,28 @@ def update_all(
 # Load API (used by loader.py)
 # ---------------------------------------------------------------------------
 
+# A ticker whose store does not yet cover the requested ``end`` is re-fetched,
+# but at most once per this many hours, to avoid hammering Polygon on repeated
+# loads or when ``end``'s close is genuinely not published yet. A pre-close
+# fetch (which only gets the prior close) therefore does NOT block a later
+# after-close fetch — that was the bug where the daily after-close run reused
+# the morning's stale prices.
+_REFETCH_THROTTLE_HOURS = 1.0
+
+
+def _fetched_age_hours(entry: dict) -> float:
+    """Hours since this ticker's last fetch attempt. Prefers the precise
+    'fetched_at_ts' timestamp; falls back to the legacy 'fetched_at' date
+    (midnight). Returns a large number if unknown → eligible to re-fetch."""
+    raw = (entry or {}).get("fetched_at_ts") or (entry or {}).get("fetched_at")
+    if not raw:
+        return 1e9
+    try:
+        return (pd.Timestamp.now() - pd.Timestamp(raw)).total_seconds() / 3600.0
+    except Exception:
+        return 1e9
+
+
 def load_prices_wide(
     tickers: List[str],
     start: Optional[str] = None,
@@ -420,13 +443,14 @@ def load_prices_wide(
     semi_strategy; pass a different dir for a separate universe such as SSRS sector
     ETFs).  When ``auto_fetch`` is True a ticker is (incrementally) fetched if it is
     MISSING, or if its cached store is STALE for ``end`` — i.e. the store's last date
-    is before ``end`` and it was not already fetched today.  This keeps marks current
-    on a per-load basis, mirroring SSRS ``loader.load_prices`` (which auto-refreshes
-    via its ``cache_max_age_hours``); callers just load prices and never refresh.
+    is before ``end`` and it has not been fetched within the last
+    ``_REFETCH_THROTTLE_HOURS``.  Crucially this is time-based (not "fetched today"),
+    so a pre-close fetch that only captured the prior close does NOT block a later
+    after-close fetch of the actual close.  Mirrors SSRS ``loader.load_prices``
+    (which auto-refreshes via ``cache_max_age_hours``); callers just load prices.
     """
     cols = {}
     meta = _load_meta(prices_dir)
-    _today = date.today().isoformat()
     _end_d = pd.Timestamp(end).date() if end else None
     _changed = False
     for t in tickers:
@@ -434,8 +458,9 @@ def load_prices_wide(
         need = df is None
         if (not need) and auto_fetch and _end_d is not None and len(df):
             last = df.index[-1].date()
-            fetched = (meta.get(t) or {}).get("fetched_at")
-            if last < _end_d and fetched != _today:   # stale for this signal date
+            # Re-fetch when we don't yet have ``end``'s data, throttled by time so
+            # repeated loads (and genuinely-unpublished closes) don't hammer Polygon.
+            if last < _end_d and _fetched_age_hours(meta.get(t)) >= _REFETCH_THROTTLE_HOURS:
                 need = True
         if need and auto_fetch:
             df = update_ticker(t, start=start or DEFAULT_INIT_START, end=end,
