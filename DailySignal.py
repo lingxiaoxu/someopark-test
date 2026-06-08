@@ -2092,9 +2092,13 @@ def run_daily_signal(
                 _perf_cmd = (f'python UpdateStrategyPerformance.py '
                              f'--start {_perf_start} --end {_perf_end}')
                 subprocess.run(_perf_cmd.split(), capture_output=True, timeout=120)
+                # BDC equity (yfinance buy-and-hold) must be regenerated BEFORE
+                # UpdateMasterPerformance, which only *reads* the BDC JSON.
+                subprocess.run('python UpdateBDCPerformance.py'.split(),
+                               capture_output=True, timeout=180)
                 subprocess.run('python UpdateMasterPerformance.py'.split(),
                                capture_output=True, timeout=120)
-                log.info(f"[PERF_UPDATE] strategy + master performance updated "
+                log.info(f"[PERF_UPDATE] strategy + BDC + master performance updated "
                          f"(start={_perf_start} end={_perf_end})")
             except Exception as e:
                 log.warning(f"[PERF_UPDATE] performance update failed (non-fatal): {e}")
@@ -2190,9 +2194,13 @@ def run_daily_signal(
             _perf_cmd = (f'python UpdateStrategyPerformance.py '
                          f'--start {_perf_start} --end {_perf_end}')
             subprocess.run(_perf_cmd.split(), capture_output=True, timeout=120)
+            # BDC equity (yfinance buy-and-hold) must be regenerated BEFORE
+            # UpdateMasterPerformance, which only *reads* the BDC JSON.
+            subprocess.run('python UpdateBDCPerformance.py'.split(),
+                           capture_output=True, timeout=180)
             subprocess.run('python UpdateMasterPerformance.py'.split(),
                            capture_output=True, timeout=120)
-            log.info(f"[PERF_UPDATE] strategy + master performance updated "
+            log.info(f"[PERF_UPDATE] strategy + BDC + master performance updated "
                      f"(start={_perf_start} end={_perf_end})")
         except Exception as e:
             log.warning(f"[PERF_UPDATE] performance update failed (non-fatal): {e}")
