@@ -474,7 +474,8 @@ def _find_today_rv(context, pair_key: str, signal_date: pd.Timestamp) -> dict | 
 
 
 def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
-                  prices_today, strategy, scale_factor: float = 1.0) -> dict:
+                  prices_today, strategy, scale_factor: float = 1.0,
+                  event_close: bool = False, event_close_reason: str = "") -> dict:
     """
     Build action dict from today's recorded_vars.
     scale_factor converts backtest shares to actual-capital shares.
@@ -723,6 +724,21 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
         d.update(_legs('short'))
         return d
 
+    # Event de-risk close (semi event overlay): convert a would-be HOLD into a CLOSE.
+    # Placed after stops/exits/profit-taking (they take precedence) and OPEN checks
+    # (only non-held), so this only fires on an otherwise-held position.
+    if event_close and (in_long or in_short) and inv_direction:
+        upnl, upnl_pct = _compute_close_upnl(inv_direction)
+        d = {**base, 'action': 'CLOSE', 'direction': inv_direction,
+             'exit_threshold': ext,
+             's1_shares': s1_shares, 's2_shares': s2_shares,
+             'days_held': days_held,
+             'unrealized_pnl': upnl, 'unrealized_pnl_pct': upnl_pct,
+             'note': f'Semi event de-risk — close {inv_direction}'
+                     + (f' ({event_close_reason})' if event_close_reason else '')}
+        d.update(_legs(inv_direction))
+        return d
+
     # HOLD
     if (in_long or in_short) and inv_direction:
         dir_label = 'long' if in_long else 'short'
@@ -832,6 +848,77 @@ _PT_RETAIN_SMALL = 0.20         # small gain: retain at least 20%
 _PT_RETAIN_LARGE = 0.50         # large gain: retain at least 50%
 _PT_RETAIN_MEGA  = 0.65         # mega gain: retain at least 65%
 
+# ── Semi event-risk overlay (MRPT/MTFS; default OFF) ───────────────────────────
+# Enable only after validation:  export SEMI_EVENT_DERISK_ENABLED=1
+_EVENT_DERISK_ENABLED = os.environ.get('SEMI_EVENT_DERISK_ENABLED', '0') == '1'
+_EVENT_STATE_DIR = os.path.join(BASE_DIR, 'pipeline_state')   # per-strategy veto state lives here
+_EVENT_HEARTBEAT = os.path.join(BASE_DIR, 'trading_signals', 'event_risk_heartbeat.log')
+_event_dr_cache: dict = {}   # (date, strategy) -> result; evaluated ONCE per run so the
+                             # monitor (reduce) and extract_signals (veto) share one result
+                             # (single state-machine advance + single heartbeat line).
+
+
+def _compute_event_derisk(signal_ts, inventory: dict, strategy: str = 'mtfs') -> dict:
+    """Evaluate the semi event-risk overlay for this run. Returns
+    {active, reduce, close_set, reason, semi_set}. Reuses the shared EventRiskDetector
+    (read-only price/calendar data); persists veto state to pipeline_state/.
+    Default off; fail-safe (any error → no veto / no reduce). Cached per (date, strategy)."""
+    off = {'active': False, 'reduce': False, 'close_set': set(), 'reason': '', 'semi_set': set()}
+    if not _EVENT_DERISK_ENABLED:
+        return off
+    _key = (pd.Timestamp(signal_ts).date().isoformat(), strategy)
+    if _key in _event_dr_cache:
+        return _event_dr_cache[_key]
+    try:
+        import sys as _sys
+        if BASE_DIR not in _sys.path:
+            _sys.path.insert(0, BASE_DIR)
+        import EventRiskDetector as _erd
+        sd = signal_ts.date() if hasattr(signal_ts, 'date') else signal_ts
+        _state_path = os.path.join(_EVENT_STATE_DIR, f'semi_event_veto_{strategy}.json')  # per-strategy
+        prev = _erd.load_veto_state(_state_path)
+        state, ev = _erd.process(sd, prev, aiss_beta=None, beta_mode='topdown')  # MTFS: SMH_beta only
+        _erd.save_veto_state(_state_path,
+                             {k: state.get(k) for k in ('active', 'signal_date', 'reason', 'reduce_done')})
+        reduce_ = bool(state.get('reduce_next_open'))
+        uni = _erd.load_universe()
+        semi_set = set(uni.get('tier1', set())) | set(uni.get('tier2', set()))
+        close_set = set()
+        if reduce_:
+            t1, t2 = [], []
+            for pk, pos in inventory.get('pairs', {}).items():
+                if not (isinstance(pos, dict) and pos.get('direction') and '/' in pk):
+                    continue
+                ll = _erd.long_leg(pk, pos['direction'])
+                tier = _erd.semi_tier(ll, uni)
+                if tier is None:
+                    continue
+                if tier == 1:                      # Tier1: rank by empirical stress P&L (most negative first)
+                    sp = _erd.stress_pnl(pk, pos.get('s1_shares', 0), pos.get('s2_shares', 0), sd)
+                    t1.append((sp if sp == sp else 0.0, pk))
+                else:                              # Tier2: rank by long-leg β to SMH (highest first)
+                    b = _erd.ticker_beta(ll, sd)
+                    t2.append((-(b if b == b else 0.0), pk))   # negate so sort asc = β desc
+            t1.sort()
+            close_set |= {pk for _, pk in t1[:len(t1) // 2]}     # Tier1: close half
+            t2.sort()
+            if t2:
+                close_set.add(t2[0][1])                          # Tier2: close β-highest 1
+        log.info(f"[SEMI_EVENT] hit={ev['hit']} beta={ev.get('beta_used')} "
+                 f"active_next={state.get('veto_next_open')} reduce={reduce_} "
+                 f"close={sorted(close_set)} triggers={ev['triggers']}")
+        # Daily heartbeat (written every run, even when nothing triggers)
+        _erd.log_evaluation(ev, state, strategy.upper(), _EVENT_HEARTBEAT,
+                            extra=f"close={sorted(close_set)}")
+        result = {'active': bool(state.get('veto_next_open')), 'reduce': reduce_,
+                  'close_set': close_set, 'reason': state.get('reason', ''), 'semi_set': semi_set}
+        _event_dr_cache[_key] = result
+        return result
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"[SEMI_EVENT] skipped (non-fatal): {e}")
+        return off
+
+
 def extract_signals(context, pair_configs, signal_ts, inventory,
                     prices_today, strategy, scale_factor: float = 1.0,
                     pair_correlations: dict = None,
@@ -853,6 +940,9 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
             else:
                 log.info(f"[MACRO_GATE] MTFS gate clear — vix_term_slope_5d_chg={slope_5d_chg:.2f} "
                          f"(threshold={_MTFS_SLOPE_CHG_THRESHOLD})")
+
+    # ── Semi event-risk overlay (default off): reduce set + veto flag ──────
+    event_dr = _compute_event_derisk(signal_ts, inventory, strategy)
 
     # ── Position count & ticker exposure: count across existing positions ──
     from collections import Counter
@@ -878,7 +968,20 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
             })
             continue
         sig = _build_signal(pair_key, s1, s2, today_rv, inventory, context,
-                            prices_today, strategy, scale_factor)
+                            prices_today, strategy, scale_factor,
+                            event_close=(pair_key in event_dr['close_set']),
+                            event_close_reason=event_dr['reason'])
+
+        # Semi event-risk veto: block new opens whose LONG leg is a semiconductor
+        # (long->s1 / short->s2). Reuses the MACRO_VETO representation (zero frontend change).
+        if event_dr['active'] and sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
+            _ll = s1 if sig['action'] == 'OPEN_LONG' else s2
+            if _ll in event_dr['semi_set']:
+                original_action = sig['action']
+                sig['action'] = 'MACRO_VETO'
+                sig['original_action'] = original_action
+                sig['note'] = f"Semi event risk — {_ll} long-leg veto ({event_dr['reason']})"
+                log.info(f"[SEMI_EVENT_VETO] {pair_key}: vetoed {original_action} — {_ll}")
 
         # Apply macro gate: veto new opens only; HOLDs and CLOSEs are unaffected
         if macro_gate.get('block_new_opens') and sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
@@ -1230,6 +1333,8 @@ def _run_position_monitor(
     inv_pair: dict,
     signal_date: date,
     scale_factor: float,
+    event_close: bool = False,
+    event_close_reason: str = "",
 ) -> dict:
     """
     Run a dedicated simulation for ONE already-open pair to check today's status.
@@ -1431,7 +1536,7 @@ def _run_position_monitor(
         monitor_history_file = None
         try:
             from PortfolioClasses import ExportExcel as _ExportExcel
-            monitor_dir = os.path.join(BASE_DIR, 'trading_signals', 'monitor_history')
+            monitor_dir = os.path.join(SIGNALS_DIR, 'monitor_history')
             os.makedirs(monitor_dir, exist_ok=True)
             pair_safe = pair_key.replace('/', '_')
             ts_file = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -1533,7 +1638,8 @@ def _run_position_monitor(
             prices_today[sym] = ph[-1][1]
 
     sig = _build_signal(pair_key, s1, s2, today_rv, {'pairs': {pair_key: inv_pair}},
-                        context, prices_today, strategy, scale_factor=scale_factor)
+                        context, prices_today, strategy, scale_factor=scale_factor,
+                        event_close=event_close, event_close_reason=event_close_reason)
 
     # Tag as coming from position monitor (not new-signal selection)
     sig['monitored']  = True
@@ -1566,7 +1672,7 @@ def _run_position_monitor(
     # ── Export full monitor history to Excel ───────────────────────────────
     try:
         from PortfolioClasses import ExportExcel as _ExportExcel
-        monitor_dir = os.path.join(BASE_DIR, 'trading_signals', 'monitor_history')
+        monitor_dir = os.path.join(SIGNALS_DIR, 'monitor_history')
         os.makedirs(monitor_dir, exist_ok=True)
         pair_safe = pair_key.replace('/', '_')
         ts_file = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -1605,6 +1711,8 @@ def monitor_existing_positions(
         inventory = load_inventory(strategy)
         pairs_inv = inventory.get('pairs', {})
         sim_capital = float(inventory.get('capital', BACKTEST_BASE_CAPITAL))
+        # Semi event-risk REDUCE: which held pairs to close (cached; shared with veto)
+        _event_dr = _compute_event_derisk(signal_date, inventory, strategy)
 
         # Actual capital for scaling
         if strategy == 'mrpt':
@@ -1631,6 +1739,8 @@ def monitor_existing_positions(
                     inv_pair=inv_pair,
                     signal_date=signal_date,
                     scale_factor=scale_factor,
+                    event_close=(pair_key in _event_dr['close_set']),
+                    event_close_reason=_event_dr['reason'],
                 )
             except Exception as e:
                 log.error(f"[monitor] {pair_key}: monitor failed: {e}", exc_info=True)

@@ -145,8 +145,15 @@ case "$MODE" in
 
     daily)
         check_nyse_open
-        # AISSdailySignal refreshes the price store itself (incremental, before
-        # marking) so positions mark to today's close regardless of how it's invoked.
+        # Event-risk shared data refresh (NON-FATAL, idempotent): keeps the event_risk
+        # price store + NFP/bellwether calendars current so the AISS event-risk overlay
+        # (in AISSdailySignal) reads fresh data even if the someopark conductor hasn't
+        # run its refresh yet.  Safe to run from both pipelines (dedupe keep-last).
+        hr; log "event-risk data refresh (non-fatal)"; hr
+        PY "$REPO_ROOT/RefreshEventRiskData.py" 2>&1 | tee "$LOG_DIR/aiss_event_refresh_$TS.log" \
+            || log "WARN: event-risk data refresh failed (non-fatal, continuing)"
+        # AISSdailySignal refreshes its own price store (incremental, before marking)
+        # so positions mark to today's close regardless of how it's invoked.
         hr; log "AISS daily signal"; hr
         PY -m $PKG.AISSdailySignal "$@" 2>&1 | tee "$LOG_DIR/aiss_daily_$TS.log"
         ;;

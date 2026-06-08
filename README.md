@@ -126,6 +126,22 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 事件风险降险 overlay（半导体）
+
+半导体崩盘保护层（可开关）。**两条触发(任一即降险)**：
+- `SMH 对 SPY 30d β > 2.5` 且未来 2 个交易日内有 **NFP**
+- **NVDA / AVGO 财报反应日收盘 < −4.5%**（龙头传染）
+
+命中时（T 收盘出信号 → T+1 执行）：MRPT/MTFS **关掉"做多腿是半导体"的合格 pair 一半**（Tier1 关半 / Tier2 关 β 最高 1 对）+ **veto 半导体做多腿新开**（复用 `MACRO_VETO`）。veto 持续 T+1~T+2，SMH 当日 < −3% 即提前解，最迟 T+3。AISS 侧是"卖一半→cash"，见 `qlib-main/semiconductor_strategy/README.md`。
+
+- **核心模块**：`EventRiskDetector.py`（两策略共享检测器）
+- **启用**：`.env` 中 `SEMI_EVENT_DERISK_ENABLED=1`（默认 off）
+- **每日留痕**（不触发也写一行）：`trading_signals/event_risk_heartbeat.log`；详细见日志 `[SEMI_EVENT]`
+- **数据维护**：`RefreshEventRiskData.py`（conductor 每日**非致命**早步：刷 `price_data/event_risk/` 价库 + NFP 日历 + bellwether 财报日历 + 死票哨兵）
+- **安全测试(零生产污染)**：`RunDailySignalSandbox.py mtfs|mrpt <date>`（读真实输入，所有输出进一次性沙盒，dry_run 跳过所有生产写入）
+
+---
+
 ## 更换配对的完整流程
 
 当需要重新筛选交易配对时（例如：定期更新、回测表现下滑），按以下顺序操作：

@@ -626,6 +626,29 @@ walk_forward/
 
 ---
 
+## 事件风险降险 overlay（半导体，MRPT/MTFS）
+
+半导体崩盘保护（默认 off）。触发：`SMH 30d β-vs-SPY > 2.5` 且 2 交易日内有 NFP；或 NVDA/AVGO 财报反应日收盘 < −4.5%。命中 → T+1 关一半"做多腿含半导体"的 pair + veto 半导体做多腿新开（`MACRO_VETO`）；SMH 当日<−3% 提前解 veto，最迟 T+3。
+
+```bash
+# 启用(默认 off):.env 加
+SEMI_EVENT_DERISK_ENABLED=1
+
+# 数据维护(conductor 每日非致命早步会自动跑;手动:)
+set -a && source .env && set +a
+conda run -n qlib_run --no-capture-output python RefreshEventRiskData.py   # 刷 event_risk 价库+NFP+bellwether 日历+死票哨兵
+conda run -n qlib_run --no-capture-output python FetchBellwetherEarnings.py # 仅 NVDA/AVGO 前向财报日历
+
+# 安全测试(零生产污染:读真实输入,输出全进一次性沙盒,dry_run 跳过所有生产写入)
+conda run -n someopark_run --no-capture-output python RunDailySignalSandbox.py mtfs 2026-06-04   # / mrpt
+```
+
+- 每日留痕(不触发也写一行):`trading_signals/event_risk_heartbeat.log`;日志 `[SEMI_EVENT]` / `[SEMI_EVENT_VETO]`
+- 核心模块:`EventRiskDetector.py`(两策略共享);状态:`pipeline_state/semi_event_veto.json`
+- AISS 侧(qlib_run)见 `qlib-main/semiconductor_strategy/RUNBOOK.md`
+
+---
+
 ## trading_signals/ — 每日信号文件结构
 
 ### 文件名规律

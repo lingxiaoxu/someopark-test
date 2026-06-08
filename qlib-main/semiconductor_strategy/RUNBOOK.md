@@ -114,6 +114,29 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh status   # curre
 
 ---
 
+## 1b. Event-risk de-risk overlay (semi crash protection)
+
+Extra de-risk layer on top of VIX (config switch, **ENABLED**). Triggers (either):
+`max(SMH bottom-up β, portfolio_beta) > 2.5` AND an NFP within 2 trading days; OR
+NVDA/AVGO earnings reaction-day close < −4.5%. On hit → **sell half the book → cash**
+(`apply_risk_controls` event tier), held until SMH < −3% lifts it (T+3 cap).
+
+```bash
+# Enable (default off): config.yaml -> risk.event_derisk.enabled: true   (already on)
+# Daily heartbeat (written every run, even no-trigger):
+tail -n 20 qlib-main/semiconductor_strategy/trading_signals/event_risk_heartbeat.log   # + log lines [EVENT_DERISK]
+# Shared data refresh (root, qlib_run; conductor runs it daily, non-fatal):
+set -a && source .env && set +a
+conda run -n qlib_run --no-capture-output python RefreshEventRiskData.py
+# Safe test — zero production writes (real inputs, all outputs to a throwaway sandbox):
+conda run -n qlib_run --no-capture-output python RunDailySignalSandbox.py aiss 2026-06-04
+```
+
+State persists in `inventory_aiss.json` (`event_derisk_active`, mirrors `emergency_mode_active`).
+Detector: root `EventRiskDetector.py` (shared with MRPT/MTFS).
+
+---
+
 ## 2. Validation — the win criterion (go/no-go)
 
 ```bash

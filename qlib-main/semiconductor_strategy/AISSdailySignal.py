@@ -973,6 +973,10 @@ def run_daily_signal(
         except Exception as _tilt_e:
             log.debug(f"[P3] Weight tilt skipped: {_tilt_e}")
 
+    # Inventory loaded here (early) so the event-risk overlay (6a) can read/persist
+    # its event_derisk_active state before risk controls are applied.
+    inv = load_inventory()
+
     # ── 6. Apply risk controls ─────────────────────────────────────
     log.info("Applying risk controls...")
     # Approximate portfolio returns: equal-weight sector basket
@@ -980,6 +984,53 @@ def run_daily_signal(
 
     prog_cfg   = risk_cfg.get("vix_progressive_derisk", {})
     prog_tiers = prog_cfg.get("tiers", []) if prog_cfg.get("enabled", False) else []
+
+    # ── 6a. Event-risk overlay (semi de-risk; default off) ──────────
+    # Independent detector (shared EventRiskDetector); mirrors emergency_mode_active
+    # lifecycle (persist in inventory; daily re-apply holds the de-risk, no buy-back).
+    ev_cfg = risk_cfg.get("event_derisk", {})
+    event_active = False
+    event_reason = ""
+    if ev_cfg.get("enabled", False):
+        try:
+            import sys as _sys, os as _os
+            _repo = _os.path.dirname(_os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+            if _repo not in _sys.path:
+                _sys.path.insert(0, _repo)
+            import EventRiskDetector as _erd
+            from semiconductor_strategy.portfolio.risk import estimate_sector_betas as _esb
+            # AISS portfolio beta vs SPY on the RAW (pre-de-risk) target weights (§3)
+            _aiss_beta = float("nan")
+            _bench_ret = (bench_prices[benchmark].pct_change().dropna()
+                          if bench_prices is not None and benchmark in bench_prices.columns else None)
+            if _bench_ret is not None and not daily_returns.empty:
+                _sb = _esb(daily_returns, _bench_ret)
+                _aiss_beta = float((target_weights_raw *
+                                    _sb.reindex(target_weights_raw.index).fillna(1.0)).sum())
+            _prev = {"active": inv.get("event_derisk_active", False),
+                     "signal_date": inv.get("event_signal_date"),
+                     "reason": inv.get("event_derisk_reason", ""),
+                     "reduce_done": inv.get("event_reduce_done", False)}
+            _state, _ev = _erd.process(
+                signal_date, _prev, aiss_beta=_aiss_beta,
+                beta_mode=ev_cfg.get("beta_mode", "bottomup"),
+                beta_threshold=ev_cfg.get("beta_threshold", 2.5),
+                nfp_days=ev_cfg.get("nfp_window_days", 2),
+                bellwether_thresh=ev_cfg.get("bellwether_drop", -0.045))
+            event_active = bool(_state.get("veto_next_open"))
+            event_reason = _state.get("reason", "")
+            inv["event_derisk_active"] = bool(_state.get("active"))
+            inv["event_signal_date"]   = _state.get("signal_date")
+            inv["event_derisk_reason"] = event_reason
+            inv["event_reduce_done"]   = bool(_state.get("reduce_done"))
+            log.info(f"[EVENT_DERISK] hit={_ev['hit']} beta_used={_ev.get('beta_used')} "
+                     f"active_next={event_active} triggers={_ev['triggers']}")
+            # Daily heartbeat (written every run, even when nothing triggers)
+            _erd.log_evaluation(_ev, _state, "AISS",
+                                str(SIGNALS_DIR / "event_risk_heartbeat.log"),
+                                extra=f"aiss_beta={_aiss_beta:.2f}")
+        except Exception as _e:  # noqa: BLE001
+            log.warning(f"[EVENT_DERISK] skipped (non-fatal): {_e}")
 
     target_weights, cash_weight, risk_flags = apply_risk_controls(
         weights=target_weights_raw,
@@ -1004,6 +1055,9 @@ def run_daily_signal(
         beta_min=port_cfg.get("constraints", {}).get("beta_min", 0.40),
         beta_max=port_cfg.get("constraints", {}).get("beta_max", 3.00),
         vix_progressive_tiers=prog_tiers,
+        event_derisk_active=event_active,
+        event_derisk_frac=ev_cfg.get("sell_frac", 0.5),
+        event_derisk_reason=event_reason,
     )
 
     # ── 6b. Macro anomaly auto-conservative (P3) ────────────────
@@ -1022,7 +1076,7 @@ def run_daily_signal(
     log.info(f"Cash allocation: {cash_weight:.1%}  Risk flags: {risk_flags}")
 
     # ── 7. Rebalance decision ──────────────────────────────────────
-    inv = load_inventory()
+    # (inv already loaded above at step 6 for the event-risk overlay)
     inv["capital"] = capital
     # Whether the per-calendar-day update already ran today — captured ONCE here,
     # before any branch mutates inv["last_daily_update"], so the subsector AND the

@@ -217,6 +217,15 @@ risk:
     tiers:
       - {vix_above: 28, cash_pct: 0.10}
       - {vix_above: 32, cash_pct: 0.25}
+  # Event-risk overlay (semi de-risk: β+NFP / NVDA·AVGO earnings contagion).
+  # ENABLED (validated: D7 offline replay Sharpe 1.02->1.14, 6/4 reproduction).
+  event_derisk:
+    enabled: true
+    beta_threshold: 2.5
+    nfp_window_days: 2
+    bellwether_drop: -0.045
+    sell_frac: 0.5             # sell half the book -> cash while active
+    beta_mode: bottomup        # live: SMH beta from holdings (falls back to top-down)
 
 # ---------------------------------------------------------------------------
 # Stop-loss (extreme events only)

@@ -84,6 +84,14 @@ run_step() {
 log "=== PIPELINE START (PID=$$, PPID=$PPID) ==="
 echo "RUNNING" > "$PIPEDIR/status"
 
+# Semi event-risk data refresh (qlib_run; runs BEFORE the strategies so both
+# MTFS and AISS read fresh event_risk data). NON-FATAL: a failure must not abort
+# the daily pipeline (the overlay is default-off until validated + enabled).
+log "[event-risk] refreshing event_risk data (non-fatal)..."
+conda run -n qlib_run --no-capture-output python "$REPO/RefreshEventRiskData.py" >> "$LOGFILE" 2>&1 \
+    && log "[event-risk] data refresh done" \
+    || log "[event-risk] WARN: data refresh failed (non-fatal, continuing)"
+
 run_step 3 "MRPTWalkForward.py --oos-windows 6" "MRPTWalkForward"
 run_step 4 "MRPTWalkForwardReport.py" "MRPTWalkForwardReport"
 run_step 5 "MTFSWalkForward.py --oos-windows 6" "MTFSWalkForward"

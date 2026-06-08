@@ -212,6 +212,22 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh test
 
 ---
 
+## 事件风险降险 overlay（半导体崩盘保护）
+
+在 VIX 降险之外**叠加**一层事件降险（`config.yaml` 开关，**已启用**）。**触发(任一)**：
+- `max(SMH 自下而上 β, 组合 portfolio_beta) > 2.5` 且未来 2 个交易日内有 **NFP**
+- **NVDA / AVGO 财报反应日收盘 < −4.5%**（龙头传染）
+
+命中 → **卖掉持仓一半 → cash**（`apply_risk_controls` 叠加档，与 DD/vol 同范式）；复用 `emergency_mode_active` 范式持久化在 `inventory_aiss.json`（`event_derisk_active`），veto 期内每日重算自动 hold 不回补；SMH 当日 < −3% 提前解，最迟 T+3。
+
+- **启用**：`config.yaml` → `risk.event_derisk.enabled: true`（默认 off；回测口径用 top-down SMH β）
+- **每日留痕**（不触发也写一行）：`trading_signals/event_risk_heartbeat.log`；日志 `[EVENT_DERISK]`
+- **共享数据**（根 `RefreshEventRiskData.py` 维护）：`price_data/event_risk/` 价库、`price_data/macro/nfp/`、`price_data/macro/earnings_bellwether/`、`price_data/semiconductor_universe.json`
+- **安全测试(零生产污染)**：根目录 `conda run -n qlib_run --no-capture-output python RunDailySignalSandbox.py aiss <date>`
+- 检测器:根 `EventRiskDetector.py`(两策略共享)
+
+---
+
 ## 数据层维护（PIT，可回填，生产增量）
 
 AISS 没有 SSRS 的 EPS 步骤；它的"另类数据"层全部隔离在 `price_data/semi_strategy/` 下，采用**仅追加的 PIT 冻结**存储（数据刷新不会改写历史 → 可复现）。

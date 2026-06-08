@@ -44,6 +44,8 @@ class RiskFlags:
     portfolio_beta: float = float("nan")
     current_dd_pct: float = float("nan")
     cash_pct: float = 0.0
+    event_derisk_triggered: bool = False
+    event_derisk_reason: str = ""
     notes: List[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -204,6 +206,9 @@ def apply_risk_controls(
     beta_max: float = 3.00,        # AISS (SSRS 1.15) — do not fight the high semis beta
     max_weight: float = 0.55,      # AISS (SSRS 0.40) — concentrate in winners
     vix_progressive_tiers: Optional[list] = None,
+    event_derisk_active: bool = False,
+    event_derisk_frac: float = 0.5,
+    event_derisk_reason: str = "",
 ) -> Tuple[pd.Series, float, RiskFlags]:
     """
     Apply all risk controls and return adjusted weights + cash allocation.
@@ -309,6 +314,25 @@ def apply_risk_controls(
                 f"Progressive VIX de-risk: VIX={current_vix:.1f} ≥ {prog_vix_hit}, "
                 f"cash_pct={prog_cash:.0%}"
             )
+
+    # -------------------------------------------------------------------
+    # 1c. Event-risk de-risk (semi event overlay; default off)
+    #     Additive-on-remaining (same pattern as DD/vol): sell `frac` of the
+    #     currently-invested book to cash. event_derisk_frac=0.5 = sell half.
+    #     Driven by an external persisted flag (veto state machine, §8.3);
+    #     while active, this re-applies daily → naturally holds (no buy-back).
+    # -------------------------------------------------------------------
+    if event_derisk_active and event_derisk_frac > 0:
+        ev_cash = (1.0 - cash_pct) * float(event_derisk_frac)
+        cash_pct = min(cash_pct + ev_cash, 0.95)
+        adjusted_weights = adjusted_weights * (1.0 - float(event_derisk_frac))
+        flags.event_derisk_triggered = True
+        flags.event_derisk_reason = event_derisk_reason
+        flags.cash_pct = cash_pct
+        flags.notes.append(f"Event de-risk: sold {event_derisk_frac:.0%} → cash"
+                           + (f" ({event_derisk_reason})" if event_derisk_reason else ""))
+        logger.warning(f"EVENT DE-RISK: sell {event_derisk_frac:.0%} → cash"
+                       f"{' — ' + event_derisk_reason if event_derisk_reason else ''}")
 
     # -------------------------------------------------------------------
     # 2. Drawdown circuit breaker
