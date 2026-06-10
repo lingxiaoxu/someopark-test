@@ -470,15 +470,23 @@ class FinancialStatements:
         # ── View 1: Balance Sheet Method ──────────────────────────────────
         # Professional long-short fund: short proceeds are RESTRICTED by PB.
         # Longs funded by: equity + margin loan (NOT short proceeds).
-        M = max(0.0, L - E)              # margin loan: PB lends when L > equity
-        free_cash = E - L + M            # = max(0, E - L) = 0 when leveraged
         restricted_cash = S * SHORT_COLLATERAL_RATIO  # 102% of short MV held by PB
-        short_collateral_due = S * (SHORT_COLLATERAL_RATIO - 1.0)  # excess 2%
+        short_collateral_due = S * (SHORT_COLLATERAL_RATIO - 1.0)  # excess 2% over short proceeds
+        # Equity funds the longs first, then the 2% excess short collateral; any
+        # remaining shortfall is borrowed.  The margin loan therefore splits into a
+        # long-financing part and a 2%-short-collateral part, and free cash is the
+        # leftover equity FLOORED AT 0 (when levered the 2% is financed, not negative).
+        long_margin  = max(0.0, L - E)                        # PB lends when longs > equity
+        equity_left  = max(0.0, E - L)                        # equity remaining after longs
+        short_equity = min(short_collateral_due, equity_left) # 2% funded by equity (if any left)
+        short_margin = short_collateral_due - short_equity    # 2% shortfall → financed
+        M = long_margin + short_margin                        # total margin loan = max(0, L+0.02S-E)
+        free_cash = max(0.0, E - L - short_collateral_due)    # leftover equity, floored at 0
         # Assets = Free Cash + Restricted Cash + Long Securities
-        # Liabilities = Short Obligation + Short Collateral Due + Margin Loan
-        # Identity: (E-L+M) + 1.02S + L - S - 0.02S - M = E ✓
+        # Liabilities = Short Obligation + Margin Loan (long financing + financed 2% collateral)
+        # Identity: free_cash + 1.02S + L - S - M = E  (the equity-posted 2% lives in restricted_cash)
         total_assets = free_cash + restricted_cash + L
-        total_liabilities = S + short_collateral_due + M
+        total_liabilities = S + M
         # Accrued costs (daily estimates)
         accrued_financing = M * ANNUAL_FINANCING_RATE / 365
         accrued_borrow_fee = S * BORROW_FEE_RATE / 365
@@ -488,28 +496,27 @@ class FinancialStatements:
         pm_requirement = G * PORTFOLIO_MARGIN_PCT
         excess_liquidity = E - pm_requirement
 
-        # ── View 2: Long/Short Book ───────────────────────────────────────
-        if G > 0:
-            long_alloc  = E * (L / G)     # pro-rata capital allocation
-            short_alloc = E * (S / G)
-            unalloc_cash = E - long_alloc - short_alloc  # rounding residual ≈ 0
-        else:
-            long_alloc = short_alloc = 0.0
-            unalloc_cash = E
-
-        # Long Book
-        long_margin = max(0.0, L - long_alloc)
-        long_cash = long_alloc - L + long_margin   # = 0 when fully invested
+        # ── View 2: Long/Short Book (mirrors the Balance-Sheet financing) ──
+        # Reuses long_margin / short_equity / short_margin from View 1, so the total
+        # margin loan M splits cleanly into Long-Book financing + Short-Book (2%
+        # collateral) financing, and the two views reconcile exactly (dual_nav == E).
+        long_alloc = L - long_margin                 # equity funding the longs (= L when unlevered)
+        long_cash = 0.0                              # fully invested
         long_financing = long_margin * ANNUAL_FINANCING_RATE / 365
-        long_book_nav = long_cash + L - long_margin  # = long_alloc
+        long_book_nav = L - long_margin              # = long_alloc
 
-        # Short Book
+        # Short Book — equity posted = equity-funded part of the 2% collateral;
+        # any financed part is short_margin (rolled into the total margin loan M).
+        short_alloc = short_equity
         short_collateral = short_alloc
         short_proceeds = S                # restricted cash from short sales
         short_borrow_fee = S * BORROW_FEE_RATE / 365
         short_rebate = 0.0                # placeholder
-        short_book_nav = short_collateral + short_proceeds - S - short_borrow_fee + short_rebate
-        # = short_alloc + S - S - 0 + 0 = short_alloc
+        short_financing = short_margin * ANNUAL_FINANCING_RATE / 365
+        short_book_nav = short_alloc      # = 1.02S - S - short_margin = short_equity
+
+        # Unallocated (genuinely free) equity = View-1 free_cash
+        unalloc_cash = E - long_alloc - short_alloc
 
         dual_nav = long_book_nav + short_book_nav + unalloc_cash
         nav_alignment_check = abs(dual_nav - E)  # should be < 0.01
@@ -549,6 +556,8 @@ class FinancialStatements:
                 'collateral_cash': _round(short_collateral),
                 'short_proceeds': _round(short_proceeds),
                 'market_value': _round(S),
+                'margin_loan': _round(short_margin),
+                'financing_cost_daily': _round(short_financing),
                 'borrow_fee_daily': _round(short_borrow_fee),
                 'rebate_daily': _round(short_rebate),
                 'book_nav': _round(short_book_nav),
@@ -1509,7 +1518,6 @@ class RiskWorkbookExporter:
             ('Long Securities 多头证券', 'long_securities', True, False),
             ('Total Assets 总资产', 'total_assets', True, True),
             ('Short Securities 空头证券 (义务)', 'short_securities', True, False),
-            ('Short Collateral Due 担保差额 2%', 'short_collateral_due', True, False),
             ('Margin Loan 保证金借款', 'margin_loan', True, False),
             ('Total Liabilities 总负债', 'total_liabilities', True, True),
             ('NAV (Equity) 净值 = TA - TL', 'nav', True, True),
@@ -1531,6 +1539,7 @@ class RiskWorkbookExporter:
             ('Short Book — Collateral 担保金', 'short_book.collateral_cash', True, False),
             ('Short Book — Short Proceeds 做空收入', 'short_book.short_proceeds', True, False),
             ('Short Book — Market Value 市值(负债)', 'short_book.market_value', True, False),
+            ('Short Book — Margin Loan 融资(2%)', 'short_book.margin_loan', True, False),
             ('Short Book — NAV', 'short_book.book_nav', True, True),
             ('Unallocated Cash 未分配现金', 'unallocated_cash', True, False),
             ('Dual-View NAV 双账户法NAV', 'dual_nav', True, True),
@@ -2133,8 +2142,7 @@ class RiskPDFReporter:
             ('多头证券', 'long_securities', True),
             ('总资产', 'total_assets', True),
             ('空头证券（回补义务）', 'short_securities', True),
-            ('空头担保金差额（2%）', 'short_collateral_due', True),
-            ('保证金借款（Long 融资）', 'margin_loan', True),
+            ('保证金借款（多头融资 + 2% 空头担保）', 'margin_loan', True),
             ('总负债', 'total_liabilities', True),
             ('NAV（净值）= TA - TL', 'nav', True),
             ('总 / 净杠杆 (x)', 'gross_leverage', False),
@@ -2167,6 +2175,7 @@ class RiskPDFReporter:
             ('Short Book 担保金', 'short_book.collateral_cash', True),
             ('Short Book 做空收入', 'short_book.short_proceeds', True),
             ('Short Book 市值（负债）', 'short_book.market_value', True),
+            ('Short Book 融资（2% 担保）', 'short_book.margin_loan', True),
             ('Short Book NAV', 'short_book.book_nav', True),
             ('未分配现金', 'unallocated_cash', True),
             ('双账户法 NAV', 'dual_nav', True),
@@ -2451,7 +2460,7 @@ def _write_txt(path, report):
     P(f"  Long securities:    ${bs.get('long_securities', 0):,.0f}")
     P(f"  Total assets:       ${bs.get('total_assets', 0):,.0f}")
     P(f"  Short securities:   ${bs.get('short_securities', 0):,.0f}  (repurchase obligation)")
-    P(f"  Short collateral 2%:${bs.get('short_collateral_due', 0):,.0f}")
+    P(f"  Short collat. 2%:   ${bs.get('short_collateral_due', 0):,.0f}  (equity-posted, locked in restricted cash — not a liability)")
     P(f"  Margin loan:        ${bs.get('margin_loan', 0):,.0f}  (PB financing for longs)")
     P(f"  Total liabilities:  ${bs.get('total_liabilities', 0):,.0f}")
     P(f"  NAV (equity):       ${bs.get('nav', 0):,.0f}    (balance check: {bs.get('balance_check')})")
