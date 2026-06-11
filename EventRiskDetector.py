@@ -25,6 +25,8 @@ import os
 import sys
 import json
 import glob
+import time
+import random
 from datetime import date, timedelta, datetime
 
 import numpy as np
@@ -44,6 +46,32 @@ DEFAULT_NFP_DAYS = 2
 DEFAULT_BELLWETHER_DROP = -0.045
 BIG_DROP_THRESHOLD = -0.03          # SMH single-day drop that lifts the veto early
 BETA_WINDOW = 30
+
+# yfinance fundamentals endpoints (funds_data holdings, .calendar) are the most
+# aggressively rate-limited Yahoo surfaces; Polygon — even Massive — has no ETF-holdings
+# or forward-earnings-calendar endpoint, so yfinance is the only source for both. Each
+# call is quasi-static, so a few jittered retries clear transient 429s before we degrade.
+# Random (not fixed) spacing avoids a synchronized retry storm.
+_YF_RETRIES = 4
+_YF_BACKOFF = (1.0, 3.0)            # random sleep seconds between attempts
+
+
+def retry_yf(fn, what: str, retries: int = _YF_RETRIES, backoff: tuple = _YF_BACKOFF):
+    """Run `fn` with randomized 1–3s retry on failure (yfinance rate limits).
+    Shared by SMH-holdings (bottom-up β) and bellwether .calendar fetches.
+    Raises after all attempts fail — the caller applies its own degradation."""
+    last_err = None
+    for attempt in range(1, retries + 1):
+        try:
+            return fn()
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            if attempt < retries:
+                delay = random.uniform(*backoff)
+                _alert(f"{what} fetch {attempt}/{retries} failed ({e!r}); "
+                       f"retrying in {delay:.1f}s.")
+                time.sleep(delay)
+    raise RuntimeError(f"{what} unavailable after {retries} attempts: {last_err!r}")
 
 
 def _alert(msg: str) -> None:
@@ -119,12 +147,25 @@ def smh_beta_topdown(asof, prices_dir: str = EVENT_STORE, window: int = BETA_WIN
     return _rolling_beta(_returns("SMH", prices_dir), _returns("SPY", prices_dir), asof, window)
 
 
-def smh_beta_bottomup(asof, prices_dir: str = EVENT_STORE, window: int = BETA_WINDOW) -> float:
-    """Live: Σ w_i·β_i over SMH's current holdings (yfinance). Falls back to top-down."""
-    try:
+def _fetch_smh_holdings() -> dict:
+    """SMH top-10 holdings → {ticker: weight} from yfinance via retry_yf.
+    Raises after all attempts fail (caller degrades to top-down)."""
+    def _pull():
         import yfinance as yf
         th = yf.Ticker("SMH").funds_data.top_holdings
         weights = {str(t): float(w) for t, w in th["Holding Percent"].items()}
+        if not weights:
+            raise ValueError("empty SMH holdings")
+        return weights
+    return retry_yf(_pull, "SMH holdings")
+
+
+def smh_beta_bottomup(asof, prices_dir: str = EVENT_STORE, window: int = BETA_WINDOW) -> float:
+    """Live: Σ w_i·β_i over SMH's current holdings. Holdings from yfinance (with
+    randomized 1–3s retry on 429); constituent betas from the local Polygon price
+    store. Falls back to top-down only after retries are exhausted."""
+    try:
+        weights = _fetch_smh_holdings()
         spy = _returns("SPY", prices_dir)
         num = den = 0.0
         for t, w in weights.items():

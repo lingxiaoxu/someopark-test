@@ -1,0 +1,92 @@
+[
+  {
+    "s1": "BWA",
+    "s2": "INTU",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "BWA",
+    "s2": "BSX",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "STLD",
+    "s2": "FMC",
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
+  },
+  {
+    "s1": "STLD",
+    "s2": "UHS",
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
+  },
+  {
+    "s1": "KLAC",
+    "s2": "JKHY",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "KLAC",
+    "s2": "NFLX",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "UNH",
+    "s2": "PYPL",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "UNH",
+    "s2": "CMCSA",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "MGM",
+    "s2": "GDDY",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "MGM",
+    "s2": "FISV",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "HST",
+    "s2": "MOS",
+    "sector": "realestate",
+    "spread_col": "Momentum_Spread_realestate"
+  },
+  {
+    "s1": "HST",
+    "s2": "ADBE",
+    "sector": "realestate",
+    "spread_col": "Momentum_Spread_realestate"
+  },
+  {
+    "s1": "MPC",
+    "s2": "ULTA",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "MPC",
+    "s2": "ICE",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "VLO",
+    "s2": "GPN",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  }
+]

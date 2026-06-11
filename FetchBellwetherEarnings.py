@@ -42,9 +42,19 @@ def _alert(msg: str) -> None:
 
 
 def _next_earnings_date(ticker: str):
-    """Next scheduled earnings date via yfinance .calendar (forward). None on failure."""
-    import yfinance as yf
-    cal = yf.Ticker(ticker).calendar
+    """Next scheduled earnings date via yfinance .calendar (forward), with the
+    same randomized 1–3s rate-limit retry as the SMH-holdings fetch
+    (EventRiskDetector.retry_yf). None when no date is scheduled; raises after
+    all retries fail (caller keeps last-good)."""
+    if _ROOT not in sys.path:
+        sys.path.insert(0, _ROOT)
+    from EventRiskDetector import retry_yf
+
+    def _pull():
+        import yfinance as yf
+        return yf.Ticker(ticker).calendar
+
+    cal = retry_yf(_pull, f"{ticker} .calendar")
     ed = cal.get("Earnings Date") if isinstance(cal, dict) else None
     if not ed:
         return None

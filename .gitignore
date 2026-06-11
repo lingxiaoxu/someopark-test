@@ -98,3 +98,6 @@ public/
 
 # Zip archives
 *.zip
+
+# transient pre-dualbook-fix risk-report backup (local rollback only)
+trading_signals/risk_report_backup_predualbookfix_20260610/

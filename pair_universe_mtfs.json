@@ -7,85 +7,85 @@
   },
   {
     "s1": "STLD",
-    "s2": "MKTX",
-    "sector": "materials",
-    "spread_col": "Momentum_Spread_materials"
-  },
-  {
-    "s1": "NUE",
-    "s2": "BSX",
-    "sector": "materials",
-    "spread_col": "Momentum_Spread_materials"
-  },
-  {
-    "s1": "NUE",
-    "s2": "UHS",
-    "sector": "materials",
-    "spread_col": "Momentum_Spread_materials"
-  },
-  {
-    "s1": "BWA",
     "s2": "FMC",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
+    "sector": "materials",
+    "spread_col": "Momentum_Spread_materials"
   },
   {
-    "s1": "BWA",
-    "s2": "HCA",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "LRCX",
-    "s2": "JKHY",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "LRCX",
-    "s2": "HII",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "ORCL",
-    "s2": "CAG",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "ORCL",
-    "s2": "RMD",
+    "s1": "KLAC",
+    "s2": "TRMB",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "KLAC",
-    "s2": "NFLX",
+    "s2": "NRG",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "KLAC",
-    "s2": "ULTA",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "VLO",
+    "s2": "UHS",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
   },
   {
-    "s1": "MGM",
+    "s1": "VLO",
     "s2": "PYPL",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "MGM",
+    "s2": "JKHY",
     "sector": "food",
     "spread_col": "Momentum_Spread_food"
   },
   {
     "s1": "MGM",
-    "s2": "CMCSA",
+    "s2": "NEM",
     "sector": "food",
     "spread_col": "Momentum_Spread_food"
   },
   {
-    "s1": "MPC",
-    "s2": "LOW",
+    "s1": "ODFL",
+    "s2": "NFLX",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "ODFL",
+    "s2": "MOS",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "UNH",
+    "s2": "ULTA",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "UNH",
+    "s2": "PLTR",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "CVS",
+    "s2": "GPN",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "CVS",
+    "s2": "FISV",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "PSX",
+    "s2": "ADBE",
     "sector": "energy",
     "spread_col": "Momentum_Spread_energy"
   }
