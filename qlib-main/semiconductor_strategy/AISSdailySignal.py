@@ -723,6 +723,21 @@ def run_daily_signal(
         signal_date = today
     log.info(f"Signal date: {signal_date}")
 
+    # ── 0b. Corporate actions（拆股/合股）检测与应用 ────────────────
+    # 必须在任何价格加载/MTM 之前：价格源（Polygon/yfinance）在 split 后
+    # 全历史回溯调整，inventory 的 shares/cost_basis/last_price 仍是旧口径。
+    # 与 mrpt/mtfs/ssrs 共用根目录 CorporateActions（统一 splits 源 + 留痕 +
+    # 日志 trading_signals/corporate_actions.log）。幂等，失败降级不阻断。
+    if not dry_run:
+        try:
+            from CorporateActions import run_for as _ca_run_for
+            _ca = _ca_run_for('aiss')
+            if _ca.get('applied'):
+                log.warning(f"[CA][aiss] {len(_ca['applied'])} corporate action(s) "
+                            f"applied to inventory — see corporate_actions.log")
+        except Exception as _ca_e:
+            log.warning(f"[CA][aiss] check failed (non-fatal): {_ca_e}")
+
     # ── 1. Load config ────────────────────────────────────────────
     cfg = load_config(config_path or CONFIG_PATH)
     if force_signal_version:

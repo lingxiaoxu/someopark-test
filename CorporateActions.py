@@ -114,6 +114,22 @@ def _ca_log(line: str):
         f.write(f'{ts} {line}\n')
 
 
+def _log_status(scope: str, status: str, detail: str):
+    """统一状态行：检查有没有跑、有没有检测到、有没有应用，一行说清。
+
+    status 取值：
+      NO-ACTION-NEEDED  检查跑了，窗口内无相关 split
+      ALREADY-APPLIED   检测到 split 但留痕显示已应用（幂等跳过）
+      APPLIED           检测到并实际调整了 inventory
+      DRY-RUN           检测到但 dry-run 未写
+      NO-POSITIONS      无持仓，跳过
+      ERROR             检查本身失败（与"无 split"是两回事！）
+    """
+    line = f'[CA][{scope}] status={status} | {detail}'
+    (log.error if status == 'ERROR' else log.info)(line)
+    _ca_log(line)
+
+
 # ── Splits 获取（Polygon）+ 本地 cache ─────────────────────────────────────────
 
 def _load_splits_cache() -> dict:
@@ -331,9 +347,9 @@ def apply_to_inventory(strategy: str, dry_run: bool = False,
     inv = _load_inventory(strategy)
     open_pairs = {k: v for k, v in inv.get('pairs', {}).items() if v.get('direction')}
     if not open_pairs:
-        _ca_log(f'{strategy}: no open positions — skip')
-        return {'strategy': strategy, 'checked_tickers': [], 'pending': [],
-                'applied': [], 'dry_run': dry_run}
+        _log_status(strategy, 'NO-POSITIONS', 'no open pairs')
+        return {'strategy': strategy, 'status': 'NO-POSITIONS', 'checked_tickers': [],
+                'pending': [], 'applied': [], 'dry_run': dry_run}
 
     tickers = set()
     earliest_open = str(date.today())
@@ -357,18 +373,129 @@ def apply_to_inventory(strategy: str, dry_run: bool = False,
                 continue
             rec = _apply_split_to_pair(pair, item['leg'], item['ticker'], item['split'])
             applied.append({'pair': item['pair'], **rec})
-            log.warning(f"[CORPORATE_ACTION APPLIED] {item['pair']} {item['ticker']} "
-                        f"split factor={rec['factor']}: "
+            log.warning(f"[CA][{strategy}] APPLIED split {item['ticker']} "
+                        f"factor={rec['factor']} pair={item['pair']}: "
                         f"{rec['before']} → {rec['after']}")
-            _ca_log(f"{strategy}: APPLIED split {item['ticker']} "
-                    f"factor={rec['factor']} pair={item['pair']} "
-                    f"before={rec['before']} after={rec['after']}")
         if applied:
             _save_inventory(inv, strategy)
-    else:
-        _ca_log(f'{strategy}: checked {len(tickers)} tickers — no pending actions')
 
-    return {'strategy': strategy, 'checked_tickers': sorted(tickers),
+    # 统一状态行（检查跑没跑 / 有没有检测到 / 有没有应用 — 三件事分开说清）
+    detected = sorted({f"{i['ticker']} {i['split'].get('split_from')}:"
+                       f"{i['split'].get('split_to')}@{i['split'].get('execution_date')}"
+                       for i in pending}) if pending else []
+    # detect_pending 已剔除留痕过的 → "检测到但已应用"需单独看：窗口内有 split 但 pending 为空
+    window_hits = sorted({f"{sp['ticker']}@{sp['execution_date']}"
+                          for t in tickers for sp in splits.get(t, [])
+                          if sp.get('execution_date', '9999') <= str(date.today())})
+    status = ('DRY-RUN' if dry_run and pending else
+              'APPLIED' if applied else
+              'ALREADY-APPLIED' if (window_hits and not pending) else
+              'NO-ACTION-NEEDED')
+    _log_status(strategy, status,
+                f'tickers={len(tickers)} splits-in-window={window_hits or "none"} '
+                f'pending={detected or "none"} applied={len(applied)}')
+    return {'strategy': strategy, 'status': status, 'checked_tickers': sorted(tickers),
+            'pending': pending, 'applied': applied, 'dry_run': dry_run}
+
+
+# ── 单腿 holdings 库存（AISS stock_holdings / SSRS ETF holdings）──────────────
+#
+# 统一四策略的 corporate action 处理：
+#   mrpt/mtfs  → apply_to_inventory()        （pairs 双腿格式）
+#   aiss       → apply_to_stock_inventory(..., holdings_key='stock_holdings')
+#   ssrs       → apply_to_stock_inventory(..., holdings_key='holdings')
+# 同一套 splits 数据源（fetch_all_splits + cache）、同一套幂等留痕
+# （applied_corporate_actions + polygon_id）、同一份日志（corporate_actions.log）。
+#
+# 调整规则（factor = split_to / split_from）：
+#   shares     × factor      cost_basis ÷ factor      last_price ÷ factor
+#   （美元市值与 PnL 不变；last_price 调整的前提是本函数在当日 MTM 刷新
+#     之前运行——daily signal 入口处调用即满足，此时 last_price 仍是旧口径）
+#   target_value / weight / days_held / entry_date 不变
+
+def apply_to_stock_inventory(inv_path: str, holdings_key: str, scope: str,
+                             dry_run: bool = False,
+                             api_key: str | None = None) -> dict:
+    """检测并应用 splits 到单腿 holdings 库存（AISS/SSRS）。幂等、留痕、备份。"""
+    if not os.path.exists(inv_path):
+        _log_status(scope, 'ERROR', f'inventory not found: {inv_path}')
+        return {'scope': scope, 'status': 'ERROR', 'checked_tickers': [],
+                'pending': [], 'applied': [], 'dry_run': dry_run}
+
+    with open(inv_path) as f:
+        inv = json.load(f)
+    holdings = inv.get(holdings_key, {}) or {}
+    tickers = [t for t, h in holdings.items()
+               if isinstance(h, dict) and (h.get('shares') or 0) != 0]
+    if not tickers:
+        _log_status(scope, 'NO-POSITIONS', f'no holdings under {holdings_key!r}')
+        return {'scope': scope, 'status': 'NO-POSITIONS', 'checked_tickers': [],
+                'pending': [], 'applied': [], 'dry_run': dry_run}
+
+    earliest = min((holdings[t].get('entry_date') or str(date.today()))
+                   for t in tickers)
+    splits = fetch_splits(tickers, since_date=earliest, api_key=api_key)
+    today_str = str(date.today())
+
+    pending, applied = [], []
+    for t in tickers:
+        h = holdings[t]
+        done = _applied_ids(h)
+        entry = h.get('entry_date') or ''
+        for sp in splits.get(t, []):
+            ed = sp.get('execution_date', '')
+            if not ed or sp.get('id') in done:
+                continue
+            if not (entry < ed <= today_str):
+                continue
+            pending.append({'ticker': t, 'split': sp})
+            if dry_run:
+                continue
+            factor = float(sp['split_to']) / float(sp['split_from'])
+            before = {'shares': h.get('shares'), 'cost_basis': h.get('cost_basis'),
+                      'last_price': h.get('last_price')}
+            if h.get('shares'):
+                h['shares'] = int(round(h['shares'] * factor))
+            for pk in ('cost_basis', 'last_price'):
+                if h.get(pk):
+                    h[pk] = round(h[pk] / factor, 6)
+            rec = {'ticker': t, 'type': 'split', 'execution_date': ed,
+                   'factor': factor, 'polygon_id': sp.get('id'),
+                   'applied_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+                   'applied_by': f'CorporateActions:{scope}',
+                   'before': before,
+                   'after': {'shares': h.get('shares'), 'cost_basis': h.get('cost_basis'),
+                             'last_price': h.get('last_price')}}
+            h.setdefault('applied_corporate_actions', []).append(rec)
+            applied.append(rec)
+            log.warning(f'[CA][{scope}] APPLIED split {t} factor={factor}: '
+                        f'{before} → {rec["after"]}')
+
+    if applied and not dry_run:
+        # 备份到库存同目录的 inventory_history/（与各策略既有约定一致）
+        hist_dir = os.path.join(os.path.dirname(inv_path), 'inventory_history')
+        os.makedirs(hist_dir, exist_ok=True)
+        ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+        base = os.path.basename(inv_path).replace('.json', '')
+        shutil.copy2(inv_path, os.path.join(hist_dir, f'{base}_{ts}_pre_corporate_action.json'))
+        with open(inv_path, 'w') as f:
+            json.dump(inv, f, indent=2, default=str)
+        log.info(f'[CA][{scope}] inventory updated → {inv_path}')
+
+    detected = sorted({f"{sp['ticker']} {sp['split'].get('split_from')}:"
+                       f"{sp['split'].get('split_to')}@{sp['split'].get('execution_date')}"
+                       for sp in pending}) if pending else []
+    window_hits = sorted({f"{sp['ticker']}@{sp['execution_date']}"
+                          for t in tickers for sp in splits.get(t, [])
+                          if sp.get('execution_date', '9999') <= today_str})
+    status = ('DRY-RUN' if dry_run and pending else
+              'APPLIED' if applied else
+              'ALREADY-APPLIED' if (window_hits and not pending) else
+              'NO-ACTION-NEEDED')
+    _log_status(scope, status,
+                f'tickers={len(tickers)} splits-in-window={window_hits or "none"} '
+                f'pending={detected or "none"} applied={len(applied)}')
+    return {'scope': scope, 'status': status, 'checked_tickers': sorted(tickers),
             'pending': pending, 'applied': applied, 'dry_run': dry_run}
 
 
@@ -428,25 +555,50 @@ def detect_other_actions(tickers, since_date: str) -> list:
     return []
 
 
+# ── 各策略库存路径（统一入口）────────────────────────────────────────────────
+
+AISS_INVENTORY = os.path.join(BASE_DIR, 'qlib-main', 'semiconductor_strategy',
+                              'inventory_aiss.json')
+SSRS_INVENTORY = os.path.join(BASE_DIR, 'qlib-main', 'sector_rotation',
+                              'inventory_sector_rotation.json')
+
+
+def run_for(scope: str, dry_run: bool = False) -> dict:
+    """四策略统一入口：mrpt / mtfs / aiss / ssrs。"""
+    if scope in ('mrpt', 'mtfs'):
+        return apply_to_inventory(scope, dry_run=dry_run)
+    if scope == 'aiss':
+        return apply_to_stock_inventory(AISS_INVENTORY, 'stock_holdings', 'aiss',
+                                        dry_run=dry_run)
+    if scope == 'ssrs':
+        return apply_to_stock_inventory(SSRS_INVENTORY, 'holdings', 'ssrs',
+                                        dry_run=dry_run)
+    raise ValueError(f'unknown scope: {scope}')
+
+
 # ── CLI ────────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description='Detect & apply stock splits to inventory')
-    parser.add_argument('--strategy', choices=['mrpt', 'mtfs', 'both'], default='both')
+    parser.add_argument('--strategy',
+                        choices=['mrpt', 'mtfs', 'aiss', 'ssrs', 'both', 'all'],
+                        default='all',
+                        help='both = mrpt+mtfs; all = 全部四策略')
     parser.add_argument('--dry-run', action='store_true',
                         help='Detect and report only; do not modify inventory')
     args = parser.parse_args()
 
-    strategies = ['mrpt', 'mtfs'] if args.strategy == 'both' else [args.strategy]
-    for strat in strategies:
-        report = apply_to_inventory(strat, dry_run=args.dry_run)
-        n_open = len(report['checked_tickers'])
-        print(f"[{strat}] tickers={n_open} pending={len(report['pending'])} "
-              f"applied={len(report['applied'])}{' (dry-run)' if args.dry_run else ''}")
+    scopes = (['mrpt', 'mtfs'] if args.strategy == 'both' else
+              ['mrpt', 'mtfs', 'aiss', 'ssrs'] if args.strategy == 'all' else
+              [args.strategy])
+    for scope in scopes:
+        report = run_for(scope, dry_run=args.dry_run)
+        print(f"[{scope}] status={report.get('status','?')} "
+              f"tickers={len(report['checked_tickers'])} "
+              f"pending={len(report['pending'])} applied={len(report['applied'])}"
+              f"{' (dry-run)' if args.dry_run else ''}")
         for a in report['applied']:
-            print(f"  APPLIED {a['pair']} {a['ticker']} factor={a['factor']}")
-        for p in report['pending'] if args.dry_run else []:
-            print(f"  PENDING {p['pair']} {p['ticker']} {p['split']}")
+            print(f"  APPLIED {a.get('pair') or a.get('ticker')} factor={a['factor']}")
 
 
 if __name__ == '__main__':

@@ -655,6 +655,21 @@ def run_daily_signal(
         signal_date = today
     log.info(f"Signal date: {signal_date}")
 
+    # ── 0b. Corporate actions（拆股/合股）检测与应用 ────────────────
+    # ETF 也会拆股（如 XLE 1:2 @2025-12-05）。价格源回溯调整后，inventory 的
+    # shares/cost_basis/last_price 仍是旧口径，必须在 MTM 前修正。
+    # 与 mrpt/mtfs/aiss 共用根目录 CorporateActions（统一 splits 源 + 留痕 +
+    # 日志 trading_signals/corporate_actions.log）。幂等，失败降级不阻断。
+    if not dry_run:
+        try:
+            from CorporateActions import run_for as _ca_run_for
+            _ca = _ca_run_for('ssrs')
+            if _ca.get('applied'):
+                log.warning(f"[CA][ssrs] {len(_ca['applied'])} corporate action(s) "
+                            f"applied to inventory — see corporate_actions.log")
+        except Exception as _ca_e:
+            log.warning(f"[CA][ssrs] check failed (non-fatal): {_ca_e}")
+
     # ── 1. Load config ────────────────────────────────────────────
     cfg = load_config(config_path or CONFIG_PATH)
 

@@ -344,6 +344,35 @@ def update_ticker(
         log.error("%s: NO data from any source", ticker)
         return None
 
+    # ---- Retro-adjustment self-heal (splits / corporate actions) ----
+    # Polygon/yfinance 返回的是回溯调整后的历史。7 天 overlap 窗口正好用来检测：
+    # 若同一日期的 Close 与缓存值差异 >2%，说明发生了回溯调整（如 KLAC 1:10 拆股，
+    # 2026-06-12 事故：增量 merge 在 overlap 边界留下 10 倍断崖，pct_change 产生
+    # 假 -90% 回报直接打崩 returns-based subsector basket 信号）。
+    # → 丢弃缓存，整段历史重拉一次，保证全序列同口径。
+    if existing is not None and "Close" in existing.columns and "Close" in ohlcv.columns:
+        _common = existing.index.intersection(ohlcv.index)
+        if len(_common) > 0:
+            _old = existing.loc[_common, "Close"].astype(float)
+            _new = ohlcv.loc[_common, "Close"].astype(float)
+            _ok = (_old > 0) & (_new > 0)
+            if _ok.any():
+                _ratio = (_old[_ok] / _new[_ok])
+                _dev = (_ratio - 1.0).abs()
+                if (_dev > 0.02).any():
+                    _worst = float(_ratio.loc[_dev.idxmax()])
+                    log.warning(
+                        "[CA][store] %s: retro price adjustment detected on overlap "
+                        "(stored/new ratio %.4f on %s — likely split) — discarding "
+                        "cache, FULL refetch %s→%s",
+                        ticker, _worst, _dev.idxmax().date(), start, end)
+                    healed = update_ticker(ticker, start=start, end=end,
+                                           api_key=api_key, force=True,
+                                           meta=meta, prices_dir=prices_dir)
+                    if standalone:
+                        _save_meta(meta, prices_dir)
+                    return healed
+
     # ---- merge with existing raw OHLCV ----
     if existing is not None:
         base = existing[[c for c in STORED_FIELDS if c in existing.columns]]
