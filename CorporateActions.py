@@ -61,6 +61,19 @@ WEB_DATA_DIR = os.path.join(BASE_DIR, 'someo-park-investment-management', 'publi
 
 _POLYGON_SPLITS_URL = 'https://api.polygon.io/v3/reference/splits'
 
+# ── Mongo stock_data 口径分界（实测确定，2026-06-12）────────────────────────────
+# Mongo 历史为批量载入（载入时已含 split 调整），之后 feeder 按 as-traded 追加。
+# 实测探针：TSCO 2024-12-20 拆股处无断崖（已调整）；FAST 2025-05-22 起
+# （ORLY/IBKR/HON/DD/NFLX/NOW/TPL/AMCR/BKNG/CVNA/KLAC）全部为断崖（as-traded）。
+# → 只对 execution_date >= 此日期的 splits 做价格序列回溯调整，
+#   更早的 splits 已体现在批量载入数据中，再调整 = 双重调整（灾难）。
+# 若未来重新批量载入 Mongo，必须同步更新此常量。
+MONGO_AS_TRADED_SINCE = '2025-05-01'
+
+# 忽略微型"拆股"（股票股利，如 SCCO 1:1.0073、LEN 1000:1033）：
+# 幅度 ≤5% 与日常波动同量级，且多落在口径分界模糊窗口内，misapply 风险 > 收益。
+_MIN_SPLIT_DEVIATION = 0.05
+
 
 # ── Inventory I/O（与 DailySignal 同约定：备份到 inventory_history + 同步前端） ──
 
@@ -129,6 +142,9 @@ def fetch_all_splits(since_date: str, api_key: str | None = None,
     cache 策略：当天已查过且覆盖 since_date 则不重查（splits 公告提前数周，
     日检足够）。Polygon 查询失败 → 返回 cache 已有数据并告警（degrade gracefully）。
     """
+    # Floor：cache 必须至少覆盖 Mongo as-traded 分界日，否则 adjust_price_df
+    # 在长回看窗口（如 walk-forward 2 年）下会漏掉历史 splits。
+    since_date = min(since_date, MONGO_AS_TRADED_SINCE)
     cache = _load_splits_cache() if use_cache else {}
     today_str = str(date.today())
     if (use_cache and cache.get('fetched_at') == today_str
@@ -198,10 +214,14 @@ def adjust_price_df(df, ticker: str, splits: list | None = None,
             continue
         if ed > today_str:
             continue  # 未来生效的 split：市场价格尚未换口径，绝不能提前应用
+        if ed < MONGO_AS_TRADED_SINCE:
+            continue  # 批量载入时代的 split 已体现在数据中 → 再调整 = 双重调整
+        factor = float(sp['split_to']) / float(sp['split_from'])
+        if abs(factor - 1.0) < _MIN_SPLIT_DEVIATION:
+            continue  # 微型股票股利（≤5%）：与日常波动同量级，忽略
         mask = df.index < pd.Timestamp(ed)
         if not mask.any():
             continue  # 序列全部在 execution 当日及之后 → 已是新口径
-        factor = float(sp['split_to']) / float(sp['split_from'])
         for col in price_cols:
             if col in df.columns:
                 df.loc[mask, col] = df.loc[mask, col] / factor
