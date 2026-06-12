@@ -580,6 +580,26 @@ qlib-main/sector_rotation/inventory_sector_rotation.json   当前持仓状态
 qlib-main/sector_rotation/inventory_history/               每次运行的快照备份
 ```
 
+**Corporate Actions（ETF 拆股/合股，自动处理）：**
+
+价格源在 split 后全历史回溯调整，但 inventory 的 `shares`/`cost_basis`/`last_price`
+是入场口径——ETF 也会拆股（如 XLE 1:2 @2025-12-05），不处理会产生幻影 MTM 跳变。
+`SectorRotationDailySignal.run_daily_signal()` 入口（0b 步）自动调用共享根模块
+`CorporateActions.run_for('ssrs')`，在任何价格加载/MTM 之前：
+
+- Polygon 市场级 splits 日检（cache）→ 命中持仓则调整 `shares`×factor、
+  `cost_basis`÷factor、`last_price`÷factor（市值不变）+ 备份 +
+  `applied_corporate_actions` 留痕（polygon_id 幂等，重跑绝不二次调整）
+- Polygon 查询失败时降级告警、不阻断信号
+- 状态日志（每次检查一行）：根目录 `trading_signals/corporate_actions.log` —
+  `NO-ACTION-NEEDED`（检查跑了、无 split）/ `ALREADY-APPLIED`（幂等跳过）/
+  `APPLIED`（实际调整）/ `NO-POSITIONS` / `ERROR`（**检查本身失败**，必须排查）
+
+```bash
+# 手动检查（只读）
+conda run -n qlib_run python CorporateActions.py --strategy ssrs --dry-run
+```
+
 ---
 
 ## 三、每周维护（Weekly Maintenance）

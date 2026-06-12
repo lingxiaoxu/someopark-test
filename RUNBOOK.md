@@ -626,23 +626,15 @@ walk_forward/
 
 ---
 
-## Corporate Actions（拆股/合股，四策略统一）
+## Corporate Actions（拆股/合股，MRPT/MTFS）
 
-价格源（Polygon/yfinance）在 split 后全历史回溯调整，但 inventory 的 shares/价格是开仓口径——不处理会产生幻影巨亏并触发假止损/假 rebalance（2026-06-12 KLAC 1:10 拆股事故：pairs -118k 幻影亏损 + AISS basket 假 -90% 回报）。`CorporateActions.py`（根目录）为**四策略统一处理**：
+价格源（Polygon/yfinance）在 split 后全历史回溯调整，但 inventory 的 shares/open_price 是开仓口径——不处理会产生幻影巨亏并触发假止损（2026-06-12 KLAC 1:10 拆股事故：KLAC/REGN 出现 -118k 幻影亏损）。由根目录共享模块 `CorporateActions.py` 处理（同一模块也服务 AISS/SSRS，各策略文档见各自 RUNBOOK）：
 
-| 策略 | 库存格式 | 自动调用点 | 调整字段 |
-|------|---------|-----------|---------|
-| MRPT/MTFS | `pairs`（双腿） | DailySignal Step 1 monitor 前 | sX_shares×f、open_sX_price÷f、hedge_ratio、price_level_stop |
-| AISS | `stock_holdings`（个股） | AISSdailySignal 入口（0b 步） | shares×f、cost_basis÷f、last_price÷f |
-| SSRS | `holdings`（ETF） | SectorRotationDailySignal 入口（0b 步） | 同 AISS |
-
-统一机制：同一 Polygon 市场级 splits 日检（cache `price_data/splits_cache.json`）、同一幂等留痕（`applied_corporate_actions` + polygon_id）、同一日志。
-
+- **DailySignal 每日自动**（Step 1 monitor 前）：Polygon 市场级 splits 日检（cache `price_data/splits_cache.json`）→ 命中持仓则调整 inventory（`sX_shares`×factor、`open_sX_price`÷factor、`open_hedge_ratio`、`open_price_level_stop` 同步换算；成本基数与 PnL 美元值不变）+ 备份 + `applied_corporate_actions` 留痕（polygon_id 幂等，重跑绝不二次调整）
 - **日志分级**（`trading_signals/corporate_actions.log`，每次检查一行）：`NO-ACTION-NEEDED`（检查跑了、无 split）/ `ALREADY-APPLIED`（检测到但已应用，幂等跳过）/ `APPLIED`（实际调整）/ `NO-POSITIONS` / `ERROR`（**检查本身失败**——与"无 split"是两回事，看到 ERROR 必须排查）
-- **Mongo 价格读取层**（pairs）：`stock_data` 2025-05 起为 as-traded 追加（之前批量载入已调整，分界 `MONGO_AS_TRADED_SINCE`），4 个 Mongo loader 读取时按 splits 回溯调整消除断崖
-- **AISS/SR Polygon parquet store 自愈**（`aiss_fetch_prices.update_ticker`）：增量更新的 7 天 overlap 若发现同日 Close 偏差 >2%（回溯调整特征），自动丢弃缓存全量重拉——防止断崖留在 store 中间打崩 returns-based basket 信号
-- **历史快照**：inventory_history 不重写；读取时经 `adjust_position_view()` 换算
-- 手动检查全部四策略：`conda run -n qlib_run python CorporateActions.py --strategy all --dry-run`
+- **Mongo 价格读取层**：`stock_data` 2025-05 起为 as-traded 追加（之前批量载入已调整，分界 `MONGO_AS_TRADED_SINCE`），PortfolioMRPTRun/PortfolioMTFSRun/PnLReport/UpdateStrategyPerformance 的 Mongo loader 读取时按 splits 回溯调整消除断崖
+- **历史快照**：inventory_history 不重写；RiskManager/PnLReport/UpdateStrategyPerformance 读取时经 `adjust_position_view()` 换算（marker + open_date 判据，未来生效的 split 不会提前应用）
+- 手动检查：`conda run -n someopark_run python CorporateActions.py --strategy both --dry-run`
 - V1 仅 splits；spinoff/换股合并等检测到只告警不自动改仓
 
 ---

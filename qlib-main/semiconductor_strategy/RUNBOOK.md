@@ -200,6 +200,36 @@ PIT rule: every slow source stores its **availability date** (`filed_date` /
 `filing_date` / `release_date`) and is read back only when `as_of >= that date`
 (`data/aiss_pit.py`). No look-ahead.
 
+### Corporate actions (stock splits)
+
+Price sources retro-adjust full history after a split, but `inventory_aiss.json`
+`stock_holdings` keep entry-era `shares`/`cost_basis`/`last_price` — unhandled,
+a split fakes a massive MTM jump and corrupts the returns-based subsector
+baskets (2026-06-12 KLAC 1:10: a 10x cliff at the incremental-merge boundary
+would have fed a fake −90% daily return into the equipment basket).
+
+Two automatic layers (shared root module `CorporateActions.py`, scope `aiss`):
+
+1. **Inventory** — `AISSdailySignal.run_daily_signal()` step 0b calls
+   `run_for('aiss')` before any price load / MTM: Polygon market-wide splits
+   daily check (cached) → adjusts `shares`×factor, `cost_basis`÷factor,
+   `last_price`÷factor (market value invariant), backs up inventory, appends
+   an `applied_corporate_actions` audit record (polygon_id ⇒ idempotent).
+   Non-fatal degrade if Polygon is unreachable.
+2. **Price store self-heal** — `data/aiss_fetch_prices.update_ticker()`:
+   if the 7-day overlap refetch disagrees with cached Close by >2% on the
+   same date (retro-adjustment signature), the cache is discarded and the
+   full history refetched, so no cliff can sit mid-series.
+
+Status log (one line per check): `trading_signals/corporate_actions.log` —
+`NO-ACTION-NEEDED` / `ALREADY-APPLIED` / `APPLIED` / `NO-POSITIONS` / `ERROR`
+("check failed" is distinct from "no split found"; ERROR must be investigated).
+
+```bash
+# manual check (read-only)
+conda run -n qlib_run python CorporateActions.py --strategy aiss --dry-run
+```
+
 ---
 
 ## 5. Tests
