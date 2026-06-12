@@ -628,7 +628,7 @@ walk_forward/
 
 ## Corporate Actions（拆股/合股，MRPT/MTFS）
 
-价格源（Polygon/yfinance）在 split 后全历史回溯调整，但 inventory 的 shares/open_price 是开仓口径——不处理会产生幻影巨亏并触发假止损（2026-06-12 KLAC 1:10 拆股事故：KLAC/REGN 出现 -118k 幻影亏损）。由根目录共享模块 `CorporateActions.py` 处理（同一模块也服务 AISS/SSRS，各策略文档见各自 RUNBOOK）：
+价格源（Polygon/yfinance）在 split 后全历史回溯调整，但 inventory 的 shares/open_price 是开仓口径——不处理会产生幻影巨亏并触发假止损（2026-06-12 KLAC 1:10 拆股事故：KLAC/REGN 出现 -118k 幻影亏损）。由 `CorporateActions.py` 处理：
 
 - **DailySignal 每日自动**（Step 1 monitor 前）：Polygon 市场级 splits 日检（cache `price_data/splits_cache.json`）→ 命中持仓则调整 inventory（`sX_shares`×factor、`open_sX_price`÷factor、`open_hedge_ratio`、`open_price_level_stop` 同步换算；成本基数与 PnL 美元值不变）+ 备份 + `applied_corporate_actions` 留痕（polygon_id 幂等，重跑绝不二次调整）
 - **日志分级**（`trading_signals/corporate_actions.log`，每次检查一行）：`NO-ACTION-NEEDED`（检查跑了、无 split）/ `ALREADY-APPLIED`（检测到但已应用，幂等跳过）/ `APPLIED`（实际调整）/ `NO-POSITIONS` / `ERROR`（**检查本身失败**——与"无 split"是两回事，看到 ERROR 必须排查）
