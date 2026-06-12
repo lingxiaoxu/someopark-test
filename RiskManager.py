@@ -361,6 +361,13 @@ class _DataLayer:
                 if not isinstance(p, dict) or not p.get('direction') or '/' not in pair_key:
                     continue
                 s1, s2 = pair_key.split('/', 1)
+                # Corporate actions：快照后执行的拆股 → 调整为当前价格口径
+                # （价格源全历史回溯调整；快照文件本身不改，读取时换算）
+                try:
+                    from CorporateActions import adjust_position_view
+                    p = adjust_position_view(p, s1, s2, best_asof)
+                except Exception:
+                    pass  # 模块/缓存不可用时按原值（与历史行为一致）
                 out.append({
                     'strategy': strategy, 'pair': pair_key, 's1': s1, 's2': s2,
                     'direction': p.get('direction'),

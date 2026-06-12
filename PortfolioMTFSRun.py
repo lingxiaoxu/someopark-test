@@ -901,6 +901,15 @@ def load_historical_data_mongo(start_date, end_date, symbols):
         log.info(f"[DataLoader/MTFS] {symbol}  mongo OK  rows={n_rows}  "
                  f"coverage={actual_start}→{actual_end}")
 
+        # ── Split adjustment（MongoDB 为 as-traded 口径，split 后不回溯）─────
+        # 调整为当前口径，与 Polygon fallback / yfinance 一致，消除拆股断崖。
+        try:
+            from CorporateActions import adjust_price_df
+            adjust_price_df(df, symbol)
+        except Exception as e:
+            log.warning(f"[DataLoader/MTFS] {symbol}  split adjustment failed "
+                        f"(non-fatal): {e}")
+
         # ── Adj Close via dividends_cache.json ────────────────────────────
         try:
             store     = PriceDataStore(

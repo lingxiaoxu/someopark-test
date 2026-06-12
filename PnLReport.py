@@ -241,6 +241,13 @@ def load_positions(start_ts, end_ts) -> list[dict]:
             # in case it was re-opened after a previous close
             closed_pairs.discard(pair_name)
             s1, s2 = pair_name.split('/', 1)
+            # Corporate actions：旧口径快照换算为当前价格口径
+            # （marker 判据：已调整快照自带 applied_corporate_actions 留痕 → 跳过）
+            try:
+                from CorporateActions import adjust_position_view
+                p = adjust_position_view(p, s1, s2, str(day.date()))
+            except Exception:
+                pass
             ml = p.get('monitor_log', [])
             positions[pair_name] = {
                 'pair':          pair_name,
@@ -391,7 +398,17 @@ def download_prices_mongo(tickers: set, price_start: str, price_end: str) -> pd.
         if docs:
             dates = [pd.Timestamp(d["t"], unit="ms").normalize() for d in docs]
             closes = [d["c"] for d in docs]
-            frames[sym] = pd.Series(closes, index=dates, name=sym)
+            ser = pd.Series(closes, index=dates, name=sym)
+            # Split adjustment：Mongo 为 as-traded 口径，调整为当前口径
+            # （消除拆股断崖，与 inventory 的调整后 basis 一致）
+            try:
+                from CorporateActions import adjust_price_df
+                sdf = ser.to_frame('c')
+                adjust_price_df(sdf, sym, volume_col=None)
+                ser = sdf['c']
+            except Exception:
+                pass
+            frames[sym] = ser
 
     if not frames:
         return pd.DataFrame()
@@ -661,6 +678,13 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
                 _inv_pairs_today.add(pair_name)
 
                 s1, s2 = pair_name.split('/', 1)
+                # Corporate actions：快照后执行的拆股 → 换算为当前价格口径
+                # （prices 为回溯调整口径；快照文件不改，读取时换算）
+                try:
+                    from CorporateActions import adjust_position_view
+                    pos = adjust_position_view(pos, s1, s2, td_str)
+                except Exception:
+                    pass
                 s1_sh = pos.get('s1_shares', 0)
                 s2_sh = pos.get('s2_shares', 0)
                 op1 = pos.get('open_s1_price', 0)

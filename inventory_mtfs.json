@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-06-10",
+  "as_of": "2026-06-11",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -135,15 +135,15 @@
       "strategy": "mtfs",
       "param_set": "beta_neutral_long_term",
       "direction": "long",
-      "s1_shares": 67,
+      "s1_shares": 670,
       "s2_shares": -23,
       "open_date": "2026-05-27",
-      "open_s1_price": 2011.39,
+      "open_s1_price": 201.139,
       "open_s2_price": 634.62,
-      "open_hedge_ratio": 0.5402817066832034,
+      "open_hedge_ratio": 0.05402817066832034,
       "open_price_level_stop": null,
       "days_held": 0,
-      "peak_unrealized_pnl": 7900.93,
+      "peak_unrealized_pnl": 8083.92,
       "open_signal": {
         "momentum_spread": 0.755,
         "entry_threshold": 0.29,
@@ -303,6 +303,38 @@
           "unrealized_pnl": 7900.93,
           "unrealized_pnl_pct": 6.025,
           "note": "Holding long, signal=0.718, exit at 0.302"
+        },
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.706,
+          "exit_threshold": 0.314,
+          "unrealized_pnl": 8083.92,
+          "unrealized_pnl_pct": 6.081,
+          "note": "Holding long, signal=0.706, exit at 0.314"
+        }
+      ],
+      "applied_corporate_actions": [
+        {
+          "ticker": "KLAC",
+          "type": "split",
+          "execution_date": "2026-06-12",
+          "factor": 10.0,
+          "polygon_id": "Edd9dd124187dfa7354bf38a483c440ae435f12dcb2afe0f7def3997ed37e47ac",
+          "applied_at": "2026-06-12T07:53:54Z",
+          "applied_by": "manual_phase0_fix",
+          "before": {
+            "s1_shares": 67,
+            "open_s1_price": 2011.39,
+            "open_hedge_ratio": 0.5402817066832034
+          },
+          "after": {
+            "s1_shares": 670,
+            "open_s1_price": 201.139,
+            "open_hedge_ratio": 0.05402817066832034
+          }
         }
       ]
     },
@@ -475,6 +507,17 @@
           "unrealized_pnl": 3965.73,
           "unrealized_pnl_pct": 4.127,
           "note": "Holding long, signal=1.153, exit at 0.4"
+        },
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.147,
+          "exit_threshold": 0.4,
+          "unrealized_pnl": 3596.16,
+          "unrealized_pnl_pct": 3.692,
+          "note": "Holding long, signal=1.147, exit at 0.4"
         }
       ]
     },
@@ -620,6 +663,17 @@
           "unrealized_pnl": 6260.97,
           "unrealized_pnl_pct": 5.2,
           "note": "Holding long, signal=1.443, exit at 0.346"
+        },
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.333,
+          "exit_threshold": 0.45,
+          "unrealized_pnl": 5375.31,
+          "unrealized_pnl_pct": 4.404,
+          "note": "Holding long, signal=1.333, exit at 0.45"
         }
       ]
     },
@@ -706,6 +760,17 @@
           "unrealized_pnl": -68.62,
           "unrealized_pnl_pct": -0.05,
           "note": "Holding long, signal=1.094, exit at 0.473"
+        },
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.021,
+          "exit_threshold": 0.5,
+          "unrealized_pnl": -7.17,
+          "unrealized_pnl_pct": -0.005,
+          "note": "Holding long, signal=1.021, exit at 0.5"
         }
       ],
       "last_updated": "2026-06-09"
@@ -725,7 +790,7 @@
       "open_hedge_ratio": 24.07207207207207,
       "open_price_level_stop": null,
       "days_held": 1,
-      "peak_unrealized_pnl": 0.0,
+      "peak_unrealized_pnl": 2464.25,
       "open_signal": {
         "momentum_spread": 0.876,
         "entry_threshold": 0.0,
@@ -797,6 +862,17 @@
           "unrealized_pnl": -969.66,
           "unrealized_pnl_pct": -0.453,
           "note": "Holding long, signal=0.84, exit at 0.4"
+        },
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.836,
+          "exit_threshold": 0.386,
+          "unrealized_pnl": 2464.25,
+          "unrealized_pnl_pct": 1.136,
+          "note": "Holding long, signal=0.836, exit at 0.386"
         }
       ],
       "last_updated": "2026-06-10"
@@ -813,7 +889,7 @@
       "open_hedge_ratio": 0.9646673045033877,
       "open_price_level_stop": null,
       "days_held": 0,
-      "peak_unrealized_pnl": 249.54,
+      "peak_unrealized_pnl": 2030.13,
       "open_signal": {
         "momentum_spread": 1.235,
         "entry_threshold": 0.1,
@@ -885,6 +961,17 @@
           "unrealized_pnl": 249.54,
           "unrealized_pnl_pct": 0.281,
           "note": "Holding long, signal=1.322, exit at 0.458"
+        },
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.179,
+          "exit_threshold": 0.383,
+          "unrealized_pnl": 2030.13,
+          "unrealized_pnl_pct": 2.252,
+          "note": "Holding long, signal=1.179, exit at 0.383"
         }
       ]
     },
@@ -892,15 +979,15 @@
       "strategy": "mtfs",
       "param_set": "monthly_aligned_windows",
       "direction": "long",
-      "s1_shares": 47,
+      "s1_shares": 470,
       "s2_shares": -972,
       "open_date": "2026-06-10",
-      "open_s1_price": 2139.37,
+      "open_s1_price": 213.937,
       "open_s2_price": 52.95,
-      "open_hedge_ratio": 40.40358829084041,
+      "open_hedge_ratio": 4.040358829084041,
       "open_price_level_stop": null,
       "days_held": 0,
-      "peak_unrealized_pnl": 0.0,
+      "peak_unrealized_pnl": 1876.91,
       "open_signal": {
         "momentum_spread": 1.422,
         "entry_threshold": 0.293,
@@ -961,7 +1048,40 @@
         },
         "default_window": "W6"
       },
-      "monitor_log": []
+      "monitor_log": [
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.473,
+          "exit_threshold": 0.323,
+          "unrealized_pnl": 1876.91,
+          "unrealized_pnl_pct": 1.387,
+          "note": "Holding long, signal=1.473, exit at 0.323"
+        }
+      ],
+      "applied_corporate_actions": [
+        {
+          "ticker": "KLAC",
+          "type": "split",
+          "execution_date": "2026-06-12",
+          "factor": 10.0,
+          "polygon_id": "Edd9dd124187dfa7354bf38a483c440ae435f12dcb2afe0f7def3997ed37e47ac",
+          "applied_at": "2026-06-12T07:53:54Z",
+          "applied_by": "manual_phase0_fix",
+          "before": {
+            "s1_shares": 47,
+            "open_s1_price": 2139.37,
+            "open_hedge_ratio": 40.40358829084041
+          },
+          "after": {
+            "s1_shares": 470,
+            "open_s1_price": 213.937,
+            "open_hedge_ratio": 4.040358829084041
+          }
+        }
+      ]
     },
     "UNH/ULTA": {
       "strategy": "mtfs",
@@ -974,8 +1094,8 @@
       "open_s2_price": 477.9,
       "open_hedge_ratio": 0.8641975308641976,
       "open_price_level_stop": null,
-      "days_held": 0,
-      "peak_unrealized_pnl": 0.0,
+      "days_held": 1,
+      "peak_unrealized_pnl": 69.5,
       "open_signal": {
         "momentum_spread": 0.697,
         "entry_threshold": 0.238,
@@ -1036,7 +1156,20 @@
         },
         "default_window": "W6"
       },
-      "monitor_log": []
+      "monitor_log": [
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.69,
+          "exit_threshold": 0.238,
+          "unrealized_pnl": 69.5,
+          "unrealized_pnl_pct": 0.076,
+          "note": "Holding long, signal=0.69, exit at 0.238"
+        }
+      ],
+      "last_updated": "2026-06-11"
     }
   }
 }

@@ -100,6 +100,10 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `CompactPriceData.py` | 合并同一周内的多个 Parquet 文件为单文件，重算 SHA256 hash，更新 index.json |
 | `AnalyzeEarningsFilter.py` | 分析财报过滤策略的历史效果，评估屏蔽日对回测的影响 |
 | `MomentumPairSelector.py` | 从 S&P500 全市场扫描动量配对候选，下载价格数据并输出候选列表 |
+| `RiskManager.py` | 每日风险报告（PDF/Excel/TXT）：双视图资产负债表（资产负债表法 + 双账户法）、Portfolio Margin（~20% gross）要求与 margin call 距离、杠杆/集中度/流动性分析。DailySignal 每日自动调用 |
+| `UpdateStrategyPerformance.py` | 更新 `strategy_performance.json`（MRPT/MTFS/Combined 权益曲线），DailySignal 在风险报告前自动调用 |
+| `UpdateMasterPerformance.py` | 更新 Master Portfolio（Pairs + SSRS + AISS + BDC）权益曲线，自动选取各策略最优回测参数（不硬编码）；live 段 MTM Polygon 优先，yfinance fallback 带显式告警 |
+| `CorporateActions.py` | 拆股/合股自动处理：Polygon splits 市场级日检（cache），DailySignal Step 1 前自动调整 inventory（shares×factor、open_price÷factor，PnL 美元值不变，polygon_id 留痕幂等）；Mongo as-traded 价格序列读取时回溯调整消除断崖；历史快照读取时换算口径（`adjust_position_view`）。CLI `--dry-run` |
 
 ### MRPT 策略
 

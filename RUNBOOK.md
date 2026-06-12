@@ -626,6 +626,18 @@ walk_forward/
 
 ---
 
+## Corporate Actions（拆股/合股，MRPT/MTFS）
+
+价格源（Polygon/yfinance）在 split 后全历史回溯调整，但 inventory 的 shares/open_price 是开仓口径——不处理会产生幻影巨亏并触发假止损（2026-06-12 KLAC 1:10 拆股事故）。`CorporateActions.py` 自动处理：
+
+- **DailySignal 每日自动**（Step 1 monitor 前）：Polygon 市场级 splits 日检（cache `price_data/splits_cache.json`）→ 命中持仓则调整 inventory（shares×factor、open_price÷factor，成本基数与 PnL 美元值不变）+ 备份 + `applied_corporate_actions` 留痕（polygon_id 幂等）
+- **Mongo 价格读取层**：`stock_data` 为 as-traded 口径，PortfolioMRPTRun/PortfolioMTFSRun/PnLReport/UpdateStrategyPerformance 的 Mongo loader 读取时按 splits 回溯调整（消除断崖，与 Polygon 口径一致）
+- **历史快照**：inventory_history 文件不重写；RiskManager/PnLReport/UpdateStrategyPerformance 读取时经 `adjust_position_view()` 换算（marker + open_date 判据，未来生效的 split 不会提前应用）
+- 留痕日志：`trading_signals/corporate_actions.log`；手动检查：`conda run -n someopark_run python CorporateActions.py --dry-run`
+- V1 仅 splits；spinoff/换股合并等检测到只告警不自动改仓
+
+---
+
 ## 事件风险降险 overlay（半导体，MRPT/MTFS）
 
 半导体崩盘保护（默认 off）。触发：`SMH 30d β-vs-SPY > 2.5` 且 2 交易日内有 NFP；或 NVDA/AVGO 财报反应日收盘 < −4.5%。命中 → T+1 关一半"做多腿含半导体"的 pair + veto 半导体做多腿新开（`MACRO_VETO`）；SMH 当日<−3% 提前解 veto，最迟 T+3。

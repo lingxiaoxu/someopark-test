@@ -76,9 +76,19 @@ def load_prices_mongo(tickers, start_date, end_date):
             {"c": 1, "t": 1, "_id": 0}
         ).sort("t", 1))
         if docs:
-            dates = [pd.Timestamp(d["t"], unit="ms").normalize().strftime("%Y-%m-%d") for d in docs]
+            dates = [pd.Timestamp(d["t"], unit="ms").normalize() for d in docs]
             closes = [d["c"] for d in docs]
-            prices[sym] = dict(zip(dates, closes))
+            ser = pd.Series(closes, index=dates)
+            # Split adjustment：Mongo 为 as-traded 口径，调整为当前口径
+            # （与 inventory 快照经 adjust_position_view 调整后的 basis 一致）
+            try:
+                from CorporateActions import adjust_price_df
+                sdf = ser.to_frame('c')
+                adjust_price_df(sdf, sym, volume_col=None)
+                ser = sdf['c']
+            except Exception:
+                pass
+            prices[sym] = {d.strftime("%Y-%m-%d"): float(v) for d, v in ser.items()}
     return prices
 
 
@@ -119,10 +129,20 @@ def is_same_position(pos1, pos2):
 def compute_pnl_mongo(pair, pos, prices, date_str):
     """Compute PnL for a position using MongoDB close prices.
     Returns (pnl, source_str) or (None, None) if prices unavailable.
+
+    Corporate actions：价格已统一为当前口径（load_prices_mongo 内 split 调整），
+    历史快照中拆股前口径的 shares/open_price 在此换算为当前口径
+    （快照日早于 execution_date 的 split → shares × factor、price ÷ factor，
+    美元 PnL 不变；快照文件本身不改）。
     """
     s1, s2 = pair.split("/")
     if (s1 in prices and date_str in prices[s1] and
             s2 in prices and date_str in prices[s2]):
+        try:
+            from CorporateActions import adjust_position_view
+            pos = adjust_position_view(pos, s1, s2, date_str)
+        except Exception:
+            pass
         pnl = (pos["s1_shares"] * (prices[s1][date_str] - pos["open_s1_price"]) +
                pos["s2_shares"] * (prices[s2][date_str] - pos["open_s2_price"]))
         return pnl, "MongoDB"

@@ -2076,6 +2076,22 @@ def run_daily_signal(
         except Exception as e:
             log.warning(f"[EARNINGS_CACHE] incremental update failed (non-fatal): {e}")
 
+    # ── Corporate actions（拆股/合股）检测与应用 ──────────────────────────
+    # 必须在 Step 1 monitor 之前：价格源在 split 后全历史回溯调整，inventory
+    # 中的 shares/open_price 仍是开仓口径，不调整会产生幻影巨亏并触发假止损。
+    # 幂等（polygon_id 留痕），Polygon 查询失败时降级不阻断。
+    if not dry_run:
+        try:
+            from CorporateActions import apply_to_inventory
+            for _strat in (['mrpt', 'mtfs'] if strategy == 'both' else [strategy]):
+                ca_report = apply_to_inventory(_strat)
+                if ca_report['applied']:
+                    for a in ca_report['applied']:
+                        log.warning(f"[CORPORATE_ACTION] {_strat} {a['pair']} "
+                                    f"{a['ticker']} split factor={a['factor']} applied")
+        except Exception as e:
+            log.warning(f"[CORPORATE_ACTION] check failed (non-fatal): {e}")
+
     # ── Regime detection ──────────────────────────────────────────────────
     regime = None
     if strategy == 'both' or (strategy in ('mrpt', 'mtfs') and not skip_regime):
