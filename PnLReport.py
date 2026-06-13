@@ -426,11 +426,48 @@ def download_prices(tickers: set, price_start: str, price_end: str) -> pd.DataFr
 
 
 def download_open_prices(tickers: set, price_start: str, price_end: str) -> pd.DataFrame:
-    """Download Open prices from yfinance (for execution-price comparison)."""
+    """Download Open prices from yfinance (for execution-price comparison).
+
+    Corporate actions: yfinance auto_adjust mis-dates recent splits (e.g. KLAC
+    1:10 exec 2026-06-12 but yfinance puts the cliff at 06-10 → its 'adjusted'
+    pre-split Opens stay old-scale while our shares/cost are canonical new-scale,
+    inflating the reference PnL ~10x). For any ticker with a split inside the
+    window we overlay Polygon Open (the same source-of-truth used for Close MTM,
+    correctly adjusted on the real execution_date). Non-split tickers are left on
+    yfinance untouched, so unaffected rows are byte-identical.
+    """
     end_plus = str((pd.Timestamp(price_end) + pd.Timedelta(days=2)).date())  # +2 for exec day
     raw = yf.download(sorted(tickers), start=price_start, end=end_plus,
                       auto_adjust=True, progress=False)
-    return raw['Open']
+    opens = raw['Open']
+
+    try:
+        from CorporateActions import _load_splits_cache
+        cache = _load_splits_cache().get('results', [])
+        split_tickers = {sp['ticker'] for sp in cache
+                         if sp.get('ticker') in tickers
+                         and price_start <= sp.get('execution_date', '') <= end_plus}
+        if split_tickers:
+            from PriceDataStore import PriceDataStore
+            store = PriceDataStore('price_data', os.environ.get('POLYGON_API_KEY', ''))
+            poly = store.load(sorted(split_tickers), price_start, end_plus)
+            # Polygon store indexes at 04:00 ET, yfinance at 00:00 → normalize to
+            # calendar date on both sides before reindex, else all-NaN (silently
+            # drops the row from section 6 instead of correcting it).
+            poly = poly.copy()
+            poly.index = pd.DatetimeIndex(poly.index).normalize()
+            for t in split_tickers:
+                col = ('Open', t)
+                if col in poly.columns:
+                    src = poly[col]
+                    src = src[~src.index.duplicated(keep='last')]
+                    opens[t] = src.reindex(pd.DatetimeIndex(opens.index).normalize()).values
+                    print(f'  [CA] section-6 exec-Open overlaid from Polygon for {t} '
+                          f'(yfinance split-adjustment unreliable)')
+    except Exception as e:
+        print(f'  [CA][WARN] exec-Open split overlay skipped: {e}')
+
+    return opens
 
 
 def get_price(prices: pd.DataFrame, ticker: str, dt: str):

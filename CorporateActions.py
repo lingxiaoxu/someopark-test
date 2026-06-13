@@ -383,16 +383,21 @@ def apply_to_inventory(strategy: str, dry_run: bool = False,
     detected = sorted({f"{i['ticker']} {i['split'].get('split_from')}:"
                        f"{i['split'].get('split_to')}@{i['split'].get('execution_date')}"
                        for i in pending}) if pending else []
-    # detect_pending 已剔除留痕过的 → "检测到但已应用"需单独看：窗口内有 split 但 pending 为空
-    window_hits = sorted({f"{sp['ticker']}@{sp['execution_date']}"
-                          for t in tickers for sp in splits.get(t, [])
-                          if sp.get('execution_date', '9999') <= str(date.today())})
+    # "applicable" = split 落在某个持仓的 open_date 之后且 <= 今天（与 detect_pending
+    # 同条件，但不看 marker）。只有 applicable 非空、pending 为空时才是真正的
+    # ALREADY-APPLIED；否则（持仓 ticker 仅有早于建仓的历史 split）= NO-ACTION-NEEDED。
+    _today = str(date.today())
+    applicable = sorted({f"{sp['ticker']}@{sp['execution_date']}"
+                         for pk, p in open_pairs.items()
+                         for leg_t in pk.split('/', 1)
+                         for sp in splits.get(leg_t, [])
+                         if (p.get('open_date') or '') < sp.get('execution_date', '') <= _today})
     status = ('DRY-RUN' if dry_run and pending else
               'APPLIED' if applied else
-              'ALREADY-APPLIED' if (window_hits and not pending) else
+              'ALREADY-APPLIED' if (applicable and not pending) else
               'NO-ACTION-NEEDED')
     _log_status(strategy, status,
-                f'tickers={len(tickers)} splits-in-window={window_hits or "none"} '
+                f'tickers={len(tickers)} applicable-splits={applicable or "none"} '
                 f'pending={detected or "none"} applied={len(applied)}')
     return {'strategy': strategy, 'status': status, 'checked_tickers': sorted(tickers),
             'pending': pending, 'applied': applied, 'dry_run': dry_run}
@@ -485,15 +490,19 @@ def apply_to_stock_inventory(inv_path: str, holdings_key: str, scope: str,
     detected = sorted({f"{sp['ticker']} {sp['split'].get('split_from')}:"
                        f"{sp['split'].get('split_to')}@{sp['split'].get('execution_date')}"
                        for sp in pending}) if pending else []
-    window_hits = sorted({f"{sp['ticker']}@{sp['execution_date']}"
-                          for t in tickers for sp in splits.get(t, [])
-                          if sp.get('execution_date', '9999') <= today_str})
+    # "applicable" = split 落在持仓 entry_date 之后且 <= 今天（与上面 pending 同条件，
+    # 但不看 marker）。仅 applicable 非空且 pending 为空 = 真 ALREADY-APPLIED；
+    # 否则（仅持有早于建仓的历史 split）= NO-ACTION-NEEDED。
+    applicable = sorted({f"{t}@{sp['execution_date']}"
+                         for t in tickers for sp in splits.get(t, [])
+                         if (holdings[t].get('entry_date') or '')
+                            < sp.get('execution_date', '') <= today_str})
     status = ('DRY-RUN' if dry_run and pending else
               'APPLIED' if applied else
-              'ALREADY-APPLIED' if (window_hits and not pending) else
+              'ALREADY-APPLIED' if (applicable and not pending) else
               'NO-ACTION-NEEDED')
     _log_status(scope, status,
-                f'tickers={len(tickers)} splits-in-window={window_hits or "none"} '
+                f'tickers={len(tickers)} applicable-splits={applicable or "none"} '
                 f'pending={detected or "none"} applied={len(applied)}')
     return {'scope': scope, 'status': status, 'checked_tickers': sorted(tickers),
             'pending': pending, 'applied': applied, 'dry_run': dry_run}
