@@ -228,6 +228,21 @@ class _DataLayer:
             return pd.DataFrame(cols) if cols else pd.DataFrame()
         self._adj_close = _field('Adj Close')
         self._volume = _field('Volume')
+        # Corporate-action heal: the root PriceDataStore caches history per *week*
+        # and never re-fetches past weeks, so a split (e.g. KLAC 1:10 exec 2026-06-12)
+        # leaves a ~10x cliff at the Monday boundary of the refetched current week.
+        # Unhealed, that cliff (a) fakes a ~-89% daily return → blows up vol/VaR/beta,
+        # and (b) 10x-inflates historical balance-sheet MTM (price_on reads this series
+        # while adjust_position_view scales the snapshot shares). Heal empirically by
+        # the actual cliff location (not exec_date — they differ here). Idempotent.
+        try:
+            from CorporateActions import heal_split_cliff
+            for _t in list(self._adj_close.columns):
+                healed, _n = heal_split_cliff(self._adj_close[_t], _t)
+                if _n:
+                    self._adj_close[_t] = healed
+        except Exception as _e:
+            log.warning(f"[RISK] split-cliff heal skipped (non-fatal): {_e}")
         self._returns = self._adj_close.pct_change(fill_method=None).dropna(how='all')
 
     def current_price(self, ticker):

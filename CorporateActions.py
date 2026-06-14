@@ -74,6 +74,11 @@ MONGO_AS_TRADED_SINCE = '2025-05-01'
 # 幅度 ≤5% 与日常波动同量级，且多落在口径分界模糊窗口内，misapply 风险 > 收益。
 _MIN_SPLIT_DEVIATION = 0.05
 
+# 经验式断崖修复（heal_split_cliff）只对实质性 factor 生效：≥1.5x 或 ≤1/1.5x。
+# 接近 1 的 factor 用价格自身跳变定位不可靠（与 5–10% 日常行情混淆 → 假阳性）。
+# 真实拆股几乎都是 ≥2:1 / ≤1:2，此阈值留足余量又排除 spinoff 微调整。
+_HEAL_MIN_FACTOR = 1.5
+
 
 # ── Inventory I/O（与 DailySignal 同约定：备份到 inventory_history + 同步前端） ──
 
@@ -247,6 +252,72 @@ def adjust_price_df(df, ticker: str, splits: list | None = None,
         log.warning(f'[SPLIT ADJUSTED] {ticker} price series: rows before {ed} '
                     f'÷{factor} (volume ×{factor})')
     return df, n_applied
+
+
+def heal_split_cliff(series, ticker: str, splits: list | None = None,
+                     tol: float = 0.15):
+    """
+    经验式断崖修复——按价格序列里**真实出现的跳变位置**消除拆股断崖，
+    而非假设它落在 execution_date。
+
+    动机：根目录 PriceDataStore 按"周"分区永久缓存历史，拆股后旧周不回刷，
+    新周（current week）才是新口径 → 断崖落在**周一边界**而非真实 exec date
+    （KLAC 1:10 exec 6/12，但缓存断崖在 6/08）。若用 adjust_price_df（exec_date
+    边界）会把已是新口径的 6/08–6/11 错误再除一次。本函数改用数据自身的跳变定位。
+
+    做法：对该 ticker 已知的每个 split（factor f，|f-1|>5%、exec<=今天），
+    在序列里找**单日 price[i-1]/price[i] ≈ f**（容差 tol）的那一天 D 作为断崖；
+    把 D 之前的所有行 ÷ f。找不到匹配跳变 = 序列已干净 → no-op（幂等）。
+
+    安全约束（避免把真实暴涨暴跌误判为拆股）：
+      • 仅对**确实存在 split** 的 ticker 运行；
+      • 跳变比必须与**已知 factor** 紧配（|ratio/f − 1| < tol），普通行情极难撞上；
+      • 多个候选时取最接近 f 的一天。
+
+    入参 series：以 DatetimeIndex 为索引的价格 Series（如 Adj Close）。
+    返回 (healed_series, n_healed)。原序列不被原地修改。
+    """
+    import pandas as pd
+    import numpy as np
+    if splits is None:
+        all_cached = _load_splits_cache().get('results', [])
+        splits = [s for s in all_cached if s.get('ticker') == ticker]
+    s = series.dropna()
+    if len(s) < 3 or not splits:
+        return series, 0
+    out = series.copy()
+    today_str = str(date.today())
+    n_healed = 0
+    for sp in splits:
+        ed = sp.get('execution_date')
+        if not ed or ed > today_str:
+            continue
+        f = float(sp['split_to']) / float(sp['split_from'])
+        # 经验式检测只对**实质性** factor 生效（≥1.5 或 ≤1/1.5）。接近 1 的微调整
+        # （如 HON 1000:1061=1.061、SCCO 1.0085 等 spinoff/股利数学）与日常 5–10%
+        # 行情无法区分，经验定位会把普通涨跌误判为断崖（实测 HON 把 7/24 的 +7%
+        # 误当 1.061 拆股，且离真实 exec 10/30 差 3 个月）。此类微调整既不会污染
+        # vol/VaR，价格源也已平滑处理 → 直接跳过，避免假阳性。
+        if 1.0 / _HEAL_MIN_FACTOR < f < _HEAL_MIN_FACTOR:
+            continue
+        sv = out.dropna()
+        if len(sv) < 3:
+            continue
+        ratio = sv.shift(1) / sv          # prev / curr ; forward split → ≈ f
+        rel = (ratio / f - 1.0).abs()
+        cand = rel[rel < tol]
+        if cand.empty:
+            continue                       # 没有与该 factor 匹配的跳变 → 已干净
+        cliff_day = cand.idxmin()          # 最贴合 factor 的那天 = 新口径首日
+        mask = out.index < cliff_day
+        if not mask.any():
+            continue
+        out.loc[mask] = out.loc[mask] / f
+        n_healed += 1
+        log.warning(f'[CA][heal] {ticker}: empirical split cliff at {cliff_day.date()} '
+                    f'(ratio≈{float(ratio.loc[cliff_day]):.2f} vs factor {f}); '
+                    f'rows before ÷{f} (exec_date={ed})')
+    return out, n_healed
 
 
 # ── 检测与应用 ─────────────────────────────────────────────────────────────────
