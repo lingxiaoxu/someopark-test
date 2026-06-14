@@ -1528,11 +1528,22 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh batch --group A B C -
 
 | 数据 | 来源 | 频率 | 脚本 |
 |---|---|---|---|
-| ETF 日线价格 | Yahoo Finance（yfinance） | 每日 | `data/loader.py` |
+| ETF 日线价格 | Yahoo Finance（yfinance，回测/信号） | 每日 | `data/loader.py` |
+| ETF live MTM 价格 | Polygon 优先（独立 store `price_data/sector_etfs/polygon`），yfinance fallback 带显式告警 | 每日 | 根目录 `UpdateMasterPerformance.py` |
 | 成分股季度 EPS | Polygon `/vX/reference/financials` | 每周增量 | `update_eps_history.py` |
 | VIX / SPY 价格 | Yahoo Finance | 每日 | `data/loader.py` |
 | FRED 宏观指标 | FRED API（fredapi） | 每日 | `data/loader.py` |
 | 宏观 parquets | someopark 主 pipeline（**只读**） | 每日 | — |
+
+**数据新鲜度自愈**：
+- 价格（`data/loader.py`）：cache 按目标日感知——未覆盖请求 end 日即重新拉取（yfinance end 为开区间，内部已 +1 天补当日收盘）；旧的按日 pkl cache 自动清理（仅保留 current + latest）
+- 宏观（`SectorRotationDailySignal.py`）：若 MacroStateStore 落后于目标交易日，自动触发一次 `update()` 后重载；历史/as-of 运行不触发（无前视），失败时降级不阻断信号
+
+**Corporate actions（拆股/合股）**：ETF 也会拆股。价格源 split 后全历史回溯调整，但 `inventory_sector_rotation.json` 的 `holdings`（shares/cost_basis/last_price）是建仓口径，须在 MTM 前修正。由根目录共享模块 `CorporateActions.py` 统一处理（同一模块也服务 pairs/AISS）：
+- `SectorRotationDailySignal` 入口（0b 步）调用 `run_for('ssrs')`，MTM 前调整 `holdings`（shares×factor、cost_basis÷factor、last_price÷factor，市值不变）+ 备份 + `applied_corporate_actions` 留痕（polygon_id 幂等）；Polygon 不可达时降级不阻断
+- 状态日志（每次检查一行）：根 `trading_signals/corporate_actions.log` — `NO-ACTION-NEEDED` / `ALREADY-APPLIED` / `APPLIED` / `NO-POSITIONS` / `ERROR`（**检查失败** ≠ **无 split**）
+- **weekly 维护**（`sector_rotation_pipeline.sh weekly` Step 0）：增量刷新 live-MTM Polygon store（11 ETF + SPY）+ 覆盖报告 —— 该 store 仅 `UpdateMasterPerformance` 写、且只刷当前持仓，故曾持有的 ETF 会在那里 stale，weekly 主动补齐（信号价走 yfinance 时效缓存，本身每日自刷，不受影响）
+- 手动检查：`conda run -n qlib_run python CorporateActions.py --strategy ssrs --dry-run`
 
 ---
 

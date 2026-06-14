@@ -280,6 +280,17 @@ $ENV.data.industry_signals  --update-dram            # 重算 DRAM proxy
 >
 > **外部数据现实**：TSMC 深历史不可自由回填（TWSE 只暴露当月），故当某日 TSMC YoY 不可得时 `supply_chain` 用 foundry 价格动量代理（V1 设计）；ASML / MU-DIO / DRAM 有真实回填历史。
 
+### Corporate actions（拆股/合股）
+
+价格源 split 后全历史回溯调整，但 `inventory_aiss.json` 的 `stock_holdings`（shares/cost_basis/last_price）是建仓口径 — 不处理会产生幻影 MTM 跳变并打崩 returns-based subsector basket 信号（2026-06-12 KLAC 1:10 拆股事故）。由根目录共享模块 `CorporateActions.py` 统一处理（同一模块也服务 pairs/SSRS），AISS 侧自动覆盖三层：
+
+- **inventory**：`AISSdailySignal` 入口（0b 步）调用 `run_for('aiss')`，MTM 前调整 `stock_holdings`（shares×factor、cost_basis÷factor、last_price÷factor，市值不变），备份 + `applied_corporate_actions` 留痕（polygon_id 幂等）；Polygon 不可达时降级不阻断。
+- **价格 store 自愈**：`data/aiss_fetch_prices.update_ticker` 的 7 天 overlap 若发现同日 Close 偏差 >2%（回溯调整特征）→ 丢弃缓存全量重拉，杜绝断崖留在序列中间。
+- **截断保护**：`_persist` truncation guard — 短/坏的 refetch（新数据 <50% 缓存且晚 180 天）拒绝覆盖磁盘并回退缓存（防 `force=True` 把全历史写成短窗口）；`--force`/`--init` 显式重建可 override。
+- 状态日志（每次检查一行）：根 `trading_signals/corporate_actions.log` — `NO-ACTION-NEEDED` / `ALREADY-APPLIED` / `APPLIED` / `NO-POSITIONS` / `ERROR`（**检查失败** ≠ **无 split**，ERROR 须排查）。
+- **weekly 维护**：`semiconductor_pipeline.sh weekly` 在 verify 前先跑 `--update`（全 universe 含 SOXX/SMH benchmark），benchmark 不在 daily 刷新路径，靠此周度刷新防 stale。
+- 手动检查：`conda run -n qlib_run python CorporateActions.py --strategy aiss --dry-run`
+
 ---
 
 ## 文件结构
@@ -689,6 +700,11 @@ AISS 的三个 OpenClaw cron 任务镜像 SSRS（在 isolated session 中运行�
 | TSMC 月营收 | TWSE OpenAPI | supply_chain foundry 领先指标 |
 | DRAM proxy | MU/SOXX 相对强度 | supply_chain 内存周期 |
 | 宏观（VIX, 利差, ISM…） | `price_data/macro/`（只读）+ FRED | regime + cycle_regime |
+
+**数据新鲜度自愈**：
+- 价格（`data/aiss_fetch_prices.py`）：loader 层按目标日 + 时间节流判断新鲜度（收盘后运行会重新拉取当日收盘，而非按"当天已拉过"跳过）；同一 store API 也服务 SR ETF 独立库（`price_data/sector_etfs/polygon`）
+- 宏观（`AISSdailySignal.py`）：MacroStateStore 落后于目标交易日时自动触发一次 `update()` 后重载；历史/as-of 运行不触发，失败时降级不阻断信号
+- live MTM（根目录 `UpdateMasterPerformance.py`）：Polygon 优先，yfinance fallback 带显式告警；自动选取最优回测参数（不硬编码）
 
 ---
 

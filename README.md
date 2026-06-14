@@ -103,7 +103,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `RiskManager.py` | 每日风险报告（PDF/Excel/TXT）：双视图资产负债表（资产负债表法 + 双账户法）、Portfolio Margin（~20% gross）要求与 margin call 距离、杠杆/集中度/流动性分析。DailySignal 每日自动调用 |
 | `UpdateStrategyPerformance.py` | 更新 `strategy_performance.json`（MRPT/MTFS/Combined 权益曲线），DailySignal 在风险报告前自动调用 |
 | `UpdateMasterPerformance.py` | 更新 Master Portfolio（Pairs + SSRS + AISS + BDC）权益曲线，自动选取各策略最优回测参数（不硬编码）；live 段 MTM Polygon 优先，yfinance fallback 带显式告警 |
-| `CorporateActions.py` | 拆股/合股自动处理：Polygon splits 市场级日检（cache），DailySignal Step 1 前自动调整 inventory（shares×factor、open_price÷factor，PnL 美元值不变，polygon_id 留痕幂等）；Mongo as-traded 价格序列读取时回溯调整消除断崖；历史快照读取时换算口径（`adjust_position_view`）。CLI `--dry-run` |
+| `CorporateActions.py` | 拆股/合股自动处理，**四策略统一**入口 `run_for(mrpt\|mtfs\|aiss\|ssrs)`：Polygon splits 市场级日检（cache），各策略 daily signal 在 MTM 前自动调整 inventory（shares×factor、价格÷factor，市值/PnL 不变，polygon_id 留痕幂等）；Mongo as-traded 价格序列读取时回溯调整消除断崖（`adjust_price_df`）；历史快照读取时换算口径（`adjust_position_view`）；RiskManager 价格序列经验式断崖修复（`heal_split_cliff`，防污染 VaR/vol/beta）。分级状态日志 `trading_signals/corporate_actions.log`（NO-ACTION-NEEDED / ALREADY-APPLIED / APPLIED / ERROR）。CLI `--strategy all --dry-run` |
 
 ### MRPT 策略
 
