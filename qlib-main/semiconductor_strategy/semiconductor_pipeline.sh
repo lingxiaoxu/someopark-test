@@ -213,15 +213,24 @@ print('inventory as_of:', d.get('as_of')); print('holdings:', d.get('holdings'))
         # Mirrors SSRS 'weekly': data/PIT health + weekly_review + dry-run validation.
         # (AISS has no EPS step; SSRS's EPS refresh is replaced by data/PIT health checks.)
         WK_LOG="$LOG_DIR/aiss_weekly_$TS.log"
-        hr; log "AISS WEEKLY maintenance (data/PIT health + weekly review + dry-run)"; hr
-        log "1/3 data + PIT health checks (prices / company / industry coverage)…"
+        hr; log "AISS WEEKLY maintenance (price refresh + data/PIT health + weekly review + dry-run)"; hr
+        # Incremental price refresh for the FULL universe incl. benchmarks (SOXX/SMH/SPY)
+        # BEFORE verifying. Benchmarks are not in the daily signal's load path
+        # (daily loads SR ETFs + SPY + the stock universe; SOXX/SMH only refresh when
+        # the monthly optimizer runs load_subsector_prices), so without this they go
+        # stale between monthly rebalances and verify always flags them. --update is
+        # incremental + time-throttled, so this is cheap and idempotent. (non-fatal)
+        log "0/4 price refresh (incremental, full universe incl. SOXX/SMH benchmarks)…"
+        PY -m $PKG.data.aiss_fetch_prices --update 2>&1 | tee -a "$WK_LOG" \
+          || log "  WARN: weekly price refresh failed (non-fatal, verify will report)"
+        log "1/4 data + PIT health checks (prices / company / industry coverage)…"
         PY -m $PKG.data.aiss_fetch_prices --verify 2>&1 | tee -a "$WK_LOG" || true
         PY -m $PKG.data.company_signals  --verify 2>&1 | tee -a "$WK_LOG" || true
         PY -m $PKG.data.industry_signals --verify 2>&1 | tee -a "$WK_LOG" || true
-        log "2/3 weekly review (multi-horizon + param drift + regime trend + P0-cache health)…"
+        log "2/4 weekly review (multi-horizon + param drift + regime trend + P0-cache health)…"
         PY -m $PKG.weekly_review "$@" 2>&1 | tee -a "$WK_LOG" \
           || log "  WARN: weekly_review failed — continuing with dry-run"
-        log "3/3 dry-run validation (full pipeline healthy, no inventory write)…"
+        log "3/4 dry-run validation (full pipeline healthy, no inventory write)…"
         PY -m $PKG.AISSdailySignal --dry-run 2>&1 | tee -a "$WK_LOG"
         log "WEEKLY MAINTENANCE COMPLETE  (log: $WK_LOG)"
         ;;
