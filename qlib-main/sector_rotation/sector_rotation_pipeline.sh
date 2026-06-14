@@ -349,6 +349,39 @@ daily)
 weekly)
     log "Mode: WEEKLY  value-source=$VALUE_SOURCE"
 
+    # Step 0: Live-MTM Polygon store refresh + coverage check (mirrors AISS weekly).
+    # The SR live-MTM store (price_data/sector_etfs/polygon) is only touched by
+    # UpdateMasterPerformance, and only for tickers CURRENTLY held — so ETFs that
+    # were dropped from the book go stale there. Signals themselves use yfinance
+    # with a time-based cache (self-refreshing daily), so this is a hygiene step
+    # for the live-MTM store, not a signal dependency. Incremental + non-fatal.
+    set -a && source "$REPO/.env" && set +a
+    log_section "STEP 0: SR live-MTM Polygon store refresh (11 ETFs + SPY)"
+    PYTHONPATH="$REPO/qlib-main:$REPO" $CONDA_QLIB python - <<'PYEOF' 2>&1 | tee -a "$LOGFILE" || log "  WARN: SR store refresh failed (non-fatal)"
+import os, sys
+import pandas as pd
+sys.path.insert(0, 'qlib-main')
+from semiconductor_strategy.data import aiss_fetch_prices as fp
+STORE = os.path.join('price_data', 'sector_etfs', 'polygon')
+TICKERS = ['XLE','XLB','XLI','XLY','XLP','XLV','XLF','XLK','XLC','XLU','XLRE','SPY']
+res = fp.update_all(tickers=TICKERS, prices_dir=__import__('pathlib').Path(STORE))
+end_ts = pd.Timestamp.today().normalize()
+ok = True
+print('=' * 60)
+print('SR LIVE-MTM STORE COVERAGE (price_data/sector_etfs/polygon)')
+print('=' * 60)
+for t in TICKERS:
+    df = fp._read_existing(t, prices_dir=__import__('pathlib').Path(STORE))
+    if df is None or len(df) == 0:
+        print(f'  !! {t:5} MISSING'); ok = False; continue
+    last = df.index[-1]
+    fresh = last >= (end_ts - pd.Timedelta(days=6))
+    if not fresh: ok = False
+    print(f"  {'ok ' if fresh else '!! '}{t:5} {df.index[0].date()}->{last.date()}  rows={len(df)}")
+print('=' * 60)
+print('RESULT:', 'ALL FRESH' if ok else 'SOME STALE — see !! rows')
+PYEOF
+
     # Step 1: Incremental EPS update (REFRESH_DAYS=7, skips symbols updated this week)
     run_python 1 "EPS incremental update (55 symbols, skips fresh)" \
         qlib-main/sector_rotation/update_eps_history.py
