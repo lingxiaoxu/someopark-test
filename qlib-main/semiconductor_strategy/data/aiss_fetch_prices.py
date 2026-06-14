@@ -298,7 +298,11 @@ _TRUNCATE_KEEP_FRACTION = 0.5
 
 def _persist(ticker: str, df: pd.DataFrame, source: str, meta: dict,
              prices_dir: Optional[Path] = None,
-             allow_truncate: bool = False) -> None:
+             allow_truncate: bool = False) -> bool:
+    """Write the frame to the store. Returns True if written, False if the
+    truncation guard refused the overwrite (disk cache left intact). Callers
+    MUST check the result and fall back to the cached frame on False, so a bad
+    short refetch never propagates into in-memory signal computation."""
     _resolve_dir(prices_dir).mkdir(parents=True, exist_ok=True)
     df = df[[c for c in ALL_COLUMNS if c in df.columns]].copy()
     df.index.name = "Date"
@@ -312,11 +316,11 @@ def _persist(ticker: str, df: pd.DataFrame, source: str, meta: dict,
             if shrinks and starts_later:
                 log.error(
                     "[CA][store] %s: REFUSING truncating overwrite — new=%d rows "
-                    "(%s→%s) vs cached=%d rows (%s→%s). Keeping cache. "
-                    "Use --force to rebuild intentionally.",
+                    "(%s→%s) vs cached=%d rows (%s→%s). Keeping cache. Pass "
+                    "allow_truncate (CLI --force/--init) to rebuild intentionally.",
                     ticker, len(df), df.index[0].date(), df.index[-1].date(),
                     len(prev), prev.index[0].date(), prev.index[-1].date())
-                return
+                return False
     df.to_parquet(_parquet_path(ticker, prices_dir), engine="pyarrow")
     meta[ticker] = {
         "source": source,
@@ -326,6 +330,7 @@ def _persist(ticker: str, df: pd.DataFrame, source: str, meta: dict,
         "fetched_at": date.today().isoformat(),                       # legacy (date)
         "fetched_at_ts": datetime.now().isoformat(timespec="seconds"),  # for staleness throttle
     }
+    return True
 
 
 def update_ticker(
@@ -336,6 +341,7 @@ def update_ticker(
     force: bool = False,
     meta: Optional[dict] = None,
     prices_dir: Optional[Path] = None,
+    allow_truncate: bool = False,
 ) -> Optional[pd.DataFrame]:
     """Fetch/refresh a single ticker into its isolated parquet.
 
@@ -438,7 +444,20 @@ def update_ticker(
         else:
             merged["AdjClose"] = merged["Close"]
 
-    _persist(ticker, merged, source, meta, prices_dir)
+    written = _persist(ticker, merged, source, meta, prices_dir,
+                       allow_truncate=allow_truncate)
+    if not written:
+        # Guard refused a truncating overwrite: the disk cache is intact but the
+        # in-memory `merged` is the bad short frame. Return the cached frame so the
+        # caller (e.g. load_prices_wide) never computes on the truncated series.
+        cached = _read_existing(ticker, prices_dir)
+        if cached is not None and len(cached):
+            log.warning("%s: refetch rejected by truncation guard — returning "
+                        "cached %d rows (%s→%s) instead of short %d-row frame",
+                        ticker, len(cached), cached.index[0].date(),
+                        cached.index[-1].date(), len(merged))
+            return cached
+        return None  # no cache to fall back to → signal "no usable data"
     if standalone:
         _save_meta(meta, prices_dir)
     log.info("%s: %d rows %s→%s (%s)", ticker, len(merged),
@@ -454,7 +473,12 @@ def update_all(
     prices_dir: Optional[Path] = None,
 ) -> Dict[str, bool]:
     """Fetch/refresh all AISS tickers (universe stocks + benchmarks).
-    ``prices_dir`` selects the store (default = AISS semi_strategy)."""
+    ``prices_dir`` selects the store (default = AISS semi_strategy).
+
+    ``force`` (CLI --force/--init) means an INTENTIONAL full rebuild from
+    ``start``, so it also passes allow_truncate=True — an explicit rebuild is
+    allowed to shrink history (e.g. a deliberate re-init), while the incremental
+    daily/weekly path keeps the truncation guard on."""
     if tickers is None:
         tickers = U.all_tickers(include_benchmark=True)
     meta = _load_meta(prices_dir)
@@ -462,7 +486,7 @@ def update_all(
     for i, t in enumerate(tickers):
         try:
             df = update_ticker(t, start=start, end=end, force=force, meta=meta,
-                               prices_dir=prices_dir)
+                               prices_dir=prices_dir, allow_truncate=force)
             results[t] = df is not None and len(df) > 0
         except Exception as e:  # noqa: BLE001
             log.error("update_ticker(%s) raised: %s", t, e)
