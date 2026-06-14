@@ -278,11 +278,45 @@ def _read_existing(ticker: str, prices_dir: Optional[Path] = None) -> Optional[p
         return None
 
 
+def _earliest_cached_date(existing: Optional[pd.DataFrame]):
+    """First date string of a cached frame, or None. Used to floor heal refetches."""
+    if existing is None or len(existing) == 0:
+        return None
+    try:
+        return existing.index[0].date().isoformat()
+    except Exception:
+        return None
+
+
+# A refetch that returns far less history than what's already cached is almost
+# always a bug (wrong/short ``start`` on a force=True path), not a legitimate
+# shrink. Refuse to overwrite when the new frame keeps < this fraction of the
+# cached rows AND starts materially later — unless ALLOW_TRUNCATE is set (used by
+# the explicit --force/--init full-rebuild path).
+_TRUNCATE_KEEP_FRACTION = 0.5
+
+
 def _persist(ticker: str, df: pd.DataFrame, source: str, meta: dict,
-             prices_dir: Optional[Path] = None) -> None:
+             prices_dir: Optional[Path] = None,
+             allow_truncate: bool = False) -> None:
     _resolve_dir(prices_dir).mkdir(parents=True, exist_ok=True)
     df = df[[c for c in ALL_COLUMNS if c in df.columns]].copy()
     df.index.name = "Date"
+    # ── Truncation guard: don't let a short/bad refetch clobber long history ──
+    if not allow_truncate:
+        prev = _read_existing(ticker, prices_dir)
+        if prev is not None and len(prev) > 10:
+            shrinks = len(df) < len(prev) * _TRUNCATE_KEEP_FRACTION
+            starts_later = (len(df) and len(prev)
+                            and df.index[0] > prev.index[0] + pd.Timedelta(days=180))
+            if shrinks and starts_later:
+                log.error(
+                    "[CA][store] %s: REFUSING truncating overwrite — new=%d rows "
+                    "(%s→%s) vs cached=%d rows (%s→%s). Keeping cache. "
+                    "Use --force to rebuild intentionally.",
+                    ticker, len(df), df.index[0].date(), df.index[-1].date(),
+                    len(prev), prev.index[0].date(), prev.index[-1].date())
+                return
     df.to_parquet(_parquet_path(ticker, prices_dir), engine="pyarrow")
     meta[ticker] = {
         "source": source,
@@ -361,12 +395,19 @@ def update_ticker(
                 _dev = (_ratio - 1.0).abs()
                 if (_dev > 0.02).any():
                     _worst = float(_ratio.loc[_dev.idxmax()])
+                    # A "FULL refetch" must use the ORIGINAL history start, not the
+                    # caller's (possibly recent) ``start`` — otherwise force=True (which
+                    # skips reading existing) overwrites full history with a short window.
+                    # 2026-06-13: UpdateMasterPerformance loads with start=live-10d
+                    # (2026-05-22); without this floor the heal truncated MU to 15 rows.
+                    _heal_start = min(start, _earliest_cached_date(existing) or start,
+                                      DEFAULT_INIT_START)
                     log.warning(
                         "[CA][store] %s: retro price adjustment detected on overlap "
                         "(stored/new ratio %.4f on %s — likely split) — discarding "
                         "cache, FULL refetch %s→%s",
-                        ticker, _worst, _dev.idxmax().date(), start, end)
-                    healed = update_ticker(ticker, start=start, end=end,
+                        ticker, _worst, _dev.idxmax().date(), _heal_start, end)
+                    healed = update_ticker(ticker, start=_heal_start, end=end,
                                            api_key=api_key, force=True,
                                            meta=meta, prices_dir=prices_dir)
                     if standalone:
