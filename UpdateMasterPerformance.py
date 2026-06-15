@@ -362,14 +362,16 @@ def main():
     bdc = load_bdc_equity()
     print(f'  BDC: {len(bdc)} days, start=${bdc.iloc[0]:,.0f} end=${bdc.iloc[-1]:,.0f}')
 
-    # 5. Benchmarks (SPY, SMH) — buy-and-hold, normalized to combined_start
+    # 5. Benchmarks (SPY, SMH, SOXX, MAGS) — buy-and-hold, normalized to combined_start.
+    #   SPY = broad market; SMH/SOXX = semis (cap-weighted vs equal-ish); MAGS = Mag-7.
+    BENCHMARK_TICKERS = ('SPY', 'SMH', 'SOXX', 'MAGS')
     benchmarks = {}
     bm_end = (datetime.now() + pd.Timedelta(days=2)).strftime('%Y-%m-%d')
-    # Prefer Polygon (SMH/SPY are in the AISS store) so the benchmark is sourced the
+    # Prefer Polygon (all four are in the AISS store) so benchmarks are sourced the
     # same way as AISS/SSRS; yfinance fallback per ticker with a loud alert.
     bm_prices = None
     try:
-        bm_prices = _polygon_price_loader(['SPY', 'SMH'], inception_date, bm_end)
+        bm_prices = _polygon_price_loader(list(BENCHMARK_TICKERS), inception_date, bm_end)
         if bm_prices is None or bm_prices.empty:
             _polygon_fallback_alert('benchmarks', 'returned no data')
             bm_prices = None
@@ -378,7 +380,7 @@ def main():
     except Exception as e:
         _polygon_fallback_alert('benchmarks', repr(e))
         bm_prices = None
-    for ticker in ('SPY', 'SMH'):
+    for ticker in BENCHMARK_TICKERS:
         try:
             close = None
             if bm_prices is not None and ticker in bm_prices.columns:

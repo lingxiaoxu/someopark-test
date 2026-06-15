@@ -42,16 +42,18 @@ const COLORS: Record<string, string> = {
   master: '#111',
   spy: '#9ca3af',
   smh: '#6b7280',
+  soxx: '#0891b2',
+  mags: '#c026d3',
 };
 const LABELS: Record<string, string> = {
   mrpt: 'MRPT', mtfs: 'MTFS', sr: 'SSRS', aiss: 'AISS', bdc: 'PC BDC',
   combined: 'COMBINED 4 AI ENABLED SYSTEMATIC STRATEGIES',
   master: 'MASTER AI PORTFOLIO WITH GLOBAL ALLOCATIONS',
-  spy: 'SPY', smh: 'SMH',
+  spy: 'SPY', smh: 'SMH', soxx: 'SOXX', mags: 'MAGS',
 };
 const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'combined'];
 const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'master'];
-const BENCHMARK_KEYS = ['spy', 'smh'];  // dashed reference lines in Master mode
+const BENCHMARK_KEYS = ['spy', 'smh', 'soxx', 'mags'];  // dashed reference lines in Master mode
 
 
 export default function StrategyPerformanceViewer({ params }: { params?: any }) {

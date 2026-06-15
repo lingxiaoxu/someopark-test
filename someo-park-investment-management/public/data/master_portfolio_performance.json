@@ -23,7 +23,9 @@
     "master_pnl": 0.0,
     "master_dd": 0.0,
     "spy_equity": 921498.79,
-    "smh_equity": 921498.79
+    "smh_equity": 921498.79,
+    "soxx_equity": 921498.79,
+    "mags_equity": 921498.79
   },
   {
     "date": "2025-11-12",
@@ -49,7 +51,9 @@
     "master_pnl": 15080.16,
     "master_dd": 0.0,
     "spy_equity": 922011.48,
-    "smh_equity": 933258.69
+    "smh_equity": 933258.69,
+    "soxx_equity": 935610.85,
+    "mags_equity": 910950.94
   },
   {
     "date": "2025-11-13",
@@ -75,7 +79,9 @@
     "master_pnl": -33081.6,
     "master_dd": -0.89,
     "spy_equity": 906711.64,
-    "smh_equity": 905145.17
+    "smh_equity": 905145.17,
+    "soxx_equity": 903484.06,
+    "mags_equity": 887663.47
   },
   {
     "date": "2025-11-14",
@@ -101,7 +107,9 @@
     "master_pnl": 7470.47,
     "master_dd": -0.69,
     "spy_equity": 906563.22,
-    "smh_equity": 905565.17
+    "smh_equity": 905565.17,
+    "soxx_equity": 900799.02,
+    "mags_equity": 888896.34
   },
   {
     "date": "2025-11-17",
@@ -127,7 +135,9 @@
     "master_pnl": -25413.21,
     "master_dd": -1.38,
     "spy_equity": 898117.28,
-    "smh_equity": 893280.27
+    "smh_equity": 893280.27,
+    "soxx_equity": 885313.22,
+    "mags_equity": 886978.54
   },
   {
     "date": "2025-11-18",
@@ -153,7 +163,9 @@
     "master_pnl": -27871.73,
     "master_dd": -2.13,
     "spy_equity": 890575.29,
-    "smh_equity": 874879.17
+    "smh_equity": 874879.17,
+    "soxx_equity": 864769.56,
+    "mags_equity": 870403.35
   },
   {
     "date": "2025-11-19",
@@ -179,7 +191,9 @@
     "master_pnl": 9125.68,
     "master_dd": -1.89,
     "spy_equity": 894015.73,
-    "smh_equity": 891022.79
+    "smh_equity": 891022.79,
+    "soxx_equity": 879225.05,
+    "mags_equity": 877526.57
   },
   {
     "date": "2025-11-20",
@@ -205,7 +219,9 @@
     "master_pnl": -58068.94,
     "master_dd": -3.45,
     "spy_equity": 880388.88,
-    "smh_equity": 853380.59
+    "smh_equity": 853380.59,
+    "soxx_equity": 837044.98,
+    "mags_equity": 862184.24
   },
   {
     "date": "2025-11-21",
@@ -231,7 +247,9 @@
     "master_pnl": 14934.52,
     "master_dd": -3.05,
     "spy_equity": 889158.63,
-    "smh_equity": 856084.32
+    "smh_equity": 856084.32,
+    "soxx_equity": 845568.41,
+    "mags_equity": 869307.47
   },
   {
     "date": "2025-11-24",
@@ -257,7 +275,9 @@
     "master_pnl": 62753.56,
     "master_dd": -1.36,
     "spy_equity": 902245.81,
-    "smh_equity": 890182.79
+    "smh_equity": 890182.79,
+    "soxx_equity": 882628.18,
+    "mags_equity": 897937.35
   },
   {
     "date": "2025-11-25",
@@ -283,7 +303,9 @@
     "master_pnl": 5631.27,
     "master_dd": -1.2,
     "spy_equity": 910732.23,
-    "smh_equity": 892519.02
+    "smh_equity": 892519.02,
+    "soxx_equity": 885375.66,
+    "mags_equity": 904375.65
   },
   {
     "date": "2025-11-26",
@@ -309,7 +331,9 @@
     "master_pnl": 30955.33,
     "master_dd": -0.37,
     "spy_equity": 917019.47,
-    "smh_equity": 912731.36
+    "smh_equity": 912731.36,
+    "soxx_equity": 909759.55,
+    "mags_equity": 908348.22
   },
   {
     "date": "2025-11-27",
@@ -335,7 +359,9 @@
     "master_pnl": 369.84,
     "master_dd": -0.36,
     "spy_equity": 917019.47,
-    "smh_equity": 912731.36
+    "smh_equity": 912731.36,
+    "soxx_equity": 909759.55,
+    "mags_equity": 908348.22
   },
   {
     "date": "2025-11-28",
@@ -361,7 +387,9 @@
     "master_pnl": 21660.86,
     "master_dd": 0.0,
     "spy_equity": 922024.98,
-    "smh_equity": 924727.51
+    "smh_equity": 924727.51,
+    "soxx_equity": 926462.99,
+    "mags_equity": 914512.55
   },
   {
     "date": "2025-12-01",
@@ -387,7 +415,9 @@
     "master_pnl": -8108.56,
     "master_dd": -0.22,
     "spy_equity": 917815.49,
-    "smh_equity": 926512.5
+    "smh_equity": 926512.5,
+    "soxx_equity": 927024.97,
+    "mags_equity": 913416.67
   },
   {
     "date": "2025-12-02",
@@ -413,7 +443,9 @@
     "master_pnl": 4434.3,
     "master_dd": -0.1,
     "spy_equity": 919515.48,
-    "smh_equity": 943496.11
+    "smh_equity": 943496.11,
+    "soxx_equity": 945508.02,
+    "mags_equity": 917800.19
   },
   {
     "date": "2025-12-03",
@@ -439,7 +471,9 @@
     "master_pnl": 14955.56,
     "master_dd": 0.0,
     "spy_equity": 922699.57,
-    "smh_equity": 956463.51
+    "smh_equity": 956463.51,
+    "soxx_equity": 965864.36,
+    "mags_equity": 917800.19
   },
   {
     "date": "2025-12-04",
@@ -465,7 +499,9 @@
     "master_pnl": -5705.11,
     "master_dd": -0.15,
     "spy_equity": 923374.17,
-    "smh_equity": 949192.32
+    "smh_equity": 949192.32,
+    "soxx_equity": 956248.18,
+    "mags_equity": 922320.7
   },
   {
     "date": "2025-12-05",
@@ -491,7 +527,9 @@
     "master_pnl": 21117.59,
     "master_dd": 0.0,
     "spy_equity": 925128.12,
-    "smh_equity": 956594.76
+    "smh_equity": 956594.76,
+    "soxx_equity": 965989.24,
+    "mags_equity": 926293.27
   },
   {
     "date": "2025-12-08",
@@ -517,7 +555,9 @@
     "master_pnl": 7035.25,
     "master_dd": 0.0,
     "spy_equity": 922348.78,
-    "smh_equity": 967435.92
+    "smh_equity": 967435.92,
+    "soxx_equity": 976479.63,
+    "mags_equity": 918074.16
   },
   {
     "date": "2025-12-09",
@@ -543,7 +583,9 @@
     "master_pnl": -357.9,
     "master_dd": -0.01,
     "spy_equity": 921552.76,
-    "smh_equity": 968617.16
+    "smh_equity": 968617.16,
+    "soxx_equity": 974668.79,
+    "mags_equity": 919991.95
   },
   {
     "date": "2025-12-10",
@@ -569,7 +611,9 @@
     "master_pnl": 20704.5,
     "master_dd": 0.0,
     "spy_equity": 927664.6,
-    "smh_equity": 982004.55
+    "smh_equity": 982004.55,
+    "soxx_equity": 987625.66,
+    "mags_equity": 920402.91
   },
   {
     "date": "2025-12-11",
@@ -595,7 +639,9 @@
     "master_pnl": -1465.03,
     "master_dd": -0.04,
     "spy_equity": 929823.31,
-    "smh_equity": 973578.37
+    "smh_equity": 973578.37,
+    "soxx_equity": 981974.59,
+    "mags_equity": 913553.65
   },
   {
     "date": "2025-12-12",
@@ -621,7 +667,9 @@
     "master_pnl": -55449.8,
     "master_dd": -1.51,
     "spy_equity": 919825.79,
-    "smh_equity": 929557.47
+    "smh_equity": 929557.47,
+    "soxx_equity": 935017.64,
+    "mags_equity": 906156.46
   },
   {
     "date": "2025-12-15",
@@ -647,7 +695,9 @@
     "master_pnl": 3870.63,
     "master_dd": -1.41,
     "spy_equity": 918436.12,
-    "smh_equity": 926355.0
+    "smh_equity": 926355.0,
+    "soxx_equity": 930428.1,
+    "mags_equity": 907252.34
   },
   {
     "date": "2025-12-16",
@@ -673,7 +723,9 @@
     "master_pnl": -8088.19,
     "master_dd": -1.62,
     "spy_equity": 915926.62,
-    "smh_equity": 923835.02
+    "smh_equity": 923835.02,
+    "soxx_equity": 926132.85,
+    "mags_equity": 914512.55
   },
   {
     "date": "2025-12-17",
@@ -699,7 +751,9 @@
     "master_pnl": -37517.03,
     "master_dd": -2.62,
     "spy_equity": 905848.15,
-    "smh_equity": 890497.79
+    "smh_equity": 890497.79,
+    "soxx_equity": 891832.79,
+    "mags_equity": 894649.71
   },
   {
     "date": "2025-12-18",
@@ -725,7 +779,9 @@
     "master_pnl": 39397.62,
     "master_dd": -1.57,
     "spy_equity": 912688.56,
-    "smh_equity": 911523.87
+    "smh_equity": 911523.87,
+    "soxx_equity": 913125.71,
+    "mags_equity": 912183.8
   },
   {
     "date": "2025-12-19",
@@ -751,7 +807,9 @@
     "master_pnl": 43272.62,
     "master_dd": -0.42,
     "spy_equity": 920961.05,
-    "smh_equity": 935096.18
+    "smh_equity": 935096.18,
+    "soxx_equity": 937420.29,
+    "mags_equity": 919444.01
   },
   {
     "date": "2025-12-22",
@@ -777,7 +835,9 @@
     "master_pnl": 29625.44,
     "master_dd": 0.0,
     "spy_equity": 926698.53,
-    "smh_equity": 947142.03
+    "smh_equity": 947142.03,
+    "soxx_equity": 950020.95,
+    "mags_equity": 924512.46
   },
   {
     "date": "2025-12-23",
@@ -803,7 +863,9 @@
     "master_pnl": -5229.58,
     "master_dd": -0.14,
     "spy_equity": 930933.99,
-    "smh_equity": 956252.7
+    "smh_equity": 956252.7,
+    "soxx_equity": 953522.87,
+    "mags_equity": 933279.51
   },
   {
     "date": "2025-12-24",
@@ -829,7 +891,9 @@
     "master_pnl": 18956.39,
     "master_dd": 0.0,
     "spy_equity": 934208.69,
-    "smh_equity": 958912.18
+    "smh_equity": 958912.18,
+    "soxx_equity": 957212.39,
+    "mags_equity": 933827.45
   },
   {
     "date": "2025-12-25",
@@ -855,7 +919,9 @@
     "master_pnl": -3208.12,
     "master_dd": -0.08,
     "spy_equity": 934208.69,
-    "smh_equity": 958912.18
+    "smh_equity": 958912.18,
+    "soxx_equity": 957212.39,
+    "mags_equity": 933827.45
   },
   {
     "date": "2025-12-26",
@@ -881,7 +947,9 @@
     "master_pnl": 5886.77,
     "master_dd": 0.0,
     "spy_equity": 934113.96,
-    "smh_equity": 963362.19
+    "smh_equity": 963362.19,
+    "soxx_equity": 956899.72,
+    "mags_equity": 931361.72
   },
   {
     "date": "2025-12-29",
@@ -907,7 +975,9 @@
     "master_pnl": -8048.44,
     "master_dd": -0.21,
     "spy_equity": 930785.14,
-    "smh_equity": 959017.51
+    "smh_equity": 959017.51,
+    "soxx_equity": 954648.48,
+    "mags_equity": 924101.51
   },
   {
     "date": "2025-12-30",
@@ -933,7 +1003,9 @@
     "master_pnl": -3375.03,
     "master_dd": -0.3,
     "spy_equity": 929648.47,
-    "smh_equity": 956647.68
+    "smh_equity": 956647.68,
+    "soxx_equity": 953397.8,
+    "mags_equity": 923075.42
   },
   {
     "date": "2025-12-31",
@@ -959,7 +1031,9 @@
     "master_pnl": -14697.07,
     "master_dd": -0.69,
     "spy_equity": 922760.78,
-    "smh_equity": 948274.28
+    "smh_equity": 948274.28,
+    "soxx_equity": 941610.08,
+    "mags_equity": 916820.58
   },
   {
     "date": "2026-01-01",
@@ -985,7 +1059,9 @@
     "master_pnl": 1425.24,
     "master_dd": -0.65,
     "spy_equity": 922760.78,
-    "smh_equity": 948274.28
+    "smh_equity": 948274.28,
+    "soxx_equity": 941610.08,
+    "mags_equity": 916820.58
   },
   {
     "date": "2026-01-02",
@@ -1011,7 +1087,9 @@
     "master_pnl": 69093.73,
     "master_dd": 0.0,
     "spy_equity": 924452.26,
-    "smh_equity": 982952.79
+    "smh_equity": 982952.79,
+    "soxx_equity": 980819.08,
+    "mags_equity": 908341.8
   },
   {
     "date": "2026-01-05",
@@ -1037,7 +1115,9 @@
     "master_pnl": 43705.61,
     "master_dd": 0.0,
     "spy_equity": 930609.23,
-    "smh_equity": 994248.98
+    "smh_equity": 994248.98,
+    "soxx_equity": 994482.83,
+    "mags_equity": 915847.61
   },
   {
     "date": "2026-01-06",
@@ -1063,7 +1143,9 @@
     "master_pnl": 58829.39,
     "master_dd": 0.0,
     "spy_equity": 936143.73,
-    "smh_equity": 1020659.42
+    "smh_equity": 1020659.42,
+    "soxx_equity": 1026656.72,
+    "mags_equity": 912511.69
   },
   {
     "date": "2026-01-07",
@@ -1089,7 +1171,9 @@
     "master_pnl": -32476.45,
     "master_dd": -0.82,
     "spy_equity": 933126.14,
-    "smh_equity": 1013813.24
+    "smh_equity": 1013813.24,
+    "soxx_equity": 1015838.29,
+    "mags_equity": 915986.6
   },
   {
     "date": "2026-01-08",
@@ -1115,7 +1199,9 @@
     "master_pnl": -14855.71,
     "master_dd": -1.2,
     "spy_equity": 933031.42,
-    "smh_equity": 997909.05
+    "smh_equity": 997909.05,
+    "soxx_equity": 999235.43,
+    "mags_equity": 915708.61
   },
   {
     "date": "2026-01-09",
@@ -1141,7 +1227,9 @@
     "master_pnl": 52140.14,
     "master_dd": 0.0,
     "spy_equity": 939201.92,
-    "smh_equity": 1024872.45
+    "smh_equity": 1024872.45,
+    "soxx_equity": 1028001.21,
+    "mags_equity": 922519.44
   },
   {
     "date": "2026-01-12",
@@ -1167,7 +1255,9 @@
     "master_pnl": 22005.9,
     "master_dd": 0.0,
     "spy_equity": 940676.89,
-    "smh_equity": 1028664.17
+    "smh_equity": 1028664.17,
+    "soxx_equity": 1032910.15,
+    "mags_equity": 921337.97
   },
   {
     "date": "2026-01-13",
@@ -1193,7 +1283,9 @@
     "master_pnl": -11994.61,
     "master_dd": -0.3,
     "spy_equity": 938795.97,
-    "smh_equity": 1030955.01
+    "smh_equity": 1030955.01,
+    "soxx_equity": 1042133.96,
+    "mags_equity": 917237.57
   },
   {
     "date": "2026-01-14",
@@ -1219,7 +1311,9 @@
     "master_pnl": -4853.81,
     "master_dd": -0.42,
     "spy_equity": 934181.62,
-    "smh_equity": 1022581.61
+    "smh_equity": 1022581.61,
+    "soxx_equity": 1037756.56,
+    "mags_equity": 903198.93
   },
   {
     "date": "2026-01-15",
@@ -1245,7 +1339,9 @@
     "master_pnl": 44547.64,
     "master_dd": 0.0,
     "spy_equity": 936725.6,
-    "smh_equity": 1043804.75
+    "smh_equity": 1043804.75,
+    "soxx_equity": 1054390.68,
+    "mags_equity": 904727.89
   },
   {
     "date": "2026-01-16",
@@ -1271,7 +1367,9 @@
     "master_pnl": 22413.02,
     "master_dd": 0.0,
     "spy_equity": 935940.76,
-    "smh_equity": 1054284.67
+    "smh_equity": 1054284.67,
+    "soxx_equity": 1070805.93,
+    "mags_equity": 902086.96
   },
   {
     "date": "2026-01-19",
@@ -1297,7 +1395,9 @@
     "master_pnl": 4262.63,
     "master_dd": 0.0,
     "spy_equity": 935940.76,
-    "smh_equity": 1054284.67
+    "smh_equity": 1054284.67,
+    "soxx_equity": 1070805.93,
+    "mags_equity": 902086.96
   },
   {
     "date": "2026-01-20",
@@ -1323,7 +1423,9 @@
     "master_pnl": -34551.11,
     "master_dd": -0.86,
     "spy_equity": 916887.98,
-    "smh_equity": 1027953.23
+    "smh_equity": 1027953.23,
+    "soxx_equity": 1054797.15,
+    "mags_equity": 874843.65
   },
   {
     "date": "2026-01-21",
@@ -1349,7 +1451,9 @@
     "master_pnl": 53449.5,
     "master_dd": 0.0,
     "spy_equity": 927469.85,
-    "smh_equity": 1058339.71
+    "smh_equity": 1058339.71,
+    "soxx_equity": 1088534.4,
+    "mags_equity": 884573.4
   },
   {
     "date": "2026-01-22",
@@ -1375,7 +1479,9 @@
     "master_pnl": 1181.64,
     "master_dd": 0.0,
     "spy_equity": 932314.23,
-    "smh_equity": 1060683.21
+    "smh_equity": 1060683.21,
+    "soxx_equity": 1090191.56,
+    "mags_equity": 902503.95
   },
   {
     "date": "2026-01-23",
@@ -1401,7 +1507,9 @@
     "master_pnl": 2407.69,
     "master_dd": 0.0,
     "spy_equity": 932652.53,
-    "smh_equity": 1053494.73
+    "smh_equity": 1053494.73,
+    "soxx_equity": 1077809.77,
+    "mags_equity": 912094.7
   },
   {
     "date": "2026-01-26",
@@ -1427,7 +1535,9 @@
     "master_pnl": 7196.77,
     "master_dd": 0.0,
     "spy_equity": 937388.66,
-    "smh_equity": 1050150.63
+    "smh_equity": 1050150.63,
+    "soxx_equity": 1072681.96,
+    "mags_equity": 916264.6
   },
   {
     "date": "2026-01-27",
@@ -1453,7 +1563,9 @@
     "master_pnl": 63515.51,
     "master_dd": 0.0,
     "spy_equity": 941123.44,
-    "smh_equity": 1072348.04
+    "smh_equity": 1072348.04,
+    "soxx_equity": 1097726.94,
+    "mags_equity": 925021.37
   },
   {
     "date": "2026-01-28",
@@ -1479,7 +1591,9 @@
     "master_pnl": 22100.77,
     "master_dd": 0.0,
     "spy_equity": 941028.72,
-    "smh_equity": 1097046.93
+    "smh_equity": 1097046.93,
+    "soxx_equity": 1127055.52,
+    "mags_equity": 924882.38
   },
   {
     "date": "2026-01-29",
@@ -1505,7 +1619,9 @@
     "master_pnl": 25161.47,
     "master_dd": 0.0,
     "spy_equity": 939161.33,
-    "smh_equity": 1099390.43
+    "smh_equity": 1099390.43,
+    "soxx_equity": 1129150.42,
+    "mags_equity": 922658.43
   },
   {
     "date": "2026-01-30",
@@ -1531,7 +1647,9 @@
     "master_pnl": -124034.78,
     "master_dd": -2.98,
     "spy_equity": 936360.24,
-    "smh_equity": 1062368.42
+    "smh_equity": 1062368.42,
+    "soxx_equity": 1082781.25,
+    "mags_equity": 919461.51
   },
   {
     "date": "2026-02-02",
@@ -1557,7 +1675,9 @@
     "master_pnl": 2072.06,
     "master_dd": -2.93,
     "spy_equity": 941015.18,
-    "smh_equity": 1074243.9
+    "smh_equity": 1074243.9,
+    "soxx_equity": 1102760.95,
+    "mags_equity": 919531.01
   },
   {
     "date": "2026-02-03",
@@ -1583,7 +1703,9 @@
     "master_pnl": -14838.07,
     "master_dd": -3.29,
     "spy_equity": 933058.48,
-    "smh_equity": 1047148.85
+    "smh_equity": 1047148.85,
+    "soxx_equity": 1080717.61,
+    "mags_equity": 904588.89
   },
   {
     "date": "2026-02-04",
@@ -1609,7 +1731,9 @@
     "master_pnl": -3592.15,
     "master_dd": -3.37,
     "spy_equity": 928538.86,
-    "smh_equity": 1005913.81
+    "smh_equity": 1005913.81,
+    "soxx_equity": 1033003.95,
+    "mags_equity": 890828.24
   },
   {
     "date": "2026-02-05",
@@ -1635,7 +1759,9 @@
     "master_pnl": -22825.97,
     "master_dd": -3.92,
     "spy_equity": 916942.1,
-    "smh_equity": 1003412.32
+    "smh_equity": 1003412.32,
+    "soxx_equity": 1034410.97,
+    "mags_equity": 873175.7
   },
   {
     "date": "2026-02-06",
@@ -1661,7 +1787,9 @@
     "master_pnl": 44915.0,
     "master_dd": -2.84,
     "spy_equity": 934533.45,
-    "smh_equity": 1057602.43
+    "smh_equity": 1057602.43,
+    "soxx_equity": 1089691.28,
+    "mags_equity": 877206.59
   },
   {
     "date": "2026-02-09",
@@ -1687,7 +1815,9 @@
     "master_pnl": 5582.87,
     "master_dd": -2.71,
     "spy_equity": 939039.54,
-    "smh_equity": 1070768.15
+    "smh_equity": 1070768.15,
+    "soxx_equity": 1103011.09,
+    "mags_equity": 887353.33
   },
   {
     "date": "2026-02-10",
@@ -1713,7 +1843,9 @@
     "master_pnl": 7893.11,
     "master_dd": -2.52,
     "spy_equity": 936563.22,
-    "smh_equity": 1065791.51
+    "smh_equity": 1065791.51,
+    "soxx_equity": 1098821.29,
+    "mags_equity": 883739.43
   },
   {
     "date": "2026-02-11",
@@ -1739,7 +1871,9 @@
     "master_pnl": 38030.71,
     "master_dd": -1.6,
     "spy_equity": 936346.71,
-    "smh_equity": 1092175.62
+    "smh_equity": 1092175.62,
+    "soxx_equity": 1126242.58,
+    "mags_equity": 878318.56
   },
   {
     "date": "2026-02-12",
@@ -1765,7 +1899,9 @@
     "master_pnl": -23563.67,
     "master_dd": -2.17,
     "spy_equity": 921881.21,
-    "smh_equity": 1069346.26
+    "smh_equity": 1069346.26,
+    "soxx_equity": 1099040.16,
+    "mags_equity": 858025.08
   },
   {
     "date": "2026-02-13",
@@ -1791,7 +1927,9 @@
     "master_pnl": 3963.47,
     "master_dd": -2.08,
     "spy_equity": 922530.74,
-    "smh_equity": 1073585.62
+    "smh_equity": 1073585.62,
+    "soxx_equity": 1108920.58,
+    "mags_equity": 849963.29
   },
   {
     "date": "2026-02-16",
@@ -1817,7 +1955,9 @@
     "master_pnl": 1103.14,
     "master_dd": -2.05,
     "spy_equity": 922530.74,
-    "smh_equity": 1073585.62
+    "smh_equity": 1073585.62,
+    "soxx_equity": 1108920.58,
+    "mags_equity": 849963.29
   },
   {
     "date": "2026-02-17",
@@ -1843,7 +1983,9 @@
     "master_pnl": -21616.97,
     "master_dd": -2.57,
     "spy_equity": 924019.24,
-    "smh_equity": 1073032.66
+    "smh_equity": 1073032.66,
+    "soxx_equity": 1107169.62,
+    "mags_equity": 851631.25
   },
   {
     "date": "2026-02-18",
@@ -1869,7 +2011,9 @@
     "master_pnl": 26046.13,
     "master_dd": -1.94,
     "spy_equity": 928674.18,
-    "smh_equity": 1086303.7
+    "smh_equity": 1086303.7,
+    "soxx_equity": 1119113.67,
+    "mags_equity": 857469.1
   },
   {
     "date": "2026-02-19",
@@ -1895,7 +2039,9 @@
     "master_pnl": -22454.28,
     "master_dd": -2.48,
     "spy_equity": 926224.92,
-    "smh_equity": 1080115.82
+    "smh_equity": 1080115.82,
+    "soxx_equity": 1112610.1,
+    "mags_equity": 856079.13
   },
   {
     "date": "2026-02-20",
@@ -1921,7 +2067,9 @@
     "master_pnl": 29695.81,
     "master_dd": -1.77,
     "spy_equity": 932923.16,
-    "smh_equity": 1092833.9
+    "smh_equity": 1092833.9,
+    "soxx_equity": 1123835.01,
+    "mags_equity": 870117.77
   },
   {
     "date": "2026-02-23",
@@ -1947,7 +2095,9 @@
     "master_pnl": -12869.23,
     "master_dd": -2.08,
     "spy_equity": 923396.77,
-    "smh_equity": 1087172.64
+    "smh_equity": 1087172.64,
+    "soxx_equity": 1115674.28,
+    "mags_equity": 856218.13
   },
   {
     "date": "2026-02-24",
@@ -1973,7 +2123,9 @@
     "master_pnl": -1534.97,
     "master_dd": -2.11,
     "spy_equity": 930108.55,
-    "smh_equity": 1103708.79
+    "smh_equity": 1103708.79,
+    "soxx_equity": 1131995.73,
+    "mags_equity": 866086.88
   },
   {
     "date": "2026-02-25",
@@ -1999,7 +2151,9 @@
     "master_pnl": 31286.28,
     "master_dd": -1.36,
     "spy_equity": 937957.0,
-    "smh_equity": 1122140.8
+    "smh_equity": 1122140.8,
+    "soxx_equity": 1150630.95,
+    "mags_equity": 879430.54
   },
   {
     "date": "2026-02-26",
@@ -2025,7 +2179,9 @@
     "master_pnl": -27548.13,
     "master_dd": -2.03,
     "spy_equity": 932747.25,
-    "smh_equity": 1084881.81
+    "smh_equity": 1084881.81,
+    "soxx_equity": 1115611.75,
+    "mags_equity": 865530.89
   },
   {
     "date": "2026-02-27",
@@ -2051,7 +2207,9 @@
     "master_pnl": -5326.41,
     "master_dd": -2.15,
     "spy_equity": 928268.22,
-    "smh_equity": 1070030.87
+    "smh_equity": 1070030.87,
+    "soxx_equity": 1101510.27,
+    "mags_equity": 852743.22
   },
   {
     "date": "2026-03-02",
@@ -2077,7 +2235,9 @@
     "master_pnl": -1160.53,
     "master_dd": -2.18,
     "spy_equity": 928795.96,
-    "smh_equity": 1070083.54
+    "smh_equity": 1070083.54,
+    "soxx_equity": 1100759.85,
+    "mags_equity": 856357.13
   },
   {
     "date": "2026-03-03",
@@ -2103,7 +2263,9 @@
     "master_pnl": -79972.84,
     "master_dd": -4.1,
     "spy_equity": 920609.22,
-    "smh_equity": 1029717.43
+    "smh_equity": 1029717.43,
+    "soxx_equity": 1046761.49,
+    "mags_equity": 851909.24
   },
   {
     "date": "2026-03-04",
@@ -2129,7 +2291,9 @@
     "master_pnl": 28744.13,
     "master_dd": -3.41,
     "spy_equity": 927104.49,
-    "smh_equity": 1050887.91
+    "smh_equity": 1050887.91,
+    "soxx_equity": 1067898.08,
+    "mags_equity": 864974.91
   },
   {
     "date": "2026-03-05",
@@ -2155,7 +2319,9 @@
     "master_pnl": -46339.27,
     "master_dd": -4.53,
     "spy_equity": 921935.34,
-    "smh_equity": 1041013.62
+    "smh_equity": 1041013.62,
+    "soxx_equity": 1056079.1,
+    "mags_equity": 864001.93
   },
   {
     "date": "2026-03-06",
@@ -2181,7 +2347,9 @@
     "master_pnl": -72946.72,
     "master_dd": -6.28,
     "spy_equity": 909851.44,
-    "smh_equity": 1002069.42
+    "smh_equity": 1002069.42,
+    "soxx_equity": 1011523.42,
+    "mags_equity": 847739.35
   },
   {
     "date": "2026-03-09",
@@ -2207,7 +2375,9 @@
     "master_pnl": 48987.63,
     "master_dd": -5.1,
     "spy_equity": 917821.67,
-    "smh_equity": 1038433.14
+    "smh_equity": 1038433.14,
+    "soxx_equity": 1051732.97,
+    "mags_equity": 857886.09
   },
   {
     "date": "2026-03-10",
@@ -2233,7 +2403,9 @@
     "master_pnl": 10985.29,
     "master_dd": -4.84,
     "spy_equity": 916346.7,
-    "smh_equity": 1046227.25
+    "smh_equity": 1046227.25,
+    "soxx_equity": 1059362.15,
+    "mags_equity": 860805.01
   },
   {
     "date": "2026-03-11",
@@ -2259,7 +2431,9 @@
     "master_pnl": 11434.72,
     "master_dd": -4.56,
     "spy_equity": 915196.5,
-    "smh_equity": 1055969.88
+    "smh_equity": 1055969.88,
+    "soxx_equity": 1069617.78,
+    "mags_equity": 863862.93
   },
   {
     "date": "2026-03-12",
@@ -2285,7 +2459,9 @@
     "master_pnl": -51337.48,
     "master_dd": -5.8,
     "spy_equity": 901299.34,
-    "smh_equity": 1022002.32
+    "smh_equity": 1022002.32,
+    "soxx_equity": 1032409.87,
+    "mags_equity": 847183.36
   },
   {
     "date": "2026-03-13",
@@ -2311,7 +2487,9 @@
     "master_pnl": 24805.94,
     "master_dd": -5.2,
     "spy_equity": 896197.85,
-    "smh_equity": 1019895.8
+    "smh_equity": 1019895.8,
+    "soxx_equity": 1035943.06,
+    "mags_equity": 833144.72
   },
   {
     "date": "2026-03-16",
@@ -2337,7 +2515,9 @@
     "master_pnl": 33597.95,
     "master_dd": -4.39,
     "spy_equity": 905318.28,
-    "smh_equity": 1037248.23
+    "smh_equity": 1037248.23,
+    "soxx_equity": 1056297.97,
+    "mags_equity": 846210.38
   },
   {
     "date": "2026-03-17",
@@ -2363,7 +2543,9 @@
     "master_pnl": 41380.56,
     "master_dd": -3.4,
     "spy_equity": 907699.88,
-    "smh_equity": 1045042.33
+    "smh_equity": 1045042.33,
+    "soxx_equity": 1064519.86,
+    "mags_equity": 849685.3
   },
   {
     "date": "2026-03-18",
@@ -2389,7 +2571,9 @@
     "master_pnl": -10006.98,
     "master_dd": -3.64,
     "spy_equity": 895034.11,
-    "smh_equity": 1036589.94
+    "smh_equity": 1036589.94,
+    "soxx_equity": 1058387.73,
+    "mags_equity": 836758.63
   },
   {
     "date": "2026-03-19",
@@ -2415,7 +2599,9 @@
     "master_pnl": 8563.93,
     "master_dd": -3.43,
     "spy_equity": 892828.43,
-    "smh_equity": 1039881.37
+    "smh_equity": 1039881.37,
+    "soxx_equity": 1064363.43,
+    "mags_equity": 827723.86
   },
   {
     "date": "2026-03-20",
@@ -2441,7 +2627,9 @@
     "master_pnl": -20978.57,
     "master_dd": -3.94,
     "spy_equity": 880029.02,
-    "smh_equity": 1013075.96
+    "smh_equity": 1013075.96,
+    "soxx_equity": 1040304.19,
+    "mags_equity": 811322.28
   },
   {
     "date": "2026-03-23",
@@ -2467,7 +2655,9 @@
     "master_pnl": 17658.53,
     "master_dd": -3.51,
     "spy_equity": 889269.34,
-    "smh_equity": 1030507.38
+    "smh_equity": 1030507.38,
+    "soxx_equity": 1053069.04,
+    "mags_equity": 823970.95
   },
   {
     "date": "2026-03-24",
@@ -2493,7 +2683,9 @@
     "master_pnl": 5001.15,
     "master_dd": -3.39,
     "spy_equity": 886284.22,
-    "smh_equity": 1039012.43
+    "smh_equity": 1039012.43,
+    "soxx_equity": 1066928.92,
+    "mags_equity": 813268.23
   },
   {
     "date": "2026-03-25",
@@ -2519,7 +2711,9 @@
     "master_pnl": -12435.74,
     "master_dd": -3.69,
     "spy_equity": 891223.24,
-    "smh_equity": 1050677.26
+    "smh_equity": 1050677.26,
+    "soxx_equity": 1080163.07,
+    "mags_equity": 819384.07
   },
   {
     "date": "2026-03-26",
@@ -2545,7 +2739,9 @@
     "master_pnl": -47650.97,
     "master_dd": -4.84,
     "spy_equity": 875307.09,
-    "smh_equity": 1002806.7
+    "smh_equity": 1002806.7,
+    "soxx_equity": 1028853.37,
+    "mags_equity": 792696.75
   },
   {
     "date": "2026-03-27",
@@ -2571,7 +2767,9 @@
     "master_pnl": -938.86,
     "master_dd": -4.86,
     "spy_equity": 860381.45,
-    "smh_equity": 985454.28
+    "smh_equity": 985454.28,
+    "soxx_equity": 1012052.57,
+    "mags_equity": 770735.31
   },
   {
     "date": "2026-03-30",
@@ -2597,7 +2795,9 @@
     "master_pnl": -9381.87,
     "master_dd": -5.08,
     "spy_equity": 857504.88,
-    "smh_equity": 954593.82
+    "smh_equity": 954593.82,
+    "soxx_equity": 969221.48,
+    "mags_equity": 769901.33
   },
   {
     "date": "2026-03-31",
@@ -2623,7 +2823,9 @@
     "master_pnl": 56374.8,
     "master_dd": -3.73,
     "spy_equity": 882430.69,
-    "smh_equity": 1009547.55
+    "smh_equity": 1009547.55,
+    "soxx_equity": 1028258.92,
+    "mags_equity": 805345.43
   },
   {
     "date": "2026-04-01",
@@ -2649,7 +2851,9 @@
     "master_pnl": 31504.12,
     "master_dd": -2.97,
     "spy_equity": 889079.38,
-    "smh_equity": 1032113.59
+    "smh_equity": 1032113.59,
+    "soxx_equity": 1059169.89,
+    "mags_equity": 815631.17
   },
   {
     "date": "2026-04-02",
@@ -2675,7 +2879,9 @@
     "master_pnl": 372.86,
     "master_dd": -2.96,
     "spy_equity": 889879.94,
-    "smh_equity": 1033035.19
+    "smh_equity": 1033035.19,
+    "soxx_equity": 1062517.54,
+    "mags_equity": 809932.31
   },
   {
     "date": "2026-04-03",
@@ -2701,7 +2907,9 @@
     "master_pnl": -6350.87,
     "master_dd": -3.12,
     "spy_equity": 889879.94,
-    "smh_equity": 1033035.19
+    "smh_equity": 1033035.19,
+    "soxx_equity": 1062517.54,
+    "mags_equity": 809932.31
   },
   {
     "date": "2026-04-06",
@@ -2727,7 +2935,9 @@
     "master_pnl": 33973.01,
     "master_dd": -2.3,
     "spy_equity": 894086.25,
-    "smh_equity": 1042672.5
+    "smh_equity": 1042672.5,
+    "soxx_equity": 1076565.13,
+    "mags_equity": 811461.27
   },
   {
     "date": "2026-04-07",
@@ -2753,7 +2963,9 @@
     "master_pnl": -1314.07,
     "master_dd": -2.33,
     "spy_equity": 894479.75,
-    "smh_equity": 1052994.43
+    "smh_equity": 1052994.43,
+    "soxx_equity": 1088015.95,
+    "mags_equity": 810210.3
   },
   {
     "date": "2026-04-08",
@@ -2779,7 +2991,9 @@
     "master_pnl": 78882.73,
     "master_dd": -0.44,
     "spy_equity": 917261.69,
-    "smh_equity": 1113609.41
+    "smh_equity": 1113609.41,
+    "soxx_equity": 1158848.37,
+    "mags_equity": 831476.76
   },
   {
     "date": "2026-04-09",
@@ -2805,7 +3019,9 @@
     "master_pnl": 59738.41,
     "master_dd": 0.0,
     "spy_equity": 922553.51,
-    "smh_equity": 1133068.35
+    "smh_equity": 1133068.35,
+    "soxx_equity": 1184597.08,
+    "mags_equity": 843986.44
   },
   {
     "date": "2026-04-10",
@@ -2831,7 +3047,9 @@
     "master_pnl": -1168.04,
     "master_dd": -0.03,
     "spy_equity": 921942.91,
-    "smh_equity": 1150368.11
+    "smh_equity": 1150368.11,
+    "soxx_equity": 1209532.34,
+    "mags_equity": 849824.29
   },
   {
     "date": "2026-04-13",
@@ -2857,7 +3075,9 @@
     "master_pnl": 26486.85,
     "master_dd": 0.0,
     "spy_equity": 930952.57,
-    "smh_equity": 1167378.22
+    "smh_equity": 1167378.22,
+    "soxx_equity": 1230619.38,
+    "mags_equity": 858442.07
   },
   {
     "date": "2026-04-14",
@@ -2883,7 +3103,9 @@
     "master_pnl": 56954.7,
     "master_dd": 0.0,
     "spy_equity": 942296.05,
-    "smh_equity": 1190181.25
+    "smh_equity": 1190181.25,
+    "soxx_equity": 1255335.64,
+    "mags_equity": 884156.42
   },
   {
     "date": "2026-04-15",
@@ -2909,7 +3131,9 @@
     "master_pnl": -9214.11,
     "master_dd": -0.21,
     "spy_equity": 949731.73,
-    "smh_equity": 1192814.39
+    "smh_equity": 1192814.39,
+    "soxx_equity": 1257275.39,
+    "mags_equity": 907090.83
   },
   {
     "date": "2026-04-16",
@@ -2935,7 +3159,9 @@
     "master_pnl": -12720.21,
     "master_dd": -0.51,
     "spy_equity": 952065.56,
-    "smh_equity": 1197554.05
+    "smh_equity": 1197554.05,
+    "soxx_equity": 1270071.53,
+    "mags_equity": 907785.81
   },
   {
     "date": "2026-04-17",
@@ -2961,7 +3187,9 @@
     "master_pnl": 42115.37,
     "master_dd": 0.0,
     "spy_equity": 963571.87,
-    "smh_equity": 1222200.29
+    "smh_equity": 1222200.29,
+    "soxx_equity": 1300607.06,
+    "mags_equity": 923631.41
   },
   {
     "date": "2026-04-20",
@@ -2987,7 +3215,9 @@
     "master_pnl": 19267.1,
     "master_dd": 0.0,
     "spy_equity": 961645.1,
-    "smh_equity": 1221673.66
+    "smh_equity": 1221673.66,
+    "soxx_equity": 1306363.76,
+    "mags_equity": 914040.65
   },
   {
     "date": "2026-04-21",
@@ -3013,7 +3243,9 @@
     "master_pnl": -32708.65,
     "master_dd": -0.76,
     "spy_equity": 955349.2,
-    "smh_equity": 1223516.86
+    "smh_equity": 1223516.86,
+    "soxx_equity": 1316218.98,
+    "mags_equity": 907785.81
   },
   {
     "date": "2026-04-22",
@@ -3039,7 +3271,9 @@
     "master_pnl": 39367.31,
     "master_dd": 0.0,
     "spy_equity": 965023.73,
-    "smh_equity": 1255562.22
+    "smh_equity": 1255562.22,
+    "soxx_equity": 1350853.03,
+    "mags_equity": 923492.41
   },
   {
     "date": "2026-04-23",
@@ -3065,7 +3299,9 @@
     "master_pnl": 65468.21,
     "master_dd": 0.0,
     "spy_equity": 961278.75,
-    "smh_equity": 1268780.61
+    "smh_equity": 1268780.61,
+    "soxx_equity": 1379730.38,
+    "mags_equity": 908063.8
   },
   {
     "date": "2026-04-24",
@@ -3091,7 +3327,9 @@
     "master_pnl": 44688.53,
     "master_dd": 0.0,
     "spy_equity": 968728.0,
-    "smh_equity": 1333529.63
+    "smh_equity": 1333529.63,
+    "soxx_equity": 1444180.37,
+    "mags_equity": 925299.36
   },
   {
     "date": "2026-04-27",
@@ -3117,7 +3355,9 @@
     "master_pnl": 4798.1,
     "master_dd": 0.0,
     "spy_equity": 970396.95,
-    "smh_equity": 1333055.66
+    "smh_equity": 1333055.66,
+    "soxx_equity": 1424814.08,
+    "mags_equity": 932388.18
   },
   {
     "date": "2026-04-28",
@@ -3143,7 +3383,9 @@
     "master_pnl": -46165.07,
     "master_dd": -1.04,
     "spy_equity": 965675.03,
-    "smh_equity": 1293426.84
+    "smh_equity": 1293426.84,
+    "soxx_equity": 1372565.79,
+    "mags_equity": 929330.26
   },
   {
     "date": "2026-04-29",
@@ -3169,7 +3411,9 @@
     "master_pnl": 29385.87,
     "master_dd": -0.38,
     "spy_equity": 965525.77,
-    "smh_equity": 1315466.26
+    "smh_equity": 1315466.26,
+    "soxx_equity": 1407856.85,
+    "mags_equity": 925438.36
   },
   {
     "date": "2026-04-30",
@@ -3195,7 +3439,9 @@
     "master_pnl": 40399.57,
     "master_dd": 0.0,
     "spy_equity": 975132.45,
-    "smh_equity": 1334266.91
+    "smh_equity": 1334266.91,
+    "soxx_equity": 1443679.78,
+    "mags_equity": 920712.48
   },
   {
     "date": "2026-05-01",
@@ -3221,7 +3467,9 @@
     "master_pnl": -32008.33,
     "master_dd": -0.72,
     "spy_equity": 977832.63,
-    "smh_equity": 1342429.66
+    "smh_equity": 1342429.66,
+    "soxx_equity": 1457164.22,
+    "mags_equity": 929469.26
   },
   {
     "date": "2026-05-04",
@@ -3247,7 +3495,9 @@
     "master_pnl": 11511.92,
     "master_dd": -0.46,
     "spy_equity": 974250.48,
-    "smh_equity": 1334451.23
+    "smh_equity": 1334451.23,
+    "soxx_equity": 1445619.54,
+    "mags_equity": 930859.22
   },
   {
     "date": "2026-05-05",
@@ -3273,7 +3523,9 @@
     "master_pnl": 41781.0,
     "master_dd": 0.0,
     "spy_equity": 982066.09,
-    "smh_equity": 1376318.22
+    "smh_equity": 1376318.22,
+    "soxx_equity": 1510288.54,
+    "mags_equity": 932805.17
   },
   {
     "date": "2026-05-06",
@@ -3299,7 +3551,9 @@
     "master_pnl": 43672.58,
     "master_dd": 0.0,
     "spy_equity": 995716.26,
-    "smh_equity": 1447597.44
+    "smh_equity": 1447597.44,
+    "soxx_equity": 1585813.91,
+    "mags_equity": 951569.69
   },
   {
     "date": "2026-05-07",
@@ -3325,7 +3579,9 @@
     "master_pnl": -47529.0,
     "master_dd": -1.05,
     "spy_equity": 992663.29,
-    "smh_equity": 1422161.27
+    "smh_equity": 1422161.27,
+    "soxx_equity": 1540417.34,
+    "mags_equity": 957546.54
   },
   {
     "date": "2026-05-08",
@@ -3351,7 +3607,9 @@
     "master_pnl": 77485.1,
     "master_dd": 0.0,
     "spy_equity": 1000858.82,
-    "smh_equity": 1491781.6
+    "smh_equity": 1491781.6,
+    "soxx_equity": 1627831.55,
+    "mags_equity": 967693.28
   },
   {
     "date": "2026-05-11",
@@ -3377,7 +3635,9 @@
     "master_pnl": 16465.24,
     "master_dd": 0.0,
     "spy_equity": 1003138.37,
-    "smh_equity": 1517507.42
+    "smh_equity": 1517507.42,
+    "soxx_equity": 1666814.41,
+    "mags_equity": 965191.35
   },
   {
     "date": "2026-05-12",
@@ -3403,7 +3663,9 @@
     "master_pnl": -27893.12,
     "master_dd": -0.61,
     "spy_equity": 1001618.67,
-    "smh_equity": 1477852.27
+    "smh_equity": 1477852.27,
+    "soxx_equity": 1614347.11,
+    "mags_equity": 960743.46
   },
   {
     "date": "2026-05-13",
@@ -3429,7 +3691,9 @@
     "master_pnl": 28415.74,
     "master_dd": 0.0,
     "spy_equity": 1007222.57,
-    "smh_equity": 1507369.82
+    "smh_equity": 1507369.82,
+    "soxx_equity": 1652829.39,
+    "mags_equity": 980341.96
   },
   {
     "date": "2026-05-14",
@@ -3455,7 +3719,9 @@
     "master_pnl": 28689.77,
     "master_dd": 0.0,
     "spy_equity": 1015173.86,
-    "smh_equity": 1522852.71
+    "smh_equity": 1522852.71,
+    "soxx_equity": 1658273.22,
+    "mags_equity": 986040.81
   },
   {
     "date": "2026-05-15",
@@ -3481,7 +3747,9 @@
     "master_pnl": -75373.65,
     "master_dd": -1.63,
     "spy_equity": 1002961.98,
-    "smh_equity": 1464923.53
+    "smh_equity": 1464923.53,
+    "soxx_equity": 1590976.17,
+    "mags_equity": 970751.2
   },
   {
     "date": "2026-05-18",
@@ -3507,7 +3775,9 @@
     "master_pnl": -45356.02,
     "master_dd": -2.62,
     "spy_equity": 1002256.4,
-    "smh_equity": 1438118.12
+    "smh_equity": 1438118.12,
+    "soxx_equity": 1551398.87,
+    "mags_equity": 965469.34
   },
   {
     "date": "2026-05-19",
@@ -3533,7 +3803,9 @@
     "master_pnl": -17284.8,
     "master_dd": -2.99,
     "spy_equity": 995580.57,
-    "smh_equity": 1432325.2
+    "smh_equity": 1432325.2,
+    "soxx_equity": 1554120.79,
+    "mags_equity": 952542.67
   },
   {
     "date": "2026-05-20",
@@ -3559,7 +3831,9 @@
     "master_pnl": 73707.36,
     "master_dd": -1.39,
     "spy_equity": 1005784.28,
-    "smh_equity": 1486831.29
+    "smh_equity": 1486831.29,
+    "soxx_equity": 1627862.84,
+    "mags_equity": 965886.33
   },
   {
     "date": "2026-05-21",
@@ -3585,7 +3859,9 @@
     "master_pnl": 25164.8,
     "master_dd": -0.85,
     "spy_equity": 1007778.89,
-    "smh_equity": 1495310.02
+    "smh_equity": 1495310.02,
+    "soxx_equity": 1641628.86,
+    "mags_equity": 966025.32
   },
   {
     "date": "2026-05-22",
@@ -3611,7 +3887,9 @@
     "master_pnl": 28148.97,
     "master_dd": -0.24,
     "spy_equity": 1011740.96,
-    "smh_equity": 1517533.76
+    "smh_equity": 1517533.76,
+    "soxx_equity": 1681112.3,
+    "mags_equity": 964079.37
   },
   {
     "date": "2026-05-25",
@@ -3637,7 +3915,9 @@
     "master_pnl": -27138.3,
     "master_dd": -0.83,
     "spy_equity": 1011740.96,
-    "smh_equity": 1517533.76
+    "smh_equity": 1517533.76,
+    "soxx_equity": 1681112.3,
+    "mags_equity": 964079.37
   },
   {
     "date": "2026-05-26",
@@ -3663,7 +3943,9 @@
     "master_pnl": 159246.34,
     "master_dd": 0.0,
     "spy_equity": 1018457.5,
-    "smh_equity": 1585521.54
+    "smh_equity": 1585521.54,
+    "soxx_equity": 1783606.55,
+    "mags_equity": 967832.28
   },
   {
     "date": "2026-05-27",
@@ -3689,7 +3971,9 @@
     "master_pnl": -26272.23,
     "master_dd": -0.56,
     "spy_equity": 1018281.11,
-    "smh_equity": 1568037.46
+    "smh_equity": 1568037.46,
+    "soxx_equity": 1764490.56,
+    "mags_equity": 977562.03
   },
   {
     "date": "2026-05-28",
@@ -3715,7 +3999,9 @@
     "master_pnl": -12174.76,
     "master_dd": -0.81,
     "spy_equity": 1023898.57,
-    "smh_equity": 1579438.98
+    "smh_equity": 1579438.98,
+    "soxx_equity": 1781666.8,
+    "mags_equity": 985067.84
   },
   {
     "date": "2026-05-29",
@@ -3741,7 +4027,9 @@
     "master_pnl": -9543.98,
     "master_dd": -1.01,
     "spy_equity": 1026449.5,
-    "smh_equity": 1577069.15
+    "smh_equity": 1577069.15,
+    "soxx_equity": 1780446.63,
+    "mags_equity": 982843.89
   },
   {
     "date": "2026-06-01",
@@ -3767,7 +4055,9 @@
     "master_pnl": 24850.4,
     "master_dd": -0.49,
     "spy_equity": 1029244.66,
-    "smh_equity": 1600451.47
+    "smh_equity": 1600451.47,
+    "soxx_equity": 1789363.25,
+    "mags_equity": 971029.2
   },
   {
     "date": "2026-06-02",
@@ -3793,7 +4083,9 @@
     "master_pnl": 99340.05,
     "master_dd": 0.0,
     "spy_equity": 1030642.24,
-    "smh_equity": 1664700.19
+    "smh_equity": 1664700.19,
+    "soxx_equity": 1892889.96,
+    "mags_equity": 961438.44
   },
   {
     "date": "2026-06-03",
@@ -3819,7 +4111,9 @@
     "master_pnl": 9683.9,
     "master_dd": 0.0,
     "spy_equity": 1023410.1,
-    "smh_equity": 1679682.79
+    "smh_equity": 1679682.79,
+    "soxx_equity": 1926241.27,
+    "mags_equity": 951013.71
   },
   {
     "date": "2026-06-04",
@@ -3845,7 +4139,9 @@
     "master_pnl": -2373.41,
     "master_dd": -0.05,
     "spy_equity": 1027277.19,
-    "smh_equity": 1652377.08
+    "smh_equity": 1652377.08,
+    "soxx_equity": 1885694.09,
+    "mags_equity": 960743.46
   },
   {
     "date": "2026-06-05",
@@ -3871,7 +4167,9 @@
     "master_pnl": -292544.18,
     "master_dd": -6.12,
     "spy_equity": 1000763.84,
-    "smh_equity": 1500076.01
+    "smh_equity": 1500076.01,
+    "soxx_equity": 1688746.18,
+    "mags_equity": 924465.39
   },
   {
     "date": "2026-06-08",
@@ -3897,7 +4195,9 @@
     "master_pnl": 153633.04,
     "master_dd": -2.93,
     "spy_equity": 1003029.82,
-    "smh_equity": 1575041.63
+    "smh_equity": 1575041.63,
+    "soxx_equity": 1787861.5,
+    "mags_equity": 924743.38
   },
   {
     "date": "2026-06-09",
@@ -3923,7 +4223,9 @@
     "master_pnl": 336.96,
     "master_dd": -2.93,
     "spy_equity": 1000085.4,
-    "smh_equity": 1556214.65
+    "smh_equity": 1556214.65,
+    "soxx_equity": 1758733.86,
+    "mags_equity": 912650.69
   },
   {
     "date": "2026-06-10",
@@ -3949,7 +4251,9 @@
     "master_pnl": -58510.78,
     "master_dd": -4.14,
     "spy_equity": 984318.5,
-    "smh_equity": 1503288.45
+    "smh_equity": 1503288.45,
+    "soxx_equity": 1694190.01,
+    "mags_equity": 892635.2
   },
   {
     "date": "2026-06-11",
@@ -3975,7 +4279,9 @@
     "master_pnl": 246250.05,
     "master_dd": 0.0,
     "spy_equity": 1001048.78,
-    "smh_equity": 1604769.83
+    "smh_equity": 1604769.83,
+    "soxx_equity": 1836292.86,
+    "mags_equity": 902225.95
   },
   {
     "date": "2026-06-12",
@@ -4001,6 +4307,8 @@
     "master_pnl": 58603.64,
     "master_dd": 0.0,
     "spy_equity": 1006462.72,
-    "smh_equity": 1632444.18
+    "smh_equity": 1632444.18,
+    "soxx_equity": 1865451.78,
+    "mags_equity": 902225.95
   }
 ]
