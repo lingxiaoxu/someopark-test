@@ -625,6 +625,47 @@ def adjust_position_view(pos: dict, s1: str, s2: str, snapshot_as_of: str = '',
     return out
 
 
+def adjust_stock_holding_view(holding: dict, ticker: str,
+                              splits_by_ticker: dict | None = None) -> dict:
+    """
+    单 ticker 版的 adjust_position_view（用于 AISS/SR 的 stock_holdings / ETF
+    holdings 历史快照）。返回 holding 副本，把旧口径的 shares/cost_basis/last_price
+    换算为当前（回溯调整后）价格源同口径。原快照文件不改。
+
+    供 UpdateMasterPerformance._load_live_equity_from_inventory 在用当前价 MTM
+    历史快照时调用，消除拆股日的 shares 口径跳变（KLAC 1:10 → AISS live 假 +40%）。
+
+    三重守卫与 adjust_position_view 完全一致（只是字段名不同：单 ticker 用
+    `shares`/`cost_basis`/`last_price`，建仓日字段为 `entry_date`）：
+      1. polygon_id 不在 holding 的 applied_corporate_actions 留痕中
+      2. entry_date < execution_date（拆股前建仓；拆股后建的天然新口径）
+      3. execution_date <= today
+    """
+    if splits_by_ticker is None:
+        splits_by_ticker = {}
+        for sp in _load_splits_cache().get('results', []):
+            splits_by_ticker.setdefault(sp.get('ticker'), []).append(sp)
+    out = deepcopy(holding)
+    today_str = str(date.today())
+    done = _applied_ids(holding)
+    entry_date = holding.get('entry_date') or ''
+    for sp in splits_by_ticker.get(ticker, []):
+        ed = sp.get('execution_date', '')
+        if not ed or ed > today_str:
+            continue                           # 未来生效 → 价格源还未调整
+        if sp.get('id') and sp['id'] in done:
+            continue                           # 该快照已是调整后口径
+        if entry_date and entry_date >= ed:
+            continue                           # 拆股后建仓 → 天然新口径
+        factor = float(sp['split_to']) / float(sp['split_from'])
+        if out.get('shares'):
+            out['shares'] = int(round(out['shares'] * factor))
+        for pk in ('cost_basis', 'last_price'):
+            if out.get(pk):
+                out[pk] = out[pk] / factor
+    return out
+
+
 # ── 扩展接口（V2 占位）：非 split 类 corporate actions ─────────────────────────
 
 def detect_other_actions(tickers, since_date: str) -> list:

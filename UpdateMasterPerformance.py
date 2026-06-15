@@ -161,6 +161,19 @@ def _load_live_equity_from_inventory(
             inv = json.load(f)
         total = 0.0
         for ticker, holding in inv.get(holdings_key, {}).items():
+            # Corporate actions: historical snapshots store entry-era shares; the
+            # price series (prices[ticker]) is split-adjusted (current caliber).
+            # Without this, a split (KLAC 1:10) makes a snapshot's old-caliber
+            # shares × new-caliber price spike the raw MTM, faking a ~10x daily
+            # return on the split day (AISS live jumped +40% on 6/12). Adjust the
+            # holding's shares to current caliber before MTM. Idempotent (marker /
+            # entry_date guards); no-op when no split applies. Does NOT touch the
+            # backtest/live splice — only the live-segment per-day mark.
+            try:
+                from CorporateActions import adjust_stock_holding_view
+                holding = adjust_stock_holding_view(holding, ticker)
+            except Exception:
+                pass
             shares = holding.get('shares', 0)
             if shares == 0 or ticker not in prices.columns:
                 continue
