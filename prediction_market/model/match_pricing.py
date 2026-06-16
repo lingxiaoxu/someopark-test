@@ -72,8 +72,16 @@ def price_match_calibrated(sm: StrengthModel, home_id: str, away_id: str, *,
     cal = cal if cal is not None else load_calibration()
     if not cal:
         return mp
-    ph, pd, pa = apply_calibration([mp.p_home, mp.p_draw, mp.p_away], cal)
+    # The draw-mass boost is a GROUP-STAGE correction only — a knockout cannot end
+    # level (extra time + shootout decide a winner), so it must not inflate the draw.
+    ph, pd, pa = apply_calibration([mp.p_home, mp.p_draw, mp.p_away], cal, knockout=knockout)
     return replace(mp, p_home=ph, p_draw=pd, p_away=pa)
+
+
+def is_knockout(round_name: str | None) -> bool:
+    """A WC round is knockout unless it is the group stage (API-Football names group
+    rounds 'Group Stage - N'; everything else — Round of 32/16, QF, SF, Final — is KO)."""
+    return bool(round_name) and "group" not in round_name.lower()
 
 
 def price_group_stage(sm: StrengthModel, prior: PriorSnapshot) -> list[MatchPrice]:

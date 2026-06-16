@@ -43,7 +43,8 @@ def build(conn=None, *, as_of: str = "") -> dict:
     doc = {
         "schema_version": SCHEMA_VERSION,
         "as_of": as_of,
-        "headline": ov.HONEST_HEADLINE,
+        # State-aware headline: tracks the live calibration-gate verdict.
+        "headline": ov.honest_headline(perf.trade_grade, perf.calibrated_brier, perf.brier_uniform),
 
         # ── Static catalog (the "what / how / when" narrative) ──
         "interfaces": [

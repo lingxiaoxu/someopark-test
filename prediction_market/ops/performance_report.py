@@ -74,6 +74,32 @@ def _settled(conn, sm):
 _SIDE_KEYS = ("home", "draw", "away")
 
 
+def _headline(rep: "PerformanceReport") -> tuple[str, bool]:
+    """State-aware headline string + whether it's a pass (for colour)."""
+    from prediction_market.ops import system_overview as ov
+    return ov.honest_headline(rep.trade_grade, rep.calibrated_brier, rep.brier_uniform), rep.trade_grade
+
+
+def _advancer(raw_json: str | None, gh: int, ga: int) -> str | None:
+    """Who went through in a knockout: by score, else the API-Football winner flag
+    (covers level-after-extra-time decided on penalties). None if undeterminable."""
+    if gh > ga:
+        return "home"
+    if ga > gh:
+        return "away"
+    if not raw_json:
+        return None
+    try:
+        teams = json.loads(raw_json).get("teams", {})
+        if teams.get("home", {}).get("winner") is True:
+            return "home"
+        if teams.get("away", {}).get("winner") is True:
+            return "away"
+    except Exception:
+        pass
+    return None
+
+
 def _bet_log(conn) -> list[dict]:
     """Production bet history: every settled match since the opener, flat 1u on the
     model's best value side vs the closing de-vig book, settled on the real result.
@@ -83,7 +109,7 @@ def _bet_log(conn) -> list[dict]:
     from match 1 (no point-in-time / out-of-sample framing; this is the record).
     """
     from prediction_market.ingest.prior_ingest import load_prior
-    from prediction_market.model.match_pricing import price_match_calibrated
+    from prediction_market.model.match_pricing import is_knockout, price_match_calibrated
     from prediction_market.model.probability_calibration import load_calibration
     from prediction_market.model.squad_strength import build_strength_live
 
@@ -103,7 +129,7 @@ def _bet_log(conn) -> list[dict]:
         _FINISHED).fetchall()}
 
     rows = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, kickoff_ts "
+        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, round, raw_json "
         "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL "
         "ORDER BY kickoff_ts".format(",".join("?" * len(_FINISHED))),
         _FINISHED).fetchall()
@@ -116,25 +142,41 @@ def _bet_log(conn) -> list[dict]:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        mp = price_match_calibrated(sm, hi, ai, cal=cal)
+        knockout = is_knockout(r["round"])
+        mp = price_match_calibrated(sm, hi, ai, knockout=knockout, cal=cal)
         model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
-        bd = book.get(r["api_id"])
-        if bd and bd["bh"] is not None:
-            s = (bd["bh"] or 0) + (bd["bd"] or 0) + (bd["ba"] or 0)
-            price = {"home": bd["bh"] / s, "draw": bd["bd"] / s, "away": bd["ba"] / s} if s else model
-        else:
-            price = model  # no book → settle at our fair price (breakeven)
-
-        # Back our prediction — the model's most-likely outcome — flat 1u, settled at
-        # the closing de-vig book odds (the price we'd really have got). edge = how
-        # much our model rated that pick above the market.
-        edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
-        pick = max(_SIDE_KEYS, key=lambda k: model[k])
-        cost = max(price[pick], 1e-6)            # contract price = win prob
-        dec_odds = 1.0 / cost                     # flat-1u stake at decimal odds
-
         gh, ga = r["home_goals"], r["away_goals"]
-        result = "home" if gh > ga else ("draw" if gh == ga else "away")
+        bd = book.get(r["api_id"])
+
+        if knockout:
+            # Knockout: NO draw. We back the team we predict ADVANCES (extra time +
+            # shootout decide it), settled on who actually went through, priced at the
+            # model's advance probability (we hold no qualification-market odds — a
+            # fair-odds bet, flagged). Advancer from the score, else the API winner flag.
+            p_adv_home = mp.p_home_advance if mp.p_home_advance is not None else model["home"] / max(model["home"] + model["away"], 1e-9)
+            pick = "home" if p_adv_home >= 0.5 else "away"
+            adv = _advancer(r["raw_json"], gh, ga)
+            if adv is None:
+                continue   # level after ET with no winner flag yet — can't settle
+            result = adv
+            cost = max(p_adv_home if pick == "home" else 1.0 - p_adv_home, 1e-6)
+            edge_val = (p_adv_home if pick == "home" else 1.0 - p_adv_home) - cost  # 0 at fair odds
+            model_prob = round(p_adv_home if pick == "home" else 1.0 - p_adv_home, 4)
+        else:
+            # Group stage: 3-way incl. draw, backed at the closing de-vig book odds.
+            if bd and bd["bh"] is not None:
+                s = (bd["bh"] or 0) + (bd["bd"] or 0) + (bd["ba"] or 0)
+                price = {"home": bd["bh"] / s, "draw": bd["bd"] / s, "away": bd["ba"] / s} if s else model
+            else:
+                price = model  # no book → settle at our fair price (breakeven)
+            edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
+            pick = max(_SIDE_KEYS, key=lambda k: model[k])
+            cost = max(price[pick], 1e-6)
+            result = "home" if gh > ga else ("draw" if gh == ga else "away")
+            edge_val = edges[pick]
+            model_prob = round(model[pick], 4)
+
+        dec_odds = 1.0 / cost                     # flat-1u stake at decimal odds
         won = pick == result
         pnl = (dec_odds - 1.0) if won else -1.0   # flat 1u stake
         cum += pnl
@@ -143,6 +185,7 @@ def _bet_log(conn) -> list[dict]:
 
         side_label = {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}
         log.append({
+            "stage": "knockout" if knockout else "group",
             "date": (r["kickoff_ts"] or "")[:10],
             "home": name.get(hi, hi), "away": name.get(ai, ai),
             "home_id": hi, "away_id": ai,
@@ -151,10 +194,10 @@ def _bet_log(conn) -> list[dict]:
             "result": result,
             "pick": pick,
             "pick_team": side_label[pick],
-            "model_prob": round(model[pick], 4),
+            "model_prob": model_prob,
             "price": round(cost, 4),
             "dec_odds": round(dec_odds, 3),
-            "edge": round(edges[pick], 4),
+            "edge": round(edge_val, 4),
             "won": won,
             "pnl": round(pnl, 3),
             "cum_pnl": round(cum, 3),
@@ -280,10 +323,11 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
         f"Kalshi + Polymarket | someopark_run{('  |  as of ' + as_of) if as_of else ''}",
     )
 
-    # Honest headline.
-    story.append(Paragraph(ov.HONEST_HEADLINE,
+    # Headline reflects the CURRENT system state (gate verdict), not a fixed stance.
+    headline, hl_color = _headline(rep)
+    story.append(Paragraph(headline,
                            ps.S("hl", fontName=ps.FONT, fontSize=8, leading=12,
-                                textColor=ps.C_NEG)))
+                                textColor=(ps.C_POS if rep.trade_grade else ps.C_NEG))))
     story.append(Spacer(1, 8))
 
     # 一、接口(CLI 命令)

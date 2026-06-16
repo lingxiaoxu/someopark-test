@@ -56,10 +56,13 @@ def apply_draw_boost(probs, beta: float):
     return [ph / s, pd2 / s, pa / s]
 
 
-def apply_calibration(probs, cal: dict | None):
+def apply_calibration(probs, cal: dict | None, *, knockout: bool = False):
     """Apply a fitted calibration dict to a 3-way [home, draw, away] vector.
 
     Order: temperature/shrinkage (over-confidence) → draw boost (draw under-mass).
+    The draw boost is a GROUP-STAGE correction and is skipped for knockout matches
+    (a knockout is decided by extra time + a penalty shootout — it cannot settle level,
+    so its draw mass must not be inflated; advancement is priced via the shootout model).
     """
     if not cal:
         return list(probs)
@@ -69,7 +72,7 @@ def apply_calibration(probs, cal: dict | None):
     elif cal.get("method") == "shrinkage":
         out = apply_shrinkage(out, cal.get("param", 0.0))
     db = cal.get("draw_boost")
-    if db:
+    if db and not knockout:
         out = apply_draw_boost(out, db)
     return out
 

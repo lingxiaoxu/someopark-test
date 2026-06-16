@@ -5,12 +5,27 @@ future frontend can render the exact same overview.
 """
 from __future__ import annotations
 
-HONEST_HEADLINE = (
-    "诚实结论:系统现在是「只看不买」状态。不是没做好执行,而是纪律闸门"
-    "(calibration gate)在主动拦截——模型在已结算的小组赛上 Brier 仍劣于均匀基线"
-    "(0.667),尚未达到可交易等级,所以系统拒绝下任何真钱单。这正是设计目标:"
-    "宁可不交易,也不拿没验证过的边缘去亏钱。"
-)
+def honest_headline(trade_grade: bool, calibrated_brier: float | None = None,
+                    uniform_brier: float = 0.6667) -> str:
+    """State-aware headline — reflects the CURRENT calibration-gate verdict, not a
+    fixed stance. Passes once the calibrated model beats the uniform baseline."""
+    cb = f"{calibrated_brier:.4f}" if calibrated_brier is not None else "—"
+    if trade_grade:
+        return (
+            f"系统状态:已达可交易等级。经概率校准后模型 Brier {cb} ≤ 均匀基线 "
+            f"{uniform_brier:.4f},纪律闸门放行。实际下单仍受 $1 硬上限、场所可执行性"
+            "与单场正向 edge 三重约束——闸门管「能不能交易」,这三项管「具体下不下、下多少」。"
+        )
+    return (
+        f"系统状态:纪律闸门拦截中。校准后模型 Brier {cb} 仍劣于均匀基线 "
+        f"{uniform_brier:.4f},未达可交易等级,系统拒绝下任何真钱单。这是设计目标:"
+        "宁可不交易,也不拿没验证过的边缘去亏钱。"
+    )
+
+
+# Backward-compatible default (gate-blocking phrasing); callers should prefer
+# honest_headline(state) so the text tracks the live calibration verdict.
+HONEST_HEADLINE = honest_headline(False)
 
 # (类别, 命令 python -m prediction_market.<x>, 作用)
 INTERFACES = [
