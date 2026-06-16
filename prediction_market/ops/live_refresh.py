@@ -152,6 +152,14 @@ def refresh_once(conn=None) -> dict:
     except Exception as e:
         print(f"[live_refresh] upcoming rebuild failed (kept previous): {e}")
 
+    # Model-vs-market (Divergence view) — not-started fixtures only, so a match that
+    # just finished drops out of it instead of lingering.
+    try:
+        from prediction_market.strategy.xv_monitor import compare_matches
+        _write_both("xv_matches.json", compare_matches(limit=12))
+    except Exception as e:
+        print(f"[live_refresh] xv_matches rebuild skipped: {e}")
+
     # When a match has just FINISHED (settled count rose), re-simulate the champion +
     # golden boot on the new results (and force eliminated teams to 0% in the knockouts).
     # Guarded by a watermark so the ~4s sim runs only on a result change, not every minute.

@@ -83,6 +83,7 @@ def main() -> None:
     from prediction_market.ops import (backtest_export, form_export, frontend_export,
                                        inplay_export, performance_report, risk_report,
                                        squad_export)
+    from prediction_market.strategy.xv_monitor import compare_matches
     from dataclasses import asdict
     steps = [
         ("backtest.json",          lambda: backtest_export.build(conn)),
@@ -90,6 +91,7 @@ def main() -> None:
         ("form.json",              lambda: form_export.build(conn)),
         ("upcoming.json",          lambda: _payload_upcoming(conn)),
         ("inplay_live.json",       lambda: inplay_export.build(conn, with_venues=False)),
+        ("xv_matches.json",        lambda: compare_matches(limit=12)),  # model vs market (NS only)
         ("performance_report.json", lambda: asdict(performance_report.build(conn))),
         ("risk_report.json",       lambda: asdict(risk_report.build(conn))),
     ]
