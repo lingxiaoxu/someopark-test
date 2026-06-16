@@ -21,7 +21,7 @@
 
 ---
 
-Full-stack dashboard for the [someopark](../README.md) quantitative trading system. Supports three strategies — **MRPT** (Mean Reversion Pair Trading), **MTFS** (Multi-Timeframe Momentum), and **SSRS** (Smart Sector Rotation) — with real-time signal monitoring, walk-forward analysis browsing, AI chat with 35+ data tools, and portfolio management. All through a responsive web interface supporting 5 languages.
+Full-stack dashboard for the [someopark](../README.md) quantitative trading system. Supports four strategies — **MRPT** (Mean Reversion Pair Trading), **MTFS** (Multi-Timeframe Momentum), **SSRS** (Smart Sector Rotation), and **AISS** (AI Semiconductor Strategy) — plus a **Private Credit BDC** sleeve, with real-time signal monitoring, walk-forward analysis browsing, AI chat with 53+ data tools, risk management reports, and portfolio management. All through a responsive web interface supporting 5 languages.
 
 ---
 
@@ -32,31 +32,34 @@ Full-stack dashboard for the [someopark](../README.md) quantitative trading syst
 | 功能 | 说明 |
 |------|------|
 | **多模型 Chat** | 支持 Claude / GPT / Gemini，流式输出，可配置 temperature / max tokens |
-| **Someo Agent 模式** | 自主多步推理代理，35+ 工具链（数据查询、Python 执行、Web 搜索），支持 MRPT/MTFS/SSRS 三策略，带实时进度面板 |
-| **Prompt 模板** | 预置常用查询模板（信号查看、持仓分析、WF 诊断、PnL 报告等），一键触发对应 Artifact |
+| **Someo Agent 模式** | 自主多步推理代理，53+ 工具链（数据查询、Python 执行、Web 搜索、Private Credit 建模、Knowledge Base），支持 MRPT/MTFS/SSRS/AISS 四策略，带实时进度面板 |
+| **Prompt 模板** | 预置常用查询模板（信号查看、持仓分析、WF 诊断、PnL 报告、风险报告等），一键触发对应 Artifact |
 | **Code Sandbox** | 在浏览器内生成 / 预览自定义工具代码，支持部署至 E2B 沙盒（30m / 1h / 3h / 6h / 1d） |
 
 ### 数据视图（Artifacts）
 
-所有 Artifact 均通过 **MRPT | MTFS | SSRS** 三策略 Tab 切换器统一访问。
+所有 Artifact 均通过 **MRPT | MTFS | SSRS | AISS** 四策略 Tab 切换器统一访问。
 
-| Artifact | MRPT / MTFS 数据源 | SSRS 数据源 | 说明 |
-|----------|-------------------|-------------|------|
-| **Trading Signals** | `trading_signals/signals_*.json` | `sr_daily_report_*.json` | MRPT/MTFS: z-score + 操作指令。SSRS: 11 板块 composite scores + 权重 + regime |
-| **WF Structure** | `historical_runs/walk_forward*/` | `historical_runs/sector_rotation/` | 回测文件结构浏览器 + Run Inspector（SSRS: 59 参数集 × V1/V2 portfolio Excel） |
-| **Daily Report** | `daily_report_*.txt` | `sr_daily_report_*.txt` | 每日量化报告（Regime + 持仓监测 + 信号汇总） |
-| **Regime Dashboard** | `trading_signals/regime_*.json` | `sr_daily_report_*.json` | 宏观状态仪表盘：7 类综合评分 → MRPT/MTFS 资金权重 / SSRS 板块权重调整 |
-| **Equity Curve** | `oos_equity_curve_*.csv` | `wf_fold_detail.json` | OOS 权益曲线（SSRS: 73 折合成 OOS） |
-| **WF Summary** | `walk_forward_summary_*.json` | `wf_fold_detail.json` | MRPT/MTFS: 6 窗口汇总。SSRS: 73 折 × 59 参数集，合成 OOS Sharpe/CAGR/WFE |
-| **OOS Summary** | `oos_pair_summary_*.csv` | `param_oos_by_regime.json` | MRPT/MTFS: 按配对汇总。SSRS: 59 参数集按 Regime 的 OOS Sharpe |
-| **DSR / Fold Grid** | `dsr_selection_log_*.csv` | `wf_fold_detail.json` | MRPT/MTFS: DSR 选参三维过滤。SSRS: 73 折选参网格（IS/OOS/WFE/Method） |
-| **Current Inventory** | `inventory_mrpt/mtfs.json` | `inventory_sector_rotation.json` | MRPT/MTFS: 配对持仓。SSRS: 板块 ETF 权重 + 成本 + 再平衡历史 |
-| **Inventory History** | `inventory_history/*.json` | `inventory_history/*.json` | 历史快照（SSRS: 含板块权重、成本基础、regime、PnL） |
-| **Portfolio History** | `portfolio_history_*.xlsx` (35 sheets) | `sr_portfolio_*.xlsx` (26 sheets) | Excel 内联查看器（SSRS: 板块权重/PnL 归因/交易/止损/regime） |
-| **PnL Report** | `pnl_reports/pnl_report_*.json` | tearsheet PDF | 盈亏报告（SSRS: 内嵌 PDF 查看器） |
-| **Strategy Performance** | `strategy_performance.json` | V1/V2 equity 比较 | 策略整体表现：权益曲线 / 回撤 / 每日 PnL |
-| **Pair / Sector Universe** | `pair_universe_mrpt/mtfs.json` | `inventory_sector_rotation.json` | MRPT/MTFS: 配对筛选视图。SSRS: 11 GICS 板块 ETF 持仓表 |
-| **WF Diagnostic** | `oos_report_*.txt` | `wf_diagnostic_sr_*.xlsx` | WF 诊断报告（SSRS: 5 sheets — 折汇总/OOS矩阵/regime/合成权益/选参记录） |
+| Artifact | MRPT / MTFS 数据源 | SSRS 数据源 | AISS 数据源 | 说明 |
+|----------|-------------------|-------------|-------------|------|
+| **Trading Signals** | `signals_*.json` | `sr_daily_report_*.json` | `/api/aiss/signals/latest` | MRPT/MTFS: z-score + 操作。SSRS: 11 板块 composite + regime。AISS: 8 子板块信号 + 个股分解 |
+| **WF Structure** | `walk_forward*/` | `sector_rotation/` | `/api/aiss/wf/` | 回测文件浏览器 + Run Inspector |
+| **Daily Report** | `daily_report_*.txt` | `sr_daily_report_*.txt` | `/api/aiss/daily-report/latest` | 每日量化报告（Regime + 持仓监测 + 信号汇总） |
+| **Regime Dashboard** | `regime_*.json` | `sr_daily_report_*.json` | `/api/aiss/regime/latest` | 宏观状态仪表盘 |
+| **Equity Curve** | `oos_equity_curve_*.csv` | `wf_fold_detail.json` | `/api/aiss/equity-curve` | OOS 权益曲线 |
+| **WF Summary** | `walk_forward_summary_*.json` | `wf_fold_detail.json` | `/api/aiss/wf/summary` | 窗口/折汇总 |
+| **OOS Summary** | `oos_pair_summary_*.csv` | `param_oos_by_regime.json` | `/api/aiss/wf/param-oos` | OOS 汇总（按配对/参数/Regime） |
+| **DSR / Fold Grid** | `dsr_selection_log_*.csv` | `wf_fold_detail.json` | `/api/aiss/wf/fold-grid` | 选参网格 |
+| **Current Inventory** | `inventory_mrpt/mtfs.json` | `inventory_sector_rotation.json` | `/api/aiss/inventory` | 持仓（AISS: 个股级持仓 + 子板块权重） |
+| **Inventory History** | `inventory_history/*.json` | `inventory_history/*.json` | `/api/aiss/inventory/history` | 历史快照 |
+| **Portfolio History** | `portfolio_history_*.xlsx` | `sr_portfolio_*.xlsx` | `/api/aiss/portfolio-history/` | Excel 内联查看器 |
+| **PnL Report** | `pnl_report_*.pdf` | tearsheet PDF | `/api/aiss/tearsheet/` | 盈亏报告 |
+| **Risk Report** | `risk_report_*.pdf/json` | — | — | 机构级风险管理报告（敞口/杠杆/VaR/CVaR/集中度/因子β/压力测试/资产负债表/现金流/Kelly） |
+| **Strategy Performance** | `strategy_performance.json` | V1/V2 equity | `master_portfolio_performance.json` | 策略权益曲线 / 回撤 / 每日 PnL / **Master 模式**（全 4+1 策略 + SPY/SMH/SOXX/MAGS 4 基准对照） |
+| **Pair / Sector Universe** | `pair_universe_*.json` | `inventory_sector_rotation.json` | `/api/aiss/stock-universe` | 配对/板块/个股筛选视图 |
+| **WF Diagnostic** | `oos_report_*.txt` | `wf_diagnostic_sr_*.xlsx` | `/api/aiss/diagnostic/latest` | WF 诊断报告 |
+| **Knowledge Base** | — | — | — | 文档知识库搜索 / 阅读（支持 Agent RAG 工具链） |
+| **Private Credit Model** | — | — | — | BDC 信用模型：模板输入/输出 + Merton PD/LGD + 敏感度热力图 + 远期利率曲线 + 现金流排期 |
 
 ### UI 特性
 
@@ -148,16 +151,22 @@ someo-park-investment-management/
 │   │   ├── chat.ts                  LLM Chat 端点（流式输出）
 │   │   ├── morphChat.ts             Morph Apply 端点
 │   │   ├── agent.ts                 Agent 模式（多步工具链编排）
-│   │   ├── sectorRotation.ts        SSRS API 端点（/api/ssrs/*，23 端点）
+│   │   ├── sectorRotation.ts        SSRS API 端点（/api/ssrs/*）
+│   │   ├── semiconductor.ts         AISS API 端点（/api/aiss/*，23+ 端点）
+│   │   ├── riskReport.ts            风险管理报告 API（/api/risk-report/*）
+│   │   ├── monitorHistory.ts        监测历史 XLSX API
 │   │   └── inventory.ts             MRPT/MTFS 持仓 API
-│   ├── tools/                       35+ Agent 工具（全部支持 strategy=ssrs）
+│   ├── tools/                       53+ Agent 工具（支持 MRPT/MTFS/SSRS/AISS 四策略）
 │   │   ├── index.ts                 工具注册表
 │   │   ├── inventoryTool.ts         持仓查询
 │   │   ├── signalsTool.ts           交易信号
 │   │   ├── regimeTool.ts            Regime 状态
+│   │   ├── riskReportTool.ts        风险管理报告
 │   │   ├── runPythonTool.ts         Python 代码执行
 │   │   ├── webSearchTool.ts         Web 搜索
 │   │   ├── statisticsTool.ts        统计计算
+│   │   ├── privateCreditTools.ts    Private Credit 建模（7 工具）
+│   │   ├── knowledgeBaseTool.ts     知识库 RAG 搜索（3 工具）
 │   │   └── ...                      （完整列表见 tools/index.ts）
 │   └── utils/
 │       ├── prompt.ts                系统提示词构建器
@@ -177,21 +186,28 @@ someo-park-investment-management/
 │   │   ├── ChatPicker.tsx           模型 / Persona 选择器
 │   │   ├── ChatSettings.tsx         LLM 参数设置
 │   │   └── artifacts/
-│   │       ├── SignalTable.tsx              交易信号表
+│   │       ├── SignalTable.tsx              交易信号表（MRPT/MTFS/SSRS/AISS 四策略）
 │   │       ├── WFStructureViewer.tsx        Walk-Forward 文件浏览器 + Run Inspector
 │   │       ├── RegimeDashboard.tsx          宏观 Regime 仪表盘
 │   │       ├── EquityChart.tsx              OOS 权益曲线
-│   │       ├── InventoryViewer.tsx          当前持仓
+│   │       ├── InventoryViewer.tsx          当前持仓（AISS: 个股级）
 │   │       ├── InventoryHistoryViewer.tsx   持仓历史快照
 │   │       ├── DailyReportViewer.tsx        每日量化报告
 │   │       ├── WalkForwardSummaryViewer.tsx WF 汇总
 │   │       ├── WFGridViewer.tsx             DSR 选参日志
 │   │       ├── OOSPairSummaryViewer.tsx     OOS 配对汇总
-│   │       ├── PairUniverseViewer.tsx       配对筛选视图
+│   │       ├── PairUniverseViewer.tsx       配对/个股筛选视图
 │   │       ├── PnlReportViewer.tsx          盈亏报告
 │   │       ├── PortfolioHistoryViewer.tsx   组合历史 Excel 查看器
-│   │       ├── StrategyPerformanceViewer.tsx 策略表现仪表盘
-│   │       └── WFDiagnosticViewer.tsx       WF 诊断报告
+│   │       ├── StrategyPerformanceViewer.tsx 策略表现（Strategies + Master + 4 基准）
+│   │       ├── RiskReportViewer.tsx         机构级风险管理报告（PDF）
+│   │       ├── WFDiagnosticViewer.tsx       WF 诊断报告
+│   │       ├── KnowledgeBaseViewer.tsx      知识库搜索 / 阅读
+│   │       ├── PrivateCreditModelViewer.tsx Private Credit 模板模型
+│   │       ├── CreditRiskDashboard.tsx     信用风险 Merton PD/LGD
+│   │       ├── SensitivityHeatmap.tsx      敏感度热力图
+│   │       ├── ForwardRateCurve.tsx        远期利率曲线
+│   │       └── CashflowScheduleViewer.tsx  现金流排期
 │   ├── i18n/
 │   │   └── locales/                 en.json / zh.json / ja.json / fr.json / es.json
 │   ├── lib/
@@ -202,7 +218,7 @@ someo-park-investment-management/
 │   │   └── types.ts                 通用类型定义
 │   └── contexts/
 │       └── ArtifactContext.tsx       Artifact 导航上下文
-├── public/                          静态资源
+├── public/                          静态资源 + 运行时数据（strategy/master performance JSON、inventory）
 ├── firebase.json                    Firebase Hosting 配置
 ├── package.json
 ├── vite.config.ts
@@ -213,33 +229,51 @@ someo-park-investment-management/
 
 ## Agent 工具列表
 
-Agent 模式下可调用 35+ 工具自主完成复杂查询。所有 strategy 参数均支持 `mrpt`、`mtfs`、`ssrs` 三值：
+Agent 模式下可调用 53+ 工具自主完成复杂查询。strategy 参数支持 `mrpt`、`mtfs`、`ssrs`、`aiss` 四值（部分工具无 strategy 参数）：
 
-| 分类 | 工具 | strategy 参数 | 说明 |
+| 分类 | 工具 | strategy | 说明 |
 |------|------|:---:|------|
-| **持仓** | `get_inventory` | mrpt / mtfs / ssrs | 当前持仓（SSRS: 板块 ETF 权重/股数/成本/再平衡历史） |
-| | `get_inventory_history` | mrpt / mtfs / ssrs | 历史持仓快照 |
-| **信号** | `get_signals` | mrpt / mtfs / combined / ssrs | 最新信号（SSRS: 11 板块 composite scores + regime + smart_select） |
+| **持仓** | `get_inventory` | mrpt / mtfs / ssrs / aiss | 当前持仓（AISS: 个股级 + 子板块权重） |
+| | `get_inventory_history` | mrpt / mtfs / ssrs / aiss | 历史持仓快照 |
+| **信号** | `get_signals` | mrpt / mtfs / combined / ssrs / aiss | 最新信号 |
 | | `get_daily_report` | — | 每日量化报告 JSON |
 | | `get_daily_report_text` | — | 每日量化报告 TXT |
-| **Regime** | `get_regime` | — | 宏观 Regime + MRPT/MTFS 权重 |
-| **Walk-Forward** | `get_wf_summary` | mrpt / mtfs / ssrs | WF 汇总（SSRS: 73 折合成 OOS Sharpe/CAGR/WFE/per-param） |
-| | `get_equity_curve` | mrpt / mtfs / ssrs | OOS 权益曲线（SSRS: 合成 OOS metrics） |
-| | `get_oos_pair_summary` | mrpt / mtfs / ssrs | OOS 汇总（SSRS: 59 参数集按 Regime 的 OOS Sharpe） |
-| | `get_dsr_log` | mrpt / mtfs / ssrs | 选参日志（SSRS: 73 折选参详情 — 选中参数/方法） |
-| | `get_wf_structure` | mrpt / mtfs / ssrs | WF 文件结构（SSRS: `historical_runs/sector_rotation/` Excel） |
-| | `get_wf_diagnostic` | — | WF 诊断 XLSX 数据 |
-| **配对/板块** | `get_pair_universe` | mrpt / mtfs / ssrs | 配对/板块筛选（SSRS: 11 GICS ETF 持仓状态） |
-| | `get_pair_stats` | mrpt / mtfs / ssrs | 配对/板块详情（SSRS: 板块 holding + composite score） |
-| **组合** | `get_monitor_history` | mrpt / mtfs / ssrs | 监测历史 XLSX（SSRS: `monitor_sr_*.xlsx`） |
+| **Regime** | `get_regime` | — | 宏观 Regime + 策略权重 |
+| **Walk-Forward** | `get_wf_summary` | mrpt / mtfs / ssrs / aiss | WF 汇总 |
+| | `get_equity_curve` | mrpt / mtfs / ssrs / aiss | OOS 权益曲线 |
+| | `get_oos_pair_summary` | mrpt / mtfs / ssrs / aiss | OOS 汇总 |
+| | `get_dsr_log` | mrpt / mtfs / ssrs / aiss | 选参日志 |
+| | `get_wf_structure` | mrpt / mtfs / ssrs / aiss | WF 文件结构 |
+| | `get_wf_diagnostic` | — | WF 诊断 XLSX |
+| **配对/板块** | `get_pair_universe` | mrpt / mtfs / ssrs / aiss | 配对/板块/个股筛选 |
+| | `get_pair_stats` | mrpt / mtfs / ssrs / aiss | 配对/板块详情 |
+| **组合** | `get_monitor_history` | mrpt / mtfs / ssrs / aiss | 监测历史 XLSX |
 | | `get_pnl_reports` | — | PnL 报告 PDF 列表 |
+| | `get_risk_reports` | — | 风险管理报告 PDF/JSON/XLSX 列表 |
 | | `get_strategy_performance` | — | 策略表现时序 |
-| | `compare_strategies` | — | 三策略对比（MRPT / MTFS / SSRS） |
+| | `compare_strategies` | — | 四策略 + BDC 对比 |
+| **Private Credit** | `pc_list_models` | — | PC 模板模型列表 |
+| | `pc_read_model` | — | 读取模板输入/输出 |
+| | `pc_compute` | — | 运行 PC 模型（IRR/MOIC/现金流） |
+| | `pc_sensitivity` | — | 敏感度分析（双变量） |
+| | `pc_compare_scenarios` | — | 情景对比 |
+| | `pc_custom_cashflow` | — | 自定义现金流排期 |
+| | `pc_excel_raw` | — | 读取原始 Excel 数据 |
+| **PC Portfolio** | `portfolio_generate_cashflows` | — | 组合现金流生成 |
+| | `portfolio_credit_risk` | — | 信用风险评分（Merton PD/LGD） |
+| | `portfolio_forward_rates` | — | 远期利率曲线 |
+| | `portfolio_stress_test` | — | 组合压力测试 |
+| | `portfolio_analyze_deal` | — | 单笔交易分析 |
+| | `portfolio_run_existing` | — | 已有模型批量运行 |
+| | `portfolio_bdc_holdings` | — | BDC 持仓查询 |
+| **知识库** | `kb_search` | — | 知识库语义搜索 |
+| | `kb_read` | — | 读取知识库文档 |
+| | `kb_list` | — | 列出知识库条目 |
 | **文件操作** | `read_file` | — | 读取任意文本文件 |
 | | `list_files` | — | 列出目录内容 |
-| | `query_json` | — | 读取并查询 JSON（含 SSRS 快捷路径） |
+| | `query_json` | — | 读取并查询 JSON |
 | | `parse_data_file` | — | 解析 XLSX / CSV |
-| | `get_set_config` | — | Agent 配置（default_strategy 含 ssrs） |
+| | `get_set_config` | — | Agent 配置 |
 | | `search_content` | — | ripgrep 文件搜索 |
 | **计算** | `calculate` | — | 数学表达式计算 |
 | | `calculate_statistics` | — | 统计分析 |
