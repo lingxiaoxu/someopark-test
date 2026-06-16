@@ -97,6 +97,11 @@ class ModelConfig:
     # knockouts / with more data). 0 = off.
     squad_blend_weight: float = 0.15
 
+    # Recent-form blend (plan 17 B.3): nudge ratings by the z-scored recent-form
+    # index (time-weighted, friendly-discounted goal difference from nt_recent).
+    # Applied to the LIVE model as a forward-looking bet, same discipline as squad.
+    form_blend_weight: float = 0.10
+
     # Time-decay for recent results (plan 03 §1b): exp(-xi * delta_days).
     time_decay_xi: float = 0.0035
 

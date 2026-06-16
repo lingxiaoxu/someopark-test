@@ -229,6 +229,51 @@ def sync_live(api: ApiFootball, conn) -> int:
     return len(detailed)
 
 
+def sync_nt_recent(api: ApiFootball, conn, *, last: int = 6, limit: int = 60) -> int:
+    """Recent NATIONAL-TEAM results (friendlies + qualifiers) for the form feature.
+
+    For each canonical-mapped national team, pulls its last ``last`` fixtures and
+    stores the finished ones (goals for/against, opponent, friendly flag, date) in
+    ``nt_recent``. ~1 request per team (non-paginated). Skips teams already covered
+    this run via the NOT IN filter so re-runs are cheap.
+    """
+    teams = conn.execute(
+        "SELECT api_id FROM team_meta WHERE canonical_team_id IS NOT NULL "
+        "ORDER BY api_id LIMIT ?", (limit,)).fetchall()
+    pulled = 0
+    for trow in teams:
+        tid = trow["api_id"]
+        try:
+            fx = api.fixtures(team=tid, last=last)
+        except BudgetExceededError as e:
+            print(f"[nt_recent] stopping early: {e}")
+            break
+        for it in fx:
+            fi = it.get("fixture", {}); lg = it.get("league", {})
+            tm = it.get("teams", {}); go = it.get("goals", {})
+            status = (fi.get("status") or {}).get("short")
+            if status not in _FINISHED:
+                continue
+            hid = (tm.get("home") or {}).get("id"); aid = (tm.get("away") or {}).get("id")
+            gh, ga = go.get("home"), go.get("away")
+            if hid is None or aid is None or gh is None or ga is None:
+                continue
+            is_home = 1 if hid == tid else 0
+            opp = aid if is_home else hid
+            gf, gag = (gh, ga) if is_home else (ga, gh)
+            lname = (lg.get("name") or "").lower()
+            is_friendly = 1 if "friendl" in lname else 0
+            store.upsert(conn, "nt_recent", {
+                "fixture_api_id": fi.get("id"), "team_api_id": tid, "opp_api_id": opp,
+                "kickoff_ts": fi.get("date"), "league_id": lg.get("id"), "is_friendly": is_friendly,
+                "gf": gf, "ga": gag, "is_home": is_home, "fetched_at": store.utcnow(),
+            }, pk=["fixture_api_id", "team_api_id"])
+        pulled += 1
+    conn.commit()
+    print(f"[nt_recent] pulled recent results for {pulled} national teams")
+    return pulled
+
+
 def sync_h2h(api: ApiFootball, conn, *, force: bool = False) -> int:
     """Head-to-head history for upcoming (not-yet-finished) fixtures."""
     if not force and store.is_fresh(conn, "h2h", CONFIG.soccer.ttl_h2h):

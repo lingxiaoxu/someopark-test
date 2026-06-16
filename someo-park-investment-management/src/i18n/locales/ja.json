@@ -139,7 +139,10 @@
     "subParams": "180 組の PIT パラメータを Brier(=MSE)で評価",
     "lblSelected": "選定(最小 Brier)", "lblVsCurrent": "現在の設定", "lblVsUniform": "一様ベースライン",
     "colParams": "パラメータ",
-    "paramsWhy": "選定 = Brier(多クラスMSE)が最小の組。現設定より良いが一様より劣るため、参考表示のみで自動適用はしない。"
+    "paramsWhy": "選定 = Brier(多クラスMSE)が最小の組。現設定より良いが一様より劣るため、参考表示のみで自動適用はしない。",
+    "recentForm": "最近の調子",
+    "subForm": "時間加重・親善試合割引の得失点差(F=親善)。ライブモデルに使用 — OOS Brier を改善。",
+    "colForm": "調子 z", "colRecent": "最近(得-失)"
   },
   "sidebar": {
     "appName": "Someo Park",

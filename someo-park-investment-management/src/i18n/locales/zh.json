@@ -139,7 +139,10 @@
     "subParams": "180 组 PIT 参数,按 Brier(=MSE)在已结算场次上打分",
     "lblSelected": "选定(最低 Brier)", "lblVsCurrent": "当前配置", "lblVsUniform": "均匀基线",
     "colParams": "参数",
-    "paramsWhy": "选定 = Brier(多类 MSE vs 实际结果)最低的一组。它优于当前配置,但仍高于均匀基线,故仅作透明展示,不自动应用。"
+    "paramsWhy": "选定 = Brier(多类 MSE vs 实际结果)最低的一组。它优于当前配置,但仍高于均匀基线,故仅作透明展示,不自动应用。",
+    "recentForm": "近期状态",
+    "subForm": "时间加权、友谊赛折扣的进球差(F=友谊赛)。已用于线上模型 —— 它降低了 OOS Brier。",
+    "colForm": "状态 z", "colRecent": "近况(进-失)"
   },
   "sidebar": {
     "appName": "Someo Park",

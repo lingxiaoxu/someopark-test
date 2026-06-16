@@ -29,6 +29,7 @@ const FILES = [
   'inplay_live.json',
   'backtest.json',
   'squad.json',
+  'form.json',
   'param_sweep.json',
   'performance_report.json',
   'risk_report.json',

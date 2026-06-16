@@ -246,3 +246,27 @@ def test_squad_index_and_export():
     # blend with weight 0 leaves ratings unchanged
     sm = build_strength(load_prior())
     assert squad_adjusted_ratings(sm, idx, 0.0) is sm
+
+
+# ── recent form ───────────────────────────────────────────────────────────────
+def test_form_index_ranks_winners_above_losers():
+    from prediction_market.model.form_strength import form_index, form_adjusted_ratings
+    from prediction_market.model.strength import build_strength
+    from prediction_market.ingest.prior_ingest import load_prior
+    c = _mem_db()
+    for api, cid in ((10, "france"), (20, "senegal")):
+        store.upsert(c, "team_meta",
+                     {"api_id": api, "canonical_team_id": cid, "updated_at": store.utcnow()}, pk=["api_id"])
+    # France wins big; Senegal loses big (both friendlies)
+    store.upsert(c, "nt_recent", {"fixture_api_id": 1, "team_api_id": 10, "opp_api_id": 99,
+                 "kickoff_ts": "2026-06-01T00:00:00+00:00", "league_id": 10, "is_friendly": 1,
+                 "gf": 3, "ga": 0, "is_home": 1, "fetched_at": store.utcnow()}, pk=["fixture_api_id", "team_api_id"])
+    store.upsert(c, "nt_recent", {"fixture_api_id": 2, "team_api_id": 20, "opp_api_id": 99,
+                 "kickoff_ts": "2026-06-01T00:00:00+00:00", "league_id": 10, "is_friendly": 1,
+                 "gf": 0, "ga": 3, "is_home": 1, "fetched_at": store.utcnow()}, pk=["fixture_api_id", "team_api_id"])
+    idx = form_index(c)
+    assert idx["france"].form_z > idx["senegal"].form_z
+    sm = build_strength(load_prior())
+    assert form_adjusted_ratings(sm, idx, 0.0) is sm
+    boosted = form_adjusted_ratings(sm, idx, 0.3)
+    assert boosted.ratings["france"] > sm.ratings["france"]   # good form lifts the rating
