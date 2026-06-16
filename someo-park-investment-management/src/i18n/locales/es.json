@@ -174,7 +174,7 @@
     "lblModelRaw": "Brier (modelo bruto)",
     "backtestPass": "El modelo bruto era demasiado confiado; tras calibrar las probabilidades supera al uniforme Y al mercado — ahora trade-grade.",
     "squadStrength": "Fuerza de Plantilla",
-    "subSquad": "Calidad de plantilla (nota de club + goles/asistencias). Informativo — no usado por el modelo.",
+    "subSquad": "Calidad de plantilla: nota de club ponderada por minutos + goles/asistencias, en z-score. Integrada en el modelo en vivo.",
     "colSquadScore": "z plantilla",
     "colTopPlayers": "Jugadores clave",
     "win": "victoria",

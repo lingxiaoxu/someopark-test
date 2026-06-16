@@ -492,7 +492,7 @@
     "lblModelRaw": "Brier (raw model)",
     "backtestPass": "The raw model was over-confident; after probability calibration it beats both the uniform baseline AND the sharp book — now trade-grade.",
     "squadStrength": "Squad Strength",
-    "subSquad": "Squad quality (club rating + goals/assists). Informative only — not used by the live model.",
+    "subSquad": "Squad quality: minutes-weighted club rating + goals/assists, z-scored. Blended into the live model.",
     "colSquadScore": "Squad z",
     "colTopPlayers": "Top players",
     "win": "win",
