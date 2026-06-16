@@ -8,22 +8,37 @@
 import { useTranslation } from 'react-i18next';
 import { getWCUpcoming, getWCInplayLive } from '../../lib/api';
 import { tCountry } from '../../i18n/countries';
+import { useSetArtifact } from '../../contexts/ArtifactContext';
 import MatchCard, { type UpcomingMatch } from './MatchCard';
 import { usePoll } from './usePoll';
 
 const pct = (v?: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
 
-function pickUpcoming(matches: UpcomingMatch[]): UpcomingMatch[] {
+// Fill the remaining slots (after live matches) with the soonest not-started fixtures.
+function pickUpcoming(matches: UpcomingMatch[], slots: number): UpcomingMatch[] {
+  if (slots <= 0) return [];
   const now = Date.now();
   const future = matches.filter((m) => new Date(m.kickoff).getTime() > now);
   const pool = future.length ? future : matches;
-  return pool.slice(0, 3);
+  return pool.slice(0, slots);
 }
 
+// A live match keeps its slot in the top region (not dropped): pulsing LIVE badge,
+// live score + minute + live model, and the whole card is clickable to jump into
+// the in-play arbitrage view.
 function LiveCard({ m }: { m: any }) {
   const { t } = useTranslation();
+  const setArtifact = useSetArtifact();
+  const openInplay = () => setArtifact({ type: 'wc_inplay', title: t('prediction.inPlayArb') });
   return (
-    <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 280, flex: '1 1 320px', borderLeft: '4px solid var(--error)' }}>
+    <div
+      className="pair-card"
+      onClick={openInplay}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInplay(); } }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 280, flex: '1 1 320px', borderLeft: '4px solid var(--error)', cursor: 'pointer' }}
+    >
       <div className="flex items-center justify-between">
         <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
           <span className="pulse" style={{ color: 'var(--error)', marginRight: 6 }}>● {t('prediction.liveBadge')}</span>
@@ -34,11 +49,9 @@ function LiveCard({ m }: { m: any }) {
       <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
         {t('prediction.model')}: H {pct(m.model?.home)} · D {pct(m.model?.draw)} · A {pct(m.model?.away)}
       </div>
-      {!!(m.opportunities?.length) && (
-        <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--success)', fontWeight: 700 }}>
-          {m.opportunities.length} {t('prediction.inPlayArb')} →
-        </div>
-      )}
+      <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--success)', fontWeight: 700 }}>
+        {m.opportunities?.length ? `${m.opportunities.length} ` : ''}{t('prediction.inPlayArb')} →
+      </div>
     </div>
   );
 }
@@ -48,8 +61,12 @@ export default function PredictionUpcoming() {
   const up = usePoll<{ matches?: UpcomingMatch[] }>(() => getWCUpcoming(), 60000);
   const live = usePoll<{ matches?: any[] }>(() => getWCInplayLive(), 30000);
 
-  const liveMatches = live.data?.matches ?? [];
-  const upMatches = up.data?.matches ? pickUpcoming(up.data.matches) : [];
+  // Keep the region at 3 slots total: live matches take their slots first, the
+  // rest are filled with the soonest not-started fixtures (started matches are
+  // never dropped — they just switch to a LIVE card).
+  const SLOTS = 3;
+  const liveMatches = (live.data?.matches ?? []).slice(0, SLOTS);
+  const upMatches = up.data?.matches ? pickUpcoming(up.data.matches, SLOTS - liveMatches.length) : [];
   const total = liveMatches.length + upMatches.length;
   const loading = up.loading && live.loading && !total;
 

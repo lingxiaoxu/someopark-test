@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Per-minute in-play refresh. Every 60s runs live_refresh.sh, which is a cheap gate:
+  outside a match window it's a single DB query (no API, no writes); inside a window
+  it pulls live fixture state (API-Football) and regenerates inplay_live.json +
+  upcoming.json into public/data. The local Express server serves public/data over
+  the Cloudflare tunnel, so the live site (someopark.web.app) updates every minute
+  WITHOUT a Firebase redeploy — the frontend polls inplay_live.json every 30s.
+
+  Requires the tunnel + server to be up (see TUNNEL_GUIDE.md):
+    npm run server    &&    cloudflared tunnel --url http://localhost:3001 ...
+
+  Install:
+    cp prediction_market/ops/com.someopark.predictionlive.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.someopark.predictionlive.plist
+  Disable:
+    launchctl unload ~/Library/LaunchAgents/com.someopark.predictionlive.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.someopark.predictionlive</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/xuling/code/someopark-test/prediction_market/ops/live_refresh.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>60</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/xuling/code/someopark-test/prediction_market/data/logs/live.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/xuling/code/someopark-test/prediction_market/data/logs/live.err.log</string>
+</dict>
+</plist>
