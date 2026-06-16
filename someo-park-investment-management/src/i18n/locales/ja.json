@@ -184,7 +184,7 @@
     "polyPrice": "Poly US 価格",
     "notListed": "未上場",
     "paramSweep": "パラメータ探索(OOS)",
-    "subParams": "180 組の PIT パラメータを Brier(=MSE)で評価",
+    "subParams": "PIT パラメータ群、確定試合で校正後 Brier(=MSE)順",
     "lblSelected": "選定(最小 Brier)",
     "lblVsCurrent": "現在の設定",
     "lblVsUniform": "一様ベースライン",

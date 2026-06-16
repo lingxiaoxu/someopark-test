@@ -184,7 +184,7 @@
     "polyPrice": "Poly US 现价",
     "notListed": "未上市",
     "paramSweep": "参数搜索(OOS)",
-    "subParams": "180 组 PIT 参数,按 Brier(=MSE)在已结算场次上打分",
+    "subParams": "PIT 参数集,按已结算场次的「校准后 Brier(=MSE)」排序",
     "lblSelected": "选定(最低 Brier)",
     "lblVsCurrent": "当前配置",
     "lblVsUniform": "均匀基线",

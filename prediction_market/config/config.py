@@ -106,6 +106,11 @@ class ModelConfig:
     # Applied to the LIVE model as a forward-looking bet, same discipline as squad.
     form_blend_weight: float = 0.10
 
+    # EA Sports FC 26 squad-quality blend (plan 17 B.3): nudge ratings by the z-scored
+    # top-16 FC overall — a clean, current talent anchor complementary to FIFA rank
+    # (results) and the squad club-form blend. Tuned by the param sweep. 0 = off.
+    fc_blend_weight: float = 0.12
+
     # Golden-boot talent prior (plan 03 §6.1): EA FC 26 ratings give each player a
     # talent-grounded per-match goal rate. That FC rate is the PRIOR; observed club
     # (season-1) and WC-to-date scoring update it Bayesian-style with these

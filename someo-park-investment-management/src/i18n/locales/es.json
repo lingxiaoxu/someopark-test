@@ -184,7 +184,7 @@
     "polyPrice": "Precio Poly US",
     "notListed": "no listado",
     "paramSweep": "Búsqueda de parámetros (OOS)",
-    "subParams": "180 conjuntos PIT, evaluados por Brier (= MSE) en partidos liquidados",
+    "subParams": "Conjuntos PIT, ordenados por Brier CALIBRADO (=MSE) en partidos liquidados",
     "lblSelected": "Seleccionado (Brier mín)",
     "lblVsCurrent": "Config actual",
     "lblVsUniform": "Base uniforme",

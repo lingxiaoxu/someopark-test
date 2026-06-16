@@ -502,7 +502,7 @@
     "polyPrice": "Poly US price",
     "notListed": "not listed yet",
     "paramSweep": "Parameter Sweep (OOS)",
-    "subParams": "180 PIT parameter sets, scored by Brier (= MSE) on settled matches",
+    "subParams": "PIT param sets, ranked by CALIBRATED Brier (=MSE) on settled matches",
     "lblSelected": "Selected (min Brier)",
     "lblVsCurrent": "Current config",
     "lblVsUniform": "Uniform baseline",

@@ -184,7 +184,7 @@
     "polyPrice": "Prix Poly US",
     "notListed": "non listé",
     "paramSweep": "Recherche de paramètres (OOS)",
-    "subParams": "180 jeux de paramètres PIT, notés au Brier (= MSE) sur matchs réglés",
+    "subParams": "Jeux de paramètres PIT, classés par Brier CALIBRÉ (=MSE) sur matchs réglés",
     "lblSelected": "Sélectionné (Brier min)",
     "lblVsCurrent": "Config actuelle",
     "lblVsUniform": "Base uniforme",

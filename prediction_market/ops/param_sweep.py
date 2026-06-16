@@ -34,10 +34,15 @@ _FINISHED = ("FT", "AET", "PEN")
 
 # Swept structural knobs (ModelConfig fields). ~180 combinations.
 GRID = {
-    "base_mu": [0.25, 0.30, 0.35],
-    "beta": [0.40, 0.55, 0.70, 0.85, 1.00, 1.20],
-    "dc_rho": [-0.16, -0.12, -0.08, -0.04, 0.0],
-    "rank_anchor_weight": [0.5, 0.7],
+    # ── λ / Dixon-Coles structure ──
+    "base_mu": [0.25, 0.30, 0.35],                  # base scoring level
+    "beta": [0.40, 0.55, 0.70, 0.85],               # rating-gap → goal-diff sharpness
+    "dc_rho": [-0.16, -0.12, -0.08, 0.0],           # low-score correlation (draw mass)
+    # ── rating-construction anchors ──
+    "rank_anchor_weight": [0.5, 0.7],               # FIFA-rank vs exp-points blend
+    "fc_blend_weight": [0.0, 0.12, 0.24],           # EA FC 26 squad-talent anchor (NEW)
+    "squad_blend_weight": [0.0, 0.15],              # club-form squad blend (NEW to the sweep)
+    "form_blend_weight": [0.0, 0.10],               # recent-form blend (NEW to the sweep)
 }
 
 
@@ -77,7 +82,29 @@ def _score(probs, outcomes):
     return {"brier": brier / n, "log_loss": log_loss / n, "acc": hits / n, "n": n}
 
 
-def evaluate(params: dict, settled, prior, *, sweeps: int = 30) -> dict:
+def _anchor_indices(conn) -> dict:
+    """Precompute the squad / form / FC z-indices once (cfg-independent) so each param
+    set just re-weights them instead of re-reading the DB."""
+    out: dict = {}
+    try:
+        from prediction_market.model.squad_strength import squad_index
+        out["squad"] = squad_index(conn)
+    except Exception:
+        pass
+    try:
+        from prediction_market.model.form_strength import form_index
+        out["form"] = form_index(conn)
+    except Exception:
+        pass
+    try:
+        from prediction_market.model.fc_strength import fc_squad_index
+        out["fc"] = fc_squad_index(conn)
+    except Exception:
+        pass
+    return out
+
+
+def evaluate(params: dict, settled, prior, *, sweeps: int = 30, idx: dict | None = None) -> dict:
     """Brier/log-loss/acc for one parameter set over the settled matches — both the
     RAW model and, fairly, the CALIBRATED model.
 
@@ -93,6 +120,19 @@ def evaluate(params: dict, settled, prior, *, sweeps: int = 30) -> dict:
     from prediction_market.model.strength import build_strength
     cfg = replace(CONFIG.model, **params)
     sm = build_strength(prior, cfg, sweeps=sweeps)
+    # Apply the rating ANCHORS the live model uses (squad / form / FC talent), with this
+    # set's weights, from PRECOMPUTED indices (passed in `idx`) so the sweep is fast.
+    idx = idx or {}
+    if idx:
+        from prediction_market.model.fc_strength import fc_adjusted_ratings
+        from prediction_market.model.form_strength import form_adjusted_ratings
+        from prediction_market.model.squad_strength import squad_adjusted_ratings
+        if cfg.squad_blend_weight and idx.get("squad"):
+            sm = squad_adjusted_ratings(sm, idx["squad"], cfg.squad_blend_weight)
+        if cfg.form_blend_weight and idx.get("form"):
+            sm = form_adjusted_ratings(sm, idx["form"], cfg.form_blend_weight)
+        if cfg.fc_blend_weight and idx.get("fc"):
+            sm = fc_adjusted_ratings(sm, idx["fc"], cfg.fc_blend_weight)
     probs, outs = [], []
     for hi, ai, outcome, _rh, _ra in settled:
         mp = price_match(sm, hi, ai)
@@ -119,12 +159,13 @@ def run(conn=None, *, sweeps: int = 30) -> dict:
 
     keys = list(GRID)
     combos = [dict(zip(keys, vals)) for vals in itertools.product(*[GRID[k] for k in keys])]
-    results = [evaluate(p, settled, prior, sweeps=sweeps) for p in combos]
+    idx = _anchor_indices(conn)   # squad / form / FC indices, computed once
+    results = [evaluate(p, settled, prior, sweeps=sweeps, idx=idx) for p in combos]
     # Rank on the CALIBRATED Brier — the number that's comparable to the uniform
     # baseline and that the live (calibrated) model is actually graded on.
     results.sort(key=lambda r: (r["brier_cal"], r["log_loss"]))
 
-    baseline = evaluate({}, settled, prior, sweeps=sweeps)   # current CONFIG.model
+    baseline = evaluate({}, settled, prior, sweeps=sweeps, idx=idx)   # current CONFIG.model
     uni = round(2 / 3, 4)
     best = results[0] if results else None
     n_beat = sum(1 for r in results if r["brier_cal"] < uni)

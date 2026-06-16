@@ -107,6 +107,13 @@ def build_strength_live(conn, prior=None, cfg=None):
             sm = form_adjusted_ratings(sm, form_index(conn), fw)
         except Exception:
             pass
+    cw = getattr(cfg, "fc_blend_weight", 0.0)
+    if cw:
+        try:
+            from prediction_market.model.fc_strength import fc_adjusted_ratings, fc_squad_index
+            sm = fc_adjusted_ratings(sm, fc_squad_index(conn), cw)
+        except Exception:
+            pass
     return sm
 
 
