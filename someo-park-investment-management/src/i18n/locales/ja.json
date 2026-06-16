@@ -193,7 +193,9 @@
     "subForm": "時間加重・親善試合割引の得失点差(F=親善)。ライブモデルに使用 — OOS Brier を改善。",
     "colForm": "調子 z",
     "colRecent": "最近(得-失)",
-    "colTeam": "チーム"
+    "colTeam": "チーム",
+    "lblBrierCalibrated": "Brier(校正後)",
+    "gradePassCalibrated": "合格(校正済み)"
   },
   "sidebar": {
     "appName": "Someo Park",

@@ -254,17 +254,21 @@ function PerformanceCard() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCPerformance(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const pass = data?.brier <= data?.brier_uniform;
+  // Gate verdict comes from the CALIBRATED Brier (trade_grade), not the raw model —
+  // the raw model is over-confident on this small sample but calibration recovers it.
+  const pass = !!data?.trade_grade;
+  const hasCal = data?.calibrated_brier != null;
   return (
     <div>
       <Title sub={tr('prediction.subPerformance')}>Accuracy & P&L</Title>
       <KV rows={[
         [tr('prediction.lblSettled'), data?.n_settled],
         [tr('prediction.lblBrierBetter'), `${num(data?.brier, 4)} vs uniform ${num(data?.brier_uniform, 4)}`],
+        ...(hasCal ? [[tr('prediction.lblBrierCalibrated'), <span style={{ color: pass ? 'var(--success)' : 'var(--ink)' }}>{`${num(data?.calibrated_brier, 4)} ≤ uniform ${num(data?.brier_uniform, 4)}`}</span>] as [string, ReactNode]] : []),
         ['Log-loss', num(data?.log_loss, 4)],
         [tr('prediction.lblFavHit'), pct(data?.favourite_hit_rate, 0)],
         [tr('prediction.lblCalibPnl'), `${num(data?.calibration_pnl, 2)}u (${num(data?.calibration_pnl_per_bet, 3)}u/bet)`],
-        [tr('prediction.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? tr('prediction.gradePass') : tr('prediction.gradeBlock')}</span>],
+        [tr('prediction.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? tr('prediction.gradePassCalibrated') : tr('prediction.gradeBlock')}</span>],
       ]} />
       <Notes items={data?.notes} />
     </div>

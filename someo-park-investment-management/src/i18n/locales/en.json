@@ -511,7 +511,9 @@
     "subForm": "Time-weighted, friendly-discounted goal difference (F = friendly). Used by the live model — it lowered the OOS Brier.",
     "colForm": "Form z",
     "colRecent": "Recent (gf-ga)",
-    "colTeam": "Team"
+    "colTeam": "Team",
+    "lblBrierCalibrated": "Brier (calibrated)",
+    "gradePassCalibrated": "PASS (calibrated)"
   },
   "sidebar": {
     "appName": "Someo Park",

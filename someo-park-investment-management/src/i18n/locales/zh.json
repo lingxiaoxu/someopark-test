@@ -193,7 +193,9 @@
     "subForm": "时间加权、友谊赛折扣的进球差(F=友谊赛)。已用于线上模型 —— 它降低了 OOS Brier。",
     "colForm": "状态 z",
     "colRecent": "近况(进-失)",
-    "colTeam": "球队"
+    "colTeam": "球队",
+    "lblBrierCalibrated": "Brier(校准后)",
+    "gradePassCalibrated": "通过(已校准)"
   },
   "sidebar": {
     "appName": "Someo Park",

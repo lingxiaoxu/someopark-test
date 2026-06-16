@@ -193,7 +193,9 @@
     "subForm": "Dif. de goles ponderada en tiempo, amistosos descontados (F = amistoso). Usado por el modelo — bajó el Brier OOS.",
     "colForm": "z forma",
     "colRecent": "Reciente (gf-gc)",
-    "colTeam": "Equipo"
+    "colTeam": "Equipo",
+    "lblBrierCalibrated": "Brier (calibrado)",
+    "gradePassCalibrated": "APROBADO (calibrado)"
   },
   "sidebar": {
     "appName": "Someo Park",

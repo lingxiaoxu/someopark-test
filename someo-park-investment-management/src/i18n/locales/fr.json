@@ -193,7 +193,9 @@
     "subForm": "Diff. de buts pondérée dans le temps, amicaux escomptés (F = amical). Utilisé par le modèle — a baissé le Brier OOS.",
     "colForm": "z forme",
     "colRecent": "Récent (bp-bc)",
-    "colTeam": "Équipe"
+    "colTeam": "Équipe",
+    "lblBrierCalibrated": "Brier (calibré)",
+    "gradePassCalibrated": "VALIDÉ (calibré)"
   },
   "sidebar": {
     "appName": "Someo Park",

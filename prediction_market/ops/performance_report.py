@@ -32,8 +32,10 @@ _FINISHED = ("FT", "AET", "PEN")
 @dataclass
 class PerformanceReport:
     n_settled: int
-    brier: float
+    brier: float                  # RAW model Brier (pre-calibration)
     brier_uniform: float
+    calibrated_brier: float | None  # post-calibration Brier (None if no calibration fit)
+    trade_grade: bool             # gate verdict: calibrated Brier <= uniform
     log_loss: float
     favourite_hit_rate: float
     calibration_pnl: float        # paper, 1u on model pick at fair odds
@@ -74,7 +76,13 @@ def build(conn=None) -> PerformanceReport:
 
     if not data:
         notes.append("no settled matches yet")
-        return PerformanceReport(0, *( [float('nan')] * 6 ), 0.0, 0, notes)
+        nan = float('nan')
+        return PerformanceReport(
+            n_settled=0, brier=nan, brier_uniform=nan, calibrated_brier=None,
+            trade_grade=False, log_loss=nan, favourite_hit_rate=nan,
+            calibration_pnl=nan, calibration_pnl_per_bet=nan,
+            settled_signal_pnl=0.0, n_settled_signals=0, notes=notes,
+        )
 
     probs = [d[0] for d in data]
     outcomes = [d[1] for d in data]
@@ -104,12 +112,18 @@ def build(conn=None) -> PerformanceReport:
 
     from prediction_market.model.probability_calibration import load_calibration
     cal = load_calibration()
-    if cal and cal.get("trade_grade"):
+    # The trade-grade gate is decided on the CALIBRATED Brier (post-hoc temperature/
+    # shrinkage), NOT the raw model — the raw model is over-confident on this tiny,
+    # draw-heavy sample, but calibration restores it below the uniform baseline.
+    calibrated_brier = cal.get("calibrated_brier") if cal else None
+    trade_grade = bool(cal and cal.get("trade_grade"))
+    if trade_grade:
         notes.append(f"After calibration ({cal['method']} {cal['param']}) the model Brier is "
                      f"{cal['calibrated_brier']} ≤ uniform {cal['uniform_brier']} — TRADE-GRADE (gate passes). "
                      f"Raw model was over-confident ({cal['raw_brier']}).")
     elif brier_score(probs, outcomes) > (2 / 3):
-        notes.append("model Brier WORSE than uniform — not yet trade-grade (discipline gate blocks).")
+        notes.append("model Brier WORSE than uniform and calibration does not recover it — "
+                     "not yet trade-grade (discipline gate blocks).")
     notes.append("Realized P&L ~0 by design: live trading gated; only demo order test placed.")
     notes.append("Calibration P&L is PAPER (fair-odds), measures model over/under-confidence.")
 
@@ -117,6 +131,8 @@ def build(conn=None) -> PerformanceReport:
         n_settled=n,
         brier=round(brier_score(probs, outcomes), 4),
         brier_uniform=round(brier_score([[1 / 3, 1 / 3, 1 / 3]] * n, outcomes), 4),
+        calibrated_brier=calibrated_brier,
+        trade_grade=trade_grade,
         log_loss=round(log_loss(probs, outcomes), 4),
         favourite_hit_rate=round(hits / n, 3),
         calibration_pnl=round(pnl, 3),
@@ -186,10 +202,13 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
     # 六、预测准确度(已结算场次)
     ps.section(story, "六、预测准确度(已结算场次)")
     if rep.n_settled:
-        grade = "PASS(优于均匀)" if rep.brier <= rep.brier_uniform else "BLOCK(劣于均匀,纪律闸门拦截)"
+        grade = "PASS(已校准,优于均匀)" if rep.trade_grade else "BLOCK(劣于均匀,纪律闸门拦截)"
+        cal_row = (f"{rep.calibrated_brier}  ≤ 均匀基线 {rep.brier_uniform}"
+                   if rep.calibrated_brier is not None else "尚未拟合校准")
         acc = [
             ("已结算场次", f"{rep.n_settled}"),
-            ("Brier(越低越好)", f"{rep.brier}  vs 均匀基线 {rep.brier_uniform}"),
+            ("Brier 原始(越低越好)", f"{rep.brier}  vs 均匀基线 {rep.brier_uniform}"),
+            ("Brier 校准后", cal_row),
             ("Log-loss", f"{rep.log_loss}"),
             ("热门命中率", f"{rep.favourite_hit_rate:.0%}"),
             ("交易等级", grade),
