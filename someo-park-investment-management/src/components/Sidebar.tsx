@@ -46,7 +46,9 @@ export default function Sidebar({
   onDeleteChat?: (id: number) => void,
 }) {
   const { t } = useTranslation();
-  const [currentLang, setCurrentLang] = useState(localStorage.getItem('sp-lang') || 'en');
+  // Reflect the language i18n actually resolved (saved choice → browser/system → en),
+  // not a hardcoded default, so the switcher shows the detected language on first load.
+  const [currentLang, setCurrentLang] = useState(i18n.language || localStorage.getItem('sp-lang') || 'en');
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showAboutDev, setShowAboutDev] = useState(false);
