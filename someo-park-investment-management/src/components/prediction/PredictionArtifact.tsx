@@ -13,6 +13,7 @@ import {
 } from '../../lib/api';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
+import { tDyn } from '../../i18n/predictionStrings';
 
 // ── shared primitives ─────────────────────────────────────────────────────────
 const pct = (v?: number | null, d = 1) => (v == null || isNaN(v) ? '—' : `${(v * 100).toFixed(d)}%`);
@@ -59,7 +60,7 @@ function Notes({ items }: { items?: string[] }) {
   if (!items?.length) return null;
   return (
     <ul style={{ marginTop: 10, paddingLeft: 16, fontSize: 11, color: 'var(--text-muted)', ...mono }}>
-      {items.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{n}</li>)}
+      {items.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{tDyn(n)}</li>)}
     </ul>
   );
 }
@@ -72,32 +73,34 @@ function ChampionOdds() {
   const champ = (data?.champion ?? []).slice(0, 16);
   return (
     <div>
-      <Title sub={`Monte-Carlo · ${data?.meta?.n_sims?.toLocaleString?.() ?? ''} sims · prior ${data?.meta?.prior_as_of ?? ''}`}>Champion Odds</Title>
-      <DataTable cols={[tr('prediction.team'), 'Grp', 'Champ', 'Final', 'SF', 'Rating']}
+      <Title sub={`${tr('prediction.subChampion')} · ${data?.meta?.n_sims?.toLocaleString?.() ?? ''} sims`}>Champion Odds</Title>
+      <DataTable cols={[tr('prediction.team'), 'Grp', tr('prediction.colChamp'), tr('prediction.colFinal'), 'SF', tr('prediction.colRating')]}
         rows={champ.map((c: any) => [tCountry(c.name), c.group, pct(c.p_champion), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])} />
     </div>
   );
 }
 
 function GoldenBoot() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCChampion(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const gb = (data?.golden_boot ?? []).slice(0, 16);
   return (
     <div>
-      <Title sub="Player goal-scoring (nested in tournament sim)">Golden Boot</Title>
-      <DataTable cols={['Player', 'P(boot)', 'E[goals]']}
+      <Title sub={tr('prediction.subGoldenBoot')}>Golden Boot</Title>
+      <DataTable cols={[tr('prediction.colPlayer'), 'P(boot)', 'E[goals]']}
         rows={gb.map((p: any) => [p.name, pct(p.p_golden_boot), num(p.e_goals, 2)])} />
     </div>
   );
 }
 
 function Methodology() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCChampion(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   return (
     <div>
-      <Title sub={`${data?.meta?.code_version ?? ''}`}>Model Notes / Methodology</Title>
+      <Title sub={`${tr('prediction.subMethodology')} · ${data?.meta?.code_version ?? ''}`}>Model Notes / Methodology</Title>
       <Notes items={data?.meta?.model_notes} />
     </div>
   );
@@ -110,8 +113,8 @@ function Divergence() {
   const rows = (data ?? []);
   return (
     <div>
-      <Title sub="Model 3-way vs sharp bookmaker de-vig; edge = model − book">Model vs Market</Title>
-      <DataTable cols={[tr('prediction.match'), 'Model H/D/A', 'Book H/D/A', 'Best edge']}
+      <Title sub={tr('prediction.subDivergence')}>Model vs Market</Title>
+      <DataTable cols={[tr('prediction.match'), 'Model H/D/A', 'Book H/D/A', tr('prediction.colEdge')]}
         rows={rows.map((m: any) => {
           const e = m.edge_vs_book || {};
           const best = Math.max(Math.abs(e.home ?? 0), Math.abs(e.draw ?? 0), Math.abs(e.away ?? 0));
@@ -135,7 +138,7 @@ function Predictions() {
   const ms = data?.matches ?? [];
   return (
     <div>
-      <Title sub="Model 3-way + O2.5 / BTTS for upcoming fixtures">Today's Predictions</Title>
+      <Title sub={tr('prediction.subPredictions')}>Today's Predictions</Title>
       <DataTable cols={[tr('prediction.match'), 'ET', 'H', 'D', 'A', 'O2.5']}
         rows={ms.map((m: any) => [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '', pct(m.model?.home, 0), pct(m.model?.draw, 0), pct(m.model?.away, 0), pct(m.model?.over_2_5, 0)])} />
     </div>
@@ -149,7 +152,7 @@ function MatchPricing() {
   const ms = data?.matches ?? [];
   return (
     <div>
-      <Title sub="3-way fair price + real venue asks (Kalshi / Poly US)">Match Pricing</Title>
+      <Title sub={tr('prediction.subMatchPricing')}>Match Pricing</Title>
       {ms.map((m: any, i: number) => (
         <div key={i} className="card" style={{ marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 6 }}>{tCountry(m.home?.name)} vs {tCountry(m.away?.name)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{m.et}</span></div>
@@ -172,42 +175,44 @@ function Schedule() {
   const ms = data?.matches ?? [];
   return (
     <div>
-      <Title sub="Kickoffs in US Eastern (from upcoming.json)">Schedule</Title>
-      <DataTable cols={['ET kickoff', 'Round', tr('prediction.match')]}
+      <Title sub={tr('prediction.subSchedule')}>Schedule</Title>
+      <DataTable cols={['ET', 'Round', tr('prediction.match')]}
         rows={ms.map((m: any) => [m.et ?? m.kickoff, m.round ?? '', `${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`])} />
     </div>
   );
 }
 
 function InPlay() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCInplay(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const sigs = data?.signals ?? [];
   return (
     <div>
-      <Title sub={`${data?.n_live ?? 0} live · per-minute lock-arb / relative-value / tactics`}>In-Play Arbitrage</Title>
+      <Title sub={`${data?.n_live ?? 0} live · ${tr('prediction.subInPlay')}`}>In-Play Arbitrage</Title>
       {sigs.length ? (
-        <DataTable cols={['Match', 'Min', 'Kind', 'Side', 'Edge', 'Action']}
-          rows={sigs.map((s: any) => [s.match, s.minute, s.kind, s.side, num(s.edge, 3), s.action])} />
-      ) : <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>No live matches right now — signals appear here per minute during games.</div>}
+        <DataTable cols={[tr('prediction.match'), 'Min', tr('prediction.colKind'), tr('prediction.colSide'), tr('prediction.colEdge'), tr('prediction.colAction')]}
+          rows={sigs.map((s: any) => [tCountry(s.match), s.minute, s.kind, s.side, num(s.edge, 3), s.action])} />
+      ) : <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{tr('prediction.noLiveMatches')}</div>}
     </div>
   );
 }
 
 function PerformanceCard() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCPerformance(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const grade = data?.brier <= data?.brier_uniform ? 'PASS' : 'BLOCK (not trade-grade)';
+  const pass = data?.brier <= data?.brier_uniform;
   return (
     <div>
-      <Title sub="Accuracy on settled matches + paper calibration P&L">Accuracy & P&L</Title>
+      <Title sub={tr('prediction.subPerformance')}>Accuracy & P&L</Title>
       <KV rows={[
-        ['Settled matches', data?.n_settled],
-        ['Brier (lower=better)', `${num(data?.brier, 4)} vs uniform ${num(data?.brier_uniform, 4)}`],
+        [tr('prediction.lblSettled'), data?.n_settled],
+        [tr('prediction.lblBrierBetter'), `${num(data?.brier, 4)} vs uniform ${num(data?.brier_uniform, 4)}`],
         ['Log-loss', num(data?.log_loss, 4)],
-        ['Favourite hit-rate', pct(data?.favourite_hit_rate, 0)],
-        ['Calibration P&L', `${num(data?.calibration_pnl, 2)}u (${num(data?.calibration_pnl_per_bet, 3)}u/bet)`],
-        ['Trade grade', <span style={{ color: grade === 'PASS' ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{grade}</span>],
+        [tr('prediction.lblFavHit'), pct(data?.favourite_hit_rate, 0)],
+        [tr('prediction.lblCalibPnl'), `${num(data?.calibration_pnl, 2)}u (${num(data?.calibration_pnl_per_bet, 3)}u/bet)`],
+        [tr('prediction.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? tr('prediction.gradePass') : tr('prediction.gradeBlock')}</span>],
       ]} />
       <Notes items={data?.notes} />
     </div>
@@ -215,44 +220,46 @@ function PerformanceCard() {
 }
 
 function RiskCard() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCRisk(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const g = data?.gates ?? {}, b = data?.venue_balances ?? {}, ab = data?.api_budget ?? {};
   return (
     <div>
-      <Title sub="Pre-trade guard rails — read-only">Risk Report</Title>
+      <Title sub={tr('prediction.subRisk')}>Risk Report</Title>
       <KV rows={[
-        ['Kalshi env', g.kalshi_env],
-        ['Kalshi trading', String(g.kalshi_trading_enabled)],
-        ['Poly US trading', String(g.pmus_trading_enabled)],
-        ['Order cap', money(g.hard_order_cap_usd)],
-        ['Kalshi demo', money(b.kalshi_demo_usd)],
+        [tr('prediction.lblKalshiEnv'), g.kalshi_env],
+        [tr('prediction.lblKalshiTrading'), String(g.kalshi_trading_enabled)],
+        [tr('prediction.lblPolyUsTrading'), String(g.pmus_trading_enabled)],
+        [tr('prediction.lblOrderCap'), money(g.hard_order_cap_usd)],
+        [tr('prediction.lblKalshiDemo'), money(b.kalshi_demo_usd)],
         ['Poly US', money(b.polymarket_us_usd)],
-        ['Kalshi prod', String(b.kalshi_prod_usd)],
-        ['API budget', `${ab.used}/${ab.cap} (${pct(ab.pct, 0)})`],
-        ['Calibration', <span style={{ color: 'var(--error)' }}>{data?.calibration_gate?.status}</span>],
+        [tr('prediction.lblKalshiProd'), tDyn(String(b.kalshi_prod_usd))],
+        [tr('prediction.lblApiBudget'), `${ab.used}/${ab.cap} (${pct(ab.pct, 0)})`],
+        [tr('prediction.lblCalibration'), <span style={{ color: 'var(--error)' }}>{tDyn(data?.calibration_gate?.status)}</span>],
       ]} />
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 4px', ...mono, color: 'var(--text-primary)' }}>Blocked / guard rails</div>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 4px', ...mono, color: 'var(--text-primary)' }}>{tr('prediction.secBlocked')}</div>
       <ul style={{ paddingLeft: 16, fontSize: 11, color: 'var(--error)', ...mono }}>
-        {(data?.blocked_summary ?? []).map((x: string, i: number) => <li key={i} style={{ marginBottom: 3 }}>{x}</li>)}
+        {(data?.blocked_summary ?? []).map((x: string, i: number) => <li key={i} style={{ marginBottom: 3 }}>{tDyn(x)}</li>)}
       </ul>
     </div>
   );
 }
 
 function Calibration() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCCalibration(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   return (
     <div>
-      <Title sub="Out-of-sample reliability (the trade-grade gate)">Calibration (OOS)</Title>
+      <Title sub={tr('prediction.subCalibration')}>Calibration (OOS)</Title>
       <KV rows={[
-        ['Matches', data?.n_matches],
+        [tr('prediction.lblMatches'), data?.n_matches],
         ['Brier', `${num(data?.brier, 4)} (uniform ${num(data?.brier_uniform, 4)})`],
         ['Log-loss', num(data?.log_loss, 4)],
-        ['Favourite hit-rate', pct(data?.favourite_hit_rate, 0)],
-        ['Pred vs obs draw', `${pct(data?.pred_draw_rate, 0)} vs ${pct(data?.obs_draw_rate, 0)}`],
-        ['Avg goals pred/obs', `${num(data?.pred_avg_total_goals, 2)} / ${num(data?.obs_avg_total_goals, 2)}`],
+        [tr('prediction.lblFavHit'), pct(data?.favourite_hit_rate, 0)],
+        [tr('prediction.lblPredObsDraw'), `${pct(data?.pred_draw_rate, 0)} vs ${pct(data?.obs_draw_rate, 0)}`],
+        [tr('prediction.lblAvgGoals'), `${num(data?.pred_avg_total_goals, 2)} / ${num(data?.obs_avg_total_goals, 2)}`],
       ]} />
       <Notes items={Array.isArray(data?.notes) ? data.notes : data?.notes ? [data.notes] : []} />
     </div>
@@ -260,47 +267,50 @@ function Calibration() {
 }
 
 function OverviewCard() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCOverview(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   return (
     <div>
       <Title sub={data?.as_of ? `as of ${data.as_of}` : undefined}>System Overview</Title>
-      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 10, ...mono }}>{data?.headline}</div>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 4px', ...mono }}>Interfaces</div>
-      <DataTable cols={['Cat', 'Command', 'Purpose']} rows={(data?.interfaces ?? []).map((i: any) => [i.category, i.command?.replace('python -m prediction_market.', ''), i.purpose])} />
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '10px 0 4px', ...mono }}>Schedule</div>
-      <DataTable cols={['When', 'Runs', 'Freq']} rows={(data?.schedule ?? []).map((s: any) => [s.when, s.runs, s.frequency])} />
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 10, ...mono }}>{tDyn(data?.headline)}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 4px', ...mono }}>{tr('prediction.secInterfaces')}</div>
+      <DataTable cols={[tr('prediction.colCat'), tr('prediction.colCommand'), tr('prediction.colPurpose')]} rows={(data?.interfaces ?? []).map((i: any) => [tDyn(i.category), i.command?.replace('python -m prediction_market.', ''), tDyn(i.purpose)])} />
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '10px 0 4px', ...mono }}>{tr('prediction.secSchedule')}</div>
+      <DataTable cols={[tr('prediction.colWhen'), tr('prediction.colRuns'), tr('prediction.colFreq')]} rows={(data?.schedule ?? []).map((s: any) => [tDyn(s.when), s.runs, tDyn(s.frequency)])} />
     </div>
   );
 }
 
 function Venues() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCRisk(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const g = data?.gates ?? {}, b = data?.venue_balances ?? {};
   return (
     <div>
-      <Title sub="Execution venues, balances & trading gates">Venues & Gates</Title>
-      <DataTable cols={['Venue', 'Role', 'Balance', 'Trading']}
+      <Title sub={tr('prediction.subVenues')}>Venues & Gates</Title>
+      <DataTable cols={[tr('prediction.colVenue'), tr('prediction.colRole'), tr('prediction.colBalance'), tr('prediction.colTrading')]}
         rows={[
-          ['Kalshi (demo)', 'execute', money(b.kalshi_demo_usd), String(g.kalshi_trading_enabled)],
-          ['Polymarket US', 'execute', money(b.polymarket_us_usd), String(g.pmus_trading_enabled)],
-          ['Kalshi (prod)', 'real money', String(b.kalshi_prod_usd), 'gated'],
+          ['Kalshi (demo)', tr('prediction.roleExecute'), money(b.kalshi_demo_usd), String(g.kalshi_trading_enabled)],
+          ['Polymarket US', tr('prediction.roleExecute'), money(b.polymarket_us_usd), String(g.pmus_trading_enabled)],
+          ['Kalshi (prod)', tr('prediction.roleRealMoney'), tDyn(String(b.kalshi_prod_usd)), tr('prediction.tradingGated')],
         ]} />
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>Executable: {(g.executable_venues ?? []).join(', ')}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{tr('prediction.lblExecutable')}: {(g.executable_venues ?? []).join(', ')}</div>
     </div>
   );
 }
 
 function Budget() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCRisk(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const ab = data?.api_budget ?? {};
   const frac = Math.min(1, (ab.used ?? 0) / (ab.cap ?? 1));
   return (
     <div>
-      <Title sub="API-Football monthly request budget">API Budget / Health</Title>
-      <KV rows={[['Used', ab.used], ['Cap', ab.cap], ['Utilisation', pct(ab.pct, 0)]]} />
+      <Title sub={tr('prediction.subBudget')}>API Budget / Health</Title>
+      <KV rows={[[tr('prediction.lblUsed'), ab.used], [tr('prediction.lblCap'), ab.cap], [tr('prediction.lblUtilisation'), pct(ab.pct, 0)]]} />
       <div style={{ height: 10, background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }}>
         <div style={{ width: `${frac * 100}%`, height: '100%', background: frac > 0.8 ? 'var(--error)' : 'var(--success)' }} />
       </div>
@@ -309,25 +319,27 @@ function Budget() {
 }
 
 function ValueCard() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCOverview(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   return (
     <div>
-      <Title sub="What this system delivers + how to see it">Value & How to See</Title>
+      <Title sub={tr('prediction.subValue')}>Value & How to See</Title>
       <ul style={{ paddingLeft: 16, fontSize: 12, color: 'var(--text-secondary)', ...mono }}>
-        {(data?.value ?? []).map((v: string, i: number) => <li key={i} style={{ marginBottom: 6 }}>{v}</li>)}
+        {(data?.value ?? []).map((v: string, i: number) => <li key={i} style={{ marginBottom: 6 }}>{tDyn(v)}</li>)}
       </ul>
     </div>
   );
 }
 
 function Pdfs() {
+  const { t: tr } = useTranslation();
   const link: CSSProperties = { display: 'inline-block', padding: '8px 14px', border: '2px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', textDecoration: 'none', fontWeight: 700, ...mono, fontSize: 12, marginRight: 10, marginBottom: 10, boxShadow: 'var(--shadow-pixel-sm)' };
   return (
     <div>
-      <Title sub="Institutional-style PDF reports">Download Reports</Title>
-      <a href="/data/performance_report.pdf" download style={link}>Performance & P&L (PDF)</a>
-      <a href="/data/risk_report.pdf" download style={link}>Risk Report (PDF)</a>
+      <Title sub={tr('prediction.subPdfs')}>Download Reports</Title>
+      <a href="/data/performance_report.pdf" download style={link}>{tr('prediction.pdfPerf')}</a>
+      <a href="/data/risk_report.pdf" download style={link}>{tr('prediction.pdfRisk')}</a>
     </div>
   );
 }
