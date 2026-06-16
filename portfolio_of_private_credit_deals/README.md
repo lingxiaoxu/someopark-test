@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="../public/SOMEO PARK矢量源文件 Big Square.svg" alt="Someopark" width="160"/>
+</p>
+
 <h1 align="center">Private Credit — BDC Look-Through Engine</h1>
 <p align="center"><b>把 BDC sleeve 追踪的 5 只 BDC 股票,穿透到它们 SEC 披露的底层私募信贷贷款</b></p>
 
