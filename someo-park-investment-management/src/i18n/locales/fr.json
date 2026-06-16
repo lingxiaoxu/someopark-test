@@ -129,7 +129,10 @@
     "subBacktest": "Sur matchs réglés : modèle vs marché vs uniforme",
     "lblModelBrier": "Brier (modèle)", "lblBookBrier": "Brier (marché)",
     "lblDrawRate": "Taux de nuls (réel)", "lblBlend": "Brier mélange→marché", "colResult": "Rés",
-    "backtestVerdict": "Modèle et marché au-dessus de l'uniforme — début de tournoi quasi aléatoire (50% de nuls), trading bloqué. Pas un bug ; le modèle est mieux calibré que le marché ici."
+    "backtestVerdict": "Modèle et marché au-dessus de l'uniforme — début de tournoi quasi aléatoire (50% de nuls), trading bloqué. Pas un bug ; le modèle est mieux calibré que le marché ici.",
+    "squadStrength": "Force de l'Effectif",
+    "subSquad": "Qualité de l'effectif (note club + buts/passes). Informatif — non utilisé par le modèle.",
+    "colSquadScore": "z effectif", "colTopPlayers": "Joueurs clés"
   },
   "sidebar": {
     "appName": "Someo Park",

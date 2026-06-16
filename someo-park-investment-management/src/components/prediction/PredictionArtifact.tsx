@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
-  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest,
+  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad,
 } from '../../lib/api';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
@@ -91,6 +91,24 @@ function GoldenBoot() {
       <Title sub={tr('prediction.subGoldenBoot')}>Golden Boot</Title>
       <DataTable cols={[tr('prediction.colPlayer'), 'P(boot)', 'E[goals]']}
         rows={gb.map((p: any) => [p.name, pct(p.p_golden_boot), num(p.e_goals, 2)])} />
+    </div>
+  );
+}
+
+function SquadStrength() {
+  const { t: tr } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getWCSquad(), []);
+  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
+  const teams = (data?.teams ?? []).slice(0, 24);
+  return (
+    <div>
+      <Title sub={tr('prediction.subSquad')}>Squad Strength</Title>
+      <DataTable cols={['#', tr('prediction.team'), tr('prediction.colSquadScore'), tr('prediction.colRating'), 'GA/90', tr('prediction.colTopPlayers')]}
+        rows={teams.map((t: any) => [
+          t.rank, tCountry(t.name), (t.score_z >= 0 ? '+' : '') + t.score_z.toFixed(2),
+          t.mw_rating?.toFixed(2), t.ga_per90?.toFixed(2),
+          (t.top_players ?? []).slice(0, 2).map((p: any) => `${p.name} (${p.goals}g)`).join(', '),
+        ])} />
     </div>
   );
 }
@@ -417,6 +435,7 @@ function Pdfs() {
 const REGISTRY: Record<string, () => ReactElement> = {
   wc_champion: ChampionOdds,
   wc_golden_boot: GoldenBoot,
+  wc_squad: SquadStrength,
   wc_methodology: Methodology,
   wc_divergence: Divergence,
   wc_predictions: Predictions,

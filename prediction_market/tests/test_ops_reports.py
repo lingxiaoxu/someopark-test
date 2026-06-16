@@ -221,3 +221,28 @@ def test_walkforward_eval_no_repeat_teams():
     doc = walkforward_eval.run(conn=c)
     assert doc["n_matches_with_prior_data"] == 0
     assert doc["improves"] is False
+
+
+# ── squad strength ────────────────────────────────────────────────────────────
+def test_squad_index_and_export():
+    from prediction_market.model.squad_strength import squad_index, squad_adjusted_ratings
+    from prediction_market.model.strength import build_strength
+    from prediction_market.ingest.prior_ingest import load_prior
+    c = _mem_db()
+    # two NTs, each one player with club stats
+    for api, cid in ((10, "france"), (20, "senegal")):
+        store.upsert(c, "team_meta",
+                     {"api_id": api, "canonical_team_id": cid, "updated_at": store.utcnow()}, pk=["api_id"])
+    for pid, team, rating, goals, mins in ((1, 10, 7.6, 20, 3000), (2, 20, 6.8, 3, 2000)):
+        store.upsert(c, "player", {"api_id": pid, "name": f"P{pid}", "updated_at": store.utcnow()}, pk=["api_id"])
+        store.upsert(c, "squad", {"team_api_id": team, "player_api_id": pid, "season": 2026,
+                     "updated_at": store.utcnow()}, pk=["team_api_id", "player_api_id", "season"])
+        store.upsert(c, "player_stat", {"player_api_id": pid, "league_id": 1, "season": 2025,
+                     "team_api_id": team, "rating": rating, "goals": goals, "assists": 0, "minutes": mins,
+                     "updated_at": store.utcnow()}, pk=["player_api_id", "league_id", "season"])
+    idx = squad_index(c)
+    assert idx["france"].mw_rating > idx["senegal"].mw_rating      # higher-rated squad
+    assert idx["france"].score_z > idx["senegal"].score_z
+    # blend with weight 0 leaves ratings unchanged
+    sm = build_strength(load_prior())
+    assert squad_adjusted_ratings(sm, idx, 0.0) is sm

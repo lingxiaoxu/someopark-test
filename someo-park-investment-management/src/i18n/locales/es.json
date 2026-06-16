@@ -129,7 +129,10 @@
     "subBacktest": "En partidos liquidados: modelo vs mercado vs uniforme",
     "lblModelBrier": "Brier (modelo)", "lblBookBrier": "Brier (mercado)",
     "lblDrawRate": "Tasa de empates (real)", "lblBlend": "Brier mezcla→mercado", "colResult": "Res",
-    "backtestVerdict": "Modelo y mercado por encima del uniforme — inicio casi aleatorio (50% empates), trading bloqueado. No es un bug; el modelo está mejor calibrado que el mercado aquí."
+    "backtestVerdict": "Modelo y mercado por encima del uniforme — inicio casi aleatorio (50% empates), trading bloqueado. No es un bug; el modelo está mejor calibrado que el mercado aquí.",
+    "squadStrength": "Fuerza de Plantilla",
+    "subSquad": "Calidad de plantilla (nota de club + goles/asistencias). Informativo — no usado por el modelo.",
+    "colSquadScore": "z plantilla", "colTopPlayers": "Jugadores clave"
   },
   "sidebar": {
     "appName": "Someo Park",
