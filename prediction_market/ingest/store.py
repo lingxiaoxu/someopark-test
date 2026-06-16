@@ -98,6 +98,12 @@ CREATE TABLE IF NOT EXISTS standing (
     win INTEGER, draw INTEGER, lose INTEGER, form TEXT, raw_json TEXT, updated_at TEXT,
     PRIMARY KEY (league_id, season, team_api_id)
 );
+CREATE TABLE IF NOT EXISTS nt_recent (
+    fixture_api_id INTEGER, team_api_id INTEGER, opp_api_id INTEGER,
+    kickoff_ts TEXT, league_id INTEGER, is_friendly INTEGER,
+    gf INTEGER, ga INTEGER, is_home INTEGER, fetched_at TEXT,
+    PRIMARY KEY (fixture_api_id, team_api_id)
+);
 CREATE TABLE IF NOT EXISTS h2h (
     pair_key TEXT, fixture_api_id INTEGER, kickoff_ts TEXT,
     home_api_id INTEGER, away_api_id INTEGER, home_goals INTEGER, away_goals INTEGER,

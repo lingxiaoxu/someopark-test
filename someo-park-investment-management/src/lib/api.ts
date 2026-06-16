@@ -250,5 +250,6 @@ export const getWCInplay       = () => fetchApi<any>('/data/inplay_signals.json'
 export const getWCInplayLive   = () => fetchApi<any>('/data/inplay_live.json');
 export const getWCBacktest     = () => fetchApi<any>('/data/backtest.json');
 export const getWCSquad        = () => fetchApi<any>('/data/squad.json');
+export const getWCForm         = () => fetchApi<any>('/data/form.json');
 export const getWCParams       = () => fetchApi<any>('/data/param_sweep.json');
 export const getWCUpcoming     = () => fetchApi<any>('/data/upcoming.json');

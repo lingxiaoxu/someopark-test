@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
-  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams,
+  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
 } from '../../lib/api';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
@@ -430,16 +430,20 @@ function Budget() {
   );
 }
 
-function ValueCard() {
+function FormCard() {
   const { t: tr } = useTranslation();
-  const { data, loading, error } = useApi<any>(() => getWCOverview(), []);
+  const { data, loading, error } = useApi<any>(() => getWCForm(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
+  const teams = (data?.teams ?? []).slice(0, 24);
   return (
     <div>
-      <Title sub={tr('prediction.subValue')}>Value & How to See</Title>
-      <ul style={{ paddingLeft: 16, fontSize: 12, color: 'var(--text-secondary)', ...mono }}>
-        {(data?.value ?? []).map((v: string, i: number) => <li key={i} style={{ marginBottom: 6 }}>{tDyn(v)}</li>)}
-      </ul>
+      <Title sub={tr('prediction.subForm')}>Recent Form</Title>
+      <DataTable cols={['#', tr('prediction.team'), tr('prediction.colForm'), 'wGD', tr('prediction.colRecent')]}
+        rows={teams.map((t: any) => [
+          t.rank, tCountry(t.name), (t.form_z >= 0 ? '+' : '') + t.form_z.toFixed(2),
+          (t.weighted_gd >= 0 ? '+' : '') + t.weighted_gd.toFixed(2),
+          (t.recent ?? []).join(' '),
+        ])} />
     </div>
   );
 }
@@ -461,6 +465,7 @@ const REGISTRY: Record<string, () => ReactElement> = {
   wc_champion: ChampionOdds,
   wc_golden_boot: GoldenBoot,
   wc_squad: SquadStrength,
+  wc_form: FormCard,
   wc_methodology: Methodology,
   wc_divergence: Divergence,
   wc_predictions: Predictions,
@@ -475,7 +480,6 @@ const REGISTRY: Record<string, () => ReactElement> = {
   wc_overview: OverviewCard,
   wc_venues: Venues,
   wc_budget: Budget,
-  wc_value: ValueCard,
   wc_pdfs: Pdfs,
 };
 

@@ -139,7 +139,10 @@
     "subParams": "180 jeux de paramètres PIT, notés au Brier (= MSE) sur matchs réglés",
     "lblSelected": "Sélectionné (Brier min)", "lblVsCurrent": "Config actuelle", "lblVsUniform": "Base uniforme",
     "colParams": "Paramètres",
-    "paramsWhy": "Sélectionné = le jeu au Brier le plus bas. Meilleur que la config actuelle mais au-dessus de l'uniforme, donc montré pour transparence, non appliqué."
+    "paramsWhy": "Sélectionné = le jeu au Brier le plus bas. Meilleur que la config actuelle mais au-dessus de l'uniforme, donc montré pour transparence, non appliqué.",
+    "recentForm": "Forme récente",
+    "subForm": "Diff. de buts pondérée dans le temps, amicaux escomptés (F = amical). Utilisé par le modèle — a baissé le Brier OOS.",
+    "colForm": "z forme", "colRecent": "Récent (bp-bc)"
   },
   "sidebar": {
     "appName": "Someo Park",

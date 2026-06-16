@@ -85,16 +85,26 @@ def squad_adjusted_ratings(sm, idx: dict[str, SquadSummary], weight: float):
 
 def build_strength_live(conn, prior=None, cfg=None):
     """The LIVE strength model: base ratings (prior + structural params) with the
-    squad-strength blend applied at ``cfg.squad_blend_weight`` (0 ⇒ base only).
-    Single entry point so every user-facing export uses the same model."""
+    squad-strength AND recent-form blends applied (cfg.squad_blend_weight /
+    cfg.form_blend_weight; 0 ⇒ off). Single entry point so every user-facing export
+    uses the same model."""
     from prediction_market.config import CONFIG
     from prediction_market.model.strength import build_strength
     cfg = cfg or CONFIG.model
     sm = build_strength(prior, cfg)
-    w = getattr(cfg, "squad_blend_weight", 0.0)
-    if w and conn is not None:
+    if conn is None:
+        return sm
+    sw = getattr(cfg, "squad_blend_weight", 0.0)
+    if sw:
         try:
-            sm = squad_adjusted_ratings(sm, squad_index(conn), w)
+            sm = squad_adjusted_ratings(sm, squad_index(conn), sw)
+        except Exception:
+            pass
+    fw = getattr(cfg, "form_blend_weight", 0.0)
+    if fw:
+        try:
+            from prediction_market.model.form_strength import form_adjusted_ratings, form_index
+            sm = form_adjusted_ratings(sm, form_index(conn), fw)
         except Exception:
             pass
     return sm

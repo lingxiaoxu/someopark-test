@@ -7,7 +7,7 @@
 import {
   Trophy, Activity, Target, GitCompare, Zap, CalendarClock, Clock,
   LineChart, ShieldAlert, Gauge, LayoutGrid, Landmark, FileText, Cpu,
-  Sparkles, Download, FlaskConical, Users, SlidersHorizontal,
+  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +21,7 @@ export const PREDICTION_ITEMS: Item[] = [
   { type: 'wc_match_pricing', i18nKey: 'matchPricing',     Icon: Activity },
   { type: 'wc_golden_boot',   i18nKey: 'goldenBoot',       Icon: Target },
   { type: 'wc_squad',         i18nKey: 'squadStrength',    Icon: Users },
+  { type: 'wc_form',          i18nKey: 'recentForm',       Icon: TrendingUp },
   { type: 'wc_divergence',    i18nKey: 'modelVsMarket',    Icon: GitCompare },
   { type: 'wc_inplay',        i18nKey: 'inPlayArb',        Icon: Zap },
   { type: 'wc_predictions',   i18nKey: 'todaysPredictions', Icon: CalendarClock },
@@ -34,7 +35,6 @@ export const PREDICTION_ITEMS: Item[] = [
   { type: 'wc_venues',        i18nKey: 'venuesGates',      Icon: Landmark },
   { type: 'wc_methodology',   i18nKey: 'modelNotes',       Icon: FileText },
   { type: 'wc_budget',        i18nKey: 'apiBudget',        Icon: Cpu },
-  { type: 'wc_value',         i18nKey: 'valueHowToSee',    Icon: Sparkles },
   { type: 'wc_pdfs',          i18nKey: 'downloadReports',  Icon: Download },
 ];
 

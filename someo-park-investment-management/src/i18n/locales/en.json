@@ -457,7 +457,10 @@
     "subParams": "180 PIT parameter sets, scored by Brier (= MSE) on settled matches",
     "lblSelected": "Selected (min Brier)", "lblVsCurrent": "Current config", "lblVsUniform": "Uniform baseline",
     "colParams": "Parameters",
-    "paramsWhy": "Selected = the set with the lowest Brier (multiclass MSE vs actual results). It beats the current config but is still above uniform, so it is shown for transparency, not auto-applied."
+    "paramsWhy": "Selected = the set with the lowest Brier (multiclass MSE vs actual results). It beats the current config but is still above uniform, so it is shown for transparency, not auto-applied.",
+    "recentForm": "Recent Form",
+    "subForm": "Time-weighted, friendly-discounted goal difference (F = friendly). Used by the live model — it lowered the OOS Brier.",
+    "colForm": "Form z", "colRecent": "Recent (gf-ga)"
   },
   "sidebar": {
     "appName": "Someo Park",
