@@ -1,9 +1,10 @@
 /**
  * MatchCard — one upcoming World Cup match in Prediction Market mode.
- * Collapsed by default: teams + kickoff + compact model line + best-edge badge.
- * Click the header to expand the full detail (O2.5/BTTS, book de-vig, real
- * Kalshi / Polymarket US quotes). Reads prediction_market/ops/upcoming_export.py.
- * Colours come from CSS vars so it inverts with the theme.
+ * Clarity-first: spells out the outcomes with team names ("Argentina win / Draw /
+ * Algeria win") instead of H/D/A, and shows three labelled rows — OUR PREDICTION,
+ * Kalshi price, Polymarket US price — so it's obvious what we predict vs what the
+ * venues currently quote. Collapsed by default (headline pick + kickoff); click to
+ * expand the full breakdown. Reads ops/upcoming_export.py output.
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,12 +12,8 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { tCountry } from '../../i18n/countries';
 
 type ThreeWay = { home: number; draw: number; away: number };
-type VenueQuote = {
-  home?: { ask: number | null; bid: number | null };
-  draw?: { ask: number | null; bid: number | null };
-  away?: { ask: number | null; bid: number | null };
-  devig?: ThreeWay | null;
-} | null;
+type Q = { ask: number | null; bid: number | null };
+type VenueQuote = { home?: Q; draw?: Q; away?: Q; devig?: ThreeWay | null } | null;
 
 export type UpcomingMatch = {
   kickoff: string;
@@ -34,87 +31,68 @@ export type UpcomingMatch = {
 const pct = (v?: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
 const px = (v?: number | null) => (v == null ? '—' : v.toFixed(2));
 
-function Row({ label, t, dim }: { label: string; t?: ThreeWay | null; dim?: boolean }) {
-  const c = dim ? 'var(--text-muted)' : 'var(--text-secondary)';
-  return (
-    <div className="flex items-center gap-2" style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: c }}>
-      <span style={{ width: 52, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</span>
-      <span style={{ width: 64 }}>H {pct(t?.home)}</span>
-      <span style={{ width: 64 }}>D {pct(t?.draw)}</span>
-      <span style={{ width: 64 }}>A {pct(t?.away)}</span>
-    </div>
-  );
-}
-
-function VenueRow({ label, q }: { label: string; q?: VenueQuote }) {
-  if (!q) {
-    return (
-      <div className="flex items-center gap-2" style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
-        <span style={{ width: 52, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</span>
-        <span style={{ opacity: 0.7 }}>—</span>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2" style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-      <span style={{ width: 52, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</span>
-      <span style={{ width: 64 }}>H {px(q.home?.ask)}</span>
-      <span style={{ width: 64 }}>D {px(q.draw?.ask)}</span>
-      <span style={{ width: 64 }}>A {px(q.away?.ask)}</span>
-    </div>
-  );
-}
-
 export default function MatchCard({ m }: { m: UpcomingMatch }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const home = tCountry(m.home.name), away = tCountry(m.away.name);
+  const winH = `${home} ${t('prediction.win')}`, winA = `${away} ${t('prediction.win')}`, drawL = t('prediction.drawResult');
   const best = m.edge?.best;
   const edgeColor = best?.tradable ? 'var(--success)' : 'var(--text-muted)';
   const Chevron = open ? ChevronDown : ChevronRight;
+
+  // headline = the model's most likely outcome, spelled out
+  const sides: [string, number][] = [[winH, m.model.home], [drawL, m.model.draw], [winA, m.model.away]];
+  const top = sides.reduce((a, b) => (b[1] > a[1] ? b : a));
+
+  // one labelled 3-way row (probabilities or venue prices), team names spelled out
+  const Line = ({ label, h, d, a, fmt }: { label: string; h?: number | null; d?: number | null; a?: number | null; fmt: (v?: number | null) => string }) => (
+    <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
+      <span style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span><br />
+      {winH} <b>{fmt(h)}</b> · {drawL} <b>{fmt(d)}</b> · {winA} <b>{fmt(a)}</b>
+    </div>
+  );
+
   return (
-    <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 280, flex: '1 1 320px' }}>
-      {/* Header — always visible, click to expand */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', width: '100%' }}
-      >
+    <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 300, flex: '1 1 360px' }}>
+      <button onClick={() => setOpen(o => !o)} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', width: '100%' }}>
         <div className="flex items-center justify-between">
           <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
             <Chevron className="inline w-3.5 h-3.5" style={{ marginRight: 4, verticalAlign: '-2px', color: 'var(--text-muted)' }} />
-            {tCountry(m.home.name)} <span style={{ color: 'var(--text-muted)' }}>vs</span> {tCountry(m.away.name)}
+            {home} <span style={{ color: 'var(--text-muted)' }}>vs</span> {away}
           </span>
           <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{m.et || ''}</span>
         </div>
-        {/* Compact summary line when collapsed */}
         {!open && (
           <div className="flex items-center justify-between" style={{ marginTop: 4 }}>
             <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
-              H {pct(m.model.home)} · D {pct(m.model.draw)} · A {pct(m.model.away)}
+              {t('prediction.ourPrediction')}: <b style={{ color: 'var(--text-primary)' }}>{top[0]} {pct(top[1])}</b>
             </span>
             {best && (
               <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700 }}>
-                {best.venue}/{best.side} {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%{best.tradable ? ' ★' : ''}
+                {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%{best.tradable ? ' ★' : ''}
               </span>
             )}
           </div>
         )}
       </button>
 
-      {/* Detail — only when expanded */}
       {open && (
         <>
-          <Row label={t('prediction.model')} t={m.model} />
+          <Line label={t('prediction.ourPrediction')} h={m.model.home} d={m.model.draw} a={m.model.away} fmt={pct} />
           {(m.model.over_2_5 != null || m.model.btts != null) && (
             <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               O2.5 {pct(m.model.over_2_5)} · BTTS {pct(m.model.btts)}
             </div>
           )}
-          <Row label={t('prediction.book')} t={m.book_devig} dim />
-          <VenueRow label="Kalshi" q={m.kalshi} />
-          <VenueRow label="Poly US" q={m.poly_us} />
+          {m.kalshi
+            ? <Line label={t('prediction.kalshiPrice')} h={m.kalshi.home?.ask} d={m.kalshi.draw?.ask} a={m.kalshi.away?.ask} fmt={px} />
+            : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('prediction.kalshiPrice')}: {t('prediction.notListed')}</div>}
+          {m.poly_us
+            ? <Line label={t('prediction.polyPrice')} h={m.poly_us.home?.ask} d={m.poly_us.draw?.ask} a={m.poly_us.away?.ask} fmt={px} />
+            : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('prediction.polyPrice')}: {t('prediction.notListed')}</div>}
           {best && (
-            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700 }}>
-              Edge {best.venue}/{best.side} {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%{best.tradable ? ' ★' : ''}
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700, marginTop: 4 }}>
+              {t('prediction.colEdge')}: {best.venue}/{best.side} {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%{best.tradable ? ' ★' : ''}
             </div>
           )}
         </>

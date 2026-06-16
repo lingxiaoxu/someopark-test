@@ -132,7 +132,14 @@
     "backtestVerdict": "Modelo y mercado por encima del uniforme — inicio casi aleatorio (50% empates), trading bloqueado. No es un bug; el modelo está mejor calibrado que el mercado aquí.",
     "squadStrength": "Fuerza de Plantilla",
     "subSquad": "Calidad de plantilla (nota de club + goles/asistencias). Informativo — no usado por el modelo.",
-    "colSquadScore": "z plantilla", "colTopPlayers": "Jugadores clave"
+    "colSquadScore": "z plantilla", "colTopPlayers": "Jugadores clave",
+    "win": "victoria", "drawResult": "Empate", "ourPrediction": "Nuestra predicción",
+    "kalshiPrice": "Precio Kalshi", "polyPrice": "Precio Poly US", "notListed": "no listado",
+    "paramSweep": "Búsqueda de parámetros (OOS)",
+    "subParams": "180 conjuntos PIT, evaluados por Brier (= MSE) en partidos liquidados",
+    "lblSelected": "Seleccionado (Brier mín)", "lblVsCurrent": "Config actual", "lblVsUniform": "Base uniforme",
+    "colParams": "Parámetros",
+    "paramsWhy": "Seleccionado = el conjunto con menor Brier. Mejor que la config actual pero por encima del uniforme; se muestra por transparencia, no se aplica."
   },
   "sidebar": {
     "appName": "Someo Park",

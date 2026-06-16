@@ -90,6 +90,13 @@ class ModelConfig:
     # divergence from the sharp Kalshi/Global champion market (validation, not fit).
     rank_anchor_weight: float = 0.5
 
+    # Squad-strength blend (plan 17 B.3): nudge ratings by the z-scored squad index
+    # (minutes-weighted club rating + attack). A modest weight is applied to the LIVE
+    # model as a forward-looking bet (it slightly raised OOS Brier on the chaotic,
+    # draw-heavy early group stage, but should help once the field separates in the
+    # knockouts / with more data). 0 = off.
+    squad_blend_weight: float = 0.15
+
     # Time-decay for recent results (plan 03 §1b): exp(-xi * delta_days).
     time_decay_xi: float = 0.0035
 
