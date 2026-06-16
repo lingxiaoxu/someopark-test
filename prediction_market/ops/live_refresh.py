@@ -75,6 +75,19 @@ def _append_review_log(inplay: dict, synced: int) -> None:
             f.write("\n".join(lines) + "\n")
 
 
+def _maybe_refresh_risk(conn) -> None:
+    """Regenerate risk_report.json (Venues & Gates view) at most every ~10 min — its
+    venue balances are live Kalshi/Poly API calls, so we throttle to avoid spamming."""
+    import os
+    import time
+    out = CONFIG.paths.output / "risk_report.json"
+    if out.exists() and (time.time() - os.path.getmtime(out)) < 600:
+        return
+    from dataclasses import asdict
+    from prediction_market.ops import risk_report
+    _write_both("risk_report.json", asdict(risk_report.build(conn)))
+
+
 def _maybe_refresh_champion(conn) -> None:
     """Re-publish worldcup_model.json only when the settled-match count has risen
     (a match just finished) — keeps the heavy tournament sim off the per-minute path."""
@@ -167,6 +180,14 @@ def refresh_once(conn=None) -> dict:
         _write_both("oos_report.json", asdict(oos_eval.evaluate(conn=conn)))
     except Exception as e:
         print(f"[live_refresh] oos_report rebuild skipped: {e}")
+
+    # Risk / Venues & Gates view — its venue balances are LIVE Kalshi/Poly API calls,
+    # so refresh it on a ~10-min throttle (not every minute) to keep the balance current
+    # without hammering the venues.
+    try:
+        _maybe_refresh_risk(conn)
+    except Exception as e:
+        print(f"[live_refresh] risk_report refresh skipped: {e}")
 
     # When a match has just FINISHED (settled count rose), re-simulate the champion +
     # golden boot on the new results (and force eliminated teams to 0% in the knockouts).
