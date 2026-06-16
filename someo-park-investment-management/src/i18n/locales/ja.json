@@ -129,7 +129,10 @@
     "subBacktest": "確定試合:モデル vs シャープ市場 vs 一様",
     "lblModelBrier": "Brier(モデル)", "lblBookBrier": "Brier(ブック)",
     "lblDrawRate": "実際の引分率", "lblBlend": "ブック混合 Brier", "colResult": "結果",
-    "backtestVerdict": "モデルも市場も一様より劣る — 序盤はほぼランダム(引分50%)、ゆえに取引はブロック継続。バグではなく、この標本ではモデルの方が市場より較正が良い。"
+    "backtestVerdict": "モデルも市場も一様より劣る — 序盤はほぼランダム(引分50%)、ゆえに取引はブロック継続。バグではなく、この標本ではモデルの方が市場より較正が良い。",
+    "squadStrength": "スカッド総合力",
+    "subSquad": "スカッドの質(クラブ評価 + 得点/アシスト)。参考情報 — ライブモデルには未使用。",
+    "colSquadScore": "スカッド z", "colTopPlayers": "主力選手"
   },
   "sidebar": {
     "appName": "Someo Park",

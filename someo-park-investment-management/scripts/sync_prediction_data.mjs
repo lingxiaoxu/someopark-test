@@ -28,6 +28,7 @@ const FILES = [
   'inplay_signals.json',
   'inplay_live.json',
   'backtest.json',
+  'squad.json',
   'performance_report.json',
   'risk_report.json',
   'oos_report.json',
