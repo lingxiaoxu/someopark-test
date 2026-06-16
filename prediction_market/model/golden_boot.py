@@ -93,14 +93,40 @@ _RANK_START_PROB = {1: 0.92, 2: 0.88, 3: 0.76, 4: 0.55, 5: 0.38}
 
 
 def _wc_to_date_by_team(conn) -> dict[tuple[str, str], tuple[int, int]]:
-    """(team_id, last-name) → (wc_goals, wc_apps) from this tournament's player_stat.
+    """(team_id, last-name) → (wc_goals, wc_apps) — tournament goals scored SO FAR.
 
-    WC season ONLY: these are tournament goals, used as a Bayesian update of the FC
-    talent rate AND as the head start. Club-season scoring never leaks in here (it
-    lives in squad strength). Players are keyed by NT + last name so they line up
-    with the FC candidate pool.
+    Counted from the per-match GOAL EVENTS (fixture_event), which are the authoritative,
+    immediate record of who scored — the players/topscorers endpoint lags and can miss a
+    just-finished match's scorers (e.g. Mbappé's goal not yet on the topscorers list).
+    Own goals are excluded; penalties count. Appearances are approximated by the scorer's
+    team's settled-match count (a goalscorer has clearly played). Falls back to player_stat
+    when no goal events are stored yet. WC only — club scoring lives in squad strength.
     """
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    played = games_played_by_team(conn)
+
     out: dict[tuple[str, str], tuple[int, int]] = {}
+    rows = conn.execute(
+        "SELECT e.team_api_id, p.name, COUNT(*) g "
+        "FROM fixture_event e "
+        "JOIN fixture f ON e.fixture_api_id = f.api_id "
+        "LEFT JOIN player p ON e.player_api_id = p.api_id "
+        "WHERE e.type = 'Goal' AND (e.detail IS NULL OR e.detail != 'Own Goal') "
+        "  AND f.status_short IN ('FT','AET','PEN') AND p.name IS NOT NULL "
+        "GROUP BY e.player_api_id"
+    ).fetchall()
+    for r in rows:
+        cid = cmap.get(r["team_api_id"])
+        if not cid:
+            continue
+        key = _name_key(cid, r["name"])
+        g, a = out.get(key, (0, 0))
+        out[key] = (g + int(r["g"] or 0), max(a, played.get(cid, 1)))
+
+    if out:
+        return out
+    # Fallback: no goal events stored yet → use the topscorers endpoint snapshot.
     for r in conn.execute(
         "SELECT p.name, ps.appearances, ps.goals, m.canonical_team_id "
         "FROM player_stat ps JOIN player p ON ps.player_api_id = p.api_id "
