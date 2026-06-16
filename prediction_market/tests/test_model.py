@@ -111,6 +111,48 @@ def test_golden_boot_distribution():
     assert all(0.0 <= v <= 1.0 for v in gb.p_golden_boot.values())
 
 
+def test_fc_goal_rate_orders_by_role():
+    from prediction_market.ingest.fc_ingest import fc_goal_rate
+    elite = fc_goal_rate(92, 91, 91, 91, "Attack")        # Mbappé-class striker
+    squad = fc_goal_rate(79, 78, 79, 77, "Attack")        # Balogun-class squad striker
+    mid = fc_goal_rate(88, 89, 80, 90, "Midfielder")      # ball-playing mid
+    defender = fc_goal_rate(50, 60, 70, 80, "Defense")    # high-rated CB
+    assert elite > squad > defender
+    assert elite > mid > defender
+    assert 0.45 < elite < 0.95 and 0.2 < squad < 0.5      # rates land in a sane band
+
+
+def test_golden_boot_rate_regresses_burst_to_talent():
+    """A 1-game 2-goal burst from a squad striker must regress toward his FC talent
+    rate (Balogun bug), not inflate near 2.0 — the boot is talent x knockout depth."""
+    import sqlite3
+    from prediction_market.ingest import store
+    from prediction_market.model.golden_boot import build_golden_boot_players, games_played_by_team
+    c = sqlite3.connect(":memory:"); c.row_factory = sqlite3.Row; store.init_db(c)
+    store.upsert(c, "team_meta", {"api_id": 30, "group_code": "A", "fifa_rank": None,
+                 "canonical_team_id": "united_states", "updated_at": store.utcnow()}, pk=["api_id"])
+    # FC talent prior: a 0.33-rate squad striker.
+    c.execute("INSERT INTO fc_player (fc_id, name, canonical_team_id, position_type, overall, "
+              "finishing, positioning, shot_power, penalties, sho, pen_taker, goal_rate, "
+              "team_attack_rank, source, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+              (1, "F. Balogun", "united_states", "Attack", 77, 79, 78, 79, 71, 77, 0, 0.33, 1,
+               "ea_fc26", store.utcnow()))
+    # WC-to-date: 2 goals in 1 appearance.
+    store.upsert(c, "player", {"api_id": 1, "name": "F. Balogun", "position": "Attacker"}, pk=["api_id"])
+    store.upsert(c, "player_stat", {"player_api_id": 1, "league_id": 1, "season": CONFIG.soccer.season,
+                 "team_api_id": 30, "appearances": 1, "goals": 2}, pk=["player_api_id", "league_id", "season"])
+    players = build_golden_boot_players(c)
+    bal = next(p for p in players if "Balogun" in p.name)
+    assert bal.goals_so_far == 2                       # real goals carried as head start
+    assert 0.33 < bal.mu_goals_per_match < 0.65        # posterior regressed toward talent, not ~2.0
+    # games-played correction: USA has played 1 settled match (vs a distinct opponent).
+    store.upsert(c, "team_meta", {"api_id": 31, "group_code": "A", "fifa_rank": None,
+                 "canonical_team_id": "england", "updated_at": store.utcnow()}, pk=["api_id"])
+    store.upsert(c, "fixture", {"api_id": 100, "home_api_id": 30, "away_api_id": 31,
+                 "status_short": "FT", "home_goals": 2, "away_goals": 1}, pk=["api_id"])
+    assert games_played_by_team(c).get("united_states") == 1
+
+
 # ── Match pricing ────────────────────────────────────────────────────────────
 def test_strength_update_nudges_by_performance():
     from prediction_market.model.strength import update_with_results

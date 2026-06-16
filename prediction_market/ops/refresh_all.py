@@ -30,6 +30,8 @@ def main() -> None:
     ap.add_argument("--ingest", action="store_true", help="pull latest finished results + missing odds first")
     ap.add_argument("--with-form", action="store_true", help="also re-pull recent NT results (form) — ~48 requests")
     ap.add_argument("--with-sweep", action="store_true", help="also re-run the 180-set param sweep (slow)")
+    ap.add_argument("--with-fc-download", action="store_true",
+                    help="re-download the latest EA FC 26 ratings from Kaggle (needs KAGGLE_API_TOKEN)")
     args = ap.parse_args()
 
     from prediction_market.ingest import store
@@ -46,6 +48,21 @@ def main() -> None:
                 si.sync_nt_recent(api, conn)      # refresh recent-form inputs
         except Exception as e:
             print(f"[refresh] ingest partial/failed (continuing with stored data): {e}")
+
+    # EA FC 26 talent ratings → golden-boot / squad prior. Re-ingest from the local
+    # CSV every run (cheap, idempotent); optionally re-download the latest first.
+    from prediction_market.ingest import fc_ingest
+    if args.with_fc_download:
+        try:
+            fc_ingest.download_fc26()
+            print("  ✓ EA FC 26 ratings re-downloaded from Kaggle")
+        except Exception as e:
+            print(f"  ✗ FC download (continuing with stored CSV): {e}")
+    try:
+        n_fc = fc_ingest.ingest_fc_players(conn)
+        print(f"  ✓ fc_player ({n_fc} players mapped to WC teams)")
+    except Exception as e:
+        print(f"  ✗ fc_player ingest (golden boot falls back to seed): {e}")
 
     n_settled = conn.execute(
         "SELECT COUNT(*) n FROM fixture WHERE status_short IN ('FT','AET','PEN') AND home_goals IS NOT NULL"

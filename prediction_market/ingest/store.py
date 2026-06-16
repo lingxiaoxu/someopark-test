@@ -104,6 +104,12 @@ CREATE TABLE IF NOT EXISTS nt_recent (
     gf INTEGER, ga INTEGER, is_home INTEGER, fetched_at TEXT,
     PRIMARY KEY (fixture_api_id, team_api_id)
 );
+CREATE TABLE IF NOT EXISTS fc_player (
+    fc_id INTEGER PRIMARY KEY, name TEXT, nationality TEXT, canonical_team_id TEXT,
+    position TEXT, position_type TEXT, overall INTEGER, finishing INTEGER,
+    positioning INTEGER, shot_power INTEGER, penalties INTEGER, sho INTEGER,
+    pen_taker INTEGER, goal_rate REAL, team_attack_rank INTEGER, source TEXT, updated_at TEXT
+);
 CREATE TABLE IF NOT EXISTS h2h (
     pair_key TEXT, fixture_api_id INTEGER, kickoff_ts TEXT,
     home_api_id INTEGER, away_api_id INTEGER, home_goals INTEGER, away_goals INTEGER,
@@ -177,6 +183,7 @@ CREATE INDEX IF NOT EXISTS ix_fixture_kickoff ON fixture (kickoff_ts);
 CREATE INDEX IF NOT EXISTS ix_api_call_ts ON api_call (ts);
 CREATE INDEX IF NOT EXISTS ix_xv_spread_entity ON xv_spread (real_entity_id);
 CREATE INDEX IF NOT EXISTS ix_signal_run ON signal (run_ts);
+CREATE INDEX IF NOT EXISTS ix_fc_player_team ON fc_player (canonical_team_id);
 """
 
 # Static venue registry (plan 05 §2): kalshi/poly_us executable, poly_global read-only.
