@@ -217,7 +217,7 @@
       "preT": "Antes del saque inicial",
       "pre": [
         "Victoria / empate / derrota, goles totales y ambos marcan, para cada partido",
-        "Una simulación de torneo Monte-Carlo de 1.000.000 de iteraciones → título, final y clasificación",
+        "Una simulación de torneo de 1.000.000 de iteraciones → título, final y clasificación",
         "Cuotas de la Bota de Oro que combinan talento (EA FC), profundidad en eliminatorias y reparto de goles",
         "Cuotas actualizadas tras cada partido; en eliminatorias, los eliminados bajan a 0%",
         "Cada predicción contrastada con la casa experta y los precios de mercado (nuestro edge)",

@@ -535,7 +535,7 @@
       "preT": "Before Kick-off",
       "pre": [
         "Fair win / draw / loss, total goals and both-teams-to-score for every match",
-        "A 1,000,000-run Monte-Carlo tournament simulation → each team’s title, final and advancement odds",
+        "A 1,000,000-run tournament simulation → each team’s title, final and advancement odds",
         "Golden Boot odds blending player talent (EA FC), knockout depth and intra-squad goal-sharing",
         "Odds refresh after every match; once the knockouts begin, eliminated teams drop to 0%",
         "Every prediction benchmarked against the sharp bookmaker and venue prices (our edge)",
