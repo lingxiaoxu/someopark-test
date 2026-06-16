@@ -34,6 +34,15 @@ set -a
 [ -f "$REPO/prediction_market/.env" ] && source "$REPO/prediction_market/.env"
 set +a
 
+# --trigger: event-driven gate. Run every ~15 min; only proceed to the full
+# pipeline when a NEW match result has just landed (else exit cheaply).
+if [ "${1:-}" = "--trigger" ]; then
+  TOUT="$(conda run -n someopark_run --no-capture-output python -m prediction_market.ops.match_trigger 2>&1)"
+  echo "trigger: $TOUT"
+  echo "$TOUT" | grep -q "^RUN" || { echo "trigger: nothing to do — exit"; exit 0; }
+  echo "trigger: new result → running full pipeline"
+fi
+
 # Weekly (Sunday) also re-pull recent national-team form; daily skips it (cheaper).
 FORM_FLAG=""
 [ "$(date +%u)" = "7" ] && FORM_FLAG="--with-form"
