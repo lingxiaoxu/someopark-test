@@ -87,11 +87,106 @@ def load_seed_players(json_path: Path | str | None = None) -> list[Player]:
     ]
 
 
+# Within-team attacking rank (EA FC goal-rate order) → expected-start probability.
+# The first-choice striker plays nearly every match; squad depth rotates.
+_RANK_START_PROB = {1: 0.92, 2: 0.88, 3: 0.76, 4: 0.55, 5: 0.38}
+
+
+def _wc_to_date_by_team(conn) -> dict[tuple[str, str], tuple[int, int]]:
+    """(team_id, last-name) → (wc_goals, wc_apps) from this tournament's player_stat.
+
+    WC season ONLY: these are tournament goals, used as a Bayesian update of the FC
+    talent rate AND as the head start. Club-season scoring never leaks in here (it
+    lives in squad strength). Players are keyed by NT + last name so they line up
+    with the FC candidate pool.
+    """
+    out: dict[tuple[str, str], tuple[int, int]] = {}
+    for r in conn.execute(
+        "SELECT p.name, ps.appearances, ps.goals, m.canonical_team_id "
+        "FROM player_stat ps JOIN player p ON ps.player_api_id = p.api_id "
+        "LEFT JOIN team_meta m ON ps.team_api_id = m.api_id "
+        "WHERE ps.goals IS NOT NULL AND ps.season = ?",
+        (CONFIG.soccer.season,),
+    ):
+        cid = r["canonical_team_id"]
+        if not cid:
+            continue
+        key = _name_key(cid, r["name"])
+        g, a = out.get(key, (0, 0))
+        out[key] = (g + int(r["goals"] or 0), a + int(r["appearances"] or 0))
+    return out
+
+
+def games_played_by_team(conn) -> dict[str, int]:
+    """Settled WC matches played so far, per canonical team (for mp_remaining)."""
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    played: dict[str, int] = {}
+    for r in conn.execute(
+        "SELECT home_api_id, away_api_id FROM fixture "
+        "WHERE status_short IN ('FT','AET','PEN') AND home_goals IS NOT NULL"):
+        for cid in (cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])):
+            if cid:
+                played[cid] = played.get(cid, 0) + 1
+    return played
+
+
+def build_golden_boot_players(conn=None) -> list[Player]:
+    """Talent-grounded golden-boot pool (plan 03 §6.1): EA FC 26 + WC-to-date.
+
+    The per-match goal rate is a Bayesian posterior — the EA FC talent rate is the
+    prior (``gb_fc_prior_alpha`` pseudo-matches), updated by this tournament's goals
+    and appearances::
+
+        mu = (fc_rate * alpha + wc_goals) / (alpha + wc_apps)
+
+    so a one-game burst from a weak-team forward (Balogun: 2 goals in 1 game) regresses
+    toward his true ~0.33 talent rate instead of a naive 0.84, while a star who has not
+    scored yet keeps his high prior. Real WC goals are carried as a head start, and the
+    final boot is dominated downstream by talent x knockout depth (matches played).
+
+    Falls back to the legacy topscorer builder / seed if FC ratings are not ingested.
+    """
+    from prediction_market.ingest import store
+
+    conn = conn or store.init_db()
+    alpha = CONFIG.model.gb_fc_prior_alpha
+    pool_n = CONFIG.model.gb_pool_per_team
+
+    rows = conn.execute(
+        "SELECT fc_id, name, canonical_team_id, position_type, overall, "
+        "       goal_rate, pen_taker, team_attack_rank "
+        "FROM fc_player WHERE team_attack_rank <= ? ORDER BY canonical_team_id, team_attack_rank",
+        (pool_n,),
+    ).fetchall()
+    if not rows:
+        return build_players_from_store(conn)
+
+    wc = _wc_to_date_by_team(conn)
+    out: list[Player] = []
+    for r in rows:
+        cid = r["canonical_team_id"]
+        fc_rate = float(r["goal_rate"])
+        wc_goals, wc_apps = wc.get(_name_key(cid, r["name"]), (0, 0))
+        mu = (fc_rate * alpha + wc_goals) / (alpha + wc_apps)   # Bayesian posterior rate
+        start = _RANK_START_PROB.get(int(r["team_attack_rank"]), 0.20)
+        # A player who already started + scored is clearly first-choice: floor his start.
+        if wc_apps:
+            start = max(start, 0.85)
+        out.append(Player(
+            player_id=f"fc{r['fc_id']}", name=r["name"], team_id=cid,
+            mu_goals_per_match=mu, start_prob=start,
+            pen_taker=bool(r["pen_taker"]), goals_so_far=int(wc_goals),
+        ))
+    return out
+
+
 def build_players_from_store(conn=None) -> list[Player]:
-    """Real golden-boot candidates from ingested topscorers (plan 03 §6.1/§6.3).
+    """Legacy fallback: candidates from ingested WC-to-date topscorers (plan 03 §6.1/§6.3).
 
     Rate is shrunk toward a position prior (tiny in-tournament sample) and the
-    current goal count is carried as a head start. Players whose team is not yet
+    current goal count is carried as a head start. Used only when EA FC ratings
+    are not ingested (see build_golden_boot_players). Players whose team is not yet
     mapped to a canonical id are skipped.
     """
     from prediction_market.ingest import store
@@ -127,24 +222,18 @@ def build_players_from_store(conn=None) -> list[Player]:
 
 
 def load_players(json_path: Path | str | None = None) -> list[Player]:
-    """Merged candidate pool: real topscorers (from store) ∪ seed favourites.
+    """Candidate pool: EA FC talent-grounded candidates (top attackers per team).
 
-    Real players take precedence; a seed favourite is added only if no store
-    player shares its (team, last-name) — so stars who haven't scored yet stay
-    in the pool without double-counting those who have. Falls back to seed-only
-    when the store has no topscorers ingested.
+    The FC pool gives every contender a talent-grounded rate updated by WC-to-date
+    goals, so it supersedes the hand-tuned seed list entirely — mixing the two would
+    duplicate stars under spelling variants (e.g. "Vinicius Junior" vs "Vini Jr.") and
+    re-introduce the stale rates this rewrite replaces. Falls back to the legacy
+    topscorer builder, then seed-only, when FC ratings are not ingested.
     """
     if json_path is not None:
         return load_seed_players(json_path)
-    real = build_players_from_store()
-    if not real:
-        return load_seed_players()
-    seen = {_name_key(p.team_id, p.name) for p in real}
-    merged = list(real)
-    for sp in load_seed_players():
-        if _name_key(sp.team_id, sp.name) not in seen:
-            merged.append(sp)
-    return merged
+    real = build_golden_boot_players()
+    return real or load_seed_players()
 
 
 def simulate_golden_boot(
@@ -152,8 +241,16 @@ def simulate_golden_boot(
     players: list[Player] | None = None,
     *,
     seed: int | None = None,
+    games_played: dict[str, int] | None = None,
 ) -> GoldenBootResult:
-    """Nested player-goal sim on the tournament's matches-played paths."""
+    """Nested player-goal sim on the tournament's matches-played paths.
+
+    ``games_played`` (canonical team_id → settled WC matches) corrects the
+    double-count: future goals are projected over REMAINING matches only
+    (``matches_played - games_played``), and the goals already scored enter
+    separately as the head start. Without it, matches already played would be
+    counted both in the head start and the forward Poisson.
+    """
     players = players or load_players()
     mp = tournament.matches_played
     if mp is None:
@@ -163,14 +260,16 @@ def simulate_golden_boot(
 
     team_col = {tid: i for i, tid in enumerate(tournament.team_ids)}
     usable = [p for p in players if p.team_id in team_col]
+    gp = games_played or {}
 
-    # future goals ~ Poisson(mu_eff * matches_played); plus real goals already
-    # scored as a head start (plan 03 §6.3). NOTE (v2 approximation): mu is
-    # applied to the full-tournament match count, lightly double-counting games
-    # already played — the head start dominates early, refine when the sim is
-    # conditioned on played fixtures.
+    # future goals ~ Poisson(mu_eff * matches_REMAINING); plus real goals already
+    # scored as a head start (plan 03 §6.3). matches_remaining = matches_played in
+    # the sim path minus games already settled (clipped at 0), so a game already
+    # played is never counted both in the head start and the forward projection.
     lam = np.stack(
-        [p.mu_eff * mp[:, team_col[p.team_id]].astype(np.float64) for p in usable],
+        [p.mu_eff * np.clip(
+            mp[:, team_col[p.team_id]].astype(np.float64) - gp.get(p.team_id, 0), 0.0, None)
+         for p in usable],
         axis=1,
     )  # (n, P)
     head_start = np.array([p.goals_so_far for p in usable], dtype=np.int64)
@@ -197,11 +296,17 @@ if __name__ == "__main__":
     from prediction_market.model.strength import build_strength
     from prediction_market.model.tournament import simulate
 
+    from prediction_market.ingest import store
+
+    conn = store.init_db()
     prior = load_prior()
     sm = build_strength(prior)
     res = simulate(prior, sm, n_sims=CONFIG.model.n_sims_quicklook, seed=1)
-    gb = simulate_golden_boot(res, seed=2)
-    print(f"Golden boot sim N={gb.n_sims}")
-    print(f"{'player':<22}{'P(boot)':>9}{'E[goals]':>10}")
-    for pid in sorted(gb.player_ids, key=lambda p: -gb.p_golden_boot[p])[:12]:
-        print(f"{gb.player_names[pid]:<22}{gb.p_golden_boot[pid]:>9.3f}{gb.e_goals[pid]:>10.2f}")
+    players = load_players()
+    gb = simulate_golden_boot(res, players, seed=2, games_played=games_played_by_team(conn))
+    team_of = {p.player_id: p.team_id for p in players}
+    print(f"Golden boot sim N={gb.n_sims}  (pool={len(gb.player_ids)} players)")
+    print(f"{'player':<22}{'team':<16}{'P(boot)':>9}{'E[goals]':>10}")
+    for pid in sorted(gb.player_ids, key=lambda p: -gb.p_golden_boot[p])[:14]:
+        print(f"{gb.player_names[pid][:21]:<22}{team_of.get(pid,''):<16}"
+              f"{gb.p_golden_boot[pid]:>9.3f}{gb.e_goals[pid]:>10.2f}")

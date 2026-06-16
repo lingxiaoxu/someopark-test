@@ -25,7 +25,11 @@ from pathlib import Path
 
 from prediction_market.config import CONFIG
 from prediction_market.ingest.prior_ingest import PriorSnapshot, load_prior
-from prediction_market.model.golden_boot import load_players, simulate_golden_boot
+from prediction_market.model.golden_boot import (
+    games_played_by_team,
+    load_players,
+    simulate_golden_boot,
+)
 from prediction_market.model.match_pricing import price_group_stage
 from prediction_market.model.strength import build_strength
 from prediction_market.model.tournament import simulate
@@ -75,7 +79,14 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
         from prediction_market.model.club_aggregation import blend_into_strength, squad_attack_quality
         sm = blend_into_strength(sm, squad_attack_quality(season=CONFIG.soccer.season))
     tour = simulate(prior, sm, n_sims=n_sims, seed=seed)
-    gb = simulate_golden_boot(tour, load_players(), seed=seed + 1)
+    from prediction_market.ingest import store
+    _gb_conn = store.init_db()
+    _gb_players = load_players()
+    _gb_team_of = {p.player_id: p.team_id for p in _gb_players}
+    gb = simulate_golden_boot(
+        tour, _gb_players, seed=seed + 1,
+        games_played=games_played_by_team(_gb_conn),
+    )
     matches = price_group_stage(sm, prior)
 
     # Optional ensemble pass → real per-market dispersion (plan 10 §5.3),
@@ -109,6 +120,9 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
     golden_boot = [
         {
             "player_id": pid, "name": gb.player_names[pid],
+            "team_id": _gb_team_of.get(pid),
+            "team": name_of.get(_gb_team_of.get(pid), ""),
+            "zh": zh_of.get(_gb_team_of.get(pid), ""),
             "p_golden_boot": round(gb.p_golden_boot[pid], 5),
             "e_goals": round(gb.e_goals[pid], 3),
         }

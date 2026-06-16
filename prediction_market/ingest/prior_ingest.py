@@ -38,6 +38,10 @@ TEAM_ALIASES: dict[str, str] = {
     "bosnia & herzegovina": "Bosnia and Herzegovina",
     "cape verde islands": "Cape Verde",
     "curaçao": "Curacao",
+    # EA Sports FC spellings → our prior canonical names.
+    "czech republic": "Czechia",
+    "côte d'ivoire": "Cote d'Ivoire",
+    "holland": "Netherlands",
 }
 
 

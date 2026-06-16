@@ -30,6 +30,10 @@ class Paths:
     raw_snapshots: Path = PROJECT_ROOT / "data" / "raw"  # append-only API snapshots (Parquet)
     logs: Path = PROJECT_ROOT / "data" / "logs"
 
+    # EA Sports FC 26 player-rating CSVs (Kaggle, CC0). Used as the talent prior
+    # for golden-boot scoring rates + squad strength. Append-only raw download.
+    fc_raw: Path = PROJECT_ROOT / "data" / "raw" / "fc26"
+
     # The fully-specified static prior from plan file 10 §2.
     prior_ext_sim_v0: Path = PROJECT_ROOT / "data" / "priors" / "ext_sim_v0.json"
 
@@ -101,6 +105,16 @@ class ModelConfig:
     # index (time-weighted, friendly-discounted goal difference from nt_recent).
     # Applied to the LIVE model as a forward-looking bet, same discipline as squad.
     form_blend_weight: float = 0.10
+
+    # Golden-boot talent prior (plan 03 §6.1): EA FC 26 ratings give each player a
+    # talent-grounded per-match goal rate. That FC rate is the PRIOR; observed club
+    # (season-1) and WC-to-date scoring update it Bayesian-style with these
+    # pseudo-match weights. A strong FC prior stops a 1-game burst (e.g. a weak-team
+    # forward scoring twice in the opener) from inflating the forecast — the final
+    # boot is dominated instead by talent x knockout depth (matches actually played).
+    gb_fc_prior_alpha: float = 8.0      # pseudo-matches of FC-talent prior weight
+    gb_club_weight: float = 0.50        # weight on observed club rate vs FC prior in the talent estimate
+    gb_pool_per_team: int = 5           # top-N attacking candidates kept per team for the sim
 
     # Time-decay for recent results (plan 03 §1b): exp(-xi * delta_days).
     time_decay_xi: float = 0.0035
