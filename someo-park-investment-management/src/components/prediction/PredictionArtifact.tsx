@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
-  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview,
+  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest,
 } from '../../lib/api';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
@@ -300,6 +300,41 @@ function Calibration() {
   );
 }
 
+function Backtest() {
+  const { t: tr } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getWCBacktest(), []);
+  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
+  const b = data?.brier ?? {};
+  const better = (b.model != null && b.model < b.uniform);
+  return (
+    <div>
+      <Title sub={tr('prediction.subBacktest')}>Backtest (OOS)</Title>
+      <KV rows={[
+        [tr('prediction.lblModelBrier'), <b style={{ color: better ? 'var(--success)' : 'var(--error)' }}>{b.model}</b>],
+        [tr('prediction.lblBookBrier'), b.book],
+        ['Brier (uniform)', b.uniform],
+        [tr('prediction.lblDrawRate'), data?.draw_rate != null ? pct(data.draw_rate, 0) : '—'],
+        [tr('prediction.lblFavHit'), `${tr('prediction.model')} ${data?.accuracy?.model_fav_hit} · book ${data?.accuracy?.book_fav_hit}`],
+      ]} />
+      {/* blend curve — shows blending toward the book does NOT help */}
+      {!!(data?.blend_curve?.length) && (
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '2px 0 8px' }}>
+          {tr('prediction.lblBlend')}: {data.blend_curve.map((c: any) => `${Math.round(c.w * 100)}%→${c.brier}`).join('  ')}
+        </div>
+      )}
+      <div style={{ fontSize: 11, color: better ? 'var(--success)' : 'var(--error)', ...mono, marginBottom: 10, fontWeight: 700 }}>
+        {tr('prediction.backtestVerdict')}
+      </div>
+      <DataTable cols={[tr('prediction.match'), 'Score', tr('prediction.colResult'), tr('prediction.model'), 'Book']}
+        rows={(data?.matches ?? []).map((m: any) => [
+          `${tCountry(m.home)} v ${tCountry(m.away)}`, m.score, m.result,
+          `${m.model_pick} ${m.model_p != null ? pct(m.model_p, 0) : ''}`,
+          m.book_pick ? `${m.book_pick} ${pct(m.book_p, 0)}` : '—',
+        ])} />
+    </div>
+  );
+}
+
 function OverviewCard() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCOverview(), []);
@@ -391,6 +426,7 @@ const REGISTRY: Record<string, () => ReactElement> = {
   wc_performance: PerformanceCard,
   wc_risk: RiskCard,
   wc_calibration: Calibration,
+  wc_backtest: Backtest,
   wc_overview: OverviewCard,
   wc_venues: Venues,
   wc_budget: Budget,

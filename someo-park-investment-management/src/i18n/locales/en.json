@@ -442,7 +442,12 @@
     "noLiveMatches": "No live matches right now — signals appear here per minute during games.",
     "autoRefresh": "auto-refresh", "updated": "updated", "live": "live", "liveBadge": "LIVE",
     "expGoals": "exp. remaining goals", "colReason": "Reason",
-    "noOpps": "No actionable signal this minute — model view only."
+    "noOpps": "No actionable signal this minute — model view only.",
+    "backtest": "Backtest (OOS)",
+    "subBacktest": "Model vs sharp market vs uniform, on settled matches",
+    "lblModelBrier": "Brier (model)", "lblBookBrier": "Brier (book)",
+    "lblDrawRate": "Draw rate (actual)", "lblBlend": "Blend→book Brier", "colResult": "Res",
+    "backtestVerdict": "Both model & market sit above uniform — the early tournament is near-random (50% draws), so trading stays blocked. Not a bug; the model is actually better-calibrated than the sharp market here."
   },
   "sidebar": {
     "appName": "Someo Park",

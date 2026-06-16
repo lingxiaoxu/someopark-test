@@ -343,10 +343,17 @@ def sync_predictions(api: ApiFootball, conn, *, limit: int = 5, force: bool = Fa
     return pulled
 
 
-def sync_odds(api: ApiFootball, conn, *, limit: int = 5, force: bool = False) -> int:
-    """Pre-match Match-Winner odds → de-vigged probabilities (market consensus, 04 §1)."""
+def sync_odds(api: ApiFootball, conn, *, limit: int = 5, force: bool = False,
+              include_settled: bool = True) -> int:
+    """Pre-match Match-Winner odds → de-vigged probabilities (market consensus, 04 §1).
+
+    Covers upcoming fixtures and, with ``include_settled``, the CLOSING odds of
+    finished fixtures still missing them (API-Football serves recent past odds) —
+    so the OOS backtest (model vs market) has a complete market reference.
+    """
+    statuses = "('NS','FT','AET','PEN')" if include_settled else "('NS')"
     rows = conn.execute(
-        "SELECT api_id FROM fixture WHERE status_short = 'NS' "
+        f"SELECT api_id FROM fixture WHERE status_short IN {statuses} "
         "AND api_id NOT IN (SELECT fixture_api_id FROM match_odds) "
         "ORDER BY kickoff_ts LIMIT ?", (limit,)).fetchall()
     pulled = 0

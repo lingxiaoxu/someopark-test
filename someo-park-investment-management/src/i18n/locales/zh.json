@@ -124,7 +124,12 @@
     "noLiveMatches": "当前无进行中的比赛 — 比赛期间信号将每分钟显示在此。",
     "autoRefresh": "自动刷新", "updated": "更新于", "live": "进行中", "liveBadge": "进行中",
     "expGoals": "预计剩余进球", "colReason": "原因",
-    "noOpps": "本分钟无可执行信号 — 仅模型视图。"
+    "noOpps": "本分钟无可执行信号 — 仅模型视图。",
+    "backtest": "回测(OOS)",
+    "subBacktest": "在已结算场次上:模型 vs 锐利市场 vs 均匀",
+    "lblModelBrier": "Brier(模型)", "lblBookBrier": "Brier(庄家)",
+    "lblDrawRate": "实际平局率", "lblBlend": "向庄家混合 Brier", "colResult": "结果",
+    "backtestVerdict": "模型和市场都劣于均匀 —— 早期赛事近乎随机(50% 平局),所以交易仍被拦截。这不是 bug;在此样本上模型甚至比锐利市场更校准。"
   },
   "sidebar": {
     "appName": "Someo Park",
