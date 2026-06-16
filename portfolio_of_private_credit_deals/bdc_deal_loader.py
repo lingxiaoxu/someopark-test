@@ -20,9 +20,13 @@ from __future__ import annotations
 
 import json
 import os
+import warnings
 
 import numpy as np
 import pandas as pd
+
+# all-NA columns (e.g. affiliation) trip a pandas concat dtype-deprecation warning; harmless
+warnings.filterwarnings("ignore", message=".*concatenation with empty or all-NA.*")
 
 _MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
 _REPO_ROOT = os.path.dirname(_MODULE_DIR)
@@ -54,7 +58,10 @@ def load_bdc_snapshots(store: str = BDC_STORE) -> pd.DataFrame:
             frames.append(pd.read_parquet(snap))
     if not frames:
         raise FileNotFoundError(f"manifest names {list(manifest)} but no snapshot parquet found")
-    return pd.concat(frames, ignore_index=True)
+    # align columns across snapshots (some carry all-NA cols, e.g. affiliation) to avoid the
+    # pandas concat all-NA-dtype FutureWarning, then one clean concat.
+    cols = list(dict.fromkeys(c for f in frames for c in f.columns))
+    return pd.concat([f.reindex(columns=cols) for f in frames], ignore_index=True)
 
 
 # ── coupon synthesis (back-compat with run_deals.parse_coupon_rate) ─────────

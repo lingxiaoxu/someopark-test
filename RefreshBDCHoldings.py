@@ -40,11 +40,15 @@ import os
 import re
 import sys
 import time
+import warnings
 import zipfile
 from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
+
+# per-column SOI assignments fragment the frame (harmless at ~5.6k rows; de-fragged once)
+warnings.filterwarnings("ignore", message="DataFrame is highly fragmented")
 
 # ── paths / config ──────────────────────────────────────────────────────────
 _ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -753,6 +757,7 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
                                 for it, idf in zip(df.loc[miss, "inv_type"],
                                                    df.loc[miss, "identifier"])]
     df.loc[miss, "maturity_source"] = "imputed_tenor"
+    df = df.copy()                       # de-fragment after the per-column assignments
 
     # intra-BDC look-through weight denominator = Σtranche FV (gross, internally consistent;
     # weights within a BDC sum to 1). companyfacts net is the QA anchor, NOT the denominator
