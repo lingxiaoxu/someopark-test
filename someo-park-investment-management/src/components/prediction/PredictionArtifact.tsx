@@ -353,6 +353,7 @@ function Backtest() {
     <div>
       <Title sub={tr('prediction.subBacktest')}>Backtest (OOS)</Title>
       <KV rows={[
+        [tr('prediction.lblSettled'), <b>{data?.n_settled}</b>],
         [tr('prediction.lblModelBrier'), <b style={{ color: better ? 'var(--success)' : 'var(--error)' }}>{b.model}</b>],
         [tr('prediction.lblBookBrier'), b.book],
         ['Brier (uniform)', b.uniform],
