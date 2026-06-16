@@ -21,9 +21,9 @@ export function AgentModeToggle({ enabled, onChange, disabled }: Props) {
         alignItems: 'center',
         gap: 5,
         padding: '3px 10px',
-        border: '2px solid #111',
-        background: enabled ? '#111' : '#fff',
-        color: enabled ? '#fff' : '#555',
+        border: '2px solid var(--ink)',
+        background: enabled ? 'var(--ink)' : 'var(--paper)',
+        color: enabled ? 'var(--paper)' : 'var(--ink-dim)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
         fontFamily: 'var(--font-mono)',
@@ -32,7 +32,7 @@ export function AgentModeToggle({ enabled, onChange, disabled }: Props) {
         letterSpacing: '.06em',
         textTransform: 'uppercase' as const,
         transition: 'all .15s',
-        boxShadow: enabled ? 'none' : '2px 2px 0 0 #111',
+        boxShadow: enabled ? 'none' : '2px 2px 0 0 var(--ink)',
       }}
     >
       {enabled ? <Zap style={{ width: 11, height: 11, fill: 'currentColor' }} /> : <MessageSquare style={{ width: 11, height: 11 }} />}
@@ -40,7 +40,7 @@ export function AgentModeToggle({ enabled, onChange, disabled }: Props) {
       {enabled && (
         <span style={{
           width: 6, height: 6, borderRadius: '50%',
-          background: '#00cc66',
+          background: 'var(--success)',
           animation: 'pulse 2s infinite',
           flexShrink: 0,
         }} />

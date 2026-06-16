@@ -730,38 +730,38 @@ export default function ChatArea({
   return (
     <div className="flex flex-col h-full relative" style={{ background: 'var(--color-bg)' }}>
       {/* Header */}
-      <div className="h-14 flex items-center justify-between px-6 shrink-0" style={{ borderBottom: '3px solid #111', background: '#fff' }}>
+      <div className="h-14 flex items-center justify-between px-6 shrink-0" style={{ borderBottom: '3px solid var(--ink)', background: appMode === 'prediction' ? 'var(--bg-secondary)' : 'var(--paper)' }}>
         <div className="flex items-center gap-3">
-          <span style={{ fontSize: '10px', letterSpacing: '.12em', textTransform: 'uppercase', color: '#888', fontFamily: 'var(--font-mono)' }}>{t('chat.currentRuntime')}</span>
+          <span style={{ fontSize: '10px', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontFamily: 'var(--font-mono)' }}>{t('chat.currentRuntime')}</span>
           <div className="relative" ref={runtimeDropdownRef}>
             <button
               onClick={() => setRuntimeDropdownOpen(prev => !prev)}
               className="flex items-center gap-2 px-3 py-1"
               style={{
-                background: agentMode === 'cloud' ? '#111' : '#fff',
-                border: '2px solid #111',
+                background: agentMode === 'cloud' ? 'var(--ink)' : 'var(--paper)',
+                border: '2px solid var(--ink)',
                 boxShadow: 'var(--shadow-pixel-sm)',
                 cursor: 'pointer',
               }}
             >
               {agentMode === 'cloud' ? (
-                <Cloud className="w-3.5 h-3.5" style={{ color: '#fff' }} />
+                <Cloud className="w-3.5 h-3.5" style={{ color: 'var(--paper)' }} />
               ) : (
-                <Laptop className="w-3.5 h-3.5" style={{ color: '#111' }} />
+                <Laptop className="w-3.5 h-3.5" style={{ color: 'var(--ink)' }} />
               )}
-              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: agentMode === 'cloud' ? '#fff' : '#111', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: agentMode === 'cloud' ? 'var(--paper)' : 'var(--ink)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>
                 {agentMode === 'cloud' ? t('chat.cloudVpsLabel') : t('chat.localConnectedLabel')}
               </span>
-              <ChevronDown className="w-3 h-3" style={{ color: agentMode === 'cloud' ? '#fff' : '#111', transition: 'transform .15s', transform: runtimeDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+              <ChevronDown className="w-3 h-3" style={{ color: agentMode === 'cloud' ? 'var(--paper)' : 'var(--ink)', transition: 'transform .15s', transform: runtimeDropdownOpen ? 'rotate(180deg)' : 'none' }} />
             </button>
             {runtimeDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50 animate-slide-in" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)', minWidth: '100%' }}>
+              <div className="absolute top-full left-0 mt-1 z-50 animate-slide-in" style={{ background: 'var(--paper)', border: '2px solid var(--ink)', boxShadow: 'var(--shadow-pixel)', minWidth: '100%' }}>
                 <button
                   onClick={() => { setRuntimeDropdownOpen(false); onConnectClick?.(); }}
                   className="w-full flex items-center gap-2 px-3 py-2"
-                  style={{ cursor: 'pointer', background: '#fff', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#333', transition: 'all .1s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#111'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#333'; }}
+                  style={{ cursor: 'pointer', background: 'var(--paper)', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--ink-soft)', transition: 'all .1s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--ink)'; e.currentTarget.style.color = 'var(--paper)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--paper)'; e.currentTarget.style.color = 'var(--ink-soft)'; }}
                 >
                   <Laptop className="w-3.5 h-3.5" />
                   Open Claw
@@ -774,7 +774,7 @@ export default function ChatArea({
 
       {/* Messages or Welcome */}
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto scrollbar-autohide px-6 pt-4 pb-6 flex flex-col items-center">
-        <div className="w-full max-w-3xl flex flex-col gap-4 pb-8">
+        <div className={`w-full max-w-3xl flex flex-col gap-4 ${appMode === 'prediction' ? 'pb-16' : 'pb-8'}`}>
           {!hasMessages ? (
             <>
               <div className="flex flex-col items-center justify-center py-6 gap-4">
@@ -976,7 +976,7 @@ export default function ChatArea({
       </div>
 
       {/* Input Area */}
-      <div className="p-6 pt-0 shrink-0 flex justify-center">
+      <div className={`p-6 ${appMode === 'prediction' ? 'pt-4' : 'pt-0'} shrink-0 flex justify-center`}>
         <div className="w-full max-w-3xl">
           <ChatInput
             retry={retry}

@@ -92,10 +92,10 @@ export function ChatInput({
     if (!files.length) return null
     return files.map(file => (
       <div key={file.name} style={{ position: 'relative', display: 'inline-block' }}>
-        <button type="button" onClick={() => handleFileRemove(file)} style={{ position: 'absolute', top: -6, right: -6, width: 16, height: 16, background: '#111', border: '1px solid #111', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-          <X style={{ width: 10, height: 10, color: '#fff' }} />
+        <button type="button" onClick={() => handleFileRemove(file)} style={{ position: 'absolute', top: -6, right: -6, width: 16, height: 16, background: 'var(--ink)', border: '1px solid var(--ink)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+          <X style={{ width: 10, height: 10, color: 'var(--paper)' }} />
         </button>
-        <img src={URL.createObjectURL(file)} alt={file.name} style={{ width: 40, height: 40, objectFit: 'cover', border: '2px solid #111', display: 'block' }} />
+        <img src={URL.createObjectURL(file)} alt={file.name} style={{ width: 40, height: 40, objectFit: 'cover', border: '2px solid var(--ink)', display: 'block' }} />
       </div>
     ))
   }, [files])
@@ -117,7 +117,7 @@ export function ChatInput({
     flexShrink: 0,
     alignSelf: 'flex-end',
     padding: '12px 14px',
-    border: '2px solid #111',
+    border: '2px solid var(--ink)',
     cursor: 'pointer',
     display: 'flex',
     alignItems: 'center',
@@ -143,7 +143,7 @@ export function ChatInput({
       {isErrored && (
         <div style={{ display: 'flex', alignItems: 'center', padding: '8px 12px', marginBottom: 10, background: '#fff0f0', border: '2px solid #ff3333', borderLeft: '4px solid #ff3333', fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#ff3333', gap: 10 }}>
           <span style={{ flex: 1 }}>{errorMessage}</span>
-          <button onClick={retry} type="button" style={{ padding: '3px 10px', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', background: '#ff3333', color: '#fff', border: '2px solid #ff3333', cursor: 'pointer' }}>
+          <button onClick={retry} type="button" style={{ padding: '3px 10px', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', background: '#ff3333', color: 'var(--paper)', border: '2px solid #ff3333', cursor: 'pointer' }}>
             {t('chatInput.tryAgain')}
           </button>
         </div>
@@ -159,8 +159,8 @@ export function ChatInput({
           right: 0,
           zIndex: 20,
           display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
-          background: '#f4f4f4',
-          border: '2px solid #111',
+          background: 'var(--bg-tertiary)',
+          border: '2px solid var(--ink)',
           padding: '7px 10px',
           marginBottom: 4,
           boxShadow: '0 -2px 8px rgba(0,0,0,0.08)',
@@ -175,7 +175,7 @@ export function ChatInput({
 
       {/* ── File previews ── */}
       {files.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', flexWrap: 'wrap', background: '#fff', border: '2px solid #111', borderTop: 'none', borderBottom: '1px solid #e5e5e5' }}>
+        <div style={{ display: 'flex', gap: 8, padding: '8px 12px', flexWrap: 'wrap', background: 'var(--paper)', border: '2px solid var(--ink)', borderTop: 'none', borderBottom: '1px solid var(--page)' }}>
           {filePreview}
         </div>
       )}
@@ -187,10 +187,10 @@ export function ChatInput({
           gap: 8,
           alignItems: 'flex-end',
           padding: '10px 12px',
-          background: '#fff',
-          border: '2px solid #111',
-          borderTop: dragActive ? '2px dashed #111' : '2px solid #111',
-          boxShadow: '4px 4px 0 0 #111',
+          background: 'var(--paper)',
+          border: '2px solid var(--ink)',
+          borderTop: dragActive ? '2px dashed var(--ink)' : '2px solid var(--ink)',
+          boxShadow: '4px 4px 0 0 var(--ink)',
         }}
       >
         {/* Textarea */}
@@ -201,15 +201,15 @@ export function ChatInput({
           style={{
             flex: 1,
             padding: '10px 12px',
-            background: '#f9f9f9',
-            border: '2px solid #ccc',
+            background: 'var(--field)',
+            border: '2px solid var(--hairline)',
             outline: 'none',
             fontFamily: 'var(--font-mono)',
             fontSize: '13px',
-            color: '#111',
+            color: 'var(--ink)',
             resize: 'none',
             lineHeight: '1.6',
-            caretColor: '#111',
+            caretColor: 'var(--ink)',
             transition: 'border-color .15s',
           }}
           required
@@ -218,9 +218,9 @@ export function ChatInput({
           value={input}
           onChange={handleInputChange}
           onPaste={isMultiModal ? handlePaste : undefined}
-          onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = '#111'; handleInputAreaEnter(); }}
+          onFocus={e => { (e.currentTarget as HTMLElement).style.borderColor = 'var(--ink)'; handleInputAreaEnter(); }}
           onBlur={e => {
-            (e.currentTarget as HTMLElement).style.borderColor = '#ccc';
+            (e.currentTarget as HTMLElement).style.borderColor = 'var(--hairline)';
             // Don't hide toolbar if focus moved to another element within the form (e.g. toolbar buttons)
             const form = e.currentTarget.closest('form');
             if (form && e.relatedTarget && form.contains(e.relatedTarget as Node)) return;
@@ -241,30 +241,30 @@ export function ChatInput({
             style={{
               ...actionBtnBase,
               alignSelf: 'auto',
-              background: (!isMultiModal || isErrored) ? '#f4f4f4' : '#fff',
+              background: (!isMultiModal || isErrored) ? 'var(--bg-tertiary)' : 'var(--paper)',
               opacity: (!isMultiModal || isErrored) ? 0.35 : 1,
               cursor: (!isMultiModal || isErrored) ? 'not-allowed' : 'pointer',
-              boxShadow: '2px 2px 0 0 #111',
+              boxShadow: '2px 2px 0 0 var(--ink)',
             }}
             onMouseEnter={e => {
               if (isMultiModal && !isErrored) {
-                (e.currentTarget as HTMLElement).style.background = '#111'
+                (e.currentTarget as HTMLElement).style.background = 'var(--ink)'
                 ;(e.currentTarget as HTMLElement).style.transform = 'translate(-1px,-1px)'
-                ;(e.currentTarget as HTMLElement).style.boxShadow = '3px 3px 0 0 #111'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '3px 3px 0 0 var(--ink)'
               }
             }}
             onMouseLeave={e => {
               if (isMultiModal && !isErrored) {
-                (e.currentTarget as HTMLElement).style.background = '#fff'
+                (e.currentTarget as HTMLElement).style.background = 'var(--paper)'
                 ;(e.currentTarget as HTMLElement).style.transform = 'none'
-                ;(e.currentTarget as HTMLElement).style.boxShadow = '2px 2px 0 0 #111'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '2px 2px 0 0 var(--ink)'
               }
               // reset icon color
               const icon = (e.currentTarget as HTMLElement).querySelector('svg') as SVGElement
-              if (icon) icon.style.color = '#555'
+              if (icon) icon.style.color = 'var(--ink-dim)'
             }}
           >
-            <Paperclip style={{ width: 16, height: 16, color: '#555', transition: 'color .1s' }} />
+            <Paperclip style={{ width: 16, height: 16, color: 'var(--ink-dim)', transition: 'color .1s' }} />
           </button>
 
           {/* Send / Stop button */}
@@ -276,26 +276,26 @@ export function ChatInput({
               style={{
                 ...actionBtnBase,
                 alignSelf: 'auto',
-                background: '#111',
-                color: '#fff',
-                boxShadow: '2px 2px 0 0 #555',
+                background: 'var(--ink)',
+                color: 'var(--paper)',
+                boxShadow: '2px 2px 0 0 var(--ink-dim)',
                 opacity: isErrored ? 0.4 : 1,
                 cursor: isErrored ? 'not-allowed' : 'pointer',
               }}
               onMouseEnter={e => {
                 if (!isErrored) {
-                  (e.currentTarget as HTMLElement).style.background = '#333'
+                  (e.currentTarget as HTMLElement).style.background = 'var(--ink-soft)'
                   ;(e.currentTarget as HTMLElement).style.transform = 'translate(-1px,-1px)'
-                  ;(e.currentTarget as HTMLElement).style.boxShadow = '3px 3px 0 0 #555'
+                  ;(e.currentTarget as HTMLElement).style.boxShadow = '3px 3px 0 0 var(--ink-dim)'
                 }
               }}
               onMouseLeave={e => {
-                ;(e.currentTarget as HTMLElement).style.background = '#111'
+                ;(e.currentTarget as HTMLElement).style.background = 'var(--ink)'
                 ;(e.currentTarget as HTMLElement).style.transform = 'none'
-                ;(e.currentTarget as HTMLElement).style.boxShadow = '2px 2px 0 0 #555'
+                ;(e.currentTarget as HTMLElement).style.boxShadow = '2px 2px 0 0 var(--ink-dim)'
               }}
             >
-              <ArrowUp style={{ width: 18, height: 18, color: '#fff' }} />
+              <ArrowUp style={{ width: 18, height: 18, color: 'var(--paper)' }} />
             </button>
           ) : (
             <button
@@ -306,7 +306,7 @@ export function ChatInput({
                 ...actionBtnBase,
                 alignSelf: 'auto',
                 background: '#ff3333',
-                color: '#fff',
+                color: 'var(--paper)',
                 border: '2px solid #ff3333',
                 boxShadow: '2px 2px 0 0 #cc0000',
                 cursor: 'pointer',
@@ -320,7 +320,7 @@ export function ChatInput({
                 ;(e.currentTarget as HTMLElement).style.transform = 'none'
               }}
             >
-              <Square style={{ width: 18, height: 18, color: '#fff' }} />
+              <Square style={{ width: 18, height: 18, color: 'var(--paper)' }} />
             </button>
           )}
         </div>

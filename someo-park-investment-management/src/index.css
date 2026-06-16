@@ -613,6 +613,7 @@
   --ink-mute:  #888888;
   --page:      #e5e5e5;   /* page background */
   --hairline:  #cccccc;
+  --field:     #f9f9f9;   /* idle input / textarea fill */
 }
 
 [data-mode="prediction"] {

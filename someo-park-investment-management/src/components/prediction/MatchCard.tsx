@@ -1,10 +1,15 @@
 /**
  * MatchCard — one upcoming World Cup match in Prediction Market mode.
- * Shows the two teams + kickoff (ET), our model's 3-way (+O2.5), the sharp book
- * de-vig, and REAL Kalshi / Polymarket US single-match quotes when listed.
- * Reads the shape produced by prediction_market/ops/upcoming_export.py.
- * Pure presentational; colours come from CSS vars so it inverts with the theme.
+ * Collapsed by default: teams + kickoff + compact model line + best-edge badge.
+ * Click the header to expand the full detail (O2.5/BTTS, book de-vig, real
+ * Kalshi / Polymarket US quotes). Reads prediction_market/ops/upcoming_export.py.
+ * Colours come from CSS vars so it inverts with the theme.
  */
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ChevronDown, ChevronRight } from 'lucide-react';
+import { tCountry } from '../../i18n/countries';
+
 type ThreeWay = { home: number; draw: number; away: number };
 type VenueQuote = {
   home?: { ask: number | null; bid: number | null };
@@ -46,7 +51,7 @@ function VenueRow({ label, q }: { label: string; q?: VenueQuote }) {
     return (
       <div className="flex items-center gap-2" style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
         <span style={{ width: 52, textTransform: 'uppercase', letterSpacing: '.06em' }}>{label}</span>
-        <span style={{ opacity: 0.7 }}>not listed yet —</span>
+        <span style={{ opacity: 0.7 }}>—</span>
       </div>
     );
   }
@@ -61,30 +66,58 @@ function VenueRow({ label, q }: { label: string; q?: VenueQuote }) {
 }
 
 export default function MatchCard({ m }: { m: UpcomingMatch }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
   const best = m.edge?.best;
   const edgeColor = best?.tradable ? 'var(--success)' : 'var(--text-muted)';
+  const Chevron = open ? ChevronDown : ChevronRight;
   return (
     <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 280, flex: '1 1 320px' }}>
-      <div className="flex items-center justify-between">
-        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
-          {m.home.name} <span style={{ color: 'var(--text-muted)' }}>vs</span> {m.away.name}
-        </span>
-        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{m.et || ''}</span>
-      </div>
-      <Row label="Model" t={m.model} />
-      {(m.model.over_2_5 != null || m.model.btts != null) && (
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-          O2.5 {pct(m.model.over_2_5)} · BTTS {pct(m.model.btts)}
+      {/* Header — always visible, click to expand */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left', width: '100%' }}
+      >
+        <div className="flex items-center justify-between">
+          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
+            <Chevron className="inline w-3.5 h-3.5" style={{ marginRight: 4, verticalAlign: '-2px', color: 'var(--text-muted)' }} />
+            {tCountry(m.home.name)} <span style={{ color: 'var(--text-muted)' }}>vs</span> {tCountry(m.away.name)}
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{m.et || ''}</span>
         </div>
-      )}
-      <Row label="Book" t={m.book_devig} dim />
-      <VenueRow label="Kalshi" q={m.kalshi} />
-      <VenueRow label="Poly US" q={m.poly_us} />
-      {best && (
-        <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700 }}>
-          Edge {best.venue}/{best.side} {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%
-          {best.tradable ? ' ★' : ''}
-        </div>
+        {/* Compact summary line when collapsed */}
+        {!open && (
+          <div className="flex items-center justify-between" style={{ marginTop: 4 }}>
+            <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
+              H {pct(m.model.home)} · D {pct(m.model.draw)} · A {pct(m.model.away)}
+            </span>
+            {best && (
+              <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700 }}>
+                {best.venue}/{best.side} {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%{best.tradable ? ' ★' : ''}
+              </span>
+            )}
+          </div>
+        )}
+      </button>
+
+      {/* Detail — only when expanded */}
+      {open && (
+        <>
+          <Row label={t('prediction.model')} t={m.model} />
+          {(m.model.over_2_5 != null || m.model.btts != null) && (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              O2.5 {pct(m.model.over_2_5)} · BTTS {pct(m.model.btts)}
+            </div>
+          )}
+          <Row label={t('prediction.book')} t={m.book_devig} dim />
+          <VenueRow label="Kalshi" q={m.kalshi} />
+          <VenueRow label="Poly US" q={m.poly_us} />
+          {best && (
+            <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700 }}>
+              Edge {best.venue}/{best.side} {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%{best.tradable ? ' ★' : ''}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

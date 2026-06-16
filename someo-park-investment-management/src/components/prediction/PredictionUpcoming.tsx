@@ -5,6 +5,7 @@
  * roll off automatically on the next backend sync, so this always shows the
  * soonest fixtures. Mirrors the Active Pairs card chrome (pixel card + corner dots).
  */
+import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import { getWCUpcoming } from '../../lib/api';
 import MatchCard, { type UpcomingMatch } from './MatchCard';
@@ -19,6 +20,7 @@ function pickUpcoming(matches: UpcomingMatch[]): UpcomingMatch[] {
 }
 
 export default function PredictionUpcoming() {
+  const { t } = useTranslation();
   const { data, loading, error } = useApi<{ matches?: UpcomingMatch[] }>(() => getWCUpcoming(), []);
   const matches = data?.matches ? pickUpcoming(data.matches) : [];
 
@@ -31,16 +33,14 @@ export default function PredictionUpcoming() {
       <div style={{ position: 'absolute', bottom: -2, right: -2, width: 6, height: 6, background: 'var(--ink)' }} />
       <div className="flex items-center justify-between mb-3">
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>
-          Upcoming Matches <span style={{ color: 'var(--success)' }}>({matches.length})</span>
+          {t('prediction.upcomingMatches')} <span style={{ color: 'var(--success)' }}>({matches.length})</span>
         </div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>World Cup 2026</div>
       </div>
       {loading ? (
-        <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>Loading upcoming matches…</div>
+        <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>{t('prediction.loadingUpcoming')}</div>
       ) : error || !matches.length ? (
-        <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>
-          No upcoming matches available. Run <code>ops.upcoming_export</code> + <code>npm run sync:wc</code>.
-        </div>
+        <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>{t('prediction.noUpcoming')}</div>
       ) : (
         <div className="flex flex-wrap gap-2">
           {matches.map((m) => (

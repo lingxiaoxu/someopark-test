@@ -5,11 +5,14 @@
  * Styling uses CSS vars / the .table & .card classes, so it inverts with the theme.
  */
 import type { CSSProperties, ReactNode, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
   getWCRisk, getWCCalibration, getWCInplay, getWCOverview,
 } from '../../lib/api';
+import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
+import { tCountry } from '../../i18n/countries';
 
 // ── shared primitives ─────────────────────────────────────────────────────────
 const pct = (v?: number | null, d = 1) => (v == null || isNaN(v) ? '—' : `${(v * 100).toFixed(d)}%`);
@@ -22,13 +25,12 @@ function Loading() { return <div className="text-xs py-3" style={{ color: 'var(-
 function ErrorBox({ e }: { e: string }) {
   return <div className="text-xs py-3" style={{ color: 'var(--error)', ...mono }}>Failed to load: {e}. Run the exporter + <code>npm run sync:wc</code>.</div>;
 }
-function Title({ children, sub }: { children: ReactNode; sub?: string }) {
-  return (
-    <div className="mb-3">
-      <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono }}>{children}</div>
-      {sub && <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, ...mono }}>{sub}</div>}
-    </div>
-  );
+// Heading is rendered (translated) by the dispatcher; Title keeps only the sub line.
+function Title({ children, sub }: { children?: ReactNode; sub?: string }) {
+  void children;
+  return sub ? (
+    <div className="mb-3" style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{sub}</div>
+  ) : null;
 }
 function KV({ rows }: { rows: [string, ReactNode][] }) {
   return (
@@ -64,14 +66,15 @@ function Notes({ items }: { items?: string[] }) {
 
 // ── viewers ───────────────────────────────────────────────────────────────────
 function ChampionOdds() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCChampion(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const champ = (data?.champion ?? []).slice(0, 16);
   return (
     <div>
       <Title sub={`Monte-Carlo · ${data?.meta?.n_sims?.toLocaleString?.() ?? ''} sims · prior ${data?.meta?.prior_as_of ?? ''}`}>Champion Odds</Title>
-      <DataTable cols={['Team', 'Grp', 'Champ', 'Final', 'SF', 'Rating']}
-        rows={champ.map((t: any) => [t.name, t.group, pct(t.p_champion), pct(t.p_final), pct(t.p_sf), num(t.rating, 3)])} />
+      <DataTable cols={[tr('prediction.team'), 'Grp', 'Champ', 'Final', 'SF', 'Rating']}
+        rows={champ.map((c: any) => [tCountry(c.name), c.group, pct(c.p_champion), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])} />
     </div>
   );
 }
@@ -101,20 +104,21 @@ function Methodology() {
 }
 
 function Divergence() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any[]>(() => getWCDivergence(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const rows = (data ?? []);
   return (
     <div>
       <Title sub="Model 3-way vs sharp bookmaker de-vig; edge = model − book">Model vs Market</Title>
-      <DataTable cols={['Match', 'Model H/D/A', 'Book H/D/A', 'Best edge']}
+      <DataTable cols={[tr('prediction.match'), 'Model H/D/A', 'Book H/D/A', 'Best edge']}
         rows={rows.map((m: any) => {
           const e = m.edge_vs_book || {};
           const best = Math.max(Math.abs(e.home ?? 0), Math.abs(e.draw ?? 0), Math.abs(e.away ?? 0));
           const side = best === Math.abs(e.home ?? 0) ? 'H' : best === Math.abs(e.draw ?? 0) ? 'D' : 'A';
           const val = side === 'H' ? e.home : side === 'D' ? e.draw : e.away;
           return [
-            `${m.home} v ${m.away}`,
+            `${tCountry(m.home)} v ${tCountry(m.away)}`,
             `${pct(m.model?.home, 0)}/${pct(m.model?.draw, 0)}/${pct(m.model?.away, 0)}`,
             `${pct(m.book_devig?.home, 0)}/${pct(m.book_devig?.draw, 0)}/${pct(m.book_devig?.away, 0)}`,
             <span style={{ color: Math.abs(val) >= 0.05 ? 'var(--success)' : 'var(--text-muted)' }}>{side} {val >= 0 ? '+' : ''}{pct(val, 1)}</span>,
@@ -125,19 +129,21 @@ function Divergence() {
 }
 
 function Predictions() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCUpcoming(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const ms = data?.matches ?? [];
   return (
     <div>
       <Title sub="Model 3-way + O2.5 / BTTS for upcoming fixtures">Today's Predictions</Title>
-      <DataTable cols={['Match', 'ET', 'H', 'D', 'A', 'O2.5']}
-        rows={ms.map((m: any) => [`${m.home?.name} v ${m.away?.name}`, m.et ?? '', pct(m.model?.home, 0), pct(m.model?.draw, 0), pct(m.model?.away, 0), pct(m.model?.over_2_5, 0)])} />
+      <DataTable cols={[tr('prediction.match'), 'ET', 'H', 'D', 'A', 'O2.5']}
+        rows={ms.map((m: any) => [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '', pct(m.model?.home, 0), pct(m.model?.draw, 0), pct(m.model?.away, 0), pct(m.model?.over_2_5, 0)])} />
     </div>
   );
 }
 
 function MatchPricing() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCUpcoming(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const ms = data?.matches ?? [];
@@ -146,12 +152,12 @@ function MatchPricing() {
       <Title sub="3-way fair price + real venue asks (Kalshi / Poly US)">Match Pricing</Title>
       {ms.map((m: any, i: number) => (
         <div key={i} className="card" style={{ marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 6 }}>{m.home?.name} vs {m.away?.name} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{m.et}</span></div>
-          <DataTable cols={['', 'Home', 'Draw', 'Away']}
+          <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 6 }}>{tCountry(m.home?.name)} vs {tCountry(m.away?.name)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{m.et}</span></div>
+          <DataTable cols={['', tr('prediction.home'), tr('prediction.draw'), tr('prediction.away')]}
             rows={[
-              ['Model', pct(m.model?.home, 0), pct(m.model?.draw, 0), pct(m.model?.away, 0)],
-              ['Kalshi ask', num(m.kalshi?.home?.ask, 2), num(m.kalshi?.draw?.ask, 2), num(m.kalshi?.away?.ask, 2)],
-              ['Poly US ask', num(m.poly_us?.home?.ask, 2), num(m.poly_us?.draw?.ask, 2), num(m.poly_us?.away?.ask, 2)],
+              [tr('prediction.model'), pct(m.model?.home, 0), pct(m.model?.draw, 0), pct(m.model?.away, 0)],
+              [tr('prediction.kalshiAsk'), num(m.kalshi?.home?.ask, 2), num(m.kalshi?.draw?.ask, 2), num(m.kalshi?.away?.ask, 2)],
+              [tr('prediction.polyUsAsk'), num(m.poly_us?.home?.ask, 2), num(m.poly_us?.draw?.ask, 2), num(m.poly_us?.away?.ask, 2)],
             ]} />
         </div>
       ))}
@@ -160,14 +166,15 @@ function MatchPricing() {
 }
 
 function Schedule() {
+  const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCUpcoming(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const ms = data?.matches ?? [];
   return (
     <div>
       <Title sub="Kickoffs in US Eastern (from upcoming.json)">Schedule</Title>
-      <DataTable cols={['ET kickoff', 'Round', 'Match']}
-        rows={ms.map((m: any) => [m.et ?? m.kickoff, m.round ?? '', `${m.home?.name} v ${m.away?.name}`])} />
+      <DataTable cols={['ET kickoff', 'Round', tr('prediction.match')]}
+        rows={ms.map((m: any) => [m.et ?? m.kickoff, m.round ?? '', `${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`])} />
     </div>
   );
 }
@@ -345,10 +352,19 @@ const REGISTRY: Record<string, () => ReactElement> = {
   wc_pdfs: Pdfs,
 };
 
+const KEY_BY_TYPE: Record<string, string> = Object.fromEntries(PREDICTION_ITEMS.map(i => [i.type, i.i18nKey]));
+
 export default function PredictionArtifact({ type }: { type: string }) {
+  const { t } = useTranslation();
   const View = REGISTRY[type];
   if (!View) return <div className="text-xs py-3" style={{ color: 'var(--text-muted)', ...mono }}>Unknown artifact: {type}</div>;
-  return <View />;
+  const key = KEY_BY_TYPE[type];
+  return (
+    <div>
+      {key && <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: 6, ...mono }}>{t(`prediction.${key}`)}</div>}
+      <View />
+    </div>
+  );
 }
 
 export const isPredictionArtifact = (type?: string) => !!type && type.startsWith('wc_');
