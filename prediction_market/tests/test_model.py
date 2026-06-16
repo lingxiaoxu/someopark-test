@@ -122,6 +122,26 @@ def test_fc_goal_rate_orders_by_role():
     assert 0.45 < elite < 0.95 and 0.2 < squad < 0.5      # rates land in a sane band
 
 
+def test_teammate_competition_discounts_shared_attack():
+    """A lone spearhead keeps his rate; co-stars who split a team's goals are
+    discounted (France's Mbappé/Dembélé/Olise; 2002-Brazil effect)."""
+    from prediction_market.model.golden_boot import Player, apply_teammate_competition
+    lone = Player("a", "Lone", "norway", mu_goals_per_match=0.70, start_prob=0.9, pen_taker=False)
+    # three equal co-stars on one team
+    co = [Player(f"f{i}", f"Co{i}", "france", mu_goals_per_match=0.60, start_prob=0.9,
+                 pen_taker=False) for i in range(3)]
+    out = {p.player_id: p for p in apply_teammate_competition([lone] + co, kappa=0.35)}
+    # lone star: share≈1 → essentially no discount
+    assert out["a"].mu_goals_per_match > 0.69
+    # each co-star: share≈1/3 → discounted below original 0.60
+    assert all(out[f"f{i}"].mu_goals_per_match < 0.60 for i in range(3))
+    # but bounded — never cut by more than kappa
+    assert all(out[f"f{i}"].mu_goals_per_match > 0.60 * (1 - 0.35) for i in range(3))
+    # kappa=0 disables it
+    same = apply_teammate_competition([lone] + co, kappa=0.0)
+    assert same[1].mu_goals_per_match == 0.60
+
+
 def test_golden_boot_rate_regresses_burst_to_talent():
     """A 1-game 2-goal burst from a squad striker must regress toward his FC talent
     rate (Balogun bug), not inflate near 2.0 — the boot is talent x knockout depth."""

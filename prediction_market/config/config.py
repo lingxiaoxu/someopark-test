@@ -115,6 +115,9 @@ class ModelConfig:
     gb_fc_prior_alpha: float = 8.0      # pseudo-matches of FC-talent prior weight
     gb_club_weight: float = 0.50        # weight on observed club rate vs FC prior in the talent estimate
     gb_pool_per_team: int = 5           # top-N attacking candidates kept per team for the sim
+    gb_teammate_competition: float = 0.35  # secondary: discount a forward's rate when elite
+                                           # teammates split the team's goals (France's Mbappé/
+                                           # Dembélé/Olise; 2002-Brazil effect). Bounded, non-decisive.
 
     # Time-decay for recent results (plan 03 §1b): exp(-xi * delta_days).
     time_decay_xi: float = 0.0035

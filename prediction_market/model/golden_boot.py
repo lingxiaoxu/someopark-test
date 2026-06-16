@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import numpy as np
@@ -178,6 +178,36 @@ def build_golden_boot_players(conn=None) -> list[Player]:
             mu_goals_per_match=mu, start_prob=start,
             pen_taker=bool(r["pen_taker"]), goals_so_far=int(wc_goals),
         ))
+    return apply_teammate_competition(out, CONFIG.model.gb_teammate_competition)
+
+
+def apply_teammate_competition(players: list[Player], kappa: float) -> list[Player]:
+    """Discount a forward's rate when elite teammates share the team's finite goals.
+
+    A lone spearhead (Haaland for Norway, Kane for England) concentrates his team's
+    goals; a team with several competitive forwards (France: Mbappé + Dembélé + Olise)
+    splits them, so no single player runs away with the boot — the 2002-Brazil "three
+    R's" effect. We model this with each player's SHARE of his team's expected starting
+    goal output (mu_eff = rate x start prob)::
+
+        share_p = mu_eff_p / sum(mu_eff over the team's pool)
+        factor_p = 1 - kappa * (1 - share_p)        # share→1 ⇒ no discount
+
+    and scale his rate by factor_p. ``kappa`` is deliberately small (bounded by kappa
+    as share→0) so this stays a SECONDARY nudge, never decisive: a deep run still
+    dominates, it just gets divided among co-stars. kappa=0 disables it.
+    """
+    if kappa <= 0 or not players:
+        return players
+    team_eff: dict[str, float] = {}
+    for p in players:
+        team_eff[p.team_id] = team_eff.get(p.team_id, 0.0) + p.mu_eff
+    out: list[Player] = []
+    for p in players:
+        total = team_eff.get(p.team_id, 0.0)
+        share = (p.mu_eff / total) if total > 0 else 1.0
+        factor = 1.0 - kappa * (1.0 - share)
+        out.append(replace(p, mu_goals_per_match=p.mu_goals_per_match * factor))
     return out
 
 
