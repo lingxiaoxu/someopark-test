@@ -241,7 +241,8 @@
       ]
     },
     "finished": "FINALIZADO",
-    "tbdPairing": "Emparejamiento por definir"
+    "tbdPairing": "Emparejamiento por definir",
+    "colGoals": "Goles"
   },
   "sidebar": {
     "appName": "Someo Park",

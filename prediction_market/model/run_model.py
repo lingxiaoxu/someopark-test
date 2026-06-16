@@ -140,12 +140,14 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
                 r["p_champion"] = round(r["p_champion"] / surviving_mass, 5)
     champion.sort(key=lambda r: -r["p_champion"])
 
+    _gb_goals_of = {p.player_id: p.goals_so_far for p in _gb_players}
     golden_boot = [
         {
             "player_id": pid, "name": gb.player_names[pid],
             "team_id": _gb_team_of.get(pid),
             "team": name_of.get(_gb_team_of.get(pid), ""),
             "zh": zh_of.get(_gb_team_of.get(pid), ""),
+            "goals": int(_gb_goals_of.get(pid, 0)),     # current WC goals scored so far
             "p_golden_boot": round(gb.p_golden_boot[pid], 5),
             "e_goals": round(gb.e_goals[pid], 3),
         }

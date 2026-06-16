@@ -241,7 +241,8 @@
       ]
     },
     "finished": "終了",
-    "tbdPairing": "対戦未定"
+    "tbdPairing": "対戦未定",
+    "colGoals": "得点"
   },
   "sidebar": {
     "appName": "Someo Park",

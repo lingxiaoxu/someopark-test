@@ -91,8 +91,8 @@ function GoldenBoot() {
   return (
     <div>
       <Title sub={tr('prediction.subGoldenBoot')}>Golden Boot</Title>
-      <DataTable cols={[tr('prediction.colPlayer'), tr('prediction.colTeam'), 'P(boot)', 'E[goals]']}
-        rows={gb.map((p: any) => [p.name, tCountry(p.team), pct(p.p_golden_boot), num(p.e_goals, 2)])} />
+      <DataTable cols={[tr('prediction.colPlayer'), tr('prediction.colTeam'), tr('prediction.colGoals'), 'P(boot)', 'E[goals]']}
+        rows={gb.map((p: any) => [p.name, tCountry(p.team), p.goals ?? 0, pct(p.p_golden_boot), num(p.e_goals, 2)])} />
     </div>
   );
 }

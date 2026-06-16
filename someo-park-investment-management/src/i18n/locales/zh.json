@@ -241,7 +241,8 @@
       ]
     },
     "finished": "已结束",
-    "tbdPairing": "对阵待定"
+    "tbdPairing": "对阵待定",
+    "colGoals": "进球"
   },
   "sidebar": {
     "appName": "Someo Park",

@@ -559,7 +559,8 @@
       ]
     },
     "finished": "FINISHED",
-    "tbdPairing": "Pairing to be decided"
+    "tbdPairing": "Pairing to be decided",
+    "colGoals": "Goals"
   },
   "sidebar": {
     "appName": "Someo Park",
