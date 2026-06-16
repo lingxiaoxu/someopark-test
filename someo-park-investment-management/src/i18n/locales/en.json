@@ -558,7 +558,8 @@
         "Multi-language, real-time dashboard"
       ]
     },
-    "finished": "FINISHED"
+    "finished": "FINISHED",
+    "tbdPairing": "Pairing to be decided"
   },
   "sidebar": {
     "appName": "Someo Park",

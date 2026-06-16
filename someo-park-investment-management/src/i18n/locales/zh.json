@@ -240,7 +240,8 @@
         "多语言、实时仪表盘"
       ]
     },
-    "finished": "已结束"
+    "finished": "已结束",
+    "tbdPairing": "对阵待定"
   },
   "sidebar": {
     "appName": "Someo Park",

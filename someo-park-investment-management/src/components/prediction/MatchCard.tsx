@@ -19,13 +19,14 @@ export type UpcomingMatch = {
   kickoff: string;
   et?: string | null;
   round?: string;
-  home: { id: string; name: string; zh?: string };
-  away: { id: string; name: string; zh?: string };
-  model: ThreeWay & { over_2_5?: number; btts?: number };
+  home: { id: string | null; name: string; zh?: string };
+  away: { id: string | null; name: string; zh?: string };
+  model: (ThreeWay & { over_2_5?: number; btts?: number }) | null;
   book_devig?: ThreeWay | null;
   kalshi?: VenueQuote;
   poly_us?: VenueQuote;
   edge?: { best?: { side: string; venue: string; net_edge: number; tradable: boolean } | null };
+  tentative?: boolean;   // knockout tie whose teams aren't decided yet (placeholder pairing)
 };
 
 const pct = (v?: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
@@ -39,6 +40,25 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   const best = m.edge?.best;
   const edgeColor = best?.tradable ? 'var(--success)' : 'var(--text-muted)';
   const Chevron = open ? ChevronDown : ChevronRight;
+
+  // Knockout tie whose teams aren't decided yet: show the placeholder bracket pairing
+  // (e.g. "Winner Group A vs Runner-up Group B") with a TBD note, no prediction. It
+  // upgrades to the real countries + model automatically once the teams are known.
+  if (m.tentative || !m.model) {
+    return (
+      <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 300, flex: '1 1 360px' }}>
+        <div className="flex items-center justify-between">
+          <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
+            {home} <span style={{ color: 'var(--text-muted)' }}>vs</span> {away}
+          </span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{m.et || ''}</span>
+        </div>
+        <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: 2 }}>
+          {m.round ? m.round + ' · ' : ''}{t('prediction.tbdPairing')}
+        </div>
+      </div>
+    );
+  }
 
   // headline = the model's most likely outcome, spelled out
   const sides: [string, number][] = [[winH, m.model.home], [drawL, m.model.draw], [winA, m.model.away]];

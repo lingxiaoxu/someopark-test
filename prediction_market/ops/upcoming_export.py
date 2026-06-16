@@ -36,10 +36,30 @@ _UPCOMING = ("NS", "TBD", "PST")   # not-started statuses
 _FINISHED = ("FT", "AET", "PEN")   # finished statuses
 
 
-def recent_finished(conn, hours: int = 3) -> list[dict]:
-    """Matches that finished in the last `hours` — shown briefly in the top region
-    marked FT + final score so a just-ended live match isn't simply dropped, then
-    rolls off. Data straight from API-Football's finished-status fixtures."""
+def _is_knockout(round_name) -> bool:
+    return bool(round_name) and "group" not in str(round_name).lower()
+
+
+def _tentative_pairing(raw_json) -> tuple[str, str] | None:
+    """Placeholder home/away labels for an undecided knockout tie, from the
+    API-Football fixture (it labels the undetermined side, e.g. "Winner Group A" /
+    "Runner-up Group B" / "1A" / "2B"). Returns None if no usable labels."""
+    try:
+        teams = json.loads(raw_json or "{}").get("teams", {})
+        h = (teams.get("home", {}) or {}).get("name")
+        a = (teams.get("away", {}) or {}).get("name")
+        if h and a:
+            return (str(h), str(a))
+    except Exception:
+        pass
+    return None
+
+
+def recent_finished(conn, hours: float = 0.75) -> list[dict]:
+    """Matches that finished in the last `hours` (default 45 min) — shown briefly in
+    the top region marked FT + final score so a just-ended live match isn't simply
+    dropped, then rolls off into the next upcoming fixtures. Data straight from
+    API-Football's finished-status fixtures."""
     from datetime import timedelta
     from prediction_market.ingest.prior_ingest import load_prior
     prior = load_prior()
@@ -47,7 +67,11 @@ def recent_finished(conn, hours: int = 3) -> list[dict]:
     zh = {t.team_id: t.zh for t in prior.teams}
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    # The fixture stores kickoff, not the final whistle, so approximate finish as
+    # kickoff + ~2h (90' + stoppage + half-time). Show while now is within `hours`
+    # (45 min) of that approximate finish, i.e. kickoff in the last (2h + hours).
+    _MATCH_DURATION_H = 2.0
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=_MATCH_DURATION_H + hours)).isoformat()
     out = []
     for r in conn.execute(
         "SELECT home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, status_short, round "
@@ -160,7 +184,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
         _UPCOMING).fetchall()}
 
     fixtures = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short "
+        "SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, raw_json "
         "FROM fixture WHERE status_short IN ({}) AND kickoff_ts IS NOT NULL "
         "ORDER BY kickoff_ts LIMIT ?".format(",".join("?" * len(_UPCOMING))),
         (*_UPCOMING, limit)).fetchall()
@@ -183,6 +207,23 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
     for f in fixtures:
         hi, ai = cmap.get(f["home_api_id"]), cmap.get(f["away_api_id"])
         if not (hi and ai):
+            # Teams not yet determined. For a KNOCKOUT fixture, still show the slot as
+            # a placeholder bracket pairing ("Winner Group A" vs "Runner-up Group B" —
+            # whatever API-Football labels the undecided side) so the next ties aren't
+            # blank; it auto-upgrades to the real countries once the teams are known.
+            # Group fixtures should always resolve, so an unresolved one is just skipped.
+            tent = _tentative_pairing(f["raw_json"]) if _is_knockout(f["round"]) else None
+            if tent:
+                out.append({
+                    "fixture_id": f["api_id"], "kickoff": f["kickoff_ts"], "et": _et_human(f["kickoff_ts"]),
+                    "et_date": _et_date(f["kickoff_ts"]), "round": f["round"] or "", "status": f["status_short"] or "",
+                    "tentative": True,
+                    "home": {"id": None, "name": tent[0], "zh": tent[0]},
+                    "away": {"id": None, "name": tent[1], "zh": tent[1]},
+                    "model": None, "book_devig": None, "kalshi": None, "poly_us": None,
+                    "edge": {"vs_book": None, "vs_kalshi": None, "vs_poly_us": None, "best": None},
+                    "lock_arb": None,
+                })
             continue
         mp = price_match(sm, hi, ai)
         model = {"home": round(mp.p_home, 4), "draw": round(mp.p_draw, 4), "away": round(mp.p_away, 4),

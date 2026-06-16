@@ -240,7 +240,8 @@
         "Panel multiidioma en tiempo real"
       ]
     },
-    "finished": "FINALIZADO"
+    "finished": "FINALIZADO",
+    "tbdPairing": "Emparejamiento por definir"
   },
   "sidebar": {
     "appName": "Someo Park",

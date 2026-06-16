@@ -240,7 +240,8 @@
         "Tableau de bord multilingue en temps réel"
       ]
     },
-    "finished": "TERMINÉ"
+    "finished": "TERMINÉ",
+    "tbdPairing": "Affiche à déterminer"
   },
   "sidebar": {
     "appName": "Someo Park",
