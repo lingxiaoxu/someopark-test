@@ -1,4 +1,4 @@
-import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
 import { useState, useRef, useEffect } from 'react';
@@ -290,6 +290,19 @@ export default function Sidebar({
                       <button onClick={() => setShowAbout(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '12px', padding: 0 }}>←</button>
                       <Terminal style={{ width: 12, height: 12 }} />
                       <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('sidebar.aboutTitle')}</span>
+                    </div>
+                    {/* Company intro */}
+                    <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e5e5' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <div style={{ width: 18, height: 18, background: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <Building2 style={{ width: 10, height: 10, color: '#fff' }} />
+                        </div>
+                        <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#111', textTransform: 'uppercase', letterSpacing: '.04em' }}>Someo Park</span>
+                      </div>
+                      <div style={{ fontSize: '10px', color: '#666', fontFamily: 'var(--font-mono)', lineHeight: 1.5, paddingLeft: 24 }}>
+                        {t('sidebar.aboutCompany')}{' '}
+                        <a href="https://www.someopark.com" target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'underline' }}>someopark.com</a>
+                      </div>
                     </div>
                     {/* Someo Park AI */}
                     <div style={{ padding: '10px 12px', borderBottom: '1px solid #e5e5e5' }}>

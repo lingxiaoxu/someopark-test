@@ -590,6 +590,7 @@
     "signOut": "Sign Out",
     "myAccount": "My Account",
     "aboutTitle": "About Someo Park",
+    "aboutCompany": "AI-powered quantitative investment management — systematic strategies across equities, semiconductors, sector rotation, and private credit.",
     "aboutParkAI": "Default chat mode. Ask questions about strategies, signals, inventory, and performance using natural language. Powered by LLM with access to all data views. Can also generate code, preview, and deploy to sandbox to create custom tools.",
     "aboutAgent": "Advanced autonomous agent mode. Uses multi-step tool calls (web search, Python execution, data queries) to research, analyze, and answer complex questions independently.",
     "aboutClaw": "Full AI-powered investment research agent built on Someo Park's quantitative infrastructure. Connects to walk-forward strategies (MRPT, MTFS & SSRS), live inventory, signals, and diagnostics.",

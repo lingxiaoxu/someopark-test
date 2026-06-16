@@ -272,6 +272,7 @@
     "signOut": "退出登录",
     "myAccount": "我的账户",
     "aboutTitle": "关于 Someo Park",
+    "aboutCompany": "AI 驱动的量化投资管理 — 涵盖股票配对、半导体、板块轮动与私募信贷的系统化策略。",
     "aboutParkAI": "默认对话模式。通过自然语言查询策略、信号、持仓和表现等数据。由 LLM 驱动，可访问所有数据视图。还可生成代码、预览并部署到沙盒来创建自定义工具。",
     "aboutAgent": "高级自主代理模式。使用多步工具调用（网页搜索、Python 执行、数据查询）自主研究、分析和回答复杂问题。",
     "aboutClaw": "基于 Someo Park 量化基础设施构建的全功能 AI 投资研究代理。连接 Walk-Forward 策略（MRPT, MTFS & SSRS）、实时持仓、信号和诊断功能。",
