@@ -15,7 +15,16 @@ order-of-magnitude from football analytics; exact point-jumps are model-computed
 - **Late level-draw correction** — when LEVEL past 70', deflate both λ (LATE_LEVEL_DEFLATE=0.30,
   ramp to 90'); fixes the documented double-Poisson late-draw under-pricing. 0-0 draw
   prob 60'→0.51, 85'→0.90, 89'→0.98.
-- **Tactics** — late-equalizer draw take-profit, convergence take-profit, xG momentum BUY.
+- **Tactics** — late-equalizer draw take-profit, convergence take-profit, totals time-decay,
+  xG momentum BUY, AND (new) the 4 event-driven tactics below.
+- **Goal-overreaction fade** — when the pre-match UNDERDOG scores, the market over-moves; back the
+  conceding favourite within a ~4-min window (Choi & Hui ~40%/min reversion).
+- **Favourite-comeback** — a clear pre-match favourite (≥55%) that is trailing still has large
+  residual equity until ~70'; back the comeback.
+- **Red-card value** — right after a red card (~12-min window), the 11-man side's near-term scoring
+  is front-loaded; flag value on it.
+- **Knockout late-draw** — level + late + KNOCKOUT → back the 90' draw (terminal paying outcome +
+  teams play for extra time) — the opposite sign to a league late-draw.
 
 ## Key research findings (to encode next)
 1. **Two opposing clocks**: goal→win-prob impact RISES with minute; goal→Overs impact FALLS.

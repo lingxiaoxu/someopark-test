@@ -123,6 +123,65 @@ def live_momentum_from_store(conn, fixture_api_id: int, home_api_id: int, away_a
                           minute=minute, side="away")
 
 
+# ── Event-driven tactics (research catalog, docs/INPLAY_SCENARIOS.md) ─────────
+GOAL_FADE_WINDOW = 4          # minutes after a surprising goal that the over-move reverts
+RED_CARD_WINDOW = 12          # minutes after a red card that the opponent's λ is front-loaded
+FAV_COMEBACK_MAX_MIN = 70     # a trailing pre-match favourite still has equity until ~here
+FAV_COMEBACK_MIN_PROB = 0.55  # "clear" pre-match favourite threshold
+
+
+def goal_overreaction_fade(lp: LiveMatchProb, *, prematch_fav_side: str | None,
+                           last_goal_side: str | None, last_goal_minute: int | None) -> TradeAction:
+    """Markets OVER-react to a SURPRISING goal then mean-revert (Choi & Hui; ~40%/min,
+    gone by ~5-6'). If the pre-match UNDERDOG just scored, fade it — back the pre-match
+    favourite, which the panic has under-priced — inside a short window."""
+    if not last_goal_side or last_goal_minute is None or prematch_fav_side not in ("home", "away"):
+        return TradeAction("HOLD", "home", "no recent goal to fade")
+    mins_since = lp.minute - last_goal_minute
+    surprising = last_goal_side != prematch_fav_side          # the underdog scored
+    if surprising and 0 <= mins_since <= GOAL_FADE_WINDOW:
+        return TradeAction("BUY", prematch_fav_side,
+                           f"underdog scored {mins_since}' ago — market over-reacts, fade: back {prematch_fav_side}", "high")
+    return TradeAction("HOLD", prematch_fav_side, "no overreaction window")
+
+
+def favourite_comeback(lp: LiveMatchProb, *, prematch_fav_side: str | None,
+                       prematch_fav_prob: float | None) -> TradeAction:
+    """A clear pre-match favourite that is TRAILING still has large residual equity
+    (high λ + time): back the comeback while there is time, before the market fully
+    re-prices it. (Favourite-longshot bias makes the now-leading underdog over-priced.)"""
+    if prematch_fav_side not in ("home", "away") or not prematch_fav_prob:
+        return TradeAction("HOLD", "home", "no clear favourite")
+    fav_goals = lp.home_goals if prematch_fav_side == "home" else lp.away_goals
+    opp_goals = lp.away_goals if prematch_fav_side == "home" else lp.home_goals
+    if prematch_fav_prob >= FAV_COMEBACK_MIN_PROB and fav_goals < opp_goals and lp.minute <= FAV_COMEBACK_MAX_MIN:
+        return TradeAction("BUY", prematch_fav_side,
+                           f"pre-match fav ({prematch_fav_prob:.0%}) trailing at {lp.minute}' — residual equity, back the comeback")
+    return TradeAction("HOLD", prematch_fav_side, "favourite not trailing")
+
+
+def red_card_value(lp: LiveMatchProb, *, carded_side: str | None, card_minute: int | None) -> TradeAction:
+    """After a red card the opponent's near-term scoring is front-loaded (~56% of the
+    extra goals land within 15'). Flag value on the 11-man side right after the card."""
+    if carded_side not in ("home", "away") or card_minute is None:
+        return TradeAction("HOLD", "home", "no recent red card")
+    opp = "away" if carded_side == "home" else "home"
+    if 0 <= lp.minute - card_minute <= RED_CARD_WINDOW:
+        return TradeAction("BUY", opp,
+                           f"red card on {carded_side} at {card_minute}' — opponent's next-goal value elevated", "high")
+    return TradeAction("HOLD", opp, "no red-card window")
+
+
+def knockout_late_draw(lp: LiveMatchProb, *, knockout: bool) -> TradeAction:
+    """In a KNOCKOUT the 3-way settles on 90', so a late level DRAW is a terminal paying
+    outcome AND both teams often play for extra time — the 90' draw is worth MORE than in
+    a league game. Back it late when level (the opposite sign to a league late-draw)."""
+    if knockout and lp.home_goals == lp.away_goals and lp.minute >= LATE_MINUTE:
+        return TradeAction("BUY", "draw",
+                           f"level knockout at {lp.minute}' — 90' draw pays (extra time ahead), back the draw", "high")
+    return TradeAction("HOLD", "draw", "not a late level knockout")
+
+
 if __name__ == "__main__":
     from prediction_market.ingest.prior_ingest import load_prior
     from prediction_market.model.inplay import live_from_strength

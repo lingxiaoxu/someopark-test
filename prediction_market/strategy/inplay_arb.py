@@ -27,7 +27,11 @@ from prediction_market.strategy.edge import compute_edge
 from prediction_market.strategy.inplay_tactics import (
     convergence_take_profit,
     draw_trade_signal,
+    favourite_comeback,
+    goal_overreaction_fade,
+    knockout_late_draw,
     live_momentum_from_store,
+    red_card_value,
 )
 
 _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
@@ -60,6 +64,41 @@ class Opportunity:
     edge: float | None
     action: str
     reason: str
+
+
+def _is_knockout(round_name) -> bool:
+    return bool(round_name) and "group" not in str(round_name).lower()
+
+
+def _prematch_favourite(sm, hi: str, ai: str) -> tuple[str | None, float | None]:
+    """The pre-match favourite side + its win probability (no scoreline), for the
+    surprise / favourite-comeback tactics."""
+    from prediction_market.model.match_pricing import price_match
+    mp = price_match(sm, hi, ai)
+    if mp.p_home >= mp.p_away:
+        return ("home", mp.p_home)
+    return ("away", mp.p_away)
+
+
+def _last_event(conn, fixture_row, etype: str, hi: str, ai: str, *, detail_like: str | None = None):
+    """Most recent event of a type (Goal / Card) for a live fixture → (side, minute).
+    Own goals are excluded for 'Goal'. Returns (None, None) if none."""
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    q = ("SELECT team_api_id, minute, detail FROM fixture_event "
+         "WHERE fixture_api_id=? AND type=? ")
+    params: list = [fixture_row["api_id"], etype]
+    if detail_like:
+        q += "AND detail LIKE ? "
+        params.append(detail_like)
+    if etype == "Goal":
+        q += "AND (detail IS NULL OR detail != 'Own Goal') "
+    q += "ORDER BY minute DESC, seq DESC LIMIT 1"
+    r = conn.execute(q, params).fetchone()
+    if not r:
+        return (None, None)
+    side = "home" if cmap.get(r["team_api_id"]) == hi else ("away" if cmap.get(r["team_api_id"]) == ai else None)
+    return (side, r["minute"])
 
 
 def live_fair(conn, sm, fixture_row) -> tuple[LiveMatchProb, dict]:
@@ -100,7 +139,7 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
     live = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed "
+        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed, round "
         "FROM fixture WHERE status_short IN ({})".format(",".join("?" * len(_LIVE))), _LIVE).fetchall()
     opps: list[Opportunity] = []
     for fx in live:
@@ -113,10 +152,20 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
         score = f"{gh}-{ga}"
         lp, fair = live_fair(conn, sm, fx)
 
+        # Event-driven context: pre-match favourite, the latest goal + red card, KO flag.
+        fav_side, fav_prob = _prematch_favourite(sm, hi, ai)
+        last_goal_side, last_goal_min = _last_event(conn, fx, "Goal", hi, ai)
+        carded_side, card_min = _last_event(conn, fx, "Card", hi, ai, detail_like="%Red%")
+        knockout = _is_knockout(fx["round"])
+
         # (1) tactics — always available, no market quote needed.
         for sig in (draw_trade_signal(lp),
                     convergence_take_profit("home" if gh > ga else "away", 0.5, lp) if gh != ga else None,
-                    live_momentum_from_store(conn, fx["api_id"], fx["home_api_id"], fx["away_api_id"], minute, gh, ga)):
+                    live_momentum_from_store(conn, fx["api_id"], fx["home_api_id"], fx["away_api_id"], minute, gh, ga),
+                    goal_overreaction_fade(lp, prematch_fav_side=fav_side, last_goal_side=last_goal_side, last_goal_minute=last_goal_min),
+                    favourite_comeback(lp, prematch_fav_side=fav_side, prematch_fav_prob=fav_prob),
+                    red_card_value(lp, carded_side=carded_side, card_minute=card_min),
+                    knockout_late_draw(lp, knockout=knockout)):
             if sig and sig.act != "HOLD":
                 opps.append(Opportunity(fx["api_id"], m, minute, score, "tactic", sig.side,
                                         "model", fair.get(sig.side), None, None, sig.act, sig.reason))

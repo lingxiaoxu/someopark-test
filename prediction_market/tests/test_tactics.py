@@ -174,3 +174,34 @@ def test_lock_arb_uses_bid_for_sell_leg_no_false_positive():
            "poly_us": lambda f: {"away": {"ask": 0.91, "bid": 0.90}}}
     locks = [o for o in find_opportunities(conn=c, sm=sm, quote_sources=qs2) if o["kind"] == "lock_arb"]
     assert locks and locks[0]["edge"] > 0
+
+
+def test_new_event_driven_tactics():
+    """The 4 added tactics fire on their trigger conditions (and only then)."""
+    from prediction_market.model.inplay import live_match_prob
+    from prediction_market.strategy.inplay_tactics import (
+        goal_overreaction_fade, favourite_comeback, red_card_value, knockout_late_draw)
+
+    # Surprising goal (underdog scored) → fade: back the pre-match favourite, briefly.
+    lp = live_match_prob(2.0, 0.5, 33, 0, 1)
+    s = goal_overreaction_fade(lp, prematch_fav_side="home", last_goal_side="away", last_goal_minute=30)
+    assert s.act == "BUY" and s.side == "home"
+    # Outside the window → HOLD.
+    assert goal_overreaction_fade(lp, prematch_fav_side="home", last_goal_side="away", last_goal_minute=20).act == "HOLD"
+    # Favourite scored (not surprising) → HOLD.
+    assert goal_overreaction_fade(lp, prematch_fav_side="home", last_goal_side="home", last_goal_minute=30).act == "HOLD"
+
+    # Clear favourite trailing, still time → back the comeback.
+    assert favourite_comeback(lp, prematch_fav_side="home", prematch_fav_prob=0.72).act == "BUY"
+    # Favourite leading → HOLD.
+    assert favourite_comeback(live_match_prob(2.0, 0.5, 33, 1, 0), prematch_fav_side="home", prematch_fav_prob=0.72).act == "HOLD"
+
+    # Red card on away → value on home, within the window.
+    lp2 = live_match_prob(1.3, 1.2, 48, 0, 0, red_away=1)
+    assert red_card_value(lp2, carded_side="away", card_minute=40).act == "BUY"
+    assert red_card_value(lp2, carded_side="away", card_minute=20).act == "HOLD"   # too old
+
+    # Level knockout late → back the 90' draw; group stage → HOLD (opposite sign).
+    lp3 = live_match_prob(1.2, 1.2, 85, 1, 1)
+    assert knockout_late_draw(lp3, knockout=True).act == "BUY"
+    assert knockout_late_draw(lp3, knockout=False).act == "HOLD"
