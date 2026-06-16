@@ -297,7 +297,7 @@ export default function Sidebar({
                         <div style={{ width: 18, height: 18, background: '#1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <Building2 style={{ width: 10, height: 10, color: '#fff' }} />
                         </div>
-                        <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#111', textTransform: 'uppercase', letterSpacing: '.04em' }}>Someo Park</span>
+                        <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#111', textTransform: 'uppercase', letterSpacing: '.04em', lineHeight: 1.3 }}>Someo Park<br/>Investment Management</span>
                       </div>
                       <div style={{ fontSize: '10px', color: '#666', fontFamily: 'var(--font-mono)', lineHeight: 1.5, paddingLeft: 24 }}>
                         {t('sidebar.aboutCompany')}{' '}
