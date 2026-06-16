@@ -124,7 +124,12 @@
     "noLiveMatches": "Aucun match en direct — les signaux apparaissent ici chaque minute pendant les matchs.",
     "autoRefresh": "rafraîchissement auto", "updated": "màj", "live": "en direct", "liveBadge": "EN DIRECT",
     "expGoals": "buts restants estimés", "colReason": "Raison",
-    "noOpps": "Aucun signal exploitable cette minute — vue modèle seulement."
+    "noOpps": "Aucun signal exploitable cette minute — vue modèle seulement.",
+    "backtest": "Backtest (OOS)",
+    "subBacktest": "Sur matchs réglés : modèle vs marché vs uniforme",
+    "lblModelBrier": "Brier (modèle)", "lblBookBrier": "Brier (marché)",
+    "lblDrawRate": "Taux de nuls (réel)", "lblBlend": "Brier mélange→marché", "colResult": "Rés",
+    "backtestVerdict": "Modèle et marché au-dessus de l'uniforme — début de tournoi quasi aléatoire (50% de nuls), trading bloqué. Pas un bug ; le modèle est mieux calibré que le marché ici."
   },
   "sidebar": {
     "appName": "Someo Park",

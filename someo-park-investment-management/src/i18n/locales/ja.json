@@ -124,7 +124,12 @@
     "noLiveMatches": "現在ライブの試合はありません — 試合中は毎分ここにシグナルが表示されます。",
     "autoRefresh": "自動更新", "updated": "更新", "live": "ライブ", "liveBadge": "ライブ",
     "expGoals": "予想残り得点", "colReason": "理由",
-    "noOpps": "この分は実行可能なシグナルなし — モデルビューのみ。"
+    "noOpps": "この分は実行可能なシグナルなし — モデルビューのみ。",
+    "backtest": "バックテスト(OOS)",
+    "subBacktest": "確定試合:モデル vs シャープ市場 vs 一様",
+    "lblModelBrier": "Brier(モデル)", "lblBookBrier": "Brier(ブック)",
+    "lblDrawRate": "実際の引分率", "lblBlend": "ブック混合 Brier", "colResult": "結果",
+    "backtestVerdict": "モデルも市場も一様より劣る — 序盤はほぼランダム(引分50%)、ゆえに取引はブロック継続。バグではなく、この標本ではモデルの方が市場より較正が良い。"
   },
   "sidebar": {
     "appName": "Someo Park",

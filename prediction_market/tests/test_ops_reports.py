@@ -5,6 +5,7 @@ import sqlite3
 
 from prediction_market.ingest import store
 from prediction_market.ops import (
+    backtest_export,
     frontend_export,
     inplay_export,
     performance_report,
@@ -165,3 +166,20 @@ def test_inplay_export_live_match():
     assert abs(m["model"]["home"] + m["model"]["draw"] + m["model"]["away"] - 1.0) < 0.02
     # xG-momentum trick should flag France (xG 1.9 vs 0.3, still 0-0) as a signal
     assert any(o["kind"] == "tactic" for o in m["opportunities"])
+
+
+# ── OOS backtest export ───────────────────────────────────────────────────────
+def test_backtest_export_with_settled():
+    c = _mem_db()
+    for api, cid in ((10, "france"), (20, "senegal")):
+        store.upsert(c, "team_meta",
+                     {"api_id": api, "canonical_team_id": cid, "updated_at": store.utcnow()}, pk=["api_id"])
+    store.upsert(c, "fixture", {"api_id": 1, "league_id": 1, "season": 2026, "status_short": "FT",
+                 "home_api_id": 10, "away_api_id": 20, "home_goals": 2, "away_goals": 0,
+                 "updated_at": store.utcnow()}, pk=["api_id"])
+    doc = backtest_export.build(conn=c)
+    assert doc["n_settled"] == 1
+    assert doc["brier"]["uniform"] == round(2 / 3, 4)
+    assert doc["brier"]["model"] is not None
+    assert doc["matches"][0]["result"] == "H"          # France 2-0 → home win
+    assert "conclusion" in doc

@@ -124,7 +124,12 @@
     "noLiveMatches": "No hay partidos en vivo — las señales aparecen aquí cada minuto durante los partidos.",
     "autoRefresh": "actualización auto", "updated": "actualizado", "live": "en vivo", "liveBadge": "EN VIVO",
     "expGoals": "goles restantes est.", "colReason": "Razón",
-    "noOpps": "Sin señal accionable este minuto — solo vista del modelo."
+    "noOpps": "Sin señal accionable este minuto — solo vista del modelo.",
+    "backtest": "Backtest (OOS)",
+    "subBacktest": "En partidos liquidados: modelo vs mercado vs uniforme",
+    "lblModelBrier": "Brier (modelo)", "lblBookBrier": "Brier (mercado)",
+    "lblDrawRate": "Tasa de empates (real)", "lblBlend": "Brier mezcla→mercado", "colResult": "Res",
+    "backtestVerdict": "Modelo y mercado por encima del uniforme — inicio casi aleatorio (50% empates), trading bloqueado. No es un bug; el modelo está mejor calibrado que el mercado aquí."
   },
   "sidebar": {
     "appName": "Someo Park",
