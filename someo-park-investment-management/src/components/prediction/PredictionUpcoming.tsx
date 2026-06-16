@@ -56,18 +56,37 @@ function LiveCard({ m }: { m: any }) {
   );
 }
 
+// A just-finished match: marked FT with the final score, shown briefly so a live
+// match that ends is acknowledged (not silently dropped) before it rolls off.
+function FinishedCard({ m }: { m: any }) {
+  const { t } = useTranslation();
+  return (
+    <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 280, flex: '1 1 320px', borderLeft: '4px solid var(--text-muted)', opacity: 0.85 }}>
+      <div className="flex items-center justify-between">
+        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
+          <span style={{ color: 'var(--text-muted)', marginRight: 6 }}>● {t('prediction.finished')}</span>
+          {tCountry(m.home.name)} <b style={{ color: 'var(--text-primary)' }}>{m.score}</b> {tCountry(m.away.name)}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{m.status}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function PredictionUpcoming() {
   const { t } = useTranslation();
-  const up = usePoll<{ matches?: UpcomingMatch[] }>(() => getWCUpcoming(), 60000);
+  const up = usePoll<{ matches?: UpcomingMatch[]; recent_finished?: any[] }>(() => getWCUpcoming(), 60000);
   const live = usePoll<{ matches?: any[] }>(() => getWCInplayLive(), 30000);
 
-  // Keep the region at 3 slots total: live matches take their slots first, the
-  // rest are filled with the soonest not-started fixtures (started matches are
-  // never dropped — they just switch to a LIVE card).
+  // Top region: live matches first (still in progress), then matches that just
+  // finished (FT + score, marked ended), then the soonest not-started fixtures —
+  // at least 3 slots, never dropping live/finished.
   const SLOTS = 3;
   const liveMatches = (live.data?.matches ?? []).slice(0, SLOTS);
-  const upMatches = up.data?.matches ? pickUpcoming(up.data.matches, SLOTS - liveMatches.length) : [];
-  const total = liveMatches.length + upMatches.length;
+  const finishedMatches = (up.data?.recent_finished ?? []).slice(0, 2);
+  const fillN = Math.max(0, SLOTS - liveMatches.length - finishedMatches.length);
+  const upMatches = up.data?.matches ? pickUpcoming(up.data.matches, fillN) : [];
+  const total = liveMatches.length + finishedMatches.length + upMatches.length;
   const loading = up.loading && live.loading && !total;
 
   return (
@@ -91,6 +110,9 @@ export default function PredictionUpcoming() {
         <div className="flex flex-wrap gap-2">
           {liveMatches.map((m) => (
             <span key={'live' + m.fixture_id} style={{ display: 'contents' }}><LiveCard m={m} /></span>
+          ))}
+          {finishedMatches.map((m, i) => (
+            <span key={'ft' + i + m.home.id} style={{ display: 'contents' }}><FinishedCard m={m} /></span>
           ))}
           {upMatches.map((m) => (
             <span key={m.kickoff + m.home.id} style={{ display: 'contents' }}><MatchCard m={m} /></span>

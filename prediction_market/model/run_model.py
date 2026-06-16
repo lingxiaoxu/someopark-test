@@ -117,6 +117,23 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
         }
         for tid in tour.team_ids
     ]
+
+    # Elimination overlay: once the knockouts begin, a team that is OUT (lost a KO
+    # tie, or never qualified from its group) can no longer win — force its champion
+    # and stage probabilities to 0 and renormalise the title odds across survivors.
+    # No-op during the group stage (eliminated set is empty).
+    from prediction_market.model.tournament import eliminated_teams
+    elim = eliminated_teams(_gb_conn, all_team_ids=list(name_of.keys()))
+    if elim:
+        for r in champion:
+            if r["team_id"] in elim:
+                for k in ("p_champion", "p_final", "p_sf", "p_qf", "p_r16", "p_advance_model", "e_matches"):
+                    r[k] = 0.0
+                r["eliminated"] = True
+        surviving_mass = sum(r["p_champion"] for r in champion)
+        if surviving_mass > 0:
+            for r in champion:
+                r["p_champion"] = round(r["p_champion"] / surviving_mass, 5)
     champion.sort(key=lambda r: -r["p_champion"])
 
     golden_boot = [
@@ -157,6 +174,20 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
         "golden_boot": golden_boot,
         "group_matches": group_matches,
     }
+
+
+def refresh_champion(*, n_sims: int | None = None, seed: int | None = None) -> dict:
+    """Re-simulate the tournament with the LATEST results (strength nudged by finished
+    matches + eliminated teams forced to 0% in the knockouts) and publish worldcup_model.json
+    to the output + frontend dirs. Called after each match so the champion/golden-boot odds
+    refresh as the tournament unfolds. Returns the payload.
+    """
+    prior = load_prior()
+    n_sims = n_sims or CONFIG.model.n_sims_quicklook
+    seed = seed if seed is not None else CONFIG.model.random_seed
+    payload = build_payload(prior, n_sims=n_sims, seed=seed, update_results=True)
+    write_outputs(payload, emit_frontend=True)
+    return payload
 
 
 def write_outputs(payload: dict, *, emit_frontend: bool) -> list[Path]:

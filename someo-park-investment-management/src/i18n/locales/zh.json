@@ -239,7 +239,8 @@
         "机构级 PDF 报告(收益与风险)",
         "多语言、实时仪表盘"
       ]
-    }
+    },
+    "finished": "已结束"
   },
   "sidebar": {
     "appName": "Someo Park",

@@ -75,6 +75,27 @@ def _append_review_log(inplay: dict, synced: int) -> None:
             f.write("\n".join(lines) + "\n")
 
 
+def _maybe_refresh_champion(conn) -> None:
+    """Re-publish worldcup_model.json only when the settled-match count has risen
+    (a match just finished) — keeps the heavy tournament sim off the per-minute path."""
+    settled = conn.execute(
+        "SELECT COUNT(*) n FROM fixture WHERE status_short IN ('FT','AET','PEN') AND home_goals IS NOT NULL"
+    ).fetchone()["n"]
+    wm = CONFIG.paths.output / ".champion_watermark"
+    prev = -1
+    try:
+        prev = int(wm.read_text().strip())
+    except Exception:
+        pass
+    if settled == prev:
+        return
+    from prediction_market.model.run_model import refresh_champion
+    pl = refresh_champion()
+    wm.write_text(str(settled))
+    top = pl["champion"][0]
+    print(f"[live_refresh] champion re-simulated on new result — leader {top['name']} {top['p_champion']:.1%}")
+
+
 def refresh_once(conn=None) -> dict:
     """One in-play refresh cycle. Returns a small status dict for logging."""
     from prediction_market.ingest import store
@@ -83,16 +104,21 @@ def refresh_once(conn=None) -> dict:
     if not _in_match_window(conn):
         return {"window": False, "n_live": 0}
 
-    # 1. Pull live fixture state (status / score / minute / xG). Resilient: if the
-    #    API hiccups we still regenerate from the last stored state.
+    # 1. Pull live fixture state (status / score / minute / xG) AND finished results.
+    #    sync_live only sees CURRENTLY-live fixtures, so a match that just ended would
+    #    otherwise stay stuck at its last in-play status; sync_results catches the
+    #    FT/AET/PEN transition + final score so the match correctly moves to "finished".
     synced = 0
     try:
         from prediction_market.ingest.api_football import ApiFootball
         from prediction_market.ingest import soccer_ingest as si
         api = ApiFootball(conn)
         synced = si.sync_live(api, conn)
+        # force=True: inside a live window we must catch the FT transition promptly,
+        # so bypass the fixtures TTL/watermark (bounded — only runs during the window).
+        si.sync_results(api, conn, force=True)   # flip just-ended matches to FT + final score
     except Exception as e:
-        print(f"[live_refresh] sync_live failed (using stored state): {e}")
+        print(f"[live_refresh] sync failed (using stored state): {e}")
 
     # 2. Regenerate the in-play export (live model + venue quotes + arb) and the
     #    upcoming export (a just-started match flips out of NS → into the live feed).
@@ -104,13 +130,24 @@ def refresh_once(conn=None) -> dict:
     try:
         rows = upcoming_export.build(limit=6, conn=conn, with_venues=True)
         # Same envelope the daily refresh writes (frontend reads `.matches`).
+        # recent_finished surfaces just-ended matches (FT + score) so a live match
+        # that finishes is marked ended in the top region, not silently dropped.
         _write_both("upcoming.json", {
             "as_of": datetime.now(timezone.utc).isoformat(), "n": len(rows),
             "note": "Real Kalshi + Polymarket US single-match quotes; venue=null only when unlisted.",
             "matches": rows,
+            "recent_finished": upcoming_export.recent_finished(conn),
         })
     except Exception as e:
         print(f"[live_refresh] upcoming rebuild failed (kept previous): {e}")
+
+    # When a match has just FINISHED (settled count rose), re-simulate the champion +
+    # golden boot on the new results (and force eliminated teams to 0% in the knockouts).
+    # Guarded by a watermark so the ~4s sim runs only on a result change, not every minute.
+    try:
+        _maybe_refresh_champion(conn)
+    except Exception as e:
+        print(f"[live_refresh] champion refresh skipped: {e}")
 
     n_opp = sum(len(m.get("opportunities", [])) for m in inplay["matches"])
     return {"window": True, "synced": synced, "n_live": inplay["n_live"], "n_opp": n_opp}

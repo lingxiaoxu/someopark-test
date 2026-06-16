@@ -557,7 +557,8 @@
         "Institutional-style PDF reports (performance and risk)",
         "Multi-language, real-time dashboard"
       ]
-    }
+    },
+    "finished": "FINISHED"
   },
   "sidebar": {
     "appName": "Someo Park",

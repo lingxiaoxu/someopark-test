@@ -33,6 +33,39 @@ ET = ZoneInfo("America/New_York")
 _FEE = 0.01            # per-contract execution fee estimate (matches inplay_arb)
 _FINISHED = ("FT", "AET", "PEN")
 _UPCOMING = ("NS", "TBD", "PST")   # not-started statuses
+_FINISHED = ("FT", "AET", "PEN")   # finished statuses
+
+
+def recent_finished(conn, hours: int = 3) -> list[dict]:
+    """Matches that finished in the last `hours` — shown briefly in the top region
+    marked FT + final score so a just-ended live match isn't simply dropped, then
+    rolls off. Data straight from API-Football's finished-status fixtures."""
+    from datetime import timedelta
+    from prediction_market.ingest.prior_ingest import load_prior
+    prior = load_prior()
+    name = {t.team_id: t.name for t in prior.teams}
+    zh = {t.team_id: t.zh for t in prior.teams}
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    out = []
+    for r in conn.execute(
+        "SELECT home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, status_short, round "
+        "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL AND kickoff_ts >= ? "
+        "ORDER BY kickoff_ts DESC".format(",".join("?" * len(_FINISHED))),
+        (*_FINISHED, cutoff)).fetchall():
+        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
+        if not (hi and ai):
+            continue
+        gh, ga = r["home_goals"], r["away_goals"]
+        out.append({
+            "home": {"id": hi, "name": name.get(hi, hi), "zh": zh.get(hi, "")},
+            "away": {"id": ai, "name": name.get(ai, ai), "zh": zh.get(ai, "")},
+            "score": f"{gh}-{ga}", "status": r["status_short"], "finished": True,
+            "result": "home" if gh > ga else ("draw" if gh == ga else "away"),
+            "kickoff": r["kickoff_ts"], "et": _et_human(r["kickoff_ts"]), "round": r["round"] or "",
+        })
+    return out
 
 
 def _et_date(kickoff_ts: str) -> str | None:

@@ -96,6 +96,60 @@ def load_official_bracket_from_store(conn=None) -> list[tuple[str, object]] | No
     return None
 
 
+def eliminated_teams(conn=None, all_team_ids=None) -> set[str]:
+    """Canonical team_ids that are OUT of the tournament — champion prob must be 0.
+
+    Empty during the group stage (nobody is eliminated until the knockouts begin).
+    Once any knockout fixture exists:
+      * group non-qualifiers = the 48 minus everyone drawn into a knockout tie, and
+      * knockout losers = the team that did NOT advance in a settled KO match
+        (by score, else the API-Football winner flag for penalty shootouts).
+    """
+    import json as _json
+
+    from prediction_market.ingest import store
+
+    conn = conn or store.init_db()
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+
+    ko = conn.execute(
+        "SELECT home_api_id, away_api_id, home_goals, away_goals, status_short, raw_json, round "
+        "FROM fixture WHERE round IS NOT NULL AND lower(round) NOT LIKE '%group%'"
+    ).fetchall()
+    if not ko:
+        return set()   # still in the group stage — no eliminations yet
+
+    participants: set[str] = set()
+    elim: set[str] = set()
+    for r in ko:
+        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
+        if hi:
+            participants.add(hi)
+        if ai:
+            participants.add(ai)
+        if r["status_short"] not in ("FT", "AET", "PEN") or r["home_goals"] is None or not (hi and ai):
+            continue
+        gh, ga = r["home_goals"], r["away_goals"]
+        if gh > ga:
+            elim.add(ai)
+        elif ga > gh:
+            elim.add(hi)
+        else:  # level after extra time → penalty shootout; read the winner flag
+            try:
+                teams = _json.loads(r["raw_json"] or "{}").get("teams", {})
+                if teams.get("home", {}).get("winner") is True:
+                    elim.add(ai)
+                elif teams.get("away", {}).get("winner") is True:
+                    elim.add(hi)
+            except Exception:
+                pass
+    # Group non-qualifiers: anyone not drawn into the knockout bracket.
+    if all_team_ids:
+        elim |= (set(all_team_ids) - participants)
+    return elim
+
+
 def _build_adv_matrix(sm: StrengthModel, team_ids: list[str], cfg: ModelConfig) -> np.ndarray:
     """ADV[i, j] = P(team i advances past team j) in a knockout tie."""
     from prediction_market.model.penalties import shootout_win_prob

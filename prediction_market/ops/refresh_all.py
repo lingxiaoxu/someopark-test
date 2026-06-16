@@ -99,6 +99,17 @@ def main() -> None:
         except Exception as e:
             print(f"  ✗ {name}: {e}")
 
+    # Re-simulate champion + golden boot on the LATEST results (strength nudged by
+    # finished matches; eliminated teams forced to 0% once the knockouts begin).
+    # refresh_champion writes worldcup_model.json to output + frontend dirs itself.
+    try:
+        from prediction_market.model.run_model import refresh_champion
+        pl = refresh_champion()
+        top = pl["champion"][0]
+        print(f"  ✓ worldcup_model.json (champion refreshed — leader {top['name']} {top['p_champion']:.1%})")
+    except Exception as e:
+        print(f"  ✗ worldcup_model.json: {e}")
+
     if args.with_sweep:
         try:
             from prediction_market.ops import param_sweep
@@ -122,7 +133,8 @@ def _payload_upcoming(conn):
     rows = upcoming_export.build(limit=6, conn=conn)
     return {"as_of": datetime.now(timezone.utc).isoformat(), "n": len(rows),
             "note": "Real Kalshi + Polymarket US single-match quotes; venue=null only when unlisted.",
-            "matches": rows}
+            "matches": rows,
+            "recent_finished": upcoming_export.recent_finished(conn)}
 
 
 if __name__ == "__main__":
