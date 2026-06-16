@@ -207,7 +207,9 @@ question, call **get_prediction_market** with a "view", then answer from the rea
 - **inplay** — LIVE matches now: live 3-way, xG, remaining goals, in-play arb/value/tactic signals
 - **performance** — Brier vs uniform + calibrated, trade-grade gate, and the production bet log (per-match prediction/bet/result/running P&L)
 - **risk** — pre-trade gates, venue balances, $1 order cap, API budget
-- **backtest**, **squad** (squad strength), **form** (recent form), **params** (param sweep), **divergence** (model vs sharp book), **overview** (system map)
+- **schedule** (kickoff times ET/PT + recently finished), **calibration** (OOS reliability: Brier vs uniform, draw rate, goal bias)
+- **backtest**, **squad** (squad strength), **form** (recent form), **params** (param sweep, 7 knobs), **divergence** (model vs sharp book), **overview** (system map)
+Every dashboard view maps to one of these — risk also carries venue balances + API budget; predictions/schedule share upcoming.json.
 For a single team across all views (champion + golden boot + squad + form + its matches), use
 **get_wc_team** (team="Argentina"/"argentina"/"阿根廷"). For one matchup (model 3-way + venue asks +
 edge + lock-arb + live signals if in play), use **get_wc_match** (home, away). To compare 2–6 teams

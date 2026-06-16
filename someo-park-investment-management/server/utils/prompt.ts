@@ -23,8 +23,9 @@ export function toChatPrompt() {
     golden_boot (top scorer), predictions (upcoming matches: our model 3-way + O2.5/BTTS + live Kalshi/Poly
     asks + edge), inplay (LIVE matches now + in-play arb/value/tactic signals), performance (Brier vs uniform,
     calibration, trade-grade gate, the production bet log: per-match prediction/bet/result/PnL), risk (gates,
-    venue balances, $1 cap), backtest, squad (squad strength), form (recent form), params (param sweep),
-    divergence (model vs sharp book), overview (system map).
+    venue balances, $1 cap, API budget), schedule (kickoff times ET/PT), calibration (OOS reliability),
+    backtest, squad (squad strength), form (recent form), params (param sweep), divergence (model vs
+    sharp book), overview (system map). Every dashboard view is one of these.
     For a single team across all views use get_wc_team (e.g. team="Argentina"/"阿根廷"); for one matchup
     (model 3-way + Kalshi/Poly asks + edge + lock-arb + live signals) use get_wc_match (home, away).
     Compare 2–6 teams with compare_wc_teams; get the betting track record as a P&L time series

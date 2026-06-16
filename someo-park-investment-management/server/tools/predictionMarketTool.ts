@@ -15,29 +15,32 @@ const dataDir = path.resolve(__dirname, '..', '..', 'public', 'data')
 // view → file + short description of what it holds.
 const VIEWS: Record<string, { file: string; about: string }> = {
   champion:    { file: 'worldcup_model.json',      about: 'champion odds (p_champion/final/sf), FIFA rank, rating per team; also golden_boot + group_matches' },
-  golden_boot: { file: 'worldcup_model.json',      about: 'top-scorer probabilities (EA FC 26 talent + knockout depth + teammate split)' },
-  predictions: { file: 'upcoming.json',            about: 'upcoming matches: model 3-way + O2.5/BTTS, de-vig book, real Kalshi/Poly US asks, edges' },
+  golden_boot: { file: 'worldcup_model.json',      about: 'top-scorer probabilities (EA FC 26 talent + knockout depth + teammate split) + current goals scored' },
+  predictions: { file: 'upcoming.json',            about: 'today/upcoming matches: model 3-way + O2.5/BTTS, de-vig book, real Kalshi/Poly US asks, edges (also the Match-Pricing view)' },
+  schedule:    { file: 'upcoming.json',            about: 'fixture schedule with kickoff times (ET/PT) + recently finished matches (FT + score)' },
   inplay:      { file: 'inplay_live.json',         about: 'LIVE matches now: live 3-way, xG, remaining goals, in-play arb/value/tactic signals' },
   performance: { file: 'performance_report.json',  about: 'accuracy (Brier vs uniform, calibrated), trade-grade gate, and the production bet log (per-match prediction/bet/result/PnL)' },
-  risk:        { file: 'risk_report.json',         about: 'pre-trade gates, venue balances, $1 order cap, API budget, calibration gate' },
+  risk:        { file: 'risk_report.json',         about: 'pre-trade gates, venue balances (Kalshi/Poly), $1 order cap, API budget/health, calibration gate (also the Venues & Gates and API-Budget views)' },
+  calibration: { file: 'oos_report.json',          about: 'out-of-sample reliability: Brier vs uniform, log-loss, predicted-vs-observed draw rate, goal-total bias — the directional calibration health check' },
   backtest:    { file: 'backtest.json',            about: 'model vs market vs uniform Brier on settled matches; blend curve; trade-grade verdict' },
-  squad:       { file: 'squad.json',               about: 'squad strength z-scores (minutes-weighted club rating + attack)' },
-  form:        { file: 'form.json',                about: 'recent-form index (time-weighted, friendly-discounted goal difference)' },
-  params:      { file: 'param_sweep.json',         about: 'parameter sweep: which param set was selected (min Brier) and the grid of alternatives' },
+  squad:       { file: 'squad.json',               about: 'squad strength z-scores (minutes-weighted club rating + attack); blended into the live model' },
+  form:        { file: 'form.json',                about: 'recent-form index (time-weighted, friendly-discounted goal difference); blended into the live model' },
+  params:      { file: 'param_sweep.json',         about: 'parameter sweep: the selected param set (min calibrated Brier) + the full grid (7 knobs incl. FC/squad/form weights), n_param_sets + n_settled' },
   divergence:  { file: 'xv_matches.json',          about: 'model 3-way vs the sharp bookmaker de-vig (where we diverge from the market)' },
-  overview:    { file: 'frontend_overview.json',   about: 'system overview: interfaces, modes, schedule, inputs/outputs, value, state-aware headline' },
+  overview:    { file: 'frontend_overview.json',   about: 'system overview: interfaces, modes, schedule, inputs/outputs, value, state-aware headline (the System Overview + Model Notes views)' },
 }
 
 export const predictionMarketTool: AgentTool = {
   definition: {
     name: 'get_prediction_market',
     description:
-      'Read World Cup 2026 prediction-market data (the Kalshi + Polymarket trading system). ' +
-      'Use this for ANY question about: who will win the World Cup / champion odds, the golden boot ' +
-      '(top scorer), today\'s / upcoming match predictions and venue prices, LIVE in-play matches and ' +
-      'in-play arbitrage signals, our prediction accuracy / Brier / calibration, the production bet log ' +
-      'and P&L, the trade-grade gate, risk gates, the backtest, squad strength, recent form, or the ' +
-      'parameter sweep. Pick the `view` for the data you need. Probabilities are 0-1; venue prices are ' +
+      'Read World Cup 2026 prediction-market data (the Kalshi + Polymarket trading system). This backs ' +
+      'EVERY dashboard view, so use it for ANY question about: champion odds, the golden boot (top ' +
+      'scorer), today\'s / upcoming match predictions + venue prices, the fixture schedule, LIVE in-play ' +
+      'matches and in-play arbitrage signals, our accuracy / Brier / calibration (OOS reliability), the ' +
+      'production bet log and P&L, the trade-grade gate, risk gates / venue balances / API budget, the ' +
+      'backtest, squad strength, recent form, model-vs-market divergence, the parameter sweep, or the ' +
+      'system overview. Pick the `view` for the data you need. Probabilities are 0-1; venue prices are ' +
       'contract prices (≈ implied probability). Knockout matches have no draw (decided by extra time + ' +
       'penalty shootout); group matches do.',
     input_schema: {
