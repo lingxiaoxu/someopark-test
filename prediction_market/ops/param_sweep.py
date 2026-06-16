@@ -78,8 +78,18 @@ def _score(probs, outcomes):
 
 
 def evaluate(params: dict, settled, prior, *, sweeps: int = 30) -> dict:
-    """Brier/log-loss/acc for one parameter set over the settled matches."""
+    """Brier/log-loss/acc for one parameter set over the settled matches — both the
+    RAW model and, fairly, the CALIBRATED model.
+
+    The live system never trades the raw model: it applies post-hoc probability
+    calibration (temperature + draw-mass), under which the model beats the uniform
+    baseline. Scoring param sets on raw Brier alone makes every set look worse than
+    uniform (it sorts well but is over-confident). So we also fit each set's own
+    calibration and report the calibrated Brier — the apples-to-apples number against
+    the uniform baseline and what selection should rank on.
+    """
     from prediction_market.model.match_pricing import price_match
+    from prediction_market.model.probability_calibration import fit_calibration
     from prediction_market.model.strength import build_strength
     cfg = replace(CONFIG.model, **params)
     sm = build_strength(prior, cfg, sweeps=sweeps)
@@ -88,7 +98,12 @@ def evaluate(params: dict, settled, prior, *, sweeps: int = 30) -> dict:
         mp = price_match(sm, hi, ai)
         probs.append([mp.p_home, mp.p_draw, mp.p_away])
         outs.append(outcome)
-    s = _score(probs, outs)
+    s = _score(probs, outs)                          # s["brier"] = RAW brier
+    cal = fit_calibration(probs, outs)               # each set's own calibration
+    s["brier_raw"] = s["brier"]
+    s["brier_cal"] = cal["calibrated_brier"]
+    s["calibration"] = {"method": cal["method"], "param": cal["param"],
+                        "draw_boost": cal.get("draw_boost")}
     s["params"] = params
     return s
 
@@ -105,36 +120,43 @@ def run(conn=None, *, sweeps: int = 30) -> dict:
     keys = list(GRID)
     combos = [dict(zip(keys, vals)) for vals in itertools.product(*[GRID[k] for k in keys])]
     results = [evaluate(p, settled, prior, sweeps=sweeps) for p in combos]
-    results.sort(key=lambda r: (r["brier"], r["log_loss"]))
+    # Rank on the CALIBRATED Brier — the number that's comparable to the uniform
+    # baseline and that the live (calibrated) model is actually graded on.
+    results.sort(key=lambda r: (r["brier_cal"], r["log_loss"]))
 
     baseline = evaluate({}, settled, prior, sweeps=sweeps)   # current CONFIG.model
-    uniform = {"brier": round(2 / 3, 4)}                      # 3× (1/3-1/3)^2 = 2/3
+    uni = round(2 / 3, 4)
     best = results[0] if results else None
+    n_beat = sum(1 for r in results if r["brier_cal"] < uni)
 
     return {
         "n_settled": n,
         "n_param_sets": len(combos),
         "grid": GRID,
-        "uniform_brier": round(2 / 3, 4),
-        "baseline": {k: (round(baseline[k], 4) if isinstance(baseline[k], float) else baseline[k]) for k in ("brier", "log_loss", "acc")},
+        "uniform_brier": uni,
+        "baseline": {"brier": round(baseline["brier"], 4), "brier_cal": round(baseline["brier_cal"], 4),
+                     "log_loss": round(baseline["log_loss"], 4), "acc": round(baseline["acc"], 3)},
         "best": best,
         "top10": results[:10],
         # All sets, compact + ranked — drives the frontend "Parameter Sweep" artifact.
+        # brier = raw model; brier_cal = after the post-hoc calibration we actually apply.
         "results_all": [
-            {"rank": i + 1, "params": r["params"], "brier": round(r["brier"], 4),
+            {"rank": i + 1, "params": r["params"],
+             "brier": round(r["brier"], 4), "brier_cal": round(r["brier_cal"], 4),
              "log_loss": round(r["log_loss"], 4), "acc": round(r["acc"], 3),
-             "beats_uniform": r["brier"] < (2 / 3)}
+             "beats_uniform": r["brier_cal"] < uni}
             for i, r in enumerate(results)
         ],
         "selected_reason": (
-            "Selected = the parameter set with the lowest Brier (multiclass MSE vs the actual "
-            "results) among all sets. It beats the current config but still sits above the uniform "
-            "baseline, so it is NOT auto-applied — shown for transparency."),
-        "note": (f"Brier = multiclass MSE (predicted W/D/L vs one-hot outcome). "
-                 f"Selected over {len(combos)} param sets on {n} settled matches. "
-                 f"WARNING: {n} matches is a small sample — the ranking is directional, not "
-                 f"definitive; re-run as more matches finish. Global structural params; "
-                 f"per-team skill is in the ratings (rating difference per match)."),
+            "Selected = the parameter set with the lowest CALIBRATED Brier among all sets. Each set is "
+            "scored after the same post-hoc probability calibration the live model uses (the raw model "
+            "is over-confident and sits above uniform; calibrated, it drops below). "
+            f"{n_beat} of {len(combos)} sets beat the uniform baseline ({uni}) once calibrated."),
+        "note": (f"Two Brier columns: RAW (over-confident, above uniform) and CALIBRATED (the fair, "
+                 f"apples-to-apples number vs the {uni} uniform baseline — what the gate uses). "
+                 f"Scored over {len(combos)} param sets on {n} settled matches. WARNING: small sample — "
+                 f"ranking is directional, re-run as more matches finish. Global structural params; "
+                 f"per-team skill is in the ratings."),
     }
 
 

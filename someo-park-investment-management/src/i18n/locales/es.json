@@ -242,7 +242,9 @@
     },
     "finished": "FINALIZADO",
     "tbdPairing": "Emparejamiento por definir",
-    "colGoals": "Goles"
+    "colGoals": "Goles",
+    "colBrierRaw": "Brier (bruto)",
+    "colBrierCal": "Brier (cal.)"
   },
   "sidebar": {
     "appName": "Someo Park",

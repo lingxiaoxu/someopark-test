@@ -388,15 +388,18 @@ function ParamSweep() {
     <div>
       <Title sub={tr('prediction.subParams')}>Parameter Sweep</Title>
       <KV rows={[
-        [tr('prediction.lblSelected'), <b style={{ color: 'var(--success)' }}>{data?.best?.brier?.toFixed?.(4)}</b>],
-        [tr('prediction.lblVsCurrent'), data?.baseline?.brier],
+        // Selected on the CALIBRATED Brier (the fair number vs uniform); raw shown alongside.
+        [tr('prediction.lblSelected'), <span><b style={{ color: 'var(--success)' }}>{data?.best?.brier_cal?.toFixed?.(4)}</b> <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>(raw {data?.best?.brier?.toFixed?.(4)})</span></span>],
+        [tr('prediction.lblVsCurrent'), `${num(data?.baseline?.brier_cal, 4)} (raw ${num(data?.baseline?.brier, 4)})`],
         [tr('prediction.lblVsUniform'), data?.uniform_brier],
         [tr('prediction.colParams'), <span style={{ fontSize: 10 }}>{fmtParams(data?.best?.params)}</span>],
       ]} />
       <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>{tr('prediction.paramsWhy')}</div>
-      <DataTable cols={['#', 'Brier', 'Acc', tr('prediction.colParams'), '>uni?']}
+      <DataTable cols={['#', tr('prediction.colBrierRaw'), tr('prediction.colBrierCal'), 'Acc', tr('prediction.colParams'), '>uni?']}
         rows={all.map((r: any) => [
-          r.rank, r.brier, r.acc, <span style={{ fontSize: 10 }}>{fmtParams(r.params)}</span>,
+          r.rank, r.brier,
+          <b style={{ color: r.beats_uniform ? 'var(--success)' : 'var(--ink)' }}>{r.brier_cal}</b>,
+          r.acc, <span style={{ fontSize: 10 }}>{fmtParams(r.params)}</span>,
           r.beats_uniform ? <span style={{ color: 'var(--success)' }}>✓</span> : <span style={{ color: 'var(--error)' }}>✗</span>,
         ])} />
     </div>

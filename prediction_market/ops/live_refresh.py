@@ -160,6 +160,14 @@ def refresh_once(conn=None) -> dict:
     except Exception as e:
         print(f"[live_refresh] xv_matches rebuild skipped: {e}")
 
+    # OOS calibration (Calibration view) — grows as matches finish (was stuck at 15).
+    try:
+        from dataclasses import asdict
+        from prediction_market.model import oos_eval
+        _write_both("oos_report.json", asdict(oos_eval.evaluate(conn=conn)))
+    except Exception as e:
+        print(f"[live_refresh] oos_report rebuild skipped: {e}")
+
     # When a match has just FINISHED (settled count rose), re-simulate the champion +
     # golden boot on the new results (and force eliminated teams to 0% in the knockouts).
     # Guarded by a watermark so the ~4s sim runs only on a result change, not every minute.

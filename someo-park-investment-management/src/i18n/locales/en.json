@@ -560,7 +560,9 @@
     },
     "finished": "FINISHED",
     "tbdPairing": "Pairing to be decided",
-    "colGoals": "Goals"
+    "colGoals": "Goals",
+    "colBrierRaw": "Brier (raw)",
+    "colBrierCal": "Brier (cal.)"
   },
   "sidebar": {
     "appName": "Someo Park",
