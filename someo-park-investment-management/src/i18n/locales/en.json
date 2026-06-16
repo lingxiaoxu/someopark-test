@@ -448,6 +448,8 @@
     "lblModelBrier": "Brier (model)", "lblBookBrier": "Brier (book)",
     "lblDrawRate": "Draw rate (actual)", "lblBlend": "Blend→book Brier", "colResult": "Res",
     "backtestVerdict": "Both model & market sit above uniform — the early tournament is near-random (50% draws), so trading stays blocked. Not a bug; the model is actually better-calibrated than the sharp market here.",
+    "lblModelRaw": "Brier (raw model)",
+    "backtestPass": "The raw model was over-confident; after probability calibration it beats both the uniform baseline AND the sharp book — now trade-grade.",
     "squadStrength": "Squad Strength",
     "subSquad": "Squad quality (club rating + goals/assists). Informative only — not used by the live model.",
     "colSquadScore": "Squad z", "colTopPlayers": "Top players",

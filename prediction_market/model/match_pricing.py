@@ -7,7 +7,7 @@ function prices any pair, group or knockout.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from prediction_market.config import CONFIG
 from prediction_market.ingest.prior_ingest import PriorSnapshot, load_prior
@@ -60,6 +60,20 @@ def price_match(sm: StrengthModel, home_id: str, away_id: str, *, knockout: bool
         p_over_2_5=p_over, p_under_2_5=p_under, p_btts=both_teams_score(m),
         lam_home=lam_h, lam_away=lam_a, p_home_advance=p_adv,
     )
+
+
+def price_match_calibrated(sm: StrengthModel, home_id: str, away_id: str, *,
+                           knockout: bool = False, cal: dict | None = None) -> MatchPrice:
+    """price_match, then apply the fitted probability calibration to the 3-way
+    (model/probability_calibration.py). This is the model's CALIBRATED view — what
+    the live exports and the trade-grade gate should use. O2.5/BTTS are left as-is."""
+    from prediction_market.model.probability_calibration import apply_calibration, load_calibration
+    mp = price_match(sm, home_id, away_id, knockout=knockout)
+    cal = cal if cal is not None else load_calibration()
+    if not cal:
+        return mp
+    ph, pd, pa = apply_calibration([mp.p_home, mp.p_draw, mp.p_away], cal)
+    return replace(mp, p_home=ph, p_draw=pd, p_away=pa)
 
 
 def price_group_stage(sm: StrengthModel, prior: PriorSnapshot) -> list[MatchPrice]:

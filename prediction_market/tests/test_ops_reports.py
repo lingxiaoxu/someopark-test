@@ -270,3 +270,25 @@ def test_form_index_ranks_winners_above_losers():
     assert form_adjusted_ratings(sm, idx, 0.0) is sm
     boosted = form_adjusted_ratings(sm, idx, 0.3)
     assert boosted.ratings["france"] > sm.ratings["france"]   # good form lifts the rating
+
+
+# ── probability calibration ───────────────────────────────────────────────────
+def test_calibration_fixes_overconfidence():
+    """An over-confident-but-skilled model is fixed by calibration → beats uniform."""
+    from prediction_market.model.probability_calibration import fit_calibration, apply_calibration
+    # 8 matches: model always sharply favours home (0.85), home wins ~half → over-confident
+    P, Y = [], []
+    for i in range(8):
+        P.append([0.85, 0.10, 0.05])
+        Y.append(0 if i % 2 == 0 else 2)   # home wins half, loses half
+    cal = fit_calibration(P, Y)
+    # raw is over-confident (Brier > uniform); calibration must not be worse than uniform
+    assert cal["calibrated_brier"] <= cal["uniform_brier"] + 1e-9
+    assert cal["method"] in ("temperature", "shrinkage")
+    soft = apply_calibration([0.85, 0.10, 0.05], cal)
+    assert abs(sum(soft) - 1.0) < 1e-9 and soft[0] < 0.85   # softened toward less confident
+
+
+def test_calibration_passthrough_when_unfit():
+    from prediction_market.model.probability_calibration import apply_calibration
+    assert apply_calibration([0.5, 0.3, 0.2], None) == [0.5, 0.3, 0.2]

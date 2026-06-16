@@ -288,7 +288,7 @@ function RiskCard() {
         ['Poly US', money(b.polymarket_us_usd)],
         [tr('prediction.lblKalshiProd'), tDyn(String(b.kalshi_prod_usd))],
         [tr('prediction.lblApiBudget'), `${ab.used}/${ab.cap} (${pct(ab.pct, 0)})`],
-        [tr('prediction.lblCalibration'), <span style={{ color: 'var(--error)' }}>{tDyn(data?.calibration_gate?.status)}</span>],
+        [tr('prediction.lblCalibration'), <span style={{ color: data?.calibration_gate?.trade_grade ? 'var(--success)' : 'var(--error)' }}>{tDyn(data?.calibration_gate?.status)}</span>],
       ]} />
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 4px', ...mono, color: 'var(--text-primary)' }}>{tr('prediction.secBlocked')}</div>
       <ul style={{ paddingLeft: 16, fontSize: 11, color: 'var(--error)', ...mono }}>
@@ -348,13 +348,14 @@ function Backtest() {
   const { data, loading, error } = useApi<any>(() => getWCBacktest(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const b = data?.brier ?? {};
-  const better = (b.model != null && b.model < b.uniform);
+  const pass = !!data?.trade_grade;
   return (
     <div>
       <Title sub={tr('prediction.subBacktest')}>Backtest (OOS)</Title>
       <KV rows={[
         [tr('prediction.lblSettled'), <b>{data?.n_settled}</b>],
-        [tr('prediction.lblModelBrier'), <b style={{ color: better ? 'var(--success)' : 'var(--error)' }}>{b.model}</b>],
+        [tr('prediction.lblModelBrier'), <b style={{ color: pass ? 'var(--success)' : 'var(--error)' }}>{b.model}</b>],
+        [tr('prediction.lblModelRaw'), b.model_raw ?? '—'],
         [tr('prediction.lblBookBrier'), b.book],
         ['Brier (uniform)', b.uniform],
         [tr('prediction.lblDrawRate'), data?.draw_rate != null ? pct(data.draw_rate, 0) : '—'],
@@ -366,8 +367,8 @@ function Backtest() {
           {tr('prediction.lblBlend')}: {data.blend_curve.map((c: any) => `${Math.round(c.w * 100)}%→${c.brier}`).join('  ')}
         </div>
       )}
-      <div style={{ fontSize: 11, color: better ? 'var(--success)' : 'var(--error)', ...mono, marginBottom: 10, fontWeight: 700 }}>
-        {tr('prediction.backtestVerdict')}
+      <div style={{ fontSize: 11, color: pass ? 'var(--success)' : 'var(--error)', ...mono, marginBottom: 10, fontWeight: 700 }}>
+        {pass ? tr('prediction.backtestPass') : tr('prediction.backtestVerdict')}
       </div>
       <DataTable cols={[tr('prediction.match'), 'Score', tr('prediction.colResult'), tr('prediction.model'), 'Book']}
         rows={(data?.matches ?? []).map((m: any) => [

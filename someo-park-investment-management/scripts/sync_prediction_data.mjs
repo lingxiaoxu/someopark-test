@@ -30,6 +30,7 @@ const FILES = [
   'backtest.json',
   'squad.json',
   'form.json',
+  'calibration.json',
   'param_sweep.json',
   'performance_report.json',
   'risk_report.json',

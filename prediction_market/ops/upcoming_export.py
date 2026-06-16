@@ -107,7 +107,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
     """The next ``limit`` not-started fixtures, fully enriched with real venue quotes."""
     from prediction_market.ingest import store
     from prediction_market.ingest.prior_ingest import load_prior
-    from prediction_market.model.match_pricing import price_match
+    from prediction_market.model.match_pricing import price_match_calibrated as price_match
     from prediction_market.model.squad_strength import build_strength_live
 
     conn = conn or store.init_db()
