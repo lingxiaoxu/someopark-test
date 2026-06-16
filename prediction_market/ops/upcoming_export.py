@@ -1,0 +1,240 @@
+"""Per-match cross-venue quote export for the frontend "Upcoming Matches" panel.
+
+For each of the next N not-started fixtures this produces a fully-enriched row:
+
+  * **model** 3-way + O2.5 + BTTS (Dixon-Coles via ``price_match``);
+  * **book_devig** — sharp bookmaker de-vig (validation reference);
+  * **kalshi** — REAL single-match 3-way quotes (public market data, no auth),
+    via ``KalshiDiscovery.match_quotes`` → {home/draw/away: {ask, bid}} + de-vig;
+  * **poly_us** — REAL single-match 3-way quotes via ``PolymarketUSDiscovery.
+    match_quotes(home, away, et_date)`` → {home/draw/away: {ask, bid}} + de-vig;
+  * **edge** — model vs each venue's de-vigged price + the best tradable buy edge
+    (``compute_edge``, fee-aware, theta-gated);
+  * **lock_arb** — best cross-venue locked arbitrage per side (``evaluate_lock``,
+    buy cheapest ask + sell highest bid across the two TRADABLE venues).
+
+Read-only: market data only, NEVER places an order. Kalshi market data is public;
+Polymarket US uses the PMUS read credentials. A venue that has not yet listed a
+given match returns ``None`` for that match — the fetch is REAL, not stubbed; the
+field is absent only when the venue genuinely has no market yet.
+
+    python -m prediction_market.ops.upcoming_export [--limit 6] [--no-venues]
+    → data/output/upcoming.json
+"""
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+from prediction_market.config import CONFIG
+
+ET = ZoneInfo("America/New_York")
+_FEE = 0.01            # per-contract execution fee estimate (matches inplay_arb)
+_FINISHED = ("FT", "AET", "PEN")
+_UPCOMING = ("NS", "TBD", "PST")   # not-started statuses
+
+
+def _et_date(kickoff_ts: str) -> str | None:
+    try:
+        return datetime.fromisoformat(kickoff_ts).astimezone(ET).date().isoformat()
+    except Exception:
+        return None
+
+
+def _et_human(kickoff_ts: str) -> str | None:
+    try:
+        return datetime.fromisoformat(kickoff_ts).astimezone(ET).strftime("%Y-%m-%d %H:%M ET")
+    except Exception:
+        return None
+
+
+def _venue_devig(q: dict | None) -> dict | None:
+    """De-vig a venue's 3-way ask quote into fair probs (multiplicative)."""
+    if not q:
+        return None
+    from prediction_market.strategy.devig import devig
+    asks = [(q.get(s) or {}).get("ask") for s in ("home", "draw", "away")]
+    if any(a is None for a in asks):
+        return None
+    p = devig(asks, method="multiplicative")
+    return {"home": round(float(p[0]), 4), "draw": round(float(p[1]), 4), "away": round(float(p[2]), 4)}
+
+
+def _best_buy_edge(model: dict, venue_q: dict | None, venue: str, theta: float) -> dict | None:
+    """Best tradable BUY edge (model vs a venue's raw ask) across the 3 sides."""
+    if not venue_q:
+        return None
+    from prediction_market.strategy.edge import compute_edge
+    best = None
+    for side in ("home", "draw", "away"):
+        ask = (venue_q.get(side) or {}).get("ask")
+        if ask is None:
+            continue
+        e = compute_edge(model[side], float(ask), fee=_FEE, theta=theta)
+        if best is None or e.net_edge > best["net_edge"]:
+            best = {"side": side, "venue": venue, "ask": round(float(ask), 4),
+                    "net_edge": round(e.net_edge, 4), "tradable": bool(e.tradable)}
+    return best
+
+
+def _lock_arb(kalshi_q: dict | None, poly_q: dict | None) -> dict | None:
+    """Best cross-venue locked arb per side: buy cheapest ask + sell highest bid."""
+    if not (kalshi_q and poly_q):
+        return None
+    from prediction_market.strategy.cross_venue import evaluate_lock
+    best = None
+    for side in ("home", "draw", "away"):
+        legs = {"kalshi": kalshi_q.get(side), "poly_us": poly_q.get(side)}
+        asks = {v: (q or {}).get("ask") for v, q in legs.items() if (q or {}).get("ask") is not None}
+        bids = {v: (q or {}).get("bid") for v, q in legs.items() if (q or {}).get("bid") is not None}
+        if not asks or not bids:
+            continue
+        buy_v = min(asks, key=asks.get)
+        sell_v = max(bids, key=bids.get)
+        if buy_v == sell_v:
+            continue
+        lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=True,
+                             fee_cheap=_FEE, fee_expensive=_FEE)
+        if best is None or lock.net_lock > best["net_lock"]:
+            best = {"side": side, "buy_venue": buy_v, "sell_venue": sell_v,
+                    "buy_ask": round(asks[buy_v], 4), "sell_bid": round(bids[sell_v], 4),
+                    "net_lock": round(lock.net_lock, 4), "tradable": bool(lock.tradable)}
+    return best
+
+
+def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
+    """The next ``limit`` not-started fixtures, fully enriched with real venue quotes."""
+    from prediction_market.ingest import store
+    from prediction_market.ingest.prior_ingest import load_prior
+    from prediction_market.model.match_pricing import price_match
+    from prediction_market.model.strength import build_strength
+
+    conn = conn or store.init_db()
+    prior = load_prior()
+    name_of = {t.team_id: t.name for t in prior.teams}
+    zh_of = {t.team_id: t.zh for t in prior.teams}
+    sm = build_strength(prior)
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    theta = CONFIG.risk.min_net_edge
+
+    # Bookmaker de-vig (averaged), when odds are present for the fixture.
+    book = {r["api_id"]: r for r in conn.execute(
+        "SELECT f.api_id, AVG(o.p_home) bh, AVG(o.p_draw) bd, AVG(o.p_away) ba "
+        "FROM fixture f JOIN match_odds o ON o.fixture_api_id=f.api_id "
+        "WHERE f.status_short IN ({}) GROUP BY f.api_id".format(",".join("?" * len(_UPCOMING))),
+        _UPCOMING).fetchall()}
+
+    fixtures = conn.execute(
+        "SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short "
+        "FROM fixture WHERE status_short IN ({}) AND kickoff_ts IS NOT NULL "
+        "ORDER BY kickoff_ts LIMIT ?".format(",".join("?" * len(_UPCOMING))),
+        (*_UPCOMING, limit)).fetchall()
+
+    # Venue discovery clients (cache their indexes once); only if requested.
+    kd = pd_ = None
+    if with_venues:
+        try:
+            from prediction_market.venues.kalshi.discovery import KalshiDiscovery
+            kd = KalshiDiscovery()
+        except Exception as e:
+            print(f"[warn] Kalshi discovery unavailable: {e}")
+        try:
+            from prediction_market.venues.polymarket_us.discovery import PolymarketUSDiscovery
+            pd_ = PolymarketUSDiscovery()
+        except Exception as e:
+            print(f"[warn] Polymarket US discovery unavailable: {e}")
+
+    out: list[dict] = []
+    for f in fixtures:
+        hi, ai = cmap.get(f["home_api_id"]), cmap.get(f["away_api_id"])
+        if not (hi and ai):
+            continue
+        mp = price_match(sm, hi, ai)
+        model = {"home": round(mp.p_home, 4), "draw": round(mp.p_draw, 4), "away": round(mp.p_away, 4),
+                 "over_2_5": round(mp.p_over_2_5, 4), "btts": round(mp.p_btts, 4)}
+        et_date = _et_date(f["kickoff_ts"])
+
+        bd = book.get(f["api_id"])
+        book_devig = ({"home": round(bd["bh"], 4), "draw": round(bd["bd"], 4), "away": round(bd["ba"], 4)}
+                      if bd else None)
+
+        kalshi_q = poly_q = None
+        if kd is not None:
+            try:
+                kalshi_q = kd.match_quotes(hi, ai)
+            except Exception as e:
+                print(f"[warn] Kalshi quote {hi} vs {ai}: {e}")
+        if pd_ is not None and et_date:
+            try:
+                poly_q = pd_.match_quotes(hi, ai, et_date)
+            except Exception as e:
+                print(f"[warn] PolyUS quote {hi} vs {ai}: {e}")
+
+        k_devig, p_devig = _venue_devig(kalshi_q), _venue_devig(poly_q)
+
+        def _edge_vs(devig_probs):
+            if not devig_probs:
+                return None
+            return {s: round(model[s] - devig_probs[s], 4) for s in ("home", "draw", "away")}
+
+        buy_edges = [e for e in (_best_buy_edge(model, kalshi_q, "kalshi", theta),
+                                 _best_buy_edge(model, poly_q, "poly_us", theta)) if e]
+        best_edge = max(buy_edges, key=lambda e: e["net_edge"]) if buy_edges else None
+
+        out.append({
+            "fixture_id": f["api_id"],
+            "kickoff": f["kickoff_ts"],
+            "et": _et_human(f["kickoff_ts"]),
+            "et_date": et_date,
+            "round": f["round"] or "",
+            "status": f["status_short"] or "",
+            "home": {"id": hi, "name": name_of.get(hi, hi), "zh": zh_of.get(hi, "")},
+            "away": {"id": ai, "name": name_of.get(ai, ai), "zh": zh_of.get(ai, "")},
+            "model": model,
+            "book_devig": book_devig,
+            "kalshi": {**kalshi_q, "devig": k_devig} if kalshi_q else None,
+            "poly_us": {**poly_q, "devig": p_devig} if poly_q else None,
+            "edge": {
+                "vs_book": _edge_vs(book_devig),
+                "vs_kalshi": _edge_vs(k_devig),
+                "vs_poly_us": _edge_vs(p_devig),
+                "best": best_edge,
+            },
+            "lock_arb": _lock_arb(kalshi_q, poly_q),
+        })
+    return out
+
+
+def main() -> None:
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Export per-match cross-venue quotes for the frontend")
+    ap.add_argument("--limit", type=int, default=6, help="max upcoming matches")
+    ap.add_argument("--no-venues", action="store_true", help="skip live venue quotes (model+book only)")
+    args = ap.parse_args()
+
+    rows = build(limit=args.limit, with_venues=not args.no_venues)
+    CONFIG.paths.ensure()
+    payload = {
+        "as_of": datetime.now(timezone.utc).isoformat(),
+        "n": len(rows),
+        "note": "Real Kalshi (public) + Polymarket US (read creds) single-match quotes; "
+                "venue=null only when that venue has not listed the match yet. "
+                "Read-only — no orders. Edge/lock are fee-aware (fee=0.01) and theta-gated.",
+        "matches": rows,
+    }
+    out = CONFIG.paths.output / "upcoming.json"
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"upcoming.json written → {out}  ({len(rows)} matches)")
+    for m in rows:
+        kq = "Kalshi✓" if m["kalshi"] else "Kalshi—"
+        pq = "Poly✓" if m["poly_us"] else "Poly—"
+        be = m["edge"]["best"]
+        edge = f"  best {be['venue']}/{be['side']} {be['net_edge']:+.3f}{'*' if be['tradable'] else ''}" if be else ""
+        print(f"  {m['et']}  {m['home']['name']} vs {m['away']['name']}  [{kq} {pq}]{edge}")
+
+
+if __name__ == "__main__":
+    main()
