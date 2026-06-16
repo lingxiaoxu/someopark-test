@@ -27,7 +27,31 @@ import pandas as pd
 
 from bond_utilities import LoanSpec, generate_loan_schedule, calculate_loan_irr_and_moic
 
-_FRED_RATES = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fred_rates.csv")
+_MODULE_DIR = os.path.dirname(os.path.abspath(__file__))
+_FRED_RATES = os.path.join(_MODULE_DIR, "fred_rates.csv")
+_FWD_DIR = os.path.join(_MODULE_DIR, "forward_rates_latest")     # §7.1 Step B output
+
+
+def _ensure_ns_forward_curve() -> str | None:
+    """§7.1 Step B: (re)generate the Nelson-Siegel forward-rate projections from the live
+    fred_rates.csv whenever they are missing or stale, so the forward SOFR curve is real
+    (not the spot-held-flat fallback). Returns the forward-rates dir, or None on failure."""
+    if not os.path.exists(_FRED_RATES):
+        return None
+    combined = os.path.join(_FWD_DIR, "COMBINED_forward_rates.txt")
+    fresh = (os.path.exists(combined) and
+             os.path.getmtime(combined) >= os.path.getmtime(_FRED_RATES))
+    if fresh:
+        return _FWD_DIR
+    try:
+        import contextlib, io
+        from forward_rate_projections import export_all_forward_rate_projections
+        rates_df = pd.read_csv(_FRED_RATES, index_col=0, parse_dates=True)
+        with contextlib.redirect_stdout(io.StringIO()):
+            export_all_forward_rate_projections(rates_df, output_dir=_FWD_DIR)
+        return _FWD_DIR if os.path.exists(combined) else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _term_months(as_of: str, maturity: str) -> int:
@@ -162,7 +186,8 @@ def build_forward_sofr_curve(as_of: str, horizon_years: int = 30):
     dates = pd.date_range(pd.Timestamp(as_of), periods=horizon_years * 4 + 1, freq="QE")
     try:
         from forward_rate_lookup import ForwardRateLookup
-        frl = ForwardRateLookup()
+        ns_dir = _ensure_ns_forward_curve()               # §7.1 Step B: fresh NS curve
+        frl = ForwardRateLookup(forward_rates_directory=ns_dir) if ns_dir else ForwardRateLookup()
         if getattr(frl, "forward_rates_dir", None):       # true NS forward curve available
             vals = []
             with contextlib.redirect_stdout(io.StringIO()):

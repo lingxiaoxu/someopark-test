@@ -257,6 +257,17 @@ def _filing_index(cik: int, adsh_nodash: str) -> dict:
     return sec_get(url).json()
 
 
+def _affiliation_label(member: str) -> str:
+    m = member.split(":")[-1]
+    if "Controlled" in m:
+        return "Control"
+    if "Noncontrolled" in m or ("Affiliated" in m and "Unaffiliated" not in m):
+        return "Affiliated"
+    if "Unaffiliated" in m:
+        return "Non-Affiliated"
+    return _camel_to_words(m)
+
+
 def _camel_to_words(member: str) -> str:
     """'FinancialServicesSectorMember' -> 'Financial Services Sector'."""
     s = re.sub(r"Member$", "", member.split(":")[-1])
@@ -342,7 +353,7 @@ def extract_classification(root, report_date: str) -> dict:
     IX = "{http://www.xbrl.org/2013/inlineXBRL}"
     XBRLI = "{http://www.xbrl.org/2003/instance}"
     XBRLDI = "{http://xbrl.org/2006/xbrldi}"
-    # context_id -> {id?, industry?, itype?} from explicit/typed members
+    # context_id -> {id?, industry?, itype?, aff?} from explicit/typed members
     ctx_info = {}
     for c in root.iter(f"{XBRLI}context"):
         cid = c.get("id"); info = {}
@@ -351,13 +362,38 @@ def extract_classification(root, report_date: str) -> dict:
             info["id"] = "".join(tm.itertext()).strip()
         for em in c.iter(f"{XBRLDI}explicitMember"):
             dim = em.get("dimension") or ""
+            mem = (em.text or "")
             if "Industry" in dim:
-                info["industry"] = _camel_to_words(em.text or "")
+                info["industry"] = _camel_to_words(mem)
             elif "InvestmentTypeAxis" in dim:
-                info["itype"] = _camel_to_words(em.text or "")
+                info["itype"] = _camel_to_words(mem)
+            elif "Affiliation" in dim:
+                info["aff"] = _affiliation_label(mem)
         if info:
             ctx_info[cid] = info
-    # walk fact elements in document order
+    # floor: InvestmentInterestRateFloor facts exist but (verified across filers) are
+    # tagged on GENERIC placeholder contexts ("Investment Two/Three/…", a sensitivity
+    # disclosure), NOT the real loan identifiers — so they don't map and yield None here.
+    # Kept forward-compatible: if a filer tags floors on real ids, they're captured.
+    # (Moot in the current rate regime: SOFR ≫ typical 0.75–1% floors, so floors don't bind.)
+    floor_by_id = {}
+    for el in root.iter(f"{IX}nonFraction"):
+        if "InvestmentInterestRateFloor" not in (el.get("name") or ""):
+            continue
+        info = ctx_info.get(el.get("contextRef"))
+        if not info or not info.get("id"):
+            continue
+        try:
+            scale = int(el.get("scale") or 0)
+            v = float("".join(el.itertext()).replace(",", "").strip()) * (10 ** scale)
+            floor_by_id[info["id"]] = v
+        except ValueError:
+            continue
+    # walk fact elements in document order — industry / type grouping (these reliably
+    # head their groups). Affiliation is NOT order-grouped: its affiliated/control
+    # sub-schedule structure bleeds across sections (verified: ARCC would mis-tag 2441
+    # rows "Control"), so affiliation is taken ONLY where directly on the investment's
+    # own context (rare) — else left None. Floor is a direct per-investment fact.
     out, cur_ind, cur_typ = {}, None, None
     for el in root.iter(f"{IX}nonFraction", f"{IX}nonNumeric"):
         info = ctx_info.get(el.get("contextRef"))
@@ -369,7 +405,8 @@ def extract_classification(root, report_date: str) -> dict:
             cur_typ = info["itype"]
         ident = info.get("id")
         if ident and ident not in out:
-            out[ident] = {"industry": cur_ind, "inv_type": cur_typ}
+            out[ident] = {"industry": cur_ind, "inv_type": cur_typ,
+                          "affiliation": info.get("aff"), "rate_floor": floor_by_id.get(ident)}
     return out
 
 
@@ -624,6 +661,11 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
     df["industry"] = [(cls.get(i, {}) or {}).get("industry") for i in df["identifier"]]
     df["industry"] = df["industry"].str.replace(r"\.$", "", regex=True).str.strip()
     df["industry_source"] = np.where(df["industry"].notna(), "xbrl_order", None)
+    # affiliation (xbrl-order grouping) + rate_floor (direct fact) — soi.tsv leaves blank
+    df["affiliation"] = [(cls.get(i, {}) or {}).get("affiliation") or a
+                         for i, a in zip(df["identifier"], df["affiliation"])]
+    df["rate_floor"] = [f if pd.notna(f) else (cls.get(i, {}) or {}).get("rate_floor")
+                        for i, f in zip(df["identifier"], df["rate_floor"])]
 
     # drop disclosure/summary rows that carry an InvestmentIdentifierAxis but are NOT
     # holdings (e.g. ARCC's "Largest Portfolio Company Investment" metric) — a real
