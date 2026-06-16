@@ -147,8 +147,8 @@ SOI 不披露发行人私有信息,以下经调研确认为真实数据墙,均**
 | 字段 | 状态 |
 |---|---|
 | **EBITDA / 杠杆** | SOI 不披露 → SOI-mode 评分改用市场信息(mark/spread/PIK),`credit_mode` 标注,不与 fundamental-mode 横比 |
-| **maturity** | 任何 filer 的 XBRL 均不逐笔标注;仅部分 filer 在原 HTML 表(BXSL/TSLX 密集,GBDC/ARCC 稀疏)→ 当前用 instrument-type 中位剩余期限 `imputed_tenor`(`maturity_source` 标注,占比披露);TSLX 走 identifier(`due M/YYYY`) |
-| **non-accrual** | 无标准 XBRL 元素 → **BDC 级**比率从 MD&A 文本提取(5/5 家),逐笔标记(HTML 脚注)留 P1.5 |
+| **maturity** | XBRL 不逐笔标注 → 从主-HTML SOI 表逐行提取(inline-XBRL 事实与 maturity 日期同 `<tr>`,取最晚日期):**BXSL 98% / TSLX 99% 真实**(`maturity_source='primary_html'`);GBDC/ARCC/OBDC 的表不以 `<tr>` 结构化/日期稀疏 → 回退 instrument-type `imputed_tenor`(标注、占比披露) |
+| **non-accrual** | 无标准 XBRL 元素 → **BDC 级**比率从 MD&A 文本提取(5/5);**逐笔**标记从 SOI 行脚注编号提取(5/5,共 ~90 笔),feeds 早期预警 + SOI 评分 |
 | **floor / affiliation** | XBRL 未逐笔可靠标注(floor 用通用占位 ID;affiliation 在 bleeding 小计)→ 留 None,代码前向兼容。floor 在当前 SOFR≫典型 floor 环境不触发 |
 
 > maturity 只影响现金流投影期限;核心敞口分析(issuer/sector/spread/mark/PIK/non-accrual)全部为真实披露数据。

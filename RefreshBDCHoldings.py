@@ -410,6 +410,69 @@ def extract_classification(root, report_date: str) -> dict:
     return out
 
 
+def _tr_ancestor(el):
+    p = el.getparent()
+    while p is not None and not (isinstance(p.tag, str) and p.tag.endswith("}tr") or p.tag == "tr"):
+        p = p.getparent()
+    return p
+
+
+def _non_accrual_footnote_num(full_text: str):
+    """The footnote number whose definition says '… on non-accrual status' (per filer)."""
+    m = re.search(r"\((\d{1,2})\)\s*(?:Loan|Investment|Security|Debt)[^.]{0,45}?non[- ]?accru",
+                  full_text, re.I)
+    return m.group(1) if m else None
+
+
+def extract_html_row_attrs(root, report_date: str) -> dict:
+    """P1.5-C/D: per-investment maturity + non-accrual from the inline-XBRL HTML table.
+
+    Inline XBRL embeds each investment's tagged facts in its own <tr> row, alongside the
+    UN-tagged maturity date and footnote markers. So for each investment fact we read its
+    <tr> ancestor and extract: maturity = the latest MM/DD/YYYY date in the row (acquisition
+    date is earlier, maturity later); non_accrual = the row's footnote markers include the
+    filer's non-accrual footnote number. Robust where the filer tabulates dates (BXSL/TSLX);
+    degrades to nothing where it does not (GBDC/ARCC) — caller keeps imputed_tenor."""
+    IX = "{http://www.xbrl.org/2013/inlineXBRL}"
+    XBRLI = "{http://www.xbrl.org/2003/instance}"
+    XBRLDI = "{http://xbrl.org/2006/xbrldi}"
+    inv_ctx = {}
+    for c in root.iter(f"{XBRLI}context"):
+        tm = c.find(f".//{XBRLDI}typedMember")
+        if tm is not None and "InvestmentIdentifierAxis" in (tm.get("dimension") or ""):
+            inv_ctx[c.get("id")] = "".join(tm.itertext()).strip()
+    na_fn = _non_accrual_footnote_num(re.sub(r"\s+", " ", " ".join(root.itertext())))
+
+    out = {}
+    _date = re.compile(r"\b(\d{1,2})/(\d{1,2})/(20\d{2})\b")
+    # anchor on ANY identifier-context fact (FV element name drifts per filer); dedup by
+    # IDENTIFIER (NOT id(tr) — lxml element proxies are ephemeral and their id() gets
+    # reused after GC, which silently collapses most rows).
+    for el in root.iter(f"{IX}nonFraction"):
+        cref = el.get("contextRef")
+        if cref not in inv_ctx:
+            continue
+        ident = inv_ctx[cref]
+        if ident in out:
+            continue
+        tr = _tr_ancestor(el)
+        if tr is None:
+            continue
+        txt = re.sub(r"\s+", " ", " ".join(tr.itertext()))
+        dates = _date.findall(txt)
+        rec = {}
+        if dates:
+            ymd = max((int(y), int(m), int(d)) for m, d, y in dates)   # latest = maturity
+            rec["maturity"] = f"{ymd[0]:04d}-{ymd[1]:02d}"
+            rec["maturity_source"] = "primary_html"
+        if na_fn:
+            foot = set(re.findall(r"\((\d{1,2})\)", txt.split("%")[0]))  # markers before the numbers
+            rec["non_accrual"] = na_fn in foot
+        if rec:
+            out[ident] = rec
+    return out
+
+
 def fetch_xbrl_instance_tranches(cik: int, adsh_nodash: str, report_date: str,
                                  primary_doc: str) -> pd.DataFrame:
     """Parse the inline-XBRL primary document: typed-dimension contexts on
@@ -653,9 +716,11 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
         root = _load_instance_root(cik, filing["adsh_nodash"], filing["primaryDocument"], cache_dir)
         cls = extract_classification(root, rd)
         non_accrual_bdc = extract_non_accrual_bdc(root)
+        html_attrs = extract_html_row_attrs(root, rd)        # P1.5-C/D: per-loan maturity + non-accrual
     except Exception as e:  # noqa: BLE001
         _alert(f"{ticker} classification (inline-XBRL) failed: {e!r}")
-        cls = {}; non_accrual_bdc = {"borrowers": None, "loans": None, "non_accrual_pct_fv": None}
+        cls = {}; html_attrs = {}
+        non_accrual_bdc = {"borrowers": None, "loans": None, "non_accrual_pct_fv": None}
     df["inv_type"] = [inv_type_from_identifier(i) or (cls.get(i, {}) or {}).get("inv_type")
                       for i in df["identifier"]]
     df["industry"] = [(cls.get(i, {}) or {}).get("industry") for i in df["identifier"]]
@@ -674,7 +739,15 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
     df = df[df["fair_value"].notna()].reset_index(drop=True)
     n_dropped = n_pre - len(df)
 
-    # maturity: keep identifier-derived; impute the rest by instrument tenor (labelled)
+    # P1.5-C/D: per-loan maturity from the primary-HTML SOI table (authoritative; works
+    # where the filer tabulates dates in <tr> rows, e.g. TSLX/GBDC) overrides the
+    # identifier regex; per-loan non-accrual from the row footnote markers.
+    df["non_accrual"] = [(html_attrs.get(i, {}) or {}).get("non_accrual") for i in df["identifier"]]
+    html_mat = [(html_attrs.get(i, {}) or {}).get("maturity") for i in df["identifier"]]
+    df["maturity"] = [hm if hm else m for hm, m in zip(html_mat, df["maturity"])]
+    df["maturity_source"] = ["primary_html" if hm else s
+                             for hm, s in zip(html_mat, df["maturity_source"])]
+    # maturity: keep html/identifier-derived; impute the rest by instrument tenor (labelled)
     miss = df["maturity"].isna()
     df.loc[miss, "maturity"] = [impute_maturity(rd, it, idf)
                                 for it, idf in zip(df.loc[miss, "inv_type"],
