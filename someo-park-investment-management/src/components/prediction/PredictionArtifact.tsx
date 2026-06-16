@@ -528,8 +528,10 @@ function Pdfs() {
           {tr('common.open')} ↗
         </a>
       </div>
-      <div style={{ flex: 1, minHeight: 560, border: '2px solid var(--ink)', background: '#fff' }}>
-        <iframe key={cur.key} src={url} title={cur.label} style={{ width: '100%', height: '100%', minHeight: 560, border: 'none' }} />
+      {/* Fill to the bottom edge: viewport-relative min-height so the viewer is tall
+          regardless of the flex chain through the panel's overflow-auto container. */}
+      <div style={{ flex: 1, minHeight: 'calc(100vh - 150px)', border: '2px solid var(--ink)', background: '#fff' }}>
+        <iframe key={cur.key} src={url} title={cur.label} style={{ width: '100%', height: '100%', minHeight: 'calc(100vh - 150px)', border: 'none' }} />
       </div>
     </div>
   );
