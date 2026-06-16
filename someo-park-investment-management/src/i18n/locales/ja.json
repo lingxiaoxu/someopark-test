@@ -121,7 +121,10 @@
     "gradePass": "合格", "gradeBlock": "ブロック(取引グレード未達)",
     "roleExecute": "執行", "roleRealMoney": "実資金", "tradingGated": "ゲート",
     "pdfPerf": "収益 & 損益(PDF)", "pdfRisk": "リスクレポート(PDF)",
-    "noLiveMatches": "現在ライブの試合はありません — 試合中は毎分ここにシグナルが表示されます。"
+    "noLiveMatches": "現在ライブの試合はありません — 試合中は毎分ここにシグナルが表示されます。",
+    "autoRefresh": "自動更新", "updated": "更新", "live": "ライブ", "liveBadge": "ライブ",
+    "expGoals": "予想残り得点", "colReason": "理由",
+    "noOpps": "この分は実行可能なシグナルなし — モデルビューのみ。"
   },
   "sidebar": {
     "appName": "Someo Park",

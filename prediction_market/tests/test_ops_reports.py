@@ -6,6 +6,7 @@ import sqlite3
 from prediction_market.ingest import store
 from prediction_market.ops import (
     frontend_export,
+    inplay_export,
     performance_report,
     risk_report,
     upcoming_export,
@@ -135,3 +136,32 @@ def test_upcoming_build_db_only():
     assert m["et_date"] == "2026-06-17"
     assert abs(m["model"]["home"] + m["model"]["draw"] + m["model"]["away"] - 1.0) < 0.02
     assert m["kalshi"] is None and m["poly_us"] is None   # venues skipped → genuinely None
+
+
+# ── live in-play export ───────────────────────────────────────────────────────
+def test_inplay_export_no_live():
+    c = _mem_db()
+    doc = inplay_export.build(conn=c, with_venues=False)
+    assert doc["n_live"] == 0 and doc["matches"] == []
+
+
+def test_inplay_export_live_match():
+    c = _mem_db()
+    for api, cid in ((10, "france"), (20, "senegal")):
+        store.upsert(c, "team_meta",
+                     {"api_id": api, "canonical_team_id": cid, "updated_at": store.utcnow()}, pk=["api_id"])
+    store.upsert(c, "fixture", {"api_id": 1, "league_id": 1, "season": 2026, "status_short": "2H",
+                 "home_api_id": 10, "away_api_id": 20, "home_goals": 0, "away_goals": 0, "elapsed": 78,
+                 "updated_at": store.utcnow()}, pk=["api_id"])
+    for tid, xgv in ((10, 1.9), (20, 0.3)):
+        store.upsert(c, "fixture_stats", {"fixture_api_id": 1, "team_api_id": tid, "xg": xgv,
+                     "fetched_at": store.utcnow()}, pk=["fixture_api_id", "team_api_id"])
+    doc = inplay_export.build(conn=c, with_venues=False)
+    assert doc["n_live"] == 1
+    m = doc["matches"][0]
+    assert m["score"] == "0-0" and m["minute"] == 78
+    # state-dependent model: at 78' 0-0 the draw should dominate the live 3-way
+    assert m["model"]["draw"] > m["model"]["home"] and m["model"]["draw"] > m["model"]["away"]
+    assert abs(m["model"]["home"] + m["model"]["draw"] + m["model"]["away"] - 1.0) < 0.02
+    # xG-momentum trick should flag France (xG 1.9 vs 0.3, still 0-0) as a signal
+    assert any(o["kind"] == "tactic" for o in m["opportunities"])

@@ -247,4 +247,5 @@ export const getWCPerformance  = () => fetchApi<any>('/data/performance_report.j
 export const getWCRisk         = () => fetchApi<any>('/data/risk_report.json');
 export const getWCCalibration  = () => fetchApi<any>('/data/oos_report.json');
 export const getWCInplay       = () => fetchApi<any>('/data/inplay_signals.json');
+export const getWCInplayLive   = () => fetchApi<any>('/data/inplay_live.json');
 export const getWCUpcoming     = () => fetchApi<any>('/data/upcoming.json');
