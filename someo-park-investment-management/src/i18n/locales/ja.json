@@ -132,7 +132,14 @@
     "backtestVerdict": "モデルも市場も一様より劣る — 序盤はほぼランダム(引分50%)、ゆえに取引はブロック継続。バグではなく、この標本ではモデルの方が市場より較正が良い。",
     "squadStrength": "スカッド総合力",
     "subSquad": "スカッドの質(クラブ評価 + 得点/アシスト)。参考情報 — ライブモデルには未使用。",
-    "colSquadScore": "スカッド z", "colTopPlayers": "主力選手"
+    "colSquadScore": "スカッド z", "colTopPlayers": "主力選手",
+    "win": "勝", "drawResult": "引分", "ourPrediction": "予測",
+    "kalshiPrice": "Kalshi 価格", "polyPrice": "Poly US 価格", "notListed": "未上場",
+    "paramSweep": "パラメータ探索(OOS)",
+    "subParams": "180 組の PIT パラメータを Brier(=MSE)で評価",
+    "lblSelected": "選定(最小 Brier)", "lblVsCurrent": "現在の設定", "lblVsUniform": "一様ベースライン",
+    "colParams": "パラメータ",
+    "paramsWhy": "選定 = Brier(多クラスMSE)が最小の組。現設定より良いが一様より劣るため、参考表示のみで自動適用はしない。"
   },
   "sidebar": {
     "appName": "Someo Park",

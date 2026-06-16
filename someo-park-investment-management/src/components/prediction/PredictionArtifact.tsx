@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
-  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad,
+  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams,
 } from '../../lib/api';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
@@ -318,6 +318,31 @@ function Calibration() {
   );
 }
 
+function ParamSweep() {
+  const { t: tr } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getWCParams(), []);
+  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
+  const fmtParams = (p: any) => Object.entries(p ?? {}).map(([k, v]) => `${k.replace('_', ' ')}=${v}`).join('  ');
+  const all = (data?.results_all ?? []).slice(0, 40);   // top 40 of the 180 (ranked)
+  return (
+    <div>
+      <Title sub={tr('prediction.subParams')}>Parameter Sweep</Title>
+      <KV rows={[
+        [tr('prediction.lblSelected'), <b style={{ color: 'var(--success)' }}>{data?.best?.brier?.toFixed?.(4)}</b>],
+        [tr('prediction.lblVsCurrent'), data?.baseline?.brier],
+        [tr('prediction.lblVsUniform'), data?.uniform_brier],
+        [tr('prediction.colParams'), <span style={{ fontSize: 10 }}>{fmtParams(data?.best?.params)}</span>],
+      ]} />
+      <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>{tr('prediction.paramsWhy')}</div>
+      <DataTable cols={['#', 'Brier', 'Acc', tr('prediction.colParams'), '>uni?']}
+        rows={all.map((r: any) => [
+          r.rank, r.brier, r.acc, <span style={{ fontSize: 10 }}>{fmtParams(r.params)}</span>,
+          r.beats_uniform ? <span style={{ color: 'var(--success)' }}>✓</span> : <span style={{ color: 'var(--error)' }}>✗</span>,
+        ])} />
+    </div>
+  );
+}
+
 function Backtest() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCBacktest(), []);
@@ -446,6 +471,7 @@ const REGISTRY: Record<string, () => ReactElement> = {
   wc_risk: RiskCard,
   wc_calibration: Calibration,
   wc_backtest: Backtest,
+  wc_params: ParamSweep,
   wc_overview: OverviewCard,
   wc_venues: Venues,
   wc_budget: Budget,

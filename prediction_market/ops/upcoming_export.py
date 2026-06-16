@@ -108,13 +108,13 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
     from prediction_market.ingest import store
     from prediction_market.ingest.prior_ingest import load_prior
     from prediction_market.model.match_pricing import price_match
-    from prediction_market.model.strength import build_strength
+    from prediction_market.model.squad_strength import build_strength_live
 
     conn = conn or store.init_db()
     prior = load_prior()
     name_of = {t.team_id: t.name for t in prior.teams}
     zh_of = {t.team_id: t.zh for t in prior.teams}
-    sm = build_strength(prior)
+    sm = build_strength_live(conn, prior)
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     theta = CONFIG.risk.min_net_edge

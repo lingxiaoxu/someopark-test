@@ -132,7 +132,14 @@
     "backtestVerdict": "模型和市场都劣于均匀 —— 早期赛事近乎随机(50% 平局),所以交易仍被拦截。这不是 bug;在此样本上模型甚至比锐利市场更校准。",
     "squadStrength": "阵容强度",
     "subSquad": "阵容质量(俱乐部评分 + 进球/助攻)。仅供参考 —— 未用于线上模型。",
-    "colSquadScore": "阵容 z", "colTopPlayers": "核心球员"
+    "colSquadScore": "阵容 z", "colTopPlayers": "核心球员",
+    "win": "胜", "drawResult": "平局", "ourPrediction": "我们的预测",
+    "kalshiPrice": "Kalshi 现价", "polyPrice": "Poly US 现价", "notListed": "未上市",
+    "paramSweep": "参数搜索(OOS)",
+    "subParams": "180 组 PIT 参数,按 Brier(=MSE)在已结算场次上打分",
+    "lblSelected": "选定(最低 Brier)", "lblVsCurrent": "当前配置", "lblVsUniform": "均匀基线",
+    "colParams": "参数",
+    "paramsWhy": "选定 = Brier(多类 MSE vs 实际结果)最低的一组。它优于当前配置,但仍高于均匀基线,故仅作透明展示,不自动应用。"
   },
   "sidebar": {
     "appName": "Someo Park",

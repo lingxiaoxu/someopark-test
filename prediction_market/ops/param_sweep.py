@@ -119,6 +119,17 @@ def run(conn=None, *, sweeps: int = 30) -> dict:
         "baseline": {k: (round(baseline[k], 4) if isinstance(baseline[k], float) else baseline[k]) for k in ("brier", "log_loss", "acc")},
         "best": best,
         "top10": results[:10],
+        # All sets, compact + ranked — drives the frontend "Parameter Sweep" artifact.
+        "results_all": [
+            {"rank": i + 1, "params": r["params"], "brier": round(r["brier"], 4),
+             "log_loss": round(r["log_loss"], 4), "acc": round(r["acc"], 3),
+             "beats_uniform": r["brier"] < (2 / 3)}
+            for i, r in enumerate(results)
+        ],
+        "selected_reason": (
+            "Selected = the parameter set with the lowest Brier (multiclass MSE vs the actual "
+            "results) among all sets. It beats the current config but still sits above the uniform "
+            "baseline, so it is NOT auto-applied — shown for transparency."),
         "note": (f"Brier = multiclass MSE (predicted W/D/L vs one-hot outcome). "
                  f"Selected over {len(combos)} param sets on {n} settled matches. "
                  f"WARNING: {n} matches is a small sample — the ranking is directional, not "

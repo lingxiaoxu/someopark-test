@@ -132,7 +132,14 @@
     "backtestVerdict": "Modèle et marché au-dessus de l'uniforme — début de tournoi quasi aléatoire (50% de nuls), trading bloqué. Pas un bug ; le modèle est mieux calibré que le marché ici.",
     "squadStrength": "Force de l'Effectif",
     "subSquad": "Qualité de l'effectif (note club + buts/passes). Informatif — non utilisé par le modèle.",
-    "colSquadScore": "z effectif", "colTopPlayers": "Joueurs clés"
+    "colSquadScore": "z effectif", "colTopPlayers": "Joueurs clés",
+    "win": "victoire", "drawResult": "Nul", "ourPrediction": "Notre prédiction",
+    "kalshiPrice": "Prix Kalshi", "polyPrice": "Prix Poly US", "notListed": "non listé",
+    "paramSweep": "Recherche de paramètres (OOS)",
+    "subParams": "180 jeux de paramètres PIT, notés au Brier (= MSE) sur matchs réglés",
+    "lblSelected": "Sélectionné (Brier min)", "lblVsCurrent": "Config actuelle", "lblVsUniform": "Base uniforme",
+    "colParams": "Paramètres",
+    "paramsWhy": "Sélectionné = le jeu au Brier le plus bas. Meilleur que la config actuelle mais au-dessus de l'uniforme, donc montré pour transparence, non appliqué."
   },
   "sidebar": {
     "appName": "Someo Park",
