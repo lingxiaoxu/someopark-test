@@ -43,6 +43,38 @@ def _write_both(name: str, doc) -> None:
         (d / name).write_text(payload, encoding="utf-8")
 
 
+def _append_review_log(inplay: dict, synced: int) -> None:
+    """Append a per-match, per-cycle record to a JSONL post-match review log.
+
+    One line per live match each minute — the exact intra-game data that fed the
+    model (minute / score / reds / xG), the model's computed live 3-way + remaining
+    goals, and the signals it produced. Replaying this file after the match shows
+    what we saw and decided, tick by tick. Lives in data/logs/inplay_review_<date>.jsonl.
+    """
+    ts = datetime.now(timezone.utc).isoformat()
+    day = ts[:10].replace("-", "")
+    path = CONFIG.paths.logs / f"inplay_review_{day}.jsonl"
+    CONFIG.paths.logs.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for mch in inplay.get("matches", []):
+        lines.append(json.dumps({
+            "ts": ts,
+            "fixture_id": mch.get("fixture_id"),
+            "match": f'{mch.get("home", {}).get("name")} v {mch.get("away", {}).get("name")}',
+            "minute": mch.get("minute"),
+            "score": mch.get("score"),
+            "reds": mch.get("reds"),
+            "xg": mch.get("xg"),                       # intra-game data fed in
+            "model": mch.get("model"),                 # live 3-way + over + remaining goals
+            "n_opportunities": len(mch.get("opportunities", [])),
+            "opportunities": mch.get("opportunities", []),  # full signal detail (kind/side/venue/edge/reason)
+            "api_synced": synced,
+        }, ensure_ascii=False))
+    if lines:
+        with path.open("a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
+
 def refresh_once(conn=None) -> dict:
     """One in-play refresh cycle. Returns a small status dict for logging."""
     from prediction_market.ingest import store
@@ -68,6 +100,7 @@ def refresh_once(conn=None) -> dict:
 
     inplay = inplay_export.build(conn, with_venues=True)
     _write_both("inplay_live.json", inplay)
+    _append_review_log(inplay, synced)
     try:
         rows = upcoming_export.build(limit=6, conn=conn, with_venues=True)
         # Same envelope the daily refresh writes (frontend reads `.matches`).

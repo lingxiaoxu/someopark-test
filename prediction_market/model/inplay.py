@@ -32,6 +32,13 @@ RED_CARD_LAMBDA_MULT = 0.70     # penalised side scores ~30% less after a red
 LEAD_LEADER_MULT = 0.92         # leader eases off
 LEAD_TRAILER_MULT = 1.10        # trailing side pushes
 XG_WEIGHT = 0.35                # how much live xG over/under-performance shades remaining lambda
+# Late-game tempo kill when the score is LEVEL: empirically both teams wind down
+# and settle for the point in the closing minutes, so remaining scoring decays
+# faster than linear time. A plain double-Poisson therefore UNDER-prices the late
+# level draw (the documented Dixon-Coles late-draw deficit). We deflate both sides'
+# remaining lambda once a level game passes ~70', ramping to the full factor at 90'.
+LATE_LEVEL_DEFLATE = 0.30
+LATE_LEVEL_FROM_MIN = 70.0
 
 
 @dataclass(frozen=True)
@@ -92,6 +99,13 @@ def live_match_prob(
     total_minutes = 90.0 + max(0.0, injury_time)
     tau = max(0.0, (total_minutes - minute) / 90.0)
     g_home, g_away = _game_state_mult(home_goals, away_goals, red_home, red_away)
+    # Late level-draw correction: tempo dies when the score is level late, so the
+    # remaining lambda decays faster than linear → lifts the late draw probability.
+    if home_goals == away_goals and minute > LATE_LEVEL_FROM_MIN:
+        ramp = min(1.0, (minute - LATE_LEVEL_FROM_MIN) / (90.0 - LATE_LEVEL_FROM_MIN))
+        deflate = 1.0 - LATE_LEVEL_DEFLATE * ramp
+        g_home *= deflate
+        g_away *= deflate
     # xG performance shading: ratio of actual xG to pre-match-expected xG-so-far.
     if minute > 10:
         exp_h, exp_a = lam_home * minute / 90.0, lam_away * minute / 90.0

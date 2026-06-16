@@ -37,15 +37,41 @@ def apply_shrinkage(probs, lam: float):
     return [(1.0 - lam) * p + lam * _U for p in probs]
 
 
+def apply_draw_boost(probs, beta: float):
+    """Scale the DRAW class (index 1) by ``beta`` and renormalise.
+
+    The double-Poisson model systematically under-states draws (it sorts winners
+    well but spreads too little mass on the level outcome), so on settled matches it
+    never rates the draw as most-likely even when ~half of group games are level.
+    A single multiplicative draw factor — fit on results — restores the draw mass so
+    the model correctly predicts a draw in tight, low-scoring matchups. beta=1 ⇒ off.
+    """
+    if not beta or abs(beta - 1.0) < 1e-9 or len(probs) != 3:
+        return list(probs)
+    ph, pd, pa = probs
+    pd2 = pd * beta
+    s = ph + pd2 + pa
+    if s <= 0:
+        return list(probs)
+    return [ph / s, pd2 / s, pa / s]
+
+
 def apply_calibration(probs, cal: dict | None):
-    """Apply a fitted calibration dict {method, param} to a 3-way prob vector."""
+    """Apply a fitted calibration dict to a 3-way [home, draw, away] vector.
+
+    Order: temperature/shrinkage (over-confidence) → draw boost (draw under-mass).
+    """
     if not cal:
         return list(probs)
+    out = list(probs)
     if cal.get("method") == "temperature":
-        return apply_temperature(probs, cal.get("param", 1.0))
-    if cal.get("method") == "shrinkage":
-        return apply_shrinkage(probs, cal.get("param", 0.0))
-    return list(probs)
+        out = apply_temperature(out, cal.get("param", 1.0))
+    elif cal.get("method") == "shrinkage":
+        out = apply_shrinkage(out, cal.get("param", 0.0))
+    db = cal.get("draw_boost")
+    if db:
+        out = apply_draw_boost(out, db)
+    return out
 
 
 def _brier(P, Y):
@@ -68,13 +94,34 @@ def fit_calibration(P, Y) -> dict:
                 "calibrated_brier": None, "uniform_brier": uniform, "trade_grade": False, "n": 0}
     raw = _brier(P, Y)
 
-    bestT, bT = 1.0, raw
-    t = 1.0
-    while t <= 8.0001:
-        b = _brier([apply_temperature(p, t) for p in P], Y)
-        if b < bT:
-            bT, bestT = b, t
-        t += 0.05
+    # Joint grid over (temperature, draw_boost): temperature fixes over-confidence,
+    # the draw boost fixes the structural draw under-mass. Draw boost is bounded
+    # (≤2.5) so it lifts the level outcome toward its true frequency without letting
+    # a small, noisy sample collapse everything onto the draw.
+    def _grid_temp():
+        t = 1.0
+        while t <= 8.0001:
+            yield round(t, 3); t += 0.05
+
+    def _grid_beta():
+        # Bounded to the GENUINE double-Poisson draw deficit (~independent goals
+        # under-state level scores; Dixon-Coles rho territory). Capped at 1.35 so a
+        # small, draw-heavy sample can't push the model to "always predict draw" —
+        # that would overfit group-stage noise and collapse in the knockouts (no
+        # regulation draws). The model's raw mean draw prob already ≈ the true rate.
+        b = 1.0
+        while b <= 1.3501:
+            yield round(b, 3); b += 0.05
+
+    bestT, bestB, cb = 1.0, 1.0, raw
+    for t in _grid_temp():
+        Pt = [apply_temperature(p, t) for p in P]
+        for beta in _grid_beta():
+            b = _brier([apply_draw_boost(p, beta) for p in Pt], Y)
+            if b < cb:
+                cb, bestT, bestB = b, t, beta
+
+    # Shrinkage as an alternative single-knob calibrator (kept if it wins).
     bestL, bL = 0.0, raw
     lam = 0.0
     while lam <= 1.0001:
@@ -83,13 +130,13 @@ def fit_calibration(P, Y) -> dict:
             bL, bestL = b, lam
         lam += 0.01
 
-    if bT <= bL:
-        method, param, cb = "temperature", round(bestT, 3), bT
+    if bL < cb:
+        method, param, draw_boost, cbest = "shrinkage", round(bestL, 3), 1.0, bL
     else:
-        method, param, cb = "shrinkage", round(bestL, 3), bL
-    return {"method": method, "param": param, "raw_brier": round(raw, 4),
-            "calibrated_brier": round(cb, 4), "uniform_brier": uniform,
-            "trade_grade": bool(cb <= 2 / 3), "n": n}
+        method, param, draw_boost, cbest = "temperature", round(bestT, 3), round(bestB, 3), cb
+    return {"method": method, "param": param, "draw_boost": draw_boost,
+            "raw_brier": round(raw, 4), "calibrated_brier": round(cbest, 4),
+            "uniform_brier": uniform, "trade_grade": bool(cbest <= 2 / 3), "n": n}
 
 
 def load_calibration() -> dict | None:

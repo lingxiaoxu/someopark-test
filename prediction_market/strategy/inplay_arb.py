@@ -126,15 +126,23 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
         quotes = {v: fn(fx["api_id"]) for v, fn in quote_sources.items()}
         for side in ("home", "draw", "away"):
             present = {v: q.get(side) for v, q in quotes.items() if q and q.get(side) is not None}
-            for venue, qv in present.items():
-                ask = _ask(qv)
-                if ask is None:
-                    continue
-                e = compute_edge(fair[side], ask, fee=fee, theta=theta)
+            # One row per side: back the CHEAPEST ask (best edge); name the other
+            # venues that also qualify, instead of a near-duplicate row per venue.
+            asks_by_v = {v: _ask(qv) for v, qv in present.items() if _ask(qv) is not None}
+            if asks_by_v:
+                best_v = min(asks_by_v, key=asks_by_v.get)
+                best_ask = asks_by_v[best_v]
+                e = compute_edge(fair[side], best_ask, fee=fee, theta=theta)
                 if e.tradable:
-                    opps.append(Opportunity(fx["api_id"], m, minute, score, "relative_value", side, venue,
-                                            round(fair[side], 3), round(ask, 3), round(e.net_edge, 3),
-                                            "BUY", f"model {fair[side]:.2f} > {venue} ask {ask:.2f}"))
+                    also = [v for v, a in asks_by_v.items()
+                            if v != best_v and compute_edge(fair[side], a, fee=fee, theta=theta).tradable]
+                    venue_lbl = best_v + (f" (+{', '.join(also)})" if also else "")
+                    reason = f"model {fair[side]:.2f} > {best_v} ask {best_ask:.2f}"
+                    if also:
+                        reason += f"; also {', '.join(f'{v} {asks_by_v[v]:.2f}' for v in also)}"
+                    opps.append(Opportunity(fx["api_id"], m, minute, score, "relative_value", side, venue_lbl,
+                                            round(fair[side], 3), round(best_ask, 3), round(e.net_edge, 3),
+                                            "BUY", reason))
             # Cross-venue lock arb: BUY YES at the cheapest ASK, SELL YES (=buy NO)
             # at the highest BID, on two EXECUTABLE venues. Lock = sell_bid − buy_ask
             # − fees. Using bid for the sell leg avoids false positives.
