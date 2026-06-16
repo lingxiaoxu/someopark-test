@@ -495,7 +495,7 @@ export default function WFStructureViewer({ data, params }: { data?: any; params
     const [srFiles, setSrFiles] = React.useState<any>(null);
     const [srLoading, setSrLoading] = React.useState(true);
     React.useEffect(() => {
-      import('../../lib/api').then(({ default: _, ...api }) => {
+      import('../../lib/api').then((api) => {
         (api as any).getWFXlsxList(qlibStrat).then((d: any) => { setSrFiles(d); setSrLoading(false); }).catch(() => setSrLoading(false));
       });
     }, []);

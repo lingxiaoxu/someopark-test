@@ -144,7 +144,7 @@ function SsrsSnapshotDetail({ data }: { data: any }) {
 // ══ AISS subsector card: header = subsector (action/weight/total PnL);
 //    each STOCK is a SectorDetail-style row with its own cost basis / price /
 //    entry / days held / PnL (all stock-level). ══
-function AissStockRow({ s, asOf }: { s: any; asOf?: string }) {
+const AissStockRow: React.FC<{ s: any; asOf?: string }> = ({ s, asOf }) => {
   const { t } = useTranslation();
   const pnlPerShare = (s.last_price || 0) - (s.cost_basis || 0);
   const totalPnl = pnlPerShare * (s.shares || 0);
@@ -167,9 +167,9 @@ function AissStockRow({ s, asOf }: { s: any; asOf?: string }) {
       </div>
     </div>
   );
-}
+};
 
-function AissSubsectorCard({ sub, holding, stocks, asOf }: { sub: string; holding: any; stocks: any[]; asOf?: string }) {
+const AissSubsectorCard: React.FC<{ sub: string; holding: any; stocks: any[]; asOf?: string }> = ({ sub, holding, stocks, asOf }) => {
   const { t } = useTranslation();
   const act = holding.action_today || 'HOLD';
   // subsector total PnL = sum of per-stock PnL
@@ -196,7 +196,7 @@ function AissSubsectorCard({ sub, holding, stocks, asOf }: { sub: string; holdin
       </div>
     </div>
   );
-}
+};
 
 // ══ AISS Snapshot Expanded View (mirrors SSRS, stock-level inside subsector cards) ══
 function AissSnapshotDetail({ data }: { data: any }) {
