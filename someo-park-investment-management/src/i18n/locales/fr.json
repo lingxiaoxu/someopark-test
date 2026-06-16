@@ -207,37 +207,37 @@
     "cap": {
       "dataT": "Données et entrées",
       "data": [
-        "Les 48 équipes qualifiées et le calendrier officiel complet",
-        "Données en direct : score, minute, qualité des tirs, cartons, événements clés",
-        "Force des équipes : résultats passés, classement mondial, qualité de l’effectif, forme récente",
-        "Données joueurs : production en club + dernières notes des joueurs",
-        "Cotes du marché : prix Kalshi et Polymarket US en temps réel",
-        "Le jeu de données s’enrichit et se recalibre à chaque match terminé"
+        "Les 48 équipes qualifiées et le calendrier officiel complet, synchronisés",
+        "Flux en direct : score, minute, qualité des tirs (xG), cartons, événements clés",
+        "Force des équipes : classement mondial + qualité de l’effectif + forme récente",
+        "Notes des joueurs EA Sports FC 26 — chaque joueur au monde, mises à jour en continu",
+        "Prix en temps réel Kalshi et Polymarket US, plus plusieurs bookmakers",
+        "Le jeu de données s’enrichit et se recalibre automatiquement après chaque match"
       ],
       "preT": "Avant le coup d’envoi",
       "pre": [
-        "Probabilité équitable victoire / nul / défaite pour chaque match",
-        "Total de buts (plus/moins) et les deux équipes marquent",
-        "Simulation du tournoi : titre, qualification et finale de chaque équipe",
-        "Probabilités du Soulier d’Or (meilleur buteur)",
-        "Là où notre prévision diffère des bookmakers (notre edge)",
-        "Phase de groupes avec nuls ; phases finales résolues par un modèle de tirs au but"
+        "Victoire / nul / défaite, total de buts et les deux équipes marquent, pour chaque match",
+        "Une simulation de tournoi Monte-Carlo à 1 000 000 de tirages → titre, finale et qualification",
+        "Cotes du Soulier d’Or mêlant talent (EA FC), profondeur en phase finale et partage des buts",
+        "Cotes mises à jour après chaque match ; en phase finale, les éliminés tombent à 0 %",
+        "Chaque prévision comparée au bookmaker affûté et aux prix des places (notre edge)",
+        "Phase de groupes avec nuls ; phases finales résolues par un modèle de tirs au but par équipe"
       ],
       "liveT": "En direct (live)",
       "live": [
-        "Prix équitables mis à jour chaque minute pendant le match",
-        "S’ajuste au score, au temps restant et à l’état du jeu — qui mène, but d’une grosse/petite équipe, cartons rouges, dernières minutes",
-        "Détection en temps réel de la valeur et de l’arbitrage entre places",
-        "Signaux tactiques en direct (ex. valeur du nul en fin de match)",
-        "Chaque minute de données et de calcul est journalisée pour le débriefing"
+        "Prix équitables recalculés chaque minute pendant le match",
+        "Réagit au score, au temps restant et à l’état du jeu — qui mène, but d’une grosse/petite équipe, cartons rouges, dernières minutes",
+        "Une bibliothèque de tactiques live : retour après but, remontée du favori, valeur carton rouge, valeur du nul tardif, etc.",
+        "Détection en temps réel de valeur et d’arbitrage entre Kalshi et Polymarket",
+        "Chaque minute de données et de calcul est journalisée pour un débriefing complet"
       ],
-      "otherT": "Discipline, risque et reporting",
+      "otherT": "Calibration, risque et reporting",
       "other": [
-        "Le modèle est calibré ; le trading n’est activé qu’après une barrière de précision",
-        "Contrôles de risque stricts : plafond ferme par ordre et vérification d’exécutabilité",
-        "Un historique réel match par match (prévision / pari / résultat / P&L)",
+        "Les probabilités sont calibrées statistiquement et doivent passer une barrière de précision avant tout trade",
+        "Contrôles de risque stricts : plafond ferme par ordre + vérification d’exécutabilité",
+        "Un historique réel match par match — prévision, pari, résultat et P&L cumulé",
         "Rapports PDF de qualité institutionnelle (performance et risque)",
-        "Tableau de bord multilingue en temps réel"
+        "Tableau de bord multilingue en temps réel sur toutes les vues"
       ]
     },
     "finished": "TERMINÉ",

@@ -209,6 +209,16 @@ def write_outputs(payload: dict, *, emit_frontend: bool) -> list[Path]:
         p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         written.append(p)
 
+    # Keep only the most recent timestamped runs (each ~40 KB) so they never accumulate
+    # now that the champion re-runs after every match. latest.json + worldcup_model.json
+    # always hold the current run.
+    runs = sorted(CONFIG.paths.output.glob("model_run_*.json"))
+    for old in runs[:-10]:
+        try:
+            old.unlink()
+        except OSError:
+            pass
+
     if emit_frontend:
         fe_dir = CONFIG.paths.frontend_data
         if fe_dir.exists():

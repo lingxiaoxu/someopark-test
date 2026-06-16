@@ -525,37 +525,37 @@
     "cap": {
       "dataT": "Data & Inputs",
       "data": [
-        "All 48 qualified teams and the full official fixture schedule",
-        "Live match data: score, minute, shot quality, cards and key events",
-        "Team strength: historical results, world ranking, squad quality, recent form",
-        "Player data: club output plus the latest player ratings",
-        "Market quotes: real-time Kalshi and Polymarket US prices",
-        "The dataset keeps growing and re-calibrating as matches finish"
+        "All 48 qualified teams and the full official fixture schedule, kept in sync",
+        "Live match feed: score, minute, shot quality (xG), cards and key events",
+        "Team strength from world ranking, squad quality and recent international form",
+        "EA Sports FC 26 player ratings — every player worldwide, continuously updated",
+        "Real-time prices from Kalshi and Polymarket US, plus multiple bookmakers",
+        "The dataset grows and re-calibrates automatically after every match"
       ],
       "preT": "Before Kick-off",
       "pre": [
-        "Fair win / draw / loss probability for every match",
-        "Total goals (over/under) and both-teams-to-score",
-        "Full tournament simulation: each team’s title, advancement and final odds",
-        "Golden Boot (top scorer) probabilities",
-        "Where our prediction differs from the bookmakers (our edge)",
-        "Group stage priced with draws; knockouts resolved through a penalty-shootout model"
+        "Fair win / draw / loss, total goals and both-teams-to-score for every match",
+        "A 1,000,000-run Monte-Carlo tournament simulation → each team’s title, final and advancement odds",
+        "Golden Boot odds blending player talent (EA FC), knockout depth and intra-squad goal-sharing",
+        "Odds refresh after every match; once the knockouts begin, eliminated teams drop to 0%",
+        "Every prediction benchmarked against the sharp bookmaker and venue prices (our edge)",
+        "Group matches priced with draws; knockouts resolved by a team-specific penalty-shootout model"
       ],
       "liveT": "In-Play (Live)",
       "live": [
-        "Fair prices updated every minute while a match is live",
-        "Adjusts to the scoreline, time remaining and game state — who leads, a strong vs weak team scoring, red cards, the closing minutes",
-        "Real-time value and cross-venue arbitrage detection",
-        "In-play tactical signals (e.g. late-game draw value)",
-        "Every minute of data and computation is logged for post-match review"
+        "Fair prices recomputed every minute while a match is live",
+        "Reacts to the scoreline, time left and game state — who leads, a strong vs weak team scoring, red cards, the closing minutes",
+        "A library of in-play tactics: goal-reaction reversion, favourite-comeback, red-card value, late-game draw value and more",
+        "Real-time value and cross-venue arbitrage detection across Kalshi & Polymarket",
+        "Every minute of data and computation is logged for full post-match review"
       ],
-      "otherT": "Discipline, Risk & Reporting",
+      "otherT": "Calibration, Risk & Reporting",
       "other": [
-        "The model is calibrated; trading is only enabled once it passes an accuracy gate",
+        "Model probabilities are statistically calibrated and must pass an accuracy gate before any trade is allowed",
         "Strict risk controls: a hard per-order cap and venue-executability checks",
-        "A live, match-by-match track record (prediction / bet / result / P&L)",
+        "A live, match-by-match track record — prediction, bet, result and running P&L",
         "Institutional-style PDF reports (performance and risk)",
-        "Multi-language, real-time dashboard"
+        "Multi-language, real-time dashboard across every model view"
       ]
     },
     "finished": "FINISHED",

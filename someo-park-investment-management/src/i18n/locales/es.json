@@ -207,37 +207,37 @@
     "cap": {
       "dataT": "Datos y entradas",
       "data": [
-        "Las 48 selecciones clasificadas y el calendario oficial completo",
-        "Datos en vivo: marcador, minuto, calidad de tiro, tarjetas y eventos clave",
-        "Fuerza de equipo: resultados históricos, ranking mundial, calidad de plantilla, forma reciente",
-        "Datos de jugadores: producción en club + las últimas valoraciones de jugadores",
-        "Cotizaciones de mercado: precios de Kalshi y Polymarket US en tiempo real",
-        "El conjunto de datos crece y se recalibra a medida que terminan los partidos"
+        "Las 48 selecciones clasificadas y el calendario oficial completo, sincronizados",
+        "Datos en vivo: marcador, minuto, calidad de tiro (xG), tarjetas y eventos clave",
+        "Fuerza de equipo: ranking mundial + calidad de plantilla + forma reciente",
+        "Valoraciones de jugadores EA Sports FC 26 — cada jugador del mundo, en continua actualización",
+        "Precios en tiempo real de Kalshi y Polymarket US, más varias casas de apuestas",
+        "El conjunto de datos crece y se recalibra automáticamente tras cada partido"
       ],
       "preT": "Antes del saque inicial",
       "pre": [
-        "Probabilidad justa de victoria / empate / derrota en cada partido",
-        "Goles totales (más/menos) y ambos equipos marcan",
-        "Simulación del torneo: título, clasificación y final de cada selección",
-        "Probabilidades de la Bota de Oro (máximo goleador)",
-        "Dónde difiere nuestra predicción de las casas (nuestro edge)",
-        "Fase de grupos con empates; eliminatorias resueltas con un modelo de tanda de penaltis"
+        "Victoria / empate / derrota, goles totales y ambos marcan, para cada partido",
+        "Una simulación de torneo Monte-Carlo de 1.000.000 de iteraciones → título, final y clasificación",
+        "Cuotas de la Bota de Oro que combinan talento (EA FC), profundidad en eliminatorias y reparto de goles",
+        "Cuotas actualizadas tras cada partido; en eliminatorias, los eliminados bajan a 0%",
+        "Cada predicción contrastada con la casa experta y los precios de mercado (nuestro edge)",
+        "Grupos con empates; eliminatorias resueltas con un modelo de penaltis específico por equipo"
       ],
       "liveT": "En juego (en vivo)",
       "live": [
-        "Precios justos actualizados cada minuto mientras el partido está en vivo",
-        "Se ajusta al marcador, el tiempo restante y el estado del juego: quién gana, gol de equipo fuerte o débil, tarjetas rojas, los minutos finales",
-        "Detección en tiempo real de valor y arbitraje entre plataformas",
-        "Señales tácticas en vivo (p. ej. valor del empate al final)",
-        "Cada minuto de datos y cálculo queda registrado para el análisis posterior"
+        "Precios justos recalculados cada minuto mientras el partido está en vivo",
+        "Responde al marcador, el tiempo restante y el estado del juego: quién gana, gol de equipo fuerte o débil, tarjetas rojas, minutos finales",
+        "Una biblioteca de tácticas en vivo: reversión tras gol, remontada del favorito, valor por tarjeta roja, valor del empate tardío y más",
+        "Detección en tiempo real de valor y arbitraje entre Kalshi y Polymarket",
+        "Cada minuto de datos y cálculo queda registrado para un análisis posterior completo"
       ],
-      "otherT": "Disciplina, riesgo e informes",
+      "otherT": "Calibración, riesgo e informes",
       "other": [
-        "El modelo está calibrado; solo se opera tras superar una puerta de precisión",
-        "Controles de riesgo estrictos: tope fijo por orden y verificación de ejecutabilidad",
-        "Un historial real partido a partido (predicción / apuesta / resultado / P&L)",
+        "Las probabilidades se calibran estadísticamente y deben superar una puerta de precisión antes de operar",
+        "Controles de riesgo estrictos: tope fijo por orden + verificación de ejecutabilidad",
+        "Un historial real partido a partido — predicción, apuesta, resultado y P&L acumulado",
         "Informes PDF de estilo institucional (rendimiento y riesgo)",
-        "Panel multiidioma en tiempo real"
+        "Panel multiidioma en tiempo real en todas las vistas"
       ]
     },
     "finished": "FINALIZADO",
