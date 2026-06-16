@@ -27,6 +27,9 @@ export function toChatPrompt() {
     divergence (model vs sharp book), overview (system map).
     For a single team across all views use get_wc_team (e.g. team="Argentina"/"阿根廷"); for one matchup
     (model 3-way + Kalshi/Poly asks + edge + lock-arb + live signals) use get_wc_match (home, away).
+    Compare 2–6 teams with compare_wc_teams; get the betting track record as a P&L time series
+    (cumulative curve + per-match + group/knockout, with team/stage/since filters) with get_wc_track_record.
+    If no match is live, the inplay data says so — relay that there's no in-play arbitrage when nothing is live.
     Key facts: probabilities are 0-1; venue prices ≈ implied probability. GROUP matches can draw; KNOCKOUT
     matches cannot (extra time + penalty shootout decide a winner — priced via a team-specific shootout model).
     The model is post-hoc CALIBRATED; live trading is gated (only trades when the calibrated Brier beats the

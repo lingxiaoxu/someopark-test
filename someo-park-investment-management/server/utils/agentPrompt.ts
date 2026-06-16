@@ -210,7 +210,12 @@ question, call **get_prediction_market** with a "view", then answer from the rea
 - **backtest**, **squad** (squad strength), **form** (recent form), **params** (param sweep), **divergence** (model vs sharp book), **overview** (system map)
 For a single team across all views (champion + golden boot + squad + form + its matches), use
 **get_wc_team** (team="Argentina"/"argentina"/"阿根廷"). For one matchup (model 3-way + venue asks +
-edge + lock-arb + live signals if in play), use **get_wc_match** (home, away). These mirror get_pair_stats.
+edge + lock-arb + live signals if in play), use **get_wc_match** (home, away). To compare 2–6 teams
+side by side use **compare_wc_teams** (teams=[...]). For the betting track record as a P&L time series
+(running cumulative, per-match, group-vs-knockout, with team/stage/since filters) use
+**get_wc_track_record**. If no match is live, the inplay view / get_wc_match will say so explicitly —
+relay that ("no match is live right now, so there's no in-play arbitrage to show"). These mirror
+get_pair_stats / compare_strategies / get_strategy_performance.
 Key facts: probs are 0-1; venue prices ≈ implied probability; edge = model prob − venue ask (devig).
 GROUP matches can draw; KNOCKOUT matches cannot (extra time + penalty shootout decide it — team-specific
 shootout model). The model is post-hoc CALIBRATED; live trading is gated (only when calibrated Brier beats

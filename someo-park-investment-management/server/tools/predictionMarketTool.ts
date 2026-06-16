@@ -86,6 +86,16 @@ export const predictionMarketTool: AgentTool = {
       if (Array.isArray(matches) && team) matches = matches.filter((m) => matchesTeam(team, m.home) || matchesTeam(team, m.away))
       return { note: data?.note, matches: n && Array.isArray(matches) ? matches.slice(0, n) : matches }
     }
+    if (view === 'inplay') {
+      // No live match → say so explicitly (don't return a confusing empty result).
+      if (!data || !data.n_live || !(data.matches || []).length) {
+        return { n_live: 0, matches: [],
+          message: 'No match is live right now, so there is no in-play arbitrage to show — ' +
+            'in-play signals are only produced during a live match. Use view="predictions" for ' +
+            'upcoming matches and their scheduled kickoff times.' }
+      }
+      return data
+    }
     if (view === 'performance' && team && Array.isArray(data?.bet_log)) {
       // Filter the production bet log to this team's matches.
       return { ...data, bet_log: data.bet_log.filter((b: any) => matchesTeam(team, b) || matchesTeam(team, { name: b.home }) || matchesTeam(team, { name: b.away })) }
@@ -189,7 +199,97 @@ export const predictionMarketMatchTool: AgentTool = {
     return {
       pre_match: pre || null,    // model 3-way + O2.5/BTTS + book + kalshi + poly + edge + lock_arb
       live: live || null,        // live model + xG + opportunities (only if in play now)
+      live_note: live ? `LIVE now ${live.minute}' ${live.score} — ${live.opportunities?.length || 0} in-play signal(s).`
+                      : 'Not in play right now — showing the pre-match model + venue prices. In-play arbitrage appears here only while the match is live.',
       context: { home: champ(home), away: champ(away) },
+    }
+  },
+}
+
+export const predictionMarketCompareTool: AgentTool = {
+  definition: {
+    name: 'compare_wc_teams',
+    description:
+      'Compare 2–6 World Cup 2026 teams side by side across the model: champion / advance odds, ' +
+      'rating, FIFA rank, squad-strength z, recent-form z, and each team\'s leading golden-boot ' +
+      'candidate. Mirrors compare_strategies. Accepts names / ids / Chinese names.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        teams: { type: 'array', items: { type: 'string' },
+          description: 'Teams to compare (2–6), by name / id / Chinese name.' },
+      },
+      required: ['teams'],
+    },
+  },
+  isConcurrencySafe: () => true,
+  isReadOnly: () => true,
+  async execute({ teams }) {
+    if (!Array.isArray(teams) || teams.length < 2) return { error: 'Provide 2–6 teams to compare.' }
+    const [wc, squad, form] = await Promise.all([_load('worldcup_model.json'), _load('squad.json'), _load('form.json')])
+    const rows = teams.slice(0, 6).map((q: string) => {
+      const c = (wc?.champion || []).find((x: any) => matchesTeam(q, x))
+      if (!c) return { query: q, error: 'not found' }
+      const sq = _list(squad).find((s: any) => matchesTeam(q, s))
+      const fm = _list(form).find((s: any) => matchesTeam(q, s))
+      const boot = (wc?.golden_boot || []).filter((p: any) => matchesTeam(q, p))
+        .sort((a: any, b: any) => b.p_golden_boot - a.p_golden_boot)[0]
+      return {
+        team: c.name, zh: c.zh, fifa_rank: c.fifa_rank, rating: c.rating,
+        p_champion: c.p_champion, p_advance_model: c.p_advance_model,
+        squad_z: sq?.score_z ?? null, form_z: fm?.form_z ?? null,
+        top_scorer: boot ? { name: boot.name, p_golden_boot: boot.p_golden_boot } : null,
+      }
+    })
+    return { teams: rows }
+  },
+}
+
+export const predictionMarketTrackRecordTool: AgentTool = {
+  definition: {
+    name: 'get_wc_track_record',
+    description:
+      'The production betting track record as a TIME SERIES — flat 1u on our prediction every match ' +
+      'since the opener, settled on the real result. Returns the running P&L curve (date → cumulative), ' +
+      'each match (prediction / bet / result / odds / P&L), a summary (W-L, units, ROI), and a group-vs-' +
+      'knockout breakdown. Optional filters: team, stage ("group"/"knockout"), since (YYYY-MM-DD).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        team: { type: 'string', description: 'Only matches involving this team.' },
+        stage: { type: 'string', enum: ['group', 'knockout'], description: 'Only this stage.' },
+        since: { type: 'string', description: 'Only matches on/after this date (YYYY-MM-DD).' },
+      },
+      required: [],
+    },
+  },
+  isConcurrencySafe: () => true,
+  isReadOnly: () => true,
+  async execute({ team, stage, since }) {
+    const perf = await _load('performance_report.json')
+    let log: any[] = perf?.bet_log || []
+    if (!log.length) return { message: 'No settled matches yet — the track record starts once matches finish.' }
+    if (team) log = log.filter((b) => matchesTeam(team, { name: b.home }) || matchesTeam(team, { name: b.away }) || matchesTeam(team, b))
+    if (stage) log = log.filter((b) => b.stage === stage)
+    if (since) log = log.filter((b) => (b.date || '') >= since)
+    if (!log.length) return { message: `No matches in the track record for the given filter (team=${team}, stage=${stage}, since=${since}).` }
+
+    // Recompute the running curve over the filtered slice.
+    let cum = 0, wins = 0
+    const pnl_curve = log.map((b) => { cum += b.pnl; wins += b.won ? 1 : 0
+      return { date: b.date, match: `${b.home} ${b.score} ${b.away}`, stage: b.stage,
+        pick: b.pick_team, result: b.result, won: b.won, odds: b.dec_odds, pnl: b.pnl, cum_pnl: Math.round(cum * 100) / 100 } })
+    const byStage: Record<string, any> = {}
+    for (const b of log) {
+      const s = byStage[b.stage] ||= { matches: 0, wins: 0, pnl: 0 }
+      s.matches++; s.wins += b.won ? 1 : 0; s.pnl = Math.round((s.pnl + b.pnl) * 100) / 100
+    }
+    return {
+      summary: { matches: log.length, record: `${wins}W-${log.length - wins}L`,
+        pnl_units: Math.round(cum * 100) / 100, roi: Math.round((cum / log.length) * 1000) / 1000,
+        since: log[0].date, trade_grade: perf?.trade_grade },
+      by_stage: byStage,
+      pnl_curve,
     }
   },
 }
