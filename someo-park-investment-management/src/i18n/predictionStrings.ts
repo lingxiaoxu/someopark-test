@@ -65,6 +65,10 @@ const M: Record<string, Tr> = {
     en: 'BLOCK (model not yet calibrated)', zh: '拦截(模型尚未校准)',
     ja: 'ブロック(モデル未較正)', fr: 'BLOQUÉ (modèle non calibré)', es: 'BLOQUEADO (modelo sin calibrar)',
   },
+  'PASS (calibrated)': {
+    en: 'PASS (calibrated)', zh: '通过(已校准)',
+    ja: '合格(較正済み)', fr: 'OK (calibré)', es: 'OK (calibrado)',
+  },
   // ── oos_report.json notes ──
   'model may UNDER-estimate draws (pred 0.22 vs obs 0.47)': {
     en: 'model may UNDER-estimate draws (pred 0.22 vs obs 0.47)',

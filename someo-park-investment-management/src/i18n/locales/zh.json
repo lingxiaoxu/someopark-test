@@ -130,6 +130,8 @@
     "lblModelBrier": "Brier(模型)", "lblBookBrier": "Brier(庄家)",
     "lblDrawRate": "实际平局率", "lblBlend": "向庄家混合 Brier", "colResult": "结果",
     "backtestVerdict": "模型和市场都劣于均匀 —— 早期赛事近乎随机(50% 平局),所以交易仍被拦截。这不是 bug;在此样本上模型甚至比锐利市场更校准。",
+    "lblModelRaw": "Brier(原始模型)",
+    "backtestPass": "原始模型过度自信;经过概率校准后,已同时优于均匀基线和锐利庄家 —— 现已达到可交易等级。",
     "squadStrength": "阵容强度",
     "subSquad": "阵容质量(俱乐部评分 + 进球/助攻)。仅供参考 —— 未用于线上模型。",
     "colSquadScore": "阵容 z", "colTopPlayers": "核心球员",

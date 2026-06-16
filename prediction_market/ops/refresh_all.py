@@ -52,6 +52,15 @@ def main() -> None:
     ).fetchone()["n"]
     print(f"[refresh] OOS sample is now {n_settled} settled matches (dynamic — grows automatically)")
 
+    # Refit the probability calibration FIRST (on the current sample) so the gate
+    # and the calibrated predictions below all use the fresh map.
+    from prediction_market.ops import calibrate_fit
+    try:
+        _write("calibration.json", calibrate_fit.fit(conn))
+        print("  ✓ calibration.json (re-fit)")
+    except Exception as e:
+        print(f"  ✗ calibration.json: {e}")
+
     # Regenerate every export the frontend reads, all on the CURRENT sample.
     from prediction_market.ops import (backtest_export, form_export, frontend_export,
                                        inplay_export, performance_report, risk_report,

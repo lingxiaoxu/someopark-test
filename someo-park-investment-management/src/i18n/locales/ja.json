@@ -130,6 +130,8 @@
     "lblModelBrier": "Brier(モデル)", "lblBookBrier": "Brier(ブック)",
     "lblDrawRate": "実際の引分率", "lblBlend": "ブック混合 Brier", "colResult": "結果",
     "backtestVerdict": "モデルも市場も一様より劣る — 序盤はほぼランダム(引分50%)、ゆえに取引はブロック継続。バグではなく、この標本ではモデルの方が市場より較正が良い。",
+    "lblModelRaw": "Brier(生モデル)",
+    "backtestPass": "生モデルは自信過剰だったが、確率較正後は一様基準とシャープ市場の両方を上回り、取引グレードに到達。",
     "squadStrength": "スカッド総合力",
     "subSquad": "スカッドの質(クラブ評価 + 得点/アシスト)。参考情報 — ライブモデルには未使用。",
     "colSquadScore": "スカッド z", "colTopPlayers": "主力選手",

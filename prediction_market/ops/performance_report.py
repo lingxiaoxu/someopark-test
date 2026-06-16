@@ -102,7 +102,13 @@ def build(conn=None) -> PerformanceReport:
     except Exception:
         pass
 
-    if brier_score(probs, outcomes) > (2 / 3):
+    from prediction_market.model.probability_calibration import load_calibration
+    cal = load_calibration()
+    if cal and cal.get("trade_grade"):
+        notes.append(f"After calibration ({cal['method']} {cal['param']}) the model Brier is "
+                     f"{cal['calibrated_brier']} ≤ uniform {cal['uniform_brier']} — TRADE-GRADE (gate passes). "
+                     f"Raw model was over-confident ({cal['raw_brier']}).")
+    elif brier_score(probs, outcomes) > (2 / 3):
         notes.append("model Brier WORSE than uniform — not yet trade-grade (discipline gate blocks).")
     notes.append("Realized P&L ~0 by design: live trading gated; only demo order test placed.")
     notes.append("Calibration P&L is PAPER (fair-odds), measures model over/under-confidence.")

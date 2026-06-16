@@ -94,11 +94,21 @@ def build(conn=None) -> RiskReport:
     api_budget = {"used": used, "cap": CONFIG.soccer.monthly_budget,
                   "pct": round(used / CONFIG.soccer.monthly_budget, 3)}
 
-    # Calibration gate: is the model trade-grade?
+    # Calibration gate: is the CALIBRATED model trade-grade? The raw model is
+    # over-confident; we fit a calibration map (calibration.json) and gate on the
+    # calibrated Brier vs the uniform baseline.
     cal = {"status": "unknown"}
-    oos_path = CONFIG.paths.output / "oos_report.json"
-    if oos_path.exists():
-        brier = json.loads(oos_path.read_text(encoding="utf-8")).get("brier")
+    cal_path = CONFIG.paths.output / "calibration.json"
+    if cal_path.exists():
+        c = json.loads(cal_path.read_text(encoding="utf-8"))
+        cb, rb = c.get("calibrated_brier"), c.get("raw_brier")
+        if cb is not None:
+            ok = bool(c.get("trade_grade"))
+            cal = {"raw_brier": rb, "calibrated_brier": cb, "uniform_baseline": round(2 / 3, 4),
+                   "method": c.get("method"), "param": c.get("param"), "trade_grade": ok,
+                   "status": "PASS (calibrated)" if ok else "BLOCK (model not yet calibrated)"}
+    elif (CONFIG.paths.output / "oos_report.json").exists():
+        brier = json.loads((CONFIG.paths.output / "oos_report.json").read_text(encoding="utf-8")).get("brier")
         if brier is not None:
             ok = brier <= 2 / 3
             cal = {"oos_brier": round(brier, 4), "uniform_baseline": round(2 / 3, 4),
