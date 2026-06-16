@@ -196,7 +196,14 @@
     "colRecent": "最近(得-失)",
     "colTeam": "チーム",
     "lblBrierCalibrated": "Brier(校正後)",
-    "gradePassCalibrated": "合格(校正済み)"
+    "gradePassCalibrated": "合格(校正済み)",
+    "subPnlReport": "実戦成績 — 開幕戦からの全試合",
+    "lblTrackRecord": "成績",
+    "colDate": "日付",
+    "colMatchup": "対戦",
+    "colOurPick": "予想",
+    "betWon": "勝",
+    "betLost": "負"
   },
   "sidebar": {
     "appName": "Someo Park",

@@ -169,7 +169,7 @@
     "lblBookBrier": "Brier (mercado)",
     "lblDrawRate": "Tasa de empates (real)",
     "lblBlend": "Brier mezcla→mercado",
-    "colResult": "Res",
+    "colResult": "Resultado",
     "backtestVerdict": "Modelo y mercado por encima del uniforme — inicio casi aleatorio (50% empates), trading bloqueado. No es un bug; el modelo está mejor calibrado que el mercado aquí.",
     "lblModelRaw": "Brier (modelo bruto)",
     "backtestPass": "El modelo bruto era demasiado confiado; tras calibrar las probabilidades supera al uniforme Y al mercado — ahora trade-grade.",
@@ -196,7 +196,14 @@
     "colRecent": "Reciente (gf-gc)",
     "colTeam": "Equipo",
     "lblBrierCalibrated": "Brier (calibrado)",
-    "gradePassCalibrated": "APROBADO (calibrado)"
+    "gradePassCalibrated": "APROBADO (calibrado)",
+    "subPnlReport": "Historial real — cada partido desde el inaugural",
+    "lblTrackRecord": "Balance",
+    "colDate": "Fecha",
+    "colMatchup": "Partido",
+    "colOurPick": "Pronóstico",
+    "betWon": "GANÓ",
+    "betLost": "perdió"
   },
   "sidebar": {
     "appName": "Someo Park",

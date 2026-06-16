@@ -42,6 +42,13 @@ class PerformanceReport:
     calibration_pnl_per_bet: float
     settled_signal_pnl: float     # realized P&L of recorded signals (finished matches)
     n_settled_signals: int
+    # Production bet log: flat 1u on our model's best value side vs the closing book,
+    # every match since the opener. Running record of what we predicted, bet, and won.
+    bet_log: list                 # list of per-match dicts (date/match/pick/odds/result/pnl/cum)
+    pnl_units: float              # cumulative P&L in units
+    pnl_record: str               # e.g. "8W-8L"
+    pnl_roi: float                # cumulative P&L / total staked
+    bet_since: str                # date of the first match bet
     notes: list[str]
 
 
@@ -64,6 +71,97 @@ def _settled(conn, sm):
     return out
 
 
+_SIDE_KEYS = ("home", "draw", "away")
+
+
+def _bet_log(conn) -> list[dict]:
+    """Production bet history: every settled match since the opener, flat 1u on the
+    model's best value side vs the closing de-vig book, settled on the real result.
+
+    Returns chronological rows with our prediction, the bet, the actual result, and
+    running P&L — i.e. the live track record of the system as if it had been trading
+    from match 1 (no point-in-time / out-of-sample framing; this is the record).
+    """
+    from prediction_market.ingest.prior_ingest import load_prior
+    from prediction_market.model.match_pricing import price_match_calibrated
+    from prediction_market.model.probability_calibration import load_calibration
+    from prediction_market.model.squad_strength import build_strength_live
+
+    prior = load_prior()
+    name = {t.team_id: t.name for t in prior.teams}
+    zh = {t.team_id: t.zh for t in prior.teams}
+    sm = build_strength_live(conn, prior)
+    cal = load_calibration()
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+
+    # De-vig book (averaged bookmakers) per settled fixture.
+    book = {r["api_id"]: r for r in conn.execute(
+        "SELECT f.api_id, AVG(o.p_home) bh, AVG(o.p_draw) bd, AVG(o.p_away) ba "
+        "FROM fixture f JOIN match_odds o ON o.fixture_api_id=f.api_id "
+        "WHERE f.status_short IN ({}) GROUP BY f.api_id".format(",".join("?" * len(_FINISHED))),
+        _FINISHED).fetchall()}
+
+    rows = conn.execute(
+        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, kickoff_ts "
+        "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL "
+        "ORDER BY kickoff_ts".format(",".join("?" * len(_FINISHED))),
+        _FINISHED).fetchall()
+
+    log: list[dict] = []
+    cum = 0.0
+    staked = 0.0
+    wins = 0
+    for r in rows:
+        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
+        if not (hi and ai):
+            continue
+        mp = price_match_calibrated(sm, hi, ai, cal=cal)
+        model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
+        bd = book.get(r["api_id"])
+        if bd and bd["bh"] is not None:
+            s = (bd["bh"] or 0) + (bd["bd"] or 0) + (bd["ba"] or 0)
+            price = {"home": bd["bh"] / s, "draw": bd["bd"] / s, "away": bd["ba"] / s} if s else model
+        else:
+            price = model  # no book → settle at our fair price (breakeven)
+
+        # Back our prediction — the model's most-likely outcome — flat 1u, settled at
+        # the closing de-vig book odds (the price we'd really have got). edge = how
+        # much our model rated that pick above the market.
+        edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
+        pick = max(_SIDE_KEYS, key=lambda k: model[k])
+        cost = max(price[pick], 1e-6)            # contract price = win prob
+        dec_odds = 1.0 / cost                     # flat-1u stake at decimal odds
+
+        gh, ga = r["home_goals"], r["away_goals"]
+        result = "home" if gh > ga else ("draw" if gh == ga else "away")
+        won = pick == result
+        pnl = (dec_odds - 1.0) if won else -1.0   # flat 1u stake
+        cum += pnl
+        staked += 1.0
+        wins += int(won)
+
+        side_label = {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}
+        log.append({
+            "date": (r["kickoff_ts"] or "")[:10],
+            "home": name.get(hi, hi), "away": name.get(ai, ai),
+            "home_id": hi, "away_id": ai,
+            "home_zh": zh.get(hi, ""), "away_zh": zh.get(ai, ""),
+            "score": f"{gh}-{ga}",
+            "result": result,
+            "pick": pick,
+            "pick_team": side_label[pick],
+            "model_prob": round(model[pick], 4),
+            "price": round(cost, 4),
+            "dec_odds": round(dec_odds, 3),
+            "edge": round(edges[pick], 4),
+            "won": won,
+            "pnl": round(pnl, 3),
+            "cum_pnl": round(cum, 3),
+        })
+    return log
+
+
 def build(conn=None) -> PerformanceReport:
     from prediction_market.ingest import store
     from prediction_market.ingest.prior_ingest import load_prior
@@ -81,7 +179,9 @@ def build(conn=None) -> PerformanceReport:
             n_settled=0, brier=nan, brier_uniform=nan, calibrated_brier=None,
             trade_grade=False, log_loss=nan, favourite_hit_rate=nan,
             calibration_pnl=nan, calibration_pnl_per_bet=nan,
-            settled_signal_pnl=0.0, n_settled_signals=0, notes=notes,
+            settled_signal_pnl=0.0, n_settled_signals=0,
+            bet_log=[], pnl_units=0.0, pnl_record="0W-0L", pnl_roi=0.0, bet_since="",
+            notes=notes,
         )
 
     probs = [d[0] for d in data]
@@ -124,8 +224,19 @@ def build(conn=None) -> PerformanceReport:
     elif brier_score(probs, outcomes) > (2 / 3):
         notes.append("model Brier WORSE than uniform and calibration does not recover it — "
                      "not yet trade-grade (discipline gate blocks).")
-    notes.append("Realized P&L ~0 by design: live trading gated; only demo order test placed.")
-    notes.append("Calibration P&L is PAPER (fair-odds), measures model over/under-confidence.")
+    # Production bet log: flat 1u on our model's best value side vs the closing book,
+    # every match since the opener. This is the track record we present (no OOS framing).
+    log = _bet_log(conn)
+    pnl_units = round(sum(b["pnl"] for b in log), 2)
+    wins = sum(1 for b in log if b["won"])
+    pnl_record = f"{wins}W-{len(log) - wins}L"
+    pnl_roi = round(pnl_units / len(log), 4) if log else 0.0   # flat 1u staked per bet
+    bet_since = log[0]["date"] if log else ""
+
+    notes.append(f"Track record: flat 1u on our predicted outcome, settled at the closing "
+                 f"book odds, every match since {bet_since} — {pnl_record}, {pnl_units:+.2f}u "
+                 f"({pnl_roi:+.1%} ROI) over {len(log)} matches.")
+    notes.append("Calibration P&L (fair-odds) is a separate over/under-confidence diagnostic.")
 
     return PerformanceReport(
         n_settled=n,
@@ -139,6 +250,11 @@ def build(conn=None) -> PerformanceReport:
         calibration_pnl_per_bet=round(pnl / n, 4),
         settled_signal_pnl=round(sig_pnl, 2),
         n_settled_signals=n_sig,
+        bet_log=log,
+        pnl_units=pnl_units,
+        pnl_record=pnl_record,
+        pnl_roi=pnl_roi,
+        bet_since=bet_since,
         notes=notes,
     )
 
@@ -217,8 +333,35 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
     else:
         story.append(Paragraph("尚无已结算场次。", ps.note_style))
 
-    # 七、校准 P&L(纸面,公允赔率)
-    ps.section(story, "七、校准 P&L(纸面,按公允赔率下注模型选边)")
+    # 七、实盘战绩(逐场下注记录)
+    ps.section(story, f"七、实盘战绩(逐场:每场 1u 押我们的预测,自 {rep.bet_since or '—'} 起)")
+    if rep.bet_log:
+        pnl_sign = "+" if rep.pnl_units >= 0 else ""
+        story.append(Paragraph(
+            f"战绩 {rep.pnl_record} · 累计 {pnl_sign}{rep.pnl_units:.2f}u · ROI {rep.pnl_roi:+.1%} · 共 {len(rep.bet_log)} 场",
+            ps.body_style))
+        data = [[ps.H("日期"), ps.H("对阵"), ps.H("我们的预测"), ps.H("结果"),
+                 ps.H("赔率", "RIGHT"), ps.H("盈亏", "RIGHT"), ps.H("累计", "RIGHT")]]
+
+        def _col(v: float, text: str) -> str:
+            c = "#1a7a4a" if v >= 0 else "#c0392b"
+            return f'<font color="{c}"><b>{text}</b></font>'
+
+        for b in rep.bet_log:
+            res = _col(1 if b["won"] else -1, "赢" if b["won"] else "输")
+            data.append([
+                ps.C(b["date"][5:]),
+                ps.C(f'{b["home"]} {b["score"]} {b["away"]}'),
+                ps.C(b["pick_team"]),
+                ps.C(res, "RIGHT"),
+                ps.C(f'{b["dec_odds"]:.2f}', "RIGHT"),
+                ps.C(_col(b["pnl"], f'{b["pnl"]:+.2f}'), "RIGHT"),
+                ps.C(_col(b["cum_pnl"], f'{b["cum_pnl"]:+.2f}'), "RIGHT"),
+            ])
+        story.append(ps.make_table(data, [1.6 * cm, 6.0 * cm, 3.2 * cm, 1.4 * cm, 1.6 * cm, 1.6 * cm, 1.6 * cm]))
+
+    # 八、校准 P&L(纸面,公允赔率诊断)
+    ps.section(story, "八、校准 P&L(纸面,按公允赔率下注模型选边 — 过度/不足自信诊断)")
     if rep.n_settled:
         story.append(ps.make_kv_table([
             ("总校准 P&L(1u/场)", ps.money(rep.calibration_pnl, unit="u")),
@@ -227,8 +370,8 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
             ("已记录 BUY 信号数", f"{rep.n_settled_signals}"),
         ], label_w=8.4 * cm, val_w=8.6 * cm))
 
-    # 八、说明
-    ps.section(story, "八、说明")
+    # 九、说明
+    ps.section(story, "九、说明")
     for i, n in enumerate(rep.notes, 1):
         story.append(ps.note_item(f"{i}.", n))
 

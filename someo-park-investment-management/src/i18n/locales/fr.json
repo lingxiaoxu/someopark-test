@@ -169,7 +169,7 @@
     "lblBookBrier": "Brier (marché)",
     "lblDrawRate": "Taux de nuls (réel)",
     "lblBlend": "Brier mélange→marché",
-    "colResult": "Rés",
+    "colResult": "Résultat",
     "backtestVerdict": "Modèle et marché au-dessus de l'uniforme — début de tournoi quasi aléatoire (50% de nuls), trading bloqué. Pas un bug ; le modèle est mieux calibré que le marché ici.",
     "lblModelRaw": "Brier (modèle brut)",
     "backtestPass": "Le modèle brut était trop confiant ; après calibration des probabilités il bat l'uniforme ET le marché — désormais trade-grade.",
@@ -196,7 +196,14 @@
     "colRecent": "Récent (bp-bc)",
     "colTeam": "Équipe",
     "lblBrierCalibrated": "Brier (calibré)",
-    "gradePassCalibrated": "VALIDÉ (calibré)"
+    "gradePassCalibrated": "VALIDÉ (calibré)",
+    "subPnlReport": "Historique réel — chaque match depuis le match d'ouverture",
+    "lblTrackRecord": "Bilan",
+    "colDate": "Date",
+    "colMatchup": "Match",
+    "colOurPick": "Notre prono",
+    "betWon": "GAGNÉ",
+    "betLost": "perdu"
   },
   "sidebar": {
     "appName": "Someo Park",

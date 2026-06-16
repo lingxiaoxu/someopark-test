@@ -196,7 +196,14 @@
     "colRecent": "近况(进-失)",
     "colTeam": "球队",
     "lblBrierCalibrated": "Brier(校准后)",
-    "gradePassCalibrated": "通过(已校准)"
+    "gradePassCalibrated": "通过(已校准)",
+    "subPnlReport": "实盘战绩 — 自首场起逐场记录",
+    "lblTrackRecord": "战绩",
+    "colDate": "日期",
+    "colMatchup": "对阵",
+    "colOurPick": "我们的预测",
+    "betWon": "赢",
+    "betLost": "输"
   },
   "sidebar": {
     "appName": "Someo Park",

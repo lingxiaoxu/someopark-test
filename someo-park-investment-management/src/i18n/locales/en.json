@@ -487,7 +487,7 @@
     "lblBookBrier": "Brier (book)",
     "lblDrawRate": "Draw rate (actual)",
     "lblBlend": "Blend→book Brier",
-    "colResult": "Res",
+    "colResult": "Result",
     "backtestVerdict": "Both model & market sit above uniform — the early tournament is near-random (50% draws), so trading stays blocked. Not a bug; the model is actually better-calibrated than the sharp market here.",
     "lblModelRaw": "Brier (raw model)",
     "backtestPass": "The raw model was over-confident; after probability calibration it beats both the uniform baseline AND the sharp book — now trade-grade.",
@@ -514,7 +514,14 @@
     "colRecent": "Recent (gf-ga)",
     "colTeam": "Team",
     "lblBrierCalibrated": "Brier (calibrated)",
-    "gradePassCalibrated": "PASS (calibrated)"
+    "gradePassCalibrated": "PASS (calibrated)",
+    "subPnlReport": "Production track record — every match since the opener",
+    "lblTrackRecord": "Track record",
+    "colDate": "Date",
+    "colMatchup": "Match",
+    "colOurPick": "Our pick",
+    "betWon": "WON",
+    "betLost": "lost"
   },
   "sidebar": {
     "appName": "Someo Park",

@@ -10,7 +10,9 @@ import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
   getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
+  API_BASE,
 } from '../../lib/api';
+import { useState } from 'react';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
 import { tDyn } from '../../i18n/predictionStrings';
@@ -282,7 +284,38 @@ function PerformanceCard() {
         [tr('prediction.lblCalibPnl'), `${num(data?.calibration_pnl, 2)}u (${num(data?.calibration_pnl_per_bet, 3)}u/bet)`],
         [tr('prediction.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? tr('prediction.gradePassCalibrated') : tr('prediction.gradeBlock')}</span>],
       ]} />
+      <BetLog data={data} />
       <Notes items={data?.notes} />
+    </div>
+  );
+}
+
+// Production track record: flat 1u on our predicted outcome every match since the
+// opener, settled at the closing book odds — what we predicted, bet, and the result.
+function BetLog({ data }: { data: any }) {
+  const { t: tr } = useTranslation();
+  const log: any[] = data?.bet_log ?? [];
+  if (!log.length) return null;
+  const pnl = data?.pnl_units ?? 0;
+  const pnlColor = pnl > 0 ? 'var(--success)' : pnl < 0 ? 'var(--error)' : 'var(--ink)';
+  const sideLabel = (b: any) => (b.pick === 'draw' ? tr('prediction.drawResult') : tCountry(b.pick_team));
+  return (
+    <div style={{ marginTop: 14 }}>
+      <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', marginBottom: 6, color: 'var(--text-secondary)' }}>
+        {tr('prediction.lblTrackRecord')}: <b>{data.pnl_record}</b> · <b style={{ color: pnlColor }}>{pnl > 0 ? '+' : ''}{num(pnl, 2)}u</b>
+        {' '}({pct(data.pnl_roi, 1)} ROI) · {tr('prediction.colDate')} ≥ {data.bet_since}
+      </div>
+      <DataTable
+        cols={[tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colResult'), 'Odds', 'P&L', 'Cum']}
+        rows={log.map((b: any) => [
+          b.date?.slice(5),
+          `${tCountry(b.home)} ${b.score} ${tCountry(b.away)}`,
+          sideLabel(b),
+          <span style={{ color: b.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{b.won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>,
+          num(b.dec_odds, 2),
+          <span style={{ color: b.pnl >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.pnl >= 0 ? '+' : ''}{num(b.pnl, 2)}</span>,
+          <span style={{ color: b.cum_pnl >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.cum_pnl >= 0 ? '+' : ''}{num(b.cum_pnl, 2)}</span>,
+        ])} />
     </div>
   );
 }
@@ -466,14 +499,38 @@ function FormCard() {
   );
 }
 
+// Two institutional-style PDF reports (PnL track record + Risk), displayed INLINE
+// via the local Express server over the Cloudflare tunnel ({API_BASE}/data/*.pdf,
+// served without auth), not just a download. Mirrors the stock-mode report viewers.
 function Pdfs() {
   const { t: tr } = useTranslation();
-  const link: CSSProperties = { display: 'inline-block', padding: '8px 14px', border: '2px solid var(--ink)', background: 'var(--paper)', color: 'var(--ink)', textDecoration: 'none', fontWeight: 700, ...mono, fontSize: 12, marginRight: 10, marginBottom: 10, boxShadow: 'var(--shadow-pixel-sm)' };
+  const reports = [
+    { key: 'pnl', file: 'performance_report.pdf', label: tr('prediction.pdfPerf') },
+    { key: 'risk', file: 'risk_report.pdf', label: tr('prediction.pdfRisk') },
+  ];
+  const [active, setActive] = useState('pnl');
+  const cur = reports.find((r) => r.key === active) ?? reports[0];
+  const url = `${API_BASE}/data/${cur.file}`;
+  const tab = (on: boolean): CSSProperties => ({
+    padding: '6px 14px', border: '2px solid var(--ink)', cursor: 'pointer', ...mono, fontSize: 12, fontWeight: 700,
+    background: on ? 'var(--ink)' : 'var(--paper)', color: on ? 'var(--paper)' : 'var(--ink)', marginRight: 8,
+  });
   return (
-    <div>
-      <Title sub={tr('prediction.subPdfs')}>Download Reports</Title>
-      <a href="/data/performance_report.pdf" download style={link}>{tr('prediction.pdfPerf')}</a>
-      <a href="/data/risk_report.pdf" download style={link}>{tr('prediction.pdfRisk')}</a>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Title sub={tr('prediction.subPdfs')}>Reports</Title>
+      <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+        <div>
+          {reports.map((r) => (
+            <button key={r.key} style={tab(r.key === active)} onClick={() => setActive(r.key)}>{r.label}</button>
+          ))}
+        </div>
+        <a href={url} target="_blank" rel="noreferrer" style={{ ...mono, fontSize: 11, color: 'var(--text-muted)', textDecoration: 'underline' }}>
+          {tr('common.open')} ↗
+        </a>
+      </div>
+      <div style={{ flex: 1, minHeight: 560, border: '2px solid var(--ink)', background: '#fff' }}>
+        <iframe key={cur.key} src={url} title={cur.label} style={{ width: '100%', height: '100%', minHeight: 560, border: 'none' }} />
+      </div>
     </div>
   );
 }
