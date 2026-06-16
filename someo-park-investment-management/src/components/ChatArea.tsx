@@ -205,6 +205,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
 }
 import modelList from '../lib/models.json'
 import PairBadge from './PairBadge'
+import PredictionArtifactGrid from './prediction/PredictionArtifactGrid'
+import PredictionUpcoming from './prediction/PredictionUpcoming'
 import { useApi } from '../hooks/useApi'
 import { getInventory, API_BASE, apiHeaders, callAgent, answerAgentQuestion } from '../lib/api'
 import { db } from '../lib/firebase'
@@ -215,6 +217,7 @@ import { AgentProgress } from './AgentProgress'
 
 export default function ChatArea({
   agentMode,
+  appMode,
   isLocalConnected,
   setActiveArtifact,
   onCodePreview,
@@ -233,6 +236,7 @@ export default function ChatArea({
   onMessagesChange,
 }: {
   agentMode: 'cloud' | 'local'
+  appMode: 'stock' | 'prediction'
   isLocalConnected: boolean
   setActiveArtifact: (a: any) => void
   onCodePreview?: (preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult; isLoading?: boolean }) => void
@@ -726,38 +730,38 @@ export default function ChatArea({
   return (
     <div className="flex flex-col h-full relative" style={{ background: 'var(--color-bg)' }}>
       {/* Header */}
-      <div className="h-14 flex items-center justify-between px-6 shrink-0" style={{ borderBottom: '3px solid #111', background: '#fff' }}>
+      <div className="h-14 flex items-center justify-between px-6 shrink-0" style={{ borderBottom: '3px solid var(--ink)', background: appMode === 'prediction' ? 'var(--bg-secondary)' : 'var(--paper)' }}>
         <div className="flex items-center gap-3">
-          <span style={{ fontSize: '10px', letterSpacing: '.12em', textTransform: 'uppercase', color: '#888', fontFamily: 'var(--font-mono)' }}>{t('chat.currentRuntime')}</span>
+          <span style={{ fontSize: '10px', letterSpacing: '.12em', textTransform: 'uppercase', color: 'var(--ink-mute)', fontFamily: 'var(--font-mono)' }}>{t('chat.currentRuntime')}</span>
           <div className="relative" ref={runtimeDropdownRef}>
             <button
               onClick={() => setRuntimeDropdownOpen(prev => !prev)}
               className="flex items-center gap-2 px-3 py-1"
               style={{
-                background: agentMode === 'cloud' ? '#111' : '#fff',
-                border: '2px solid #111',
+                background: agentMode === 'cloud' ? 'var(--ink)' : 'var(--paper)',
+                border: '2px solid var(--ink)',
                 boxShadow: 'var(--shadow-pixel-sm)',
                 cursor: 'pointer',
               }}
             >
               {agentMode === 'cloud' ? (
-                <Cloud className="w-3.5 h-3.5" style={{ color: '#fff' }} />
+                <Cloud className="w-3.5 h-3.5" style={{ color: 'var(--paper)' }} />
               ) : (
-                <Laptop className="w-3.5 h-3.5" style={{ color: '#111' }} />
+                <Laptop className="w-3.5 h-3.5" style={{ color: 'var(--ink)' }} />
               )}
-              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: agentMode === 'cloud' ? '#fff' : '#111', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>
+              <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: agentMode === 'cloud' ? 'var(--paper)' : 'var(--ink)', textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 700 }}>
                 {agentMode === 'cloud' ? t('chat.cloudVpsLabel') : t('chat.localConnectedLabel')}
               </span>
-              <ChevronDown className="w-3 h-3" style={{ color: agentMode === 'cloud' ? '#fff' : '#111', transition: 'transform .15s', transform: runtimeDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+              <ChevronDown className="w-3 h-3" style={{ color: agentMode === 'cloud' ? 'var(--paper)' : 'var(--ink)', transition: 'transform .15s', transform: runtimeDropdownOpen ? 'rotate(180deg)' : 'none' }} />
             </button>
             {runtimeDropdownOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50 animate-slide-in" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)', minWidth: '100%' }}>
+              <div className="absolute top-full left-0 mt-1 z-50 animate-slide-in" style={{ background: 'var(--paper)', border: '2px solid var(--ink)', boxShadow: 'var(--shadow-pixel)', minWidth: '100%' }}>
                 <button
                   onClick={() => { setRuntimeDropdownOpen(false); onConnectClick?.(); }}
                   className="w-full flex items-center gap-2 px-3 py-2"
-                  style={{ cursor: 'pointer', background: '#fff', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: '#333', transition: 'all .1s' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = '#111'; e.currentTarget.style.color = '#fff'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#333'; }}
+                  style={{ cursor: 'pointer', background: 'var(--paper)', border: 'none', fontFamily: 'var(--font-mono)', fontSize: '10px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--ink-soft)', transition: 'all .1s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'var(--ink)'; e.currentTarget.style.color = 'var(--paper)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'var(--paper)'; e.currentTarget.style.color = 'var(--ink-soft)'; }}
                 >
                   <Laptop className="w-3.5 h-3.5" />
                   Open Claw
@@ -770,19 +774,22 @@ export default function ChatArea({
 
       {/* Messages or Welcome */}
       <div ref={chatContainerRef} className="flex-1 overflow-y-auto scrollbar-autohide px-6 pt-4 pb-6 flex flex-col items-center">
-        <div className="w-full max-w-3xl flex flex-col gap-4 pb-8">
+        <div className={`w-full max-w-3xl flex flex-col gap-4 ${appMode === 'prediction' ? 'pb-16' : 'pb-8'}`}>
           {!hasMessages ? (
             <>
               <div className="flex flex-col items-center justify-center py-6 gap-4">
                 {/* Stanse-style icon — black box with pixel shadow */}
-                <div className="w-14 h-14 flex items-center justify-center" style={{ background: '#111', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)' }}>
-                  <Terminal className="w-7 h-7" style={{ color: '#fff', opacity: 1 }} />
+                <div className="w-14 h-14 flex items-center justify-center" style={{ background: 'var(--ink)', border: '2px solid var(--ink)', boxShadow: 'var(--shadow-pixel)' }}>
+                  <Terminal className="w-7 h-7" style={{ color: 'var(--paper)', opacity: 1 }} />
                 </div>
-                <h2 style={{ fontFamily: 'var(--font-pixel)', fontSize: '28px', color: '#111', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>{t('chat.welcomeTitle')}</h2>
-                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', maxWidth: '28rem', fontFamily: 'var(--font-mono)' }}>{t('chat.welcomeDesc')}</p>
+                <h2 style={{ fontFamily: 'var(--font-pixel)', fontSize: '28px', color: 'var(--ink)', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>{t('chat.welcomeTitle')}</h2>
+                <p style={{ fontSize: '12px', color: 'var(--ink-dim)', textAlign: 'center', maxWidth: '28rem', fontFamily: 'var(--font-mono)' }}>{t('chat.welcomeDesc')}</p>
               </div>
 
-              {/* Active Pairs card — Stanse PixelCard */}
+              {/* Active Pairs (stock) ↔ Upcoming Matches (prediction) */}
+              {appMode === 'prediction' ? (
+                <PredictionUpcoming />
+              ) : (
               <div className="p-4 relative" style={{ background: '#fff', border: '3px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
                 {/* Corner dots */}
                 <div style={{ position: 'absolute', top: -2, left: -2, width: 6, height: 6, background: '#111' }} />
@@ -844,7 +851,12 @@ export default function ChatArea({
                   <div className="text-xs text-[var(--text-muted)] py-2">{t('chat.noActivePairs', 'No active positions')}</div>
                 )}
               </div>
+              )}
 
+              {appMode === 'prediction' ? (
+                /* Prediction artifacts are public static data → open directly (no sign-in gate). */
+                <PredictionArtifactGrid onOpen={(a) => setActiveArtifact(a)} />
+              ) : (
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => guardedSetArtifact({ type: 'pair_universe', title: 'Pair Universe', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnPairUniverse')}
@@ -895,6 +907,7 @@ export default function ChatArea({
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnStrategyPerformance')}
                 </button>
               </div>
+              )}
             </>
           ) : (
             messages.map((msg, idx) => (
@@ -963,7 +976,7 @@ export default function ChatArea({
       </div>
 
       {/* Input Area */}
-      <div className="p-6 pt-0 shrink-0 flex justify-center">
+      <div className={`p-6 ${appMode === 'prediction' ? 'pt-4' : 'pt-0'} shrink-0 flex justify-center`}>
         <div className="w-full max-w-3xl">
           <ChatInput
             retry={retry}

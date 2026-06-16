@@ -591,3 +591,142 @@
   }
   .pulse { animation: pulse-dot 2s infinite; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   PREDICTION MARKET MODE — global colour inversion  (frontend P0)
+   ────────────────────────────────────────────────────────────
+   Activated ONLY by [data-mode="prediction"] on the app root (added in P1).
+   STOCK MODE IS PIXEL-IDENTICAL: every rule below is scoped under
+   [data-mode="prediction"], so it never matches when the attribute is
+   absent or "stock". Nothing above this banner is modified.
+   Palette: near-black page · super-dark-grey surfaces · white ink.
+   ════════════════════════════════════════════════════════════ */
+
+/* Semantic shell tokens. In :root they equal the EXISTING brutalist values,
+   so any component migrated to them later renders identically in stock mode
+   (var(--ink)→#111 is byte-identical to a literal #111). */
+:root {
+  --ink:       #111111;   /* primary ink: text / borders */
+  --paper:     #ffffff;   /* primary surface */
+  --ink-soft:  #333333;
+  --ink-dim:   #555555;   /* inactive icon / secondary control */
+  --ink-mute:  #888888;
+  --page:      #e5e5e5;   /* page background */
+  --hairline:  #cccccc;
+  --field:     #f9f9f9;   /* idle input / textarea fill */
+}
+
+[data-mode="prediction"] {
+  /* — semantic tokens flip — */
+  --ink:       #f4f4f4;
+  --paper:     #161618;   /* 超深灰 card surface */
+  --ink-soft:  #cfcfcf;
+  --ink-dim:   #9a9a9a;
+  --ink-mute:  #8a8a8a;
+  --page:      #0b0b0c;   /* 近黑 page */
+  --hairline:  #3a3a40;
+
+  /* — legacy :root aliases (artifact components consume var(--*)) — */
+  --bg-primary:    #161618;
+  --bg-secondary:  #0b0b0c;
+  --bg-tertiary:   #1e1e22;
+  --text-primary:  #f4f4f4;
+  --text-secondary:#cfcfcf;
+  --text-muted:    #8a8a8a;
+  --border-subtle: #f4f4f4;
+  --accent-primary:#f4f4f4;
+  --success:       #19e08a;   /* 略提亮以适配深底，保留 LONG/盈利语义 */
+  --error:         #ff5a5a;
+
+  /* — @theme palette (body / scrollbar / links / tables consume these) — */
+  --color-bg:          #0b0b0c;
+  --color-surface:     #161618;
+  --color-pixel-black: #f4f4f4;   /* “black” ink → white on dark */
+  --color-pixel-white: #161618;
+  --color-pixel-gray:  #8a8a8a;
+
+  /* — pixel shadows become light on dark — */
+  --shadow-pixel:    4px 4px 0 0 #f4f4f4;
+  --shadow-pixel-lg: 6px 6px 0 0 #f4f4f4;
+  --shadow-pixel-sm: 2px 2px 0 0 #f4f4f4;
+}
+
+/* Smooth flip when the attribute toggles (inert in stock — colours never
+   change there, so nothing animates). Kept off descendants' own transitions. */
+[data-mode="prediction"],
+[data-mode="prediction"] .sidebar,
+[data-mode="prediction"] .right-panel,
+[data-mode="prediction"] .card,
+[data-mode="prediction"] .message-content > p {
+  transition: background-color .35s ease, color .35s ease, border-color .35s ease;
+}
+
+/* ─ Override hardcoded-colour shell rules (var()-based ones already flipped) ─ */
+[data-mode="prediction"] body { background: var(--page); color: var(--ink); }
+
+[data-mode="prediction"] .sidebar { background: var(--paper); }
+[data-mode="prediction"] .section-label { color: var(--ink-mute); }
+
+[data-mode="prediction"] .chat-item { color: var(--ink-soft); }
+[data-mode="prediction"] .chat-item:hover {
+  background: var(--page); color: var(--ink); border-left-color: var(--ink-mute); border-color: var(--hairline);
+}
+[data-mode="prediction"] .chat-item.active {
+  background: var(--ink); color: var(--page); border-color: var(--ink); border-left-color: var(--ink);
+}
+[data-mode="prediction"] .chat-item.active svg { color: var(--page) !important; }
+
+[data-mode="prediction"] .button { border-color: var(--ink); }
+[data-mode="prediction"] .button-primary   { background: var(--ink);   color: var(--page); }
+[data-mode="prediction"] .button-secondary { background: var(--paper); color: var(--ink); }
+[data-mode="prediction"] .button-ghost:hover { background: var(--page); color: var(--ink); border-color: var(--hairline); }
+
+[data-mode="prediction"] .chat-input { background: var(--paper); border-color: var(--ink); }
+[data-mode="prediction"] .chat-input::before { color: var(--ink-mute); }
+[data-mode="prediction"] .chat-textarea { color: var(--ink); caret-color: var(--ink); }
+[data-mode="prediction"] .chat-textarea::placeholder { color: var(--ink-mute); }
+
+[data-mode="prediction"] .message-user { background: var(--ink); color: var(--page); border-color: var(--ink); }
+[data-mode="prediction"] .message-user::before { color: var(--ink-mute); }
+[data-mode="prediction"] .message-content > p { background: var(--paper); border-color: var(--ink); color: var(--ink); }
+
+/* Quick-action / artifact grid cards (original rules use !important) */
+[data-mode="prediction"] .grid.grid-cols-2 > button,
+[data-mode="prediction"] .grid.grid-cols-2 > a {
+  background: var(--paper) !important; border-color: var(--ink) !important; color: var(--ink-soft) !important;
+}
+[data-mode="prediction"] .grid.grid-cols-2 > button:hover,
+[data-mode="prediction"] .grid.grid-cols-2 > a:hover {
+  background: var(--ink) !important; color: var(--page) !important; border-color: var(--ink) !important;
+}
+[data-mode="prediction"] .grid.grid-cols-2 > button:hover svg,
+[data-mode="prediction"] .grid.grid-cols-2 > a:hover svg { color: var(--page) !important; }
+[data-mode="prediction"] .grid.grid-cols-2 > button svg,
+[data-mode="prediction"] .grid.grid-cols-2 > a svg { color: var(--ink-mute); }
+
+[data-mode="prediction"] .table th { color: var(--ink); border-bottom-color: var(--ink); }
+[data-mode="prediction"] .table td { color: var(--ink-soft); border-bottom-color: var(--hairline); }
+[data-mode="prediction"] .table tr:hover td { color: var(--ink); }
+
+[data-mode="prediction"] .pixel-card,
+[data-mode="prediction"] .card,
+[data-mode="prediction"] .pair-card,
+[data-mode="prediction"] .inventory-box { background: var(--paper); border-color: var(--ink); }
+[data-mode="prediction"] .pixel-card::before,
+[data-mode="prediction"] .pixel-card::after { background: var(--ink); }
+[data-mode="prediction"] .inventory-box { border-left-color: var(--ink); }
+[data-mode="prediction"] .card-header { color: var(--ink); border-bottom-color: var(--ink); }
+[data-mode="prediction"] .right-panel { background: var(--bg-tertiary); border-left-color: var(--ink); }
+
+/* Base-layer hardcoded rules (inputs / scrollbar / selection / links) */
+[data-mode="prediction"] input,
+[data-mode="prediction"] textarea,
+[data-mode="prediction"] select {
+  color: var(--ink) !important; background: var(--paper); border-color: var(--ink);
+}
+[data-mode="prediction"] input::placeholder,
+[data-mode="prediction"] textarea::placeholder { color: var(--ink-mute) !important; }
+[data-mode="prediction"] ::-webkit-scrollbar-thumb { background: var(--ink); border-color: var(--page); }
+[data-mode="prediction"] ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
+[data-mode="prediction"] ::selection { background: var(--ink); color: var(--page); }
+[data-mode="prediction"] a:hover { color: var(--ink-soft); }

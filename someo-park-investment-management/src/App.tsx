@@ -113,7 +113,20 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentMode>('cloud');
   const [isLocalConnected, setIsLocalConnected] = useState(false);
+  // Prediction Market mode: 'stock' (default, pixel-identical to before) | 'prediction'.
+  // The attribute lives on <html> so the whole viewport (incl. <body>) inverts.
+  const [appMode, setAppMode] = useLocalStorage<'stock' | 'prediction'>('sp-appMode', 'stock');
   const [activeArtifact, setActiveArtifact] = useState<any>(null);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-mode', appMode);
+  }, [appMode]);
+
+  const toggleAppMode = useCallback(() => {
+    setActiveArtifact(null);   // drop any open artifact so modes never cross-render
+    setShowSettings(false);
+    setAppMode(m => (m === 'prediction' ? 'stock' : 'prediction'));
+  }, [setAppMode]);
   const [lastClosedArtifact, setLastClosedArtifact] = useState<any>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -299,6 +312,8 @@ export default function App() {
             onConnectClick={() => setIsModalOpen(true)}
             agentMode={agentMode}
             setAgentMode={setAgentMode}
+            appMode={appMode}
+            onToggleAppMode={toggleAppMode}
             isLocalConnected={isLocalConnected}
             onSettingsClick={() => { setShowSettings(true); setActiveArtifact(null); setCodePreview(null); }}
             session={session}
@@ -343,6 +358,7 @@ export default function App() {
           ) : (
             <ChatArea
               agentMode={agentMode}
+              appMode={appMode}
               isLocalConnected={isLocalConnected}
               setActiveArtifact={(a: any) => { setActiveArtifact(a); setShowSettings(false); setCodePreview(null); }}
               onCodePreview={handleCodePreview}
@@ -409,6 +425,7 @@ export default function App() {
               {activeArtifact ? (
                 <RightPanel
                   artifact={activeArtifact}
+                  appMode={appMode}
                   onClose={() => { setLastClosedArtifact(activeArtifact); setActiveArtifact(null); setIsMaximized(false); }}
                   onMaximize={() => setIsMaximized(m => !m)}
                   isMaximized={isMaximized}

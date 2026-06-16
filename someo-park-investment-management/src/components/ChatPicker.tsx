@@ -34,9 +34,9 @@ function Dropdown({ trigger, children, open, setOpen }: { trigger: React.ReactNo
           minWidth: 200,
           maxHeight: 300,
           overflowY: 'auto',
-          background: '#fff',
-          border: '2px solid #111',
-          boxShadow: '4px 4px 0 0 #111',
+          background: 'var(--paper)',
+          border: '2px solid var(--ink)',
+          boxShadow: '4px 4px 0 0 var(--ink)',
           zIndex: 100,
         }}>
           {children}
@@ -78,9 +78,9 @@ export function ChatPicker({
   const triggerStyle: React.CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: 4,
     padding: '3px 8px',
-    background: '#fff', color: '#111',
-    border: '2px solid #111',
-    boxShadow: '2px 2px 0 0 #111',
+    background: 'var(--paper)', color: 'var(--ink)',
+    border: '2px solid var(--ink)',
+    boxShadow: '2px 2px 0 0 var(--ink)',
     fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700,
     letterSpacing: '.04em', textTransform: 'uppercase',
     cursor: 'pointer', transition: 'all .1s',
@@ -88,9 +88,9 @@ export function ChatPicker({
   const menuItemStyle = (active: boolean): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 8,
     width: '100%', padding: '6px 12px',
-    background: active ? '#111' : 'transparent',
-    color: active ? '#fff' : '#333',
-    border: 'none', borderBottom: '1px solid #e5e5e5',
+    background: active ? 'var(--ink)' : 'transparent',
+    color: active ? 'var(--paper)' : 'var(--ink-soft)',
+    border: 'none', borderBottom: '1px solid var(--page)',
     fontFamily: 'var(--font-mono)', fontSize: '12px',
     cursor: 'pointer', textAlign: 'left', transition: 'background .1s',
   })
@@ -98,9 +98,9 @@ export function ChatPicker({
     padding: '6px 12px 3px',
     fontSize: '9px', fontWeight: 700,
     letterSpacing: '.14em', textTransform: 'uppercase',
-    color: '#888', fontFamily: 'var(--font-mono)',
-    borderBottom: '1px solid #e5e5e5',
-    background: '#f4f4f4',
+    color: 'var(--ink-mute)', fontFamily: 'var(--font-mono)',
+    borderBottom: '1px solid var(--page)',
+    background: 'var(--bg-tertiary)',
   }
 
   return (
@@ -108,8 +108,8 @@ export function ChatPicker({
       {/* Template picker */}
       <Dropdown open={templateOpen} setOpen={setTemplateOpen} trigger={
         <button type="button" style={triggerStyle}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#111'; (e.currentTarget as HTMLElement).style.color = '#fff' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#111' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--ink)'; (e.currentTarget as HTMLElement).style.color = 'var(--paper)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--paper)'; (e.currentTarget as HTMLElement).style.color = 'var(--ink)' }}
         >
           <Sparkles style={{ width: 11, height: 11 }} />
           <span>{selectedTemplate === 'auto' ? 'Auto' : (templates as any)[selectedTemplate]?.name || selectedTemplate}</span>
@@ -119,14 +119,14 @@ export function ChatPicker({
         <div>
           <div style={groupLabelStyle}>{t('chatPicker.persona')}</div>
           <button onClick={() => { onSelectedTemplateChange('auto'); setTemplateOpen(false) }} style={menuItemStyle(selectedTemplate === 'auto')}
-            onMouseEnter={e => { if (selectedTemplate !== 'auto') (e.currentTarget as HTMLElement).style.background = '#f4f4f4' }}
+            onMouseEnter={e => { if (selectedTemplate !== 'auto') (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)' }}
             onMouseLeave={e => { if (selectedTemplate !== 'auto') (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
             <Sparkles style={{ width: 12, height: 12 }} /> Auto
           </button>
           {Object.entries(templates).map(([id, tmpl]) => (
             <button key={id} onClick={() => { onSelectedTemplateChange(id); setTemplateOpen(false) }} style={menuItemStyle(selectedTemplate === id)}
-              onMouseEnter={e => { if (selectedTemplate !== id) (e.currentTarget as HTMLElement).style.background = '#f4f4f4' }}
+              onMouseEnter={e => { if (selectedTemplate !== id) (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)' }}
               onMouseLeave={e => { if (selectedTemplate !== id) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
             >
               {(tmpl as any).name}
@@ -138,8 +138,8 @@ export function ChatPicker({
       {/* Model picker */}
       <Dropdown open={modelOpen} setOpen={setModelOpen} trigger={
         <button type="button" style={triggerStyle}
-          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#111'; (e.currentTarget as HTMLElement).style.color = '#fff' }}
-          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; (e.currentTarget as HTMLElement).style.color = '#111' }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--ink)'; (e.currentTarget as HTMLElement).style.color = 'var(--paper)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--paper)'; (e.currentTarget as HTMLElement).style.color = 'var(--ink)' }}
         >
           <span>{selectedModelName}</span>
           <ChevronDown style={{ width: 11, height: 11 }} />
@@ -151,7 +151,7 @@ export function ChatPicker({
               <div style={groupLabelStyle}>{provider}</div>
               {providerModels.map(m => (
                 <button key={m.id} onClick={() => { onLanguageModelChange({ model: m.id }); setModelOpen(false) }} style={menuItemStyle(languageModel.model === m.id)}
-                  onMouseEnter={e => { if (languageModel.model !== m.id) (e.currentTarget as HTMLElement).style.background = '#f4f4f4' }}
+                  onMouseEnter={e => { if (languageModel.model !== m.id) (e.currentTarget as HTMLElement).style.background = 'var(--bg-tertiary)' }}
                   onMouseLeave={e => { if (languageModel.model !== m.id) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
                 >
                   {m.name}
