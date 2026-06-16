@@ -1,292 +1,166 @@
-# Institutional-Quality Fixed Income Portfolio Analytics
+<h1 align="center">Private Credit — BDC Look-Through Engine</h1>
+<p align="center"><b>把 BDC sleeve 追踪的 5 只 BDC 股票,穿透到它们 SEC 披露的底层私募信贷贷款</b></p>
 
-## Overview
-
-Advanced fixed income portfolio analysis system with Credit Risk Modeling, AI-powered PDF processing, and comprehensive stress testing. Features both static assumptions and fundamental-based credit analytics with risk-adjusted pricing.
-
-## Core Python Files
-
-### Main Scripts
-- `run_deals.py` - Real deal portfolio analytics with advanced credit risk modeling and PDF memo processing
-- `run_synthetic.py` - Synthetic 150-instrument fixed income portfolio modeling
-
-### Credit Risk & Analytics Modules
-- `credit_risk_module.py` - NEW: Advanced credit risk integration with toggle between static/fundamental models
-- `bond_utilities.py` - Mathematical functions for bonds and loans (IRR, duration, pricing)
-- `forward_rate_lookup.py` - Rate lookup system with historical FRED data and forward projections
-- `forward_rate_projections.py` - Nelson-Siegel yield curve forward rate generation
-- `yield_curve_modeling.py` - Nelson-Siegel yield curve implementation
-- `enriched_bond_portfolio.py` - Enhanced bond portfolio analysis with OU modeling
-- `cashflow_exporter.py` - Professional cashflow export functions
-- `download_fred_data.py` - FRED economic data download and integration
-
-### Configuration
-- `config_template.py` - Template for API key configuration (copy to config.py)
-
-## Project Structure
-```
-├── run_deals.py                 # Main analysis script with credit risk modeling
-├── credit_risk_module.py        # Credit risk integration module (NEW)
-├── bond_utilities.py           # Core financial calculations
-├── forward_rate_*.py           # Rate modeling and projections  
-├── config_template.py          # API configuration template
-├── requirements.txt            # Dependencies with organized sections
-├── deals_data/                 # Portfolio data and CSV files
-├── logs/                       # Timestamped analysis logs (71+ entries)
-├── cashflows_YYYYMMDD_HHMMSS/  # Generated cashflow schedules
-└── forward_rates_YYYYMMDD_HHMMSS/ # Rate projections
-```
-
-## Quick Start
-
-### 1. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Setup Configuration
-```bash
-cp config_template.py config.py
-# Edit config.py and add your OpenAI API key
-```
-
-### 2.1. Verify Installation
-```python
-# Test basic imports
-from run_deals import PrivateLoanPortfolioAnalyzer
-from credit_risk_module import get_cashflow_attributes
-print("✅ Installation successful!")
-```
-
-### 3. Run Analysis
-
-#### Real Deal Portfolio Analysis (Advanced Credit Mode - Default)
-```bash
-python run_deals.py
-```
-- 🔧 Credit Risk Mode: Advanced (uses credit scores and risk-adjusted spreads)
-- Processes PDF memos automatically
-- Generates comprehensive portfolio analytics with fundamental-based credit modeling
-- Creates detailed loan cashflows (base + stressed scenarios)
-- Output: `logs/deals_analysis_YYYYMMDD_HHMMSS.log`
-
-#### Alternative: Static Credit Mode
-```python
-from run_deals import run_portfolio_analysis_with_source
-run_portfolio_analysis_with_source(advanced_credit_mode=False)
-```
-- 🔧 Credit Risk Mode: Static (uses fixed assumptions)
-- Uses uniform 40% recovery rates and original default probabilities
-
-#### Synthetic Portfolio Analysis
-```bash
-python run_synthetic.py  
-```
-- Analyzes 150 synthetic fixed income instruments
-- OU mean-reverting bond models
-- Professional portfolio optimization
-- Output: `logs/synthetic_analysis_YYYYMMDD_HHMMSS.log`
-
-## Expected Output Examples
-
-### Console Output (Advanced Mode)
-```
-🔧 Credit Risk Mode: Advanced
-   ✅ Using credit scores, risk-adjusted spreads, and fundamental-based default/recovery modeling
-Loading CSV data files from source: deals_data/deal_start_unstructured.csv
-Loaded deals_data/deal_start_unstructured.csv: 5 records
-Combined portfolio: 10 total loans
-
-🏦 Processing DEAL_001 - Mode: Advanced
-   📊 Credit Score: 59.4
-   📈 Risk-Adj Spread: 0.00%
-   🎯 Adj Default Prob: 4.50%
-   🛡️ Recovery Rate: 35.00%
-
-✅ Private loan portfolio analysis completed successfully!
-✅ Credit Risk Mode: Advanced
-```
-
-### Log File Output (71+ entries)
-```
-2025-08-30 01:29:27,512 - INFO - 🔧 Credit Risk Mode: Advanced
-2025-08-30 01:29:27,533 - INFO - Combined portfolio: 10 total loans
-2025-08-30 01:29:27,533 - INFO - 🏦 Processing DEAL_001 - Mode: Advanced
-2025-08-30 01:29:27,533 - INFO -    📊 Credit Score: 59.4
-```
-
-### Generated Files
-```
-logs/deals_analysis_20250830_012927.log          # Complete audit trail (5KB)
-private_loan_portfolio_analytics_20250830.png    # 9-panel dashboard
-cashflows_20250830_012927/                       # Individual loan cashflows
-forward_rates_stressed_20250830_012927/           # Stressed rate scenarios
-credit_risk_analysis_20250830.txt                # Credit mode comparison
-```
-
-## Performance Benchmarks
-- Portfolio Size: Up to 150+ instruments tested
-- Processing Time: ~30 seconds for 10-loan portfolio with full analysis
-- Memory Usage: ~200MB for comprehensive analytics
-- Log Generation: 71+ detailed log entries per run
-- Output Files: 5-8 analysis files generated per run
-
-## Key Deliverables
-
-### Portfolio Metrics
-- Weighted average coupon, maturity, and effective duration
-- Sector and currency exposures (% of market value)
-- Top 5 issuers by exposure
-- Advanced Credit Risk Metrics: Credit scores, risk-adjusted spreads, fundamental-based PD/LGD
-- Mode Comparison: Static vs Advanced credit modeling impact analysis
-
-### Stress Testing & Credit Analytics
-- Credit-Differentiated Stress: Custom parameters based on credit scores (80%-200% multipliers)
-- Risk-Adjusted Pricing: Leverage-based spread adjustments (25bp per turn above 3x)
-- Recovery Rate Modeling: Credit score-driven recovery rates (35%-75%)
-- Expected Loss Calculation: PD × LGD × EAD with fundamental inputs
-- Default Probability Adjustment: Credit score-based PD scaling (50%-200% of base)
-- Aggregated portfolio impact analysis with credit risk attribution
-
-### Visualization
-- 9-panel analytics dashboard
-- Sector weights and leverage analysis
-- EBITDA distribution with stress thresholds
-- Credit rating and maturity profiles
-
-## Data Structure
-
-### Input Data
-- `deals_data/` - Real deal data from PDF memos
-- `synthetic_data/` - Synthetic bonds and loans for modeling
-- `memos_structured/` - Structured PDF investment memos
-- `memos_unstructured/` - Unstructured PDF investment memos
-
-### Generated Output
-- `cashflows_YYYYMMDD_HHMMSS/` - Detailed loan cashflows (base/stressed)
-- `forward_rates_YYYYMMDD_HHMMSS/` - Forward rate projections
-- `logs/` - Analysis logs with timestamps
-- `private_loan_portfolio_analytics_*.png` - Dashboard visualizations
-
-## Technical Features
-
-### NEW: Advanced Credit Risk Integration
-- Dual Mode System: Toggle between Static (fixed assumptions) and Advanced (fundamental modeling)
-- Credit Score Calculation: EBITDA, leverage, growth, and sector-based scoring
-- Risk-Adjusted Spreads: Instrument-specific spread adjustments using fundamental metrics
-- Dynamic Default/Recovery: Credit score-driven PD and LGD calculations
-- Stress Testing Calibration: Credit quality-based stress parameter customization
-
-### Advanced Rate Modeling
-- No static rates - All rates from real market data or proper error handling
-- Temporal logic - Historical FRED data for past, forward curves for future
-- Stress scenarios - Proper application to historical vs forward rates
-- Credit-Enhanced Cashflows: Default probability haircuts and expected payment calculations
-
-### AI Integration
-- PDF processing - Automatic memo data extraction
-- Smart caching - Skips expensive processing when data exists  
-- Priority logic - AI-extracted unstructured data preferred over structured
-
-### Professional Standards
-- Institutional format - Matches existing loan infrastructure
-- Comprehensive logging - Every operation logged to timestamped files (71+ log entries per run)
-- Error handling - Graceful failures when data unavailable
-- Modular design - Clean separation of concerns with dedicated credit risk module
-
-## Requirements
-
-See `requirements.txt` for full dependency list. Key packages:
-- pandas>=2.2.2, numpy>=1.26.4 - Data analysis and portfolio modeling
-- matplotlib>=3.9.1, seaborn>=0.13.2 - Visualization and analytics dashboards
-- openai==0.28.0 - AI-powered PDF memo processing
-- pdfplumber>=0.11.7 - PDF text extraction and parsing
-- scipy>=1.14.0, scikit-learn>=1.5.1 - Mathematical calculations and modeling
-- fredapi>=0.5.2 - Economic data integration
-- statsmodels>=0.14.2 - Advanced statistical modeling
-
-## Credit Risk Modeling Usage
-
-### Advanced Mode Examples
-```python
-from credit_risk_module import get_cashflow_attributes, compare_cashflow_modes
-
-# Get credit-adjusted attributes for single loan
-loan_data = {
-    'credit_score': 72.6, 'leverage': 4.4, 'ebitda': 95_000_000,
-    'risk_adjusted_spread': 0.071, 'instrument': 'Unitranche Term Loan'
-}
-attrs = get_cashflow_attributes(loan_data, advanced_mode=True)
-print(f"Adjusted Default Prob: {attrs.default_prob:.2%}")  # 4.00%
-print(f"Recovery Rate: {attrs.recovery_rate:.2%}")         # 50.00%
-
-# Compare portfolio-level impacts
-import pandas as pd
-portfolio_df = pd.read_csv('deal_start_structured.csv')
-comparison = compare_cashflow_modes(portfolio_df)
-print(f"Expected loss change: {comparison['impact_analysis']['expected_loss_change']:+.1f}%")
-```
-
-### Credit Score Examples by Quality
-- DEAL_004 (Score: 117.3): 1.00% default, 75.00% recovery - *Excellent credit quality*
-- DEAL_003 (Score: 72.6): 4.00% default, 50.00% recovery - *Average credit quality*  
-- DEAL_001 (Score: 59.4): 4.50% default, 35.00% recovery - *Below average credit quality*
-
-## API Reference
-
-### Core Functions
-```python
-# Main Analysis
-from run_deals import run_portfolio_analysis_with_source
-result = run_portfolio_analysis_with_source(
-    data_source='deals_data/deal_start_unstructured.csv',
-    advanced_credit_mode=True  # Toggle credit modeling
-)
-
-# Credit Risk Analysis
-from credit_risk_module import get_cashflow_attributes, compare_cashflow_modes
-attrs = get_cashflow_attributes(loan_data, advanced_mode=True)
-comparison = compare_cashflow_modes(portfolio_df)
-
-# Direct Class Usage
-from run_deals import PrivateLoanPortfolioAnalyzer
-analyzer = PrivateLoanPortfolioAnalyzer(advanced_credit_mode=False)
-analyzer.run_analysis()
-```
-
-### Key Parameters
-- `advanced_credit_mode`: `bool` - Use credit scores and risk-adjusted spreads (default: `True`)
-- `data_source`: `str` - Path to CSV data file (default: unstructured PDF data)
-- `loan_data`: `dict` - Loan metadata with credit_score, leverage, ebitda, etc.
-
-## Troubleshooting
-
-### Common Issues
-
-"ModuleNotFoundError: No module named 'config'"
-```bash
-# Solution: Copy and configure API keys
-cp config_template.py config.py
-# Edit config.py and add your OpenAI API key
-```
-
-"FileNotFoundError: deals_data/portfolio.csv not found"
-```bash
-# Solution: Ensure data files exist
-ls deals_data/  # Should show CSV files
-# Or run with different data source
-```
-
-"Forward rates not available" warnings
-- Cause: FRED API issues or missing historical data
-- Solution: Script continues with cached data, warnings are non-fatal
-
-Memory issues with large portfolios
-- Cause: Processing 200+ instruments with full cashflow generation
-- Solution: Reduce portfolio size or increase system memory
-
-
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/conda-someopark__run-green?logo=anaconda&logoColor=white"/>
+  <img src="https://img.shields.io/badge/source-SEC%20EDGAR%20SOI-orange"/>
+  <img src="https://img.shields.io/badge/BDCs-GBDC%20TSLX%20OBDC%20BXSL%20ARCC-purple"/>
+  <img src="https://img.shields.io/badge/deals-~4%2C800%2Fquarter-teal"/>
+  <img src="https://img.shields.io/badge/rates-FRED%20%7C%20Nelson--Siegel-lightgrey"/>
+</p>
 
 ---
 
-*Professional fixed income analytics with institutional-quality credit risk modeling and comprehensive stress testing capabilities.*
+本模块原是一个固收/私募信贷分析引擎(IRR/久期/现金流/信用评分/Nelson-Siegel 利率)。2026-06 起被**盘活为实盘 look-through 系统**:不再用虚构样例,而是从 **SEC Schedule of Investments(SOI,Inline-XBRL)** 拉取 BDC sleeve 实际持有的 5 只 BDC 股票的**底层逐笔贷款**,每日重估值并产出 sleeve 级穿透敞口。
+
+| 追踪的 BDC | 全称 | sleeve 权重 |
+|---|---|---|
+| **GBDC** | Golub Capital BDC | 80% |
+| **TSLX** | Sixth Street Specialty Lending | 5% |
+| **OBDC** | Blue Owl Capital Corp | 5% |
+| **BXSL** | Blackstone Secured Lending | 5% |
+| **ARCC** | Ares Capital Corp | 5% |
+
+> 权重与 sleeve 配置(50% BDC / 50% cash)来自仓库根 `UpdateBDCPerformance.py`。底层数据为 SEC 季度披露(财季末 +28~57 天到齐),因此 look-through 是"**最新已披露季度 × 当日利率曲线**";新鲜度元数据随每份输出。
+
+---
+
+## 架构
+
+整条链路由仓库根的**整合层脚本**驱动(本模块提供建模引擎):
+
+```
+┌─ 每日 production run(conductor/bdc_daily_pipeline.sh,目标窗口 19:00–19:30 ET)──┐
+│  A  SyncPrivateCreditRates.py   利率统一:MacroStateStore → fred_rates.csv       │
+│  C  RefreshBDCHoldings.py        SOI ingest(仅在有新 10-Q/10-K 时,filing 驱动) │
+│       通道A=SEC BDC Data Sets soi.tsv │ 通道B=inline-XBRL instance(兜底)        │
+│       → price_data/bdc_holdings/{TICKER}/soi_{date}_{adsh}.parquet (PIT 快照)    │
+│  D  RunBDCLookThrough.py         每日重估值(forward-SOFR)+ 持仓 diff 引擎       │
+│       → 本模块 bdc_results/ + public/data/bdc_lookthrough_latest.json            │
+└──────────────────────────────────────────────────────────────────────────────┘
+        ↑ 本模块(portfolio_of_private_credit_deals/)= 建模引擎,被上面调用
+        ↓ Someo Agent 只读工具 portfolio_bdc_holdings 服务预计算结果(秒回)
+```
+
+> 整合层脚本(`RefreshBDCHoldings.py` / `SyncPrivateCreditRates.py` / `RunBDCLookThrough.py` / `conductor/bdc_daily_pipeline.sh`)在 **someopark-test 仓库根**,不在本模块内。本 README 聚焦本模块的建模引擎。
+
+---
+
+## 环境配置
+
+```bash
+# someopark_run conda 环境(与主仓库共用)
+conda run -n someopark_run --no-capture-output python <script.py>
+```
+
+| 凭证 | 用途 | 来源 |
+|---|---|---|
+| `FRED_API_KEY` | 利率序列 | 仓库根 `.env`(经 MacroStateStore 统一接入) |
+| **EDGAR** | SOI 抓取 | **免 key**,仅需 User-Agent(`admin@someopark.com`) |
+| `OPENAI_API_KEY`(`config.py`) | **仅 legacy PDF memo 旁路**,BDC 主路径不需要 | `cp config_template.py config.py` |
+
+> `config.py` / `.env` / `fred_rates.csv` / 生成数据 均已 `.gitignore`,不入版本库。BDC 路径**不**经 OpenAI/PDF。
+
+---
+
+## 核心文件
+
+### BDC Look-Through 层(2026-06 新增)
+
+| 文件 | 说明 |
+|---|---|
+| `bdc_deal_loader.py` | SEC SOI 快照 → 模块 deal 契约(原 11 列 + 21 个真实 SOI 列:fair_value/cost/spread/pik_rate/pct_nav/deal_uid/…)。`load_bdc_deals()` / `write_bdc_deal_start()` |
+| `bdc_credit.py` | **SOI-mode 信用评分**:SOI 不披露 EBITDA/杠杆,改用 mark(FV/cost)、spread 分位、PIK、non-accrual、优先级、sector 乘数评 0–120 分,复用现有 recovery/PD/stress 映射。方向性已验证(PIK/低mark → 低分) |
+| `bdc_cashflow.py` | 在现有引擎上**附加**真实 SOI 现金流列:现金/PIK 息拆分、OID 拉平、ExitValue(par vs mark)、non-accrual;浮动腿逐期用 **Nelson-Siegel forward SOFR 曲线**(`build_forward_sofr_curve`,从 live fred_rates 重拟合) |
+| `bdc_lookthrough.py` | sleeve 级聚合:top 发行人(跨 BDC)、行业敞口(FV 加权 + 等权 BDC 对照)、加权 spread/all-in/IRR/信用分、PIK 占比、non-accrual、mark 分布、maturity ladder、利率敏感度、早期预警 |
+| `bdc_sector.py` + `bdc_sector_map.yaml` | SOI 原始行业(100+ filer 变体)→ canonical sector + 风险乘数(关键词规则,鲁棒于新行业) |
+| `bdc_calibration.py` | 适配器:真实 deal → `EnhancedLoanSpec`(供 enriched 分析);run_synthetic 参数从真实组合统计校准 |
+| `tests/fixtures/` | 5 笔原 demo deal,作 fundamental-mode 回归基准保留 |
+
+### 底层引擎(沿用,数学基础)
+
+| 文件 | 说明 |
+|---|---|
+| `bond_utilities.py` | 债券/贷款数学:`LoanSpec`、`generate_loan_schedule`(amort/IO/PIK/fees)、XIRR/久期/凸性 |
+| `credit_risk_module.py` | `CreditRiskCashflowIntegrator`:credit_score → recovery/PD/stress 分档 + 风险调整 spread(static/advanced 双模式) |
+| `forward_rate_lookup.py` | 利率查询:历史查 `fred_rates.csv`,未来查 Nelson-Siegel forward |
+| `forward_rate_projections.py` / `yield_curve_modeling.py` | Nelson-Siegel 曲线拟合 + forward 投影生成 |
+| `cashflow_exporter.py` | 现金流表导出 |
+| `enriched_bond_portfolio.py` | 组合级分析(OU/有效前沿,用于可市场化标的) |
+| `run_deals.py` / `run_synthetic.py` | legacy 编排入口(real deal / 合成情景);`download_fred_data.py` 已 **DEPRECATED**(被 SyncPrivateCreditRates 取代) |
+
+---
+
+## 数据来源:SEC Schedule of Investments
+
+BDC 财报的 SOI 自 SEC Release 33-10771 起被 **Inline-XBRL 逐笔结构化**(typed dimension `InvestmentIdentifierAxis`)。两条免费通道:
+
+| 通道 | 来源 | 用途 |
+|---|---|---|
+| **A(首选)** | SEC BDC Data Sets 月度包 `soi.tsv` | 逐笔财务字段(FV/cost/principal/spread/PIK) |
+| **B(兜底)** | 逐 filing inline-XBRL instance | 月度包滞后时;行业(文档顺序分组)、对账 |
+
+下游对两通道无感(统一列名)。逐笔财务**对账**:companyfacts 净额做锚 + `gross_net_ratio` 透明披露(合并子公司 gross-up,如 ARCC Ivy Hill/SDLP)。
+
+---
+
+## 运行
+
+```bash
+# 整条 production pipeline(仓库根,目标窗口 19:00–19:30 ET,调度由外部安排)
+bash conductor/bdc_daily_pipeline.sh daily
+
+# 单步(均支持 --sandbox DIR 零生产污染 / --dry-run)
+set -a && source .env && set +a
+conda run -n someopark_run --no-capture-output python SyncPrivateCreditRates.py     # 利率
+conda run -n someopark_run --no-capture-output python RefreshBDCHoldings.py          # SOI ingest
+conda run -n someopark_run --no-capture-output python RunBDCLookThrough.py           # 重估值 + diff
+
+# 仅本模块:从快照重建 look-through(调试)
+conda run -n someopark_run --no-capture-output python bdc_lookthrough.py --csv <bdc_deal_start.csv>
+```
+
+**幂等**:同 `(manifest hash, rates date)` 不重算。**filing 驱动**:无新 10-Q/K 即 skip(一年约 20 次真正 ingest)。
+
+---
+
+## 输出
+
+| 文件 | 内容 |
+|---|---|
+| `price_data/bdc_holdings/{TICKER}/soi_*.parquet` | PIT 逐笔快照(append-only,永不覆盖) |
+| `price_data/bdc_holdings/latest_manifest.json` | 各 BDC adsh/reportDate/对账/coverage/non-accrual |
+| `bdc_results/bdc_lookthrough_{asof}.json` | 全量逐笔 + 聚合 |
+| `bdc_results/daily_report_{date}.json` | 每日重估值 + diff 摘要 + 股价层并排 |
+| `bdc_results/diff_{asof}.json` | **新增/变化/exit deal + 预警**(mark 恶化、PIK 上升) |
+| `public/data/bdc_lookthrough_latest.json` | sleeve 聚合(供 agent 工具),<2MB |
+
+**diff 引擎(系统化增量)**:基于稳定 `deal_uid`(=sha1(cik|完整 identifier))跨季三向 diff——新增入库、exit 标记不删除(PIT 留痕)、变化记录向量(加减仓/重定价/mark 迁移/PIK/non-accrual)。
+
+---
+
+## 数据可得性说明(诚实标注,非简化)
+
+SOI 不披露发行人私有信息,以下经调研确认为真实数据墙,均**透明标注**:
+
+| 字段 | 状态 |
+|---|---|
+| **EBITDA / 杠杆** | SOI 不披露 → SOI-mode 评分改用市场信息(mark/spread/PIK),`credit_mode` 标注,不与 fundamental-mode 横比 |
+| **maturity** | 任何 filer 的 XBRL 均不逐笔标注;仅部分 filer 在原 HTML 表(BXSL/TSLX 密集,GBDC/ARCC 稀疏)→ 当前用 instrument-type 中位剩余期限 `imputed_tenor`(`maturity_source` 标注,占比披露);TSLX 走 identifier(`due M/YYYY`) |
+| **non-accrual** | 无标准 XBRL 元素 → **BDC 级**比率从 MD&A 文本提取(5/5 家),逐笔标记(HTML 脚注)留 P1.5 |
+| **floor / affiliation** | XBRL 未逐笔可靠标注(floor 用通用占位 ID;affiliation 在 bleeding 小计)→ 留 None,代码前向兼容。floor 在当前 SOFR≫典型 floor 环境不触发 |
+
+> maturity 只影响现金流投影期限;核心敞口分析(issuer/sector/spread/mark/PIK/non-accrual)全部为真实披露数据。
+
+---
+
+## 与 someopark-test 的集成
+
+- **利率统一**:本模块利率经 `SyncPrivateCreditRates.py` 走仓库级 `MacroStateStore`(全项目一个 FRED 接入点,新增 SOFR/DGS2/5/10/30 五序列;不影响 MCPS/MRPT/MTFS)。
+- **Agent 工具**:`someo-park-investment-management/server/tools/portfolioBdcHoldingsTool.ts` 只读服务 `bdc_lookthrough_latest.json`(绕开 pythonBridge 60s 限制);legacy `portfolioRunExistingTool` 现读 `tests/fixtures/`。
+- **股价层对照**:daily_report 并排 BDC 股价 sleeve 市值(`UpdateBDCPerformance.py` 维护的 `private_credit_bdc_performance.json`)与 look-through 层,各标 as-of。
+
+---
+
+*Institutional private-credit look-through: real SEC Schedule-of-Investments holdings, SOI-mode credit analytics, daily forward-rate re-valuation, and a systematic holdings-diff engine — built on the module's existing fixed-income math.*
