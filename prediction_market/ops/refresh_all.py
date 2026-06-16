@@ -43,6 +43,7 @@ def main() -> None:
         api = ApiFootball(conn)
         try:
             si.sync_results(api, conn)            # newly finished matches → bigger OOS sample
+            si.sync_topscorers(api, conn)         # updated WC goal tallies → golden boot
             si.sync_odds(api, conn, limit=30, include_settled=True)   # market reference incl. settled
             if args.with_form:
                 si.sync_nt_recent(api, conn)      # refresh recent-form inputs

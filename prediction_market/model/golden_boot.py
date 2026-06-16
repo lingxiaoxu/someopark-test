@@ -272,6 +272,7 @@ def simulate_golden_boot(
     *,
     seed: int | None = None,
     games_played: dict[str, int] | None = None,
+    eliminated: set[str] | None = None,
 ) -> GoldenBootResult:
     """Nested player-goal sim on the tournament's matches-played paths.
 
@@ -280,6 +281,11 @@ def simulate_golden_boot(
     (``matches_played - games_played``), and the goals already scored enter
     separately as the head start. Without it, matches already played would be
     counted both in the head start and the forward Poisson.
+
+    ``eliminated`` (canonical team_ids out of the tournament) freezes those teams'
+    players at their goals-so-far — they play no more matches, so they can only win
+    the boot if their current tally already leads. A player on an eliminated team who
+    is not (near) the top scorer therefore lands at ~0%, which is correct.
     """
     players = players or load_players()
     mp = tournament.matches_played
@@ -287,6 +293,7 @@ def simulate_golden_boot(
         raise ValueError("TournamentResult has no matches_played; run simulate() first")
     n = mp.shape[0]
     rng = np.random.default_rng(seed if seed is not None else CONFIG.model.random_seed + 1)
+    elim = eliminated or set()
 
     team_col = {tid: i for i, tid in enumerate(tournament.team_ids)}
     usable = [p for p in players if p.team_id in team_col]
@@ -296,9 +303,12 @@ def simulate_golden_boot(
     # scored as a head start (plan 03 §6.3). matches_remaining = matches_played in
     # the sim path minus games already settled (clipped at 0), so a game already
     # played is never counted both in the head start and the forward projection.
+    # An eliminated team plays no more matches → its players' future lambda is 0
+    # (only their head-start goals remain). Otherwise project over remaining matches.
     lam = np.stack(
-        [p.mu_eff * np.clip(
-            mp[:, team_col[p.team_id]].astype(np.float64) - gp.get(p.team_id, 0), 0.0, None)
+        [(np.zeros(n) if p.team_id in elim else
+          p.mu_eff * np.clip(
+              mp[:, team_col[p.team_id]].astype(np.float64) - gp.get(p.team_id, 0), 0.0, None))
          for p in usable],
         axis=1,
     )  # (n, P)

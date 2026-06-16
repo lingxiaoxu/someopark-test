@@ -68,9 +68,10 @@ def recent_finished(conn, hours: float = 0.75) -> list[dict]:
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     # The fixture stores kickoff, not the final whistle, so approximate finish as
-    # kickoff + ~2h (90' + stoppage + half-time). Show while now is within `hours`
-    # (45 min) of that approximate finish, i.e. kickoff in the last (2h + hours).
-    _MATCH_DURATION_H = 2.0
+    # kickoff + ~3h (covers 90' + stoppage + half-time + any extra time/penalties +
+    # post-match settling). Show while now is within `hours` (45 min) of that
+    # approximate finish, i.e. kickoff in the last (3h + hours).
+    _MATCH_DURATION_H = 3.0
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=_MATCH_DURATION_H + hours)).isoformat()
     out = []
     for r in conn.execute(

@@ -89,11 +89,22 @@ def _maybe_refresh_champion(conn) -> None:
         pass
     if settled == prev:
         return
+    # A match just finished → refresh the WC scorer tallies first so the golden boot
+    # reflects the goals just scored (e.g. a hat-trick lifts that player's odds), then
+    # re-simulate champion + golden boot on the new results.
+    try:
+        from prediction_market.ingest.api_football import ApiFootball
+        from prediction_market.ingest import soccer_ingest as si
+        si.sync_topscorers(ApiFootball(conn), conn, force=True)
+    except Exception as e:
+        print(f"[live_refresh] topscorers refresh skipped: {e}")
     from prediction_market.model.run_model import refresh_champion
     pl = refresh_champion()
     wm.write_text(str(settled))
     top = pl["champion"][0]
-    print(f"[live_refresh] champion re-simulated on new result — leader {top['name']} {top['p_champion']:.1%}")
+    gb = pl["golden_boot"][0]
+    print(f"[live_refresh] re-simulated on new result — champion {top['name']} {top['p_champion']:.1%}, "
+          f"golden boot {gb['name']} {gb['p_golden_boot']:.1%}")
 
 
 def refresh_once(conn=None) -> dict:

@@ -81,12 +81,17 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
         sm = blend_into_strength(sm, squad_attack_quality(season=CONFIG.soccer.season))
     tour = simulate(prior, sm, n_sims=n_sims, seed=seed)
     from prediction_market.ingest import store
+    from prediction_market.model.tournament import eliminated_teams
     _gb_conn = store.init_db()
     _gb_players = load_players()
     _gb_team_of = {p.player_id: p.team_id for p in _gb_players}
+    # Eliminated teams: their players play no more matches (golden boot frozen at
+    # goals-so-far) AND their champion odds are 0 (overlay below). Same set for both.
+    _elim = eliminated_teams(_gb_conn, all_team_ids=list(name_of.keys()))
     gb = simulate_golden_boot(
         tour, _gb_players, seed=seed + 1,
         games_played=games_played_by_team(_gb_conn),
+        eliminated=_elim,
     )
     matches = price_group_stage(sm, prior)
 
@@ -122,8 +127,7 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
     # tie, or never qualified from its group) can no longer win — force its champion
     # and stage probabilities to 0 and renormalise the title odds across survivors.
     # No-op during the group stage (eliminated set is empty).
-    from prediction_market.model.tournament import eliminated_teams
-    elim = eliminated_teams(_gb_conn, all_team_ids=list(name_of.keys()))
+    elim = _elim
     if elim:
         for r in champion:
             if r["team_id"] in elim:
