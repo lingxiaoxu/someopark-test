@@ -91,7 +91,7 @@
     "team": "Équipe",
     "subChampion": "Simulation de tournoi Monte-Carlo",
     "subGoldenBoot": "Buts des joueurs (intégré à la simulation)",
-    "subMethodology": "Version et hypothèses du modèle",
+    "subMethodology": "Ce que le système peut faire — données, avant-match, en direct et discipline",
     "subDivergence": "Modèle 1N2 vs cote dévigée du bookmaker",
     "subPredictions": "Modèle 1N2 + O2.5 / BTTS pour les matchs à venir",
     "legendAbbrev": "H = victoire à domicile · D = nul · A = victoire à l'extérieur · O2.5 = plus de 2,5 buts au total · BTTS = les deux équipes marquent",
@@ -203,7 +203,43 @@
     "colMatchup": "Match",
     "colOurPick": "Notre prono",
     "betWon": "GAGNÉ",
-    "betLost": "perdu"
+    "betLost": "perdu",
+    "cap": {
+      "dataT": "Données et entrées",
+      "data": [
+        "Les 48 équipes qualifiées et le calendrier officiel complet",
+        "Données en direct : score, minute, qualité des tirs, cartons, événements clés",
+        "Force des équipes : résultats passés, classement mondial, qualité de l’effectif, forme récente",
+        "Données joueurs : production en club + dernières notes des joueurs",
+        "Cotes du marché : prix Kalshi et Polymarket US en temps réel",
+        "Le jeu de données s’enrichit et se recalibre à chaque match terminé"
+      ],
+      "preT": "Avant le coup d’envoi",
+      "pre": [
+        "Probabilité équitable victoire / nul / défaite pour chaque match",
+        "Total de buts (plus/moins) et les deux équipes marquent",
+        "Simulation du tournoi : titre, qualification et finale de chaque équipe",
+        "Probabilités du Soulier d’Or (meilleur buteur)",
+        "Là où notre prévision diffère des bookmakers (notre edge)",
+        "Phase de groupes avec nuls ; phases finales résolues par un modèle de tirs au but"
+      ],
+      "liveT": "En direct (live)",
+      "live": [
+        "Prix équitables mis à jour chaque minute pendant le match",
+        "S’ajuste au score, au temps restant et à l’état du jeu — qui mène, but d’une grosse/petite équipe, cartons rouges, dernières minutes",
+        "Détection en temps réel de la valeur et de l’arbitrage entre places",
+        "Signaux tactiques en direct (ex. valeur du nul en fin de match)",
+        "Chaque minute de données et de calcul est journalisée pour le débriefing"
+      ],
+      "otherT": "Discipline, risque et reporting",
+      "other": [
+        "Le modèle est calibré ; le trading n’est activé qu’après une barrière de précision",
+        "Contrôles de risque stricts : plafond ferme par ordre et vérification d’exécutabilité",
+        "Un historique réel match par match (prévision / pari / résultat / P&L)",
+        "Rapports PDF de qualité institutionnelle (performance et risque)",
+        "Tableau de bord multilingue en temps réel"
+      ]
+    }
   },
   "sidebar": {
     "appName": "Someo Park",

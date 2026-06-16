@@ -115,14 +115,25 @@ function SquadStrength() {
   );
 }
 
+// Client-facing capability overview — what the system does across data / pre-match /
+// in-play / discipline. Deliberately NO model parameters, methods or version numbers.
 function Methodology() {
   const { t: tr } = useTranslation();
-  const { data, loading, error } = useApi<any>(() => getWCChampion(), []);
-  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
+  const cap = tr('prediction.cap', { returnObjects: true }) as any;
+  const sections: [string, string[]][] = [
+    [cap?.dataT, cap?.data], [cap?.preT, cap?.pre], [cap?.liveT, cap?.live], [cap?.otherT, cap?.other],
+  ];
   return (
     <div>
-      <Title sub={`${tr('prediction.subMethodology')} · ${data?.meta?.code_version ?? ''}`}>Model Notes / Methodology</Title>
-      <Notes items={data?.meta?.model_notes} />
+      <Title sub={tr('prediction.subMethodology')}>What This System Does</Title>
+      {sections.filter(([t, items]) => t && Array.isArray(items)).map(([title, items]) => (
+        <div key={title} style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono, marginBottom: 6 }}>{title}</div>
+          <ul style={{ paddingLeft: 16, fontSize: 11.5, lineHeight: 1.6, color: 'var(--text-secondary)', ...mono }}>
+            {items.map((it, i) => <li key={i} style={{ marginBottom: 3 }}>{it}</li>)}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }

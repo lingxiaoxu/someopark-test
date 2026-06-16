@@ -409,7 +409,7 @@
     "team": "Team",
     "subChampion": "Monte-Carlo tournament simulation",
     "subGoldenBoot": "Player goal-scoring, nested in the tournament sim",
-    "subMethodology": "Model version & assumptions",
+    "subMethodology": "What the system can do — data, pre-match, in-play, and discipline",
     "subDivergence": "Model 3-way vs the sharp bookmaker de-vig",
     "subPredictions": "Model 3-way + O2.5 / BTTS for upcoming fixtures",
     "legendAbbrev": "H = home win · D = draw · A = away win · O2.5 = over 2.5 total goals · BTTS = both teams to score",
@@ -521,7 +521,43 @@
     "colMatchup": "Match",
     "colOurPick": "Our pick",
     "betWon": "WON",
-    "betLost": "lost"
+    "betLost": "lost",
+    "cap": {
+      "dataT": "Data & Inputs",
+      "data": [
+        "All 48 qualified teams and the full official fixture schedule",
+        "Live match data: score, minute, shot quality, cards and key events",
+        "Team strength: historical results, world ranking, squad quality, recent form",
+        "Player data: club output plus the latest player ratings",
+        "Market quotes: real-time Kalshi and Polymarket US prices",
+        "The dataset keeps growing and re-calibrating as matches finish"
+      ],
+      "preT": "Before Kick-off",
+      "pre": [
+        "Fair win / draw / loss probability for every match",
+        "Total goals (over/under) and both-teams-to-score",
+        "Full tournament simulation: each team’s title, advancement and final odds",
+        "Golden Boot (top scorer) probabilities",
+        "Where our prediction differs from the bookmakers (our edge)",
+        "Group stage priced with draws; knockouts resolved through a penalty-shootout model"
+      ],
+      "liveT": "In-Play (Live)",
+      "live": [
+        "Fair prices updated every minute while a match is live",
+        "Adjusts to the scoreline, time remaining and game state — who leads, a strong vs weak team scoring, red cards, the closing minutes",
+        "Real-time value and cross-venue arbitrage detection",
+        "In-play tactical signals (e.g. late-game draw value)",
+        "Every minute of data and computation is logged for post-match review"
+      ],
+      "otherT": "Discipline, Risk & Reporting",
+      "other": [
+        "The model is calibrated; trading is only enabled once it passes an accuracy gate",
+        "Strict risk controls: a hard per-order cap and venue-executability checks",
+        "A live, match-by-match track record (prediction / bet / result / P&L)",
+        "Institutional-style PDF reports (performance and risk)",
+        "Multi-language, real-time dashboard"
+      ]
+    }
   },
   "sidebar": {
     "appName": "Someo Park",
