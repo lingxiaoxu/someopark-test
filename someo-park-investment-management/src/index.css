@@ -688,6 +688,9 @@
 
 [data-mode="prediction"] .message-user { background: var(--ink); color: var(--page); border-color: var(--ink); }
 [data-mode="prediction"] .message-user::before { color: var(--ink-mute); }
+/* The user-bubble text is hard-coded text-white (correct on the dark stock bubble);
+   in prediction the bubble flips to a light surface, so force dark text for contrast. */
+[data-mode="prediction"] .message-user .text-white { color: var(--page); }
 [data-mode="prediction"] .message-content > p { background: var(--paper); border-color: var(--ink); color: var(--ink); }
 
 /* Quick-action / artifact grid cards (original rules use !important) */

@@ -276,6 +276,12 @@ export default function ChatArea({
 
   // Someo Agent mode state
   const [isAgentMode, setIsAgentMode] = useState(false)
+  // In Prediction Market mode, Someo Agent is ON by default (it has the World Cup
+  // tools). This fires only when the mode changes, so the user can still toggle it
+  // off afterwards; re-entering prediction mode re-enables it.
+  useEffect(() => {
+    if (appMode === 'prediction') setIsAgentMode(true)
+  }, [appMode])
   const [isAgentRunning, setIsAgentRunning] = useState(false)
   const sessionIdRef = useRef(crypto.randomUUID())
 
