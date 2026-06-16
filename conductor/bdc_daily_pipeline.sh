@@ -5,7 +5,7 @@
 # Daily production driver for the BDC underlying-loan look-through
 # (portfolio_of_private_credit_deals). Mirrors the project's strategy-pipeline
 # conventions (log/hr/PY, non-fatal data steps, heartbeat). Scheduling is arranged
-# externally (target window 19:00–19:30 ET); this script is the entrypoint only.
+# externally (target window 15:45–16:05 ET); this script is the entrypoint only.
 #
 # Usage (run from anywhere; paths resolve absolutely):
 #     bash conductor/bdc_daily_pipeline.sh daily
@@ -16,7 +16,7 @@
 #   C  RefreshBDCHoldings        probe 5 CIKs; ingest only on a NEW 10-Q/10-K (filing-driven)
 #   D  RunBDCLookThrough         daily re-valuation + holdings diff (new/changed/exited)
 #   E  heartbeat + reports       written by RunBDCLookThrough
-# Every step is NON-FATAL (loud-alert + continue), per the project convention. A 25-min
+# Every step is NON-FATAL (loud-alert + continue), per the project convention. A 15-min
 # wall-clock self-kill keeps the run inside its window.
 #
 # Environment: conda env `someopark_run` + `.env` (FRED_API_KEY). EDGAR needs no key.
@@ -43,8 +43,8 @@ PY()  { conda run -n "$CONDA_ENV" --no-capture-output python "$@"; }
 # load FRED key (EDGAR is key-free)
 if [ -f "$REPO_ROOT/.env" ]; then set -a; . "$REPO_ROOT/.env"; set +a; fi
 
-# 25-minute self-kill so the run never overruns the 19:00–19:30 window
-( sleep 1500 && log "WATCHDOG: 25-min limit hit, killing pipeline" && kill -TERM $$ ) &
+# 15-minute self-kill so the run never overruns the 15:45–16:05 window
+( sleep 900 && log "WATCHDOG: 15-min limit hit, killing pipeline" && kill -TERM $$ ) &
 WATCHDOG=$!
 trap 'kill "$WATCHDOG" 2>/dev/null' EXIT
 
