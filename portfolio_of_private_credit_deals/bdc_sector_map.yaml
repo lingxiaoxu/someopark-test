@@ -1,0 +1,28 @@
+# bdc_sector_map.yaml — D4 §6.2
+# Maps the 100+ raw SEC-SOI industry strings (which vary by filer and carry naming
+# noise, e.g. "Aerospace And Defense Sector" vs "Aerospace Sector") onto a small
+# canonical GICS-like sector set + a credit risk multiplier used by SOI-mode scoring.
+#
+# Matching is by keyword, FIRST RULE WINS (order matters: put specific before generic).
+# Robust to future/unseen industries — anything unmatched falls to `default` (1.0) and
+# is logged so the universe can be extended. Multipliers are HY-spread-tiered:
+# cyclical / commodity / consumer-discretionary > 1.0 (riskier), recurring-revenue /
+# defensive < 1.0. Applied as: sector_adj = (multiplier - 1.0) scaled into the score.
+rules:
+  - {canonical: "Healthcare",            multiplier: 1.00, keywords: [health, heathcare, pharma, biotech, life scien, medical]}
+  - {canonical: "Software & IT",         multiplier: 0.90, keywords: [software, it servic, internet, data center, technology hardware, electronic equip, communications equip]}
+  - {canonical: "Insurance",             multiplier: 0.85, keywords: [insurance]}
+  - {canonical: "Financial Services",    multiplier: 0.90, keywords: [financ, bank, capital markets, asset based lend, fund finance, investment fund, joint ventur]}
+  - {canonical: "Business Services",     multiplier: 0.95, keywords: [business servic, professional servic, commercial and professional, commercial servic, human resource, advertis, marketing]}
+  - {canonical: "Energy",                multiplier: 1.25, keywords: [oil, gas, energy, fuel]}
+  - {canonical: "Utilities",             multiplier: 0.85, keywords: [utilit, power, renewable, electric]}
+  - {canonical: "Auto",                  multiplier: 1.20, keywords: [auto, vehicle]}
+  - {canonical: "Transportation",        multiplier: 1.15, keywords: [transport, freight, logistic, marine, road rail, airline, air freight]}
+  - {canonical: "Materials & Chemicals", multiplier: 1.15, keywords: [chemical, material, paper, forest, container, packaging, metal, mining]}
+  - {canonical: "Industrials",           multiplier: 1.10, keywords: [aerospace, defense, machinery, industrial, building product, construction, electrical equip, manufactur, distribut, trading compan, infrastructure, capital goods]}
+  - {canonical: "Consumer Staples",      multiplier: 0.95, keywords: [food, beverage, staples, household product, personal product, consumer staple]}
+  - {canonical: "Media & Leisure",       multiplier: 1.20, keywords: [media, entertain, gaming, hotel, leisure, restaurant, sports]}
+  - {canonical: "Telecom",               multiplier: 1.00, keywords: [telecom, communication]}
+  - {canonical: "Real Estate",           multiplier: 1.05, keywords: [real estate, reit, buildings and real]}
+  - {canonical: "Consumer Discretionary",multiplier: 1.15, keywords: [retail, consumer, apparel, textile, luxury, durables, education, leisure product, specialty]}
+default: {canonical: "Other", multiplier: 1.00}

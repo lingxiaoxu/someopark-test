@@ -92,9 +92,28 @@ qlib-main/semiconductor_strategy/trading_signals/
 qlib-main/semiconductor_strategy/pipeline_state/
 qlib-main/semiconductor_strategy/notebooks/
 
-# Private Credit module & public docs (large files, managed locally)
-portfolio_of_private_credit_deals/
+# Private Credit module — now tracked in someopark-test (de-nested 2026-06). Its CODE is
+# committed here; generated data + secrets are excluded by its own
+# portfolio_of_private_credit_deals/.gitignore (config.py, .env, fred_rates.csv,
+# bdc_results/, cashflows_*/, *.key, *.pem, …).
 public/
 
 # Zip archives
 *.zip
+
+# Private keys — never commit any key material anywhere in the repo
+*.key
+*.pem
+
+# prediction_market — World Cup trading project (isolated): secrets + generated data
+# (its own prediction_market/.gitignore also covers these; this is belt-and-suspenders)
+prediction_market/.env
+prediction_market/**/*.key
+prediction_market/**/*.pem
+prediction_market/data/output/
+prediction_market/data/raw/
+prediction_market/data/logs/
+prediction_market/data/wc.db
+prediction_market/data/wc.db-wal
+prediction_market/data/wc.db-shm
+prediction_market/data/kalshi_docs/

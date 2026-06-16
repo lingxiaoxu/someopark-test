@@ -1,0 +1,6 @@
+company,sector,instrument,currency,deal_size,coupon,maturity,ebitda,leverage,rev,risks
+Delta Holdings,Industrial Services,"Senior Secured Term Loan B Currency: USD Deal Size: $450,000,000 Coupon: SOFR + 375","USD Deal Size: $450,000,000 Coupon: SOFR + 375",0.0,SOFR + 375,2032,0.0,4.5x Revenue Growth: 5% YoY,5% YoY,
+Echo Foods,Consumer Staples,"Senior Unsecured Notes Currency: USD Deal Size: $600,000,000 Coupon: 6.25%","USD Deal Size: $600,000,000 Coupon: 6.25%",0.0,6.25%,2033,0.0,4.5x Revenue Growth: 8% YoY,8% YoY,
+Bravo Logistics,Transportation & Logistics,"Asset-Backed Facility Currency: USD Deal Size: $300,000,000 Coupon: SOFR + 275 bps","USD Deal Size: $300,000,000 Coupon: SOFR + 275 bps",0.0,SOFR + 275 bps,2030,0.0,2.2x Revenue Growth: 3% YoY,3% YoY,
+Charlie Energy,Energy (Midstream),"Senior Secured Notes Currency: USD Deal Size: $750,000,000 Coupon: 7.25% Maturity:","USD Deal Size: $750,000,000 Coupon: 7.25% Maturity:",0.0,7.25% Maturity:,2034,0.0,4.6x Revenue Growth: 6% YoY,6% YoY,
+Foxtrot Health,Healthcare Services,"Unitranche Term Loan Currency: USD Deal Size: $350,000,000 Coupon: SOFR + 575 bps","USD Deal Size: $350,000,000 Coupon: SOFR + 575 bps",0.0,SOFR + 575 bps,2031,0.0,4.4x Revenue Growth: 7% YoY,7% YoY,

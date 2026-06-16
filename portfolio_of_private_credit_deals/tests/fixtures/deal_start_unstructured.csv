@@ -1,0 +1,6 @@
+company,sector,instrument,currency,deal_size,coupon,maturity,ebitda,leverage,rev,risks
+Echo Foods Co.,Consumer Staples,Senior Unsecured Notes,USD,600000000.0,6.25%,2033,300000000.0,4.5x,8% YoY,"Input cost volatility, private-label competition, sensitivity to macro conditions, potential need for sponsor support"
+Charlie Energy Partners LP,Energy (Midstream),Senior Secured Notes,USD,750000000.0,7.25%,2034,410000000.0,4.6x,6% YoY,Volume risk; basin concentration; sensitivity to macro conditions; potential need for sponsor support
+Foxtrot Health Services,Healthcare Services,Unitranche Term Loan,USD,350000000.0,SOFR + 575 bps,2031,95000000.0,4.4x,7% YoY,Reimbursement risk; integration; sensitivity to macro conditions; potential need for sponsor support
+Bravo Logistics Inc.,Transportation & Logistics,Asset-Backed Facility,USD,300000000.0,SOFR + 275 bps,2030,120000000.0,2.2x,3% YoY,Freight rate pressure; diesel price spikes; sensitivity to macro conditions; potential need for sponsor support
+Delta Holdings LLC,Industrial Services,Senior Secured Term Loan B,USD,450000000.0,SOFR + 375 bps,2032,160000000.0,4.5x,5% YoY,Cyclicality; customer concentration; sensitivity to macro conditions; potential need for sponsor support

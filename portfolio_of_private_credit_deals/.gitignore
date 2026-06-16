@@ -1,0 +1,24 @@
+# Generated / runtime artifacts (BDC look-through went live 2026-06) — code only in git
+__pycache__/
+*.pyc
+.DS_Store
+.tmp_agent_script.py
+bdc_results/
+logs/
+deals_data/
+fred_rates.csv
+config.py
+cashflows_*/
+forward_rates_*/
+*.png
+credit_risk_analysis_*.txt
+synthetic_data/synthetic_loans_bdc_calibrated.csv
+# Secrets / private — never commit
+.env
+*.env
+.env.*
+*.key
+*.pem
+*credentials*
+*secret*
+secrets/
