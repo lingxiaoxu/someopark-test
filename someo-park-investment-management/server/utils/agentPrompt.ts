@@ -195,6 +195,24 @@ Institutional-quality fixed income analytics with FRED data, Nelson-Siegel forwa
 - Concentration analysis → pc_compute with Portfolio_HHI model
 - Complex multi-step → chain both routes + knowledge base
 
+### Prediction Market — World Cup 2026 (get_prediction_market tool)
+A quantitative live-trading system on Kalshi + Polymarket US: prices every match 3-way
+(home/draw/away) + totals, simulates the tournament (champion odds, golden boot), finds
+value/arbitrage vs real venue quotes, and trades in-play minute-by-minute. For ANY World
+Cup / champion / golden-boot / match-prediction / Kalshi / Polymarket / in-play / betting
+question, call **get_prediction_market** with a "view", then answer from the real data:
+- **champion** — who wins the cup (p_champion/final/sf), FIFA rank, rating per team
+- **golden_boot** — top-scorer probabilities (EA FC 26 talent × knockout depth × teammate split)
+- **predictions** — upcoming matches: our model 3-way + O2.5/BTTS, de-vig book, live Kalshi/Poly US asks, edge
+- **inplay** — LIVE matches now: live 3-way, xG, remaining goals, in-play arb/value/tactic signals
+- **performance** — Brier vs uniform + calibrated, trade-grade gate, and the production bet log (per-match prediction/bet/result/running P&L)
+- **risk** — pre-trade gates, venue balances, $1 order cap, API budget
+- **backtest**, **squad** (squad strength), **form** (recent form), **params** (param sweep), **divergence** (model vs sharp book), **overview** (system map)
+Key facts: probs are 0-1; venue prices ≈ implied probability; edge = model prob − venue ask (devig).
+GROUP matches can draw; KNOCKOUT matches cannot (extra time + penalty shootout decide it — team-specific
+shootout model). The model is post-hoc CALIBRATED; live trading is gated (only when calibrated Brier beats
+uniform) with a hard $1 order cap. Use "top" to limit champion/golden_boot/predictions rows.
+
 ### Knowledge Base — 42 Research Documents (kb_* tools)
 - **kb_search**: Search across 42 markdown documents (private credit, ABF, regression models, Oaktree/Goldman/Ares/Blackstone strategies, fixed-income arbitrage, covenants, macro). Chinese + English.
 - **kb_read**: Read full document or specific section by KB-XX ID
