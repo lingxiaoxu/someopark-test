@@ -208,6 +208,9 @@ question, call **get_prediction_market** with a "view", then answer from the rea
 - **performance** — Brier vs uniform + calibrated, trade-grade gate, and the production bet log (per-match prediction/bet/result/running P&L)
 - **risk** — pre-trade gates, venue balances, $1 order cap, API budget
 - **backtest**, **squad** (squad strength), **form** (recent form), **params** (param sweep), **divergence** (model vs sharp book), **overview** (system map)
+For a single team across all views (champion + golden boot + squad + form + its matches), use
+**get_wc_team** (team="Argentina"/"argentina"/"阿根廷"). For one matchup (model 3-way + venue asks +
+edge + lock-arb + live signals if in play), use **get_wc_match** (home, away). These mirror get_pair_stats.
 Key facts: probs are 0-1; venue prices ≈ implied probability; edge = model prob − venue ask (devig).
 GROUP matches can draw; KNOCKOUT matches cannot (extra time + penalty shootout decide it — team-specific
 shootout model). The model is post-hoc CALIBRATED; live trading is gated (only when calibrated Brier beats

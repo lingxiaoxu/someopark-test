@@ -25,6 +25,8 @@ export function toChatPrompt() {
     calibration, trade-grade gate, the production bet log: per-match prediction/bet/result/PnL), risk (gates,
     venue balances, $1 cap), backtest, squad (squad strength), form (recent form), params (param sweep),
     divergence (model vs sharp book), overview (system map).
+    For a single team across all views use get_wc_team (e.g. team="Argentina"/"阿根廷"); for one matchup
+    (model 3-way + Kalshi/Poly asks + edge + lock-arb + live signals) use get_wc_match (home, away).
     Key facts: probabilities are 0-1; venue prices ≈ implied probability. GROUP matches can draw; KNOCKOUT
     matches cannot (extra time + penalty shootout decide a winner — priced via a team-specific shootout model).
     The model is post-hoc CALIBRATED; live trading is gated (only trades when the calibrated Brier beats the

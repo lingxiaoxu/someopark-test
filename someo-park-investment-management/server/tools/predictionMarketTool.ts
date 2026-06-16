@@ -51,13 +51,14 @@ export const predictionMarketTool: AgentTool = {
             Object.entries(VIEWS).map(([k, v]) => `"${k}" = ${v.about}`).join('; '),
         },
         top: { type: 'number', description: 'For champion/golden_boot/predictions: only the top N rows (default all).' },
+        team: { type: 'string', description: 'Optional filter — restrict champion/golden_boot/predictions/performance(bet log) to one team (name/id/Chinese).' },
       },
       required: ['view'],
     },
   },
   isConcurrencySafe: () => true,
   isReadOnly: () => true,
-  async execute({ view, top }) {
+  async execute({ view, top, team }) {
     const spec = VIEWS[view]
     if (!spec) {
       return { error: `Unknown view "${view}". Valid: ${Object.keys(VIEWS).join(', ')}` }
@@ -70,17 +71,125 @@ export const predictionMarketTool: AgentTool = {
     }
 
     const n = typeof top === 'number' && top > 0 ? top : undefined
+    const hit = (s: any) => !team || matchesTeam(team, s)
     // Trim the big arrays so the model gets the relevant slice, not a wall of JSON.
     if (view === 'champion' && data?.champion) {
-      return { meta: data.meta, champion: n ? data.champion.slice(0, n) : data.champion }
+      let rows = data.champion.filter((c: any) => hit(c))
+      return { meta: data.meta, champion: n ? rows.slice(0, n) : rows }
     }
     if (view === 'golden_boot' && data?.golden_boot) {
-      return { meta: data.meta, golden_boot: n ? data.golden_boot.slice(0, n) : data.golden_boot }
+      let rows = data.golden_boot.filter((p: any) => hit(p))
+      return { meta: data.meta, golden_boot: n ? rows.slice(0, n) : rows }
     }
     if (view === 'predictions') {
-      const matches = data?.matches ?? data
+      let matches = (data?.matches ?? data) as any[]
+      if (Array.isArray(matches) && team) matches = matches.filter((m) => matchesTeam(team, m.home) || matchesTeam(team, m.away))
       return { note: data?.note, matches: n && Array.isArray(matches) ? matches.slice(0, n) : matches }
     }
+    if (view === 'performance' && team && Array.isArray(data?.bet_log)) {
+      // Filter the production bet log to this team's matches.
+      return { ...data, bet_log: data.bet_log.filter((b: any) => matchesTeam(team, b) || matchesTeam(team, { name: b.home }) || matchesTeam(team, { name: b.away })) }
+    }
     return data
+  },
+}
+
+// ── team / match resolution (accepts English name, team_id, or Chinese name) ──
+function _norm(s: string): string {
+  return (s || '').toString().toLowerCase().replace(/[\s'._-]/g, '')
+}
+function matchesTeam(query: string, row: any): boolean {
+  if (!query || !row) return false
+  const q = _norm(query)
+  for (const k of ['team_id', 'name', 'zh', 'home_id', 'away_id', 'pick_team']) {
+    const v = row[k]
+    if (v && (_norm(v) === q || _norm(v).includes(q) || q.includes(_norm(v)))) return true
+  }
+  return false
+}
+
+async function _load(file: string): Promise<any> {
+  try { return await readJsonFile(path.resolve(dataDir, file)) } catch { return null }
+}
+function _list(d: any): any[] {
+  if (Array.isArray(d)) return d
+  return d?.rows || d?.teams || d?.matches || []
+}
+
+export const predictionMarketTeamTool: AgentTool = {
+  definition: {
+    name: 'get_wc_team',
+    description:
+      'Deep-dive on ONE World Cup 2026 team across every model view: champion / advance ' +
+      'probabilities + rating + FIFA rank, its golden-boot candidates, squad strength, recent form, ' +
+      'and its upcoming + live matches (model 3-way, venue asks, edge). Accepts the team\'s English ' +
+      'name, id, or Chinese name (e.g. "Argentina", "argentina", "阿根廷"). Mirrors get_pair_stats.',
+    input_schema: {
+      type: 'object',
+      properties: { team: { type: 'string', description: 'Team name / id (English, id, or Chinese).' } },
+      required: ['team'],
+    },
+  },
+  isConcurrencySafe: () => true,
+  isReadOnly: () => true,
+  async execute({ team }) {
+    const [wc, squad, form, upcoming, inplay] = await Promise.all([
+      _load('worldcup_model.json'), _load('squad.json'), _load('form.json'),
+      _load('upcoming.json'), _load('inplay_live.json'),
+    ])
+    const champion = (wc?.champion || []).find((c: any) => matchesTeam(team, c))
+    if (!champion) return { error: `Team "${team}" not found in the 48-team field.` }
+    return {
+      team: champion.name, zh: champion.zh,
+      champion,                                                   // p_champion/final/sf/qf/r16/advance, rating, fifa_rank
+      golden_boot: (wc?.golden_boot || []).filter((p: any) => matchesTeam(team, p)),
+      squad: _list(squad).find((s: any) => matchesTeam(team, s)) || null,
+      form: _list(form).find((s: any) => matchesTeam(team, s)) || null,
+      upcoming_matches: _list(upcoming).filter((m: any) => matchesTeam(team, m.home) || matchesTeam(team, m.away)),
+      live_matches: (inplay?.matches || []).filter((m: any) => matchesTeam(team, m.home) || matchesTeam(team, m.away)),
+    }
+  },
+}
+
+export const predictionMarketMatchTool: AgentTool = {
+  definition: {
+    name: 'get_wc_match',
+    description:
+      'Deep-dive on ONE World Cup 2026 matchup: our model 3-way + O2.5/BTTS, the de-vig book, real ' +
+      'Kalshi & Polymarket US asks, our edge per side, any cross-venue lock-arb, and — if the match is ' +
+      'LIVE now — the live 3-way / xG / remaining goals and all in-play signals. Also each team\'s ' +
+      'tournament advance odds for context. Give both teams (name/id/Chinese).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        home: { type: 'string', description: 'One team (name/id/Chinese).' },
+        away: { type: 'string', description: 'The other team (name/id/Chinese).' },
+      },
+      required: ['home', 'away'],
+    },
+  },
+  isConcurrencySafe: () => true,
+  isReadOnly: () => true,
+  async execute({ home, away }) {
+    const [wc, upcoming, inplay] = await Promise.all([
+      _load('worldcup_model.json'), _load('upcoming.json'), _load('inplay_live.json'),
+    ])
+    const pairOf = (m: any) =>
+      (matchesTeam(home, m.home) && matchesTeam(away, m.away)) ||
+      (matchesTeam(home, m.away) && matchesTeam(away, m.home))
+    const live = (inplay?.matches || []).find(pairOf)
+    const pre = _list(upcoming).find(pairOf)
+    if (!live && !pre) {
+      return { error: `No scheduled/live match found for "${home}" vs "${away}". They may have already played or not be drawn together.` }
+    }
+    const champ = (t: string) => {
+      const c = (wc?.champion || []).find((x: any) => matchesTeam(t, x))
+      return c ? { name: c.name, p_advance_model: c.p_advance_model, p_champion: c.p_champion, fifa_rank: c.fifa_rank } : null
+    }
+    return {
+      pre_match: pre || null,    // model 3-way + O2.5/BTTS + book + kalshi + poly + edge + lock_arb
+      live: live || null,        // live model + xG + opportunities (only if in play now)
+      context: { home: champ(home), away: champ(away) },
+    }
   },
 }
