@@ -1,0 +1,17 @@
+# prediction_market — local artifacts, never committed
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated data (model runs, raw API snapshots, DB, logs). Priors + seed are kept.
+data/output/
+data/raw/
+data/logs/
+data/wc.db
+data/wc.db-wal
+data/wc.db-shm
+
+# Secrets: Kalshi PEM private keys must live OUTSIDE git entirely.
+*.key
+*.pem

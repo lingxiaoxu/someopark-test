@@ -1,0 +1,32 @@
+# prediction_market — World Cup 2026 × Kalshi + Polymarket trading system
+# Run inside the `someopark_run` conda env (set -a; source prediction_market/.env; set +a).
+# Most numerical deps (numpy/scipy/pandas) already ship with someopark_run; this file
+# documents the additional, project-specific dependencies.
+
+# --- numerical / modeling (already in someopark_run, pinned here for reference) ---
+numpy>=1.26
+scipy>=1.13
+pandas>=2.2
+
+# --- venue connectivity (install when wiring live execution; Demo-gated) ---
+cryptography>=42.0        # Kalshi RSA-PSS request signing
+requests>=2.31            # Kalshi REST + public market data
+websockets>=12.0          # Kalshi / Polymarket US realtime
+polymarket-us            # Polymarket US execution + market data (Ed25519). INSTALLED + auth verified.
+                         # pulls pynacl (Ed25519) + httpx. Client: PolymarketUS(key_id, secret_key).
+# py-clob-client-v2        # Polymarket Global read-only reference (EIP-712)
+
+# --- football data (offline modeling / research) ---
+# soccerdata              # ClubElo/FBref/Understat/Sofascore aggregator
+# statsbombpy             # StatsBomb open event data (xG)
+# penaltyblog             # Dixon-Coles / Poisson reference implementations
+# scraperfc               # Sofascore/Transfermarkt/Understat scraping
+
+# --- storage / scheduling / ops (add as those layers come online) ---
+# sqlalchemy
+# psycopg2-binary
+# pyarrow
+# apscheduler
+tenacity>=8.2             # retry with exponential backoff
+pydantic>=2.5            # config / schema validation
+pytest>=8.0

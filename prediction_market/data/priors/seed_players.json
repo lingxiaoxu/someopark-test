@@ -1,0 +1,33 @@
+{
+  "_comment": "SEED / PLACEHOLDER player data for the golden-boot engine. These are REAL players, but mu_goals_per_match and start_prob are ROUGH priors, NOT ingested data. Replace with API-Football / StatsBomb xG-based rates (plan 02 §2b, plan 03 §6.1) before trading the golden-boot market. team must match a canonical team name in ext_sim_v0.json. Long-tail players are folded into 'other' downstream (plan 03 §8).",
+  "source": "seed_placeholder_v0",
+  "as_of": "2026-06-13",
+  "is_stale": true,
+  "players": [
+    {"player_id": "mbappe", "name": "Kylian Mbappe", "team": "France", "mu_goals_per_match": 0.72, "start_prob": 0.98, "pen_taker": true},
+    {"player_id": "vinicius", "name": "Vinicius Junior", "team": "Brazil", "mu_goals_per_match": 0.55, "start_prob": 0.95, "pen_taker": false},
+    {"player_id": "rodrygo", "name": "Rodrygo", "team": "Brazil", "mu_goals_per_match": 0.45, "start_prob": 0.85, "pen_taker": false},
+    {"player_id": "raphinha", "name": "Raphinha", "team": "Brazil", "mu_goals_per_match": 0.50, "start_prob": 0.90, "pen_taker": true},
+    {"player_id": "kane", "name": "Harry Kane", "team": "England", "mu_goals_per_match": 0.68, "start_prob": 0.98, "pen_taker": true},
+    {"player_id": "bellingham", "name": "Jude Bellingham", "team": "England", "mu_goals_per_match": 0.42, "start_prob": 0.95, "pen_taker": false},
+    {"player_id": "lamine_yamal", "name": "Lamine Yamal", "team": "Spain", "mu_goals_per_match": 0.48, "start_prob": 0.95, "pen_taker": false},
+    {"player_id": "morata", "name": "Alvaro Morata", "team": "Spain", "mu_goals_per_match": 0.45, "start_prob": 0.80, "pen_taker": false},
+    {"player_id": "messi", "name": "Lionel Messi", "team": "Argentina", "mu_goals_per_match": 0.60, "start_prob": 0.90, "pen_taker": true},
+    {"player_id": "julian_alvarez", "name": "Julian Alvarez", "team": "Argentina", "mu_goals_per_match": 0.52, "start_prob": 0.88, "pen_taker": false},
+    {"player_id": "lautaro", "name": "Lautaro Martinez", "team": "Argentina", "mu_goals_per_match": 0.50, "start_prob": 0.78, "pen_taker": false},
+    {"player_id": "haaland", "name": "Erling Haaland", "team": "Norway", "mu_goals_per_match": 0.85, "start_prob": 0.98, "pen_taker": true},
+    {"player_id": "wirtz", "name": "Florian Wirtz", "team": "Germany", "mu_goals_per_match": 0.40, "start_prob": 0.92, "pen_taker": false},
+    {"player_id": "havertz", "name": "Kai Havertz", "team": "Germany", "mu_goals_per_match": 0.42, "start_prob": 0.85, "pen_taker": false},
+    {"player_id": "lukaku", "name": "Romelu Lukaku", "team": "Belgium", "mu_goals_per_match": 0.55, "start_prob": 0.90, "pen_taker": false},
+    {"player_id": "ronaldo", "name": "Cristiano Ronaldo", "team": "Portugal", "mu_goals_per_match": 0.50, "start_prob": 0.85, "pen_taker": true},
+    {"player_id": "leao", "name": "Rafael Leao", "team": "Portugal", "mu_goals_per_match": 0.40, "start_prob": 0.80, "pen_taker": false},
+    {"player_id": "nunez", "name": "Darwin Nunez", "team": "Uruguay", "mu_goals_per_match": 0.48, "start_prob": 0.85, "pen_taker": false},
+    {"player_id": "james_rodriguez", "name": "James Rodriguez", "team": "Colombia", "mu_goals_per_match": 0.38, "start_prob": 0.90, "pen_taker": true},
+    {"player_id": "luis_diaz", "name": "Luis Diaz", "team": "Colombia", "mu_goals_per_match": 0.45, "start_prob": 0.90, "pen_taker": false},
+    {"player_id": "en_nesyri", "name": "Youssef En-Nesyri", "team": "Morocco", "mu_goals_per_match": 0.45, "start_prob": 0.88, "pen_taker": false},
+    {"player_id": "gakpo", "name": "Cody Gakpo", "team": "Netherlands", "mu_goals_per_match": 0.45, "start_prob": 0.88, "pen_taker": false},
+    {"player_id": "depay", "name": "Memphis Depay", "team": "Netherlands", "mu_goals_per_match": 0.42, "start_prob": 0.82, "pen_taker": true},
+    {"player_id": "pulisic", "name": "Christian Pulisic", "team": "United States", "mu_goals_per_match": 0.40, "start_prob": 0.92, "pen_taker": false},
+    {"player_id": "kudus", "name": "Mohammed Kudus", "team": "Ghana", "mu_goals_per_match": 0.38, "start_prob": 0.88, "pen_taker": false}
+  ]
+}
