@@ -9,11 +9,12 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
-  getWCRisk, getWCCalibration, getWCInplay, getWCOverview,
+  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview,
 } from '../../lib/api';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
 import { tDyn } from '../../i18n/predictionStrings';
+import { usePoll } from './usePoll';
 
 // ── shared primitives ─────────────────────────────────────────────────────────
 const pct = (v?: number | null, d = 1) => (v == null || isNaN(v) ? '—' : `${(v * 100).toFixed(d)}%`);
@@ -182,18 +183,51 @@ function Schedule() {
   );
 }
 
+const KIND_COLOR: Record<string, string> = {
+  lock_arb: 'var(--success)', relative_value: 'var(--text-primary)', tactic: 'var(--text-secondary)',
+};
+
 function InPlay() {
   const { t: tr } = useTranslation();
-  const { data, loading, error } = useApi<any>(() => getWCInplay(), []);
-  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const sigs = data?.signals ?? [];
+  // Polls every 30s so the live model + tricks refresh during a match (no reload).
+  const { data, loading, updatedAt } = usePoll<any>(() => getWCInplayLive(), 30000);
+  const matches = data?.matches ?? [];
+  const upd = updatedAt ? new Date(updatedAt).toLocaleTimeString() : '';
   return (
     <div>
-      <Title sub={`${data?.n_live ?? 0} live · ${tr('prediction.subInPlay')}`}>In-Play Arbitrage</Title>
-      {sigs.length ? (
-        <DataTable cols={[tr('prediction.match'), 'Min', tr('prediction.colKind'), tr('prediction.colSide'), tr('prediction.colEdge'), tr('prediction.colAction')]}
-          rows={sigs.map((s: any) => [tCountry(s.match), s.minute, s.kind, s.side, num(s.edge, 3), s.action])} />
-      ) : <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{tr('prediction.noLiveMatches')}</div>}
+      <Title sub={tr('prediction.subInPlay')}>In-Play Arbitrage</Title>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8, ...mono }}>
+        ● {tr('prediction.autoRefresh')} 30s{upd ? ` · ${tr('prediction.updated')} ${upd}` : ''} · {data?.n_live ?? 0} {tr('prediction.live')}
+      </div>
+      {loading && !matches.length ? <Loading /> : !matches.length ? (
+        <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{tr('prediction.noLiveMatches')}</div>
+      ) : matches.map((m: any) => (
+        <div key={m.fixture_id} className="card" style={{ marginBottom: 12 }}>
+          {/* live header */}
+          <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+            <span style={{ fontWeight: 700, fontSize: 13, ...mono, color: 'var(--text-primary)' }}>
+              <span style={{ color: 'var(--error)', fontWeight: 700, marginRight: 6 }} className="pulse">● {tr('prediction.liveBadge')}</span>
+              {tCountry(m.home.name)} <b>{m.score}</b> {tCountry(m.away.name)}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{m.minute}'{m.reds !== '0-0' ? ` · 🟥 ${m.reds}` : ''}</span>
+          </div>
+          {/* live model */}
+          <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)', marginBottom: 2 }}>
+            {tr('prediction.model')}: H {pct(m.model.home, 0)} · D {pct(m.model.draw, 0)} · A {pct(m.model.away, 0)} · O2.5 {pct(m.model.over_2_5, 0)}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>
+            xG {m.xg.home ?? '—'} / {m.xg.away ?? '—'} · {tr('prediction.expGoals')} {num(m.model.exp_remaining_goals, 2)}
+          </div>
+          {/* opportunities / tricks */}
+          {m.opportunities?.length ? (
+            <DataTable cols={[tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colEdge'), tr('prediction.colReason')]}
+              rows={m.opportunities.map((o: any) => [
+                <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{o.kind}</span>,
+                o.action, o.side, o.edge != null ? num(o.edge, 3) : '—', (o.reason || '').slice(0, 60),
+              ])} />
+          ) : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
+        </div>
+      ))}
     </div>
   );
 }

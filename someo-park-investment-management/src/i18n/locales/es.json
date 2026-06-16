@@ -121,7 +121,10 @@
     "gradePass": "OK", "gradeBlock": "BLOQUEADO (nivel insuficiente)",
     "roleExecute": "ejecutar", "roleRealMoney": "dinero real", "tradingGated": "bloqueado",
     "pdfPerf": "Rendimiento & P&L (PDF)", "pdfRisk": "Informe de riesgo (PDF)",
-    "noLiveMatches": "No hay partidos en vivo — las señales aparecen aquí cada minuto durante los partidos."
+    "noLiveMatches": "No hay partidos en vivo — las señales aparecen aquí cada minuto durante los partidos.",
+    "autoRefresh": "actualización auto", "updated": "actualizado", "live": "en vivo", "liveBadge": "EN VIVO",
+    "expGoals": "goles restantes est.", "colReason": "Razón",
+    "noOpps": "Sin señal accionable este minuto — solo vista del modelo."
   },
   "sidebar": {
     "appName": "Someo Park",

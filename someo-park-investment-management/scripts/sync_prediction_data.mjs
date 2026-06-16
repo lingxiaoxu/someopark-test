@@ -26,6 +26,7 @@ const FILES = [
   'xv_champion.json',
   'upcoming.json',
   'inplay_signals.json',
+  'inplay_live.json',
   'performance_report.json',
   'risk_report.json',
   'oos_report.json',
