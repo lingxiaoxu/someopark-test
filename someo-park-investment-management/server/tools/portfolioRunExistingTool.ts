@@ -39,9 +39,13 @@ export const portfolioRunExistingTool: AgentTool = {
       summary_only = true,
     } = input
 
+    // The 5 legacy demo deals were relocated to tests/fixtures when the module went live
+    // on real BDC underlying loans (see RunBDCLookThrough.py / portfolio_bdc_holdings).
+    // These options now run on the regression fixtures; real-data queries use the
+    // portfolio_bdc_holdings tool (precomputed sleeve look-through).
     const csvFile = data_source === 'structured'
-      ? 'deals_data/deal_start_structured.csv'
-      : 'deals_data/deal_start_unstructured.csv'
+      ? 'tests/fixtures/deal_start_structured.csv'
+      : 'tests/fixtures/deal_start_unstructured.csv'
 
     // Conditionally include per-deal cashflow rows in the Python script
     const cashflowBlock = summary_only ? '' : `

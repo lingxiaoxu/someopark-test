@@ -129,6 +129,7 @@ import { portfolioForwardRatesTool } from './portfolioForwardRatesTool.js'
 import { portfolioStressTestTool } from './portfolioStressTestTool.js'
 import { portfolioAnalyzeDealTool } from './portfolioAnalyzeDealTool.js'
 import { portfolioRunExistingTool } from './portfolioRunExistingTool.js'
+import { portfolioBdcHoldingsTool } from './portfolioBdcHoldingsTool.js'  // BDC sleeve look-through (read-only)
 
 // Knowledge Base (3 tools)
 import { kbSearchTool } from './kbSearchTool.js'
@@ -153,10 +154,11 @@ export function registerAllTools() {
     // Private Credit — Excel template models (7)
     pcListModelsTool, pcReadModelTool, pcComputeTool, pcSensitivityTool,
     pcCompareScenariosTool, pcCustomCashflowTool, pcExcelRawTool,
-    // Private Credit — Python portfolio engine (6)
+    // Private Credit — Python portfolio engine (7)
     portfolioGenerateCashflowsTool, portfolioCreditRiskTool,
     portfolioForwardRatesTool, portfolioStressTestTool,
     portfolioAnalyzeDealTool, portfolioRunExistingTool,
+    portfolioBdcHoldingsTool,   // BDC sleeve look-through (real underlying loans)
     // Knowledge Base (3)
     kbSearchTool, kbReadTool, kbListTool,
     // Note: ask_user, manage_tasks, send_message are stateful factories

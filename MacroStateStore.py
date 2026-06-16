@@ -120,6 +120,14 @@ FRED_SERIES = {
     'recession_flag':('USREC',        'M'),
     'unrate':        ('UNRATE',       'M'),
     'payems':        ('PAYEMS',       'M'),
+    # Treasury / SOFR curve — added 2026-06 for the private-credit BDC look-through
+    # (SyncPrivateCreditRates). Additive only; NOT in SIMILARITY_FEATURES so MCPS /
+    # MRPT / MTFS behaviour is unchanged (verified: SIMILARITY_FEATURES has no yields).
+    'sofr':          ('SOFR',         'D'),
+    'dgs2':          ('DGS2',         'D'),
+    'dgs5':          ('DGS5',         'D'),
+    'dgs10':         ('DGS10',        'D'),
+    'dgs30':         ('DGS30',        'D'),
 }
 
 # Point-in-Time 发布滞后（天数）
@@ -151,6 +159,11 @@ FRED_RELEASE_LAG: dict[str, int] = {
     'recession_flag': 45,
     'unrate':        35,
     'payems':        35,
+    'sofr':          1,   # SOFR published T+1 (NY Fed, ~08:00 ET next morning)
+    'dgs2':          1,   # CMT yields published same day ~16:15 ET; 1d PIT-safe
+    'dgs5':          1,
+    'dgs10':         1,
+    'dgs30':         1,
 }
 
 # 需要完整统计（val/prev/chg/obs30/obs90）的指标列表
