@@ -35,6 +35,7 @@ from prediction_market.model.tournament import TournamentResult
 # samples (plan 03 §6.1). A 2-goals-in-1-game leader must regress toward this.
 _POS_PRIOR = {"Attacker": 0.45, "Midfielder": 0.20, "Defender": 0.08}
 _SHRINK_ALPHA = 3.0     # pseudo-matches of prior weight
+_GB_MAX_SIMS = 250_000  # cap the nested golden-boot sim (memory); champion can run larger
 
 
 @dataclass(frozen=True)
@@ -317,6 +318,11 @@ def simulate_golden_boot(
     mp = tournament.matches_played
     if mp is None:
         raise ValueError("TournamentResult has no matches_played; run simulate() first")
+    # The nested player-goal array is (n_sims, n_players) — at 1M champion paths that
+    # would be GBs of RAM. The champion sim can run at 1M while the golden boot stays
+    # accurate on a sub-sample of the (i.i.d.) paths, so cap the rows used here.
+    if mp.shape[0] > _GB_MAX_SIMS:
+        mp = mp[:_GB_MAX_SIMS]
     n = mp.shape[0]
     rng = np.random.default_rng(seed if seed is not None else CONFIG.model.random_seed + 1)
     elim = eliminated or set()

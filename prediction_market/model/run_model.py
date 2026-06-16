@@ -189,7 +189,9 @@ def refresh_champion(*, n_sims: int | None = None, seed: int | None = None) -> d
     refresh as the tournament unfolds. Returns the payload.
     """
     prior = load_prior()
-    n_sims = n_sims or CONFIG.model.n_sims_quicklook
+    # Publish the FULL-resolution champion run (1M sims → low MC noise). The nested
+    # golden-boot sim self-caps its sub-sample for memory (see golden_boot._GB_MAX_SIMS).
+    n_sims = n_sims or CONFIG.model.n_sims_tournament
     seed = seed if seed is not None else CONFIG.model.random_seed
     payload = build_payload(prior, n_sims=n_sims, seed=seed, update_results=True)
     write_outputs(payload, emit_frontend=True)

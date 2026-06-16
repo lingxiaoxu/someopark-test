@@ -244,7 +244,8 @@
     "tbdPairing": "Affiche à déterminer",
     "colGoals": "Buts",
     "colBrierRaw": "Brier (brut)",
-    "colBrierCal": "Brier (cal.)"
+    "colBrierCal": "Brier (cal.)",
+    "paramSets": "jeux de params"
   },
   "sidebar": {
     "appName": "Someo Park",

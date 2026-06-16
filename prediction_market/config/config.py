@@ -52,8 +52,8 @@ class ModelConfig:
     """Modeling parameters (plan files 03, 10). Starting points — tune via backtest."""
 
     # Monte-Carlo sizing (plan 03 §5/§8). Champion/advance N>=200k for stable tails.
-    n_sims_tournament: int = 200_000
-    n_sims_quicklook: int = 50_000  # fast correctness pass before scaling up
+    n_sims_tournament: int = 1_000_000  # PUBLISHED champion run (low Monte-Carlo noise)
+    n_sims_quicklook: int = 50_000      # fast correctness pass before scaling up
 
     # Dixon-Coles low-score correlation parameter (plan 03 §2). rho in (-0.2, 0).
     dc_rho: float = -0.05

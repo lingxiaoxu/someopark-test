@@ -244,7 +244,8 @@
     "tbdPairing": "对阵待定",
     "colGoals": "进球",
     "colBrierRaw": "Brier(原始)",
-    "colBrierCal": "Brier(校准)"
+    "colBrierCal": "Brier(校准)",
+    "paramSets": "组参数"
   },
   "sidebar": {
     "appName": "Someo Park",

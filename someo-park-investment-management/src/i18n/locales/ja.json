@@ -244,7 +244,8 @@
     "tbdPairing": "対戦未定",
     "colGoals": "得点",
     "colBrierRaw": "Brier(生)",
-    "colBrierCal": "Brier(校正)"
+    "colBrierCal": "Brier(校正)",
+    "paramSets": "パラメータ群"
   },
   "sidebar": {
     "appName": "Someo Park",

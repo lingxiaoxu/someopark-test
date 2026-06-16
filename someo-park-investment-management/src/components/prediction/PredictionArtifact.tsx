@@ -382,11 +382,14 @@ function ParamSweep() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCParams(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const fmtParams = (p: any) => Object.entries(p ?? {}).map(([k, v]) => `${k.replace('_', ' ')}=${v}`).join('  ');
-  const all = (data?.results_all ?? []).slice(0, 40);   // top 40 of the 180 (ranked)
+  const fmtParams = (p: any) => Object.entries(p ?? {}).map(([k, v]) => `${k.replace(/_/g, ' ')}=${v}`).join('  ');
+  const all = (data?.results_all ?? []).slice(0, 60);   // top 60 of the ranked sets
+  // Live counts read straight from the data — how many param sets were scored, on how many matches.
+  const nSets = data?.n_param_sets, nSettled = data?.n_settled;
+  const subCount = nSets != null ? `${nSets} ${tr('prediction.paramSets')} · ${nSettled} ${tr('prediction.lblMatches')} · ${tr('prediction.subParams')}` : tr('prediction.subParams');
   return (
     <div>
-      <Title sub={tr('prediction.subParams')}>Parameter Sweep</Title>
+      <Title sub={subCount}>Parameter Sweep</Title>
       <KV rows={[
         // Selected on the CALIBRATED Brier (the fair number vs uniform); raw shown alongside.
         [tr('prediction.lblSelected'), <span><b style={{ color: 'var(--success)' }}>{data?.best?.brier_cal?.toFixed?.(4)}</b> <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>(raw {data?.best?.brier?.toFixed?.(4)})</span></span>],
