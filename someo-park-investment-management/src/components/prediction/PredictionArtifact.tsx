@@ -75,8 +75,8 @@ function ChampionOdds() {
   return (
     <div>
       <Title sub={`${tr('prediction.subChampion')} · ${data?.meta?.n_sims?.toLocaleString?.() ?? ''} sims`}>Champion Odds</Title>
-      <DataTable cols={[tr('prediction.team'), 'Grp', tr('prediction.colChamp'), tr('prediction.colFinal'), 'SF', tr('prediction.colRating')]}
-        rows={champ.map((c: any) => [tCountry(c.name), c.group, pct(c.p_champion), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])} />
+      <DataTable cols={[tr('prediction.team'), 'FIFA', 'Grp', tr('prediction.colChamp'), tr('prediction.colFinal'), 'SF', tr('prediction.colRating')]}
+        rows={champ.map((c: any) => [tCountry(c.name), c.fifa_rank != null ? `#${c.fifa_rank}` : '—', c.group, pct(c.p_champion), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])} />
     </div>
   );
 }
@@ -160,6 +160,18 @@ function Predictions() {
       <Title sub={tr('prediction.subPredictions')}>Today's Predictions</Title>
       <DataTable cols={[tr('prediction.match'), 'ET', 'H', 'D', 'A', 'O2.5']}
         rows={ms.map((m: any) => [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '', pct(m.model?.home, 0), pct(m.model?.draw, 0), pct(m.model?.away, 0), pct(m.model?.over_2_5, 0)])} />
+      <Legend />
+    </div>
+  );
+}
+
+// Explains the column abbreviations (H / D / A / O2.5 / BTTS) inline, so the
+// prediction tables are self-documenting in every language.
+function Legend() {
+  const { t: tr } = useTranslation();
+  return (
+    <div style={{ marginTop: 10, fontSize: 10, lineHeight: 1.5, color: 'var(--text-muted)', ...mono }}>
+      {tr('prediction.legendAbbrev')}
     </div>
   );
 }

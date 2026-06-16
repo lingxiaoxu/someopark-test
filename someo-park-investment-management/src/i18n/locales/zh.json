@@ -94,6 +94,7 @@
     "subMethodology": "模型版本与假设",
     "subDivergence": "模型胜平负 vs 锐利庄家去 vig",
     "subPredictions": "未来场次的模型胜平负 + O2.5 / BTTS",
+    "legendAbbrev": "H = 主队胜 · D = 平局 · A = 客队胜 · O2.5 = 全场总进球超过 2.5 个(≥3 球)· BTTS = 双方都进球",
     "subMatchPricing": "公允胜平负价 + 真实场所报价(Kalshi / Poly US)",
     "subSchedule": "美国东部时间开赛",
     "subInPlay": "每分钟:锁定套利 / 相对价值 / 战术",

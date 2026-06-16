@@ -68,6 +68,7 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
     zh_of = {t.team_id: t.zh for t in prior.teams}
     group_of = {t.team_id: t.group for t in prior.teams}
     prior_adv = {t.team_id: t.p_advance for t in prior.teams}
+    fifa_of = {t.team_id: t.fifa_rank for t in prior.teams}
 
     sm = build_strength(prior)
     if update_results:
@@ -102,6 +103,7 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
     champion = [
         {
             "team_id": tid, "name": name_of[tid], "zh": zh_of[tid], "group": group_of[tid],
+            "fifa_rank": fifa_of.get(tid),
             "p_champion": round(tour.p_champion[tid], 5),
             "p_champion_sigma": round(champ_sigma[tid], 5) if tid in champ_sigma else None,
             "p_final": round(tour.p_final[tid], 5),

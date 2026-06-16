@@ -94,6 +94,7 @@
     "subMethodology": "モデルのバージョンと前提",
     "subDivergence": "モデル勝分敗 vs シャープなブックメーカーの控除除去",
     "subPredictions": "今後の試合のモデル勝分敗 + O2.5 / BTTS",
+    "legendAbbrev": "H = ホーム勝ち · D = 引き分け · A = アウェイ勝ち · O2.5 = 総得点2.5超(3点以上)· BTTS = 両チーム得点",
     "subMatchPricing": "公正な勝分敗価格 + 実際の会場アスク(Kalshi / Poly US)",
     "subSchedule": "米国東部時間のキックオフ",
     "subInPlay": "毎分:ロック裁定 / 相対価値 / 戦術",

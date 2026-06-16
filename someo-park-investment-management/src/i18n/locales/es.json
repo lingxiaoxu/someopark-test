@@ -94,6 +94,7 @@
     "subMethodology": "Versión y supuestos del modelo",
     "subDivergence": "Modelo 1X2 vs cuota sin margen del bookmaker",
     "subPredictions": "Modelo 1X2 + O2.5 / BTTS para próximos partidos",
+    "legendAbbrev": "H = victoria local · D = empate · A = victoria visitante · O2.5 = más de 2,5 goles en total · BTTS = ambos equipos marcan",
     "subMatchPricing": "Precio justo 1X2 + cuotas reales (Kalshi / Poly US)",
     "subSchedule": "Inicios en hora del Este de EE.UU.",
     "subInPlay": "Por minuto: arbitraje / valor relativo / tácticas",

@@ -94,6 +94,7 @@
     "subMethodology": "Version et hypothèses du modèle",
     "subDivergence": "Modèle 1N2 vs cote dévigée du bookmaker",
     "subPredictions": "Modèle 1N2 + O2.5 / BTTS pour les matchs à venir",
+    "legendAbbrev": "H = victoire à domicile · D = nul · A = victoire à l'extérieur · O2.5 = plus de 2,5 buts au total · BTTS = les deux équipes marquent",
     "subMatchPricing": "Prix équitable 1N2 + cotes réelles (Kalshi / Poly US)",
     "subSchedule": "Coups d'envoi en heure de l'Est US",
     "subInPlay": "Par minute : arbitrage / valeur relative / tactiques",

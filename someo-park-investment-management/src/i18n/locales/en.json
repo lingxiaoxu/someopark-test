@@ -412,6 +412,7 @@
     "subMethodology": "Model version & assumptions",
     "subDivergence": "Model 3-way vs the sharp bookmaker de-vig",
     "subPredictions": "Model 3-way + O2.5 / BTTS for upcoming fixtures",
+    "legendAbbrev": "H = home win · D = draw · A = away win · O2.5 = over 2.5 total goals · BTTS = both teams to score",
     "subMatchPricing": "Fair 3-way price + real venue asks (Kalshi / Poly US)",
     "subSchedule": "Kickoffs in US Eastern time",
     "subInPlay": "Per-minute lock-arb / relative value / tactics",
