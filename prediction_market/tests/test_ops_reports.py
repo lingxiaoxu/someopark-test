@@ -183,3 +183,41 @@ def test_backtest_export_with_settled():
     assert doc["brier"]["model"] is not None
     assert doc["matches"][0]["result"] == "H"          # France 2-0 → home win
     assert "conclusion" in doc
+
+
+# ── walk-forward Elo result-update ────────────────────────────────────────────
+def test_walkforward_update_moves_prediction():
+    """Proves the result-update (Elo) genuinely shifts ratings + future predictions
+    once a team has a prior game — i.e. #1 is implemented, not just inert."""
+    from prediction_market.ingest.prior_ingest import load_prior
+    from prediction_market.model.match_pricing import price_match
+    from prediction_market.model.strength import build_strength, update_with_results
+    prior = load_prior()
+    base = build_strength(prior)
+    a, b, c = "france", "senegal", "iraq"
+    p_before = price_match(base, a, c).p_home
+    # France thrashes Senegal 5-0 → France over-performed
+    updated = update_with_results(
+        base, [{"home_id": a, "away_id": b, "home_goals": 5, "away_goals": 0, "days_ago": 1}], lr=0.2)
+    p_after = price_match(updated, a, c).p_home
+    assert updated.ratings[a] > base.ratings[a]   # rating rises on over-performance
+    assert p_after > p_before                       # → higher win prob in the next game
+
+
+def test_walkforward_eval_no_repeat_teams():
+    """On a first-games-only sample the walk-forward equals baseline (inert)."""
+    from prediction_market.ops import walkforward_eval
+    c = _mem_db()
+    for api, cid in ((10, "france"), (20, "senegal"), (30, "brazil"), (40, "germany")):
+        store.upsert(c, "team_meta",
+                     {"api_id": api, "canonical_team_id": cid, "updated_at": store.utcnow()}, pk=["api_id"])
+    # two matches, four DISTINCT teams → no prior data for anyone
+    store.upsert(c, "fixture", {"api_id": 1, "league_id": 1, "season": 2026, "status_short": "FT",
+                 "home_api_id": 10, "away_api_id": 20, "home_goals": 1, "away_goals": 0,
+                 "kickoff_ts": "2026-06-11T19:00:00+00:00", "updated_at": store.utcnow()}, pk=["api_id"])
+    store.upsert(c, "fixture", {"api_id": 2, "league_id": 1, "season": 2026, "status_short": "FT",
+                 "home_api_id": 30, "away_api_id": 40, "home_goals": 2, "away_goals": 2,
+                 "kickoff_ts": "2026-06-12T19:00:00+00:00", "updated_at": store.utcnow()}, pk=["api_id"])
+    doc = walkforward_eval.run(conn=c)
+    assert doc["n_matches_with_prior_data"] == 0
+    assert doc["improves"] is False
