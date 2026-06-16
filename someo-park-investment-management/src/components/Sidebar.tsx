@@ -1,4 +1,4 @@
-import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
 import { useState, useRef, useEffect } from 'react';
@@ -16,6 +16,8 @@ export default function Sidebar({
   onConnectClick,
   agentMode,
   setAgentMode,
+  appMode,
+  onToggleAppMode,
   isLocalConnected,
   onSettingsClick,
   session,
@@ -30,6 +32,8 @@ export default function Sidebar({
   onConnectClick: () => void,
   agentMode: 'cloud' | 'local',
   setAgentMode: (mode: 'cloud' | 'local') => void,
+  appMode: 'stock' | 'prediction',
+  onToggleAppMode: () => void,
   isLocalConnected: boolean,
   onSettingsClick?: () => void,
   session: Session | null,
@@ -72,9 +76,38 @@ export default function Sidebar({
       {/* Logo — h-14 matches ChatArea header (both 3.5rem); style matches bottom divider */}
       <div className="flex items-center gap-2 h-14 mb-5" style={{ borderBottom: '2px solid var(--border-subtle)', marginTop: '-16px' }}>
         <a href="https://www.someopark.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2" style={{ textDecoration: 'none' }}>
-          <Terminal className="w-5 h-5" style={{ color: '#111' }} />
-          <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '20px', color: '#111', letterSpacing: '.06em', lineHeight: 1 }}>{t('sidebar.appName')}</span>
+          <Terminal className="w-5 h-5" style={{ color: 'var(--ink)' }} />
+          <span style={{ fontFamily: 'var(--font-pixel)', fontSize: '20px', color: 'var(--ink)', letterSpacing: '.06em', lineHeight: 1 }}>{t('sidebar.appName')}</span>
         </a>
+      </div>
+
+      {/* App Mode Selector — World Cup 2026 Prediction Market.
+          Sits between the logo and AGENT RUNTIME. The button INVERTS vs the agent
+          buttons: black in stock mode, white in prediction mode (the active look on
+          the inverted dark shell). Click toggles the whole-site mode. */}
+      <div className="mb-5">
+        <div className="section-label">{t('sidebar.appMode')}</div>
+        <button
+          onClick={onToggleAppMode}
+          className="flex items-center gap-3 px-3 py-2.5 transition-all w-full"
+          style={{
+            background: appMode === 'prediction' ? '#fff' : '#111',
+            color: appMode === 'prediction' ? '#111' : '#fff',
+            border: '2px solid var(--ink)',
+            borderLeft: '4px solid var(--ink)',
+            boxShadow: 'var(--shadow-pixel-sm)',
+            fontFamily: 'var(--font-mono)',
+            cursor: 'pointer',
+          }}
+        >
+          <Trophy className="w-4 h-4" style={{ color: appMode === 'prediction' ? '#111' : '#fff' }} />
+          <div className="flex flex-col items-start flex-1">
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('sidebar.predictionMarket')}</span>
+            <span style={{ fontSize: '10px', color: appMode === 'prediction' ? '#555' : '#ccc' }}>
+              {appMode === 'prediction' ? t('sidebar.wcLive') : t('sidebar.wcSwitch')}
+            </span>
+          </div>
+        </button>
       </div>
 
       {/* Agent Mode Selector */}
@@ -85,19 +118,19 @@ export default function Sidebar({
             onClick={() => setAgentMode('cloud')}
             className="flex items-center gap-3 px-3 py-2.5 transition-all"
             style={{
-              background: agentMode === 'cloud' ? '#111' : '#fff',
-              border: '2px solid #111',
-              borderLeft: agentMode === 'cloud' ? '4px solid #111' : '2px solid #111',
-              color: agentMode === 'cloud' ? '#fff' : '#333',
+              background: agentMode === 'cloud' ? 'var(--ink)' : 'var(--paper)',
+              border: '2px solid var(--ink)',
+              borderLeft: agentMode === 'cloud' ? '4px solid var(--ink)' : '2px solid var(--ink)',
+              color: agentMode === 'cloud' ? 'var(--paper)' : 'var(--ink-soft)',
               boxShadow: agentMode === 'cloud' ? 'var(--shadow-pixel-sm)' : 'none',
               fontFamily: 'var(--font-mono)',
               cursor: 'pointer',
             }}
           >
-            <Cloud className="w-4 h-4" style={{ color: agentMode === 'cloud' ? '#fff' : '#555' }} />
+            <Cloud className="w-4 h-4" style={{ color: agentMode === 'cloud' ? 'var(--paper)' : 'var(--ink-dim)' }} />
             <div className="flex flex-col items-start">
               <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('sidebar.cloudVps')}</span>
-              <span style={{ fontSize: '10px', color: agentMode === 'cloud' ? '#ccc' : '#888' }}>{t('sidebar.cloudHosted')}</span>
+              <span style={{ fontSize: '10px', color: agentMode === 'cloud' ? 'var(--hairline)' : 'var(--ink-mute)' }}>{t('sidebar.cloudHosted')}</span>
             </div>
           </button>
 
@@ -105,21 +138,21 @@ export default function Sidebar({
             onClick={() => isLocalConnected ? setAgentMode('local') : onConnectClick()}
             className="flex items-center gap-3 px-3 py-2.5 transition-all"
             style={{
-              background: agentMode === 'local' ? '#111' : '#fff',
-              border: '2px solid #111',
-              borderLeft: agentMode === 'local' ? '4px solid #111' : '2px solid #111',
-              color: agentMode === 'local' ? '#fff' : '#333',
+              background: agentMode === 'local' ? 'var(--ink)' : 'var(--paper)',
+              border: '2px solid var(--ink)',
+              borderLeft: agentMode === 'local' ? '4px solid var(--ink)' : '2px solid var(--ink)',
+              color: agentMode === 'local' ? 'var(--paper)' : 'var(--ink-soft)',
               boxShadow: agentMode === 'local' ? 'var(--shadow-pixel-sm)' : 'none',
               fontFamily: 'var(--font-mono)',
               cursor: 'pointer',
             }}
           >
-            <Laptop className="w-4 h-4" style={{ color: agentMode === 'local' ? '#fff' : '#555' }} />
+            <Laptop className="w-4 h-4" style={{ color: agentMode === 'local' ? 'var(--paper)' : 'var(--ink-dim)' }} />
             <div className="flex flex-col items-start flex-1">
               <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('sidebar.localOpenClaw')}</span>
-              <span style={{ fontSize: '10px', color: agentMode === 'local' ? '#ccc' : '#888' }}>{isLocalConnected ? t('sidebar.connected') : t('sidebar.notConnected')}</span>
+              <span style={{ fontSize: '10px', color: agentMode === 'local' ? 'var(--hairline)' : 'var(--ink-mute)' }}>{isLocalConnected ? t('sidebar.connected') : t('sidebar.notConnected')}</span>
             </div>
-            {!isLocalConnected && <Plus className="w-3.5 h-3.5" style={{ color: '#888' }} />}
+            {!isLocalConnected && <Plus className="w-3.5 h-3.5" style={{ color: 'var(--ink-mute)' }} />}
           </button>
         </div>
       </div>

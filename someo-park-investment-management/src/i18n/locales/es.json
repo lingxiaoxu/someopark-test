@@ -62,6 +62,10 @@
   },
   "sidebar": {
     "appName": "Someo Park",
+    "appMode": "Modo App",
+    "predictionMarket": "Mercado de Predicción",
+    "wcLive": "Mundial 2026 · EN VIVO",
+    "wcSwitch": "Cambiar a modo Mundial",
     "agentRuntime": "Entorno de ejecución",
     "cloudVps": "SomeoClaw en Cloud VPS",
     "cloudHosted": "Alojado por Someo Park",

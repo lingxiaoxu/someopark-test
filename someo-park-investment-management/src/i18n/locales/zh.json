@@ -62,6 +62,10 @@
   },
   "sidebar": {
     "appName": "Someo Park",
+    "appMode": "应用模式",
+    "predictionMarket": "预测市场",
+    "wcLive": "世界杯 2026 · 实时",
+    "wcSwitch": "切换到世界杯模式",
     "agentRuntime": "代理运行环境",
     "cloudVps": "SomeoClaw 云端 VPS",
     "cloudHosted": "Someo Park 托管",

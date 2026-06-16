@@ -233,3 +233,18 @@ export async function answerAgentQuestion(sessionId: string, answer: string) {
     body: JSON.stringify({ sessionId, answer }),
   })
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Prediction Market (World Cup 2026) — static JSON synced from
+// prediction_market/data/output/ into public/data/ (see scripts/sync_prediction_data.mjs).
+// All read-only; same fetchApi convention as the other /data/*.json sources.
+// ═══════════════════════════════════════════════════════════════════════
+export const getWCOverview     = () => fetchApi<any>('/data/frontend_overview.json');
+export const getWCChampion     = () => fetchApi<any>('/data/worldcup_model.json');
+export const getWCDivergence   = () => fetchApi<any>('/data/xv_matches.json');
+export const getWCChampionXV   = () => fetchApi<any>('/data/xv_champion.json');
+export const getWCPerformance  = () => fetchApi<any>('/data/performance_report.json');
+export const getWCRisk         = () => fetchApi<any>('/data/risk_report.json');
+export const getWCCalibration  = () => fetchApi<any>('/data/oos_report.json');
+export const getWCInplay       = () => fetchApi<any>('/data/inplay_signals.json');
+export const getWCUpcoming     = () => fetchApi<any>('/data/upcoming.json');

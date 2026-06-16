@@ -380,6 +380,10 @@
   },
   "sidebar": {
     "appName": "Someo Park",
+    "appMode": "App Mode",
+    "predictionMarket": "Prediction Market",
+    "wcLive": "World Cup 2026 · LIVE",
+    "wcSwitch": "Switch to WC mode",
     "agentRuntime": "Agent Runtime",
     "cloudVps": "SomeoClaw on Cloud VPS",
     "cloudHosted": "Someo Park Hosted",

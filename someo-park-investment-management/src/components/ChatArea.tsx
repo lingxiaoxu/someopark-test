@@ -205,6 +205,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
 }
 import modelList from '../lib/models.json'
 import PairBadge from './PairBadge'
+import PredictionArtifactGrid from './prediction/PredictionArtifactGrid'
+import PredictionUpcoming from './prediction/PredictionUpcoming'
 import { useApi } from '../hooks/useApi'
 import { getInventory, API_BASE, apiHeaders, callAgent, answerAgentQuestion } from '../lib/api'
 import { db } from '../lib/firebase'
@@ -215,6 +217,7 @@ import { AgentProgress } from './AgentProgress'
 
 export default function ChatArea({
   agentMode,
+  appMode,
   isLocalConnected,
   setActiveArtifact,
   onCodePreview,
@@ -233,6 +236,7 @@ export default function ChatArea({
   onMessagesChange,
 }: {
   agentMode: 'cloud' | 'local'
+  appMode: 'stock' | 'prediction'
   isLocalConnected: boolean
   setActiveArtifact: (a: any) => void
   onCodePreview?: (preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult; isLoading?: boolean }) => void
@@ -775,14 +779,17 @@ export default function ChatArea({
             <>
               <div className="flex flex-col items-center justify-center py-6 gap-4">
                 {/* Stanse-style icon — black box with pixel shadow */}
-                <div className="w-14 h-14 flex items-center justify-center" style={{ background: '#111', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)' }}>
-                  <Terminal className="w-7 h-7" style={{ color: '#fff', opacity: 1 }} />
+                <div className="w-14 h-14 flex items-center justify-center" style={{ background: 'var(--ink)', border: '2px solid var(--ink)', boxShadow: 'var(--shadow-pixel)' }}>
+                  <Terminal className="w-7 h-7" style={{ color: 'var(--paper)', opacity: 1 }} />
                 </div>
-                <h2 style={{ fontFamily: 'var(--font-pixel)', fontSize: '28px', color: '#111', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>{t('chat.welcomeTitle')}</h2>
-                <p style={{ fontSize: '12px', color: '#555', textAlign: 'center', maxWidth: '28rem', fontFamily: 'var(--font-mono)' }}>{t('chat.welcomeDesc')}</p>
+                <h2 style={{ fontFamily: 'var(--font-pixel)', fontSize: '28px', color: 'var(--ink)', letterSpacing: '.04em', textTransform: 'uppercase', lineHeight: 1 }}>{t('chat.welcomeTitle')}</h2>
+                <p style={{ fontSize: '12px', color: 'var(--ink-dim)', textAlign: 'center', maxWidth: '28rem', fontFamily: 'var(--font-mono)' }}>{t('chat.welcomeDesc')}</p>
               </div>
 
-              {/* Active Pairs card — Stanse PixelCard */}
+              {/* Active Pairs (stock) ↔ Upcoming Matches (prediction) */}
+              {appMode === 'prediction' ? (
+                <PredictionUpcoming />
+              ) : (
               <div className="p-4 relative" style={{ background: '#fff', border: '3px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
                 {/* Corner dots */}
                 <div style={{ position: 'absolute', top: -2, left: -2, width: 6, height: 6, background: '#111' }} />
@@ -844,7 +851,12 @@ export default function ChatArea({
                   <div className="text-xs text-[var(--text-muted)] py-2">{t('chat.noActivePairs', 'No active positions')}</div>
                 )}
               </div>
+              )}
 
+              {appMode === 'prediction' ? (
+                /* Prediction artifacts are public static data → open directly (no sign-in gate). */
+                <PredictionArtifactGrid onOpen={(a) => setActiveArtifact(a)} />
+              ) : (
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => guardedSetArtifact({ type: 'pair_universe', title: 'Pair Universe', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnPairUniverse')}
@@ -895,6 +907,7 @@ export default function ChatArea({
                   <Activity className="w-4 h-4 text-[var(--accent-primary)]" /> {t('chat.btnStrategyPerformance')}
                 </button>
               </div>
+              )}
             </>
           ) : (
             messages.map((msg, idx) => (

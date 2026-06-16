@@ -62,6 +62,10 @@
   },
   "sidebar": {
     "appName": "Someo Park",
+    "appMode": "アプリモード",
+    "predictionMarket": "予測市場",
+    "wcLive": "ワールドカップ 2026 · LIVE",
+    "wcSwitch": "W杯モードへ切替",
     "agentRuntime": "エージェント実行環境",
     "cloudVps": "SomeoClaw クラウド VPS",
     "cloudHosted": "Someo Park ホスティング",

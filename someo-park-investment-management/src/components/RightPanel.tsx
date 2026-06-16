@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Maximize2, Minimize2, Download } from 'lucide-react';
+import PredictionArtifact, { isPredictionArtifact } from './prediction/PredictionArtifact';
 import EquityChart from './artifacts/EquityChart';
 import SignalTable from './artifacts/SignalTable';
 import RegimeDashboard from './artifacts/RegimeDashboard';
@@ -50,7 +51,7 @@ function getDownloadUrl(artifact: any): string | null {
   }
 }
 
-export default function RightPanel({ artifact, onClose, onMaximize, isMaximized }: { artifact: any, onClose: () => void, onMaximize?: () => void, isMaximized?: boolean }) {
+export default function RightPanel({ artifact, appMode, onClose, onMaximize, isMaximized }: { artifact: any, appMode?: 'stock' | 'prediction', onClose: () => void, onMaximize?: () => void, isMaximized?: boolean }) {
   const { t } = useTranslation();
   const params = artifact.params || {};
 
@@ -79,16 +80,16 @@ export default function RightPanel({ artifact, onClose, onMaximize, isMaximized 
   const MaxIcon = isMaximized ? Minimize2 : Maximize2;
 
   return (
-    <div className="h-full flex flex-col relative" style={{ background: '#f4f4f4', borderLeft: '4px solid #111' }}>
+    <div className="h-full flex flex-col relative" style={{ background: 'var(--bg-tertiary)', borderLeft: '4px solid var(--ink)' }}>
 
       {/* Header — Stanse sticky header style */}
       <div
         className="h-14 flex items-center justify-between px-4 shrink-0"
-        style={{ background: '#fff', borderBottom: '3px solid #111' }}
+        style={{ background: 'var(--paper)', borderBottom: '3px solid var(--ink)' }}
       >
         <div className="flex items-center gap-3 min-w-0">
           {/* Title */}
-          <span className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700, color: '#111', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+          <span className="truncate" style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 700, color: 'var(--ink)', textTransform: 'uppercase', letterSpacing: '.04em' }}>
             {displayTitle}
           </span>
           {/* Type badge — Stanse sharp tag */}
@@ -99,9 +100,9 @@ export default function RightPanel({ artifact, onClose, onMaximize, isMaximized 
             fontWeight: 700,
             letterSpacing: '.08em',
             textTransform: 'uppercase',
-            background: '#111',
-            color: '#fff',
-            border: '2px solid #111',
+            background: 'var(--ink)',
+            color: 'var(--paper)',
+            border: '2px solid var(--ink)',
           }}>
             {artifact.type}
           </span>
@@ -123,19 +124,19 @@ export default function RightPanel({ artifact, onClose, onMaximize, isMaximized 
                 border: '2px solid transparent',
                 cursor: 'pointer',
                 transition: 'all .1s',
-                color: '#555',
+                color: 'var(--ink-dim)',
               }}
               onMouseEnter={e => {
                 const el = e.currentTarget as HTMLElement
-                el.style.background = '#111'
-                el.style.borderColor = '#111'
-                el.style.color = '#fff'
+                el.style.background = 'var(--ink)'
+                el.style.borderColor = 'var(--ink)'
+                el.style.color = 'var(--paper)'
               }}
               onMouseLeave={e => {
                 const el = e.currentTarget as HTMLElement
                 el.style.background = 'transparent'
                 el.style.borderColor = 'transparent'
-                el.style.color = '#555'
+                el.style.color = 'var(--ink-dim)'
               }}
             >
               <Icon className="w-4 h-4" />
@@ -146,6 +147,7 @@ export default function RightPanel({ artifact, onClose, onMaximize, isMaximized 
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
+        {isPredictionArtifact(artifact.type)   && <PredictionArtifact type={artifact.type} />}
         {artifact.type === 'chart'             && <EquityChart params={params} />}
         {artifact.type === 'table'             && <SignalTable params={params} />}
         {artifact.type === 'dashboard'         && <RegimeDashboard params={params} />}
