@@ -238,6 +238,7 @@ def refresh_once(conn=None) -> dict:
         # force=True: inside a live window we must catch the FT transition promptly,
         # so bypass the fixtures TTL/watermark (bounded — only runs during the window).
         si.sync_results(api, conn, force=True)   # flip just-ended matches to FT + final score
+        si.project_wc_results_to_nt_recent(conn)  # keep recent-form current with WC results (0 API)
     except Exception as e:
         print(f"[live_refresh] sync failed (using stored state): {e}")
 

@@ -45,8 +45,11 @@ def main() -> None:
             si.sync_results(api, conn)            # newly finished matches → bigger OOS sample
             si.sync_topscorers(api, conn)         # updated WC goal tallies → golden boot
             si.sync_odds(api, conn, limit=30, include_settled=True)   # market reference incl. settled
+            # Keep recent-form current with WC results EVERY run (0 API calls — the
+            # fixtures are already synced); the weekly --with-form pull adds friendlies.
+            si.project_wc_results_to_nt_recent(conn)
             if args.with_form:
-                si.sync_nt_recent(api, conn)      # refresh recent-form inputs
+                si.sync_nt_recent(api, conn)      # refresh recent-form inputs (friendlies/qualifiers)
         except Exception as e:
             print(f"[refresh] ingest partial/failed (continuing with stored data): {e}")
 

@@ -229,6 +229,33 @@ def sync_live(api: ApiFootball, conn) -> int:
     return len(detailed)
 
 
+def project_wc_results_to_nt_recent(conn) -> int:
+    """Project finished WC fixtures (already in `fixture`) into `nt_recent` so the
+    recent-form feature reflects WC results IMMEDIATELY — without waiting for the
+    weekly per-team API pull (`sync_nt_recent`, --with-form). The fixtures are already
+    synced every refresh, so this costs ZERO API calls. Idempotent via the
+    (fixture_api_id, team_api_id) PK; the weekly pull upserts the same rows harmlessly.
+    """
+    rows = conn.execute(
+        "SELECT api_id, home_api_id, away_api_id, kickoff_ts, league_id, home_goals, away_goals "
+        "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL".format(
+            ",".join("?" * len(_FINISHED))), tuple(_FINISHED)).fetchall()
+    n = 0
+    for r in rows:
+        for tid, opp, gf, ga, is_home in (
+            (r["home_api_id"], r["away_api_id"], r["home_goals"], r["away_goals"], 1),
+            (r["away_api_id"], r["home_api_id"], r["away_goals"], r["home_goals"], 0),
+        ):
+            store.upsert(conn, "nt_recent", {
+                "fixture_api_id": r["api_id"], "team_api_id": tid, "opp_api_id": opp,
+                "kickoff_ts": r["kickoff_ts"], "league_id": r["league_id"], "is_friendly": 0,
+                "gf": gf, "ga": ga, "is_home": is_home, "fetched_at": store.utcnow(),
+            }, pk=["fixture_api_id", "team_api_id"])
+            n += 1
+    conn.commit()
+    return n
+
+
 def sync_nt_recent(api: ApiFootball, conn, *, last: int = 6, limit: int = 60) -> int:
     """Recent NATIONAL-TEAM results (friendlies + qualifiers) for the form feature.
 
