@@ -218,6 +218,14 @@ def _maybe_refresh_champion(conn) -> None:
         _write_both("form.json", form_export.build(conn))
     except Exception as e:
         print(f"[live_refresh] form refresh skipped: {e}")
+    # Reach-round (晋级盘): model round-probs were just re-simulated (refresh_champion →
+    # worldcup_model.json), and the Kalshi reach-round prices move continuously, so
+    # regenerate it on the SAME settle event.
+    try:
+        from prediction_market.ops import reach_round_export
+        _write_both("reach_round.json", reach_round_export.build(conn))
+    except Exception as e:
+        print(f"[live_refresh] reach_round refresh skipped: {e}")
     wm.write_text(str(settled))
     top = pl["champion"][0]
     gb = pl["golden_boot"][0]

@@ -65,7 +65,7 @@
     "reachRound": "Clasificar a ronda",
     "subReachRound": "P(equipo alcanza la ronda) del modelo vs precio Kalshi en vivo — el producto de clasificación sin empate",
     "colModelReach": "Modelo clasif.%",
-    "reachRoundNote": "Distinto del mercado de 90 min por partido: mercado 2-way por equipo «llegar a la ronda X» (Kalshi KXWCROUND). Poco negociado en fase de grupos (¢ a menudo «—»), líquido cerca de las eliminatorias. ★ = edge positivo. Dinero real sigue bloqueado + límite $1.",
+    "reachRoundNote": "Distinto del mercado de 90 min por partido: mercado 2-way por equipo «llegar a la ronda X». Kalshi lo lista (KXWCROUND), poco negociado en fase de grupos (¢ a menudo «—»), líquido cerca de eliminatorias; Polymarket aún NO lista mercados de clasificación (solo el de campeón), así que Poly¢ es casi siempre «—» y se rellena si lo hace. ★ = edge positivo (modelo vs precio de compra más barato). Dinero real bloqueado + límite $1.",
     "matchPricing": "Precio del Partido (1X2)",
     "goldenBoot": "Bota de Oro",
     "modelVsMarket": "Modelo vs Mercado",

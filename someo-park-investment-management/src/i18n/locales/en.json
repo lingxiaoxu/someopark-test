@@ -386,7 +386,7 @@
     "reachRound": "Reach Round",
     "subReachRound": "Model P(team reaches round) vs live Kalshi Yes price — the no-draw advance product",
     "colModelReach": "Model reach%",
-    "reachRoundNote": "Distinct from the per-match 90-min market: the per-team 'reach round X' 2-way market (Kalshi KXWCROUND). Thinly traded in the group stage so ¢ is often '—'; liquid nearer the knockouts. ★ = positive edge. Real money is still gated + $1-capped.",
+    "reachRoundNote": "Distinct from the per-match 90-min market: a per-team 'reach round X' 2-way market. Kalshi lists it (KXWCROUND), thinly traded in the group stage (¢ often '—'); it gets liquid near the knockouts. Polymarket does NOT list reach-round markets yet (only the champion market), so Poly¢ is mostly '—' and fills automatically if it does. ★ = positive edge (model vs cheapest buy price). Real money still gated + $1-capped.",
     "matchPricing": "Match Pricing (3-way)",
     "goldenBoot": "Golden Boot",
     "modelVsMarket": "Model vs Market",

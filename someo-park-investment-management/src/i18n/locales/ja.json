@@ -65,7 +65,7 @@
     "reachRound": "勝ち上がり盤",
     "subReachRound": "チームが各ラウンドへ進む確率(モデル)vs Kalshi 実価格 —— 引分なしの勝ち上がり商品",
     "colModelReach": "モデル進出%",
-    "reachRoundNote": "単試合90分盤とは別:チーム別「各ラウンド進出」2-way盤(Kalshi KXWCROUND)。グループ stage は薄商いで¢は「—」が多く、決勝トーナメント近くで流動化。★=正のエッジ。実資金はゲート+$1上限。",
+    "reachRoundNote": "単試合90分盤とは別:チーム別「各ラウンド進出」2-way盤。Kalshiは上場(KXWCROUND)、グループ stage は薄商いで¢は「—」が多く、決勝T近くで流動化。Polymarketは勝ち上がり盤を未上場(優勝盤のみ)のためPoly¢は「—」が多く、上場すれば自動反映。★=正のエッジ(モデル vs 最安購入価)。実資金はゲート+$1上限。",
     "matchPricing": "試合プライシング（勝分敗）",
     "goldenBoot": "得点王",
     "modelVsMarket": "モデル vs 市場",

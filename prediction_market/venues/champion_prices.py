@@ -54,60 +54,112 @@ def _kalshi_champ_cents() -> dict[str, float]:
     return out
 
 
-# Kalshi reach-round ("qualify for round X") series → our model's per-team round prob.
+# Kalshi reach-round ("qualify for round X") markets → our model's per-team round prob.
 # These are PER-TEAM 2-way Yes/No markets (NOT the per-match 90-min 3-way) — the genuine
-# "advance/no-draw" product the user asked for.
-REACH_ROUND_SERIES = {
-    "r16": "KXWCROUND-26RO16",    # reach Round of 16   → model p_r16
-    "qf": "KXWCROUND-26QUAR",     # reach Quarterfinals → model p_qf
-    "sf": "KXWCROUND-26SEMI",     # reach Semifinals    → model p_sf
-    "final": "KXWCROUND-26FINAL", # reach Final         → model p_final
+# no-draw "advance" product. The PARENT SERIES is "KXWCROUND"; each round is an EVENT
+# under it (event_ticker → round key).
+REACH_ROUND_PARENT = "KXWCROUND"
+REACH_ROUND_EVENTS = {
+    "KXWCROUND-26RO16": "r16",     # reach Round of 16   → model p_r16
+    "KXWCROUND-26QUAR": "qf",      # reach Quarterfinals → model p_qf
+    "KXWCROUND-26SEMI": "sf",      # reach Semifinals    → model p_sf
+    "KXWCROUND-26FINAL": "final",  # reach Final         → model p_final
 }
+# round key → event ticker (for display/reference in the export).
+REACH_ROUND_SERIES = {v: k for k, v in REACH_ROUND_EVENTS.items()}
 
 
-def _reach_round_cents(series_ticker: str) -> dict[str, float]:
-    """{canonical_team_id: ¢} for one reach-round series. Uses last-traded price (like the
-    champion market): a team with no Yes sellers shows yes_ask=$1.00 (the cap), which is
-    not its value — last-traded / bid is the real mark."""
+def _real_price(ask, bid, last):
+    """A REAL 0<p<1 mark: reach-round books are thin in the group stage, so 0.00
+    (placeholder) and 1.00 (no-seller cap) are NOT prices. Prefer last-traded, then the
+    bid (what buyers will pay), then a genuine ask (<0.99)."""
     def _num(x):
         try:
             return float(x)
         except (TypeError, ValueError):
             return None
+    ask, bid, last = _num(ask), _num(bid), _num(last)
+    if last is not None and 0.0 < last < 1.0:
+        return last
+    if bid is not None and 0.0 < bid < 1.0:
+        return bid
+    if ask is not None and 0.0 < ask < 0.99:
+        return ask
+    return None
 
-    out: dict[str, float] = {}
+
+def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
+    """{round_key: {team_id: ¢}} — query the PARENT series once, dispatch by event."""
+    out: dict[str, dict[str, float]] = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
     from prediction_market.venues.kalshi.market_data import KalshiMarketData
     md = KalshiMarketData()
-    for ev in md.list_events(series_ticker, status="open"):
+    for ev in md.list_events(REACH_ROUND_PARENT, status="open"):
+        rk = REACH_ROUND_EVENTS.get(ev.get("event_ticker"))
+        if not rk:
+            continue
         for m in ev.get("markets", []):
             tid = team_id(canonical_team_name(m.get("yes_sub_title", "") or ""))
             if not tid:
                 continue
-            ask = _num(m.get("yes_ask_dollars"))
-            bid = _num(m.get("yes_bid_dollars"))
-            last = _num(m.get("previous_price_dollars"))
-            # Only a REAL price (0<p<1): the reach-round markets are barely traded during
-            # the group stage, so 0.00 (placeholder) and 1.00 (no-seller cap) are NOT prices.
-            price = last if (last is not None and 0.0 < last < 1.0) else None
-            if price is None and bid is not None and 0.0 < bid < 1.0:
-                price = bid
-            if price is None and ask is not None and 0.0 < ask < 0.99:
-                price = ask
+            price = _real_price(m.get("yes_ask_dollars"), m.get("yes_bid_dollars"),
+                                m.get("previous_price_dollars"))
             if price is not None:
-                out[tid] = to_cents(price)
+                out[rk][tid] = to_cents(price)
     return out
 
 
-def reach_round_cents() -> dict[str, dict[str, float]]:
-    """{round_key: {team_id: ¢}} for r16/qf/sf/final — failure-tolerant per series."""
-    out: dict[str, dict[str, float]] = {}
-    for rk, ser in REACH_ROUND_SERIES.items():
-        try:
-            out[rk] = _reach_round_cents(ser)
-        except Exception as e:
-            print(f"[champion_prices] reach_round {rk} skipped: {e}")
-            out[rk] = {}
+def _poly_reach_round_cents() -> dict[str, dict[str, float]]:
+    """{round_key: {team_id: ¢}} from Polymarket, IF it lists per-round qualifier markets.
+    As of the group stage Poly Global only lists the champion ("world-cup-winner") market
+    and NO reach-round markets — so this returns empty until/unless Poly lists them."""
+    out: dict[str, dict[str, float]] = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
+    # Candidate Poly slugs per round (Poly hasn't listed these for WC-26; ready if it does).
+    slugs = {"final": ("world-cup-finalist", "world-cup-finalists", "world-cup-to-reach-the-final"),
+             "sf": ("world-cup-semifinalist", "world-cup-semifinalists", "world-cup-final-four"),
+             "qf": ("world-cup-quarterfinalist", "world-cup-quarterfinalists"),
+             "r16": ("world-cup-round-of-16", "world-cup-to-reach-round-of-16")}
+    try:
+        import json as _json
+        from prediction_market.venues.polymarket_global.reader import PolymarketGlobalReader
+        r = PolymarketGlobalReader()
+        for rk, cand in slugs.items():
+            for slug in cand:
+                evs = r.list_events(slug=slug) or []
+                if not evs:
+                    continue
+                for m in evs[0].get("markets", []) or []:
+                    tid = team_id(canonical_team_name(m.get("groupItemTitle", "") or ""))
+                    op = m.get("outcomePrices")
+                    if isinstance(op, str):
+                        try:
+                            op = _json.loads(op)
+                        except Exception:
+                            op = None
+                    if tid and op:
+                        try:
+                            out[rk][tid] = to_cents(float(op[0]))
+                        except (TypeError, ValueError, IndexError):
+                            pass
+                break  # first slug that resolves wins for this round
+    except Exception as e:
+        print(f"[champion_prices] poly reach_round skipped: {e}")
     return out
+
+
+def reach_round_cents() -> dict[str, dict[str, dict[str, float]]]:
+    """{round_key: {'kalshi': {team: ¢}, 'poly': {team: ¢}}} — failure-tolerant per venue."""
+    kal = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
+    poly = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
+    try:
+        kal = _kalshi_reach_round_cents()
+    except Exception as e:
+        print(f"[champion_prices] kalshi reach_round skipped: {e}")
+    try:
+        poly = _poly_reach_round_cents()
+    except Exception as e:
+        print(f"[champion_prices] poly reach_round skipped: {e}")
+    return {rk: {"kalshi": kal.get(rk, {}), "poly": poly.get(rk, {})}
+            for rk in REACH_ROUND_EVENTS.values()}
 
 
 def _poly_champ_cents() -> dict[str, float]:

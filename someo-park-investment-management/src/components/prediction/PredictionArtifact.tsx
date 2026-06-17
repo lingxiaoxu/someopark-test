@@ -100,11 +100,12 @@ function ReachRound() {
         <div key={r.key} style={{ marginBottom: 14 }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>{r.label}</div>
           <DataTable
-            cols={[tr('prediction.team'), tr('prediction.colModelReach'), 'Kalshi¢', tr('prediction.colEdge')]}
+            cols={[tr('prediction.team'), tr('prediction.colModelReach'), 'Kalshi¢', 'Poly¢', tr('prediction.colEdge')]}
             rows={(r.teams ?? []).filter((t: any) => (t.model_pct ?? 0) >= 0.02).map((t: any) => [
               tCountry(t.name),
               <span>{pct(t.model_pct)} <span style={{ color: 'var(--text-muted)' }}>({cc(t.model_c)})</span></span>,
               cc(t.kalshi_c),
+              cc(t.poly_c),
               t.edge != null
                 ? <span style={{ color: t.tradable ? 'var(--success)' : 'var(--text-muted)', fontWeight: t.tradable ? 700 : 400 }}>{t.edge >= 0 ? '+' : ''}{pct(t.edge, 1)}{t.tradable ? ' ★' : ''}</span>
                 : <span style={{ color: 'var(--text-muted)' }}>—</span>,

@@ -45,19 +45,22 @@ def build(conn=None) -> dict:
 
     rounds = []
     for rk, (fld, label) in _ROUNDS.items():
-        cmap = cents.get(rk, {})
+        venues = cents.get(rk, {})
+        kal, pol = venues.get("kalshi", {}), venues.get("poly", {})
         teams = []
         for row in champ:
             tid = row.get("team_id")
             p = row.get(fld)
             if tid is None or p is None:
                 continue
-            kc = cmap.get(tid)
-            edge = (p - kc / 100.0) if kc is not None else None
+            kc, pc = kal.get(tid), pol.get(tid)
+            avail = [x for x in (kc, pc) if x is not None]
+            best = min(avail) if avail else None        # cheapest executable buy price
+            edge = (p - best / 100.0) if best is not None else None
             teams.append({
                 "team_id": tid, "name": row.get("name", tid), "zh": row.get("zh", ""),
                 "model_pct": round(p, 4), "model_c": round(p * 100, 1),
-                "kalshi_c": kc,
+                "kalshi_c": kc, "poly_c": pc,
                 "edge": (round(edge, 4) if edge is not None else None),
                 "tradable": bool(edge is not None and edge >= theta),
             })
@@ -68,10 +71,12 @@ def build(conn=None) -> dict:
     return {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "theta": theta,
-        "note": ("Per-team REACH-ROUND market (Kalshi KXWCROUND, 2-way Yes/No — the no-draw "
-                 "'advance' product, distinct from the per-match 90-min 3-way). Model prob of "
-                 "reaching each round (tournament sim) vs the live Kalshi Yes price; edge = "
-                 "model − price. Real-money trading is still gated + $1-capped."),
+        "note": ("Per-team REACH-ROUND market (2-way Yes/No — the no-draw 'advance' product, "
+                 "distinct from the per-match 90-min 3-way). Model prob of reaching each round "
+                 "(tournament sim) vs the live venue Yes price; edge = model − cheapest price. "
+                 "Kalshi lists these (KXWCROUND, thin during the group stage); Polymarket does "
+                 "NOT list reach-round markets yet (only the champion market) — its column fills "
+                 "automatically if it does. Real-money trading is still gated + $1-capped."),
         "rounds": rounds,
     }
 
@@ -81,9 +86,9 @@ def main() -> None:
     (CONFIG.paths.output / "reach_round.json").write_text(
         json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
     for r in doc["rounds"]:
-        top = r["teams"][0] if r["teams"] else None
-        print(f"{r['label']:<16} {len(r['teams'])} teams"
-              + (f" | top {top['name']} model {top['model_c']}¢ vs kalshi {top['kalshi_c']}¢" if top else ""))
+        n_k = sum(1 for t in r["teams"] if t.get("kalshi_c") is not None)
+        n_p = sum(1 for t in r["teams"] if t.get("poly_c") is not None)
+        print(f"{r['label']:<16} {len(r['teams'])} teams | kalshi¢ on {n_k}, poly¢ on {n_p}")
 
 
 if __name__ == "__main__":
