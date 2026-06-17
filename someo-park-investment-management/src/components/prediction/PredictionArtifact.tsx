@@ -531,8 +531,8 @@ function Venues() {
           ['Kalshi (demo)', tr('prediction.roleExecute'), money(b.kalshi_demo_usd), String(g.kalshi_trading_enabled)],
           ['Polymarket US', tr('prediction.roleExecute'), money(b.polymarket_us_usd), String(g.pmus_trading_enabled)],
           ['Kalshi (prod)', tr('prediction.roleRealMoney'), tDyn(String(b.kalshi_prod_usd)), tr('prediction.tradingGated')],
-          // Read-only data source (never trades): geoblocked in the US, no account/balance.
-          ['Polymarket Global', tr('prediction.roleReference'), '—', tr('prediction.tradingReadonly')],
+          // Read-only data source (never trades): geoblocked in the US, no account.
+          ['Polymarket Global', tr('prediction.roleReference'), money(0), tr('prediction.tradingReadonly')],
         ]} />
       <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{tr('prediction.lblExecutable')}: {(g.executable_venues ?? []).join(', ')}</div>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>{tr('prediction.venueGlobalNote')}</div>

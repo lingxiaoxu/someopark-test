@@ -269,7 +269,7 @@
     "lblSweepUpdated": "参数搜索上次更新",
     "colRound": "轮次",
     "lblMatchday": "第",
-    "roleReference": "只读参考",
+    "roleReference": "数据",
     "tradingReadonly": "只读",
     "venueGlobalNote": "Polymarket Global:仅用于只读拉数据 —— 逐分钟历史价(→ 价格轨迹回填)、夺冠盘参考价(夺冠¢ Poly 侧)、跨场对照;美国 geoblock 不可交易、无账户余额。"
   },
