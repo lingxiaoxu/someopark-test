@@ -214,18 +214,23 @@ def compare_matches(*, limit: int = 8) -> list[dict]:
     when their markets populate.
     """
     from prediction_market.ingest import store
-    from prediction_market.model.match_pricing import price_match
-    from prediction_market.model.strength import build_strength
+    from prediction_market.model.match_pricing import is_knockout, price_match_calibrated
+    from prediction_market.model.probability_calibration import load_calibration
+    from prediction_market.model.squad_strength import build_strength_live
 
     conn = store.init_db()
     prior = load_prior()
     name_of = {t.team_id: t.name for t in prior.teams}
-    sm = build_strength(prior)
+    # Use the SAME live model the rest of the system uses (squad/form/FC/opponent-adj
+    # blends + post-hoc calibration) so the Divergence view's model 3-way matches the
+    # Match-Pricing / upcoming card exactly — not the bare FIFA-only raw model.
+    sm = build_strength_live(conn, prior)
+    cal = load_calibration()
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
     rows = conn.execute(
-        "SELECT f.api_id, f.home_api_id, f.away_api_id, "
+        "SELECT f.api_id, f.home_api_id, f.away_api_id, f.round, "
         "       AVG(o.p_home) bh, AVG(o.p_draw) bd, AVG(o.p_away) ba "
         "FROM fixture f JOIN match_odds o ON o.fixture_api_id = f.api_id "
         "WHERE f.status_short='NS' GROUP BY f.api_id ORDER BY f.kickoff_ts LIMIT ?", (limit,)).fetchall()
@@ -234,7 +239,7 @@ def compare_matches(*, limit: int = 8) -> list[dict]:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        mp = price_match(sm, hi, ai)
+        mp = price_match_calibrated(sm, hi, ai, knockout=is_knockout(r["round"]), cal=cal)
         out.append({
             "home": name_of.get(hi, hi), "away": name_of.get(ai, ai),
             "model": {"home": round(mp.p_home, 3), "draw": round(mp.p_draw, 3), "away": round(mp.p_away, 3)},
