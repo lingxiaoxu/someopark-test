@@ -140,8 +140,10 @@ def goal_overreaction_fade(lp: LiveMatchProb, *, prematch_fav_side: str | None,
     mins_since = lp.minute - last_goal_minute
     surprising = last_goal_side != prematch_fav_side          # the underdog scored
     if surprising and 0 <= mins_since <= GOAL_FADE_WINDOW:
+        when = "just now" if mins_since == 0 else f"{mins_since}' ago"
         return TradeAction("BUY", prematch_fav_side,
-                           f"underdog scored {mins_since}' ago — market over-reacts, fade: back {prematch_fav_side}", "high")
+                           f"underdog scored {when} — markets over-react to surprise goals "
+                           f"(~40%/min, reverts by {GOAL_FADE_WINDOW}'); fade back the favourite", "high")
     return TradeAction("HOLD", prematch_fav_side, "no overreaction window")
 
 

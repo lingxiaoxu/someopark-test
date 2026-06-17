@@ -42,6 +42,10 @@ TEAM_ALIASES: dict[str, str] = {
     "czech republic": "Czechia",
     "côte d'ivoire": "Cote d'Ivoire",
     "holland": "Netherlands",
+    # Kalshi / Polymarket venue spellings → our prior canonical names.
+    "ir iran": "Iran",
+    "bosnia-herzegovina": "Bosnia and Herzegovina",
+    "cabo verde": "Cape Verde",
 }
 
 

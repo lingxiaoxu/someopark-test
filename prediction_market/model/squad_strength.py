@@ -20,6 +20,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from prediction_market.config import CONFIG
+
 
 @dataclass(frozen=True)
 class SquadSummary:
@@ -88,7 +90,6 @@ def build_strength_live(conn, prior=None, cfg=None):
     squad-strength AND recent-form blends applied (cfg.squad_blend_weight /
     cfg.form_blend_weight; 0 ⇒ off). Single entry point so every user-facing export
     uses the same model."""
-    from prediction_market.config import CONFIG
     from prediction_market.model.strength import build_strength
     cfg = cfg or CONFIG.model
     sm = build_strength(prior, cfg)
