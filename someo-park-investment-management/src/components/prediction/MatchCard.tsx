@@ -51,7 +51,7 @@ function VigNote({ q }: { q: { home?: { ask: number | null }; draw?: { ask: numb
 }
 
 export default function MatchCard({ m }: { m: UpcomingMatch }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const home = tCountry(m.home.name), away = tCountry(m.away.name);
   const winH = `${home} ${t('prediction.win')}`, winA = `${away} ${t('prediction.win')}`, drawL = t('prediction.drawResult');
@@ -88,6 +88,9 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   // otherwise → sit out. Either way, point to the in-play view once the match starts.
   const sideLabelMap: Record<string, string> = { home: winH, draw: drawL, away: winA };
   const venueLabelMap: Record<string, string> = { kalshi: 'Kalshi', poly_us: 'Polymarket US', poly: 'Polymarket US' };
+  // CJK languages don't put a space between full sentences; Latin ones do.
+  const lang = i18n.language || '';
+  const sep = (lang.startsWith('zh') || lang.startsWith('ja')) ? '' : ' ';
   const buildAdvice = (): string => {
     const inplay = t('prediction.adviceInplay');
     if (best && best.tradable && best.net_edge > 0) {
@@ -101,9 +104,9 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
         cents: c != null ? Math.round(c) : '—',
         model: mp != null ? Math.round(mp * 100) : '—',
         edge: (best.net_edge * 100).toFixed(1),
-      }) + ' ' + inplay;
+      }) + sep + inplay;
     }
-    return t('prediction.adviceHold') + ' ' + inplay;
+    return t('prediction.adviceHold') + sep + inplay;
   };
 
   // one labelled 3-way row (probabilities or venue prices), team names spelled out.
