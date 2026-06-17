@@ -541,10 +541,18 @@
     "lblBrierCalibrated": "Brier (calibrated)",
     "gradePassCalibrated": "PASS (calibrated)",
     "subPnlReport": "Production track record — every match since the opener",
-    "lblTrackRecord": "Track record",
+    "lblTrackRecord": "Decision-model record",
+    "lblModelAcc": "Model prediction accuracy (argmax)",
+    "lblAvgClv": "Avg CLV",
+    "lblBets": "bets",
+    "lblSkipped": "skipped (no edge)",
+    "betLogNote": "Bet = the decision model's most-underpriced side (not the most-likely), sized $0.2–$2 by confidence; no-edge matches are skipped.",
+    "colStake": "Stake",
+    "argmaxShort": "argmax",
+    "noBet": "no bet (no edge)",
     "colDate": "Date",
     "colMatchup": "Match",
-    "colOurPick": "Our pick",
+    "colOurPick": "Bet side",
     "betWon": "WON",
     "betLost": "lost",
     "cap": {
@@ -574,6 +582,14 @@
         "A library of in-play tactics: goal-reaction reversion, favourite-comeback, red-card value, late-game draw value and more",
         "Real-time value and cross-venue arbitrage detection across Kalshi & Polymarket",
         "Every minute of data and computation is logged for full post-match review"
+      ],
+      "decisionT": "Betting decision model (which side, how much)",
+      "decision": [
+        "Picks by VALUE, not by most-likely: buys the side the model rates above the de-vigged market price — the most underpriced one (often a draw or an underdog), not simply the highest-probability outcome",
+        "Stake scales $0.2–$2 by confidence: bigger edge, better-calibrated model, and supportive recent form → larger stake; low confidence → smaller, floor $0.2",
+        "Sizes with fractional Kelly (¼ Kelly) and raises the bar against the favourite-longshot bias; skips matches with no safe edge",
+        "Everything uses pre-match (point-in-time) info only — no look-ahead; real orders are still capped at $1",
+        "Closing-line value (CLV) is the primary scorecard (more reliable than win-rate at small N); argmax prediction accuracy is kept as a model-quality reference"
       ],
       "otherT": "Calibration, Risk & Reporting",
       "other": [

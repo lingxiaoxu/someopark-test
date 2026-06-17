@@ -205,7 +205,15 @@
     "lblBrierCalibrated": "Brier (calibré)",
     "gradePassCalibrated": "VALIDÉ (calibré)",
     "subPnlReport": "Historique réel — chaque match depuis le match d'ouverture",
-    "lblTrackRecord": "Bilan",
+    "lblTrackRecord": "Bilan du modèle de décision",
+    "lblModelAcc": "Précision de prédiction (argmax)",
+    "lblAvgClv": "CLV moyen",
+    "lblBets": "paris",
+    "lblSkipped": "ignorés (sans marge)",
+    "betLogNote": "Pari = le côté le plus sous-évalué selon le modèle (pas le plus probable), misé 0,2–2 $ selon la confiance ; sans marge, on passe.",
+    "colStake": "Mise",
+    "argmaxShort": "argmax",
+    "noBet": "pas de pari (sans marge)",
     "colDate": "Date",
     "colMatchup": "Match",
     "colOurPick": "Notre prono",
@@ -237,6 +245,14 @@
         "Une bibliothèque de tactiques live : retour après but, remontée du favori, valeur carton rouge, valeur du nul tardif, etc.",
         "Détection en temps réel de valeur et d’arbitrage entre Kalshi et Polymarket",
         "Chaque minute de données et de calcul est journalisée pour un débriefing complet"
+      ],
+      "decisionT": "Modèle de décision de pari (quel côté, combien)",
+      "decision": [
+        "Choisit par VALEUR, pas par probabilité : achète le côté que le modèle évalue au-dessus du prix de marché dévigué — le plus sous-évalué (souvent un nul ou un outsider), pas le plus probable",
+        "Mise échelonnée de 0,2 à 2 $ selon la confiance : marge plus grande, modèle mieux calibré, forme récente favorable → mise plus élevée ; faible confiance → plus petite, plancher 0,2 $",
+        "Dimensionne avec un Kelly fractionnaire (¼ Kelly) et relève le seuil contre le biais favori-outsider ; ignore les matchs sans marge sûre",
+        "Tout repose sur l'info d'avant-match (point-in-time) — sans anticipation ; les ordres réels restent plafonnés à 1 $",
+        "La valeur de clôture (CLV) est l'indicateur principal (plus fiable que le taux de réussite à petit N) ; la précision argmax est conservée comme référence de qualité du modèle"
       ],
       "otherT": "Calibration, risque et reporting",
       "other": [

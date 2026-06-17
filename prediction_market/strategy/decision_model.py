@@ -65,6 +65,29 @@ class Decision:
     reason: str
 
 
+def quotes_from_milestone_row(row) -> dict:
+    """Build {side: SideQuote} from a milestone_snapshot row — the cheapest executable
+    ask per side across the two venues, plus that side's de-vigged market prob. Shared
+    by the bet log AND the price-track so both feed decide() the identical entry quotes
+    (→ identical pick → the views reconcile by construction)."""
+    keys = set(row.keys()) if hasattr(row, "keys") else set()
+    q = {}
+    for s in _SIDES:
+        asks = []
+        ka, pa = row[f"kalshi_{s}_ask"], row[f"poly_{s}_ask"]
+        if ka is not None:
+            asks.append((ka, "kalshi"))
+        if pa is not None:
+            asks.append((pa, "poly_us"))
+        if not asks:
+            q[s] = SideQuote()
+            continue
+        ask, ven = min(asks, key=lambda t: t[0])
+        dv = row[f"devig_{s}"] if f"devig_{s}" in keys else None
+        q[s] = SideQuote(ask=ask, devig=dv, venue=ven)
+    return q
+
+
 def _clip(x: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, x))
 

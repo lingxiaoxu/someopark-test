@@ -61,6 +61,11 @@ def build(conn=None) -> dict:
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     sm = build_strength_live(conn, prior)
     cal = load_calibration()
+    # Same confidence input the bet log uses (calibrated Brier vs uniform), so the
+    # decision (and stake) here matches performance_report exactly.
+    _ub = (cal.get("uniform_brier") if cal else None) or (2.0 / 3.0)
+    _cb = cal.get("calibrated_brier") if cal else None
+    calib_conf = max(-1.0, min(1.0, (_ub - _cb) / _ub)) if (_cb is not None and _ub) else 0.0
 
     fids = [r["fixture_api_id"] for r in conn.execute(
         "SELECT DISTINCT fixture_api_id FROM milestone_snapshot")]
@@ -92,8 +97,14 @@ def build(conn=None) -> dict:
         # None only for a knockout that can't be settled yet → fall back to the plain
         # argmax pick (live / undecided), with no MTM.
         from prediction_market.ops.performance_report import match_pick
-        mr = match_pick(sm, cal, hi, ai, fx, None) if settled else None
+        from prediction_market.strategy.decision_model import quotes_from_milestone_row
+        pre_row = next((r for r in rows if r["milestone"] == "PRE"), None)
+        quotes = quotes_from_milestone_row(pre_row) if pre_row is not None else None
+        mr = match_pick(sm, cal, hi, ai, fx, None, conn=conn, quotes=quotes,
+                        calib_confidence=calib_conf, gate_open=True, pit=True) if settled else None
+        bet = bool(mr and mr["bet"])
         if mr is not None:
+            # The decision side (value pick) when we bet; else the model argmax for display.
             pick = mr["pick"]
             entry_prob = mr["model_prob"]
         else:
@@ -106,10 +117,13 @@ def build(conn=None) -> dict:
         our_bet = {
             "side": pick, "entry_prob": entry_prob, "entry_cents": entry_c,
             "pick_team": {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}[pick],
+            "bet": bet,                                  # False ⇒ decision model found no edge
+            "stake_usd": (mr["stake_usd"] if mr else None),
+            "model_pick": (mr["model_pick"] if mr else pick),
         }
 
         mtm = None
-        if settled and mr is not None and entry_c is not None:
+        if settled and bet and entry_c is not None:
             won = mr["won"]                       # bet-logic win (aligned with the bet log)
             ft_c = 100.0 if won else 0.0
             pnl_c = round(ft_c - entry_c, 1)

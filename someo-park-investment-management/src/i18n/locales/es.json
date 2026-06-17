@@ -205,7 +205,15 @@
     "lblBrierCalibrated": "Brier (calibrado)",
     "gradePassCalibrated": "APROBADO (calibrado)",
     "subPnlReport": "Historial real — cada partido desde el inaugural",
-    "lblTrackRecord": "Balance",
+    "lblTrackRecord": "Balance del modelo de decisión",
+    "lblModelAcc": "Precisión de predicción (argmax)",
+    "lblAvgClv": "CLV medio",
+    "lblBets": "apuestas",
+    "lblSkipped": "omitidas (sin margen)",
+    "betLogNote": "Apuesta = el lado más infravalorado según el modelo (no el más probable), con stake $0.2–$2 según confianza; sin margen se omite.",
+    "colStake": "Stake",
+    "argmaxShort": "argmax",
+    "noBet": "sin apuesta (sin margen)",
     "colDate": "Fecha",
     "colMatchup": "Partido",
     "colOurPick": "Pronóstico",
@@ -237,6 +245,14 @@
         "Una biblioteca de tácticas en vivo: reversión tras gol, remontada del favorito, valor por tarjeta roja, valor del empate tardío y más",
         "Detección en tiempo real de valor y arbitraje entre Kalshi y Polymarket",
         "Cada minuto de datos y cálculo queda registrado para un análisis posterior completo"
+      ],
+      "decisionT": "Modelo de decisión de apuesta (qué lado, cuánto)",
+      "decision": [
+        "Elige por VALOR, no por lo más probable: compra el lado que el modelo valora por encima del precio de mercado sin vig — el más infravalorado (a menudo un empate o un débil), no el de mayor probabilidad",
+        "El stake escala $0.2–$2 según confianza: mayor margen, modelo mejor calibrado y forma reciente favorable → más stake; baja confianza → menos, mínimo $0.2",
+        "Dimensiona con Kelly fraccionario (¼ Kelly) y sube el listón contra el sesgo favorito-tapado; omite partidos sin margen seguro",
+        "Todo usa info previa al partido (point-in-time) — sin anticipación; las órdenes reales siguen limitadas a $1",
+        "El valor de cierre (CLV) es el indicador principal (más fiable que el % de aciertos con N pequeño); la precisión argmax se mantiene como referencia de calidad del modelo"
       ],
       "otherT": "Calibración, riesgo e informes",
       "other": [

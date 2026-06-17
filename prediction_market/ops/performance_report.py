@@ -56,6 +56,11 @@ class PerformanceReport:
     avg_entry_cents: float = 0.0  # average price we entered at (¢)
     cents_capture_rate: float = 0.0  # captured ¢ / theoretically available ¢
     avg_clv_cents: float = 0.0    # mean closing-line value (T75 ¢ − entry ¢), result-independent
+    # Decision model (plan 20): value/Kelly pick + confidence sizing.
+    model_pred_accuracy: float = 0.0  # argmax prediction hit-rate (model-quality reference)
+    n_decision_bets: int = 0          # matches the decision model actually bet
+    n_skipped: int = 0                # settled matches skipped (no tradable edge)
+    decision_staked_usd: float = 0.0  # total $ staked across the decision bets
 
 
 def _settled(conn, sm):
@@ -106,28 +111,59 @@ def _advancer(raw_json: str | None, gh: int, ga: int) -> str | None:
     return None
 
 
-def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None) -> dict | None:
-    """SINGLE SOURCE OF TRUTH for one settled match: which side we picked, the actual
-    result, and whether we won — shared by the production bet log (this module) AND the
-    price-track / mark-to-market (ops.milestone_export), so those two views ALWAYS
-    reconcile. Handles both stages:
+_prior_cache = None
 
-      * group   — 3-way incl. draw; pick = argmax of the calibrated model; result by score.
-      * knockout — NO draw; pick = the side we predict ADVANCES (advance prob); result =
-                   who actually went through (score, else API winner flag for shootouts).
 
-    The PICK / RESULT / WON are book-independent (book only affects the group COST), so a
-    caller without bookmaker odds (milestone_export) gets the identical pick by passing
-    book_row=None. Returns None if the match can't be settled yet (knockout level after
-    extra time with no winner flag).
+def _pit_strength(conn, as_of: str):
+    """PIT strength model for one match: ratings + alt-data computed only from data
+    strictly before `as_of` (the kickoff). Mirrors param_sweep/decision_backtest so the
+    record's pick matches the honest backtest. Returns the live-config strength model."""
+    from dataclasses import replace
+    from prediction_market.ingest.prior_ingest import load_prior
+    from prediction_market.model.altdata_adjust import altdata_index
+    from prediction_market.model.squad_strength import build_strength_live
+    global _prior_cache
+    if _prior_cache is None:
+        _prior_cache = load_prior()
+    cfg = CONFIG.model
+    sm = build_strength_live(conn, _prior_cache, cfg)
+    if cfg.oppadj_def_weight or cfg.oppadj_off_weight:
+        sm = replace(sm, adj=altdata_index(conn, sm.ratings, as_of=as_of))
+    return sm
+
+
+def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
+               quotes=None, calib_confidence: float = 0.0, gate_open: bool = True,
+               pit: bool = False) -> dict | None:
+    """SINGLE SOURCE OF TRUTH for one settled match: which side we BET (the decision),
+    the actual result, and whether we won — shared by the production bet log (this
+    module) AND the price-track / mark-to-market (ops.milestone_export), so those views
+    ALWAYS reconcile. Also reports the model's argmax pick as a prediction-accuracy
+    reference (kept alongside, not the bet).
+
+      * group   — 3-way incl. draw. The BET is the value/Kelly decision
+                  (decision_model.decide on the PRE venue `quotes`): the most-underpriced
+                  side, sized to [$0.2,$2]; `bet=False` when no side clears the edge bar.
+                  Falls back to the model argmax as the bet when no `quotes` are given.
+      * knockout — NO draw; bet = the side we predict ADVANCES (advance prob).
+
+    PIT: when ``conn`` is given and ``pit`` is True, the model + alt-data are recomputed
+    with features cut at this match's kickoff (honest point-in-time). Both callers pass
+    the same ``conn`` and the same PRE ``quotes`` row → identical pick → reconciliation.
+
+    Returns None if the match can't be settled yet (knockout after ET, no winner flag).
     """
     from prediction_market.model.match_pricing import is_knockout, price_match_calibrated
     gh, ga = fx_row["home_goals"], fx_row["away_goals"]
     if gh is None or ga is None:
         return None   # not settled (no final score) — nothing to settle a bet on
     knockout = is_knockout(fx_row["round"])
+    if pit and conn is not None and fx_row["kickoff_ts"]:
+        sm = _pit_strength(conn, fx_row["kickoff_ts"])
     mp = price_match_calibrated(sm, hi, ai, knockout=knockout, cal=cal)
     model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
+
+    base_stake = CONFIG.decision.base_stake_usd
     if knockout:
         p_adv_home = mp.p_home_advance if mp.p_home_advance is not None else model["home"] / max(model["home"] + model["away"], 1e-9)
         pick = "home" if p_adv_home >= 0.5 else "away"
@@ -138,22 +174,46 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None) -> dict | None:
         cost = max(p_adv_home if pick == "home" else 1.0 - p_adv_home, 1e-6)
         edge_val = (p_adv_home if pick == "home" else 1.0 - p_adv_home) - cost
         model_prob = round(p_adv_home if pick == "home" else 1.0 - p_adv_home, 4)
-        stage = "knockout"
+        stage, model_pick, bet, stake, conf_k = "knockout", pick, True, base_stake, None
     else:
         bd = book_row
         if bd and bd["bh"] is not None:
             s = (bd["bh"] or 0) + (bd["bd"] or 0) + (bd["ba"] or 0)
             price = {"home": bd["bh"] / s, "draw": bd["bd"] / s, "away": bd["ba"] / s} if s else model
         else:
-            price = model  # no book → settle at our fair price (breakeven)
+            price = model  # no book → fair price
         edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
-        pick = max(_SIDE_KEYS, key=lambda k: model[k])
-        cost = max(price[pick], 1e-6)
         result = "home" if gh > ga else ("draw" if gh == ga else "away")
-        edge_val = edges[pick]
-        model_prob = round(model[pick], 4)
+        model_pick = max(_SIDE_KEYS, key=lambda k: model[k])
         stage = "group"
-    return {"stage": stage, "pick": pick, "result": result, "won": pick == result,
+        # PIT recent-form for the decision's confidence sizing.
+        form = None
+        if pit and conn is not None:
+            try:
+                from prediction_market.model.form_strength import form_index
+                fi = form_index(conn, as_of=fx_row["kickoff_ts"])
+                form = {"home_z": fi[hi].form_z if hi in fi else None,
+                        "away_z": fi[ai].form_z if ai in fi else None}
+            except Exception:
+                form = None
+        if quotes:
+            from prediction_market.strategy.decision_model import decide
+            d = decide(model, quotes, calib_confidence=calib_confidence, form=form, gate_open=gate_open)
+            if d.side is not None:
+                pick, bet, stake, conf_k = d.side, True, d.stake_usd, d.confidence_k
+                cost = max((d.price_cents or 0.0) / 100.0, 1e-6)   # real entry ask we'd pay
+                edge_val, model_prob = d.net_edge, round(model[pick], 4)
+            else:
+                pick, bet, stake, conf_k = model_pick, False, 0.0, d.confidence_k
+                cost, edge_val, model_prob = max(price[model_pick], 1e-6), edges[model_pick], round(model[model_pick], 4)
+        else:
+            # legacy (no venue quotes): bet the model argmax at the book price.
+            pick, bet, stake, conf_k = model_pick, True, base_stake, None
+            cost, edge_val, model_prob = max(price[pick], 1e-6), edges[pick], round(model[pick], 4)
+
+    return {"stage": stage, "pick": pick, "model_pick": model_pick, "result": result,
+            "won": (pick == result) if bet else None, "model_won": model_pick == result,
+            "bet": bet, "stake_usd": round(stake, 2), "confidence_k": conf_k,
             "cost": cost, "model_prob": model_prob, "edge": round(edge_val, 4), "model": model}
 
 
@@ -178,12 +238,18 @@ def _bet_log(conn) -> list[dict]:
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
-    # PRE-milestone venue entry ¢ per fixture (real Kalshi/Poly price at kickoff) —
-    # the true per-contract cost we'd have paid; falls back to the book price below.
+    # PRE-milestone venue entry quotes per fixture (real Kalshi/Poly price at kickoff) —
+    # the executable asks + de-vig the decision model selects on, and the true per-contract
+    # cost we'd have paid. SELECT * so quotes_from_milestone_row sees every ask/devig column.
     pre_px = {r["fixture_api_id"]: r for r in conn.execute(
-        "SELECT fixture_api_id, poly_home_ask, poly_draw_ask, poly_away_ask, "
-        "kalshi_home_ask, kalshi_draw_ask, kalshi_away_ask "
-        "FROM milestone_snapshot WHERE milestone='PRE'")}
+        "SELECT * FROM milestone_snapshot WHERE milestone='PRE'")}
+
+    # Model-quality → confidence: how far the calibrated Brier beats the uniform baseline
+    # (scales the stake). gate_open stays True for the RECORD (it shows the value picks);
+    # real-money execution is additionally gated in production.
+    _ub = (cal.get("uniform_brier") if cal else None) or (2.0 / 3.0)
+    _cb = cal.get("calibrated_brier") if cal else None
+    calib_conf = max(-1.0, min(1.0, (_ub - _cb) / _ub)) if (_cb is not None and _ub) else 0.0
     # T75 (last in-play milestone before FT) per fixture, for closing-line value (CLV).
     t75_px = {r["fixture_api_id"]: r for r in conn.execute(
         "SELECT fixture_api_id, poly_home_ask, poly_draw_ask, poly_away_ask, "
@@ -203,10 +269,13 @@ def _bet_log(conn) -> list[dict]:
         "ORDER BY kickoff_ts".format(",".join("?" * len(_FINISHED))),
         _FINISHED).fetchall()
 
+    from prediction_market.strategy.decision_model import quotes_from_milestone_row
     log: list[dict] = []
     cum = 0.0
     staked = 0.0
     wins = 0
+    skipped = 0          # settled matches the decision model declined (no edge)
+    model_n = model_hits = 0   # argmax prediction-accuracy reference (over ALL settled)
     cum_c = 0.0          # cumulative per-contract ¢ P&L
     sum_entry_c = 0.0    # Σ entry ¢ (for the average)
     cents_avail = 0.0    # Σ theoretically-capturable ¢ (for capture rate)
@@ -214,20 +283,30 @@ def _bet_log(conn) -> list[dict]:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        # Shared pick/result/won (group 3-way or knockout advance) — same function the
-        # price-track uses, so the two views reconcile by construction.
-        mr = match_pick(sm, cal, hi, ai, r, book.get(r["api_id"]))
+        # Shared DECISION (value/Kelly on the PRE venue quotes, PIT) — the SAME call the
+        # price-track uses with the SAME quotes, so the two views reconcile by construction.
+        pr = pre_px.get(r["api_id"])
+        quotes = quotes_from_milestone_row(pr) if pr is not None else None
+        mr = match_pick(sm, cal, hi, ai, r, book.get(r["api_id"]),
+                        conn=conn, quotes=quotes, calib_confidence=calib_conf,
+                        gate_open=True, pit=True)
         if mr is None:
             continue   # knockout level after ET with no winner flag yet — can't settle
+        model_n += 1
+        model_hits += int(mr["model_won"])
+        if not mr["bet"]:
+            skipped += 1   # decision model found no tradable edge → not a bet (excluded)
+            continue
         knockout = mr["stage"] == "knockout"
         gh, ga = r["home_goals"], r["away_goals"]
         pick, result, won = mr["pick"], mr["result"], mr["won"]
         cost, edge_val, model_prob = mr["cost"], mr["edge"], mr["model_prob"]
+        stake = mr["stake_usd"] or 1.0
 
-        dec_odds = 1.0 / cost                     # flat-1u stake at decimal odds
-        pnl = (dec_odds - 1.0) if won else -1.0   # flat 1u stake
+        dec_odds = 1.0 / cost                          # decimal odds at our entry price
+        pnl = stake * (dec_odds - 1.0) if won else -stake   # $ P&L at the chosen stake
         cum += pnl
-        staked += 1.0
+        staked += stake
         wins += int(won)
 
         # Per-contract ¢ view: prefer the real venue price at kickoff (PRE milestone,
@@ -266,6 +345,11 @@ def _bet_log(conn) -> list[dict]:
             "result": result,
             "pick": pick,
             "pick_team": side_label[pick],
+            "model_pick": mr["model_pick"],
+            "model_pick_team": side_label[mr["model_pick"]],
+            "model_won": mr["model_won"],
+            "stake_usd": stake,
+            "confidence_k": mr.get("confidence_k"),
             "model_prob": model_prob,
             "price": round(cost, 4),
             "dec_odds": round(dec_odds, 3),
@@ -281,7 +365,8 @@ def _bet_log(conn) -> list[dict]:
             "cum_pnl_cents": round(cum_c, 1),
             "clv_cents": clv_cents,
         })
-    return log
+    return log, {"skipped": skipped, "model_n": model_n, "model_hits": model_hits,
+                 "staked_usd": round(staked, 2)}
 
 
 def build(conn=None) -> PerformanceReport:
@@ -348,12 +433,14 @@ def build(conn=None) -> PerformanceReport:
                      "not yet trade-grade (discipline gate blocks).")
     # Production bet log: flat 1u on our model's best value side vs the closing book,
     # every match since the opener. This is the track record we present (no OOS framing).
-    log = _bet_log(conn)
-    pnl_units = round(sum(b["pnl"] for b in log), 2)
+    log, betmeta = _bet_log(conn)
+    pnl_units = round(sum(b["pnl"] for b in log), 2)   # $ P&L at the decision-model stakes
     wins = sum(1 for b in log if b["won"])
     pnl_record = f"{wins}W-{len(log) - wins}L"
-    pnl_roi = round(pnl_units / len(log), 4) if log else 0.0   # flat 1u staked per bet
+    decision_staked = betmeta["staked_usd"] or 0.0
+    pnl_roi = round(pnl_units / decision_staked, 4) if decision_staked else 0.0
     bet_since = log[0]["date"] if log else ""
+    model_pred_accuracy = round(betmeta["model_hits"] / betmeta["model_n"], 3) if betmeta["model_n"] else 0.0
 
     # Per-contract ¢ headline metrics (plan 18 §2.7).
     _ent = [b["entry_cents"] for b in log if b.get("entry_cents") is not None]
@@ -365,9 +452,14 @@ def build(conn=None) -> PerformanceReport:
     _clv = [b["clv_cents"] for b in log if b.get("clv_cents") is not None]
     avg_clv_cents = round(sum(_clv) / len(_clv), 1) if _clv else 0.0
 
-    notes.append(f"Track record: flat 1u on our predicted outcome, settled at the closing "
-                 f"book odds, every match since {bet_since} — {pnl_record}, {pnl_units:+.2f}u "
-                 f"({pnl_roi:+.1%} ROI) over {len(log)} matches.")
+    notes.append(f"Track record (decision model): value bet the most-underpriced side, "
+                 f"sized ${CONFIG.decision.min_stake_usd:.1f}–${CONFIG.decision.max_stake_usd:.1f} by "
+                 f"confidence, since {bet_since} — {pnl_record}, {pnl_units:+.2f}$ "
+                 f"({pnl_roi:+.1%} ROI) over {len(log)} bets; {betmeta['skipped']} settled "
+                 f"matches skipped (no tradable edge).")
+    notes.append(f"Model prediction accuracy (argmax, reference): {model_pred_accuracy:.1%} "
+                 f"over {betmeta['model_n']} settled matches — measures model quality, separate "
+                 f"from the betting decision.")
     notes.append("Calibration P&L (fair-odds) is a separate over/under-confidence diagnostic.")
 
     return PerformanceReport(
@@ -392,6 +484,10 @@ def build(conn=None) -> PerformanceReport:
         avg_entry_cents=avg_entry_cents,
         cents_capture_rate=cents_capture_rate,
         avg_clv_cents=avg_clv_cents,
+        model_pred_accuracy=model_pred_accuracy,
+        n_decision_bets=len(log),
+        n_skipped=betmeta["skipped"],
+        decision_staked_usd=round(decision_staked, 2),
     )
 
 

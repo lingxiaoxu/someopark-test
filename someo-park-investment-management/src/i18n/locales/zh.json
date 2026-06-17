@@ -223,10 +223,18 @@
     "lblBrierCalibrated": "Brier(校准后)",
     "gradePassCalibrated": "通过(已校准)",
     "subPnlReport": "实盘战绩 — 自首场起逐场记录",
-    "lblTrackRecord": "战绩",
+    "lblTrackRecord": "决策模型战绩",
+    "lblModelAcc": "模型预测准确率(argmax)",
+    "lblAvgClv": "平均 CLV",
+    "lblBets": "注",
+    "lblSkipped": "跳过(无边际)",
+    "betLogNote": "下注 = 决策模型选「最被低估」的一边(非概率最高),按置信度 $0.2–$2 定额;无边际则跳过。",
+    "colStake": "金额",
+    "argmaxShort": "argmax",
+    "noBet": "不下注(无边际)",
     "colDate": "日期",
     "colMatchup": "对阵",
-    "colOurPick": "我们的预测",
+    "colOurPick": "下注边",
     "betWon": "赢",
     "betLost": "输",
     "cap": {
@@ -256,6 +264,14 @@
         "一整套盘中交易战术:进球反应回归、强队翻盘、红牌价值、终场前平局价值等",
         "跨 Kalshi 与 Polymarket 的实时价值与套利识别",
         "每分钟数据与计算全程记录,供赛后完整复盘"
+      ],
+      "decisionT": "下注决策模型(买哪边、下多少)",
+      "decision": [
+        "选边按「价值」而非「最可能」:买模型概率高于市场去 vig 价、被低估最多的一边(可能是平局或弱队),不是单纯概率最高的那个",
+        "下注额按置信度在 $0.2–$2 之间缩放:edge 越大、模型校准越好、近期状态越支持,下得越多;信心不足则少下、最低 $0.2",
+        "用分数凯利(¼ Kelly)定量,并对「冷门系统性高估」偏差设更高门槛;无足够安全边际则跳过不下",
+        "全部基于赛前可得信息(PIT,无未来泄漏);真实下单仍受 $1 硬顶约束",
+        "以闭线价值(CLV)为首要成绩(小样本下比胜率可靠),并保留 argmax 预测准确率作为模型质量参考"
       ],
       "otherT": "概率校准、风控与报告",
       "other": [

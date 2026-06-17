@@ -126,7 +126,8 @@ function Methodology() {
   const { t: tr } = useTranslation();
   const cap = tr('prediction.cap', { returnObjects: true }) as any;
   const sections: [string, string[]][] = [
-    [cap?.dataT, cap?.data], [cap?.preT, cap?.pre], [cap?.liveT, cap?.live], [cap?.otherT, cap?.other],
+    [cap?.dataT, cap?.data], [cap?.preT, cap?.pre], [cap?.decisionT, cap?.decision],
+    [cap?.liveT, cap?.live], [cap?.otherT, cap?.other],
   ];
   return (
     <div>
@@ -335,7 +336,8 @@ function PerformanceCard() {
         [tr('prediction.lblBrierBetter'), `${num(data?.brier, 4)} vs uniform ${num(data?.brier_uniform, 4)}`],
         ...(hasCal ? [[tr('prediction.lblBrierCalibrated'), <span style={{ color: pass ? 'var(--success)' : 'var(--ink)' }}>{`${num(data?.calibrated_brier, 4)} ≤ uniform ${num(data?.brier_uniform, 4)}`}</span>] as [string, ReactNode]] : []),
         ['Log-loss', num(data?.log_loss, 4)],
-        [tr('prediction.lblFavHit'), pct(data?.favourite_hit_rate, 0)],
+        [tr('prediction.lblModelAcc'), pct(data?.model_pred_accuracy ?? data?.favourite_hit_rate, 0)],
+        [tr('prediction.lblAvgClv'), <span style={{ color: (data?.avg_clv_cents ?? 0) > 0 ? 'var(--success)' : 'var(--ink)' }}>{(data?.avg_clv_cents ?? 0) > 0 ? '+' : ''}{cc(data?.avg_clv_cents)}</span>],
         [tr('prediction.lblCalibPnl'), `${num(data?.calibration_pnl, 2)}u (${num(data?.calibration_pnl_per_bet, 3)}u/bet)`],
         [tr('prediction.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? tr('prediction.gradePassCalibrated') : tr('prediction.gradeBlock')}</span>],
       ]} />
@@ -354,24 +356,27 @@ function BetLog({ data }: { data: any }) {
   const pnl = data?.pnl_units ?? 0;
   const pnlColor = pnl > 0 ? 'var(--success)' : pnl < 0 ? 'var(--error)' : 'var(--ink)';
   const sideLabel = (b: any) => (b.pick === 'draw' ? tr('prediction.drawResult') : tCountry(b.pick_team));
+  const argmaxLabel = (b: any) => (b.model_pick === 'draw' ? tr('prediction.drawResult') : tCountry(b.model_pick_team));
   return (
     <div style={{ marginTop: 14 }}>
       <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-secondary)' }}>
-        {tr('prediction.lblTrackRecord')}: <b>{data.pnl_record}</b> · <b style={{ color: pnlColor }}>{pnl > 0 ? '+' : ''}{num(pnl, 2)}u</b>
-        {' '}({pct(data.pnl_roi, 1)} ROI) · {tr('prediction.colDate')} ≥ {data.bet_since}
+        {tr('prediction.lblTrackRecord')}: <b>{data.pnl_record}</b> · <b style={{ color: pnlColor }}>{pnl > 0 ? '+' : ''}${num(pnl, 2)}</b>
+        {' '}({pct(data.pnl_roi, 1)} ROI) · {data.n_decision_bets ?? log.length} {tr('prediction.lblBets')}{data.n_skipped ? ` · ${data.n_skipped} ${tr('prediction.lblSkipped')}` : ''} · {tr('prediction.colDate')} ≥ {data.bet_since}
       </div>
+      <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-muted)' }}>{tr('prediction.betLogNote')}</div>
       {data.pnl_cents_total != null && (
         <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 6, color: 'var(--text-muted)' }}>
           {tr('prediction.lblPerContract')}: <b style={{ color: data.pnl_cents_total >= 0 ? 'var(--success)' : 'var(--error)' }}>{data.pnl_cents_total >= 0 ? '+' : ''}{cc(data.pnl_cents_total)}</b>
-          {' '}· {tr('prediction.lblAvgEntry')} {cc(data.avg_entry_cents)} · {tr('prediction.lblCaptureRate')} {pct(data.cents_capture_rate, 0)}
+          {' '}· {tr('prediction.lblAvgEntry')} {cc(data.avg_entry_cents)} · {tr('prediction.lblCaptureRate')} {pct(data.cents_capture_rate, 0)} · {tr('prediction.lblAvgClv')} {(data.avg_clv_cents ?? 0) > 0 ? '+' : ''}{cc(data.avg_clv_cents)}
         </div>
       )}
       <DataTable
-        cols={[tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colSettleC'), tr('prediction.colPnlC'), 'Cum¢']}
+        cols={[tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colSettleC'), tr('prediction.colPnlC'), 'Cum¢']}
         rows={log.map((b: any) => [
           b.date?.slice(5),
           `${tCountry(b.home)} ${b.score} ${tCountry(b.away)}`,
-          sideLabel(b),
+          <span>{sideLabel(b)}{b.model_pick && b.model_pick !== b.pick ? <span style={{ color: 'var(--text-muted)' }}> ·{tr('prediction.argmaxShort')} {argmaxLabel(b)}</span> : null}</span>,
+          b.stake_usd != null ? `$${num(b.stake_usd, 2)}` : '—',
           <span style={{ color: b.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{b.won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>,
           cc(b.entry_cents),
           cc(b.settle_cents),
@@ -640,8 +645,12 @@ function PriceTrack() {
                 {m.settled && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {m.score}</span>}
               </div>
               <div style={{ fontSize: 10.5, ...mono, marginBottom: 6, color: 'var(--text-secondary)' }}>
-                {tr('prediction.ourBet')}: <b>{tCountry(b.pick_team)}</b> · {tr('prediction.lblEntry')} {cc(b.entry_cents)}
-                {mtm && <> → {tr('prediction.lblSettle')} {cc(mtm.ft_c)} · <b style={{ color: dirColor }}>{mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)}</b> {mtm.won ? tr('prediction.betWon') : tr('prediction.betLost')}</>}
+                {b.bet === false
+                  ? <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.ourBet')}: {tr('prediction.noBet')}</span>
+                  : <>
+                      {tr('prediction.ourBet')}: <b>{tCountry(b.pick_team)}</b>{b.stake_usd != null ? <> · ${num(b.stake_usd, 2)}</> : null} · {tr('prediction.lblEntry')} {cc(b.entry_cents)}
+                      {mtm && <> → {tr('prediction.lblSettle')} {cc(mtm.ft_c)} · <b style={{ color: dirColor }}>{mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)}</b> {mtm.won ? tr('prediction.betWon') : tr('prediction.betLost')}</>}
+                    </>}
               </div>
               <DataTable
                 cols={[tr('prediction.colMilestone'), tr('prediction.colScore'), `${sideName.home}¢`, `${sideName.draw}¢`, `${sideName.away}¢`]}
