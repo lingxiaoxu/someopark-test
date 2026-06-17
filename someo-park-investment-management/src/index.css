@@ -750,3 +750,16 @@
 [data-mode="prediction"] ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
 [data-mode="prediction"] ::selection { background: var(--ink); color: var(--page); }
 [data-mode="prediction"] a:hover { color: var(--ink-soft); }
+
+/* Auth dialog inputs keep the light (stock) styling even in prediction mode —
+   override the [data-mode="prediction"] input rule above (which forces the dark
+   --paper background). Higher specificity + later in source, so it wins. */
+[data-mode="prediction"] .auth-light input,
+[data-mode="prediction"] .auth-light textarea,
+[data-mode="prediction"] .auth-light select {
+  color: var(--text-primary) !important;
+  background: var(--bg-secondary);
+  border-color: var(--border-subtle);
+}
+[data-mode="prediction"] .auth-light input::placeholder,
+[data-mode="prediction"] .auth-light textarea::placeholder { color: var(--text-muted) !important; }
