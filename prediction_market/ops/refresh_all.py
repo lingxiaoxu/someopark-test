@@ -88,6 +88,7 @@ def main() -> None:
                                        risk_report, squad_export, backfill_milestones, schedule_export)
     from prediction_market.strategy.xv_monitor import compare_matches
     from prediction_market.model import oos_eval
+    from prediction_market.exec import executor
     from dataclasses import asdict
 
     def _milestones():
@@ -110,6 +111,7 @@ def main() -> None:
         ("risk_report.json",       lambda: asdict(risk_report.build(conn))),
         ("milestone_marks.json",   _milestones),   # PriceTrack / mark-to-market view
         ("schedule.json",          lambda: schedule_export.build(conn)),  # full group schedule
+        ("match_signals.json",     lambda: executor.build_match_signals(conn)),  # daily decision-model bets ($1-capped)
     ]
     for name, fn in steps:
         try:

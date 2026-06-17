@@ -37,6 +37,7 @@ const FILES = [
   'oos_report.json',
   'milestone_marks.json',
   'schedule.json',
+  'match_signals.json',
   'performance_report.pdf',
   'risk_report.pdf',
 ];
