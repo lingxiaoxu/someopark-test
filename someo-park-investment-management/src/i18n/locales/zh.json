@@ -207,6 +207,7 @@
     "formWeak": "(不过{{team}}近期状态偏弱,留意风险)",
     "formDrawClose": ",两队近期状态接近、平局合理",
     "adviceHold": "目前价差不够安全,先观望、不下单。",
+    "adviceStakeClause": "建议下注 ${{stake}}(实际下单 ≤ $1 硬顶)。",
     "adviceInplay": "开赛后切到「盘中套利」视图实时跟进买卖点。",
     "paramSweep": "参数搜索(OOS)",
     "subParams": "PIT 参数集,按已结算场次的「校准后 Brier(=MSE)」排序",

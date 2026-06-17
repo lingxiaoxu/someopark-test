@@ -137,6 +137,47 @@ def _best_buy_edge(model: dict, venue_q: dict | None, venue: str, theta: float) 
     return best
 
 
+def _decision_quotes(kalshi_q, poly_q, k_devig, p_devig):
+    """{side: SideQuote} for decision_model.decide — cheapest executable ask per side
+    across venues + that side's de-vig (same selection the bet log uses on PRE rows)."""
+    from prediction_market.strategy.decision_model import SideQuote
+    q = {}
+    for s in ("home", "draw", "away"):
+        cands = []
+        ka = (kalshi_q.get(s) or {}).get("ask") if kalshi_q else None
+        pa = (poly_q.get(s) or {}).get("ask") if poly_q else None
+        if ka is not None:
+            cands.append((ka, "kalshi", (k_devig or {}).get(s)))
+        if pa is not None:
+            cands.append((pa, "poly_us", (p_devig or {}).get(s)))
+        if not cands:
+            q[s] = SideQuote()
+            continue
+        ask, ven, dv = min(cands, key=lambda t: t[0])
+        q[s] = SideQuote(ask=ask, devig=dv, venue=ven)
+    return q
+
+
+def _decision_for(model, kalshi_q, poly_q, k_devig, p_devig, form_row, calib_conf, gate_open):
+    """The production pre-match DECISION for one match (decision_model.decide on the live
+    quotes), plus the $1-capped order — so the card's '怎么操作' is the SAME decision the
+    bet log + match_signals use (value side, confidence stake, no-bet when no edge)."""
+    from prediction_market.strategy.decision_model import decide
+    dq = _decision_quotes(kalshi_q, poly_q, k_devig, p_devig)
+    d = decide(model, dq, calib_confidence=calib_conf, form=form_row, gate_open=gate_open)
+    if d.side is None:
+        return {"bet": False, "side": None, "stake_usd": 0.0,
+                "net_edge": d.net_edge, "confidence_k": d.confidence_k}
+    ask = dq[d.side].ask
+    cap = CONFIG.risk.max_test_order_usd
+    cnt = max(1, int(cap / max(ask, 1e-3)))
+    while cnt > 1 and cnt * ask > cap + 1e-9:
+        cnt -= 1
+    return {"bet": True, "side": d.side, "venue": d.venue, "price_cents": d.price_cents,
+            "model_prob": d.model_prob, "net_edge": d.net_edge, "stake_usd": d.stake_usd,
+            "count": cnt, "capped_notional_usd": round(cnt * ask, 2), "confidence_k": d.confidence_k}
+
+
 def _lock_arb(kalshi_q: dict | None, poly_q: dict | None) -> dict | None:
     """Best cross-venue locked arb per side: buy cheapest ask + sell highest bid."""
     if not (kalshi_q and poly_q):
@@ -186,12 +227,15 @@ def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q) -> None:
     kh, khb = ab(kalshi_q, "home"); kd, kdb = ab(kalshi_q, "draw"); ka, kab = ab(kalshi_q, "away")
     ph, phb = ab(poly_q, "home"); pd_, pdb = ab(poly_q, "draw"); pa, pab = ab(poly_q, "away")
     conn.execute(
+        # PRE is captured pre-kickoff (status NS) → the score is 0-0 by definition.
+        # Store it explicitly so the price-track view shows "0-0", not "?-?" (null score):
+        # backfill won't heal it once a live/settlement FT row trips its incremental skip.
         "INSERT OR IGNORE INTO milestone_snapshot "
-        "(fixture_api_id, milestone, ts, elapsed, status_short, "
+        "(fixture_api_id, milestone, ts, elapsed, status_short, home_goals, away_goals, "
         " kalshi_home_ask, kalshi_home_bid, kalshi_draw_ask, kalshi_draw_bid, kalshi_away_ask, kalshi_away_bid, "
         " poly_home_ask, poly_home_bid, poly_draw_ask, poly_draw_bid, poly_away_ask, poly_away_bid, "
-        " price_source) VALUES (?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?)",
-        (fixture_id, "PRE", now.isoformat(), 0, "NS",
+        " price_source) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?)",
+        (fixture_id, "PRE", now.isoformat(), 0, "NS", 0, 0,
          kh, khb, kd, kdb, ka, kab, ph, phb, pd_, pdb, pa, pab, "live"))
     conn.commit()
 
@@ -219,6 +263,15 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     theta = CONFIG.risk.min_net_edge
+
+    # Decision-model inputs (same as the bet log): confidence from calibrated Brier vs
+    # uniform, and the discipline gate. So the card's '怎么操作' = the production decision.
+    from prediction_market.model.probability_calibration import load_calibration
+    _cal = load_calibration()
+    _gate_open = bool(_cal and _cal.get("trade_grade"))
+    _ub = (_cal.get("uniform_brier") if _cal else None) or (2.0 / 3.0)
+    _cb = _cal.get("calibrated_brier") if _cal else None
+    _calib_conf = max(-1.0, min(1.0, (_ub - _cb) / _ub)) if (_cb is not None and _ub) else 0.0
 
     # Bookmaker de-vig (averaged), when odds are present for the fixture.
     book = {r["api_id"]: r for r in conn.execute(
@@ -309,6 +362,11 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
                                  _best_buy_edge(model, poly_q, "poly_us", theta)) if e]
         best_edge = max(buy_edges, key=lambda e: e["net_edge"]) if buy_edges else None
 
+        form_row = {"home_z": (fidx[hi].form_z if hi in fidx else None),
+                    "away_z": (fidx[ai].form_z if ai in fidx else None)}
+        decision = _decision_for(model, kalshi_q, poly_q, k_devig, p_devig,
+                                 form_row, _calib_conf, _gate_open)
+
         out.append({
             "fixture_id": f["api_id"],
             "kickoff": f["kickoff_ts"],
@@ -331,6 +389,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
                 "vs_poly_us": _edge_vs(p_devig),
                 "best": best_edge,
             },
+            "decision": decision,   # production decide(): value side + confidence stake + $1 cap
             "lock_arb": _lock_arb(kalshi_q, poly_q),
         })
     return out

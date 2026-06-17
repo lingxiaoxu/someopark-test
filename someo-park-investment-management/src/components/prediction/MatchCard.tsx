@@ -27,6 +27,11 @@ export type UpcomingMatch = {
   kalshi?: VenueQuote;
   poly_us?: VenueQuote;
   edge?: { best?: { side: string; venue: string; net_edge: number; tradable: boolean } | null };
+  decision?: {
+    bet: boolean; side?: string | null; venue?: string | null;
+    price_cents?: number | null; model_prob?: number | null; net_edge?: number | null;
+    stake_usd?: number; capped_notional_usd?: number; confidence_k?: number | null;
+  } | null;
   tentative?: boolean;   // knockout tie whose teams aren't decided yet (placeholder pairing)
 };
 
@@ -114,21 +119,37 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   };
   const buildAdvice = (): string => {
     const inplay = t('prediction.adviceInplay');
-    if (best && best.tradable && best.net_edge > 0) {
+    const dec = m.decision;
+    // The production decision model (decide()) takes precedence — same brain as the bet
+    // log + match_signals: it picks the value side, sizes the stake, and says "no bet"
+    // when there's no safe edge (incl. the longshot bar / discipline gate).
+    if (dec && !dec.bet) return t('prediction.adviceHold') + sep + inplay;
+    let side: 'home' | 'draw' | 'away' | null = null;
+    let venue = '', cents: number | string = '—', model: number | string = '—', edge: string = '—', stakeClause = '';
+    if (dec && dec.bet && dec.side) {
+      side = dec.side as 'home' | 'draw' | 'away';
+      venue = dec.venue ?? '';
+      cents = dec.price_cents != null ? Math.round(dec.price_cents) : '—';
+      model = dec.model_prob != null ? Math.round(dec.model_prob * 100) : '—';
+      edge = dec.net_edge != null ? (dec.net_edge * 100).toFixed(1) : '—';
+      if (dec.stake_usd != null) stakeClause = t('prediction.adviceStakeClause', { stake: dec.stake_usd.toFixed(2) });
+    } else if (best && best.tradable && best.net_edge > 0) {
+      side = best.side as 'home' | 'draw' | 'away';
+      venue = best.venue;
       const q = best.venue === 'kalshi' ? m.kalshi : m.poly_us;
-      const side = best.side as 'home' | 'draw' | 'away';
       const c = q?.[side]?.ask_c ?? q?.[side]?.mid_c ?? null;
+      cents = c != null ? Math.round(c) : '—';
       const mp = (m.model as ThreeWay)[side];
-      return t('prediction.adviceBuy', {
-        venue: venueLabelMap[best.venue] ?? best.venue,
-        side: sideLabelMap[best.side] ?? best.side,
-        cents: c != null ? Math.round(c) : '—',
-        model: mp != null ? Math.round(mp * 100) : '—',
-        edge: (best.net_edge * 100).toFixed(1),
-        form: formClause(side),
-      }) + sep + inplay;
+      model = mp != null ? Math.round(mp * 100) : '—';
+      edge = (best.net_edge * 100).toFixed(1);
+    } else {
+      return t('prediction.adviceHold') + sep + inplay;
     }
-    return t('prediction.adviceHold') + sep + inplay;
+    return t('prediction.adviceBuy', {
+      venue: venueLabelMap[venue] ?? venue,
+      side: sideLabelMap[side] ?? side,
+      cents, model, edge, form: formClause(side),
+    }) + (stakeClause ? sep + stakeClause : '') + sep + inplay;
   };
 
   // one labelled 3-way row (probabilities or venue prices), team names spelled out.

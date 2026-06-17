@@ -189,6 +189,7 @@
     "formWeak": " (aunque {{team}} está en mala forma — ojo al riesgo)",
     "formDrawClose": ", y ambos equipos están en forma reciente similar",
     "adviceHold": "Aún no hay margen lo bastante seguro — mejor pasar.",
+    "adviceStakeClause": "Stake sugerido ${{stake}} (orden real limitada a $1).",
     "adviceInplay": "Tras el saque inicial, cambia a la vista de Arbitraje en vivo para seguir las entradas.",
     "paramSweep": "Búsqueda de parámetros (OOS)",
     "subParams": "Conjuntos PIT, ordenados por Brier CALIBRADO (=MSE) en partidos liquidados",
