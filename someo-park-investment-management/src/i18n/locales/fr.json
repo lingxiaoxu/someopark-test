@@ -189,7 +189,7 @@
     "formWeak": " (mais {{team}} est en méforme — attention au risque)",
     "formDrawClose": ", et les deux équipes sont dans une forme récente similaire",
     "adviceHold": "Pas encore d'écart assez sûr — on passe ce match.",
-    "adviceStakeClause": "Mise suggérée {{stake}} $ (ordre réel plafonné à 1 $).",
+    "adviceStakeClause": "En prenant 1 $ comme mise de base, la confiance porte ce match à {{stake}} $.",
     "adviceInplay": "Après le coup d'envoi, passez à la vue Arbitrage en direct pour suivre les entrées.",
     "paramSweep": "Recherche de paramètres (OOS)",
     "subParams": "Jeux de paramètres PIT, classés par Brier CALIBRÉ (=MSE) sur matchs réglés",

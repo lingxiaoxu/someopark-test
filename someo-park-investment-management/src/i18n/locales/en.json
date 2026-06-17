@@ -525,7 +525,7 @@
     "formWeak": " (though {{team}}'s recent form is weak — note the risk)",
     "formDrawClose": ", and both sides are in similar recent form",
     "adviceHold": "No safe-enough edge yet — sit this one out.",
-    "adviceStakeClause": "Suggested stake ${{stake}} (actual order capped at $1).",
+    "adviceStakeClause": "Taking $1 as the base bet, confidence sizes this match to ${{stake}}.",
     "adviceInplay": "After kickoff, switch to the In-Play Arbitrage view to track live entries.",
     "paramSweep": "Parameter Sweep (OOS)",
     "subParams": "PIT param sets, ranked by CALIBRATED Brier (=MSE) on settled matches",

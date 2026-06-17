@@ -189,7 +189,7 @@
     "formWeak": "({{team}}は最近不調 — リスクに注意)",
     "formDrawClose": "、両チームの最近の調子は拮抗",
     "adviceHold": "まだ十分に安全なエッジがない — 今回は見送り。",
-    "adviceStakeClause": "推奨ベット ${{stake}}(実注文は $1 上限)。",
+    "adviceStakeClause": "$1 を基準ベットとして、本試合は確信度により ${{stake}} を推奨。",
     "adviceInplay": "キックオフ後は「ライブ裁定」ビューに切り替えて実時間のエントリーを追跡。",
     "paramSweep": "パラメータ探索(OOS)",
     "subParams": "PIT パラメータ群、確定試合で校正後 Brier(=MSE)順",
