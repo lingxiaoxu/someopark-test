@@ -11,14 +11,17 @@ export function apiHeaders(): Record<string, string> {
 
 export { API_BASE };
 
+// cache: 'no-store' — the JSON/text data files are regenerated continuously (every
+// 30s/15min over the tunnel), so the browser must NOT serve a stale cached copy
+// (this was why refreshed views — balances, recent form, etc. — looked unchanged).
 async function fetchApi<T>(path: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: apiHeaders() });
+  const res = await fetch(`${API_BASE}${path}`, { headers: apiHeaders(), cache: 'no-store' });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   return res.json();
 }
 
 async function fetchText(path: string): Promise<string> {
-  const res = await fetch(`${API_BASE}${path}`, { headers: apiHeaders() });
+  const res = await fetch(`${API_BASE}${path}`, { headers: apiHeaders(), cache: 'no-store' });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.text();
 }
