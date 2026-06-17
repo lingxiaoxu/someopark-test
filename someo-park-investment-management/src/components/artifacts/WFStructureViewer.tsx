@@ -90,18 +90,7 @@ const fileSystem: FileNode[] = [
             name: 'charts',
             type: 'folder',
             description: 'wfStructure.fsDesc.oosCharts',
-            children: [
-              {
-                name: 'wf_test_window06_2026-02-13_2026-03-20_1',
-                type: 'folder',
-                children: [
-                  { name: 'individual_stocks.png', type: 'png' },
-                  { name: 'pair_trades.png', type: 'png' },
-                  { name: 'portfolio_history.png', type: 'png' },
-                  { name: 'z_scores_and_pnl.png', type: 'png', description: 'wfStructure.fsDesc.mrptChart' }
-                ]
-              }
-            ]
+            children: []
           },
           {
             name: 'logs',
@@ -132,9 +121,7 @@ const fileSystem: FileNode[] = [
                 name: 'charts',
                 type: 'folder',
                 description: 'wfStructure.fsDesc.perParamCharts',
-                children: [
-                   { name: 'all15_aggressive_1', type: 'folder', children: [] }
-                ]
+                children: []
               },
               {
                 name: 'logs',
@@ -175,19 +162,8 @@ const fileSystem: FileNode[] = [
           {
             name: 'charts',
             type: 'folder',
-            children: [
-              {
-                name: 'wf_test_window01_2025-07-30_2025-09-05_1',
-                type: 'folder',
-                children: [
-                  { name: 'individual_stocks.png', type: 'png' },
-                  { name: 'pair_trades.png', type: 'png' },
-                  { name: 'portfolio_history.png', type: 'png' },
-                  { name: 'momentum_scores_and_pnl.png', type: 'png', description: 'wfStructure.fsDesc.mtfsChart' },
-                  { name: 'vams_window_decomposition.png', type: 'png', description: 'wfStructure.fsDesc.mtfsChart' }
-                ]
-              }
-            ]
+            description: 'wfStructure.fsDesc.oosCharts',
+            children: []
           },
           {
             name: 'logs',
@@ -994,25 +970,26 @@ export default function WFStructureViewer({ data, params }: { data?: any; params
             </h4>
             <div className="flex flex-wrap gap-2">
               {['individual_stocks.png', 'pair_trades.png', 'portfolio_history.png'].map(name => (
-                <span key={name} className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)]">
-                  <ImageIcon className="w-3 h-3 text-[var(--accent-primary)]" /> {name}
+                <span key={name} className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
+                  <ImageIcon className="w-3 h-3 text-[var(--text-muted)]" /> {name}
                 </span>
               ))}
               {strategy === 'MRPT' ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)]">
-                  <ImageIcon className="w-3 h-3 text-[var(--accent-primary)]" /> z_scores_and_pnl.png
+                <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
+                  <ImageIcon className="w-3 h-3 text-[var(--text-muted)]" /> z_scores_and_pnl.png
                 </span>
               ) : (
                 <>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)]">
-                    <ImageIcon className="w-3 h-3 text-[var(--accent-primary)]" /> momentum_scores_and_pnl.png
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
+                    <ImageIcon className="w-3 h-3 text-[var(--text-muted)]" /> momentum_scores_and_pnl.png
                   </span>
-                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-primary)]">
-                    <ImageIcon className="w-3 h-3 text-[var(--accent-primary)]" /> vams_window_decomposition.png
+                  <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-xs text-[var(--text-muted)]">
+                    <ImageIcon className="w-3 h-3 text-[var(--text-muted)]" /> vams_window_decomposition.png
                   </span>
                 </>
               )}
             </div>
+            <p className="text-[10px] text-[var(--text-muted)] mt-2">{t('wfStructure.chartsCleared')}</p>
           </div>
 
           </>)}

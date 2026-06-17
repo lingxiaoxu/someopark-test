@@ -590,6 +590,7 @@
     "oneXlsxReal": "1 个 xlsx，真实表现",
     "deepDive": "组合历史深度分析",
     "generatedCharts": "生成图表",
+    "chartsCleared": "历史图表已清理以释放磁盘空间。新图表在每次 Walk-Forward 运行时自动生成。",
     "keyDifference": "关键区别",
     "rootHistoricalRuns": "根目录 historical_runs/：OOS 测试（样本外验证），每次运行 2 个文件。",
     "windowHistoricalRuns": "wf_windowXX/historical_runs/：IS 网格搜索（样本内训练），每次运行约 64 个文件。",

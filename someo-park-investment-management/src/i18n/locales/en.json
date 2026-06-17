@@ -257,6 +257,7 @@
     "oneXlsxReal": "1 xlsx, real performance",
     "deepDive": "Portfolio History Deep Dive",
     "generatedCharts": "Generated Charts",
+    "chartsCleared": "Historical charts cleared to save disk space. New charts are generated on each walk-forward run.",
     "keyDifference": "Key Difference",
     "rootHistoricalRuns": "Root historical_runs/: OOS Test (Out-of-Sample validation). 2 files per run.",
     "windowHistoricalRuns": "wf_windowXX/historical_runs/: IS Grid Search (In-Sample training). ~64 files per run.",
@@ -286,6 +287,7 @@
       "oosResults": "OOS test results (real performance using selected optimal strategy)",
       "oosPerformance": "OOS period real performance",
       "oosCharts": "OOS test charts",
+      "oosChartsCleared": "OOS test charts (cleared to save disk — regenerated on next WF run)",
       "oosLogs": "OOS test logs",
       "mrptChart": "MRPT specific chart",
       "isGridSearch": "IS Grid Search results (in-sample training)",
@@ -293,6 +295,7 @@
       "gridSummary": "Grid search summary table",
       "perParamBacktest": "Per param_set backtest Excel (64 files)",
       "perParamCharts": "Per param_set charts (64 subdirectories)",
+      "perParamChartsCleared": "Per param_set charts (cleared to save disk — regenerated on next WF run)",
       "perParamLogs": "Per param_set run logs (64 files)",
       "mtfsRoot": "MTFS (Multi-Timeframe Momentum Strategy) Walk-Forward root directory",
       "mtfsChart": "MTFS specific chart"
