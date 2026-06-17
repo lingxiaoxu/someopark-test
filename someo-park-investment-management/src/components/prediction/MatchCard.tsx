@@ -22,6 +22,7 @@ export type UpcomingMatch = {
   home: { id: string | null; name: string; zh?: string };
   away: { id: string | null; name: string; zh?: string };
   model: (ThreeWay & { over_2_5?: number; btts?: number; cents?: ThreeWay }) | null;
+  form?: { home?: number | null; away?: number | null } | null;
   book_devig?: ThreeWay | null;
   kalshi?: VenueQuote;
   poly_us?: VenueQuote;
@@ -91,6 +92,26 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   // CJK languages don't put a space between full sentences; Latin ones do.
   const lang = i18n.language || '';
   const sep = (lang.startsWith('zh') || lang.startsWith('ja')) ? '' : ' ';
+  // Recent-form clause woven into the "why", picked by which side we recommend:
+  //   home → home team's form, away → away team's form, draw → both teams' closeness.
+  // Strong form reinforces the pick; weak form is flagged as a risk; near-neutral is
+  // omitted so the line stays clean. z-index is the same form feature the model uses.
+  const STRONG_Z = 0.5, WEAK_Z = -0.5;
+  const formClause = (side: 'home' | 'draw' | 'away'): string => {
+    const f = m.form;
+    if (!f) return '';
+    if (side === 'draw') {
+      const zh = f.home, za = f.away;
+      if (zh != null && za != null && Math.abs(zh - za) <= 0.4) return t('prediction.formDrawClose');
+      return '';
+    }
+    const z = side === 'home' ? f.home : f.away;
+    const team = side === 'home' ? home : away;
+    if (z == null) return '';
+    if (z >= STRONG_Z) return t('prediction.formStrong', { team });
+    if (z <= WEAK_Z) return t('prediction.formWeak', { team });
+    return '';
+  };
   const buildAdvice = (): string => {
     const inplay = t('prediction.adviceInplay');
     if (best && best.tradable && best.net_edge > 0) {
@@ -104,6 +125,7 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
         cents: c != null ? Math.round(c) : '—',
         model: mp != null ? Math.round(mp * 100) : '—',
         edge: (best.net_edge * 100).toFixed(1),
+        form: formClause(side),
       }) + sep + inplay;
     }
     return t('prediction.adviceHold') + sep + inplay;

@@ -208,6 +208,14 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
     name_of = {t.team_id: t.name for t in prior.teams}
     zh_of = {t.team_id: t.zh for t in prior.teams}
     sm = build_strength_live(conn, prior)
+    # Recent-form z-index per team (same feature that feeds the model), so the card can
+    # EXPLAIN a pick with current form ("X is in strong recent form"). DB-only, no network.
+    try:
+        from prediction_market.model.form_strength import form_index
+        fidx = form_index(conn)
+    except Exception as e:
+        print(f"[warn] form_index unavailable: {e}")
+        fidx = {}
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     theta = CONFIG.risk.min_net_edge
@@ -311,6 +319,8 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
             "home": {"id": hi, "name": name_of.get(hi, hi), "zh": zh_of.get(hi, "")},
             "away": {"id": ai, "name": name_of.get(ai, ai), "zh": zh_of.get(ai, "")},
             "model": model,
+            "form": {"home": (round(fidx[hi].form_z, 2) if hi in fidx else None),
+                     "away": (round(fidx[ai].form_z, 2) if ai in fidx else None)},
             "book_devig": book_devig,
             # quote_to_cents adds ask_c/bid_c/mid_c per side (0–1 ask/bid preserved).
             "kalshi": {**quote_to_cents(kalshi_q), "devig": k_devig} if kalshi_q else None,
