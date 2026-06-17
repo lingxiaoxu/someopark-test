@@ -82,7 +82,7 @@ def main() -> None:
     # Regenerate every export the frontend reads, all on the CURRENT sample.
     from prediction_market.ops import (backtest_export, form_export, frontend_export,
                                        inplay_export, milestone_export, performance_report,
-                                       risk_report, squad_export, backfill_milestones)
+                                       risk_report, squad_export, backfill_milestones, schedule_export)
     from prediction_market.strategy.xv_monitor import compare_matches
     from prediction_market.model import oos_eval
     from dataclasses import asdict
@@ -106,6 +106,7 @@ def main() -> None:
         ("performance_report.json", lambda: asdict(performance_report.build(conn))),
         ("risk_report.json",       lambda: asdict(risk_report.build(conn))),
         ("milestone_marks.json",   _milestones),   # PriceTrack / mark-to-market view
+        ("schedule.json",          lambda: schedule_export.build(conn)),  # full group schedule
     ]
     for name, fn in steps:
         try:

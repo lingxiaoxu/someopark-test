@@ -10,7 +10,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
   getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
-  getWCMilestoneMarks, API_BASE,
+  getWCMilestoneMarks, getWCSchedule, API_BASE,
 } from '../../lib/api';
 import { useState } from 'react';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
@@ -76,7 +76,7 @@ function ChampionOdds() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCChampion(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const champ = (data?.champion ?? []).slice(0, 16);
+  const champ = (data?.champion ?? []);  // all 48 teams
   return (
     <div>
       <Title sub={`${tr('prediction.subChampion')} · ${data?.meta?.n_sims?.toLocaleString?.() ?? ''} sims`}>Champion Odds</Title>
@@ -106,7 +106,7 @@ function SquadStrength() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCSquad(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const teams = (data?.teams ?? []).slice(0, 24);
+  const teams = (data?.teams ?? []);  // all 48 teams
   return (
     <div>
       <Title sub={tr('prediction.subSquad')}>Squad Strength</Title>
@@ -236,14 +236,25 @@ function MatchPricing() {
 
 function Schedule() {
   const { t: tr } = useTranslation();
-  const { data, loading, error } = useApi<any>(() => getWCUpcoming(), []);
-  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const ms = data?.matches ?? [];
+  // Full fixed group-stage schedule (all 72, played + upcoming); knockouts auto-append
+  // once they're drawn. Falls back to upcoming.json if schedule.json isn't synced yet.
+  const sched = useApi<any>(() => getWCSchedule(), []);
+  const upc = useApi<any>(() => getWCUpcoming(), []);
+  if ((sched.loading && upc.loading)) return <Loading />;
+  const ms = (sched.data?.matches?.length ? sched.data.matches : upc.data?.matches) ?? [];
+  const grp = (r?: string) => (r || '').replace('Group Stage - ', tr('prediction.lblMatchday') + ' ');
+  const played = ms.filter((m: any) => m.finished).length;
   return (
     <div>
-      <Title sub={tr('prediction.subSchedule')}>Schedule</Title>
-      <DataTable cols={['ET', 'Round', tr('prediction.match')]}
-        rows={ms.map((m: any) => [m.et ?? m.kickoff, m.round ?? '', `${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`])} />
+      <Title sub={`${tr('prediction.subSchedule')} · ${ms.length} ${tr('prediction.lblMatches')}${played ? ` (${played} ${tr('prediction.finished')})` : ''}`}>Schedule</Title>
+      <DataTable cols={['ET', tr('prediction.colRound'), tr('prediction.match'), tr('prediction.colResult')]}
+        rows={ms.map((m: any) => [
+          m.et ?? m.kickoff, grp(m.round),
+          `${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`,
+          m.finished
+            ? <span style={{ fontWeight: 700 }}>{m.score}</span>
+            : <span style={{ color: 'var(--text-muted)' }}>{m.status === 'NS' ? '—' : m.status}</span>,
+        ])} />
     </div>
   );
 }
@@ -547,7 +558,7 @@ function FormCard() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCForm(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const teams = (data?.teams ?? []).slice(0, 24);
+  const teams = (data?.teams ?? []);  // all 48 teams
   return (
     <div>
       <Title sub={tr('prediction.subForm')}>Recent Form</Title>

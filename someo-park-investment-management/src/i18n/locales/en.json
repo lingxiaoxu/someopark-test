@@ -425,7 +425,7 @@
     "polyUsAsk": "Poly US ask",
     "match": "Match",
     "team": "Team",
-    "subChampion": "Monte-Carlo tournament simulation",
+    "subChampion": "Tournament simulation",
     "subGoldenBoot": "Player goal-scoring, nested in the tournament sim",
     "subMethodology": "What the system can do — data, pre-match, in-play, and discipline",
     "subDivergence": "Model 3-way vs the sharp bookmaker de-vig",
@@ -557,7 +557,8 @@
         "Golden Boot odds blending player talent (EA FC), knockout depth and intra-squad goal-sharing",
         "Odds refresh after every match; once the knockouts begin, eliminated teams drop to 0%",
         "Every prediction benchmarked against the sharp bookmaker and venue prices (our edge)",
-        "Group matches priced with draws; knockouts resolved by a team-specific penalty-shootout model"
+        "Group matches priced with draws; knockouts resolved by a team-specific penalty-shootout model",
+        "Every probability is shown as a per-contract price (¢), and each pre-match bet is marked-to-market (entry→full-time) to validate the read"
       ],
       "liveT": "In-Play (Live)",
       "live": [
@@ -573,7 +574,8 @@
         "Strict risk controls: a hard per-order cap and venue-executability checks",
         "A live, match-by-match track record — prediction, bet, result and running P&L",
         "Institutional-style PDF reports (performance and risk)",
-        "Multi-language, real-time dashboard across every model view"
+        "Multi-language, real-time dashboard across every model view",
+        "P&L, accuracy and price-track records share one source — always reconciled"
       ]
     },
     "finished": "FINISHED",
@@ -582,7 +584,9 @@
     "colBrierRaw": "Brier (raw)",
     "colBrierCal": "Brier (cal.)",
     "paramSets": "param sets",
-    "lblSweepUpdated": "Sweep last updated"
+    "lblSweepUpdated": "Sweep last updated",
+    "colRound": "Round",
+    "lblMatchday": "MD"
   },
   "sidebar": {
     "appName": "Someo Park",
