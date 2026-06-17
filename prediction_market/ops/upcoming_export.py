@@ -158,24 +158,55 @@ def _decision_quotes(kalshi_q, poly_q, k_devig, p_devig):
     return q
 
 
-def _decision_for(model, kalshi_q, poly_q, k_devig, p_devig, form_row, calib_conf, gate_open):
-    """The production pre-match DECISION for one match (decision_model.decide on the live
-    quotes), plus the $1-capped order — so the card's '怎么操作' is the SAME decision the
-    bet log + match_signals use (value side, confidence stake, no-bet when no edge)."""
-    from prediction_market.strategy.decision_model import decide
-    dq = _decision_quotes(kalshi_q, poly_q, k_devig, p_devig)
-    d = decide(model, dq, calib_confidence=calib_conf, form=form_row, gate_open=gate_open)
-    if d.side is None:
-        return {"bet": False, "side": None, "stake_usd": 0.0,
-                "net_edge": d.net_edge, "confidence_k": d.confidence_k}
-    ask = dq[d.side].ask
+def _cap_count(ask: float) -> int:
+    """Largest contract count whose notional stays within the $1 hard test cap."""
     cap = CONFIG.risk.max_test_order_usd
     cnt = max(1, int(cap / max(ask, 1e-3)))
     while cnt > 1 and cnt * ask > cap + 1e-9:
         cnt -= 1
+    return cnt
+
+
+def _decision_for(mp, model, kalshi_q, poly_q, k_devig, p_devig, form_row, calib_conf, gate_open, knockout):
+    """The production pre-match DECISION for one match — the SAME decision the bet log +
+    match_signals use, so the card's '怎么操作' matches.
+
+    GROUP: value/Kelly on the 3-way (decision_model.decide).
+    KNOCKOUT: there is NO draw — the bet settles on who ADVANCES (incl. ET/penalties), so
+    we pick the advance side (never draw) at the base stake, mirroring performance_report.
+    match_pick. Value/confidence sizing on the advance market is deferred until the
+    knockout 2-way quotes are live and verified."""
+    from prediction_market.strategy.decision_model import decide
+    dq = _decision_quotes(kalshi_q, poly_q, k_devig, p_devig)
+
+    if knockout:
+        if not gate_open:                                  # discipline gate (same as group)
+            return {"bet": False, "side": None, "stake_usd": 0.0, "net_edge": None,
+                    "confidence_k": None, "knockout": True}
+        p_adv = mp.p_home_advance
+        if p_adv is None:
+            p_adv = mp.p_home / max(mp.p_home + mp.p_away, 1e-9)
+        side = "home" if p_adv >= 0.5 else "away"          # advance pick — never "draw"
+        q = dq.get(side)
+        ask = q.ask if q else None
+        cnt = _cap_count(ask) if ask is not None else 0
+        return {"bet": True, "side": side, "venue": (q.venue if q else None),
+                "price_cents": (round(ask * 100, 1) if ask is not None else None),
+                "model_prob": round(p_adv if side == "home" else 1.0 - p_adv, 4),
+                "net_edge": None, "stake_usd": CONFIG.decision.base_stake_usd,
+                "count": cnt, "capped_notional_usd": (round(cnt * ask, 2) if ask is not None else 0.0),
+                "confidence_k": None, "knockout": True, "advance": True}
+
+    d = decide(model, dq, calib_confidence=calib_conf, form=form_row, gate_open=gate_open)
+    if d.side is None:
+        return {"bet": False, "side": None, "stake_usd": 0.0,
+                "net_edge": d.net_edge, "confidence_k": d.confidence_k, "knockout": False}
+    ask = dq[d.side].ask
+    cnt = _cap_count(ask)
     return {"bet": True, "side": d.side, "venue": d.venue, "price_cents": d.price_cents,
             "model_prob": d.model_prob, "net_edge": d.net_edge, "stake_usd": d.stake_usd,
-            "count": cnt, "capped_notional_usd": round(cnt * ask, 2), "confidence_k": d.confidence_k}
+            "count": cnt, "capped_notional_usd": round(cnt * ask, 2),
+            "confidence_k": d.confidence_k, "knockout": False}
 
 
 def _lock_arb(kalshi_q: dict | None, poly_q: dict | None) -> dict | None:
@@ -323,11 +354,15 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
                 })
             continue
         from prediction_market.util.pricing import model_cents
-        mp = price_match(sm, hi, ai)
+        ko = _is_knockout(f["round"])
+        mp = price_match(sm, hi, ai, knockout=ko)
         model = {"home": round(mp.p_home, 4), "draw": round(mp.p_draw, 4), "away": round(mp.p_away, 4),
                  "over_2_5": round(mp.p_over_2_5, 4), "btts": round(mp.p_btts, 4),
                  # per-contract ¢ view of the model's fair (= prob×100); ADD ONLY.
                  "cents": model_cents({"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away})}
+        # Knockout has NO draw — the contract settles on who ADVANCES (incl. ET/penalties).
+        if ko and mp.p_home_advance is not None:
+            model["p_home_advance"] = round(mp.p_home_advance, 4)
         et_date = _et_date(f["kickoff_ts"])
 
         bd = book.get(f["api_id"])
@@ -364,8 +399,8 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
 
         form_row = {"home_z": (fidx[hi].form_z if hi in fidx else None),
                     "away_z": (fidx[ai].form_z if ai in fidx else None)}
-        decision = _decision_for(model, kalshi_q, poly_q, k_devig, p_devig,
-                                 form_row, _calib_conf, _gate_open)
+        decision = _decision_for(mp, model, kalshi_q, poly_q, k_devig, p_devig,
+                                 form_row, _calib_conf, _gate_open, ko)
 
         out.append({
             "fixture_id": f["api_id"],
@@ -377,6 +412,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
             "home": {"id": hi, "name": name_of.get(hi, hi), "zh": zh_of.get(hi, "")},
             "away": {"id": ai, "name": name_of.get(ai, ai), "zh": zh_of.get(ai, "")},
             "model": model,
+            "knockout": ko,
             "form": {"home": (round(fidx[hi].form_z, 2) if hi in fidx else None),
                      "away": (round(fidx[ai].form_z, 2) if ai in fidx else None)},
             "book_devig": book_devig,

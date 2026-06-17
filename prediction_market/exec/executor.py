@@ -168,35 +168,42 @@ def generate_match_signals(conn=None, *, limit: int = 12) -> tuple[list[MatchSig
     cal_msg = (f"calibrated Brier {_cb} ≤ uniform {_ub} — trade-grade" if gate_open
                else f"calibrated Brier {_cb} vs uniform {_ub} — gate BLOCKS live orders")
 
+    # Use the decision ALREADY attached to each upcoming row (upcoming_export._decision_for):
+    # one source of truth → automatically knockout-correct (advance side, never draw).
     rows = upcoming_export.build(limit=limit, conn=conn)
     sigs: list[MatchSignal] = []
     for m in rows:
         if m.get("tentative") or not m.get("model"):
             continue
-        quotes = _quotes_from_upcoming(m)
-        d = decide(m["model"], quotes, calib_confidence=calib_conf, form=m.get("form"), gate_open=gate_open)
+        dec = m.get("decision") or {}
+        ko = bool(dec.get("knockout"))
+        family = "knockout_advance" if ko else "match_3way"
         label = {"home": m["home"]["name"], "draw": "Draw", "away": m["away"]["name"]}
         match_str = f'{m["home"]["name"]} v {m["away"]["name"]}'
-        if d.side is None:
+        if not dec.get("bet") or dec.get("side") is None:
             kind = "blocked:model_uncalibrated" if not gate_open else "blocked:no_edge"
             sigs.append(MatchSignal(
-                market_family="match_3way", fixture_id=m.get("fixture_id"), match=match_str,
+                market_family=family, fixture_id=m.get("fixture_id"), match=match_str,
                 kickoff=m.get("kickoff"), venue=None, side=None, side_label="—",
-                p_model=None, market_devig=None, ask=None, net_edge=d.net_edge,
-                confidence_k=d.confidence_k, target_stake_usd=0.0, count=0, capped_notional_usd=0.0,
-                kind=kind, action="HOLD", reason=d.reason))
+                p_model=None, market_devig=None, ask=None, net_edge=dec.get("net_edge"),
+                confidence_k=dec.get("confidence_k"), target_stake_usd=0.0, count=0, capped_notional_usd=0.0,
+                kind=kind, action="HOLD",
+                reason=("knockout advance — no edge/gate" if ko else "no tradable edge / gate")))
             continue
-        ask = quotes[d.side].ask
-        count = cap_count(ask)                      # HARD $1 cap on the actual order
+        side = dec["side"]
+        ask = (dec.get("price_cents") / 100.0) if dec.get("price_cents") is not None else None
+        side_label = label.get(side, side) + ("（晋级）" if ko else "")
         sigs.append(MatchSignal(
-            market_family="match_3way", fixture_id=m.get("fixture_id"), match=match_str,
-            kickoff=m.get("kickoff"), venue=d.venue, side=d.side, side_label=label[d.side],
-            p_model=d.model_prob, market_devig=d.market_prob, ask=ask, net_edge=d.net_edge,
-            confidence_k=d.confidence_k, target_stake_usd=d.stake_usd, count=count,
-            capped_notional_usd=round(count * ask, 2),
+            market_family=family, fixture_id=m.get("fixture_id"), match=match_str,
+            kickoff=m.get("kickoff"), venue=dec.get("venue"), side=side, side_label=side_label,
+            p_model=dec.get("model_prob"), market_devig=None, ask=ask, net_edge=dec.get("net_edge"),
+            confidence_k=dec.get("confidence_k"), target_stake_usd=dec.get("stake_usd", 0.0),
+            count=dec.get("count", 0), capped_notional_usd=dec.get("capped_notional_usd", 0.0),
             kind="tradable" if gate_open else "blocked:model_uncalibrated",
-            action="BUY" if gate_open else "HOLD", reason=d.reason))
-    sigs.sort(key=lambda s: -(s.net_edge or -9))
+            action="BUY" if gate_open else "HOLD",
+            reason=("knockout: bet the side we predict to ADVANCE (incl. ET/penalties)" if ko
+                    else "value pick: most-underpriced side, confidence-sized")))
+    sigs.sort(key=lambda s: -(s.net_edge if s.net_edge is not None else -9))
     return sigs, cal_msg, gate_open
 
 

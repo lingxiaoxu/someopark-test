@@ -21,7 +21,8 @@ export type UpcomingMatch = {
   round?: string;
   home: { id: string | null; name: string; zh?: string };
   away: { id: string | null; name: string; zh?: string };
-  model: (ThreeWay & { over_2_5?: number; btts?: number; cents?: ThreeWay }) | null;
+  model: (ThreeWay & { over_2_5?: number; btts?: number; cents?: ThreeWay; p_home_advance?: number }) | null;
+  knockout?: boolean;   // knockout tie: NO draw — bet/headline settle on who ADVANCES
   form?: { home?: number | null; away?: number | null } | null;
   book_devig?: ThreeWay | null;
   kalshi?: VenueQuote;
@@ -60,7 +61,9 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const home = tCountry(m.home.name), away = tCountry(m.away.name);
-  const winH = `${home} ${t('prediction.win')}`, winA = `${away} ${t('prediction.win')}`, drawL = t('prediction.drawResult');
+  // Knockout: no draw — outcomes are "advances", not "wins".
+  const verb = m.knockout ? t('prediction.advance') : t('prediction.win');
+  const winH = `${home} ${verb}`, winA = `${away} ${verb}`, drawL = t('prediction.drawResult');
   const best = m.edge?.best;
   const edgeColor = best?.tradable ? 'var(--success)' : 'var(--text-muted)';
   const Chevron = open ? ChevronDown : ChevronRight;
@@ -84,9 +87,16 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
     );
   }
 
-  // headline = the model's most likely outcome, spelled out
-  const sides: [string, number][] = [[winH, m.model.home], [drawL, m.model.draw], [winA, m.model.away]];
-  const top = sides.reduce((a, b) => (b[1] > a[1] ? b : a));
+  // headline = the model's most likely outcome, spelled out. Knockout → the side we
+  // predict to ADVANCE (incl. ET/penalties), never a draw.
+  let top: [string, number];
+  if (m.knockout && m.model.p_home_advance != null) {
+    const pa = m.model.p_home_advance;
+    top = pa >= 0.5 ? [winH, pa] : [winA, 1 - pa];
+  } else {
+    const sides: [string, number][] = [[winH, m.model.home], [drawL, m.model.draw], [winA, m.model.away]];
+    top = sides.reduce((a, b) => (b[1] > a[1] ? b : a));
+  }
 
   // Plain-language "how to trade" line, generated from the edge data so a first-time
   // user knows what to do at a glance — what to buy, why, and where to watch in-play —
