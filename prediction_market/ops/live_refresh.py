@@ -210,6 +210,14 @@ def _maybe_refresh_champion(conn) -> None:
             print(f"[live_refresh] performance PDF refresh skipped: {e}")
     except Exception as e:
         print(f"[live_refresh] performance_report refresh skipped: {e}")
+    # Recent-form (近期状态) also depends on the just-settled result (projected into
+    # nt_recent earlier this cycle), so regenerate form.json on the SAME settle event —
+    # else the form table shows stale recent results until the next daily refresh.
+    try:
+        from prediction_market.ops import form_export
+        _write_both("form.json", form_export.build(conn))
+    except Exception as e:
+        print(f"[live_refresh] form refresh skipped: {e}")
     wm.write_text(str(settled))
     top = pl["champion"][0]
     gb = pl["golden_boot"][0]
