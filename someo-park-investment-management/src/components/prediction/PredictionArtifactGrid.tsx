@@ -7,7 +7,7 @@
 import {
   Trophy, Activity, Target, GitCompare, Zap, CalendarClock, Clock,
   LineChart, ShieldAlert, Gauge, LayoutGrid, Landmark, FileText, Cpu,
-  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp, Coins,
+  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp, Coins, ChevronsUp,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,7 @@ type Item = { type: string; i18nKey: string; Icon: ComponentType<{ className?: s
 // i18nKey resolves to prediction.<key>; shared with PredictionArtifact viewer titles.
 export const PREDICTION_ITEMS: Item[] = [
   { type: 'wc_champion',      i18nKey: 'championOdds',     Icon: Trophy },
+  { type: 'wc_reach_round',   i18nKey: 'reachRound',       Icon: ChevronsUp },
   { type: 'wc_match_pricing', i18nKey: 'matchPricing',     Icon: Activity },
   { type: 'wc_golden_boot',   i18nKey: 'goldenBoot',       Icon: Target },
   { type: 'wc_squad',         i18nKey: 'squadStrength',    Icon: Users },

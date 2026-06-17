@@ -85,7 +85,8 @@ def main() -> None:
     # Regenerate every export the frontend reads, all on the CURRENT sample.
     from prediction_market.ops import (backtest_export, form_export, frontend_export,
                                        inplay_export, milestone_export, performance_report,
-                                       risk_report, squad_export, backfill_milestones, schedule_export)
+                                       risk_report, squad_export, backfill_milestones, schedule_export,
+                                       reach_round_export)
     from prediction_market.strategy.xv_monitor import compare_matches
     from prediction_market.model import oos_eval
     from prediction_market.exec import executor
@@ -112,6 +113,7 @@ def main() -> None:
         ("milestone_marks.json",   _milestones),   # PriceTrack / mark-to-market view
         ("schedule.json",          lambda: schedule_export.build(conn)),  # full group schedule
         ("match_signals.json",     lambda: executor.build_match_signals(conn)),  # daily decision-model bets ($1-capped)
+        ("reach_round.json",       lambda: reach_round_export.build(conn)),  # knockout reach-round (advance) product
     ]
     for name, fn in steps:
         try:

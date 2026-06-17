@@ -62,6 +62,10 @@
   },
   "prediction": {
     "championOdds": "夺冠概率",
+    "reachRound": "晋级盘",
+    "subReachRound": "球队「晋级到某轮」概率(模型) vs Kalshi 真实合约价 —— 无平局的晋级产品",
+    "colModelReach": "模型晋级%",
+    "reachRoundNote": "独立于单场 90 分钟盘:这是按球队的「晋级到某轮」2-way 盘(Kalshi KXWCROUND)。小组赛阶段晋级盘成交稀疏,¢ 多为「—」,临近淘汰赛才会活跃。★ = 有正向 edge。真钱仍受闸门 + $1 硬顶。",
     "matchPricing": "单场定价（胜平负）",
     "goldenBoot": "金靴",
     "modelVsMarket": "模型 vs 市场",

@@ -383,6 +383,10 @@
   },
   "prediction": {
     "championOdds": "Champion Odds",
+    "reachRound": "Reach Round",
+    "subReachRound": "Model P(team reaches round) vs live Kalshi Yes price — the no-draw advance product",
+    "colModelReach": "Model reach%",
+    "reachRoundNote": "Distinct from the per-match 90-min market: the per-team 'reach round X' 2-way market (Kalshi KXWCROUND). Thinly traded in the group stage so ¢ is often '—'; liquid nearer the knockouts. ★ = positive edge. Real money is still gated + $1-capped.",
     "matchPricing": "Match Pricing (3-way)",
     "goldenBoot": "Golden Boot",
     "modelVsMarket": "Model vs Market",

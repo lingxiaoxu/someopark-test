@@ -62,6 +62,10 @@
   },
   "prediction": {
     "championOdds": "Cotes de Champion",
+    "reachRound": "Qualif. par tour",
+    "subReachRound": "P(équipe atteint le tour) du modèle vs prix Kalshi en direct — le produit qualification sans nul",
+    "colModelReach": "Modèle qualif.%",
+    "reachRoundNote": "Distinct du marché 90 min par match : marché 2-way par équipe « atteindre le tour X » (Kalshi KXWCROUND). Peu traité en phase de groupes (¢ souvent « — »), liquide près des phases finales. ★ = edge positif. Argent réel toujours barré + plafond 1 $.",
     "matchPricing": "Cote du Match (1N2)",
     "goldenBoot": "Soulier d'Or",
     "modelVsMarket": "Modèle vs Marché",

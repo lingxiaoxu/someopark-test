@@ -54,6 +54,62 @@ def _kalshi_champ_cents() -> dict[str, float]:
     return out
 
 
+# Kalshi reach-round ("qualify for round X") series → our model's per-team round prob.
+# These are PER-TEAM 2-way Yes/No markets (NOT the per-match 90-min 3-way) — the genuine
+# "advance/no-draw" product the user asked for.
+REACH_ROUND_SERIES = {
+    "r16": "KXWCROUND-26RO16",    # reach Round of 16   → model p_r16
+    "qf": "KXWCROUND-26QUAR",     # reach Quarterfinals → model p_qf
+    "sf": "KXWCROUND-26SEMI",     # reach Semifinals    → model p_sf
+    "final": "KXWCROUND-26FINAL", # reach Final         → model p_final
+}
+
+
+def _reach_round_cents(series_ticker: str) -> dict[str, float]:
+    """{canonical_team_id: ¢} for one reach-round series. Uses last-traded price (like the
+    champion market): a team with no Yes sellers shows yes_ask=$1.00 (the cap), which is
+    not its value — last-traded / bid is the real mark."""
+    def _num(x):
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            return None
+
+    out: dict[str, float] = {}
+    from prediction_market.venues.kalshi.market_data import KalshiMarketData
+    md = KalshiMarketData()
+    for ev in md.list_events(series_ticker, status="open"):
+        for m in ev.get("markets", []):
+            tid = team_id(canonical_team_name(m.get("yes_sub_title", "") or ""))
+            if not tid:
+                continue
+            ask = _num(m.get("yes_ask_dollars"))
+            bid = _num(m.get("yes_bid_dollars"))
+            last = _num(m.get("previous_price_dollars"))
+            # Only a REAL price (0<p<1): the reach-round markets are barely traded during
+            # the group stage, so 0.00 (placeholder) and 1.00 (no-seller cap) are NOT prices.
+            price = last if (last is not None and 0.0 < last < 1.0) else None
+            if price is None and bid is not None and 0.0 < bid < 1.0:
+                price = bid
+            if price is None and ask is not None and 0.0 < ask < 0.99:
+                price = ask
+            if price is not None:
+                out[tid] = to_cents(price)
+    return out
+
+
+def reach_round_cents() -> dict[str, dict[str, float]]:
+    """{round_key: {team_id: ¢}} for r16/qf/sf/final — failure-tolerant per series."""
+    out: dict[str, dict[str, float]] = {}
+    for rk, ser in REACH_ROUND_SERIES.items():
+        try:
+            out[rk] = _reach_round_cents(ser)
+        except Exception as e:
+            print(f"[champion_prices] reach_round {rk} skipped: {e}")
+            out[rk] = {}
+    return out
+
+
 def _poly_champ_cents() -> dict[str, float]:
     """{canonical_team_id: YES ¢} from the Poly Global world-cup-winner event."""
     out: dict[str, float] = {}

@@ -10,7 +10,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
   getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
-  getWCMilestoneMarks, getWCSchedule, API_BASE,
+  getWCMilestoneMarks, getWCSchedule, getWCReachRound, API_BASE,
 } from '../../lib/api';
 import { useState } from 'react';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
@@ -84,6 +84,34 @@ function ChampionOdds() {
         rows={champ.map((c: any) => [tCountry(c.name), c.fifa_rank != null ? `#${c.fifa_rank}` : '—', c.group, pct(c.p_champion),
           cc(c.kalshi_champ_c), cc(c.poly_champ_c), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])} />
       <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.dualUnitLegend')}</div>
+    </div>
+  );
+}
+
+function ReachRound() {
+  const { t: tr } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getWCReachRound(), []);
+  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
+  const rounds = data?.rounds ?? [];
+  return (
+    <div>
+      <Title sub={tr('prediction.subReachRound')}>Reach Round</Title>
+      {rounds.map((r: any) => (
+        <div key={r.key} style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>{r.label}</div>
+          <DataTable
+            cols={[tr('prediction.team'), tr('prediction.colModelReach'), 'Kalshi¢', tr('prediction.colEdge')]}
+            rows={(r.teams ?? []).filter((t: any) => (t.model_pct ?? 0) >= 0.02).map((t: any) => [
+              tCountry(t.name),
+              <span>{pct(t.model_pct)} <span style={{ color: 'var(--text-muted)' }}>({cc(t.model_c)})</span></span>,
+              cc(t.kalshi_c),
+              t.edge != null
+                ? <span style={{ color: t.tradable ? 'var(--success)' : 'var(--text-muted)', fontWeight: t.tradable ? 700 : 400 }}>{t.edge >= 0 ? '+' : ''}{pct(t.edge, 1)}{t.tradable ? ' ★' : ''}</span>
+                : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+            ])} />
+        </div>
+      ))}
+      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.reachRoundNote')}</div>
     </div>
   );
 }
@@ -695,6 +723,7 @@ function PriceTrack() {
 const REGISTRY: Record<string, () => ReactElement> = {
   wc_pricetrack: PriceTrack,
   wc_champion: ChampionOdds,
+  wc_reach_round: ReachRound,
   wc_golden_boot: GoldenBoot,
   wc_squad: SquadStrength,
   wc_form: FormCard,

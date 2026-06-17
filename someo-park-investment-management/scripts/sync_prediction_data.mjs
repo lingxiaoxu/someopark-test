@@ -38,6 +38,7 @@ const FILES = [
   'milestone_marks.json',
   'schedule.json',
   'match_signals.json',
+  'reach_round.json',
   'performance_report.pdf',
   'risk_report.pdf',
 ];
