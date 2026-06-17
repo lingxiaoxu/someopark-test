@@ -102,11 +102,19 @@ export default function Sidebar({
             cursor: 'pointer',
           }}
         >
-          <Trophy className="w-4 h-4" style={{ color: appMode === 'prediction' ? '#111' : '#fff' }} />
+          {/* The button shows the DESTINATION mode (where a click takes you): in
+              prediction mode it reads "AI Quant Strategy" (click → back to stocks);
+              in stock mode it reads "Prediction Market" (click → World Cup). Label only;
+              onToggleAppMode is unchanged. */}
+          {appMode === 'prediction'
+            ? <Brain className="w-4 h-4" style={{ color: '#111' }} />
+            : <Trophy className="w-4 h-4" style={{ color: '#fff' }} />}
           <div className="flex flex-col items-start flex-1">
-            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('sidebar.predictionMarket')}</span>
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+              {appMode === 'prediction' ? t('sidebar.aiQuant') : t('sidebar.predictionMarket')}
+            </span>
             <span style={{ fontSize: '10px', color: appMode === 'prediction' ? '#555' : '#ccc' }}>
-              {appMode === 'prediction' ? t('sidebar.wcLive') : t('sidebar.wcSwitch')}
+              {appMode === 'prediction' ? t('sidebar.aiQuantSwitch') : t('sidebar.wcSwitch')}
             </span>
           </div>
         </button>

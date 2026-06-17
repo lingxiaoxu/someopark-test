@@ -282,7 +282,9 @@
     "aboutClawLocal": "Local",
     "aboutClawLocalDesc": "OpenClaw auto-heberge",
     "aboutDevTitle": "À propos du développeur",
-    "aboutDevBio": "Lingxiao était Stratégiste Quantitatif Senior, Vice-Président (VP) chez Goldman Sachs, titulaire d'un MBA de la Yale School of Management et diplômé du département IEOR de la Columbia School of Engineering. Auparavant, Lingxiao a géré des opérations au sein du groupe Equity Structured Derivatives chez UBS Investment Bank et a également travaillé chez Bank of America Merrill Lynch. Lingxiao est le Champion du Goldman Sachs Global Engineering Hackathon en 2024 et a été récompensé au GDPS 2026 (Conférence mondiale des pionniers du développement 2026, Shanghai) lors du hackathon mondial pour une application AI Agentic."
+    "aboutDevBio": "Lingxiao était Stratégiste Quantitatif Senior, Vice-Président (VP) chez Goldman Sachs, titulaire d'un MBA de la Yale School of Management et diplômé du département IEOR de la Columbia School of Engineering. Auparavant, Lingxiao a géré des opérations au sein du groupe Equity Structured Derivatives chez UBS Investment Bank et a également travaillé chez Bank of America Merrill Lynch. Lingxiao est le Champion du Goldman Sachs Global Engineering Hackathon en 2024 et a été récompensé au GDPS 2026 (Conférence mondiale des pionniers du développement 2026, Shanghai) lors du hackathon mondial pour une application AI Agentic.",
+    "aiQuant": "Stratégie quant IA",
+    "aiQuantSwitch": "Revenir aux actions"
   },
   "chat": {
     "currentRuntime": "Environnement actuel :",
