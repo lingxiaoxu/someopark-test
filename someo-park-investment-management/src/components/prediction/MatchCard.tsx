@@ -82,6 +82,30 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   const sides: [string, number][] = [[winH, m.model.home], [drawL, m.model.draw], [winA, m.model.away]];
   const top = sides.reduce((a, b) => (b[1] > a[1] ? b : a));
 
+  // Plain-language "how to trade" line, generated from the edge data so a first-time
+  // user knows what to do at a glance — what to buy, why, and where to watch in-play —
+  // instead of decoding "edge: kalshi/draw +8.7%". Tradable+positive → a concrete BUY;
+  // otherwise → sit out. Either way, point to the in-play view once the match starts.
+  const sideLabelMap: Record<string, string> = { home: winH, draw: drawL, away: winA };
+  const venueLabelMap: Record<string, string> = { kalshi: 'Kalshi', poly_us: 'Polymarket US', poly: 'Polymarket US' };
+  const buildAdvice = (): string => {
+    const inplay = t('prediction.adviceInplay');
+    if (best && best.tradable && best.net_edge > 0) {
+      const q = best.venue === 'kalshi' ? m.kalshi : m.poly_us;
+      const side = best.side as 'home' | 'draw' | 'away';
+      const c = q?.[side]?.ask_c ?? q?.[side]?.mid_c ?? null;
+      const mp = (m.model as ThreeWay)[side];
+      return t('prediction.adviceBuy', {
+        venue: venueLabelMap[best.venue] ?? best.venue,
+        side: sideLabelMap[best.side] ?? best.side,
+        cents: c != null ? Math.round(c) : '—',
+        model: mp != null ? Math.round(mp * 100) : '—',
+        edge: (best.net_edge * 100).toFixed(1),
+      }) + ' ' + inplay;
+    }
+    return t('prediction.adviceHold') + ' ' + inplay;
+  };
+
   // one labelled 3-way row (probabilities or venue prices), team names spelled out.
   // hc/dc/ac (optional) render the per-contract ¢ alongside in parentheses.
   const Line = ({ label, h, d, a, fmt, hc, dc, ac }: { label: string; h?: number | null; d?: number | null; a?: number | null; fmt: (v?: number | null) => string; hc?: number | null; dc?: number | null; ac?: number | null }) => {
@@ -120,6 +144,10 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
 
       {open && (
         <>
+          <div style={{ marginTop: 4, padding: '6px 8px', border: `1px solid ${best?.tradable ? 'var(--success)' : 'var(--border-subtle)'}`, background: 'var(--bg-tertiary)', fontSize: 11, fontFamily: 'var(--font-mono)', lineHeight: 1.5 }}>
+            <span style={{ color: best?.tradable ? 'var(--success)' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>{t('prediction.adviceLabel')}</span>
+            <span style={{ color: 'var(--text-primary)' }}> · {buildAdvice()}</span>
+          </div>
           <Line label={t('prediction.ourPrediction')} h={m.model.home} d={m.model.draw} a={m.model.away} fmt={pct}
             hc={m.model.cents?.home} dc={m.model.cents?.draw} ac={m.model.cents?.away} />
           {(m.model.over_2_5 != null || m.model.btts != null) && (
