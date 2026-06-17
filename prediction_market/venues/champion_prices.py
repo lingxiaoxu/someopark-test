@@ -20,7 +20,19 @@ from prediction_market.util.pricing import to_cents
 
 
 def _kalshi_champ_cents() -> dict[str, float]:
-    """{canonical_team_id: yes_ask ¢} from the Kalshi WC-winner event."""
+    """{canonical_team_id: champion ¢} from the Kalshi WC-winner event.
+
+    Use the LAST-TRADED price (`previous_price_dollars`) as the contract value, not the
+    raw `yes_ask`: a no-hoper team has NO YES sellers, so Kalshi reports yes_ask = $1.00
+    (the cap) — which is not its value (~1–10¢). Last-traded matches Poly's current-price
+    semantics. Fall back to the bid / a sane mid when there's no last price.
+    """
+    def _num(x):
+        try:
+            return float(x)
+        except (TypeError, ValueError):
+            return None
+
     out: dict[str, float] = {}
     from prediction_market.venues.kalshi.discovery import CHAMPION_SERIES
     from prediction_market.venues.kalshi.market_data import KalshiMarketData
@@ -28,9 +40,17 @@ def _kalshi_champ_cents() -> dict[str, float]:
     for ev in md.list_events(CHAMPION_SERIES, status="open"):
         for m in ev.get("markets", []):
             tid = team_id(canonical_team_name(m.get("yes_sub_title", "") or ""))
-            ask = m.get("yes_ask_dollars")
-            if tid and ask is not None:
-                out[tid] = to_cents(float(ask))
+            if not tid:
+                continue
+            ask = _num(m.get("yes_ask_dollars"))
+            bid = _num(m.get("yes_bid_dollars"))
+            last = _num(m.get("previous_price_dollars"))
+            # prefer last-traded; else the bid; else the ask only if it's a real offer (<$1).
+            price = last
+            if price is None:
+                price = bid if bid else (ask if (ask is not None and ask < 0.99) else None)
+            if price is not None:
+                out[tid] = to_cents(price)
     return out
 
 
