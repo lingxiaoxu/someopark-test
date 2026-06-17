@@ -159,7 +159,7 @@ set -a && source prediction_market/.env && set +a && \
 |------|------|
 | `model/strength.py` | 队伍强度底座：FIFA 排名 → 评分，**反解拟合**到先验期望积分（坐标下降 + Dixon‑Coles 解析） |
 | `model/dixon_coles.py` | 单场内核：双泊松 + 低分相关修正 → 比分矩阵 → 胜平负/总进球/双方进球/晋级（含加时+点球） |
-| `model/tournament.py` | 蒙特卡洛锦标赛（2026 48 队赛制，best‑8‑thirds），向量化 → 冠军/晋级/各轮/E[场次]（快查 50k；生产 1M） |
+| `model/tournament.py` | 锦标赛模拟（2026 48 队赛制，best‑8‑thirds），向量化 → 冠军/晋级/各轮/E[场次]（快查 50k；生产 1M） |
 | `model/golden_boot.py` | 金靴嵌套模拟：球员进球与球队走多远相关（同一批路径），Poisson(μ×已打场次) |
 | `model/inplay.py` | 赛中实时模型（分钟+比分+红牌 → 实时胜平负、公平平局价、剩余进球），驱动赛中交易 |
 | `model/match_pricing.py` | 单场定价：从比分矩阵导出任意单场市场（小组 72 场全量） |
@@ -306,7 +306,7 @@ conda run -n someopark_run --no-capture-output python -m pytest prediction_marke
 | 数据 | `ingest.bootstrap` | 一次性拉全量（球队/球员/对阵/赛程），建增量水位 |
 | 数据 | `ingest.refresh` | 增量刷新（赛果、比分、live 状态） |
 | 预测 | `model.match_pricing` | 单场 3‑way 公允价（主/平/客），含点球大战建模 |
-| 预测 | `model.tournament` | 蒙特卡洛冠军概率（48 队） |
+| 预测 | `model.tournament` | 模拟冠军概率（48 队） |
 | 预测 | `model.golden_boot` | 金靴（进球王）概率 |
 | 策略 | `strategy.compare` | 模型 vs 市场偏离扫描（赛前） |
 | 策略 | `strategy.inplay_arb` | 盘中每分钟：套利 / 相对价值 / 战术 |

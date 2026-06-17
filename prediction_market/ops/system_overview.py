@@ -32,7 +32,7 @@ INTERFACES = [
     ("数据", "ingest.bootstrap", "一次性拉全量(球队/球员/对阵/赛程),建立增量水位"),
     ("数据", "ingest.refresh", "增量刷新(赛果、比分、live 状态)"),
     ("预测", "model.match_pricing", "单场 3-way 公允价(主/平/客),含点球大战建模"),
-    ("预测", "model.tournament", "蒙特卡洛冠军概率(48 队)"),
+    ("预测", "model.tournament", "模拟冠军概率(48 队)"),
     ("预测", "model.golden_boot", "金靴(进球王)球员概率"),
     ("策略", "strategy.compare", "模型 vs 市场偏离扫描(赛前)"),
     ("策略", "strategy.inplay_arb", "盘中每分钟:套利 / 相对价值 / 战术"),
