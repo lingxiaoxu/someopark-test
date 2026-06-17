@@ -7,7 +7,7 @@
 import {
   Trophy, Activity, Target, GitCompare, Zap, CalendarClock, Clock,
   LineChart, ShieldAlert, Gauge, LayoutGrid, Landmark, FileText, Cpu,
-  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp,
+  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp, Coins,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +24,7 @@ export const PREDICTION_ITEMS: Item[] = [
   { type: 'wc_form',          i18nKey: 'recentForm',       Icon: TrendingUp },
   { type: 'wc_divergence',    i18nKey: 'modelVsMarket',    Icon: GitCompare },
   { type: 'wc_inplay',        i18nKey: 'inPlayArb',        Icon: Zap },
+  { type: 'wc_pricetrack',    i18nKey: 'priceTrack',       Icon: Coins },
   { type: 'wc_predictions',   i18nKey: 'todaysPredictions', Icon: CalendarClock },
   { type: 'wc_schedule',      i18nKey: 'schedule',         Icon: Clock },
   { type: 'wc_performance',   i18nKey: 'accuracyPnl',      Icon: LineChart },

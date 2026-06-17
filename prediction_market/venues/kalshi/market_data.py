@@ -83,3 +83,36 @@ class KalshiMarketData:
     def get_orderbook(self, ticker: str) -> OrderBook:
         payload = self._get(f"/markets/{ticker}/orderbook")
         return best_prices(payload, market_key=ticker)
+
+    def candlesticks(self, series_ticker: str, ticker: str, start_ts: int, end_ts: int,
+                     period_interval: int = 1) -> list[dict]:
+        """Historical OHLC price bars for a market (plan 18 §2.4b). Public, no auth.
+
+        period_interval is the bar size in minutes (1 / 60 / 1440). Returns
+        [{"ts","ask","bid","last","vol"}] (prices 0–1), ascending by time — usable
+        to reconstruct any past minute's contract price even after the event closed
+        (the live event index only lists OPEN markets, but candlesticks persist).
+        """
+        path = f"/series/{series_ticker}/markets/{ticker}/candlesticks"
+        payload = self._get(path, {"start_ts": int(start_ts), "end_ts": int(end_ts),
+                                   "period_interval": period_interval})
+
+        def _d(node, *keys):
+            for k in keys:
+                if isinstance(node, dict) and k in node and node[k] is not None:
+                    try:
+                        return float(node[k])
+                    except (TypeError, ValueError):
+                        return None
+            return None
+
+        out = []
+        for c in payload.get("candlesticks") or []:
+            ts = c.get("end_period_ts") or c.get("ts")
+            ask = _d(c.get("yes_ask") or {}, "close_dollars", "close")
+            bid = _d(c.get("yes_bid") or {}, "close_dollars", "close")
+            last = _d(c.get("price") or {}, "close_dollars", "previous_dollars", "mean_dollars")
+            vol = _d(c, "volume_fp", "volume")
+            if ts is not None:
+                out.append({"ts": int(ts), "ask": ask, "bid": bid, "last": last, "vol": vol})
+        return out

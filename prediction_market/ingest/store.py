@@ -178,6 +178,21 @@ CREATE TABLE IF NOT EXISTS calibration (
     run_ts TEXT, metric TEXT, value REAL, n INTEGER, detail_json TEXT,
     PRIMARY KEY (run_ts, metric)
 );
+CREATE TABLE IF NOT EXISTS milestone_snapshot (
+    fixture_api_id INTEGER, milestone TEXT, ts TEXT,
+    elapsed INTEGER, status_short TEXT, home_goals INTEGER, away_goals INTEGER,
+    p_model_home REAL, p_model_draw REAL, p_model_away REAL,
+    kalshi_home_ask REAL, kalshi_home_bid REAL, kalshi_draw_ask REAL, kalshi_draw_bid REAL,
+    kalshi_away_ask REAL, kalshi_away_bid REAL,
+    poly_home_ask REAL, poly_home_bid REAL, poly_draw_ask REAL, poly_draw_bid REAL,
+    poly_away_ask REAL, poly_away_bid REAL,
+    devig_home REAL, devig_draw REAL, devig_away REAL,
+    xg_home REAL, xg_away REAL, reds_home INTEGER, reds_away INTEGER,
+    kalshi_ticker_home TEXT, kalshi_ticker_draw TEXT, kalshi_ticker_away TEXT,
+    poly_token_home TEXT, poly_token_draw TEXT, poly_token_away TEXT,
+    price_source TEXT,
+    PRIMARY KEY (fixture_api_id, milestone)
+);
 CREATE INDEX IF NOT EXISTS ix_fixture_status ON fixture (status_short);
 CREATE INDEX IF NOT EXISTS ix_fixture_kickoff ON fixture (kickoff_ts);
 CREATE INDEX IF NOT EXISTS ix_api_call_ts ON api_call (ts);

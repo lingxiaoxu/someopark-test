@@ -101,6 +101,31 @@ def _last_event(conn, fixture_row, etype: str, hi: str, ai: str, *, detail_like:
     return (side, r["minute"])
 
 
+def _goal_on_board(conn, fixture_row, hi: str, ai: str, side: str, gh: int, ga: int) -> bool:
+    """True if `side`'s latest goal event is actually reflected on the scoreboard.
+
+    A goal can be disallowed (VAR / offside) or corrected by the feed AFTER its
+    event row is written: the fixture_event row stays, but home_goals/away_goals
+    revert. We count that side's (non-own-goal) goal events and require it to be
+    ≤ the goals showing on the board — otherwise the latest event is a phantom
+    goal and the goal-driven tactics must ignore it.
+    """
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    target = hi if side == "home" else ai
+    n_events = 0
+    for r in conn.execute(
+        "SELECT team_api_id, detail FROM fixture_event WHERE fixture_api_id=? AND type='Goal'",
+        (fixture_row["api_id"],),
+    ):
+        if (r["detail"] or "") == "Own Goal":
+            continue
+        if cmap.get(r["team_api_id"]) == target:
+            n_events += 1
+    on_board = gh if side == "home" else ga
+    return n_events <= on_board
+
+
 def live_fair(conn, sm, fixture_row) -> tuple[LiveMatchProb, dict]:
     """xG-shaded live fair prices for one fixture (intra-game stats → price)."""
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
@@ -155,6 +180,13 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
         # Event-driven context: pre-match favourite, the latest goal + red card, KO flag.
         fav_side, fav_prob = _prematch_favourite(sm, hi, ai)
         last_goal_side, last_goal_min = _last_event(conn, fx, "Goal", hi, ai)
+        # Score-consistency guard: a goal can be chalked off (VAR / offside / feed
+        # correction) AFTER its event row was written — the event lingers but the
+        # scoreboard reverts. Only treat the latest goal as "recent" if the scoring
+        # side's goal-event count matches the goals actually on the board; otherwise
+        # the goal-driven tactics (overreaction fade) would fire on a disallowed goal.
+        if last_goal_side and not _goal_on_board(conn, fx, hi, ai, last_goal_side, gh, ga):
+            last_goal_side, last_goal_min = None, None
         carded_side, card_min = _last_event(conn, fx, "Card", hi, ai, detail_like="%Red%")
         knockout = _is_knockout(fx["round"])
 

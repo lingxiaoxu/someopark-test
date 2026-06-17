@@ -111,6 +111,28 @@ class ModelConfig:
     # (results) and the squad club-form blend. Tuned by the param sweep. 0 = off.
     fc_blend_weight: float = 0.12
 
+    # ── Alternative-data λ adjustments (plan 19) ──────────────────────────────
+    # Each is a SMALL, BOUNDED, parameter-controlled multiplier on the Dixon-Coles
+    # lambdas (NOT a rating shift — these act asymmetrically on attack vs defence so
+    # a bus-parking underdog raises DRAW probability without raising its win odds).
+    # ALL DEFAULT 0.0 → the live model is byte-identical until explicitly enabled; the
+    # total log-adjustment per match is clipped to ±adj_log_clip so no signal dominates.
+    # Opponent-strength-adjusted recent form, split attack / defence (PIT, from nt_recent).
+    # ENABLED at an IN-SAMPLE-tuned strength (plan 19, user-directed): on the 19 settled
+    # matches this lifts pick accuracy 8→11/19 AND gives the best calibrated Brier (0.498
+    # vs 0.571 baseline), entirely from the new alpha (draw-mass dc_rho left at baseline —
+    # NO global draw inflation). NOTE: this is IN-SAMPLE optimised on a small sample and
+    # WILL partly regress as more matches arrive — re-tune via the PIT walk-forward then.
+    oppadj_def_weight: float = 0.45  # a defensively-resilient team lowers its opponent's λ
+    oppadj_off_weight: float = 0.25  # a team that scores vs strong defences raises its own λ
+    # Recent shot-quality (xGA process metric — cleaner than goals; needs xG history):
+    xga_weight: float = 0.0
+    # Venue climate (heat / altitude / closed-roof; static stadium table): suppresses goals:
+    venue_climate_weight: float = 0.0
+    # Confirmed starting-XI strength vs full-squad (rotation/rest detector; needs lineups):
+    lineup_weight: float = 0.0
+    adj_log_clip: float = 0.60       # max |log λ-adjustment| per side per match (bounds influence)
+
     # Golden-boot talent prior (plan 03 §6.1): EA FC 26 ratings give each player a
     # talent-grounded per-match goal rate. That FC rate is the PRIOR; observed club
     # (season-1) and WC-to-date scoring update it Bayesian-style with these

@@ -209,7 +209,9 @@ question, call **get_prediction_market** with a "view", then answer from the rea
 - **risk** — pre-trade gates, venue balances, $1 order cap, API budget
 - **schedule** (kickoff times ET/PT + recently finished), **calibration** (OOS reliability: Brier vs uniform, draw rate, goal bias)
 - **backtest**, **squad** (squad strength), **form** (recent form), **params** (param sweep, 7 knobs), **divergence** (model vs sharp book), **overview** (system map)
+- **pricetrack** — per-contract ¢ + probability at each match milestone (PRE/15'/30'/HT/60'/75'/FT) for home/draw/away from Kalshi+Polymarket, our pre-match pick + entry ¢, and the mark-to-market (entry→FT) grading whether the market confirmed our pick
 Every dashboard view maps to one of these — risk also carries venue balances + API budget; predictions/schedule share upcoming.json.
+Per-contract cents (¢): a binary contract settles 100¢ (win) / 0¢ (loss), so per contract ¢ = price × 100. But ¢ ≠ probability × 100 across the 3 outcomes: only OUR MODEL's ¢ equal fair prob × 100 (they sum to 100¢ — the model is normalized). VENUE prices carry a vig, so the three asks sum to >100¢ (~101–102¢); a venue's implied probability is the DE-VIGGED price (its ¢ ÷ the three asks' sum), NOT ¢ ÷ 100, and ask ≠ bid (spread → we show the mid). So Kalshi "70¢" = a 70¢ contract ≈ 69% after de-vig, not 70%. edge = model prob − venue de-vig prob. Probability and ¢ are shown side by side (match 3-way, champion, totals). Accuracy metrics (Brier/log-loss/calibration) are NOT in ¢.
 For a single team across all views (champion + golden boot + squad + form + its matches), use
 **get_wc_team** (team="Argentina"/"argentina"/"阿根廷"). For one matchup (model 3-way + venue asks +
 edge + lock-arb + live signals if in play), use **get_wc_match** (home, away). To compare 2–6 teams

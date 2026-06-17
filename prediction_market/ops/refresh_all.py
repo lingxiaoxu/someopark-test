@@ -81,11 +81,20 @@ def main() -> None:
 
     # Regenerate every export the frontend reads, all on the CURRENT sample.
     from prediction_market.ops import (backtest_export, form_export, frontend_export,
-                                       inplay_export, performance_report, risk_report,
-                                       squad_export)
+                                       inplay_export, milestone_export, performance_report,
+                                       risk_report, squad_export, backfill_milestones)
     from prediction_market.strategy.xv_monitor import compare_matches
     from prediction_market.model import oos_eval
     from dataclasses import asdict
+
+    def _milestones():
+        # Backfill any newly-finished matches' price tracks from venue history, then export.
+        try:
+            backfill_milestones.backfill(conn)
+        except Exception as e:
+            print(f"    (milestone backfill skipped: {e})")
+        return milestone_export.build(conn)
+
     steps = [
         ("backtest.json",          lambda: backtest_export.build(conn)),
         ("squad.json",             lambda: squad_export.build(conn)),
@@ -96,6 +105,7 @@ def main() -> None:
         ("oos_report.json",        lambda: asdict(oos_eval.evaluate(conn=conn))),  # calibration view
         ("performance_report.json", lambda: asdict(performance_report.build(conn))),
         ("risk_report.json",       lambda: asdict(risk_report.build(conn))),
+        ("milestone_marks.json",   _milestones),   # PriceTrack / mark-to-market view
     ]
     for name, fn in steps:
         try:
@@ -114,6 +124,29 @@ def main() -> None:
         print(f"  ✓ worldcup_model.json (champion refreshed — leader {top['name']} {top['p_champion']:.1%})")
     except Exception as e:
         print(f"  ✗ worldcup_model.json: {e}")
+
+    # Champion model-vs-market divergence (xv_champion.json) — the Champion-Divergence
+    # view; compare_champion writes the file itself.
+    try:
+        from prediction_market.strategy.xv_monitor import compare_champion
+        compare_champion()
+        print("  ✓ xv_champion.json")
+    except Exception as e:
+        print(f"  ✗ xv_champion.json: {e}")
+
+    # Render the PDF reports (the "下载报告" view) from the SAME just-built reports, to
+    # BOTH dirs, so the full pipeline keeps the PDFs current — not just live_refresh.
+    try:
+        import shutil
+        from prediction_market.ops import performance_report as _pr, risk_report as _rr
+        for mod, name in ((_pr, "performance_report.pdf"), (_rr, "risk_report.pdf")):
+            rep = mod.build(conn)
+            out = CONFIG.paths.output / name
+            mod.build_pdf(rep, str(out))
+            shutil.copyfile(out, CONFIG.paths.frontend_data / name)
+        print("  ✓ performance_report.pdf + risk_report.pdf")
+    except Exception as e:
+        print(f"  ✗ report PDFs: {e}")
 
     if args.with_sweep:
         try:

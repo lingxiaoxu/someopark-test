@@ -170,7 +170,9 @@ def run(conn=None, *, sweeps: int = 30) -> dict:
     best = results[0] if results else None
     n_beat = sum(1 for r in results if r["brier_cal"] < uni)
 
+    from datetime import datetime, timezone
     return {
+        "generated_at": datetime.now(timezone.utc).isoformat(),   # "last updated" stamp
         "n_settled": n,
         "n_param_sets": len(combos),
         "grid": GRID,
@@ -232,11 +234,76 @@ def loocv(conn=None, *, sweeps: int = 25) -> dict:
             "loocv_baseline": _score(base_probs, sel_outs)}
 
 
+def walk_forward(conn=None, *, start: int = 6, candidates=None) -> dict:
+    """Honest PIT walk-forward for the alt-data λ weights (plan 19).
+
+    Unlike `run()` (which selects in-sample and whose form anchor isn't point-in-time),
+    this evaluates each FIXED weight candidate on the chronological OUT-OF-SAMPLE tail
+    with strictly point-in-time features (form / alt-data cut at each match's kickoff).
+    It does NOT fit the weight per step — at small N that overfits (proven); instead it
+    asks "does this fixed small prior generalise on matches it never saw?". The alt-data
+    weights stay a fixed bounded prior until N is large enough to fit them safely.
+    """
+    from dataclasses import replace
+    from prediction_market.ingest import store
+    from prediction_market.ingest.prior_ingest import load_prior
+    from prediction_market.model.altdata_adjust import altdata_index
+    from prediction_market.model.match_pricing import price_match
+    from prediction_market.model.probability_calibration import load_calibration, apply_calibration
+    from prediction_market.model.squad_strength import build_strength_live
+
+    conn = conn or store.init_db()
+    prior = load_prior()
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    rows = conn.execute(
+        "SELECT home_api_id, away_api_id, home_goals, away_goals, round, kickoff_ts "
+        "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL "
+        "ORDER BY kickoff_ts".format(",".join("?" * len(_FINISHED))), _FINISHED).fetchall()
+    matches = [(cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"]), r["kickoff_ts"], r["round"],
+                0 if r["home_goals"] > r["away_goals"] else (1 if r["home_goals"] == r["away_goals"] else 2))
+               for r in rows if cmap.get(r["home_api_id"]) and cmap.get(r["away_api_id"])]
+    cal = load_calibration()
+    candidates = candidates or [
+        {"label": "baseline", "oppadj_def_weight": 0.0, "oppadj_off_weight": 0.0},
+        {"label": "oppadj-prior", "oppadj_def_weight": 0.10, "oppadj_off_weight": 0.15},
+        {"label": "oppadj-off-only", "oppadj_def_weight": 0.0, "oppadj_off_weight": 0.18},
+    ]
+    from prediction_market.model.match_pricing import is_knockout
+    res = []
+    for c in candidates:
+        cfg = replace(CONFIG.model, oppadj_def_weight=c["oppadj_def_weight"], oppadj_off_weight=c["oppadj_off_weight"])
+        probs, outs = [], []
+        for hi, ai, ko_ts, rnd, o in matches[start:]:
+            # PIT: ratings + alt-data computed only from data strictly before this kickoff.
+            sm = build_strength_live(conn, prior, cfg)
+            if cfg.oppadj_def_weight or cfg.oppadj_off_weight:
+                sm = replace(sm, adj=altdata_index(conn, sm.ratings, as_of=ko_ts))
+            mp = price_match(sm, hi, ai, knockout=is_knockout(rnd))
+            probs.append(apply_calibration([mp.p_home, mp.p_draw, mp.p_away], cal, knockout=is_knockout(rnd)))
+            outs.append(o)
+        s = _score(probs, outs)
+        res.append({**{k: v for k, v in c.items()}, "brier_cal": round(s["brier"], 4), "acc": round(s["acc"], 3), "n": s["n"]})
+    return {"n_oos": len(matches) - start, "start": start, "candidates": res,
+            "note": ("Honest PIT walk-forward over the OOS tail (features cut at each kickoff). "
+                     "Alt-data weights are a FIXED bounded prior, NOT fit per-step (small-N fitting "
+                     "overfits). Promote a candidate to CONFIG only if it beats baseline here AND as N grows.")}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="PIT parameter sweep on settled WC matches")
+    ap.add_argument("--walk-forward", action="store_true", help="honest PIT walk-forward of the alt-data λ weights")
     ap.add_argument("--loocv", action="store_true", help="also run leave-one-out generalization estimate (slow)")
     ap.add_argument("--sweeps", type=int, default=30, help="coordinate-descent sweeps per rating fit")
     args = ap.parse_args()
+
+    if args.walk_forward:
+        wf = walk_forward()
+        print(f"PIT WALK-FORWARD — {wf['n_oos']} OOS matches (features cut at each kickoff)")
+        for c in wf["candidates"]:
+            print(f"  {c['label']:16} Brier_cal {c['brier_cal']}  acc {c['acc']}  "
+                  f"(def={c['oppadj_def_weight']} off={c['oppadj_off_weight']})")
+        return
 
     doc = run(sweeps=args.sweeps)
     if args.loocv and doc["n_settled"] >= 4:

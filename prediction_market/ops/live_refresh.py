@@ -75,6 +75,84 @@ def _append_review_log(inplay: dict, synced: int) -> None:
             f.write("\n".join(lines) + "\n")
 
 
+# In-play milestone minute thresholds (FT/PRE are filled by backfill_milestones).
+_MILESTONE_MIN = [("T15", 15), ("T30", 30), ("HT", 45), ("T60", 60), ("T75", 75)]
+
+
+def _capture_milestones(conn, inplay: dict) -> int:
+    """Record a milestone_snapshot row the first time a live match crosses each
+    minute threshold (plan 18 §2.3) — captures the live model + Kalshi/Poly book at
+    that instant. Idempotent (INSERT OR IGNORE on (fixture, milestone)). PRE/FT are
+    reconstructed by ops.backfill_milestones from venue history."""
+    n = 0
+    for m in inplay.get("matches", []):
+        fid = m.get("fixture_id")
+        minute = m.get("minute") or 0
+        st = m.get("status")
+        try:
+            gh, ga = (int(x) for x in str(m.get("score", "0-0")).split("-"))
+        except Exception:
+            gh, ga = None, None
+        model = m.get("model") or {}
+        prices = m.get("prices") or {}
+        kq, pq = prices.get("kalshi") or {}, prices.get("poly_us") or {}
+
+        def ab(q, side):  # (ask, bid) from a {side:{ask,bid}} venue block
+            s = (q or {}).get(side) or {}
+            return s.get("ask"), s.get("bid")
+
+        for code, thr in _MILESTONE_MIN:
+            # Capture only when the match is NEAR the threshold (within GRACE minutes),
+            # not whenever minute >= thr — otherwise a late start (e.g. first poll at 64')
+            # would back-stamp T15/T30/… with stale current data. Milestones we miss live
+            # are filled accurately from venue price history by backfill_milestones.
+            _GRACE = 8
+            reached = (st == "HT") if code == "HT" else (thr <= minute <= thr + _GRACE)
+            if not reached:
+                continue
+            if conn.execute("SELECT 1 FROM milestone_snapshot WHERE fixture_api_id=? AND milestone=?",
+                            (fid, code)).fetchone():
+                continue
+            kh, khb = ab(kq, "home"); kd, kdb = ab(kq, "draw"); ka, kab = ab(kq, "away")
+            ph, phb = ab(pq, "home"); pd_, pdb = ab(pq, "draw"); pa, pab = ab(pq, "away")
+            conn.execute(
+                "INSERT OR IGNORE INTO milestone_snapshot "
+                "(fixture_api_id, milestone, ts, elapsed, status_short, home_goals, away_goals, "
+                " p_model_home, p_model_draw, p_model_away, "
+                " kalshi_home_ask, kalshi_home_bid, kalshi_draw_ask, kalshi_draw_bid, kalshi_away_ask, kalshi_away_bid, "
+                " poly_home_ask, poly_home_bid, poly_draw_ask, poly_draw_bid, poly_away_ask, poly_away_bid, "
+                " price_source) VALUES (?,?,?,?,?,?,?, ?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?)",
+                (fid, code, datetime.now(timezone.utc).isoformat(), minute, st, gh, ga,
+                 model.get("home"), model.get("draw"), model.get("away"),
+                 kh, khb, kd, kdb, ka, kab, ph, phb, pd_, pdb, pa, pab, "live"))
+            n += 1
+    if n:
+        conn.commit()
+    return n
+
+
+def _maybe_backfill_milestones(conn) -> bool:
+    """Backfill PRE→FT price tracks for any SETTLED match still missing its FT
+    milestone row, retrying each cycle until the venue's price history is available.
+
+    Decoupled from the champion watermark on purpose: a just-finished match can lag
+    in Polymarket's catalog for a while, so a single on-settle attempt often finds
+    nothing. This cheap DB guard (only runs when a settled match lacks an FT row)
+    keeps retrying until the history shows up, then naturally goes quiet.
+    """
+    missing = conn.execute(
+        "SELECT COUNT(*) n FROM fixture f "
+        "WHERE f.status_short IN ('FT','AET','PEN') AND f.home_goals IS NOT NULL "
+        "AND NOT EXISTS (SELECT 1 FROM milestone_snapshot m "
+        "                WHERE m.fixture_api_id=f.api_id AND m.milestone='FT')"
+    ).fetchone()["n"]
+    if not missing:
+        return False
+    from prediction_market.ops import backfill_milestones
+    backfill_milestones.backfill(conn)
+    return True
+
+
 def _maybe_refresh_risk(conn) -> None:
     """Regenerate risk_report.json (Venues & Gates view) at most every ~10 min — its
     venue balances are live Kalshi/Poly API calls, so we throttle to avoid spamming."""
@@ -113,6 +191,25 @@ def _maybe_refresh_champion(conn) -> None:
         print(f"[live_refresh] topscorers refresh skipped: {e}")
     from prediction_market.model.run_model import refresh_champion
     pl = refresh_champion()
+    # A match just settled → regenerate the performance/PnL report too, so the
+    # Accuracy & P&L view (and the PDF) update on the SAME settle event as the price
+    # track (both derive win/loss from performance_report.match_pick → they reconcile).
+    try:
+        from dataclasses import asdict
+        from prediction_market.ops import performance_report
+        rep = performance_report.build(conn)
+        _write_both("performance_report.json", asdict(rep))
+        # Re-render the PnL report PDF too (the "下载报告" view) from the SAME report,
+        # so the JSON views and the PDF never disagree after a match settles.
+        try:
+            import shutil
+            pdf = CONFIG.paths.output / "performance_report.pdf"
+            performance_report.build_pdf(rep, str(pdf))
+            shutil.copyfile(pdf, CONFIG.paths.frontend_data / "performance_report.pdf")
+        except Exception as e:
+            print(f"[live_refresh] performance PDF refresh skipped: {e}")
+    except Exception as e:
+        print(f"[live_refresh] performance_report refresh skipped: {e}")
     wm.write_text(str(settled))
     top = pl["champion"][0]
     gb = pl["golden_boot"][0]
@@ -151,6 +248,17 @@ def refresh_once(conn=None) -> dict:
     inplay = inplay_export.build(conn, with_venues=True)
     _write_both("inplay_live.json", inplay)
     _append_review_log(inplay, synced)
+    # Record per-milestone price/prob snapshots as live matches cross 15/30/45/60/75',
+    # then regenerate the milestone price-track export (PriceTrack / Mark-to-Market view).
+    try:
+        _capture_milestones(conn, inplay)
+        # Fill PRE/FT (+ any milestone missed live) for settled matches from venue
+        # history; retries across cycles until the just-ended match's history is up.
+        _maybe_backfill_milestones(conn)
+        from prediction_market.ops import milestone_export
+        _write_both("milestone_marks.json", milestone_export.build(conn))
+    except Exception as e:
+        print(f"[live_refresh] milestone capture/export skipped: {e}")
     try:
         rows = upcoming_export.build(limit=6, conn=conn, with_venues=True)
         # Same envelope the daily refresh writes (frontend reads `.matches`).

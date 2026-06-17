@@ -39,6 +39,31 @@ class StrengthModel:
     sigma: dict[str, float]              # team_id -> posterior std (placeholder for now)
     host_ids: frozenset[str]
     cfg: ModelConfig
+    # Optional alt-data λ adjustments (plan 19): team_id -> TeamAdj(def_z/off_z/xga_z).
+    # None ⇒ no adjustment (the default everywhere → prod unchanged unless attached
+    # AND a weight is non-zero). Attached last in build_strength_live so blends are
+    # already applied to ratings.
+    adj: dict | None = None
+
+    def _adj_lambdas(self, lam_i: float, lam_j: float, i: str, j: str) -> tuple[float, float]:
+        """Apply the bounded alt-data λ multipliers (plan 19). A team's defence /
+        xGA suppresses the OPPONENT's λ; its attack form raises its OWN λ. The total
+        log-adjustment per side is clipped to ±cfg.adj_log_clip so no signal dominates.
+        Returns the lambdas unchanged when no adj is attached or all weights are 0."""
+        c = self.cfg
+        wd = getattr(c, "oppadj_def_weight", 0.0); wo = getattr(c, "oppadj_off_weight", 0.0)
+        wx = getattr(c, "xga_weight", 0.0)
+        if not self.adj or (wd == 0.0 and wo == 0.0 and wx == 0.0):
+            return lam_i, lam_j
+        ai = self.adj.get(i); aj = self.adj.get(j)
+        if ai is None and aj is None:
+            return lam_i, lam_j
+        z = lambda a, f: getattr(a, f, 0.0) if a is not None else 0.0
+        clip = getattr(c, "adj_log_clip", 0.40)
+        di = -wd * z(aj, "def_z") - wx * z(aj, "xga_z") + wo * z(ai, "off_z")
+        dj = -wd * z(ai, "def_z") - wx * z(ai, "xga_z") + wo * z(aj, "off_z")
+        di = max(-clip, min(clip, di)); dj = max(-clip, min(clip, dj))
+        return lam_i * math.exp(di), lam_j * math.exp(dj)
 
     def pair_lambdas(
         self, i: str, j: str, *, knockout: bool = False
@@ -69,7 +94,7 @@ class StrengthModel:
         if knockout:
             s = self.cfg.knockout_lambda_scale
             lam_i, lam_j = lam_i * s, lam_j * s
-        return lam_i, lam_j
+        return self._adj_lambdas(lam_i, lam_j, i, j)
 
 
 def _mean_std(d: dict[str, float]) -> tuple[float, float]:

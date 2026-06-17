@@ -25,7 +25,8 @@ export function toChatPrompt() {
     calibration, trade-grade gate, the production bet log: per-match prediction/bet/result/PnL), risk (gates,
     venue balances, $1 cap, API budget), schedule (kickoff times ET/PT), calibration (OOS reliability),
     backtest, squad (squad strength), form (recent form), params (param sweep), divergence (model vs
-    sharp book), overview (system map). Every dashboard view is one of these.
+    sharp book), pricetrack (per-contract ¢ + probability at each match milestone, with mark-to-market),
+    overview (system map). Every dashboard view is one of these.
     For a single team across all views use get_wc_team (e.g. team="Argentina"/"阿根廷"); for one matchup
     (model 3-way + Kalshi/Poly asks + edge + lock-arb + live signals) use get_wc_match (home, away).
     Compare 2–6 teams with compare_wc_teams; get the betting track record as a P&L time series
@@ -35,6 +36,19 @@ export function toChatPrompt() {
     matches cannot (extra time + penalty shootout decide a winner — priced via a team-specific shootout model).
     The model is post-hoc CALIBRATED; live trading is gated (only trades when the calibrated Brier beats the
     uniform baseline) with a hard $1 order cap. "edge" = our model probability minus the venue's ask (devig).
+    PER-CONTRACT CENTS (¢): a binary contract settles 100¢ if it wins, 0¢ if it loses, so for ANY single
+    contract its price in ¢ = price × 100 (definitional). But ¢ is NOT simply probability × 100 across the
+    three outcomes: only OUR MODEL's ¢ equal its fair probability × 100 (the three sum to exactly 100¢, since
+    the model is a normalized probability). VENUE prices (Kalshi / Poly US) carry a vig / overround, so their
+    three asks sum to MORE than 100¢ (typically ~101–102¢) — a venue's implied probability is the DE-VIGGED
+    price (its ¢ ÷ the sum of the three asks), NOT ¢ ÷ 100; and ask ≠ bid (a spread), so we display the mid.
+    So "70¢" on Kalshi means the contract costs 70¢, implying ≈69% after de-vig — not a flat 70%. edge = our
+    model's probability − the venue's de-vigged probability. Probability and ¢ are shown side by side wherever
+    a probability maps to a tradable contract (match 3-way, champion, totals). The pricetrack view records each
+    match's ¢ + probability at 6 milestones (PRE / 15' / 30' / HT / 60' / 75' / FT) for home/draw/away, from
+    Kalshi + Polymarket, so a pre-match bet's entry ¢ can be marked-to-market to settlement — that PRE→FT
+    trajectory grades whether the market confirmed our pick. Accuracy metrics (Brier / log-loss / calibration)
+    are NOT shown in ¢ — they aren't tradable contracts.
 
     ## Data Views Available
     When relevant to the user's question, you can suggest they use interactive viewers.

@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
 from prediction_market.config import CONFIG
+from prediction_market.util.pricing import quote_to_cents
 
 ET = ZoneInfo("America/New_York")
 _FEE = 0.01            # per-contract execution fee estimate (matches inplay_arb)
@@ -161,6 +162,40 @@ def _lock_arb(kalshi_q: dict | None, poly_q: dict | None) -> dict | None:
     return best
 
 
+def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q) -> None:
+    """Write a milestone='PRE' snapshot when the match is ≤20 min from kickoff (and
+    not already stored). Captures the live Kalshi/Poly ask/bid as the pre-match entry."""
+    if not kickoff_ts:
+        return
+    from datetime import timedelta
+    try:
+        ko = datetime.fromisoformat(kickoff_ts)
+    except Exception:
+        return
+    now = datetime.now(timezone.utc)
+    if not (now <= ko <= now + timedelta(minutes=20)):
+        return
+    if conn.execute("SELECT 1 FROM milestone_snapshot WHERE fixture_api_id=? AND milestone='PRE'",
+                    (fixture_id,)).fetchone():
+        return
+
+    def ab(q, side):
+        s = ((q or {}).get(side) or {})
+        return s.get("ask"), s.get("bid")
+
+    kh, khb = ab(kalshi_q, "home"); kd, kdb = ab(kalshi_q, "draw"); ka, kab = ab(kalshi_q, "away")
+    ph, phb = ab(poly_q, "home"); pd_, pdb = ab(poly_q, "draw"); pa, pab = ab(poly_q, "away")
+    conn.execute(
+        "INSERT OR IGNORE INTO milestone_snapshot "
+        "(fixture_api_id, milestone, ts, elapsed, status_short, "
+        " kalshi_home_ask, kalshi_home_bid, kalshi_draw_ask, kalshi_draw_bid, kalshi_away_ask, kalshi_away_bid, "
+        " poly_home_ask, poly_home_bid, poly_draw_ask, poly_draw_bid, poly_away_ask, poly_away_bid, "
+        " price_source) VALUES (?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?)",
+        (fixture_id, "PRE", now.isoformat(), 0, "NS",
+         kh, khb, kd, kdb, ka, kab, ph, phb, pd_, pdb, pa, pab, "live"))
+    conn.commit()
+
+
 def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
     """The next ``limit`` not-started fixtures, fully enriched with real venue quotes."""
     from prediction_market.ingest import store
@@ -226,9 +261,12 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
                     "lock_arb": None,
                 })
             continue
+        from prediction_market.util.pricing import model_cents
         mp = price_match(sm, hi, ai)
         model = {"home": round(mp.p_home, 4), "draw": round(mp.p_draw, 4), "away": round(mp.p_away, 4),
-                 "over_2_5": round(mp.p_over_2_5, 4), "btts": round(mp.p_btts, 4)}
+                 "over_2_5": round(mp.p_over_2_5, 4), "btts": round(mp.p_btts, 4),
+                 # per-contract ¢ view of the model's fair (= prob×100); ADD ONLY.
+                 "cents": model_cents({"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away})}
         et_date = _et_date(f["kickoff_ts"])
 
         bd = book.get(f["api_id"])
@@ -248,6 +286,11 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
                 print(f"[warn] PolyUS quote {hi} vs {ai}: {e}")
 
         k_devig, p_devig = _venue_devig(kalshi_q), _venue_devig(poly_q)
+        # Stash a PRE milestone snapshot once the match is within ~20 min of kickoff,
+        # so an in-progress match has a real pre-match entry ¢ before it settles (the
+        # backfill later refines PRE from venue history). INSERT OR IGNORE → first
+        # near-kickoff write wins; harmless no-op for far-out fixtures.
+        _stash_pre(conn, f["api_id"], f["kickoff_ts"], kalshi_q, poly_q)
 
         def _edge_vs(devig_probs):
             if not devig_probs:
@@ -269,8 +312,9 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
             "away": {"id": ai, "name": name_of.get(ai, ai), "zh": zh_of.get(ai, "")},
             "model": model,
             "book_devig": book_devig,
-            "kalshi": {**kalshi_q, "devig": k_devig} if kalshi_q else None,
-            "poly_us": {**poly_q, "devig": p_devig} if poly_q else None,
+            # quote_to_cents adds ask_c/bid_c/mid_c per side (0–1 ask/bid preserved).
+            "kalshi": {**quote_to_cents(kalshi_q), "devig": k_devig} if kalshi_q else None,
+            "poly_us": {**quote_to_cents(poly_q), "devig": p_devig} if poly_q else None,
             "edge": {
                 "vs_book": _edge_vs(book_devig),
                 "vs_kalshi": _edge_vs(k_devig),

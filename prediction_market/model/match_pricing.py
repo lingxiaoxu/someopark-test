@@ -38,9 +38,19 @@ class MatchPrice:
     p_home_advance: float | None = None
 
 
-def price_match(sm: StrengthModel, home_id: str, away_id: str, *, knockout: bool = False) -> MatchPrice:
+def price_match(sm: StrengthModel, home_id: str, away_id: str, *, knockout: bool = False,
+                venue_name: str | None = None) -> MatchPrice:
     cfg = sm.cfg
     lam_h, lam_a = sm.pair_lambdas(home_id, away_id, knockout=knockout)
+    # Venue-climate suppression (plan 19): symmetric λ trim for altitude/heat. No-op
+    # when venue_name is None or venue_climate_weight=0 (the default → prod unchanged).
+    vw = getattr(cfg, "venue_climate_weight", 0.0)
+    if venue_name and vw:
+        import math as _math
+        from prediction_market.model.venue_climate import venue_log_suppression
+        sup = venue_log_suppression(venue_name, vw)
+        if sup:
+            lam_h *= _math.exp(-sup); lam_a *= _math.exp(-sup)
     m = score_matrix(lam_h, lam_a, cfg.dc_rho, cfg.score_matrix_kmax)
     p_home, p_draw, p_away = wdl(m)
     p_over, p_under, _ = over_under(m, 2.5)

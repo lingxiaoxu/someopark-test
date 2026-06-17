@@ -50,6 +50,12 @@ class PerformanceReport:
     pnl_roi: float                # cumulative P&L / total staked
     bet_since: str                # date of the first match bet
     notes: list[str]
+    # Per-contract ¢ view (plan 18 §2.7): real Kalshi/Poly contract economics —
+    # buy 1 contract at entry ¢, settle 100¢ (won) / 0¢ (lost).
+    pnl_cents_total: float = 0.0  # cumulative per-contract P&L in ¢
+    avg_entry_cents: float = 0.0  # average price we entered at (¢)
+    cents_capture_rate: float = 0.0  # captured ¢ / theoretically available ¢
+    avg_clv_cents: float = 0.0    # mean closing-line value (T75 ¢ − entry ¢), result-independent
 
 
 def _settled(conn, sm):
@@ -100,6 +106,57 @@ def _advancer(raw_json: str | None, gh: int, ga: int) -> str | None:
     return None
 
 
+def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None) -> dict | None:
+    """SINGLE SOURCE OF TRUTH for one settled match: which side we picked, the actual
+    result, and whether we won — shared by the production bet log (this module) AND the
+    price-track / mark-to-market (ops.milestone_export), so those two views ALWAYS
+    reconcile. Handles both stages:
+
+      * group   — 3-way incl. draw; pick = argmax of the calibrated model; result by score.
+      * knockout — NO draw; pick = the side we predict ADVANCES (advance prob); result =
+                   who actually went through (score, else API winner flag for shootouts).
+
+    The PICK / RESULT / WON are book-independent (book only affects the group COST), so a
+    caller without bookmaker odds (milestone_export) gets the identical pick by passing
+    book_row=None. Returns None if the match can't be settled yet (knockout level after
+    extra time with no winner flag).
+    """
+    from prediction_market.model.match_pricing import is_knockout, price_match_calibrated
+    gh, ga = fx_row["home_goals"], fx_row["away_goals"]
+    if gh is None or ga is None:
+        return None   # not settled (no final score) — nothing to settle a bet on
+    knockout = is_knockout(fx_row["round"])
+    mp = price_match_calibrated(sm, hi, ai, knockout=knockout, cal=cal)
+    model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
+    if knockout:
+        p_adv_home = mp.p_home_advance if mp.p_home_advance is not None else model["home"] / max(model["home"] + model["away"], 1e-9)
+        pick = "home" if p_adv_home >= 0.5 else "away"
+        adv = _advancer(fx_row["raw_json"], gh, ga)
+        if adv is None:
+            return None
+        result = adv
+        cost = max(p_adv_home if pick == "home" else 1.0 - p_adv_home, 1e-6)
+        edge_val = (p_adv_home if pick == "home" else 1.0 - p_adv_home) - cost
+        model_prob = round(p_adv_home if pick == "home" else 1.0 - p_adv_home, 4)
+        stage = "knockout"
+    else:
+        bd = book_row
+        if bd and bd["bh"] is not None:
+            s = (bd["bh"] or 0) + (bd["bd"] or 0) + (bd["ba"] or 0)
+            price = {"home": bd["bh"] / s, "draw": bd["bd"] / s, "away": bd["ba"] / s} if s else model
+        else:
+            price = model  # no book → settle at our fair price (breakeven)
+        edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
+        pick = max(_SIDE_KEYS, key=lambda k: model[k])
+        cost = max(price[pick], 1e-6)
+        result = "home" if gh > ga else ("draw" if gh == ga else "away")
+        edge_val = edges[pick]
+        model_prob = round(model[pick], 4)
+        stage = "group"
+    return {"stage": stage, "pick": pick, "result": result, "won": pick == result,
+            "cost": cost, "model_prob": model_prob, "edge": round(edge_val, 4), "model": model}
+
+
 def _bet_log(conn) -> list[dict]:
     """Production bet history: every settled match since the opener, flat 1u on the
     model's best value side vs the closing de-vig book, settled on the real result.
@@ -121,6 +178,18 @@ def _bet_log(conn) -> list[dict]:
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
+    # PRE-milestone venue entry ¢ per fixture (real Kalshi/Poly price at kickoff) —
+    # the true per-contract cost we'd have paid; falls back to the book price below.
+    pre_px = {r["fixture_api_id"]: r for r in conn.execute(
+        "SELECT fixture_api_id, poly_home_ask, poly_draw_ask, poly_away_ask, "
+        "kalshi_home_ask, kalshi_draw_ask, kalshi_away_ask "
+        "FROM milestone_snapshot WHERE milestone='PRE'")}
+    # T75 (last in-play milestone before FT) per fixture, for closing-line value (CLV).
+    t75_px = {r["fixture_api_id"]: r for r in conn.execute(
+        "SELECT fixture_api_id, poly_home_ask, poly_draw_ask, poly_away_ask, "
+        "kalshi_home_ask, kalshi_draw_ask, kalshi_away_ask "
+        "FROM milestone_snapshot WHERE milestone='T75'")}
+
     # De-vig book (averaged bookmakers) per settled fixture.
     book = {r["api_id"]: r for r in conn.execute(
         "SELECT f.api_id, AVG(o.p_home) bh, AVG(o.p_draw) bd, AVG(o.p_away) ba "
@@ -138,50 +207,53 @@ def _bet_log(conn) -> list[dict]:
     cum = 0.0
     staked = 0.0
     wins = 0
+    cum_c = 0.0          # cumulative per-contract ¢ P&L
+    sum_entry_c = 0.0    # Σ entry ¢ (for the average)
+    cents_avail = 0.0    # Σ theoretically-capturable ¢ (for capture rate)
     for r in rows:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        knockout = is_knockout(r["round"])
-        mp = price_match_calibrated(sm, hi, ai, knockout=knockout, cal=cal)
-        model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
+        # Shared pick/result/won (group 3-way or knockout advance) — same function the
+        # price-track uses, so the two views reconcile by construction.
+        mr = match_pick(sm, cal, hi, ai, r, book.get(r["api_id"]))
+        if mr is None:
+            continue   # knockout level after ET with no winner flag yet — can't settle
+        knockout = mr["stage"] == "knockout"
         gh, ga = r["home_goals"], r["away_goals"]
-        bd = book.get(r["api_id"])
-
-        if knockout:
-            # Knockout: NO draw. We back the team we predict ADVANCES (extra time +
-            # shootout decide it), settled on who actually went through, priced at the
-            # model's advance probability (we hold no qualification-market odds — a
-            # fair-odds bet, flagged). Advancer from the score, else the API winner flag.
-            p_adv_home = mp.p_home_advance if mp.p_home_advance is not None else model["home"] / max(model["home"] + model["away"], 1e-9)
-            pick = "home" if p_adv_home >= 0.5 else "away"
-            adv = _advancer(r["raw_json"], gh, ga)
-            if adv is None:
-                continue   # level after ET with no winner flag yet — can't settle
-            result = adv
-            cost = max(p_adv_home if pick == "home" else 1.0 - p_adv_home, 1e-6)
-            edge_val = (p_adv_home if pick == "home" else 1.0 - p_adv_home) - cost  # 0 at fair odds
-            model_prob = round(p_adv_home if pick == "home" else 1.0 - p_adv_home, 4)
-        else:
-            # Group stage: 3-way incl. draw, backed at the closing de-vig book odds.
-            if bd and bd["bh"] is not None:
-                s = (bd["bh"] or 0) + (bd["bd"] or 0) + (bd["ba"] or 0)
-                price = {"home": bd["bh"] / s, "draw": bd["bd"] / s, "away": bd["ba"] / s} if s else model
-            else:
-                price = model  # no book → settle at our fair price (breakeven)
-            edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
-            pick = max(_SIDE_KEYS, key=lambda k: model[k])
-            cost = max(price[pick], 1e-6)
-            result = "home" if gh > ga else ("draw" if gh == ga else "away")
-            edge_val = edges[pick]
-            model_prob = round(model[pick], 4)
+        pick, result, won = mr["pick"], mr["result"], mr["won"]
+        cost, edge_val, model_prob = mr["cost"], mr["edge"], mr["model_prob"]
 
         dec_odds = 1.0 / cost                     # flat-1u stake at decimal odds
-        won = pick == result
         pnl = (dec_odds - 1.0) if won else -1.0   # flat 1u stake
         cum += pnl
         staked += 1.0
         wins += int(won)
+
+        # Per-contract ¢ view: prefer the real venue price at kickoff (PRE milestone,
+        # Poly then Kalshi), else the book/fair cost ×100. Settle 100¢ (won) / 0¢.
+        from prediction_market.util.pricing import to_cents, pnl_cents as _pnl_cents
+        pr = pre_px.get(r["api_id"])
+        entry_cents = entry_source = None
+        if pr is not None and pr[f"poly_{pick}_ask"] is not None:
+            entry_cents, entry_source = to_cents(pr[f"poly_{pick}_ask"]), "poly"
+        elif pr is not None and pr[f"kalshi_{pick}_ask"] is not None:
+            entry_cents, entry_source = to_cents(pr[f"kalshi_{pick}_ask"]), "kalshi"
+        else:
+            entry_cents, entry_source = to_cents(cost), "book_devig"
+        c_pnl = _pnl_cents(entry_cents, won)
+        cum_c += (c_pnl or 0.0)
+        sum_entry_c += (entry_cents or 0.0)
+        cents_avail += ((100.0 - entry_cents) if won else entry_cents) if entry_cents is not None else 0.0
+        # CLV ¢: the pick side's market ¢ at T75 (the last in-play milestone) minus our
+        # entry ¢ — positive means the market drifted toward our bet (a real-time
+        # leading indicator that the pre-match read was right), independent of the result.
+        clv_cents = None
+        t75 = t75_px.get(r["api_id"])
+        if t75 is not None and entry_cents is not None:
+            t75_side = t75[f"poly_{pick}_ask"] if t75[f"poly_{pick}_ask"] is not None else t75[f"kalshi_{pick}_ask"]
+            if t75_side is not None:
+                clv_cents = round(to_cents(t75_side) - entry_cents, 1)
 
         side_label = {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}
         log.append({
@@ -201,6 +273,13 @@ def _bet_log(conn) -> list[dict]:
             "won": won,
             "pnl": round(pnl, 3),
             "cum_pnl": round(cum, 3),
+            # per-contract ¢ view (plan 18 §2.7)
+            "entry_cents": entry_cents,
+            "entry_source": entry_source,
+            "settle_cents": (100.0 if won else 0.0),
+            "pnl_cents": c_pnl,
+            "cum_pnl_cents": round(cum_c, 1),
+            "clv_cents": clv_cents,
         })
     return log
 
@@ -276,6 +355,16 @@ def build(conn=None) -> PerformanceReport:
     pnl_roi = round(pnl_units / len(log), 4) if log else 0.0   # flat 1u staked per bet
     bet_since = log[0]["date"] if log else ""
 
+    # Per-contract ¢ headline metrics (plan 18 §2.7).
+    _ent = [b["entry_cents"] for b in log if b.get("entry_cents") is not None]
+    pnl_cents_total = round(sum((b.get("pnl_cents") or 0.0) for b in log), 1)
+    avg_entry_cents = round(sum(_ent) / len(_ent), 1) if _ent else 0.0
+    _avail = sum(((100.0 - b["entry_cents"]) if b["won"] else b["entry_cents"])
+                 for b in log if b.get("entry_cents") is not None)
+    cents_capture_rate = round(pnl_cents_total / _avail, 4) if _avail else 0.0
+    _clv = [b["clv_cents"] for b in log if b.get("clv_cents") is not None]
+    avg_clv_cents = round(sum(_clv) / len(_clv), 1) if _clv else 0.0
+
     notes.append(f"Track record: flat 1u on our predicted outcome, settled at the closing "
                  f"book odds, every match since {bet_since} — {pnl_record}, {pnl_units:+.2f}u "
                  f"({pnl_roi:+.1%} ROI) over {len(log)} matches.")
@@ -299,6 +388,10 @@ def build(conn=None) -> PerformanceReport:
         pnl_roi=pnl_roi,
         bet_since=bet_since,
         notes=notes,
+        pnl_cents_total=pnl_cents_total,
+        avg_entry_cents=avg_entry_cents,
+        cents_capture_rate=cents_capture_rate,
+        avg_clv_cents=avg_clv_cents,
     )
 
 
@@ -384,8 +477,13 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
         story.append(Paragraph(
             f"战绩 {rep.pnl_record} · 累计 {pnl_sign}{rep.pnl_units:.2f}u · ROI {rep.pnl_roi:+.1%} · 共 {len(rep.bet_log)} 场",
             ps.body_style))
+        story.append(Paragraph(
+            f"每合约口径 · 累计 {rep.pnl_cents_total:+.0f}¢/张 · 平均入场 {rep.avg_entry_cents:.0f}¢ · "
+            f"价格空间捕获率 {rep.cents_capture_rate:+.0%}",
+            ps.body_style))
         data = [[ps.H("日期"), ps.H("对阵"), ps.H("我们的预测"), ps.H("结果"),
-                 ps.H("赔率", "RIGHT"), ps.H("盈亏", "RIGHT"), ps.H("累计", "RIGHT")]]
+                 ps.H("入场¢", "RIGHT"), ps.H("结算¢", "RIGHT"), ps.H("每张¢", "RIGHT"),
+                 ps.H("盈亏u", "RIGHT"), ps.H("累计¢", "RIGHT")]]
 
         def _col(v: float, text: str) -> str:
             c = "#1a7a4a" if v >= 0 else "#c0392b"
@@ -393,16 +491,21 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
 
         for b in rep.bet_log:
             res = _col(1 if b["won"] else -1, "赢" if b["won"] else "输")
+            ec = f'{b["entry_cents"]:.0f}' if b.get("entry_cents") is not None else "—"
+            pc = b.get("pnl_cents")
             data.append([
                 ps.C(b["date"][5:]),
                 ps.C(f'{b["home"]} {b["score"]} {b["away"]}'),
                 ps.C(b["pick_team"]),
                 ps.C(res, "RIGHT"),
-                ps.C(f'{b["dec_odds"]:.2f}', "RIGHT"),
+                ps.C(ec, "RIGHT"),
+                ps.C(f'{b["settle_cents"]:.0f}', "RIGHT"),
+                ps.C(_col(pc if pc is not None else 0, f'{pc:+.0f}' if pc is not None else "—"), "RIGHT"),
                 ps.C(_col(b["pnl"], f'{b["pnl"]:+.2f}'), "RIGHT"),
-                ps.C(_col(b["cum_pnl"], f'{b["cum_pnl"]:+.2f}'), "RIGHT"),
+                ps.C(_col(b["cum_pnl_cents"], f'{b["cum_pnl_cents"]:+.0f}'), "RIGHT"),
             ])
-        story.append(ps.make_table(data, [1.6 * cm, 6.0 * cm, 3.2 * cm, 1.4 * cm, 1.6 * cm, 1.6 * cm, 1.6 * cm]))
+        story.append(ps.make_table(data, [1.5 * cm, 5.0 * cm, 2.7 * cm, 1.2 * cm,
+                                          1.4 * cm, 1.4 * cm, 1.4 * cm, 1.5 * cm, 1.5 * cm]))
 
     # 八、校准 P&L(纸面,公允赔率诊断)
     ps.section(story, "八、校准 P&L(纸面,按公允赔率下注模型选边 — 过度/不足自信诊断)")

@@ -43,14 +43,19 @@ def _mean_std(xs):
     return m, (math.sqrt(var) or 1.0)
 
 
-def form_index(conn, ref: datetime | None = None) -> dict[str, FormSummary]:
-    """{canonical_team_id: FormSummary} from nt_recent (recent NT results)."""
-    ref = ref or datetime.now(timezone.utc)
+def form_index(conn, ref: datetime | None = None, *, as_of: str | None = None) -> dict[str, FormSummary]:
+    """{canonical_team_id: FormSummary} from nt_recent (recent NT results).
+
+    `as_of` (ISO ts) makes it POINT-IN-TIME: only matches strictly before it are used
+    (so scoring a past match never sees that team's later results — the leak the param
+    walk-forward must avoid). `ref` is the decay reference (defaults to now / as_of)."""
+    ref = ref or (datetime.fromisoformat(as_of) if as_of else datetime.now(timezone.utc))
+    where = "WHERE tm.canonical_team_id IS NOT NULL" + (" AND n.kickoff_ts < ?" if as_of else "")
+    params = (as_of,) if as_of else ()
     rows = conn.execute(
         "SELECT tm.canonical_team_id cid, n.opp_api_id, n.kickoff_ts, n.is_friendly, "
         "       n.gf, n.ga FROM nt_recent n "
-        "JOIN team_meta tm ON tm.api_id = n.team_api_id "
-        "WHERE tm.canonical_team_id IS NOT NULL").fetchall()
+        "JOIN team_meta tm ON tm.api_id = n.team_api_id " + where, params).fetchall()
     agg: dict[str, dict] = {}
     for r in rows:
         d = agg.setdefault(r["cid"], {"num": 0.0, "den": 0.0, "n": 0, "nf": 0, "recent": []})

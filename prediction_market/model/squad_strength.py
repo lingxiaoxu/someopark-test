@@ -114,6 +114,16 @@ def build_strength_live(conn, prior=None, cfg=None):
             sm = fc_adjusted_ratings(sm, fc_squad_index(conn), cw)
         except Exception:
             pass
+    # Alt-data λ adjustments (plan 19): attach LAST (ratings/blends already applied) so
+    # pair_lambdas can apply the opponent-adjusted form / xGA multipliers. Only computed
+    # when at least one weight is non-zero → zero cost + prod unchanged at the 0 default.
+    if any(getattr(cfg, w, 0.0) for w in ("oppadj_def_weight", "oppadj_off_weight", "xga_weight")):
+        try:
+            from dataclasses import replace as _replace
+            from prediction_market.model.altdata_adjust import altdata_index
+            sm = _replace(sm, adj=altdata_index(conn, sm.ratings))
+        except Exception:
+            pass
     return sm
 
 

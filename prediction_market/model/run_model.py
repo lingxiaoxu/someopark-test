@@ -63,7 +63,11 @@ def _code_version() -> str:
 
 
 def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
-                  ensemble: bool = False, update_results: bool = False, club_blend: bool = False) -> dict:
+                  ensemble: bool = False, update_results: bool = False, club_blend: bool = False,
+                  champ_cents: dict | None = None) -> dict:
+    # Real per-contract ¢ for the tournament-winner market (Kalshi + Poly), keyed by
+    # canonical team_id; shown beside p_champion. Failure-tolerant (empty if venues down).
+    champ_cents = champ_cents or {}
     name_of = {t.team_id: t.name for t in prior.teams}
     zh_of = {t.team_id: t.zh for t in prior.teams}
     group_of = {t.team_id: t.group for t in prior.teams}
@@ -119,6 +123,9 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
             "p_advance_prior": prior_adv[tid],
             "e_matches": round(tour.e_matches[tid], 3),
             "rating": round(sm.ratings[tid], 4),
+            # real per-contract ¢ (champion market); None when a venue has no quote.
+            "kalshi_champ_c": (champ_cents.get(tid) or {}).get("kalshi_c"),
+            "poly_champ_c": (champ_cents.get(tid) or {}).get("poly_c"),
         }
         for tid in tour.team_ids
     ]
@@ -193,7 +200,14 @@ def refresh_champion(*, n_sims: int | None = None, seed: int | None = None) -> d
     # golden-boot sim self-caps its sub-sample for memory (see golden_boot._GB_MAX_SIMS).
     n_sims = n_sims or CONFIG.model.n_sims_tournament
     seed = seed if seed is not None else CONFIG.model.random_seed
-    payload = build_payload(prior, n_sims=n_sims, seed=seed, update_results=True)
+    # Real champion-market ¢ from Kalshi + Poly (failure-tolerant; empty if venues down).
+    try:
+        from prediction_market.venues.champion_prices import champion_cents
+        cc = champion_cents()
+    except Exception as e:
+        print(f"[refresh_champion] champion ¢ skipped: {e}")
+        cc = {}
+    payload = build_payload(prior, n_sims=n_sims, seed=seed, update_results=True, champ_cents=cc)
     write_outputs(payload, emit_frontend=True)
     return payload
 

@@ -55,8 +55,12 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         opps = find_opportunities(conn=conn, sm=sm, quote_sources=quote_sources)
     except Exception:
         opps = []
+    # Per-contract ¢ on every opportunity (market/fair/edge → ¢), ADD ONLY.
+    from prediction_market.util.pricing import to_cents, model_cents, quote_to_cents
     by_fixture: dict[int, list] = {}
     for o in opps:
+        o = {**o, "market_c": to_cents(o.get("market")), "fair_c": to_cents(o.get("fair")),
+             "edge_c": to_cents(o.get("edge"))}
         by_fixture.setdefault(o["fixture_id"], []).append(o)
 
     matches = []
@@ -75,6 +79,15 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         lam_h, lam_a = sm.pair_lambdas(hi, ai)
         lp = live_match_prob(lam_h, lam_a, minute, gh, ga, red_home=rh, red_away=ra,
                              xg_home=xg.get(fx["home_api_id"]), xg_away=xg.get(fx["away_api_id"]))
+        # Live venue quotes (¢) per side for this fixture, alongside model-implied ¢.
+        prices = {"model_c": model_cents({"home": lp.p_home, "draw": lp.p_draw, "away": lp.p_away})}
+        for v, fn in quote_sources.items():
+            try:
+                q = fn(fx["api_id"])
+            except Exception:
+                q = None
+            if q:
+                prices[v] = quote_to_cents(q)
         matches.append({
             "fixture_id": fx["api_id"],
             "status": fx["status_short"],
@@ -89,6 +102,7 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
                 "exp_remaining_goals": round(lp.exp_remaining_goals, 3),
             },
             "xg": {"home": xg.get(fx["home_api_id"]), "away": xg.get(fx["away_api_id"])},
+            "prices": prices,
             "opportunities": by_fixture.get(fx["api_id"], []),
         })
 

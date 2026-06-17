@@ -253,3 +253,4 @@ export const getWCSquad        = () => fetchApi<any>('/data/squad.json');
 export const getWCForm         = () => fetchApi<any>('/data/form.json');
 export const getWCParams       = () => fetchApi<any>('/data/param_sweep.json');
 export const getWCUpcoming     = () => fetchApi<any>('/data/upcoming.json');
+export const getWCMilestoneMarks = () => fetchApi<any>('/data/milestone_marks.json');

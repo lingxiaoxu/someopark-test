@@ -26,8 +26,11 @@
     <string>/bin/bash</string>
     <string>/Users/xuling/code/someopark-test/prediction_market/ops/live_refresh.sh</string>
   </array>
+  <!-- 30s cadence for tighter in-play ¢ + milestone capture (plan 18 P8). Outside a
+       match window live_refresh is a cheap 1-query no-op, so this only does real work
+       during matches; Kalshi reads are free, Poly US reads stay within the API budget. -->
   <key>StartInterval</key>
-  <integer>60</integer>
+  <integer>30</integer>
   <key>RunAtLoad</key>
   <true/>
   <key>StandardOutPath</key>

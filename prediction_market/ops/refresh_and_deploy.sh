@@ -63,4 +63,16 @@ else
   firebase deploy --only hosting --project someopark || { echo "deploy failed (no FIREBASE_TOKEN; needs interactive auth)"; exit 1; }
 fi
 
+# --- 4) (DAILY only, NOT the 15-min --trigger) re-run the slow 1152 param sweep,
+#         TIME-ISOLATED: wait 60s so it never overlaps the refresh/build/deploy above
+#         (CPU isolation), then sync just its JSON over the tunnel (no rebuild needed).
+if [ "${1:-}" != "--trigger" ]; then
+  echo "--- 4) daily param sweep (time-isolated; sleeping 60s first) ---"
+  sleep 60
+  cd "$REPO" || exit 0
+  conda run -n someopark_run --no-capture-output \
+    python -m prediction_market.ops.param_sweep && echo "param sweep: done" || echo "param sweep: skipped (non-fatal)"
+  cd "$FRONTEND" && npm run sync:wc || true   # copy param_sweep.json to public/data (tunnel serves it)
+fi
+
 echo "=== done @ $(date) — https://someopark.web.app ==="

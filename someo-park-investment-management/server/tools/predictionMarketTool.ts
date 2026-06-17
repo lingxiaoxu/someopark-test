@@ -27,6 +27,7 @@ const VIEWS: Record<string, { file: string; about: string }> = {
   form:        { file: 'form.json',                about: 'recent-form index (time-weighted, friendly-discounted goal difference); blended into the live model' },
   params:      { file: 'param_sweep.json',         about: 'parameter sweep: the selected param set (min calibrated Brier) + the full grid (7 knobs incl. FC/squad/form weights), n_param_sets + n_settled' },
   divergence:  { file: 'xv_matches.json',          about: 'model 3-way vs the sharp bookmaker de-vig (where we diverge from the market)' },
+  pricetrack:  { file: 'milestone_marks.json',     about: 'per-contract ¢ + probability at each match milestone (PRE/15\'/30\'/HT/60\'/75\'/FT) for home/draw/away from Kalshi+Polymarket, our pre-match pick + entry ¢, and the mark-to-market (entry→FT) showing if the market confirmed our pick' },
   overview:    { file: 'frontend_overview.json',   about: 'system overview: interfaces, modes, schedule, inputs/outputs, value, state-aware headline (the System Overview + Model Notes views)' },
 }
 
@@ -102,6 +103,11 @@ export const predictionMarketTool: AgentTool = {
     if (view === 'performance' && team && Array.isArray(data?.bet_log)) {
       // Filter the production bet log to this team's matches.
       return { ...data, bet_log: data.bet_log.filter((b: any) => matchesTeam(team, b) || matchesTeam(team, { name: b.home }) || matchesTeam(team, { name: b.away })) }
+    }
+    if (view === 'pricetrack') {
+      let matches = (data?.matches ?? []) as any[]
+      if (team) matches = matches.filter((m) => matchesTeam(team, m.home) || matchesTeam(team, m.away))
+      return { milestones: data?.milestones, note: data?.note, matches: n ? matches.slice(0, n) : matches }
     }
     return data
   },

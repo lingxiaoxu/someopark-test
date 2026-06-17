@@ -13,6 +13,7 @@ import MatchCard, { type UpcomingMatch } from './MatchCard';
 import { usePoll } from './usePoll';
 
 const pct = (v?: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
+const cc = (v?: number | null) => (v == null ? '—' : `${Math.round(v)}¢`);
 
 // Fill the remaining slots (after live matches) with the soonest not-started fixtures.
 function pickUpcoming(matches: UpcomingMatch[], slots: number): UpcomingMatch[] {
@@ -49,6 +50,22 @@ function LiveCard({ m }: { m: any }) {
       <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
         {t('prediction.model')}: H {pct(m.model?.home)} · D {pct(m.model?.draw)} · A {pct(m.model?.away)}
       </div>
+      {(() => {
+        const mk = m.prices?.kalshi || m.prices?.poly_us;
+        const src = m.prices?.kalshi ? 'Kalshi' : m.prices?.poly_us ? 'Poly' : null;
+        if (mk && src) return (
+          <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+            {/* mid_c falls back to the bid when a deep ITM contract has no ask. */}
+            {src}: H {cc(mk.home?.mid_c)} · D {cc(mk.draw?.mid_c)} · A {cc(mk.away?.mid_c)}
+          </div>
+        );
+        if (m.prices?.model_c) return (
+          <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
+            ¢: H {cc(m.prices.model_c.home)} · D {cc(m.prices.model_c.draw)} · A {cc(m.prices.model_c.away)}
+          </div>
+        );
+        return null;
+      })()}
       <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--success)', fontWeight: 700 }}>
         {m.opportunities?.length ? `${m.opportunities.length} ` : ''}{t('prediction.inPlayArb')} →
       </div>
@@ -76,7 +93,7 @@ function FinishedCard({ m }: { m: any }) {
 export default function PredictionUpcoming() {
   const { t } = useTranslation();
   const up = usePoll<{ matches?: UpcomingMatch[]; recent_finished?: any[] }>(() => getWCUpcoming(), 60000);
-  const live = usePoll<{ matches?: any[] }>(() => getWCInplayLive(), 30000);
+  const live = usePoll<{ matches?: any[] }>(() => getWCInplayLive(), 20000);
 
   // Top region: live matches first (still in progress), then matches that just
   // finished (FT + score, marked ended), then the soonest not-started fixtures —

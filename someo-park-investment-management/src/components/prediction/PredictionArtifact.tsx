@@ -10,7 +10,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
   getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
-  API_BASE,
+  getWCMilestoneMarks, API_BASE,
 } from '../../lib/api';
 import { useState } from 'react';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
@@ -22,6 +22,9 @@ import { usePoll } from './usePoll';
 const pct = (v?: number | null, d = 1) => (v == null || isNaN(v) ? '—' : `${(v * 100).toFixed(d)}%`);
 const num = (v?: number | null, d = 3) => (v == null || isNaN(v) ? '—' : v.toFixed(d));
 const money = (v: any) => (typeof v === 'number' ? `$${v.toFixed(2)}` : String(v ?? '—'));
+// per-contract cents: cc() formats an already-¢ value, pcent() converts a 0–1 prob → ¢.
+const cc = (v?: number | null, d = 0) => (v == null || isNaN(v) ? '—' : `${v.toFixed(d)}¢`);
+const pcent = (v?: number | null, d = 0) => (v == null || isNaN(v) ? '—' : `${(v * 100).toFixed(d)}¢`);
 
 const mono: CSSProperties = { fontFamily: 'var(--font-mono)' };
 
@@ -77,8 +80,10 @@ function ChampionOdds() {
   return (
     <div>
       <Title sub={`${tr('prediction.subChampion')} · ${data?.meta?.n_sims?.toLocaleString?.() ?? ''} sims`}>Champion Odds</Title>
-      <DataTable cols={[tr('prediction.team'), 'FIFA', 'Grp', tr('prediction.colChamp'), tr('prediction.colFinal'), 'SF', tr('prediction.colRating')]}
-        rows={champ.map((c: any) => [tCountry(c.name), c.fifa_rank != null ? `#${c.fifa_rank}` : '—', c.group, pct(c.p_champion), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])} />
+      <DataTable cols={[tr('prediction.team'), 'FIFA', 'Grp', tr('prediction.colChamp'), 'Kalshi¢', 'Poly¢', tr('prediction.colFinal'), 'SF', tr('prediction.colRating')]}
+        rows={champ.map((c: any) => [tCountry(c.name), c.fifa_rank != null ? `#${c.fifa_rank}` : '—', c.group, pct(c.p_champion),
+          cc(c.kalshi_champ_c), cc(c.poly_champ_c), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])} />
+      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.dualUnitLegend')}</div>
     </div>
   );
 }
@@ -146,7 +151,7 @@ function Divergence() {
   return (
     <div>
       <Title sub={tr('prediction.subDivergence')}>Model vs Market</Title>
-      <DataTable cols={[tr('prediction.match'), 'Model H/D/A', 'Book H/D/A', tr('prediction.colEdge')]}
+      <DataTable cols={[tr('prediction.match'), 'Model ¢ H/D/A', 'Book ¢ H/D/A', tr('prediction.colEdge')]}
         rows={rows.map((m: any) => {
           const e = m.edge_vs_book || {};
           const best = Math.max(Math.abs(e.home ?? 0), Math.abs(e.draw ?? 0), Math.abs(e.away ?? 0));
@@ -154,9 +159,9 @@ function Divergence() {
           const val = side === 'H' ? e.home : side === 'D' ? e.draw : e.away;
           return [
             `${tCountry(m.home)} v ${tCountry(m.away)}`,
-            `${pct(m.model?.home, 0)}/${pct(m.model?.draw, 0)}/${pct(m.model?.away, 0)}`,
-            `${pct(m.book_devig?.home, 0)}/${pct(m.book_devig?.draw, 0)}/${pct(m.book_devig?.away, 0)}`,
-            <span style={{ color: Math.abs(val) >= 0.05 ? 'var(--success)' : 'var(--text-muted)' }}>{side} {val >= 0 ? '+' : ''}{pct(val, 1)}</span>,
+            `${pcent(m.model?.home)}/${pcent(m.model?.draw)}/${pcent(m.model?.away)}`,
+            `${pcent(m.book_devig?.home)}/${pcent(m.book_devig?.draw)}/${pcent(m.book_devig?.away)}`,
+            <span style={{ color: Math.abs(val) >= 0.05 ? 'var(--success)' : 'var(--text-muted)' }}>{side} {val >= 0 ? '+' : ''}{pct(val, 1)} ({val >= 0 ? '+' : ''}{pcent(val)})</span>,
           ];
         })} />
     </div>
@@ -171,8 +176,10 @@ function Predictions() {
   return (
     <div>
       <Title sub={tr('prediction.subPredictions')}>Today's Predictions</Title>
-      <DataTable cols={[tr('prediction.match'), 'ET', 'H', 'D', 'A', 'O2.5']}
-        rows={ms.map((m: any) => [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '', pct(m.model?.home, 0), pct(m.model?.draw, 0), pct(m.model?.away, 0), pct(m.model?.over_2_5, 0)])} />
+      <DataTable cols={[tr('prediction.match'), 'ET', 'H', 'H¢', 'D', 'D¢', 'A', 'A¢', 'O2.5']}
+        rows={ms.map((m: any) => [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '',
+          pct(m.model?.home, 0), cc(m.model?.cents?.home), pct(m.model?.draw, 0), cc(m.model?.cents?.draw),
+          pct(m.model?.away, 0), cc(m.model?.cents?.away), pct(m.model?.over_2_5, 0)])} />
       <Legend />
     </div>
   );
@@ -200,12 +207,27 @@ function MatchPricing() {
       {ms.map((m: any, i: number) => (
         <div key={i} className="card" style={{ marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 6 }}>{tCountry(m.home?.name)} vs {tCountry(m.away?.name)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{m.et}</span></div>
-          <DataTable cols={['', tr('prediction.home'), tr('prediction.draw'), tr('prediction.away')]}
-            rows={[
-              [tr('prediction.model'), pct(m.model?.home, 0), pct(m.model?.draw, 0), pct(m.model?.away, 0)],
-              [tr('prediction.kalshiAsk'), num(m.kalshi?.home?.ask, 2), num(m.kalshi?.draw?.ask, 2), num(m.kalshi?.away?.ask, 2)],
-              [tr('prediction.polyUsAsk'), num(m.poly_us?.home?.ask, 2), num(m.poly_us?.draw?.ask, 2), num(m.poly_us?.away?.ask, 2)],
-            ]} />
+          {(() => {
+            // Each cell shows probability AND the per-contract ¢ together. Model: its
+            // fair prob + fair ¢ (numerically equal — ¢ = prob×100). Venues: the de-vig
+            // implied probability + the contract price ¢ (these differ by the vig).
+            const dual = (prob?: number | null, c?: number | null) =>
+              prob == null && c == null ? '—' : `${pct(prob, 0)} · ${cc(c)}`;
+            const vprob = (q: any, side: string) =>
+              (q?.devig?.[side] ?? (q?.[side]?.mid_c != null ? q[side].mid_c / 100 : null));
+            return (
+              <DataTable cols={['', tr('prediction.home'), tr('prediction.draw'), tr('prediction.away')]}
+                rows={[
+                  [tr('prediction.model'),
+                    dual(m.model?.home, m.model?.cents?.home), dual(m.model?.draw, m.model?.cents?.draw), dual(m.model?.away, m.model?.cents?.away)],
+                  [tr('prediction.kalshiAsk'),
+                    dual(vprob(m.kalshi, 'home'), m.kalshi?.home?.mid_c), dual(vprob(m.kalshi, 'draw'), m.kalshi?.draw?.mid_c), dual(vprob(m.kalshi, 'away'), m.kalshi?.away?.mid_c)],
+                  [tr('prediction.polyUsAsk'),
+                    dual(vprob(m.poly_us, 'home'), m.poly_us?.home?.mid_c), dual(vprob(m.poly_us, 'draw'), m.poly_us?.draw?.mid_c), dual(vprob(m.poly_us, 'away'), m.poly_us?.away?.mid_c)],
+                ]} />
+            );
+          })()}
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.dualUnitLegend')}</div>
         </div>
       ))}
     </div>
@@ -232,15 +254,15 @@ const KIND_COLOR: Record<string, string> = {
 
 function InPlay() {
   const { t: tr } = useTranslation();
-  // Polls every 30s so the live model + tricks refresh during a match (no reload).
-  const { data, loading, updatedAt } = usePoll<any>(() => getWCInplayLive(), 30000);
+  // Polls every 20s so the live model + ¢ + tricks refresh during a match (no reload).
+  const { data, loading, updatedAt } = usePoll<any>(() => getWCInplayLive(), 20000);
   const matches = data?.matches ?? [];
   const upd = updatedAt ? new Date(updatedAt).toLocaleTimeString() : '';
   return (
     <div>
       <Title sub={tr('prediction.subInPlay')}>In-Play Arbitrage</Title>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8, ...mono }}>
-        ● {tr('prediction.autoRefresh')} 30s{upd ? ` · ${tr('prediction.updated')} ${upd}` : ''} · {data?.n_live ?? 0} {tr('prediction.live')}
+        ● {tr('prediction.autoRefresh')} 20s{upd ? ` · ${tr('prediction.updated')} ${upd}` : ''} · {data?.n_live ?? 0} {tr('prediction.live')}
       </div>
       {loading && !matches.length ? <Loading /> : !matches.length ? (
         <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{tr('prediction.noLiveMatches')}</div>
@@ -254,19 +276,30 @@ function InPlay() {
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{m.minute}'{m.reds !== '0-0' ? ` · 🟥 ${m.reds}` : ''}</span>
           </div>
-          {/* live model */}
+          {/* live model — probability + per-contract ¢ side by side */}
           <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)', marginBottom: 2 }}>
-            {tr('prediction.model')}: H {pct(m.model.home, 0)} · D {pct(m.model.draw, 0)} · A {pct(m.model.away, 0)} · O2.5 {pct(m.model.over_2_5, 0)}
+            {tr('prediction.model')}: H {pct(m.model.home, 0)} ({cc(m.prices?.model_c?.home)}) · D {pct(m.model.draw, 0)} ({cc(m.prices?.model_c?.draw)}) · A {pct(m.model.away, 0)} ({cc(m.prices?.model_c?.away)})
           </div>
+          {/* live market ¢ (executable) per venue */}
+          {(m.prices?.kalshi || m.prices?.poly_us) && (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 2 }}>
+              {/* mid_c (not ask_c): a deep in-the-money contract has an empty opposite
+                  book so yes_ask is undefined — mid_c falls back to the live bid. */}
+              {m.prices?.kalshi && <>Kalshi: H {cc(m.prices.kalshi.home?.mid_c)} / D {cc(m.prices.kalshi.draw?.mid_c)} / A {cc(m.prices.kalshi.away?.mid_c)}　</>}
+              {m.prices?.poly_us && <>Poly: H {cc(m.prices.poly_us.home?.mid_c)} / D {cc(m.prices.poly_us.draw?.mid_c)} / A {cc(m.prices.poly_us.away?.mid_c)}</>}
+            </div>
+          )}
           <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>
             xG {m.xg.home ?? '—'} / {m.xg.away ?? '—'} · {tr('prediction.expGoals')} {num(m.model.exp_remaining_goals, 2)}
           </div>
-          {/* opportunities / tricks */}
+          {/* opportunities / tricks — edge in probability AND ¢ per contract */}
           {m.opportunities?.length ? (
-            <DataTable cols={[tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colEdge'), tr('prediction.colReason')]}
+            <DataTable cols={[tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colMarketC'), tr('prediction.colEdge'), tr('prediction.colEdgeC'), tr('prediction.colReason')]}
               rows={m.opportunities.map((o: any) => [
                 <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{o.kind}</span>,
-                o.action, o.side, o.edge != null ? num(o.edge, 3) : '—', (o.reason || '').slice(0, 60),
+                o.action, o.side, cc(o.market_c), o.edge != null ? num(o.edge, 3) : '—',
+                <span style={{ color: (o.edge_c ?? 0) > 0 ? 'var(--success)' : 'var(--ink)' }}>{o.edge_c != null ? `${o.edge_c > 0 ? '+' : ''}${cc(o.edge_c)}` : '—'}</span>,
+                (o.reason || '').slice(0, 50),
               ])} />
           ) : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
         </div>
@@ -312,20 +345,27 @@ function BetLog({ data }: { data: any }) {
   const sideLabel = (b: any) => (b.pick === 'draw' ? tr('prediction.drawResult') : tCountry(b.pick_team));
   return (
     <div style={{ marginTop: 14 }}>
-      <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', marginBottom: 6, color: 'var(--text-secondary)' }}>
+      <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-secondary)' }}>
         {tr('prediction.lblTrackRecord')}: <b>{data.pnl_record}</b> · <b style={{ color: pnlColor }}>{pnl > 0 ? '+' : ''}{num(pnl, 2)}u</b>
         {' '}({pct(data.pnl_roi, 1)} ROI) · {tr('prediction.colDate')} ≥ {data.bet_since}
       </div>
+      {data.pnl_cents_total != null && (
+        <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 6, color: 'var(--text-muted)' }}>
+          {tr('prediction.lblPerContract')}: <b style={{ color: data.pnl_cents_total >= 0 ? 'var(--success)' : 'var(--error)' }}>{data.pnl_cents_total >= 0 ? '+' : ''}{cc(data.pnl_cents_total)}</b>
+          {' '}· {tr('prediction.lblAvgEntry')} {cc(data.avg_entry_cents)} · {tr('prediction.lblCaptureRate')} {pct(data.cents_capture_rate, 0)}
+        </div>
+      )}
       <DataTable
-        cols={[tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colResult'), 'Odds', 'P&L', 'Cum']}
+        cols={[tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colSettleC'), tr('prediction.colPnlC'), 'Cum¢']}
         rows={log.map((b: any) => [
           b.date?.slice(5),
           `${tCountry(b.home)} ${b.score} ${tCountry(b.away)}`,
           sideLabel(b),
           <span style={{ color: b.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{b.won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>,
-          num(b.dec_odds, 2),
-          <span style={{ color: b.pnl >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.pnl >= 0 ? '+' : ''}{num(b.pnl, 2)}</span>,
-          <span style={{ color: b.cum_pnl >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.cum_pnl >= 0 ? '+' : ''}{num(b.cum_pnl, 2)}</span>,
+          cc(b.entry_cents),
+          cc(b.settle_cents),
+          <span style={{ color: (b.pnl_cents ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.pnl_cents != null ? `${b.pnl_cents >= 0 ? '+' : ''}${cc(b.pnl_cents)}` : '—'}</span>,
+          <span style={{ color: (b.cum_pnl_cents ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.cum_pnl_cents != null ? `${b.cum_pnl_cents >= 0 ? '+' : ''}${cc(b.cum_pnl_cents)}` : '—'}</span>,
         ])} />
     </div>
   );
@@ -390,6 +430,11 @@ function ParamSweep() {
   return (
     <div>
       <Title sub={subCount}>Parameter Sweep</Title>
+      {data?.generated_at && (
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: -6, marginBottom: 8 }}>
+          {tr('prediction.lblSweepUpdated')}: {new Date(data.generated_at).toLocaleString()}
+        </div>
+      )}
       <KV rows={[
         // Selected on the CALIBRATED Brier (the fair number vs uniform); raw shown alongside.
         [tr('prediction.lblSelected'), <span><b style={{ color: 'var(--success)' }}>{data?.best?.brier_cal?.toFixed?.(4)}</b> <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>(raw {data?.best?.brier?.toFixed?.(4)})</span></span>],
@@ -526,8 +571,12 @@ function Pdfs() {
     { key: 'risk', file: 'risk_report.pdf', label: tr('prediction.pdfRisk') },
   ];
   const [active, setActive] = useState('pnl');
+  // Cache-buster: PDFs are served with a fixed URL over the tunnel and browsers cache
+  // them hard, so a freshly-regenerated report (e.g. the new 11W-8L bet log) can look
+  // stale. A per-mount version token forces a fresh fetch each time the view is opened.
+  const [v] = useState(() => Date.now());
   const cur = reports.find((r) => r.key === active) ?? reports[0];
-  const url = `${API_BASE}/data/${cur.file}`;
+  const url = `${API_BASE}/data/${cur.file}?v=${v}`;
   const tab = (on: boolean): CSSProperties => ({
     padding: '6px 14px', border: '2px solid var(--ink)', cursor: 'pointer', ...mono, fontSize: 12, fontWeight: 700,
     background: on ? 'var(--ink)' : 'var(--paper)', color: on ? 'var(--paper)' : 'var(--ink)', marginRight: 8,
@@ -554,8 +603,54 @@ function Pdfs() {
   );
 }
 
+// Mark-to-market price tracks: per-contract ¢ + probability at each milestone
+// (PRE→T15→T30→HT→T60→T75→FT), grading whether the market confirmed our pre-match pick.
+function PriceTrack() {
+  const { t: tr } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getWCMilestoneMarks(), []);
+  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
+  const matches = data?.matches ?? [];
+  const sideName: Record<string, string> = { home: tr('prediction.home'), draw: tr('prediction.draw'), away: tr('prediction.away') };
+  return (
+    <div>
+      <Title sub={tr('prediction.subPriceTrack')}>Price Track</Title>
+      {!matches.length ? <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>—</div> :
+        matches.map((m: any) => {
+          const b = m.our_bet || {}; const mtm = m.mtm;
+          const dir = mtm?.path_direction;
+          const dirColor = dir === 'converging' ? 'var(--success)' : dir === 'diverging' ? 'var(--error)' : 'var(--text-muted)';
+          return (
+            <div key={m.fixture_id} className="card" style={{ marginBottom: 12 }}>
+              <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 4 }}>
+                {tCountry(m.home?.name)} vs {tCountry(m.away?.name)}
+                {m.settled && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {m.score}</span>}
+              </div>
+              <div style={{ fontSize: 10.5, ...mono, marginBottom: 6, color: 'var(--text-secondary)' }}>
+                {tr('prediction.ourBet')}: <b>{tCountry(b.pick_team)}</b> · {tr('prediction.lblEntry')} {cc(b.entry_cents)}
+                {mtm && <> → {tr('prediction.lblSettle')} {cc(mtm.ft_c)} · <b style={{ color: dirColor }}>{mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)}</b> {mtm.won ? tr('prediction.betWon') : tr('prediction.betLost')}</>}
+              </div>
+              <DataTable
+                cols={[tr('prediction.colMilestone'), tr('prediction.colScore'), `${sideName.home}¢`, `${sideName.draw}¢`, `${sideName.away}¢`]}
+                rows={(m.marks ?? []).map((mk: any) => {
+                  const hl = (side: string) => ({ fontWeight: b.side === side ? 700 : 400, color: b.side === side ? 'var(--text-primary)' : 'var(--ink)' });
+                  return [
+                    <b>{mk.milestone}</b>, mk.score,
+                    <span style={hl('home')}>{cc(mk.poly_c?.home)}</span>,
+                    <span style={hl('draw')}>{cc(mk.poly_c?.draw)}</span>,
+                    <span style={hl('away')}>{cc(mk.poly_c?.away)}</span>,
+                  ];
+                })} />
+            </div>
+          );
+        })}
+      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.priceTrackNote')}</div>
+    </div>
+  );
+}
+
 // ── dispatcher ────────────────────────────────────────────────────────────────
 const REGISTRY: Record<string, () => ReactElement> = {
+  wc_pricetrack: PriceTrack,
   wc_champion: ChampionOdds,
   wc_golden_boot: GoldenBoot,
   wc_squad: SquadStrength,

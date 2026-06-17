@@ -9,9 +9,10 @@
   <img src="https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white"/>
   <img src="https://img.shields.io/badge/conda-someopark__run-green?logo=anaconda&logoColor=white"/>
   <img src="https://img.shields.io/badge/venues-Kalshi%20%7C%20Polymarket-orange"/>
-  <img src="https://img.shields.io/badge/model-Dixon--Coles%20%7C%20MonteCarlo%20200k-purple"/>
+  <img src="https://img.shields.io/badge/model-Dixon--Coles%20%7C%20Simulation%201M-purple"/>
+  <img src="https://img.shields.io/badge/pricing-probability%20%2B%20per--contract%20%C2%A2-teal"/>
   <img src="https://img.shields.io/badge/data-API--Football%20(league%3D1)-lightgrey"/>
-  <img src="https://img.shields.io/badge/tests-90%20passing-brightgreen"/>
+  <img src="https://img.shields.io/badge/tests-133%20passing-brightgreen"/>
   <img src="https://img.shields.io/badge/isolated-prediction__market%2F-red"/>
 </p>
 
@@ -21,7 +22,7 @@
 
 > **隔离铁律**：本项目完全自包含于 `prediction_market/` —— 读自己的 `.env`、只写自己的 `data/`、**绝不 import 根仓库任何代码**。唯一对外写入是可选的前端 JSON（`--emit-frontend`）。所有命令在 **`someopark_run`** conda 环境下运行。
 
-设计文档：`.claude/plan/prediction market plan/`（13 个文件，00–12）；逐条实现核对：[`PLAN_AUDIT.md`](PLAN_AUDIT.md)。
+设计文档：`.claude/plan/prediction market plan/`（20 个文件，00–19）；逐条实现核对：[`PLAN_AUDIT.md`](PLAN_AUDIT.md)。
 
 ---
 
@@ -30,10 +31,49 @@
 | 品类 | 核心问题 | 方法 | 标的 |
 |------|----------|------|------|
 | **① 单场比赛** | 这一场谁赢 / 比分 / 进球 | Dixon‑Coles 双泊松比分模型（小组/淘汰分别建模）+ 赛中 in‑play 实时模型 | 3‑way 胜平负、总进球、双方进球、晋级 |
-| **② 冠军** | 谁举杯 | 蒙特卡洛锦标赛模拟（48 队 2026 赛制，N≥200k） | "Men's World Cup winner?" 48 互斥 outcome |
+| **② 冠军** | 谁举杯 | 锦标赛模拟（48 队 2026 赛制，生产 N=1,000,000，每场结束后自动重模） | "Men's World Cup winner?" 48 互斥 outcome |
 | **③ 金靴** | 谁进球最多 | 嵌套在锦标赛路径里的球员进球模拟 | Kalshi `KXWCGOALLEADER` / Polymarket 对应市场 |
 
 三品类共用**队伍强度底座**与**同一批模拟路径**，保证冠军、晋级、金靴概率自洽。其上叠加第四类**交易**机会：**④ 跨场所相对价值 / 套利**（同一标的 Kalshi vs Polymarket US 价差）。
+
+---
+
+## 每合约价格（¢）+ 里程碑盯市轨迹（plan 18，新）
+
+概率（0–1）是研究语言，但下注/结算发生在**每合约价格（cents, ¢）**上。系统现在在**每一处概率旁同步显示 ¢**，并把两者的关系讲准确：
+
+- **单合约**：¢ = 价格 × 100（二元合约赢结算 100¢、输 0¢，定义恒等）。
+- **但 ¢ ≠ 概率 × 100**：只有**我们模型**的 ¢ = 公允概率×100（三项和正好 100¢，归一化）；**场馆报价含 vig**，三个 ask 之和 >100¢（约 101–102¢），其隐含概率是**去 vig 价**（¢ ÷ 三项之和），不是 ¢÷100；且 ask≠bid（价差，展示中间价 mid）。`edge = 模型概率 − 场馆去 vig 概率`。
+- **科学边界**：只有"概率对应可成交合约"的地方才配 ¢（单场 3‑way、夺冠、totals）；**纯准确度指标（Brier/log‑loss/校准）不配 ¢**（无金融含义）。
+
+**六个里程碑盯市（mark‑to‑market）**：对每场比赛在 **PRE / 15′ / 30′ / 中场 / 60′ / 75′ / 终场** 钉下每个 outcome 的 **¢ 与概率**（Kalshi + Polymarket 双源），形成"入场 → 终场结算"的价格轨迹——验证赛前押注是否被市场逐步确认（converging / diverging）。
+
+- **数据源（实时 + 历史均实测可用）**：Kalshi 公开行情 + candlesticks 历史；Polymarket US 实时（`PMUS_*` 凭证）+ Polymarket Global 公开 `prices-history`（`fifwc-{home}-{away}-{date}` 持久事件，可回填已结束比赛）。两源逐场吻合度 ≤1–2¢。
+- **记录 + 查询双轨**：比赛进行中实时记录里程碑（GRACE 窗口防止迟启动乱码）；已结束比赛用场馆历史**回填**（`backfill_milestones`，对刚结束未归档的比赛持续重试直到历史可用）。
+- **夺冠 ¢**：Kalshi `KXMENWORLDCUP` + Poly `world-cup-winner` 真实合约价并列在夺冠概率旁。
+- **实盘战绩 ¢**：bet log 增加 `入场¢ / 结算¢ / 每张盈亏¢ / 累计¢` + `平均入场¢ / 价格捕获率 / 平均 CLV¢`。
+
+> **三视图对账(单一真值)**:PnL report(PDF)、准确度&盈亏、价格轨迹的逐场输赢全部来自同一个
+> `performance_report.match_pick`(小组 3-way + 淘汰晋级),**by construction 永远一致**;结算时
+> `live_refresh` 同步重生成 performance(JSON+PDF)+ 里程碑,杜绝"一个变另一个没变"。
+
+---
+
+## 对手加权 form 提准 + alt-data 控制框架（plan 19，新）
+
+诊断:早期错误高度集中在**"热门被对手逼平"**(8/11 输注),而现有 `form_strength` 明确"不看对手强弱"。
+新增**对手强度加权、攻防分离**的近期状态信号,把它喂回 Dixon-Coles 的 λ:防守强的弱旅压低对手 λ
+(单一 rating 做不到的"逼平"),进攻型抬自己 λ。**纯新 alpha,不靠全局加平局**(dc_rho 不动)。
+
+- **`model/altdata_adjust.py`**:对手加权 def/off form + xGA,**PIT**(`as_of` 截断,无前视泄漏)。
+- **`model/venue_climate.py`**:16 球场静态表(海拔/高温/闭顶空调)→ 比赛级对称 λ 抑制(墨西哥城海拔主导)。
+- **控制框架(都是小的、有界的、参数控制的)**:`config.py` 新增
+  `oppadj_def_weight` / `oppadj_off_weight` / `xga_weight` / `venue_climate_weight` / `lineup_weight`,
+  每场 λ 调整 clip 在 `±adj_log_clip`,任何信号都不会失控;**xga/venue/lineup 默认 0**(数据薄/待摄取)。
+- **应用点**:`StrengthModel.adj` + `pair_lambdas`(夺冠模拟也走这条 → 一致)。
+- **当前线上**:`oppadj_def=0.45, oppadj_off=0.25`(样本内调,提准 8→11/19、Brier 0.571→0.498)。
+  ⚠️ **样本内优化、会部分回吐**;权重**不进 in-sample 1152 sweep**(小样本拟合过拟合),改由
+  `param_sweep --walk-forward`(真 PIT walk-forward,已修 form 前视泄漏)验证,样本够大再 fit。
 
 ---
 
@@ -108,7 +148,9 @@ set -a && source prediction_market/.env && set +a && \
 | `config/config.py` | 中央配置：路径、模型/场所/风控/数据参数（全部锚定 `prediction_market/`，单一可追溯来源） |
 | `ingest/prior_ingest.py` | 静态先验（file 10）：12 组 48 队出线模拟 + FIFA 排名 + 分组，恒等式校验(±2pp)，队名别名映射 |
 | `ingest/api_football.py` | API‑Football 节流客户端：预算护栏(7000/月)、读写限流+429 退避、批量 `/fixtures?ids=`(≤20，events 内嵌)、逐调用记账 |
-| `ingest/store.py` | 本地存储：SQLite 业务表 + append‑only 原始快照 + 增量水位(watermark) + 月度用量；`data/wc.db` |
+| `ingest/store.py` | 本地存储：SQLite 业务表（含 `ob_snapshot` 盘口 + **`milestone_snapshot` 6 里程碑 ¢/概率/devig**）+ append‑only 原始快照 + 增量水位 + 月度用量；`data/wc.db` |
+| `util/pricing.py` | 每合约 ¢ 换算（纯展示层，不改任何模型数值）：`to_cents`/`mid`（缺边回退）/`quote_to_cents`(ask_c/bid_c/mid_c)/`model_cents`/`settle_cents`/`pnl_cents` |
+| `util/price_history.py` | 历史价格采样：`price_at(series, when_ts)` 取离里程碑时刻最近的 bar（含 gap 容差），喂回填/盯市 |
 | `ingest/soccer_ingest.py` | 摄取编排：watermark/TTL 闸（TTL 内重跑 0 请求）、幂等 upsert、coverage 感知；`--scope {static\|results\|live\|h2h\|squads\|all}` |
 
 ### 模型层（`model/`）
@@ -117,14 +159,16 @@ set -a && source prediction_market/.env && set +a && \
 |------|------|
 | `model/strength.py` | 队伍强度底座：FIFA 排名 → 评分，**反解拟合**到先验期望积分（坐标下降 + Dixon‑Coles 解析） |
 | `model/dixon_coles.py` | 单场内核：双泊松 + 低分相关修正 → 比分矩阵 → 胜平负/总进球/双方进球/晋级（含加时+点球） |
-| `model/tournament.py` | 蒙特卡洛锦标赛（2026 48 队赛制，best‑8‑thirds），向量化，20 万次约 4 秒 → 冠军/晋级/各轮/E[场次] |
+| `model/tournament.py` | 蒙特卡洛锦标赛（2026 48 队赛制，best‑8‑thirds），向量化 → 冠军/晋级/各轮/E[场次]（快查 50k；生产 1M） |
 | `model/golden_boot.py` | 金靴嵌套模拟：球员进球与球队走多远相关（同一批路径），Poisson(μ×已打场次) |
 | `model/inplay.py` | 赛中实时模型（分钟+比分+红牌 → 实时胜平负、公平平局价、剩余进球），驱动赛中交易 |
 | `model/match_pricing.py` | 单场定价：从比分矩阵导出任意单场市场（小组 72 场全量） |
 | `model/ensemble.py` | 集成：参数变体 → 概率均值 + **离散度**（替换占位 sigma，喂仓位） |
 | `model/calibrate.py` | 校准/评分：Brier / Log‑loss / 可靠性曲线 / CLV / bootstrap CI |
 | `model/oos_eval.py` | OOS 体检：冻结赛前模型对已打比赛打分，查系统性偏差（放真钱前门禁） |
-| `model/run_model.py` | 编排器：先验 → 强度 → 锦标赛 → 金靴 → 单场定价 → 前端 JSON；`--full` / `--ensemble` / `--emit-frontend` |
+| `model/run_model.py` | 编排器：先验 → 强度 → 锦标赛 → 金靴 → 单场定价 → 前端 JSON；含**夺冠¢**注入；`--full` / `--ensemble` / `--emit-frontend` |
+| `model/altdata_adjust.py` | **alt-data λ 调整(plan 19)**:对手强度加权 def/off form + xGA,z 标准化,**PIT**(`as_of`)。挂到 `StrengthModel.adj`,由 `pair_lambdas` 按权重 + clip 应用 |
+| `model/venue_climate.py` | 16 球场静态气候表(海拔/高温/闭顶空调)→ 比赛级对称 λ 抑制(更多平局),`venue_climate_weight` 控制、默认 0 |
 
 ### 策略 / 执行 / 场所（`strategy/` `exec/` `venues/`）
 
@@ -137,12 +181,12 @@ set -a && source prediction_market/.env && set +a && \
 | `strategy/cross_venue.py` | 跨场数学：锁定套利 `net_lock` + 统计相对价值 + `<$1` 篮子套利（结算等价闸） |
 | `strategy/xv_monitor.py` | 跨场比价监控（live 只读）：Global 盘口去 vig vs `p_model`，输出冠军价差/相对价值报告 |
 | `exec/order_translation.py` | 目标净头寸 → 合法订单：编码场所规则（Kalshi netting / Poly US intent），下单前自检清单 |
-| `venues/polymarket_global/reader.py` | Polymarket Global 只读 reader（Gamma/CLOB/Data，免凭证，`executable=False`） |
+| `venues/polymarket_global/reader.py` | Polymarket Global 只读 reader（Gamma/CLOB/Data，免凭证）：盘口去 vig + **`prices-history` 逐分钟历史** + `list_wc_match_events`（持久 `fifwc-*` 事件，open+closed 全覆盖，回填已结束比赛） |
 | `jobs/hourly_job.py` | 每小时编排：增量摄取 → 强度+赛果更新 → 模型 → 跨场监控 → OOS → 结构化日志（`--dry-run`/`--loop`） |
 | `venues/base.py` | 统一 `Venue` / `ExecutionVenue` 接口 + `OrderBook`/`Balance`/`Position` 类型 |
 | `venues/guard.py` | `venue_guard`：执行只允许 Kalshi/Poly US（拦截 Global）；**实盘交易硬闸**（prod/真钱 须显式授权） |
 | `venues/kalshi/auth.py` | Kalshi RSA‑PSS 签名（毫秒时间戳，签 `ts+METHOD+path` 去 query） |
-| `venues/kalshi/market_data.py` | Kalshi 公开行情读取器（免鉴权）：`best_prices` 双边 ask + 深度 |
+| `venues/kalshi/market_data.py` | Kalshi 公开行情读取器（免鉴权）：`best_prices` 双边 ask + 深度 + **`candlesticks` 逐分钟历史**（按 ticker，绕过只列 open 的事件索引） |
 
 ### 运维 / 报告 / 前端层（`ops/` `jobs/`）
 
@@ -154,8 +198,14 @@ set -a && source prediction_market/.env && set +a && \
 | `ops/risk_report.py` | **风险报告**：交易闸门、仓位限额、各场余额（prod key 永不查）、敞口、API 预算、校准闸门、护栏；`--pdf` 同款 PDF |
 | `ops/pdf_style.py` | PDF 样式模块（自包含复制根仓库报告风格：PingFang CJK 字体、深蓝表头+金线、隔行底纹、盈亏红绿；**不 import 根代码**） |
 | `ops/system_overview.py` | 静态系统目录（接口/模式/调度/输入输出/价值）的单一数据源，供 PDF 与前端共用 |
-| `ops/upcoming_export.py` | **逐场跨场报价**：对未来比赛真实拉取 Kalshi（公开）+ Polymarket US（读凭证）单场 3‑way（ask/bid）+ 去 vig + 模型边缘 + 跨场锁定套利 → `upcoming.json`（只读，绝不下单） |
+| `ops/upcoming_export.py` | **逐场跨场报价**：对未来比赛真实拉取 Kalshi（公开）+ Polymarket US（读凭证）单场 3‑way（ask/bid + **¢**）+ 去 vig + 模型边缘 + 跨场锁定套利 → `upcoming.json`；临近开赛落库 PRE 里程碑入场价（只读，绝不下单） |
+| `ops/inplay_export.py` | **盘中导出**：每场 live 模型 3‑way + xG + 剩余进球 + 每个 outcome 的市价¢（Kalshi/Poly）+ 盘中机会（市价¢/公允¢/edge¢）→ `inplay_live.json` |
+| `ops/milestone_export.py` | **价格轨迹**：聚合 `milestone_snapshot` → 每场 6 里程碑的 ¢+概率双口径 + 我们的赛前选边 + 入场→终场盯市（MTM）→ `milestone_marks.json` |
+| `ops/backfill_milestones.py` | **历史回填**：用 Poly Global 持久事件 `fifwc-{h}-{a}-{date}` + CLOB `prices-history` 重建已结束比赛的 6 里程碑轨迹（date+队名匹配，含重音/别名）；REPLACE 自愈乱码行，缺 FT 行则重试 |
+| `ops/live_refresh.py` | **盘中每周期刷新**（launchd 30s，窗口外低成本空转）：同步 live/赛果 → 重建 inplay/upcoming/xv/oos → 捕获里程碑（GRACE 窗）+ 回填 + 导出 → 写本地 + 前端目录（经 Cloudflare tunnel 实时上线，无需重新部署前端） |
+| `ops/refresh_all.py` | **全量重生成**：把前端读的每个导出在当前样本上重算（含 milestone_marks）+ 重跑夺冠模拟（1M） |
 | `ops/frontend_export.py` | **前端数据合约**：静态目录 + 实时快照（performance/risk/预测/upcoming）→ 单一 `frontend_overview.json`，前端读这一个文件即可 |
+| `venues/champion_prices.py` | 夺冠盘真实合约价：Kalshi `KXMENWORLDCUP`（inline ask）+ Poly Global `world-cup-winner`（inline outcomePrices）→ 映射到 canonical team_id，失败容错 |
 | `jobs/live_poller.py` | 盘中每分钟轮询：live 公允价 + 跨场套利 + 战术 → `inplay_signals.json` |
 
 ---
@@ -223,7 +273,7 @@ conda run -n someopark_run --no-capture-output python -m prediction_market.model
 conda run -n someopark_run --no-capture-output python -m pytest prediction_market/tests/ -q
 ```
 
-90 passing：先验校验、Dixon‑Coles、强度标定、锦标赛/金靴分布、in‑play、校准、OOS、集成、de‑vig/edge/sizing、风控、跨场套利、订单翻译、场所守卫、Kalshi 签名/盘口解析、数据层（store/预算/解析）、运维报告（performance/risk 报告 + PDF 渲染 + 前端 export 合约）。
+133 passing：先验校验、Dixon‑Coles、强度标定、锦标赛/金靴分布、in‑play、校准、OOS、集成、de‑vig/edge/sizing、风控、跨场套利、订单翻译、场所守卫、Kalshi 签名/盘口解析、数据层（store/预算/解析）、运维报告（performance/risk 报告 + PDF 渲染 + 前端 export 合约）、**每合约 ¢ 体系**（pricing 换算/历史采样/candlestick 解析/夺冠¢映射/里程碑捕获幂等+GRACE 窗/milestone 导出/PnL¢ 对账），以及 **alt-data 层**（对手加权 form PIT/默认零权重 no-op 不变 prod/clip 有界/价格轨迹↔bet log 对账一致）。
 
 ---
 
@@ -236,6 +286,10 @@ conda run -n someopark_run --no-capture-output python -m pytest prediction_marke
 | `06–10` | 路线图 / Polymarket 对接 / 跨场策略 / 场所微结构规则 / 球队先验全量 |
 | `11` | **API‑Football 对接**（官方世界杯指南 + 本项目实现） |
 | `12` | **Kalshi Trade API 深度摘要**（全文精读 → 环境/鉴权/定点价/下单V2/限速/WS/映射） |
+| `13–16` | 跨场监控 / 前端集成 / 赌球边缘+盘中战术 / 前端 Prediction 模式 |
+| `17` | 建模研究 + 参数搜索（7 旋钮 OOS 扫描，FC/squad/form 权重） |
+| `18` | **每合约价格(¢) + 里程碑盯市轨迹**（双口径展示 + vig/devig + 6 里程碑 + Poly/Kalshi 历史回填 + 夺冠¢ + PnL¢ + 三视图对账） |
+| `19` | **对手加权 form 提准 + alt-data 控制框架**（对手强度加权攻防 form + xGA + 球场气候,参数控制有界,PIT walk-forward 验证） |
 
 ---
 
@@ -294,38 +348,60 @@ conda run -n someopark_run --no-capture-output python -m pytest prediction_marke
 
 ### 6. 输出是什么 / 在哪里（`outputs`，全在 `data/output/`）
 
+- `worldcup_model.json` — 冠军/晋级/金靴（含**夺冠 Kalshi/Poly ¢**）
 - `xv_champion.json` / `xv_matches.json` — 冠军概率 / 赛前偏离
-- `upcoming.json` — **逐场跨场报价**（模型 + book + 真实 Kalshi/Poly US ask/bid + 边缘 + 锁定套利）
+- `upcoming.json` — **逐场跨场报价**（模型 + book + 真实 Kalshi/Poly US ask/bid + **¢** + devig + 边缘 + 锁定套利）
+- `inplay_live.json` — 盘中 live 模型 + 市价¢ + 机会（edge¢）
+- `milestone_marks.json` — **价格轨迹**：每场 6 里程碑 ¢+概率 + 入场→终场盯市（MTM）
 - `inplay_signals.json` — 盘中套利/战术
-- `performance_report.json` + `.pdf` — 收益/准确度
+- `performance_report.json` + `.pdf` — 收益/准确度（含**每合约 ¢ 盈亏 + 捕获率 + CLV**）
 - `risk_report.json` + `.pdf` — 风险
 - `oos_report.json` — 样本外校准（闸门依据）
 - `frontend_overview.json` — **前端总入口**
 
 ### 7. 给用户带来的价值（`value`）
 
-① 校准过的赛事概率模型（已修巴西高估：France 18.5% / Brazil 11.2%）　② 跨 Kalshi/Polymarket 实时错价发现　③ 强制纪律——只在模型达标且真有边缘时动钱，每单硬顶 $1。
+① 校准过的赛事概率模型（每场结束后重模，1M 路径）　② 跨 Kalshi/Polymarket 实时错价发现，**概率 + 每合约 ¢ 双口径**（含 vig/去 vig）　③ **6 里程碑盯市轨迹**：赛前押注入场 ¢ → 终场结算的实盘验证　④ 强制纪律——只在模型达标且真有边缘时动钱，每单硬顶 $1。
 
 ### 8. 怎么能看到这个价值（`performance` + `risk`）
 
-- **准确度**：16 场已结算，Brier 0.7225 vs 均匀 0.6667 → 当前 **BLOCK**（模型还没达标，这是纪律在生效）
-- **校准 P&L**：‑3.11u 纸面（对大热门过度自信）
-- **风险**：demo 环境，Kalshi $10 / PMUS $0 / prod 永不查，0 敞口，4 条护栏全亮
+> 下列数字随每场结束**动态更新**（已结算样本自动增长，模型每场后重模），以面板实时数为准。
+
+- **准确度**：已结算约 18–19 场，原始 Brier vs 均匀基线 0.6667 + **校准后** Brier（交易等级以校准后为准）→ 当前仍 **BLOCK**（纪律在生效，未达标不动真钱）
+- **实盘战绩**：逐场 1u 押模型选边的 track record（W‑L、ROI）+ **每合约 ¢ 口径**（累计¢、平均入场¢、价格捕获率、CLV¢）
+- **校准 P&L**：纸面公允赔率诊断（过度/不足自信）
+- **风险**：demo 环境，Kalshi $10 / PMUS / prod 永不查，0 敞口，护栏全亮，每单硬顶 $1
 
 ---
 
 ## 前端集成
 
-**单一数据合约**：`python -m prediction_market.ops.frontend_export` → 写 `data/output/frontend_overview.json`（含上面 8 节全部内容 + 实时 performance/risk 快照）。同步脚本把它与 `xv_*.json` / `predictions_*.json` / 两个 `.pdf` 拷入 `someo-park-investment-management/public/data/`。
+**单一数据合约**：`python -m prediction_market.ops.frontend_export` → 写 `data/output/frontend_overview.json`（含上面 8 节全部内容 + 实时 performance/risk 快照）。`refresh_all` / `live_refresh` 把所有导出（含 `milestone_marks.json`）同步到 `someo-park-investment-management/public/data/`。
 
-> 前端「Prediction Market 模式」开发计划见 `.claude/plan/prediction market plan/16_frontend_prediction_mode.md`：点切换按钮整站反色进入预测视图（中间 artifact、Active Pairs→未来比赛、右侧 panel 换预测内容），**绝不修改任何股票策略元素**。
+> **实时上线管线**：本地 Express（`:3001`，serve `public/data/*` + `/api`）经 **Cloudflare tunnel** 供给线上站点；`live_refresh`（launchd 30s）持续刷新 JSON → **数据改动无需重新部署前端即实时上线**。仅前端代码（组件/视图）变更才需 `npm run build` + firebase deploy。
 >
-> 历史兼容：`run_model.py --emit-frontend` 仍写 `worldcup_model.json`（本项目对前端的写入仅限 `public/data/` 下的预测文件，绝不触碰其它前端文件）。
+> **前端 Prediction 模式**（plan 16）：点切换按钮整站反色进入预测视图，**19 个 dashboard 视图**（夺冠概率 / 单场定价 / 金靴 / 盘中套利 / **价格轨迹(¢)** / 实盘战绩 / 模型vs市场 / 校准 / 参数搜索 / 风险 …），每处概率旁同步显示 ¢，**绝不修改任何股票策略元素**。
+>
+> **Someo Agent**（前端 chat，预测模式默认开启）：5 个只读工具（`get_prediction_market` 含 `pricetrack` view、`get_wc_team`、`get_wc_match`、`compare_wc_teams`、`get_wc_track_record`）读全部结构化数据；prompt 知识涵盖 ¢/概率/vig/devig/里程碑（与股票四策略对等）。
+>
+> 历史兼容：`run_model.py --emit-frontend` / `refresh_champion` 仍写 `worldcup_model.json`（本项目对前端的写入仅限 `public/data/` 下的预测文件，绝不触碰其它前端文件）。
 
 ---
 
 ## 已建 vs 待接
 
-**已建并验证**：数据层全链路（节流摄取 + SQLite + 增量）、建模引擎（强度/Dixon‑Coles/锦标赛/金靴/in‑play/集成/OOS/校准）、策略数学（de‑vig/edge/sizing/风控/跨场）、订单翻译 + 场所守卫、Kalshi/Poly US 凭证验证。
+**已建并验证**：数据层全链路（节流摄取 + SQLite + 增量）、建模引擎（强度/Dixon‑Coles/锦标赛 **1M**/金靴/in‑play/集成/OOS/校准）、策略数学（de‑vig/edge/sizing/风控/跨场）、订单翻译 + 场所守卫、Kalshi/Poly US 凭证验证、**每合约 ¢ + 6 里程碑盯市轨迹**（双源实时+历史、夺冠¢、PnL¢、价格轨迹视图、三视图对账）、**对手加权 form alt-data 层**（提准 8→11/19、参数控制有界、PIT walk-forward 验证）、Polymarket Global 只读 reader（**已用于逐分钟历史回填**）、launchd 30s 盘中刷新 + Cloudflare tunnel 实时上线、前端 Prediction 模式 + Someo Agent 工具（19 个 dashboard 视图，懂 ¢/概率/vig/devig）。
 
-**待接（需凭证或按路线图 Demo 优先）**：Kalshi 实盘订单/WS（已对齐文档，受实盘闸约束）、`PolymarketUSVenue` 适配器 + Global 只读 reader、跨场套利执行、每小时调度、真实金靴球员速率（topscorers）。完整逐条状态见 [`PLAN_AUDIT.md`](PLAN_AUDIT.md)。
+### 定时调度（3 个 launchd job,无 cron）
+
+| Job | 频率 | 跑什么 | 跑 sweep? |
+|-----|------|--------|----------|
+| `predictionlive` | **30s** | `live_refresh.sh`:盘中刷新 + **结算时**重算夺冠(1M)/绩效(JSON+PDF)/里程碑回填(经 tunnel,不部署) | ❌ |
+| `predictionmatchtrigger` | **15min** | `refresh_and_deploy.sh --trigger`:有新赛果才跑全量 `refresh_all` + sync + build + firebase 部署 | ❌ |
+| `predictionrefresh` | **每日 06:30** | `refresh_and_deploy.sh`:全量 pipeline + 部署 + **时间隔离(sleep 60s)后跑 1152 sweep** | ✅(仅此) |
+
+> 完整 pipeline(`refresh_all`)重生成**所有**导出:JSON 全套 + `milestone_marks`(价格轨迹)+ **两个 PDF** +
+> `xv_champion`;1152 sweep **只在每日 06:30 跑**(慢、时间隔离),其余两个 job 不跑。`param_sweep.json`
+> 带 `generated_at` 时间戳,前端"参数搜索"视图显示"上次更新"。
+
+**待接（需凭证或按路线图 Demo 优先）**：Kalshi 实盘订单/WS（已对齐文档，受实盘闸约束）、跨场套利执行（真钱）、真实金靴球员速率（topscorers 已接，持续校准）。完整逐条状态见 [`PLAN_AUDIT.md`](PLAN_AUDIT.md)。
