@@ -586,7 +586,10 @@
     "paramSets": "param sets",
     "lblSweepUpdated": "Sweep last updated",
     "colRound": "Round",
-    "lblMatchday": "MD"
+    "lblMatchday": "MD",
+    "roleReference": "Read-only ref",
+    "tradingReadonly": "read-only",
+    "venueGlobalNote": "Polymarket Global: read-only data only — per-minute price history (→ price-track backfill), champion-odds reference (Poly side of champion ¢), cross-venue check; US geoblocked, not tradable, no account balance."
   },
   "sidebar": {
     "appName": "Someo Park",
