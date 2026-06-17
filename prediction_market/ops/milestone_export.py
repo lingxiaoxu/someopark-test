@@ -114,12 +114,28 @@ def build(conn=None) -> dict:
             entry_prob = round(model[pick], 4)
         pre = next((m for m in marks if m["milestone"] == "PRE"), None)
         entry_c = (pre["poly_c"].get(pick) if pre else None)
+        side_label = {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}
+        # argmax 口径 (most-likely side) — the parallel reference shown under our bet, on
+        # EVERY settled match (incl. ones the decision model skipped).
+        argmax = None
+        if mr is not None:
+            am_pick = mr["model_pick"]
+            am_entry_c = (pre["poly_c"].get(am_pick) if pre else None)
+            am_won = mr["model_won"]
+            argmax = {
+                "side": am_pick, "pick_team": side_label[am_pick], "entry_cents": am_entry_c,
+                "won": am_won,
+                "mtm": ({"entry_c": am_entry_c, "ft_c": 100.0 if am_won else 0.0,
+                         "pnl_c": round((100.0 if am_won else 0.0) - am_entry_c, 1), "won": am_won}
+                        if (settled and am_entry_c is not None) else None),
+            }
         our_bet = {
             "side": pick, "entry_prob": entry_prob, "entry_cents": entry_c,
-            "pick_team": {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}[pick],
+            "pick_team": side_label[pick],
             "bet": bet,                                  # False ⇒ decision model found no edge
             "stake_usd": (mr["stake_usd"] if mr else None),
             "model_pick": (mr["model_pick"] if mr else pick),
+            "argmax": argmax,                            # parallel argmax track (side + mtm)
         }
 
         mtm = None

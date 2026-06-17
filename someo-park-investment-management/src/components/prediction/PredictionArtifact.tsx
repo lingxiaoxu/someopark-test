@@ -337,6 +337,7 @@ function PerformanceCard() {
         ...(hasCal ? [[tr('prediction.lblBrierCalibrated'), <span style={{ color: pass ? 'var(--success)' : 'var(--ink)' }}>{`${num(data?.calibrated_brier, 4)} ≤ uniform ${num(data?.brier_uniform, 4)}`}</span>] as [string, ReactNode]] : []),
         ['Log-loss', num(data?.log_loss, 4)],
         [tr('prediction.lblModelAcc'), pct(data?.model_pred_accuracy ?? data?.favourite_hit_rate, 0)],
+        ...(data?.argmax_record ? [[tr('prediction.lblArgmaxRecord'), <span><b>{data.argmax_record}</b> · <span style={{ color: (data?.argmax_pnl_cents_total ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{(data?.argmax_pnl_cents_total ?? 0) >= 0 ? '+' : ''}{cc(data?.argmax_pnl_cents_total)}</span></span>] as [string, ReactNode]] : []),
         [tr('prediction.lblAvgClv'), <span style={{ color: (data?.avg_clv_cents ?? 0) > 0 ? 'var(--success)' : 'var(--ink)' }}>{(data?.avg_clv_cents ?? 0) > 0 ? '+' : ''}{cc(data?.avg_clv_cents)}</span>],
         [tr('prediction.lblCalibPnl'), `${num(data?.calibration_pnl, 2)}u (${num(data?.calibration_pnl_per_bet, 3)}u/bet)`],
         [tr('prediction.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? tr('prediction.gradePassCalibrated') : tr('prediction.gradeBlock')}</span>],
@@ -363,6 +364,11 @@ function BetLog({ data }: { data: any }) {
         {tr('prediction.lblTrackRecord')}: <b>{data.pnl_record}</b> · <b style={{ color: pnlColor }}>{pnl > 0 ? '+' : ''}${num(pnl, 2)}</b>
         {' '}({pct(data.pnl_roi, 1)} ROI) · {data.n_decision_bets ?? log.length} {tr('prediction.lblBets')}{data.n_skipped ? ` · ${data.n_skipped} ${tr('prediction.lblSkipped')}` : ''} · {tr('prediction.colDate')} ≥ {data.bet_since}
       </div>
+      {data.argmax_record && (
+        <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-muted)' }}>
+          {tr('prediction.lblArgmaxRecord')}: <b>{data.argmax_record}</b> · {pct(data.model_pred_accuracy, 0)} · <b style={{ color: (data.argmax_pnl_cents_total ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{(data.argmax_pnl_cents_total ?? 0) >= 0 ? '+' : ''}{cc(data.argmax_pnl_cents_total)}</b> · {log.length} {tr('prediction.lblMatchesAll')}
+        </div>
+      )}
       <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-muted)' }}>{tr('prediction.betLogNote')}</div>
       {data.pnl_cents_total != null && (
         <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 6, color: 'var(--text-muted)' }}>
@@ -371,18 +377,22 @@ function BetLog({ data }: { data: any }) {
         </div>
       )}
       <DataTable
-        cols={[tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colSettleC'), tr('prediction.colPnlC'), 'Cum¢']}
-        rows={log.map((b: any) => [
-          b.date?.slice(5),
-          `${tCountry(b.home)} ${b.score} ${tCountry(b.away)}`,
-          <span>{sideLabel(b)}{b.model_pick && b.model_pick !== b.pick ? <span style={{ color: 'var(--text-muted)' }}> ·{tr('prediction.argmaxShort')} {argmaxLabel(b)}</span> : null}</span>,
-          b.stake_usd != null ? `$${num(b.stake_usd, 2)}` : '—',
-          <span style={{ color: b.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{b.won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>,
-          cc(b.entry_cents),
-          cc(b.settle_cents),
-          <span style={{ color: (b.pnl_cents ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.pnl_cents != null ? `${b.pnl_cents >= 0 ? '+' : ''}${cc(b.pnl_cents)}` : '—'}</span>,
-          <span style={{ color: (b.cum_pnl_cents ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.cum_pnl_cents != null ? `${b.cum_pnl_cents >= 0 ? '+' : ''}${cc(b.cum_pnl_cents)}` : '—'}</span>,
-        ])} />
+        cols={[tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colPnlC'), 'Cum¢', tr('prediction.colArgmax')]}
+        rows={log.map((b: any) => {
+          const noBet = b.bet === false;
+          const amColor = (b.argmax_pnl_cents ?? 0) > 0 ? 'var(--success)' : (b.argmax_pnl_cents ?? 0) < 0 ? 'var(--error)' : 'var(--text-muted)';
+          return [
+            b.date?.slice(5),
+            `${tCountry(b.home)} ${b.score} ${tCountry(b.away)}`,
+            noBet ? <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.noBetShort')}</span> : sideLabel(b),
+            noBet ? <span style={{ color: 'var(--text-muted)' }}>$0</span> : `$${num(b.stake_usd, 2)}`,
+            noBet ? <span style={{ color: 'var(--text-muted)' }}>—</span> : <span style={{ color: b.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{b.won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>,
+            noBet ? '—' : cc(b.entry_cents),
+            noBet ? '—' : <span style={{ color: (b.pnl_cents ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.pnl_cents != null ? `${b.pnl_cents >= 0 ? '+' : ''}${cc(b.pnl_cents)}` : '—'}</span>,
+            noBet ? '—' : <span style={{ color: (b.cum_pnl_cents ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.cum_pnl_cents != null ? `${b.cum_pnl_cents >= 0 ? '+' : ''}${cc(b.cum_pnl_cents)}` : '—'}</span>,
+            <span>{argmaxLabel(b)} <span style={{ color: b.model_won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{b.model_won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>{b.argmax_pnl_cents != null ? <span style={{ color: amColor }}> {b.argmax_pnl_cents >= 0 ? '+' : ''}{cc(b.argmax_pnl_cents)}</span> : null}</span>,
+          ];
+        })} />
     </div>
   );
 }
@@ -644,7 +654,7 @@ function PriceTrack() {
                 {tCountry(m.home?.name)} vs {tCountry(m.away?.name)}
                 {m.settled && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {m.score}</span>}
               </div>
-              <div style={{ fontSize: 10.5, ...mono, marginBottom: 6, color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: 10.5, ...mono, marginBottom: 2, color: 'var(--text-secondary)' }}>
                 {b.bet === false
                   ? <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.ourBet')}: {tr('prediction.noBet')}</span>
                   : <>
@@ -652,6 +662,16 @@ function PriceTrack() {
                       {mtm && <> → {tr('prediction.lblSettle')} {cc(mtm.ft_c)} · <b style={{ color: dirColor }}>{mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)}</b> {mtm.won ? tr('prediction.betWon') : tr('prediction.betLost')}</>}
                     </>}
               </div>
+              {b.argmax && (() => {
+                const a = b.argmax; const am = a.mtm;
+                const aColor = am ? (am.pnl_c > 0 ? 'var(--success)' : am.pnl_c < 0 ? 'var(--error)' : 'var(--text-muted)') : 'var(--text-muted)';
+                return (
+                  <div style={{ fontSize: 10, ...mono, marginBottom: 6, color: 'var(--text-muted)' }}>
+                    {tr('prediction.argmaxShort')}: <b>{tCountry(a.pick_team)}</b>
+                    {am && <> · {tr('prediction.lblEntry')} {cc(am.entry_c)} → {cc(am.ft_c)} · <b style={{ color: aColor }}>{am.pnl_c >= 0 ? '+' : ''}{cc(am.pnl_c)}</b> {am.won ? tr('prediction.betWon') : tr('prediction.betLost')}</>}
+                  </div>
+                );
+              })()}
               <DataTable
                 cols={[tr('prediction.colMilestone'), tr('prediction.colScore'), `${sideName.home}¢`, `${sideName.draw}¢`, `${sideName.away}¢`]}
                 rows={(m.marks ?? []).map((mk: any) => {

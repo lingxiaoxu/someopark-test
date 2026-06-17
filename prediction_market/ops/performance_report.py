@@ -61,6 +61,9 @@ class PerformanceReport:
     n_decision_bets: int = 0          # matches the decision model actually bet
     n_skipped: int = 0                # settled matches skipped (no tradable edge)
     decision_staked_usd: float = 0.0  # total $ staked across the decision bets
+    # Argmax 口径 (parallel reference, every settled match): bet the most-likely side.
+    argmax_record: str = ""           # e.g. "12W-10L" over all settled matches
+    argmax_pnl_cents_total: float = 0.0  # ¢ P&L betting argmax every match
 
 
 def _settled(conn, sm):
@@ -270,15 +273,20 @@ def _bet_log(conn) -> list[dict]:
         _FINISHED).fetchall()
 
     from prediction_market.strategy.decision_model import quotes_from_milestone_row
+    from prediction_market.util.pricing import to_cents, pnl_cents as _pnl_cents
     log: list[dict] = []
     cum = 0.0
     staked = 0.0
     wins = 0
+    n_bets = 0           # matches the decision model actually bet
     skipped = 0          # settled matches the decision model declined (no edge)
-    model_n = model_hits = 0   # argmax prediction-accuracy reference (over ALL settled)
-    cum_c = 0.0          # cumulative per-contract ¢ P&L
+    cum_c = 0.0          # cumulative per-contract ¢ P&L (decision bets)
     sum_entry_c = 0.0    # Σ entry ¢ (for the average)
     cents_avail = 0.0    # Σ theoretically-capturable ¢ (for capture rate)
+    # argmax 口径 (model_pick): bet the most-likely side EVERY settled match (all 22) —
+    # the parallel reference track shown alongside the decision model.
+    am_cum_c = 0.0       # cumulative per-contract ¢ P&L (argmax, all matches)
+    am_n = am_wins = 0
     for r in rows:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
@@ -292,49 +300,72 @@ def _bet_log(conn) -> list[dict]:
                         gate_open=True, pit=True)
         if mr is None:
             continue   # knockout level after ET with no winner flag yet — can't settle
-        model_n += 1
-        model_hits += int(mr["model_won"])
-        if not mr["bet"]:
-            skipped += 1   # decision model found no tradable edge → not a bet (excluded)
-            continue
         knockout = mr["stage"] == "knockout"
         gh, ga = r["home_goals"], r["away_goals"]
-        pick, result, won = mr["pick"], mr["result"], mr["won"]
-        cost, edge_val, model_prob = mr["cost"], mr["edge"], mr["model_prob"]
-        stake = mr["stake_usd"] or 1.0
-
-        dec_odds = 1.0 / cost                          # decimal odds at our entry price
-        pnl = stake * (dec_odds - 1.0) if won else -stake   # $ P&L at the chosen stake
-        cum += pnl
-        staked += stake
-        wins += int(won)
-
-        # Per-contract ¢ view: prefer the real venue price at kickoff (PRE milestone,
-        # Poly then Kalshi), else the book/fair cost ×100. Settle 100¢ (won) / 0¢.
-        from prediction_market.util.pricing import to_cents, pnl_cents as _pnl_cents
+        result = mr["result"]
         pr = pre_px.get(r["api_id"])
-        entry_cents = entry_source = None
-        if pr is not None and pr[f"poly_{pick}_ask"] is not None:
-            entry_cents, entry_source = to_cents(pr[f"poly_{pick}_ask"]), "poly"
-        elif pr is not None and pr[f"kalshi_{pick}_ask"] is not None:
-            entry_cents, entry_source = to_cents(pr[f"kalshi_{pick}_ask"]), "kalshi"
-        else:
-            entry_cents, entry_source = to_cents(cost), "book_devig"
-        c_pnl = _pnl_cents(entry_cents, won)
-        cum_c += (c_pnl or 0.0)
-        sum_entry_c += (entry_cents or 0.0)
-        cents_avail += ((100.0 - entry_cents) if won else entry_cents) if entry_cents is not None else 0.0
-        # CLV ¢: the pick side's market ¢ at T75 (the last in-play milestone) minus our
-        # entry ¢ — positive means the market drifted toward our bet (a real-time
-        # leading indicator that the pre-match read was right), independent of the result.
-        clv_cents = None
-        t75 = t75_px.get(r["api_id"])
-        if t75 is not None and entry_cents is not None:
-            t75_side = t75[f"poly_{pick}_ask"] if t75[f"poly_{pick}_ask"] is not None else t75[f"kalshi_{pick}_ask"]
-            if t75_side is not None:
-                clv_cents = round(to_cents(t75_side) - entry_cents, 1)
-
         side_label = {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}
+
+        def _entry_c(side):
+            """Real PRE venue ¢ for a side (Poly then Kalshi) → (cents, source); else None."""
+            if pr is None:
+                return None
+            if pr[f"poly_{side}_ask"] is not None:
+                return to_cents(pr[f"poly_{side}_ask"]), "poly"
+            if pr[f"kalshi_{side}_ask"] is not None:
+                return to_cents(pr[f"kalshi_{side}_ask"]), "kalshi"
+            return None
+
+        def _clv_c(side, entry_c):
+            t75 = t75_px.get(r["api_id"])
+            if t75 is None or entry_c is None:
+                return None
+            s = t75[f"poly_{side}_ask"] if t75[f"poly_{side}_ask"] is not None else t75[f"kalshi_{side}_ask"]
+            return round(to_cents(s) - entry_c, 1) if s is not None else None
+
+        # ── argmax 口径 (model_pick) — recorded for EVERY settled match (all 22) ──
+        am_pick, am_won = mr["model_pick"], mr["model_won"]
+        _ame = _entry_c(am_pick)
+        am_entry_c = _ame[0] if _ame else None
+        am_pnl_c = _pnl_cents(am_entry_c, am_won) if am_entry_c is not None else None
+        am_cum_c += (am_pnl_c or 0.0)
+        am_n += 1
+        am_wins += int(am_won)
+
+        # ── decision 口径 (value pick) — populated only when the model actually bet ──
+        if mr["bet"]:
+            pick, won = mr["pick"], mr["won"]
+            cost, edge_val, model_prob = mr["cost"], mr["edge"], mr["model_prob"]
+            stake = mr["stake_usd"] or 1.0
+            dec_odds = 1.0 / cost
+            pnl = stake * (dec_odds - 1.0) if won else -stake
+            cum += pnl
+            staked += stake
+            wins += int(won)
+            n_bets += 1
+            _de = _entry_c(pick)
+            entry_cents, entry_source = (_de[0], _de[1]) if _de else (to_cents(cost), "book_devig")
+            c_pnl = _pnl_cents(entry_cents, won)
+            cum_c += (c_pnl or 0.0)
+            sum_entry_c += (entry_cents or 0.0)
+            cents_avail += ((100.0 - entry_cents) if won else entry_cents) if entry_cents is not None else 0.0
+            clv_cents = _clv_c(pick, entry_cents)
+            dec = {"pick": pick, "pick_team": side_label[pick], "won": won,
+                   "stake_usd": round(stake, 2), "model_prob": model_prob,
+                   "price": round(cost, 4), "dec_odds": round(dec_odds, 3),
+                   "edge": round(edge_val, 4), "confidence_k": mr.get("confidence_k"),
+                   "pnl": round(pnl, 3), "cum_pnl": round(cum, 3),
+                   "entry_cents": entry_cents, "entry_source": entry_source,
+                   "settle_cents": (100.0 if won else 0.0), "pnl_cents": c_pnl,
+                   "cum_pnl_cents": round(cum_c, 1), "clv_cents": clv_cents}
+        else:
+            skipped += 1   # decision model found no tradable edge → no bet (but still listed)
+            dec = {"pick": None, "pick_team": None, "won": None, "stake_usd": 0.0,
+                   "model_prob": round(mr["model"][am_pick], 4), "price": None,
+                   "dec_odds": None, "edge": None, "confidence_k": mr.get("confidence_k"),
+                   "pnl": None, "cum_pnl": None, "entry_cents": None, "entry_source": None,
+                   "settle_cents": None, "pnl_cents": None, "cum_pnl_cents": None, "clv_cents": None}
+
         log.append({
             "stage": "knockout" if knockout else "group",
             "date": (r["kickoff_ts"] or "")[:10],
@@ -343,30 +374,16 @@ def _bet_log(conn) -> list[dict]:
             "home_zh": zh.get(hi, ""), "away_zh": zh.get(ai, ""),
             "score": f"{gh}-{ga}",
             "result": result,
-            "pick": pick,
-            "pick_team": side_label[pick],
-            "model_pick": mr["model_pick"],
-            "model_pick_team": side_label[mr["model_pick"]],
-            "model_won": mr["model_won"],
-            "stake_usd": stake,
-            "confidence_k": mr.get("confidence_k"),
-            "model_prob": model_prob,
-            "price": round(cost, 4),
-            "dec_odds": round(dec_odds, 3),
-            "edge": round(edge_val, 4),
-            "won": won,
-            "pnl": round(pnl, 3),
-            "cum_pnl": round(cum, 3),
-            # per-contract ¢ view (plan 18 §2.7)
-            "entry_cents": entry_cents,
-            "entry_source": entry_source,
-            "settle_cents": (100.0 if won else 0.0),
-            "pnl_cents": c_pnl,
-            "cum_pnl_cents": round(cum_c, 1),
-            "clv_cents": clv_cents,
+            "bet": mr["bet"],
+            **dec,
+            # argmax 口径 (model_pick) — present on every row, all 22 matches
+            "model_pick": am_pick, "model_pick_team": side_label[am_pick], "model_won": am_won,
+            "argmax_entry_cents": am_entry_c, "argmax_settle_cents": (100.0 if am_won else 0.0),
+            "argmax_pnl_cents": am_pnl_c, "argmax_cum_pnl_cents": round(am_cum_c, 1),
         })
-    return log, {"skipped": skipped, "model_n": model_n, "model_hits": model_hits,
-                 "staked_usd": round(staked, 2)}
+    return log, {"skipped": skipped, "n_bets": n_bets, "model_n": am_n, "model_hits": am_wins,
+                 "staked_usd": round(staked, 2), "argmax_pnl_cents_total": round(am_cum_c, 1),
+                 "argmax_record": f"{am_wins}W-{am_n - am_wins}L"}
 
 
 def build(conn=None) -> PerformanceReport:
@@ -433,14 +450,17 @@ def build(conn=None) -> PerformanceReport:
                      "not yet trade-grade (discipline gate blocks).")
     # Production bet log: flat 1u on our model's best value side vs the closing book,
     # every match since the opener. This is the track record we present (no OOS framing).
-    log, betmeta = _bet_log(conn)
-    pnl_units = round(sum(b["pnl"] for b in log), 2)   # $ P&L at the decision-model stakes
-    wins = sum(1 for b in log if b["won"])
-    pnl_record = f"{wins}W-{len(log) - wins}L"
+    log, betmeta = _bet_log(conn)   # ALL settled matches; no-bet rows carry the argmax track only
+    n_bets = betmeta["n_bets"]
+    pnl_units = round(sum((b["pnl"] or 0.0) for b in log), 2)   # $ P&L at the decision-model stakes
+    wins = sum(1 for b in log if b.get("won"))
+    pnl_record = f"{wins}W-{n_bets - wins}L"
     decision_staked = betmeta["staked_usd"] or 0.0
     pnl_roi = round(pnl_units / decision_staked, 4) if decision_staked else 0.0
     bet_since = log[0]["date"] if log else ""
     model_pred_accuracy = round(betmeta["model_hits"] / betmeta["model_n"], 3) if betmeta["model_n"] else 0.0
+    argmax_record = betmeta["argmax_record"]                      # W-L over ALL settled (22)
+    argmax_pnl_cents_total = betmeta["argmax_pnl_cents_total"]    # ¢ P&L if we bet argmax every match
 
     # Per-contract ¢ headline metrics (plan 18 §2.7).
     _ent = [b["entry_cents"] for b in log if b.get("entry_cents") is not None]
@@ -457,9 +477,10 @@ def build(conn=None) -> PerformanceReport:
                  f"confidence, since {bet_since} — {pnl_record}, {pnl_units:+.2f}$ "
                  f"({pnl_roi:+.1%} ROI) over {len(log)} bets; {betmeta['skipped']} settled "
                  f"matches skipped (no tradable edge).")
-    notes.append(f"Model prediction accuracy (argmax, reference): {model_pred_accuracy:.1%} "
-                 f"over {betmeta['model_n']} settled matches — measures model quality, separate "
-                 f"from the betting decision.")
+    notes.append(f"Argmax track (reference, every match): bet the most-likely side all "
+                 f"{betmeta['model_n']} settled matches — {argmax_record} "
+                 f"({model_pred_accuracy:.1%}), {argmax_pnl_cents_total:+.0f}¢/contract. This is the "
+                 f"OLD naive rule, shown alongside so both methods are comparable on the full sample.")
     notes.append("Calibration P&L (fair-odds) is a separate over/under-confidence diagnostic.")
 
     return PerformanceReport(
@@ -485,9 +506,11 @@ def build(conn=None) -> PerformanceReport:
         cents_capture_rate=cents_capture_rate,
         avg_clv_cents=avg_clv_cents,
         model_pred_accuracy=model_pred_accuracy,
-        n_decision_bets=len(log),
+        n_decision_bets=n_bets,
         n_skipped=betmeta["skipped"],
         decision_staked_usd=round(decision_staked, 2),
+        argmax_record=argmax_record,
+        argmax_pnl_cents_total=argmax_pnl_cents_total,
     )
 
 
@@ -566,42 +589,52 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
     else:
         story.append(Paragraph("尚无已结算场次。", ps.note_style))
 
-    # 七、实盘战绩(逐场下注记录)
-    ps.section(story, f"七、实盘战绩(逐场:每场 1u 押我们的预测,自 {rep.bet_since or '—'} 起)")
+    # 七、实盘战绩(逐场下注记录 — 决策模型 vs argmax 两口径并列,全部已结算场次)
+    ps.section(story, f"七、实盘战绩(逐场:决策模型选边定额,argmax 口径并列,自 {rep.bet_since or '—'} 起)")
     if rep.bet_log:
         pnl_sign = "+" if rep.pnl_units >= 0 else ""
         story.append(Paragraph(
-            f"战绩 {rep.pnl_record} · 累计 {pnl_sign}{rep.pnl_units:.2f}u · ROI {rep.pnl_roi:+.1%} · 共 {len(rep.bet_log)} 场",
+            f"决策模型 {rep.pnl_record} · 累计 {pnl_sign}{rep.pnl_units:.2f}$ · ROI {rep.pnl_roi:+.1%} · "
+            f"{rep.n_decision_bets} 注 · {rep.n_skipped} 跳过(无边际) · 共 {len(rep.bet_log)} 场",
             ps.body_style))
         story.append(Paragraph(
-            f"每合约口径 · 累计 {rep.pnl_cents_total:+.0f}¢/张 · 平均入场 {rep.avg_entry_cents:.0f}¢ · "
-            f"价格空间捕获率 {rep.cents_capture_rate:+.0%}",
+            f"argmax 口径(每场押最可能边,全 {len(rep.bet_log)} 场) {rep.argmax_record} · "
+            f"准确率 {rep.model_pred_accuracy:+.0%} · 累计 {rep.argmax_pnl_cents_total:+.0f}¢/张",
             ps.body_style))
-        data = [[ps.H("日期"), ps.H("对阵"), ps.H("我们的预测"), ps.H("结果"),
-                 ps.H("入场¢", "RIGHT"), ps.H("结算¢", "RIGHT"), ps.H("每张¢", "RIGHT"),
-                 ps.H("盈亏u", "RIGHT"), ps.H("累计¢", "RIGHT")]]
+        story.append(Paragraph(
+            f"决策模型每合约口径 · 累计 {rep.pnl_cents_total:+.0f}¢/张 · 平均入场 {rep.avg_entry_cents:.0f}¢ · "
+            f"价格空间捕获率 {rep.cents_capture_rate:+.0%} · 平均 CLV {rep.avg_clv_cents:+.0f}¢",
+            ps.body_style))
+        data = [[ps.H("日期"), ps.H("对阵"), ps.H("下注边"), ps.H("金额", "RIGHT"), ps.H("结果"),
+                 ps.H("入场¢", "RIGHT"), ps.H("每张¢", "RIGHT"), ps.H("累计¢", "RIGHT"),
+                 ps.H("argmax(边·输赢·¢)")]]
 
         def _col(v: float, text: str) -> str:
             c = "#1a7a4a" if v >= 0 else "#c0392b"
             return f'<font color="{c}"><b>{text}</b></font>'
 
         for b in rep.bet_log:
-            res = _col(1 if b["won"] else -1, "赢" if b["won"] else "输")
+            bet = b.get("bet", True)
             ec = f'{b["entry_cents"]:.0f}' if b.get("entry_cents") is not None else "—"
             pc = b.get("pnl_cents")
+            cumc = b.get("cum_pnl_cents")
+            apc = b.get("argmax_pnl_cents")
+            am_res = _col(1 if b["model_won"] else -1, "赢" if b["model_won"] else "输")
+            am_txt = (f'{b["model_pick_team"]} {am_res}'
+                      + (f' {_col(apc, f"{apc:+.0f}")}' if apc is not None else ''))
             data.append([
                 ps.C(b["date"][5:]),
                 ps.C(f'{b["home"]} {b["score"]} {b["away"]}'),
-                ps.C(b["pick_team"]),
-                ps.C(res, "RIGHT"),
-                ps.C(ec, "RIGHT"),
-                ps.C(f'{b["settle_cents"]:.0f}', "RIGHT"),
-                ps.C(_col(pc if pc is not None else 0, f'{pc:+.0f}' if pc is not None else "—"), "RIGHT"),
-                ps.C(_col(b["pnl"], f'{b["pnl"]:+.2f}'), "RIGHT"),
-                ps.C(_col(b["cum_pnl_cents"], f'{b["cum_pnl_cents"]:+.0f}'), "RIGHT"),
+                ps.C(b["pick_team"] if bet else '<font color="#888">不下注</font>'),
+                ps.C(f'${b["stake_usd"]:.2f}' if bet else '<font color="#888">$0</font>', "RIGHT"),
+                ps.C(_col(1 if b["won"] else -1, "赢" if b["won"] else "输") if bet else '<font color="#888">—</font>', "RIGHT"),
+                ps.C(ec if bet else "—", "RIGHT"),
+                ps.C(_col(pc if pc is not None else 0, f'{pc:+.0f}') if (bet and pc is not None) else "—", "RIGHT"),
+                ps.C(_col(cumc if cumc is not None else 0, f'{cumc:+.0f}') if (bet and cumc is not None) else "—", "RIGHT"),
+                ps.C(am_txt),
             ])
-        story.append(ps.make_table(data, [1.5 * cm, 5.0 * cm, 2.7 * cm, 1.2 * cm,
-                                          1.4 * cm, 1.4 * cm, 1.4 * cm, 1.5 * cm, 1.5 * cm]))
+        story.append(ps.make_table(data, [1.4 * cm, 4.4 * cm, 2.0 * cm, 1.3 * cm, 1.0 * cm,
+                                          1.3 * cm, 1.3 * cm, 1.3 * cm, 3.2 * cm]))
 
     # 八、校准 P&L(纸面,公允赔率诊断)
     ps.section(story, "八、校准 P&L(纸面,按公允赔率下注模型选边 — 过度/不足自信诊断)")
