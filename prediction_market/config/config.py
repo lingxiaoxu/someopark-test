@@ -256,12 +256,46 @@ class RiskConfig:
 
 
 @dataclass(frozen=True)
+class DecisionConfig:
+    """Pre-match DECISION model (plan 20): value/edge selection + confidence-scaled
+    stake. The model RECOMMENDS a stake in [min, max]; the actual order layer still
+    clamps to RiskConfig.max_test_order_usd (the $1 hard cap) until that is raised."""
+
+    # Stake envelope (USD). Base is the neutral bet; confidence scales it within [min,max].
+    base_stake_usd: float = 1.0
+    min_stake_usd: float = 0.2
+    max_stake_usd: float = 2.0
+
+    # Confidence multiplier k (stake = clip(base*(1+k), min, max)). Bounds chosen so
+    # base $1 spans exactly [0.2, 2.0]: k in [-0.8, +1.0].
+    k_min: float = -0.8
+    k_max: float = 1.0
+
+    # Blend weights for k. edge dominates (it's the value signal); calibration,
+    # recent form, then other alt-data nudge it. Sum need not be 1 (each is bounded).
+    conf_w_edge: float = 0.60     # quarter-Kelly fraction → tanh
+    conf_w_calib: float = 0.20    # how well the calibrated model beats the uniform baseline
+    conf_w_form: float = 0.15     # recent-form agreement of the picked side
+    conf_w_alt: float = 0.05      # other alt-data (oppadj/xga) agreement
+
+    # Saturation references (signal value that maps to ~1.0 after tanh/clip).
+    kelly_ref: float = 0.40       # quarter-Kelly fraction that saturates the edge component
+    form_ref: float = 1.0         # form z that saturates the form component
+
+    # Favourite–longshot bias: longshots are systematically overpriced (arXiv 1710.02824),
+    # so a sub-threshold-cents pick must clear EXTRA edge (or it's skipped).
+    longshot_cents: float = 15.0
+    longshot_extra_theta: float = 0.05
+
+
+@dataclass(frozen=True)
 class Config:
     paths: Paths = field(default_factory=Paths)
     model: ModelConfig = field(default_factory=ModelConfig)
     venue: VenueConfig = field(default_factory=VenueConfig)
     risk: RiskConfig = field(default_factory=RiskConfig)
     soccer: SoccerConfig = field(default_factory=SoccerConfig)
+    decision: DecisionConfig = field(default_factory=DecisionConfig)
 
 
 # Singleton used across the project.
