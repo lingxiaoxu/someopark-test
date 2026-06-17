@@ -19,7 +19,7 @@ export function AuthDialog({
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="auth-light fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60 " onClick={() => setOpen(false)} />
       <div className="relative w-full max-w-md mx-4 p-6 rounded-none bg-white border-2 border-black shadow-none">
         <button

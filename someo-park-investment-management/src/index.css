@@ -48,6 +48,23 @@
   --warning:          #f5a623;        /* amber warning */
 }
 
+/* Force the light (stock) palette on a subtree regardless of app mode.
+   The auth dialog opts into this so login renders identically in both
+   stock and prediction modes (otherwise [data-mode="prediction"] flips the
+   inner form's inputs/text to dark on the dialog's hardcoded white card). */
+.auth-light {
+  --bg-primary:     #ffffff;
+  --bg-secondary:   #e5e5e5;
+  --bg-tertiary:    #f4f4f4;
+  --text-primary:   #111111;
+  --text-secondary: #333333;
+  --text-muted:     #888888;
+  --border-subtle:  #111111;
+  --accent-primary: #111111;
+  --success:        #00cc66;
+  --error:          #ff3333;
+}
+
 /* ─── Base ───────────────────────────────────────────────── */
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
