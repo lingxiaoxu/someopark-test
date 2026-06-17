@@ -176,8 +176,8 @@ def generate_match_signals(conn=None, *, limit: int = 12) -> tuple[list[MatchSig
         if m.get("tentative") or not m.get("model"):
             continue
         dec = m.get("decision") or {}
-        ko = bool(dec.get("knockout"))
-        family = "knockout_advance" if ko else "match_3way"
+        # Per-match market is a 90-min 3-way for BOTH stages (draw valid even in knockout).
+        family = "match_3way"
         label = {"home": m["home"]["name"], "draw": "Draw", "away": m["away"]["name"]}
         match_str = f'{m["home"]["name"]} v {m["away"]["name"]}'
         if not dec.get("bet") or dec.get("side") is None:
@@ -187,22 +187,19 @@ def generate_match_signals(conn=None, *, limit: int = 12) -> tuple[list[MatchSig
                 kickoff=m.get("kickoff"), venue=None, side=None, side_label="—",
                 p_model=None, market_devig=None, ask=None, net_edge=dec.get("net_edge"),
                 confidence_k=dec.get("confidence_k"), target_stake_usd=0.0, count=0, capped_notional_usd=0.0,
-                kind=kind, action="HOLD",
-                reason=("knockout advance — no edge/gate" if ko else "no tradable edge / gate")))
+                kind=kind, action="HOLD", reason="no tradable edge / gate"))
             continue
         side = dec["side"]
         ask = (dec.get("price_cents") / 100.0) if dec.get("price_cents") is not None else None
-        side_label = label.get(side, side) + ("（晋级）" if ko else "")
         sigs.append(MatchSignal(
             market_family=family, fixture_id=m.get("fixture_id"), match=match_str,
-            kickoff=m.get("kickoff"), venue=dec.get("venue"), side=side, side_label=side_label,
+            kickoff=m.get("kickoff"), venue=dec.get("venue"), side=side, side_label=label.get(side, side),
             p_model=dec.get("model_prob"), market_devig=None, ask=ask, net_edge=dec.get("net_edge"),
             confidence_k=dec.get("confidence_k"), target_stake_usd=dec.get("stake_usd", 0.0),
             count=dec.get("count", 0), capped_notional_usd=dec.get("capped_notional_usd", 0.0),
             kind="tradable" if gate_open else "blocked:model_uncalibrated",
             action="BUY" if gate_open else "HOLD",
-            reason=("knockout: bet the side we predict to ADVANCE (incl. ET/penalties)" if ko
-                    else "value pick: most-underpriced side, confidence-sized")))
+            reason="value pick: most-underpriced 90-min side, confidence-sized"))
     sigs.sort(key=lambda s: -(s.net_edge if s.net_edge is not None else -9))
     return sigs, cal_msg, gate_open
 

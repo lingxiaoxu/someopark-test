@@ -61,9 +61,9 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
   const home = tCountry(m.home.name), away = tCountry(m.away.name);
-  // Knockout: no draw — outcomes are "advances", not "wins".
-  const verb = m.knockout ? t('prediction.advance') : t('prediction.win');
-  const winH = `${home} ${verb}`, winA = `${away} ${verb}`, drawL = t('prediction.drawResult');
+  // Per-match market settles on the 90-min 3-way for both stages — a draw is valid even
+  // in knockout (the separate "advance/reach-round" product is team-level, elsewhere).
+  const winH = `${home} ${t('prediction.win')}`, winA = `${away} ${t('prediction.win')}`, drawL = t('prediction.drawResult');
   const best = m.edge?.best;
   const edgeColor = best?.tradable ? 'var(--success)' : 'var(--text-muted)';
   const Chevron = open ? ChevronDown : ChevronRight;
@@ -87,16 +87,9 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
     );
   }
 
-  // headline = the model's most likely outcome, spelled out. Knockout → the side we
-  // predict to ADVANCE (incl. ET/penalties), never a draw.
-  let top: [string, number];
-  if (m.knockout && m.model.p_home_advance != null) {
-    const pa = m.model.p_home_advance;
-    top = pa >= 0.5 ? [winH, pa] : [winA, 1 - pa];
-  } else {
-    const sides: [string, number][] = [[winH, m.model.home], [drawL, m.model.draw], [winA, m.model.away]];
-    top = sides.reduce((a, b) => (b[1] > a[1] ? b : a));
-  }
+  // headline = the model's most likely 90-min outcome, spelled out (draw included).
+  const sides: [string, number][] = [[winH, m.model.home], [drawL, m.model.draw], [winA, m.model.away]];
+  const top = sides.reduce((a, b) => (b[1] > a[1] ? b : a));
 
   // Plain-language "how to trade" line, generated from the edge data so a first-time
   // user knows what to do at a glance — what to buy, why, and where to watch in-play —

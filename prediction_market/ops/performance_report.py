@@ -163,56 +163,49 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
     knockout = is_knockout(fx_row["round"])
     if pit and conn is not None and fx_row["kickoff_ts"]:
         sm = _pit_strength(conn, fx_row["kickoff_ts"])
-    mp = price_match_calibrated(sm, hi, ai, knockout=knockout, cal=cal)
+    # The per-match market (Kalshi KXWCGAME / Poly fwc) settles on the 90-MINUTE 3-way
+    # result — a draw is VALID even in knockout (1-1 at 90' pays the "Tie" market; extra
+    # time then decides who ADVANCES, which is a SEPARATE per-team reach-round market,
+    # KXWCROUND). So the per-match bet is a 90-min 3-way for BOTH stages (knockout=False
+    # → group-style draw calibration). gh/ga must be the 90-min (regulation) score.
+    mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal)
     model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
-
     base_stake = CONFIG.decision.base_stake_usd
-    if knockout:
-        p_adv_home = mp.p_home_advance if mp.p_home_advance is not None else model["home"] / max(model["home"] + model["away"], 1e-9)
-        pick = "home" if p_adv_home >= 0.5 else "away"
-        adv = _advancer(fx_row["raw_json"], gh, ga)
-        if adv is None:
-            return None
-        result = adv
-        cost = max(p_adv_home if pick == "home" else 1.0 - p_adv_home, 1e-6)
-        edge_val = (p_adv_home if pick == "home" else 1.0 - p_adv_home) - cost
-        model_prob = round(p_adv_home if pick == "home" else 1.0 - p_adv_home, 4)
-        stage, model_pick, bet, stake, conf_k = "knockout", pick, True, base_stake, None
+
+    bd = book_row
+    if bd and bd["bh"] is not None:
+        s = (bd["bh"] or 0) + (bd["bd"] or 0) + (bd["ba"] or 0)
+        price = {"home": bd["bh"] / s, "draw": bd["bd"] / s, "away": bd["ba"] / s} if s else model
     else:
-        bd = book_row
-        if bd and bd["bh"] is not None:
-            s = (bd["bh"] or 0) + (bd["bd"] or 0) + (bd["ba"] or 0)
-            price = {"home": bd["bh"] / s, "draw": bd["bd"] / s, "away": bd["ba"] / s} if s else model
+        price = model  # no book → fair price
+    edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
+    result = "home" if gh > ga else ("draw" if gh == ga else "away")
+    model_pick = max(_SIDE_KEYS, key=lambda k: model[k])
+    stage = "knockout" if knockout else "group"
+    # PIT recent-form for the decision's confidence sizing.
+    form = None
+    if pit and conn is not None:
+        try:
+            from prediction_market.model.form_strength import form_index
+            fi = form_index(conn, as_of=fx_row["kickoff_ts"])
+            form = {"home_z": fi[hi].form_z if hi in fi else None,
+                    "away_z": fi[ai].form_z if ai in fi else None}
+        except Exception:
+            form = None
+    if quotes:
+        from prediction_market.strategy.decision_model import decide
+        d = decide(model, quotes, calib_confidence=calib_confidence, form=form, gate_open=gate_open)
+        if d.side is not None:
+            pick, bet, stake, conf_k = d.side, True, d.stake_usd, d.confidence_k
+            cost = max((d.price_cents or 0.0) / 100.0, 1e-6)   # real entry ask we'd pay
+            edge_val, model_prob = d.net_edge, round(model[pick], 4)
         else:
-            price = model  # no book → fair price
-        edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
-        result = "home" if gh > ga else ("draw" if gh == ga else "away")
-        model_pick = max(_SIDE_KEYS, key=lambda k: model[k])
-        stage = "group"
-        # PIT recent-form for the decision's confidence sizing.
-        form = None
-        if pit and conn is not None:
-            try:
-                from prediction_market.model.form_strength import form_index
-                fi = form_index(conn, as_of=fx_row["kickoff_ts"])
-                form = {"home_z": fi[hi].form_z if hi in fi else None,
-                        "away_z": fi[ai].form_z if ai in fi else None}
-            except Exception:
-                form = None
-        if quotes:
-            from prediction_market.strategy.decision_model import decide
-            d = decide(model, quotes, calib_confidence=calib_confidence, form=form, gate_open=gate_open)
-            if d.side is not None:
-                pick, bet, stake, conf_k = d.side, True, d.stake_usd, d.confidence_k
-                cost = max((d.price_cents or 0.0) / 100.0, 1e-6)   # real entry ask we'd pay
-                edge_val, model_prob = d.net_edge, round(model[pick], 4)
-            else:
-                pick, bet, stake, conf_k = model_pick, False, 0.0, d.confidence_k
-                cost, edge_val, model_prob = max(price[model_pick], 1e-6), edges[model_pick], round(model[model_pick], 4)
-        else:
-            # legacy (no venue quotes): bet the model argmax at the book price.
-            pick, bet, stake, conf_k = model_pick, True, base_stake, None
-            cost, edge_val, model_prob = max(price[pick], 1e-6), edges[pick], round(model[pick], 4)
+            pick, bet, stake, conf_k = model_pick, False, 0.0, d.confidence_k
+            cost, edge_val, model_prob = max(price[model_pick], 1e-6), edges[model_pick], round(model[model_pick], 4)
+    else:
+        # legacy (no venue quotes): bet the model argmax at the book price.
+        pick, bet, stake, conf_k = model_pick, True, base_stake, None
+        cost, edge_val, model_prob = max(price[pick], 1e-6), edges[pick], round(model[pick], 4)
 
     return {"stage": stage, "pick": pick, "model_pick": model_pick, "result": result,
             "won": (pick == result) if bet else None, "model_won": model_pick == result,
