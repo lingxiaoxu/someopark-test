@@ -520,7 +520,7 @@
     "polyPrice": "Poly US price",
     "notListed": "not listed yet",
     "adviceLabel": "How to trade",
-    "adviceBuy": "Buy \"{{side}}\" on {{venue}} @ {{cents}}¢: our model says {{model}}%, ~{{edge}}% cheaper than the market — worth a bet.",
+    "adviceBuy": "Buy \"{{side}}\" on {{venue}} at {{cents}}¢: our model says {{model}}% (fair value ~{{model}}¢), so the market underprices it by ~{{edge}}% — cheap, worth buying.",
     "adviceHold": "No safe-enough edge yet — sit this one out.",
     "adviceInplay": "After kickoff, switch to the In-Play Arbitrage view to track live entries.",
     "paramSweep": "Parameter Sweep (OOS)",

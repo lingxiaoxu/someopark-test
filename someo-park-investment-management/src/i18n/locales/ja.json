@@ -184,7 +184,7 @@
     "polyPrice": "Poly US 価格",
     "notListed": "未上場",
     "adviceLabel": "取引方法",
-    "adviceBuy": "{{venue}} で「{{side}}」を @ {{cents}}¢ で購入:モデルは {{model}}% と予測、市場より約 {{edge}}% 割安 — 賭ける価値あり。",
+    "adviceBuy": "{{venue}} で「{{side}}」を {{cents}}¢ で購入:モデルは {{model}}%(公正価値 約{{model}}¢)と予測、市場は約 {{edge}}% 過小評価 — 割安で買う価値あり。",
     "adviceHold": "まだ十分に安全なエッジがない — 今回は見送り。",
     "adviceInplay": "キックオフ後は「ライブ裁定」ビューに切り替えて実時間のエントリーを追跡。",
     "paramSweep": "パラメータ探索(OOS)",

@@ -184,7 +184,7 @@
     "polyPrice": "Precio Poly US",
     "notListed": "no listado",
     "adviceLabel": "Cómo operar",
-    "adviceBuy": "Compra «{{side}}» en {{venue}} @ {{cents}}¢: nuestro modelo estima {{model}}%, ~{{edge}}% más barato que el mercado — vale la apuesta.",
+    "adviceBuy": "Compra «{{side}}» en {{venue}} a {{cents}}¢: nuestro modelo estima {{model}}% (valor justo ~{{model}}¢), el mercado lo infravalora ~{{edge}}% — barato, vale la compra.",
     "adviceHold": "Aún no hay margen lo bastante seguro — mejor pasar.",
     "adviceInplay": "Tras el saque inicial, cambia a la vista de Arbitraje en vivo para seguir las entradas.",
     "paramSweep": "Búsqueda de parámetros (OOS)",
