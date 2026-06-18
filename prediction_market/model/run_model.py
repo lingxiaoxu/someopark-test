@@ -83,10 +83,12 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
         # Squad club/tournament form blend (plan 03 §1c).
         from prediction_market.model.club_aggregation import blend_into_strength, squad_attack_quality
         sm = blend_into_strength(sm, squad_attack_quality(season=CONFIG.soccer.season))
-    tour = simulate(prior, sm, n_sims=n_sims, seed=seed)
     from prediction_market.ingest import store
     from prediction_market.model.tournament import eliminated_teams
     _gb_conn = store.init_db()
+    # Pass conn so the sim CONDITIONS on already-played group results (advancement reflects
+    # the real standings; mathematically-eliminated teams get ~0 advance/champion).
+    tour = simulate(prior, sm, n_sims=n_sims, seed=seed, conn=_gb_conn)
     _gb_players = load_players()
     _gb_team_of = {p.player_id: p.team_id for p in _gb_players}
     # Eliminated teams: their players play no more matches (golden boot frozen at

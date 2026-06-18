@@ -171,12 +171,29 @@ def _build_adv_matrix(sm: StrengthModel, team_ids: list[str], cfg: ModelConfig) 
     return adv
 
 
+def _played_group_results(conn) -> dict:
+    """{frozenset(cid_a, cid_b): {cid: goals}} for group fixtures ALREADY PLAYED — so the
+    sim can FIX them to reality instead of re-rolling, conditioning advancement on the
+    actual standings (a team that can no longer qualify then gets ~0 advance naturally)."""
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    out: dict = {}
+    for r in conn.execute(
+        "SELECT home_api_id, away_api_id, home_goals, away_goals FROM fixture "
+        "WHERE round LIKE '%roup%' AND status_short IN ('FT','AET','PEN') AND home_goals IS NOT NULL"):
+        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
+        if hi and ai and hi != ai:
+            out[frozenset((hi, ai))] = {hi: int(r["home_goals"]), ai: int(r["away_goals"])}
+    return out
+
+
 def simulate(
     prior: PriorSnapshot | None = None,
     sm: StrengthModel | None = None,
     *,
     n_sims: int | None = None,
     seed: int | None = None,
+    conn=None,
 ) -> TournamentResult:
     prior = prior or load_prior()
     cfg = sm.cfg if sm is not None else CONFIG.model
@@ -202,15 +219,28 @@ def simulate(
     def _r3_intensity(points_after2: np.ndarray) -> np.ndarray:
         return r3_intensity(points_after2, cfg)
 
+    # Already-played group results to CONDITION the sim on reality (empty ⇒ pure prior).
+    played = _played_group_results(conn) if conn is not None else {}
+
     # Round-robin rounds for 4 teams: R1+R2 = first 4 fixtures, R3 = last 2.
     r12, r3 = _GROUP_FIXTURES[:4], _GROUP_FIXTURES[4:]
     for gi, g in enumerate(groups):
         gg = group_global[g]                       # 4 global indices
         pts = np.zeros((n, 4));  gd = np.zeros((n, 4));  gf = np.zeros((n, 4))
 
-        def _play(a, b, lam_a, lam_b):
-            ga = rng.poisson(lam_a, n) if np.isscalar(lam_a) else rng.poisson(lam_a)
-            gb = rng.poisson(lam_b, n) if np.isscalar(lam_b) else rng.poisson(lam_b)
+        def _fixed(a, b):
+            """Actual (goals_a, goals_b) if this group match is already played, else None."""
+            res = played.get(frozenset((team_ids[gg[a]], team_ids[gg[b]])))
+            if not res:
+                return None
+            return res[team_ids[gg[a]]], res[team_ids[gg[b]]]
+
+        def _play(a, b, lam_a, lam_b, fixed=None):
+            if fixed is not None:               # PLAYED → fix to the real score (all sims)
+                ga = np.full(n, fixed[0]);  gb = np.full(n, fixed[1])
+            else:
+                ga = rng.poisson(lam_a, n) if np.isscalar(lam_a) else rng.poisson(lam_a)
+                gb = rng.poisson(lam_b, n) if np.isscalar(lam_b) else rng.poisson(lam_b)
             a_win = ga > gb;  b_win = gb > ga;  tie = ga == gb
             pts[:, a] += 3 * a_win + tie
             pts[:, b] += 3 * b_win + tie
@@ -219,18 +249,20 @@ def simulate(
 
         for a, b in r12:
             la, lb = sm.pair_lambdas(team_ids[gg[a]], team_ids[gg[b]])
-            _play(a, b, la, lb)
+            _play(a, b, la, lb, fixed=_fixed(a, b))
         # Round 3: adjust intensity by qualification incentive (plan 03 §3). A team
-        # that rotates scores less and defends weaker; a desperate team pushes.
+        # that rotates scores less and defends weaker; a desperate team pushes. (A played
+        # R3 match is fixed regardless of the incentive model.)
         for a, b in r3:
+            fixed = _fixed(a, b)
             base_a, base_b = sm.pair_lambdas(team_ids[gg[a]], team_ids[gg[b]])
-            if cfg.r3_incentives:
+            if cfg.r3_incentives and fixed is None:
                 ia, ib = _r3_intensity(pts[:, a]), _r3_intensity(pts[:, b])
                 la = base_a * np.sqrt(ia / ib)
                 lb = base_b * np.sqrt(ib / ia)
             else:
                 la, lb = base_a, base_b
-            _play(a, b, la, lb)
+            _play(a, b, la, lb, fixed=fixed)
 
         key = pts * 1e4 + gd * 1e2 + gf + rng.random((n, 4)) * 1e-2  # random tie-break
         order = np.argsort(-key, axis=1)           # (n,4): col0=1st place ... col3=4th
