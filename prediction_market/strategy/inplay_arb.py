@@ -18,7 +18,7 @@ Read-only: opportunities flow to the gated executor + the hard $1 test cap.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from prediction_market.config import CONFIG
 from prediction_market.model.inplay import LiveMatchProb, live_match_prob
@@ -63,21 +63,56 @@ class Opportunity:
     market: float | None
     edge: float | None
     action: str
-    reason: str
+    reason: str          # English fallback (numbers baked in)
+    # i18n: stable template key + raw args so the frontend renders the localized
+    # backbone with live numbers spliced in (5 languages). reason stays the fallback.
+    reason_key: str = ""
+    reason_args: dict = field(default_factory=dict)
 
 
 def _is_knockout(round_name) -> bool:
     return bool(round_name) and "group" not in str(round_name).lower()
 
 
-def _prematch_favourite(sm, hi: str, ai: str) -> tuple[str | None, float | None]:
-    """The pre-match favourite side + its win probability (no scoreline), for the
-    surprise / favourite-comeback tactics."""
+def _favourite_basis(conn, prior, sm, hi: str, ai: str) -> tuple[str, float, str]:
+    """Pre-match favourite as an EXPLICIT, explainable combination of the two views the
+    desk sees (Part 2): TEAM STRENGTH (the 球队强度 view — pure rating, no recent-form
+    blend) z-scored, PLUS RECENT FORM (the 近期状态 view — the same form_z form.json
+    ranks by). favourite = higher (z_strength + z_form). Recomputed every refresh, so a
+    strong team in poor form can lose favourite status to an in-form one.
+
+    Returns (fav_side, fav_win_prob, basis) where basis explains WHY:
+      * ``aligned``           — strength and form agree (strong AND in form)
+      * ``strong_poor_form``  — favourite is the stronger team but worse recent form
+      * ``in_form_underdog``  — favourite is weaker by strength but in better form
+    """
+    from prediction_market.model.form_strength import form_index
     from prediction_market.model.match_pricing import price_match
-    mp = price_match(sm, hi, ai)
-    if mp.p_home >= mp.p_away:
-        return ("home", mp.p_home)
-    return ("away", mp.p_away)
+    from prediction_market.model.strength import build_strength
+
+    ratings = build_strength(prior).ratings        # pure team strength (no form blend)
+    vals = list(ratings.values()) or [0.0]
+    mu = sum(vals) / len(vals)
+    sd = (sum((v - mu) ** 2 for v in vals) / len(vals)) ** 0.5 or 1.0
+    z_str = {t: (ratings.get(t, mu) - mu) / sd for t in (hi, ai)}
+    fi = form_index(conn)
+    z_form = {t: (fi[t].form_z if t in fi else 0.0) for t in (hi, ai)}
+    comb = {t: z_str[t] + z_form[t] for t in (hi, ai)}      # explicit equal-weight z-sum
+
+    fav = hi if comb[hi] >= comb[ai] else ai
+    fav_side = "home" if fav == hi else "away"
+    mp = price_match(sm, hi, ai)                            # win prob from the live model
+    prob = mp.p_home if fav_side == "home" else mp.p_away
+
+    strength_fav = hi if z_str[hi] >= z_str[ai] else ai
+    form_fav = hi if z_form[hi] >= z_form[ai] else ai
+    if strength_fav == form_fav:
+        basis = "aligned"
+    elif fav == strength_fav:
+        basis = "strong_poor_form"
+    else:
+        basis = "in_form_underdog"
+    return fav_side, prob, basis
 
 
 def _last_event(conn, fixture_row, etype: str, hi: str, ai: str, *, detail_like: str | None = None):
@@ -156,10 +191,11 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
     from prediction_market.model.strength import build_strength
 
     conn = conn or store.init_db()
-    sm = sm or build_strength(load_prior())
+    prior = load_prior()
+    sm = sm or build_strength(prior)
     theta = CONFIG.risk.min_net_edge if theta is None else theta
     quote_sources = quote_sources or {}
-    name = {t.team_id: t.name for t in load_prior().teams}
+    name = {t.team_id: t.name for t in prior.teams}
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
@@ -177,8 +213,9 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
         score = f"{gh}-{ga}"
         lp, fair = live_fair(conn, sm, fx)
 
-        # Event-driven context: pre-match favourite, the latest goal + red card, KO flag.
-        fav_side, fav_prob = _prematch_favourite(sm, hi, ai)
+        # Event-driven context: pre-match favourite (explicit strength+form basis, Part 2),
+        # the latest goal + red card, KO flag.
+        fav_side, fav_prob, fav_basis = _favourite_basis(conn, prior, sm, hi, ai)
         last_goal_side, last_goal_min = _last_event(conn, fx, "Goal", hi, ai)
         # Score-consistency guard: a goal can be chalked off (VAR / offside / feed
         # correction) AFTER its event row was written — the event lingers but the
@@ -194,13 +231,15 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
         for sig in (draw_trade_signal(lp),
                     convergence_take_profit("home" if gh > ga else "away", 0.5, lp) if gh != ga else None,
                     live_momentum_from_store(conn, fx["api_id"], fx["home_api_id"], fx["away_api_id"], minute, gh, ga),
-                    goal_overreaction_fade(lp, prematch_fav_side=fav_side, last_goal_side=last_goal_side, last_goal_minute=last_goal_min),
-                    favourite_comeback(lp, prematch_fav_side=fav_side, prematch_fav_prob=fav_prob),
+                    goal_overreaction_fade(lp, prematch_fav_side=fav_side, last_goal_side=last_goal_side,
+                                           last_goal_minute=last_goal_min, fav_basis=fav_basis),
+                    favourite_comeback(lp, prematch_fav_side=fav_side, prematch_fav_prob=fav_prob, fav_basis=fav_basis),
                     red_card_value(lp, carded_side=carded_side, card_minute=card_min),
                     knockout_late_draw(lp, knockout=knockout)):
             if sig and sig.act != "HOLD":
                 opps.append(Opportunity(fx["api_id"], m, minute, score, "tactic", sig.side,
-                                        "model", fair.get(sig.side), None, None, sig.act, sig.reason))
+                                        "model", fair.get(sig.side), None, None, sig.act, sig.reason,
+                                        reason_key=sig.reason_key, reason_args=sig.reason_args))
 
         # (2) market-dependent: relative value + cross-venue lock arb.
         # Quote per outcome is {'ask','bid'} (or a plain float = ask==bid).
@@ -218,12 +257,15 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                     also = [v for v, a in asks_by_v.items()
                             if v != best_v and compute_edge(fair[side], a, fee=fee, theta=theta).tradable]
                     venue_lbl = best_v + (f" (+{', '.join(also)})" if also else "")
+                    also_str = ", ".join(f"{v} {asks_by_v[v]:.2f}" for v in also)
                     reason = f"model {fair[side]:.2f} > {best_v} ask {best_ask:.2f}"
                     if also:
-                        reason += f"; also {', '.join(f'{v} {asks_by_v[v]:.2f}' for v in also)}"
+                        reason += f"; also {also_str}"
                     opps.append(Opportunity(fx["api_id"], m, minute, score, "relative_value", side, venue_lbl,
                                             round(fair[side], 3), round(best_ask, 3), round(e.net_edge, 3),
-                                            "BUY", reason))
+                                            "BUY", reason, reason_key="relative_value",
+                                            reason_args={"fair": round(fair[side], 2), "venue": best_v,
+                                                         "ask": round(best_ask, 2), "also": also_str}))
             # Cross-venue lock arb: BUY YES at the cheapest ASK, SELL YES (=buy NO)
             # at the highest BID, on two EXECUTABLE venues. Lock = sell_bid − buy_ask
             # − fees. Using bid for the sell leg avoids false positives.
@@ -237,11 +279,16 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                     lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=True,
                                          fee_cheap=fee, fee_expensive=fee)
                     if lock.tradable:
+                        no_price, cost = 1 - bids[sell_v], asks[buy_v] + 1 - bids[sell_v]
                         opps.append(Opportunity(
                             fx["api_id"], m, minute, score, "lock_arb", side, f"{buy_v}+{sell_v}",
                             None, None, round(lock.net_lock, 3), "ARB",
-                            f"buy {buy_v} YES {asks[buy_v]:.2f} + {sell_v} NO {1-bids[sell_v]:.2f} "
-                            f"(cost {asks[buy_v]+1-bids[sell_v]:.2f}) → lock {lock.net_lock:+.2f}"))
+                            f"buy {buy_v} YES {asks[buy_v]:.2f} + {sell_v} NO {no_price:.2f} "
+                            f"(cost {cost:.2f}) → lock {lock.net_lock:+.2f}",
+                            reason_key="lock_arb",
+                            reason_args={"buy_v": buy_v, "ask": round(asks[buy_v], 2), "sell_v": sell_v,
+                                         "no": round(no_price, 2), "cost": round(cost, 2),
+                                         "lock": round(lock.net_lock, 2)}))
     # Rank: lock arb > relative value > tactic; by |edge|.
     rank = {"lock_arb": 0, "relative_value": 1, "tactic": 2}
     opps.sort(key=lambda o: (rank[o.kind], -(abs(o.edge) if o.edge is not None else 0)))

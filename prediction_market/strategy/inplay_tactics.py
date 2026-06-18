@@ -23,7 +23,7 @@ risk caps + the hard $1 test cap before any order.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from prediction_market.model.inplay import LiveMatchProb
 
@@ -39,8 +39,13 @@ EARLY_MINUTE = 35
 class TradeAction:
     act: str          # "BUY" | "SELL" | "HOLD"
     side: str         # "home" | "draw" | "away" | "under" | "over"
-    reason: str
+    reason: str       # English fallback / log / PDF text (numbers baked in)
     urgency: str = "normal"   # "normal" | "high"
+    # i18n: a stable template key + the raw numeric/enum args, so the frontend can
+    # render the localized backbone with the live numbers spliced in (5 languages).
+    # `reason` stays the English fallback; HOLD actions leave these empty (not shown).
+    reason_key: str = ""
+    reason_args: dict = field(default_factory=dict)
 
 
 def _fair(lp: LiveMatchProb, side: str) -> float:
@@ -53,9 +58,13 @@ def convergence_take_profit(side: str, entry_price: float, lp: LiveMatchProb, *,
     """Lock profit when a held position's live fair value spikes (plan 04 §7)."""
     fair = _fair(lp, side)
     if fair >= lock_fraction:
-        return TradeAction("SELL", side, f"{side} fair {fair:.2f} near max payout — lock profit", "high")
+        return TradeAction("SELL", side, f"{side} fair {fair:.2f} near max payout — lock profit", "high",
+                           reason_key="convergence_lock", reason_args={"side": side, "fair": round(fair, 2)})
     if fair - entry_price >= min_gain:
-        return TradeAction("SELL", side, f"{side} fair {fair:.2f} vs entry {entry_price:.2f} — take {fair-entry_price:+.2f}")
+        return TradeAction("SELL", side, f"{side} fair {fair:.2f} vs entry {entry_price:.2f} — take {fair-entry_price:+.2f}",
+                           reason_key="convergence_take",
+                           reason_args={"side": side, "fair": round(fair, 2), "entry": round(entry_price, 2),
+                                        "gain": round(fair - entry_price, 2)})
     return TradeAction("HOLD", side, f"{side} fair {fair:.2f}, hold")
 
 
@@ -71,12 +80,18 @@ def draw_trade_signal(lp: LiveMatchProb, *, draw_entry: float | None = None,
     if level and lp.minute >= LATE_MINUTE and lp.fair_draw >= DRAW_LOCK_FAIR:
         if draw_entry is not None:
             return TradeAction("SELL", "draw",
-                               f"level at {lp.minute}', fair draw {lp.fair_draw:.2f} → lock profit (held from {draw_entry:.2f})", "high")
-        return TradeAction("SELL", "draw", f"level at {lp.minute}', fair draw {lp.fair_draw:.2f} near max — sell if held", "high")
+                               f"level at {lp.minute}', fair draw {lp.fair_draw:.2f} → lock profit (held from {draw_entry:.2f})", "high",
+                               reason_key="draw_lock_held",
+                               reason_args={"min": lp.minute, "fair": round(lp.fair_draw, 2), "entry": round(draw_entry, 2)})
+        return TradeAction("SELL", "draw", f"level at {lp.minute}', fair draw {lp.fair_draw:.2f} near max — sell if held", "high",
+                           reason_key="draw_lock", reason_args={"min": lp.minute, "fair": round(lp.fair_draw, 2)})
     # 2) Early time-value entry: 0:0, draw under-priced vs fair.
     if level and lp.minute <= EARLY_MINUTE and draw_market_price is not None and lp.fair_draw > draw_market_price + 0.03:
         return TradeAction("BUY", "draw",
-                           f"tight {lp.home_goals}:{lp.away_goals} at {lp.minute}', fair draw {lp.fair_draw:.2f} > market {draw_market_price:.2f}")
+                           f"tight {lp.home_goals}:{lp.away_goals} at {lp.minute}', fair draw {lp.fair_draw:.2f} > market {draw_market_price:.2f}",
+                           reason_key="draw_entry",
+                           reason_args={"gh": lp.home_goals, "ga": lp.away_goals, "min": lp.minute,
+                                        "fair": round(lp.fair_draw, 2), "mkt": round(draw_market_price, 2)})
     return TradeAction("HOLD", "draw", f"draw fair {lp.fair_draw:.2f} at {lp.minute}'")
 
 
@@ -91,9 +106,12 @@ def totals_time_decay(lp: LiveMatchProb, line: float = 2.5, *,
         return TradeAction("HOLD", "under", "no totals line available")
     p_under = 1.0 - p_over
     if p_under >= LOCK_FRACTION:
-        return TradeAction("SELL", "under", f"Under {line} fair {p_under:.2f} near max — lock", "high")
+        return TradeAction("SELL", "under", f"Under {line} fair {p_under:.2f} near max — lock", "high",
+                           reason_key="under_lock", reason_args={"line": line, "fair": round(p_under, 2)})
     if entry_under is not None and p_under - entry_under >= MIN_TAKE_PROFIT_GAIN:
-        return TradeAction("SELL", "under", f"Under {line} {p_under:.2f} vs entry {entry_under:.2f} — take profit")
+        return TradeAction("SELL", "under", f"Under {line} {p_under:.2f} vs entry {entry_under:.2f} — take profit",
+                           reason_key="under_take",
+                           reason_args={"line": line, "fair": round(p_under, 2), "entry": round(entry_under, 2)})
     return TradeAction("HOLD", "under", f"Under {line} fair {p_under:.2f}")
 
 
@@ -102,7 +120,10 @@ def momentum_value(*, xg_for: float, xg_against: float, goals_for: int, goals_ag
     """Flag a side that dominates xG without the scoreline to match (value next-goal/win)."""
     if xg_for - xg_against >= xg_edge and goals_for <= goals_against and minute <= 80:
         return TradeAction("BUY", side,
-                           f"{side} xG {xg_for:.1f} vs {xg_against:.1f} but score {goals_for}:{goals_against} — under-priced", "normal")
+                           f"{side} xG {xg_for:.1f} vs {xg_against:.1f} but score {goals_for}:{goals_against} — under-priced", "normal",
+                           reason_key="momentum",
+                           reason_args={"side": side, "xg_for": round(xg_for, 1), "xg_against": round(xg_against, 1),
+                                        "gf": goals_for, "ga": goals_against})
     return TradeAction("HOLD", side, "no momentum mispricing")
 
 
@@ -128,37 +149,56 @@ GOAL_FADE_WINDOW = 4          # minutes after a surprising goal that the over-mo
 RED_CARD_WINDOW = 12          # minutes after a red card that the opponent's λ is front-loaded
 FAV_COMEBACK_MAX_MIN = 70     # a trailing pre-match favourite still has equity until ~here
 FAV_COMEBACK_MIN_PROB = 0.55  # "clear" pre-match favourite threshold
+# A reversal/value tactic only makes sense while the game is still LIVE enough to revert:
+FADE_MIN_FAV_EQUITY = 0.15    # don't "fade back the favourite" once the live model rates it dead
+                              # (e.g. 90'/stoppage, 0-1 down → ~0% → no over-reaction left to fade)
+MIN_REMAINING_GOALS = 0.30    # a "next-goal value" flag needs goals still expected to come
 
 
 def goal_overreaction_fade(lp: LiveMatchProb, *, prematch_fav_side: str | None,
-                           last_goal_side: str | None, last_goal_minute: int | None) -> TradeAction:
+                           last_goal_side: str | None, last_goal_minute: int | None,
+                           fav_basis: str | None = None) -> TradeAction:
     """Markets OVER-react to a SURPRISING goal then mean-revert (Choi & Hui; ~40%/min,
     gone by ~5-6'). If the pre-match UNDERDOG just scored, fade it — back the pre-match
-    favourite, which the panic has under-priced — inside a short window."""
+    favourite, which the panic has under-priced — inside a short window.
+
+    ``fav_basis`` (Part 2): why this side is the favourite — an explicit strength+form
+    combination (aligned / strong_poor_form / in_form_underdog), surfaced in the reason."""
     if not last_goal_side or last_goal_minute is None or prematch_fav_side not in ("home", "away"):
         return TradeAction("HOLD", "home", "no recent goal to fade")
     mins_since = lp.minute - last_goal_minute
     surprising = last_goal_side != prematch_fav_side          # the underdog scored
-    if surprising and 0 <= mins_since <= GOAL_FADE_WINDOW:
+    # Liveness guard: only fade when the favourite STILL has real comeback equity in the
+    # live model. Late/decided games (e.g. 90'+, 0-1 down → fav ~0%) have nothing left to
+    # revert — backing the favourite there is nonsense, not an over-reaction.
+    fav_equity = lp.p_home if prematch_fav_side == "home" else lp.p_away
+    if surprising and 0 <= mins_since <= GOAL_FADE_WINDOW and fav_equity >= FADE_MIN_FAV_EQUITY:
         when = "just now" if mins_since == 0 else f"{mins_since}' ago"
         return TradeAction("BUY", prematch_fav_side,
                            f"underdog scored {when} — markets over-react to surprise goals "
-                           f"(~40%/min, reverts by {GOAL_FADE_WINDOW}'); fade back the favourite", "high")
+                           f"(~40%/min, reverts by {GOAL_FADE_WINDOW}'); fade back the favourite", "high",
+                           reason_key=("fade_now" if mins_since == 0 else "fade_ago"),
+                           reason_args={"mins": mins_since, "window": GOAL_FADE_WINDOW, "basis": fav_basis or "aligned"})
     return TradeAction("HOLD", prematch_fav_side, "no overreaction window")
 
 
 def favourite_comeback(lp: LiveMatchProb, *, prematch_fav_side: str | None,
-                       prematch_fav_prob: float | None) -> TradeAction:
+                       prematch_fav_prob: float | None, fav_basis: str | None = None) -> TradeAction:
     """A clear pre-match favourite that is TRAILING still has large residual equity
     (high λ + time): back the comeback while there is time, before the market fully
-    re-prices it. (Favourite-longshot bias makes the now-leading underdog over-priced.)"""
+    re-prices it. (Favourite-longshot bias makes the now-leading underdog over-priced.)
+
+    ``fav_basis`` (Part 2): the explicit strength+form basis for calling this side the
+    favourite, surfaced in the reason."""
     if prematch_fav_side not in ("home", "away") or not prematch_fav_prob:
         return TradeAction("HOLD", "home", "no clear favourite")
     fav_goals = lp.home_goals if prematch_fav_side == "home" else lp.away_goals
     opp_goals = lp.away_goals if prematch_fav_side == "home" else lp.home_goals
     if prematch_fav_prob >= FAV_COMEBACK_MIN_PROB and fav_goals < opp_goals and lp.minute <= FAV_COMEBACK_MAX_MIN:
         return TradeAction("BUY", prematch_fav_side,
-                           f"pre-match fav ({prematch_fav_prob:.0%}) trailing at {lp.minute}' — residual equity, back the comeback")
+                           f"pre-match fav ({prematch_fav_prob:.0%}) trailing at {lp.minute}' — residual equity, back the comeback",
+                           reason_key="comeback",
+                           reason_args={"pct": round(prematch_fav_prob * 100), "min": lp.minute, "basis": fav_basis or "aligned"})
     return TradeAction("HOLD", prematch_fav_side, "favourite not trailing")
 
 
@@ -168,9 +208,12 @@ def red_card_value(lp: LiveMatchProb, *, carded_side: str | None, card_minute: i
     if carded_side not in ("home", "away") or card_minute is None:
         return TradeAction("HOLD", "home", "no recent red card")
     opp = "away" if carded_side == "home" else "home"
-    if 0 <= lp.minute - card_minute <= RED_CARD_WINDOW:
+    # A "next-goal value" flag is pointless once the game is effectively over (no goals
+    # expected to come — e.g. a red shown deep in stoppage time).
+    if 0 <= lp.minute - card_minute <= RED_CARD_WINDOW and lp.exp_remaining_goals >= MIN_REMAINING_GOALS:
         return TradeAction("BUY", opp,
-                           f"red card on {carded_side} at {card_minute}' — opponent's next-goal value elevated", "high")
+                           f"red card on {carded_side} at {card_minute}' — opponent's next-goal value elevated", "high",
+                           reason_key="red_card", reason_args={"carded": carded_side, "min": card_minute})
     return TradeAction("HOLD", opp, "no red-card window")
 
 
@@ -180,7 +223,8 @@ def knockout_late_draw(lp: LiveMatchProb, *, knockout: bool) -> TradeAction:
     a league game. Back it late when level (the opposite sign to a league late-draw)."""
     if knockout and lp.home_goals == lp.away_goals and lp.minute >= LATE_MINUTE:
         return TradeAction("BUY", "draw",
-                           f"level knockout at {lp.minute}' — 90' draw pays (extra time ahead), back the draw", "high")
+                           f"level knockout at {lp.minute}' — 90' draw pays (extra time ahead), back the draw", "high",
+                           reason_key="ko_draw", reason_args={"min": lp.minute})
     return TradeAction("HOLD", "draw", "not a late level knockout")
 
 

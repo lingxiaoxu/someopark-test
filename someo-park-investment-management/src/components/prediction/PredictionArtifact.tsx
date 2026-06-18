@@ -329,6 +329,22 @@ const KIND_COLOR: Record<string, string> = {
   lock_arb: 'var(--success)', relative_value: 'var(--text-primary)', tactic: 'var(--text-secondary)',
 };
 
+// Render an opportunity's reason from its i18n template (reason_key) + the live numbers
+// (reason_args), in the active language. Sub-enums (side/carded) are themselves localized;
+// the Part-2 strength+form basis becomes a parenthetical suffix; the cross-venue "also"
+// clause is appended. Falls back to the English reason string when no key is present.
+function renderOppReason(o: any, tr: (k: string, opts?: any) => string): string {
+  if (!o.reason_key) return o.reason || '';
+  const a: any = { ...(o.reason_args || {}) };
+  if (a.side) a.side = tr('prediction.side.' + a.side, { defaultValue: a.side });
+  if (a.carded) a.carded = tr('prediction.side.' + a.carded, { defaultValue: a.carded });
+  a.basisSuffix = a.basis && a.basis !== 'aligned'
+    ? ' (' + tr('prediction.favBasis.' + a.basis, { defaultValue: a.basis }) + ')' : '';
+  let s = tr('prediction.reason.' + o.reason_key, { ...a, defaultValue: o.reason || '' });
+  if (a.also) s += tr('prediction.reason.alsoSuffix', { also: a.also });
+  return s;
+}
+
 function InPlay() {
   const { t: tr } = useTranslation();
   // Polls every 20s so the live model + ¢ + tricks refresh during a match (no reload).
@@ -373,10 +389,12 @@ function InPlay() {
           {m.opportunities?.length ? (
             <DataTable cols={[tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colMarketC'), tr('prediction.colEdge'), tr('prediction.colEdgeC'), tr('prediction.colReason')]}
               rows={m.opportunities.map((o: any) => [
-                <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{o.kind}</span>,
-                o.action, o.side, cc(o.market_c), o.edge != null ? num(o.edge, 3) : '—',
+                <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{tr('prediction.kind.' + o.kind, { defaultValue: o.kind })}</span>,
+                tr('prediction.action.' + o.action, { defaultValue: o.action }),
+                tr('prediction.side.' + o.side, { defaultValue: o.side }),
+                cc(o.market_c), o.edge != null ? num(o.edge, 3) : '—',
                 <span style={{ color: (o.edge_c ?? 0) > 0 ? 'var(--success)' : 'var(--ink)' }}>{o.edge_c != null ? `${o.edge_c > 0 ? '+' : ''}${cc(o.edge_c)}` : '—'}</span>,
-                (o.reason || '').slice(0, 50),
+                renderOppReason(o, tr),
               ])} />
           ) : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
         </div>
