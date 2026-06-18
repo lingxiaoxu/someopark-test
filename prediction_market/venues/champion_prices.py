@@ -110,17 +110,21 @@ def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
 # Polymarket Global per-round qualifier events (read-only). These ARE listed and liquid
 # for all 48 teams — the "Nation To Reach <round>" markets (YES = reach that round).
 POLY_REACH_ROUND_SLUGS = {
+    "advance": "world-cup-team-to-advance-to-knockout-stages",  # reach R32 (advance from group)
     "r16": "world-cup-nation-to-reach-round-of-16",
     "qf": "world-cup-nation-to-reach-quarterfinals",
     "sf": "world-cup-nation-to-reach-semifinals",
     "final": "world-cup-nation-to-reach-final",
 }
 
+# All round keys (Kalshi has no 'advance' market — only Poly + the model do).
+REACH_ROUND_KEYS = ("advance", "r16", "qf", "sf", "final")
+
 
 def _poly_reach_round_cents() -> dict[str, dict[str, float]]:
     """{round_key: {team_id: ¢}} from Polymarket Global's per-round "Nation To Reach
     <round>" markets (YES price × 100). Liquid for all 48 teams."""
-    out: dict[str, dict[str, float]] = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
+    out: dict[str, dict[str, float]] = {rk: {} for rk in REACH_ROUND_KEYS}
     import json as _json
     from prediction_market.venues.polymarket_global.reader import PolymarketGlobalReader
     r = PolymarketGlobalReader()
@@ -151,19 +155,21 @@ def _poly_reach_round_cents() -> dict[str, dict[str, float]]:
 
 
 def reach_round_cents() -> dict[str, dict[str, dict[str, float]]]:
-    """{round_key: {'kalshi': {team: ¢}, 'poly': {team: ¢}}} — failure-tolerant per venue."""
-    kal = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
-    poly = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
+    """{round_key: {'kalshi': {team: ¢}, 'poly': {team: ¢}}} for advance/r16/qf/sf/final —
+    failure-tolerant per venue. ('advance' = reach R32 from the group; Kalshi has no such
+    market, only Poly + the model.)"""
+    kal = {rk: {} for rk in REACH_ROUND_KEYS}
+    poly = {rk: {} for rk in REACH_ROUND_KEYS}
     try:
-        kal = _kalshi_reach_round_cents()
+        kal.update(_kalshi_reach_round_cents())
     except Exception as e:
         print(f"[champion_prices] kalshi reach_round skipped: {e}")
     try:
-        poly = _poly_reach_round_cents()
+        poly.update(_poly_reach_round_cents())
     except Exception as e:
         print(f"[champion_prices] poly reach_round skipped: {e}")
     return {rk: {"kalshi": kal.get(rk, {}), "poly": poly.get(rk, {})}
-            for rk in REACH_ROUND_EVENTS.values()}
+            for rk in REACH_ROUND_KEYS}
 
 
 def _poly_champ_cents() -> dict[str, float]:

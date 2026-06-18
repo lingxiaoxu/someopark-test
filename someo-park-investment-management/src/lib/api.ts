@@ -258,4 +258,4 @@ export const getWCParams       = () => fetchApi<any>('/data/param_sweep.json');
 export const getWCUpcoming     = () => fetchApi<any>('/data/upcoming.json');
 export const getWCMilestoneMarks = () => fetchApi<any>('/data/milestone_marks.json');
 export const getWCSchedule       = () => fetchApi<any>('/data/schedule.json');
-export const getWCReachRound     = () => fetchApi<any>('/data/reach_round.json');
+export const getWCReachRound     = () => fetchApi<any>(`/data/reach_round.json?_=${Date.now()}`);

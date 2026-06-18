@@ -90,28 +90,64 @@ function ChampionOdds() {
 
 function ReachRound() {
   const { t: tr } = useTranslation();
+  // Re-fetched on every open (artifact remounts) + cache-busted in getWCReachRound.
   const { data, loading, error } = useApi<any>(() => getWCReachRound(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const rounds = data?.rounds ?? [];
+  const rounds: any[] = data?.rounds ?? [];
+  const roundLabel: Record<string, string> = {
+    advance: tr('prediction.rrAdvance'), r16: tr('prediction.rrR16'),
+    qf: tr('prediction.rrQF'), sf: tr('prediction.rrSF'), final: tr('prediction.rrFinal'),
+  };
+  // Pivot rounds → one row per team (48), columns grouped by round.
+  const teamMap: Record<string, any> = {};
+  rounds.forEach((r) => (r.teams ?? []).forEach((t: any) => {
+    const e = teamMap[t.team_id] || (teamMap[t.team_id] = { name: t.name, byRound: {} });
+    e.byRound[r.key] = t;
+  }));
+  const strength = (e: any) => rounds.reduce((s, r) => s + (e.byRound[r.key]?.model_pct ?? 0), 0);
+  const teams = Object.values(teamMap).sort((a: any, b: any) => strength(b) - strength(a));
+  const asOf = data?.as_of ? new Date(data.as_of).toLocaleString() : '';
+  const bd = '1px solid var(--border-subtle)';
+  const th: any = { fontSize: 9.5, fontWeight: 700, padding: '4px 6px', textAlign: 'right', color: 'var(--text-muted)', whiteSpace: 'nowrap' };
+  const td: any = { fontSize: 10, padding: '3px 6px', textAlign: 'right', whiteSpace: 'nowrap' };
+  const edgeCell = (t: any) => (t?.edge != null
+    ? <span style={{ color: t.tradable ? 'var(--success)' : 'var(--text-muted)', fontWeight: t.tradable ? 700 : 400 }}>{t.edge >= 0 ? '+' : ''}{pct(t.edge, 0)}{t.tradable ? '★' : ''}</span>
+    : <span style={{ color: 'var(--text-muted)' }}>—</span>);
   return (
     <div>
       <Title sub={tr('prediction.subReachRound')}>Reach Round</Title>
-      {rounds.map((r: any) => (
-        <div key={r.key} style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.08em', color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>{r.label}</div>
-          <DataTable
-            cols={[tr('prediction.team'), tr('prediction.colModelReach'), 'Kalshi¢', 'Poly¢', tr('prediction.colEdge')]}
-            rows={(r.teams ?? []).filter((t: any) => (t.model_pct ?? 0) >= 0.02).map((t: any) => [
-              tCountry(t.name),
-              <span>{pct(t.model_pct)} <span style={{ color: 'var(--text-muted)' }}>({cc(t.model_c)})</span></span>,
-              cc(t.kalshi_c),
-              cc(t.poly_c),
-              t.edge != null
-                ? <span style={{ color: t.tradable ? 'var(--success)' : 'var(--text-muted)', fontWeight: t.tradable ? 700 : 400 }}>{t.edge >= 0 ? '+' : ''}{pct(t.edge, 1)}{t.tradable ? ' ★' : ''}</span>
-                : <span style={{ color: 'var(--text-muted)' }}>—</span>,
-            ])} />
-        </div>
-      ))}
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>{tr('prediction.rrAsOf')}: {asOf}</div>
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', ...mono, minWidth: 1080 }}>
+          <thead>
+            <tr style={{ borderBottom: bd }}>
+              <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>{tr('prediction.team')}</th>
+              {rounds.map((r) => <th key={r.key} colSpan={4} style={{ ...th, textAlign: 'center', color: 'var(--text-primary)', borderLeft: bd }}>{roundLabel[r.key] ?? r.label}</th>)}
+            </tr>
+            <tr style={{ borderBottom: bd }}>
+              {rounds.map((r) => [
+                <th key={r.key + 'm'} style={{ ...th, borderLeft: bd }}>{tr('prediction.rrModel')}</th>,
+                <th key={r.key + 'k'} style={th}>K¢</th>,
+                <th key={r.key + 'p'} style={th}>P¢</th>,
+                <th key={r.key + 'e'} style={th}>{tr('prediction.colEdge')}</th>,
+              ])}
+            </tr>
+          </thead>
+          <tbody>
+            {teams.map((e: any, i: number) => (
+              <tr key={i} style={{ borderBottom: '1px solid var(--hairline)' }}>
+                <td style={{ ...td, textAlign: 'left', color: 'var(--text-primary)', fontWeight: 600, ...mono }}>{tCountry(e.name)}</td>
+                {rounds.map((r) => { const t = e.byRound[r.key]; return [
+                  <td key={r.key + 'm'} style={{ ...td, borderLeft: bd, color: 'var(--text-secondary)', ...mono }}>{t ? pct(t.model_pct) : '—'}</td>,
+                  <td key={r.key + 'k'} style={{ ...td, ...mono }}>{t ? cc(t.kalshi_c) : '—'}</td>,
+                  <td key={r.key + 'p'} style={{ ...td, ...mono }}>{t ? cc(t.poly_c) : '—'}</td>,
+                  <td key={r.key + 'e'} style={{ ...td, ...mono }}>{edgeCell(t)}</td>,
+                ]; })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.reachRoundNote')}</div>
     </div>
   );

@@ -21,8 +21,10 @@ from prediction_market.config import CONFIG
 _KALSHI_SANITY_CENTS = 15.0
 _KALSHI_SANITY_FRAC = 0.60
 
-# round key → (model prob field in the champion array, human label)
+# round key → (model prob field in the champion array, human label). 'advance' = reach
+# the Round of 32 (qualify from the group); Kalshi lists no such market, only Poly.
 _ROUNDS = {
+    "advance": ("p_advance_model", "Advance (R32)"),
     "r16": ("p_r16", "Round of 16"),
     "qf": ("p_qf", "Quarterfinals"),
     "sf": ("p_sf", "Semifinals"),
