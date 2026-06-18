@@ -4,11 +4,12 @@ Ranks all 48 teams by the squad-strength index (model/squad_strength.py:
 minutes-weighted club rating + attacking output) and lists each team's top
 players by goals+assists. Read-only, point-in-time (club-2025 data).
 
-Honest note baked into the payload: the squad index is INFORMATIVE (a quality
-ranking) but NOT a validated predictive edge — blending it into the model raised
-the OOS Brier on the settled matches (the early tournament is draw/upset-heavy and
-the API club-rating scale is compressed), so it is NOT wired into the live model;
-it's shown for context. Re-validate via param_sweep/backtest as more data accrues.
+Honest note: the squad index is a heuristic quality ranking. The rating is now
+LEAGUE-STRENGTH weighted (model/squad_strength._LEAGUE_STRENGTH) so a high match
+rating in a weaker league doesn't inflate a squad (this fixed Portugal/Algeria/
+Saudi ranking far too high). It IS blended into the live model at a small weight
+(cfg.squad_blend_weight=0.15); its impact on the settled-match Brier is ≈neutral.
+Re-validate via param_sweep/backtest as more data accrues.
 
     python -m prediction_market.ops.squad_export  →  data/output/squad.json
 """
@@ -63,9 +64,11 @@ def build(conn=None) -> dict:
         "ts": datetime.now(timezone.utc).isoformat(),
         "n_teams": len(teams),
         "teams": teams,
-        "note": ("Squad quality (minutes-weighted club rating + goals/assists per 90). "
-                 "Informative ranking only — blending this into the model RAISED the OOS Brier "
-                 "on settled matches, so it is NOT used by the live predictions."),
+        "note": ("Squad quality: minutes-weighted club rating, now also LEAGUE-STRENGTH "
+                 "weighted (a 7.2 in a weaker league counts less than a 7.2 in a top-5 "
+                 "league), plus goals/assists per 90. It IS blended into the live model at a "
+                 "small weight (squad_blend_weight=0.15) — impact on the settled-match Brier is "
+                 "≈neutral. A heuristic quality ranking, not a validated predictive edge."),
     }
 
 

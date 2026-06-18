@@ -41,10 +41,49 @@ def _mean_std(xs):
     return m, (math.sqrt(var) or 1.0)
 
 
+# League-strength multipliers (API-Football league_id → relative strength), so a 7.2
+# match rating in the Saudi/South-African league isn't counted the same as a 7.2 in the
+# Premier League. Covers the ~22 leagues that hold >90% of WC-squad minutes; everything
+# else (46-league long tail + cups/friendlies/None) gets _LEAGUE_DEFAULT. Tiers track
+# widely-accepted league strength (UEFA coefficients / market value), top-5 Europe = 1.0.
+# This is an explicit, tunable HEURISTIC — not a validated predictive coefficient.
+_LEAGUE_STRENGTH = {
+    39: 1.00,   # England — Premier League
+    140: 0.97,  # Spain — La Liga
+    135: 0.95,  # Italy — Serie A
+    78: 0.95,   # Germany — Bundesliga
+    61: 0.90,   # France — Ligue 1
+    94: 0.80,   # Portugal — Primeira Liga
+    88: 0.78,   # Netherlands — Eredivisie
+    71: 0.78,   # Brazil — Serie A
+    144: 0.75,  # Belgium — Jupiler Pro League
+    40: 0.72,   # England — Championship
+    203: 0.70,  # Turkey — Süper Lig
+    253: 0.66,  # USA — MLS
+    262: 0.66,  # Mexico — Liga MX
+    179: 0.62,  # Scotland — Premiership
+    119: 0.60,  # Denmark — Superliga
+    307: 0.60,  # Saudi Arabia — Pro League
+    345: 0.58,  # Czechia — Czech Liga
+    197: 0.58,  # Greece — Super League
+    103: 0.55,  # Norway — Eliteserien
+    188: 0.48,  # Australia — A-League
+    288: 0.42,  # South Africa — PSL
+    233: 0.42,  # Egypt — Premier League
+}
+_LEAGUE_DEFAULT = 0.50   # long-tail leagues / cups / friendlies / unknown
+
+
+def _league_mult(league_id) -> float:
+    return _LEAGUE_STRENGTH.get(league_id, _LEAGUE_DEFAULT)
+
+
 def squad_index(conn) -> dict[str, SquadSummary]:
-    """{canonical_team_id: SquadSummary} from squad ↔ player_stat (club season)."""
+    """{canonical_team_id: SquadSummary} from squad ↔ player_stat (club season). The
+    minutes-weighted rating is also LEAGUE-STRENGTH weighted, so minutes in weaker leagues
+    count less (a 7.2 in the Saudi league ≠ a 7.2 in the Premier League)."""
     rows = conn.execute(
-        "SELECT tm.canonical_team_id cid, ps.rating, ps.goals, ps.assists, ps.minutes "
+        "SELECT tm.canonical_team_id cid, ps.rating, ps.goals, ps.assists, ps.minutes, ps.league_id "
         "FROM squad s JOIN team_meta tm ON tm.api_id = s.team_api_id "
         "JOIN player_stat ps ON ps.player_api_id = s.player_api_id "
         "WHERE tm.canonical_team_id IS NOT NULL").fetchall()
@@ -53,7 +92,8 @@ def squad_index(conn) -> dict[str, SquadSummary]:
         d = agg.setdefault(r["cid"], {"rw": 0.0, "mins": 0.0, "ga": 0.0, "n": 0})
         mins = float(r["minutes"] or 0)
         if r["rating"] is not None and mins > 0:
-            d["rw"] += float(r["rating"]) * mins
+            lm = _league_mult(r["league_id"])
+            d["rw"] += float(r["rating"]) * lm * mins   # league-strength + minutes weighted
             d["mins"] += mins
         d["ga"] += float((r["goals"] or 0) + (r["assists"] or 0))
         d["n"] += 1

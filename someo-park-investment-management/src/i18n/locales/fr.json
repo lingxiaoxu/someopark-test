@@ -178,7 +178,7 @@
     "lblModelRaw": "Brier (modèle brut)",
     "backtestPass": "Le modèle brut était trop confiant ; après calibration des probabilités il bat l'uniforme ET le marché — désormais trade-grade.",
     "squadStrength": "Force de l'Effectif",
-    "subSquad": "Qualité de l’effectif : note club pondérée par le temps de jeu + buts/passes, en z-score. Intégrée au modèle live.",
+    "subSquad": "Qualité de l'effectif : note de club pondérée par les minutes ET la force de la ligue (ligues faibles décotées, ex. une note élevée en Arabie saoudite/Afrique du Sud est réduite) + buts/passes, en z-score. Intégré au modèle à un faible poids 0,15 (≈neutre sur les prédictions).",
     "colSquadScore": "z effectif",
     "colTopPlayers": "Joueurs clés",
     "win": "victoire",
