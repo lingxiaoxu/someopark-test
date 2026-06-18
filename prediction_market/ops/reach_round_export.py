@@ -15,6 +15,12 @@ from datetime import datetime, timezone
 
 from prediction_market.config import CONFIG
 
+# Kalshi reach-round quote is trusted only when it's close to the liquid Poly reference:
+# within this absolute ¢ gap AND at least this fraction of the Poly price (a relative
+# floor — a 6¢-vs-25¢ quote is a 19¢ gap but, more tellingly, ¼ of Poly → noise).
+_KALSHI_SANITY_CENTS = 15.0
+_KALSHI_SANITY_FRAC = 0.60
+
 # round key → (model prob field in the champion array, human label)
 _ROUNDS = {
     "r16": ("p_r16", "Round of 16"),
@@ -54,6 +60,14 @@ def build(conn=None) -> dict:
             if tid is None or p is None:
                 continue
             kc, pc = kal.get(tid), pol.get(tid)
+            # Cross-venue sanity gate: Poly Global is liquid (48/48), Kalshi reach-round is
+            # thin and its asks are often broken (e.g. France→SF quoted 1¢, Iran→RO16 69¢).
+            # If Kalshi disagrees with the liquid Poly price by more than the tolerance,
+            # treat the Kalshi quote as noise and drop it ('—') rather than show a fake edge.
+            if kc is not None and pc is not None and (
+                    abs(kc - pc) > _KALSHI_SANITY_CENTS or kc < _KALSHI_SANITY_FRAC * pc
+                    or kc > pc / _KALSHI_SANITY_FRAC):
+                kc = None
             avail = [x for x in (kc, pc) if x is not None]
             best = min(avail) if avail else None        # cheapest executable buy price
             edge = (p - best / 100.0) if best is not None else None
@@ -74,9 +88,10 @@ def build(conn=None) -> dict:
         "note": ("Per-team REACH-ROUND market (2-way Yes/No — the no-draw 'advance' product, "
                  "distinct from the per-match 90-min 3-way). Model prob of reaching each round "
                  "(tournament sim) vs the live venue Yes price; edge = model − cheapest price. "
-                 "BOTH venues list these: Kalshi (KXWCROUND, thin in the group stage) and "
-                 "Polymarket Global (Nation-To-Reach-X, liquid for all 48 teams). Real-money "
-                 "trading is still gated + $1-capped."),
+                 "BOTH venues list these: Polymarket Global (Nation-To-Reach-X, liquid for all "
+                 "48 teams — the reference) and Kalshi (KXWCROUND, thin; its quotes are shown "
+                 "ONLY when within 20¢ of Poly, else dropped as noise — its deeper-round asks "
+                 "are often broken). Real-money trading is still gated + $1-capped."),
         "rounds": rounds,
     }
 
