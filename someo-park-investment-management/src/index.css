@@ -459,8 +459,11 @@
     color: #111;
   }
   /* In-play arb table: shrink the short numeric columns to their content so the
-     last "Reason" column gets all the remaining width (left-aligned, wraps instead
-     of clipping) — keeps the localized reason fully readable. */
+     last "Reason" column gets all the remaining width (left-aligned, WRAPS instead
+     of clipping) — keeps the localized reason fully readable on any screen width.
+     No fixed min-width: on a narrow (mobile) panel that would overflow + clip; the
+     reason just wraps to as many lines as it needs within the available space. */
+  .table.inplay-arb-table { table-layout: auto; }
   .table.inplay-arb-table th:not(:last-child),
   .table.inplay-arb-table td:not(:last-child) {
     width: 1%;
@@ -470,7 +473,8 @@
   .table.inplay-arb-table td:last-child {
     text-align: left;
     white-space: normal;
-    min-width: 320px;
+    word-break: break-word;
+    overflow-wrap: anywhere;
   }
 
   /* ════ CARDS ══════════════════════════════════════════ */
