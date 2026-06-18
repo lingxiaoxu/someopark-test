@@ -50,9 +50,9 @@ function KV({ rows }: { rows: [string, ReactNode][] }) {
     </table>
   );
 }
-function DataTable({ cols, rows }: { cols: string[]; rows: ReactNode[][] }) {
+function DataTable({ cols, rows, className }: { cols: string[]; rows: ReactNode[][]; className?: string }) {
   return (
-    <table className="table">
+    <table className={className ? `table ${className}` : 'table'}>
       <thead><tr>{cols.map((c, i) => <th key={i} style={{ textAlign: i === 0 ? 'left' : 'right' }}>{c}</th>)}</tr></thead>
       <tbody>
         {rows.map((r, i) => (
@@ -387,7 +387,7 @@ function InPlay() {
           </div>
           {/* opportunities / tricks — edge in probability AND ¢ per contract */}
           {m.opportunities?.length ? (
-            <DataTable cols={[tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colMarketC'), tr('prediction.colEdge'), tr('prediction.colEdgeC'), tr('prediction.colReason')]}
+            <DataTable className="inplay-arb-table" cols={[tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colMarketC'), tr('prediction.colEdge'), tr('prediction.colEdgeC'), tr('prediction.colReason')]}
               rows={m.opportunities.map((o: any) => [
                 <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{tr('prediction.kind.' + o.kind, { defaultValue: o.kind })}</span>,
                 tr('prediction.action.' + o.action, { defaultValue: o.action }),
