@@ -70,20 +70,19 @@ REACH_ROUND_SERIES = {v: k for k, v in REACH_ROUND_EVENTS.items()}
 
 
 def _real_price(ask, bid, last):
-    """A REAL 0<p<1 mark: reach-round books are thin in the group stage, so 0.00
-    (placeholder) and 1.00 (no-seller cap) are NOT prices. Prefer last-traded, then the
-    bid (what buyers will pay), then a genuine ask (<0.99)."""
+    """The executable BUY price for a reach-round contract = the YES **ask** (what you'd
+    pay), when it's a real offer below the $1.00 no-seller cap. The reach-round books are
+    thin: the last-traded price is usually a STALE single fill at an absurd value (e.g.
+    France→RO16 last-traded 5¢ while the real ask is 80¢) and the bid is often a lone
+    lowball — so neither is the price. ``bid``/``last`` are accepted for signature
+    compatibility but ignored. Returns None ('—') when there's no real ask (capped)."""
     def _num(x):
         try:
             return float(x)
         except (TypeError, ValueError):
             return None
-    ask, bid, last = _num(ask), _num(bid), _num(last)
-    if last is not None and 0.0 < last < 1.0:
-        return last
-    if bid is not None and 0.0 < bid < 1.0:
-        return bid
-    if ask is not None and 0.0 < ask < 0.99:
+    ask = _num(ask)
+    if ask is not None and 0.0 < ask < 1.0:
         return ask
     return None
 
