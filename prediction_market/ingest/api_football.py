@@ -61,10 +61,16 @@ class ApiFootball:
                 "deliberately if this run genuinely needs more"
             )
         if billed:
+            # API-Football bills per DAY (UTC reset) — the daily cap is the real guard.
+            day_used = store.daily_request_count(self.conn)
+            if day_used >= getattr(self.cfg, "daily_budget", 7500):
+                raise BudgetExceededError(
+                    f"daily budget exhausted ({day_used}/{self.cfg.daily_budget})"
+                )
             used = store.monthly_request_count(self.conn)
             if used >= self.cfg.monthly_budget:
                 raise BudgetExceededError(
-                    f"monthly budget exhausted ({used}/{self.cfg.monthly_budget})"
+                    f"monthly budget exhausted ({used}/{self.cfg.monthly_budget}) — backstop"
                 )
 
     def requests_used_this_month(self) -> int:

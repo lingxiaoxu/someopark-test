@@ -114,7 +114,7 @@
     "subCalibration": "Fiabilidad fuera de muestra (la puerta de trade)",
     "subOverview": "Interfaces, calendario y valor",
     "subVenues": "Mercados de ejecución, saldos y controles",
-    "subBudget": "Presupuesto mensual de solicitudes API-Football",
+    "subBudget": "Presupuesto diario de solicitudes API-Football (Pro 7.500/día)",
     "subValue": "Lo que ofrece este sistema, y cómo verlo",
     "subPdfs": "Informes PDF de estilo institucional",
     "colChamp": "Campeón",
@@ -173,10 +173,28 @@
     "liveBadge": "EN VIVO",
     "expGoals": "goles restantes est.",
     "colReason": "Razón",
-    "kind": { "relative_value": "Valor relativo", "lock_arb": "Arbitraje fijo", "tactic": "Táctica" },
-    "side": { "home": "Local", "draw": "Empate", "away": "Visit.", "under": "Menos", "over": "Más" },
-    "action": { "BUY": "Comprar", "SELL": "Vender", "ARB": "Arbitraje", "HOLD": "Esperar" },
-    "favBasis": { "strong_poor_form": "fuerte pero en mal estado reciente", "in_form_underdog": "menos favorito pero en mejor forma" },
+    "kind": {
+      "relative_value": "Valor relativo",
+      "lock_arb": "Arbitraje fijo",
+      "tactic": "Táctica"
+    },
+    "side": {
+      "home": "Local",
+      "draw": "Empate",
+      "away": "Visit.",
+      "under": "Menos",
+      "over": "Más"
+    },
+    "action": {
+      "BUY": "Comprar",
+      "SELL": "Vender",
+      "ARB": "Arbitraje",
+      "HOLD": "Esperar"
+    },
+    "favBasis": {
+      "strong_poor_form": "fuerte pero en mal estado reciente",
+      "in_form_underdog": "menos favorito pero en mejor forma"
+    },
     "reason": {
       "relative_value": "modelo {{fair}} > {{venue}} pedido {{ask}}",
       "alsoSuffix": "; también {{also}}",
@@ -307,7 +325,12 @@
     "colGoals": "Goles",
     "colBrierRaw": "Brier (bruto)",
     "colBrierCal": "Brier (cal.)",
-    "paramSets": "conjuntos"
+    "paramSets": "conjuntos",
+    "lblUsedToday": "Usado hoy / límite diario",
+    "lblRemaining": "Restante hoy",
+    "lblMonthBackstop": "Este mes (respaldo)",
+    "perDay": "día",
+    "budgetResetNote": "Plan API-Football Pro: 7.500 req/día, se reinicia a las 00:00 UTC. El sondeo en vivo por minuto (fixtures + xG) es el principal consumidor."
   },
   "sidebar": {
     "appName": "Someo Park",

@@ -114,7 +114,7 @@
     "subCalibration": "サンプル外の信頼性(取引可ゲート)",
     "subOverview": "インターフェース、スケジュール、価値",
     "subVenues": "執行会場、残高、取引ゲート",
-    "subBudget": "API-Football 月間リクエスト予算",
+    "subBudget": "API-Football 日次リクエスト予算(Pro 7,500/日)",
     "subValue": "本システムの提供価値と、その見方",
     "subPdfs": "機関投資家向けPDFレポート",
     "colChamp": "優勝",
@@ -173,10 +173,28 @@
     "liveBadge": "ライブ",
     "expGoals": "予想残り得点",
     "colReason": "理由",
-    "kind": { "relative_value": "相対価値", "lock_arb": "ロックアービトラージ", "tactic": "戦術" },
-    "side": { "home": "ホーム", "draw": "引分", "away": "アウェイ", "under": "アンダー", "over": "オーバー" },
-    "action": { "BUY": "買い", "SELL": "売り", "ARB": "裁定", "HOLD": "様子見" },
-    "favBasis": { "strong_poor_form": "強豪だが近況不調", "in_form_underdog": "格下だが好調" },
+    "kind": {
+      "relative_value": "相対価値",
+      "lock_arb": "ロックアービトラージ",
+      "tactic": "戦術"
+    },
+    "side": {
+      "home": "ホーム",
+      "draw": "引分",
+      "away": "アウェイ",
+      "under": "アンダー",
+      "over": "オーバー"
+    },
+    "action": {
+      "BUY": "買い",
+      "SELL": "売り",
+      "ARB": "裁定",
+      "HOLD": "様子見"
+    },
+    "favBasis": {
+      "strong_poor_form": "強豪だが近況不調",
+      "in_form_underdog": "格下だが好調"
+    },
     "reason": {
       "relative_value": "モデル {{fair}} > {{venue}} アスク {{ask}}",
       "alsoSuffix": "；他に {{also}}",
@@ -307,7 +325,12 @@
     "colGoals": "得点",
     "colBrierRaw": "Brier(生)",
     "colBrierCal": "Brier(校正)",
-    "paramSets": "パラメータ群"
+    "paramSets": "パラメータ群",
+    "lblUsedToday": "本日使用 / 日次上限",
+    "lblRemaining": "本日残り",
+    "lblMonthBackstop": "今月(バックストップ)",
+    "perDay": "日",
+    "budgetResetNote": "API-Football Proプラン:7,500回/日、00:00 UTCにリセット。ライブの毎分ポーリング(fixtures+xG)が主な消費。"
   },
   "sidebar": {
     "appName": "Someo Park",

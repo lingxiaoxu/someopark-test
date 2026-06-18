@@ -132,7 +132,7 @@
     "subCalibration": "样本外可靠性(可交易闸门)",
     "subOverview": "接口、调度与价值",
     "subVenues": "执行场所、余额与交易闸门",
-    "subBudget": "API-Football 每月请求预算",
+    "subBudget": "API-Football 每日请求预算(Pro 7,500/天)",
     "subValue": "本系统交付什么,以及如何看到",
     "subPdfs": "机构风格 PDF 报告",
     "colChamp": "夺冠",
@@ -191,10 +191,28 @@
     "liveBadge": "进行中",
     "expGoals": "预计剩余进球",
     "colReason": "原因",
-    "kind": { "relative_value": "相对价值", "lock_arb": "锁定套利", "tactic": "战术" },
-    "side": { "home": "主", "draw": "平", "away": "客", "under": "小球", "over": "大球" },
-    "action": { "BUY": "买入", "SELL": "卖出", "ARB": "套利", "HOLD": "观望" },
-    "favBasis": { "strong_poor_form": "强队但近期状态差", "in_form_underdog": "弱队但近期状态好" },
+    "kind": {
+      "relative_value": "相对价值",
+      "lock_arb": "锁定套利",
+      "tactic": "战术"
+    },
+    "side": {
+      "home": "主",
+      "draw": "平",
+      "away": "客",
+      "under": "小球",
+      "over": "大球"
+    },
+    "action": {
+      "BUY": "买入",
+      "SELL": "卖出",
+      "ARB": "套利",
+      "HOLD": "观望"
+    },
+    "favBasis": {
+      "strong_poor_form": "强队但近期状态差",
+      "in_form_underdog": "弱队但近期状态好"
+    },
     "reason": {
       "relative_value": "模型 {{fair}} > {{venue}} 卖价 {{ask}}",
       "alsoSuffix": "；另有 {{also}}",
@@ -333,7 +351,12 @@
     "lblMatchday": "第",
     "roleReference": "数据",
     "tradingReadonly": "只读",
-    "venueGlobalNote": "Polymarket Global:仅用于只读拉数据 —— 逐分钟历史价(→ 价格轨迹回填)、夺冠盘参考价(夺冠¢ Poly 侧)、跨场对照;美国 geoblock 不可交易、无账户余额。"
+    "venueGlobalNote": "Polymarket Global:仅用于只读拉数据 —— 逐分钟历史价(→ 价格轨迹回填)、夺冠盘参考价(夺冠¢ Poly 侧)、跨场对照;美国 geoblock 不可交易、无账户余额。",
+    "lblUsedToday": "今日已用 / 每日上限",
+    "lblRemaining": "今日剩余",
+    "lblMonthBackstop": "本月(兜底)",
+    "perDay": "天",
+    "budgetResetNote": "API-Football Pro 套餐:7,500 次/天,每日 00:00 UTC 重置。盘中每分钟轮询主要消耗 fixtures + xG。"
   },
   "sidebar": {
     "appName": "Someo Park",

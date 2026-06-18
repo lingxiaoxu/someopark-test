@@ -90,9 +90,14 @@ def build(conn=None) -> RiskReport:
         "max_total_allowed_note": "per-market <= 5% bankroll, per-theme <= 10% (plan 04 §6)",
         "note": "no fills recorded (execution gated; demo test order placed+cancelled only)",
     }
-    used = store.monthly_request_count(conn)
-    api_budget = {"used": used, "cap": CONFIG.soccer.monthly_budget,
-                  "pct": round(used / CONFIG.soccer.monthly_budget, 3)}
+    # API-Football bills per DAY (Pro = 7,500/day, resets 00:00 UTC) — the daily figure is
+    # the real budget; monthly is a loose backstop.
+    used = store.daily_request_count(conn)
+    cap = CONFIG.soccer.daily_budget
+    api_budget = {"used": used, "cap": cap, "pct": round(used / cap, 3) if cap else 0.0,
+                  "period": "day",
+                  "month_used": store.monthly_request_count(conn),
+                  "month_cap": CONFIG.soccer.monthly_budget}
 
     # Calibration gate: is the CALIBRATED model trade-grade? The raw model is
     # over-confident; we fit a calibration map (calibration.json) and gate on the

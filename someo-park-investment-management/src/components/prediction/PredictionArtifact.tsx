@@ -496,7 +496,7 @@ function RiskCard() {
         [tr('prediction.lblKalshiDemo'), money(b.kalshi_demo_usd)],
         ['Poly US', money(b.polymarket_us_usd)],
         [tr('prediction.lblKalshiProd'), tDyn(String(b.kalshi_prod_usd))],
-        [tr('prediction.lblApiBudget'), `${ab.used}/${ab.cap} (${pct(ab.pct, 0)})`],
+        [tr('prediction.lblApiBudget'), `${ab.used}/${ab.cap}/${tr('prediction.perDay')} (${pct(ab.pct, 0)})`],
         [tr('prediction.lblCalibration'), <span style={{ color: data?.calibration_gate?.trade_grade ? 'var(--success)' : 'var(--error)' }}>{tDyn(data?.calibration_gate?.status)}</span>],
       ]} />
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 4px', ...mono, color: 'var(--text-primary)' }}>{tr('prediction.secBlocked')}</div>
@@ -647,10 +647,16 @@ function Budget() {
   return (
     <div>
       <Title sub={tr('prediction.subBudget')}>API Budget / Health</Title>
-      <KV rows={[[tr('prediction.lblUsed'), ab.used], [tr('prediction.lblCap'), ab.cap], [tr('prediction.lblUtilisation'), pct(ab.pct, 0)]]} />
+      <KV rows={[
+        [tr('prediction.lblUsedToday'), `${ab.used ?? '—'} / ${ab.cap ?? '—'}`],
+        [tr('prediction.lblUtilisation'), pct(ab.pct, 0)],
+        [tr('prediction.lblRemaining'), ab.cap != null && ab.used != null ? (ab.cap - ab.used) : '—'],
+        ...(ab.month_used != null ? [[tr('prediction.lblMonthBackstop'), `${ab.month_used} / ${ab.month_cap}`] as [string, ReactNode]] : []),
+      ]} />
       <div style={{ height: 10, background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }}>
         <div style={{ width: `${frac * 100}%`, height: '100%', background: frac > 0.8 ? 'var(--error)' : 'var(--success)' }} />
       </div>
+      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.budgetResetNote')}</div>
     </div>
   );
 }

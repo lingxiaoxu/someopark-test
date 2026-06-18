@@ -453,7 +453,7 @@
     "subCalibration": "Out-of-sample reliability (the trade-grade gate)",
     "subOverview": "Interfaces, schedule & value",
     "subVenues": "Execution venues, balances & trading gates",
-    "subBudget": "API-Football monthly request budget",
+    "subBudget": "API-Football daily request budget (Pro 7,500/day)",
     "subValue": "What this system delivers, and how to see it",
     "subPdfs": "Institutional-style PDF reports",
     "colChamp": "Champ",
@@ -512,10 +512,28 @@
     "liveBadge": "LIVE",
     "expGoals": "exp. remaining goals",
     "colReason": "Reason",
-    "kind": { "relative_value": "Relative value", "lock_arb": "Lock arb", "tactic": "Tactic" },
-    "side": { "home": "Home", "draw": "Draw", "away": "Away", "under": "Under", "over": "Over" },
-    "action": { "BUY": "Buy", "SELL": "Sell", "ARB": "Arb", "HOLD": "Hold" },
-    "favBasis": { "strong_poor_form": "strong but poor recent form", "in_form_underdog": "underdog but in better form" },
+    "kind": {
+      "relative_value": "Relative value",
+      "lock_arb": "Lock arb",
+      "tactic": "Tactic"
+    },
+    "side": {
+      "home": "Home",
+      "draw": "Draw",
+      "away": "Away",
+      "under": "Under",
+      "over": "Over"
+    },
+    "action": {
+      "BUY": "Buy",
+      "SELL": "Sell",
+      "ARB": "Arb",
+      "HOLD": "Hold"
+    },
+    "favBasis": {
+      "strong_poor_form": "strong but poor recent form",
+      "in_form_underdog": "underdog but in better form"
+    },
     "reason": {
       "relative_value": "model {{fair}} > {{venue}} ask {{ask}}",
       "alsoSuffix": "; also {{also}}",
@@ -654,7 +672,12 @@
     "lblMatchday": "MD",
     "roleReference": "Data",
     "tradingReadonly": "read-only",
-    "venueGlobalNote": "Polymarket Global: read-only data only — per-minute price history (→ price-track backfill), champion-odds reference (Poly side of champion ¢), cross-venue check; US geoblocked, not tradable, no account balance."
+    "venueGlobalNote": "Polymarket Global: read-only data only — per-minute price history (→ price-track backfill), champion-odds reference (Poly side of champion ¢), cross-venue check; US geoblocked, not tradable, no account balance.",
+    "lblUsedToday": "Used today / daily cap",
+    "lblRemaining": "Remaining today",
+    "lblMonthBackstop": "This month (backstop)",
+    "perDay": "day",
+    "budgetResetNote": "API-Football Pro plan: 7,500 req/day, resets 00:00 UTC. In-play per-minute polling (fixtures + xG) is the main consumer."
   },
   "sidebar": {
     "appName": "Someo Park",

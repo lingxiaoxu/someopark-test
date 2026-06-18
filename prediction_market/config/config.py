@@ -211,17 +211,20 @@ class VenueConfig:
 class SoccerConfig:
     """API-Football ingestion settings + request-budget guard rails (plan 02).
 
-    Pro plan = 7000 req/month. Discipline: pull once, store centrally, never
-    re-pull; the frontend reads our stored data. Per-resource TTLs gate the
-    watermark so a re-run within TTL costs ZERO requests.
+    Pro plan = 7,500 requests/DAY (resets at 00:00 UTC). The budget guard counts the
+    current UTC DAY (daily_budget) — that's the real constraint; the monthly_budget is
+    just a loose backstop. Discipline: pull once, store centrally; per-resource TTLs gate
+    the watermark so a re-run within TTL costs ZERO requests.
     """
 
     api_host: str = "https://v3.football.api-sports.io"
     league_id: int = 1          # FIFA World Cup
     season: int = 2026
 
-    # Budget guard rails.
-    monthly_budget: int = 7000
+    # Budget guard rails — API-Football bills PER DAY (UTC reset), so the daily cap is the
+    # real guard. (Was wrongly set to "7000/month", which exhausted mid-tournament.)
+    daily_budget: int = 7500            # Pro plan: 7,500 requests/day
+    monthly_budget: int = 200000        # loose backstop (~7500/day × 30); daily guard binds
     max_requests_per_run: int = 60      # hard stop per sync invocation (safety)
 
     # Per-resource freshness TTL in seconds — a sync within TTL is skipped.

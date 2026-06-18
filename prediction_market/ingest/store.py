@@ -368,6 +368,17 @@ def monthly_request_count(conn: sqlite3.Connection) -> int:
     return int(cur.fetchone()["n"])
 
 
+def daily_request_count(conn: sqlite3.Connection) -> int:
+    """Quota-counting API calls in the current UTC DAY — API-Football bills per day and
+    resets at UTC midnight, so this is the real constraint (excludes /status)."""
+    day = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    cur = conn.execute(
+        "SELECT COUNT(*) AS n FROM api_call WHERE substr(ts,1,10)=? AND endpoint NOT LIKE '%status%'",
+        (day,),
+    )
+    return int(cur.fetchone()["n"])
+
+
 if __name__ == "__main__":
     c = init_db()
     print(f"store ready at {DB_PATH}")
