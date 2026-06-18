@@ -227,6 +227,11 @@ def simulate(
     for gi, g in enumerate(groups):
         gg = group_global[g]                       # 4 global indices
         pts = np.zeros((n, 4));  gd = np.zeros((n, 4));  gf = np.zeros((n, 4))
+        # Per-match results for the FIFA head-to-head tie-break (criteria 4-6): for each
+        # ordered pair (i, j) store i's points/GD/GF in the i-vs-j match (int8, 0 diagonal).
+        hh_pts = np.zeros((n, 4, 4), dtype=np.int16)
+        hh_gd = np.zeros((n, 4, 4), dtype=np.int16)
+        hh_gf = np.zeros((n, 4, 4), dtype=np.int16)
 
         def _fixed(a, b):
             """Actual (goals_a, goals_b) if this group match is already played, else None."""
@@ -246,6 +251,10 @@ def simulate(
             pts[:, b] += 3 * b_win + tie
             gd[:, a] += ga - gb;  gd[:, b] += gb - ga
             gf[:, a] += ga;       gf[:, b] += gb
+            # record this match for the head-to-head mini-table
+            hh_pts[:, a, b] = 3 * a_win + tie;  hh_pts[:, b, a] = 3 * b_win + tie
+            hh_gd[:, a, b] = ga - gb;           hh_gd[:, b, a] = gb - ga
+            hh_gf[:, a, b] = ga;                hh_gf[:, b, a] = gb
 
         for a, b in r12:
             la, lb = sm.pair_lambdas(team_ids[gg[a]], team_ids[gg[b]])
@@ -264,13 +273,27 @@ def simulate(
                 la, lb = base_a, base_b
             _play(a, b, la, lb, fixed=fixed)
 
-        key = pts * 1e4 + gd * 1e2 + gf + rng.random((n, 4)) * 1e-2  # random tie-break
+        # FIFA tie-break: 1) points 2) GD 3) GF — then, AMONG the teams still level on all
+        # three, 4) head-to-head points 5) h2h GD 6) h2h GF — then lots (random). The h2h
+        # mini-table is summed only over the tied set, via an exact (pts,GD,GF) identity mask.
+        pid = (pts.astype(np.int64) * 100000 + (gd.astype(np.int64) + 200) * 100
+               + gf.astype(np.int64))                       # exact id of (pts,GD,GF)
+        same = pid[:, :, None] == pid[:, None, :]           # (n,4,4): j shares i's (pts,GD,GF)
+        h2h_pts = np.einsum('nij,nij->ni', same, hh_pts)    # h2h points vs the tied teams only
+        h2h_gd = np.einsum('nij,nij->ni', same, hh_gd)
+        h2h_gf = np.einsum('nij,nij->ni', same, hh_gf)
+        lots = rng.random((n, 4))
+        key = (pts * 1e12 + gd * 1e10 + gf * 1e8
+               + h2h_pts * 1e6 + h2h_gd * 1e4 + h2h_gf * 1e2 + lots)
         order = np.argsort(-key, axis=1)           # (n,4): col0=1st place ... col3=4th
         rows = np.arange(n)
         winners[:, gi] = gg[order[:, 0]]
         runners[:, gi] = gg[order[:, 1]]
         third_global[:, gi] = gg[order[:, 2]]
-        third_key[:, gi] = key[rows, order[:, 2]]
+        # Best-thirds are ranked ACROSS groups, where head-to-head does NOT apply (those
+        # teams never met) — compare by points → GD → GF → lots only.
+        third_cmp = pts * 1e6 + gd * 1e4 + gf * 1e2 + lots
+        third_key[:, gi] = third_cmp[rows, order[:, 2]]
 
     # Best 8 of 12 thirds (highest key) revive.
     third_order = np.argsort(-third_key, axis=1)    # (n,12)
