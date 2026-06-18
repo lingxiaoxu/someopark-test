@@ -74,9 +74,9 @@ def build(conn=None) -> dict:
         "note": ("Per-team REACH-ROUND market (2-way Yes/No — the no-draw 'advance' product, "
                  "distinct from the per-match 90-min 3-way). Model prob of reaching each round "
                  "(tournament sim) vs the live venue Yes price; edge = model − cheapest price. "
-                 "Kalshi lists these (KXWCROUND, thin during the group stage); Polymarket does "
-                 "NOT list reach-round markets yet (only the champion market) — its column fills "
-                 "automatically if it does. Real-money trading is still gated + $1-capped."),
+                 "BOTH venues list these: Kalshi (KXWCROUND, thin in the group stage) and "
+                 "Polymarket Global (Nation-To-Reach-X, liquid for all 48 teams). Real-money "
+                 "trading is still gated + $1-capped."),
         "rounds": rounds,
     }
 

@@ -63,9 +63,9 @@
   "prediction": {
     "championOdds": "Cotes de Champion",
     "reachRound": "Qualif. par tour",
-    "subReachRound": "P(équipe atteint le tour) du modèle vs prix Kalshi en direct — le produit qualification sans nul",
+    "subReachRound": "P(équipe atteint le tour) du modèle vs prix Kalshi + Poly en direct — produit qualification sans nul",
     "colModelReach": "Modèle qualif.%",
-    "reachRoundNote": "Distinct du marché 90 min par match : marché 2-way par équipe « atteindre le tour X ». Kalshi le propose (KXWCROUND), peu traité en phase de groupes (¢ souvent « — »), liquide près des phases finales ; Polymarket ne propose PAS encore ces marchés (seulement le vainqueur), donc Poly¢ est surtout « — » et se remplit s'il le fait. ★ = edge positif (modèle vs prix d'achat le moins cher). Argent réel barré + plafond 1 $.",
+    "reachRoundNote": "Distinct du marché 90 min par match : marché 2-way par équipe « atteindre le tour X » (Oui = atteint ce tour). Deux sources : Kalshi (KXWCROUND, peu liquide en phase de groupes) et Polymarket Global (Nation-To-Reach, liquide pour les 48 équipes). ★ = edge positif (modèle vs le moins cher des deux). Argent réel barré + plafond 1 $.",
     "matchPricing": "Cote du Match (1N2)",
     "goldenBoot": "Soulier d'Or",
     "modelVsMarket": "Modèle vs Marché",

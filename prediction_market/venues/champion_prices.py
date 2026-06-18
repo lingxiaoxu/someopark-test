@@ -108,41 +108,46 @@ def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
     return out
 
 
+# Polymarket Global per-round qualifier events (read-only). These ARE listed and liquid
+# for all 48 teams — the "Nation To Reach <round>" markets (YES = reach that round).
+POLY_REACH_ROUND_SLUGS = {
+    "r16": "world-cup-nation-to-reach-round-of-16",
+    "qf": "world-cup-nation-to-reach-quarterfinals",
+    "sf": "world-cup-nation-to-reach-semifinals",
+    "final": "world-cup-nation-to-reach-final",
+}
+
+
 def _poly_reach_round_cents() -> dict[str, dict[str, float]]:
-    """{round_key: {team_id: ¢}} from Polymarket, IF it lists per-round qualifier markets.
-    As of the group stage Poly Global only lists the champion ("world-cup-winner") market
-    and NO reach-round markets — so this returns empty until/unless Poly lists them."""
+    """{round_key: {team_id: ¢}} from Polymarket Global's per-round "Nation To Reach
+    <round>" markets (YES price × 100). Liquid for all 48 teams."""
     out: dict[str, dict[str, float]] = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
-    # Candidate Poly slugs per round (Poly hasn't listed these for WC-26; ready if it does).
-    slugs = {"final": ("world-cup-finalist", "world-cup-finalists", "world-cup-to-reach-the-final"),
-             "sf": ("world-cup-semifinalist", "world-cup-semifinalists", "world-cup-final-four"),
-             "qf": ("world-cup-quarterfinalist", "world-cup-quarterfinalists"),
-             "r16": ("world-cup-round-of-16", "world-cup-to-reach-round-of-16")}
-    try:
-        import json as _json
-        from prediction_market.venues.polymarket_global.reader import PolymarketGlobalReader
-        r = PolymarketGlobalReader()
-        for rk, cand in slugs.items():
-            for slug in cand:
-                evs = r.list_events(slug=slug) or []
-                if not evs:
-                    continue
-                for m in evs[0].get("markets", []) or []:
-                    tid = team_id(canonical_team_name(m.get("groupItemTitle", "") or ""))
-                    op = m.get("outcomePrices")
-                    if isinstance(op, str):
-                        try:
-                            op = _json.loads(op)
-                        except Exception:
-                            op = None
-                    if tid and op:
-                        try:
-                            out[rk][tid] = to_cents(float(op[0]))
-                        except (TypeError, ValueError, IndexError):
-                            pass
-                break  # first slug that resolves wins for this round
-    except Exception as e:
-        print(f"[champion_prices] poly reach_round skipped: {e}")
+    import json as _json
+    from prediction_market.venues.polymarket_global.reader import PolymarketGlobalReader
+    r = PolymarketGlobalReader()
+    for rk, slug in POLY_REACH_ROUND_SLUGS.items():
+        try:
+            evs = r.list_events(slug=slug) or []
+        except Exception as e:
+            print(f"[champion_prices] poly reach_round {rk} skipped: {e}")
+            continue
+        if not evs:
+            continue
+        for m in evs[0].get("markets", []) or []:
+            tid = team_id(canonical_team_name(m.get("groupItemTitle", "") or ""))
+            op = m.get("outcomePrices")
+            if isinstance(op, str):
+                try:
+                    op = _json.loads(op)
+                except Exception:
+                    op = None
+            if tid and op:
+                try:
+                    yes = float(op[0])
+                    if 0.0 < yes < 1.0:
+                        out[rk][tid] = to_cents(yes)
+                except (TypeError, ValueError, IndexError):
+                    pass
     return out
 
 
