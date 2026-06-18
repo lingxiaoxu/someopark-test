@@ -371,7 +371,7 @@
     "aboutCompany": "Gestion d'investissement quantitative propulsee par l'IA — strategies systematiques sur actions, semi-conducteurs, rotation sectorielle, credit prive et marches de prediction.",
     "aboutParkAI": "Mode chat par defaut. Interrogez strategies, signaux, positions et performances en langage naturel. Alimente par LLM avec acces a toutes les vues de donnees. Peut aussi generer du code, previsualiser et deployer dans un sandbox pour creer des outils personnalises.",
     "aboutAgent": "Mode agent autonome avance. Utilise des appels d'outils multi-etapes (recherche web, execution Python, requetes de donnees) pour rechercher, analyser et repondre de maniere autonome.",
-    "aboutClaw": "Agent de recherche d'investissement IA complet, construit sur l'infrastructure quantitative de Someo Park. Se connecte aux strategies walk-forward (MRPT, MTFS & SSRS), positions en temps reel, signaux et diagnostics.",
+    "aboutClaw": "Agent de recherche d'investissement IA complet, construit sur l'infrastructure quantitative de Someo Park. Se connecte a la construction & optimisation de strategies (MRPT, MTFS, SSRS & AISS), positions en temps reel, signaux et diagnostics.",
     "aboutClawCloud": "Cloud VPS",
     "aboutClawCloudDesc": "Heberge par Someo Park",
     "aboutClawLocal": "Local",
