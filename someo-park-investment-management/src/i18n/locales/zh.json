@@ -229,7 +229,18 @@
       "fade_ago": "弱队 {{mins}}′ 前进球 — 市场过度反应（约 40%/分钟，{{window}}′ 内回归）；反向买入强队{{basisSuffix}}",
       "comeback": "赛前热门（{{pct}}%）{{min}}′ 落后 — 仍有翻盘价值，抄底强队{{basisSuffix}}",
       "red_card": "{{carded}} 于 {{min}}′ 染红 — 对手下一球价值抬升",
-      "ko_draw": "淘汰赛 {{min}}′ 比分平 — 90′ 平局赔付（将进加时），买入平局"
+      "ko_draw": "淘汰赛 {{min}}′ 比分平 — 90′ 平局赔付（将进加时），买入平局",
+      "dormant_explosion": "{{min}}′ 闷平 {{gh}}:{{ga}} 但合计 xG {{xg}} — 下半场进球将至(半场闷的世界杯 6/6 爆发,均 3.0)— 买 OVER",
+      "finishing_uplift": "OVER {{line}} 被纯 xG 低估:修正后 {{base}}→{{adj}}(世界杯临门超 xG +{{uplift}})— 倾向 OVER",
+      "finishing_uplift_mkt": "修正后 OVER {{line}} {{fair}} > 市场 {{mkt}}(世界杯进球超 xG +{{uplift}})",
+      "xg_chase": "{{side}} xG {{xgf}} vs {{xga}} 却 {{gf}}:{{ga}}（{{min}}′）— 应得未得,买 {{side}}",
+      "possession_trap": "{{side}} 控球 {{poss}}% 但仅 {{xg}} xG — 无效控球,反向;{{opp}} 有价值",
+      "formation_fragility": "{{side}} 摆出脆弱的 {{formation}}（易失球）— 倾向 OVER / {{attack}} 进攻",
+      "lone_threat": "{{side}} 的单点威胁 {{player}}（占 {{share}}% 射门）已下场 — 进攻熄火,反向 {{side}}（看好 {{opp}}）",
+      "late_goal_back": "晚段 OVER 价值 — {{min}}′ 仍预期 {{exp}} 球（世界杯 34% 进球在 75′ 后）",
+      "late_goal_hold": "谨慎持有 UNDER {{line}}：{{min}}′ 仍预期 {{exp}} 球（世界杯晚段进球多）",
+      "odds_crossval_lead": "{{side}}：实时庄家盘 {{book}} 高于模型 {{model}} — 聪明钱领先,留意入场",
+      "odds_crossval_venue": "{{side}}：庄家 {{book}} 与模型 {{model}} 均 > 交易所 {{venue}} — 庄家确认,交易所滞后"
     },
     "noOpps": "本分钟无可执行信号 — 仅模型视图。",
     "backtest": "回测(OOS)",
@@ -823,7 +834,7 @@
   "ssrs": {
     "title": "SSRS",
     "inventoryTitle": "当前持仓 — SSRS",
-    "signalsTitle": "交易信号 — SSRS",
+    "signalsTitle": "交易信号 (SSRS)",
     "wfSummaryTitle": "Walk-Forward 汇总 — SSRS（{{folds}} 折叠 × {{etfs}} 板块ETF × {{params}} 参数集）",
     "wfGridTitle": "Walk-Forward 折叠网格（{{count}} 折叠）",
     "oosParamTitle": "OOS 参数汇总 — SSRS（{{count}} 参数集）",
@@ -884,7 +895,7 @@
     "colMarketValue": "市值",
     "colValue": "市值",
     "subsectorLabel": "子板块",
-    "signalsTitle": "AISS 信号 — 个股层面",
+    "signalsTitle": "交易信号 (AISS)",
     "holdingsTitle": "AISS 持仓 — 个股层面",
     "wfSummaryTitle": "Walk-Forward 汇总 — AISS（{{folds}} 折叠 × {{subsectors}} 子板块 / {{stocks}} 半导体个股 × {{params}} 参数集）"
   }

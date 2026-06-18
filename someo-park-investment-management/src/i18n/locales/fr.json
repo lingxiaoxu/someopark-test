@@ -211,7 +211,18 @@
       "fade_ago": "l'outsider a marqué il y a {{mins}}′ — le marché sur-réagit (~40%/min, retour en {{window}}′) ; contre-acheter le favori{{basisSuffix}}",
       "comeback": "favori d'avant-match ({{pct}}%) mené à {{min}}′ — équité résiduelle, acheter le retour{{basisSuffix}}",
       "red_card": "carton rouge sur {{carded}} à {{min}}′ — valeur du prochain but de l'adversaire accrue",
-      "ko_draw": "match couperet {{min}}′ à égalité — le nul à 90′ paie (prolongation à venir), acheter le nul"
+      "ko_draw": "match couperet {{min}}′ à égalité — le nul à 90′ paie (prolongation à venir), acheter le nul",
+      "dormant_explosion": "calme {{gh}}:{{ga}} à {{min}}' mais xG cumulé {{xg}} — vague de buts en 2e mi-temps attendue (matchs calmes à la mi-temps : 6/6 ont explosé, moy. 3,0) — jouer OVER",
+      "finishing_uplift": "OVER {{line}} sous-évalué par le xG pur : l'ajustement passe de {{base}} à {{adj}} (la finition en CdM bat le xG +{{uplift}}) — pencher OVER",
+      "finishing_uplift_mkt": "OVER {{line}} ajusté {{fair}} > marché {{mkt}} (buts CdM > xG +{{uplift}})",
+      "xg_chase": "{{side}} xG {{xgf}} c. {{xga}} mais {{gf}}:{{ga}} à {{min}}' — le but mérité arrive, jouer {{side}}",
+      "possession_trap": "{{side}} accapare {{poss}}% de possession mais seulement {{xg}} xG — contrôle stérile, contre ; valeur sur {{opp}}",
+      "formation_fragility": "{{side}} en {{formation}} fragile (encaisse beaucoup) — pencher OVER / attaque {{attack}}",
+      "lone_threat": "le seul danger de {{side}}, {{player}} ({{share}}% des tirs), a quitté le terrain — l'attaque s'effondre, contre {{side}} (valeur {{opp}})",
+      "late_goal_back": "valeur OVER tardive — {{min}}' et {{exp}} buts encore attendus (CdM : 34% des buts après 75')",
+      "late_goal_hold": "tenir UNDER {{line}} prudemment : {{min}}' mais {{exp}} buts encore attendus (buts tardifs fréquents en CdM)",
+      "odds_crossval_lead": "{{side}} : la cote live {{book}} dépasse le modèle {{model}} — l'argent avisé mène, surveiller l'entrée",
+      "odds_crossval_venue": "{{side}} : cote {{book}} et modèle {{model}} > plateforme {{venue}} — la cote confirme, la plateforme retarde"
     },
     "noOpps": "Aucun signal exploitable cette minute — vue modèle seulement.",
     "backtest": "Backtest (OOS)",
@@ -796,7 +807,7 @@
   "ssrs": {
     "title": "SSRS",
     "inventoryTitle": "Inventaire actuel — SSRS",
-    "signalsTitle": "Signaux de trading — SSRS",
+    "signalsTitle": "Signaux de trading (SSRS)",
     "wfSummaryTitle": "Résumé Walk-Forward — SSRS ({{folds}} plis × {{etfs}} ETF sectoriels × {{params}} jeux de params)",
     "wfGridTitle": "Grille de plis Walk-Forward ({{count}} plis)",
     "oosParamTitle": "Résumé des paramètres OOS — SSRS ({{count}} params)",
@@ -857,7 +868,7 @@
     "colMarketValue": "Valeur de marché",
     "colValue": "Valeur",
     "subsectorLabel": "sous-secteur",
-    "signalsTitle": "Signaux AISS — niveau action",
+    "signalsTitle": "Signaux de trading (AISS)",
     "holdingsTitle": "Positions AISS — niveau action",
     "wfSummaryTitle": "Synthèse Walk-Forward — AISS ({{folds}} plis × {{subsectors}} sous-secteurs / {{stocks}} actions semi-conducteurs × {{params}} jeux de params)"
   }

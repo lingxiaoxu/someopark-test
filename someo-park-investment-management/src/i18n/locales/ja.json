@@ -211,7 +211,18 @@
       "fade_ago": "格下が {{mins}}′ 前に得点 — 市場は過剰反応（約40%/分、{{window}}′ で回帰）；強豪を逆張りで買い{{basisSuffix}}",
       "comeback": "試合前の本命（{{pct}}%）が {{min}}′ にビハインド — 逆転の余地、本命を押し目買い{{basisSuffix}}",
       "red_card": "{{carded}} が {{min}}′ に退場 — 相手の次得点価値が上昇",
-      "ko_draw": "ノックアウト {{min}}′ 同点 — 90′ の引分が配当（延長へ）、引分を買い"
+      "ko_draw": "ノックアウト {{min}}′ 同点 — 90′ の引分が配当（延長へ）、引分を買い",
+      "dormant_explosion": "{{min}}′ {{gh}}:{{ga}} と静かだが合計 xG {{xg}} — 後半の得点ラッシュ予想（前半静かな W杯試合は 6/6 で爆発、平均3.0）— OVER",
+      "finishing_uplift": "OVER {{line}} は純 xG で過小評価：補正 {{base}}→{{adj}}（W杯の決定力は xG 超 +{{uplift}}）— OVER 寄り",
+      "finishing_uplift_mkt": "補正後 OVER {{line}} {{fair}} > 市場 {{mkt}}（W杯得点は xG 超 +{{uplift}}）",
+      "xg_chase": "{{side}} xG {{xgf}} 対 {{xga}} だが {{gf}}:{{ga}}（{{min}}′）— 当然の得点が来る、{{side}} を買い",
+      "possession_trap": "{{side}} は支配率 {{poss}}% だが xG {{xg}} のみ — 不毛な支配、逆張り；{{opp}} に妙味",
+      "formation_fragility": "{{side}} は脆い {{formation}}（失点多）— OVER / {{attack}} の攻撃寄り",
+      "lone_threat": "{{side}} の単独脅威 {{player}}（シュートの {{share}}%）が退場 — 得点力低下、{{side}} 逆張り（{{opp}} 妙味）",
+      "late_goal_back": "終盤 OVER の妙味 — {{min}}′ で残り {{exp}} 得点予想（W杯：34% が 75′ 以降）",
+      "late_goal_hold": "UNDER {{line}} は慎重に保持：{{min}}′ でも残り {{exp}} 得点予想（W杯は終盤得点多）",
+      "odds_crossval_lead": "{{side}}：ライブのブック {{book}} がモデル {{model}} を上回る — スマートマネー先行、エントリー注視",
+      "odds_crossval_venue": "{{side}}：ブック {{book}} とモデル {{model}} が共に取引所 {{venue}} を上回る — ブック確認、取引所遅延"
     },
     "noOpps": "この分は実行可能なシグナルなし — モデルビューのみ。",
     "backtest": "バックテスト(OOS)",
@@ -796,7 +807,7 @@
   "ssrs": {
     "title": "SSRS",
     "inventoryTitle": "現在の保有 — SSRS",
-    "signalsTitle": "トレーディングシグナル — SSRS",
+    "signalsTitle": "トレーディングシグナル (SSRS)",
     "wfSummaryTitle": "Walk-Forward サマリー — SSRS（{{folds}} フォールド × {{etfs}} セクターETF × {{params}} パラメータセット）",
     "wfGridTitle": "Walk-Forward フォールドグリッド（{{count}} フォールド）",
     "oosParamTitle": "OOS パラメータサマリー — SSRS（{{count}} パラメータ）",
@@ -857,7 +868,7 @@
     "colMarketValue": "時価",
     "colValue": "時価",
     "subsectorLabel": "サブセクター",
-    "signalsTitle": "AISS シグナル — 銘柄レベル",
+    "signalsTitle": "トレーディングシグナル (AISS)",
     "holdingsTitle": "AISS 保有 — 銘柄レベル",
     "wfSummaryTitle": "ウォークフォワード集計 — AISS（{{folds}} フォールド × {{subsectors}} サブセクター / {{stocks}} 半導体銘柄 × {{params}} パラメータセット）"
   }

@@ -211,7 +211,18 @@
       "fade_ago": "el menos favorito marcó hace {{mins}}′ — el mercado sobrerreacciona (~40%/min, revierte en {{window}}′); comprar a contra el favorito{{basisSuffix}}",
       "comeback": "favorito previo ({{pct}}%) perdiendo a {{min}}′ — valor residual, apostar por la remontada{{basisSuffix}}",
       "red_card": "tarjeta roja a {{carded}} en {{min}}′ — valor del próximo gol del rival elevado",
-      "ko_draw": "eliminatoria {{min}}′ en empate — el empate a 90′ paga (prórroga por venir), comprar el empate"
+      "ko_draw": "eliminatoria {{min}}′ en empate — el empate a 90′ paga (prórroga por venir), comprar el empate",
+      "dormant_explosion": "tranquilo {{gh}}:{{ga}} al {{min}}' pero xG combinado {{xg}} — se espera oleada de goles en la 2ª parte (partidos tranquilos al descanso: 6/6 estallaron, prom. 3,0) — ir OVER",
+      "finishing_uplift": "OVER {{line}} infravalorado por el xG puro: el ajuste sube de {{base}} a {{adj}} (la definición en el Mundial supera al xG +{{uplift}}) — inclinarse OVER",
+      "finishing_uplift_mkt": "OVER {{line}} ajustado {{fair}} > mercado {{mkt}} (goles del Mundial > xG +{{uplift}})",
+      "xg_chase": "{{side}} xG {{xgf}} vs {{xga}} pero {{gf}}:{{ga}} al {{min}}' — el gol merecido llega, apostar {{side}}",
+      "possession_trap": "{{side}} acapara {{poss}}% de posesión pero solo {{xg}} xG — control estéril, ir en contra; valor en {{opp}}",
+      "formation_fragility": "{{side}} en {{formation}} frágil (encaja mucho) — inclinarse OVER / ataque {{attack}}",
+      "lone_threat": "la única amenaza de {{side}}, {{player}} ({{share}}% de los tiros), salió del campo — el ataque se hunde, ir contra {{side}} (valor {{opp}})",
+      "late_goal_back": "valor OVER tardío — {{min}}' y aún se esperan {{exp}} goles (Mundial: 34% de goles tras el 75')",
+      "late_goal_hold": "mantener UNDER {{line}} con cautela: {{min}}' pero aún se esperan {{exp}} goles (goles tardíos frecuentes en el Mundial)",
+      "odds_crossval_lead": "{{side}}: la cuota en vivo {{book}} superó al modelo {{model}} — dinero inteligente liderando, atento a la entrada",
+      "odds_crossval_venue": "{{side}}: cuota {{book}} y modelo {{model}} > plataforma {{venue}} — la cuota confirma, la plataforma rezagada"
     },
     "noOpps": "Sin señal accionable este minuto — solo vista del modelo.",
     "backtest": "Backtest (OOS)",
@@ -796,7 +807,7 @@
   "ssrs": {
     "title": "SSRS",
     "inventoryTitle": "Inventario actual — SSRS",
-    "signalsTitle": "Señales de trading — SSRS",
+    "signalsTitle": "Señales de trading (SSRS)",
     "wfSummaryTitle": "Resumen Walk-Forward — SSRS ({{folds}} pliegues × {{etfs}} ETF sectoriales × {{params}} conjuntos de params)",
     "wfGridTitle": "Cuadrícula de pliegues Walk-Forward ({{count}} pliegues)",
     "oosParamTitle": "Resumen de parámetros OOS — SSRS ({{count}} params)",
@@ -857,7 +868,7 @@
     "colMarketValue": "Valor de mercado",
     "colValue": "Valor",
     "subsectorLabel": "subsector",
-    "signalsTitle": "Señales AISS — nivel de acción",
+    "signalsTitle": "Señales de trading (AISS)",
     "holdingsTitle": "Posiciones AISS — nivel de acción",
     "wfSummaryTitle": "Resumen Walk-Forward — AISS ({{folds}} pliegues × {{subsectors}} subsectores / {{stocks}} acciones de semiconductores × {{params}} conjuntos de params)"
   }
