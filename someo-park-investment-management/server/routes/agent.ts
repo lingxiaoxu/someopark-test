@@ -16,7 +16,7 @@ import type { AgentTool } from '../tools/index.js'
 // Owner (by email) is unlimited. Count persists server-side in Supabase `agent_usage`.
 const OWNER_EMAIL = 'lxu912@gmail.com'
 const FREE_AGENT_QUESTIONS = 2   // allow 2; block on the 3rd
-const BLOCK_MSG = '你这个用户余额不足了!不能白嫖我!请充值。充值请找开发者本人,请他吃饭即可。'
+const BLOCK_MSG = '你这个用户余额不足了!不能白嫖我!请充值。充值请找开发者本人,请他吃饭即可。\n\n💡 建议马上关掉 Someo Agent 模式,就可以畅享 Someo Park 自研的 Local Model 无限对话啦!免费模式下也可以无限对话!'
 
 const router = express.Router()
 

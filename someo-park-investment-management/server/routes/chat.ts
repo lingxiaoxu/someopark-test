@@ -101,6 +101,13 @@ router.post('/', async (req: Request, res: Response) => {
         res.write('\n__ARTIFACTS__' + JSON.stringify(detectedArtifacts))
       }
 
+      // Forced role: when the user explicitly picks a role (non-"auto"), pin the
+      // template to that choice — never trust the model's `template` field (weaker
+      // local models often pick the wrong one). The frontend applies this marker.
+      if (selectedTemplate && selectedTemplate !== 'auto') {
+        res.write('\n__TEMPLATE__' + selectedTemplate)
+      }
+
       res.end()
     } catch (error: any) {
       console.error('Chat error (code):', error)

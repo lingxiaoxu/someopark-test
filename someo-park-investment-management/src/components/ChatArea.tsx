@@ -599,7 +599,17 @@ export default function ChatArea({
         throw new Error(err.error || `HTTP ${response.status}`)
       }
 
-      const text = await response.text()
+      let text = await response.text()
+
+      // Forced-role marker: the server pins the template when a non-"auto" role is
+      // selected. Strip it first (appended last), then override after parsing so the
+      // selected role wins regardless of what the model put in `template`.
+      let forcedTemplate: string | null = null
+      const templateIdx = text.indexOf('\n__TEMPLATE__')
+      if (templateIdx !== -1) {
+        forcedTemplate = text.substring(templateIdx + '\n__TEMPLATE__'.length).trim()
+        text = text.substring(0, templateIdx)
+      }
 
       // Check for artifacts marker
       let artifacts: ArtifactTrigger[] = []
@@ -617,6 +627,8 @@ export default function ChatArea({
       let commentary = ''
       try {
         const parsed = JSON.parse(responseText)
+        // Forced role wins over the model's template (see __TEMPLATE__ above).
+        if (forcedTemplate && parsed) parsed.template = forcedTemplate
         if (parsed.commentary) {
           commentary = parsed.commentary
           if (parsed.code && parsed.file_path) {
@@ -647,7 +659,7 @@ export default function ChatArea({
       }
 
       // If code was generated, open preview immediately then run sandbox
-      if (parsedAgent?.code && parsedAgent.template && parsedAgent.template !== 'chat-response') {
+      if (parsedAgent?.code && parsedAgent.template && (parsedAgent.template as string) !== 'chat-response') {
         // Open code panel right away (no result yet, preview tab will show loading)
         if (onCodePreview) {
           onCodePreview({ stanseAgent: parsedAgent, isLoading: true })

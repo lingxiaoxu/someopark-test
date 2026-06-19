@@ -7,8 +7,19 @@ export const stanseAgentSchema = z.object({
       `Describe what you're about to do and the steps you want to take for generating the code in great detail.`,
     ),
   template: z
-    .string()
-    .describe('Name of the template used to generate the code.'),
+    .enum([
+      'code-interpreter-v1',
+      'nextjs-developer',
+      'vue-developer',
+      'streamlit-developer',
+      'gradio-developer',
+    ])
+    .describe(
+      'The exact template id used to run the code — MUST be one of the listed values, ' +
+      'not a free-form name. Use "code-interpreter-v1" for any plain Python script / ' +
+      'algorithm / data task (this is the default); "nextjs-developer" or "vue-developer" ' +
+      'for web apps; "streamlit-developer" / "gradio-developer" for those Python UI frameworks.',
+    ),
   title: z.string().describe('Short title of the generated code. Max 3 words.'),
   description: z
     .string()

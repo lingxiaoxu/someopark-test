@@ -35,6 +35,8 @@ export function CodePreview({
   const [selectedDuration, setSelectedDuration] = useState<Duration | null>(null)
   const [isDeploying, setIsDeploying] = useState(false)
   const [deployed, setDeployed] = useState(false)
+  const [deployedUrl, setDeployedUrl] = useState<string | null>(null)
+  const [urlCopied, setUrlCopied] = useState(false)
   const deployRef = useRef<HTMLDivElement>(null)
 
   const isWebResult = result && 'url' in result
@@ -43,6 +45,7 @@ export function CodePreview({
   useEffect(() => {
     setDeployed(false)
     setSelectedDuration(null)
+    setDeployedUrl(null)
   }, [result])
 
   // Close deploy dropdown when clicking outside
@@ -79,7 +82,11 @@ export function CodePreview({
       setDeployed(true)
       setDeployOpen(false)
       if (isWebResult) {
-        window.open((result as ExecutionResultWeb).url, '_blank')
+        const u = (result as ExecutionResultWeb).url
+        setDeployedUrl(u)
+        // best-effort new tab; browsers often block window.open after an await (no direct
+        // user gesture), so the visible link/banner below is the reliable way to open it.
+        window.open(u, '_blank')
       }
     } catch (e) {
       console.error('Deploy failed:', e)
@@ -347,6 +354,28 @@ export function CodePreview({
         </div>
       </div>
 
+      {/* Deployed URL banner — reliable way to open the live app (window.open is often
+          blocked by the popup blocker after the async deploy call). */}
+      {deployedUrl && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px',
+          background: '#f0fdf4', borderBottom: '2px solid #22c55e',
+          fontFamily: 'var(--font-mono)', fontSize: '11px',
+        }}>
+          <Check style={{ width: 14, height: 14, color: '#22c55e', flexShrink: 0 }} />
+          <span style={{ color: '#15803d', fontWeight: 700, flexShrink: 0 }}>{t('codePreview.deployed')}:</span>
+          <a href={deployedUrl} target="_blank" rel="noopener noreferrer" style={{
+            color: '#111', textDecoration: 'underline', overflow: 'hidden',
+            textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1,
+          }}>{deployedUrl}</a>
+          <button
+            onClick={() => { navigator.clipboard.writeText(deployedUrl); setUrlCopied(true); setTimeout(() => setUrlCopied(false), 2000) }}
+            style={{ padding: '3px 6px', background: '#fff', border: '2px solid #111', cursor: 'pointer', flexShrink: 0, display: 'flex', alignItems: 'center' }}
+            title="Copy URL"
+          >{urlCopied ? <Check style={{ width: 12, height: 12, color: '#22c55e' }} /> : <Copy style={{ width: 12, height: 12, color: '#111' }} />}</button>
+        </div>
+      )}
+
       {/* Content */}
       <div style={{ flex: 1, overflowY: 'auto', background: '#fafafa' }}>
         {selectedTab === 'code' && stanseAgent.code && (
@@ -438,6 +467,17 @@ export function CodePreview({
                     </pre>
                   </div>
                 )}
+                {/* Jupyter cell outputs — matplotlib/plotly charts (png/jpeg/svg/html).
+                    Without this, plot-only code (e.g. a matplotlib drawing with no stdout)
+                    renders a blank preview. */}
+                {'cellResults' in result && Array.isArray((result as any).cellResults) &&
+                  (result as any).cellResults.map((cell: any, i: number) => {
+                    if (cell?.png) return <img key={i} src={`data:image/png;base64,${cell.png}`} alt="output" style={{ maxWidth: '100%', border: '2px solid #e5e5e5' }} />
+                    if (cell?.jpeg) return <img key={i} src={`data:image/jpeg;base64,${cell.jpeg}`} alt="output" style={{ maxWidth: '100%', border: '2px solid #e5e5e5' }} />
+                    if (cell?.svg) return <div key={i} style={{ maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: cell.svg }} />
+                    if (cell?.html) return <div key={i} style={{ maxWidth: '100%' }} dangerouslySetInnerHTML={{ __html: cell.html }} />
+                    return null
+                  })}
               </div>
             )}
           </div>
