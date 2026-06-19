@@ -374,7 +374,15 @@
     "planEntry": "Entrée",
     "planExit": "Plan de sortie",
     "planExitDesc": "encaisser si le prix sur-réagit au-dessus de la juste valeur en direct (sortie maligne), sinon tenir jusqu'au règlement",
-    "planWhy": "pourquoi +{{edge}}% suffit : l'encaissement protège les paris marginaux (67% rentables vs 39% en conservant)"
+    "planWhy": "pourquoi +{{edge}}% suffit : l'encaissement protège les paris marginaux (67% rentables vs 39% en conservant)",
+    "note": {
+      "noSettled": "Aucun match réglé pour l'instant.",
+      "calibTradeGrade": "Après calibrage ({{method}} {{param}}), le Brier du modèle est {{cal}} ≤ uniforme {{uniform}} — NIVEAU-TRADE (porte ouverte). Le modèle brut était sur-confiant ({{raw}}).",
+      "calibBlock": "Brier du modèle PIRE que l'uniforme et le calibrage ne le récupère pas — pas encore niveau-trade (la porte de discipline bloque).",
+      "trackRecord": "Bilan (modèle de décision) : miser sur le côté le plus sous-évalué, taille ${{min}}–${{max}} selon confiance, depuis {{since}} — {{record}}, {{pnl}}$ ({{roi}}% ROI) sur {{bets}} paris ; {{skipped}} matchs réglés ignorés (pas d'avantage).",
+      "argmaxTrack": "Bilan argmax (réf., chaque match) : miser sur le côté le plus probable sur les {{n}} matchs réglés — {{record}} ({{acc}}%), {{pnl}}¢/contrat. L'ancienne règle naïve, montrée en parallèle pour comparer sur tout l'échantillon.",
+      "calibPnlNote": "Le P&L de calibrage (cotes justes) est un diagnostic distinct de sur/sous-confiance."
+    }
   },
   "sidebar": {
     "appName": "Someo Park",

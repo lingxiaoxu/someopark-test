@@ -19,7 +19,7 @@ entry price and the market closes — wired to fill going forward.
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
 
@@ -50,6 +50,7 @@ class PerformanceReport:
     pnl_roi: float                # cumulative P&L / total staked
     bet_since: str                # date of the first match bet
     notes: list[str]
+    notes_i18n: list = field(default_factory=list)   # {key, args} per note, for 5-language frontend
     # Per-contract ¢ view (plan 18 §2.7): real Kalshi/Poly contract economics —
     # buy 1 contract at entry ¢, settle 100¢ (won) / 0¢ (lost).
     pnl_cents_total: float = 0.0  # cumulative per-contract P&L in ¢
@@ -427,10 +428,12 @@ def build(conn=None) -> PerformanceReport:
     conn = conn or store.init_db()
     sm = build_strength(load_prior())
     data = _settled(conn, sm)
-    notes = []
+    notes = []          # English prose (used by the PDF)
+    notes_i18n = []     # {key, args} parallel to `notes`, for the 5-language frontend
 
     if not data:
         notes.append("no settled matches yet")
+        notes_i18n.append({"key": "noSettled", "args": {}})
         nan = float('nan')
         return PerformanceReport(
             n_settled=0, brier=nan, brier_uniform=nan, calibrated_brier=None,
@@ -439,6 +442,7 @@ def build(conn=None) -> PerformanceReport:
             settled_signal_pnl=0.0, n_settled_signals=0,
             bet_log=[], pnl_units=0.0, pnl_record="0W-0L", pnl_roi=0.0, bet_since="",
             notes=notes,
+            notes_i18n=notes_i18n,
         )
 
     probs = [d[0] for d in data]
@@ -478,9 +482,13 @@ def build(conn=None) -> PerformanceReport:
         notes.append(f"After calibration ({cal['method']} {cal['param']}) the model Brier is "
                      f"{cal['calibrated_brier']} ≤ uniform {cal['uniform_brier']} — TRADE-GRADE (gate passes). "
                      f"Raw model was over-confident ({cal['raw_brier']}).")
+        notes_i18n.append({"key": "calibTradeGrade", "args": {
+            "method": cal['method'], "param": cal['param'], "cal": cal['calibrated_brier'],
+            "uniform": cal['uniform_brier'], "raw": cal['raw_brier']}})
     elif brier_score(probs, outcomes) > (2 / 3):
         notes.append("model Brier WORSE than uniform and calibration does not recover it — "
                      "not yet trade-grade (discipline gate blocks).")
+        notes_i18n.append({"key": "calibBlock", "args": {}})
     # Production bet log: flat 1u on our model's best value side vs the closing book,
     # every match since the opener. This is the track record we present (no OOS framing).
     log, betmeta = _bet_log(conn)   # ALL settled matches; no-bet rows carry the argmax track only
@@ -510,11 +518,19 @@ def build(conn=None) -> PerformanceReport:
                  f"confidence, since {bet_since} — {pnl_record}, {pnl_units:+.2f}$ "
                  f"({pnl_roi:+.1%} ROI) over {len(log)} bets; {betmeta['skipped']} settled "
                  f"matches skipped (no tradable edge).")
+    notes_i18n.append({"key": "trackRecord", "args": {
+        "min": f"{CONFIG.decision.min_stake_usd:.1f}", "max": f"{CONFIG.decision.max_stake_usd:.1f}",
+        "since": bet_since, "record": pnl_record, "pnl": f"{pnl_units:+.2f}",
+        "roi": f"{pnl_roi*100:+.1f}", "bets": len(log), "skipped": betmeta['skipped']}})
     notes.append(f"Argmax track (reference, every match): bet the most-likely side all "
                  f"{betmeta['model_n']} settled matches — {argmax_record} "
                  f"({model_pred_accuracy:.1%}), {argmax_pnl_cents_total:+.0f}¢/contract. This is the "
                  f"OLD naive rule, shown alongside so both methods are comparable on the full sample.")
+    notes_i18n.append({"key": "argmaxTrack", "args": {
+        "n": betmeta['model_n'], "record": argmax_record,
+        "acc": f"{model_pred_accuracy*100:.1f}", "pnl": f"{argmax_pnl_cents_total:+.0f}"}})
     notes.append("Calibration P&L (fair-odds) is a separate over/under-confidence diagnostic.")
+    notes_i18n.append({"key": "calibPnlNote", "args": {}})
 
     return PerformanceReport(
         n_settled=n,
@@ -534,6 +550,7 @@ def build(conn=None) -> PerformanceReport:
         pnl_roi=pnl_roi,
         bet_since=bet_since,
         notes=notes,
+        notes_i18n=notes_i18n,
         pnl_cents_total=pnl_cents_total,
         avg_entry_cents=avg_entry_cents,
         cents_capture_rate=cents_capture_rate,

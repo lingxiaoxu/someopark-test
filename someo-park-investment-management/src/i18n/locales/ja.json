@@ -374,7 +374,15 @@
     "planEntry": "エントリー",
     "planExit": "決済計画",
     "planExitDesc": "開始後、価格がライブ公正値を超えて過剰反応したら利確(スマート利確)、なければ決済まで保持",
-    "planWhy": "+{{edge}}% で十分な理由:利確が限界的な賭けを保護(実現67%が利益 vs 保持39%)"
+    "planWhy": "+{{edge}}% で十分な理由:利確が限界的な賭けを保護(実現67%が利益 vs 保持39%)",
+    "note": {
+      "noSettled": "確定した試合はまだありません。",
+      "calibTradeGrade": "校正後({{method}} {{param}})、モデル Brier は {{cal}} ≤ 一様基準 {{uniform}} —— 取引可(ゲート通過)。生モデルは自信過剰({{raw}})。",
+      "calibBlock": "モデル Brier が一様基準より悪く、校正でも回復せず —— まだ取引可ではない(規律ゲートが遮断)。",
+      "trackRecord": "成績(判断モデル):最も過小評価された側に賭け、信頼度で ${{min}}–${{max}}、{{since}} 以降 —— {{record}}、{{pnl}}$({{roi}}% ROI)、{{bets}} 賭;{{skipped}} 試合はエッジ無しでスキップ。",
+      "argmaxTrack": "argmax(参考、毎試合):最有力の側に全 {{n}} 試合賭け —— {{record}}({{acc}}%)、{{pnl}}¢/枚。旧来の単純ルール、全サンプル比較のため併記。",
+      "calibPnlNote": "校正損益(公正オッズ)は別個の自信過剰/不足の診断です。"
+    }
   },
   "sidebar": {
     "appName": "Someo Park",

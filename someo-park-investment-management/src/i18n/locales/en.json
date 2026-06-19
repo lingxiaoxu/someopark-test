@@ -721,7 +721,15 @@
     "planEntry": "Entry",
     "planExit": "Exit plan",
     "planExitDesc": "cash out if the price over-reacts above live fair in-play (smart-exit), else hold to settlement",
-    "planWhy": "why +{{edge}}% is enough: the cash-out protects marginal bets (realised 67% profitable vs 39% holding)"
+    "planWhy": "why +{{edge}}% is enough: the cash-out protects marginal bets (realised 67% profitable vs 39% holding)",
+    "note": {
+      "noSettled": "No settled matches yet.",
+      "calibTradeGrade": "After calibration ({{method}} {{param}}) the model Brier is {{cal}} ≤ uniform {{uniform}} — TRADE-GRADE (gate passes). Raw model was over-confident ({{raw}}).",
+      "calibBlock": "Model Brier WORSE than uniform and calibration does not recover it — not yet trade-grade (discipline gate blocks).",
+      "trackRecord": "Track record (decision model): value bet the most-underpriced side, sized ${{min}}–${{max}} by confidence, since {{since}} — {{record}}, {{pnl}}$ ({{roi}}% ROI) over {{bets}} bets; {{skipped}} settled matches skipped (no tradable edge).",
+      "argmaxTrack": "Argmax track (reference, every match): bet the most-likely side all {{n}} settled matches — {{record}} ({{acc}}%), {{pnl}}¢/contract. The OLD naive rule, shown alongside so both methods are comparable on the full sample.",
+      "calibPnlNote": "Calibration P&L (fair-odds) is a separate over/under-confidence diagnostic."
+    }
   },
   "sidebar": {
     "appName": "Someo Park",

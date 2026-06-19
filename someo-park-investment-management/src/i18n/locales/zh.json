@@ -400,7 +400,15 @@
     "planEntry": "入场",
     "planExit": "离场计划",
     "planExitDesc": "开赛后价格若超调高于实时公允价就现金出(智能择时),否则持有到结算",
-    "planWhy": "为何 +{{edge}}% 也够下:现金出保护边际注(实现 67% 盈利 vs 持有 39%)"
+    "planWhy": "为何 +{{edge}}% 也够下:现金出保护边际注(实现 67% 盈利 vs 持有 39%)",
+    "note": {
+      "noSettled": "尚无已结算场次。",
+      "calibTradeGrade": "校准后({{method}} {{param}}),模型 Brier {{cal}} ≤ 均匀基线 {{uniform}} —— 可交易等级(闸门通过)。原始模型过度自信({{raw}})。",
+      "calibBlock": "模型 Brier 劣于均匀基线,校准也救不回 —— 尚未达到可交易等级(纪律闸门拦截)。",
+      "trackRecord": "战绩(决策模型):押最被低估的一边,按置信度 ${{min}}–${{max}} 定额,自 {{since}} 起 —— {{record}},{{pnl}}$({{roi}}% ROI),共 {{bets}} 注;{{skipped}} 场已结算因无边际跳过。",
+      "argmaxTrack": "argmax 口径(参考,每场都押):每场押概率最高的一边,全 {{n}} 场已结算 —— {{record}}({{acc}}%),{{pnl}}¢/张。这是旧的天真规则,并列展示以便全样本对照。",
+      "calibPnlNote": "校准盈亏(公允赔率)是单独的过度/不足自信诊断。"
+    }
   },
   "sidebar": {
     "appName": "Someo Park",

@@ -62,11 +62,17 @@ function DataTable({ cols, rows, className }: { cols: string[]; rows: ReactNode[
     </table>
   );
 }
-function Notes({ items }: { items?: string[] }) {
-  if (!items?.length) return null;
+function Notes({ items, i18nItems }: { items?: string[]; i18nItems?: { key: string; args?: any }[] }) {
+  const { t } = useTranslation();
+  // Prefer the structured {key,args} notes → rendered in the active language; fall back to
+  // the English prose (tDyn) for any note without a template / older data.
+  const list: string[] = (i18nItems && i18nItems.length)
+    ? i18nItems.map((n, i) => t('prediction.note.' + n.key, { ...(n.args || {}), defaultValue: items?.[i] ?? '' }))
+    : (items ?? []);
+  if (!list.length) return null;
   return (
     <ul style={{ marginTop: 10, paddingLeft: 16, fontSize: 11, color: 'var(--text-muted)', ...mono }}>
-      {items.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{tDyn(n)}</li>)}
+      {list.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{n}</li>)}
     </ul>
   );
 }
@@ -429,7 +435,7 @@ function PerformanceCard() {
         [tr('prediction.lblTradeGrade'), <span style={{ color: pass ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{pass ? tr('prediction.gradePassCalibrated') : tr('prediction.gradeBlock')}</span>],
       ]} />
       <BetLog data={data} />
-      <Notes items={data?.notes} />
+      <Notes items={data?.notes} i18nItems={data?.notes_i18n} />
     </div>
   );
 }

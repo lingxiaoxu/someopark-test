@@ -374,7 +374,15 @@
     "planEntry": "Entrada",
     "planExit": "Plan de salida",
     "planExitDesc": "cobrar si el precio sobrerreacciona por encima del valor justo en vivo (salida inteligente), si no mantener hasta liquidar",
-    "planWhy": "por qué +{{edge}}% basta: el cobro protege apuestas marginales (67% rentables vs 39% manteniendo)"
+    "planWhy": "por qué +{{edge}}% basta: el cobro protege apuestas marginales (67% rentables vs 39% manteniendo)",
+    "note": {
+      "noSettled": "Aún no hay partidos liquidados.",
+      "calibTradeGrade": "Tras calibrar ({{method}} {{param}}), el Brier del modelo es {{cal}} ≤ uniforme {{uniform}} — APTO-TRADE (la puerta pasa). El modelo crudo estaba sobreconfiado ({{raw}}).",
+      "calibBlock": "Brier del modelo PEOR que el uniforme y la calibración no lo recupera — aún no apto-trade (la puerta de disciplina bloquea).",
+      "trackRecord": "Historial (modelo de decisión): apostar al lado más infravalorado, tamaño ${{min}}–${{max}} por confianza, desde {{since}} — {{record}}, {{pnl}}$ ({{roi}}% ROI) en {{bets}} apuestas; {{skipped}} partidos liquidados omitidos (sin ventaja).",
+      "argmaxTrack": "Historial argmax (ref., cada partido): apostar al lado más probable en los {{n}} partidos liquidados — {{record}} ({{acc}}%), {{pnl}}¢/contrato. La antigua regla ingenua, mostrada en paralelo para comparar en toda la muestra.",
+      "calibPnlNote": "El P&L de calibración (cuotas justas) es un diagnóstico aparte de sobre/infraconfianza."
+    }
   },
   "sidebar": {
     "appName": "Someo Park",
