@@ -16,10 +16,12 @@ const dataDir = path.resolve(__dirname, '..', '..', 'public', 'data')
 const VIEWS: Record<string, { file: string; about: string }> = {
   champion:    { file: 'worldcup_model.json',      about: 'champion odds (p_champion/final/sf), FIFA rank, rating per team; also golden_boot + group_matches' },
   golden_boot: { file: 'worldcup_model.json',      about: 'top-scorer probabilities (EA FC 26 talent + knockout depth + teammate split) + current goals scored' },
-  predictions: { file: 'upcoming.json',            about: 'today/upcoming matches: model 3-way + O2.5/BTTS, de-vig book, real Kalshi/Poly US asks, edges (also the Match-Pricing view)' },
+  predictions: { file: 'upcoming.json',            about: 'today/upcoming matches: model 3-way + O2.5/BTTS, de-vig book, real Kalshi/Poly US asks, edges, AND the decision (value pick + stake + the dual-口径 plan: entry now + planned smart-exit cash-out)' },
   schedule:    { file: 'upcoming.json',            about: 'fixture schedule with kickoff times (ET/PT) + recently finished matches (FT + score)' },
-  inplay:      { file: 'inplay_live.json',         about: 'LIVE matches now: live 3-way, xG, remaining goals, in-play arb/value/tactic signals' },
-  performance: { file: 'performance_report.json',  about: 'accuracy (Brier vs uniform, calibrated), trade-grade gate, and the production bet log (per-match prediction/bet/result/PnL)' },
+  inplay:      { file: 'inplay_live.json',         about: 'LIVE matches now: live 3-way, xG, remaining goals, + 15 in-play tactics (8 data-mined incl. the overshoot/smart-exit take-profit) + the OVER/UNDER totals market' },
+  performance: { file: 'performance_report.json',  about: 'accuracy (Brier vs uniform, calibrated), trade-grade gate, and the bet log in 3 modes: REALIZED (decision + smart-exit cash-out = the real strategy, e.g. 15W-7L/+486¢), HOLD-to-FT (reference), and ARGMAX (reference) — each with W-L + PnL' },
+  reach_round: { file: 'reach_round.json',         about: 'reach-round (晋级盘): each of the 48 teams’ probability to reach each round (group-advance / R16 / QF / SF / final), model % vs Kalshi¢ (KXWCROUND) vs Poly¢ + edge; refreshed on every settle' },
+  styles:      { file: 'team_styles.json',         about: 'team style taxonomy: each team’s data-driven style cluster (possession / direct / high-press / clinical / dominant-attack / high-volume / low-block…) + possession/xG/directness metrics (scouting aid; descriptive)' },
   risk:        { file: 'risk_report.json',         about: 'pre-trade gates, venue balances (Kalshi/Poly), $1 order cap, API budget/health, calibration gate (also the Venues & Gates and API-Budget views)' },
   calibration: { file: 'oos_report.json',          about: 'out-of-sample reliability: Brier vs uniform, log-loss, predicted-vs-observed draw rate, goal-total bias — the directional calibration health check' },
   backtest:    { file: 'backtest.json',            about: 'model vs market vs uniform Brier on settled matches; blend curve; trade-grade verdict' },
@@ -27,7 +29,7 @@ const VIEWS: Record<string, { file: string; about: string }> = {
   form:        { file: 'form.json',                about: 'recent-form index (time-weighted, friendly-discounted goal difference); blended into the live model' },
   params:      { file: 'param_sweep.json',         about: 'parameter sweep: the selected param set (min calibrated Brier) + the full grid (7 knobs incl. FC/squad/form weights), n_param_sets + n_settled' },
   divergence:  { file: 'xv_matches.json',          about: 'model 3-way vs the sharp bookmaker de-vig (where we diverge from the market)' },
-  pricetrack:  { file: 'milestone_marks.json',     about: 'per-contract ¢ + probability at each match milestone (PRE/15\'/30\'/HT/60\'/75\'/FT) for home/draw/away from Kalshi+Polymarket, our pre-match pick + entry ¢, and the mark-to-market (entry→FT) showing if the market confirmed our pick' },
+  pricetrack:  { file: 'milestone_marks.json',     about: 'per-contract ¢ + probability at each match milestone (PRE/15\'/30\'/HT/60\'/75\'/FT) for home/draw/away from Kalshi+Polymarket, our pre-match pick + entry ¢, the mark-to-market (entry→FT), AND the smart-exit cash-out (when/at what ¢ we sold the over-reaction vs holding to settlement)' },
   overview:    { file: 'frontend_overview.json',   about: 'system overview: interfaces, modes, schedule, inputs/outputs, value, state-aware headline (the System Overview + Model Notes views)' },
 }
 
@@ -38,10 +40,12 @@ export const predictionMarketTool: AgentTool = {
       'Read World Cup 2026 prediction-market data (the Kalshi + Polymarket trading system). This backs ' +
       'EVERY dashboard view, so use it for ANY question about: champion odds, the golden boot (top ' +
       'scorer), today\'s / upcoming match predictions + venue prices, the fixture schedule, LIVE in-play ' +
-      'matches and in-play arbitrage signals, our accuracy / Brier / calibration (OOS reliability), the ' +
-      'production bet log and P&L, the trade-grade gate, risk gates / venue balances / API budget, the ' +
-      'backtest, squad strength, recent form, model-vs-market divergence, the parameter sweep, or the ' +
-      'system overview. Pick the `view` for the data you need. Probabilities are 0-1; venue prices are ' +
+      'matches + 15 in-play tactics (incl. the smart-exit/overshoot take-profit) and totals markets, our ' +
+      'accuracy / Brier / calibration (OOS reliability), the production bet log and P&L in 3 modes ' +
+      '(REALIZED = decision + smart-exit cash-out, HOLD-to-FT, ARGMAX), the trade-grade gate, risk gates / ' +
+      'venue balances / API budget, the backtest, squad strength, recent form, the reach-round (晋级盘) ' +
+      'per-team advancement probabilities, the team style taxonomy (球队风格), model-vs-market divergence, ' +
+      'the parameter sweep, or the system overview. Pick the `view` for the data you need. Probabilities are 0-1; venue prices are ' +
       'contract prices (≈ implied probability). Knockout matches have no draw (decided by extra time + ' +
       'penalty shootout); group matches do.',
     input_schema: {
@@ -108,6 +112,17 @@ export const predictionMarketTool: AgentTool = {
       let matches = (data?.matches ?? []) as any[]
       if (team) matches = matches.filter((m) => matchesTeam(team, m.home) || matchesTeam(team, m.away))
       return { milestones: data?.milestones, note: data?.note, matches: n ? matches.slice(0, n) : matches }
+    }
+    if (view === 'styles') {
+      let rows = (data?.teams ?? []) as any[]
+      if (team) rows = rows.filter((r) => matchesTeam(team, r))
+      return { ts: data?.ts, n: rows.length, teams: n ? rows.slice(0, n) : rows }
+    }
+    if (view === 'reach_round') {
+      // rounds[] each holds a per-team array — optionally filter to one team per round.
+      let rounds = (data?.rounds ?? []) as any[]
+      if (team) rounds = rounds.map((rd) => ({ ...rd, teams: (rd.teams ?? []).filter((t: any) => matchesTeam(team, t)) }))
+      return { as_of: data?.as_of, note: data?.note, rounds }
     }
     return data
   },
