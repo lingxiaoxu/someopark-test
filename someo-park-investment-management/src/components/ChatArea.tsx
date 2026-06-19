@@ -421,6 +421,7 @@ export default function ChatArea({
 
       const steps: AgentStep[] = []
       let usageData: any = null
+      let agentArtifacts: ArtifactTrigger[] = []
       // Segments: interleaved text + images in stream arrival order
       // Images inline where generated; same-label images replace in-place (fix/retry)
       const segments: Array<{ type: 'text'; text: string } | { type: 'image'; alt: string; src: string }> = []
@@ -479,6 +480,13 @@ export default function ChatArea({
           steps.push({ type: 'ask_user', question: evt.question, options: evt.options })
         } else if (evt.type === 'brief') {
           steps.push({ type: 'brief', text: evt.text })
+        } else if (evt.type === 'artifact') {
+          // Open the matching artifact panel (e.g. champion odds) + keep buttons on the msg.
+          if (Array.isArray(evt.artifacts) && evt.artifacts.length > 0) {
+            agentArtifacts = evt.artifacts
+            const first = evt.artifacts[0]
+            setActiveArtifact({ type: first.type, title: first.title, params: first.params })
+          }
         } else if (evt.type === 'error') {
           segments.push({ type: 'text', text: (segments.length > 0 ? '\n\n' : '') + `⚠️ ${evt.text || 'Unknown error'}` })
         } else if (evt.type === 'usage') {
@@ -487,7 +495,7 @@ export default function ChatArea({
           break
         }
         const combined = segmentsToString()
-        updateLastAgentMsg(m => ({ ...m, agentSteps: [...steps], agentFinalText: combined, agentUsage: usageData }))
+        updateLastAgentMsg(m => ({ ...m, agentSteps: [...steps], agentFinalText: combined, agentUsage: usageData, artifacts: agentArtifacts.length ? agentArtifacts : m.artifacts }))
       }
 
       const finalCombined = segmentsToString()
@@ -496,6 +504,7 @@ export default function ChatArea({
         agentSteps: steps,
         agentFinalText: finalCombined,
         agentUsage: usageData,
+        artifacts: agentArtifacts.length ? agentArtifacts : m.artifacts,
         content: [{ type: 'text', text: finalCombined }],
       }))
     } catch (err: any) {

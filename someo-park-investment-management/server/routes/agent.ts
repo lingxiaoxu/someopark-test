@@ -9,6 +9,7 @@ import { getAgentTools, executeTool } from '../tools/index.js'
 import { getSomeoAgentSystemPrompt } from '../utils/agentPrompt.js'
 import { createSendMessageTool } from '../tools/sendMessageTool.js'
 import { supabaseAdmin, emailFromToken } from '../utils/supabaseAdmin.js'
+import { detectArtifacts } from '../utils/artifactDetector.js'
 import type { AgentTool } from '../tools/index.js'
 
 // === Someo Agent usage gate ===
@@ -65,7 +66,7 @@ function getModelCost(modelId: string): ModelCosts {
 // === SSE event types ===
 interface AgentSSEEvent {
   type: 'thinking' | 'tool_call' | 'tool_result' | 'text' | 'image' |
-    'task_update' | 'ask_user' | 'error' | 'done' | 'usage' | 'brief'
+    'task_update' | 'ask_user' | 'error' | 'done' | 'usage' | 'brief' | 'artifact'
   [key: string]: any
 }
 
@@ -239,6 +240,20 @@ router.post('/', async (req, res) => {
   })
 
   try {
+    // === Open the matching artifact (right panel) for this query ===
+    // Prediction Market mode forces agent mode, so without this the rich wc_* viewers
+    // (champion odds, etc.) never auto-open the way stock chat opens its artifacts.
+    try {
+      const lastUser = [...messages].reverse().find((m: any) => m.role === 'user')
+      const qText = typeof lastUser?.content === 'string'
+        ? lastUser.content
+        : Array.isArray(lastUser?.content)
+          ? lastUser.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join(' ')
+          : ''
+      const artifacts = detectArtifacts(qText)
+      if (artifacts.length > 0) send({ type: 'artifact', artifacts })
+    } catch { /* best-effort, never block the agent */ }
+
     // === Usage gate: verify user, enforce free-question limit (owner exempt) ===
     // Disabled (everyone unlimited) if Supabase secret key isn't configured.
     if (supabaseAdmin) {

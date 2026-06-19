@@ -100,6 +100,23 @@ const ARTIFACT_PATTERNS: Array<{
     keywords: ['aiss', 'ai semiconductor', 'semiconductor strategy', 'ai chip', 'ai-chips', '半导体策略', 'ai半导体', '芯片策略'],
     params: { strategy: 'aiss' },
   },
+
+  // ── Prediction Market (World Cup 2026) artifacts — open the rich wc_* viewer on the
+  //    right when the user asks about these in Prediction Market mode. Keywords kept
+  //    specific to avoid colliding with the stock-strategy patterns above.
+  { type: 'wc_champion',      title: 'Champion Odds',       keywords: ['champion', 'championship odds', 'win the cup', 'world cup winner', '夺冠', '冠军概率', '夺冠概率', '谁夺冠'] },
+  { type: 'wc_golden_boot',   title: 'Golden Boot',         keywords: ['golden boot', 'top scorer', 'top goalscorer', '金靴', '最佳射手'] },
+  { type: 'wc_match_pricing', title: 'Match Pricing',       keywords: ['match pricing', 'match odds', '单场定价', '比赛定价', '胜平负'] },
+  { type: 'wc_reach_round',   title: 'Reach Round',         keywords: ['reach round', 'advance to', 'reach the final', 'reach semifinal', '晋级', '晋级盘', '进决赛', '进四强'] },
+  { type: 'wc_predictions',   title: "Today's Predictions", keywords: ["today's predictions", 'upcoming matches', '今日预测', '近期比赛', '即将开始'] },
+  { type: 'wc_inplay',        title: 'In-Play Arbitrage',   keywords: ['in-play', 'in play', 'inplay', 'live match', 'live arbitrage', '盘中套利', '盘中', '实时比赛'] },
+  { type: 'wc_divergence',    title: 'Model vs Market',     keywords: ['model vs market', 'divergence', 'vs book', '模型vs市场', '模型 vs 市场', '散度'] },
+  { type: 'wc_squad',         title: 'Squad Strength',      keywords: ['squad strength', '阵容强度'] },
+  { type: 'wc_form',          title: 'Recent Form',         keywords: ['recent form', '近期状态', '球队状态'] },
+  { type: 'wc_styles',        title: 'Team Styles',         keywords: ['team styles', 'playing style', '球队风格', '打法'] },
+  { type: 'wc_performance',   title: 'Accuracy & PnL',      keywords: ['accuracy & pnl', 'accuracy and pnl', 'prediction accuracy', 'brier', 'track record', '准确度', '盈亏', '战绩'] },
+  { type: 'wc_calibration',   title: 'Calibration',         keywords: ['calibration', 'reliability', '校准'] },
+  { type: 'wc_schedule',      title: 'Schedule',            keywords: ['world cup schedule', 'kickoff time', '赛程', '开赛时间'] },
 ]
 
 export function detectArtifacts(message: string): ArtifactTrigger[] {
