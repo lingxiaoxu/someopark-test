@@ -222,9 +222,10 @@ def compare_matches(*, limit: int = 8) -> list[dict]:
     prior = load_prior()
     name_of = {t.team_id: t.name for t in prior.teams}
     # Use the SAME live model the rest of the system uses (squad/form/FC/opponent-adj
-    # blends + post-hoc calibration) so the Divergence view's model 3-way matches the
-    # Match-Pricing / upcoming card exactly — not the bare FIFA-only raw model.
-    sm = build_strength_live(conn, prior)
+    # blends + xG-form + post-hoc calibration) so the Divergence view's model 3-way
+    # matches the Match-Pricing / upcoming card exactly — not the bare FIFA-only raw
+    # model. xg_form=True mirrors upcoming_export.py (without it the two views diverge).
+    sm = build_strength_live(conn, prior, xg_form=True)
     cal = load_calibration()
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}

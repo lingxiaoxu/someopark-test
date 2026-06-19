@@ -1,6 +1,7 @@
 import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import { useState, useRef, useEffect } from 'react';
 import i18n from '../i18n';
 
@@ -53,6 +54,8 @@ export default function Sidebar({
   const [showAbout, setShowAbout] = useState(false);
   const [showAboutDev, setShowAboutDev] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const autoOpenedForRef = useRef<string | null>(null);
+  const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const changeLang = (code: string) => {
     i18n.changeLanguage(code);
@@ -71,6 +74,27 @@ export default function Sidebar({
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Auto-expand the account menu on an actual sign-in (any provider), then auto-close
+  // after 3s. We listen for the SIGNED_IN *event* rather than the session state, so it
+  // fires after the OAuth redirect when the UI is visible — and NOT during a silent
+  // session restore on page load (which could open+close before the user sees it, the
+  // reason Google appeared to "not work" while a fresh GitHub login did).
+  // The once-per-uid guard ignores SIGNED_IN re-fires on tab refocus/token refresh.
+  useEffect(() => {
+    if (!supabase) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, sess) => {
+      if (event === 'SIGNED_OUT') { autoOpenedForRef.current = null; return; }
+      if (event !== 'SIGNED_IN') return;
+      const uid = sess?.user?.id;
+      if (!uid || autoOpenedForRef.current === uid) return;
+      autoOpenedForRef.current = uid;
+      setMenuOpen(true);
+      if (autoCloseTimerRef.current) clearTimeout(autoCloseTimerRef.current);
+      autoCloseTimerRef.current = setTimeout(() => setMenuOpen(false), 3000);
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   return (
@@ -270,7 +294,7 @@ export default function Sidebar({
             </button>
 
             {menuOpen && (
-              <div className="absolute bottom-full left-0 right-0 mb-1 overflow-hidden z-50 animate-slide-in" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)' }}>
+              <div className="auth-light absolute bottom-full left-0 right-0 mb-1 overflow-hidden z-50 animate-slide-in" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)' }}>
                 {showAboutDev ? (
                   <>
                     {/* About Developer header */}

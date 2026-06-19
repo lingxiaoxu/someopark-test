@@ -8,7 +8,7 @@ export default function ConnectionModal({ onClose, onConnect }: { onClose: () =>
 
   return (
     <div className="fixed inset-0 bg-black/60  flex items-center justify-center z-50 p-4">
-      <div className="w-full max-w-md overflow-hidden flex flex-col" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel-lg)' }}>
+      <div className="auth-light w-full max-w-md overflow-hidden flex flex-col" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel-lg)' }}>
         
         {/* Header */}
         <div className="flex justify-between items-center p-5 border-b-2 border-b-black">

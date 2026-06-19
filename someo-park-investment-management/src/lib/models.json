@@ -1,5 +1,5 @@
 [
-  { "id": "nemotron-3-super:120b",      "name": "Nemotron 3 Super 120B (开源)", "provider": "Ollama", "providerId": "ollama", "multiModal": false },
+  { "id": "nemotron-3-super:120b",      "name": "Someo Park Local Model 120B", "provider": "Ollama", "providerId": "ollama", "multiModal": false },
   { "id": "claude-opus-4-6",            "name": "Claude Opus 4.6",   "provider": "Anthropic",  "providerId": "anthropic", "multiModal": true },
   { "id": "claude-sonnet-4-6",          "name": "Claude Sonnet 4.6", "provider": "Anthropic",  "providerId": "anthropic", "multiModal": true },
   { "id": "claude-haiku-4-5-20251001",  "name": "Claude Haiku 4.5",  "provider": "Anthropic",  "providerId": "anthropic", "multiModal": true }

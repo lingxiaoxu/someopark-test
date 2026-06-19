@@ -55,8 +55,9 @@ function renderMarkdown(text: string): React.ReactNode[] {
 
   const inlineFormat = (s: string): React.ReactNode[] => {
     const parts: React.ReactNode[] = []
-    // Match bold, inline code, images, and links
-    const re = /\*\*(.+?)\*\*|`([^`]+)`|!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)/g
+    // Match bold, inline code, images, links, and single-* italic (italic is LAST so
+    // **bold** is always matched first; the italic group is therefore index 7).
+    const re = /\*\*(.+?)\*\*|`([^`]+)`|!\[([^\]]*)\]\(([^)]+)\)|\[([^\]]+)\]\(([^)]+)\)|\*([^*\n]+?)\*/g
     let last = 0
     let m: RegExpExecArray | null
     while ((m = re.exec(s)) !== null) {
@@ -69,6 +70,8 @@ function renderMarkdown(text: string): React.ReactNode[] {
         parts.push(<img key={m.index} src={m[4]} alt={m[3] || ''} style={{ maxWidth: '100%', borderRadius: '8px', margin: '4px 0' }} />)
       } else if (m[5] && m[6]) {
         parts.push(<a key={m.index} href={m[6]} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-primary)', textDecoration: 'underline' }}>{m[5]}</a>)
+      } else if (m[7]) {
+        parts.push(<em key={m.index}>{m[7]}</em>)
       }
       last = m.index + m[0].length
     }

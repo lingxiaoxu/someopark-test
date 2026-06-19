@@ -10,6 +10,7 @@ import { CodePreview } from './components/CodePreview';
 import { ArtifactProvider } from './contexts/ArtifactContext';
 import { useAuth, ViewType } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
+import { loadUserChats, upsertUserChat, deleteUserChat } from './lib/chatStore';
 import { LLMModelConfig } from './lib/models';
 import { StanseAgentSchema } from './lib/schema';
 import { ExecutionResult } from './lib/types';
@@ -137,13 +138,34 @@ export default function App() {
   // Ref to track current messages for saving before switching
   const currentMessagesRef = useRef<Message[]>([]);
 
+  // Cross-device chat history sync (Supabase). Refs avoid TDZ since `session` is
+  // declared further down; effects below keep them current.
+  const sessionRef = useRef<any>(null);
+  const chatHistoryRef = useRef<ChatEntry[]>([]);
+  const syncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const loadedUserRef = useRef<string | null>(null);
+
+  // Debounced upsert of the active chat to Supabase (per logged-in user).
+  const scheduleChatSync = useCallback((chatId: number, messages: Message[]) => {
+    if (!supabase) return;
+    const snapshot = stripBase64ForStorage(messages);
+    if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    syncTimerRef.current = setTimeout(() => {
+      const userId = sessionRef.current?.user?.id;
+      if (!userId) return;
+      const title = chatHistoryRef.current.find(c => c.id === chatId)?.title || '';
+      upsertUserChat(supabase!, userId, { id: chatId, title, messages: snapshot });
+    }, 1200);
+  }, []);
+
   const handleMessagesChange = useCallback((messages: Message[]) => {
     currentMessagesRef.current = messages;
-    // Auto-save to localStorage
+    // Auto-save to localStorage (fast local cache) + debounced Supabase sync (cross-device)
     if (activeChatId != null) {
       saveChatMessages(activeChatId, messages);
+      scheduleChatSync(activeChatId, messages);
     }
-  }, [activeChatId]);
+  }, [activeChatId, scheduleChatSync]);
 
   const handleNewChat = useCallback(() => {
     const newId = Date.now();
@@ -172,6 +194,8 @@ export default function App() {
   const handleDeleteChat = useCallback((chatId: number) => {
     setChatHistory(prev => prev.filter(c => c.id !== chatId));
     deleteChatMessages(chatId);
+    const userId = sessionRef.current?.user?.id;
+    if (supabase && userId) deleteUserChat(supabase, userId, chatId);
     // If deleting the active chat, reset to welcome
     if (chatId === activeChatId) {
       setActiveChatId(null);
@@ -188,11 +212,15 @@ export default function App() {
       chatId = Date.now()
       setActiveChatId(chatId)
     }
+    const title = text.slice(0, 40);
     setChatHistory(prev => {
       const exists = prev.find(c => c.id === chatId);
       if (exists) return prev;
-      return [{ id: chatId!, title: text.slice(0, 40) }, ...prev];
+      return [{ id: chatId!, title }, ...prev];
     });
+    // Create the row in Supabase right away so the chat shows up on other devices
+    const userId = sessionRef.current?.user?.id;
+    if (supabase && userId) upsertUserChat(supabase, userId, { id: chatId!, title, messages: [] });
   }, [activeChatId, setChatHistory]);
 
   const [rightPanelWidth, setRightPanelWidth] = useState(480);
@@ -210,6 +238,27 @@ export default function App() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [authView, setAuthView] = useState<ViewType>('sign_in');
   const { session } = useAuth(setIsAuthDialogOpen, setAuthView);
+
+  // Keep refs current for the debounced/deferred chat-sync closures above.
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { chatHistoryRef.current = chatHistory; }, [chatHistory]);
+
+  // On login, pull this user's chat history from Supabase (cross-device) and merge
+  // it into the sidebar list + hydrate the local message cache. Runs once per user.
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!supabase || !userId || loadedUserRef.current === userId) return;
+    loadedUserRef.current = userId;
+    loadUserChats(supabase, userId).then(remote => {
+      if (!remote.length) return;
+      remote.forEach(c => saveChatMessages(c.id, c.messages as Message[]));
+      setChatHistory(prev => {
+        const remoteIds = new Set(remote.map(c => c.id));
+        const localOnly = prev.filter(c => !remoteIds.has(c.id));
+        return [...remote.map(c => ({ id: c.id, title: c.title })), ...localOnly];
+      });
+    });
+  }, [session, setChatHistory]);
 
   // Model & Template (persisted in localStorage)
   // Default chat model is the open-source Nemotron (Ollama). Someo Agent mode is exempt —

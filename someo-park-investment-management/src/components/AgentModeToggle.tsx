@@ -23,7 +23,7 @@ export function AgentModeToggle({ enabled, onChange, disabled }: Props) {
         padding: '3px 10px',
         border: '2px solid var(--ink)',
         background: enabled ? 'var(--ink)' : 'var(--paper)',
-        color: enabled ? 'var(--paper)' : 'var(--ink-dim)',
+        color: enabled ? 'var(--paper)' : 'var(--ink)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
         fontFamily: 'var(--font-mono)',
