@@ -204,11 +204,12 @@ export async function* callAgent(
   messages: any[],
   model: any,
   sessionId: string,
+  accessToken?: string,
 ): AsyncGenerator<any> {
   const res = await fetch(`${API_BASE}/api/agent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...apiHeaders() },
-    body: JSON.stringify({ messages, model, sessionId }),
+    body: JSON.stringify({ messages, model, sessionId, accessToken }),
   })
   if (!res.ok) throw new Error(`Agent API error: ${res.status}`)
 

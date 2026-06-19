@@ -212,10 +212,13 @@ export default function App() {
   const { session } = useAuth(setIsAuthDialogOpen, setAuthView);
 
   // Model & Template (persisted in localStorage)
+  // Default chat model is the open-source Nemotron (Ollama). Someo Agent mode is exempt —
+  // it falls back to Claude in server/routes/agent.ts since it requires the Anthropic API.
   const [languageModel, setLanguageModel] = useLocalStorage<LLMModelConfig>('sp-languageModel', {
-    model: 'claude-sonnet-4-5-20250929',
+    model: 'nemotron-3-super:120b',
   });
-  const [useMorphApply, setUseMorphApply] = useLocalStorage('sp-useMorphApply', false);
+  // Morph fast-apply is ON by default; user can turn it off in chat settings (persisted).
+  const [useMorphApply, setUseMorphApply] = useLocalStorage('sp-useMorphApply', true);
   const [selectedTemplate, setSelectedTemplate] = useLocalStorage('sp-selectedTemplate', 'auto');
 
   // Code preview
@@ -227,6 +230,17 @@ export default function App() {
 
   const handleLanguageModelChange = useCallback((config: LLMModelConfig) => {
     setLanguageModel(prev => ({ ...prev, ...config }));
+  }, [setLanguageModel]);
+
+  // One-time migration: switch the default chat model to open-source Nemotron.
+  // Runs once per browser (guarded by a flag) so it overrides a previously-stored
+  // Claude default just once — afterwards the user's own model choice persists freely.
+  useEffect(() => {
+    const MIGRATION_FLAG = 'sp-defaultModel-nemotron-v1';
+    if (!localStorage.getItem(MIGRATION_FLAG)) {
+      setLanguageModel(prev => ({ ...prev, model: 'nemotron-3-super:120b' }));
+      localStorage.setItem(MIGRATION_FLAG, '1');
+    }
   }, [setLanguageModel]);
 
   const handleCodePreview = useCallback((preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult; isLoading?: boolean }) => {

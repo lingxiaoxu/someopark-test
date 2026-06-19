@@ -1,7 +1,5 @@
 import { createAnthropic } from '@ai-sdk/anthropic'
-import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAI } from '@ai-sdk/openai'
-import { createOllama } from 'ollama-ai-provider'
 
 export type LLMModel = {
   id: string
@@ -29,33 +27,33 @@ export function getModelClient(model: LLMModel, config: LLMModelConfig) {
   const baseURL = config.baseURL || undefined
 
   const anthropicKey = apiKey || process.env.ANTHROPIC_API_KEY
-  const openaiKey = apiKey || process.env.OPENAI_API_KEY
-  const googleKey = apiKey || process.env.GOOGLE_AI_API_KEY
+  // Open-source models are served by a (possibly remote) Ollama host through its
+  // OpenAI-compatible endpoint (.../v1). The native ollama-ai-provider package only
+  // implements AI SDK provider spec v1, which AI SDK v6 rejects — so we drive Ollama
+  // via @ai-sdk/openai instead (spec v2). UI override > env (remote Tailscale host) >
+  // localhost default. apiKey is required by the SDK but ignored by Ollama.
+  const ollamaBaseURL = baseURL || process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1'
 
   const providerConfigs = {
+    // Claude (Anthropic) — hosted API.
     anthropic: () =>
       createAnthropic({
         apiKey: anthropicKey,
         ...(baseURL ? { baseURL } : {}),
       })(modelNameString),
-    openai: () =>
+    // Open-source model on an Ollama host (OpenAI-compatible /v1 endpoint).
+    ollama: () =>
       createOpenAI({
-        apiKey: openaiKey,
-        ...(baseURL ? { baseURL } : {}),
-      })(modelNameString),
-    google: () =>
-      createGoogleGenerativeAI({
-        apiKey: googleKey,
-        ...(baseURL ? { baseURL } : {}),
-      })(modelNameString),
-    ollama: () => createOllama({ baseURL })(modelNameString),
+        baseURL: ollamaBaseURL,
+        apiKey: apiKey || 'ollama',
+      }).chat(modelNameString),
   }
 
   const createClient =
     providerConfigs[providerId as keyof typeof providerConfigs]
 
   if (!createClient) {
-    throw new Error(`Unsupported provider: ${providerId}`)
+    throw new Error(`Unsupported provider: ${providerId} (supported: 'anthropic', 'ollama')`)
   }
 
   return createClient()

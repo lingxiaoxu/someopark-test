@@ -7,7 +7,7 @@ import type { AgentTool } from './index.js'
 // SP config (stored in process memory, could be extended to database)
 const spConfig: Record<string, any> = {
   default_strategy: process.env.SP_DEFAULT_STRATEGY || 'both',
-  default_model: process.env.SP_DEFAULT_MODEL || 'claude-sonnet-4-5-20250929',
+  default_model: process.env.SP_DEFAULT_MODEL || 'claude-sonnet-4-6',
   language: 'zh',
   agent_max_iterations: 10,
   tool_timeout_seconds: 30,

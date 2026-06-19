@@ -8,7 +8,15 @@ import Anthropic from '@anthropic-ai/sdk'
 import { getAgentTools, executeTool } from '../tools/index.js'
 import { getSomeoAgentSystemPrompt } from '../utils/agentPrompt.js'
 import { createSendMessageTool } from '../tools/sendMessageTool.js'
+import { supabaseAdmin, emailFromToken } from '../utils/supabaseAdmin.js'
 import type { AgentTool } from '../tools/index.js'
+
+// === Someo Agent usage gate ===
+// Non-owner users get a small number of free Someo Agent questions; the next is blocked.
+// Owner (by email) is unlimited. Count persists server-side in Supabase `agent_usage`.
+const OWNER_EMAIL = 'lxu912@gmail.com'
+const FREE_AGENT_QUESTIONS = 2   // allow 2; block on the 3rd
+const BLOCK_MSG = '你这个用户余额不足了!不能白嫖我!请充值。充值请找开发者本人,请他吃饭即可。'
 
 const router = express.Router()
 
@@ -204,7 +212,7 @@ const MAX_ITERATIONS = 18
 
 // === Main agent endpoint ===
 router.post('/', async (req, res) => {
-  const { messages, model, sessionId = crypto.randomUUID() } = req.body
+  const { messages, model, sessionId = crypto.randomUUID(), accessToken } = req.body
 
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream')
@@ -231,6 +239,30 @@ router.post('/', async (req, res) => {
   })
 
   try {
+    // === Usage gate: verify user, enforce free-question limit (owner exempt) ===
+    // Disabled (everyone unlimited) if Supabase secret key isn't configured.
+    if (supabaseAdmin) {
+      const userEmail = await emailFromToken(accessToken)
+      if (userEmail !== OWNER_EMAIL) {
+        const bucket = userEmail || 'anonymous'
+        const { data: usageRow } = await supabaseAdmin
+          .from('agent_usage').select('count').eq('email', bucket).maybeSingle()
+        const used = usageRow?.count ?? 0
+        if (used >= FREE_AGENT_QUESTIONS) {
+          console.log(`[Agent] usage gate: blocked ${bucket} (used ${used}/${FREE_AGENT_QUESTIONS})`)
+          send({ type: 'text', text: BLOCK_MSG })
+          send({ type: 'done' })
+          return // finally{} clears heartbeat + ends the SSE stream
+        }
+        // Count this question (upsert: create row at 1, or bump existing).
+        await supabaseAdmin.from('agent_usage').upsert(
+          { email: bucket, count: used + 1, updated_at: new Date().toISOString() },
+          { onConflict: 'email' },
+        )
+        console.log(`[Agent] usage gate: ${bucket} now ${used + 1}/${FREE_AGENT_QUESTIONS}`)
+      }
+    }
+
     // Build tools: static + stateful factories
     const staticTools = getAgentTools()
     const askUser = createAskUserTool(sessionId, send)
@@ -259,7 +291,17 @@ router.post('/', async (req, res) => {
     let globalChartIndex = 0 // Global counter so images from different run_python calls get unique names
 
     // Token usage tracking (reference: CC src/cost-tracker.ts)
-    const modelId = model?.id || 'claude-sonnet-4-5-20250929'
+    // Someo Agent loop is hardwired to the Anthropic SDK (tool-use + thinking protocol),
+    // so it can ONLY run on Claude. If a non-Claude model (e.g. an open-source Ollama model)
+    // is selected while agent mode is on, fall back to the default Claude model instead of
+    // sending an unknown id to the Anthropic API (which would 404).
+    const DEFAULT_AGENT_MODEL = 'claude-sonnet-4-6'
+    const requestedModelId = model?.id || DEFAULT_AGENT_MODEL
+    const modelId = requestedModelId.startsWith('claude') ? requestedModelId : DEFAULT_AGENT_MODEL
+    if (modelId !== requestedModelId) {
+      console.warn(`[Agent] '${requestedModelId}' is not Anthropic-compatible; agent mode requires Claude. Falling back to ${modelId}.`)
+      send({ type: 'brief', text: `Someo Agent 模式需要 Claude,已自动切回 ${modelId}(开源模型仅用于普通聊天)。` })
+    }
     const usage = {
       input_tokens: 0, output_tokens: 0,
       cache_read_input_tokens: 0, cache_creation_input_tokens: 0,
