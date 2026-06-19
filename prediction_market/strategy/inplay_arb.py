@@ -77,6 +77,24 @@ class Opportunity:
     # backbone with live numbers spliced in (5 languages). reason stays the fallback.
     reason_key: str = ""
     reason_args: dict = field(default_factory=dict)
+    # Which question the row answers, so the desk can group instead of seeing a held-position
+    # exit next to a new-entry buy and reading them as a contradiction. Never drops a signal.
+    intent: str = "entry"   # "manage" (sell/lock a HELD position) | "entry" | "event"
+
+
+# reason_key → intent. Everything not listed defaults to "entry" (relative_value, lock_arb,
+# momentum, xg_chase, draw_entry, dormant/finishing/formation/late OVER, ko_draw, crossval).
+_MANAGE_KEYS = {"overshoot_lock", "convergence_lock", "convergence_take",
+                "draw_lock", "draw_lock_held", "under_lock", "under_take", "late_goal_hold"}
+_EVENT_KEYS = {"fade_now", "fade_ago", "comeback", "red_card", "possession_trap", "lone_threat"}
+
+
+def _intent_for(reason_key: str) -> str:
+    if reason_key in _MANAGE_KEYS:
+        return "manage"
+    if reason_key in _EVENT_KEYS:
+        return "event"
+    return "entry"
 
 
 def _is_knockout(round_name) -> bool:
@@ -333,7 +351,8 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
             if sig and sig.act != "HOLD":
                 opps.append(Opportunity(fx["api_id"], m, minute, score, "tactic", sig.side,
                                         "model", fair.get(sig.side), None, None, sig.act, sig.reason,
-                                        reason_key=sig.reason_key, reason_args=sig.reason_args))
+                                        reason_key=sig.reason_key, reason_args=sig.reason_args,
+                                        intent=_intent_for(sig.reason_key)))
 
         # (1b) data-mined tactics (26-match intra-game study) — read the extra live
         # stats once, then fan out. Each gracefully HOLDs when its data is absent.
@@ -361,7 +380,11 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                                 removed=lt_removed, minute=minute, exp_remaining_goals=lp.exp_remaining_goals),
         ]
         for side in ("home", "draw", "away"):
-            mined.append(live_odds_crossval(model_fair=fair[side], book_prob=book.get(side), side=side))
+            # Pass the live tradable-venue ask so crossval uses its SOUND branch (book AND
+            # model both beat the venue → venue lagging), not the noisy book>model-only branch
+            # that contradicted the model and fired on quote-cadence noise.
+            mined.append(live_odds_crossval(model_fair=fair[side], book_prob=book.get(side),
+                                            side=side, our_venue_price=_best_ask(side)))
         for sig in mined:
             if sig and sig.act != "HOLD":
                 # Attach the live totals market price to OVER/UNDER tactics so the desk
@@ -374,7 +397,8 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                                         "model" if mkt is None else "totals", fair.get(sig.side),
                                         round(mkt, 3) if mkt is not None else None, None,
                                         sig.act, sig.reason,
-                                        reason_key=sig.reason_key, reason_args=sig.reason_args))
+                                        reason_key=sig.reason_key, reason_args=sig.reason_args,
+                                        intent=_intent_for(sig.reason_key)))
                 # kind stays "tactic" so ranking / frontend colour / i18n are unchanged.
 
         # (2) market-dependent: relative value + cross-venue lock arb (3-way + totals).
@@ -397,7 +421,8 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                     opps.append(Opportunity(fx["api_id"], m, minute, score, "tactic", side,
                                             best_bid_v, round(fair[side], 3), round(best_bid, 3),
                                             round(best_bid - fair[side], 3), "SELL", tp.reason,
-                                            reason_key=tp.reason_key, reason_args=tp.reason_args))
+                                            reason_key=tp.reason_key, reason_args=tp.reason_args,
+                                            intent=_intent_for(tp.reason_key)))
             if asks_by_v:
                 best_v = min(asks_by_v, key=asks_by_v.get)
                 best_ask = asks_by_v[best_v]
@@ -414,7 +439,8 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                                             round(fair[side], 3), round(best_ask, 3), round(e.net_edge, 3),
                                             "BUY", reason, reason_key="relative_value",
                                             reason_args={"fair": round(fair[side], 2), "venue": best_v,
-                                                         "ask": round(best_ask, 2), "also": also_str}))
+                                                         "ask": round(best_ask, 2), "also": also_str},
+                                            intent="entry"))
             # Cross-venue lock arb: BUY YES at the cheapest ASK, SELL YES (=buy NO)
             # at the highest BID, on two EXECUTABLE venues. Lock = sell_bid − buy_ask
             # − fees. Using bid for the sell leg avoids false positives.
@@ -437,7 +463,8 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                             reason_key="lock_arb",
                             reason_args={"buy_v": buy_v, "ask": round(asks[buy_v], 2), "sell_v": sell_v,
                                          "no": round(no_price, 2), "cost": round(cost, 2),
-                                         "lock": round(lock.net_lock, 2)}))
+                                         "lock": round(lock.net_lock, 2)},
+                            intent="entry"))
     # Rank: lock arb > relative value > tactic; by |edge|.
     rank = {"lock_arb": 0, "relative_value": 1, "tactic": 2}
     opps.sort(key=lambda o: (rank[o.kind], -(abs(o.edge) if o.edge is not None else 0)))

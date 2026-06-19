@@ -196,6 +196,11 @@
       "lock_arb": "锁定套利",
       "tactic": "战术"
     },
+    "intent": {
+      "manage": "持仓管理 · 若你持有",
+      "entry": "新入场机会",
+      "event": "事件驱动"
+    },
     "side": {
       "home": "主",
       "draw": "平",

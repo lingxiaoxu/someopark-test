@@ -178,6 +178,11 @@
       "lock_arb": "Arbitrage verrouillé",
       "tactic": "Tactique"
     },
+    "intent": {
+      "manage": "Gestion · si vous détenez",
+      "entry": "Nouvelle entrée",
+      "event": "Événementiel"
+    },
     "side": {
       "home": "Dom.",
       "draw": "Nul",

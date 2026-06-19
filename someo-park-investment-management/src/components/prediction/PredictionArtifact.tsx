@@ -394,18 +394,32 @@ function InPlay() {
           <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>
             xG {m.xg.home ?? '—'} / {m.xg.away ?? '—'} · {tr('prediction.expGoals')} {num(m.model.exp_remaining_goals, 2)}
           </div>
-          {/* opportunities / tricks — edge in probability AND ¢ per contract */}
-          {m.opportunities?.length ? (
-            <DataTable className="inplay-arb-table" cols={[tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colMarketC'), tr('prediction.colEdge'), tr('prediction.colEdgeC'), tr('prediction.colReason')]}
-              rows={m.opportunities.map((o: any) => [
-                <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{tr('prediction.kind.' + o.kind, { defaultValue: o.kind })}</span>,
-                tr('prediction.action.' + o.action, { defaultValue: o.action }),
-                tr('prediction.side.' + o.side, { defaultValue: o.side }),
-                cc(o.market_c), o.edge != null ? num(o.edge, 3) : '—',
-                <span style={{ color: (o.edge_c ?? 0) > 0 ? 'var(--success)' : 'var(--ink)' }}>{o.edge_c != null ? `${o.edge_c > 0 ? '+' : ''}${cc(o.edge_c)}` : '—'}</span>,
-                renderOppReason(o, tr),
-              ])} />
-          ) : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
+          {/* opportunities / tricks — grouped by INTENT (manage a held position / new entry /
+              event) so a held-position exit (e.g. overshoot sell) isn't read as contradicting
+              a new-entry buy. Every signal is kept; only the grouping changes. */}
+          {m.opportunities?.length ? (() => {
+            const cols = [tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colMarketC'), tr('prediction.colEdge'), tr('prediction.colEdgeC'), tr('prediction.colReason')];
+            const oppRow = (o: any) => [
+              <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{tr('prediction.kind.' + o.kind, { defaultValue: o.kind })}</span>,
+              tr('prediction.action.' + o.action, { defaultValue: o.action }),
+              tr('prediction.side.' + o.side, { defaultValue: o.side }),
+              cc(o.market_c), o.edge != null ? num(o.edge, 3) : '—',
+              <span style={{ color: (o.edge_c ?? 0) > 0 ? 'var(--success)' : 'var(--ink)' }}>{o.edge_c != null ? `${o.edge_c > 0 ? '+' : ''}${cc(o.edge_c)}` : '—'}</span>,
+              renderOppReason(o, tr),
+            ];
+            return (['manage', 'entry', 'event'] as const).map(group => {
+              const rows = m.opportunities.filter((o: any) => (o.intent || 'entry') === group);
+              if (!rows.length) return null;
+              return (
+                <div key={group} style={{ marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', ...mono, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 2 }}>
+                    {tr('prediction.intent.' + group)}
+                  </div>
+                  <DataTable className="inplay-arb-table" cols={cols} rows={rows.map(oppRow)} />
+                </div>
+              );
+            });
+          })() : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
         </div>
       ))}
     </div>

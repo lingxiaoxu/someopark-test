@@ -517,6 +517,11 @@
       "lock_arb": "Lock arb",
       "tactic": "Tactic"
     },
+    "intent": {
+      "manage": "Manage · if you hold",
+      "entry": "New entry",
+      "event": "Event-driven"
+    },
     "side": {
       "home": "Home",
       "draw": "Draw",

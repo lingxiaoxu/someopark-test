@@ -178,6 +178,11 @@
       "lock_arb": "Arbitraje fijo",
       "tactic": "Táctica"
     },
+    "intent": {
+      "manage": "Gestión · si tienes posición",
+      "entry": "Nueva entrada",
+      "event": "Por evento"
+    },
     "side": {
       "home": "Local",
       "draw": "Empate",

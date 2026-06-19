@@ -466,8 +466,10 @@ def live_odds_crossval(*, model_fair: float, book_prob: float | None, side: str,
                                reason_args={"side": side, "book": round(book_prob, 2), "model": round(model_fair, 2),
                                             "venue": round(our_venue_price, 2)})
         return TradeAction("HOLD", side, "venue not lagging book+model")
-    # No venue quote yet: book leading the model materially is itself an early signal.
-    if book_prob - model_fair >= move_threshold:
+    # No venue quote yet: a book that LEADS the model is only a weak advisory flag — it
+    # trusts the book over our calibrated model, so require a clearly BIGGER gap (move +0.04)
+    # than the venue-confirmed branch, to avoid firing on quote-cadence noise.
+    if book_prob - model_fair >= move_threshold + 0.04:
         return TradeAction("BUY", side,
                            f"{side}: live book {book_prob:.2f} has moved above model {model_fair:.2f} — "
                            f"sharp money leading, watch for entry", "normal",
