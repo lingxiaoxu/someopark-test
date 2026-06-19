@@ -26,12 +26,21 @@ from prediction_market.strategy.cross_venue import evaluate_lock
 from prediction_market.strategy.edge import compute_edge
 from prediction_market.strategy.inplay_tactics import (
     convergence_take_profit,
+    dormant_explosion,
     draw_trade_signal,
     favourite_comeback,
+    finishing_uplift_over,
+    formation_fragility,
     goal_overreaction_fade,
     knockout_late_draw,
+    late_goal_bias,
     live_momentum_from_store,
+    live_odds_crossval,
+    lone_threat_removed,
+    model_overshoot_take_profit,
+    possession_trap_fade,
     red_card_value,
+    xg_dominance_chase,
 )
 
 _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
@@ -161,6 +170,76 @@ def _goal_on_board(conn, fixture_row, hi: str, ai: str, side: str, gh: int, ga: 
     return n_events <= on_board
 
 
+def _team_live_stats(conn, fixture_row) -> dict:
+    """Per-side live xG / possession / shots from fixture_stats → {'home':{...},'away':{...}}.
+    Keyed by side so the data-mined tactics don't need team-id plumbing."""
+    rows = {r["team_api_id"]: r for r in conn.execute(
+        "SELECT team_api_id, xg, possession, shots_total FROM fixture_stats WHERE fixture_api_id=?",
+        (fixture_row["api_id"],))}
+    out = {}
+    for side, tid in (("home", fixture_row["home_api_id"]), ("away", fixture_row["away_api_id"])):
+        r = rows.get(tid)
+        out[side] = {"xg": r["xg"] if r else None,
+                     "possession": r["possession"] if r else None,
+                     "shots": r["shots_total"] if r else None}
+    return out
+
+
+def _formations(conn, fixture_row) -> tuple[str | None, str | None]:
+    """(home_formation, away_formation) from the lineup table (pulled pre/at kickoff)."""
+    f = {r["team_api_id"]: r["formation"] for r in conn.execute(
+        "SELECT team_api_id, formation FROM lineup WHERE fixture_api_id=?", (fixture_row["api_id"],))}
+    return f.get(fixture_row["home_api_id"]), f.get(fixture_row["away_api_id"])
+
+
+def _lone_threat(conn, fixture_row, *, min_team_shots: int = 5):
+    """Detect a side whose shots funnel through ONE player (≥50% share) who has since
+    LEFT the pitch (subbed off / sent off). Returns (side, player_name, share, removed)
+    for the first such side, else (None, None, None, False). Live player stats come from
+    fixture_player_stats; departures from fixture_event (Subst / Red Card)."""
+    # shots per (team, player) and the team totals.
+    per = {}
+    for r in conn.execute(
+        "SELECT team_api_id, player_api_id, player_name, shots_total FROM fixture_player_stats "
+        "WHERE fixture_api_id=? AND shots_total IS NOT NULL AND shots_total>0", (fixture_row["api_id"],)):
+        per.setdefault(r["team_api_id"], []).append(r)
+    # players who left the pitch: substituted off (assist holds the incomer; player is the one off)
+    # or red-carded.
+    gone = set()
+    for r in conn.execute(
+        "SELECT player_api_id, assist_api_id, type, detail FROM fixture_event "
+        "WHERE fixture_api_id=? AND (type='subst' OR (type='Card' AND detail LIKE '%Red%'))",
+        (fixture_row["api_id"],)):
+        if r["type"] == "subst":
+            gone.add(r["assist_api_id"])           # API-Football subst: player=IN, assist=OFF
+        else:
+            gone.add(r["player_api_id"])           # red card: the carded player leaves
+    for side, tid in (("home", fixture_row["home_api_id"]), ("away", fixture_row["away_api_id"])):
+        rows = per.get(tid, [])
+        total = sum(x["shots_total"] for x in rows)
+        if total < min_team_shots:
+            continue
+        top = max(rows, key=lambda x: x["shots_total"])
+        share = top["shots_total"] / total
+        if share >= 0.50 and top["player_api_id"] in gone:
+            return side, top["player_name"], share, True
+    return None, None, None, False
+
+
+def _live_book_prob(conn, fixture_row) -> dict:
+    """Most-recent de-vigged bookmaker 1X2 implied probs from match_odds (API-Football
+    Odds, pre-match seed + In-Play updates) → {'home','draw','away'} or {} if none."""
+    r = conn.execute(
+        "SELECT p_home, p_draw, p_away FROM match_odds WHERE fixture_api_id=? "
+        "ORDER BY fetched_at DESC LIMIT 1", (fixture_row["api_id"],)).fetchone()
+    if not r or r["p_home"] is None:
+        return {}
+    s = (r["p_home"] or 0) + (r["p_draw"] or 0) + (r["p_away"] or 0)
+    if s <= 0:
+        return {}
+    return {"home": r["p_home"] / s, "draw": r["p_draw"] / s, "away": r["p_away"] / s}
+
+
 def live_fair(conn, sm, fixture_row) -> tuple[LiveMatchProb, dict]:
     """xG-shaded live fair prices for one fixture (intra-game stats → price)."""
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
@@ -212,6 +291,21 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
         gh, ga = fx["home_goals"] or 0, fx["away_goals"] or 0
         score = f"{gh}-{ga}"
         lp, fair = live_fair(conn, sm, fx)
+        # Totals (OVER/UNDER 2.5) fair from the live model → enables totals relative
+        # value + the finishing-uplift signal once a totals market is quoted.
+        p_over25 = lp.p_over_total.get(2.5)
+        if p_over25 is not None:
+            fair["over"], fair["under"] = p_over25, 1.0 - p_over25
+        # Live market quotes per venue (3-way + KXWCTOTAL / tsc totals), fetched once.
+        quotes = {v: fn(fx["api_id"]) for v, fn in quote_sources.items()}
+
+        def _best_ask(side: str):
+            xs = [_ask(q.get(side)) for q in quotes.values() if q and q.get(side) is not None]
+            xs = [a for a in xs if a is not None]
+            return min(xs) if xs else None
+
+        over_mkt, under_mkt = _best_ask("over"), _best_ask("under")
+        mkt_by_side = {"over": over_mkt, "under": under_mkt}
 
         # Event-driven context: pre-match favourite (explicit strength+form basis, Part 2),
         # the latest goal + red card, KO flag.
@@ -241,14 +335,69 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                                         "model", fair.get(sig.side), None, None, sig.act, sig.reason,
                                         reason_key=sig.reason_key, reason_args=sig.reason_args))
 
-        # (2) market-dependent: relative value + cross-venue lock arb.
-        # Quote per outcome is {'ask','bid'} (or a plain float = ask==bid).
-        quotes = {v: fn(fx["api_id"]) for v, fn in quote_sources.items()}
+        # (1b) data-mined tactics (26-match intra-game study) — read the extra live
+        # stats once, then fan out. Each gracefully HOLDs when its data is absent.
+        st = _team_live_stats(conn, fx)
+        comb_xg = None
+        if st["home"]["xg"] is not None and st["away"]["xg"] is not None:
+            comb_xg = st["home"]["xg"] + st["away"]["xg"]
+        hf, af = _formations(conn, fx)
+        lt_side, lt_player, lt_share, lt_removed = _lone_threat(conn, fx)
+        book = _live_book_prob(conn, fx)
+        mined = [
+            dormant_explosion(lp, combined_xg=comb_xg),
+            finishing_uplift_over(lp, market_over_price=over_mkt),
+            late_goal_bias(lp),
+            formation_fragility(lp, home_formation=hf, away_formation=af),
+            xg_dominance_chase(xg_for=st["home"]["xg"], xg_against=st["away"]["xg"],
+                               goals_for=gh, goals_against=ga, minute=minute, side="home"),
+            xg_dominance_chase(xg_for=st["away"]["xg"], xg_against=st["home"]["xg"],
+                               goals_for=ga, goals_against=gh, minute=minute, side="away"),
+            possession_trap_fade(possession=st["home"]["possession"], xg_for=st["home"]["xg"],
+                                 goals_for=gh, goals_against=ga, minute=minute, side="home"),
+            possession_trap_fade(possession=st["away"]["possession"], xg_for=st["away"]["xg"],
+                                 goals_for=ga, goals_against=gh, minute=minute, side="away"),
+            lone_threat_removed(side=lt_side or "home", lone_player=lt_player, shot_share=lt_share,
+                                removed=lt_removed, minute=minute, exp_remaining_goals=lp.exp_remaining_goals),
+        ]
         for side in ("home", "draw", "away"):
+            mined.append(live_odds_crossval(model_fair=fair[side], book_prob=book.get(side), side=side))
+        for sig in mined:
+            if sig and sig.act != "HOLD":
+                # Attach the live totals market price to OVER/UNDER tactics so the desk
+                # sees what it would pay. NO model-vs-market edge is shown for these:
+                # the pattern tactics (dormant / formation / late) deliberately disagree
+                # with the naive Poisson p_over, so an edge vs the model would mislead —
+                # the genuine model-vs-market totals edge surfaces as a relative_value row.
+                mkt = mkt_by_side.get(sig.side)
+                opps.append(Opportunity(fx["api_id"], m, minute, score, "tactic", sig.side,
+                                        "model" if mkt is None else "totals", fair.get(sig.side),
+                                        round(mkt, 3) if mkt is not None else None, None,
+                                        sig.act, sig.reason,
+                                        reason_key=sig.reason_key, reason_args=sig.reason_args))
+                # kind stays "tactic" so ranking / frontend colour / i18n are unchanged.
+
+        # (2) market-dependent: relative value + cross-venue lock arb (3-way + totals).
+        # Quote per outcome is {'ask','bid'} (or a plain float = ask==bid).
+        sides = ["home", "draw", "away"] + (["over", "under"] if "over" in fair else [])
+        for side in sides:
             present = {v: q.get(side) for v, q in quotes.items() if q and q.get(side) is not None}
             # One row per side: back the CHEAPEST ask (best edge); name the other
             # venues that also qualify, instead of a near-duplicate row per venue.
             asks_by_v = {v: _ask(qv) for v, qv in present.items() if _ask(qv) is not None}
+            # Model-aware take-profit: if the BEST bid we could sell into over-reacts above
+            # the live model fair (+margin), emit a SELL to lock the overshoot (validated
+            # ~2.8× hold-to-FT). Fires per side; the desk sells whatever it actually holds.
+            bids_by_v = {v: _bid(qv) for v, qv in present.items() if _bid(qv) is not None}
+            if bids_by_v and side in ("home", "draw", "away"):
+                best_bid_v = max(bids_by_v, key=bids_by_v.get)
+                best_bid = bids_by_v[best_bid_v]
+                tp = model_overshoot_take_profit(side, best_bid, lp)
+                if tp.act == "SELL":
+                    opps.append(Opportunity(fx["api_id"], m, minute, score, "tactic", side,
+                                            best_bid_v, round(fair[side], 3), round(best_bid, 3),
+                                            round(best_bid - fair[side], 3), "SELL", tp.reason,
+                                            reason_key=tp.reason_key, reason_args=tp.reason_args))
             if asks_by_v:
                 best_v = min(asks_by_v, key=asks_by_v.get)
                 best_ask = asks_by_v[best_v]

@@ -262,7 +262,9 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
     prior = load_prior()
     name_of = {t.team_id: t.name for t in prior.teams}
     zh_of = {t.team_id: t.zh for t in prior.teams}
-    sm = build_strength_live(conn, prior)
+    # Upcoming matches → as_of=None (now): all played matches are legitimately prior, so the
+    # xG-form alpha uses every team's WC xG so far. PIT by construction (future ≡ none).
+    sm = build_strength_live(conn, prior, xg_form=True)
     # Recent-form z-index per team (same feature that feeds the model), so the card can
     # EXPLAIN a pick with current form ("X is in strong recent form"). DB-only, no network.
     try:

@@ -7,7 +7,7 @@
 import {
   Trophy, Activity, Target, GitCompare, Zap, CalendarClock, Clock,
   LineChart, ShieldAlert, Gauge, LayoutGrid, Landmark, FileText, Cpu,
-  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp, Coins, ChevronsUp,
+  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp, Coins, ChevronsUp, Shapes,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,7 @@ export const PREDICTION_ITEMS: Item[] = [
   { type: 'wc_match_pricing', i18nKey: 'matchPricing',     Icon: Activity },
   { type: 'wc_golden_boot',   i18nKey: 'goldenBoot',       Icon: Target },
   { type: 'wc_squad',         i18nKey: 'squadStrength',    Icon: Users },
+  { type: 'wc_styles',        i18nKey: 'teamStyles',       Icon: Shapes },
   { type: 'wc_form',          i18nKey: 'recentForm',       Icon: TrendingUp },
   { type: 'wc_divergence',    i18nKey: 'modelVsMarket',    Icon: GitCompare },
   { type: 'wc_inplay',        i18nKey: 'inPlayArb',        Icon: Zap },

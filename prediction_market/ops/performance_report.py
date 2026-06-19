@@ -64,14 +64,26 @@ class PerformanceReport:
     # Argmax 口径 (parallel reference, every settled match): bet the most-likely side.
     argmax_record: str = ""           # e.g. "12W-10L" over all settled matches
     argmax_pnl_cents_total: float = 0.0  # ¢ P&L betting argmax every match
+    # REALISED 口径 — the actual strategy is decision + smart-exit cash-out (not hold-to-FT).
+    realized_record: str = ""            # profitable-bets record with cash-out, e.g. "12-6"
+    realized_pnl_cents_total: float = 0.0  # ¢ P&L with the smart-exit applied
+    n_smart_sold: int = 0                # bets where the smart-exit cashed out the over-reaction
+    hold_record: str = ""                # the hold-to-FT W-L (reference)
+    hold_pnl_cents_total: float = 0.0    # hold-to-FT ¢ P&L (reference)
 
 
-def _settled(conn, sm):
-    from prediction_market.model.match_pricing import price_match
+def _settled(conn, sm=None):
+    """RAW-model probs + outcomes for every settled match, used for the accuracy Brier.
+
+    PIT + consistent with the bet log: each match is priced with its OWN point-in-time
+    strength (``_pit_strength`` — host boost + xG-form + as_of-cut form, the SAME model
+    the bets use) and its OWN knockout flag — NOT one global model. This is what makes
+    the headline Brier reflect the model we actually trade, with no form leak."""
+    from prediction_market.model.match_pricing import is_knockout, price_match
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     rows = conn.execute(
-        "SELECT home_api_id, away_api_id, home_goals, away_goals FROM fixture "
+        "SELECT home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, round FROM fixture "
         "WHERE status_short IN ({}) AND home_goals IS NOT NULL".format(",".join("?" * len(_FINISHED))),
         _FINISHED).fetchall()
     out = []
@@ -79,7 +91,8 @@ def _settled(conn, sm):
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        mp = price_match(sm, hi, ai)
+        sm_pit = _pit_strength(conn, r["kickoff_ts"]) if r["kickoff_ts"] else sm
+        mp = price_match(sm_pit, hi, ai, knockout=is_knockout(r["round"]))
         outcome = 0 if r["home_goals"] > r["away_goals"] else (1 if r["home_goals"] == r["away_goals"] else 2)
         out.append(([mp.p_home, mp.p_draw, mp.p_away], outcome))
     return out
@@ -129,7 +142,7 @@ def _pit_strength(conn, as_of: str):
     if _prior_cache is None:
         _prior_cache = load_prior()
     cfg = CONFIG.model
-    sm = build_strength_live(conn, _prior_cache, cfg)
+    sm = build_strength_live(conn, _prior_cache, cfg, as_of=as_of, xg_form=True)
     if cfg.oppadj_def_weight or cfg.oppadj_off_weight:
         sm = replace(sm, adj=altdata_index(conn, sm.ratings, as_of=as_of))
     return sm
@@ -280,6 +293,10 @@ def _bet_log(conn) -> list[dict]:
     # the parallel reference track shown alongside the decision model.
     am_cum_c = 0.0       # cumulative per-contract ¢ P&L (argmax, all matches)
     am_n = am_wins = 0
+    # REALISED 口径: the strategy is decision + smart-exit cash-out (we don't hold to FT).
+    realized_cum_c = 0.0   # cumulative ¢ P&L with the model-aware cash-out applied
+    realized_wins = 0      # bets that REALISED a profit (cash-out or settle)
+    n_smart_sold = 0       # bets where the smart-exit actually fired (sold the overshoot)
     for r in rows:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
@@ -343,6 +360,20 @@ def _bet_log(conn) -> list[dict]:
             sum_entry_c += (entry_cents or 0.0)
             cents_avail += ((100.0 - entry_cents) if won else entry_cents) if entry_cents is not None else 0.0
             clv_cents = _clv_c(pick, entry_cents)
+            # REALISED cash-out: apply the validated smart-exit (sell the over-reaction)
+            # to THIS bet — the realised ¢ is the cash-out PnL when it fired, else hold-to-FT.
+            smart_exit = None
+            try:
+                from prediction_market.strategy.smart_exit import smart_exit_cashout
+                if conn is not None and r["kickoff_ts"]:
+                    smart_exit = smart_exit_cashout(conn, _pit_strength(conn, r["kickoff_ts"]),
+                                                    r["api_id"], pick, entry_cents, hi, ai, r["round"], won)
+            except Exception:
+                smart_exit = None
+            realized_c = smart_exit["pnl_c"] if smart_exit else c_pnl
+            realized_cum_c += (realized_c or 0.0)
+            realized_wins += int((realized_c or 0.0) > 0)
+            n_smart_sold += int(bool(smart_exit))
             dec = {"pick": pick, "pick_team": side_label[pick], "won": won,
                    "stake_usd": round(stake, 2), "model_prob": model_prob,
                    "price": round(cost, 4), "dec_odds": round(dec_odds, 3),
@@ -350,7 +381,9 @@ def _bet_log(conn) -> list[dict]:
                    "pnl": round(pnl, 3), "cum_pnl": round(cum, 3),
                    "entry_cents": entry_cents, "entry_source": entry_source,
                    "settle_cents": (100.0 if won else 0.0), "pnl_cents": c_pnl,
-                   "cum_pnl_cents": round(cum_c, 1), "clv_cents": clv_cents}
+                   "cum_pnl_cents": round(cum_c, 1), "clv_cents": clv_cents,
+                   "smart_exit": smart_exit, "realized_pnl_cents": realized_c,
+                   "realized_cum_pnl_cents": round(realized_cum_c, 1)}
         else:
             skipped += 1   # decision model found no tradable edge → no bet (but still listed)
             dec = {"pick": None, "pick_team": None, "won": None, "stake_usd": 0.0,
@@ -376,7 +409,14 @@ def _bet_log(conn) -> list[dict]:
         })
     return log, {"skipped": skipped, "n_bets": n_bets, "model_n": am_n, "model_hits": am_wins,
                  "staked_usd": round(staked, 2), "argmax_pnl_cents_total": round(am_cum_c, 1),
-                 "argmax_record": f"{am_wins}W-{am_n - am_wins}L"}
+                 "argmax_record": f"{am_wins}W-{am_n - am_wins}L",
+                 # REALISED 口径 (decision + smart-exit cash-out — the actual strategy).
+                 # W/L here = PROFITABLE / not (a 'W' can be a cash-out at a gain on a bet
+                 # that would have lost at settlement). Same W-L format as the other modes.
+                 "realized_pnl_cents_total": round(realized_cum_c, 1),
+                 "realized_record": f"{realized_wins}W-{n_bets - realized_wins}L",
+                 "n_smart_sold": n_smart_sold, "hold_pnl_cents_total": round(cum_c, 1),
+                 "hold_record": f"{wins}W-{n_bets - wins}L"}
 
 
 def build(conn=None) -> PerformanceReport:
@@ -504,6 +544,11 @@ def build(conn=None) -> PerformanceReport:
         decision_staked_usd=round(decision_staked, 2),
         argmax_record=argmax_record,
         argmax_pnl_cents_total=argmax_pnl_cents_total,
+        realized_record=betmeta["realized_record"],
+        realized_pnl_cents_total=betmeta["realized_pnl_cents_total"],
+        n_smart_sold=betmeta["n_smart_sold"],
+        hold_record=betmeta["hold_record"],
+        hold_pnl_cents_total=betmeta["hold_pnl_cents_total"],
     )
 
 
@@ -582,52 +627,62 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
     else:
         story.append(Paragraph("尚无已结算场次。", ps.note_style))
 
-    # 七、实盘战绩(逐场下注记录 — 决策模型 vs argmax 两口径并列,全部已结算场次)
-    ps.section(story, f"七、实盘战绩(逐场:决策模型选边定额,argmax 口径并列,自 {rep.bet_since or '—'} 起)")
+    # 七、实盘战绩 — 真实策略 = 决策 + 智能择时现金出(持有到 FT / argmax 作参考)
+    ps.section(story, f"七、实盘战绩(真实口径:决策选边 + 超调止盈现金出;持有/argmax 作参考,自 {rep.bet_since or '—'} 起)")
     if rep.bet_log:
-        pnl_sign = "+" if rep.pnl_units >= 0 else ""
-        story.append(Paragraph(
-            f"决策模型 {rep.pnl_record} · 累计 {pnl_sign}{rep.pnl_units:.2f}$ · ROI {rep.pnl_roi:+.1%} · "
-            f"{rep.n_decision_bets} 注 · {rep.n_skipped} 跳过(无边际) · 共 {len(rep.bet_log)} 场",
-            ps.body_style))
-        story.append(Paragraph(
-            f"argmax 口径(每场押最可能边,全 {len(rep.bet_log)} 场) {rep.argmax_record} · "
-            f"准确率 {rep.model_pred_accuracy:+.0%} · 累计 {rep.argmax_pnl_cents_total:+.0f}¢/张",
-            ps.body_style))
-        story.append(Paragraph(
-            f"决策模型每合约口径 · 累计 {rep.pnl_cents_total:+.0f}¢/张 · 平均入场 {rep.avg_entry_cents:.0f}¢ · "
-            f"价格空间捕获率 {rep.cents_capture_rate:+.0%} · 平均 CLV {rep.avg_clv_cents:+.0f}¢",
-            ps.body_style))
-        data = [[ps.H("日期"), ps.H("对阵"), ps.H("下注边"), ps.H("金额", "RIGHT"), ps.H("结果"),
-                 ps.H("入场¢", "RIGHT"), ps.H("每张¢", "RIGHT"), ps.H("累计¢", "RIGHT"),
-                 ps.H("argmax(边·输赢·¢)")]]
-
         def _col(v: float, text: str) -> str:
             c = "#1a7a4a" if v >= 0 else "#c0392b"
             return f'<font color="{c}"><b>{text}</b></font>'
 
+        # Unified format across the 3 modes: 标签 {W-L} · 累计 {¢}/张 · {场景}
+        story.append(Paragraph(
+            f"<b>实现(决策 + 智能择时现金出)</b> {rep.realized_record} · 累计 {rep.realized_pnl_cents_total:+.0f}¢/张 · "
+            f"{rep.n_decision_bets} 注 · {rep.n_smart_sold} 现金出",
+            ps.body_style))
+        story.append(Paragraph(
+            f"持有到 FT(参考) {rep.hold_record} · 累计 {rep.hold_pnl_cents_total:+.0f}¢/张 · "
+            f"{rep.n_decision_bets} 注 · {rep.n_skipped} 跳过(无边际)",
+            ps.body_style))
+        story.append(Paragraph(
+            f"argmax 口径(参考) {rep.argmax_record} · 累计 {rep.argmax_pnl_cents_total:+.0f}¢/张 · "
+            f"{len(rep.bet_log)} 场 · 准确率 {rep.model_pred_accuracy:+.0%}",
+            ps.body_style))
+        story.append(Paragraph(
+            f"平均入场 {rep.avg_entry_cents:.0f}¢ · 价格空间捕获率 {rep.cents_capture_rate:+.0%} · 平均 CLV {rep.avg_clv_cents:+.0f}¢",
+            ps.note_style))
+        data = [[ps.H("日期"), ps.H("对阵"), ps.H("下注边"), ps.H("金额", "RIGHT"), ps.H("离场"),
+                 ps.H("入场¢", "RIGHT"), ps.H("实现¢", "RIGHT"), ps.H("累计¢", "RIGHT"),
+                 ps.H("argmax(边·输赢·¢)")]]
+
         for b in rep.bet_log:
             bet = b.get("bet", True)
             ec = f'{b["entry_cents"]:.0f}' if b.get("entry_cents") is not None else "—"
-            pc = b.get("pnl_cents")
-            cumc = b.get("cum_pnl_cents")
+            se = b.get("smart_exit")
+            rpc = b.get("realized_pnl_cents")
+            rcum = b.get("realized_cum_pnl_cents")
             apc = b.get("argmax_pnl_cents")
             am_res = _col(1 if b["model_won"] else -1, "赢" if b["model_won"] else "输")
             am_txt = (f'{b["model_pick_team"]} {am_res}'
                       + (f' {_col(apc, f"{apc:+.0f}")}' if apc is not None else ''))
+            if not bet:
+                exit_txt = '<font color="#888">—</font>'
+            elif se:
+                exit_txt = _col(se["pnl_c"], f'{se["sold_min"]}′卖{se["sold_c"]:.0f}¢')
+            else:
+                exit_txt = _col(1 if b["won"] else -1, "结算赢" if b["won"] else "结算输")
             data.append([
                 ps.C(b["date"][5:]),
                 ps.C(f'{b["home"]} {b["score"]} {b["away"]}'),
                 ps.C(b["pick_team"] if bet else '<font color="#888">不下注</font>'),
                 ps.C(f'${b["stake_usd"]:.2f}' if bet else '<font color="#888">$0</font>', "RIGHT"),
-                ps.C(_col(1 if b["won"] else -1, "赢" if b["won"] else "输") if bet else '<font color="#888">—</font>', "RIGHT"),
+                ps.C(exit_txt),
                 ps.C(ec if bet else "—", "RIGHT"),
-                ps.C(_col(pc if pc is not None else 0, f'{pc:+.0f}') if (bet and pc is not None) else "—", "RIGHT"),
-                ps.C(_col(cumc if cumc is not None else 0, f'{cumc:+.0f}') if (bet and cumc is not None) else "—", "RIGHT"),
+                ps.C(_col(rpc if rpc is not None else 0, f'{rpc:+.0f}') if (bet and rpc is not None) else "—", "RIGHT"),
+                ps.C(_col(rcum if rcum is not None else 0, f'{rcum:+.0f}') if (bet and rcum is not None) else "—", "RIGHT"),
                 ps.C(am_txt),
             ])
-        story.append(ps.make_table(data, [1.4 * cm, 4.4 * cm, 2.0 * cm, 1.3 * cm, 1.0 * cm,
-                                          1.3 * cm, 1.3 * cm, 1.3 * cm, 3.2 * cm]))
+        story.append(ps.make_table(data, [1.4 * cm, 4.0 * cm, 1.9 * cm, 1.2 * cm, 2.0 * cm,
+                                          1.2 * cm, 1.2 * cm, 1.2 * cm, 3.0 * cm]))
 
     # 八、校准 P&L(纸面,公允赔率诊断)
     ps.section(story, "八、校准 P&L(纸面,按公允赔率下注模型选边 — 过度/不足自信诊断)")

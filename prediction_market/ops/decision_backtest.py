@@ -125,7 +125,7 @@ def backtest(conn=None, *, calib_confidence: float = 0.25) -> dict:
         ko = is_knockout(f["round"])
 
         # PIT calibrated model probs (features cut at kickoff).
-        sm = build_strength_live(conn, prior, cfg_model)
+        sm = build_strength_live(conn, prior, cfg_model, as_of=f["kickoff_ts"], xg_form=True)
         if cfg_model.oppadj_def_weight or cfg_model.oppadj_off_weight:
             sm = replace(sm, adj=altdata_index(conn, sm.ratings, as_of=f["kickoff_ts"]))
         mp = price_match(sm, hi, ai, knockout=ko)

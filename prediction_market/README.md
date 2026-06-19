@@ -66,6 +66,7 @@
 - **选边按价值,不按最可能**:`decide()` 在 PRE 场馆报价上选**去 vig 后被低估最多**的一边(模型概率 − 市场隐含)——可能是平局或弱队,而不是单纯概率最高的那个。
 - **置信度定额($0.2–$2)**:`stake = clip($1×(1+k), 0.2, 2)`,k 由 **edge(分数凯利 ¼)+ 模型校准 + 近期状态 + alt-data** 加权;信心足多下、不足少下。**真实下单仍受 $1 硬顶**(`max_test_order_usd`),决策模型只给「理想额」。
 - **冷门高估偏差**:对 sub‑15¢ 的 longshot 边设更高 edge 门槛(favourite‑longshot bias,arXiv 1710.02824);无安全边际则**跳过不下**。
+- **平局纪律(`draw_extra_theta`,默认 0.06)**:小组赛平局率异常高(本样本 38%,模型甚至**低估**至 26%、市场更低估至 22% → 平局确有价值),但这是会在淘汰赛回归的 regime。故对平局边加一截 edge 门槛,**只砍信心最低的平局**(本样本平局注 45%→37%,命中率不降),稳健性 hedge 而非扭曲模型。诊断/调参:`ops/_diag_draw_bias`。
 - **全程 PIT**:`match_pick` 传入 `conn` 时按开赛时点重算模型+form+alt-data(无未来泄漏),`_bet_log` 与 `milestone_export` 传**同一份 PRE 报价**→ pick 必然一致 → 三视图仍同源。
 - **考核口径**:以 **CLV** 为首要成绩(小样本下比胜率可靠),并保留 **argmax 预测准确率**(`model_pred_accuracy`)作模型质量参考。
 - **PIT 回测**:`ops.decision_backtest` 在真实结算比赛 + 真实里程碑价上实测「argmax vs 价值 vs 价值+缩放」× 6 个退出时点(T15..T75 vs 持有到 FT)+ CLV。配置在 `config.DecisionConfig`。
@@ -166,7 +167,7 @@ set -a && source prediction_market/.env && set +a && \
 | `ingest/store.py` | 本地存储：SQLite 业务表（含 `ob_snapshot` 盘口 + **`milestone_snapshot` 6 里程碑 ¢/概率/devig**）+ append‑only 原始快照 + 增量水位 + 月度用量；`data/wc.db` |
 | `util/pricing.py` | 每合约 ¢ 换算（纯展示层，不改任何模型数值）：`to_cents`/`mid`（缺边回退）/`quote_to_cents`(ask_c/bid_c/mid_c)/`model_cents`/`settle_cents`/`pnl_cents` |
 | `util/price_history.py` | 历史价格采样：`price_at(series, when_ts)` 取离里程碑时刻最近的 bar（含 gap 容差），喂回填/盯市 |
-| `ingest/soccer_ingest.py` | 摄取编排：watermark/TTL 闸（TTL 内重跑 0 请求）、幂等 upsert、coverage 感知；`--scope {static\|results\|live\|h2h\|squads\|all}` |
+| `ingest/soccer_ingest.py` | 摄取编排：watermark/TTL 闸（TTL 内重跑 0 请求）、幂等 upsert、coverage 感知；`--scope {static\|results\|live\|h2h\|squads\|all}`。`live`/`results` 每场拉取 **xG + 阵型(lineup) + 逐球员战绩(fixture_player_stats) + 盘中庄家赔率(odds/live)**，喂给数据挖掘战术 |
 
 ### 模型层（`model/`）
 
@@ -222,6 +223,7 @@ set -a && source prediction_market/.env && set +a && \
 | `ops/frontend_export.py` | **前端数据合约**：静态目录 + 实时快照（performance/risk/预测/upcoming）→ 单一 `frontend_overview.json`，前端读这一个文件即可 |
 | `venues/champion_prices.py` | 夺冠盘真实合约价：Kalshi `KXMENWORLDCUP`（inline ask）+ Poly Global `world-cup-winner`（inline outcomePrices）→ 映射到 canonical team_id，失败容错 |
 | `jobs/live_poller.py` | 盘中每分钟轮询：live 公允价 + 跨场套利 + 战术 → `inplay_signals.json` |
+| `strategy/inplay_tactics.py` | 盘中战术库：基础(平局/收敛/动量/总进球)+ 事件(进球过反应/落后夺冠/红牌/淘汰赛平局)+ **8 个数据挖掘战术**(闷平爆发/临门修正/应得未得/无效控球/阵型脆弱/单点失效/晚段进球/庄家交叉验证，源自 26 场 intra-game 研究，见 `docs/INPLAY_FINDINGS.md`)。OVER/UNDER 类信号接入 **Kalshi `KXWCTOTAL` + Poly US `tsc-fwc-*` 总进球盘**实时价(`venues/*/discovery.py:totals_quotes`)：闷平/阵型/晚段附市场价,临门修正(#9)在模型已看高于市场时激活,并产出 totals relative-value |
 
 ---
 
@@ -270,15 +272,100 @@ conda run -n someopark_run --no-capture-output python -m prediction_market.model
 
 ---
 
-## 输出目录
+## 数据存储结构（本地落盘）
 
-| 路径 | 内容 | 版本控制 |
-|------|------|----------|
-| `data/priors/` | 静态先验（`ext_sim_v0.json` file 10）+ 金靴种子球员 | ✅ 跟踪 |
-| `data/output/` | 模型运行 JSON（`latest.json` / `model_run_*` / `oos_report`） | gitignore |
-| `data/raw/` | API 原始响应快照（带 `fetched_at`，可重放） | gitignore |
-| `data/wc.db` | SQLite 业务库（teams/fixtures/events/standings/h2h/squads…） | gitignore |
-| `~/.config/someopark/*.key` | Kalshi PEM 私钥（**仓库外**） | 永不进 git |
+> 设计原则：**单一真相源 + 派生产物 + 原始快照可回放**。所有动态数据都只落在
+> `prediction_market/data/` 下（git 不跟踪）；备份只需 `wc.db` 一个文件，其余都能从它重算。
+> 行数为某时点快照，随每日运行增长。
+
+### 一、存储总览
+
+```
+prediction_market/
+├── .env                    ← 密钥(API_FOOTBALL_KEY、Kalshi/Poly 凭据) ★永不入库
+└── data/
+    ├── wc.db   (~10 MB)    ★ 唯一真相源 (SQLite, WAL 模式)
+    │   ├── wc.db-wal       预写日志(未 checkpoint 的写入)
+    │   └── wc.db-shm       共享内存索引
+    ├── output/  (~5 MB)    派生产物:前端用的 JSON + PDF(从 wc.db 计算导出)
+    ├── raw/     (~215 MB)  原始 API 响应快照(append-only,可回放/审计)
+    ├── priors/             手工种子:ext_sim_v0.json、seed_players.json (★唯一入库的数据)
+    ├── logs/    (~6 MB)    运行日志 + 盘中复盘 jsonl(inplay_review_*.jsonl)
+    └── kalshi_docs/        Kalshi API 文档缓存
+
+someo-park-investment-management/public/data/   ← 前端服务层(output 的镜像子集,
+                                                   经 Cloudflare tunnel 实时上线)
+~/.config/someopark/*.key   ← Kalshi PEM 私钥(★仓库外,永不进 git)
+```
+
+### 二、`wc.db` 表结构（按逻辑分组）
+
+| 分类 | 表 | 示例行数 | 内容 |
+|------|----|---------|------|
+| **原始/参考** | `team` `team_meta` `venue` `standing` | 48/48/3/48 | 球队、规范名映射、场馆、积分榜 |
+| | `player` `squad` `fc_player` | 1248/1248/9853 | 球员、阵容、EA FC26 评分(金靴/强度用) |
+| **赛程/比分/事件** | `fixture` | 72 | 全部 72 场赛程 + 比分 + 状态 |
+| | `fixture_event` | 391 | 逐分钟 进球/红黄牌/换人 |
+| | `nt_recent` `h2h` | 300/0 | 国家队近期战绩、交锋史 |
+| **盘中细粒度** | `fixture_stats` | 52 | 每队 xG/射门/控球/角球(live + 终场) |
+| | `lineup` | 54 | 阵型/首发/教练 |
+| | `fixture_player_stats` | 1340 | **每球员每场** 评分/射门/传球/过人/对抗/抢断/犯规 |
+| | `injury` | 0 | 伤停(WC 此 endpoint 暂无数据) |
+| **市场/赔率** | `match_odds` | 917 | 庄家 1X2 去 vig(含盘中 `live_consensus` 实时盘口) |
+| | `prediction` | 5 | API-Football 自带预测 |
+| | `ob_snapshot` `xref` | 0/0 | 订单簿快照、跨场标的映射(预留) |
+| **模型输出** | `sim_champion` `sim_golden_boot` | 2400/10274 | 蒙特卡洛 夺冠/金靴 分布 |
+| | `model_run` `xv_spread` `milestone_snapshot` | 50/144/183 | 每次模型运行、跨场价差、里程碑快照 |
+| | `player_stat` `calibration` `signal` | 1246/0/0 | 球员赛季统计、校准、信号(后两者按需) |
+| **API 审计** | `api_call` `raw_index` `watermark` | 7228/7228/5 | 每次 API 调用日志、快照索引、TTL 水位 |
+
+盘中细粒度四表 + `live_consensus` 实时盘口由 `ingest/soccer_ingest.sync_live` / `sync_results`
+每场拉取,喂给数据挖掘盘中战术(见 `strategy/inplay_tactics.py`、`docs/INPLAY_FINDINGS.md`）。
+
+### 三、`data/output/` 主要派生产物（前端消费）
+
+| 文件 | 内容 |
+|------|------|
+| `latest.json` / `model_run_*.json` | 每次全量模拟结果(夺冠/晋级/各轮) |
+| `frontend_overview.json` | 前端系统总览(接口/模式/频率/价值) |
+| `upcoming.json` / `schedule.json` | 赛前卡片(决策+argmax+form) / 赛程 |
+| `inplay_live.json` / `match_signals.json` / `inplay_signals.json` | 盘中实时模型 + 机会 + 信号 |
+| `milestone_marks.json` | 每合约 ¢ 里程碑盯市轨迹 |
+| `reach_round.json` | 晋级盘(48 队 × 5 轮,模型%/Kalshi¢/Poly¢/边缘) |
+| `form.json` / `squad.json` | 对手加权 form / 队伍强度(联赛加权) |
+| `performance_report.json` + `.pdf` / `risk_report.json` + `.pdf` | 绩效 / 风控报告 |
+| `xv_champion.json` / `xv_matches.json` | 跨场冠军/单场比价 |
+| `calibration.json` / `oos_report.json` / `backtest.json` / `param_sweep.json` | 校准 / OOS / 回测 / 参数扫描 |
+
+### 四、`data/raw/` 原始快照（按 endpoint 分目录，可回放）
+
+每次 API 调用的原始 JSON 落盘,文件名 `时间戳_参数哈希.json`,与 `api_call`/`raw_index` 一一对应:
+
+```
+fixtures(~176M)  odds(~15M)  players(~9M)  fc26(~7M)  fixtures_statistics(~4M)
+fixtures_players  fixtures_lineups  odds_live  injuries  predictions  standings
+teams  leagues  players_squads  players_topscorers  status
+```
+
+### 五、数据流向
+
+```
+API-Football ──(billed, 审计到 api_call)──► raw/*.json (原始)
+                                              │
+                                              └─► 解析 + 幂等 upsert ─► wc.db (真相源)
+                                                                         │
+                                  ops/*_export.py 计算导出 ◄─────────────┘
+                                                │
+                                data/output/*.json + *.pdf
+                                                │  (live_refresh 镜像)
+                                public/data/*.json ──(Cloudflare tunnel)──► someopark.web.app
+```
+
+### 六、版本库 vs 本地（`.gitignore`）
+
+- **入库**:只有代码 + `data/priors/`(手工种子)。
+- **不入库(纯本地)**:`wc.db`、`data/output/`、`data/raw/`、`data/logs/`、`.env`、`*.pem` / `*.key`。
+- **备份**:核心是 `wc.db` 一个文件(其余都能从它重算,`raw/` 仅作回放/审计)。
 
 ---
 
@@ -288,7 +375,7 @@ conda run -n someopark_run --no-capture-output python -m prediction_market.model
 conda run -n someopark_run --no-capture-output python -m pytest prediction_market/tests/ -q
 ```
 
-133 passing：先验校验、Dixon‑Coles、强度标定、锦标赛/金靴分布、in‑play、校准、OOS、集成、de‑vig/edge/sizing、风控、跨场套利、订单翻译、场所守卫、Kalshi 签名/盘口解析、数据层（store/预算/解析）、运维报告（performance/risk 报告 + PDF 渲染 + 前端 export 合约）、**每合约 ¢ 体系**（pricing 换算/历史采样/candlestick 解析/夺冠¢映射/里程碑捕获幂等+GRACE 窗/milestone 导出/PnL¢ 对账），以及 **alt-data 层**（对手加权 form PIT/默认零权重 no-op 不变 prod/clip 有界/价格轨迹↔bet log 对账一致）。
+162 passing：先验校验、Dixon‑Coles、强度标定、锦标赛/金靴分布、in‑play、校准、OOS、集成、de‑vig/edge/sizing、风控、跨场套利、订单翻译、场所守卫、Kalshi 签名/盘口解析、数据层（store/预算/解析）、运维报告（performance/risk 报告 + PDF 渲染 + 前端 export 合约）、**每合约 ¢ 体系**（pricing 换算/历史采样/candlestick 解析/夺冠¢映射/里程碑捕获幂等+GRACE 窗/milestone 导出/PnL¢ 对账）、**alt-data 层**（对手加权 form PIT/默认零权重 no-op 不变 prod/clip 有界/价格轨迹↔bet log 对账一致），以及 **8 个数据挖掘盘中战术**（闷平爆发/临门修正/应得未得/无效控球/阵型脆弱/单点失效/晚段进球/庄家交叉验证，各含正例+反例,锚定真实比赛）。
 
 ---
 

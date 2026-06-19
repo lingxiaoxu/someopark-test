@@ -82,10 +82,31 @@ CREATE TABLE IF NOT EXISTS fixture_stats (
     raw_json TEXT, fetched_at TEXT,
     PRIMARY KEY (fixture_api_id, team_api_id)
 );
+CREATE TABLE IF NOT EXISTS price_tick (
+    -- per-minute (or finer) market price path per outcome, from Polymarket Global
+    -- prices-history. `rel_min` = minutes since kickoff (negative = pre-match). Enables
+    -- fine-grained exit-timing / cash-out research beyond the 7 milestone checkpoints.
+    fixture_api_id INTEGER, side TEXT, ts INTEGER, rel_min INTEGER, price REAL,
+    venue TEXT DEFAULT 'poly_global',
+    PRIMARY KEY (fixture_api_id, side, ts)
+);
 CREATE TABLE IF NOT EXISTS lineup (
     fixture_api_id INTEGER, team_api_id INTEGER, formation TEXT, coach TEXT,
     raw_json TEXT, fetched_at TEXT,
     PRIMARY KEY (fixture_api_id, team_api_id)
+);
+CREATE TABLE IF NOT EXISTS fixture_player_stats (
+    fixture_api_id INTEGER, team_api_id INTEGER, player_api_id INTEGER,
+    player_name TEXT, position TEXT, is_starter INTEGER, captain INTEGER,
+    minutes INTEGER, rating REAL,
+    shots_total INTEGER, shots_on INTEGER, goals INTEGER, assists INTEGER,
+    passes_total INTEGER, passes_key INTEGER, pass_accuracy INTEGER,
+    dribbles_attempts INTEGER, dribbles_success INTEGER,
+    duels_total INTEGER, duels_won INTEGER,
+    tackles INTEGER, interceptions INTEGER,
+    fouls_drawn INTEGER, fouls_committed INTEGER, offsides INTEGER,
+    raw_json TEXT, fetched_at TEXT,
+    PRIMARY KEY (fixture_api_id, player_api_id)
 );
 CREATE TABLE IF NOT EXISTS injury (
     fixture_api_id INTEGER, team_api_id INTEGER, player_api_id INTEGER,

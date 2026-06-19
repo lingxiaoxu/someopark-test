@@ -12,6 +12,7 @@ milestones (`home_team_id`/`away_team_id`); used where titles are ambiguous.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from prediction_market.ingest.prior_ingest import canonical_team_name, load_prior, team_id
@@ -24,6 +25,7 @@ PROD_PUBLIC = "https://api.elections.kalshi.com/trade-api/v2"
 CHAMPION_SERIES = "KXMENWORLDCUP"
 GOLDEN_BOOT_SERIES = "KXWCGOALLEADER"
 MATCH_SERIES = "KXWCGAME"        # single-match 3-way (home / draw=Tie / away)
+TOTALS_SERIES = "KXWCTOTAL"      # single-match total goals (YES = Over N.5; markets per line)
 
 
 @dataclass(frozen=True)
@@ -103,6 +105,51 @@ class KalshiDiscovery:
                                 for tid, t in entry["teams"].items()}
         out["draw"] = q(entry["tie"])
         return out
+
+    def totals_index(self) -> dict[frozenset, dict]:
+        """{frozenset(team_id, team_id): {lines:{line: ticker}, event}} for KXWCTOTAL.
+
+        Each event ("Jordan vs Argentina: Total Goals") has one market per Over line
+        (floor_strike = 0.5/1.5/2.5/…; YES = Over). Team pair parsed from the event
+        title. Cached per instance."""
+        if getattr(self, "_ti", None) is not None:
+            return self._ti
+        idx: dict[frozenset, dict] = {}
+        for ev in self.md.list_events(TOTALS_SERIES, status="open"):
+            title = ev.get("title") or ""             # "Jordan vs Argentina: Total Goals"
+            head = title.split(":")[0]
+            parts = re.split(r"\s+vs\.?\s+", head, flags=re.IGNORECASE)
+            if len(parts) != 2:
+                continue
+            t1 = team_id(canonical_team_name(parts[0].strip()))
+            t2 = team_id(canonical_team_name(parts[1].strip()))
+            if not (t1 in self._team_ids and t2 in self._team_ids):
+                continue
+            lines: dict[float, str] = {}
+            for m in ev.get("markets", []):
+                fs = m.get("floor_strike")
+                if fs is not None:
+                    lines[float(fs)] = m["ticker"]
+            if lines:
+                idx[frozenset({t1, t2})] = {"lines": lines, "event": ev.get("event_ticker")}
+        self._ti = idx
+        return idx
+
+    def totals_quotes(self, home_id: str, away_id: str, line: float = 2.5) -> dict[str, dict] | None:
+        """{over/under: {'ask','bid'}} for a match's total-goals line (None if no market).
+
+        YES = Over `line`; Under is the NO side (complement of the YES book)."""
+        entry = self.totals_index().get(frozenset({home_id, away_id}))
+        if not entry or line not in entry["lines"]:
+            return None
+        ob = self.orderbook(entry["lines"][line])
+        over_ask = float(ob.yes_ask) if ob.yes_ask is not None else None
+        over_bid = float(ob.yes_bid) if ob.yes_bid is not None else None
+        # NO (Under) prices are the complement of the YES (Over) book.
+        under_ask = (1.0 - over_bid) if over_bid is not None else None
+        under_bid = (1.0 - over_ask) if over_ask is not None else None
+        return {"over": {"ask": over_ask, "bid": over_bid},
+                "under": {"ask": under_ask, "bid": under_bid}}
 
 
 if __name__ == "__main__":

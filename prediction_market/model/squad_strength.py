@@ -125,14 +125,31 @@ def squad_adjusted_ratings(sm, idx: dict[str, SquadSummary], weight: float):
     return StrengthModel(ratings=new, sigma=dict(sm.sigma), host_ids=sm.host_ids, cfg=sm.cfg)
 
 
-def build_strength_live(conn, prior=None, cfg=None):
+def build_strength_live(conn, prior=None, cfg=None, *, as_of: str | None = None, xg_form: bool = False):
     """The LIVE strength model: base ratings (prior + structural params) with the
     squad-strength AND recent-form blends applied (cfg.squad_blend_weight /
     cfg.form_blend_weight; 0 ⇒ off). Single entry point so every user-facing export
-    uses the same model."""
-    from prediction_market.model.strength import build_strength
+    uses the same model.
+
+    ``as_of`` (ISO ts) makes the recent-form blends POINT-IN-TIME: only data strictly
+    before it contributes (``None`` ⇒ all data, correct for an upcoming/live match).
+    This matters because nt_recent carries PROJECTED WC results, so a historical/backtest
+    caller MUST pass as_of=kickoff or the form blend leaks the match's own later results.
+
+    ``xg_form`` opt-in (PIT/live prediction paths only) applies the xG-form alpha
+    (cfg.xg_form_blend_weight). It is OFF by default so the param sweep / calibration —
+    which score one model across ALL settled matches — can never leak a match's own xG.
+    """
+    from prediction_market.model.strength import StrengthModel, build_strength
     cfg = cfg or CONFIG.model
     sm = build_strength(prior, cfg)
+    # Tournament-long host rating boost (prior-driven; host identity known a priori → no
+    # leak). Applied before the data blends so it composes with squad/form/xG nudges.
+    hb = getattr(cfg, "host_rating_boost", 0.0)
+    if hb and sm.host_ids:
+        b = sm.cfg.rating_bound
+        nw = {t: (max(-b, min(b, r + hb)) if t in sm.host_ids else r) for t, r in sm.ratings.items()}
+        sm = StrengthModel(ratings=nw, sigma=dict(sm.sigma), host_ids=sm.host_ids, cfg=sm.cfg)
     if conn is None:
         return sm
     sw = getattr(cfg, "squad_blend_weight", 0.0)
@@ -145,7 +162,14 @@ def build_strength_live(conn, prior=None, cfg=None):
     if fw:
         try:
             from prediction_market.model.form_strength import form_adjusted_ratings, form_index
-            sm = form_adjusted_ratings(sm, form_index(conn), fw)
+            sm = form_adjusted_ratings(sm, form_index(conn, as_of=as_of), fw)
+        except Exception:
+            pass
+    xw = getattr(cfg, "xg_form_blend_weight", 0.0)
+    if xg_form and xw:
+        try:
+            from prediction_market.model.xg_form import xg_form_adjusted_ratings, xg_form_index
+            sm = xg_form_adjusted_ratings(sm, xg_form_index(conn, as_of=as_of), xw)
         except Exception:
             pass
     cw = getattr(cfg, "fc_blend_weight", 0.0)
@@ -162,7 +186,10 @@ def build_strength_live(conn, prior=None, cfg=None):
         try:
             from dataclasses import replace as _replace
             from prediction_market.model.altdata_adjust import altdata_index
-            sm = _replace(sm, adj=altdata_index(conn, sm.ratings))
+            # as_of-cut so the opponent-adjusted alt-data is POINT-IN-TIME (it was a leak:
+            # without as_of it used a team's later/own matches). Historical/backtest callers
+            # MUST pass as_of=kickoff; live callers pass None (= all data, correct).
+            sm = _replace(sm, adj=altdata_index(conn, sm.ratings, as_of=as_of))
         except Exception:
             pass
     return sm

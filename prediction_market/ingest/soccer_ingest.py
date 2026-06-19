@@ -202,8 +202,13 @@ def sync_results(api: ApiFootball, conn, *, force: bool = False) -> int:
     for item in detailed:
         _store_detailed(conn, item)
     conn.commit()
-    print(f"[results] pulled events for {len(detailed)} newly-finished fixtures "
-          f"(batched from {len(ids)} ids)")
+    # Backfill the intra-game tables for the just-finished fixtures so the historical
+    # study + tactics stay complete (each is final once the match ends).
+    sync_fixture_stats(api, conn, ids)
+    sync_lineups(api, conn, ids)
+    sync_fixture_players(api, conn, ids)
+    print(f"[results] pulled events + stats + lineups + player stats for {len(detailed)} "
+          f"newly-finished fixtures (batched from {len(ids)} ids)")
     return len(detailed)
 
 
@@ -223,9 +228,20 @@ def sync_live(api: ApiFootball, conn) -> int:
     for item in detailed:
         _store_detailed(conn, item)
     conn.commit()
-    # Also capture live team stats (xG, shots) for the momentum tactic (plan 03 §4b).
+    # Also capture live team stats (xG, shots, possession) for the momentum / dormant /
+    # possession-trap tactics (plan 03 §4b; 26-match study).
     sync_fixture_stats(api, conn, ids)
-    print(f"[live] {len(detailed)} fixture(s) in play, events + xG refreshed")
+    # Formations publish ~40' pre-kickoff and are final once live → pull once per fixture
+    # for the formation-fragility tactic (skip ids we already stored).
+    have_lineup = {r["fixture_api_id"] for r in conn.execute(
+        "SELECT DISTINCT fixture_api_id FROM lineup WHERE fixture_api_id IN ({})".format(
+            ",".join("?" * len(ids))), ids)} if ids else set()
+    sync_lineups(api, conn, [i for i in ids if i not in have_lineup])
+    # Live per-player stats (shot shares) for the lone-threat tactic; refreshes each poll.
+    sync_fixture_players(api, conn, ids)
+    # In-play bookmaker odds (third price source for the live-odds cross-val tactic).
+    sync_live_odds(api, conn, ids)
+    print(f"[live] {len(detailed)} fixture(s) in play, events + xG + lineups + player stats + odds refreshed")
     return len(detailed)
 
 
@@ -381,6 +397,127 @@ def sync_fixture_stats(api: ApiFootball, conn, fixture_ids: list[int]) -> int:
     return pulled
 
 
+def _num(v):
+    """API-Football stat values are str/int/None/'45%'. Coerce to number or None."""
+    if v is None:
+        return None
+    if isinstance(v, (int, float)):
+        return v
+    try:
+        return float(str(v).replace("%", "").strip())
+    except ValueError:
+        return None
+
+
+def sync_lineups(api: ApiFootball, conn, fixture_ids: list[int]) -> int:
+    """Per-fixture formations + starting XI + coach (one request per fixture).
+
+    Lineups publish ~40 min before kickoff and are FINAL once the match starts,
+    so a finished fixture only needs to be pulled once (idempotent upsert)."""
+    pulled = 0
+    for fid in fixture_ids:
+        try:
+            res = api.lineups(fid)
+        except BudgetExceededError as e:
+            print(f"[lineups] stopping early: {e}")
+            break
+        for block in res:
+            team = block.get("team") or {}
+            coach = block.get("coach") or {}
+            store.upsert(conn, "lineup", {
+                "fixture_api_id": fid, "team_api_id": team.get("id"),
+                "formation": block.get("formation"), "coach": coach.get("name"),
+                "raw_json": store.json.dumps(block, ensure_ascii=False), "fetched_at": store.utcnow(),
+            }, pk=["fixture_api_id", "team_api_id"])
+        if res:
+            pulled += 1
+    conn.commit()
+    print(f"[lineups] pulled formations for {pulled} fixtures")
+    return pulled
+
+
+def sync_fixture_players(api: ApiFootball, conn, fixture_ids: list[int]) -> int:
+    """Per-player per-match statistics (rating/shots/passes/dribbles/duels/tackles/
+    fouls) — the richest intra-game source, previously never pulled. One request
+    per fixture. Final once the match ends, so each fixture is pulled once."""
+    pulled = 0
+    for fid in fixture_ids:
+        try:
+            res = api.fixture_players(fid)
+        except BudgetExceededError as e:
+            print(f"[fixture_players] stopping early: {e}")
+            break
+        n_rows = 0
+        for block in res:
+            team = block.get("team") or {}
+            for p in block.get("players") or []:
+                player = p.get("player") or {}
+                st = (p.get("statistics") or [{}])[0]
+                games = st.get("games") or {}
+                shots = st.get("shots") or {}
+                goals = st.get("goals") or {}
+                passes = st.get("passes") or {}
+                dribbles = st.get("dribbles") or {}
+                duels = st.get("duels") or {}
+                tackles = st.get("tackles") or {}
+                fouls = st.get("fouls") or {}
+                store.upsert(conn, "fixture_player_stats", {
+                    "fixture_api_id": fid, "team_api_id": team.get("id"),
+                    "player_api_id": player.get("id"), "player_name": player.get("name"),
+                    "position": games.get("position"),
+                    "is_starter": 0 if games.get("substitute") else 1,
+                    "captain": 1 if games.get("captain") else 0,
+                    "minutes": games.get("minutes"), "rating": _num(games.get("rating")),
+                    "shots_total": shots.get("total"), "shots_on": shots.get("on"),
+                    "goals": goals.get("total"), "assists": goals.get("assists"),
+                    "passes_total": passes.get("total"), "passes_key": passes.get("key"),
+                    "pass_accuracy": _num(passes.get("accuracy")),
+                    "dribbles_attempts": dribbles.get("attempts"), "dribbles_success": dribbles.get("success"),
+                    "duels_total": duels.get("total"), "duels_won": duels.get("won"),
+                    "tackles": tackles.get("total"), "interceptions": tackles.get("interceptions"),
+                    "fouls_drawn": fouls.get("drawn"), "fouls_committed": fouls.get("committed"),
+                    "offsides": st.get("offsides"),
+                    "raw_json": store.json.dumps(p, ensure_ascii=False), "fetched_at": store.utcnow(),
+                }, pk=["fixture_api_id", "player_api_id"])
+                n_rows += 1
+        if n_rows:
+            pulled += 1
+    conn.commit()
+    print(f"[fixture_players] pulled per-player match stats for {pulled} fixtures")
+    return pulled
+
+
+def sync_injuries(api: ApiFootball, conn, *, force: bool = False) -> int:
+    """Squad injuries/suspensions for the tournament (one league+season request).
+
+    Coverage-gated: WC 2026 may not populate injuries until closer to matches; a
+    clean-but-empty response is still recorded via the watermark so we don't re-pull."""
+    if not force and store.is_fresh(conn, "injury", CONFIG.soccer.ttl_h2h):
+        print("[injury] fresh — skipped (0 requests)")
+        return 0
+    try:
+        res = api.injuries(league=LEAGUE, season=SEASON)
+    except BudgetExceededError as e:
+        print(f"[injury] stopping early: {e}")
+        return 0
+    n = 0
+    for it in res:
+        fx = it.get("fixture") or {}
+        team = it.get("team") or {}
+        player = it.get("player") or {}
+        store.upsert(conn, "injury", {
+            "fixture_api_id": fx.get("id"), "team_api_id": team.get("id"),
+            "player_api_id": player.get("id"),
+            "type": player.get("type"), "reason": player.get("reason"),
+            "raw_json": store.json.dumps(it, ensure_ascii=False), "fetched_at": store.utcnow(),
+        }, pk=["fixture_api_id", "player_api_id"])
+        n += 1
+    store.set_watermark(conn, "injury", note=f"{n} injury rows")
+    conn.commit()
+    print(f"[injury] pulled {n} injury/suspension rows")
+    return n
+
+
 def sync_predictions(api: ApiFootball, conn, *, limit: int = 5, force: bool = False) -> int:
     """Algorithmic predictions for the next `limit` upcoming fixtures (reference, 02 §2b).
 
@@ -455,6 +592,65 @@ def sync_odds(api: ApiFootball, conn, *, limit: int = 5, force: bool = False,
         pulled += 1
     conn.commit()
     print(f"[odds] pulled odds for {pulled} upcoming fixtures")
+    return pulled
+
+
+def sync_live_odds(api: ApiFootball, conn, fixture_ids: list[int] | None = None) -> int:
+    """In-play bookmaker 1X2 odds → de-vigged consensus into match_odds (bookmaker tag
+    'live_consensus'), the third price source for the live-odds cross-validation tactic.
+
+    Defensive: the live-odds envelope differs from pre-match (bet name 'Fulltime Result'
+    or 'Match Winner'; values Home/Draw/Away or 1/X/2). Anything unparseable is skipped,
+    never raised — a clean miss must not break the live poll."""
+    try:
+        res = api.odds_live(league=LEAGUE) if not fixture_ids else \
+            [b for fid in fixture_ids for b in api.odds_live(fixture=fid)]
+    except BudgetExceededError as e:
+        print(f"[live_odds] stopping early: {e}")
+        return 0
+    except Exception as e:  # in-play odds is best-effort; never break the poll
+        print(f"[live_odds] skipped ({type(e).__name__}: {e})")
+        return 0
+    pulled = 0
+    for entry in res:
+        fid = (entry.get("fixture") or {}).get("id")
+        if fid is None:
+            continue
+        # Collect Match-Winner-equivalent across odds blocks; average de-vigged probs.
+        probs = []
+        for od in entry.get("odds", []):
+            name = (od.get("name") or "")
+            if name not in ("Match Winner", "Fulltime Result", "1X2"):
+                continue
+            vals = {}
+            for v in od.get("values", []):
+                key = str(v.get("value"))
+                odd = v.get("odd")
+                if odd in (None, "", "0"):
+                    continue
+                key = {"1": "Home", "X": "Draw", "2": "Away"}.get(key, key)
+                try:
+                    vals[key] = float(odd)
+                except (TypeError, ValueError):
+                    continue
+            if {"Home", "Draw", "Away"} <= set(vals):
+                inv = {k: 1.0 / vals[k] for k in ("Home", "Draw", "Away")}
+                s = sum(inv.values())
+                probs.append((inv["Home"] / s, inv["Draw"] / s, inv["Away"] / s, s - 1.0))
+        if not probs:
+            continue
+        ph = sum(p[0] for p in probs) / len(probs)
+        pd = sum(p[1] for p in probs) / len(probs)
+        pa = sum(p[2] for p in probs) / len(probs)
+        ov = sum(p[3] for p in probs) / len(probs)
+        store.upsert(conn, "match_odds", {
+            "fixture_api_id": fid, "bookmaker": "live_consensus",
+            "p_home": ph, "p_draw": pd, "p_away": pa, "overround": ov,
+            "raw_json": store.json.dumps(entry, ensure_ascii=False)[:20000], "fetched_at": store.utcnow(),
+        }, pk=["fixture_api_id", "bookmaker"])
+        pulled += 1
+    conn.commit()
+    print(f"[live_odds] refreshed in-play 1X2 consensus for {pulled} fixtures")
     return pulled
 
 

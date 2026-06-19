@@ -167,6 +167,13 @@ class ApiFootball:
     def lineups(self, fixture_id: int) -> list:
         return self.get("fixtures/lineups", {"fixture": fixture_id}, paginate=False)
 
+    def fixture_players(self, fixture_id: int) -> list:
+        """Per-player per-match statistics (rating, shots, passes, dribbles, duels,
+        tackles, fouls). One request per fixture; the richest intra-game source —
+        previously never pulled. Returns the per-team `response` blocks, each with
+        a `players` list carrying a single-element `statistics` array."""
+        return self.get("fixtures/players", {"fixture": fixture_id}, paginate=False)
+
     def head_to_head(self, h2h: str, **params) -> list:
         return self.get("fixtures/headtohead", {"h2h": h2h, **params}, paginate=False)
 
@@ -178,6 +185,12 @@ class ApiFootball:
 
     def odds(self, fixture_id: int) -> list:
         return self.get("odds", {"fixture": fixture_id}, paginate=False)
+
+    def odds_live(self, **params) -> list:
+        """In-play bookmaker odds (Odds In-Play). One call returns every live fixture's
+        current odds; optionally filter by `fixture=` / `league=`. Used as an independent
+        third price source for the live-odds cross-validation tactic."""
+        return self.get("odds/live", params, paginate=False)
 
     def players(self, **params) -> list:
         return self.get("players", params, paginate=True)

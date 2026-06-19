@@ -26,6 +26,28 @@ order-of-magnitude from football analytics; exact point-jumps are model-computed
 - **Knockout late-draw** — level + late + KNOCKOUT → back the 90' draw (terminal paying outcome +
   teams play for extra time) — the opposite sign to a league late-draw.
 
+## Data-mined tactics (our own 26-match study — see INPLAY_FINDINGS.md)
+Eight tactics added from the API-Football intra-game study of the first 26 WC fixtures
+(xG, per-player stats, formations, event timing). Each is grounded in a recurring,
+re-derivable pattern, not an anecdote (validated by `ops/_validate_signals.py`):
+- **dormant_explosion** — quiet scoreline (≤1 goal) near HT WITH chances already created
+  (high combined live xG) → back the OVER. (HT-quiet WC matches: 16/18 saw a 2H goal; the
+  6 HT-goalless erupted 6/6, avg 3.0 2H goals; xG filter skips the 1 sterile case, Ghana.)
+- **finishing_uplift_over** — WC finishing beats xG (goals−xG = +0.87, median +0.70); the
+  pure-Poisson model under-prices the OVER → re-price with the empirical uplift.
+- **xg_dominance_chase** — a side out-creating by ≥1.0 xG while NOT ahead is held back by
+  variance that reverts → back it. (SUI 3.2, ESP 2.1, URU 1.7 all dominated xG yet drew.)
+- **possession_trap_fade** — sterile control (≥58% possession, ≤0.8 xG) is not scoreboard
+  value → fade it. (NED, PAN, POR all hoarded the ball without creating and failed to win.)
+- **formation_fragility** — back-three/stretched shapes leak: 5-3-2 conceded 3.5/g, 3-4-2-1
+  2.2/g vs 4-2-3-1's 1.27 → one-sided fragile lineup leans OVER / the solid side's attack.
+- **lone_threat_removed** — a team whose shots funnel through ONE player (≥50% share: Messi
+  60%, Haaland 56%, Ronaldo 60%) collapses when he is subbed off / sent off → fade it.
+- **late_goal_bias** — 34% of WC goals land at 75'+, 59% in the 2H → don't lock UNDER early;
+  back the late goal while the game is live with chances expected.
+- **live_odds_crossval** — API-Football in-play bookmaker 1X2 as an independent third price
+  source; when the sharp book leads the model / the venue lags both → earlier entry.
+
 ## Key research findings (to encode next)
 1. **Two opposing clocks**: goal→win-prob impact RISES with minute; goal→Overs impact FALLS.
 2. **Goal by who/when/state**: favourite scores 1-0 → +18–22 win pts; underdog scores → +25–30

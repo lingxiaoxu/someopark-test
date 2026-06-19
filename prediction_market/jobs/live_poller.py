@@ -126,7 +126,8 @@ def _live_quote_sources(conn) -> dict:
     try:
         from prediction_market.venues.kalshi.discovery import KalshiDiscovery
         d = KalshiDiscovery()
-        d.match_index()   # warm the event→market cache once per poll
+        d.match_index()    # warm the 3-way event→market cache once per poll
+        d.totals_index()   # warm the KXWCTOTAL over/under cache once per poll
 
         def kalshi_q(fixture_id: int) -> dict:
             fx = conn.execute("SELECT home_api_id, away_api_id FROM fixture WHERE api_id=?",
@@ -134,7 +135,14 @@ def _live_quote_sources(conn) -> dict:
             hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
             return (d.match_quotes(hi, ai) or {}) if (hi and ai) else {}
 
+        def kalshi_totals_q(fixture_id: int) -> dict:
+            fx = conn.execute("SELECT home_api_id, away_api_id FROM fixture WHERE api_id=?",
+                              (fixture_id,)).fetchone()
+            hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
+            return (d.totals_quotes(hi, ai) or {}) if (hi and ai) else {}
+
         sources["kalshi"] = kalshi_q
+        sources["kalshi_totals"] = kalshi_totals_q
     except Exception as e:
         log.warning("Kalshi match quotes unavailable: %s", e)
 
@@ -146,16 +154,25 @@ def _live_quote_sources(conn) -> dict:
         ud = PolymarketUSDiscovery()
         ud.code_map()   # warm once
 
-        def us_q(fixture_id: int) -> dict:
+        def _et_date(fixture_id: int):
             fx = conn.execute("SELECT home_api_id, away_api_id, kickoff_ts FROM fixture WHERE api_id=?",
                               (fixture_id,)).fetchone()
             hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
             if not (hi and ai and fx["kickoff_ts"]):
-                return {}
+                return None, None, None
             et = datetime.fromisoformat(fx["kickoff_ts"]).astimezone(ZoneInfo("America/New_York")).date().isoformat()
-            return ud.match_quotes(hi, ai, et) or {}
+            return hi, ai, et
+
+        def us_q(fixture_id: int) -> dict:
+            hi, ai, et = _et_date(fixture_id)
+            return (ud.match_quotes(hi, ai, et) or {}) if et else {}
+
+        def us_totals_q(fixture_id: int) -> dict:
+            hi, ai, et = _et_date(fixture_id)
+            return (ud.totals_quotes(hi, ai, et) or {}) if et else {}
 
         sources["poly_us"] = us_q
+        sources["poly_us_totals"] = us_totals_q
     except Exception as e:
         log.warning("Polymarket US match quotes unavailable: %s", e)
     return sources

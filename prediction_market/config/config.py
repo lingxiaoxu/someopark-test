@@ -67,6 +67,12 @@ class ModelConfig:
     rating_bound: float = 2.5      # clip calibrated ratings to [-bound, +bound]
     home_adv: float = 0.25         # applied only to host nations on home soil
     host_nations: tuple[str, ...] = ("United States", "Mexico", "Canada")
+    # Tournament-long host rating boost (on TOP of the per-match home_adv): WC hosts
+    # historically OVER-perform their ratings (crowd, familiarity, travel, refereeing —
+    # every host except RSA 2010 / QAT 2022 reached ≥ R16). This is a PRIOR-driven nudge,
+    # NOT fit to the small in-sample host set (which is only weakly consistent). Applied a
+    # priori in build_strength_live (PIT-safe; host identity is known before any match).
+    host_rating_boost: float = 0.15
 
     # Group round-3 qualification-incentive adjustments (plan 03 §3): teams that
     # have effectively clinched rotate (lower intensity); teams facing
@@ -110,6 +116,15 @@ class ModelConfig:
     # top-16 FC overall — a clean, current talent anchor complementary to FIFA rank
     # (results) and the squad club-form blend. Tuned by the param sweep. 0 = off.
     fc_blend_weight: float = 0.12
+
+    # xG-form blend (alpha from the API-Football match-stats pull): nudge ratings by the
+    # z-scored net-xG/game from each team's PRIOR WC matches — a lower-noise predictor than
+    # the scoreline. Weight set from the WALK-FORWARD study (ops/_xg_alpha_research: OOS
+    # Brier 0.604→0.600 at 0.15, monotone improving; goals-form did NOT help), NOT the
+    # in-sample sweep — so it can't be over-fit. Applied ONLY in PIT/live prediction paths
+    # (build_strength_live(..., xg_form=True, as_of=kickoff)); never in the sweep/calibration
+    # so a match never sees its own or later xG. 0 = off.
+    xg_form_blend_weight: float = 0.15
 
     # ── Alternative-data λ adjustments (plan 19) ──────────────────────────────
     # Each is a SMALL, BOUNDED, parameter-controlled multiplier on the Dixon-Coles
@@ -285,10 +300,26 @@ class DecisionConfig:
     kelly_ref: float = 0.40       # quarter-Kelly fraction that saturates the edge component
     form_ref: float = 1.0         # form z that saturates the form component
 
+    # Base net-edge threshold for the PRE-MATCH decision (separate from the in-play
+    # risk.min_net_edge=0.03). Lowered to 0.02 because the smart-exit cash-out PROTECTS
+    # marginal bets (sell the over-reaction before a settlement loss) — so we don't need
+    # as much pre-match edge. PIT-validated (ops threshold sweep): 0.03→0.02 cut no-bets
+    # 9→5 and lifted realised PnL +302→+448¢ (ROI 16.8→20.4%), robust across 0.02–0.01.
+    min_net_edge: float = 0.02
     # Favourite–longshot bias: longshots are systematically overpriced (arXiv 1710.02824),
     # so a sub-threshold-cents pick must clear EXTRA edge (or it's skipped).
     longshot_cents: float = 15.0
     longshot_extra_theta: float = 0.05
+
+    # Draw discipline: the draw edge in the early group stage is a REGIME-SPECIFIC,
+    # mean-reverting effect (teams play not to lose; full-time draws are far rarer in
+    # knockouts). The model is well-calibrated on draws in-sample (it predicts ~26% vs
+    # 38% realised, i.e. under, not over), so we do NOT distort the model — instead a
+    # draw pick must clear EXTRA net-edge before we stake it. This trims the lowest-
+    # conviction draws (cutting draw-bet frequency) while keeping the high-edge ones.
+    # Tuned by the PIT sweep in ops/_diag_draw_bias (draw bets 45%→37% at 0.06 with no
+    # win-rate loss; the trimmed draws are the lowest-edge ones). See README plan 20.
+    draw_extra_theta: float = 0.06
 
 
 @dataclass(frozen=True)

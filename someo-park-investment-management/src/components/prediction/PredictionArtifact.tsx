@@ -10,7 +10,7 @@ import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
   getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
-  getWCMilestoneMarks, getWCSchedule, getWCReachRound, API_BASE,
+  getWCMilestoneMarks, getWCSchedule, getWCReachRound, getWCStyles, API_BASE,
 } from '../../lib/api';
 import { useState } from 'react';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
@@ -338,6 +338,9 @@ function renderOppReason(o: any, tr: (k: string, opts?: any) => string): string 
   const a: any = { ...(o.reason_args || {}) };
   if (a.side) a.side = tr('prediction.side.' + a.side, { defaultValue: a.side });
   if (a.carded) a.carded = tr('prediction.side.' + a.carded, { defaultValue: a.carded });
+  // Data-mined tactics carry secondary side enums (the side to back / attack) — localize too.
+  if (a.opp) a.opp = tr('prediction.side.' + a.opp, { defaultValue: a.opp });
+  if (a.attack) a.attack = tr('prediction.side.' + a.attack, { defaultValue: a.attack });
   a.basisSuffix = a.basis && a.basis !== 'aligned'
     ? ' (' + tr('prediction.favBasis.' + a.basis, { defaultValue: a.basis }) + ')' : '';
   let s = tr('prediction.reason.' + o.reason_key, { ...a, defaultValue: o.reason || '' });
@@ -431,51 +434,73 @@ function PerformanceCard() {
   );
 }
 
-// Production track record: flat 1u on our predicted outcome every match since the
-// opener, settled at the closing book odds — what we predicted, bet, and the result.
+// Bet log with 3 SELF-CONSISTENT modes so each口径 is unambiguous:
+//   cashout — decision bet + smart-exit cash-out (the REAL strategy). "Exit" column shows
+//             when/at what price we sold the over-reaction, OR settled W/L; ¢ is realised.
+//   hold    — same picks held to settlement (reference).
+//   argmax  — bet the most-likely side every match (the old naive rule, reference).
 function BetLog({ data }: { data: any }) {
   const { t: tr } = useTranslation();
   const log: any[] = data?.bet_log ?? [];
+  const [mode, setMode] = useState<'cashout' | 'hold' | 'argmax'>('cashout');
   if (!log.length) return null;
-  const pnl = data?.pnl_units ?? 0;
-  const pnlColor = pnl > 0 ? 'var(--success)' : pnl < 0 ? 'var(--error)' : 'var(--ink)';
   const sideLabel = (b: any) => (b.pick === 'draw' ? tr('prediction.drawResult') : tCountry(b.pick_team));
   const argmaxLabel = (b: any) => (b.model_pick === 'draw' ? tr('prediction.drawResult') : tCountry(b.model_pick_team));
+  const wl = (won: boolean) => <span style={{ color: won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>;
+  const cVal = (v: number | null | undefined): ReactNode => v == null ? '—' : <span style={{ color: v >= 0 ? 'var(--success)' : 'var(--error)' }}>{v >= 0 ? '+' : ''}{cc(v)}</span>;
+  const matchup = (b: any) => `${tCountry(b.home)} ${b.score} ${tCountry(b.away)}`;
+
+  const tab = (m: typeof mode, label: string) => (
+    <button key={m} onClick={() => setMode(m)} style={{ padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: mode === m ? 700 : 400, color: mode === m ? 'var(--text-primary)' : 'var(--text-muted)', background: mode === m ? 'var(--bg-tertiary)' : 'transparent', border: `1px solid ${mode === m ? 'var(--accent-primary)' : 'var(--border-subtle)'}`, borderRadius: 4, cursor: 'pointer', marginRight: 6 }}>{label}</button>
+  );
+
+  // Unified headline format across all 3 modes: <record W-L> · <PnL¢> · <context>.
+  const hl = (record: string, pnl: number, context: ReactNode) =>
+    <><b>{record}</b> · {cVal(pnl)} · <span style={{ color: 'var(--text-muted)' }}>{context}</span></>;
+  const nb = data.n_decision_bets ?? log.length;
+  const headline = (): ReactNode => {
+    if (mode === 'cashout') return hl(data.realized_record, data.realized_pnl_cents_total, <>{nb} {tr('prediction.lblBets')} · {data.n_smart_sold ?? 0} {tr('prediction.lblCashedOut')}</>);
+    if (mode === 'hold') return hl(data.hold_record || data.pnl_record, data.hold_pnl_cents_total, <>{nb} {tr('prediction.lblBets')} · {data.n_skipped ?? 0} {tr('prediction.lblSkipped')}</>);
+    return hl(data.argmax_record, data.argmax_pnl_cents_total, <>{log.length} {tr('prediction.lblMatchesAll')} · {tr('prediction.lblModelAcc')} {pct(data.model_pred_accuracy, 0)}</>);
+  };
+  const note = (): string => mode === 'cashout'
+    ? tr('prediction.noteCashout', { entry: cc(data.avg_entry_cents), clv: ((data.avg_clv_cents ?? 0) >= 0 ? '+' : '') + cc(data.avg_clv_cents) })
+    : mode === 'hold' ? tr('prediction.noteHold') : tr('prediction.noteArgmax');
+
+  const cols = mode === 'argmax'
+    ? [tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colRealizedC'), 'Cum¢']
+    : mode === 'cashout'
+      ? [tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colExit'), tr('prediction.colEntryC'), tr('prediction.colRealizedC'), 'Cum¢']
+      : [tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colPnlC'), 'Cum¢'];
+
+  const muted = (x: ReactNode) => <span style={{ color: 'var(--text-muted)' }}>{x}</span>;
+  const rows = log.map((b: any) => {
+    if (mode === 'argmax')
+      return [b.date?.slice(5), matchup(b), argmaxLabel(b), wl(b.model_won), cc(b.argmax_entry_cents), cVal(b.argmax_pnl_cents), cVal(b.argmax_cum_pnl_cents)];
+    if (b.bet === false) {
+      const base = [b.date?.slice(5), matchup(b), muted(tr('prediction.noBetShort')), muted('$0')];
+      return mode === 'cashout' ? [...base, muted('—'), '—', '—', '—'] : [...base, muted('—'), '—', '—', '—'];
+    }
+    if (mode === 'cashout') {
+      const se = b.smart_exit;
+      const exit = se
+        ? <span style={{ color: se.pnl_c >= 0 ? 'var(--success)' : 'var(--error)' }}>{tr('prediction.smartExitSold', { min: se.sold_min, c: Math.round(se.sold_c) })}</span>
+        : <span style={{ color: b.won ? 'var(--success)' : 'var(--error)' }}>{tr(b.won ? 'prediction.exitSettleWon' : 'prediction.exitSettleLost')}</span>;
+      return [b.date?.slice(5), matchup(b), sideLabel(b), `$${num(b.stake_usd, 2)}`, exit, cc(b.entry_cents), cVal(b.realized_pnl_cents), cVal(b.realized_cum_pnl_cents)];
+    }
+    return [b.date?.slice(5), matchup(b), sideLabel(b), `$${num(b.stake_usd, 2)}`, wl(b.won), cc(b.entry_cents), cVal(b.pnl_cents), cVal(b.cum_pnl_cents)];
+  });
+
   return (
     <div style={{ marginTop: 14 }}>
-      <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-secondary)' }}>
-        {tr('prediction.lblTrackRecord')}: <b>{data.pnl_record}</b> · <b style={{ color: pnlColor }}>{pnl > 0 ? '+' : ''}${num(pnl, 2)}</b>
-        {' '}({pct(data.pnl_roi, 1)} ROI) · {data.n_decision_bets ?? log.length} {tr('prediction.lblBets')}{data.n_skipped ? ` · ${data.n_skipped} ${tr('prediction.lblSkipped')}` : ''} · {tr('prediction.colDate')} ≥ {data.bet_since}
+      <div style={{ marginBottom: 8 }}>
+        {tab('cashout', tr('prediction.modeCashout'))}
+        {tab('hold', tr('prediction.modeHold'))}
+        {tab('argmax', tr('prediction.modeArgmax'))}
       </div>
-      {data.argmax_record && (
-        <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-muted)' }}>
-          {tr('prediction.lblArgmaxRecord')}: <b>{data.argmax_record}</b> · {pct(data.model_pred_accuracy, 0)} · <b style={{ color: (data.argmax_pnl_cents_total ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{(data.argmax_pnl_cents_total ?? 0) >= 0 ? '+' : ''}{cc(data.argmax_pnl_cents_total)}</b> · {log.length} {tr('prediction.lblMatchesAll')}
-        </div>
-      )}
-      <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-muted)' }}>{tr('prediction.betLogNote')}</div>
-      {data.pnl_cents_total != null && (
-        <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 6, color: 'var(--text-muted)' }}>
-          {tr('prediction.lblPerContract')}: <b style={{ color: data.pnl_cents_total >= 0 ? 'var(--success)' : 'var(--error)' }}>{data.pnl_cents_total >= 0 ? '+' : ''}{cc(data.pnl_cents_total)}</b>
-          {' '}· {tr('prediction.lblAvgEntry')} {cc(data.avg_entry_cents)} · {tr('prediction.lblCaptureRate')} {pct(data.cents_capture_rate, 0)} · {tr('prediction.lblAvgClv')} {(data.avg_clv_cents ?? 0) > 0 ? '+' : ''}{cc(data.avg_clv_cents)}
-        </div>
-      )}
-      <DataTable
-        cols={[tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colPnlC'), 'Cum¢', tr('prediction.colArgmax')]}
-        rows={log.map((b: any) => {
-          const noBet = b.bet === false;
-          const amColor = (b.argmax_pnl_cents ?? 0) > 0 ? 'var(--success)' : (b.argmax_pnl_cents ?? 0) < 0 ? 'var(--error)' : 'var(--text-muted)';
-          return [
-            b.date?.slice(5),
-            `${tCountry(b.home)} ${b.score} ${tCountry(b.away)}`,
-            noBet ? <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.noBetShort')}</span> : sideLabel(b),
-            noBet ? <span style={{ color: 'var(--text-muted)' }}>$0</span> : `$${num(b.stake_usd, 2)}`,
-            noBet ? <span style={{ color: 'var(--text-muted)' }}>—</span> : <span style={{ color: b.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{b.won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>,
-            noBet ? '—' : cc(b.entry_cents),
-            noBet ? '—' : <span style={{ color: (b.pnl_cents ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.pnl_cents != null ? `${b.pnl_cents >= 0 ? '+' : ''}${cc(b.pnl_cents)}` : '—'}</span>,
-            noBet ? '—' : <span style={{ color: (b.cum_pnl_cents ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{b.cum_pnl_cents != null ? `${b.cum_pnl_cents >= 0 ? '+' : ''}${cc(b.cum_pnl_cents)}` : '—'}</span>,
-            <span>{argmaxLabel(b)} <span style={{ color: b.model_won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{b.model_won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>{b.argmax_pnl_cents != null ? <span style={{ color: amColor }}> {b.argmax_pnl_cents >= 0 ? '+' : ''}{cc(b.argmax_pnl_cents)}</span> : null}</span>,
-          ];
-        })} />
+      <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', marginBottom: 4, color: 'var(--text-primary)' }}>{headline()}</div>
+      <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', marginBottom: 6, color: 'var(--text-muted)', lineHeight: 1.55 }}>{note()}</div>
+      <DataTable cols={cols} rows={rows} />
     </div>
   );
 }
@@ -679,6 +704,40 @@ function FormCard() {
   );
 }
 
+// Team STYLE taxonomy (data-driven clusters from intra-game metrics). Descriptive
+// scouting aid — grouped by style with each team's possession / xG / directness.
+function TeamStyles() {
+  const { t: tr } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getWCStyles(), []);
+  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
+  const teams = (data?.teams ?? []);
+  const groups: Record<string, any[]> = {};
+  for (const t of teams) (groups[t.style] ??= []).push(t);
+  const ordered = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
+  return (
+    <div>
+      <Title sub={tr('prediction.subStyles')}>Team Styles</Title>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 8 }}>
+        {tr('prediction.stylesNote')} · {data?.n ?? 0} {tr('prediction.lblMatchesAll')}
+      </div>
+      {ordered.map(([style, ts]) => (
+        <div key={style} className="card" style={{ marginBottom: 8 }}>
+          <div style={{ fontWeight: 700, fontSize: 12, ...mono, color: 'var(--accent-primary)', marginBottom: 4 }}>
+            {style} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({ts.length})</span>
+          </div>
+          <DataTable cols={[tr('prediction.team'), 'Poss', 'xG', tr('prediction.stylesDirect')]}
+            rows={ts.map((t: any) => [
+              tCountry(t.name),
+              pct(t.metrics?.possession, 0),
+              (t.metrics?.xg ?? 0).toFixed(2),
+              (t.metrics?.directness ?? 0).toFixed(2),
+            ])} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Two institutional-style PDF reports (PnL track record + Risk), displayed INLINE
 // via the local Express server over the Cloudflare tunnel ({API_BASE}/data/*.pdf,
 // served without auth), not just a download. Mirrors the stock-mode report viewers.
@@ -735,32 +794,41 @@ function PriceTrack() {
       {!matches.length ? <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>—</div> :
         matches.map((m: any) => {
           const b = m.our_bet || {}; const mtm = m.mtm;
-          const dir = mtm?.path_direction;
-          const dirColor = dir === 'converging' ? 'var(--success)' : dir === 'diverging' ? 'var(--error)' : 'var(--text-muted)';
           return (
             <div key={m.fixture_id} className="card" style={{ marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 4 }}>
                 {tCountry(m.home?.name)} vs {tCountry(m.away?.name)}
                 {m.settled && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {m.score}</span>}
               </div>
-              <div style={{ fontSize: 10.5, ...mono, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                {b.bet === false
-                  ? <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.ourBet')}: {tr('prediction.noBet')}</span>
-                  : <>
-                      {tr('prediction.ourBet')}: <b>{tCountry(b.pick_team)}</b>{b.stake_usd != null ? <> · ${num(b.stake_usd, 2)}</> : null} · {tr('prediction.lblEntry')} {cc(b.entry_cents)}
-                      {mtm && <> → {tr('prediction.lblSettle')} {cc(mtm.ft_c)} · <b style={{ color: dirColor }}>{mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)}</b> {mtm.won ? tr('prediction.betWon') : tr('prediction.betLost')}</>}
-                    </>}
+              <div style={{ fontSize: 10.5, ...mono, marginBottom: 6, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {b.bet === false ? (
+                  <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.ourBet')}: {tr('prediction.noBet')}</span>
+                ) : (() => {
+                  const s = m.smart_exit;
+                  return (<>
+                    {/* line 1: what we bet — side · type · stake */}
+                    <div>{tr('prediction.ptBet')}: <b style={{ color: 'var(--text-primary)' }}>{tCountry(b.pick_team)}</b> <span style={{ color: 'var(--text-muted)' }}>· {tr('prediction.ptSingle')}</span>{b.stake_usd != null ? <> · ${num(b.stake_usd, 2)}</> : null}</div>
+                    {/* line 2: the realised path — buy(when/price) → sell(when/price) · realised · mode */}
+                    {s ? (
+                      <div>　{tr('prediction.ptBuy')} <b>PRE {cc(b.entry_cents)}</b> → {tr('prediction.ptSell')} <b>{s.sold_min}′ {Math.round(s.sold_c)}¢</b> · {tr('prediction.lblRealized')} <b style={{ color: s.pnl_c >= 0 ? 'var(--success)' : 'var(--error)' }}>{s.pnl_c >= 0 ? '+' : ''}{cc(s.pnl_c)}</b> <span style={{ color: 'var(--accent-primary)' }}>{tr('prediction.ptTagTiming')}</span></div>
+                    ) : mtm ? (
+                      <div>　{tr('prediction.ptBuy')} <b>PRE {cc(b.entry_cents)}</b> → {tr('prediction.lblSettle')} <b>{cc(mtm.ft_c)}</b> · <b style={{ color: mtm.pnl_c >= 0 ? 'var(--success)' : 'var(--error)' }}>{mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)} {mtm.won ? tr('prediction.betWon') : tr('prediction.betLost')}</b> <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.ptTagHold')}</span></div>
+                    ) : null}
+                    {/* line 3 (only when we cashed out): the hold-to-FT reference */}
+                    {s && mtm && (
+                      <div style={{ color: 'var(--text-muted)' }}>　{tr('prediction.ptIfHeld')}: {cc(mtm.ft_c)} · {mtm.pnl_c >= 0 ? '+' : ''}{cc(mtm.pnl_c)}</div>
+                    )}
+                  </>);
+                })()}
+                {/* argmax reference line */}
+                {b.argmax && (() => {
+                  const a = b.argmax; const am = a.mtm;
+                  const aColor = am ? (am.pnl_c > 0 ? 'var(--success)' : am.pnl_c < 0 ? 'var(--error)' : 'var(--text-muted)') : 'var(--text-muted)';
+                  return (
+                    <div style={{ color: 'var(--text-muted)' }}>{tr('prediction.argmaxShort')}: <b>{tCountry(a.pick_team)}</b>{am && <> · {cc(am.entry_c)} → {cc(am.ft_c)} · <span style={{ color: aColor }}>{am.pnl_c >= 0 ? '+' : ''}{cc(am.pnl_c)}</span></>}</div>
+                  );
+                })()}
               </div>
-              {b.argmax && (() => {
-                const a = b.argmax; const am = a.mtm;
-                const aColor = am ? (am.pnl_c > 0 ? 'var(--success)' : am.pnl_c < 0 ? 'var(--error)' : 'var(--text-muted)') : 'var(--text-muted)';
-                return (
-                  <div style={{ fontSize: 10, ...mono, marginBottom: 6, color: 'var(--text-muted)' }}>
-                    {tr('prediction.argmaxShort')}: <b>{tCountry(a.pick_team)}</b>
-                    {am && <> · {tr('prediction.lblEntry')} {cc(am.entry_c)} → {cc(am.ft_c)} · <b style={{ color: aColor }}>{am.pnl_c >= 0 ? '+' : ''}{cc(am.pnl_c)}</b> {am.won ? tr('prediction.betWon') : tr('prediction.betLost')}</>}
-                  </div>
-                );
-              })()}
               <DataTable
                 cols={[tr('prediction.colMilestone'), tr('prediction.colScore'), `${sideName.home}¢`, `${sideName.draw}¢`, `${sideName.away}¢`]}
                 rows={(m.marks ?? []).map((mk: any) => {
@@ -787,6 +855,7 @@ const REGISTRY: Record<string, () => ReactElement> = {
   wc_reach_round: ReachRound,
   wc_golden_boot: GoldenBoot,
   wc_squad: SquadStrength,
+  wc_styles: TeamStyles,
   wc_form: FormCard,
   wc_methodology: Methodology,
   wc_divergence: Divergence,

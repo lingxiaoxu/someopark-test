@@ -65,7 +65,19 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   // in knockout (the separate "advance/reach-round" product is team-level, elsewhere).
   const winH = `${home} ${t('prediction.win')}`, winA = `${away} ${t('prediction.win')}`, drawL = t('prediction.drawResult');
   const best = m.edge?.best;
-  const edgeColor = best?.tradable ? 'var(--success)' : 'var(--text-muted)';
+  // Single source of truth for "are we betting this match" + the edge to show: the
+  // production decision model (m.decision) — the SAME brain that writes the advice text
+  // and the bet log. The standalone edge finder (m.edge.best) computes net_edge ~1pp
+  // lower (it nets a fee) and can fall on the other side of the 3% tradable threshold,
+  // which used to make the advice say "buy $1.23" while the colour/★ stayed grey. Colour
+  // and the edge readout now follow the decision, so a bet is uniformly green + starred
+  // and the shown % matches the advice. Falls back to the edge finder when no decision.
+  const dec = m.decision;
+  const betting = dec ? !!dec.bet : !!(best?.tradable && best.net_edge > 0);
+  const edgeView = (betting && dec && dec.side)
+    ? { side: dec.side, venue: dec.venue ?? '', net_edge: dec.net_edge ?? 0 }
+    : best ? { side: best.side, venue: best.venue, net_edge: best.net_edge } : null;
+  const edgeColor = betting ? 'var(--success)' : 'var(--text-muted)';
   const Chevron = open ? ChevronDown : ChevronRight;
 
   // Knockout tie whose teams aren't decided yet: show the placeholder bracket pairing
@@ -122,7 +134,6 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   };
   const buildAdvice = (): string => {
     const inplay = t('prediction.adviceInplay');
-    const dec = m.decision;
     // The production decision model (decide()) takes precedence — same brain as the bet
     // log + match_signals: it picks the value side, sizes the stake, and says "no bet"
     // when there's no safe edge (incl. the longshot bar / discipline gate).
@@ -148,11 +159,13 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
     } else {
       return t('prediction.adviceHold') + sep + inplay;
     }
+    // We HAVE a position → tell the user the EXIT plan (the validated smart-exit cash-out,
+    // our core edge: realised 67% profitable vs 39% holding), not just "watch in-play".
     return t('prediction.adviceBuy', {
       venue: venueLabelMap[venue] ?? venue,
       side: sideLabelMap[side] ?? side,
       cents, model, edge, form: formClause(side),
-    }) + (stakeClause ? sep + stakeClause : '') + sep + inplay;
+    }) + (stakeClause ? sep + stakeClause : '') + sep + t('prediction.adviceCashout');
   };
 
   // one labelled 3-way row (probabilities or venue prices), team names spelled out.
@@ -182,9 +195,9 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
             <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
               {t('prediction.ourPrediction')}: <b style={{ color: 'var(--text-primary)' }}>{top[0]} {pct(top[1])}</b>
             </span>
-            {best && (
+            {edgeView && (
               <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700 }}>
-                {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%{best.tradable ? ' ★' : ''}
+                {edgeView.net_edge >= 0 ? '+' : ''}{(edgeView.net_edge * 100).toFixed(1)}%{betting ? ' ★' : ''}
               </span>
             )}
           </div>
@@ -193,10 +206,19 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
 
       {open && (
         <>
-          <div style={{ marginTop: 4, padding: '6px 8px', border: `1px solid ${best?.tradable ? 'var(--success)' : 'var(--border-subtle)'}`, background: 'var(--bg-tertiary)', fontSize: 11, fontFamily: 'var(--font-mono)', lineHeight: 1.5 }}>
-            <span style={{ color: best?.tradable ? 'var(--success)' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>{t('prediction.adviceLabel')}</span>
+          <div style={{ marginTop: 4, padding: '6px 8px', border: `1px solid ${betting ? 'var(--success)' : 'var(--border-subtle)'}`, background: 'var(--bg-tertiary)', fontSize: 11, fontFamily: 'var(--font-mono)', lineHeight: 1.5 }}>
+            <span style={{ color: betting ? 'var(--success)' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>{t('prediction.adviceLabel')}</span>
             <span style={{ color: 'var(--text-primary)' }}> · {buildAdvice()}</span>
           </div>
+          {/* DUAL-口径 plan for an actual bet: entry now + planned smart-exit cash-out, and
+              WHY a small edge is still worth it (the cash-out protects marginal bets). */}
+          {m.decision && m.decision.bet && m.decision.side && (
+            <div style={{ marginTop: 4, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              <div>{t('prediction.planEntry')}: <b style={{ color: 'var(--text-primary)' }}>{sideLabelMap[m.decision.side] ?? m.decision.side}</b> @ {m.decision.price_cents != null ? Math.round(m.decision.price_cents) : '—'}¢{m.decision.stake_usd != null ? <> · ${m.decision.stake_usd.toFixed(2)}</> : null}</div>
+              <div>{t('prediction.planExit')}: {t('prediction.planExitDesc')}</div>
+              <div style={{ color: 'var(--text-muted)' }}>{t('prediction.planWhy', { edge: m.decision.net_edge != null ? (m.decision.net_edge * 100).toFixed(1) : '—' })}</div>
+            </div>
+          )}
           <Line label={t('prediction.ourPrediction')} h={m.model.home} d={m.model.draw} a={m.model.away} fmt={pct}
             hc={m.model.cents?.home} dc={m.model.cents?.draw} ac={m.model.cents?.away} />
           {(m.model.over_2_5 != null || m.model.btts != null) && (
@@ -212,9 +234,9 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
             ? <><Line label={t('prediction.polyPrice')} h={m.poly_us.home?.ask} d={m.poly_us.draw?.ask} a={m.poly_us.away?.ask} fmt={px}
                 hc={m.poly_us.home?.ask_c} dc={m.poly_us.draw?.ask_c} ac={m.poly_us.away?.ask_c} /><VigNote q={m.poly_us} /></>
             : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('prediction.polyPrice')}: {t('prediction.notListed')}</div>}
-          {best && (
+          {edgeView && (
             <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700, marginTop: 4 }}>
-              {t('prediction.colEdge')}: {best.venue}/{best.side} {best.net_edge >= 0 ? '+' : ''}{(best.net_edge * 100).toFixed(1)}%{best.tradable ? ' ★' : ''}
+              {t('prediction.colEdge')}: {edgeView.venue}/{edgeView.side} {edgeView.net_edge >= 0 ? '+' : ''}{(edgeView.net_edge * 100).toFixed(1)}%{betting ? ' ★' : ''}
             </div>
           )}
         </>

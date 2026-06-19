@@ -96,7 +96,7 @@ def build(conn=None) -> dict:
         # book-independent, so we get the identical pick without bookmaker odds. Returns
         # None only for a knockout that can't be settled yet → fall back to the plain
         # argmax pick (live / undecided), with no MTM.
-        from prediction_market.ops.performance_report import match_pick
+        from prediction_market.ops.performance_report import _pit_strength, match_pick
         from prediction_market.strategy.decision_model import quotes_from_milestone_row
         pre_row = next((r for r in rows if r["milestone"] == "PRE"), None)
         quotes = quotes_from_milestone_row(pre_row) if pre_row is not None else None
@@ -146,6 +146,18 @@ def build(conn=None) -> dict:
             mtm = {"entry_c": entry_c, "ft_c": ft_c, "pnl_c": pnl_c, "won": won,
                    "path_direction": "converging" if pnl_c > 0 else ("diverging" if pnl_c < 0 else "flat")}
 
+        # Model-aware cash-out (the validated smart-exit): what selling the over-reaction
+        # would have returned vs holding to FT — surfaced so the desk sees the timing.
+        smart_exit = None
+        if settled and bet and entry_c is not None:
+            try:
+                from prediction_market.strategy.smart_exit import smart_exit_cashout
+                sm_pit = _pit_strength(conn, fx["kickoff_ts"]) if fx["kickoff_ts"] else sm
+                smart_exit = smart_exit_cashout(conn, sm_pit, fid, pick, entry_c, hi, ai,
+                                                fx["round"], mr["won"])
+            except Exception:
+                smart_exit = None
+
         matches.append({
             "fixture_id": fid,
             "home": {"id": hi, "name": name.get(hi, hi), "zh": zh.get(hi, "")},
@@ -157,6 +169,7 @@ def build(conn=None) -> dict:
             "result": result,
             "our_bet": our_bet,
             "mtm": mtm,
+            "smart_exit": smart_exit,
             "marks": marks,
         })
 

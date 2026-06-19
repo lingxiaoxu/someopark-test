@@ -185,9 +185,11 @@ def test_milestone_export_builds_marks_and_mtm():
     c = _mem_db(); _seed_match(c)
     c.execute("UPDATE fixture SET status_short='FT' WHERE api_id=1")   # settled home win 3-0
     # PRE + FT rows for a France-like home win (use argentina here; result=home, won)
+    # Home (Argentina) priced clearly cheap → unambiguous home VALUE pick, so the test
+    # is deterministic regardless of the draw-discipline policy (draw_extra_theta).
     c.execute("INSERT INTO milestone_snapshot(fixture_api_id,milestone,elapsed,home_goals,away_goals,"
               "poly_home_ask,poly_draw_ask,poly_away_ask,price_source) VALUES "
-              "(1,'PRE',0,0,0,0.50,0.27,0.23,'candlestick'),"
+              "(1,'PRE',0,0,0,0.40,0.30,0.30,'candlestick'),"
               "(1,'FT',90,3,0,1.0,0.0,0.0,'candlestick')")
     c.commit()
     doc = milestone_export.build(conn=c)
@@ -196,7 +198,7 @@ def test_milestone_export_builds_marks_and_mtm():
     assert m["settled"] is True and m["result"] == "home" and m["score"] == "3-0"
     # marks carry ¢ (poly_c = price×100)
     pre = next(x for x in m["marks"] if x["milestone"] == "PRE")
-    assert pre["poly_c"]["home"] == 50.0
+    assert pre["poly_c"]["home"] == 40.0
     # our_bet pick is the model's pick; mtm present + sign consistent with the result
     assert m["our_bet"]["side"] in ("home", "draw", "away")
     assert m["mtm"] is not None

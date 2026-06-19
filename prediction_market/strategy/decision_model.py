@@ -152,24 +152,38 @@ def decide(
     if not gate_open:
         return _no_bet("discipline gate closed (model not trade-grade)")
 
-    # 1) Value selection: best net-edge side, with a longshot penalty on cheap picks.
+    # 1) Value selection: the best net-edge side AMONG THE TRADABLE ones — each side is
+    # judged against ITS OWN threshold (base + longshot + draw-discipline). Picking the
+    # raw-highest-edge side first and only THEN checking tradability was a bug: a draw with
+    # the biggest gap but failing the draw discipline would suppress a perfectly tradable
+    # home/away value bet (e.g. USA-Australia: draw +8% needs 8% → skip, but away +6% clears
+    # its 2% → should bet). So we now only consider sides that clear their own threshold.
     best = None  # (net_edge, side, er, q)
+    best_any = None  # best raw-edge side (for an informative no-bet reason)
     for side in _SIDES:
         q = quotes.get(side)
         if not q or q.ask is None:
             continue
         price_c = q.ask * 100.0
-        theta = risk.min_net_edge + (cfg.longshot_extra_theta if price_c < cfg.longshot_cents else 0.0)
+        # Decision-layer base threshold (cfg.min_net_edge), lower than the in-play
+        # risk.min_net_edge because the smart-exit protects marginal pre-match bets.
+        theta = getattr(cfg, "min_net_edge", risk.min_net_edge)
+        if price_c < cfg.longshot_cents:
+            theta += cfg.longshot_extra_theta                  # favourite–longshot guard
+        if side == "draw":
+            theta += getattr(cfg, "draw_extra_theta", 0.0)     # draw discipline (regime guard)
         er = compute_edge(model[side], q.ask, sigma_p=sigma.get(side, 0.0),
                           k=risk.shrink_k, fee=fee, theta=theta)
-        if best is None or er.net_edge > best[0]:
+        if best_any is None or er.net_edge > best_any[0]:
+            best_any = (er.net_edge, side)
+        if er.tradable and (best is None or er.net_edge > best[0]):
             best = (er.net_edge, side, er, q)
 
     if best is None:
+        if best_any is not None:
+            return _no_bet(f"best side {best_any[1]} net_edge {best_any[0]:+.3f} below its threshold")
         return _no_bet("no executable quotes")
     net_edge, side, er, q = best
-    if not er.tradable:
-        return _no_bet(f"best side {side} net_edge {net_edge:+.3f} below threshold")
 
     # 2) Confidence multiplier k from a bounded blend of signals.
     f_kelly = _kelly_fraction(er.p_eff, q.ask, risk.kelly_fraction)

@@ -106,6 +106,34 @@ class PolymarketUSDiscovery:
                 return out
         return None
 
+    def totals_quotes(self, home_id: str, away_id: str, et_date: str,
+                      line: float = 2.5) -> dict[str, dict] | None:
+        """{over/under: {'ask','bid'}} for a match's total-goals line (None if not found).
+
+        Poly US totals market slug: ``tsc-fwc-{home}-{away}-{date}-{N}pt5`` ("Will the
+        total in X be more than N.5?") — YES = Over. Under is the complement of the YES
+        book. ``line`` like 2.5 → token ``2pt5``."""
+        codes = self.code_map()
+        hc, ac = codes.get(home_id), codes.get(away_id)
+        if not (hc and ac):
+            return None
+        tok = f"{int(line)}pt5" if line == int(line) + 0.5 else str(line).replace(".", "pt")
+        for ev_slug in (f"fwc-{hc}-{ac}-{et_date}", f"fwc-{ac}-{hc}-{et_date}"):
+            try:
+                ev = self.c.events.retrieve_by_slug(ev_slug).get("event") or {}
+            except Exception:
+                continue
+            for m in ev.get("markets") or []:
+                if m.get("slug", "") == f"tsc-{ev_slug}-{tok}":
+                    p = self._price(m["slug"])
+                    if not p:
+                        return None
+                    over_ask, over_bid = p.get("ask"), p.get("bid")
+                    return {"over": {"ask": over_ask, "bid": over_bid},
+                            "under": {"ask": (1.0 - over_bid) if over_bid is not None else None,
+                                      "bid": (1.0 - over_ask) if over_ask is not None else None}}
+        return None
+
 
 if __name__ == "__main__":
     d = PolymarketUSDiscovery()
