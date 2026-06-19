@@ -63,7 +63,9 @@
 
 把原本隐式的「押概率最高(argmax)」升级成一个独立、有研究支撑的**决策模型**（`strategy/decision_model.py`，加法式接入,未改既有同源结构):
 
-- **选边按价值,不按最可能**:`decide()` 在 PRE 场馆报价上选**去 vig 后被低估最多**的一边(模型概率 − 市场隐含)——可能是平局或弱队,而不是单纯概率最高的那个。
+- **选边按价值,不按最可能**:`decide()` 在 PRE 场馆报价上选**被低估最多且能过自己门槛**的一边(模型概率 − 市场隐含)。注意:**在「能过门槛的边」里挑最优**——若净边缘最高的平局过不了平局纪律,会回退到可下注的主/客边(修复了之前"高边缘平局压住可下注的主/客"的 bug)。
+- **决策阈值 `min_net_edge=0.02`**(低于盘中的 0.03):因为有**智能择时**保护边际注,赛前不需要那么高的 edge。PIT 验证:0.03→0.02 把无边际跳过从 9 场降到 4-5 场,实现盈亏 +302→+486¢。
+- **真实策略 = 决策 + 智能择时现金出(非持有到 FT)**:`strategy/smart_exit.py`——开赛后市场对进球/事件过度反应、价格冲高于 live 模型公允价(+12¢)时就卖出锁利。PIT 验证(每分钟 `price_tick` 回填):同一批注 **7W-11L/+114¢(持有)→ 实现 +486¢、有效盈利率 39%→67%**。三视图 + PDF 都按 **实现 / 持有 / argmax** 三口径并列。
 - **置信度定额($0.2–$2)**:`stake = clip($1×(1+k), 0.2, 2)`,k 由 **edge(分数凯利 ¼)+ 模型校准 + 近期状态 + alt-data** 加权;信心足多下、不足少下。**真实下单仍受 $1 硬顶**(`max_test_order_usd`),决策模型只给「理想额」。
 - **冷门高估偏差**:对 sub‑15¢ 的 longshot 边设更高 edge 门槛(favourite‑longshot bias,arXiv 1710.02824);无安全边际则**跳过不下**。
 - **平局纪律(`draw_extra_theta`,默认 0.06)**:小组赛平局率异常高(本样本 38%,模型甚至**低估**至 26%、市场更低估至 22% → 平局确有价值),但这是会在淘汰赛回归的 regime。故对平局边加一截 edge 门槛,**只砍信心最低的平局**(本样本平局注 45%→37%,命中率不降),稳健性 hedge 而非扭曲模型。诊断/调参:`ops/_diag_draw_bias`。
@@ -178,6 +180,8 @@ set -a && source prediction_market/.env && set +a && \
 | `model/tournament.py` | 锦标赛模拟（2026 48 队赛制，best‑8‑thirds），向量化 → 冠军/晋级/各轮/E[场次]（快查 50k；生产 1M） |
 | `model/golden_boot.py` | 金靴嵌套模拟：球员进球与球队走多远相关（同一批路径），Poisson(μ×已打场次) |
 | `model/inplay.py` | 赛中实时模型（分钟+比分+红牌 → 实时胜平负、公平平局价、剩余进球），驱动赛中交易 |
+| `model/xg_form.py` | **xG-form 评分加成**（PIT,plan 21）：各队近期 xG（比比分低噪）z 化后微调评分;walk-forward 验证降 OOS Brier、提 ROI。+ 东道主先验加成(`host_rating_boost`)、平局纪律(`draw_extra_theta`) |
+| `strategy/smart_exit.py` | **智能择时/超调止盈**：市场价超调高于 live 公允价(+12¢)时现金出锁利——「实现口径」核心,把持有 7W-11L/+114¢ 提升到实现 +486¢(39%→67% 盈利) |
 | `model/match_pricing.py` | 单场定价：从比分矩阵导出任意单场市场（小组 72 场全量） |
 | `model/ensemble.py` | 集成：参数变体 → 概率均值 + **离散度**（替换占位 sigma，喂仓位） |
 | `model/calibrate.py` | 校准/评分：Brier / Log‑loss / 可靠性曲线 / CLV / bootstrap CI |
@@ -216,7 +220,10 @@ set -a && source prediction_market/.env && set +a && \
 | `ops/system_overview.py` | 静态系统目录（接口/模式/调度/输入输出/价值）的单一数据源，供 PDF 与前端共用 |
 | `ops/upcoming_export.py` | **逐场跨场报价**：对未来比赛真实拉取 Kalshi（公开）+ Polymarket US（读凭证）单场 3‑way（ask/bid + **¢**）+ 去 vig + 模型边缘 + 跨场锁定套利 → `upcoming.json`；临近开赛落库 PRE 里程碑入场价（只读，绝不下单） |
 | `ops/inplay_export.py` | **盘中导出**：每场 live 模型 3‑way + xG + 剩余进球 + 每个 outcome 的市价¢（Kalshi/Poly）+ 盘中机会（市价¢/公允¢/edge¢）→ `inplay_live.json` |
-| `ops/milestone_export.py` | **价格轨迹**：聚合 `milestone_snapshot` → 每场 6 里程碑的 ¢+概率双口径 + 我们的赛前选边 + 入场→终场盯市（MTM）→ `milestone_marks.json` |
+| `ops/milestone_export.py` | **价格轨迹**：聚合 `milestone_snapshot` → 每场 6 里程碑的 ¢+概率双口径 + 我们的赛前选边 + 入场→终场盯市（MTM）+ **智能择时现金出**(逐场买/卖时刻价格/实现盈亏) → `milestone_marks.json` |
+| `ops/team_styles_export.py` | **球队风格分型**：盘中指标(控球/传球/直接性/射门)KMeans → 9 类风格(控球/直接/高压/高效/碾压…)→ `team_styles.json`(前端「球队风格」视图) |
+| `ops/reach_round_export.py` | **晋级盘**：48 队 × 5 轮(小组出线/16/8/4/决赛)模型% vs Kalshi `KXWCROUND`¢ / Poly¢ / 边缘 → `reach_round.json` |
+| `ops/backfill_price_ticks.py` | **每分钟价格回填**(Poly Global prices-history)→ `price_tick` 表,供智能择时/细粒度择时研究 |
 | `ops/backfill_milestones.py` | **历史回填**：用 Poly Global 持久事件 `fifwc-{h}-{a}-{date}` + CLOB `prices-history` 重建已结束比赛的 6 里程碑轨迹（date+队名匹配，含重音/别名）；REPLACE 自愈乱码行，缺 FT 行则重试 |
 | `ops/live_refresh.py` | **盘中每周期刷新**（launchd 30s，窗口外低成本空转）：同步 live/赛果 → 重建 inplay/upcoming/xv/oos → 捕获里程碑（GRACE 窗）+ 回填 + 导出 → 写本地 + 前端目录（经 Cloudflare tunnel 实时上线，无需重新部署前端） |
 | `ops/refresh_all.py` | **全量重生成**：把前端读的每个导出在当前样本上重算（含 milestone_marks）+ 重跑夺冠模拟（1M） |
