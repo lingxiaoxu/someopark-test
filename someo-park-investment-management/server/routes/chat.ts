@@ -35,6 +35,35 @@ function isCodeRequest(text: string): boolean {
 // and, when told about views, sometimes prints a bare {"view": …} tool-call blob instead of prose).
 // Safety net only — the prompt already forbids these; if stripping would empty the reply we keep
 // the original so the user still sees something.
+// Native Ollama /api/chat — the ONLY endpoint that honours the `think` flag (the OpenAI-
+// compat /v1 path the AI SDK uses ignores it). Used solely when the user turns thinking OFF
+// for a local (ollama) model; the default (thinking ON) keeps the existing /v1 path untouched,
+// so default behaviour is byte-identical to before.
+async function ollamaNativeChat(opts: {
+  baseURL?: string; model: string; system: string; messages: ModelMessage[]
+  think: boolean; maxTokens: number
+}): Promise<string> {
+  const host = (opts.baseURL || process.env.OLLAMA_BASE_URL || 'http://localhost:11434/v1').replace(/\/v1\/?$/, '')
+  const flat = (c: any): string =>
+    typeof c === 'string' ? c
+      : Array.isArray(c) ? c.filter((p: any) => p?.type === 'text' && p.text).map((p: any) => p.text).join('\n') : ''
+  const msgs = [
+    { role: 'system', content: opts.system },
+    ...opts.messages.map((m: any) => ({ role: m.role, content: flat(m.content) })),
+  ]
+  const r = await fetch(`${host}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: opts.model, messages: msgs, think: opts.think, stream: false,
+      options: { num_predict: opts.maxTokens },
+    }),
+  })
+  if (!r.ok) throw new Error(`Ollama /api/chat ${r.status}: ${(await r.text().catch(() => '')).slice(0, 200)}`)
+  const j: any = await r.json()
+  return j?.message?.content || ''
+}
+
 function sanitizeChatText(s: string): string {
   if (!s) return s
   let t = s
@@ -54,6 +83,7 @@ router.post('/', async (req: Request, res: Response) => {
     config,
     selectedTemplate,
     appMode,
+    think,
   }: {
     messages: ModelMessage[]
     userID: string | undefined
@@ -61,6 +91,7 @@ router.post('/', async (req: Request, res: Response) => {
     config: LLMModelConfig
     selectedTemplate?: string
     appMode?: 'stock' | 'prediction'
+    think?: boolean   // local (ollama) reasoning toggle; undefined/true = thinking ON (default)
   } = req.body
 
   console.log('Chat request:', { userID, model: model?.id })
@@ -168,16 +199,23 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     try {
-      const result = await generateText({
-        model: modelClient as LanguageModel,
-        system: chatSystem,
-        messages,
-        maxTokens: modelParams.maxTokens || defaultMaxTokens,
-        ...modelParams,
-      })
+      // Thinking toggle: only a LOCAL (ollama) model with think===false takes the native
+      // /api/chat path (which truly disables reasoning → faster, no empty/timeout). Everything
+      // else (Claude, or thinking ON/default) keeps the existing /v1 generateText path verbatim.
+      const maxTokens = modelParams.maxTokens || defaultMaxTokens
+      const text = (model?.providerId === 'ollama' && think === false)
+        ? await ollamaNativeChat({ baseURL: config.baseURL, model: model.id, system: chatSystem,
+                                   messages, think: false, maxTokens })
+        : (await generateText({
+            model: modelClient as LanguageModel,
+            system: chatSystem,
+            messages,
+            maxTokens,
+            ...modelParams,
+          })).text
 
       const chatResponse = {
-        commentary: sanitizeChatText(result.text),
+        commentary: sanitizeChatText(text),
         template: 'chat-response',
         title: 'Chat',
         description: 'Chat response',

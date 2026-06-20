@@ -216,6 +216,7 @@ import { db } from '../lib/firebase'
 import { collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore'
 import { Session } from '@supabase/supabase-js'
 import { AgentModeToggle } from './AgentModeToggle'
+import { ThinkingToggle } from './ThinkingToggle'
 import { AgentProgress } from './AgentProgress'
 
 export default function ChatArea({
@@ -279,6 +280,10 @@ export default function ChatArea({
 
   // Someo Agent mode state
   const [isAgentMode, setIsAgentMode] = useState(false)
+  // Local-model (ollama) reasoning toggle. Default ON = unchanged behaviour; OFF routes the
+  // normal chat to native Ollama think:false (fast, no reasoning overhead). Only sent/relevant
+  // for the local model in normal chat.
+  const [thinkingOn, setThinkingOn] = useState(true)
   // In Prediction Market mode, Someo Agent is ON by default (it has the World Cup
   // tools). This fires only when the mode changes, so the user can still toggle it
   // off afterwards; re-entering prediction mode re-enables it.
@@ -593,8 +598,8 @@ export default function ChatArea({
       }))
 
       const body = useMorphApply && currentStanseAgent
-        ? { messages: msgPayload, model: currentModel, config: languageModel, currentStanseAgent, selectedTemplate, appMode }
-        : { messages: msgPayload, model: currentModel, config: languageModel, selectedTemplate, appMode }
+        ? { messages: msgPayload, model: currentModel, config: languageModel, currentStanseAgent, selectedTemplate, appMode, think: thinkingOn }
+        : { messages: msgPayload, model: currentModel, config: languageModel, selectedTemplate, appMode, think: thinkingOn }
 
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',
@@ -710,7 +715,7 @@ export default function ChatArea({
       setIsLoading(false)
       abortControllerRef.current = null
     }
-  }, [input, isLoading, messages, currentModel, languageModel, useMorphApply, currentStanseAgent, onCodePreview, isAgentMode, handleAgentSubmit])
+  }, [input, isLoading, messages, currentModel, languageModel, useMorphApply, currentStanseAgent, onCodePreview, isAgentMode, thinkingOn, handleAgentSubmit])
 
   const stop = useCallback(() => {
     abortControllerRef.current?.abort()
@@ -1027,6 +1032,13 @@ export default function ChatArea({
               onChange={setIsAgentMode}
               disabled={isLoading || isAgentRunning}
             />
+            {currentModel?.providerId === 'ollama' && !isAgentMode && (
+              <ThinkingToggle
+                enabled={thinkingOn}
+                onChange={setThinkingOn}
+                disabled={isLoading}
+              />
+            )}
             <ChatPicker
               templates={templates}
               selectedTemplate={selectedTemplate}
