@@ -109,7 +109,7 @@ const ARTIFACT_PATTERNS: Array<{
   { type: 'wc_match_pricing', title: 'Match Pricing',       keywords: ['match pricing', 'match odds', '单场定价', '比赛定价', '胜平负'] },
   { type: 'wc_reach_round',   title: 'Reach Round',         keywords: ['reach round', 'advance to', 'reach the final', 'reach semifinal', '晋级', '晋级盘', '进决赛', '进四强'] },
   { type: 'wc_predictions',   title: "Today's Predictions", keywords: ["today's predictions", 'upcoming matches', '今日预测', '近期比赛', '即将开始'] },
-  { type: 'wc_inplay',        title: 'In-Play Arbitrage',   keywords: ['in-play', 'in play', 'inplay', 'live match', 'live arbitrage', '盘中套利', '盘中', '实时比赛'] },
+  { type: 'wc_inplay',        title: 'In-Play Arbitrage',   keywords: ['in-play', 'in play', 'inplay', 'live match', 'live game', 'live arbitrage', 'playing now', 'live now', 'going on now', '盘中套利', '盘中', '实时比赛', '正在进行', '进行中', '现在的比赛', '当前比赛', '现在在踢', '正在踢'] },
   { type: 'wc_divergence',    title: 'Model vs Market',     keywords: ['model vs market', 'divergence', 'vs book', '模型vs市场', '模型 vs 市场', '散度'] },
   { type: 'wc_squad',         title: 'Squad Strength',      keywords: ['squad strength', '阵容强度'] },
   { type: 'wc_form',          title: 'Recent Form',         keywords: ['recent form', '近期状态', '球队状态'] },
@@ -117,15 +117,34 @@ const ARTIFACT_PATTERNS: Array<{
   { type: 'wc_performance',   title: 'Accuracy & PnL',      keywords: ['accuracy & pnl', 'accuracy and pnl', 'prediction accuracy', 'brier', 'track record', '准确度', '盈亏', '战绩'] },
   { type: 'wc_calibration',   title: 'Calibration',         keywords: ['calibration', 'reliability', '校准'] },
   { type: 'wc_schedule',      title: 'Schedule',            keywords: ['world cup schedule', 'kickoff time', '赛程', '开赛时间'] },
+  // ── previously-uncovered views: now reachable in normal chat too. These words are
+  //    broad, but detection is MODE-SCOPED (only fires in prediction mode), so they
+  //    never collide with the stock-strategy patterns above.
+  { type: 'wc_risk',          title: 'Risk & Gates',        keywords: ['risk', 'gate', 'pre-trade', 'order cap', '$1 cap', 'trade-grade', 'discipline gate', '风险', '风控', '闸门', '可交易等级', '硬顶', '下单上限'] },
+  { type: 'wc_venues',        title: 'Venues & Gates',      keywords: ['venue', 'venues', 'kalshi balance', 'poly balance', 'polymarket balance', 'account balance', '场所', '场馆', '余额', '下注场所', '账户余额'] },
+  { type: 'wc_budget',        title: 'API Budget / Health', keywords: ['api budget', 'budget', 'api-football quota', 'request budget', 'api 预算', '预算', '额度', '请求额度', '健康度'] },
+  { type: 'wc_backtest',      title: 'Backtest',            keywords: ['backtest', 'back-test', 'blend curve', '回测', '混合曲线', '回溯测试'] },
+  { type: 'wc_params',        title: 'Parameter Sweep',     keywords: ['param sweep', 'parameter sweep', 'param set', 'parameter set', '参数扫描', '参数集', '参数寻优', '调参', '参数网格'] },
+  { type: 'wc_pricetrack',    title: 'Price Track',         keywords: ['price track', 'pricetrack', 'milestone', 'price trajectory', 'mark to market', 'mark-to-market', '价格轨迹', '里程碑', '盯市', '价格追踪'] },
+  { type: 'wc_overview',      title: 'System Overview',     keywords: ['system overview', 'overview', 'how the system works', 'system map', '系统总览', '总览', '系统概览', '系统地图'] },
+  { type: 'wc_methodology',   title: 'Methodology',         keywords: ['methodology', 'model notes', 'how it works', '方法论', '模型说明', '建模方法', '原理'] },
+  { type: 'wc_pdfs',          title: 'PDF Reports',         keywords: ['pdf', 'pdf report', 'download report', 'pdf 报告', '下载报告', 'pdf报告'] },
 ]
 
-export function detectArtifacts(message: string): ArtifactTrigger[] {
+export function detectArtifacts(message: string, mode?: 'stock' | 'prediction'): ArtifactTrigger[] {
   if (!message) return []
 
   const lowerMessage = message.toLowerCase()
   const detected: ArtifactTrigger[] = []
 
   for (const pattern of ARTIFACT_PATTERNS) {
+    // Mode-scoped detection: prediction mode considers ONLY the wc_* (World Cup) views;
+    // stock mode considers only the strategy views. No mode given → match all (keeps the
+    // agent / morph-chat callers' existing behaviour). This is what lets the prediction
+    // keywords above be broad ("risk", "回测", "总览") without colliding with stock ones.
+    const isWc = pattern.type.startsWith('wc_')
+    if (mode === 'prediction' && !isWc) continue
+    if (mode === 'stock' && isWc) continue
     for (const keyword of pattern.keywords) {
       if (lowerMessage.includes(keyword.toLowerCase())) {
         // Check MTFS strategy mentions

@@ -183,6 +183,18 @@
       "entry": "Nueva entrada",
       "event": "Por evento"
     },
+    "style": {
+      "possession": "Posesión",
+      "direct": "Directo",
+      "high_press": "Presión alta",
+      "low_block": "Bloque bajo",
+      "dominant_attack": "Ataque dominante",
+      "clinical": "Definición",
+      "high_volume": "Alto volumen",
+      "set_piece": "Balón parado",
+      "balanced": "Equilibrado",
+      "contained": "Contenido"
+    },
     "side": {
       "home": "Local",
       "draw": "Empate",

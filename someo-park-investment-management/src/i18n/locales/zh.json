@@ -201,6 +201,18 @@
       "entry": "新入场机会",
       "event": "事件驱动"
     },
+    "style": {
+      "possession": "控球传导",
+      "direct": "直接快攻",
+      "high_press": "高压逼抢",
+      "low_block": "低位防反",
+      "dominant_attack": "碾压强攻",
+      "clinical": "高效终结",
+      "high_volume": "高射门量",
+      "set_piece": "定位球",
+      "balanced": "稳健均衡",
+      "contained": "低效被压制"
+    },
     "side": {
       "home": "主",
       "draw": "平",

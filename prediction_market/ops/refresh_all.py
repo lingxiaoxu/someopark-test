@@ -133,6 +133,13 @@ def main() -> None:
     except Exception as e:
         print(f"  ✗ worldcup_model.json: {e}")
 
+    # Team styles (48×10 matrix) — self-throttled to a WEEKLY rebuild; writes the file itself.
+    try:
+        from prediction_market.ops import team_styles_export
+        team_styles_export.main()
+    except Exception as e:
+        print(f"  ✗ team_styles.json: {e}")
+
     # Champion model-vs-market divergence (xv_champion.json) — the Champion-Divergence
     # view; compare_champion writes the file itself.
     try:

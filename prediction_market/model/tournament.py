@@ -12,9 +12,14 @@ Format implemented (plan 03 §5.1, 10 §1):
   * 32-team single elimination: R32 -> R16 -> QF -> SF -> Final, with extra
     time + penalties resolved via the knockout advance matrix.
 
+GROUP TIE-BREAK (2026 rules): points -> head-to-head (points -> GD -> goals,
+  among teams level on points) -> overall GD -> overall goals -> lots. The 2026
+  edition moved head-to-head ABOVE overall goal difference. Third-placed teams are
+  ranked ACROSS groups by points -> overall GD -> overall goals -> lots (head-to-head
+  cannot apply — those teams never met). Disciplinary / FIFA-ranking criteria are
+  approximated by lots (rarely reached).
+
 DOCUMENTED SIMPLIFICATIONS (v1, flagged for later replacement):
-  * Group tie-breaks use points -> goal difference -> goals for -> random.
-    Head-to-head and the full official tie-break chain are NOT yet implemented.
   * The R32 bracket is a FIXED, balanced, same-group-avoiding mapping (see
     ``_BRACKET_SLOTS``) — NOT the exact official 2026 slotting / third-place
     combination table. Champion odds are bracket-sensitive; swap in the official
@@ -273,18 +278,19 @@ def simulate(
                 la, lb = base_a, base_b
             _play(a, b, la, lb, fixed=fixed)
 
-        # FIFA tie-break: 1) points 2) GD 3) GF — then, AMONG the teams still level on all
-        # three, 4) head-to-head points 5) h2h GD 6) h2h GF — then lots (random). The h2h
-        # mini-table is summed only over the tied set, via an exact (pts,GD,GF) identity mask.
-        pid = (pts.astype(np.int64) * 100000 + (gd.astype(np.int64) + 200) * 100
-               + gf.astype(np.int64))                       # exact id of (pts,GD,GF)
-        same = pid[:, :, None] == pid[:, None, :]           # (n,4,4): j shares i's (pts,GD,GF)
-        h2h_pts = np.einsum('nij,nij->ni', same, hh_pts)    # h2h points vs the tied teams only
-        h2h_gd = np.einsum('nij,nij->ni', same, hh_gd)
-        h2h_gf = np.einsum('nij,nij->ni', same, hh_gf)
+        # FIFA 2026 group tie-break (RULE CHANGED for 2026): 1) points, then — AMONG teams level
+        # on POINTS — 2) head-to-head points 3) h2h GD 4) h2h goals; only if STILL level do we
+        # fall to overall 5) GD 6) GF, then lots. The 2026 change moved HEAD-TO-HEAD ABOVE overall
+        # goal difference (pre-2026 order was points→GD→GF→h2h, which wrongly let a team leapfrog
+        # on GD a rival that had beaten it head-to-head). The h2h mini-table is summed over the
+        # POINTS-tied set — exact for the common 2-way tie; standard approximation for 3-way ties.
+        same_pts = pts[:, :, None] == pts[:, None, :]       # (n,4,4): j level on POINTS with i
+        h2h_pts = np.einsum('nij,nij->ni', same_pts, hh_pts)
+        h2h_gd = np.einsum('nij,nij->ni', same_pts, hh_gd)
+        h2h_gf = np.einsum('nij,nij->ni', same_pts, hh_gf)
         lots = rng.random((n, 4))
-        key = (pts * 1e12 + gd * 1e10 + gf * 1e8
-               + h2h_pts * 1e6 + h2h_gd * 1e4 + h2h_gf * 1e2 + lots)
+        key = (pts * 1e12 + h2h_pts * 1e10 + h2h_gd * 1e8 + h2h_gf * 1e6
+               + gd * 1e4 + gf * 1e2 + lots)
         order = np.argsort(-key, axis=1)           # (n,4): col0=1st place ... col3=4th
         rows = np.arange(n)
         winners[:, gi] = gg[order[:, 0]]

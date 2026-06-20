@@ -522,6 +522,18 @@
       "entry": "New entry",
       "event": "Event-driven"
     },
+    "style": {
+      "possession": "Possession",
+      "direct": "Direct",
+      "high_press": "High press",
+      "low_block": "Low block",
+      "dominant_attack": "Dominant attack",
+      "clinical": "Clinical",
+      "high_volume": "High volume",
+      "set_piece": "Set-piece",
+      "balanced": "Balanced",
+      "contained": "Contained"
+    },
     "side": {
       "home": "Home",
       "draw": "Draw",

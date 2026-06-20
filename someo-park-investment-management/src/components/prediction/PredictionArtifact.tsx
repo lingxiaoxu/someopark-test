@@ -15,7 +15,7 @@ import {
 import { useState } from 'react';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
-import { tDyn } from '../../i18n/predictionStrings';
+import { tDyn, overviewHeadline } from '../../i18n/predictionStrings';
 import { usePoll } from './usePoll';
 
 // ── shared primitives ─────────────────────────────────────────────────────────
@@ -652,9 +652,9 @@ function OverviewCard() {
   return (
     <div>
       <Title sub={data?.as_of ? `as of ${data.as_of}` : undefined}>System Overview</Title>
-      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 10, ...mono }}>{tDyn(data?.headline)}</div>
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 10, ...mono }}>{overviewHeadline(data?.performance, data?.headline)}</div>
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 4px', ...mono }}>{tr('prediction.secInterfaces')}</div>
-      <DataTable cols={[tr('prediction.colCat'), tr('prediction.colCommand'), tr('prediction.colPurpose')]} rows={(data?.interfaces ?? []).map((i: any) => [tDyn(i.category), i.command?.replace('python -m prediction_market.', ''), tDyn(i.purpose)])} />
+      <DataTable cols={[tr('prediction.colCat'), tr('prediction.colCommand'), tr('prediction.colPurpose')]} rows={(data?.interfaces ?? []).map((i: any) => [<span style={{ whiteSpace: 'nowrap' }}>{tDyn(i.category)}</span>, i.command?.replace('python -m prediction_market.', ''), tDyn(i.purpose)])} />
       <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '10px 0 4px', ...mono }}>{tr('prediction.secSchedule')}</div>
       <DataTable cols={[tr('prediction.colWhen'), tr('prediction.colRuns'), tr('prediction.colFreq')]} rows={(data?.schedule ?? []).map((s: any) => [tDyn(s.when), s.runs, tDyn(s.frequency)])} />
     </div>
@@ -724,36 +724,80 @@ function FormCard() {
   );
 }
 
-// Team STYLE taxonomy (data-driven clusters from intra-game metrics). Descriptive
-// scouting aid — grouped by style with each team's possession / xG / directness.
+// Team STYLE taxonomy — a 48 teams × 10 styles MATRIX (a team can play 1–2 styles, so
+// 1–2 filled cells per row). Each filled cell shows the team's possession; within a style
+// column teams are ranked by possession (cells do NOT sum to 100%). Built from a curated
+// research prior blended with live API-Football metrics. Descriptive scouting aid.
 function TeamStyles() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCStyles(), []);
+  const [sortCode, setSortCode] = useState<string | null>(null);   // null = default block-diagonal order
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const teams = (data?.teams ?? []);
-  const groups: Record<string, any[]> = {};
-  for (const t of teams) (groups[t.style] ??= []).push(t);
-  const ordered = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
+  const styles = (data?.styles ?? []);                 // [{code, label}]
+  const codeIdx: Record<string, number> = {};
+  styles.forEach((s: any, i: number) => { codeIdx[s.code] = i; });
+  const cellOf = (t: any, code: string) => (t.styles || []).find((s: any) => s.code === code);
+  const shortLabel = (label: string) => (label || '').split(' ')[0];   // fallback header (Chinese part)
+  const styleName = (s: any) => tr('prediction.style.' + s.code, { defaultValue: shortLabel(s.label) });
+  const onSort = (code: string) => {
+    if (sortCode === code) setSortDir(d => (d === 'desc' ? 'asc' : 'desc'));
+    else { setSortCode(code); setSortDir('desc'); }
+  };
+  // Default: primary style column then possession desc (readable block-diagonal matrix).
+  // When a header is clicked: sort by that style column's possession; teams without that
+  // style (cell = '·') sink to the bottom. Click again toggles asc/desc.
+  const cellPoss = (t: any, code: string) => { const c = cellOf(t, code); return c ? c.poss : -1; };
+  const rows = [...teams].sort((a: any, b: any) => {
+    if (sortCode) {
+      const va = cellPoss(a, sortCode), vb = cellPoss(b, sortCode);
+      if (va !== vb) return sortDir === 'desc' ? vb - va : va - vb;
+      return a.team_id < b.team_id ? -1 : 1;
+    }
+    const ca = codeIdx[a.styles?.[0]?.code] ?? 99, cb = codeIdx[b.styles?.[0]?.code] ?? 99;
+    return ca - cb || (b.poss - a.poss);
+  });
+  const th: CSSProperties = { padding: '4px 5px', borderBottom: '2px solid var(--border-subtle)', fontWeight: 700, color: 'var(--text-secondary)', whiteSpace: 'nowrap', textAlign: 'center' };
+  const td: CSSProperties = { padding: '3px 5px', borderBottom: '1px solid var(--border-subtle)', textAlign: 'center' };
   return (
     <div>
       <Title sub={tr('prediction.subStyles')}>Team Styles</Title>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 8 }}>
         {tr('prediction.stylesNote')} · {data?.n ?? 0} {tr('prediction.lblMatchesAll')}
       </div>
-      {ordered.map(([style, ts]) => (
-        <div key={style} className="card" style={{ marginBottom: 8 }}>
-          <div style={{ fontWeight: 700, fontSize: 12, ...mono, color: 'var(--accent-primary)', marginBottom: 4 }}>
-            {style} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({ts.length})</span>
-          </div>
-          <DataTable cols={[tr('prediction.team'), 'Poss', 'xG', tr('prediction.stylesDirect')]}
-            rows={ts.map((t: any) => [
-              tCountry(t.name),
-              pct(t.metrics?.possession, 0),
-              (t.metrics?.xg ?? 0).toFixed(2),
-              (t.metrics?.directness ?? 0).toFixed(2),
-            ])} />
-        </div>
-      ))}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ borderCollapse: 'collapse', fontSize: 10, ...mono, width: '100%' }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, position: 'sticky', left: 0, background: 'var(--bg-secondary)', textAlign: 'left', zIndex: 1 }}>{tr('prediction.team')}</th>
+              {styles.map((s: any) => (
+                <th key={s.code} onClick={() => onSort(s.code)} title={s.label}
+                    style={{ ...th, cursor: 'pointer', color: sortCode === s.code ? 'var(--accent-primary)' : 'var(--text-secondary)' }}>
+                  {styleName(s)}{sortCode === s.code ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((t: any) => (
+              <tr key={t.team_id}>
+                <td style={{ ...td, position: 'sticky', left: 0, background: 'var(--bg-primary)', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--text-primary)' }}>{tCountry(t.name)}</td>
+                {styles.map((s: any) => {
+                  const c = cellOf(t, s.code);
+                  return (
+                    <td key={s.code}
+                        style={{ ...td, background: c ? 'var(--bg-tertiary)' : 'transparent', color: c ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: c ? 700 : 400 }}
+                        title={c ? `${tCountry(t.name)} · ${s.label} · poss ${Math.round(c.poss * 100)}% · #${c.rank} in style` : ''}>
+                      {c ? Math.round(c.poss * 100) : '·'}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

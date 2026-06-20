@@ -176,7 +176,199 @@ const M: Record<string, Tr> = {
     fr: 'Comment voir la valeur : les deux rapports — performance_report (précision / P&L de calibration) + risk_report (barrières / exposition / budget) — sont la réponse.',
     es: 'Cómo ver el valor: los dos informes — performance_report (precisión / P&L de calibración) + risk_report (controles / exposición / presupuesto) — son la respuesta.',
   },
+  // ── frontend_overview.json: interface category (执行 missing; others above) ──
+  '执行': { en: 'Execute', zh: '执行', ja: '実行', fr: 'Exécution', es: 'Ejecución' },
+  // ── frontend_overview.json: interface purposes ──
+  '一次性拉全量(球队/球员/对阵/赛程),建立增量水位': {
+    zh: '一次性拉全量(球队/球员/对阵/赛程),建立增量水位',
+    en: 'One-time full pull (teams/players/fixtures/schedule), establishing the incremental watermark',
+    ja: '全量を一度取得(チーム/選手/対戦/日程)、増分の基準位置を確立',
+    fr: 'Extraction complète unique (équipes/joueurs/affiches/calendrier), pose le repère incrémental',
+    es: 'Extracción completa única (equipos/jugadores/enfrentamientos/calendario), fija la marca incremental',
+  },
+  '增量刷新(赛果、比分、live 状态)': {
+    zh: '增量刷新(赛果、比分、live 状态)',
+    en: 'Incremental refresh (results, scores, live status)',
+    ja: '増分リフレッシュ(結果、スコア、ライブ状態)',
+    fr: 'Rafraîchissement incrémental (résultats, scores, statut live)',
+    es: 'Actualización incremental (resultados, marcadores, estado en vivo)',
+  },
+  '单场 3-way 公允价(主/平/客),含点球大战建模': {
+    zh: '单场 3-way 公允价(主/平/客),含点球大战建模',
+    en: 'Single-match 3-way fair odds (home/draw/away), incl. penalty-shootout modelling',
+    ja: '単一試合の3-way公正オッズ(ホーム/引分/アウェイ)、PK戦モデリング含む',
+    fr: 'Cotes justes 3-way par match (domicile/nul/extérieur), avec modélisation des tirs au but',
+    es: 'Cuotas justas 3-way por partido (local/empate/visitante), con modelado de tanda de penaltis',
+  },
+  '模拟冠军概率(48 队)': {
+    zh: '模拟冠军概率(48 队)',
+    en: 'Simulated title probabilities (48 teams)',
+    ja: '優勝確率のシミュレーション(48チーム)',
+    fr: 'Probabilités de titre simulées (48 équipes)',
+    es: 'Probabilidades de título simuladas (48 equipos)',
+  },
+  '金靴(进球王)球员概率': {
+    zh: '金靴(进球王)球员概率',
+    en: 'Golden Boot (top scorer) player probabilities',
+    ja: '得点王(ゴールデンブート)の選手確率',
+    fr: 'Probabilités joueur du Soulier d’or (meilleur buteur)',
+    es: 'Probabilidades de jugador para la Bota de Oro (máximo goleador)',
+  },
+  'xG-form 评分加成(PIT):球队近期 xG 比比分更低噪,提升预测': {
+    zh: 'xG-form 评分加成(PIT):球队近期 xG 比比分更低噪,提升预测',
+    en: "xG-form rating boost (PIT): a team's recent xG is less noisy than scores, improving predictions",
+    ja: 'xG-formによる評価加点(PIT):チーム直近のxGはスコアより低ノイズで予測を改善',
+    fr: "Bonus de note xG-form (PIT) : le xG récent d'une équipe est moins bruité que les scores, améliore les prédictions",
+    es: 'Bonificación de rating xG-form (PIT): el xG reciente de un equipo tiene menos ruido que los marcadores, mejora las predicciones',
+  },
+  '赛前下注决策:价值选边(在可交易边里挑最优)+ 分数凯利 + 置信度定额($0.2–$2);决策阈值 0.02(择时保护)': {
+    zh: '赛前下注决策:价值选边(在可交易边里挑最优)+ 分数凯利 + 置信度定额($0.2–$2);决策阈值 0.02(择时保护)',
+    en: 'Pre-match betting decision: value side-pick (best among tradable sides) + fractional Kelly + confidence sizing ($0.2–$2); decision threshold 0.02 (timing guard)',
+    ja: '試合前ベット判断:バリューでサイド選択(取引可能なサイドから最良)+ 分数ケリー + 信頼度に応じた定額($0.2–$2);判断閾値0.02(タイミング保護)',
+    fr: 'Décision de pari avant-match : choix de côté valeur (le meilleur parmi les côtés négociables) + Kelly fractionnaire + mise selon la confiance (0,2–2 $) ; seuil de décision 0,02 (garde-fou de timing)',
+    es: 'Decisión de apuesta previa: elección de lado por valor (el mejor entre los lados negociables) + Kelly fraccional + tamaño por confianza (0,2–2 $); umbral de decisión 0,02 (protección de timing)',
+  },
+  '智能择时/超调止盈:市场价超调高于 live 公允价时现金出锁利——实现口径的核心 alpha(39%→67% 盈利)': {
+    zh: '智能择时/超调止盈:市场价超调高于 live 公允价时现金出锁利——实现口径的核心 alpha(39%→67% 盈利)',
+    en: 'Smart timing / overshoot take-profit: cash out to lock gains when market price overshoots above the live fair value — the core alpha of the realized view (39%→67% profitable)',
+    ja: 'スマートタイミング/オーバーシュート利確:市場価格がライブ公正価を上回り過剰反応した時に現金化して利益確定——実現ベースの中核アルファ(39%→67%が黒字)',
+    fr: "Timing intelligent / prise de profit sur dépassement : encaisser pour verrouiller les gains quand le prix de marché dépasse la juste valeur live — l'alpha central de la vue réalisée (39 %→67 % gagnants)",
+    es: 'Timing inteligente / toma de ganancias por sobrerreacción: liquidar para asegurar ganancias cuando el precio de mercado supera el valor justo en vivo — el alfa central de la vista realizada (39 %→67 % rentables)',
+  },
+  '决策模型 PIT 回测(选边/退出时点/CLV 实测)': {
+    zh: '决策模型 PIT 回测(选边/退出时点/CLV 实测)',
+    en: 'Decision-model PIT backtest (side pick / exit timing / measured CLV)',
+    ja: '判断モデルのPITバックテスト(サイド選択/退出タイミング/CLV実測)',
+    fr: 'Backtest PIT du modèle de décision (choix de côté / timing de sortie / CLV mesuré)',
+    es: 'Backtest PIT del modelo de decisión (elección de lado / timing de salida / CLV medido)',
+  },
+  '每日赛前下单信号:decide() 选边定额 → $1 硬顶 cap → 闸门放行才下单': {
+    zh: '每日赛前下单信号:decide() 选边定额 → $1 硬顶 cap → 闸门放行才下单',
+    en: 'Daily pre-match order signal: decide() picks side & size → $1 hard cap → order only if the gate passes',
+    ja: '毎日の試合前発注シグナル:decide()でサイドと定額を決定 → $1ハード上限 → ゲート通過時のみ発注',
+    fr: "Signal d'ordre quotidien avant-match : decide() choisit côté et mise → plafond strict 1 $ → ordre seulement si la barrière passe",
+    es: 'Señal de orden diaria previa al partido: decide() elige lado y tamaño → tope estricto de 1 $ → orden solo si la puerta lo permite',
+  },
+  '模型 vs 市场偏离扫描(赛前)': {
+    zh: '模型 vs 市场偏离扫描(赛前)',
+    en: 'Model vs market divergence scan (pre-match)',
+    ja: 'モデル対市場の乖離スキャン(試合前)',
+    fr: "Scan d'écart modèle vs marché (avant-match)",
+    es: 'Escaneo de divergencia modelo vs mercado (previo al partido)',
+  },
+  '盘中每分钟:套利 / 相对价值 / 15 个战术(8 个数据挖掘:闷平爆发/应得未得/无效控球/阵型脆弱/单点失效/晚段进球/庄家交叉验证/临门修正 + 超调止盈)。信号按 intent 分区(持仓管理/新入场/事件,避免平仓与入场被读成矛盾);庄家交叉验证需「庄家+模型双双>可交易场价」确认(与模型同向);收敛锁定需市场 bid≈公允才卖(否则持有吃满额,不贱卖)': {
+    zh: '盘中每分钟:套利 / 相对价值 / 15 个战术(8 个数据挖掘:闷平爆发/应得未得/无效控球/阵型脆弱/单点失效/晚段进球/庄家交叉验证/临门修正 + 超调止盈)。信号按 intent 分区(持仓管理/新入场/事件,避免平仓与入场被读成矛盾);庄家交叉验证需「庄家+模型双双>可交易场价」确认(与模型同向);收敛锁定需市场 bid≈公允才卖(否则持有吃满额,不贱卖)',
+    en: 'In-play per minute: arbitrage / relative value / 15 tactics (8 data-mined: stalemate breakout / deserved-but-denied / sterile possession / fragile formation / single-point failure / late goal / bookmaker cross-validation / final-touch correction + overshoot take-profit). Signals are partitioned by intent (position management / new entry / event, so closing and entering aren\'t read as contradictory); bookmaker cross-validation requires "both bookmaker + model > the tradable venue price" confirmation (same direction as the model); convergence lock only sells when the market bid ≈ fair (otherwise hold for full settlement, don\'t sell cheap)',
+    ja: 'ライブ毎分:裁定 / 相対価値 / 15戦術(データマイニング8:膠着爆発/報われない内容/無効な支配/脆い布陣/一点依存の崩壊/終盤ゴール/ブックメーカー交差検証/土壇場修正 + オーバーシュート利確)。シグナルはintentで分区(ポジション管理/新規エントリー/イベント、決済とエントリーが矛盾と読まれないように);ブックメーカー交差検証は「ブックメーカー+モデルの双方>取引可能な会場価格」の確認が必要(モデルと同方向);収束ロックは市場bid≈公正の時のみ売る(さもなくば満額決済まで保有し、安売りしない)',
+    fr: "En direct chaque minute : arbitrage / valeur relative / 15 tactiques (8 issues du data-mining : déblocage de match fermé / mérité-mais-refusé / possession stérile / formation fragile / défaillance d'un seul point / but tardif / validation croisée bookmaker / correction de dernière minute + prise de profit sur dépassement). Les signaux sont répartis par intention (gestion de position / nouvelle entrée / événement, pour que clôturer et entrer ne paraissent pas contradictoires) ; la validation croisée bookmaker exige la confirmation « bookmaker + modèle tous deux > prix négociable du marché » (même sens que le modèle) ; le verrouillage de convergence ne vend que si le bid de marché ≈ juste valeur (sinon conserver jusqu'au règlement plein, ne pas brader)",
+    es: 'En vivo cada minuto: arbitraje / valor relativo / 15 tácticas (8 de minería de datos: desbloqueo de empate cerrado / merecido-pero-negado / posesión estéril / formación frágil / fallo de un solo punto / gol tardío / validación cruzada de casa de apuestas / corrección de último momento + toma de ganancias por sobrerreacción). Las señales se reparten por intención (gestión de posición / nueva entrada / evento, para que cerrar y entrar no se lean como contradictorios); la validación cruzada de casa de apuestas exige confirmación «casa + modelo ambos > precio negociable del mercado» (misma dirección que el modelo); el bloqueo por convergencia solo vende cuando el bid de mercado ≈ valor justo (de lo contrario, mantener hasta la liquidación completa, no malvender)',
+  },
+  '球队风格分型(48队×10风格矩阵:每队1-2风格,手策研究先验+live指标混合,每周更新)': {
+    zh: '球队风格分型(48队×10风格矩阵:每队1-2风格,手策研究先验+live指标混合,每周更新)',
+    en: 'Team style typing (48-team × 10-style matrix: 1–2 styles per team, curated research prior blended with live metrics, weekly update)',
+    ja: 'チームのスタイル分類(48チーム×10スタイルの行列:1チーム1-2スタイル、手作業の研究事前分布+ライブ指標の混合、週次更新)',
+    fr: "Typage de style d'équipe (matrice 48 équipes × 10 styles : 1–2 styles par équipe, a priori de recherche curé mêlé aux métriques live, mise à jour hebdomadaire)",
+    es: 'Tipificación de estilo de equipo (matriz 48 equipos × 10 estilos: 1–2 estilos por equipo, prior de investigación curado mezclado con métricas en vivo, actualización semanal)',
+  },
+  '晋级盘(48 队 × 5 轮:小组出线/16/8/4/决赛,模型%/Kalshi¢/Poly¢/边缘)': {
+    zh: '晋级盘(48 队 × 5 轮:小组出线/16/8/4/决赛,模型%/Kalshi¢/Poly¢/边缘)',
+    en: 'Advancement board (48 teams × 5 rounds: group-out/R16/QF/SF/final, model% / Kalshi¢ / Poly¢ / edge)',
+    ja: '勝ち上がりボード(48チーム×5ラウンド:グループ突破/16強/8強/4強/決勝、モデル%/Kalshi¢/Poly¢/エッジ)',
+    fr: 'Tableau de qualification (48 équipes × 5 tours : sortie de groupe/8e/4e/demi/finale, modèle % / Kalshi¢ / Poly¢ / avantage)',
+    es: 'Tablero de avance (48 equipos × 5 rondas: salida de grupo/octavos/cuartos/semis/final, modelo % / Kalshi¢ / Poly¢ / ventaja)',
+  },
+  '每分钟价格回填(Poly Global prices-history),供细粒度择时研究': {
+    zh: '每分钟价格回填(Poly Global prices-history),供细粒度择时研究',
+    en: 'Per-minute price backfill (Poly Global prices-history), for fine-grained timing research',
+    ja: '毎分の価格バックフィル(Poly Global prices-history)、細粒度のタイミング研究用',
+    fr: 'Remplissage de prix à la minute (Poly Global prices-history), pour la recherche de timing fin',
+    es: 'Relleno de precios por minuto (Poly Global prices-history), para investigación de timing de grano fino',
+  },
+  '赛程表(美东 ET + 美西 PT 双时区)': {
+    zh: '赛程表(美东 ET + 美西 PT 双时区)',
+    en: 'Schedule (US Eastern ET + US Pacific PT dual time zones)',
+    ja: '日程表(米東部ET + 米西部PTの2タイムゾーン)',
+    fr: 'Calendrier (double fuseau : Est ET + Pacifique PT des États-Unis)',
+    es: 'Calendario (doble zona horaria: Este ET + Pacífico PT de EE. UU.)',
+  },
+  '健康报告(数据新鲜度/预算/校准/错误率)': {
+    zh: '健康报告(数据新鲜度/预算/校准/错误率)',
+    en: 'Health report (data freshness / budget / calibration / error rate)',
+    ja: 'ヘルスレポート(データ鮮度/予算/較正/エラー率)',
+    fr: "Rapport de santé (fraîcheur des données / budget / calibration / taux d'erreur)",
+    es: 'Informe de salud (frescura de datos / presupuesto / calibración / tasa de error)',
+  },
+  '收益/准确度报告(本 PDF)': {
+    zh: '收益/准确度报告(本 PDF)',
+    en: 'Returns / accuracy report (this PDF)',
+    ja: '収益/精度レポート(本PDF)',
+    fr: 'Rapport rendement/précision (ce PDF)',
+    es: 'Informe de rendimiento/precisión (este PDF)',
+  },
+  '风险报告(配套 PDF)': {
+    zh: '风险报告(配套 PDF)',
+    en: 'Risk report (companion PDF)',
+    ja: 'リスクレポート(付属PDF)',
+    fr: 'Rapport de risque (PDF compagnon)',
+    es: 'Informe de riesgo (PDF complementario)',
+  },
+  '整点任务(刷数据+扫偏离+健康)': {
+    zh: '整点任务(刷数据+扫偏离+健康)',
+    en: 'On-the-hour job (refresh data + scan divergence + health)',
+    ja: '正時タスク(データ更新+乖離スキャン+ヘルス)',
+    fr: "Tâche à l'heure pile (rafraîchir données + scan d'écart + santé)",
+    es: 'Tarea en punto (actualizar datos + escanear divergencia + salud)',
+  },
+  '盘中每分钟轮询(内部调 inplay_arb)': {
+    zh: '盘中每分钟轮询(内部调 inplay_arb)',
+    en: 'In-play per-minute polling (internally calls inplay_arb)',
+    ja: 'ライブ毎分ポーリング(内部でinplay_arbを呼ぶ)',
+    fr: 'Interrogation en direct à la minute (appelle inplay_arb en interne)',
+    es: 'Sondeo en vivo por minuto (llama internamente a inplay_arb)',
+  },
+  // ── frontend_overview.json: schedule "when" + "frequency" ──
+  '每天一次(赛前)': {
+    zh: '每天一次(赛前)', en: 'Once daily (pre-match)', ja: '1日1回(試合前)',
+    fr: 'Une fois/jour (avant-match)', es: 'Una vez/día (pre-partido)',
+  },
+  '整点': { zh: '整点', en: 'On the hour', ja: '毎正時', fr: "À l'heure pile", es: 'En punto' },
+  '比赛进行中': { zh: '比赛进行中', en: 'During matches', ja: '試合中', fr: 'Pendant les matchs', es: 'Durante los partidos' },
+  '随时查看': { zh: '随时查看', en: 'On demand', ja: '随時', fr: 'À la demande', es: 'Bajo demanda' },
+  '1×/天': { zh: '1×/天', en: '1×/day', ja: '1×/日', fr: '1×/jour', es: '1×/día' },
+  '每小时': { zh: '每小时', en: 'Hourly', ja: '毎時', fr: 'Toutes les heures', es: 'Cada hora' },
+  '每分钟': { zh: '每分钟', en: 'Per minute', ja: '毎分', fr: 'Chaque minute', es: 'Cada minuto' },
+  '按需': { zh: '按需', en: 'On demand', ja: '随時', fr: 'À la demande', es: 'Bajo demanda' },
 };
+
+// ── System Overview headline ──
+// The backend headline (honest_headline) interpolates the live Brier numbers, so an
+// exact-string M lookup can't match it. Rebuild it in the active language from the
+// structured `performance` fields instead; fall back to tDyn(raw) if perf is absent.
+type OverviewPerf = { trade_grade?: boolean; calibrated_brier?: number | null; brier_uniform?: number } | null | undefined;
+const HEADLINE_PASS: Tr = {
+  zh: '系统状态:已达可交易等级。经概率校准后模型 Brier {cb} ≤ 均匀基线 {ub},纪律闸门放行。实际下单仍受 $1 硬上限、场所可执行性与单场正向 edge 三重约束——闸门管「能不能交易」,这三项管「具体下不下、下多少」。',
+  en: "System status: trade-grade reached. After probability calibration the model's Brier {cb} ≤ uniform baseline {ub}, so the discipline gate is open. Live orders are still bound by three limits — the $1 hard cap, venue executability, and a positive per-match edge — the gate governs 'whether we can trade at all', these three govern 'whether and how much to actually bet'.",
+  ja: 'システム状態:取引グレード到達。確率較正後、モデルのBrier {cb} ≤ 一様基準 {ub} のため規律ゲートは開放。実際の発注は依然として3つの制約 — $1のハード上限、会場の執行可能性、試合ごとの正のエッジ — を受ける。ゲートは「そもそも取引できるか」を、この3つは「実際に賭けるか・いくら賭けるか」を司る。',
+  fr: "État du système : niveau négociable atteint. Après calibration, le Brier du modèle {cb} ≤ référence uniforme {ub}, donc la barrière de discipline est ouverte. Les ordres réels restent soumis à trois limites — le plafond strict de 1 $, l'exécutabilité du marché et un avantage positif par match — la barrière régit « peut-on trader », ces trois régissent « parier ou non, et combien ».",
+  es: 'Estado del sistema: nivel negociable alcanzado. Tras la calibración, el Brier del modelo {cb} ≤ línea base uniforme {ub}, así que la puerta de disciplina está abierta. Las órdenes reales siguen sujetas a tres límites — el tope estricto de 1 $, la ejecutabilidad del mercado y una ventaja positiva por partido — la puerta rige «si se puede operar», estos tres rigen «apostar o no, y cuánto».',
+};
+const HEADLINE_BLOCK: Tr = {
+  zh: '系统状态:纪律闸门拦截中。校准后模型 Brier {cb} 仍劣于均匀基线 {ub},未达可交易等级,系统拒绝下任何真钱单。这是设计目标:宁可不交易,也不拿没验证过的边缘去亏钱。',
+  en: "System status: discipline gate is blocking. After calibration the model's Brier {cb} is still worse than the uniform baseline {ub}, not yet trade-grade, so the system refuses any real-money order. This is by design: better not to trade than to lose on an unvalidated edge.",
+  ja: 'システム状態:規律ゲートがブロック中。較正後もモデルのBrier {cb} は一様基準 {ub} に劣り、取引グレード未達のため、システムは実資金の注文を一切拒否する。これは設計目標:検証されていないエッジで損をするより、取引しない方が良い。',
+  fr: "État du système : la barrière de discipline bloque. Après calibration, le Brier du modèle {cb} reste pire que la référence uniforme {ub}, niveau non atteint, donc le système refuse tout ordre en argent réel. C'est voulu : mieux vaut ne pas trader que perdre sur un avantage non validé.",
+  es: 'Estado del sistema: la puerta de disciplina está bloqueando. Tras la calibración, el Brier del modelo {cb} sigue siendo peor que la línea base uniforme {ub}, nivel no alcanzado, así que el sistema rechaza toda orden con dinero real. Es por diseño: mejor no operar que perder con una ventaja no validada.',
+};
+
+/** Localized System Overview headline rebuilt from structured performance fields. */
+export function overviewHeadline(perf: OverviewPerf, fallback?: string | null): string {
+  if (!perf || perf.trade_grade == null) return tDyn(fallback);
+  const lang = (i18n.language || 'en').slice(0, 2) as keyof Tr;
+  const cb = perf.calibrated_brier != null ? perf.calibrated_brier.toFixed(4) : '—';
+  const ub = (perf.brier_uniform ?? 0.6667).toFixed(4);
+  const T = perf.trade_grade ? HEADLINE_PASS : HEADLINE_BLOCK;
+  return (T[lang] ?? T.en).replace('{cb}', cb).replace('{ub}', ub);
+}
 
 /** Dynamic backend string in the active language (original fallback). */
 export function tDyn(s?: string | null): string {

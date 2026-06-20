@@ -230,7 +230,7 @@ set -a && source prediction_market/.env && set +a && \
 | `ops/frontend_export.py` | **前端数据合约**：静态目录 + 实时快照（performance/risk/预测/upcoming）→ 单一 `frontend_overview.json`，前端读这一个文件即可 |
 | `venues/champion_prices.py` | 夺冠盘真实合约价：Kalshi `KXMENWORLDCUP`（inline ask）+ Poly Global `world-cup-winner`（inline outcomePrices）→ 映射到 canonical team_id，失败容错 |
 | `jobs/live_poller.py` | 盘中每分钟轮询：live 公允价 + 跨场套利 + 战术 → `inplay_signals.json` |
-| `strategy/inplay_tactics.py` | 盘中战术库：基础(平局/收敛/动量/总进球)+ 事件(进球过反应/落后夺冠/红牌/淘汰赛平局)+ **8 个数据挖掘战术**(闷平爆发/临门修正/应得未得/无效控球/阵型脆弱/单点失效/晚段进球/庄家交叉验证，源自 26 场 intra-game 研究，见 `docs/INPLAY_FINDINGS.md`)。OVER/UNDER 类信号接入 **Kalshi `KXWCTOTAL` + Poly US `tsc-fwc-*` 总进球盘**实时价(`venues/*/discovery.py:totals_quotes`)：闷平/阵型/晚段附市场价,临门修正(#9)在模型已看高于市场时激活,并产出 totals relative-value |
+| `strategy/inplay_tactics.py` | 盘中战术库：基础(平局/收敛/动量/总进球)+ 事件(进球过反应/落后夺冠/红牌/淘汰赛平局)+ **8 个数据挖掘战术**(闷平爆发/临门修正/应得未得/无效控球/阵型脆弱/单点失效/晚段进球/庄家交叉验证，源自 26 场 intra-game 研究，见 `docs/INPLAY_FINDINGS.md`)。OVER/UNDER 类信号接入 **Kalshi `KXWCTOTAL` + Poly US `tsc-fwc-*` 总进球盘**实时价(`venues/*/discovery.py:totals_quotes`)：闷平/阵型/晚段附市场价,临门修正(#9)在模型已看高于市场时激活,并产出 totals relative-value。**庄家交叉验证(聪明钱)仅在「庄家盘 + 模型双双高于可交易场价(场价滞后)」时触发,与模型同向**——不再单凭 `book>model` 跟庄(无场价时阈值提至 0.10) |
 
 ---
 
@@ -418,7 +418,7 @@ conda run -n someopark_run --no-capture-output python -m pytest prediction_marke
 | 预测 | `model.tournament` | 模拟冠军概率（48 队） |
 | 预测 | `model.golden_boot` | 金靴（进球王）概率 |
 | 策略 | `strategy.compare` | 模型 vs 市场偏离扫描（赛前） |
-| 策略 | `strategy.inplay_arb` | 盘中每分钟：套利 / 相对价值 / 战术 |
+| 策略 | `strategy.inplay_arb` | 盘中每分钟：套利 / 相对价值 / 战术；每个机会带 `intent`(持仓管理 manage / 新入场 entry / 事件 event)按意图分组,前端分三区显示(持仓平仓不被当成与新入场买入矛盾) |
 | 运维 | `ops.schedule` | 赛程表（美东 ET + 美西 PT） |
 | 运维 | `ops.monitor` | 健康报告 |
 | 运维 | `ops.performance_report` | 收益/准确度报告（`--pdf`） |

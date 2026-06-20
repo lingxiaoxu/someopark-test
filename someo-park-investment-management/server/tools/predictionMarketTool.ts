@@ -18,10 +18,10 @@ const VIEWS: Record<string, { file: string; about: string }> = {
   golden_boot: { file: 'worldcup_model.json',      about: 'top-scorer probabilities (EA FC 26 talent + knockout depth + teammate split) + current goals scored' },
   predictions: { file: 'upcoming.json',            about: 'today/upcoming matches: model 3-way + O2.5/BTTS, de-vig book, real Kalshi/Poly US asks, edges, AND the decision (value pick + stake + the dual-口径 plan: entry now + planned smart-exit cash-out)' },
   schedule:    { file: 'upcoming.json',            about: 'fixture schedule with kickoff times (ET/PT) + recently finished matches (FT + score)' },
-  inplay:      { file: 'inplay_live.json',         about: 'LIVE matches now: live 3-way, xG, remaining goals, + 15 in-play tactics (8 data-mined incl. the overshoot/smart-exit take-profit) + the OVER/UNDER totals market' },
+  inplay:      { file: 'inplay_live.json',         about: 'LIVE matches now: live 3-way, xG, remaining goals, + 15 in-play tactics (8 data-mined incl. the overshoot/smart-exit take-profit) + the OVER/UNDER totals market. Each opportunity carries an `intent`: "manage" (sell/lock a HELD position, e.g. overshoot/convergence take-profit), "entry" (a new value entry), or "event" (event-driven, e.g. red card / goal over-reaction) — grouped so a held-position exit is NOT read as contradicting a new-entry buy. The smart-money cross-validation (live bookmaker odds) only flags an entry when the book AND the model both beat the tradable venue price (venue lagging), so it agrees with the model rather than chasing the book.' },
   performance: { file: 'performance_report.json',  about: 'accuracy (Brier vs uniform, calibrated), trade-grade gate, and the bet log in 3 modes: REALIZED (decision + smart-exit cash-out = the real strategy, e.g. 15W-7L/+486¢), HOLD-to-FT (reference), and ARGMAX (reference) — each with W-L + PnL' },
   reach_round: { file: 'reach_round.json',         about: 'reach-round (晋级盘): each of the 48 teams’ probability to reach each round (group-advance / R16 / QF / SF / final), model % vs Kalshi¢ (KXWCROUND) vs Poly¢ + edge; refreshed on every settle' },
-  styles:      { file: 'team_styles.json',         about: 'team style taxonomy: each team’s data-driven style cluster (possession / direct / high-press / clinical / dominant-attack / high-volume / low-block…) + possession/xG/directness metrics (scouting aid; descriptive)' },
+  styles:      { file: 'team_styles.json',         about: 'team style taxonomy as a 48 teams × 10 styles MATRIX (styles: possession / direct / high-press / low-block / dominant-attack / clinical / high-volume / set-piece / balanced / contained). A team can play 1–2 styles — `teams[].styles` is a 1–2 element array, each {code,label,poss,rank} where rank is the team\'s within-style ranking by possession (cells do NOT sum to 100%). Built from a curated research prior blended with live API-Football metrics; refreshed weekly. Backward-compatible: each team also keeps the legacy single `style` (its primary) + `metrics` (possession/xG/directness…). Descriptive scouting aid.' },
   risk:        { file: 'risk_report.json',         about: 'pre-trade gates, venue balances (Kalshi/Poly), $1 order cap, API budget/health, calibration gate (also the Venues & Gates and API-Budget views)' },
   calibration: { file: 'oos_report.json',          about: 'out-of-sample reliability: Brier vs uniform, log-loss, predicted-vs-observed draw rate, goal-total bias — the directional calibration health check' },
   backtest:    { file: 'backtest.json',            about: 'model vs market vs uniform Brier on settled matches; blend curve; trade-grade verdict' },
@@ -126,6 +126,53 @@ export const predictionMarketTool: AgentTool = {
     }
     return data
   },
+}
+
+// ── grounding for the NON-agent chat ───────────────────────────────────────────
+// The plain chat path (nemo / any model, no real tool-calling) answers blind unless we
+// hand it the data. When detectArtifacts() flags a wc_* artifact, we load the SAME
+// trimmed data the panel shows and inject it so the model's prose matches the panel.
+// wc_<type> artifact → VIEWS key (a few cards share one underlying file/view).
+const WC_TYPE_TO_VIEW: Record<string, string> = {
+  wc_champion: 'champion', wc_golden_boot: 'golden_boot', wc_predictions: 'predictions',
+  wc_match_pricing: 'predictions', wc_schedule: 'schedule', wc_inplay: 'inplay',
+  wc_performance: 'performance', wc_reach_round: 'reach_round', wc_styles: 'styles',
+  wc_risk: 'risk', wc_venues: 'risk', wc_budget: 'risk', wc_calibration: 'calibration',
+  wc_backtest: 'backtest', wc_squad: 'squad', wc_form: 'form', wc_params: 'params',
+  wc_divergence: 'divergence', wc_pricetrack: 'pricetrack', wc_overview: 'overview',
+  wc_methodology: 'overview',
+}
+
+/** Load the real data behind detected wc_* artifact types as a compact context block so
+ *  a non-agent chat model answers from the same numbers the user sees on the panel.
+ *  Hard-capped per view AND in total — some files (overview/risk/performance) carry the
+ *  full bet_log and would otherwise inject 100s of KB. Summary fields sit at the TOP of
+ *  these JSONs (headline / gates / top rows), so head-keep truncation preserves the
+ *  numbers a user actually asks about. */
+const _PER_VIEW_CAP = 8000
+const _TOTAL_CAP = 24000
+export async function predictionContextForArtifacts(
+  types: string[], opts: { top?: number } = {},
+): Promise<string> {
+  const seen = new Set<string>()
+  const blocks: string[] = []
+  let total = 0
+  for (const t of types) {
+    const view = WC_TYPE_TO_VIEW[t]
+    if (!view || seen.has(view)) continue
+    seen.add(view)
+    if (total >= _TOTAL_CAP) break
+    try {
+      const data = await predictionMarketTool.execute({ view, top: opts.top ?? 10 })
+      if (!data || (data as any).error) continue
+      let json = JSON.stringify(data)
+      if (json.length > _PER_VIEW_CAP) json = json.slice(0, _PER_VIEW_CAP) + ' …[truncated]'
+      const block = `### view="${view}" — ${VIEWS[view].about}\n${json}`
+      blocks.push(block)
+      total += block.length
+    } catch { /* skip a view that fails to load; others still inject */ }
+  }
+  return blocks.join('\n\n')
 }
 
 // ── team / match resolution (accepts English name, team_id, or Chinese name) ──

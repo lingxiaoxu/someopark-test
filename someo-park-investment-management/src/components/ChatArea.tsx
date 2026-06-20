@@ -593,8 +593,8 @@ export default function ChatArea({
       }))
 
       const body = useMorphApply && currentStanseAgent
-        ? { messages: msgPayload, model: currentModel, config: languageModel, currentStanseAgent, selectedTemplate }
-        : { messages: msgPayload, model: currentModel, config: languageModel, selectedTemplate }
+        ? { messages: msgPayload, model: currentModel, config: languageModel, currentStanseAgent, selectedTemplate, appMode }
+        : { messages: msgPayload, model: currentModel, config: languageModel, selectedTemplate, appMode }
 
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: 'POST',

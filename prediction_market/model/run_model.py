@@ -40,7 +40,8 @@ CODE_VERSION_FALLBACK = "wc-model-v1"
 # simplifications (plan discipline: a model is an entry ticket, not edge).
 MODEL_NOTES = [
     "v1: ratings reverse-fit to external prior expected points (plan 10 §5.1).",
-    "Group tie-breaks: points>GD>GF>random (no head-to-head / full official chain).",
+    "Group tie-breaks: 2026 rules — points > head-to-head (pts>GD>GF among level teams) > "
+    "overall GD > overall GF > lots; thirds ranked across groups by points>GD>GF>lots.",
     "Knockout bracket: fixed balanced mapping, NOT the official 2026 third-place table.",
     "Golden-boot: real topscorers (shrunk rate + goals head-start) merged with seed favourites; "
     "mu lightly double-counts played games (v2, refine when sim conditions on results).",

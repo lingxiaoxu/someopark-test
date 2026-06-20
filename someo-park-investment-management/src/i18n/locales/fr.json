@@ -183,6 +183,18 @@
       "entry": "Nouvelle entrée",
       "event": "Événementiel"
     },
+    "style": {
+      "possession": "Possession",
+      "direct": "Direct",
+      "high_press": "Pressing haut",
+      "low_block": "Bloc bas",
+      "dominant_attack": "Attaque dominante",
+      "clinical": "Clinique",
+      "high_volume": "Gros volume",
+      "set_piece": "Coups de pied arrêtés",
+      "balanced": "Équilibré",
+      "contained": "Contenu"
+    },
     "side": {
       "home": "Dom.",
       "draw": "Nul",

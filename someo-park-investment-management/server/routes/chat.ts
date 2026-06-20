@@ -4,6 +4,7 @@ import { getModelClient, LLMModel, LLMModelConfig } from '../utils/models.js'
 import { toPrompt, toChatPrompt } from '../utils/prompt.js'
 import { stanseAgentSchema as schema } from '../../src/lib/schema.js'
 import { detectArtifacts } from '../utils/artifactDetector.js'
+import { predictionContextForArtifacts } from '../tools/predictionMarketTool.js'
 import templates from '../../src/lib/templates.js'
 
 const router = Router()
@@ -30,6 +31,21 @@ function isCodeRequest(text: string): boolean {
   return CODE_INTENT_PATTERNS.some(pattern => pattern.test(text))
 }
 
+// Clean reasoning-model leakage from a normal chat reply (e.g. nemotron emits <think>…</think>
+// and, when told about views, sometimes prints a bare {"view": …} tool-call blob instead of prose).
+// Safety net only — the prompt already forbids these; if stripping would empty the reply we keep
+// the original so the user still sees something.
+function sanitizeChatText(s: string): string {
+  if (!s) return s
+  let t = s
+  t = t.replace(/<think>[\s\S]*?<\/think>/gi, '')        // paired think blocks
+  const close = t.lastIndexOf('</think>')                 // orphan opening (reasoning leaked, no close shown)
+  if (close !== -1) t = t.slice(close + '</think>'.length)
+  t = t.replace(/^\s*(\{\s*"view"\s*:[\s\S]*?\}\s*)+/i, '') // leading bare {"view":…} tool-call blob(s)
+  t = t.trim()
+  return t || s.trim()
+}
+
 router.post('/', async (req: Request, res: Response) => {
   const {
     messages,
@@ -37,12 +53,14 @@ router.post('/', async (req: Request, res: Response) => {
     model,
     config,
     selectedTemplate,
+    appMode,
   }: {
     messages: ModelMessage[]
     userID: string | undefined
     model: LLMModel
     config: LLMModelConfig
     selectedTemplate?: string
+    appMode?: 'stock' | 'prediction'
   } = req.body
 
   console.log('Chat request:', { userID, model: model?.id })
@@ -66,11 +84,19 @@ router.post('/', async (req: Request, res: Response) => {
     }
   }
 
-  // Detect artifacts in the message
-  const detectedArtifacts = detectArtifacts(lastContent)
+  // Detect artifacts in the message (mode-scoped: prediction mode → wc_* views only).
+  const detectedArtifacts = detectArtifacts(lastContent, appMode)
 
-  const modelClient = getModelClient(model, config)
-  const isHaikuModel = model.id.includes('haiku')
+  // Resolve the model client up front. A bad/missing provider must NOT crash the whole
+  // process (it used to throw uncaught here, taking the server down for every user) —
+  // return a 400 instead.
+  let modelClient
+  try {
+    modelClient = getModelClient(model, config)
+  } catch (e: any) {
+    return res.status(400).json({ error: e?.message || 'Invalid model/provider' })
+  }
+  const isHaikuModel = (model?.id || '').includes('haiku')
 
   // Decide: code generation (streamObject) vs normal chat (generateText)
   if (isCodeRequest(lastContent)) {
@@ -122,17 +148,36 @@ router.post('/', async (req: Request, res: Response) => {
     console.log('Normal chat:', lastContent.substring(0, 80))
     const defaultMaxTokens = isHaikuModel ? 4096 : 8192
 
+    // Grounding: if a World Cup view was detected, hand the model the SAME real data the
+    // panel shows so its prose matches the numbers (the non-agent chat has no real
+    // tool-calling). Only the chat prompt is augmented — the coding path is untouched.
+    let chatSystem = toChatPrompt()
+    const wcTypes = detectedArtifacts.map(a => a.type).filter(t => t.startsWith('wc_'))
+    if (wcTypes.length > 0) {
+      try {
+        const ctx = await predictionContextForArtifacts(wcTypes)
+        if (ctx) {
+          chatSystem +=
+            '\n\n## World Cup 2026 prediction-market data (authoritative — these are the ' +
+            'live numbers on the panel the user is seeing; answer ONLY from them, do not ' +
+            'invent figures, and say so if a value is absent):\n' + ctx
+        }
+      } catch (e) {
+        console.error('prediction grounding failed (continuing without it):', e)
+      }
+    }
+
     try {
       const result = await generateText({
         model: modelClient as LanguageModel,
-        system: toChatPrompt(),
+        system: chatSystem,
         messages,
         maxTokens: modelParams.maxTokens || defaultMaxTokens,
         ...modelParams,
       })
 
       const chatResponse = {
-        commentary: result.text,
+        commentary: sanitizeChatText(result.text),
         template: 'chat-response',
         title: 'Chat',
         description: 'Chat response',

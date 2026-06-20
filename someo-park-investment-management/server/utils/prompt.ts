@@ -17,20 +17,23 @@ export function toChatPrompt() {
       (champion odds via Monte-Carlo, golden-boot top-scorer via EA FC 26 talent × knockout depth),
       finds value/arbitrage vs real Kalshi & Polymarket US quotes, and trades in-play minute-by-minute.
 
-    ## Prediction Market knowledge (use the get_prediction_market tool)
-    For ANY World Cup 2026 / betting / Kalshi / Polymarket question, call get_prediction_market with the
-    right view, then answer from the real data — never guess. Views: champion (who wins the cup, FIFA rank),
-    golden_boot (top scorer), predictions (upcoming matches: our model 3-way + O2.5/BTTS + live Kalshi/Poly
-    asks + edge), inplay (LIVE matches now + in-play arb/value/tactic signals), performance (Brier vs uniform,
-    calibration, trade-grade gate, the production bet log: per-match prediction/bet/result/PnL), risk (gates,
-    venue balances, $1 cap, API budget), schedule (kickoff times ET/PT), calibration (OOS reliability),
-    backtest, squad (squad strength), form (recent form), params (param sweep), divergence (model vs
-    sharp book), pricetrack (per-contract ¢ + probability at each match milestone, with mark-to-market),
-    overview (system map). Every dashboard view is one of these.
-    For a single team across all views use get_wc_team (e.g. team="Argentina"/"阿根廷"); for one matchup
-    (model 3-way + Kalshi/Poly asks + edge + lock-arb + live signals) use get_wc_match (home, away).
-    Compare 2–6 teams with compare_wc_teams; get the betting track record as a P&L time series
-    (cumulative curve + per-match + group/knockout, with team/stage/since filters) with get_wc_track_record.
+    ## Prediction Market knowledge
+    When the user asks about World Cup 2026 / betting / Kalshi / Polymarket, the relevant data is
+    INJECTED BELOW this prompt under a "prediction-market data" heading. Answer ONLY from that data,
+    in plain natural-language prose — never guess numbers.
+    CRITICAL OUTPUT RULE: do NOT emit a tool call, a function call, JSON, a {"view": ...} object, or
+    <think>...</think> tags. None of those execute here — they appear to the user as broken text. Just
+    write the answer as ordinary sentences. If the data you need is not present below, say in ONE sentence
+    which dashboard view to open (or ask the user to be more specific) instead of inventing figures.
+    The data is organised into these views (for your reference — name them in prose, never as JSON):
+    champion (who wins the cup, FIFA rank), golden_boot (top scorer), predictions (upcoming matches:
+    model 3-way + O2.5/BTTS + live Kalshi/Poly asks + edge), inplay (LIVE matches now + in-play
+    arb/value/tactic signals), performance (Brier vs uniform, calibration, trade-grade gate, the production
+    bet log: per-match prediction/bet/result/PnL), risk (gates, venue balances, $1 cap, API budget),
+    schedule (kickoff times ET/PT), calibration (OOS reliability), backtest, squad (squad strength),
+    form (recent form), params (param sweep), divergence (model vs sharp book), pricetrack (per-contract
+    ¢ + probability at each match milestone, with mark-to-market), overview (system map). There are also
+    per-team, per-match, multi-team comparison, and betting track-record (cumulative P&L) breakdowns.
     If no match is live, the inplay data says so — relay that there's no in-play arbitrage when nothing is live.
     Key facts: probabilities are 0-1; venue prices ≈ implied probability. GROUP matches can draw; KNOCKOUT
     matches cannot (extra time + penalty shootout decide a winner — priced via a team-specific shootout model).

@@ -60,20 +60,42 @@ def _fair(lp: LiveMatchProb, side: str) -> float:
     return {"home": lp.p_home, "draw": lp.p_draw, "away": lp.p_away}[side]
 
 
+# A held position is only worth LOCKING if the market actually offers a price near fair —
+# you can only sell into the market BID. If the bid sits well below fair, "locking" would
+# dump a near-certain payout cheap (e.g. fair 0.92 but bid 0.79 = giving up 0.13); hold
+# instead and collect the settlement (the relative-value BUY already flags the under-pricing).
+_LOCK_BID_GAP = 0.05
+
+
 def convergence_take_profit(side: str, entry_price: float, lp: LiveMatchProb, *,
                             lock_fraction: float = LOCK_FRACTION,
-                            min_gain: float = MIN_TAKE_PROFIT_GAIN) -> TradeAction:
-    """Lock profit when a held position's live fair value spikes (plan 04 §7)."""
+                            min_gain: float = MIN_TAKE_PROFIT_GAIN,
+                            market_bid: float | None = None) -> TradeAction:
+    """Lock profit when a held position's live fair value spikes AND the market bid actually
+    reflects it (so the lock captures the value rather than dumping it cheap). If there is no
+    market bid, or the bid is well below fair, HOLD — selling would realise less than fair."""
     fair = _fair(lp, side)
+    if market_bid is None:
+        return TradeAction("HOLD", side, f"{side} fair {fair:.2f}, no market bid to lock into")
+    # If the bid sits well below fair, selling realises LESS than fair — hold for settlement
+    # (this is the case the relative-value BUY flags as under-priced). Don't sell cheap.
+    if market_bid < fair - _LOCK_BID_GAP:
+        return TradeAction("HOLD", side,
+                           f"{side} fair {fair:.2f} > market {market_bid:.2f} — hold for settlement, don't sell below fair")
+    # Market bid is near/above fair → safe to lock. Near-max fair → lock the (near-certain) payout.
     if fair >= lock_fraction:
-        return TradeAction("SELL", side, f"{side} fair {fair:.2f} near max payout — lock profit", "high",
-                           reason_key="convergence_lock", reason_args={"side": side, "fair": round(fair, 2)})
-    if fair - entry_price >= min_gain:
-        return TradeAction("SELL", side, f"{side} fair {fair:.2f} vs entry {entry_price:.2f} — take {fair-entry_price:+.2f}",
+        return TradeAction("SELL", side,
+                           f"{side} fair {fair:.2f} near max payout, market {market_bid:.2f} ≈ fair — lock profit", "high",
+                           reason_key="convergence_lock",
+                           reason_args={"side": side, "fair": round(fair, 2), "mkt": round(market_bid, 2)})
+    # Realised take-profit uses the ACTUAL sellable price (the bid), not fair.
+    if market_bid - entry_price >= min_gain:
+        return TradeAction("SELL", side,
+                           f"{side} market {market_bid:.2f} vs entry {entry_price:.2f} — take {market_bid-entry_price:+.2f}",
                            reason_key="convergence_take",
-                           reason_args={"side": side, "fair": round(fair, 2), "entry": round(entry_price, 2),
-                                        "gain": round(fair - entry_price, 2)})
-    return TradeAction("HOLD", side, f"{side} fair {fair:.2f}, hold")
+                           reason_args={"side": side, "mkt": round(market_bid, 2), "entry": round(entry_price, 2),
+                                        "gain": round(market_bid - entry_price, 2)})
+    return TradeAction("HOLD", side, f"{side} fair {fair:.2f}, market {market_bid:.2f}, hold")
 
 
 # Market this far ABOVE the live model fair = an over-reaction worth locking. Tuned on

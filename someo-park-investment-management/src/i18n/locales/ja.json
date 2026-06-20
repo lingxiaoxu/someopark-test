@@ -183,6 +183,18 @@
       "entry": "新規エントリー",
       "event": "イベント駆動"
     },
+    "style": {
+      "possession": "ポゼッション",
+      "direct": "ダイレクト",
+      "high_press": "ハイプレス",
+      "low_block": "ローブロック",
+      "dominant_attack": "圧倒攻撃",
+      "clinical": "決定力",
+      "high_volume": "高シュート量",
+      "set_piece": "セットプレー",
+      "balanced": "バランス型",
+      "contained": "抑制"
+    },
     "side": {
       "home": "ホーム",
       "draw": "引分",

@@ -322,6 +322,11 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
             xs = [a for a in xs if a is not None]
             return min(xs) if xs else None
 
+        def _best_bid(side: str):
+            xs = [_bid(q.get(side)) for q in quotes.values() if q and q.get(side) is not None]
+            xs = [a for a in xs if a is not None]
+            return max(xs) if xs else None
+
         over_mkt, under_mkt = _best_ask("over"), _best_ask("under")
         mkt_by_side = {"over": over_mkt, "under": under_mkt}
 
@@ -339,9 +344,11 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
         carded_side, card_min = _last_event(conn, fx, "Card", hi, ai, detail_like="%Red%")
         knockout = _is_knockout(fx["round"])
 
-        # (1) tactics — always available, no market quote needed.
+        # (1) tactics — mostly model-only; convergence now takes the live market BID so it
+        # only "locks" when the bid is near fair (won't tell you to sell a 0.92 fair into 0.79).
+        _cv_side = "home" if gh > ga else "away"
         for sig in (draw_trade_signal(lp),
-                    convergence_take_profit("home" if gh > ga else "away", 0.5, lp) if gh != ga else None,
+                    convergence_take_profit(_cv_side, 0.5, lp, market_bid=_best_bid(_cv_side)) if gh != ga else None,
                     live_momentum_from_store(conn, fx["api_id"], fx["home_api_id"], fx["away_api_id"], minute, gh, ga),
                     goal_overreaction_fade(lp, prematch_fav_side=fav_side, last_goal_side=last_goal_side,
                                            last_goal_minute=last_goal_min, fav_basis=fav_basis),
