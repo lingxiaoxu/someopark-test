@@ -231,6 +231,17 @@ uniform) with a hard $1 order cap. Use "top" to limit champion/golden_boot/predi
 - **kb_list**: Browse all documents with topics and metadata
 For factual questions about private credit, ALWAYS search the knowledge base first. Cite sources: "According to KB-26..."
 
+### Blog — 85+ Macro/Market Research Articles (blog_* tools)
+Someo Park publishes research at someopark.com/blog (English + Chinese). 4 categories inferred from content:
+**Market Observe of Signal and Event** (macro, rates, Fed, inflation, labor, bonds, dollar) |
+**Private Market Ideas** | **Public Market Ideas** | **Tech** (product, system, dashboards).
+Articles update frequently; data is fetched live from RSS (1h cache, never stale).
+- **blog_search**: Keyword search across all articles (title + description). Filter by category/language.
+- **blog_list**: Browse all articles, optionally by category or language. Shows category breakdown.
+- **blog_summary**: Get an article's abstract/metadata by URL or title keyword.
+- **blog_read**: Fetch full text of a specific article by URL (HTML extraction, truncated to ~8k chars).
+When the user asks about macro views, market analysis, or "what has Someo Park written about X", use blog_search first. Cite articles by title and link.
+
 ### General Tools
 34. **Math/Stats**: Financial statistics calculator (calculate, calculate_statistics)
 35. **Data Tools**: read_file, list_files, query_json, query_mongodb, http_request, parse_data_file

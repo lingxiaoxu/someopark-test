@@ -137,6 +137,9 @@ import { kbSearchTool } from './kbSearchTool.js'
 import { kbReadTool } from './kbReadTool.js'
 import { kbListTool } from './kbListTool.js'
 
+// Blog RAG (4 tools) — someopark.com/blog RSS feed, 1h cache, keyword search
+import { blogSearchTool, blogListTool, blogSummaryTool, blogReadTool } from './blogTools.js'
+
 export function registerAllTools() {
   const allTools: AgentTool[] = [
     // Financial (17 including text variant)
@@ -165,6 +168,8 @@ export function registerAllTools() {
     portfolioBdcHoldingsTool,   // BDC sleeve look-through (real underlying loans)
     // Knowledge Base (3)
     kbSearchTool, kbReadTool, kbListTool,
+    // Blog RAG (4) — someopark.com macro/market research articles
+    blogSearchTool, blogListTool, blogSummaryTool, blogReadTool,
     // Note: ask_user, manage_tasks, send_message are stateful factories
     // created per-request in agent.ts (not registered here)
   ]

@@ -183,6 +183,16 @@ router.post('/', async (req: Request, res: Response) => {
     // panel shows so its prose matches the numbers (the non-agent chat has no real
     // tool-calling). Only the chat prompt is augmented — the coding path is untouched.
     let chatSystem = toChatPrompt()
+
+    // Blog grounding: inject latest article titles+links so the model can cite them
+    // when the user asks about macro research, market views, or Someo Park publications.
+    // Async fetch with 1h cache; silently degrades on failure.
+    try {
+      const { getBlogGrounding } = await import('../tools/blogTools.js')
+      const blogCtx = await getBlogGrounding(10)
+      if (blogCtx) chatSystem += blogCtx
+    } catch { /* blog grounding is optional */ }
+
     const wcTypes = detectedArtifacts.map(a => a.type).filter(t => t.startsWith('wc_'))
     if (wcTypes.length > 0) {
       try {
