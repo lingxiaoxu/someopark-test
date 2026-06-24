@@ -221,12 +221,24 @@ def load_positions(start_ts, end_ts) -> list[dict]:
     positions: dict[str, dict] = {}
     closed_pairs: set[str] = set()   # pairs seen with direction=null AFTER being active
     for fpath in sorted(glob.glob(os.path.join(INV_DIR, 'inventory_*.json'))):
-        day, _ = _parse_ts(fpath)
-        if day is None or day < start_ts or day > end_ts:
+        # Filter by as_of (the inventory's semantic date), not the file timestamp.
+        # File timestamp = when the cron wrote it (may be hours/days after as_of due
+        # to cron gaps, holidays, or delayed runs). as_of = the trading day this
+        # snapshot represents. This fixes two bugs:
+        #   A) new positions opened on day X whose snapshot file is X+1 → missed
+        #   B) closed positions whose null-snapshot file is outside [start,end] → ghost HOLD
+        try:
+            with open(fpath) as f:
+                data = json.load(f)
+        except Exception:
+            continue
+        as_of_str = data.get('as_of', '')
+        if not as_of_str:
+            continue
+        day = pd.Timestamp(as_of_str)
+        if day < start_ts or day > end_ts:
             continue
         strategy = os.path.basename(fpath).split('_')[1]
-        with open(fpath) as f:
-            data = json.load(f)
         for pair_name, p in data.get('pairs', {}).items():
             if not isinstance(p, dict):
                 continue
@@ -264,7 +276,82 @@ def load_positions(start_ts, end_ts) -> list[dict]:
                 'last_pnl':      ml[-1]['unrealized_pnl'] if ml else None,
                 'last_pnl_date': ml[-1]['date'] if ml else None,
             }
-    # Mark pairs that were closed in a later snapshot
+    # Also read the CURRENT inventory main files — inventory_history snapshots are
+    # taken BEFORE Step 2 opens new positions, so the latest snapshot may not contain
+    # positions opened in the most recent run. The main file always reflects the final
+    # state (Step 1 closes + Step 2 opens). Without this, same-day opens are invisible.
+    for inv_f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
+                  os.path.join(BASE_DIR, 'inventory_mtfs.json')):
+        if not os.path.exists(inv_f):
+            continue
+        try:
+            with open(inv_f) as f:
+                inv_data = json.load(f)
+        except Exception:
+            continue
+        inv_as_of = inv_data.get('as_of', '')
+        if not inv_as_of:
+            continue
+        inv_day = pd.Timestamp(inv_as_of)
+        if inv_day < start_ts or inv_day > end_ts:
+            continue
+        strategy = os.path.basename(inv_f).split('_')[1].replace('.json', '')
+        for pair_name, p in inv_data.get('pairs', {}).items():
+            if not isinstance(p, dict) or '/' not in pair_name:
+                continue
+            if not p.get('direction'):
+                if pair_name in positions:
+                    closed_pairs.add(pair_name)
+                continue
+            if pair_name in positions:
+                continue  # history snapshot already captured this pair — don't overwrite
+            closed_pairs.discard(pair_name)
+            s1, s2 = pair_name.split('/', 1)
+            try:
+                from CorporateActions import adjust_position_view
+                p = adjust_position_view(p, s1, s2, inv_as_of)
+            except Exception:
+                pass
+            ml = p.get('monitor_log', [])
+            positions[pair_name] = {
+                'pair':          pair_name,
+                'strategy':      strategy,
+                's1':            s1,
+                's2':            s2,
+                's1_shares':     p.get('s1_shares', 0),
+                's2_shares':     p.get('s2_shares', 0),
+                'open_date':     p.get('open_date'),
+                'open_s1_price': p.get('open_s1_price'),
+                'open_s2_price': p.get('open_s2_price'),
+                'direction':     p.get('direction'),
+                'param_set':     p.get('param_set', '—'),
+                'last_pnl':      ml[-1]['unrealized_pnl'] if ml else None,
+                'last_pnl_date': ml[-1]['date'] if ml else None,
+            }
+
+    # Cross-check against current inventory main files: any position that
+    # load_positions thinks is still open but the live inventory says dir=null
+    # is a ghost HOLD (orphan-close during a cron gap where the null-snapshot
+    # was never taken). Mark it closed.
+    # Build set of pairs that are CURRENTLY OPEN in the live inventory files.
+    # Anything in positions but NOT in this set is a ghost HOLD (orphan-close
+    # during a cron gap where the null/removal was never snapshot'd).
+    _live_open = set()
+    for inv_f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
+                  os.path.join(BASE_DIR, 'inventory_mtfs.json')):
+        try:
+            with open(inv_f) as f:
+                inv_d = json.load(f)
+            for pname, pv in inv_d.get('pairs', {}).items():
+                if isinstance(pv, dict) and pv.get('direction'):
+                    _live_open.add(pname)
+        except Exception:
+            pass
+    for pair_name in list(positions.keys()):
+        if pair_name not in _live_open and pair_name not in closed_pairs:
+            closed_pairs.add(pair_name)
+
+    # Mark pairs that were closed in a later snapshot (or live null-check above)
     for pair_name in closed_pairs:
         if pair_name in positions:
             positions[pair_name]['_closed_in_snapshot'] = True
@@ -1050,6 +1137,25 @@ def build_report_data(start: str, end: str) -> dict:
                     if not pair or pair in existing_pairs:
                         continue
                     if e.get('action') != 'HOLD':
+                        continue
+                    # Guard: if the current inventory shows this pair as closed
+                    # (direction=null), the HOLD record is stale — skip it.
+                    # Without this, cron-gap orphan-closes leave ghost HOLDs.
+                    # Note: _inv_main only has pairs with s1_shares, so for
+                    # null-direction pairs we check the raw inventory files.
+                    _is_closed_now = False
+                    for _inv_f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
+                                   os.path.join(BASE_DIR, 'inventory_mtfs.json')):
+                        try:
+                            with open(_inv_f) as _f:
+                                _inv_raw = json.load(_f)
+                            _pair_state = _inv_raw.get('pairs', {}).get(pair)
+                            if _pair_state is not None and not _pair_state.get('direction'):
+                                _is_closed_now = True
+                                break
+                        except Exception:
+                            pass
+                    if _is_closed_now:
                         continue
                     upnl = e.get('unrealized_pnl', 0) or 0
                     raw_upnl = round(upnl / sf, 2) if sf != 1.0 else upnl
