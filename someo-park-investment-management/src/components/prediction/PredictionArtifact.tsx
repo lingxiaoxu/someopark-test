@@ -456,32 +456,18 @@ function InPlay() {
             return (
               <div style={{ marginTop: 8, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-subtle)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', ...mono, marginBottom: 3 }}>
-                  🛡 {tr('prediction.hedge.title')}
+                  🛡 {tr(h.lead_state === 'leading' ? 'prediction.hedge.titleLeading' : 'prediction.hedge.titleManage')}
                 </div>
-                {/* When our pre-match pick IS the leader, one clean line; otherwise show the
-                    leader being hedged AND our (different) recommendation, so they aren't confused. */}
-                {h.our_matches_leader ? (
-                  <div style={{ fontSize: 10, color: 'var(--text-secondary)', ...mono, marginBottom: 2 }}>
-                    {tr('prediction.hedge.summaryMatched', { team: tCountry(h.held_team), entry: cc(h.entry_c, 1), draw: cc(h.draw_c, 1), shares: h.shares_ref })}
-                  </div>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 10, color: 'var(--text-secondary)', ...mono, marginBottom: 2 }}>
-                      {tr('prediction.hedge.leading', { team: tCountry(h.held_team), draw: cc(h.draw_c, 1) })}
-                      {' · '}{tr('prediction.hedge.held', { entry: cc(h.entry_c, 1), shares: h.shares_ref })}
-                    </div>
-                    <div style={{ fontSize: 10, ...mono, marginBottom: 2, color: 'var(--warning, #d08b00)' }}>
-                      {h.our_pick
-                        ? tr('prediction.hedge.ourPick', {
-                            team: h.our_pick === 'draw' ? tr('prediction.side.draw')
-                              : tCountry(h.our_pick === 'home' ? m.home.name : m.away.name),
-                            entry: cc(h.our_entry_c, 1),
-                          })
-                        : tr('prediction.hedge.ourPickNone')}
-                      {' · '}{tr('prediction.hedge.notLeader')}
-                    </div>
-                  </>
-                )}
+                {/* Always our pre-match position; the state (leading / level / behind) is noted. */}
+                <div style={{ fontSize: 10, ...mono, marginBottom: 2, color: h.lead_state === 'leading' ? 'var(--text-secondary)' : 'var(--warning, #d08b00)' }}>
+                  {tr('prediction.hedge.summary', {
+                    team: tCountry(h.held_team),
+                    entry: cc(h.entry_c, 1),
+                    state: tr('prediction.hedge.state.' + h.lead_state),
+                    draw: cc(h.draw_c, 1),
+                    shares: h.shares_ref,
+                  })}
+                </div>
                 <div style={{ fontSize: 11, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
                   {tr('prediction.hedge.breakEven', { b: num(h.break_even_b, 2) })}
                   {h.profit_if_win_c != null && <> · {tr('prediction.hedge.profitIfWin', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })}</>}
@@ -507,7 +493,7 @@ function InPlay() {
                   ))}</tbody>
                 </table>
                 <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 3 }}>
-                  ⚠ {tr('prediction.hedge.warnAway', { away: awayName })}
+                  ⚠ {tr('prediction.hedge.warnAway', { away: h.held_side === 'home' ? awayName : homeName })}
                 </div>
                 {h.knockout && (
                   <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 1 }}>

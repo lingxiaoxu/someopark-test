@@ -443,7 +443,15 @@
       "ourPick": "我们赛前建议 {{team}} @{{entry}}",
       "ourPickNone": "我们赛前未下注(无 edge)",
       "notLeader": "≠领先方 — 本对冲假设你持有领先方,非我们的建议边",
-      "summaryMatched": "我们赛前押 {{team}} @{{entry}}(现领先) · draw 现价 {{draw}} · 每 {{shares}} 张"
+      "summaryMatched": "我们赛前押 {{team}} @{{entry}}(现领先) · draw 现价 {{draw}} · 每 {{shares}} 张",
+      "titleLeading": "对冲 — 保护领先",
+      "titleManage": "对冲 — 持仓对冲",
+      "summary": "我们赛前押 {{team}} @{{entry}} · {{state}} · draw 现价 {{draw}} · 每 {{shares}} 张",
+      "state": {
+        "leading": "现领先",
+        "level": "比分扳平",
+        "behind": "现落后"
+      }
     },
     "colConf": "置信",
     "conf": {

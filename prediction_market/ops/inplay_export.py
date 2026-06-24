@@ -38,44 +38,18 @@ def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, 
 
     if minute <= 0:
         return None
-    # Hedge the side that is CURRENTLY LEADING (the directional position with unrealised
-    # gains worth protecting) — NOT just the pre-match favourite. This covers an upset in
-    # progress: e.g. Switzerland 2-1 over a model-favoured Canada — the leader (Switzerland)
-    # is the position to protect, even though Canada was the pre-match pick. A level match has
-    # no leading position → no hedge.
+    # Hedge OUR pre-match DIRECTIONAL position — the side we actually recommended (value pick
+    # vs the PRE de-vigged market), NOT just whoever is leading now. Shown REGARDLESS of the
+    # current score (our pick leading / level / behind); the label notes the state. This keeps
+    # the box tied to what we actually hold (e.g. we backed Morocco @79¢; even at 2-2 or with
+    # Morocco trailing, the box shows our Morocco position + how to hedge it).
     from prediction_market.model.inplay import live_match_prob
-    if gh > ga:
-        pick = "home"
-    elif ga > gh:
-        pick = "away"
-    else:
-        return None
-    pm = live_match_prob(lam_h, lam_a, 0, 0, 0)  # pre-match price of the leading side (entry fallback)
-
-    # Entry ¢ for our held side: pre-match milestone PRE quote (poly→kalshi), else
-    # the pre-match model ¢. Current draw ¢: best live venue mid, else live model ¢.
-    entry_c = None
+    pm = live_match_prob(lam_h, lam_a, 0, 0, 0)  # pre-match probs (value pick + entry fallback)
     pre_row = conn.execute(
         "SELECT * FROM milestone_snapshot WHERE fixture_api_id=? AND milestone='PRE'",
         (fx["api_id"],)).fetchone()
-    if pre_row is not None:
-        for v in ("poly", "kalshi"):
-            try:
-                q = pre_row[f"{v}_{pick}_ask"]
-            except (KeyError, IndexError):
-                q = None
-            if q is not None:
-                entry_c = to_cents(q)
-                break
-    if entry_c is None:
-        entry_c = to_cents(pm.p_home if pick == "home" else pm.p_away)
 
-    # Our ACTUAL pre-match recommendation (the value pick vs the PRE de-vigged market) + its
-    # PRE quote — shown alongside so the desk knows THIS hedge is for "IF you hold the LEADER
-    # at the pre-match price", which may differ from what we recommended (e.g. we backed the
-    # favourite that is now trailing). Entry prices are the PRE milestone quotes (the captured
-    # pre-kickoff book), the same source the bet log uses.
-    our_pick, our_entry_c = None, None
+    our_pick, entry_c = None, None
     if pre_row is not None:
         pm3 = {"home": pm.p_home, "draw": pm.p_draw, "away": pm.p_away}
         ask = {}
@@ -94,7 +68,22 @@ def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, 
             cand = max(edges, key=edges.get)
             if edges[cand] > 0:                              # positive value → that's our bet
                 our_pick = cand
-                our_entry_c = to_cents(ask[cand])
+                entry_c = to_cents(ask[cand])
+
+    # Need a DIRECTIONAL position (home/away) to draw-hedge. No value bet, or a draw bet → none.
+    if our_pick not in ("home", "away"):
+        return None
+    pick = our_pick
+    if entry_c is None:
+        entry_c = to_cents(pm.p_home if pick == "home" else pm.p_away)
+
+    # Current state of OUR position relative to the score — drives the title/summary wording.
+    if (pick == "home" and gh > ga) or (pick == "away" and ga > gh):
+        lead_state = "leading"
+    elif gh == ga:
+        lead_state = "level"
+    else:
+        lead_state = "behind"
 
     draw_c = None
     for v in ("kalshi", "poly_us"):
@@ -128,9 +117,7 @@ def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, 
         "profit_if_win_c": (round(be_row[pick], 1) if be_row else None),  # held side still wins
         "payoff": matrix,                # rows: b=0 / break-even / full hedge
         "knockout": knockout,            # KO: a 90' draw → extra time (frontend adds the caveat)
-        "our_pick": our_pick,            # the side WE recommended pre-match (None = no value bet)
-        "our_entry_c": (round(our_entry_c, 1) if our_entry_c is not None else None),
-        "our_matches_leader": (our_pick == pick),  # True ⇒ our bet IS the leader (hedge = our position)
+        "lead_state": lead_state,        # leading / level / behind — our pick vs the score
         "note_key": "hedge.protectLeading",
     }
 

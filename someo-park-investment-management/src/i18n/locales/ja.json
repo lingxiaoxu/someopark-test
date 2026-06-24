@@ -417,7 +417,15 @@
       "ourPick": "試合前の推奨 {{team}} @{{entry}}",
       "ourPickNone": "試合前ベットなし(エッジなし)",
       "notLeader": "≠リード側 — このヘッジはリード側保有を仮定(推奨と異なる)",
-      "summaryMatched": "試合前に {{team}} @{{entry}} を推奨(現在リード) · draw {{draw}} · {{shares}}枚"
+      "summaryMatched": "試合前に {{team}} @{{entry}} を推奨(現在リード) · draw {{draw}} · {{shares}}枚",
+      "titleLeading": "ヘッジ — リードを保護",
+      "titleManage": "ヘッジ — ポジション管理",
+      "summary": "試合前に {{team}} @{{entry}} · {{state}} · draw {{draw}} · {{shares}}枚",
+      "state": {
+        "leading": "リード中",
+        "level": "同点",
+        "behind": "ビハインド"
+      }
     },
     "colConf": "信頼度",
     "conf": {

@@ -764,7 +764,15 @@
       "ourPick": "Our pre-match pick {{team}} @{{entry}}",
       "ourPickNone": "no pre-match bet (no edge)",
       "notLeader": "≠ leader — this hedge assumes you hold the LEADER, not our pick",
-      "summaryMatched": "Our pre-match {{team}} @{{entry}} (now leading) · draw {{draw}} · per {{shares}}"
+      "summaryMatched": "Our pre-match {{team}} @{{entry}} (now leading) · draw {{draw}} · per {{shares}}",
+      "titleLeading": "Hedge — protect the lead",
+      "titleManage": "Hedge — manage your position",
+      "summary": "Our pre-match {{team}} @{{entry}} · {{state}} · draw {{draw}} · per {{shares}}",
+      "state": {
+        "leading": "leading",
+        "level": "level",
+        "behind": "behind"
+      }
     },
     "colConf": "Conf",
     "conf": {

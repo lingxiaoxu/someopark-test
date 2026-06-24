@@ -417,7 +417,15 @@
       "ourPick": "Nuestra apuesta previa {{team}} @{{entry}}",
       "ourPickNone": "sin apuesta previa (sin edge)",
       "notLeader": "≠ líder — esta cobertura asume que tienes al líder, no nuestra apuesta",
-      "summaryMatched": "Nuestra apuesta previa {{team}} @{{entry}} (ahora líder) · empate {{draw}} · por {{shares}}"
+      "summaryMatched": "Nuestra apuesta previa {{team}} @{{entry}} (ahora líder) · empate {{draw}} · por {{shares}}",
+      "titleLeading": "Cobertura — proteger la ventaja",
+      "titleManage": "Cobertura — gestionar la posición",
+      "summary": "Previa {{team}} @{{entry}} · {{state}} · empate {{draw}} · por {{shares}}",
+      "state": {
+        "leading": "en cabeza",
+        "level": "empate",
+        "behind": "por detrás"
+      }
     },
     "colConf": "Conf.",
     "conf": {

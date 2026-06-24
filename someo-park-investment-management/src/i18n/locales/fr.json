@@ -417,7 +417,15 @@
       "ourPick": "Notre choix avant-match {{team}} @{{entry}}",
       "ourPickNone": "pas de pari avant-match (sans edge)",
       "notLeader": "≠ meneur — cette couverture suppose que vous détenez le meneur, pas notre choix",
-      "summaryMatched": "Notre pari avant-match {{team}} @{{entry}} (en tête) · nul {{draw}} · par {{shares}}"
+      "summaryMatched": "Notre pari avant-match {{team}} @{{entry}} (en tête) · nul {{draw}} · par {{shares}}",
+      "titleLeading": "Couverture — protéger l'avance",
+      "titleManage": "Couverture — gérer la position",
+      "summary": "Avant-match {{team}} @{{entry}} · {{state}} · nul {{draw}} · par {{shares}}",
+      "state": {
+        "leading": "en tête",
+        "level": "à égalité",
+        "behind": "mené"
+      }
     },
     "colConf": "Conf.",
     "conf": {
