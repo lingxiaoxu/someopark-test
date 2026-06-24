@@ -842,6 +842,17 @@ def load_historical_data_mongo(start_date, end_date, symbols):
                 polygon_api_key=POLYGON_API_KEY,
             )
             fallback_df = store.load(fallback_symbols, start_date, end_date)
+            # Split heal on Polygon fallback data (same cliff as Stage 2)
+            try:
+                from CorporateActions import heal_split_cliff
+                for sym in fallback_symbols:
+                    col = ('Adj Close', sym)
+                    if col in fallback_df.columns:
+                        healed, n = heal_split_cliff(fallback_df[col], sym)
+                        if n:
+                            fallback_df[col] = healed
+            except Exception:
+                pass
             for symbol in fallback_symbols:
                 sym_data = {}
                 for field in ('Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume'):
@@ -1023,6 +1034,19 @@ def load_historical_data(start_date, end_date, symbols, data_source=None):
                 polygon_api_key=POLYGON_API_KEY,
             )
             data = store.load(symbols, start_date, end_date)
+            # Split heal: PriceDataStore caches per-week and never re-fetches past
+            # weeks, so a split leaves a cliff at the week boundary. Heal each ticker
+            # in the Adj Close column (same pattern as the Mongo main path).
+            try:
+                from CorporateActions import heal_split_cliff
+                for sym in symbols:
+                    col = ('Adj Close', sym)
+                    if col in data.columns:
+                        healed, n = heal_split_cliff(data[col], sym)
+                        if n:
+                            data[col] = healed
+            except Exception as _he:
+                log.warning(f"[DataLoader/MRPT] split-cliff heal skipped (non-fatal): {_he}")
             data = check_data_structure(data)
             return data
         except Exception as e:
