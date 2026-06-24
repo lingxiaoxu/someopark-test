@@ -312,7 +312,10 @@ def test_smart_exit_fires_inside_regulation():
     c.execute("INSERT INTO fixture_event (fixture_api_id, seq, minute, team_api_id, type, detail) "
               "VALUES (?,?,?,?,?,?)", (201, 0, 20, 1, "Goal", None))
     base_ts = 1_700_000_000
-    rows = [(201, "home", base_ts + m * 60, m, 0.55, "poly_global") for m in range(5, 56, 5)]
+    # Calm ticks BELOW fair (market under-pricing home) → never a sell, at any margin; only
+    # the genuine 0.97 overshoot should fire. (0.55 sat right at fair+margin for a tuned margin
+    # and fired spuriously once the margin tightened — keep the control unambiguous.)
+    rows = [(201, "home", base_ts + m * 60, m, 0.40, "poly_global") for m in range(5, 56, 5)]
     rows += [(201, "home", base_ts + 60 * 60, 60, 0.97, "poly_global")]   # 60' overshoot
     rows += [(201, "home", base_ts + m * 60, m, 0.9, "poly_global") for m in range(65, 91, 5)]
     c.executemany("INSERT INTO price_tick (fixture_api_id, side, ts, rel_min, price, venue) "

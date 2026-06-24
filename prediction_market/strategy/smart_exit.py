@@ -8,7 +8,13 @@ turned 7W-11L / +114¢ (hold) into 12/18 profitable / +302¢ (cash-out).
 """
 from __future__ import annotations
 
-OVERSHOOT_MARGIN = 0.12   # market this far above live model fair = over-reaction → lock
+OVERSHOOT_MARGIN = 0.08   # market this far above live model fair = over-reaction → lock.
+# Re-tuned on the CORRECTED match-clock basis (after _match_minute fixed the wall-clock-as-
+# minute fair): a margin sweep over the settled bets showed a stable plateau ~0.06–0.08 (total
+# vs-hold +285¢, 17 fires, 12 helped / 5 hurt) vs the old 0.12 (+230¢, 14 fires). Below 0.06 a
+# cliff (noise → an extra false sell, value drops); above 0.08 it decays back toward 0.12. On the
+# real sample 0.072 and 0.08 are identical — 0.08 is chosen for the larger safety buffer (further
+# from the 0.05→0.06 cliff, more robust to the unseen knockout regime). Group sample; recheck on KO.
 
 # price_tick.rel_min is WALL-CLOCK minutes since kickoff, NOT the match minute — the ~15-min
 # half-time break means a 90' game runs to ~110-115 wall-clock and extra time to ~120-150.
