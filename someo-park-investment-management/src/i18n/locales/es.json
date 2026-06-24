@@ -296,7 +296,7 @@
     "lblBets": "apuestas",
     "lblSkipped": "omitidas (sin margen)",
     "betLogNote": "Apuesta = el lado más infravalorado según el modelo (no el más probable), con stake $0.2–$2 según confianza; sin margen se omite.",
-    "colStake": "Stake",
+    "colStake": "Apuesta",
     "argmaxShort": "argmax",
     "noBet": "sin apuesta (sin margen)",
     "colDate": "Fecha",
@@ -399,7 +399,29 @@
       "trackRecord": "Historial (modelo de decisión): apostar al lado más infravalorado, tamaño ${{min}}–${{max}} por confianza, desde {{since}} — {{record}}, {{pnl}}$ ({{roi}}% ROI) en {{bets}} apuestas; {{skipped}} partidos liquidados omitidos (sin ventaja).",
       "argmaxTrack": "Historial argmax (ref., cada partido): apostar al lado más probable en los {{n}} partidos liquidados — {{record}} ({{acc}}%), {{pnl}}¢/contrato. La antigua regla ingenua, mostrada en paralelo para comparar en toda la muestra.",
       "calibPnlNote": "El P&L de calibración (cuotas justas) es un diagnóstico aparte de sobre/infraconfianza."
-    }
+    },
+    "hedge": {
+      "title": "Cobertura — proteger la ventaja",
+      "leading": "{{team}} en cabeza · empate a {{draw}}",
+      "held": "entrada {{entry}} · por {{shares}} contratos",
+      "breakEven": "Cobertura de equilibrio: comprar {{b}} empate → sin pérdida aun si empata",
+      "profitIfWin": "victoria de {{team}} aún gana {{profit}}",
+      "win": "gana",
+      "colPlan": "Plan",
+      "colDrawB": "Empate ×",
+      "planNone": "Sin cobertura",
+      "planBe": "Equilibrio",
+      "planFull": "Cobertura total",
+      "warnAway": "comprar el empate no cubre una remontada de {{away}} (pata visitante sin cobertura)",
+      "koNote": "Eliminatoria: un empate a los 90' va a la prórroga — comprar empate solo cubre el mercado de 90'"
+    },
+    "colConf": "Conf.",
+    "conf": {
+      "high": "Alta",
+      "medium": "Media",
+      "low": "Baja"
+    },
+    "advisory": "informativo"
   },
   "sidebar": {
     "appName": "Someo Park",

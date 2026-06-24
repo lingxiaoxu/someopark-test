@@ -335,6 +335,11 @@ const KIND_COLOR: Record<string, string> = {
   lock_arb: 'var(--success)', relative_value: 'var(--text-primary)', tactic: 'var(--text-secondary)',
 };
 
+// Confidence tier badge colour (validated effectiveness rules — see plan 20-22).
+const CONF_COLOR: Record<string, string> = {
+  high: 'var(--success)', medium: 'var(--warning, #d08b00)', low: 'var(--text-muted)',
+};
+
 // Render an opportunity's reason from its i18n template (reason_key) + the live numbers
 // (reason_args), in the active language. Sub-enums (side/carded) are themselves localized;
 // the Part-2 strength+form basis becomes a parenthetical suffix; the cross-venue "also"
@@ -398,9 +403,21 @@ function InPlay() {
               event) so a held-position exit (e.g. overshoot sell) isn't read as contradicting
               a new-entry buy. Every signal is kept; only the grouping changes. */}
           {m.opportunities?.length ? (() => {
-            const cols = [tr('prediction.colKind'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colMarketC'), tr('prediction.colEdge'), tr('prediction.colEdgeC'), tr('prediction.colReason')];
+            const cols = [tr('prediction.colKind'), tr('prediction.colConf'), tr('prediction.colStake'), tr('prediction.colAction'), tr('prediction.colSide'), tr('prediction.colMarketC'), tr('prediction.colEdge'), tr('prediction.colEdgeC'), tr('prediction.colReason')];
+            const confBadge = (o: any) => o.confidence ? (
+              <span title={o.confidence_reason || ''} style={{ color: CONF_COLOR[o.confidence] ?? 'var(--text-muted)', fontWeight: 700, fontSize: 9, border: `1px solid ${CONF_COLOR[o.confidence] ?? 'var(--text-muted)'}`, borderRadius: 3, padding: '0 4px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                {tr('prediction.conf.' + o.confidence, { defaultValue: o.confidence })}
+              </span>
+            ) : '—';
+            // Staking gate (the betting threshold): green $ when we'd actually bet it,
+            // muted "advisory" when the signal is kept but below the gate. Tooltip = why.
+            const stakeCell = (o: any) => o.actionable
+              ? <span title={o.gate_reason || ''} style={{ color: 'var(--success)', fontWeight: 700 }}>${num(o.stake_usd ?? 0, 2)}</span>
+              : <span title={o.gate_reason || ''} style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>{tr('prediction.advisory')}</span>;
             const oppRow = (o: any) => [
               <span style={{ color: KIND_COLOR[o.kind] ?? 'var(--text-secondary)', fontWeight: 700 }}>{tr('prediction.kind.' + o.kind, { defaultValue: o.kind })}</span>,
+              confBadge(o),
+              stakeCell(o),
               tr('prediction.action.' + o.action, { defaultValue: o.action }),
               tr('prediction.side.' + o.side, { defaultValue: o.side }),
               cc(o.market_c), o.edge != null ? num(o.edge, 3) : '—',
@@ -420,6 +437,44 @@ function InPlay() {
               );
             });
           })() : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
+          {/* Hedge — protect a leading directional position by buying draw (the quant
+              math lives in the backend strategy.inplay_hedge; here we only render). */}
+          {m.hedge && (() => {
+            const h = m.hedge;
+            const homeName = tCountry(m.home.name), awayName = tCountry(m.away.name);
+            const planLabel = (b: number) => b === 0 ? tr('prediction.hedge.planNone')
+              : (h.full_hedge_b != null && Math.abs(b - h.full_hedge_b) < 0.01) ? tr('prediction.hedge.planFull')
+              : tr('prediction.hedge.planBe');
+            const sign = (x: number) => (x >= 0 ? '+' : '');
+            const col = (x: number) => <span style={{ color: x >= 0 ? 'var(--success)' : 'var(--error)' }}>{sign(x)}{cc(x)}</span>;
+            const cols = [tr('prediction.hedge.colPlan'), tr('prediction.hedge.colDrawB'),
+              `${homeName} ${tr('prediction.hedge.win')}`, tr('prediction.side.draw'), `${awayName} ${tr('prediction.hedge.win')}`];
+            const rows = (h.payoff || []).map((r: any) => [planLabel(r.b), num(r.b, 2), col(r.home), col(r.draw), col(r.away)]);
+            return (
+              <div style={{ marginTop: 8, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-subtle)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', ...mono, marginBottom: 3 }}>
+                  🛡 {tr('prediction.hedge.title')}
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-secondary)', ...mono, marginBottom: 2 }}>
+                  {tr('prediction.hedge.leading', { team: tCountry(h.held_team), draw: cc(h.draw_c) })}
+                  {' · '}{tr('prediction.hedge.held', { entry: cc(h.entry_c), shares: h.shares_ref })}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
+                  {tr('prediction.hedge.breakEven', { b: num(h.break_even_b, 2) })}
+                  {h.profit_if_win_c != null && <> · {tr('prediction.hedge.profitIfWin', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })}</>}
+                </div>
+                <DataTable className="inplay-arb-table" cols={cols} rows={rows} />
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 3 }}>
+                  ⚠ {tr('prediction.hedge.warnAway', { away: awayName })}
+                </div>
+                {h.knockout && (
+                  <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 1 }}>
+                    ⏱ {tr('prediction.hedge.koNote')}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       ))}
     </div>

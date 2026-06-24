@@ -23,6 +23,82 @@ from prediction_market.config import CONFIG
 _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
 
 
+def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, *, knockout=False):
+    """Hedge suggestion for a live match, or None when not applicable.
+
+    Scenario (user's core case): we hold the pre-match favourite (home/away) and
+    that side is NOW leading → the draw contract has cheapened, so buying draw is
+    a protection leg. We surface the break-even hedge (the headline) + a 3-state
+    payoff matrix from strategy.inplay_hedge — the single source of the quant math
+    (no re-derivation in the frontend). Read-only; reference size = 10 contracts.
+    """
+    from prediction_market.strategy import inplay_hedge as ih
+    from prediction_market.util.pricing import to_cents
+
+    if minute <= 0:
+        return None
+    # Pre-match favourite among home/away = the directional side we'd have backed.
+    from prediction_market.model.inplay import live_match_prob
+    pm = live_match_prob(lam_h, lam_a, 0, 0, 0)
+    pick = "home" if pm.p_home >= pm.p_away else "away"
+    leading = (pick == "home" and gh > ga) or (pick == "away" and ga > gh)
+    if not leading:
+        return None  # only protect a winning directional position
+
+    # Entry ¢ for our held side: pre-match milestone PRE quote (poly→kalshi), else
+    # the pre-match model ¢. Current draw ¢: best live venue mid, else live model ¢.
+    entry_c = None
+    pre_row = conn.execute(
+        "SELECT * FROM milestone_snapshot WHERE fixture_api_id=? AND milestone='PRE'",
+        (fx["api_id"],)).fetchone()
+    if pre_row is not None:
+        for v in ("poly", "kalshi"):
+            try:
+                q = pre_row[f"{v}_{pick}_ask"]
+            except (KeyError, IndexError):
+                q = None
+            if q is not None:
+                entry_c = to_cents(q)
+                break
+    if entry_c is None:
+        entry_c = to_cents(pm.p_home if pick == "home" else pm.p_away)
+
+    draw_c = None
+    for v in ("kalshi", "poly_us"):
+        blk = (prices or {}).get(v)
+        if blk and blk.get("draw") and blk["draw"].get("mid_c") is not None:
+            draw_c = blk["draw"]["mid_c"]
+            break
+    if draw_c is None:
+        draw_c = to_cents(lp.p_draw)
+    if entry_c is None or draw_c is None or draw_c >= 100.0:
+        return None
+
+    SHARES = 10.0
+    pos = ih.Position(shares=SHARES, entry_c=float(entry_c), side=pick)
+    quotes = ih.Quotes(draw_ask=float(draw_c), minute=minute, score=f"{gh}-{ga}")
+    be = ih.break_even_b(pos, quotes, hedge_side="draw")
+    if be.b is None:
+        return None
+    full = ih.full_hedge_b(pos, quotes, hedge_side="draw")
+    bs = sorted({0.0, round(be.b, 2)} | ({round(full, 2)} if full is not None else set()))
+    matrix = [r.as_dict() for r in ih.payoff_matrix(pos, quotes, "draw", bs=bs)]
+    be_row = be.payoff.as_dict() if be.payoff else None
+    return {
+        "held_side": pick,
+        "held_team": pick_name,
+        "shares_ref": SHARES,            # payoff numbers are per this many contracts
+        "entry_c": round(float(entry_c), 1),
+        "draw_c": round(float(draw_c), 1),
+        "break_even_b": round(be.b, 2),
+        "full_hedge_b": (round(full, 2) if full is not None else None),
+        "profit_if_win_c": (round(be_row[pick], 1) if be_row else None),  # held side still wins
+        "payoff": matrix,                # rows: b=0 / break-even / full hedge
+        "knockout": knockout,            # KO: a 90' draw → extra time (frontend adds the caveat)
+        "note_key": "hedge.protectLeading",
+    }
+
+
 def build(conn=None, *, with_venues: bool = True) -> dict:
     from prediction_market.ingest import store
     from prediction_market.ingest.prior_ingest import load_prior
@@ -39,7 +115,7 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
     live = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed, status_short "
+        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed, status_short, round "
         "FROM fixture WHERE status_short IN ({}) ORDER BY elapsed DESC".format(",".join("?" * len(_LIVE))),
         _LIVE).fetchall()
 
@@ -88,6 +164,31 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
                 q = None
             if q:
                 prices[v] = quote_to_cents(q)
+        # Confidence tier (high/medium/low) on EVERY opportunity — the validated
+        # effectiveness rules (plan 20-22), so the desk sees which signals to trust
+        # without any signal being dropped. Read-only annotation.
+        # Knockout flag — the per-match market is the 90' 3-way (home/Tie/away) in BOTH
+        # stages, but KO games run lower-scoring with more 90' draws (→ extra time), so
+        # the confidence/hedge layers take it into account (see inplay_confidence).
+        knockout = bool(fx["round"]) and "group" not in str(fx["round"]).lower()
+        fixture_opps = by_fixture.get(fx["api_id"], [])
+        try:
+            from prediction_market.strategy import inplay_confidence as ic
+            ctx = ic.match_context(hi, ai, name.get(hi, hi), name.get(ai, ai), gh, ga, minute,
+                                   model={"home": lp.p_home, "draw": lp.p_draw, "away": lp.p_away},
+                                   knockout=knockout)
+            for _o in fixture_opps:
+                ic.annotate(_o, ctx)
+        except Exception:
+            pass
+        # Hedge suggestion (protect a leading directional position) — None when N/A.
+        try:
+            hedge = _match_hedge(conn, fx, None, lam_h, lam_a, gh, ga, minute, lp, prices,
+                                 knockout=knockout)
+            if hedge is not None:
+                hedge["held_team"] = name.get(hi, hi) if hedge["held_side"] == "home" else name.get(ai, ai)
+        except Exception:
+            hedge = None
         matches.append({
             "fixture_id": fx["api_id"],
             "status": fx["status_short"],
@@ -103,7 +204,8 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             },
             "xg": {"home": xg.get(fx["home_api_id"]), "away": xg.get(fx["away_api_id"])},
             "prices": prices,
-            "opportunities": by_fixture.get(fx["api_id"], []),
+            "opportunities": fixture_opps,
+            "hedge": hedge,
         })
 
     return {"ts": datetime.now(timezone.utc).isoformat(), "n_live": len(matches), "matches": matches}

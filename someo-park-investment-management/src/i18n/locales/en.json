@@ -635,7 +635,7 @@
     "lblBets": "bets",
     "lblSkipped": "skipped (no edge)",
     "betLogNote": "Bet = the decision model's most-underpriced side (not the most-likely), sized $0.2–$2 by confidence; no-edge matches are skipped.",
-    "colStake": "Stake",
+    "colStake": "Bet",
     "argmaxShort": "argmax",
     "noBet": "no bet (no edge)",
     "colDate": "Date",
@@ -746,7 +746,29 @@
       "trackRecord": "Track record (decision model): value bet the most-underpriced side, sized ${{min}}–${{max}} by confidence, since {{since}} — {{record}}, {{pnl}}$ ({{roi}}% ROI) over {{bets}} bets; {{skipped}} settled matches skipped (no tradable edge).",
       "argmaxTrack": "Argmax track (reference, every match): bet the most-likely side all {{n}} settled matches — {{record}} ({{acc}}%), {{pnl}}¢/contract. The OLD naive rule, shown alongside so both methods are comparable on the full sample.",
       "calibPnlNote": "Calibration P&L (fair-odds) is a separate over/under-confidence diagnostic."
-    }
+    },
+    "hedge": {
+      "title": "Hedge — protect the lead",
+      "leading": "{{team}} leading · draw now {{draw}}",
+      "held": "entry {{entry}} · per {{shares}} contracts",
+      "breakEven": "Break-even hedge: buy {{b}} draw → flat even if drawn",
+      "profitIfWin": "{{team}} win still nets {{profit}}",
+      "win": "win",
+      "colPlan": "Plan",
+      "colDrawB": "Draw ×",
+      "planNone": "No hedge",
+      "planBe": "Break-even",
+      "planFull": "Full hedge",
+      "warnAway": "buying draw does NOT cover a {{away}} comeback (away leg unhedged)",
+      "koNote": "Knockout: a 90' draw goes to extra time — buying draw protects the 90' market only"
+    },
+    "colConf": "Conf",
+    "conf": {
+      "high": "High",
+      "medium": "Med",
+      "low": "Low"
+    },
+    "advisory": "advisory"
   },
   "sidebar": {
     "appName": "Someo Park",

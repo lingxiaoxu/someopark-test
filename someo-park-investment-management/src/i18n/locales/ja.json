@@ -296,7 +296,7 @@
     "lblBets": "ベット",
     "lblSkipped": "見送り(エッジなし)",
     "betLogNote": "ベット = 判断モデルが最も過小評価された側を選択(最有力ではない)、確信度に応じて $0.2–$2。エッジなしは見送り。",
-    "colStake": "金額",
+    "colStake": "賭け",
     "argmaxShort": "argmax",
     "noBet": "ベットなし(エッジなし)",
     "colDate": "日付",
@@ -399,7 +399,29 @@
       "trackRecord": "成績(判断モデル):最も過小評価された側に賭け、信頼度で ${{min}}–${{max}}、{{since}} 以降 —— {{record}}、{{pnl}}$({{roi}}% ROI)、{{bets}} 賭;{{skipped}} 試合はエッジ無しでスキップ。",
       "argmaxTrack": "argmax(参考、毎試合):最有力の側に全 {{n}} 試合賭け —— {{record}}({{acc}}%)、{{pnl}}¢/枚。旧来の単純ルール、全サンプル比較のため併記。",
       "calibPnlNote": "校正損益(公正オッズ)は別個の自信過剰/不足の診断です。"
-    }
+    },
+    "hedge": {
+      "title": "ヘッジ — リードを保護",
+      "leading": "{{team}} リード · draw 現在 {{draw}}",
+      "held": "建値 {{entry}} · {{shares}} 枚あたり",
+      "breakEven": "損益分岐ヘッジ:draw を {{b}} 枚購入 → 引き分けでも回収",
+      "profitIfWin": "{{team}} 勝利なら依然 {{profit}}",
+      "win": "勝",
+      "colPlan": "方策",
+      "colDrawB": "draw 枚数",
+      "planNone": "ヘッジなし",
+      "planBe": "損益分岐",
+      "planFull": "完全ヘッジ",
+      "warnAway": "draw 購入は {{away}} の逆転を防げない(away は無保護)",
+      "koNote": "ノックアウト:90分引き分けは延長へ——draw購入は90分市場のみ保護"
+    },
+    "colConf": "信頼度",
+    "conf": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "advisory": "参考のみ"
   },
   "sidebar": {
     "appName": "Someo Park",

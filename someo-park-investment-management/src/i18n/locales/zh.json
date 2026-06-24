@@ -314,7 +314,7 @@
     "lblBets": "注",
     "lblSkipped": "跳过(无边际)",
     "betLogNote": "下注 = 决策模型选「最被低估」的一边(非概率最高),按置信度 $0.2–$2 定额;无边际则跳过。",
-    "colStake": "金额",
+    "colStake": "下注",
     "argmaxShort": "argmax",
     "noBet": "不下注(无边际)",
     "colDate": "日期",
@@ -425,7 +425,29 @@
       "trackRecord": "战绩(决策模型):押最被低估的一边,按置信度 ${{min}}–${{max}} 定额,自 {{since}} 起 —— {{record}},{{pnl}}$({{roi}}% ROI),共 {{bets}} 注;{{skipped}} 场已结算因无边际跳过。",
       "argmaxTrack": "argmax 口径(参考,每场都押):每场押概率最高的一边,全 {{n}} 场已结算 —— {{record}}({{acc}}%),{{pnl}}¢/张。这是旧的天真规则,并列展示以便全样本对照。",
       "calibPnlNote": "校准盈亏(公允赔率)是单独的过度/不足自信诊断。"
-    }
+    },
+    "hedge": {
+      "title": "对冲 — 保护领先",
+      "leading": "{{team}} 领先 · draw 现价 {{draw}}",
+      "held": "入场 {{entry}} · 每 {{shares}} 张",
+      "breakEven": "保本对冲:买 {{b}} 张 draw → 被拖平也回本",
+      "profitIfWin": "{{team}} 仍胜净赚 {{profit}}",
+      "win": "胜",
+      "colPlan": "方案",
+      "colDrawB": "draw 张数",
+      "planNone": "不对冲",
+      "planBe": "保本",
+      "planFull": "完全对冲",
+      "warnAway": "买 draw 不防 {{away}} 翻盘(away 态无保护)",
+      "koNote": "淘汰赛:90' 打平进加时——买 draw 只保护 90' 市场"
+    },
+    "colConf": "置信",
+    "conf": {
+      "high": "高",
+      "medium": "中",
+      "low": "低"
+    },
+    "advisory": "仅参考"
   },
   "sidebar": {
     "appName": "Someo Park",

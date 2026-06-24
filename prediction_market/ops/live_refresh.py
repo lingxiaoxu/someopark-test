@@ -68,6 +68,7 @@ def _append_review_log(inplay: dict, synced: int) -> None:
             "model": mch.get("model"),                 # live 3-way + over + remaining goals
             "n_opportunities": len(mch.get("opportunities", [])),
             "opportunities": mch.get("opportunities", []),  # full signal detail (kind/side/venue/edge/reason)
+            "hedge": mch.get("hedge"),                  # protect-leading hedge suggestion (None when N/A)
             "api_synced": synced,
         }, ensure_ascii=False))
     if lines:

@@ -399,7 +399,29 @@
       "trackRecord": "Bilan (modèle de décision) : miser sur le côté le plus sous-évalué, taille ${{min}}–${{max}} selon confiance, depuis {{since}} — {{record}}, {{pnl}}$ ({{roi}}% ROI) sur {{bets}} paris ; {{skipped}} matchs réglés ignorés (pas d'avantage).",
       "argmaxTrack": "Bilan argmax (réf., chaque match) : miser sur le côté le plus probable sur les {{n}} matchs réglés — {{record}} ({{acc}}%), {{pnl}}¢/contrat. L'ancienne règle naïve, montrée en parallèle pour comparer sur tout l'échantillon.",
       "calibPnlNote": "Le P&L de calibrage (cotes justes) est un diagnostic distinct de sur/sous-confiance."
-    }
+    },
+    "hedge": {
+      "title": "Couverture — protéger l’avance",
+      "leading": "{{team}} en tête · nul à {{draw}}",
+      "held": "entrée {{entry}} · par {{shares}} contrats",
+      "breakEven": "Couverture seuil nul : acheter {{b}} nul → équilibre même en cas de nul",
+      "profitIfWin": "victoire {{team}} rapporte encore {{profit}}",
+      "win": "gagne",
+      "colPlan": "Plan",
+      "colDrawB": "Nul ×",
+      "planNone": "Sans couverture",
+      "planBe": "Seuil nul",
+      "planFull": "Couverture totale",
+      "warnAway": "acheter le nul ne couvre pas un retour de {{away}} (jambe extérieure non couverte)",
+      "koNote": "Élimination directe : un nul à 90' va en prolongation — acheter le nul ne couvre que le marché 90'"
+    },
+    "colConf": "Conf.",
+    "conf": {
+      "high": "Élevé",
+      "medium": "Moyen",
+      "low": "Faible"
+    },
+    "advisory": "indicatif"
   },
   "sidebar": {
     "appName": "Someo Park",
