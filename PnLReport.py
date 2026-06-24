@@ -877,17 +877,29 @@ def build_report_data(start: str, end: str) -> dict:
             close_note = close_ev['note']
         elif p.get('_closed_in_snapshot'):
             # Pair was closed in inventory (direction→null) but no monitor
-            # close event was recorded (orphan close from Step 1 signal).
-            # Use all-lifecycle total if available (matches curve logic).
-            # If no CLOSE events exist at all, use 0 (curve also has no
-            # realized PnL for this pair — it just disappears from MTM).
+            # close event was recorded (orphan close from Step 1 signal,
+            # or cron gap where monitor never ran for this position).
+            # Priority: all-lifecycle total → MTM from prices → 0.
             is_open    = False
             if pair in all_lifecycle_total:
                 sys_pnl = all_lifecycle_total[pair]
-                # Clear prior_pnl since sys_pnl already covers all lifecycles
                 prior_lifecycle_pnl.pop(pair, None)
             else:
-                sys_pnl = 0
+                # Fallback: compute MTM from inventory shares × Close prices.
+                # The position was never monitored, so we reconstruct its PnL
+                # from the last available close price before it disappeared.
+                mtm_fallback = None
+                if s1_sh and s2_sh and op1 and op2:
+                    try:
+                        cp1 = prices[s1].dropna().iloc[-1] if s1 in prices.columns else None
+                        cp2 = prices[s2].dropna().iloc[-1] if s2 in prices.columns else None
+                        if cp1 is not None and cp2 is not None:
+                            mtm_fallback = round(
+                                (s1_sh * float(cp1) + s2_sh * float(cp2))
+                                - (s1_sh * op1 + s2_sh * op2), 2)
+                    except Exception:
+                        pass
+                sys_pnl = mtm_fallback if mtm_fallback is not None else 0
             exit_dt    = p['last_pnl_date'] or end
             action     = 'CLOSE'
             close_note = 'Closed by signal (no monitor event)'
