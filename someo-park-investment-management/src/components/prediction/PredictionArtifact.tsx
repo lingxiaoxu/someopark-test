@@ -449,21 +449,43 @@ function InPlay() {
             const col = (x: number) => <span style={{ color: x >= 0 ? 'var(--success)' : 'var(--error)' }}>{sign(x)}{cc(x)}</span>;
             const cols = [tr('prediction.hedge.colPlan'), tr('prediction.hedge.colDrawB'),
               `${homeName} ${tr('prediction.hedge.win')}`, tr('prediction.side.draw'), `${awayName} ${tr('prediction.hedge.win')}`];
-            const rows = (h.payoff || []).map((r: any) => [planLabel(r.b), num(r.b, 2), col(r.home), col(r.draw), col(r.away)]);
+            // draw cell shows the share count AND the per-contract draw price (so the cost is
+            // verifiable); draw_c at 1-decimal precision — the same value the back-end sizes on.
+            const drawCell = (b: number) => b === 0 ? num(b, 2) : `${num(b, 2)} @${cc(h.draw_c, 1)}`;
+            const rows = (h.payoff || []).map((r: any) => [planLabel(r.b), drawCell(r.b), col(r.home), col(r.draw), col(r.away)]);
             return (
               <div style={{ marginTop: 8, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-subtle)' }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', ...mono, marginBottom: 3 }}>
                   🛡 {tr('prediction.hedge.title')}
                 </div>
                 <div style={{ fontSize: 10, color: 'var(--text-secondary)', ...mono, marginBottom: 2 }}>
-                  {tr('prediction.hedge.leading', { team: tCountry(h.held_team), draw: cc(h.draw_c) })}
-                  {' · '}{tr('prediction.hedge.held', { entry: cc(h.entry_c), shares: h.shares_ref })}
+                  {tr('prediction.hedge.leading', { team: tCountry(h.held_team), draw: cc(h.draw_c, 1) })}
+                  {' · '}{tr('prediction.hedge.held', { entry: cc(h.entry_c, 1), shares: h.shares_ref })}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
                   {tr('prediction.hedge.breakEven', { b: num(h.break_even_b, 2) })}
                   {h.profit_if_win_c != null && <> · {tr('prediction.hedge.profitIfWin', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })}</>}
                 </div>
-                <DataTable className="inplay-arb-table" cols={cols} rows={rows} />
+                {/* fixed layout: the three outcome columns are EXACTLY equal width */}
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', ...mono, fontSize: 10, marginTop: 2 }}>
+                  <colgroup>
+                    <col style={{ width: '20%' }} />
+                    <col style={{ width: '24%' }} />
+                    <col style={{ width: '18.66%' }} />
+                    <col style={{ width: '18.66%' }} />
+                    <col style={{ width: '18.66%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr>{cols.map((c, i) => (
+                      <th key={i} style={{ textAlign: i < 2 ? 'left' : 'right', padding: '2px 6px', color: 'var(--text-muted)', fontWeight: 700, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>{rows.map((r, ri) => (
+                    <tr key={ri}>{r.map((cell, ci) => (
+                      <td key={ci} style={{ textAlign: ci < 2 ? 'left' : 'right', padding: '2px 6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cell}</td>
+                    ))}</tr>
+                  ))}</tbody>
+                </table>
                 <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 3 }}>
                   ⚠ {tr('prediction.hedge.warnAway', { away: awayName })}
                 </div>
