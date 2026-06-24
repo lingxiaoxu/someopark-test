@@ -26,24 +26,31 @@ _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
 def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, *, knockout=False):
     """Hedge suggestion for a live match, or None when not applicable.
 
-    Scenario (user's core case): we hold the pre-match favourite (home/away) and
-    that side is NOW leading → the draw contract has cheapened, so buying draw is
-    a protection leg. We surface the break-even hedge (the headline) + a 3-state
-    payoff matrix from strategy.inplay_hedge — the single source of the quant math
-    (no re-derivation in the frontend). Read-only; reference size = 10 contracts.
+    Scenario (user's core case): a directional side (home/away) is NOW leading, so
+    the draw contract has cheapened and buying draw is a protection leg. The held
+    side is the CURRENT LEADER (not the pre-match favourite), so an upset in progress
+    is covered too. We surface the break-even hedge (the headline) + a 3-state payoff
+    matrix from strategy.inplay_hedge — the single source of the quant math (no
+    re-derivation in the frontend). Read-only; reference size = 10 contracts.
     """
     from prediction_market.strategy import inplay_hedge as ih
     from prediction_market.util.pricing import to_cents
 
     if minute <= 0:
         return None
-    # Pre-match favourite among home/away = the directional side we'd have backed.
+    # Hedge the side that is CURRENTLY LEADING (the directional position with unrealised
+    # gains worth protecting) — NOT just the pre-match favourite. This covers an upset in
+    # progress: e.g. Switzerland 2-1 over a model-favoured Canada — the leader (Switzerland)
+    # is the position to protect, even though Canada was the pre-match pick. A level match has
+    # no leading position → no hedge.
     from prediction_market.model.inplay import live_match_prob
-    pm = live_match_prob(lam_h, lam_a, 0, 0, 0)
-    pick = "home" if pm.p_home >= pm.p_away else "away"
-    leading = (pick == "home" and gh > ga) or (pick == "away" and ga > gh)
-    if not leading:
-        return None  # only protect a winning directional position
+    if gh > ga:
+        pick = "home"
+    elif ga > gh:
+        pick = "away"
+    else:
+        return None
+    pm = live_match_prob(lam_h, lam_a, 0, 0, 0)  # pre-match price of the leading side (entry fallback)
 
     # Entry ¢ for our held side: pre-match milestone PRE quote (poly→kalshi), else
     # the pre-match model ¢. Current draw ¢: best live venue mid, else live model ¢.
