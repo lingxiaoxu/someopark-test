@@ -76,18 +76,22 @@ def recent_finished(conn, hours: float = 0.75) -> list[dict]:
     cutoff = (datetime.now(timezone.utc) - timedelta(hours=_MATCH_DURATION_H + hours)).isoformat()
     out = []
     for r in conn.execute(
-        "SELECT home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, status_short, round "
+        "SELECT home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, status_short, round, raw_json "
         "FROM fixture WHERE status_short IN ({}) AND home_goals IS NOT NULL AND kickoff_ts >= ? "
         "ORDER BY kickoff_ts DESC".format(",".join("?" * len(_FINISHED))),
         (*_FINISHED, cutoff)).fetchall():
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        gh, ga = r["home_goals"], r["away_goals"]
+        from prediction_market.util.pricing import reg_score
+        fgh, fga = r["home_goals"], r["away_goals"]                       # final (incl ET)
+        gh, ga = reg_score(r["raw_json"], fgh, fga)                       # 90' regulation
+        # The 90' 3-way result our predictions settle on; show the AET final when it differs.
+        score = f"{gh}-{ga}" + (f" (AET {fgh}-{fga})" if (gh, ga) != (fgh, fga) else "")
         out.append({
             "home": {"id": hi, "name": name.get(hi, hi), "zh": zh.get(hi, "")},
             "away": {"id": ai, "name": name.get(ai, ai), "zh": zh.get(ai, "")},
-            "score": f"{gh}-{ga}", "status": r["status_short"], "finished": True,
+            "score": score, "status": r["status_short"], "finished": True,
             "result": "home" if gh > ga else ("draw" if gh == ga else "away"),
             "kickoff": r["kickoff_ts"], "et": _et_human(r["kickoff_ts"]), "round": r["round"] or "",
         })

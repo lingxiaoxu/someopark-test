@@ -30,9 +30,10 @@ def fit(conn=None) -> dict:
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     rows = conn.execute(
-        "SELECT home_api_id, away_api_id, home_goals, away_goals FROM fixture "
+        "SELECT home_api_id, away_api_id, home_goals, away_goals, raw_json FROM fixture "
         "WHERE status_short IN ({}) AND home_goals IS NOT NULL".format(",".join("?" * len(_FINISHED))),
         _FINISHED).fetchall()
+    from prediction_market.util.pricing import reg_score
     P, Y = [], []
     for r in rows:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
@@ -40,7 +41,8 @@ def fit(conn=None) -> dict:
             continue
         mp = price_match(sm, hi, ai)
         P.append([mp.p_home, mp.p_draw, mp.p_away])
-        gh, ga = r["home_goals"], r["away_goals"]
+        # 90' regulation score → the 3-way label the market calibrates against.
+        gh, ga = reg_score(r["raw_json"], r["home_goals"], r["away_goals"])
         Y.append(0 if gh > ga else (1 if gh == ga else 2))
     cal = fit_calibration(P, Y)
     cal["ts"] = datetime.now(timezone.utc).isoformat()

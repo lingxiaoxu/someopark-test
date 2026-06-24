@@ -14,6 +14,31 @@ market's fair view, the model ¢ is ours. We surface all of them side-by-side.
 """
 from __future__ import annotations
 
+import json as _json
+
+
+def reg_score(raw_json, gh, ga):
+    """The 90-MINUTE (regulation) score for settling the 90' 3-way (home/Tie/away).
+
+    API-Football stores the ET-inclusive FINAL in `goals` (→ fixture.home_goals/
+    away_goals); the regulation-time result — what the Tie market actually settles
+    on — lives in `score.fulltime`. For a knockout that goes to extra time a 1-1@90'
+    finishing 2-1 has goals=2-1 but fulltime=1-1, so the 90' market settles 'Tie',
+    NOT 'home'. Use this wherever the 90' 3-way outcome/label/PnL is derived. Falls
+    back to (gh, ga) when fulltime is absent (group games never go to ET → identical).
+
+    NB: `_advancer` (who progressed) deliberately keeps the ET-inclusive score — that
+    is a DIFFERENT market (advance) and must count extra time / penalties.
+    """
+    try:
+        d = _json.loads(raw_json) if isinstance(raw_json, str) else (raw_json or {})
+        ft = (d.get("score") or {}).get("fulltime") or {}
+        if ft.get("home") is not None and ft.get("away") is not None:
+            return int(ft["home"]), int(ft["away"])
+    except Exception:
+        pass
+    return gh, ga
+
 
 def to_cents(q, ndigits: int = 1):
     """A 0–1 quote/probability → per-contract cents (¢). None-safe."""

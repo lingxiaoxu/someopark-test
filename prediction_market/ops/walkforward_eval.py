@@ -34,15 +34,16 @@ def load_chrono(conn):
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     rows = conn.execute(
-        "SELECT home_api_id, away_api_id, home_goals, away_goals, kickoff_ts FROM fixture "
+        "SELECT home_api_id, away_api_id, home_goals, away_goals, kickoff_ts, raw_json FROM fixture "
         "WHERE status_short IN ({}) AND home_goals IS NOT NULL AND kickoff_ts IS NOT NULL "
         "ORDER BY kickoff_ts".format(",".join("?" * len(_FINISHED))), _FINISHED).fetchall()
+    from prediction_market.util.pricing import reg_score
     out = []
     for r in rows:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        gh, ga = r["home_goals"], r["away_goals"]
+        gh, ga = reg_score(r["raw_json"], r["home_goals"], r["away_goals"])  # 90' result
         y = 0 if gh > ga else (1 if gh == ga else 2)
         try:
             dt = datetime.fromisoformat(r["kickoff_ts"])

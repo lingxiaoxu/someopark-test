@@ -44,12 +44,13 @@ def build(conn=None) -> dict:
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
     rows = conn.execute(
-        "SELECT f.home_api_id, f.away_api_id, f.home_goals, f.away_goals, "
+        "SELECT f.home_api_id, f.away_api_id, f.home_goals, f.away_goals, f.raw_json, "
         "       AVG(o.p_home) bh, AVG(o.p_draw) bd, AVG(o.p_away) ba, COUNT(DISTINCT o.bookmaker) nbk "
         "FROM fixture f LEFT JOIN match_odds o ON o.fixture_api_id=f.api_id "
         "WHERE f.status_short IN ({}) AND f.home_goals IS NOT NULL "
         "GROUP BY f.api_id ORDER BY f.kickoff_ts".format(",".join("?" * len(_FINISHED))),
         _FINISHED).fetchall()
+    from prediction_market.util.pricing import reg_score
 
     lab = ["H", "D", "A"]
     matches = []
@@ -62,7 +63,7 @@ def build(conn=None) -> dict:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        gh, ga = r["home_goals"], r["away_goals"]
+        gh, ga = reg_score(r["raw_json"], r["home_goals"], r["away_goals"])  # 90' result
         y = 0 if gh > ga else (1 if gh == ga else 2)
         raw = price_match(sm, hi, ai)
         mp = price_match_calibrated(sm, hi, ai, cal=cal)   # calibrated = the live model

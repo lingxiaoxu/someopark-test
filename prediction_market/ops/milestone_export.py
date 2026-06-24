@@ -49,7 +49,7 @@ def _mark(row) -> dict:
 def build(conn=None) -> dict:
     from prediction_market.ingest import store
     from prediction_market.ingest.prior_ingest import load_prior
-    from prediction_market.model.match_pricing import is_knockout, price_match_calibrated
+    from prediction_market.model.match_pricing import price_match_calibrated
     from prediction_market.model.probability_calibration import load_calibration
     from prediction_market.model.squad_strength import build_strength_live
 
@@ -87,15 +87,18 @@ def build(conn=None) -> dict:
         settled = fx["status_short"] in _FINISHED and fx["home_goals"] is not None
         result = None
         if settled:
-            gh, ga = fx["home_goals"], fx["away_goals"]
+            # 90' regulation score (KO ET match settles the 90' Tie market on 1-1@90').
+            from prediction_market.util.pricing import reg_score
+            gh, ga = reg_score(fx["raw_json"], fx["home_goals"], fx["away_goals"])
             result = "home" if gh > ga else ("draw" if gh == ga else "away")
 
         # Our pick / win — from the SAME shared function the production bet log uses
         # (performance_report.match_pick), so PriceTrack and Accuracy/PnL reconcile by
-        # construction (group 3-way + knockout advance). book_row=None: the pick is
-        # book-independent, so we get the identical pick without bookmaker odds. Returns
-        # None only for a knockout that can't be settled yet → fall back to the plain
-        # argmax pick (live / undecided), with no MTM.
+        # construction (90-min 3-way for BOTH stages — a draw is a valid knockout outcome;
+        # 'advance' is a SEPARATE per-team reach-round product). book_row=None: the pick is
+        # book-independent, so we get the identical pick without bookmaker odds. match_pick
+        # returns None only when the score isn't final yet → fall back to the plain argmax
+        # pick (live / undecided), with no MTM.
         from prediction_market.ops.performance_report import _pit_strength, match_pick
         from prediction_market.strategy.decision_model import quotes_from_milestone_row
         pre_row = next((r for r in rows if r["milestone"] == "PRE"), None)
@@ -108,7 +111,9 @@ def build(conn=None) -> dict:
             pick = mr["pick"]
             entry_prob = mr["model_prob"]
         else:
-            mp = price_match_calibrated(sm, hi, ai, knockout=is_knockout(fx["round"]), cal=cal)
+            # Per-match market = 90-min 3-way for BOTH stages → knockout=False (same as the
+            # bet log / upcoming card). A draw is a valid knockout outcome here.
+            mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal)
             model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
             pick = max(model, key=model.get)
             entry_prob = round(model[pick], 4)
@@ -174,7 +179,10 @@ def build(conn=None) -> dict:
             "kickoff": fx["kickoff_ts"],
             "round": fx["round"] or "",
             "settled": settled,
-            "score": (f'{fx["home_goals"]}-{fx["away_goals"]}' if settled else None),
+            # 90' regulation score (matches `result`/MTM); show the AET final when it differs.
+            "score": ((f"{gh}-{ga}" + (f' (AET {fx["home_goals"]}-{fx["away_goals"]})'
+                                       if (gh, ga) != (fx["home_goals"], fx["away_goals"]) else ""))
+                      if settled else None),
             "result": result,
             "our_bet": our_bet,
             "mtm": mtm,
