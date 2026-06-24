@@ -24,20 +24,27 @@ from prediction_market.config import CONFIG
 def _top_players(conn, team_api_ids: dict, top_n: int = 4) -> dict:
     """{canonical_team_id: [{name, goals, assists, rating}]} top by goals+assists."""
     rows = conn.execute(
-        "SELECT tm.canonical_team_id cid, p.name, ps.goals, ps.assists, ps.rating "
+        "SELECT tm.canonical_team_id cid, p.api_id pid, p.name, ps.goals, ps.assists, ps.rating "
         "FROM squad s JOIN team_meta tm ON tm.api_id = s.team_api_id "
         "JOIN player p ON p.api_id = s.player_api_id "
         "JOIN player_stat ps ON ps.player_api_id = s.player_api_id "
         "WHERE tm.canonical_team_id IS NOT NULL").fetchall()
-    by_team: dict[str, list] = {}
+    # A player can have multiple player_stat rows (different league/season), which would list
+    # them TWICE (e.g. Canada "P. David, P. David"). Dedup by (team, player) keeping the single
+    # best goals+assists row.
+    best: dict[tuple, dict] = {}
     for r in rows:
-        by_team.setdefault(r["cid"], []).append({
-            "name": r["name"], "goals": r["goals"] or 0, "assists": r["assists"] or 0,
-            "rating": round(r["rating"], 2) if r["rating"] is not None else None,
-        })
+        ga = (r["goals"] or 0) + (r["assists"] or 0)
+        key = (r["cid"], r["pid"])
+        if key not in best or ga > best[key]["_ga"]:
+            best[key] = {"name": r["name"], "goals": r["goals"] or 0, "assists": r["assists"] or 0,
+                         "rating": round(r["rating"], 2) if r["rating"] is not None else None, "_ga": ga}
+    by_team: dict[str, list] = {}
+    for (cid, _pid), v in best.items():
+        by_team.setdefault(cid, []).append(v)
     for cid, lst in by_team.items():
-        lst.sort(key=lambda x: -(x["goals"] + x["assists"]))
-        by_team[cid] = lst[:top_n]
+        lst.sort(key=lambda x: -x["_ga"])
+        by_team[cid] = [{k: val for k, val in p.items() if k != "_ga"} for p in lst[:top_n]]
     return by_team
 
 

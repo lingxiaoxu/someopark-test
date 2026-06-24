@@ -216,7 +216,12 @@ def decide(
     k = (cfg.conf_w_edge * edge_comp + cfg.conf_w_calib * calib_comp
          + cfg.conf_w_form * form_comp + cfg.conf_w_alt * alt_comp)
     k = _clip(k, cfg.k_min, cfg.k_max)
-    stake = _clip(cfg.base_stake_usd * (1.0 + k), cfg.min_stake_usd, cfg.max_stake_usd)
+    # Re-center on base_stake: k is built from positive-only signals (edge ≥0 for any value bet
+    # + a positive calib constant), so without the conf_k_ref offset every bet sized > $1 and the
+    # "$1 or less when unsure" intent was never hit. Subtracting the typical k centres a median
+    # bet on $1 — low confidence dips below $1, high confidence above (still clipped to [min,max]).
+    stake = _clip(cfg.base_stake_usd * (1.0 + k - getattr(cfg, "conf_k_ref", 0.0)),
+                  cfg.min_stake_usd, cfg.max_stake_usd)
 
     reason = (f"value buy {side} @ {q.ask*100:.0f}¢ (model {model[side]*100:.0f}% vs "
               f"devig {(q.devig or 0)*100:.0f}%, net_edge {net_edge:+.1%}); "

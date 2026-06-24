@@ -65,7 +65,7 @@ class ModelConfig:
     # beta maps a team-rating difference to a log-goal difference (Poisson rating model).
     beta: float = 0.40
     rating_bound: float = 2.5      # clip calibrated ratings to [-bound, +bound]
-    home_adv: float = 0.20         # per-match host advantage (group only; off in KO via host_neutral)
+    home_adv: float = 0.15         # per-match host advantage (group only; off in KO via host_neutral)
     host_nations: tuple[str, ...] = ("United States", "Mexico", "Canada")
     # Tournament-long host rating boost: WC hosts historically OVER-perform their ratings (crowd,
     # familiarity, travel, refereeing — every host except RSA 2010 / QAT 2022 reached ≥ R16). A
@@ -306,10 +306,15 @@ class DecisionConfig:
     min_stake_usd: float = 0.2
     max_stake_usd: float = 2.0
 
-    # Confidence multiplier k (stake = clip(base*(1+k), min, max)). Bounds chosen so
-    # base $1 spans exactly [0.2, 2.0]: k in [-0.8, +1.0].
+    # Confidence multiplier k (stake = clip(base*(1 + k - conf_k_ref), min, max)). Bounds so
+    # base $1 spans [0.2, 2.0]: k in [-0.8, +1.0]. conf_k_ref RE-CENTERS the stake on $1: k is
+    # built from positive-only signals (edge ≥0 for any value bet + a positive calib constant),
+    # so without an offset every bet sized ABOVE $1 (the "$1 or less when unsure" intent was never
+    # hit — uncertain bets still bet $1.02). Subtracting the typical k (~0.25) makes a median-
+    # confidence bet ≈ $1, a low-confidence one < $1, a high-confidence one > $1.
     k_min: float = -0.8
     k_max: float = 1.0
+    conf_k_ref: float = 0.25      # k that maps to base_stake ($1); below → sub-$1, above → super-$1
 
     # Blend weights for k. edge dominates (it's the value signal); calibration,
     # recent form, then other alt-data nudge it. Sum need not be 1 (each is bounded).
