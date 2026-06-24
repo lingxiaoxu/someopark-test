@@ -164,7 +164,10 @@ def test_golden_boot_rate_regresses_burst_to_talent():
     players = build_golden_boot_players(c)
     bal = next(p for p in players if "Balogun" in p.name)
     assert bal.goals_so_far == 2                       # real goals carried as head start
-    assert 0.33 < bal.mu_goals_per_match < 0.65        # posterior regressed toward talent, not ~2.0
+    # posterior regressed toward talent, not the ~2.0 raw burst. With the tuned
+    # gb_fc_prior_alpha=3.0 (lets WC goals matter more — the Messi/Ronaldo fix) the
+    # Bayesian rate is (0.33·3 + 2)/(3 + 1) = 0.7475: still a heavy pull-down from 2.0.
+    assert 0.33 < bal.mu_goals_per_match < 0.85
     # games-played correction: USA has played 1 settled match (vs a distinct opponent).
     store.upsert(c, "team_meta", {"api_id": 31, "group_code": "A", "fifa_rank": None,
                  "canonical_team_id": "england", "updated_at": store.utcnow()}, pk=["api_id"])

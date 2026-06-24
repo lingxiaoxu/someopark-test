@@ -10,6 +10,30 @@ from __future__ import annotations
 
 OVERSHOOT_MARGIN = 0.12   # market this far above live model fair = over-reaction → lock
 
+# price_tick.rel_min is WALL-CLOCK minutes since kickoff, NOT the match minute — the ~15-min
+# half-time break means a 90' game runs to ~110-115 wall-clock and extra time to ~120-150.
+# We map wall-clock → MATCH minute and gate on the match clock so the cash-out logic is
+# venue/stoppage-independent: the fair is priced at the true match minute, and the scan stops
+# at end of regulation (match-min ≤ 95 = 90' + stoppage) — which excludes knockout extra time
+# (the 90' 3-way contract has already settled) for ANY wall-clock drift, no magic number.
+_HALFTIME_WALL_MIN = 15      # typical half-time break (wall-clock minutes with no play)
+_REG_MAX_MATCH_MIN = 95      # end of regulation incl. stoppage (same clamp the live model uses)
+_SCAN_MAX_RELMIN = 170       # sane wall-clock ceiling (covers full ET); match-clock does the gating
+
+
+def _match_minute(rel_min: int) -> int:
+    """Approximate MATCH minute from wall-clock minutes-since-kickoff.
+
+    First half (match 0-45) ≈ wall 0-45; then a ~15' half-time break (no match progress);
+    second half (match 45-90) ≈ wall 60-110; extra time ≈ wall 120-150. The half-time offset
+    is the dominant correction (1st-half stoppage shifts the break by ~1-3', negligible vs the
+    5' regulation buffer)."""
+    if rel_min <= 45:
+        return rel_min
+    if rel_min <= 45 + _HALFTIME_WALL_MIN:        # inside the half-time break
+        return 45
+    return rel_min - _HALFTIME_WALL_MIN
+
 
 def smart_exit_cashout(conn, sm, fid, pick, entry_c, hi, ai, round_name, won,
                        *, margin: float = OVERSHOOT_MARGIN):
@@ -20,9 +44,16 @@ def smart_exit_cashout(conn, sm, fid, pick, entry_c, hi, ai, round_name, won,
     fixture_event; the per-minute market price comes from the price_tick backfill."""
     if entry_c is None or pick not in ("home", "draw", "away"):
         return None
-    ticks = conn.execute(
-        "SELECT rel_min, price FROM price_tick WHERE fixture_api_id=? AND side=? AND rel_min BETWEEN 1 AND 125 "
-        "ORDER BY ts", (fid, pick)).fetchall()
+    # The per-match contract (KXWCGAME / fwc) is the 90-MIN 3-way for BOTH stages — it SETTLES at
+    # 90' (a knockout tie pays 'Tie'; extra time / penalties only decide the SEPARATE reach-round
+    # product). Pull the in-game ticks (wall-clock window), then gate each on the MATCH clock
+    # below — regulation only — so knockout extra time is excluded by the match minute itself.
+    raw = conn.execute(
+        "SELECT rel_min, price FROM price_tick WHERE fixture_api_id=? AND side=? AND rel_min BETWEEN 1 AND ? "
+        "ORDER BY ts", (fid, pick, _SCAN_MAX_RELMIN)).fetchall()
+    # Map each tick to its match minute and keep only the regulation window (≤ 95 match-min).
+    ticks = [(_match_minute(r["rel_min"]), r["price"]) for r in raw]
+    ticks = [(mn, px) for (mn, px) in ticks if 1 <= mn <= _REG_MAX_MATCH_MIN]
     if len(ticks) < 10:
         return None
     from prediction_market.model.inplay import live_match_prob
@@ -51,14 +82,13 @@ def smart_exit_cashout(conn, sm, fid, pick, entry_c, hi, ai, round_name, won,
                 break
         return h, a
 
-    for t in ticks:
-        mn = min(95, max(1, t["rel_min"]))
+    for mn, price in ticks:                 # mn is the MATCH minute (regulation, ≤ 95)
         sh, sa = score_at(mn)
         lp = live_match_prob(lam_h, lam_a, mn, sh, sa)
         fair = {"home": lp.p_home, "draw": lp.p_draw, "away": lp.p_away}[pick] * 100.0
-        mkt = t["price"] * 100.0
+        mkt = price * 100.0
         if mkt >= fair + margin * 100.0:
             hold = (100.0 - entry_c) if won else -entry_c
-            return {"sold_min": int(t["rel_min"]), "sold_c": round(mkt, 1),
+            return {"sold_min": int(mn), "sold_c": round(mkt, 1),   # sold_min = true match minute
                     "pnl_c": round(mkt - entry_c, 1), "vs_hold_c": round((mkt - entry_c) - hold, 1)}
     return None

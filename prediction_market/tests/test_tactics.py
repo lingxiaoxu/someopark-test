@@ -42,11 +42,17 @@ def test_draw_time_value_entry():
 
 def test_convergence_take_profit():
     sm = build_strength(load_prior())
-    lp = live_from_strength(sm, "brazil", "morocco", 80, 2, 0)   # home cruising
-    assert convergence_take_profit("home", 0.55, lp).act == "SELL"
-    # Not yet near max → hold.
+    lp = live_from_strength(sm, "brazil", "morocco", 80, 2, 0)   # home cruising, fair near max
+    fair = lp.p_home
+    # With a real market bid that reflects the spiked fair → lock the (near-certain) payout.
+    assert convergence_take_profit("home", 0.55, lp, market_bid=fair - 0.02).act == "SELL"
+    # SAFETY: no market bid to sell into → HOLD (don't dump a held position blind).
+    assert convergence_take_profit("home", 0.55, lp).act == "HOLD"
+    # SAFETY: bid sits well below fair → selling realises less than fair → HOLD for settlement.
+    assert convergence_take_profit("home", 0.55, lp, market_bid=fair - 0.20).act == "HOLD"
+    # Not yet near max (early, level) → hold even with a bid.
     early = live_from_strength(sm, "brazil", "morocco", 10, 0, 0)
-    assert convergence_take_profit("home", 0.55, early).act == "HOLD"
+    assert convergence_take_profit("home", 0.55, early, market_bid=early.p_home).act == "HOLD"
 
 
 def test_totals_time_decay():
