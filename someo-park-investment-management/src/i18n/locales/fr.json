@@ -403,7 +403,7 @@
     "hedge": {
       "title": "Couverture — protéger l’avance",
       "leading": "{{team}} en tête · nul à {{draw}}",
-      "held": "entrée {{entry}} · par {{shares}} contrats",
+      "held": "entrée avant-match {{entry}} · par {{shares}}",
       "breakEven": "Couverture seuil nul : acheter {{b}} nul → équilibre même en cas de nul",
       "profitIfWin": "victoire {{team}} rapporte encore {{profit}}",
       "win": "gagne",
@@ -413,7 +413,10 @@
       "planBe": "Seuil nul",
       "planFull": "Couverture totale",
       "warnAway": "acheter le nul ne couvre pas un retour de {{away}} (jambe extérieure non couverte)",
-      "koNote": "Élimination directe : un nul à 90' va en prolongation — acheter le nul ne couvre que le marché 90'"
+      "koNote": "Élimination directe : un nul à 90' va en prolongation — acheter le nul ne couvre que le marché 90'",
+      "ourPick": "Notre choix avant-match {{team}} @{{entry}}",
+      "ourPickNone": "pas de pari avant-match (sans edge)",
+      "notLeader": "≠ meneur — cette couverture suppose que vous détenez le meneur, pas notre choix"
     },
     "colConf": "Conf.",
     "conf": {

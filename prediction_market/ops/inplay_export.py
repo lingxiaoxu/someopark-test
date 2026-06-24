@@ -70,6 +70,32 @@ def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, 
     if entry_c is None:
         entry_c = to_cents(pm.p_home if pick == "home" else pm.p_away)
 
+    # Our ACTUAL pre-match recommendation (the value pick vs the PRE de-vigged market) + its
+    # PRE quote — shown alongside so the desk knows THIS hedge is for "IF you hold the LEADER
+    # at the pre-match price", which may differ from what we recommended (e.g. we backed the
+    # favourite that is now trailing). Entry prices are the PRE milestone quotes (the captured
+    # pre-kickoff book), the same source the bet log uses.
+    our_pick, our_entry_c = None, None
+    if pre_row is not None:
+        pm3 = {"home": pm.p_home, "draw": pm.p_draw, "away": pm.p_away}
+        ask = {}
+        for s in ("home", "draw", "away"):
+            for v in ("poly", "kalshi"):
+                try:
+                    a = pre_row[f"{v}_{s}_ask"]
+                except (KeyError, IndexError):
+                    a = None
+                if a is not None:
+                    ask[s] = a
+                    break
+        tot = sum(ask.values())
+        if tot:
+            edges = {s: pm3[s] - ask[s] / tot for s in ask}  # model − de-vigged market
+            cand = max(edges, key=edges.get)
+            if edges[cand] > 0:                              # positive value → that's our bet
+                our_pick = cand
+                our_entry_c = to_cents(ask[cand])
+
     draw_c = None
     for v in ("kalshi", "poly_us"):
         blk = (prices or {}).get(v)
@@ -102,6 +128,9 @@ def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, 
         "profit_if_win_c": (round(be_row[pick], 1) if be_row else None),  # held side still wins
         "payoff": matrix,                # rows: b=0 / break-even / full hedge
         "knockout": knockout,            # KO: a 90' draw → extra time (frontend adds the caveat)
+        "our_pick": our_pick,            # the side WE recommended pre-match (None = no value bet)
+        "our_entry_c": (round(our_entry_c, 1) if our_entry_c is not None else None),
+        "our_matches_leader": (our_pick == pick),  # True ⇒ our bet IS the leader (hedge = our position)
         "note_key": "hedge.protectLeading",
     }
 

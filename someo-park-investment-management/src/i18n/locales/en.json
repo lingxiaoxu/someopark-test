@@ -750,7 +750,7 @@
     "hedge": {
       "title": "Hedge — protect the lead",
       "leading": "{{team}} leading · draw now {{draw}}",
-      "held": "entry {{entry}} · per {{shares}} contracts",
+      "held": "pre-match entry {{entry}} · per {{shares}}",
       "breakEven": "Break-even hedge: buy {{b}} draw → flat even if drawn",
       "profitIfWin": "{{team}} win still nets {{profit}}",
       "win": "win",
@@ -760,7 +760,10 @@
       "planBe": "Break-even",
       "planFull": "Full hedge",
       "warnAway": "buying draw does NOT cover a {{away}} comeback (away leg unhedged)",
-      "koNote": "Knockout: a 90' draw goes to extra time — buying draw protects the 90' market only"
+      "koNote": "Knockout: a 90' draw goes to extra time — buying draw protects the 90' market only",
+      "ourPick": "Our pre-match pick {{team}} @{{entry}}",
+      "ourPickNone": "no pre-match bet (no edge)",
+      "notLeader": "≠ leader — this hedge assumes you hold the LEADER, not our pick"
     },
     "colConf": "Conf",
     "conf": {

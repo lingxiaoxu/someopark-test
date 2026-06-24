@@ -429,7 +429,7 @@
     "hedge": {
       "title": "对冲 — 保护领先",
       "leading": "{{team}} 领先 · draw 现价 {{draw}}",
-      "held": "入场 {{entry}} · 每 {{shares}} 张",
+      "held": "赛前入场 {{entry}} · 每 {{shares}} 张",
       "breakEven": "保本对冲:买 {{b}} 张 draw → 被拖平也回本",
       "profitIfWin": "{{team}} 仍胜净赚 {{profit}}",
       "win": "胜",
@@ -439,7 +439,10 @@
       "planBe": "保本",
       "planFull": "完全对冲",
       "warnAway": "买 draw 不防 {{away}} 翻盘(away 态无保护)",
-      "koNote": "淘汰赛:90' 打平进加时——买 draw 只保护 90' 市场"
+      "koNote": "淘汰赛:90' 打平进加时——买 draw 只保护 90' 市场",
+      "ourPick": "我们赛前建议 {{team}} @{{entry}}",
+      "ourPickNone": "我们赛前未下注(无 edge)",
+      "notLeader": "≠领先方 — 本对冲假设你持有领先方,非我们的建议边"
     },
     "colConf": "置信",
     "conf": {

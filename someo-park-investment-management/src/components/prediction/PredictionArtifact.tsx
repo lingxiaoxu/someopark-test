@@ -462,6 +462,18 @@ function InPlay() {
                   {tr('prediction.hedge.leading', { team: tCountry(h.held_team), draw: cc(h.draw_c, 1) })}
                   {' · '}{tr('prediction.hedge.held', { entry: cc(h.entry_c, 1), shares: h.shares_ref })}
                 </div>
+                {/* Our ACTUAL pre-match recommendation, so this hedge (for "if you hold the
+                    LEADER at the pre-match price") isn't mistaken for our recommended position. */}
+                <div style={{ fontSize: 10, ...mono, marginBottom: 2, color: h.our_matches_leader ? 'var(--text-secondary)' : 'var(--warning, #d08b00)' }}>
+                  {h.our_pick
+                    ? tr('prediction.hedge.ourPick', {
+                        team: h.our_pick === 'draw' ? tr('prediction.side.draw')
+                          : tCountry(h.our_pick === 'home' ? m.home.name : m.away.name),
+                        entry: cc(h.our_entry_c, 1),
+                      })
+                    : tr('prediction.hedge.ourPickNone')}
+                  {h.our_pick && !h.our_matches_leader && <> · {tr('prediction.hedge.notLeader')}</>}
+                </div>
                 <div style={{ fontSize: 11, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
                   {tr('prediction.hedge.breakEven', { b: num(h.break_even_b, 2) })}
                   {h.profit_if_win_c != null && <> · {tr('prediction.hedge.profitIfWin', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })}</>}

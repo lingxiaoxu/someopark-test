@@ -403,7 +403,7 @@
     "hedge": {
       "title": "ヘッジ — リードを保護",
       "leading": "{{team}} リード · draw 現在 {{draw}}",
-      "held": "建値 {{entry}} · {{shares}} 枚あたり",
+      "held": "試合前建値 {{entry}} · {{shares}}枚あたり",
       "breakEven": "損益分岐ヘッジ:draw を {{b}} 枚購入 → 引き分けでも回収",
       "profitIfWin": "{{team}} 勝利なら依然 {{profit}}",
       "win": "勝",
@@ -413,7 +413,10 @@
       "planBe": "損益分岐",
       "planFull": "完全ヘッジ",
       "warnAway": "draw 購入は {{away}} の逆転を防げない(away は無保護)",
-      "koNote": "ノックアウト:90分引き分けは延長へ——draw購入は90分市場のみ保護"
+      "koNote": "ノックアウト:90分引き分けは延長へ——draw購入は90分市場のみ保護",
+      "ourPick": "試合前の推奨 {{team}} @{{entry}}",
+      "ourPickNone": "試合前ベットなし(エッジなし)",
+      "notLeader": "≠リード側 — このヘッジはリード側保有を仮定(推奨と異なる)"
     },
     "colConf": "信頼度",
     "conf": {

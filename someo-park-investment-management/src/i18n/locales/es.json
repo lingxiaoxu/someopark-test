@@ -403,7 +403,7 @@
     "hedge": {
       "title": "Cobertura — proteger la ventaja",
       "leading": "{{team}} en cabeza · empate a {{draw}}",
-      "held": "entrada {{entry}} · por {{shares}} contratos",
+      "held": "entrada previa {{entry}} · por {{shares}}",
       "breakEven": "Cobertura de equilibrio: comprar {{b}} empate → sin pérdida aun si empata",
       "profitIfWin": "victoria de {{team}} aún gana {{profit}}",
       "win": "gana",
@@ -413,7 +413,10 @@
       "planBe": "Equilibrio",
       "planFull": "Cobertura total",
       "warnAway": "comprar el empate no cubre una remontada de {{away}} (pata visitante sin cobertura)",
-      "koNote": "Eliminatoria: un empate a los 90' va a la prórroga — comprar empate solo cubre el mercado de 90'"
+      "koNote": "Eliminatoria: un empate a los 90' va a la prórroga — comprar empate solo cubre el mercado de 90'",
+      "ourPick": "Nuestra apuesta previa {{team}} @{{entry}}",
+      "ourPickNone": "sin apuesta previa (sin edge)",
+      "notLeader": "≠ líder — esta cobertura asume que tienes al líder, no nuestra apuesta"
     },
     "colConf": "Conf.",
     "conf": {
