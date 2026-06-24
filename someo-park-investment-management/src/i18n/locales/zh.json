@@ -447,7 +447,9 @@
       "medium": "中",
       "low": "低"
     },
-    "advisory": "仅参考"
+    "advisory": "仅参考",
+    "kickingOff": "即将开球",
+    "kickoffWaiting": "等待数据"
   },
   "sidebar": {
     "appName": "Someo Park",

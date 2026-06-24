@@ -73,6 +73,36 @@ function LiveCard({ m }: { m: any }) {
   );
 }
 
+// A match whose scheduled kickoff just passed but the live feed hasn't confirmed yet:
+// "kicking off" placeholder so the slot isn't empty during the API's ~3-5 min status lag.
+// Clickable into the in-play view (which will populate once the feed flips it live).
+function KickingOffCard({ m }: { m: any }) {
+  const { t } = useTranslation();
+  const setArtifact = useSetArtifact();
+  const openInplay = () => setArtifact({ type: 'wc_inplay', title: t('prediction.inPlayArb') });
+  return (
+    <div
+      className="pair-card"
+      onClick={openInplay}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInplay(); } }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 5, minWidth: 280, flex: '1 1 320px', borderLeft: '4px solid var(--warning, #d08b00)', cursor: 'pointer' }}
+    >
+      <div className="flex items-center justify-between">
+        <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
+          <span className="pulse" style={{ color: 'var(--warning, #d08b00)', marginRight: 6 }}>● {t('prediction.kickingOff')}</span>
+          {tCountry(m.home?.name)} <b style={{ color: 'var(--text-muted)', fontWeight: 400 }}>vs</b> {tCountry(m.away?.name)}
+        </span>
+        <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{t('prediction.kickoffWaiting')}</span>
+      </div>
+      <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--success)', fontWeight: 700 }}>
+        {t('prediction.inPlayArb')} →
+      </div>
+    </div>
+  );
+}
+
 // A just-finished match: marked FT with the final score, shown briefly so a live
 // match that ends is acknowledged (not silently dropped) before it rolls off.
 function FinishedCard({ m }: { m: any }) {
@@ -99,11 +129,27 @@ export default function PredictionUpcoming() {
   // finished (FT + score, marked ended), then the soonest not-started fixtures —
   // up to 4 slots, never dropping live/finished.
   const SLOTS = 4;
+  const now = Date.now();
   const liveMatches = (live.data?.matches ?? []).slice(0, SLOTS);
+  // Scheduled kickoff has passed but the live feed hasn't CONFIRMED the match yet
+  // (API-Football flips a fixture to "1H" ~3-5 min after the real kickoff). Show a
+  // "kicking off" placeholder in the SAME region so the slot isn't empty during that gap;
+  // it rolls into liveMatches automatically once the feed confirms (deduped by team pair).
+  // SAFETY: the real live trigger (liveMatches, sourced from inplay_live) is left untouched —
+  // this only fills the pre-confirmation gap and never gates or delays the real entry.
+  const liveKeys = new Set(liveMatches.map((m: any) => `${m.home?.id}|${m.away?.id}`));
+  const kickingOff = (up.data?.matches ?? []).filter((m: any) => {
+    const ko = new Date(m.kickoff).getTime();
+    return ko <= now && ko > now - 25 * 60 * 1000 && !liveKeys.has(`${m.home?.id}|${m.away?.id}`);
+  }).slice(0, Math.max(0, SLOTS - liveMatches.length));
+  const koKeys = new Set(kickingOff.map((m: any) => `${m.home?.id}|${m.away?.id}`));
   const finishedMatches = (up.data?.recent_finished ?? []).slice(0, 2);
-  const fillN = Math.max(0, SLOTS - liveMatches.length - finishedMatches.length);
-  const upMatches = up.data?.matches ? pickUpcoming(up.data.matches, fillN) : [];
-  const total = liveMatches.length + finishedMatches.length + upMatches.length;
+  const fillN = Math.max(0, SLOTS - liveMatches.length - kickingOff.length - finishedMatches.length);
+  // pickUpcoming returns FUTURE fixtures (kickoff > now), so kicking-off matches are never
+  // double-listed; still guard by team pair in case of clock skew.
+  const upMatches = (up.data?.matches ? pickUpcoming(up.data.matches, fillN) : [])
+    .filter((m: any) => !koKeys.has(`${m.home?.id}|${m.away?.id}`));
+  const total = liveMatches.length + kickingOff.length + finishedMatches.length + upMatches.length;
   const loading = up.loading && live.loading && !total;
 
   return (
@@ -127,6 +173,9 @@ export default function PredictionUpcoming() {
         <div className="flex flex-wrap gap-2">
           {liveMatches.map((m) => (
             <span key={'live' + m.fixture_id} style={{ display: 'contents' }}><LiveCard m={m} /></span>
+          ))}
+          {kickingOff.map((m: any) => (
+            <span key={'ko' + m.home?.id + m.away?.id} style={{ display: 'contents' }}><KickingOffCard m={m} /></span>
           ))}
           {finishedMatches.map((m, i) => (
             <span key={'ft' + i + m.home.id} style={{ display: 'contents' }}><FinishedCard m={m} /></span>

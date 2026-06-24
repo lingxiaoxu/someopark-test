@@ -421,7 +421,9 @@
       "medium": "Moyen",
       "low": "Faible"
     },
-    "advisory": "indicatif"
+    "advisory": "indicatif",
+    "kickingOff": "Coup d'envoi",
+    "kickoffWaiting": "en attente du flux"
   },
   "sidebar": {
     "appName": "Someo Park",

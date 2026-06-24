@@ -421,7 +421,9 @@
       "medium": "Media",
       "low": "Baja"
     },
-    "advisory": "informativo"
+    "advisory": "informativo",
+    "kickingOff": "Inicio inminente",
+    "kickoffWaiting": "esperando datos"
   },
   "sidebar": {
     "appName": "Someo Park",

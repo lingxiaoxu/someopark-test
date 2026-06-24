@@ -421,7 +421,9 @@
       "medium": "中",
       "low": "低"
     },
-    "advisory": "参考のみ"
+    "advisory": "参考のみ",
+    "kickingOff": "まもなくキックオフ",
+    "kickoffWaiting": "データ待ち"
   },
   "sidebar": {
     "appName": "Someo Park",

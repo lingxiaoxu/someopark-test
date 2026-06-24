@@ -185,7 +185,7 @@ function SquadStrength() {
         rows={teams.map((t: any) => [
           t.rank, tCountry(t.name), (t.score_z >= 0 ? '+' : '') + t.score_z.toFixed(2),
           t.mw_rating?.toFixed(2), t.ga_per90?.toFixed(2),
-          (t.top_players ?? []).slice(0, 2).map((p: any) => `${p.name} (${p.goals}g)`).join(', '),
+          (t.top_players ?? []).slice(0, 3).map((p: any) => `${p.name} (${p.goals}g)`).join(', '),
         ])} />
     </div>
   );

@@ -768,7 +768,9 @@
       "medium": "Med",
       "low": "Low"
     },
-    "advisory": "advisory"
+    "advisory": "advisory",
+    "kickingOff": "Kicking off",
+    "kickoffWaiting": "awaiting feed"
   },
   "sidebar": {
     "appName": "Someo Park",
