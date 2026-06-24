@@ -97,8 +97,8 @@ export default function PredictionUpcoming() {
 
   // Top region: live matches first (still in progress), then matches that just
   // finished (FT + score, marked ended), then the soonest not-started fixtures —
-  // at least 3 slots, never dropping live/finished.
-  const SLOTS = 3;
+  // up to 4 slots, never dropping live/finished.
+  const SLOTS = 4;
   const liveMatches = (live.data?.matches ?? []).slice(0, SLOTS);
   const finishedMatches = (up.data?.recent_finished ?? []).slice(0, 2);
   const fillN = Math.max(0, SLOTS - liveMatches.length - finishedMatches.length);
