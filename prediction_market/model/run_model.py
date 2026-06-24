@@ -210,7 +210,11 @@ def refresh_champion(*, n_sims: int | None = None, seed: int | None = None) -> d
     except Exception as e:
         print(f"[refresh_champion] champion ¢ skipped: {e}")
         cc = {}
-    payload = build_payload(prior, n_sims=n_sims, seed=seed, update_results=True, champ_cents=cc)
+    # update_results = recent form (Bayesian nudge from played results); club_blend = the
+    # squad/roster strength anchor (EA-FC-grade) — both ON so the champion odds reflect
+    # roster + current form, not just the static prior (owner request).
+    payload = build_payload(prior, n_sims=n_sims, seed=seed, update_results=True,
+                            club_blend=True, champ_cents=cc)
     write_outputs(payload, emit_frontend=True)
     return payload
 

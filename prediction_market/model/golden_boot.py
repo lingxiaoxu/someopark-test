@@ -113,7 +113,9 @@ def _wc_to_date_by_team(conn) -> dict[tuple[str, str], tuple[int, int]]:
         "FROM fixture_event e "
         "JOIN fixture f ON e.fixture_api_id = f.api_id "
         "LEFT JOIN player p ON e.player_api_id = p.api_id "
-        "WHERE e.type = 'Goal' AND (e.detail IS NULL OR e.detail != 'Own Goal') "
+        # API-Football logs MISSED penalties as type='Goal', detail='Missed Penalty' — those
+        # are NOT goals (this over-counted e.g. Messi 6 vs the real 5). Own goals also excluded.
+        "WHERE e.type = 'Goal' AND (e.detail IS NULL OR e.detail NOT IN ('Own Goal', 'Missed Penalty')) "
         "  AND f.status_short IN ('FT','AET','PEN') AND p.name IS NOT NULL "
         "GROUP BY e.player_api_id"
     ).fetchall()
@@ -337,13 +339,24 @@ def simulate_golden_boot(
     # played is never counted both in the head start and the forward projection.
     # An eliminated team plays no more matches → its players' future lambda is 0
     # (only their head-start goals remain). Otherwise project over remaining matches.
-    lam = np.stack(
-        [(np.zeros(n) if p.team_id in elim else
-          p.mu_eff * np.clip(
-              mp[:, team_col[p.team_id]].astype(np.float64) - gp.get(p.team_id, 0), 0.0, None))
-         for p in usable],
-        axis=1,
-    )  # (n, P)
+    # OPPONENT-AWARE projection: future goals ~ Poisson(mu_eff * future_opp), where future_opp
+    # is the sum over the team's FUTURE matches of each opponent's defence-weakness (per the
+    # per-sim official-bracket draw) — a soft knockout route scores >1 goal-share/match, a hard
+    # one <1, vs the old flat remaining-match count. Falls back to the flat count if a caller
+    # ran an older sim without future_opp.
+    fo = getattr(tournament, "future_opp", None)
+    if fo is not None and fo.shape[0] > _GB_MAX_SIMS:
+        fo = fo[:_GB_MAX_SIMS]
+
+    def _future_lambda(p):
+        if p.team_id in elim:
+            return np.zeros(n)
+        col = team_col[p.team_id]
+        if fo is not None:
+            return p.mu_eff * fo[:, col]
+        return p.mu_eff * np.clip(mp[:, col].astype(np.float64) - gp.get(p.team_id, 0), 0.0, None)
+
+    lam = np.stack([_future_lambda(p) for p in usable], axis=1)  # (n, P)
     head_start = np.array([p.goals_so_far for p in usable], dtype=np.int64)
     goals = rng.poisson(lam) + head_start[None, :]  # (n, P)
 

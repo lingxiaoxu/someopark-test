@@ -129,6 +129,18 @@ def _advancer(raw_json: str | None, gh: int, ga: int) -> str | None:
 
 
 _prior_cache = None
+_fifa_cache = None
+
+
+def _fifa_ranks() -> dict:
+    """Cached team_id → FIFA rank, for the motivation λ tilt."""
+    global _prior_cache, _fifa_cache
+    if _fifa_cache is None:
+        if _prior_cache is None:
+            from prediction_market.ingest.prior_ingest import load_prior
+            _prior_cache = load_prior()
+        _fifa_cache = {t.team_id: t.fifa_rank for t in _prior_cache.teams}
+    return _fifa_cache
 
 
 def _pit_strength(conn, as_of: str):
@@ -182,7 +194,18 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
     # time then decides who ADVANCES, which is a SEPARATE per-team reach-round market,
     # KXWCROUND). So the per-match bet is a 90-min 3-way for BOTH stages (knockout=False
     # → group-style draw calibration). gh/ga must be the 90-min (regulation) score.
-    mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal)
+    # Motivation tilt (group-progression psychology) — SAME logic as the live upcoming view,
+    # PIT-correct (motivation_multipliers only counts games in rounds BEFORE this match, so
+    # replaying game 2 sees game 1 only — no look-ahead). Applied to the BET decision so the
+    # bet log + price-track reflect it; the accuracy Brier (_settled) stays on the clean model.
+    lam_mult: tuple[float, float] | None = None
+    motiv = None
+    if conn is not None:
+        from prediction_market.model.motivation import motivation_multipliers
+        mh, ma, motiv = motivation_multipliers(conn, _fifa_ranks(), hi, ai, fx_row["round"], CONFIG.model)
+        if (mh, ma) != (1.0, 1.0):
+            lam_mult = (mh, ma)
+    mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal, lam_mult=lam_mult)
     model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
     base_stake = CONFIG.decision.base_stake_usd
 
@@ -208,7 +231,8 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
             form = None
     if quotes:
         from prediction_market.strategy.decision_model import decide
-        d = decide(model, quotes, calib_confidence=calib_confidence, form=form, gate_open=gate_open)
+        d = decide(model, quotes, calib_confidence=calib_confidence, form=form, gate_open=gate_open,
+                   conviction_side=(motiv or {}).get("conviction_side"))
         if d.side is not None:
             pick, bet, stake, conf_k = d.side, True, d.stake_usd, d.confidence_k
             cost = max((d.price_cents or 0.0) / 100.0, 1e-6)   # real entry ask we'd pay
@@ -224,7 +248,8 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
     return {"stage": stage, "pick": pick, "model_pick": model_pick, "result": result,
             "won": (pick == result) if bet else None, "model_won": model_pick == result,
             "bet": bet, "stake_usd": round(stake, 2), "confidence_k": conf_k,
-            "cost": cost, "model_prob": model_prob, "edge": round(edge_val, 4), "model": model}
+            "cost": cost, "model_prob": model_prob, "edge": round(edge_val, 4), "model": model,
+            "motivation": motiv}
 
 
 def _bet_log(conn) -> list[dict]:

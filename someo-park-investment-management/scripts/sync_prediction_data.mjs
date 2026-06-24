@@ -39,6 +39,7 @@ const FILES = [
   'schedule.json',
   'match_signals.json',
   'reach_round.json',
+  'knockout_bracket.json',
   'performance_report.pdf',
   'risk_report.pdf',
 ];

@@ -82,6 +82,18 @@ class ModelConfig:
     r3_rotation_intensity: float = 0.90
     r3_desperation_intensity: float = 1.06
 
+    # ── Match-motivation λ tilt (group-progression psychology) ──────────────────
+    # LIVE betting-only (NOT used in calibration / OOS / the trade-grade gate). A strong
+    # team (fifa_rank ≤ motiv_strong_rank) that dropped points early goes all-out against a
+    # weaker, NON-host opponent in its remaining group games; a clinched team rotates a
+    # little in game 3. Factor 1 (bounce) > factor 2 (rotation). See model/motivation.py.
+    motiv_enabled: bool = True
+    motiv_strong_rank: int = 24        # "strong team" = top half of 48 by FIFA rank
+    motiv_bounce_attack: float = 1.12  # wounded favourite's attacking λ ×, at full intensity
+    motiv_bounce_def: float = 0.96     # the weaker opponent's λ ×, at full intensity
+    motiv_rotation_attack: float = 0.93  # clinched team's attacking λ × in game 3
+    # (conviction-bet knobs live in DecisionConfig — they govern the bet decision, not pricing)
+
     # Knockout adjustments (plan 03 §4a): more cautious, fewer goals, more draws.
     knockout_lambda_scale: float = 0.85
     # Extra-time goal rate vs regulation (plan 03 §4b): lambda * 30/90.
@@ -91,14 +103,21 @@ class ModelConfig:
 
     # Rank -> strength prior mapping (plan 10 §5.1). Maps FIFA rank to a goal-
     # expectation prior; reverse-fit against the ext_sim_v0 advance probabilities.
-    rank_strength_decay: float = 0.0125  # strength ~ exp(-decay * (rank - 1))
+    rank_strength_decay: float = 0.0080  # rank→rating curve shape (z-scored in the anchor,
+                                         # so the EFFECTIVE rank influence is rank_anchor_weight)
+    rank_top_tier_floor: int = 4         # clamp ranks 1..N to one tier — the top N teams share
+                                         # a rank-rating (differentiated only by exp_points/form/
+                                         # roster), so #1 sits only slightly above #4. 1 = no clamp
 
     # Fusion of the absolute-strength anchor (FIFA rank, plan 03 §1a) with the
     # external-sim prior fit (exp_points, §1d). exp_points conflates team strength
     # with GROUP DIFFICULTY (a team in a weak group looks too strong), so we
-    # anchor on rank. 1.0 = rank only, 0.0 = exp_points only. 0.5 minimises
-    # divergence from the sharp Kalshi/Global champion market (validation, not fit).
-    rank_anchor_weight: float = 0.5
+    # anchor on rank. 1.0 = rank only, 0.0 = exp_points only. 0.8 = rank-led so the
+    # world top-4 (clamped to one tier via rank_top_tier_floor) lead the field by
+    # ranking, with exp_points/form/roster only ordering them WITHIN the tier.
+    # (Deliberately diverges from the sharp champion market per the owner's call:
+    # the market over-rates the #1; the top four should be near-equal.)
+    rank_anchor_weight: float = 0.8
 
     # Squad-strength blend (plan 17 B.3): nudge ratings by the z-scored squad index
     # (minutes-weighted club rating + attack). A modest weight is applied to the LIVE
@@ -154,7 +173,10 @@ class ModelConfig:
     # pseudo-match weights. A strong FC prior stops a 1-game burst (e.g. a weak-team
     # forward scoring twice in the opener) from inflating the forecast — the final
     # boot is dominated instead by talent x knockout depth (matches actually played).
-    gb_fc_prior_alpha: float = 8.0      # pseudo-matches of FC-talent prior weight
+    gb_fc_prior_alpha: float = 3.0      # pseudo-matches of FC-talent prior weight. Lower = the
+                                        # ACTUAL tournament scoring dominates sooner, so a star
+                                        # who hasn't scored by round 2 regresses out of the top
+                                        # (was 8.0, which kept high-talent 0-goal players too high)
     gb_club_weight: float = 0.50        # weight on observed club rate vs FC prior in the talent estimate
     gb_pool_per_team: int = 5           # top-N attacking candidates kept per team for the sim
     gb_teammate_competition: float = 0.35  # secondary: discount a forward's rate when elite
@@ -320,6 +342,14 @@ class DecisionConfig:
     # Tuned by the PIT sweep in ops/_diag_draw_bias (draw bets 45%→37% at 0.06 with no
     # win-rate loss; the trimmed draws are the lowest-edge ones). See README plan 20.
     draw_extra_theta: float = 0.06
+
+    # Motivation CONVICTION bet (decision behaviour): when the wounded-favourite bounce fires
+    # (model/motivation.py) AND that team is the model's TOP pick, BET it even with no market
+    # value — the thesis is the model/market under-rate an all-out favourite (e.g. Spain 4-0,
+    # Netherlands 5-1 would both have been winning bets). Overrides the usual edge gate, so
+    # top-pick-gated and modestly sized.
+    motiv_conviction: bool = True
+    motiv_conviction_min_prob: float = 0.40   # only force the bet if model rates the side ≥ this
 
 
 @dataclass(frozen=True)

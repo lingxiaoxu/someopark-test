@@ -35,9 +35,16 @@ from prediction_market.config import CONFIG, ModelConfig
 from prediction_market.ingest.prior_ingest import PriorSnapshot, load_prior
 from prediction_market.model.dixon_coles import knockout_advance_prob
 from prediction_market.model.strength import StrengthModel, build_strength
+from prediction_market.model import knockout_bracket as _KB
 
 # Group round-robin fixtures over within-group indices 0..3 (6 matches).
 _GROUP_FIXTURES = [(0, 1), (2, 3), (0, 2), (1, 3), (0, 3), (1, 2)]
+
+# OFFICIAL 2026 R32 bracket lookups (model/knockout_bracket), used by simulate():
+#   _KB_ASSIGN_SLOT  (4096,8) int8 — qualifying-group mask → group index per third-slot.
+#   _KB_SLOT_K       third-slot id (match_idx, side) → its column k in THIRD_SLOTS order.
+_KB_ASSIGN_SLOT = _KB.assign_slot_lookup()
+_KB_SLOT_K = {sid: k for k, (sid, _) in enumerate(_KB.THIRD_SLOTS)}
 
 # Fixed R32 bracket in pairing order: slots (0,1),(2,3),... meet in R32, and the
 # winners cascade up the tree. Descriptors: ("W", group) winner, ("R", group)
@@ -69,6 +76,14 @@ class TournamentResult:
     e_matches: dict[str, float]
     # Per-sim matches played per team (N, 48) int8 — consumed by golden boot.
     matches_played: np.ndarray = field(repr=False, default=None)
+    # Per-sim OPPONENT-AWARE future scoring opportunity (N, 48): sum of each team's future-
+    # match opponents' defence-weakness (≈ # future matches, but a soft draw scores >1/match,
+    # a hard one <1). Replaces the flat remaining-match count in the golden boot.
+    future_opp: np.ndarray = field(repr=False, default=None)
+    # Knockout-bracket report (only when simulate(bracket_report=True)): the weighted-
+    # average bracket across all sampled possibilities — {opp_counts (N,N) R32 opponent
+    # co-occurrence, slot_counts (32,N) per-R32-slot occupancy}. Consumed by knockout_export.
+    bracket_report: dict = field(repr=False, default=None)
 
 
 def r3_intensity(points_after2: np.ndarray, cfg: ModelConfig) -> np.ndarray:
@@ -199,6 +214,7 @@ def simulate(
     n_sims: int | None = None,
     seed: int | None = None,
     conn=None,
+    bracket_report: bool = False,
 ) -> TournamentResult:
     prior = prior or load_prior()
     cfg = sm.cfg if sm is not None else CONFIG.model
@@ -220,6 +236,15 @@ def simulate(
     third_global = np.empty((n, len(groups)), dtype=np.int32)
     third_key = np.empty((n, len(groups)), dtype=np.float64)
     matches_played = np.full((n, len(team_ids)), 3, dtype=np.int8)  # everyone plays 3
+
+    # OPPONENT-AWARE golden-boot opportunity: opp_factor[j] = how WEAK team j's defence is,
+    # normalised so an average defence ≈ 1 (weak >1, elite <1). future_opp[sim, team] sums it
+    # over the team's FUTURE matches (unplayed group games + every knockout match on the
+    # per-sim official-bracket path), so a striker with a soft draw projects MORE goals than
+    # one routed through the other heavyweights. Consumed by simulate_golden_boot.
+    _R = np.array([sm.ratings[t] for t in team_ids])
+    opp_factor = np.exp(-cfg.beta * (_R - _R.mean()))
+    future_opp = np.zeros((n, len(team_ids)), dtype=np.float64)
 
     def _r3_intensity(points_after2: np.ndarray) -> np.ndarray:
         return r3_intensity(points_after2, cfg)
@@ -251,6 +276,10 @@ def simulate(
             else:
                 ga = rng.poisson(lam_a, n) if np.isscalar(lam_a) else rng.poisson(lam_a)
                 gb = rng.poisson(lam_b, n) if np.isscalar(lam_b) else rng.poisson(lam_b)
+                # FUTURE group game → opponent-aware scoring opportunity for the golden boot
+                # (each side's per-match chance scales with how weak the OPPONENT's defence is).
+                future_opp[:, gg[a]] += opp_factor[gg[b]]
+                future_opp[:, gg[b]] += opp_factor[gg[a]]
             a_win = ga > gb;  b_win = gb > ga;  tie = ga == gb
             pts[:, a] += 3 * a_win + tie
             pts[:, b] += 3 * b_win + tie
@@ -301,22 +330,44 @@ def simulate(
         third_cmp = pts * 1e6 + gd * 1e4 + gf * 1e2 + lots
         third_key[:, gi] = third_cmp[rows, order[:, 2]]
 
-    # Best 8 of 12 thirds (highest key) revive.
-    third_order = np.argsort(-third_key, axis=1)    # (n,12)
+    # Best 8 of 12 thirds (highest key) revive → which GROUPS they come from, per sim.
+    third_order = np.argsort(-third_key, axis=1)    # (n,12) group indices, best third first
     rows = np.arange(n)
-    thirds_sorted = np.take_along_axis(third_global, third_order[:, :8], axis=1)  # (n,8)
+    qual = third_order[:, :8]                        # (n,8) the 8 qualifying group indices
 
-    # ── Assemble the 32-team bracket per sim ─────────────────────────────────
-    gcol = {g: i for i, g in enumerate(groups)}
+    # OFFICIAL R32 bracket (model/knockout_bracket): a 12-bit mask of which groups' thirds
+    # qualified selects the FIFA Annex-C third→slot assignment; group_of_slot[sim,k] is the
+    # group index feeding third-slot k. Then assemble the 32 leaves in the OFFICIAL bracket
+    # order so the binary-tree progression reproduces the real R16/QF/SF/Final pairings.
+    mask = np.bitwise_or.reduce((np.int64(1) << qual.astype(np.int64)), axis=1)   # (n,)
+    group_of_slot = _KB_ASSIGN_SLOT[mask]            # (n,8) group idx per third-slot
+    third_team = np.empty((n, group_of_slot.shape[1]), dtype=np.int32)
+    for k in range(group_of_slot.shape[1]):
+        third_team[:, k] = third_global[rows, group_of_slot[:, k]]
+
+    gcol = {g: i for i, g in enumerate(groups)}      # group letter → column (A=0…L=11)
     cols = []
-    for kind, ref in _BRACKET_SLOTS:
-        if kind == "W":
-            cols.append(winners[:, gcol[ref]])
-        elif kind == "R":
-            cols.append(runners[:, gcol[ref]])
-        else:  # "T"
-            cols.append(thirds_sorted[:, int(ref)])
+    for mi in _KB.R32_LEAF_ORDER:                    # 16 R32 matches in official leaf order
+        for si, slot in enumerate(_KB.R32_MATCHES[mi]):
+            if slot[0] == "W":
+                cols.append(winners[:, gcol[slot[1]]])
+            elif slot[0] == "R":
+                cols.append(runners[:, gcol[slot[1]]])
+            else:                                    # third-place slot
+                cols.append(third_team[:, _KB_SLOT_K[(mi, si)]])
     bracket = np.stack(cols, axis=1).astype(np.int32)  # (n,32) global team idx
+
+    # Knockout-bracket report: the weighted-average bracket over ALL sampled possibilities
+    # (each sim IS one possible bracket, weighted by its sampling probability). opp_counts =
+    # R32 opponent co-occurrence; slot_counts = which team fills each of the 32 R32 slots.
+    _bracket_report = None
+    if bracket_report:
+        N = len(team_ids)
+        a32, b32 = bracket[:, 0::2].ravel(), bracket[:, 1::2].ravel()   # R32 match pairs
+        opp = np.zeros((N, N))
+        np.add.at(opp, (a32, b32), 1); np.add.at(opp, (b32, a32), 1)
+        slot_counts = np.stack([np.bincount(bracket[:, s], minlength=N) for s in range(32)])
+        _bracket_report = {"opp_counts": opp, "slot_counts": slot_counts, "n": n}
 
     # Everyone in the bracket played their R32 match (one knockout game).
     np.add.at(matches_played, (rows[:, None], bracket), 1)
@@ -337,6 +388,10 @@ def simulate(
         m = current.shape[1] // 2
         a_team = current[:, 0::2]                  # (n, m)
         b_team = current[:, 1::2]
+        # Opponent-aware scoring opportunity for this knockout round (golden boot): each side
+        # accrues the OTHER side's defence-weakness, per the per-sim bracket draw.
+        np.add.at(future_opp, (rows[:, None], a_team), opp_factor[b_team])
+        np.add.at(future_opp, (rows[:, None], b_team), opp_factor[a_team])
         p_a = adv[a_team, b_team]                  # gather advance probs
         a_wins = rng.random((n, m)) < p_a
         winner = np.where(a_wins, a_team, b_team)  # (n, m)
@@ -361,6 +416,8 @@ def simulate(
         p_advance={team_ids[i]: advance_counts[i] * inv for i in range(len(team_ids))},
         e_matches={team_ids[i]: float(matches_played[:, i].mean()) for i in range(len(team_ids))},
         matches_played=matches_played,
+        future_opp=future_opp,
+        bracket_report=_bracket_report,
     )
     return res
 

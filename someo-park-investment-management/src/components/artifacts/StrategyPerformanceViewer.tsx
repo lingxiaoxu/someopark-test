@@ -55,6 +55,10 @@ const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'combined'];
 const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'master'];
 const BENCHMARK_KEYS = ['spy', 'smh', 'soxx', 'mags'];  // dashed reference lines in Master mode
 
+// Default start of the visible window when a view first opens. The picker's `min` still
+// exposes the full history, so earlier dates remain selectable — this only sets the default.
+const DEFAULT_START_DATE = '2026-04-01';
+
 
 export default function StrategyPerformanceViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
@@ -76,7 +80,12 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then((d: DayData[]) => {
         setStratData(d);
-        if (d.length > 0) { setStartDate(d[0].date); setEndDate(d[d.length - 1].date); }
+        if (d.length > 0) {
+          const first = d[0].date, last = d[d.length - 1].date;
+          // Default the window start to DEFAULT_START_DATE, clamped into the available range.
+          setStartDate(DEFAULT_START_DATE >= first && DEFAULT_START_DATE <= last ? DEFAULT_START_DATE : first);
+          setEndDate(last);
+        }
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -268,9 +277,9 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
             <button key={m} onClick={() => {
               setViewMode(m);
               setActiveStrategies(new Set(m === 'strategies' ? STRAT_KEYS : MASTER_KEYS));
-              // Reset date range from new data source
-              const d = m === 'master' && masterData ? masterData : stratData;
-              if (d && d.length > 0) { setStartDate(d[0].date); setEndDate(d[d.length - 1].date); }
+              // Keep the currently-selected date range so it carries over to the new view
+              // (both modes share the same underlying data range; the chart below refreshes
+              // automatically since filteredData depends on startDate/endDate).
             }} style={{
               padding: '4px 10px', fontSize: '10px', fontWeight: 700, letterSpacing: '.06em',
               background: viewMode === m ? '#111' : 'transparent',

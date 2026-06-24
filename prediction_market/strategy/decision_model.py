@@ -128,6 +128,7 @@ def decide(
     form: dict | None = None,
     alt: dict | None = None,
     gate_open: bool = True,
+    conviction_side: str | None = None,
 ) -> Decision:
     """Decide the single best value bet for one match (or no bet).
 
@@ -178,6 +179,20 @@ def decide(
             best_any = (er.net_edge, side)
         if er.tradable and (best is None or er.net_edge > best[0]):
             best = (er.net_edge, side, er, q)
+
+    # Motivation CONVICTION override: a wounded strong favourite going all-out vs a weaker
+    # team. When the bounce flags this side AND it's the model's TOP pick, bet it even with no
+    # market value — the thesis is the model/market under-rate the all-out favourite (e.g.
+    # Spain 4-0, Netherlands 5-1 would both have been winning bets). -EV by market devig, so
+    # it's a deliberate, top-pick-gated override (config motiv_conviction).
+    if (conviction_side is not None and getattr(cfg, "motiv_conviction", False)):
+        qc = quotes.get(conviction_side)
+        argmax = max(_SIDES, key=lambda s: model.get(s, 0.0))
+        if (qc and qc.ask is not None and conviction_side == argmax
+                and model.get(conviction_side, 0.0) >= getattr(cfg, "motiv_conviction_min_prob", 0.4)):
+            erc = compute_edge(model[conviction_side], qc.ask, sigma_p=sigma.get(conviction_side, 0.0),
+                               k=risk.shrink_k, fee=fee, theta=-1.0)   # theta=-1 → always "tradable"
+            best = (erc.net_edge, conviction_side, erc, qc)            # override value selection
 
     if best is None:
         if best_any is not None:

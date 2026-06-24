@@ -39,9 +39,14 @@ class MatchPrice:
 
 
 def price_match(sm: StrengthModel, home_id: str, away_id: str, *, knockout: bool = False,
-                venue_name: str | None = None) -> MatchPrice:
+                venue_name: str | None = None,
+                lam_mult: tuple[float, float] | None = None) -> MatchPrice:
     cfg = sm.cfg
     lam_h, lam_a = sm.pair_lambdas(home_id, away_id, knockout=knockout)
+    # Optional motivation tilt (model/motivation.py): a modest λ scale for group-progression
+    # psychology. No-op when lam_mult is None (the default → calibration / OOS / sim unchanged).
+    if lam_mult:
+        lam_h *= lam_mult[0]; lam_a *= lam_mult[1]
     # Venue-climate suppression (plan 19): symmetric λ trim for altitude/heat. No-op
     # when venue_name is None or venue_climate_weight=0 (the default → prod unchanged).
     vw = getattr(cfg, "venue_climate_weight", 0.0)
@@ -73,12 +78,14 @@ def price_match(sm: StrengthModel, home_id: str, away_id: str, *, knockout: bool
 
 
 def price_match_calibrated(sm: StrengthModel, home_id: str, away_id: str, *,
-                           knockout: bool = False, cal: dict | None = None) -> MatchPrice:
+                           knockout: bool = False, cal: dict | None = None,
+                           lam_mult: tuple[float, float] | None = None) -> MatchPrice:
     """price_match, then apply the fitted probability calibration to the 3-way
     (model/probability_calibration.py). This is the model's CALIBRATED view — what
-    the live exports and the trade-grade gate should use. O2.5/BTTS are left as-is."""
+    the live exports and the trade-grade gate should use. O2.5/BTTS are left as-is.
+    lam_mult forwards the optional motivation tilt (default None = unchanged)."""
     from prediction_market.model.probability_calibration import apply_calibration, load_calibration
-    mp = price_match(sm, home_id, away_id, knockout=knockout)
+    mp = price_match(sm, home_id, away_id, knockout=knockout, lam_mult=lam_mult)
     cal = cal if cal is not None else load_calibration()
     if not cal:
         return mp

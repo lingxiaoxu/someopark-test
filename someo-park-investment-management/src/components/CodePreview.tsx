@@ -467,6 +467,25 @@ export function CodePreview({
                     </pre>
                   </div>
                 )}
+                {/* Runtime error / unsupported-environment guidance. Without this, a result
+                    whose ONLY payload is a runtimeError (e.g. the tkinter/pygame GUI guard, or
+                    any Python exception/traceback) renders a blank preview. */}
+                {'runtimeError' in result && (result as any).runtimeError && (
+                  <div>
+                    <div style={{
+                      fontSize: '9px', fontFamily: 'var(--font-mono)', fontWeight: 700,
+                      color: '#ef4444', textTransform: 'uppercase', letterSpacing: '.1em', marginBottom: 4,
+                    }}>{(result as any).runtimeError.name || 'error'}</div>
+                    <pre style={{
+                      fontSize: '12px', fontFamily: 'var(--font-mono)', color: '#dc2626',
+                      background: '#fef2f2', border: '2px solid #fca5a5', padding: 12,
+                      whiteSpace: 'pre-wrap', lineHeight: 1.6,
+                    }}>
+                      {[(result as any).runtimeError.value, (result as any).runtimeError.traceback]
+                        .filter(Boolean).join('\n\n')}
+                    </pre>
+                  </div>
+                )}
                 {/* Jupyter cell outputs — matplotlib/plotly charts (png/jpeg/svg/html).
                     Without this, plot-only code (e.g. a matplotlib drawing with no stdout)
                     renders a blank preview. */}

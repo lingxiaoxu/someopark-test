@@ -109,13 +109,19 @@ def _zscore(d: dict[str, float]) -> dict[str, float]:
     return {k: (v - mu) / sd for k, v in d.items()}
 
 
-def _rank_to_rating(rank: int, decay: float) -> float:
+def _rank_to_rating(rank: int, decay: float, top_tier_floor: int = 1) -> float:
     """Monotone initial rating from FIFA rank (rank 1 strongest).
 
     Centred so the median-ranked team is ~0. Uses a log-rank transform so the
     gap between top teams is larger than between minnows.
+
+    top_tier_floor: ranks ABOVE this are clamped to it, so the top tier (ranks
+    1..floor) share one rank-rating and are differentiated only by exp_points /
+    form / roster — deliberately flattening the very top (the log transform alone
+    over-separates #1 from #4). floor=1 = no clamp (original behaviour).
     """
-    return -decay * (math.log(rank) - math.log(20)) / math.log(2) * 40.0
+    eff = max(rank, top_tier_floor)
+    return -decay * (math.log(eff) - math.log(20)) / math.log(2) * 40.0
 
 
 def _expected_points(
@@ -162,7 +168,7 @@ def build_strength(
     host_ids = frozenset(team_id(n) for n in cfg.host_nations)
 
     ratings = {
-        t.team_id: _rank_to_rating(t.fifa_rank, cfg.rank_strength_decay)
+        t.team_id: _rank_to_rating(t.fifa_rank, cfg.rank_strength_decay, cfg.rank_top_tier_floor)
         for t in prior.teams
     }
 
@@ -195,7 +201,7 @@ def build_strength(
     # meaningful, then rescaled to the exp-points fit's spread.
     w = cfg.rank_anchor_weight
     if w > 0:
-        rank_r = {t.team_id: _rank_to_rating(t.fifa_rank, cfg.rank_strength_decay)
+        rank_r = {t.team_id: _rank_to_rating(t.fifa_rank, cfg.rank_strength_decay, cfg.rank_top_tier_floor)
                   for t in prior.teams}
         fit_z = _zscore(ratings)
         rank_z = _zscore(rank_r)

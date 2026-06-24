@@ -167,7 +167,8 @@ def _cap_count(ask: float) -> int:
     return cnt
 
 
-def _decision_for(model, kalshi_q, poly_q, k_devig, p_devig, form_row, calib_conf, gate_open, knockout):
+def _decision_for(model, kalshi_q, poly_q, k_devig, p_devig, form_row, calib_conf, gate_open, knockout,
+                  conviction_side=None):
     """The production pre-match DECISION for one match — the SAME decision the bet log +
     match_signals use, so the card's '怎么操作' matches.
 
@@ -177,7 +178,8 @@ def _decision_for(model, kalshi_q, poly_q, k_devig, p_devig, form_row, calib_con
     per-team reach-round product, KXWCROUND — handled elsewhere.)"""
     from prediction_market.strategy.decision_model import decide
     dq = _decision_quotes(kalshi_q, poly_q, k_devig, p_devig)
-    d = decide(model, dq, calib_confidence=calib_conf, form=form_row, gate_open=gate_open)
+    d = decide(model, dq, calib_confidence=calib_conf, form=form_row, gate_open=gate_open,
+               conviction_side=conviction_side)
     if d.side is None:
         return {"bet": False, "side": None, "stake_usd": 0.0,
                 "net_edge": d.net_edge, "confidence_k": d.confidence_k, "knockout": knockout}
@@ -257,11 +259,13 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
     from prediction_market.ingest.prior_ingest import load_prior
     from prediction_market.model.match_pricing import price_match_calibrated as price_match
     from prediction_market.model.squad_strength import build_strength_live
+    from prediction_market.model.motivation import motivation_multipliers
 
     conn = conn or store.init_db()
     prior = load_prior()
     name_of = {t.team_id: t.name for t in prior.teams}
     zh_of = {t.team_id: t.zh for t in prior.teams}
+    fifa_of = {t.team_id: t.fifa_rank for t in prior.teams}   # for the motivation λ tilt
     # Upcoming matches → as_of=None (now): all played matches are legitimately prior, so the
     # xG-form alpha uses every team's WC xG so far. PIT by construction (future ≡ none).
     sm = build_strength_live(conn, prior, xg_form=True)
@@ -340,7 +344,11 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
         # a draw is valid even in knockout. "Advance" is a SEPARATE per-team reach-round
         # product (KXWCROUND). So the per-match model + decision are 3-way regardless.
         ko = _is_knockout(f["round"])
-        mp = price_match(sm, hi, ai)
+        # Motivation tilt (group-progression psychology) — group games only, live-only.
+        mh, ma, motiv = (1.0, 1.0, None)
+        if not ko:
+            mh, ma, motiv = motivation_multipliers(conn, fifa_of, hi, ai, f["round"], CONFIG.model)
+        mp = price_match(sm, hi, ai, lam_mult=(mh, ma))
         model = {"home": round(mp.p_home, 4), "draw": round(mp.p_draw, 4), "away": round(mp.p_away, 4),
                  "over_2_5": round(mp.p_over_2_5, 4), "btts": round(mp.p_btts, 4),
                  # per-contract ¢ view of the model's fair (= prob×100); ADD ONLY.
@@ -382,7 +390,8 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
         form_row = {"home_z": (fidx[hi].form_z if hi in fidx else None),
                     "away_z": (fidx[ai].form_z if ai in fidx else None)}
         decision = _decision_for(model, kalshi_q, poly_q, k_devig, p_devig,
-                                 form_row, _calib_conf, _gate_open, ko)
+                                 form_row, _calib_conf, _gate_open, ko,
+                                 conviction_side=(motiv or {}).get("conviction_side"))
 
         out.append({
             "fixture_id": f["api_id"],
@@ -395,6 +404,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
             "away": {"id": ai, "name": name_of.get(ai, ai), "zh": zh_of.get(ai, "")},
             "model": model,
             "knockout": ko,
+            "motivation": motiv,   # null unless a group-progression λ tilt fired (see model/motivation.py)
             "form": {"home": (round(fidx[hi].form_z, 2) if hi in fidx else None),
                      "away": (round(fidx[ai].form_z, 2) if ai in fidx else None)},
             "book_devig": book_devig,
