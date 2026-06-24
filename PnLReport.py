@@ -1010,7 +1010,21 @@ def build_report_data(start: str, end: str) -> dict:
             close_note = ''
         else:
             is_open    = True
-            sys_pnl    = p['last_pnl']
+            # No close event, no hold_pnl from daily_report, not closed in snapshot.
+            # This happens for positions read from the live inventory main file
+            # (same-run opens with no monitor_log yet). Compute MTM from prices.
+            mtm_pnl = None
+            if s1_sh and s2_sh and op1 and op2:
+                try:
+                    cp1 = prices[s1].dropna().iloc[-1] if s1 in prices.columns else None
+                    cp2 = prices[s2].dropna().iloc[-1] if s2 in prices.columns else None
+                    if cp1 is not None and cp2 is not None:
+                        mtm_pnl = round(
+                            (s1_sh * float(cp1) + s2_sh * float(cp2))
+                            - (s1_sh * op1 + s2_sh * op2), 2)
+                except Exception:
+                    pass
+            sys_pnl    = mtm_pnl if mtm_pnl is not None else p['last_pnl']
             exit_dt    = p['last_pnl_date'] or end
             action     = 'HOLD'
             close_note = ''
