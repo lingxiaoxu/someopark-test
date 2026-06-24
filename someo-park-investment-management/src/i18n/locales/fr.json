@@ -416,7 +416,8 @@
       "koNote": "Élimination directe : un nul à 90' va en prolongation — acheter le nul ne couvre que le marché 90'",
       "ourPick": "Notre choix avant-match {{team}} @{{entry}}",
       "ourPickNone": "pas de pari avant-match (sans edge)",
-      "notLeader": "≠ meneur — cette couverture suppose que vous détenez le meneur, pas notre choix"
+      "notLeader": "≠ meneur — cette couverture suppose que vous détenez le meneur, pas notre choix",
+      "summaryMatched": "Notre pari avant-match {{team}} @{{entry}} (en tête) · nul {{draw}} · par {{shares}}"
     },
     "colConf": "Conf.",
     "conf": {
