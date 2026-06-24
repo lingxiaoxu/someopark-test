@@ -113,14 +113,23 @@ def build(conn=None) -> dict:
             pick = max(model, key=model.get)
             entry_prob = round(model[pick], 4)
         pre = next((m for m in marks if m["milestone"] == "PRE"), None)
-        entry_c = (pre["poly_c"].get(pick) if pre else None)
+        # Entry ¢ for our pick: Poly PRE ask, falling back to Kalshi — the SAME poly-then-kalshi
+        # source the bet log uses (performance_report._entry_c). Without the Kalshi fallback a
+        # Poly-less side left entry_c=None, which silently skipped the smart-exit here while the
+        # accuracy/PnL view (with the fallback) showed it — the two then disagreed (price-track
+        # showed hold-to-FT, accuracy showed the cash-out). Now both reconcile.
+        entry_c = None
+        if pre:
+            entry_c = pre["poly_c"].get(pick)
+            if entry_c is None:
+                entry_c = pre["kalshi_c"].get(pick)
         side_label = {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}
         # argmax 口径 (most-likely side) — the parallel reference shown under our bet, on
         # EVERY settled match (incl. ones the decision model skipped).
         argmax = None
         if mr is not None:
             am_pick = mr["model_pick"]
-            am_entry_c = (pre["poly_c"].get(am_pick) if pre else None)
+            am_entry_c = (pre["poly_c"].get(am_pick) or pre["kalshi_c"].get(am_pick)) if pre else None
             am_won = mr["model_won"]
             argmax = {
                 "side": am_pick, "pick_team": side_label[am_pick], "entry_cents": am_entry_c,
