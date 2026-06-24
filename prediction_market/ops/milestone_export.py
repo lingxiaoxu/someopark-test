@@ -49,7 +49,7 @@ def _mark(row) -> dict:
 def build(conn=None) -> dict:
     from prediction_market.ingest import store
     from prediction_market.ingest.prior_ingest import load_prior
-    from prediction_market.model.match_pricing import price_match_calibrated
+    from prediction_market.model.match_pricing import is_knockout, price_match_calibrated
     from prediction_market.model.probability_calibration import load_calibration
     from prediction_market.model.squad_strength import build_strength_live
 
@@ -112,8 +112,10 @@ def build(conn=None) -> dict:
             entry_prob = mr["model_prob"]
         else:
             # Per-match market = 90-min 3-way for BOTH stages → knockout=False (same as the
-            # bet log / upcoming card). A draw is a valid knockout outcome here.
-            mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal)
+            # bet log / upcoming card). A draw is a valid knockout outcome here. host_neutral on
+            # a KO round drops the host's home-soil edge (neutral venue).
+            mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal,
+                                        host_neutral=is_knockout(fx["round"]))
             model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
             pick = max(model, key=model.get)
             entry_prob = round(model[pick], 4)

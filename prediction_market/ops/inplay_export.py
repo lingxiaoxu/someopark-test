@@ -159,7 +159,15 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             "SELECT team_api_id, COUNT(*) n FROM fixture_event WHERE fixture_api_id=? "
             "AND type='Card' AND detail LIKE '%Red%' GROUP BY team_api_id", (fx["api_id"],))}
         rh, ra = reds.get(fx["home_api_id"], 0), reds.get(fx["away_api_id"], 0)
-        lam_h, lam_a = sm.pair_lambdas(hi, ai)
+        # Knockout = neutral venue: the per-match host advantage (home_adv) must NOT apply, or a
+        # co-host (USA/Canada/Mexico) gets spuriously boosted in a KO tie. Without this flag the
+        # live model favoured host Canada over the higher-ranked Switzerland (#30 vs #19) in their
+        # R32; with it, Switzerland is correctly favoured. (The a-priori host_rating_boost still
+        # applies — a modest tournament-long nudge — but not the 0.25 per-match term.)
+        knockout = bool(fx["round"]) and "group" not in str(fx["round"]).lower()
+        # 90' market keeps group-style λ/draw (knockout=False); host_neutral drops the host's
+        # home-soil edge on a neutral KO venue — decoupled, so only the host term changes.
+        lam_h, lam_a = sm.pair_lambdas(hi, ai, host_neutral=knockout)
         lp = live_match_prob(lam_h, lam_a, minute, gh, ga, red_home=rh, red_away=ra,
                              xg_home=xg.get(fx["home_api_id"]), xg_away=xg.get(fx["away_api_id"]))
         # Live venue quotes (¢) per side for this fixture, alongside model-implied ¢.
@@ -174,10 +182,8 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         # Confidence tier (high/medium/low) on EVERY opportunity — the validated
         # effectiveness rules (plan 20-22), so the desk sees which signals to trust
         # without any signal being dropped. Read-only annotation.
-        # Knockout flag — the per-match market is the 90' 3-way (home/Tie/away) in BOTH
-        # stages, but KO games run lower-scoring with more 90' draws (→ extra time), so
-        # the confidence/hedge layers take it into account (see inplay_confidence).
-        knockout = bool(fx["round"]) and "group" not in str(fx["round"]).lower()
+        # `knockout` (computed above) also feeds the confidence/hedge layers: KO games run
+        # lower-scoring with more 90' draws (→ extra time). See inplay_confidence.
         fixture_opps = by_fixture.get(fx["api_id"], [])
         try:
             from prediction_market.strategy import inplay_confidence as ic

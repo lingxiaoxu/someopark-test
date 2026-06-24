@@ -188,8 +188,14 @@ def decide(
     if (conviction_side is not None and getattr(cfg, "motiv_conviction", False)):
         qc = quotes.get(conviction_side)
         argmax = max(_SIDES, key=lambda s: model.get(s, 0.0))
+        # Floor: don't force the bet when the market disagrees BIG (raw edge model−ask below
+        # the floor). A small -EV is the intended thesis (the all-out favourite is under-rated),
+        # but a deep negative edge means the market is telling us the model is wrong — there we
+        # defer to the market and skip the override (config motiv_conviction_min_edge, def -0.18).
+        conv_floor = getattr(cfg, "motiv_conviction_min_edge", -0.25)
         if (qc and qc.ask is not None and conviction_side == argmax
-                and model.get(conviction_side, 0.0) >= getattr(cfg, "motiv_conviction_min_prob", 0.4)):
+                and model.get(conviction_side, 0.0) >= getattr(cfg, "motiv_conviction_min_prob", 0.4)
+                and model.get(conviction_side, 0.0) - qc.ask >= conv_floor):
             erc = compute_edge(model[conviction_side], qc.ask, sigma_p=sigma.get(conviction_side, 0.0),
                                k=risk.shrink_k, fee=fee, theta=-1.0)   # theta=-1 → always "tradable"
             best = (erc.net_edge, conviction_side, erc, qc)            # override value selection

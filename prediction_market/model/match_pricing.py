@@ -39,10 +39,13 @@ class MatchPrice:
 
 
 def price_match(sm: StrengthModel, home_id: str, away_id: str, *, knockout: bool = False,
-                venue_name: str | None = None,
+                venue_name: str | None = None, host_neutral: bool | None = None,
                 lam_mult: tuple[float, float] | None = None) -> MatchPrice:
     cfg = sm.cfg
-    lam_h, lam_a = sm.pair_lambdas(home_id, away_id, knockout=knockout)
+    # host_neutral decoupled from knockout: callers price the 90' market with knockout=False
+    # (group-style draw/λ calibration) but pass host_neutral=is_knockout(round) so a host loses
+    # its home-soil edge on a neutral KO venue. Defaults to `knockout` when not given.
+    lam_h, lam_a = sm.pair_lambdas(home_id, away_id, knockout=knockout, host_neutral=host_neutral)
     # Optional motivation tilt (model/motivation.py): a modest λ scale for group-progression
     # psychology. No-op when lam_mult is None (the default → calibration / OOS / sim unchanged).
     if lam_mult:
@@ -79,13 +82,15 @@ def price_match(sm: StrengthModel, home_id: str, away_id: str, *, knockout: bool
 
 def price_match_calibrated(sm: StrengthModel, home_id: str, away_id: str, *,
                            knockout: bool = False, cal: dict | None = None,
+                           host_neutral: bool | None = None,
                            lam_mult: tuple[float, float] | None = None) -> MatchPrice:
     """price_match, then apply the fitted probability calibration to the 3-way
     (model/probability_calibration.py). This is the model's CALIBRATED view — what
     the live exports and the trade-grade gate should use. O2.5/BTTS are left as-is.
-    lam_mult forwards the optional motivation tilt (default None = unchanged)."""
+    lam_mult forwards the optional motivation tilt (default None = unchanged).
+    host_neutral (decoupled from knockout) drops a host's home-soil edge on a neutral KO venue."""
     from prediction_market.model.probability_calibration import apply_calibration, load_calibration
-    mp = price_match(sm, home_id, away_id, knockout=knockout, lam_mult=lam_mult)
+    mp = price_match(sm, home_id, away_id, knockout=knockout, host_neutral=host_neutral, lam_mult=lam_mult)
     cal = cal if cal is not None else load_calibration()
     if not cal:
         return mp

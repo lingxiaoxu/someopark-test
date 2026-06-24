@@ -66,28 +66,40 @@ class StrengthModel:
         return lam_i * math.exp(di), lam_j * math.exp(dj)
 
     def pair_lambdas(
-        self, i: str, j: str, *, knockout: bool = False
+        self, i: str, j: str, *, knockout: bool = False, host_neutral: bool | None = None
     ) -> tuple[float, float]:
         """(lambda_i, lambda_j) for team i vs team j.
 
-        Host advantage applies only when one side is a host nation (group stage;
-        knockouts treated as neutral in v1). Knockout games scale lambda down
-        (more cautious, fewer goals — plan 03 §4a).
+        The per-match host advantage (`home_adv`) applies only when one side is a host
+        nation AND the venue is not neutral. `host_neutral` controls that, DECOUPLED from
+        `knockout`: knockout=False keeps the 90' group-style draw/λ calibration even for a
+        KO tie, while host_neutral=True (set by callers to is_knockout(round)) still drops
+        the host's home-soil edge on a neutral KO venue. Defaults to `knockout` when not
+        given (back-compat). Knockout also scales λ down (fewer goals — plan 03 §4a).
+
+        No-stacking: a host already carries the a-priori `host_rating_boost` in its rating
+        (build_strength_live). Where the per-match `home_adv` applies we CANCEL that baked
+        boost from the λ so the two never double-count — group host = home_adv only,
+        knockout host = the rating boost only.
         """
         ri, rj = self.ratings[i], self.ratings[j]
         mu, beta = self.cfg.base_mu, self.cfg.beta
+        hb = getattr(self.cfg, "host_rating_boost", 0.0)
         i_host, j_host = i in self.host_ids, j in self.host_ids
 
-        if knockout:
-            i_host = j_host = False  # neutral venues in knockout (v1 simplification)
+        if host_neutral is None:
+            host_neutral = knockout
+        if host_neutral:
+            i_host = j_host = False  # neutral venue → no per-match home advantage
 
         if j_host and not i_host:
-            d = rj - ri
+            d = (rj - hb) - ri       # cancel j's baked rating boost (no stacking with home_adv)
             lam_j = math.exp(mu + self.cfg.home_adv + beta * d)
             lam_i = math.exp(mu - beta * d)
         else:
             ha = self.cfg.home_adv if i_host else 0.0
-            d = ri - rj
+            ri_eff = (ri - hb) if i_host else ri   # cancel i's baked boost when it gets home_adv
+            d = ri_eff - rj
             lam_i = math.exp(mu + ha + beta * d)
             lam_j = math.exp(mu - beta * d)
 

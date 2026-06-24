@@ -88,7 +88,7 @@ def _settled(conn, sm=None):
     3-way the bet log / price-track / upcoming-card actually trade. Using ``knockout=True``
     here scaled λ down + dropped the host boost, inflating the draw mass and producing a
     Brier for a model we DON'T trade (and diverging from match_pick). Fixed → 90-min 3-way."""
-    from prediction_market.model.match_pricing import price_match
+    from prediction_market.model.match_pricing import is_knockout, price_match
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
     rows = conn.execute(
@@ -102,8 +102,9 @@ def _settled(conn, sm=None):
         if not (hi and ai):
             continue
         sm_pit = _pit_strength(conn, r["kickoff_ts"]) if r["kickoff_ts"] else sm
-        # 90-min 3-way for both stages (knockout=False) — matches the bet/MTM model.
-        mp = price_match(sm_pit, hi, ai, knockout=False)
+        # 90-min 3-way for both stages (knockout=False) — matches the bet/MTM model;
+        # host_neutral on a KO round drops the host's home-soil edge (neutral venue).
+        mp = price_match(sm_pit, hi, ai, knockout=False, host_neutral=is_knockout(r["round"]))
         # 90' regulation score (KO ET match settles the Tie market on the 90' result).
         gh90, ga90 = reg_score(r["raw_json"], r["home_goals"], r["away_goals"])
         outcome = 0 if gh90 > ga90 else (1 if gh90 == ga90 else 2)
@@ -230,7 +231,8 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
         mh, ma, motiv = motivation_multipliers(conn, _fifa_ranks(), hi, ai, fx_row["round"], CONFIG.model)
         if (mh, ma) != (1.0, 1.0):
             lam_mult = (mh, ma)
-    mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal, lam_mult=lam_mult)
+    mp = price_match_calibrated(sm, hi, ai, knockout=False, cal=cal, lam_mult=lam_mult,
+                                host_neutral=knockout)   # KO = neutral venue → drop host home-soil edge
     model = {"home": mp.p_home, "draw": mp.p_draw, "away": mp.p_away}
     base_stake = CONFIG.decision.base_stake_usd
 

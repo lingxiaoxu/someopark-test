@@ -352,7 +352,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
         mh, ma, motiv = (1.0, 1.0, None)
         if not ko:
             mh, ma, motiv = motivation_multipliers(conn, fifa_of, hi, ai, f["round"], CONFIG.model)
-        mp = price_match(sm, hi, ai, lam_mult=(mh, ma))
+        mp = price_match(sm, hi, ai, lam_mult=(mh, ma), host_neutral=ko)   # KO = neutral venue → host edge off
         model = {"home": round(mp.p_home, 4), "draw": round(mp.p_draw, 4), "away": round(mp.p_away, 4),
                  "over_2_5": round(mp.p_over_2_5, 4), "btts": round(mp.p_btts, 4),
                  # per-contract ¢ view of the model's fair (= prob×100); ADD ONLY.

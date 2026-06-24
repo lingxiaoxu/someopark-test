@@ -65,14 +65,14 @@ class ModelConfig:
     # beta maps a team-rating difference to a log-goal difference (Poisson rating model).
     beta: float = 0.40
     rating_bound: float = 2.5      # clip calibrated ratings to [-bound, +bound]
-    home_adv: float = 0.25         # applied only to host nations on home soil
+    home_adv: float = 0.20         # per-match host advantage (group only; off in KO via host_neutral)
     host_nations: tuple[str, ...] = ("United States", "Mexico", "Canada")
-    # Tournament-long host rating boost (on TOP of the per-match home_adv): WC hosts
-    # historically OVER-perform their ratings (crowd, familiarity, travel, refereeing —
-    # every host except RSA 2010 / QAT 2022 reached ≥ R16). This is a PRIOR-driven nudge,
-    # NOT fit to the small in-sample host set (which is only weakly consistent). Applied a
-    # priori in build_strength_live (PIT-safe; host identity is known before any match).
-    host_rating_boost: float = 0.15
+    # Tournament-long host rating boost: WC hosts historically OVER-perform their ratings (crowd,
+    # familiarity, travel, refereeing — every host except RSA 2010 / QAT 2022 reached ≥ R16). A
+    # PRIOR-driven nudge, applied a priori in build_strength_live (PIT-safe). Does NOT stack with
+    # home_adv: pair_lambdas cancels this baked boost in the per-match λ whenever home_adv applies
+    # (group host = home_adv only; knockout host = this rating boost only).
+    host_rating_boost: float = 0.10
 
     # Group round-3 qualification-incentive adjustments (plan 03 §3): teams that
     # have effectively clinched rotate (lower intensity); teams facing
@@ -350,6 +350,9 @@ class DecisionConfig:
     # top-pick-gated and modestly sized.
     motiv_conviction: bool = True
     motiv_conviction_min_prob: float = 0.40   # only force the bet if model rates the side ≥ this
+    motiv_conviction_min_edge: float = -0.25  # …AND raw edge (model−ask) ≥ this: a small -EV is
+                                              # the thesis, but a deep negative edge = market says
+                                              # the model is wrong → defer to market, skip override
 
 
 @dataclass(frozen=True)
