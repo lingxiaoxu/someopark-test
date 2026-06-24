@@ -2097,7 +2097,7 @@ class RiskPDFReporter:
         story.append(HRFlowable(width='100%', thickness=0.4, color=colors.HexColor(self.C_BORDER)))
         story.append(Paragraph(
             f"由 Someo Park RiskManager 生成 · {datetime.now().strftime('%Y-%m-%d %H:%M')} · "
-            f"基于模型，券商对账完成", self.footer))
+            f"基于模型，券商对账完成，MTM 基于 signal_date 收盘价（Polygon）", self.footer))
         doc.build(story)
 
     # ── table builders ───────────────────────────────────────────────────────
