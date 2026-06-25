@@ -116,14 +116,17 @@ def load_official_bracket_from_store(conn=None) -> list[tuple[str, object]] | No
     return None
 
 
-def eliminated_teams(conn=None, all_team_ids=None) -> set[str]:
+def eliminated_teams(conn=None, all_team_ids=None, *, knockout_field_size: int = 32) -> set[str]:
     """Canonical team_ids that are OUT of the tournament — champion prob must be 0.
 
     Empty during the group stage (nobody is eliminated until the knockouts begin).
     Once any knockout fixture exists:
-      * group non-qualifiers = the 48 minus everyone drawn into a knockout tie, and
       * knockout losers = the team that did NOT advance in a settled KO match
-        (by score, else the API-Football winner flag for penalty shootouts).
+        (by score, else the API-Football winner flag for penalty shootouts) — always out, and
+      * group non-qualifiers = everyone NOT drawn into a knockout tie, but ONLY once the full
+        knockout field (``knockout_field_size`` distinct participants, 32 for the 48-team WC)
+        is drawn. API-Football publishes knockout fixtures incrementally, so a partial bracket
+        must not be mistaken for the final qualifier list (see the gate below).
     """
     import json as _json
 
@@ -164,8 +167,16 @@ def eliminated_teams(conn=None, all_team_ids=None) -> set[str]:
                     elim.add(hi)
             except Exception:
                 pass
-    # Group non-qualifiers: anyone not drawn into the knockout bracket.
-    if all_team_ids:
+    # Group non-qualifiers: anyone NOT drawn into the knockout bracket — but ONLY once the
+    # full R32 field is known. API-Football publishes knockout fixtures INCREMENTALLY: a
+    # single R32 tie can appear days before the group stage even finishes (e.g. an early-
+    # settled host group), so `participants` may hold just 2 teams while 46 are still alive.
+    # Marking "48 − participants" eliminated off a partial bracket would wrongly zero those
+    # 46 teams' advance/champion odds and collapse the title mass onto a handful of teams
+    # (and freeze their golden-boot goals). Defer until ≥32 distinct teams are drawn into the
+    # bracket (the complete R32 field). Settled KO LOSERS above are eliminated immediately
+    # regardless — a team that lost its tie is out no matter how many fixtures exist yet.
+    if all_team_ids and len(participants) >= knockout_field_size:
         elim |= (set(all_team_ids) - participants)
     return elim
 

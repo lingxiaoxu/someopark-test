@@ -95,8 +95,10 @@ def test_eliminated_teams_empty_in_group_stage():
 
 
 def test_eliminated_teams_knockout_loser_and_nonqualifier():
-    """Once a settled KO fixture exists: the by-score loser is eliminated AND every team
-    not drawn into the bracket (group non-qualifier) is eliminated."""
+    """Once the bracket is COMPLETE: the by-score loser is eliminated AND every team not
+    drawn into it (group non-qualifier) is eliminated. The toy bracket here is 'complete'
+    at 2 participants (knockout_field_size=2) — see the partial-bracket guard test below
+    for why a real 48-team WC must wait for all 32."""
     from prediction_market.model.tournament import eliminated_teams
     c = _mem_db()
     # team_meta maps api_id -> canonical id
@@ -108,11 +110,33 @@ def test_eliminated_teams_knockout_loser_and_nonqualifier():
         "api_id": 100, "round": "Round of 32", "status_short": "FT",
         "home_api_id": 1, "away_api_id": 2, "home_goals": 2, "away_goals": 0,
         "updated_at": store.utcnow()}, pk=["api_id"])
-    elim = eliminated_teams(c, all_team_ids=["brazil", "ghana", "spain", "iran"])
+    elim = eliminated_teams(c, all_team_ids=["brazil", "ghana", "spain", "iran"],
+                            knockout_field_size=2)
     assert "ghana" in elim          # lost the KO tie
     assert "brazil" not in elim     # advanced
-    # spain + iran were never drawn into the (only) knockout tie → non-qualifiers, out.
+    # spain + iran were never drawn into the (now-complete) knockout bracket → out.
     assert "spain" in elim and "iran" in elim
+
+
+def test_eliminated_teams_partial_bracket_does_not_strand_field():
+    """REGRESSION (prod bug 2026-06-25): API-Football publishes knockout fixtures one at a
+    time, so a SINGLE not-yet-played R32 tie can appear while the group stage is still under
+    way. With the full field not yet drawn (participants < knockout_field_size), no team may
+    be marked a 'non-qualifier' — else 46 of 48 teams get wrongly eliminated, collapsing the
+    champion / reach-round / golden-boot views. Settled KO losers, if any, still go out."""
+    from prediction_market.model.tournament import eliminated_teams
+    c = _mem_db()
+    for aid, cid in ((1, "south_africa"), (2, "canada")):
+        store.upsert(c, "team_meta", {"api_id": aid, "canonical_team_id": cid,
+                                      "updated_at": store.utcnow()}, pk=["api_id"])
+    # One UNPLAYED R32 fixture (status NS) — exactly the prod condition.
+    store.upsert(c, "fixture", {
+        "api_id": 1561329, "round": "Round of 32", "status_short": "NS",
+        "home_api_id": 1, "away_api_id": 2, "home_goals": None, "away_goals": None,
+        "updated_at": store.utcnow()}, pk=["api_id"])
+    field = ["south_africa", "canada"] + [f"team_{i}" for i in range(46)]  # 48-team field
+    elim = eliminated_teams(c, all_team_ids=field)   # default knockout_field_size=32
+    assert elim == set()            # bracket incomplete → nobody stranded
 
 
 def test_eliminated_teams_penalty_shootout_winner_flag():
