@@ -38,6 +38,22 @@ try:
     from qlib.backtest.executor import SimulatorExecutor
     from qlib.backtest.decision import Order, OrderDir, TradeDecisionWO
     from qlib.backtest.backtest import backtest_loop
+    # AISS runs qlib WITHOUT qlib.init() (no CN data provider needed).  In this
+    # qlib build the US region defaults are not in the global config, so
+    # ``Exchange.__init__`` lines like ``kwargs.pop("trade_unit", C.trade_unit)``
+    # eagerly evaluate ``C.<key>`` and raise ``No such '<key>'`` (even though we
+    # pass the kwarg).  Register the standard US-market defaults (REG_US) so the
+    # qlib execution path runs instead of silently falling back to the native loop.
+    from qlib.config import C as _QLIB_C
+    _US_DEFAULTS = {"trade_unit": 1, "limit_threshold": None, "deal_price": "close", "region": "us"}
+    for _k, _v in _US_DEFAULTS.items():
+        try:
+            getattr(_QLIB_C, _k)
+        except Exception:
+            try:
+                _QLIB_C[_k] = _v
+            except Exception:
+                _QLIB_C.update({_k: _v})
     _QLIB_BACKTEST_AVAILABLE = True
 except Exception as _e:
     _QLIB_BACKTEST_AVAILABLE = False

@@ -114,9 +114,12 @@ else:
             initial_capital: float = 1_000_000.0,
             **kwargs,
         ) -> None:
-            # WeightStrategyBase requires `signal` kwarg; we pass None because
-            # we override generate_trade_decision() and fetch scores ourselves.
-            super().__init__(signal=None, **kwargs)
+            # WeightStrategyBase requires a `signal` it can wrap; newer qlib
+            # (0.9.99) rejects None in create_signal_from().  We override the
+            # weight generation and never read self.signal, so pass an empty
+            # DataFrame purely to satisfy the base constructor.
+            import pandas as _pd
+            super().__init__(signal=_pd.DataFrame(), **kwargs)
 
             self._composite_signals = composite_signals
             self._etf_prices = etf_prices

@@ -14,10 +14,34 @@ import type { AgentTool } from '../tools/index.js'
 
 // === Someo Agent usage gate ===
 // Non-owner users get a small number of free Someo Agent questions; the next is blocked.
-// Owner (by email) is unlimited. Count persists server-side in Supabase `agent_usage`.
-const OWNER_EMAIL = 'lxu912@gmail.com'
-const FREE_AGENT_QUESTIONS = 2   // allow 2; block on the 3rd
-const BLOCK_MSG = '你这个用户余额不足了!不能白嫖我!请充值。充值请找开发者本人,请他吃饭即可。\n\n💡 建议马上关掉 Someo Agent 模式,就可以畅享 Someo Park 自研的 Local Model 无限对话啦!免费模式下也可以无限对话!'
+// Emails in UNLIMITED_EMAILS are unlimited. Count persists server-side in Supabase `agent_usage`.
+const UNLIMITED_EMAILS = new Set(['lxu912@gmail.com', 'yxc924@gmail.com'])
+const FREE_AGENT_QUESTIONS = 2   // allow 2 per week; block on the 3rd until Monday reset
+
+// Quota-exhausted message, localized into the app's 5 languages (en/zh/ja/fr/es).
+const BLOCK_MSG: Record<string, string> = {
+  zh: "你这个用户余额不足了!不能白嫖我!请充值。充值请找开发者本人,请他吃饭即可。\n\n💡 建议马上关掉 Someo Agent 模式,就可以畅享 Someo Park 自研的 Local Model 无限对话啦!免费模式下也可以无限对话!",
+  en: "You're out of credits! No freeloading 😄 Please top up — to recharge, find the developer in person and treat him to a meal.\n\n💡 Tip: turn off Someo Agent mode now to enjoy unlimited chat with Someo Park's own Local Model! Free mode is unlimited too!",
+  ja: "残高が不足しています!タダ乗りはダメですよ😄 チャージしてください — チャージは開発者本人を見つけて、ご飯をおごればOKです。\n\n💡 ヒント:今すぐ Someo Agent モードをオフにすれば、Someo Park 自社開発の Local Model で無制限チャットを楽しめます!無料モードも無制限です!",
+  fr: "Vous n'avez plus de crédits ! Pas de resquille 😄 Veuillez recharger — pour recharger, trouvez le développeur en personne et offrez-lui un repas.\n\n💡 Astuce : désactivez le mode Someo Agent maintenant pour profiter d'un chat illimité avec le Local Model maison de Someo Park ! Le mode gratuit est illimité aussi !",
+  es: "¡Te quedaste sin créditos! Nada de gorronear 😄 Recarga por favor — para recargar, busca al desarrollador en persona e invítale a comer.\n\n💡 Consejo: desactiva ya el modo Someo Agent y disfruta del chat ilimitado con el Local Model propio de Someo Park. ¡El modo gratis también es ilimitado!",
+}
+function blockMsg(lang?: string): string {
+  // Default zh (preserves prior behavior before the frontend deploy that sends `lang`);
+  // fall back to en for any unrecognised language code.
+  const k = (lang || 'zh').slice(0, 2).toLowerCase()
+  return BLOCK_MSG[k] || BLOCK_MSG.en
+}
+
+// Monday 00:00 of the CURRENT week (server-local time). A stored count older than this is
+// treated as 0 → the free quota refills every Monday morning. No DB cron — staleness is
+// judged on read against this boundary.
+function weekStart(): Date {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7))   // back to this week's Monday (Sun→-6)
+  return d
+}
 
 const router = express.Router()
 
@@ -213,7 +237,7 @@ const MAX_ITERATIONS = 18
 
 // === Main agent endpoint ===
 router.post('/', async (req, res) => {
-  const { messages, model, sessionId = crypto.randomUUID(), accessToken } = req.body
+  const { messages, model, sessionId = crypto.randomUUID(), accessToken, lang } = req.body
 
   // SSE headers
   res.setHeader('Content-Type', 'text/event-stream')
@@ -258,23 +282,27 @@ router.post('/', async (req, res) => {
     // Disabled (everyone unlimited) if Supabase secret key isn't configured.
     if (supabaseAdmin) {
       const userEmail = await emailFromToken(accessToken)
-      if (userEmail !== OWNER_EMAIL) {
+      if (!UNLIMITED_EMAILS.has(userEmail || '')) {
         const bucket = userEmail || 'anonymous'
         const { data: usageRow } = await supabaseAdmin
-          .from('agent_usage').select('count').eq('email', bucket).maybeSingle()
-        const used = usageRow?.count ?? 0
+          .from('agent_usage').select('count, updated_at').eq('email', bucket).maybeSingle()
+        // WEEKLY reset: a stored count only counts if it was last updated in the CURRENT
+        // week (since Monday 00:00). Older counts are treated as 0 → free questions refill
+        // every Monday morning. (No DB cron needed — staleness is judged on read.)
+        const fresh = usageRow?.updated_at && new Date(usageRow.updated_at) >= weekStart()
+        const used = fresh ? (usageRow?.count ?? 0) : 0
         if (used >= FREE_AGENT_QUESTIONS) {
-          console.log(`[Agent] usage gate: blocked ${bucket} (used ${used}/${FREE_AGENT_QUESTIONS})`)
-          send({ type: 'text', text: BLOCK_MSG })
+          console.log(`[Agent] usage gate: blocked ${bucket} (used ${used}/${FREE_AGENT_QUESTIONS} this week)`)
+          send({ type: 'text', text: blockMsg(lang) })
           send({ type: 'done' })
           return // finally{} clears heartbeat + ends the SSE stream
         }
-        // Count this question (upsert: create row at 1, or bump existing).
+        // Count this question (upsert: reset to 1 on a new week, else bump existing).
         await supabaseAdmin.from('agent_usage').upsert(
           { email: bucket, count: used + 1, updated_at: new Date().toISOString() },
           { onConflict: 'email' },
         )
-        console.log(`[Agent] usage gate: ${bucket} now ${used + 1}/${FREE_AGENT_QUESTIONS}`)
+        console.log(`[Agent] usage gate: ${bucket} now ${used + 1}/${FREE_AGENT_QUESTIONS} this week`)
       }
     }
 
