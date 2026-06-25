@@ -1,3 +1,4 @@
+import i18n from '../i18n';
 // In dev: empty (Vite proxy handles it). In prod: set VITE_API_URL to your tunnel/server URL.
 const API_BASE = import.meta.env.VITE_API_URL || '';
 const API_KEY = import.meta.env.VITE_API_KEY || '';
@@ -209,7 +210,8 @@ export async function* callAgent(
   const res = await fetch(`${API_BASE}/api/agent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...apiHeaders() },
-    body: JSON.stringify({ messages, model, sessionId, accessToken }),
+    // lang → server localizes the usage-limit (quota) message in the user's language.
+    body: JSON.stringify({ messages, model, sessionId, accessToken, lang: i18n.language }),
   })
   if (!res.ok) throw new Error(`Agent API error: ${res.status}`)
 
