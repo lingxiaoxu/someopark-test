@@ -57,6 +57,37 @@ def _accent_strip(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
 
 
+# Generation suffixes that aren't part of the identifying name (Vinícius "Júnior" = "Jr.").
+_GEN_SUFFIX = {"jr", "jr.", "junior", "sr", "snr", "ii", "iii", "filho", "neto"}
+
+
+def _name_tokens(name: str) -> list[str]:
+    """Accent-stripped lowercase name tokens, dropping initials' dots and generation suffixes."""
+    return [t for t in _accent_strip(name).replace(".", " ").lower().split() if t and t not in _GEN_SUFFIX]
+
+
+def _names_match(a: str, b: str) -> bool:
+    """Flexible person-name match to reconcile the EA-FC display name with the API scorer name
+    (no shared player id; the two sources differ on nicknames/suffixes). Rule: the SURNAME (last
+    token) must match — exact ≥3 chars, or a ≥4-char prefix either way for nicknames (EA 'Vini
+    Jr.' ↔ API 'Vinícius Júnior': 'junior'/'jr' dropped, 'vini' a prefix of 'vinicius') — AND, when
+    BOTH names carry a given name, their first tokens must be consistent (a prefix either way) so
+    two same-surname teammates don't merge ('Jonathan David' ≠ 'P. David', J. ≠ P.)."""
+    ta, tb = _name_tokens(a), _name_tokens(b)
+    if not ta or not tb:
+        return False
+    la, lb = ta[-1], tb[-1]
+    surname_ok = ((la == lb and len(la) >= 3)
+                  or (len(la) >= 4 and len(lb) >= 4 and (la.startswith(lb) or lb.startswith(la))))
+    if not surname_ok:
+        return False
+    if len(ta) >= 2 and len(tb) >= 2:                 # both have a given name → initials must agree
+        fa, fb = ta[0], tb[0]
+        if not (fa == fb or fa.startswith(fb) or fb.startswith(fa)):
+            return False
+    return True
+
+
 def _name_key(team_id_: str, name: str) -> tuple[str, str]:
     """(team_id, last-name) key for de-duping store vs seed players (accent-insensitive)."""
     tokens = _accent_strip(name).replace(".", " ").split()
@@ -160,6 +191,37 @@ def games_played_by_team(conn) -> dict[str, int]:
     return played
 
 
+def _wc_scorers_by_team(conn) -> dict[str, list[tuple[str, int, int]]]:
+    """team_id → [(api_player_name, wc_goals, wc_apps)] from settled-match GOAL EVENTS, kept as
+    a per-team list (not a last-name map) so the EA-FC pool can be matched by _names_match —
+    the two name sources have no shared id and differ on nicknames/suffixes (Vini Jr. vs
+    Vinícius Júnior). Falls back to the topscorers snapshot when no goal events are stored."""
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    played = games_played_by_team(conn)
+    out: dict[str, list[tuple[str, int, int]]] = {}
+    rows = conn.execute(
+        "SELECT e.team_api_id, p.name, COUNT(*) g FROM fixture_event e "
+        "JOIN fixture f ON e.fixture_api_id = f.api_id LEFT JOIN player p ON e.player_api_id = p.api_id "
+        "WHERE e.type = 'Goal' AND (e.detail IS NULL OR e.detail NOT IN ('Own Goal', 'Missed Penalty')) "
+        "  AND f.status_short IN ('FT','AET','PEN') AND p.name IS NOT NULL GROUP BY e.player_api_id"
+    ).fetchall()
+    for r in rows:
+        cid = cmap.get(r["team_api_id"])
+        if cid:
+            out.setdefault(cid, []).append((r["name"], int(r["g"] or 0), max(1, played.get(cid, 1))))
+    if out:
+        return out
+    for r in conn.execute(
+        "SELECT p.name, ps.appearances, ps.goals, m.canonical_team_id FROM player_stat ps "
+        "JOIN player p ON ps.player_api_id = p.api_id LEFT JOIN team_meta m ON ps.team_api_id = m.api_id "
+        "WHERE ps.goals IS NOT NULL AND ps.season = ?", (CONFIG.soccer.season,)):
+        cid = r["canonical_team_id"]
+        if cid and int(r["goals"] or 0):
+            out.setdefault(cid, []).append((r["name"], int(r["goals"] or 0), int(r["appearances"] or 0)))
+    return out
+
+
 def build_golden_boot_players(conn=None) -> list[Player]:
     """Talent-grounded golden-boot pool (plan 03 §6.1): EA FC 26 + WC-to-date.
 
@@ -191,12 +253,18 @@ def build_golden_boot_players(conn=None) -> list[Player]:
     if not rows:
         return build_players_from_store(conn)
 
-    wc = _wc_to_date_by_team(conn)
+    scorers = _wc_scorers_by_team(conn)
     out: list[Player] = []
     for r in rows:
         cid = r["canonical_team_id"]
         fc_rate = float(r["goal_rate"])
-        wc_goals, wc_apps = wc.get(_name_key(cid, r["name"]), (0, 0))
+        # Match this EA-FC pool player to a WC scorer by flexible name (handles Vini Jr. ↔
+        # Vinícius Júnior, nicknames, Jr/Júnior suffixes) — no shared id between the sources.
+        wc_goals, wc_apps = 0, 0
+        for api_name, g, a in scorers.get(cid, []):
+            if _names_match(r["name"], api_name):
+                wc_goals, wc_apps = g, a
+                break
         mu = (fc_rate * alpha + wc_goals) / (alpha + wc_apps)   # Bayesian posterior rate
         start = _RANK_START_PROB.get(int(r["team_attack_rank"]), 0.20)
         # A player who already started + scored is clearly first-choice: floor his start.
