@@ -1,48 +1,48 @@
 ==============================================================================
   SOMEO PARK — 组合风险管理报告 (RISK MANAGEMENT REPORT)
-  Signal date: 2026-06-10   Generated: 2026-06-11T03:11:29
+  Signal date: 2026-06-10   Generated: 2026-06-24T18:51:00
   Scope: MRPT + MTFS pairs book   |   model-based, broker-reconciled
 ==============================================================================
 
 ── RISK SUMMARY ──────────────────────────────────────────────────────────
-  NAV:                $1,053,947
+  NAV:                $1,054,547
   Gross leverage:     1.409x      Net leverage: 0.405x
   Net market beta:    0.768        (target ≈ 0, market-neutral)
   VaR 95% 1d:         $21,654 (2.05% of NAV)
-  Annual vol:         19.83% of NAV
-  Sharpe (annual):    1.12    PSR(>0): 0.8035
-  CDaR 95%:           8.83%
-  Kelly: full=4.03x  half=2.02x  actual=1.409x
-  Max single-name:    STLD (25.82% of NAV)
+  Annual vol:         19.82% of NAV
+  Sharpe (annual):    1.111    PSR(>0): 0.8018
+  CDaR 95%:           8.86%
+  Kelly: full=3.94x  half=1.97x  actual=1.409x
+  Max single-name:    STLD (25.8% of NAV)
   Open pairs:         10      Limit breaches: 6  (worst: single_name_gross:STLD red)
 
 ── BALANCE SHEET METHOD (资产负债表法, combined, T) ──────────────────────
-  Free cash:          $87,201
+  Free cash:          $87,802
   Restricted cash:    $539,797  (PB short collateral 102%)
   Long securities:    $956,161
-  Total assets:       $1,583,160
+  Total assets:       $1,583,760
   Short securities:   $529,213  (repurchase obligation)
   Short collat. 2%:   $10,584  (equity-posted, locked in restricted cash — not a liability)
   Margin loan:        $0  (PB financing for longs)
   Total liabilities:  $529,213
-  NAV (equity):       $1,053,947    (balance check: 0.0)
+  NAV (equity):       $1,054,547    (balance check: 0.0)
   PM requirement:     $297,075  (20% of gross)
-  Excess liquidity:   $756,872  OK
+  Excess liquidity:   $757,473  OK
 
 ── LONG/SHORT BOOK (双账户法, combined, T) ──────────────────────────────
   Long Book:  capital=$956,161  MV=$956,161  margin=$0  NAV=$956,161
   Short Book: capital=$10,584  MV=$529,213  collateral=$10,584  NAV=$10,584
-  Unallocated cash:   $87,201
-  Dual-view NAV:      $1,053,947  (alignment check: 0.0)
+  Unallocated cash:   $87,802
+  Dual-view NAV:      $1,054,547  (alignment check: 0.0)
 
 ── LIMIT MONITOR ─────────────────────────────────────────────────────────
-     gross_leverage       mrpt       = 0.6 (amber 3.0, red 4.0) [green]
+     gross_leverage       mrpt       = 0.61 (amber 3.0, red 4.0) [green]
      net_leverage_abs     mrpt       = 0.01 (amber 0.5, red 1.0) [green]
-     gross_leverage       mtfs       = 2.38 (amber 3.0, red 4.0) [green]
-  ⚠  net_leverage_abs     mtfs       = 0.9 (amber 0.5, red 1.0) [amber]
-  🔴 single_name_gross    STLD       = 25.82 (amber 15.0, red 25.0) [red]
-  ⚠  single_name_gross    KLAC       = 23.1 (amber 15.0, red 25.0) [amber]
-  ⚠  single_name_gross    NUE        = 15.64 (amber 15.0, red 25.0) [amber]
+     gross_leverage       mtfs       = 2.33 (amber 3.0, red 4.0) [green]
+  ⚠  net_leverage_abs     mtfs       = 0.88 (amber 0.5, red 1.0) [amber]
+  🔴 single_name_gross    STLD       = 25.8 (amber 15.0, red 25.0) [red]
+  ⚠  single_name_gross    KLAC       = 23.09 (amber 15.0, red 25.0) [amber]
+  ⚠  single_name_gross    NUE        = 15.63 (amber 15.0, red 25.0) [amber]
      sector_net           materials  = 29.41 (amber 30.0, red 50.0) [green]
      max_pair             combined   = 16.32 (amber 20.0, red 35.0) [green]
   🔴 net_market_beta      combined   = 0.77 (amber 0.3, red 0.5) [red]
