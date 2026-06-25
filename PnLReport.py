@@ -220,13 +220,14 @@ def load_positions(start_ts, end_ts) -> list[dict]:
     so the caller can distinguish truly-open from closed-mid-period."""
     positions: dict[str, dict] = {}
     closed_pairs: set[str] = set()   # pairs seen with direction=null AFTER being active
-    for fpath in sorted(glob.glob(os.path.join(INV_DIR, 'inventory_*.json'))):
-        # Filter by as_of (the inventory's semantic date), not the file timestamp.
-        # File timestamp = when the cron wrote it (may be hours/days after as_of due
-        # to cron gaps, holidays, or delayed runs). as_of = the trading day this
-        # snapshot represents. This fixes two bugs:
-        #   A) new positions opened on day X whose snapshot file is X+1 → missed
-        #   B) closed positions whose null-snapshot file is outside [start,end] → ghost HOLD
+    # Pre-load all inventory files and sort by (as_of, filename) to ensure
+    # chronological processing.  Alphabetical filename order breaks when a
+    # later cron run (e.g. 20260617) writes a snapshot with a stale as_of
+    # (e.g. 6/10) that comes after the file that properly closed the position
+    # (20260612, as_of=6/11).  Sorting by as_of first guarantees that closes
+    # at as_of=T always override opens at as_of<T, regardless of file date.
+    _inv_entries = []
+    for fpath in glob.glob(os.path.join(INV_DIR, 'inventory_*.json')):
         try:
             with open(fpath) as f:
                 data = json.load(f)
@@ -238,6 +239,10 @@ def load_positions(start_ts, end_ts) -> list[dict]:
         day = pd.Timestamp(as_of_str)
         if day < start_ts or day > end_ts:
             continue
+        _inv_entries.append((day, fpath, data))
+    _inv_entries.sort(key=lambda x: (x[0], x[1]))
+
+    for day, fpath, data in _inv_entries:
         strategy = os.path.basename(fpath).split('_')[1]
         for pair_name, p in data.get('pairs', {}).items():
             if not isinstance(p, dict):
@@ -249,9 +254,17 @@ def load_positions(start_ts, end_ts) -> list[dict]:
                 if pair_name in positions:
                     closed_pairs.add(pair_name)
                 continue
-            # Active snapshot — record (or update) position, and un-mark closed
-            # in case it was re-opened after a previous close
-            closed_pairs.discard(pair_name)
+            # Active snapshot — only un-close if this is a genuinely NEW position
+            # (different open_date).  If the open_date is the same as the already-
+            # closed record, it's a stale/corrupted snapshot (e.g. BSX/WMB zombie
+            # from the 6/17 pipeline bug) and should be ignored.
+            if pair_name in closed_pairs:
+                prev_open = positions.get(pair_name, {}).get('open_date')
+                new_open  = p.get('open_date')
+                if prev_open == new_open:
+                    continue   # stale snapshot — skip
+                # Genuine re-entry with a new open_date
+                closed_pairs.discard(pair_name)
             s1, s2 = pair_name.split('/', 1)
             # Corporate actions：旧口径快照换算为当前价格口径
             # （marker 判据：已调整快照自带 applied_corporate_actions 留痕 → 跳过）
@@ -333,23 +346,28 @@ def load_positions(start_ts, end_ts) -> list[dict]:
     # load_positions thinks is still open but the live inventory says dir=null
     # is a ghost HOLD (orphan-close during a cron gap where the null-snapshot
     # was never taken). Mark it closed.
-    # Build set of pairs that are CURRENTLY OPEN in the live inventory files.
-    # Anything in positions but NOT in this set is a ghost HOLD (orphan-close
-    # during a cron gap where the null/removal was never snapshot'd).
-    _live_open = set()
-    for inv_f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
-                  os.path.join(BASE_DIR, 'inventory_mtfs.json')):
-        try:
-            with open(inv_f) as f:
-                inv_d = json.load(f)
-            for pname, pv in inv_d.get('pairs', {}).items():
-                if isinstance(pv, dict) and pv.get('direction'):
-                    _live_open.add(pname)
-        except Exception:
-            pass
-    for pair_name in list(positions.keys()):
-        if pair_name not in _live_open and pair_name not in closed_pairs:
-            closed_pairs.add(pair_name)
+    # IMPORTANT: only do this when generating a report for "today" (or very
+    # recent). For historical backfill (end_ts < today - 1 trading day), the
+    # live inventory reflects the CURRENT state, not the state as-of end_ts,
+    # so the check would incorrectly mark positions that were open on end_ts
+    # but closed later as ghost HOLDs.
+    _today = pd.Timestamp.now().normalize()
+    _is_current_report = (end_ts >= _today - pd.Timedelta(days=3))
+    if _is_current_report:
+        _live_open = set()
+        for inv_f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
+                      os.path.join(BASE_DIR, 'inventory_mtfs.json')):
+            try:
+                with open(inv_f) as f:
+                    inv_d = json.load(f)
+                for pname, pv in inv_d.get('pairs', {}).items():
+                    if isinstance(pv, dict) and pv.get('direction'):
+                        _live_open.add(pname)
+            except Exception:
+                pass
+        for pair_name in list(positions.keys()):
+            if pair_name not in _live_open and pair_name not in closed_pairs:
+                closed_pairs.add(pair_name)
 
     # Mark pairs that were closed in a later snapshot (or live null-check above)
     for pair_name in closed_pairs:
