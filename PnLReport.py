@@ -416,6 +416,37 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
                 elif action == 'HOLD':
                     if full > hold_ts.get(pair, pd.Timestamp('1970-01-01')):
                         hold_ts[pair] = full
+        # Fallback: also scan active_signals for CLOSE/CLOSE_STOP events that
+        # were not recorded in position_monitor (e.g. RSG/AFL whose CLOSE_STOP
+        # only appears in mtfs.active_signals). Use the last HOLD unrealized_pnl
+        # as the close PnL when the event itself has pnl=None.
+        _last_hold_pnl: dict[str, float] = {}
+        for strat in ('mrpt', 'mtfs'):
+            for e in pm.get(strat, []):
+                if isinstance(e, dict) and e.get('action') == 'HOLD' and e.get('pair'):
+                    _last_hold_pnl[e['pair']] = e.get('unrealized_pnl', 0)
+        for strat in ('mrpt', 'mtfs'):
+            for e in data.get(strat, {}).get('active_signals', []):
+                if not isinstance(e, dict):
+                    continue
+                pair = e.get('pair')
+                action = e.get('action', '')
+                if not pair or action not in ('CLOSE', 'CLOSE_STOP'):
+                    continue
+                if pair in all_ev:
+                    continue  # already have a close event from position_monitor
+                pnl = e.get('unrealized_pnl') or e.get('pnl')
+                if pnl is None:
+                    pnl = _last_hold_pnl.get(pair, 0)
+                ev = {
+                    'action':      action,
+                    'pnl':         pnl,
+                    'note':        e.get('note', ''),
+                    'report_date': signal_date_str,
+                    'signal_date': signal_date_str,
+                    '_ts':         full,
+                }
+                all_ev.setdefault(pair, []).append(ev)
 
     # Prior lifecycle PnL: compute from ALL close events BEFORE hold-filtering.
     # Group by (pair, signal_date), keep latest per group — same as curve logic.
