@@ -65,8 +65,11 @@
 
 - **选边按价值,不按最可能**:`decide()` 在 PRE 场馆报价上选**被低估最多且能过自己门槛**的一边(模型概率 − 市场隐含)。注意:**在「能过门槛的边」里挑最优**——若净边缘最高的平局过不了平局纪律,会回退到可下注的主/客边(修复了之前"高边缘平局压住可下注的主/客"的 bug)。
 - **决策阈值 `min_net_edge=0.02`**(低于盘中的 0.03):因为有**智能择时**保护边际注,赛前不需要那么高的 edge。PIT 验证:0.03→0.02 把无边际跳过从 9 场降到 4-5 场,实现盈亏 +302→+486¢。
-- **真实策略 = 决策 + 智能择时现金出(非持有到 FT)**:`strategy/smart_exit.py`——开赛后市场对进球/事件过度反应、价格冲高于 live 模型公允价(+12¢)时就卖出锁利。PIT 验证(每分钟 `price_tick` 回填):同一批注 **7W-11L/+114¢(持有)→ 实现 +486¢、有效盈利率 39%→67%**。三视图 + PDF 都按 **实现 / 持有 / argmax** 三口径并列。
-- **置信度定额($0.2–$2)**:`stake = clip($1×(1+k), 0.2, 2)`,k 由 **edge(分数凯利 ¼)+ 模型校准 + 近期状态 + alt-data** 加权;信心足多下、不足少下。**真实下单仍受 $1 硬顶**(`max_test_order_usd`),决策模型只给「理想额」。
+- **真实策略 = 决策 + 智能择时现金出(非持有到 FT)**:`strategy/smart_exit.py`——开赛后市场对进球/事件过度反应、价格冲高于 live 模型公允价(`OVERSHOOT_MARGIN`,**默认 0.08 / 8¢**)时就卖出锁利。**关键:`price_tick.rel_min` 是从开球起的墙钟分钟(含中场),不是比赛分钟**——`_match_minute()` 把它映射成真实比赛分钟,择时按**比赛分钟门控**(≤95',正则;淘汰赛加时由比赛时钟天然排除)。阈值在修正后的比赛分钟时钟上重调:平台 0.06–0.08,选 0.08(对持有到结算 +285¢)。三视图 + PDF 都按 **实现 / 持有 / argmax** 三口径并列。
+- **置信度定额($0.2–$2,以 $1 为中心)**:`stake = clip($1×(1 + k − conf_k_ref), 0.2, 2)`,k 由 **edge(分数凯利 ¼)+ 模型校准 + 近期状态 + alt-data** 加权;`conf_k_ref`(默认 0.25)把中等置信注居中到 $1,**低置信 <$1、高置信 >$1**(k 全是正信号,不减这个偏移会永远 >$1)。**真实下单仍受 $1 硬顶**(`max_test_order_usd`)。
+- **对冲(保护仓位)**:`strategy/inplay_hedge.py`——盘中持有方向性仓位时,买 draw 对冲。保本张数 `b = 成本/(100−draw¢)`(被拖平也回本)、完全对冲(赢与平同利润)、maximin、部分止盈、反向 lay、dutch 锁利。前端"🛡 对冲"框绑定**我们的赛前价值边**,领先/平局/落后全状态显示,带三态 payoff。**买 draw 不防对方翻盘**(那条态无保护)。
+- **盘中信号置信分级 + 下注门槛**:`strategy/inplay_confidence.py`——每个盘中信号打 high/med/low 置信(基于 9 天/32 场有效性复盘:领先方 82%、top10 队 89%、UNDER 65%…),并加实际下注门槛(`actionable`+`stake_usd`):draw 仅 >70'且仍平局、over 仅 ≤15'或恰好1球、大边际仅 lead∩top10、conviction 强下设 −0.25 地板。**信号全保留,只区分下不下注**。
+- **淘汰赛 90' 结算**:单场市场两阶段都是 90' 三向(淘汰赛 1-1@90' 赔 Tie)。`util/pricing.reg_score()` 用 `score.fulltime`(90' 正则比分)结算,而非含加时的最终比分。东道主优势用 `host_neutral`(=is_knockout)与 draw/λ 校准**解耦**:淘汰赛中立场关掉每场 `home_adv`,只留赛事级 `host_rating_boost`(不叠加)。
 - **冷门高估偏差**:对 sub‑15¢ 的 longshot 边设更高 edge 门槛(favourite‑longshot bias,arXiv 1710.02824);无安全边际则**跳过不下**。
 - **平局纪律(`draw_extra_theta`,默认 0.06)**:小组赛平局率异常高(本样本 38%,模型甚至**低估**至 26%、市场更低估至 22% → 平局确有价值),但这是会在淘汰赛回归的 regime。故对平局边加一截 edge 门槛,**只砍信心最低的平局**(本样本平局注 45%→37%,命中率不降),稳健性 hedge 而非扭曲模型。诊断/调参:`ops/_diag_draw_bias`。
 - **全程 PIT**:`match_pick` 传入 `conn` 时按开赛时点重算模型+form+alt-data(无未来泄漏),`_bet_log` 与 `milestone_export` 传**同一份 PRE 报价**→ pick 必然一致 → 三视图仍同源。
@@ -181,7 +184,9 @@ set -a && source prediction_market/.env && set +a && \
 | `model/golden_boot.py` | 金靴嵌套模拟：球员进球与球队走多远相关（同一批路径），Poisson(μ×已打场次) |
 | `model/inplay.py` | 赛中实时模型（分钟+比分+红牌 → 实时胜平负、公平平局价、剩余进球），驱动赛中交易 |
 | `model/xg_form.py` | **xG-form 评分加成**（PIT,plan 21）：各队近期 xG（比比分低噪）z 化后微调评分;walk-forward 验证降 OOS Brier、提 ROI。+ 东道主先验加成(`host_rating_boost`)、平局纪律(`draw_extra_theta`) |
-| `strategy/smart_exit.py` | **智能择时/超调止盈**：市场价超调高于 live 公允价(+12¢)时现金出锁利——「实现口径」核心,把持有 7W-11L/+114¢ 提升到实现 +486¢(39%→67% 盈利) |
+| `strategy/smart_exit.py` | **智能择时/超调止盈**：市场价超调高于 live 公允价(`OVERSHOOT_MARGIN`,默认 **8¢**)时现金出锁利——「实现口径」核心。`_match_minute()` 把 `price_tick.rel_min`(墙钟分钟)映射成真实比赛分钟,按比赛分钟门控(≤95' 正则) |
+| `strategy/inplay_hedge.py` | **对冲计算器**(纯函数):持方向性仓位时买 draw 对冲——保本张数 `b=成本/(100−draw¢)`、完全对冲、maximin、部分止盈、反向 lay、dutch 锁利;前端"🛡 对冲"框的单一数学源 |
+| `strategy/inplay_confidence.py` | **盘中信号置信分级 + 下注门槛**:每信号打 high/med/low(有效性复盘规律)+ `actionable`/`stake_usd` 门槛(draw 限晚盘平局、over 限早盘/1球、大边际限 lead∩top10、conviction −0.25 地板);信号全留只区分下注 |
 | `model/match_pricing.py` | 单场定价：从比分矩阵导出任意单场市场（小组 72 场全量） |
 | `model/ensemble.py` | 集成：参数变体 → 概率均值 + **离散度**（替换占位 sigma，喂仓位） |
 | `model/calibrate.py` | 校准/评分：Brier / Log‑loss / 可靠性曲线 / CLV / bootstrap CI |

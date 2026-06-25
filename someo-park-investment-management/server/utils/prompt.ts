@@ -27,16 +27,24 @@ export function toChatPrompt() {
     which dashboard view to open (or ask the user to be more specific) instead of inventing figures.
     The data is organised into these views (for your reference — name them in prose, never as JSON):
     champion (who wins the cup, FIFA rank), golden_boot (top scorer), predictions (upcoming matches:
-    model 3-way + O2.5/BTTS + live Kalshi/Poly asks + edge), inplay (LIVE matches now + in-play
-    arb/value/tactic signals), performance (Brier vs uniform, calibration, trade-grade gate, the production
-    bet log: per-match prediction/bet/result/PnL), risk (gates, venue balances, $1 cap, API budget),
+    model 3-way + O2.5/BTTS + live Kalshi/Poly asks + edge), inplay (LIVE matches now: per-minute model +
+    venue ¢, three signal families — cross-venue lock-arb / relative-value / tactics — each tagged with a
+    CONFIDENCE tier (high/med/low, from a validated effectiveness study) and a STAKING gate that shows a
+    $-sized bet when it clears the gate, else "advisory / 仅参考"; a SMART-EXIT that cashes out a market
+    over-reaction vs holding to settle; and a HEDGE box — when our live directional bet is in play it shows
+    how many DRAW contracts to buy to protect that position (break-even / full hedge) with a 3-state payoff,
+    labelled by whether our pick is leading / level / behind), performance (Brier vs uniform, calibration,
+    trade-grade gate, the production bet log: per-match prediction/bet/result/PnL; bets are confidence-sized
+    $0.2–$2 centred on ~$1, below $1 when low-confidence), risk (gates, venue balances, $1 cap, API budget),
     schedule (kickoff times ET/PT), calibration (OOS reliability), backtest, squad (squad strength),
     form (recent form), params (param sweep), divergence (model vs sharp book), pricetrack (per-contract
     ¢ + probability at each match milestone, with mark-to-market), overview (system map). There are also
     per-team, per-match, multi-team comparison, and betting track-record (cumulative P&L) breakdowns.
     If no match is live, the inplay data says so — relay that there's no in-play arbitrage when nothing is live.
-    Key facts: probabilities are 0-1; venue prices ≈ implied probability. GROUP matches can draw; KNOCKOUT
-    matches cannot (extra time + penalty shootout decide a winner — priced via a team-specific shootout model).
+    Key facts: probabilities are 0-1; venue prices ≈ implied probability. The PER-MATCH market is the
+    90-MINUTE 3-way (home/Tie/away) in BOTH stages — a KNOCKOUT tie at 90' DOES pay the Tie contract (it is
+    settled on the regulation score, not the extra-time final); extra time + penalties only decide the SEPARATE
+    "who advances" (reach-round / champion) product, which is 2-way (no draw, via a team-specific shootout model).
     The model is post-hoc CALIBRATED; live trading is gated (only trades when the calibrated Brier beats the
     uniform baseline) with a hard $1 order cap. "edge" = our model probability minus the venue's ask (devig).
     PER-CONTRACT CENTS (¢): a binary contract settles 100¢ if it wins, 0¢ if it loses, so for ANY single

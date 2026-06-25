@@ -109,7 +109,7 @@ const ARTIFACT_PATTERNS: Array<{
   { type: 'wc_match_pricing', title: 'Match Pricing',       keywords: ['match pricing', 'match odds', '单场定价', '比赛定价', '胜平负'] },
   { type: 'wc_reach_round',   title: 'Reach Round',         keywords: ['reach round', 'advance to', 'reach the final', 'reach semifinal', '晋级', '晋级盘', '进决赛', '进四强'] },
   { type: 'wc_predictions',   title: "Today's Predictions", keywords: ["today's predictions", 'upcoming matches', '今日预测', '近期比赛', '即将开始'] },
-  { type: 'wc_inplay',        title: 'In-Play Arbitrage',   keywords: ['in-play', 'in play', 'inplay', 'live match', 'live game', 'live arbitrage', 'playing now', 'live now', 'going on now', '盘中套利', '盘中', '实时比赛', '正在进行', '进行中', '现在的比赛', '当前比赛', '现在在踢', '正在踢'] },
+  { type: 'wc_inplay',        title: 'In-Play Arbitrage',   keywords: ['in-play', 'in play', 'inplay', 'live match', 'live game', 'live arbitrage', 'playing now', 'live now', 'going on now', 'hedge', 'protect the lead', 'smart exit', 'smart-exit', 'cash out', 'cash-out', 'staking gate', 'confidence tier', '盘中套利', '盘中', '实时比赛', '正在进行', '进行中', '现在的比赛', '当前比赛', '现在在踢', '正在踢', '对冲', '保护领先', '持仓对冲', '智能择时', '现金出', '置信', '下注门槛'] },
   { type: 'wc_divergence',    title: 'Model vs Market',     keywords: ['model vs market', 'divergence', 'vs book', '模型vs市场', '模型 vs 市场', '散度'] },
   { type: 'wc_squad',         title: 'Squad Strength',      keywords: ['squad strength', '阵容强度'] },
   { type: 'wc_form',          title: 'Recent Form',         keywords: ['recent form', '近期状态', '球队状态'] },
