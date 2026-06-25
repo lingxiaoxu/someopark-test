@@ -1,29 +1,29 @@
 {
   "report_type": "risk",
   "signal_date": "2026-06-04",
-  "generated_at": "2026-06-25T01:35:33",
+  "generated_at": "2026-06-25T01:48:57",
   "total_capital": 1000000.0,
   "scope": "MRPT + MTFS pairs book (model-based, broker-reconciled)",
   "summary": {
     "nav": 1111869.67,
-    "gross_leverage": 4.313,
-    "net_leverage": 2.821,
-    "net_beta": 5.661,
-    "var_95_1d": 110097.87,
-    "var_95_1d_pct": 9.9,
-    "annual_vol_pct": 95.56,
-    "max_single_name": "KLAC",
-    "max_single_name_pct": 208.92,
-    "max_sector_net_pct": 61.48,
+    "gross_leverage": 2.433,
+    "net_leverage": 0.941,
+    "net_beta": 1.714,
+    "var_95_1d": 35872.22,
+    "var_95_1d_pct": 3.23,
+    "annual_vol_pct": 31.13,
+    "max_single_name": "BWA",
+    "max_single_name_pct": 32.69,
+    "max_sector_net_pct": 31.71,
     "n_open_pairs": 15,
-    "n_breaches": 10,
+    "n_breaches": 9,
     "worst_breach": "gross_leverage:mtfs red",
     "psr_combined": 0.9616,
     "sharpe_annual": 1.91,
     "cdar_95_pct": 8.61,
     "kelly_full": 9.22,
     "kelly_half": 4.61,
-    "kelly_actual_leverage": 4.313
+    "kelly_actual_leverage": 2.433
   },
   "balance_sheet": {
     "combined": {
@@ -32,25 +32,25 @@
         "free_cash": 0.0,
         "restricted_cash": 845850.78,
         "cash": 0.0,
-        "long_securities": 3966284.68,
-        "total_assets": 4812135.46,
+        "long_securities": 1875675.58,
+        "total_assets": 2721526.36,
         "short_securities": 829265.47,
         "short_collateral_due": 16585.31,
-        "margin_loan": 2871000.32,
-        "accrued_financing": 393.29,
+        "margin_loan": 780391.22,
+        "accrued_financing": 106.9,
         "accrued_borrow_fee": 0.0,
-        "accrued_costs": 393.29,
-        "total_liabilities": 3700265.79,
+        "accrued_costs": 106.9,
+        "total_liabilities": 1609656.69,
         "nav": 1111869.67,
         "balance_check": 0.0,
-        "pm_requirement": 959110.03,
-        "excess_liquidity": 152759.64,
+        "pm_requirement": 540988.21,
+        "excess_liquidity": 570881.46,
         "long_book": {
           "allocated_capital": 1111869.67,
           "cash": 0.0,
-          "market_value": 3966284.68,
-          "margin_loan": 2854415.01,
-          "financing_cost_daily": 391.02,
+          "market_value": 1875675.58,
+          "margin_loan": 763805.91,
+          "financing_cost_daily": 104.63,
           "book_nav": 1111869.67
         },
         "short_book": {
@@ -67,35 +67,35 @@
         "unallocated_cash": 0.0,
         "dual_nav": 1111869.67,
         "nav_alignment_check": 0.0,
-        "gross": 4795550.15,
-        "net": 3137019.21,
-        "gross_leverage": 4.313,
-        "net_leverage": 2.821
+        "gross": 2704941.05,
+        "net": 1046410.11,
+        "gross_leverage": 2.433,
+        "net_leverage": 0.941
       },
       "T_1D": {
         "as_of": "2026-06-03",
         "free_cash": 0.0,
         "restricted_cash": 999888.16,
         "cash": 0.0,
-        "long_securities": 4031206.54,
-        "total_assets": 5031094.7,
+        "long_securities": 2024865.34,
+        "total_assets": 3024753.5,
         "short_securities": 980282.51,
         "short_collateral_due": 19605.65,
-        "margin_loan": 2942254.14,
-        "accrued_financing": 403.05,
+        "margin_loan": 935912.94,
+        "accrued_financing": 128.21,
         "accrued_borrow_fee": 0.0,
-        "accrued_costs": 403.05,
-        "total_liabilities": 3922536.65,
+        "accrued_costs": 128.21,
+        "total_liabilities": 1916195.45,
         "nav": 1108558.05,
-        "balance_check": 0.0,
-        "pm_requirement": 1002297.81,
-        "excess_liquidity": 106260.24,
+        "balance_check": -0.0,
+        "pm_requirement": 601029.57,
+        "excess_liquidity": 507528.48,
         "long_book": {
           "allocated_capital": 1108558.05,
           "cash": 0.0,
-          "market_value": 4031206.54,
-          "margin_loan": 2922648.49,
-          "financing_cost_daily": 400.36,
+          "market_value": 2024865.34,
+          "margin_loan": 916307.29,
+          "financing_cost_daily": 125.52,
           "book_nav": 1108558.05
         },
         "short_book": {
@@ -109,38 +109,38 @@
           "rebate_daily": 0.0,
           "book_nav": 0.0
         },
-        "unallocated_cash": -0.0,
+        "unallocated_cash": 0.0,
         "dual_nav": 1108558.05,
         "nav_alignment_check": 0.0,
-        "gross": 5011489.05,
-        "net": 3050924.03,
-        "gross_leverage": 4.521,
-        "net_leverage": 2.752
+        "gross": 3005147.85,
+        "net": 1044582.83,
+        "gross_leverage": 2.711,
+        "net_leverage": 0.942
       },
       "T_1W": {
         "as_of": "2026-05-28",
         "free_cash": 0.0,
         "restricted_cash": 874362.36,
         "cash": 0.0,
-        "long_securities": 3948333.29,
-        "total_assets": 4822695.65,
+        "long_securities": 1587962.15,
+        "total_assets": 2462324.51,
         "short_securities": 857218.0,
         "short_collateral_due": 17144.36,
-        "margin_loan": 2974077.28,
-        "accrued_financing": 407.41,
+        "margin_loan": 613706.14,
+        "accrued_financing": 84.07,
         "accrued_borrow_fee": 0.0,
-        "accrued_costs": 407.41,
-        "total_liabilities": 3831295.28,
+        "accrued_costs": 84.07,
+        "total_liabilities": 1470924.14,
         "nav": 991400.37,
-        "balance_check": 0.0,
-        "pm_requirement": 961110.26,
-        "excess_liquidity": 30290.11,
+        "balance_check": -0.0,
+        "pm_requirement": 489036.03,
+        "excess_liquidity": 502364.34,
         "long_book": {
           "allocated_capital": 991400.37,
           "cash": 0.0,
-          "market_value": 3948333.29,
-          "margin_loan": 2956932.92,
-          "financing_cost_daily": 405.06,
+          "market_value": 1587962.15,
+          "margin_loan": 596561.78,
+          "financing_cost_daily": 81.72,
           "book_nav": 991400.37
         },
         "short_book": {
@@ -154,13 +154,13 @@
           "rebate_daily": 0.0,
           "book_nav": 0.0
         },
-        "unallocated_cash": -0.0,
+        "unallocated_cash": 0.0,
         "dual_nav": 991400.37,
         "nav_alignment_check": 0.0,
-        "gross": 4805551.29,
-        "net": 3091115.29,
-        "gross_leverage": 4.847,
-        "net_leverage": 3.118
+        "gross": 2445180.15,
+        "net": 730744.15,
+        "gross_leverage": 2.466,
+        "net_leverage": 0.737
       },
       "T_1M": {
         "as_of": "2026-05-06",
@@ -396,25 +396,25 @@
         "free_cash": 0.0,
         "restricted_cash": 756527.18,
         "cash": 0.0,
-        "long_securities": 3869485.32,
-        "total_assets": 4626012.5,
+        "long_securities": 1778876.22,
+        "total_assets": 2535403.4,
         "short_securities": 741693.31,
         "short_collateral_due": 14833.87,
-        "margin_loan": 3347144.75,
-        "accrued_financing": 458.51,
+        "margin_loan": 1256535.65,
+        "accrued_financing": 172.13,
         "accrued_borrow_fee": 0.0,
-        "accrued_costs": 458.51,
-        "total_liabilities": 4088838.06,
+        "accrued_costs": 172.13,
+        "total_liabilities": 1998228.96,
         "nav": 537174.44,
         "balance_check": 0.0,
-        "pm_requirement": 922235.73,
-        "excess_liquidity": -385061.29,
+        "pm_requirement": 504113.91,
+        "excess_liquidity": 33060.53,
         "long_book": {
           "allocated_capital": 537174.44,
           "cash": 0.0,
-          "market_value": 3869485.32,
-          "margin_loan": 3332310.88,
-          "financing_cost_daily": 456.48,
+          "market_value": 1778876.22,
+          "margin_loan": 1241701.78,
+          "financing_cost_daily": 170.1,
           "book_nav": 537174.44
         },
         "short_book": {
@@ -431,35 +431,35 @@
         "unallocated_cash": 0.0,
         "dual_nav": 537174.44,
         "nav_alignment_check": 0.0,
-        "gross": 4611178.63,
-        "net": 3127792.01,
-        "gross_leverage": 8.584,
-        "net_leverage": 5.823
+        "gross": 2520569.53,
+        "net": 1037182.91,
+        "gross_leverage": 4.692,
+        "net_leverage": 1.931
       },
       "T_1D": {
         "as_of": "2026-06-03",
         "free_cash": 0.0,
         "restricted_cash": 913597.85,
         "cash": 0.0,
-        "long_securities": 3935266.54,
-        "total_assets": 4848864.39,
+        "long_securities": 1928925.34,
+        "total_assets": 2842523.19,
         "short_securities": 895684.17,
         "short_collateral_due": 17913.68,
-        "margin_loan": 3421734.37,
-        "accrued_financing": 468.73,
+        "margin_loan": 1415393.17,
+        "accrued_financing": 193.89,
         "accrued_borrow_fee": 0.0,
-        "accrued_costs": 468.73,
-        "total_liabilities": 4317418.54,
+        "accrued_costs": 193.89,
+        "total_liabilities": 2311077.34,
         "nav": 531445.85,
         "balance_check": 0.0,
-        "pm_requirement": 966190.14,
-        "excess_liquidity": -434744.29,
+        "pm_requirement": 564921.9,
+        "excess_liquidity": -33476.05,
         "long_book": {
           "allocated_capital": 531445.85,
           "cash": 0.0,
-          "market_value": 3935266.54,
-          "margin_loan": 3403820.69,
-          "financing_cost_daily": 466.28,
+          "market_value": 1928925.34,
+          "margin_loan": 1397479.49,
+          "financing_cost_daily": 191.44,
           "book_nav": 531445.85
         },
         "short_book": {
@@ -473,38 +473,38 @@
           "rebate_daily": 0.0,
           "book_nav": 0.0
         },
-        "unallocated_cash": -0.0,
+        "unallocated_cash": 0.0,
         "dual_nav": 531445.85,
         "nav_alignment_check": 0.0,
-        "gross": 4830950.71,
-        "net": 3039582.37,
-        "gross_leverage": 9.09,
-        "net_leverage": 5.719
+        "gross": 2824609.51,
+        "net": 1033241.17,
+        "gross_leverage": 5.315,
+        "net_leverage": 1.944
       },
       "T_1W": {
         "as_of": "2026-05-28",
         "free_cash": 0.0,
         "restricted_cash": 785506.0,
         "cash": 0.0,
-        "long_securities": 3858024.23,
-        "total_assets": 4643530.23,
+        "long_securities": 1497653.09,
+        "total_assets": 2283159.09,
         "short_securities": 770103.92,
         "short_collateral_due": 15402.08,
-        "margin_loan": 3452358.87,
-        "accrued_financing": 472.93,
+        "margin_loan": 1091987.73,
+        "accrued_financing": 149.59,
         "accrued_borrow_fee": 0.0,
-        "accrued_costs": 472.93,
-        "total_liabilities": 4222462.79,
+        "accrued_costs": 149.59,
+        "total_liabilities": 1862091.65,
         "nav": 421067.44,
-        "balance_check": -0.0,
-        "pm_requirement": 925625.63,
-        "excess_liquidity": -504558.19,
+        "balance_check": 0.0,
+        "pm_requirement": 453551.4,
+        "excess_liquidity": -32483.96,
         "long_book": {
           "allocated_capital": 421067.44,
           "cash": 0.0,
-          "market_value": 3858024.23,
-          "margin_loan": 3436956.79,
-          "financing_cost_daily": 470.82,
+          "market_value": 1497653.09,
+          "margin_loan": 1076585.65,
+          "financing_cost_daily": 147.48,
           "book_nav": 421067.44
         },
         "short_book": {
@@ -521,10 +521,10 @@
         "unallocated_cash": 0.0,
         "dual_nav": 421067.44,
         "nav_alignment_check": 0.0,
-        "gross": 4628128.15,
-        "net": 3087920.31,
-        "gross_leverage": 10.991,
-        "net_leverage": 7.334
+        "gross": 2267757.01,
+        "net": 727549.17,
+        "gross_leverage": 5.386,
+        "net_leverage": 1.728
       },
       "T_1M": {
         "as_of": "2026-05-06",
@@ -595,22 +595,22 @@
     "combined": {
       "1D": {
         "net_income": 3311.62,
-        "interest_expense_est": 393.29,
+        "interest_expense_est": 106.9,
         "note": "net_income authoritative (strategy_performance); interest estimated on each scope's own margin"
       },
       "1W": {
         "net_income": 120469.3,
-        "interest_expense_est": 1966.44,
+        "interest_expense_est": 534.51,
         "note": "net_income authoritative (strategy_performance); interest estimated on each scope's own margin"
       },
       "1M": {
         "net_income": 79396.93,
-        "interest_expense_est": 8259.04,
+        "interest_expense_est": 2244.96,
         "note": "net_income authoritative (strategy_performance); interest estimated on each scope's own margin"
       },
       "ITD": {
         "net_income": 190370.88,
-        "interest_expense_est": 58206.58,
+        "interest_expense_est": 15821.63,
         "note": "net_income authoritative (strategy_performance); interest estimated on each scope's own margin"
       }
     },
@@ -639,29 +639,29 @@
     "mtfs": {
       "1D": {
         "net_income": 5728.59,
-        "interest_expense_est": 458.51,
+        "interest_expense_est": 172.13,
         "note": "net_income authoritative (strategy_performance); interest estimated on each scope's own margin"
       },
       "1W": {
         "net_income": 116107.0,
-        "interest_expense_est": 2292.56,
+        "interest_expense_est": 860.64,
         "note": "net_income authoritative (strategy_performance); interest estimated on each scope's own margin"
       },
       "1M": {
         "net_income": 112732.65,
-        "interest_expense_est": 9628.77,
+        "interest_expense_est": 3614.69,
         "note": "net_income authoritative (strategy_performance); interest estimated on each scope's own margin"
       },
       "ITD": {
         "net_income": 125007.59,
-        "interest_expense_est": 67859.92,
+        "interest_expense_est": 25474.97,
         "note": "net_income authoritative (strategy_performance); interest estimated on each scope's own margin"
       }
     },
     "_current_unrealized": {
-      "combined": 2233436.73,
+      "combined": 142827.63,
       "mrpt": 10977.58,
-      "mtfs": 2222459.15
+      "mtfs": 131850.05
     }
   },
   "capital_statement": {
@@ -783,12 +783,12 @@
   "cash_flow": {
     "1W": {
       "operating_cash_flow": 120469.3,
-      "investing_cash_flow": -45903.92,
-      "financing_cash_flow": -103076.96,
+      "investing_cash_flow": -315665.96,
+      "financing_cash_flow": 166685.08,
       "net_change_in_cash": -28511.58,
       "beginning_cash": 0.0,
       "ending_cash": 0.0,
-      "interest_expense_memo": 1966.44,
+      "interest_expense_memo": 534.51,
       "reconciliation_check": -28511.58,
       "note": "indirect-method; operating=\u0394NAV (interest already in net income, shown as memo)"
     }
@@ -811,14 +811,14 @@
     "mtfs": {
       "exposure": {
         "capital": 537174.44,
-        "long": 3869485.32,
+        "long": 1778876.22,
         "short": 741693.31,
-        "gross": 4611178.63,
-        "net": 3127792.01,
-        "gross_leverage": 8.584,
-        "net_leverage": 5.823,
-        "deployed_pct": 858.41,
-        "margin_utilization_pct": 429.21,
+        "gross": 2520569.53,
+        "net": 1037182.91,
+        "gross_leverage": 4.692,
+        "net_leverage": 1.931,
+        "deployed_pct": 469.23,
+        "margin_utilization_pct": 234.61,
         "n_open_pairs": 14
       }
     }
@@ -826,32 +826,24 @@
   "combined": {
     "exposure": {
       "capital": 1111869.67,
-      "long": 3966284.68,
+      "long": 1875675.58,
       "short": 829265.47,
-      "gross": 4795550.15,
-      "net": 3137019.21,
-      "gross_leverage": 4.313,
-      "net_leverage": 2.821,
-      "deployed_pct": 431.31,
-      "margin_utilization_pct": 215.65,
+      "gross": 2704941.05,
+      "net": 1046410.11,
+      "gross_leverage": 2.433,
+      "net_leverage": 0.941,
+      "deployed_pct": 243.28,
+      "margin_utilization_pct": 121.64,
       "n_open_pairs": 15
     },
     "concentration": {
       "single_name_top": [
         {
-          "ticker": "KLAC",
-          "gross": 2322899.0,
-          "net": 2322899.0,
-          "gross_pct_capital": 208.92,
-          "pct_of_gross": 48.44,
-          "n_pairs": 2
-        },
-        {
           "ticker": "BWA",
           "gross": 363427.54,
           "net": 363427.54,
           "gross_pct_capital": 32.69,
-          "pct_of_gross": 7.58,
+          "pct_of_gross": 13.44,
           "n_pairs": 2
         },
         {
@@ -859,7 +851,7 @@
           "gross": 289985.42,
           "net": 289985.42,
           "gross_pct_capital": 26.08,
-          "pct_of_gross": 6.05,
+          "pct_of_gross": 10.72,
           "n_pairs": 2
         },
         {
@@ -867,7 +859,7 @@
           "gross": 277957.4,
           "net": 277957.4,
           "gross_pct_capital": 25.0,
-          "pct_of_gross": 5.8,
+          "pct_of_gross": 10.28,
           "n_pairs": 2
         },
         {
@@ -875,7 +867,15 @@
           "gross": 237120.0,
           "net": 237120.0,
           "gross_pct_capital": 21.33,
-          "pct_of_gross": 4.94,
+          "pct_of_gross": 8.77,
+          "n_pairs": 2
+        },
+        {
+          "ticker": "KLAC",
+          "gross": 232289.9,
+          "net": 232289.9,
+          "gross_pct_capital": 20.89,
+          "pct_of_gross": 8.59,
           "n_pairs": 2
         },
         {
@@ -883,7 +883,7 @@
           "gross": 174089.16,
           "net": 174089.16,
           "gross_pct_capital": 15.66,
-          "pct_of_gross": 3.63,
+          "pct_of_gross": 6.44,
           "n_pairs": 1
         },
         {
@@ -891,7 +891,7 @@
           "gross": 172580.24,
           "net": 172580.24,
           "gross_pct_capital": 15.52,
-          "pct_of_gross": 3.6,
+          "pct_of_gross": 6.38,
           "n_pairs": 2
         },
         {
@@ -899,7 +899,7 @@
           "gross": 137787.24,
           "net": -137787.24,
           "gross_pct_capital": 12.39,
-          "pct_of_gross": 2.87,
+          "pct_of_gross": 5.09,
           "n_pairs": 2
         },
         {
@@ -907,7 +907,7 @@
           "gross": 96799.36,
           "net": 96799.36,
           "gross_pct_capital": 8.71,
-          "pct_of_gross": 2.02,
+          "pct_of_gross": 3.58,
           "n_pairs": 1
         },
         {
@@ -915,63 +915,63 @@
           "gross": 87572.16,
           "net": -87572.16,
           "gross_pct_capital": 7.88,
-          "pct_of_gross": 1.83,
+          "pct_of_gross": 3.24,
           "n_pairs": 1
         }
       ],
-      "hhi": 0.1524,
-      "effective_n_pairs": 6.6,
-      "max_pair_pct": 30.08,
+      "hhi": 0.0723,
+      "effective_n_pairs": 13.8,
+      "max_pair_pct": 9.73,
       "sector": {
         "health": {
           "long": 96799.36,
           "short": 468166.2,
           "net": -371366.84,
-          "net_pct_of_gross": -7.74
+          "net_pct_of_gross": -13.73
         },
         "industrial": {
           "long": 394854.1,
           "short": 52426.34,
           "net": 342427.76,
-          "net_pct_of_gross": 7.14
+          "net_pct_of_gross": 12.66
         },
         "finance": {
           "long": 0.0,
           "short": 101275.31,
           "net": -101275.31,
-          "net_pct_of_gross": -2.11
+          "net_pct_of_gross": -3.74
         },
         "tech": {
-          "long": 3024093.58,
+          "long": 933484.48,
           "short": 75664.0,
-          "net": 2948429.58,
-          "net_pct_of_gross": 61.48
+          "net": 857820.48,
+          "net_pct_of_gross": 31.71
         },
         "food": {
           "long": 0.0,
           "short": 131733.62,
           "net": -131733.62,
-          "net_pct_of_gross": -2.75
+          "net_pct_of_gross": -4.87
         },
         "materials": {
           "long": 450537.64,
           "short": 0.0,
           "net": 450537.64,
-          "net_pct_of_gross": 9.39
+          "net_pct_of_gross": 16.66
         }
       }
     },
     "factor": {
-      "net_market_beta": 5.661,
-      "gross_beta": 6.375,
-      "momentum_factor_net_pct": 281.31,
+      "net_market_beta": 1.714,
+      "gross_beta": 2.428,
+      "momentum_factor_net_pct": 93.28,
       "sector_net_vector": {
-        "health": -7.74,
-        "industrial": 7.14,
-        "finance": -2.11,
-        "tech": 61.48,
-        "food": -2.75,
-        "materials": 9.39
+        "health": -13.73,
+        "industrial": 12.66,
+        "finance": -3.74,
+        "tech": 31.71,
+        "food": -4.87,
+        "materials": 16.66
       },
       "beta_data_insufficient": [
         "BWA",
@@ -980,91 +980,91 @@
     },
     "var": {
       "method_param": {
-        "var_95_1d": 110097.87,
-        "var_99_1d": 155676.39,
-        "vol_daily": 66928.8,
-        "vol_annual": 1062461.74,
-        "vol_annual_pct_of_capital": 95.56
+        "var_95_1d": 35872.22,
+        "var_99_1d": 50722.67,
+        "vol_daily": 21806.82,
+        "vol_annual": 346172.59,
+        "vol_annual_pct_of_capital": 31.13
       },
       "method_hist": {
-        "var_95_1d": 82515.45,
-        "cvar_95_1d": 98940.97
+        "var_95_1d": 25083.94,
+        "cvar_95_1d": 27338.16
       },
       "component_var": [
         {
-          "pair": "KLAC/REGN",
-          "component_var_95": 53786.48,
-          "pct_of_total": 48.85
-        },
-        {
-          "pair": "KLAC/LOW",
-          "component_var_95": 33071.53,
-          "pct_of_total": 30.04
-        },
-        {
           "pair": "LRCX/BSX",
-          "component_var_95": 5705.57,
-          "pct_of_total": 5.18
+          "component_var_95": 5934.86,
+          "pct_of_total": 16.54
         },
         {
           "pair": "LRCX/RMD",
-          "component_var_95": 4908.09,
-          "pct_of_total": 4.46
+          "component_var_95": 4849.71,
+          "pct_of_total": 13.52
+        },
+        {
+          "pair": "KLAC/REGN",
+          "component_var_95": 4030.45,
+          "pct_of_total": 11.24
         },
         {
           "pair": "STLD/HII",
-          "component_var_95": 1960.48,
-          "pct_of_total": 1.78
+          "component_var_95": 3174.89,
+          "pct_of_total": 8.85
         },
         {
           "pair": "STLD/ISRG",
-          "component_var_95": 1867.13,
-          "pct_of_total": 1.7
+          "component_var_95": 2779.91,
+          "pct_of_total": 7.75
         },
         {
-          "pair": "BWA/CME",
-          "component_var_95": 1533.1,
-          "pct_of_total": 1.39
-        },
-        {
-          "pair": "NUE/INTU",
-          "component_var_95": 1509.28,
-          "pct_of_total": 1.37
+          "pair": "KLAC/LOW",
+          "component_var_95": 2093.34,
+          "pct_of_total": 5.84
         },
         {
           "pair": "NUE/MKTX",
-          "component_var_95": 1468.6,
-          "pct_of_total": 1.33
+          "component_var_95": 1945.06,
+          "pct_of_total": 5.42
         },
         {
           "pair": "CSCO/CAG",
-          "component_var_95": 1266.66,
-          "pct_of_total": 1.15
+          "component_var_95": 1889.21,
+          "pct_of_total": 5.27
+        },
+        {
+          "pair": "NUE/INTU",
+          "component_var_95": 1725.48,
+          "pct_of_total": 4.81
+        },
+        {
+          "pair": "BWA/CME",
+          "component_var_95": 1692.57,
+          "pct_of_total": 4.72
         },
         {
           "pair": "FFIV/VLTO",
-          "component_var_95": 1034.59,
-          "pct_of_total": 0.94
+          "component_var_95": 1629.86,
+          "pct_of_total": 4.54
         },
         {
           "pair": "CI/MTD",
-          "component_var_95": 656.51,
-          "pct_of_total": 0.6
-        },
-        {
-          "pair": "BWA/VLTO",
-          "component_var_95": 465.94,
-          "pct_of_total": 0.42
-        },
-        {
-          "pair": "ODFL/JKHY",
-          "component_var_95": 436.83,
-          "pct_of_total": 0.4
+          "component_var_95": 1590.19,
+          "pct_of_total": 4.43
         },
         {
           "pair": "CSCO/REGN",
-          "component_var_95": 427.07,
-          "pct_of_total": 0.39
+          "component_var_95": 1289.97,
+          "pct_of_total": 3.6
+        },
+        {
+          "pair": "BWA/VLTO",
+          "component_var_95": 763.01,
+          "pct_of_total": 2.13
+        },
+        {
+          "pair": "ODFL/JKHY",
+          "component_var_95": 483.7,
+          "pct_of_total": 1.35
         }
       ]
     },
@@ -1102,7 +1102,7 @@
           "ticker": "KLAC",
           "pair": "KLAC/REGN",
           "shares": 670,
-          "adv20": 989366.0,
+          "adv20": 9893663.0,
           "days_to_liquidate": 0.0
         },
         {
@@ -1116,7 +1116,7 @@
           "ticker": "KLAC",
           "pair": "KLAC/LOW",
           "shares": 420,
-          "adv20": 989366.0,
+          "adv20": 9893663.0,
           "days_to_liquidate": 0.0
         },
         {
@@ -1181,23 +1181,23 @@
     "stress": [
       {
         "scenario": "SPY -5%",
-        "est_pnl": -314714.71,
-        "est_pnl_pct_of_capital": -28.31
+        "est_pnl": -95287.23,
+        "est_pnl_pct_of_capital": -8.57
       },
       {
         "scenario": "SPY -10%",
-        "est_pnl": -629429.42,
-        "est_pnl_pct_of_capital": -56.61
+        "est_pnl": -190574.46,
+        "est_pnl_pct_of_capital": -17.14
       },
       {
         "scenario": "VIX +10pt",
-        "est_pnl": -314714.71,
-        "est_pnl_pct_of_capital": -28.31
+        "est_pnl": -95287.23,
+        "est_pnl_pct_of_capital": -8.57
       },
       {
         "scenario": "Top sector -10%",
-        "est_pnl": -294842.96,
-        "est_pnl_pct_of_capital": -26.52
+        "est_pnl": -85782.05,
+        "est_pnl_pct_of_capital": -7.72
       }
     ]
   },
@@ -1223,7 +1223,7 @@
     {
       "name": "gross_leverage",
       "scope": "mtfs",
-      "value": 8.58,
+      "value": 4.69,
       "amber": 3.0,
       "red": 4.0,
       "fmt": "x",
@@ -1232,19 +1232,10 @@
     {
       "name": "net_leverage_abs",
       "scope": "mtfs",
-      "value": 5.82,
+      "value": 1.93,
       "amber": 0.5,
       "red": 1.0,
       "fmt": "x",
-      "status": "red"
-    },
-    {
-      "name": "single_name_gross",
-      "scope": "KLAC",
-      "value": 208.92,
-      "amber": 15.0,
-      "red": 25.0,
-      "fmt": "%",
       "status": "red"
     },
     {
@@ -1266,27 +1257,36 @@
       "status": "red"
     },
     {
-      "name": "sector_net",
-      "scope": "tech",
-      "value": 61.48,
-      "amber": 30.0,
-      "red": 50.0,
+      "name": "single_name_gross",
+      "scope": "STLD",
+      "value": 25.0,
+      "amber": 15.0,
+      "red": 25.0,
       "fmt": "%",
       "status": "red"
     },
     {
-      "name": "max_pair",
-      "scope": "combined",
-      "value": 30.08,
-      "amber": 20.0,
-      "red": 35.0,
+      "name": "sector_net",
+      "scope": "tech",
+      "value": 31.71,
+      "amber": 30.0,
+      "red": 50.0,
       "fmt": "%",
       "status": "amber"
     },
     {
+      "name": "max_pair",
+      "scope": "combined",
+      "value": 9.73,
+      "amber": 20.0,
+      "red": 35.0,
+      "fmt": "%",
+      "status": "green"
+    },
+    {
       "name": "net_market_beta",
       "scope": "combined",
-      "value": 5.66,
+      "value": 1.71,
       "amber": 0.3,
       "red": 0.5,
       "fmt": "b",
@@ -1295,11 +1295,11 @@
     {
       "name": "var_95_1d",
       "scope": "combined",
-      "value": 9.9,
+      "value": 3.23,
       "amber": 3.0,
       "red": 5.0,
       "fmt": "%",
-      "status": "red"
+      "status": "amber"
     },
     {
       "name": "open_pairs",
@@ -1354,64 +1354,64 @@
       ],
       "pairs": [
         {
-          "pair": "KLAC/REGN",
-          "risk_contribution_pct": 48.85
-        },
-        {
-          "pair": "KLAC/LOW",
-          "risk_contribution_pct": 30.04
-        },
-        {
           "pair": "LRCX/BSX",
-          "risk_contribution_pct": 5.18
+          "risk_contribution_pct": 16.54
         },
         {
           "pair": "LRCX/RMD",
-          "risk_contribution_pct": 4.46
+          "risk_contribution_pct": 13.52
+        },
+        {
+          "pair": "KLAC/REGN",
+          "risk_contribution_pct": 11.24
         },
         {
           "pair": "STLD/HII",
-          "risk_contribution_pct": 1.78
+          "risk_contribution_pct": 8.85
         },
         {
           "pair": "STLD/ISRG",
-          "risk_contribution_pct": 1.7
+          "risk_contribution_pct": 7.75
         },
         {
-          "pair": "BWA/CME",
-          "risk_contribution_pct": 1.39
-        },
-        {
-          "pair": "NUE/INTU",
-          "risk_contribution_pct": 1.37
+          "pair": "KLAC/LOW",
+          "risk_contribution_pct": 5.84
         },
         {
           "pair": "NUE/MKTX",
-          "risk_contribution_pct": 1.33
+          "risk_contribution_pct": 5.42
         },
         {
           "pair": "CSCO/CAG",
-          "risk_contribution_pct": 1.15
+          "risk_contribution_pct": 5.27
+        },
+        {
+          "pair": "NUE/INTU",
+          "risk_contribution_pct": 4.81
+        },
+        {
+          "pair": "BWA/CME",
+          "risk_contribution_pct": 4.72
         },
         {
           "pair": "FFIV/VLTO",
-          "risk_contribution_pct": 0.94
+          "risk_contribution_pct": 4.54
         },
         {
           "pair": "CI/MTD",
-          "risk_contribution_pct": 0.6
-        },
-        {
-          "pair": "BWA/VLTO",
-          "risk_contribution_pct": 0.42
-        },
-        {
-          "pair": "ODFL/JKHY",
-          "risk_contribution_pct": 0.4
+          "risk_contribution_pct": 4.43
         },
         {
           "pair": "CSCO/REGN",
-          "risk_contribution_pct": 0.39
+          "risk_contribution_pct": 3.6
+        },
+        {
+          "pair": "BWA/VLTO",
+          "risk_contribution_pct": 2.13
+        },
+        {
+          "pair": "ODFL/JKHY",
+          "risk_contribution_pct": 1.35
         }
       ],
       "ref": "Maillard, Roncalli & Teiletche (2010), J. Portfolio Mgmt"
@@ -1621,7 +1621,7 @@
         "combined": {
           "kelly_full": 9.22,
           "kelly_half": 4.61,
-          "actual_gross_leverage": 4.313,
+          "actual_gross_leverage": 2.433,
           "over_half_kelly": false,
           "note": "i.i.d./known-moments assumption; half-Kelly prudent; short-sample"
         },
@@ -1635,7 +1635,7 @@
         "mtfs": {
           "kelly_full": 3.23,
           "kelly_half": 1.62,
-          "actual_gross_leverage": 8.584,
+          "actual_gross_leverage": 4.692,
           "over_half_kelly": true,
           "note": "i.i.d./known-moments assumption; half-Kelly prudent; short-sample"
         }

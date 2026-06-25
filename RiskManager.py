@@ -236,11 +236,44 @@ class _DataLayer:
         # while adjust_position_view scales the snapshot shares). Heal empirically by
         # the actual cliff location (not exec_date — they differ here). Idempotent.
         try:
-            from CorporateActions import heal_split_cliff
+            from CorporateActions import heal_split_cliff, _load_splits_cache
+            _healed_set = set()
             for _t in list(self._adj_close.columns):
                 healed, _n = heal_split_cliff(self._adj_close[_t], _t)
                 if _n:
                     self._adj_close[_t] = healed
+                    _healed_set.add(_t)
+            # Retroactive split adjustment for PriceDataStore weekly cache:
+            # When signal_date < split execution_date, the entire price series
+            # is in pre-split units (no cliff to heal). But adjust_position_view
+            # has already converted positions to post-split.  Detect & fix by
+            # checking if all prices are pre-split (no post-split data at all).
+            # _healed_set tracks tickers already fixed by heal_split_cliff above
+            _all_splits = _load_splits_cache().get('results', [])
+            _today_str = str(pd.Timestamp.now().date())
+            for sp in _all_splits:
+                _tk = sp.get('ticker', '')
+                _ed = sp.get('execution_date', '')
+                if not _ed or _ed > _today_str or _tk not in self._adj_close.columns:
+                    continue
+                _factor = float(sp['split_to']) / float(sp['split_from'])
+                if abs(_factor - 1.0) < 0.05:
+                    continue
+                _s = self._adj_close[_tk].dropna()
+                if len(_s) == 0:
+                    continue
+                # Only apply if the ENTIRE series ends before exec_date AND
+                # heal_split_cliff did NOT already fix this ticker (which would
+                # mean there WAS a cliff → partial adjustment already done).
+                _pre = _s[_s.index < pd.Timestamp(_ed)]
+                _post = _s[_s.index >= pd.Timestamp(_ed)]
+                if len(_pre) > 0 and len(_post) == 0 and _tk not in _healed_set:
+                    self._adj_close[_tk] = self._adj_close[_tk] / _factor
+                    if _tk in self._volume.columns:
+                        self._volume[_tk] = self._volume[_tk] * _factor
+                    log.warning(f"[RISK] retroactive split adjustment: {_tk} "
+                                f"all prices ÷{_factor} (series ends before "
+                                f"exec {_ed}, signal_date={self.signal_date})")
         except Exception as _e:
             log.warning(f"[RISK] split-cliff heal skipped (non-fatal): {_e}")
         self._returns = self._adj_close.pct_change(fill_method=None).dropna(how='all')

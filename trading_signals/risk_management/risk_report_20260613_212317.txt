@@ -1,6 +1,6 @@
 ==============================================================================
   SOMEO PARK — 组合风险管理报告 (RISK MANAGEMENT REPORT)
-  Signal date: 2026-06-12   Generated: 2026-06-24T18:51:19
+  Signal date: 2026-06-12   Generated: 2026-06-25T01:49:52
   Scope: MRPT + MTFS pairs book   |   model-based, broker-reconciled
 ==============================================================================
 

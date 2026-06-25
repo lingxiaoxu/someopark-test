@@ -1,7 +1,7 @@
 {
   "report_type": "risk",
   "signal_date": "2026-06-23",
-  "generated_at": "2026-06-24T21:39:42",
+  "generated_at": "2026-06-25T01:51:03",
   "total_capital": 1000000.0,
   "scope": "MRPT + MTFS pairs book (model-based, broker-reconciled)",
   "summary": {
@@ -1050,14 +1050,14 @@
           "ticker": "YUM",
           "pair": "HAS/YUM",
           "shares": 1087,
-          "adv20": 2304436.0,
+          "adv20": 2304435.0,
           "days_to_liquidate": 0.0
         },
         {
           "ticker": "CAT",
           "pair": "CAT/TYL",
           "shares": 56,
-          "adv20": 3205792.0,
+          "adv20": 3196982.0,
           "days_to_liquidate": 0.0
         },
         {
@@ -1085,7 +1085,7 @@
           "ticker": "IRM",
           "pair": "IRM/EFX",
           "shares": 874,
-          "adv20": 1505640.0,
+          "adv20": 1435760.0,
           "days_to_liquidate": 0.0
         },
         {
@@ -1099,7 +1099,7 @@
           "ticker": "AMAT",
           "pair": "AMAT/LULU",
           "shares": 177,
-          "adv20": 9346875.0,
+          "adv20": 9346880.0,
           "days_to_liquidate": 0.0
         },
         {
@@ -1113,7 +1113,7 @@
           "ticker": "TER",
           "pair": "TER/ISRG",
           "shares": 187,
-          "adv20": 4719808.0,
+          "adv20": 4719809.0,
           "days_to_liquidate": 0.0
         },
         {
@@ -1127,7 +1127,7 @@
           "ticker": "AMAT",
           "pair": "AMAT/CSGP",
           "shares": 177,
-          "adv20": 9346875.0,
+          "adv20": 9346880.0,
           "days_to_liquidate": 0.0
         },
         {

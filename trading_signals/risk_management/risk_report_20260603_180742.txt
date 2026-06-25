@@ -1,36 +1,36 @@
 ==============================================================================
   SOMEO PARK — 组合风险管理报告 (RISK MANAGEMENT REPORT)
-  Signal date: 2026-06-03   Generated: 2026-06-25T01:35:11
+  Signal date: 2026-06-03   Generated: 2026-06-25T01:48:35
   Scope: MRPT + MTFS pairs book   |   model-based, broker-reconciled
 ==============================================================================
 
 ── RISK SUMMARY ──────────────────────────────────────────────────────────
   NAV:                $1,108,558
-  Gross leverage:     4.616x      Net leverage: 2.84x
-  Net market beta:    5.762        (target ≈ 0, market-neutral)
-  VaR 95% 1d:         $111,662 (10.07% of NAV)
-  Annual vol:         97.2% of NAV
+  Gross leverage:     2.735x      Net leverage: 0.959x
+  Net market beta:    1.833        (target ≈ 0, market-neutral)
+  VaR 95% 1d:         $38,394 (3.46% of NAV)
+  Annual vol:         33.42% of NAV
   Sharpe (annual):    1.888    PSR(>0): 0.9591
   CDaR 95%:           8.61%
-  Kelly: full=9.06x  half=4.53x  actual=4.616x
-  Max single-name:    KLAC (208.95% of NAV)
-  Open pairs:         18      Limit breaches: 10  (worst: gross_leverage:mtfs red)
+  Kelly: full=9.06x  half=4.53x  actual=2.735x
+  Max single-name:    BWA (32.58% of NAV)
+  Open pairs:         18      Limit breaches: 9  (worst: gross_leverage:mtfs red)
 
 ── BALANCE SHEET METHOD (资产负债表法, combined, T) ──────────────────────
   Free cash:          $0
   Restricted cash:    $1,004,176  (PB short collateral 102%)
-  Long securities:    $4,132,433
-  Total assets:       $5,136,609
+  Long securities:    $2,047,700
+  Total assets:       $3,051,876
   Short securities:   $984,486  (repurchase obligation)
   Short collat. 2%:   $19,690  (equity-posted, locked in restricted cash — not a liability)
-  Margin loan:        $3,043,565  (PB financing for longs)
-  Total liabilities:  $4,028,051
-  NAV (equity):       $1,108,558    (balance check: -0.0)
-  PM requirement:     $1,023,384  (20% of gross)
-  Excess liquidity:   $85,174  OK
+  Margin loan:        $958,832  (PB financing for longs)
+  Total liabilities:  $1,943,318
+  NAV (equity):       $1,108,558    (balance check: 0.0)
+  PM requirement:     $606,437  (20% of gross)
+  Excess liquidity:   $502,121  OK
 
 ── LONG/SHORT BOOK (双账户法, combined, T) ──────────────────────────────
-  Long Book:  capital=$1,108,558  MV=$4,132,433  margin=$3,023,875  NAV=$1,108,558
+  Long Book:  capital=$1,108,558  MV=$2,047,700  margin=$939,142  NAV=$1,108,558
   Short Book: capital=$0  MV=$984,486  collateral=$0  NAV=$0
   Unallocated cash:   $0
   Dual-view NAV:      $1,108,558  (alignment check: 0.0)
@@ -38,15 +38,15 @@
 ── LIMIT MONITOR ─────────────────────────────────────────────────────────
      gross_leverage       mrpt       = 0.31 (amber 3.0, red 4.0) [green]
      net_leverage_abs     mrpt       = 0.02 (amber 0.5, red 1.0) [green]
-  🔴 gross_leverage       mtfs       = 9.29 (amber 3.0, red 4.0) [red]
-  🔴 net_leverage_abs     mtfs       = 5.9 (amber 0.5, red 1.0) [red]
-  🔴 single_name_gross    KLAC       = 208.95 (amber 15.0, red 25.0) [red]
+  🔴 gross_leverage       mtfs       = 5.37 (amber 3.0, red 4.0) [red]
+  🔴 net_leverage_abs     mtfs       = 1.98 (amber 0.5, red 1.0) [red]
   🔴 single_name_gross    BWA        = 32.58 (amber 15.0, red 25.0) [red]
   🔴 single_name_gross    LRCX       = 26.73 (amber 15.0, red 25.0) [red]
-  🔴 sector_net           tech       = 58.85 (amber 30.0, red 50.0) [red]
-  ⚠  max_pair             combined   = 28.1 (amber 20.0, red 35.0) [amber]
-  🔴 net_market_beta      combined   = 5.76 (amber 0.3, red 0.5) [red]
-  🔴 var_95_1d            combined   = 10.07 (amber 3.0, red 5.0) [red]
+  ⚠  single_name_gross    STLD       = 24.92 (amber 15.0, red 25.0) [amber]
+  ⚠  sector_net           tech       = 30.56 (amber 30.0, red 50.0) [amber]
+     max_pair             combined   = 8.64 (amber 20.0, red 35.0) [green]
+  🔴 net_market_beta      combined   = 1.83 (amber 0.3, red 0.5) [red]
+  ⚠  var_95_1d            combined   = 3.46 (amber 3.0, red 5.0) [amber]
      open_pairs           mrpt       = 1 (amber 8, red None) [green]
   ⚠  open_pairs           mtfs       = 17 (amber 8, red None) [amber]
 
