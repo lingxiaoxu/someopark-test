@@ -578,23 +578,6 @@
         "note": "Holding long, signal=0.799, exit at 0.336"
       },
       {
-        "pair": "NUE/INTU",
-        "action": "CLOSE_STOP",
-        "direction": "long",
-        "open_date": "2026-06-01",
-        "days_held": 0,
-        "param_set": "conservative",
-        "z_score": null,
-        "momentum_spread": 1.2,
-        "entry_threshold": null,
-        "exit_threshold": null,
-        "s1": {},
-        "s2": {},
-        "unrealized_pnl": 7564.91,
-        "unrealized_pnl_pct": 7.37,
-        "note": "Injected position closed in simulation on 2026-06-11 (Time-based Stop Loss). Simulation stopped — synthetic re-entry suppressed."
-      },
-      {
         "pair": "NUE/MKTX",
         "action": "HOLD",
         "direction": "long",
@@ -682,35 +665,6 @@
         "note": "Profit-taking: trailing stop (peak=$2,464, floor=$493, current=$308, retain=20%)"
       },
       {
-        "pair": "HST/MOS",
-        "action": "HOLD",
-        "direction": "long",
-        "open_date": "2026-06-09",
-        "days_held": 0,
-        "param_set": "long_term_kalman",
-        "z_score": null,
-        "momentum_spread": 0.876,
-        "entry_threshold": 0.3,
-        "exit_threshold": 0.3,
-        "s1": {
-          "symbol": "HST",
-          "shares": 2108,
-          "side": "BUY",
-          "price": 24.81,
-          "est_value": 52299.0
-        },
-        "s2": {
-          "symbol": "MOS",
-          "shares": -2034,
-          "side": "SELL_SHORT",
-          "price": 22.52,
-          "est_value": 45806.0
-        },
-        "unrealized_pnl": -1538.44,
-        "unrealized_pnl_pct": -1.62,
-        "note": "Holding long, signal=0.876, exit at 0.3"
-      },
-      {
         "pair": "KLAC/TRMB",
         "action": "HOLD",
         "direction": "long",
@@ -738,27 +692,10 @@
         "unrealized_pnl": 21227.21,
         "unrealized_pnl_pct": 14.887,
         "note": "Holding long, signal=1.888, exit at 0.347"
-      },
-      {
-        "pair": "UNH/ULTA",
-        "action": "CLOSE_STOP",
-        "direction": "long",
-        "open_date": "2026-06-10",
-        "days_held": 1,
-        "param_set": "short_term_beta_neutral",
-        "z_score": null,
-        "momentum_spread": 0.675,
-        "entry_threshold": null,
-        "exit_threshold": null,
-        "s1": {},
-        "s2": {},
-        "unrealized_pnl": -985.86,
-        "unrealized_pnl_pct": -1.027,
-        "note": "Injected position closed in simulation on 2026-06-11 (Momentum Decay (both stocks reversing)). Simulation stopped — synthetic re-entry suppressed."
       }
     ],
-    "total_open": 5,
-    "total_close": 3
+    "total_open": 4,
+    "total_close": 1
   },
   "portfolio": {
     "total_capital": 1000000.0,

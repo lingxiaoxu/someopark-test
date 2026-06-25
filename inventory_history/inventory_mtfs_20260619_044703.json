@@ -1,0 +1,799 @@
+{
+  "as_of": "2026-06-17",
+  "capital": 500000,
+  "pairs": {
+    "GS/ALLY": {
+      "direction": null
+    },
+    "ESS/EXPD": {
+      "direction": null
+    },
+    "MCHP/D": {
+      "direction": null
+    },
+    "XOM/V": {
+      "direction": null
+    },
+    "ETR/AVB": {
+      "direction": null
+    },
+    "RSG/AFL": {
+      "direction": null
+    },
+    "EVRG/AVB": {
+      "direction": null
+    },
+    "TJX/AVB": {
+      "direction": null
+    },
+    "ALL/BK": {
+      "direction": null
+    },
+    "AWK/AXP": {
+      "direction": null
+    },
+    "L/AVB": {
+      "direction": null
+    },
+    "AIG/AVB": {
+      "direction": null
+    },
+    "MSCI/NDSN": {
+      "direction": null
+    },
+    "D/NSC": {
+      "direction": null
+    },
+    "ACGL/MCD": {
+      "direction": null
+    },
+    "NDSN/MSCI": {
+      "direction": null
+    },
+    "L/AWK": {
+      "direction": null
+    },
+    "AFL/ICE": {
+      "direction": null
+    },
+    "CSCO/ALL": {
+      "direction": null
+    },
+    "BK/ALL": {
+      "direction": null
+    },
+    "AEE/CNP": {
+      "direction": null
+    },
+    "CSX/AIG": {
+      "direction": null
+    },
+    "STT/C": {
+      "direction": null
+    },
+    "WELL/AIG": {
+      "direction": null
+    },
+    "PEP/AIG": {
+      "direction": null
+    },
+    "AME/WMT": {
+      "direction": null
+    },
+    "INCY/AWK": {
+      "direction": null
+    },
+    "MS/AWK": {
+      "direction": null
+    },
+    "CBOE/TYL": {
+      "direction": null
+    },
+    "CSCO/LULU": {
+      "direction": null
+    },
+    "DVA/TRMB": {
+      "direction": null
+    },
+    "SLB/XYL": {
+      "direction": null
+    },
+    "TRGP/ROP": {
+      "direction": null
+    },
+    "SLB/ALLE": {
+      "direction": null
+    },
+    "CSCO/BLDR": {
+      "direction": null
+    },
+    "NVDA/REGN": {
+      "direction": null
+    },
+    "DVA/PNR": {
+      "direction": null
+    },
+    "TRGP/NCLH": {
+      "direction": null
+    },
+    "ODFL/MKTX": {
+      "direction": null
+    },
+    "CBOE/MKTX": {
+      "direction": null
+    },
+    "ODFL/JKHY": {
+      "direction": null
+    },
+    "BWA/MOS": {
+      "direction": null
+    },
+    "AKAM/POOL": {
+      "direction": null
+    },
+    "KLAC/REGN": {
+      "strategy": "mtfs",
+      "param_set": "beta_neutral_long_term",
+      "direction": "long",
+      "s1_shares": 670,
+      "s2_shares": -23,
+      "open_date": "2026-05-27",
+      "open_s1_price": 201.139,
+      "open_s2_price": 634.62,
+      "open_hedge_ratio": 0.05402817066832034,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "peak_unrealized_pnl": 35165.61,
+      "open_signal": {
+        "momentum_spread": 0.755,
+        "entry_threshold": 0.29,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260528_013157.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2025-10-02",
+            "test_start": "2025-10-03",
+            "test_end": "2025-11-10",
+            "oos_sharpe": 1.5044,
+            "oos_pnl": 16564.2
+          },
+          "W2": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2025-11-10",
+            "test_start": "2025-11-11",
+            "test_end": "2025-12-18",
+            "oos_sharpe": 0.0275,
+            "oos_pnl": -116.5
+          },
+          "W3": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2025-12-18",
+            "test_start": "2025-12-19",
+            "test_end": "2026-01-29",
+            "oos_sharpe": 4.1207,
+            "oos_pnl": 137325.23
+          },
+          "W4": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2026-01-29",
+            "test_start": "2026-01-30",
+            "test_end": "2026-03-10",
+            "oos_sharpe": 2.6957,
+            "oos_pnl": 30869.02
+          },
+          "W5": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2026-03-10",
+            "test_start": "2026-03-11",
+            "test_end": "2026-04-17",
+            "oos_sharpe": 0.668,
+            "oos_pnl": 3550.13
+          },
+          "W6": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2026-04-17",
+            "test_start": "2026-04-20",
+            "test_end": "2026-05-27",
+            "oos_sharpe": 8.8454,
+            "oos_pnl": 174846.56
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": [
+        {
+          "date": "2026-05-28",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.657,
+          "exit_threshold": 0.3,
+          "unrealized_pnl": -3341.18,
+          "unrealized_pnl_pct": -2.325,
+          "note": "Holding long, signal=0.657, exit at 0.3"
+        },
+        {
+          "date": "2026-05-29",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.603,
+          "exit_threshold": 0.323,
+          "unrealized_pnl": -5119.44,
+          "unrealized_pnl_pct": -3.556,
+          "note": "Holding long, signal=0.603, exit at 0.323"
+        },
+        {
+          "date": "2026-06-01",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.841,
+          "exit_threshold": 0.324,
+          "unrealized_pnl": -5230.21,
+          "unrealized_pnl_pct": -3.717,
+          "note": "Holding long, signal=0.841, exit at 0.324"
+        },
+        {
+          "date": "2026-06-03",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.639,
+          "exit_threshold": 0.3,
+          "unrealized_pnl": 2880.58,
+          "unrealized_pnl_pct": 2.005,
+          "note": "Holding long, signal=0.639, exit at 0.3"
+        },
+        {
+          "date": "2026-06-04",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.56,
+          "exit_threshold": 0.309,
+          "unrealized_pnl": 7692.38,
+          "unrealized_pnl_pct": 5.343,
+          "note": "Holding long, signal=0.56, exit at 0.309"
+        },
+        {
+          "date": "2026-06-05",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.654,
+          "exit_threshold": 0.3,
+          "unrealized_pnl": 7242.56,
+          "unrealized_pnl_pct": 5.461,
+          "note": "Holding long, signal=0.654, exit at 0.3"
+        },
+        {
+          "date": "2026-06-08",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.595,
+          "exit_threshold": 0.3,
+          "unrealized_pnl": -4917.98,
+          "unrealized_pnl_pct": -3.7,
+          "note": "Holding long, signal=0.595, exit at 0.3"
+        },
+        {
+          "date": "2026-06-09",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.649,
+          "exit_threshold": 0.3,
+          "unrealized_pnl": 6269.02,
+          "unrealized_pnl_pct": 4.695,
+          "note": "Holding long, signal=0.649, exit at 0.3"
+        },
+        {
+          "date": "2026-06-10",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.718,
+          "exit_threshold": 0.302,
+          "unrealized_pnl": 7900.93,
+          "unrealized_pnl_pct": 6.025,
+          "note": "Holding long, signal=0.718, exit at 0.302"
+        },
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.706,
+          "exit_threshold": 0.314,
+          "unrealized_pnl": 8083.92,
+          "unrealized_pnl_pct": 6.081,
+          "note": "Holding long, signal=0.706, exit at 0.314"
+        },
+        {
+          "date": "2026-06-16",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.799,
+          "exit_threshold": 0.336,
+          "unrealized_pnl": 35165.61,
+          "unrealized_pnl_pct": 25.101,
+          "note": "Holding long, signal=0.799, exit at 0.336"
+        },
+        {
+          "date": "2026-06-17",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.704,
+          "exit_threshold": 0.3,
+          "unrealized_pnl": 22926.65,
+          "unrealized_pnl_pct": 16.541,
+          "note": "Holding long, signal=0.704, exit at 0.3"
+        }
+      ],
+      "applied_corporate_actions": [
+        {
+          "ticker": "KLAC",
+          "type": "split",
+          "execution_date": "2026-06-12",
+          "factor": 10.0,
+          "polygon_id": "Edd9dd124187dfa7354bf38a483c440ae435f12dcb2afe0f7def3997ed37e47ac",
+          "applied_at": "2026-06-12T07:53:54Z",
+          "applied_by": "manual_phase0_fix",
+          "before": {
+            "s1_shares": 67,
+            "open_s1_price": 2011.39,
+            "open_hedge_ratio": 0.5402817066832034
+          },
+          "after": {
+            "s1_shares": 670,
+            "open_s1_price": 201.139,
+            "open_hedge_ratio": 0.05402817066832034
+          }
+        }
+      ]
+    },
+    "KLAC/LVS": {
+      "direction": null
+    },
+    "ON/UHS": {
+      "direction": null
+    },
+    "ON/TRMB": {
+      "direction": null
+    },
+    "PANW/IQV": {
+      "direction": null
+    },
+    "KLAC/LOW": {
+      "direction": null
+    },
+    "FFIV/VLTO": {
+      "direction": null
+    },
+    "LRCX/BSX": {
+      "direction": null
+    },
+    "LRCX/RMD": {
+      "direction": null
+    },
+    "ORCL/LOW": {
+      "direction": null
+    },
+    "CSCO/CAG": {
+      "direction": null
+    },
+    "NUE/INTU": {
+      "direction": null
+    },
+    "CSCO/REGN": {
+      "direction": null
+    },
+    "NUE/MKTX": {
+      "direction": null
+    },
+    "STLD/ISRG": {
+      "direction": null
+    },
+    "BWA/VLTO": {
+      "direction": null
+    },
+    "STLD/HII": {
+      "direction": null
+    },
+    "BWA/CME": {
+      "direction": null
+    },
+    "STLD/UHS": {
+      "strategy": "mtfs",
+      "param_set": "no_reversal_protection",
+      "direction": "long",
+      "s1_shares": 386,
+      "s2_shares": -358,
+      "open_date": "2026-06-08",
+      "open_s1_price": 268.5,
+      "open_s2_price": 144.97,
+      "open_hedge_ratio": 1.8521073325515625,
+      "open_price_level_stop": null,
+      "days_held": 1,
+      "peak_unrealized_pnl": 1432.83,
+      "open_signal": {
+        "momentum_spread": 1.148,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260609_030846.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W4": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2026-02-10",
+            "test_start": "2026-02-11",
+            "test_end": "2026-03-20",
+            "oos_sharpe": -4.2821,
+            "oos_pnl": -25474.14
+          },
+          "W5": {
+            "param_set": "no_reversal_protection",
+            "train_end": "2026-03-20",
+            "test_start": "2026-03-23",
+            "test_end": "2026-04-29",
+            "oos_sharpe": 2.9678,
+            "oos_pnl": 18458.22
+          },
+          "W6": {
+            "param_set": "no_reversal_protection",
+            "train_end": "2026-04-29",
+            "test_start": "2026-04-30",
+            "test_end": "2026-06-08",
+            "oos_sharpe": 4.2142,
+            "oos_pnl": 65711.95
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": [
+        {
+          "date": "2026-06-09",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.096,
+          "exit_threshold": 0.371,
+          "unrealized_pnl": 223.5,
+          "unrealized_pnl_pct": 0.161,
+          "note": "Holding long, signal=1.096, exit at 0.371"
+        },
+        {
+          "date": "2026-06-10",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.094,
+          "exit_threshold": 0.473,
+          "unrealized_pnl": -68.62,
+          "unrealized_pnl_pct": -0.05,
+          "note": "Holding long, signal=1.094, exit at 0.473"
+        },
+        {
+          "date": "2026-06-11",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.021,
+          "exit_threshold": 0.5,
+          "unrealized_pnl": -7.17,
+          "unrealized_pnl_pct": -0.005,
+          "note": "Holding long, signal=1.021, exit at 0.5"
+        },
+        {
+          "date": "2026-06-16",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.952,
+          "exit_threshold": 0.47,
+          "unrealized_pnl": 1000.23,
+          "unrealized_pnl_pct": 0.686,
+          "note": "Holding long, signal=0.952, exit at 0.47"
+        },
+        {
+          "date": "2026-06-17",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.899,
+          "exit_threshold": 0.469,
+          "unrealized_pnl": 1432.83,
+          "unrealized_pnl_pct": 0.993,
+          "note": "Holding long, signal=0.899, exit at 0.469"
+        }
+      ],
+      "last_updated": "2026-06-09"
+    },
+    "MPC/ULTA": {
+      "direction": null
+    },
+    "STLD/FMC": {
+      "direction": null
+    },
+    "HST/MOS": {
+      "direction": null
+    },
+    "KLAC/TRMB": {
+      "direction": null
+    },
+    "UNH/ULTA": {
+      "direction": null
+    },
+    "AMAT/TRMB": {
+      "strategy": "mtfs",
+      "param_set": "aggressive",
+      "direction": "long",
+      "s1_shares": 309,
+      "s2_shares": -1466,
+      "open_date": "2026-06-12",
+      "open_s1_price": 552.64,
+      "open_s2_price": 50.0,
+      "open_hedge_ratio": 11.0528,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "peak_unrealized_pnl": 3602.46,
+      "open_signal": {
+        "momentum_spread": 0.944,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260613_031620.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "aggressive",
+            "train_end": "2025-10-20",
+            "test_start": "2025-10-21",
+            "test_end": "2025-11-26",
+            "oos_sharpe": 3.2343,
+            "oos_pnl": 33364.7
+          },
+          "W2": {
+            "param_set": "aggressive",
+            "train_end": "2025-11-26",
+            "test_start": "2025-11-28",
+            "test_end": "2026-01-07",
+            "oos_sharpe": 3.8611,
+            "oos_pnl": 40224.61
+          },
+          "W3": {
+            "param_set": "aggressive",
+            "train_end": "2026-01-07",
+            "test_start": "2026-01-08",
+            "test_end": "2026-02-17",
+            "oos_sharpe": 6.9319,
+            "oos_pnl": 108265.96
+          },
+          "W4": {
+            "param_set": "aggressive",
+            "train_end": "2026-02-17",
+            "test_start": "2026-02-18",
+            "test_end": "2026-03-26",
+            "oos_sharpe": -3.5616,
+            "oos_pnl": -39190.14
+          },
+          "W5": {
+            "param_set": "beta_neutral",
+            "train_end": "2026-03-26",
+            "test_start": "2026-03-27",
+            "test_end": "2026-05-05",
+            "oos_sharpe": -5.7506,
+            "oos_pnl": -58068.68
+          },
+          "W6": {
+            "param_set": "aggressive",
+            "train_end": "2026-05-05",
+            "test_start": "2026-05-06",
+            "test_end": "2026-06-12",
+            "oos_sharpe": 3.7142,
+            "oos_pnl": 71437.74
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": [
+        {
+          "date": "2026-06-15",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 1.01,
+          "exit_threshold": 0.2,
+          "unrealized_pnl": 3602.46,
+          "unrealized_pnl_pct": 1.597,
+          "note": "Holding long, signal=1.01, exit at 0.2"
+        }
+      ]
+    },
+    "LRCX/NRG": {
+      "strategy": "mtfs",
+      "param_set": "let_profits_run",
+      "direction": "long",
+      "s1_shares": 269,
+      "s2_shares": -395,
+      "open_date": "2026-06-12",
+      "open_s1_price": 362.52,
+      "open_s2_price": 123.7,
+      "open_hedge_ratio": 2.930638641875505,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "peak_unrealized_pnl": 420.29,
+      "open_signal": {
+        "momentum_spread": 0.922,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260613_031620.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "let_profits_run",
+            "train_end": "2025-10-20",
+            "test_start": "2025-10-21",
+            "test_end": "2025-11-26",
+            "oos_sharpe": 3.2343,
+            "oos_pnl": 33364.7
+          },
+          "W2": {
+            "param_set": "let_profits_run",
+            "train_end": "2025-11-26",
+            "test_start": "2025-11-28",
+            "test_end": "2026-01-07",
+            "oos_sharpe": 3.8611,
+            "oos_pnl": 40224.61
+          },
+          "W3": {
+            "param_set": "let_profits_run",
+            "train_end": "2026-01-07",
+            "test_start": "2026-01-08",
+            "test_end": "2026-02-17",
+            "oos_sharpe": 6.9319,
+            "oos_pnl": 108265.96
+          },
+          "W4": {
+            "param_set": "let_profits_run",
+            "train_end": "2026-02-17",
+            "test_start": "2026-02-18",
+            "test_end": "2026-03-26",
+            "oos_sharpe": -3.5616,
+            "oos_pnl": -39190.14
+          },
+          "W5": {
+            "param_set": "let_profits_run",
+            "train_end": "2026-03-26",
+            "test_start": "2026-03-27",
+            "test_end": "2026-05-05",
+            "oos_sharpe": -5.7506,
+            "oos_pnl": -58068.68
+          },
+          "W6": {
+            "param_set": "let_profits_run",
+            "train_end": "2026-05-05",
+            "test_start": "2026-05-06",
+            "test_end": "2026-06-12",
+            "oos_sharpe": 3.7142,
+            "oos_pnl": 71437.74
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": [
+        {
+          "date": "2026-06-15",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.977,
+          "exit_threshold": 0.2,
+          "unrealized_pnl": 420.29,
+          "unrealized_pnl_pct": 0.311,
+          "note": "Holding long, signal=0.977, exit at 0.2"
+        }
+      ]
+    },
+    "ODFL/PLTR": {
+      "strategy": "mtfs",
+      "param_set": "weekly_aligned_windows",
+      "direction": "long",
+      "s1_shares": 394,
+      "s2_shares": -372,
+      "open_date": "2026-06-12",
+      "open_s1_price": 247.76,
+      "open_s2_price": 131.08,
+      "open_hedge_ratio": 1.8901434238632893,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "peak_unrealized_pnl": 330.37,
+      "open_signal": {
+        "momentum_spread": 0.546,
+        "entry_threshold": 0.26,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260613_031620.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2025-10-20",
+            "test_start": "2025-10-21",
+            "test_end": "2025-11-26",
+            "oos_sharpe": 3.2343,
+            "oos_pnl": 33364.7
+          },
+          "W2": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2025-11-26",
+            "test_start": "2025-11-28",
+            "test_end": "2026-01-07",
+            "oos_sharpe": 3.8611,
+            "oos_pnl": 40224.61
+          },
+          "W3": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2026-01-07",
+            "test_start": "2026-01-08",
+            "test_end": "2026-02-17",
+            "oos_sharpe": 6.9319,
+            "oos_pnl": 108265.96
+          },
+          "W4": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2026-02-17",
+            "test_start": "2026-02-18",
+            "test_end": "2026-03-26",
+            "oos_sharpe": -3.5616,
+            "oos_pnl": -39190.14
+          },
+          "W5": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2026-03-26",
+            "test_start": "2026-03-27",
+            "test_end": "2026-05-05",
+            "oos_sharpe": -5.7506,
+            "oos_pnl": -58068.68
+          },
+          "W6": {
+            "param_set": "weekly_aligned_windows",
+            "train_end": "2026-05-05",
+            "test_start": "2026-05-06",
+            "test_end": "2026-06-12",
+            "oos_sharpe": 3.7142,
+            "oos_pnl": 71437.74
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": [
+        {
+          "date": "2026-06-15",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.612,
+          "exit_threshold": 0.273,
+          "unrealized_pnl": 330.37,
+          "unrealized_pnl_pct": 0.244,
+          "note": "Holding long, signal=0.612, exit at 0.273"
+        }
+      ]
+    }
+  }
+}

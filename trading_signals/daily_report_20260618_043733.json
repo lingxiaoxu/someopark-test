@@ -624,35 +624,6 @@
         "note": "Holding long, signal=0.899, exit at 0.469"
       },
       {
-        "pair": "HST/MOS",
-        "action": "CLOSE",
-        "direction": "long",
-        "open_date": "2026-06-09",
-        "days_held": 0,
-        "param_set": "long_term_kalman",
-        "z_score": null,
-        "momentum_spread": 0.902,
-        "entry_threshold": 0.3,
-        "exit_threshold": 0.3,
-        "s1": {
-          "symbol": "HST",
-          "shares": 2085,
-          "side": "BUY",
-          "price": 24.9,
-          "est_value": 51916.0
-        },
-        "s2": {
-          "symbol": "MOS",
-          "shares": -2012,
-          "side": "SELL_SHORT",
-          "price": 21.69,
-          "est_value": 43640.0
-        },
-        "unrealized_pnl": 335.51,
-        "unrealized_pnl_pct": 0.357,
-        "note": "Profit-taking: trailing stop (peak=$2,030, floor=$406, current=$336, retain=20%)"
-      },
-      {
         "pair": "KLAC/TRMB",
         "action": "CLOSE",
         "direction": "long",
@@ -683,7 +654,7 @@
       }
     ],
     "total_open": 2,
-    "total_close": 3
+    "total_close": 2
   },
   "portfolio": {
     "total_capital": 1000000.0,
