@@ -174,7 +174,79 @@
       "direction": null
     },
     "BSX/WMB": {
-      "direction": null
+      "strategy": "mrpt",
+      "param_set": "tight_stop",
+      "direction": "short",
+      "s1_shares": -1817,
+      "s2_shares": 1195,
+      "open_date": "2026-06-10",
+      "open_s1_price": 48.96,
+      "open_s2_price": 71.59,
+      "open_hedge_ratio": 0.6577792659278063,
+      "open_price_level_stop": 2.804373528342513,
+      "days_held": 0,
+      "peak_unrealized_pnl": 0.0,
+      "open_signal": {
+        "z_score": 0.889,
+        "entry_threshold": 0.75,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward/walk_forward_summary_20260610_232027.json",
+        "wf_dir": "historical_runs/walk_forward",
+        "windows": {
+          "W1": {
+            "param_set": "conservative",
+            "train_end": "2025-11-03",
+            "test_start": "2025-11-04",
+            "test_end": "2025-12-09",
+            "oos_sharpe": 1.5311,
+            "oos_pnl": 3957.54
+          },
+          "W2": {
+            "param_set": "low_vol_specialist",
+            "train_end": "2025-12-09",
+            "test_start": "2025-12-10",
+            "test_end": "2026-01-15",
+            "oos_sharpe": 3.8053,
+            "oos_pnl": 8483.47
+          },
+          "W3": {
+            "param_set": "low_vol_specialist",
+            "train_end": "2026-01-15",
+            "test_start": "2026-01-16",
+            "test_end": "2026-02-23",
+            "oos_sharpe": 0.2331,
+            "oos_pnl": 566.07
+          },
+          "W4": {
+            "param_set": "quick_exit",
+            "train_end": "2026-02-23",
+            "test_start": "2026-02-24",
+            "test_end": "2026-03-30",
+            "oos_sharpe": -6.8552,
+            "oos_pnl": -12579.92
+          },
+          "W5": {
+            "param_set": "tight_stop",
+            "train_end": "2026-03-30",
+            "test_start": "2026-03-31",
+            "test_end": "2026-05-05",
+            "oos_sharpe": 0.1547,
+            "oos_pnl": 334.91
+          },
+          "W6": {
+            "param_set": "tight_stop",
+            "train_end": "2026-05-05",
+            "test_start": "2026-05-06",
+            "test_end": "2026-06-10",
+            "oos_sharpe": -3.0615,
+            "oos_pnl": -9324.58
+          }
+        },
+        "default_window": "W6"
+      },
+      "monitor_log": []
     }
   }
 }
