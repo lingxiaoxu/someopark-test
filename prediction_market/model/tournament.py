@@ -181,6 +181,89 @@ def eliminated_teams(conn=None, all_team_ids=None, *, knockout_field_size: int =
     return elim
 
 
+# Knockout ladder, shallow → deep. 'advance' = reached the Round of 32 (out of the group);
+# these are the reach-probability fields published in worldcup_model.json / reach_round.json.
+REACH_LADDER = ["advance", "r16", "qf", "sf", "final", "champion"]
+
+
+def _round_entry_level(round_name: str) -> str | None:
+    """The reach-ladder level BOTH participants of a knockout fixture have already SECURED by
+    being drawn into it. Order matters: 'Quarter-finals'/'Semi-finals' both contain 'final',
+    so the specific rounds are matched before the bare Final, and the 3rd-place play-off (not
+    on the title ladder) is excluded."""
+    r = (round_name or "").lower()
+    if "group" in r:
+        return None
+    if "round of 32" in r:
+        return "advance"
+    if "round of 16" in r:
+        return "r16"
+    if "quarter" in r:
+        return "qf"
+    if "semi" in r:
+        return "sf"
+    if "3rd place" in r or "third place" in r:
+        return None          # the bronze-medal match is not part of the champion ladder
+    if "final" in r:
+        return "final"
+    return None
+
+
+def confirmed_reach(conn=None) -> dict[str, str]:
+    """Deepest knockout round each team has CONFIRMED reaching, read from published fixtures.
+
+    Positive-information counterpart to ``eliminated_teams`` (the negative side). Being DRAWN
+    into a knockout fixture is itself confirmation a team qualified that far, so BOTH
+    participants secure that fixture's entry level — even before it kicks off. The by-score (or
+    shootout-winner-flag) WINNER of a SETTLED fixture additionally secures the NEXT level.
+    Returns {team_id: level} with level in ``REACH_LADDER``; the caller pins those reach
+    probabilities to 100%."""
+    import json as _json
+
+    from prediction_market.ingest import store
+
+    conn = conn or store.init_db()
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    rank = {lvl: i for i, lvl in enumerate(REACH_LADDER)}
+    best: dict[str, int] = {}
+
+    def _bump(tid, lvl):
+        if tid is None or lvl is None:
+            return
+        best[tid] = max(best.get(tid, -1), rank[lvl])
+
+    for r in conn.execute(
+        "SELECT home_api_id, away_api_id, home_goals, away_goals, status_short, raw_json, round "
+        "FROM fixture WHERE round IS NOT NULL AND lower(round) NOT LIKE '%group%'"
+    ).fetchall():
+        lvl = _round_entry_level(r["round"])
+        if lvl is None:
+            continue
+        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
+        _bump(hi, lvl)
+        _bump(ai, lvl)
+        # Settled tie → the winner has secured the NEXT level up.
+        nxt_i = rank[lvl] + 1
+        nxt = REACH_LADDER[nxt_i] if nxt_i < len(REACH_LADDER) else None
+        if r["status_short"] in ("FT", "AET", "PEN") and r["home_goals"] is not None and hi and ai:
+            gh, ga = r["home_goals"], r["away_goals"]
+            if gh > ga:
+                _bump(hi, nxt)
+            elif ga > gh:
+                _bump(ai, nxt)
+            else:
+                try:
+                    teams = _json.loads(r["raw_json"] or "{}").get("teams", {})
+                    if teams.get("home", {}).get("winner") is True:
+                        _bump(hi, nxt)
+                    elif teams.get("away", {}).get("winner") is True:
+                        _bump(ai, nxt)
+                except Exception:
+                    pass
+    return {tid: REACH_LADDER[i] for tid, i in best.items()}
+
+
 def _build_adv_matrix(sm: StrengthModel, team_ids: list[str], cfg: ModelConfig) -> np.ndarray:
     """ADV[i, j] = P(team i advances past team j) in a knockout tie."""
     from prediction_market.model.penalties import shootout_win_prob

@@ -139,6 +139,31 @@ def test_eliminated_teams_partial_bracket_does_not_strand_field():
     assert elim == set()            # bracket incomplete → nobody stranded
 
 
+def test_confirmed_reach_published_fixture_and_winner():
+    """Being DRAWN into a knockout fixture confirms BOTH sides reached that round (even
+    unplayed); the settled winner additionally secures the next round up."""
+    import json
+    from prediction_market.model.tournament import confirmed_reach
+    c = _mem_db()
+    for aid, cid in ((1, "south_africa"), (2, "canada"), (3, "brazil"), (4, "ghana")):
+        store.upsert(c, "team_meta", {"api_id": aid, "canonical_team_id": cid,
+                                      "updated_at": store.utcnow()}, pk=["api_id"])
+    # Unplayed R32: both reach 'advance' (R32), neither beyond.
+    store.upsert(c, "fixture", {
+        "api_id": 1561329, "round": "Round of 32", "status_short": "NS",
+        "home_api_id": 1, "away_api_id": 2, "home_goals": None, "away_goals": None,
+        "updated_at": store.utcnow()}, pk=["api_id"])
+    # Settled R16: brazil 2-0 ghana → both reached r16, brazil additionally reached qf.
+    store.upsert(c, "fixture", {
+        "api_id": 2002, "round": "Round of 16", "status_short": "FT",
+        "home_api_id": 3, "away_api_id": 4, "home_goals": 2, "away_goals": 0,
+        "updated_at": store.utcnow()}, pk=["api_id"])
+    cr = confirmed_reach(c)
+    assert cr["south_africa"] == "advance" and cr["canada"] == "advance"
+    assert cr["brazil"] == "qf"      # won its R16 tie → secured the quarter-final
+    assert cr["ghana"] == "r16"      # drawn into (and lost) R16 → reached r16, no further
+
+
 def test_eliminated_teams_penalty_shootout_winner_flag():
     """A KO tie level after extra time (PEN) reads the API-Football winner flag, not score."""
     import json

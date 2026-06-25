@@ -148,6 +148,36 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
         if surviving_mass > 0:
             for r in champion:
                 r["p_champion"] = round(r["p_champion"] / surviving_mass, 5)
+
+    # Confirmed-reach overlay (positive counterpart to the elimination overlay above): a team
+    # DRAWN into a published knockout fixture has secured reaching that round — even before it
+    # kicks off — so pin every reach level up to & including it to 100%, and rescale the
+    # DEEPER-round odds to be conditional on that confirmed progress (divide by the sim's prob
+    # of reaching the confirmed level). This keeps the ladder a coherent monotone chain
+    # (advance ≥ r16 ≥ … ≥ champion) instead of leaving e.g. a confirmed R32 team at the sim's
+    # noisy 0.9 'advance'. No-op during the group stage (no knockout fixtures yet).
+    from prediction_market.model.tournament import REACH_LADDER, confirmed_reach
+    _conf = confirmed_reach(_gb_conn)
+    if _conf:
+        _fld = {"advance": "p_advance_model", "r16": "p_r16", "qf": "p_qf",
+                "sf": "p_sf", "final": "p_final", "champion": "p_champion"}
+        _rank = {lvl: i for i, lvl in enumerate(REACH_LADDER)}
+        for r in champion:
+            lvl = _conf.get(r["team_id"])
+            if lvl is None or r.get("eliminated"):
+                continue
+            li = _rank[lvl]
+            s = r[_fld[REACH_LADDER[li]]]            # sim prob of reaching the confirmed level
+            for k, lv in enumerate(REACH_LADDER):
+                if k <= li:
+                    r[_fld[lv]] = 1.0                # secured this round (and all shallower)
+                elif s > 0:
+                    r[_fld[lv]] = round(min(1.0, r[_fld[lv]] / s), 5)  # conditional on reaching li
+        # Champion mass shifted (confirmed teams rescaled) → renormalise to a proper distribution.
+        tot = sum(r["p_champion"] for r in champion)
+        if tot > 0:
+            for r in champion:
+                r["p_champion"] = round(r["p_champion"] / tot, 5)
     champion.sort(key=lambda r: -r["p_champion"])
 
     _gb_goals_of = {p.player_id: p.goals_so_far for p in _gb_players}
