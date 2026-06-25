@@ -381,8 +381,8 @@ class _DataLayer:
                 try:
                     from CorporateActions import adjust_position_view
                     p = adjust_position_view(p, s1, s2, best_asof)
-                except Exception:
-                    pass  # 模块/缓存不可用时按原值（与历史行为一致）
+                except Exception as _e:
+                    log.warning(f"[RISK] adjust_position_view({pair_key}, {best_asof}) failed: {_e}")
                 out.append({
                     'strategy': strategy, 'pair': pair_key, 's1': s1, 's2': s2,
                     'direction': p.get('direction'),

@@ -1,7 +1,7 @@
 {
   "report_type": "risk",
   "signal_date": "2026-06-08",
-  "generated_at": "2026-06-25T01:17:59",
+  "generated_at": "2026-06-25T01:35:51",
   "total_capital": 1000000.0,
   "scope": "MRPT + MTFS pairs book (model-based, broker-reconciled)",
   "summary": {
