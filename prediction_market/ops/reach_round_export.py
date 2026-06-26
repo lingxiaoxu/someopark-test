@@ -46,25 +46,49 @@ def _load_champion_rows() -> list[dict]:
 
 
 def _group_form(conn) -> dict[str, dict]:
-    """Per-team group-stage goal difference + matches played, derived LIVE from the fixture
-    table (the same data the model runs on, always current — unlike the TTL-cached standing
-    table). Verified equal to API-Football's official goalsDiff/played (0/48 mismatch, 2026-06-26).
-    Returns {canonical_team_id: {"gd": int, "played": int}} — feeds the 净胜球（已完赛场次）column."""
+    """Per-team group-stage goal difference, matches played, and CURRENT in-group rank (1-4),
+    derived LIVE from the fixture table (the same data the model runs on, always current —
+    unlike the TTL-cached standing table, which was 10 days stale on 2026-06-26). GD/played
+    verified equal to API-Football's official goalsDiff/played, and the in-group rank verified
+    equal to the official per-group standings (0/48 mismatch, 2026-06-26). Rank uses the draw's
+    authoritative group composition with the points→GD→GF tie-break. Returns
+    {canonical_team_id: {"gd": int, "played": int, "rank": int}} — feeds the 净胜球（完赛场次/排名）column."""
     if conn is None:
         return {}
     from collections import defaultdict
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    pts: dict = defaultdict(int)
     gd: dict = defaultdict(int)
+    gf: dict = defaultdict(int)
     played: dict = defaultdict(int)
     for r in conn.execute(
         "SELECT home_api_id, away_api_id, home_goals, away_goals FROM fixture "
         "WHERE round LIKE '%roup%' AND status_short IN ('FT','AET','PEN') AND home_goals IS NOT NULL"):
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
-        if hi and ai:
-            gd[hi] += r["home_goals"] - r["away_goals"]; played[hi] += 1
-            gd[ai] += r["away_goals"] - r["home_goals"]; played[ai] += 1
-    return {tid: {"gd": int(gd[tid]), "played": int(played[tid])} for tid in played}
+        if not (hi and ai):
+            continue
+        hg, ag = r["home_goals"], r["away_goals"]
+        played[hi] += 1; played[ai] += 1
+        gf[hi] += hg; gf[ai] += ag
+        gd[hi] += hg - ag; gd[ai] += ag - hg
+        if hg > ag:
+            pts[hi] += 3
+        elif ag > hg:
+            pts[ai] += 3
+        else:
+            pts[hi] += 1; pts[ai] += 1
+    # Current in-group rank (1-4) from the authoritative group draw, ordered points→GD→GF.
+    rank: dict = {}
+    try:
+        from prediction_market.ingest.prior_ingest import load_prior
+        for teams in load_prior().draw().values():
+            for i, t in enumerate(sorted(teams, key=lambda t: (-pts[t], -gd[t], -gf[t])), 1):
+                rank[t] = i
+    except Exception:
+        rank = {}
+    return {tid: {"gd": int(gd[tid]), "played": int(played[tid]), "rank": rank.get(tid)}
+            for tid in played}
 
 
 def build(conn=None) -> dict:
@@ -96,15 +120,17 @@ def build(conn=None) -> dict:
             avail = [x for x in (kc, pc) if x is not None]
             best = min(avail) if avail else None        # cheapest executable buy price
             edge = (p - best / 100.0) if best is not None else None
-            gf = form.get(tid) or {}
+            frm = form.get(tid) or {}
             teams.append({
                 "team_id": tid, "name": row.get("name", tid), "zh": row.get("zh", ""),
                 "model_pct": round(p, 4), "model_c": round(p * 100, 1),
                 "kalshi_c": kc, "poly_c": pc,
                 "edge": (round(edge, 4) if edge is not None else None),
                 "tradable": bool(edge is not None and edge >= theta),
-                # Group-stage net goal difference + matches played (the 净胜球（已完赛场次）column).
-                "group_gd": gf.get("gd"), "group_played": gf.get("played"),
+                # Group net goal difference, matches played, current in-group rank — the
+                # 净胜球（完赛场次/排名）column: "+1（2=1）（#3）" = GD +1, 2 played / 1 to go, 3rd in group.
+                "group_gd": frm.get("gd"), "group_played": frm.get("played"),
+                "group_rank": frm.get("rank"),
             })
         teams.sort(key=lambda t: -t["model_pct"])
         rounds.append({"key": rk, "label": label,

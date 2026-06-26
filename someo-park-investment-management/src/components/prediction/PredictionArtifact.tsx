@@ -104,17 +104,24 @@ function ReachRound() {
     advance: tr('prediction.rrAdvance'), r16: tr('prediction.rrR16'),
     qf: tr('prediction.rrQF'), sf: tr('prediction.rrSF'), final: tr('prediction.rrFinal'),
   };
-  // Pivot rounds → one row per team (48), columns grouped by round. group_gd / group_played
-  // are per-team (identical across rounds) → captured onto the row for the 净胜球（已完赛场次）column.
+  // Pivot rounds → one row per team (48), columns grouped by round. group_gd / group_played /
+  // group_rank are per-team (identical across rounds) → captured onto the row for the
+  // 净胜球（完赛场次/排名）column.
   const teamMap: Record<string, any> = {};
   rounds.forEach((r) => (r.teams ?? []).forEach((t: any) => {
     const e = teamMap[t.team_id] || (teamMap[t.team_id] = { name: t.name, byRound: {} });
     e.byRound[r.key] = t;
-    if (t.group_gd != null) { e.gd = t.group_gd; e.played = t.group_played; }
+    if (t.group_gd != null) { e.gd = t.group_gd; e.played = t.group_played; e.rank = t.group_rank; }
   }));
-  // "+6 (3)" — group-stage net goal difference (signed) with matches played in parentheses.
-  const gdLabel = (e: any) => (e.gd == null ? '—'
-    : `${e.gd > 0 ? '+' : ''}${e.gd} (${e.played ?? 0})`);
+  // "+1（2=1）（#3）" — signed group GD, then (played=matches-still-to-play), then (#in-group rank).
+  // Group stage is 3 matches, so matches-to-play = 3 − played.
+  const gdLabel = (e: any) => {
+    if (e.gd == null) return '—';
+    const sign = e.gd > 0 ? '+' : '';
+    const left = `（${e.played ?? 0}=${Math.max(0, 3 - (e.played ?? 0))}）`;
+    const right = e.rank != null ? `（#${e.rank}）` : '';
+    return `${sign}${e.gd}${left}${right}`;
+  };
   const strength = (e: any) => rounds.reduce((s, r) => s + (e.byRound[r.key]?.model_pct ?? 0), 0);
   const teams = Object.values(teamMap).sort((a: any, b: any) => strength(b) - strength(a));
   const asOf = data?.as_of ? new Date(data.as_of).toLocaleString() : '';
@@ -133,7 +140,7 @@ function ReachRound() {
           <thead>
             <tr style={{ borderBottom: bd }}>
               <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>{tr('prediction.team')}</th>
-              <th style={{ ...th, textAlign: 'right', borderLeft: bd, color: 'var(--text-primary)' }} rowSpan={2}>{tr('prediction.rrGdGp')}</th>
+              <th style={{ ...th, textAlign: 'right', borderLeft: bd, color: 'var(--text-primary)', whiteSpace: 'pre-line', lineHeight: 1.25 }} rowSpan={2}>{tr('prediction.rrGdGp')}</th>
               {rounds.map((r) => <th key={r.key} colSpan={4} style={{ ...th, textAlign: 'center', color: 'var(--text-primary)', borderLeft: bd }}>{roundLabel[r.key] ?? r.label}</th>)}
             </tr>
             <tr style={{ borderBottom: bd }}>
