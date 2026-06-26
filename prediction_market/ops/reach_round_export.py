@@ -16,10 +16,11 @@ from datetime import datetime, timezone
 from prediction_market.config import CONFIG
 
 # Kalshi reach-round quote is trusted only when it's close to the liquid Poly reference:
-# within this absolute ¢ gap AND at least this fraction of the Poly price (a relative
-# floor — a 6¢-vs-25¢ quote is a 19¢ gap but, more tellingly, ¼ of Poly → noise).
-_KALSHI_SANITY_CENTS = 15.0
-_KALSHI_SANITY_FRAC = 0.60
+# within this ABSOLUTE ¢ gap. (An earlier RELATIVE floor — drop if kalshi < 60% of poly —
+# was removed: now that champion_prices._real_price derives a sane mark from the bid/last on
+# crossed books, the relative rule only mis-fired on the deep-round TAILS, dropping legitimate
+# low-prob agreements like 2¢-vs-5¢ that both venues actually concur on.)
+_KALSHI_SANITY_CENTS = 18.0
 
 # round key → (model prob field in the champion array, human label). 'advance' = reach
 # the Round of 32 (qualify from the group); Kalshi lists no such market, only Poly.
@@ -109,13 +110,12 @@ def build(conn=None) -> dict:
             if tid is None or p is None:
                 continue
             kc, pc = kal.get(tid), pol.get(tid)
-            # Cross-venue sanity gate: Poly Global is liquid (48/48), Kalshi reach-round is
-            # thin and its asks are often broken (e.g. France→SF quoted 1¢, Iran→RO16 69¢).
-            # If Kalshi disagrees with the liquid Poly price by more than the tolerance,
-            # treat the Kalshi quote as noise and drop it ('—') rather than show a fake edge.
-            if kc is not None and pc is not None and (
-                    abs(kc - pc) > _KALSHI_SANITY_CENTS or kc < _KALSHI_SANITY_FRAC * pc
-                    or kc > pc / _KALSHI_SANITY_FRAC):
+            # Cross-venue sanity gate: Poly Global is liquid (48/48). Kalshi's reach-round mark
+            # is now robust (bid/last on crossed books), but a genuinely broken book can still
+            # mis-mark (e.g. a thin SF market with only a stale 1¢ ask and no bid). If Kalshi
+            # disagrees with the liquid Poly reference by more than the absolute tolerance, drop
+            # it ('—') rather than show a fake edge. (Tail-safe: low-prob agreements survive.)
+            if kc is not None and pc is not None and abs(kc - pc) > _KALSHI_SANITY_CENTS:
                 kc = None
             avail = [x for x in (kc, pc) if x is not None]
             best = min(avail) if avail else None        # cheapest executable buy price
@@ -143,9 +143,10 @@ def build(conn=None) -> dict:
                  "distinct from the per-match 90-min 3-way). Model prob of reaching each round "
                  "(tournament sim) vs the live venue Yes price; edge = model − cheapest price. "
                  "BOTH venues list these: Polymarket Global (Nation-To-Reach-X, liquid for all "
-                 "48 teams — the reference) and Kalshi (KXWCROUND, thin; its quotes are shown "
-                 "ONLY when within 20¢ of Poly, else dropped as noise — its deeper-round asks "
-                 "are often broken). Real-money trading is still gated + $1-capped."),
+                 "48 teams — the reference) and Kalshi (KXWCROUND, RO16/QF/SF/Final qualifier "
+                 "markets; its books are thin and often crossed, so the mark is taken from the "
+                 "bid/last, and a quote is shown only when within 18¢ of Poly). Real-money "
+                 "trading is still gated + $1-capped."),
         "rounds": rounds,
     }
 

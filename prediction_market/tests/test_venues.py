@@ -32,6 +32,24 @@ def test_best_prices_handles_empty_side():
     assert ob.yes_ask is None and ob.no_ask is None
 
 
+def test_reach_round_mark_uses_bid_on_crossed_book():
+    """Regression: reach-round books are thin and often CROSSED — a stale 1¢ sell order can sit
+    far below the live bid (real case: Argentina→QF ask $0.01, bid $0.60, last $0.63). The mark
+    must NOT take the broken ask (that made a strong team look like a 1¢ free-arb); it falls back
+    to the bid/last. Well-formed books still use the ask."""
+    from prediction_market.venues.champion_prices import _real_price
+    # crossed book → ignore the 1¢ ask, use the live bid.
+    assert _real_price("0.01", "0.60", "0.63") == 0.60
+    # well-formed book (ask at/above bid) → executable ask.
+    assert _real_price("0.62", "0.61", "0.62") == 0.62
+    # capped ask, no sellers (yes_ask = $1) but a real bid → the bid.
+    assert _real_price("1.00", "0.08", None) == 0.08
+    # only a last trade present → last.
+    assert _real_price(None, None, "0.21") == 0.21
+    # settled / no real price anywhere → None.
+    assert _real_price("1.00", "0.00", "1.00") is None
+
+
 def test_polymarket_global_book_parse():
     # Polymarket returns both bids and asks for a token (unlike Kalshi).
     from prediction_market.venues.polymarket_global.reader import parse_clob_book

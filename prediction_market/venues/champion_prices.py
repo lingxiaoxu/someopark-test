@@ -70,20 +70,34 @@ REACH_ROUND_SERIES = {v: k for k, v in REACH_ROUND_EVENTS.items()}
 
 
 def _real_price(ask, bid, last):
-    """The executable BUY price for a reach-round contract = the YES **ask** (what you'd
-    pay), when it's a real offer below the $1.00 no-seller cap. The reach-round books are
-    thin: the last-traded price is usually a STALE single fill at an absurd value (e.g.
-    France→RO16 last-traded 5¢ while the real ask is 80¢) and the bid is often a lone
-    lowball — so neither is the price. ``bid``/``last`` are accepted for signature
-    compatibility but ignored. Returns None ('—') when there's no real ask (capped)."""
+    """Sane executable mark for a thin reach-round contract, from the YES ask/bid/last (dollars).
+
+    The reach-round books are thin and frequently CROSSED: a stale lone SELL order can sit at
+    1¢ while the live bid is 60¢ and the last trade 63¢ (real case: Argentina→QF ask $0.01,
+    bid $0.60, last $0.63). So the raw ask alone is NOT the price — using it makes a strong
+    team look like a 1¢ free-arb. Rule:
+      * well-formed book — the ask is a real offer AT/ABOVE the bid (0<ask<1) → use the ask
+        (what you'd actually pay), and
+      * crossed / no real ask (ask < bid, or ask capped at $1 with no sellers) → fall back to
+        the live best BID (a real resting order), else the last trade.
+    Returns None ('—') when none of the three is a real in-range price (e.g. a settled market).
+    Verified: this recovers the QF/SF/Final marks to within a few ¢ of liquid Polymarket."""
     def _num(x):
         try:
             return float(x)
         except (TypeError, ValueError):
             return None
-    ask = _num(ask)
-    if ask is not None and 0.0 < ask < 1.0:
-        return ask
+
+    def _ok(x):
+        return x is not None and 0.0 < x < 1.0
+
+    a, b, l = _num(ask), _num(bid), _num(last)
+    if _ok(a) and (b is None or a >= b):   # well-formed book → executable ask
+        return a
+    if _ok(b):                              # crossed / capped ask → live best bid
+        return b
+    if _ok(l):                              # last resort → last trade
+        return l
     return None
 
 
@@ -101,7 +115,7 @@ def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
             if not tid:
                 continue
             price = _real_price(m.get("yes_ask_dollars"), m.get("yes_bid_dollars"),
-                                m.get("previous_price_dollars"))
+                                m.get("last_price_dollars"))
             if price is not None:
                 out[rk][tid] = to_cents(price)
     return out
