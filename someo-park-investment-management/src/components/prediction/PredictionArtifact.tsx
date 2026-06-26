@@ -98,6 +98,8 @@ function ReachRound() {
   const { t: tr } = useTranslation();
   // Re-fetched on every open (artifact remounts) + cache-busted in getWCReachRound.
   const { data, loading, error } = useApi<any>(() => getWCReachRound(), []);
+  // Which of the 7 sortable columns is active + direction (null = default reach-strength order).
+  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' } | null>(null);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const rounds: any[] = data?.rounds ?? [];
   const roundLabel: Record<string, string> = {
@@ -112,6 +114,7 @@ function ReachRound() {
     const e = teamMap[t.team_id] || (teamMap[t.team_id] = { name: t.name, byRound: {} });
     e.byRound[r.key] = t;
     if (t.group_gd != null) { e.gd = t.group_gd; e.played = t.group_played; e.rank = t.group_rank; }
+    if (t.group != null) { e.group = t.group; e.points = t.group_points; }
   }));
   // "+1 (2=1) (#3)" — signed group GD, then (played=matches-still-to-play), then (#in-group rank).
   // Half-width parens (CJK full-width ones are too wide). Group stage is 3 matches, so to-play = 3 − played.
@@ -123,7 +126,25 @@ function ReachRound() {
     return `${sign}${e.gd} ${left}${right}`;
   };
   const strength = (e: any) => rounds.reduce((s, r) => s + (e.byRound[r.key]?.model_pct ?? 0), 0);
-  const teams = Object.values(teamMap).sort((a: any, b: any) => strength(b) - strength(a));
+  let teams = Object.values(teamMap).sort((a: any, b: any) => strength(b) - strength(a));
+  // 7 sortable columns: 'group' (group letter asc, then points desc within a group), 'gd'
+  // (net goal difference), and each round's model% ('round:<key>'). One click = ascending,
+  // click again = descending (the whole order reverses, so 'group' desc = L→A, points asc).
+  if (sort) {
+    const arr = [...teams] as any[];
+    if (sort.key === 'group') {
+      arr.sort((a, b) => (a.group || '').localeCompare(b.group || '') || (b.points ?? -1) - (a.points ?? -1));
+    } else {
+      const val = (e: any) => (sort.key === 'gd' ? (e.gd ?? -999) : (e.byRound[sort.key.slice(6)]?.model_pct ?? -1));
+      arr.sort((a, b) => val(a) - val(b));
+    }
+    if (sort.dir === 'desc') arr.reverse();
+    teams = arr;
+  }
+  const clickSort = (key: string) =>
+    setSort((s) => (s && s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+  const arrow = (key: string) => (sort?.key === key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : '');
+  const sortable = { cursor: 'pointer', userSelect: 'none' as const };
   const asOf = data?.as_of ? new Date(data.as_of).toLocaleString() : '';
   const bd = '1px solid var(--border-subtle)';
   const th: any = { fontSize: 9.5, fontWeight: 700, padding: '4px 6px', textAlign: 'right', color: 'var(--text-muted)', whiteSpace: 'nowrap' };
@@ -140,12 +161,13 @@ function ReachRound() {
           <thead>
             <tr style={{ borderBottom: bd }}>
               <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>{tr('prediction.team')}</th>
-              <th style={{ ...th, textAlign: 'right', borderLeft: bd, color: 'var(--text-primary)', whiteSpace: 'pre-line', lineHeight: 1.15, padding: '4px 3px', fontSize: 8.5 }} rowSpan={2}>{tr('prediction.rrGdGp')}</th>
+              <th style={{ ...th, ...sortable, textAlign: 'right', borderLeft: bd, color: 'var(--text-primary)', whiteSpace: 'pre-line', lineHeight: 1.15, padding: '4px 3px', fontSize: 8.5 }} rowSpan={2} onClick={() => clickSort('group')}>{tr('prediction.rrGroupPts')}{arrow('group')}</th>
+              <th style={{ ...th, ...sortable, textAlign: 'right', borderLeft: bd, color: 'var(--text-primary)', whiteSpace: 'pre-line', lineHeight: 1.15, padding: '4px 3px', fontSize: 8.5 }} rowSpan={2} onClick={() => clickSort('gd')}>{tr('prediction.rrGdGp')}{arrow('gd')}</th>
               {rounds.map((r) => <th key={r.key} colSpan={4} style={{ ...th, textAlign: 'center', color: 'var(--text-primary)', borderLeft: bd }}>{roundLabel[r.key] ?? r.label}</th>)}
             </tr>
             <tr style={{ borderBottom: bd }}>
               {rounds.map((r) => [
-                <th key={r.key + 'm'} style={{ ...th, borderLeft: bd }}>{tr('prediction.rrModel')}</th>,
+                <th key={r.key + 'm'} style={{ ...th, ...sortable, borderLeft: bd }} onClick={() => clickSort('round:' + r.key)}>{tr('prediction.rrModel')}{arrow('round:' + r.key)}</th>,
                 <th key={r.key + 'k'} style={th}>K¢</th>,
                 <th key={r.key + 'p'} style={th}>P¢</th>,
                 <th key={r.key + 'e'} style={th}>{tr('prediction.colEdge')}</th>,
@@ -156,6 +178,7 @@ function ReachRound() {
             {teams.map((e: any, i: number) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--hairline)' }}>
                 <td style={{ ...td, textAlign: 'left', color: 'var(--text-primary)', fontWeight: 600, ...mono }}>{tCountry(e.name)}</td>
+                <td style={{ ...td, borderLeft: bd, padding: '3px 3px', fontSize: 9.5, color: 'var(--text-secondary)', ...mono }}>{e.group ? `${e.group} · ${e.points ?? 0}` : '—'}</td>
                 <td style={{ ...td, borderLeft: bd, padding: '3px 3px', fontSize: 9.5, color: 'var(--text-secondary)', ...mono }}>{gdLabel(e)}</td>
                 {rounds.map((r) => { const t = e.byRound[r.key]; return [
                   <td key={r.key + 'm'} style={{ ...td, borderLeft: bd, color: 'var(--text-secondary)', ...mono }}>{t ? pct(t.model_pct) : '—'}</td>,

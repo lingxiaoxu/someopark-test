@@ -88,7 +88,8 @@ def _group_form(conn) -> dict[str, dict]:
                 rank[t] = i
     except Exception:
         rank = {}
-    return {tid: {"gd": int(gd[tid]), "played": int(played[tid]), "rank": rank.get(tid)}
+    return {tid: {"gd": int(gd[tid]), "played": int(played[tid]), "rank": rank.get(tid),
+                  "points": int(pts[tid])}
             for tid in played}
 
 
@@ -127,8 +128,10 @@ def build(conn=None) -> dict:
                 "kalshi_c": kc, "poly_c": pc,
                 "edge": (round(edge, 4) if edge is not None else None),
                 "tradable": bool(edge is not None and edge >= theta),
-                # Group net goal difference, matches played, current in-group rank — the
-                # 净胜球(完赛场次/排名)column: "+1 (2=1) (#3)" = GD +1, 2 played / 1 to go, 3rd in group.
+                # Group label + current points (小组/积分 column), then net goal difference,
+                # matches played, current in-group rank — the 净胜球(完赛场次/排名) column:
+                # "+1 (2=1) (#3)" = GD +1, 2 played / 1 to go, 3rd in group.
+                "group": row.get("group"), "group_points": frm.get("points"),
                 "group_gd": frm.get("gd"), "group_played": frm.get("played"),
                 "group_rank": frm.get("rank"),
             })
