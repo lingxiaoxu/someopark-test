@@ -104,12 +104,17 @@ function ReachRound() {
     advance: tr('prediction.rrAdvance'), r16: tr('prediction.rrR16'),
     qf: tr('prediction.rrQF'), sf: tr('prediction.rrSF'), final: tr('prediction.rrFinal'),
   };
-  // Pivot rounds → one row per team (48), columns grouped by round.
+  // Pivot rounds → one row per team (48), columns grouped by round. group_gd / group_played
+  // are per-team (identical across rounds) → captured onto the row for the 净胜球（已完赛场次）column.
   const teamMap: Record<string, any> = {};
   rounds.forEach((r) => (r.teams ?? []).forEach((t: any) => {
     const e = teamMap[t.team_id] || (teamMap[t.team_id] = { name: t.name, byRound: {} });
     e.byRound[r.key] = t;
+    if (t.group_gd != null) { e.gd = t.group_gd; e.played = t.group_played; }
   }));
+  // "+6 (3)" — group-stage net goal difference (signed) with matches played in parentheses.
+  const gdLabel = (e: any) => (e.gd == null ? '—'
+    : `${e.gd > 0 ? '+' : ''}${e.gd} (${e.played ?? 0})`);
   const strength = (e: any) => rounds.reduce((s, r) => s + (e.byRound[r.key]?.model_pct ?? 0), 0);
   const teams = Object.values(teamMap).sort((a: any, b: any) => strength(b) - strength(a));
   const asOf = data?.as_of ? new Date(data.as_of).toLocaleString() : '';
@@ -124,10 +129,11 @@ function ReachRound() {
       <Title sub={tr('prediction.subReachRound')}>Reach Round</Title>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>{tr('prediction.rrAsOf')}: {asOf}</div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', ...mono, minWidth: 1080 }}>
+        <table style={{ borderCollapse: 'collapse', ...mono, minWidth: 1180 }}>
           <thead>
             <tr style={{ borderBottom: bd }}>
               <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>{tr('prediction.team')}</th>
+              <th style={{ ...th, textAlign: 'right', borderLeft: bd, color: 'var(--text-primary)' }} rowSpan={2}>{tr('prediction.rrGdGp')}</th>
               {rounds.map((r) => <th key={r.key} colSpan={4} style={{ ...th, textAlign: 'center', color: 'var(--text-primary)', borderLeft: bd }}>{roundLabel[r.key] ?? r.label}</th>)}
             </tr>
             <tr style={{ borderBottom: bd }}>
@@ -143,6 +149,7 @@ function ReachRound() {
             {teams.map((e: any, i: number) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--hairline)' }}>
                 <td style={{ ...td, textAlign: 'left', color: 'var(--text-primary)', fontWeight: 600, ...mono }}>{tCountry(e.name)}</td>
+                <td style={{ ...td, borderLeft: bd, color: 'var(--text-secondary)', ...mono }}>{gdLabel(e)}</td>
                 {rounds.map((r) => { const t = e.byRound[r.key]; return [
                   <td key={r.key + 'm'} style={{ ...td, borderLeft: bd, color: 'var(--text-secondary)', ...mono }}>{t ? pct(t.model_pct) : '—'}</td>,
                   <td key={r.key + 'k'} style={{ ...td, ...mono }}>{t ? cc(t.kalshi_c) : '—'}</td>,

@@ -391,6 +391,7 @@
     "rrSF": "SF",
     "rrFinal": "Final",
     "rrModel": "Model%",
+    "rrGdGp": "GD (GP)",
     "rrAsOf": "Data as of",
     "colModelReach": "Model reach%",
     "reachRoundNote": "Distinct from the per-match 90-min market: a per-team 'reach round X' 2-way market (Yes = reaches that round). Two sources: Kalshi (KXWCROUND, thin in the group stage) and Polymarket Global (Nation-To-Reach, liquid across all 48 teams). ★ = positive edge (model vs the cheaper of the two prices). Real money still gated + $1-capped.",
