@@ -68,6 +68,12 @@ REACH_ROUND_EVENTS = {
 # round key → event ticker (for display/reference in the export).
 REACH_ROUND_SERIES = {v: k for k, v in REACH_ROUND_EVENTS.items()}
 
+# 'advance' (reach the Round of 32 = qualify from the group) is a SEPARATE Kalshi series:
+# "KXWCGROUPQUAL", with one EVENT per group (KXWCGROUPQUAL-26A…26L) and a per-team Yes/No
+# market inside each. (KXWCROUND only covers R16→Final.) These books are thin/illiquid early
+# in the tournament — most sit at ask $1 / no bid — so the column fills in as they trade.
+REACH_ROUND_ADVANCE_SERIES = "KXWCGROUPQUAL"
+
 
 def _real_price(ask, bid, last):
     """Sane executable mark for a thin reach-round contract, from the YES ask/bid/last (dollars).
@@ -102,14 +108,16 @@ def _real_price(ask, bid, last):
 
 
 def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
-    """{round_key: {team_id: ¢}} — query the PARENT series once, dispatch by event."""
-    out: dict[str, dict[str, float]] = {rk: {} for rk in REACH_ROUND_EVENTS.values()}
+    """{round_key: {team_id: ¢}} for advance/r16/qf/sf/final, from the Kalshi reach-round books.
+
+    R16→Final live under the KXWCROUND parent (one event per round); 'advance' (reach R32 =
+    qualify from group) lives under KXWCGROUPQUAL (one event per group). Each per-team mark uses
+    _real_price (ask on a well-formed book, else bid/last on a crossed/thin one)."""
+    out: dict[str, dict[str, float]] = {"advance": {}, "r16": {}, "qf": {}, "sf": {}, "final": {}}
     from prediction_market.venues.kalshi.market_data import KalshiMarketData
     md = KalshiMarketData()
-    for ev in md.list_events(REACH_ROUND_PARENT, status="open"):
-        rk = REACH_ROUND_EVENTS.get(ev.get("event_ticker"))
-        if not rk:
-            continue
+
+    def _fill(round_key: str, ev: dict) -> None:
         for m in ev.get("markets", []):
             tid = team_id(canonical_team_name(m.get("yes_sub_title", "") or ""))
             if not tid:
@@ -117,7 +125,19 @@ def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
             price = _real_price(m.get("yes_ask_dollars"), m.get("yes_bid_dollars"),
                                 m.get("last_price_dollars"))
             if price is not None:
-                out[rk][tid] = to_cents(price)
+                out[round_key][tid] = to_cents(price)
+
+    # R16 / QF / SF / Final — KXWCROUND, dispatch each event to its round.
+    for ev in md.list_events(REACH_ROUND_PARENT, status="open"):
+        rk = REACH_ROUND_EVENTS.get(ev.get("event_ticker"))
+        if rk:
+            _fill(rk, ev)
+    # Advance (reach R32 / qualify from group) — KXWCGROUPQUAL, one event per group, all → 'advance'.
+    try:
+        for ev in md.list_events(REACH_ROUND_ADVANCE_SERIES, status="open"):
+            _fill("advance", ev)
+    except Exception as e:
+        print(f"[champion_prices] kalshi advance ({REACH_ROUND_ADVANCE_SERIES}) skipped: {e}")
     return out
 
 
