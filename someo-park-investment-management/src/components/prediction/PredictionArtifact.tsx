@@ -106,21 +106,21 @@ function ReachRound() {
   };
   // Pivot rounds → one row per team (48), columns grouped by round. group_gd / group_played /
   // group_rank are per-team (identical across rounds) → captured onto the row for the
-  // 净胜球（完赛场次/排名）column.
+  // 净胜球(完赛场次/排名) column.
   const teamMap: Record<string, any> = {};
   rounds.forEach((r) => (r.teams ?? []).forEach((t: any) => {
     const e = teamMap[t.team_id] || (teamMap[t.team_id] = { name: t.name, byRound: {} });
     e.byRound[r.key] = t;
     if (t.group_gd != null) { e.gd = t.group_gd; e.played = t.group_played; e.rank = t.group_rank; }
   }));
-  // "+1（2=1）（#3）" — signed group GD, then (played=matches-still-to-play), then (#in-group rank).
-  // Group stage is 3 matches, so matches-to-play = 3 − played.
+  // "+1 (2=1) (#3)" — signed group GD, then (played=matches-still-to-play), then (#in-group rank).
+  // Half-width parens (CJK full-width ones are too wide). Group stage is 3 matches, so to-play = 3 − played.
   const gdLabel = (e: any) => {
     if (e.gd == null) return '—';
     const sign = e.gd > 0 ? '+' : '';
-    const left = `（${e.played ?? 0}=${Math.max(0, 3 - (e.played ?? 0))}）`;
-    const right = e.rank != null ? `（#${e.rank}）` : '';
-    return `${sign}${e.gd}${left}${right}`;
+    const left = `(${e.played ?? 0}=${Math.max(0, 3 - (e.played ?? 0))})`;
+    const right = e.rank != null ? ` (#${e.rank})` : '';
+    return `${sign}${e.gd} ${left}${right}`;
   };
   const strength = (e: any) => rounds.reduce((s, r) => s + (e.byRound[r.key]?.model_pct ?? 0), 0);
   const teams = Object.values(teamMap).sort((a: any, b: any) => strength(b) - strength(a));

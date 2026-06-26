@@ -394,7 +394,7 @@
     "rrGdGp": "GD\n(played/rank)",
     "rrAsOf": "Data as of",
     "colModelReach": "Model reach%",
-    "reachRoundNote": "Distinct from the per-match 90-min market: a per-team 'reach round X' 2-way market (Yes = reaches that round). Two sources: Kalshi (KXWCROUND, thin in the group stage) and Polymarket Global (Nation-To-Reach, liquid across all 48 teams). ★ = positive edge (model vs the cheaper of the two prices). Real money still gated + $1-capped. The GD (played/rank) column, e.g. +1（2=1）（#3）: group goal difference +1, first parenthesis 'played=remaining' (3 group games — here 2 played, 1 still to go), and '#3' is the team's current in-group rank (1–4). Computed live from match results and reconciled to the official group standings (0/48 mismatch).",
+    "reachRoundNote": "Distinct from the per-match 90-min market: a per-team 'reach round X' 2-way market (Yes = reaches that round). Two sources: Kalshi (KXWCROUND, thin in the group stage) and Polymarket Global (Nation-To-Reach, liquid across all 48 teams). ★ = positive edge (model vs the cheaper of the two prices). Real money still gated + $1-capped. The GD (played/rank) column, e.g. +1 (2=1) (#3): group goal difference +1, first parenthesis 'played=remaining' (3 group games — here 2 played, 1 still to go), and '#3' is the team's current in-group rank (1–4). Computed live from match results and reconciled to the official group standings (0/48 mismatch).",
     "matchPricing": "Match Pricing (3-way)",
     "goldenBoot": "Golden Boot",
     "modelVsMarket": "Model vs Market",

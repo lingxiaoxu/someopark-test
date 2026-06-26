@@ -73,7 +73,7 @@
     "rrGdGp": "Diff. buts\n(joués/rang)",
     "rrAsOf": "Données au",
     "colModelReach": "Modèle qualif.%",
-    "reachRoundNote": "Distinct du marché 90 min par match : marché 2-way par équipe « atteindre le tour X » (Oui = atteint ce tour). Deux sources : Kalshi (KXWCROUND, peu liquide en phase de groupes) et Polymarket Global (Nation-To-Reach, liquide pour les 48 équipes). ★ = edge positif (modèle vs le moins cher des deux). Argent réel barré + plafond 1 $. Colonne Diff. buts (joués/rang), ex. +1（2=1）（#3） : différence de buts +1 ; 1ʳᵉ parenthèse « joués=restants » (3 matchs de groupe — ici 2 joués, 1 à venir) ; « #3 » = classement actuel dans le groupe (1–4). Calculé en direct depuis les résultats et vérifié avec le classement officiel (0/48 écart).",
+    "reachRoundNote": "Distinct du marché 90 min par match : marché 2-way par équipe « atteindre le tour X » (Oui = atteint ce tour). Deux sources : Kalshi (KXWCROUND, peu liquide en phase de groupes) et Polymarket Global (Nation-To-Reach, liquide pour les 48 équipes). ★ = edge positif (modèle vs le moins cher des deux). Argent réel barré + plafond 1 $. Colonne Diff. buts (joués/rang), ex. +1 (2=1) (#3) : différence de buts +1 ; 1ʳᵉ parenthèse « joués=restants » (3 matchs de groupe — ici 2 joués, 1 à venir) ; « #3 » = classement actuel dans le groupe (1–4). Calculé en direct depuis les résultats et vérifié avec le classement officiel (0/48 écart).",
     "matchPricing": "Cote du Match (1N2)",
     "goldenBoot": "Soulier d'Or",
     "modelVsMarket": "Modèle vs Marché",

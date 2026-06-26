@@ -52,7 +52,7 @@ def _group_form(conn) -> dict[str, dict]:
     verified equal to API-Football's official goalsDiff/played, and the in-group rank verified
     equal to the official per-group standings (0/48 mismatch, 2026-06-26). Rank uses the draw's
     authoritative group composition with the points→GD→GF tie-break. Returns
-    {canonical_team_id: {"gd": int, "played": int, "rank": int}} — feeds the 净胜球（完赛场次/排名）column."""
+    {canonical_team_id: {"gd": int, "played": int, "rank": int}} — feeds the 净胜球(完赛场次/排名)column."""
     if conn is None:
         return {}
     from collections import defaultdict
@@ -128,7 +128,7 @@ def build(conn=None) -> dict:
                 "edge": (round(edge, 4) if edge is not None else None),
                 "tradable": bool(edge is not None and edge >= theta),
                 # Group net goal difference, matches played, current in-group rank — the
-                # 净胜球（完赛场次/排名）column: "+1（2=1）（#3）" = GD +1, 2 played / 1 to go, 3rd in group.
+                # 净胜球(完赛场次/排名)column: "+1 (2=1) (#3)" = GD +1, 2 played / 1 to go, 3rd in group.
                 "group_gd": frm.get("gd"), "group_played": frm.get("played"),
                 "group_rank": frm.get("rank"),
             })
