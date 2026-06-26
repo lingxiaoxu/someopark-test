@@ -227,7 +227,7 @@ set -a && source prediction_market/.env && set +a && \
 | `ops/inplay_export.py` | **盘中导出**：每场 live 模型 3‑way + xG + 剩余进球 + 每个 outcome 的市价¢（Kalshi/Poly）+ 盘中机会（市价¢/公允¢/edge¢）→ `inplay_live.json` |
 | `ops/milestone_export.py` | **价格轨迹**：聚合 `milestone_snapshot` → 每场 6 里程碑的 ¢+概率双口径 + 我们的赛前选边 + 入场→终场盯市（MTM）+ **智能择时现金出**(逐场买/卖时刻价格/实现盈亏) → `milestone_marks.json` |
 | `ops/team_styles_export.py` | **球队风格分型**：盘中指标(控球/传球/直接性/射门)KMeans → 9 类风格(控球/直接/高压/高效/碾压…)→ `team_styles.json`(前端「球队风格」视图) |
-| `ops/reach_round_export.py` | **晋级盘**：48 队 × 5 轮(小组出线/16/8/4/决赛)模型% vs Kalshi `KXWCROUND`¢ / Poly¢ / 边缘 → `reach_round.json`。每队另带 `group_gd`/`group_played`/`group_rank`(净胜球(完赛场次/排名)列,显示为 `+1 (2=1) (#3)`)，实时从赛果算、与官方小组榜核对一致 |
+| `ops/reach_round_export.py` | **晋级盘**：48 队 × 5 轮(小组出线/16/8/4/决赛)模型% vs Kalshi(`KXWCROUND` 进 R16→决赛 + `KXWCGROUPQUAL` 出线)¢ / Poly¢ / 边缘 → `reach_round.json`。每队另带 `group`/`group_points`(小组/积分列,显示 `J · 6`)与 `group_gd`/`group_played`/`group_rank`(净胜球(完赛场次/排名)列,显示 `+1 (2=1) (#3)`)，实时从赛果算、与官方小组榜核对一致 |
 | `ops/backfill_price_ticks.py` | **每分钟价格回填**(Poly Global prices-history)→ `price_tick` 表,供智能择时/细粒度择时研究 |
 | `ops/backfill_milestones.py` | **历史回填**：用 Poly Global 持久事件 `fifwc-{h}-{a}-{date}` + CLOB `prices-history` 重建已结束比赛的 6 里程碑轨迹（date+队名匹配，含重音/别名）；REPLACE 自愈乱码行，缺 FT 行则重试 |
 | `ops/live_refresh.py` | **盘中每周期刷新**（launchd 30s，窗口外低成本空转）：同步 live/赛果 → 重建 inplay/upcoming/xv/oos → 捕获里程碑（GRACE 窗）+ 回填 + 导出 → 写本地 + 前端目录（经 Cloudflare tunnel 实时上线，无需重新部署前端） |
@@ -343,7 +343,7 @@ someo-park-investment-management/public/data/   ← 前端服务层(output 的�
 | `upcoming.json` / `schedule.json` | 赛前卡片(决策+argmax+form) / 赛程 |
 | `inplay_live.json` / `match_signals.json` / `inplay_signals.json` | 盘中实时模型 + 机会 + 信号 |
 | `milestone_marks.json` | 每合约 ¢ 里程碑盯市轨迹 |
-| `reach_round.json` | 晋级盘(48 队 × 5 轮,模型%/Kalshi¢/Poly¢/边缘 + 每队 `group_gd`/`group_played`/`group_rank` 净胜球(完赛场次/排名)列) |
+| `reach_round.json` | 晋级盘(48 队 × 5 轮,模型%/Kalshi¢/Poly¢/边缘 + 每队 `group`/`group_points` 小组/积分列、`group_gd`/`group_played`/`group_rank` 净胜球(完赛场次/排名)列) |
 | `form.json` / `squad.json` | 对手加权 form / 队伍强度(联赛加权) |
 | `performance_report.json` + `.pdf` / `risk_report.json` + `.pdf` | 绩效 / 风控报告 |
 | `xv_champion.json` / `xv_matches.json` | 跨场冠军/单场比价 |
