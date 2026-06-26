@@ -57,13 +57,15 @@ def build(conn=None) -> dict:
     prior = load_prior()
     name = {t.team_id: t.name for t in prior.teams}
     zh = {t.team_id: t.zh for t in prior.teams}
+    fifa = {t.team_id: t.fifa_rank for t in prior.teams}
     idx = squad_index(conn)
     tops = _top_players(conn, {})
     ranked = sorted(idx.values(), key=lambda s: -s.score_z)
     teams = []
     for i, s in enumerate(ranked, 1):
         teams.append({
-            "rank": i, "team_id": s.team_id, "name": name.get(s.team_id, s.team_id), "zh": zh.get(s.team_id, ""),
+            "rank": i, "fifa_rank": fifa.get(s.team_id),
+            "team_id": s.team_id, "name": name.get(s.team_id, s.team_id), "zh": zh.get(s.team_id, ""),
             "score_z": s.score_z, "mw_rating": s.mw_rating, "ga_per90": s.ga_per90, "n_players": s.n_players,
             "top_players": tops.get(s.team_id, []),
         })

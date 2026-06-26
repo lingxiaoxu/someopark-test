@@ -50,13 +50,47 @@ function KV({ rows }: { rows: [string, ReactNode][] }) {
     </table>
   );
 }
-function DataTable({ cols, rows, className }: { cols: string[]; rows: ReactNode[][]; className?: string }) {
+// Optional column sorting: pass `sortableCols` (clickable column indices) and `sortVals`
+// (raw comparable value per row per col — strings sort lexically, numbers numerically, nulls
+// last). One click ascending, click again descending. `defaultSort` sets the initial order
+// (and shows its arrow) without a click — used to surface a view's natural ordering.
+function DataTable({ cols, rows, className, sortableCols, sortVals, defaultSort }: {
+  cols: ReactNode[]; rows: ReactNode[][]; className?: string;
+  sortableCols?: number[];
+  sortVals?: (number | string | null | undefined)[][];
+  defaultSort?: { col: number; dir: 'asc' | 'desc' };
+}) {
+  const [sort, setSort] = useState<{ col: number; dir: 'asc' | 'desc' } | null>(defaultSort ?? null);
+  const canSort = new Set(sortableCols ?? []);
+  const order = rows.map((_, i) => i);
+  if (sort && canSort.has(sort.col)) {
+    const acc = (i: number) => (sortVals ? sortVals[i]?.[sort.col] : (rows[i]?.[sort.col] as any));
+    order.sort((a, b) => {
+      const va = acc(a), vb = acc(b);
+      if (va == null && vb == null) return 0;
+      if (va == null) return 1;            // nulls last (ascending)
+      if (vb == null) return -1;
+      if (typeof va === 'number' && typeof vb === 'number') return va - vb;
+      return String(va).localeCompare(String(vb));
+    });
+    if (sort.dir === 'desc') order.reverse();
+  }
+  const click = (j: number) => {
+    if (!canSort.has(j)) return;
+    setSort((s) => (s && s.col === j ? { col: j, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { col: j, dir: 'asc' }));
+  };
+  const arrow = (j: number) => (sort?.col === j ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : '');
   return (
     <table className={className ? `table ${className}` : 'table'}>
-      <thead><tr>{cols.map((c, i) => <th key={i} style={{ textAlign: i === 0 ? 'left' : 'right' }}>{c}</th>)}</tr></thead>
+      <thead><tr>{cols.map((c, i) => (
+        <th key={i} onClick={() => click(i)}
+          style={{ textAlign: i === 0 ? 'left' : 'right', cursor: canSort.has(i) ? 'pointer' : undefined, userSelect: canSort.has(i) ? 'none' : undefined }}>
+          {c}{arrow(i)}
+        </th>
+      ))}</tr></thead>
       <tbody>
-        {rows.map((r, i) => (
-          <tr key={i}>{r.map((cell, j) => <td key={j} style={{ textAlign: j === 0 ? 'left' : 'right' }}>{cell}</td>)}</tr>
+        {order.map((ri) => (
+          <tr key={ri}>{rows[ri].map((cell, j) => <td key={j} style={{ textAlign: j === 0 ? 'left' : 'right' }}>{cell}</td>)}</tr>
         ))}
       </tbody>
     </table>
@@ -88,7 +122,10 @@ function ChampionOdds() {
       <Title sub={`${tr('prediction.subChampion')} · ${data?.meta?.n_sims?.toLocaleString?.() ?? ''} sims`}>Champion Odds</Title>
       <DataTable cols={[tr('prediction.team'), 'FIFA', 'Grp', tr('prediction.colChamp'), 'Kalshi¢', 'Poly¢', tr('prediction.colFinal'), 'SF', tr('prediction.colRating')]}
         rows={champ.map((c: any) => [tCountry(c.name), c.fifa_rank != null ? `#${c.fifa_rank}` : '—', c.group, pct(c.p_champion),
-          cc(c.kalshi_champ_c), cc(c.poly_champ_c), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])} />
+          cc(c.kalshi_champ_c), cc(c.poly_champ_c), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])}
+        sortableCols={[1, 2, 3, 4, 5, 6, 7, 8]}
+        sortVals={champ.map((c: any) => [null, c.fifa_rank, c.group, c.p_champion, c.kalshi_champ_c, c.poly_champ_c, c.p_final, c.p_sf, c.rating])}
+        defaultSort={{ col: 3, dir: 'desc' }} />
       <div style={{ marginTop: 8, fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.dualUnitLegend')}</div>
     </div>
   );
@@ -218,12 +255,15 @@ function SquadStrength() {
   return (
     <div>
       <Title sub={tr('prediction.subSquad')}>Squad Strength</Title>
-      <DataTable cols={['#', tr('prediction.team'), tr('prediction.colSquadScore'), tr('prediction.colRating'), 'GA/90', tr('prediction.colTopPlayers')]}
+      <DataTable cols={['FIFA', tr('prediction.team'), tr('prediction.colSquadScore'), tr('prediction.colRating'), 'GA/90', tr('prediction.colTopPlayers')]}
         rows={teams.map((t: any) => [
-          t.rank, tCountry(t.name), (t.score_z >= 0 ? '+' : '') + t.score_z.toFixed(2),
+          t.fifa_rank != null ? `#${t.fifa_rank}` : '—', tCountry(t.name), (t.score_z >= 0 ? '+' : '') + t.score_z.toFixed(2),
           t.mw_rating?.toFixed(2), t.ga_per90?.toFixed(2),
           (t.top_players ?? []).slice(0, 3).map((p: any) => `${p.name} (${p.goals}g)`).join(', '),
-        ])} />
+        ])}
+        sortableCols={[0, 2, 3, 4]}
+        sortVals={teams.map((t: any) => [t.fifa_rank, null, t.score_z, t.mw_rating, t.ga_per90, null])}
+        defaultSort={{ col: 2, dir: 'desc' }} />
     </div>
   );
 }
@@ -834,12 +874,15 @@ function FormCard() {
   return (
     <div>
       <Title sub={tr('prediction.subForm')}>Recent Form</Title>
-      <DataTable cols={['#', tr('prediction.team'), tr('prediction.colForm'), 'wGD', tr('prediction.colRecent')]}
+      <DataTable cols={['FIFA', tr('prediction.team'), tr('prediction.colForm'), 'wGD', tr('prediction.colRecent')]}
         rows={teams.map((t: any) => [
-          t.rank, tCountry(t.name), (t.form_z >= 0 ? '+' : '') + t.form_z.toFixed(2),
+          t.fifa_rank != null ? `#${t.fifa_rank}` : '—', tCountry(t.name), (t.form_z >= 0 ? '+' : '') + t.form_z.toFixed(2),
           (t.weighted_gd >= 0 ? '+' : '') + t.weighted_gd.toFixed(2),
           (t.recent ?? []).join(' '),
-        ])} />
+        ])}
+        sortableCols={[0, 2, 3]}
+        sortVals={teams.map((t: any) => [t.fifa_rank, null, t.form_z, t.weighted_gd, null])}
+        defaultSort={{ col: 2, dir: 'desc' }} />
     </div>
   );
 }

@@ -26,12 +26,14 @@ def build(conn=None) -> dict:
     prior = load_prior()
     name = {t.team_id: t.name for t in prior.teams}
     zh = {t.team_id: t.zh for t in prior.teams}
+    fifa = {t.team_id: t.fifa_rank for t in prior.teams}
     idx = form_index(conn)
     ranked = sorted(idx.values(), key=lambda s: -s.form_z)
     teams = []
     for i, s in enumerate(ranked, 1):
         teams.append({
-            "rank": i, "team_id": s.team_id, "name": name.get(s.team_id, s.team_id), "zh": zh.get(s.team_id, ""),
+            "rank": i, "fifa_rank": fifa.get(s.team_id),
+            "team_id": s.team_id, "name": name.get(s.team_id, s.team_id), "zh": zh.get(s.team_id, ""),
             "form_z": s.form_z, "weighted_gd": s.weighted_gd, "n": s.n, "n_friendly": s.n_friendly,
             "recent": [f"{r['gf']}-{r['ga']}{'F' if r['friendly'] else ''}" for r in s.recent],
         })
