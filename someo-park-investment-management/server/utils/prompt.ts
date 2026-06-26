@@ -35,7 +35,15 @@ export function toChatPrompt() {
     how many DRAW contracts to buy to protect that position (break-even / full hedge) with a 3-state payoff,
     labelled by whether our pick is leading / level / behind), performance (Brier vs uniform, calibration,
     trade-grade gate, the production bet log: per-match prediction/bet/result/PnL; bets are confidence-sized
-    $0.2–$2 centred on ~$1, below $1 when low-confidence), risk (gates, venue balances, $1 cap, API budget),
+    $0.2–$2 centred on ~$1, below $1 when low-confidence),
+    reach_round (晋级盘: each of the 48 teams' model probability to reach each round — group-advance(R32) /
+    R16 / QF / SF / final — vs Kalshi¢ + Poly¢ + edge. Each team row also carries a GROUP-FORM cell, in the
+    data as group_gd / group_played / group_rank and DISPLAYED as e.g. "+1（2=1）（#3）": group goal-difference
+    +1, then (matches-played = matches-still-to-play) where a group has 3 games so remaining = 3 − played, then
+    (#current in-group rank 1–4). It is computed live from match results and reconciled to the official group
+    standings. A team already DRAWN into a published knockout fixture is pinned to 100% for that round even before
+    kickoff; a team's reach-prob can therefore be 100% with a negative GD),
+    risk (gates, venue balances, $1 cap, API budget),
     schedule (kickoff times ET/PT), calibration (OOS reliability), backtest, squad (squad strength),
     form (recent form), params (param sweep), divergence (model vs sharp book), pricetrack (per-contract
     ¢ + probability at each match milestone, with mark-to-market), overview (system map). There are also
