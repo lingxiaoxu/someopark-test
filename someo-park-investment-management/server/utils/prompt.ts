@@ -38,8 +38,8 @@ export function toChatPrompt() {
     $0.2–$2 centred on ~$1, below $1 when low-confidence),
     reach_round (晋级盘: each of the 48 teams' model probability to reach each round — group-advance(R32) /
     R16 / QF / SF / final — vs Kalshi¢ + Poly¢ + edge. Each team row also carries two group-stage cells: a
-    小组/积分 (group/points) cell — data fields `group` (group letter A–L) + `group_points` (current group
-    points), shown as e.g. "J · 6" — and a GROUP-FORM cell, data `group_gd` / `group_played` / `group_rank`,
+    小组/积分 (group/points) cell — data fields group (group letter A–L) + group_points (current group
+    points), shown as e.g. "J · 6" — and a GROUP-FORM cell, data group_gd / group_played / group_rank,
     shown as e.g. "+1 (2=1) (#3)": group goal-difference +1, then (matches-played = matches-still-to-play)
     where a group has 3 games so remaining = 3 − played, then (#current in-group rank 1–4). Both are computed
     live from match results and reconciled to the official group standings. Seven columns are click-sortable
