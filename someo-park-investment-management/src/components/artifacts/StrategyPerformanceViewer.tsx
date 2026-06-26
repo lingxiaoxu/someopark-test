@@ -57,7 +57,7 @@ const BENCHMARK_KEYS = ['spy', 'smh', 'soxx', 'mags'];  // dashed reference line
 
 // Default start of the visible window when a view first opens. The picker's `min` still
 // exposes the full history, so earlier dates remain selectable — this only sets the default.
-const DEFAULT_START_DATE = '2026-04-01';
+const DEFAULT_START_DATE = '2025-11-11';
 
 
 export default function StrategyPerformanceViewer({ params }: { params?: any }) {
