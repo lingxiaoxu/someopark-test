@@ -136,11 +136,11 @@ function ReachRound() {
       <Title sub={tr('prediction.subReachRound')}>Reach Round</Title>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>{tr('prediction.rrAsOf')}: {asOf}</div>
       <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', ...mono, minWidth: 1180 }}>
+        <table style={{ borderCollapse: 'collapse', ...mono }}>
           <thead>
             <tr style={{ borderBottom: bd }}>
               <th style={{ ...th, textAlign: 'left' }} rowSpan={2}>{tr('prediction.team')}</th>
-              <th style={{ ...th, textAlign: 'right', borderLeft: bd, color: 'var(--text-primary)', whiteSpace: 'pre-line', lineHeight: 1.25 }} rowSpan={2}>{tr('prediction.rrGdGp')}</th>
+              <th style={{ ...th, textAlign: 'right', borderLeft: bd, color: 'var(--text-primary)', whiteSpace: 'pre-line', lineHeight: 1.15, padding: '4px 3px', fontSize: 8.5 }} rowSpan={2}>{tr('prediction.rrGdGp')}</th>
               {rounds.map((r) => <th key={r.key} colSpan={4} style={{ ...th, textAlign: 'center', color: 'var(--text-primary)', borderLeft: bd }}>{roundLabel[r.key] ?? r.label}</th>)}
             </tr>
             <tr style={{ borderBottom: bd }}>
@@ -156,7 +156,7 @@ function ReachRound() {
             {teams.map((e: any, i: number) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--hairline)' }}>
                 <td style={{ ...td, textAlign: 'left', color: 'var(--text-primary)', fontWeight: 600, ...mono }}>{tCountry(e.name)}</td>
-                <td style={{ ...td, borderLeft: bd, color: 'var(--text-secondary)', ...mono }}>{gdLabel(e)}</td>
+                <td style={{ ...td, borderLeft: bd, padding: '3px 3px', fontSize: 9.5, color: 'var(--text-secondary)', ...mono }}>{gdLabel(e)}</td>
                 {rounds.map((r) => { const t = e.byRound[r.key]; return [
                   <td key={r.key + 'm'} style={{ ...td, borderLeft: bd, color: 'var(--text-secondary)', ...mono }}>{t ? pct(t.model_pct) : '—'}</td>,
                   <td key={r.key + 'k'} style={{ ...td, ...mono }}>{t ? cc(t.kalshi_c) : '—'}</td>,
