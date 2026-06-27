@@ -1,0 +1,541 @@
+{
+  "generated_at": "2026-06-26T04:37:25.612424",
+  "strategy": "MTFS",
+  "mode": "expanding",
+  "n_param_sets": 31,
+  "train_start": "2024-05-03",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 162,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-05-03",
+      "train_end": "2025-10-31",
+      "test_start": "2025-11-03",
+      "test_end": "2025-12-10",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "AMAT",
+          "LULU",
+          "aggressive"
+        ],
+        [
+          "LRCX",
+          "FISV",
+          "beta_neutral"
+        ],
+        [
+          "TER",
+          "ICE",
+          "beta_neutral_long_term"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "weekly_aligned_windows"
+        ],
+        [
+          "GLW",
+          "FOXA",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CAT",
+          "INTU",
+          "conservative"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "LRCX",
+          "BR",
+          "let_profits_run"
+        ],
+        [
+          "KMX",
+          "PTC",
+          "sensitive_reversal"
+        ],
+        [
+          "CAT",
+          "KLAC",
+          "beta_neutral_long_term"
+        ],
+        [
+          "KEYS",
+          "ISRG",
+          "short_term_beta_neutral"
+        ],
+        [
+          "KMX",
+          "TYL",
+          "fast_rebalance"
+        ],
+        [
+          "KEYS",
+          "NKE",
+          "short_term_beta_neutral"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "monthly_aligned_windows"
+        ]
+      ],
+      "oos_sharpe": -0.9383291457465808,
+      "oos_pnl": -9746.521084979242
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-05-03",
+      "train_end": "2025-12-10",
+      "test_start": "2025-12-11",
+      "test_end": "2026-01-21",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "AMAT",
+          "LULU",
+          "aggressive"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "weekly_aligned_windows"
+        ],
+        [
+          "LRCX",
+          "FISV",
+          "short_term_beta_neutral"
+        ],
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "GLW",
+          "FOXA",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "TER",
+          "ICE",
+          "no_skip_month"
+        ],
+        [
+          "CAT",
+          "KLAC",
+          "short_term_beta_neutral"
+        ],
+        [
+          "LRCX",
+          "BR",
+          "short_term_beta_neutral"
+        ],
+        [
+          "CAT",
+          "INTU",
+          "beta_neutral_long_term"
+        ],
+        [
+          "KMX",
+          "PTC",
+          "sensitive_reversal"
+        ],
+        [
+          "KMX",
+          "TYL",
+          "fast_rebalance"
+        ],
+        [
+          "KEYS",
+          "ISRG",
+          "short_term_beta_neutral"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "aggressive"
+        ],
+        [
+          "KEYS",
+          "NKE",
+          "short_term_beta_neutral"
+        ]
+      ],
+      "oos_sharpe": 3.165501489912535,
+      "oos_pnl": 29145.08205835957
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-05-03",
+      "train_end": "2026-01-21",
+      "test_start": "2026-01-22",
+      "test_end": "2026-03-02",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "LRCX",
+          "FISV",
+          "beta_neutral"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "weekly_aligned_windows"
+        ],
+        [
+          "LRCX",
+          "BR",
+          "let_profits_run"
+        ],
+        [
+          "CAT",
+          "INTU",
+          "let_profits_run"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "kalman_aggressive"
+        ],
+        [
+          "KMX",
+          "PTC",
+          "sensitive_reversal"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "KMX",
+          "TYL",
+          "slow_rebalance"
+        ],
+        [
+          "TER",
+          "ICE",
+          "no_skip_month"
+        ],
+        [
+          "CAT",
+          "KLAC",
+          "short_term_beta_neutral"
+        ],
+        [
+          "GLW",
+          "FOXA",
+          "monthly_aligned_windows"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "short_term_tilt"
+        ],
+        [
+          "KEYS",
+          "ISRG",
+          "short_term_beta_neutral"
+        ],
+        [
+          "KEYS",
+          "NKE",
+          "short_term_beta_neutral"
+        ]
+      ],
+      "oos_sharpe": 6.102817159541919,
+      "oos_pnl": 114772.68830733624
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-05-03",
+      "train_end": "2026-03-02",
+      "test_start": "2026-03-03",
+      "test_end": "2026-04-09",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "weekly_aligned_windows"
+        ],
+        [
+          "GLW",
+          "FOXA",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "KMX",
+          "TYL",
+          "sensitive_reversal"
+        ],
+        [
+          "CAT",
+          "INTU",
+          "let_profits_run"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "short_term_tilt"
+        ],
+        [
+          "LRCX",
+          "FISV",
+          "beta_neutral"
+        ],
+        [
+          "TER",
+          "ICE",
+          "monthly_aligned_windows"
+        ],
+        [
+          "KEYS",
+          "ISRG",
+          "conservative"
+        ],
+        [
+          "LRCX",
+          "BR",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CAT",
+          "KLAC",
+          "short_term_beta_neutral"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "kalman_aggressive"
+        ],
+        [
+          "KMX",
+          "PTC",
+          "sensitive_reversal"
+        ],
+        [
+          "KEYS",
+          "NKE",
+          "short_term_beta_neutral"
+        ]
+      ],
+      "oos_sharpe": 0.6403271194500069,
+      "oos_pnl": 5643.640854324614
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-05-03",
+      "train_end": "2026-04-09",
+      "test_start": "2026-04-10",
+      "test_end": "2026-05-18",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "weekly_aligned_windows"
+        ],
+        [
+          "CAT",
+          "INTU",
+          "let_profits_run"
+        ],
+        [
+          "GLW",
+          "FOXA",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "KMX",
+          "TYL",
+          "sensitive_reversal"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "fast_rebalance"
+        ],
+        [
+          "KEYS",
+          "ISRG",
+          "no_reversal_protection"
+        ],
+        [
+          "LRCX",
+          "FISV",
+          "let_profits_run"
+        ],
+        [
+          "LRCX",
+          "BR",
+          "aggressive"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "kalman_aggressive"
+        ],
+        [
+          "CAT",
+          "KLAC",
+          "short_term_beta_neutral"
+        ],
+        [
+          "TER",
+          "ICE",
+          "kalman_aggressive"
+        ],
+        [
+          "KMX",
+          "PTC",
+          "sensitive_reversal"
+        ],
+        [
+          "KEYS",
+          "NKE",
+          "aggressive"
+        ]
+      ],
+      "oos_sharpe": -0.4723268790624459,
+      "oos_pnl": -13797.704737793603
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-05-03",
+      "train_end": "2026-05-18",
+      "test_start": "2026-05-19",
+      "test_end": "2026-06-26",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "TER",
+          "CMCSA",
+          "weekly_aligned_windows"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "slow_rebalance"
+        ],
+        [
+          "KMX",
+          "TYL",
+          "sensitive_reversal"
+        ],
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "fast_rebalance"
+        ],
+        [
+          "CAT",
+          "INTU",
+          "let_profits_run"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "KEYS",
+          "ISRG",
+          "no_reversal_protection"
+        ],
+        [
+          "GLW",
+          "FOXA",
+          "monthly_aligned_windows"
+        ],
+        [
+          "LRCX",
+          "FISV",
+          "kalman_aggressive"
+        ],
+        [
+          "LRCX",
+          "BR",
+          "short_term_beta_neutral"
+        ],
+        [
+          "CAT",
+          "KLAC",
+          "short_term_beta_neutral"
+        ],
+        [
+          "KEYS",
+          "NKE",
+          "aggressive"
+        ],
+        [
+          "KMX",
+          "PTC",
+          "sensitive_reversal"
+        ],
+        [
+          "TER",
+          "ICE",
+          "kalman_aggressive"
+        ]
+      ],
+      "oos_sharpe": 3.872478938829034,
+      "oos_pnl": 112111.61270432506
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": 238539.7570056821,
+    "oos_trading_days": 156,
+    "oos_sharpe": 2.0452130269317346,
+    "oos_max_dd_dollar": -84634.15191480762,
+    "oos_max_dd_pct": -0.1253567462715427
+  }
+}

@@ -1,0 +1,536 @@
+{
+  "generated_at": "2026-06-24T04:38:20.019510",
+  "strategy": "MTFS",
+  "mode": "expanding",
+  "n_param_sets": 31,
+  "train_start": "2024-04-30",
+  "train_months": 18,
+  "oos_windows": 6,
+  "oos_days": 162,
+  "windows": [
+    {
+      "window_idx": 1,
+      "train_start": "2024-04-30",
+      "train_end": "2025-10-29",
+      "test_start": "2025-10-30",
+      "test_end": "2025-12-08",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "GLW",
+          "FISV",
+          "sensitive_reversal"
+        ],
+        [
+          "CAT",
+          "TYL",
+          "kalman_aggressive"
+        ],
+        [
+          "CAT",
+          "ICE",
+          "long_term_tilt"
+        ],
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "aggressive"
+        ],
+        [
+          "TER",
+          "ISRG",
+          "beta_neutral"
+        ],
+        [
+          "DVA",
+          "INTU",
+          "aggressive"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "beta_neutral"
+        ],
+        [
+          "DVA",
+          "KLAC",
+          "slow_rebalance"
+        ],
+        [
+          "LRCX",
+          "FIS",
+          "sensitive_reversal"
+        ],
+        [
+          "PWR",
+          "NKE",
+          "uniform_weights"
+        ],
+        [
+          "IRM",
+          "EFX",
+          "weekly_aligned_windows"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "vol_sized_conservative"
+        ],
+        [
+          "LRCX",
+          "FOXA",
+          "monthly_aligned_windows"
+        ]
+      ],
+      "oos_sharpe": -0.8059575507826517,
+      "oos_pnl": -8590.383282820527
+    },
+    {
+      "window_idx": 2,
+      "train_start": "2024-04-30",
+      "train_end": "2025-12-08",
+      "test_start": "2025-12-09",
+      "test_end": "2026-01-16",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "GLW",
+          "FISV",
+          "sensitive_reversal"
+        ],
+        [
+          "CAT",
+          "TYL",
+          "kalman_aggressive"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "aggressive"
+        ],
+        [
+          "DVA",
+          "KLAC",
+          "raw_momentum_kalman"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "long_term_tilt"
+        ],
+        [
+          "CAT",
+          "ICE",
+          "conservative"
+        ],
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "TER",
+          "ISRG",
+          "beta_neutral"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "DVA",
+          "INTU",
+          "crash_tolerant"
+        ],
+        [
+          "LRCX",
+          "FIS",
+          "sensitive_reversal"
+        ],
+        [
+          "IRM",
+          "EFX",
+          "weekly_aligned_windows"
+        ],
+        [
+          "PWR",
+          "NKE",
+          "no_reversal_protection"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "vol_sized_conservative"
+        ],
+        [
+          "LRCX",
+          "FOXA",
+          "monthly_aligned_windows"
+        ]
+      ],
+      "oos_sharpe": -0.0524425886417314,
+      "oos_pnl": -1949.1147233679148
+    },
+    {
+      "window_idx": 3,
+      "train_start": "2024-04-30",
+      "train_end": "2026-01-16",
+      "test_start": "2026-01-20",
+      "test_end": "2026-02-26",
+      "n_selected_pairs": 14,
+      "selected_pairs": [
+        [
+          "GLW",
+          "FISV",
+          "monthly_aligned_windows"
+        ],
+        [
+          "DVA",
+          "KLAC",
+          "raw_momentum_kalman"
+        ],
+        [
+          "CAT",
+          "TYL",
+          "kalman_aggressive"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "conservative"
+        ],
+        [
+          "CAT",
+          "ICE",
+          "conservative"
+        ],
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "beta_neutral"
+        ],
+        [
+          "TER",
+          "ISRG",
+          "beta_neutral"
+        ],
+        [
+          "LRCX",
+          "FIS",
+          "short_term_beta_neutral"
+        ],
+        [
+          "DVA",
+          "INTU",
+          "aggressive"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "fast_rebalance"
+        ],
+        [
+          "IRM",
+          "EFX",
+          "weekly_aligned_windows"
+        ],
+        [
+          "PWR",
+          "NKE",
+          "no_reversal_protection"
+        ]
+      ],
+      "oos_sharpe": 7.673156299102456,
+      "oos_pnl": 139595.50582257233
+    },
+    {
+      "window_idx": 4,
+      "train_start": "2024-04-30",
+      "train_end": "2026-02-26",
+      "test_start": "2026-02-27",
+      "test_end": "2026-04-07",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "GLW",
+          "FISV",
+          "short_term_beta_neutral"
+        ],
+        [
+          "CAT",
+          "TYL",
+          "kalman_aggressive"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "TER",
+          "ISRG",
+          "beta_neutral"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "fast_rebalance"
+        ],
+        [
+          "CAT",
+          "ICE",
+          "aggressive"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "conservative"
+        ],
+        [
+          "DVA",
+          "KLAC",
+          "no_reversal_protection"
+        ],
+        [
+          "LRCX",
+          "FIS",
+          "short_term_beta_neutral"
+        ],
+        [
+          "DVA",
+          "INTU",
+          "aggressive"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "aggressive"
+        ],
+        [
+          "IRM",
+          "EFX",
+          "weekly_aligned_windows"
+        ],
+        [
+          "LRCX",
+          "FOXA",
+          "no_skip_month"
+        ],
+        [
+          "PWR",
+          "NKE",
+          "no_reversal_protection"
+        ]
+      ],
+      "oos_sharpe": 0.932255088199777,
+      "oos_pnl": 8984.918224808462
+    },
+    {
+      "window_idx": 5,
+      "train_start": "2024-04-30",
+      "train_end": "2026-04-07",
+      "test_start": "2026-04-08",
+      "test_end": "2026-05-14",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "GLW",
+          "FISV",
+          "short_term_beta_neutral"
+        ],
+        [
+          "CAT",
+          "TYL",
+          "aggressive"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "fast_rebalance"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "conservative"
+        ],
+        [
+          "TER",
+          "ISRG",
+          "vol_sized_conservative"
+        ],
+        [
+          "DVA",
+          "KLAC",
+          "no_reversal_protection"
+        ],
+        [
+          "CAT",
+          "ICE",
+          "conservative"
+        ],
+        [
+          "DVA",
+          "INTU",
+          "trend_leverage"
+        ],
+        [
+          "LRCX",
+          "FIS",
+          "sensitive_reversal"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "kalman_aggressive"
+        ],
+        [
+          "PWR",
+          "NKE",
+          "no_reversal_protection"
+        ],
+        [
+          "IRM",
+          "EFX",
+          "raw_momentum_kalman"
+        ],
+        [
+          "LRCX",
+          "FOXA",
+          "no_skip_month"
+        ]
+      ],
+      "oos_sharpe": 3.166184551856595,
+      "oos_pnl": 47157.34921854006
+    },
+    {
+      "window_idx": 6,
+      "train_start": "2024-04-30",
+      "train_end": "2026-05-14",
+      "test_start": "2026-05-15",
+      "test_end": "2026-06-24",
+      "n_selected_pairs": 15,
+      "selected_pairs": [
+        [
+          "GLW",
+          "FISV",
+          "short_term_beta_neutral"
+        ],
+        [
+          "CAT",
+          "TYL",
+          "raw_momentum"
+        ],
+        [
+          "GLW",
+          "FOX",
+          "monthly_aligned_windows"
+        ],
+        [
+          "CAT",
+          "ICE",
+          "long_term_tilt"
+        ],
+        [
+          "AMAT",
+          "LULU",
+          "slow_rebalance"
+        ],
+        [
+          "AMAT",
+          "CSGP",
+          "fast_rebalance"
+        ],
+        [
+          "IRM",
+          "MSFT",
+          "fast_rebalance"
+        ],
+        [
+          "TER",
+          "CMCSA",
+          "conservative"
+        ],
+        [
+          "DVA",
+          "KLAC",
+          "no_reversal_protection"
+        ],
+        [
+          "TER",
+          "ISRG",
+          "long_term_kalman"
+        ],
+        [
+          "PWR",
+          "NKE",
+          "aggressive"
+        ],
+        [
+          "IRM",
+          "EFX",
+          "raw_momentum_kalman"
+        ],
+        [
+          "DVA",
+          "INTU",
+          "no_reversal_protection"
+        ],
+        [
+          "LRCX",
+          "FIS",
+          "kalman_aggressive"
+        ],
+        [
+          "LRCX",
+          "FOXA",
+          "no_skip_month"
+        ]
+      ],
+      "oos_sharpe": 1.9151025711862055,
+      "oos_pnl": 40463.28173606406
+    }
+  ],
+  "oos_stats": {
+    "oos_total_pnl": 226072.51589990628,
+    "oos_trading_days": 156,
+    "oos_sharpe": 2.305328771317426,
+    "oos_max_dd_dollar": -51915.49022117088,
+    "oos_max_dd_pct": -0.10224816209379654
+  }
+}

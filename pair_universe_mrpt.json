@@ -24,12 +24,6 @@
     "z_col": "Z_utilities"
   },
   {
-    "s1": "AIG",
-    "s2": "NTRS",
-    "sector": "finance",
-    "z_col": "Z_finance"
-  },
-  {
     "s1": "AKAM",
     "s2": "MSFT",
     "sector": "tech",
@@ -42,20 +36,14 @@
     "z_col": "Z_finance"
   },
   {
-    "s1": "AIG",
-    "s2": "CFG",
+    "s1": "AON",
+    "s2": "BR",
     "sector": "finance",
     "z_col": "Z_finance"
   },
   {
-    "s1": "BSX",
-    "s2": "PFE",
-    "sector": "health",
-    "z_col": "Z_health"
-  },
-  {
-    "s1": "AON",
-    "s2": "BR",
+    "s1": "AIG",
+    "s2": "CFG",
     "sector": "finance",
     "z_col": "Z_finance"
   },
@@ -66,8 +54,14 @@
     "z_col": "Z_finance"
   },
   {
+    "s1": "BSX",
+    "s2": "PFE",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
     "s1": "AIG",
-    "s2": "PFG",
+    "s2": "NTRS",
     "sector": "finance",
     "z_col": "Z_finance"
   },
@@ -88,5 +82,11 @@
     "s2": "FISV",
     "sector": "finance",
     "z_col": "Z_finance"
+  },
+  {
+    "s1": "CL",
+    "s2": "PM",
+    "sector": "food",
+    "z_col": "Z_food"
   }
 ]

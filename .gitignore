@@ -120,3 +120,6 @@ prediction_market/data/kalshi_docs/
 
 # Prediction-market pricing research (papers, figures, tick data, scratch) — keep out of git
 prediction_market/research/
+
+# Remote-access doc — operational/access info, never commit
+prediction_market/docs/REMOTE_DATA_ACCESS.md

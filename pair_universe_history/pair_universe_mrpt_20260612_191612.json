@@ -1,0 +1,92 @@
+[
+  {
+    "s1": "HAS",
+    "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "CSCO",
+    "s2": "PAYC",
+    "sector": "tech",
+    "z_col": "Z_tech"
+  },
+  {
+    "s1": "TXT",
+    "s2": "YUM",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
+    "s1": "EXR",
+    "s2": "WY",
+    "sector": "realestate",
+    "z_col": "Z_realestate"
+  },
+  {
+    "s1": "ATO",
+    "s2": "PCG",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "BIIB",
+    "s2": "HCA",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
+    "s1": "CDNS",
+    "s2": "PTC",
+    "sector": "tech",
+    "z_col": "Z_tech"
+  },
+  {
+    "s1": "EVRG",
+    "s2": "PCG",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "RTX",
+    "s2": "SNA",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
+    "s1": "MSCI",
+    "s2": "PRU",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "AKAM",
+    "s2": "KEYS",
+    "sector": "tech",
+    "z_col": "Z_tech"
+  },
+  {
+    "s1": "CINF",
+    "s2": "FMC",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "AON",
+    "s2": "KKR",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "BSX",
+    "s2": "WMB",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
+    "s1": "MSCI",
+    "s2": "SCHW",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  }
+]

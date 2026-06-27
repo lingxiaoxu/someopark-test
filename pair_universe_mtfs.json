@@ -7,19 +7,7 @@
   },
   {
     "s1": "AMAT",
-    "s2": "LULU",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "LRCX",
     "s2": "FOXA",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "LRCX",
-    "s2": "FIS",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
@@ -31,62 +19,74 @@
   },
   {
     "s1": "GLW",
-    "s2": "FISV",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "DVA",
-    "s2": "KLAC",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "DVA",
-    "s2": "INTU",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "TER",
     "s2": "BR",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
+    "s1": "LRCX",
+    "s2": "FISV",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "LRCX",
+    "s2": "ICE",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
     "s1": "TER",
-    "s2": "ISRG",
+    "s2": "CME",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "TER",
+    "s2": "NKE",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "CAT",
-    "s2": "PTC",
+    "s2": "KLAC",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
   },
   {
     "s1": "CAT",
-    "s2": "TYL",
+    "s2": "ADBE",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "IRM",
-    "s2": "CMCSA",
-    "sector": "realestate",
-    "spread_col": "Momentum_Spread_realestate"
-  },
-  {
-    "s1": "IRM",
-    "s2": "ICE",
-    "sector": "realestate",
-    "spread_col": "Momentum_Spread_realestate"
   },
   {
     "s1": "KMX",
-    "s2": "MSFT",
+    "s2": "TYL",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "KMX",
+    "s2": "PTC",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "IRM",
+    "s2": "KKR",
+    "sector": "realestate",
+    "spread_col": "Momentum_Spread_realestate"
+  },
+  {
+    "s1": "IRM",
+    "s2": "NDAQ",
+    "sector": "realestate",
+    "spread_col": "Momentum_Spread_realestate"
+  },
+  {
+    "s1": "CVS",
+    "s2": "MSFT",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
   }
 ]
