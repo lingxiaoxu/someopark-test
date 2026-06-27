@@ -117,3 +117,6 @@ prediction_market/data/wc.db
 prediction_market/data/wc.db-wal
 prediction_market/data/wc.db-shm
 prediction_market/data/kalshi_docs/
+
+# Prediction-market pricing research (papers, figures, tick data, scratch) — keep out of git
+prediction_market/research/
