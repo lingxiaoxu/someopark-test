@@ -10,6 +10,7 @@ import { getWCUpcoming, getWCInplayLive } from '../../lib/api';
 import { tCountry } from '../../i18n/countries';
 import { useSetArtifact } from '../../contexts/ArtifactContext';
 import MatchCard, { type UpcomingMatch } from './MatchCard';
+import { AdvanceModeToggle } from './AdvanceMode';
 import { usePoll } from './usePoll';
 
 const pct = (v?: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
@@ -163,7 +164,10 @@ export default function PredictionUpcoming() {
           {t('prediction.upcomingMatches')} <span style={{ color: 'var(--success)' }}>({total})</span>
           {!!liveMatches.length && <span className="pulse" style={{ color: 'var(--error)', marginLeft: 8 }}>● {liveMatches.length} {t('prediction.live')}</span>}
         </div>
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>World Cup 2026</div>
+        <div className="flex items-center gap-2">
+          <AdvanceModeToggle dark />
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>World Cup 2026</div>
+        </div>
       </div>
       {loading ? (
         <div className="text-xs py-2" style={{ color: 'var(--text-muted)' }}>{t('prediction.loadingUpcoming')}</div>

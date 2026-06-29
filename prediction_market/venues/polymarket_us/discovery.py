@@ -106,6 +106,40 @@ class PolymarketUSDiscovery:
                 return out
         return None
 
+    def advance_quotes(self, home_id: str, away_id: str, et_date: str) -> dict[str, dict] | None:
+        """Raw 2-way {home, away} advance prices for a knockout match (None if not found).
+
+        Poly US lists a dedicated per-match advance market inside the same ``fwc-`` event:
+        ``aadc-fwc-{home}-{away}-{date}-to-advance-{teamcode}`` ("Will <Team> advance against
+        <Opp> on <date>?") — YES = that team advances the tie (ET + penalties included). No
+        draw leg. Mirrors match_quotes; ``et_date`` is the ET 'YYYY-MM-DD' slug date."""
+        codes = self.code_map()
+        hc, ac = codes.get(home_id), codes.get(away_id)
+        if not (hc and ac):
+            return None
+        for ev_slug in (f"fwc-{hc}-{ac}-{et_date}", f"fwc-{ac}-{hc}-{et_date}"):
+            try:
+                ev = self.c.events.retrieve_by_slug(ev_slug).get("event") or {}
+            except Exception:
+                continue
+            markets = ev.get("markets") or []
+            if not markets:
+                continue
+            prefix = f"aadc-{ev_slug}-to-advance-"
+            out: dict[str, dict] = {}
+            for m in markets:
+                s = m.get("slug", "")
+                if not s.startswith(prefix):
+                    continue
+                code = s[len(prefix):]
+                if code == hc:
+                    out["home"] = self._price(s)
+                elif code == ac:
+                    out["away"] = self._price(s)
+            if {"home", "away"} <= set(out):
+                return out
+        return None
+
     def totals_quotes(self, home_id: str, away_id: str, et_date: str,
                       line: float = 2.5) -> dict[str, dict] | None:
         """{over/under: {'ask','bid'}} for a match's total-goals line (None if not found).

@@ -5,15 +5,35 @@
  * Kalshi price, Polymarket US price — so it's obvious what we predict vs what the
  * venues currently quote. Collapsed by default (headline pick + kickoff); click to
  * expand the full breakdown. Reads ops/upcoming_export.py output.
+ *
+ * Knockout matches carry a parallel 2-way "advance" block (m.advance). When the shared
+ * AdvanceMode is 'advance' AND this is a knockout tie, the WHOLE card (model / quotes /
+ * edge / decision) renders from that 2-way block (home/away, no draw). Group matches
+ * have no advance block, so they always render the 3-way regulation view (auto-lock).
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { tCountry } from '../../i18n/countries';
+import { useAdvanceMode } from './AdvanceMode';
 
 type ThreeWay = { home: number; draw: number; away: number };
 type Q = { ask: number | null; bid: number | null; ask_c?: number | null; bid_c?: number | null; mid_c?: number | null };
-type VenueQuote = { home?: Q; draw?: Q; away?: Q; devig?: ThreeWay | null } | null;
+type VenueQuote = { home?: Q; draw?: Q; away?: Q; devig?: ThreeWay | { home: number; away: number } | null } | null;
+type Decision = {
+  bet: boolean; side?: string | null; venue?: string | null;
+  price_cents?: number | null; model_prob?: number | null; net_edge?: number | null;
+  stake_usd?: number; capped_notional_usd?: number; confidence_k?: number | null;
+} | null;
+
+// 2-way "who advances" block (knockout only) — same fields as the 3-way set, two sides.
+type AdvanceBlock = {
+  model: { home: number; away: number; cents?: { home: number; away: number } } | null;
+  kalshi?: VenueQuote;
+  poly_us?: VenueQuote;
+  edge?: { best?: { side: string; venue: string; net_edge: number; tradable: boolean } | null };
+  decision?: Decision;
+} | null;
 
 export type UpcomingMatch = {
   kickoff: string;
@@ -22,17 +42,14 @@ export type UpcomingMatch = {
   home: { id: string | null; name: string; zh?: string };
   away: { id: string | null; name: string; zh?: string };
   model: (ThreeWay & { over_2_5?: number; btts?: number; cents?: ThreeWay; p_home_advance?: number }) | null;
-  knockout?: boolean;   // knockout tie: NO draw — bet/headline settle on who ADVANCES
+  knockout?: boolean;   // knockout tie: also carries the 2-way advance market
   form?: { home?: number | null; away?: number | null } | null;
   book_devig?: ThreeWay | null;
   kalshi?: VenueQuote;
   poly_us?: VenueQuote;
   edge?: { best?: { side: string; venue: string; net_edge: number; tradable: boolean } | null };
-  decision?: {
-    bet: boolean; side?: string | null; venue?: string | null;
-    price_cents?: number | null; model_prob?: number | null; net_edge?: number | null;
-    stake_usd?: number; capped_notional_usd?: number; confidence_k?: number | null;
-  } | null;
+  decision?: Decision;
+  advance?: AdvanceBlock;   // 2-way knockout product (null for group / undecided ties)
   tentative?: boolean;   // knockout tie whose teams aren't decided yet (placeholder pairing)
 };
 
@@ -40,39 +57,53 @@ const pct = (v?: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%
 const px = (v?: number | null) => (v == null ? '—' : v.toFixed(2));
 const cents = (v?: number | null) => (v == null ? '—' : `${Math.round(v)}¢`);
 
-// A venue's three asks carry a vig, so they sum to MORE than 100¢ — the contract
-// price is NOT the probability. This line makes that explicit: the overround (sum of
-// the three asks) and the de-vigged implied probability (what the venue really thinks).
-function VigNote({ q }: { q: { home?: { ask: number | null }; draw?: { ask: number | null }; away?: { ask: number | null }; devig?: { home: number; draw: number; away: number } | null } | null | undefined }) {
+// A venue's asks carry a vig, so they sum to MORE than 100¢ — the contract price is NOT
+// the probability. This line makes that explicit: the overround (sum of the asks) and the
+// de-vigged implied probability. Works for the 3-way (home/draw/away) and the 2-way
+// advance book (home/away, no draw).
+function VigNote({ q, twoWay }: { q: VenueQuote; twoWay?: boolean }) {
   if (!q) return null;
-  const a = [q.home?.ask, q.draw?.ask, q.away?.ask];
+  const a = twoWay ? [q.home?.ask, q.away?.ask] : [q.home?.ask, q.draw?.ask, q.away?.ask];
   if (a.some((x) => x == null)) return null;
   const sum = (a as number[]).reduce((s, x) => s + x, 0);
-  const dv = q.devig;
+  const dv = q.devig as any;
+  const dvStr = dv
+    ? (twoWay
+        ? ` · de-vig ${Math.round(dv.home * 100)}/${Math.round(dv.away * 100)}%`
+        : ` · de-vig ${Math.round(dv.home * 100)}/${Math.round(dv.draw * 100)}/${Math.round(dv.away * 100)}%`)
+    : '';
   return (
     <div style={{ fontSize: 9, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 1, marginLeft: 2 }}>
-      ↳ {Math.round(sum * 100)}¢ (vig {((sum - 1) * 100).toFixed(1)}%)
-      {dv ? ` · de-vig ${Math.round(dv.home * 100)}/${Math.round(dv.draw * 100)}/${Math.round(dv.away * 100)}%` : ''}
+      ↳ {Math.round(sum * 100)}¢ (vig {((sum - 1) * 100).toFixed(1)}%){dvStr}
     </div>
   );
 }
 
 export default function MatchCard({ m }: { m: UpcomingMatch }) {
   const { t, i18n } = useTranslation();
+  const { mode } = useAdvanceMode();
   const [open, setOpen] = useState(false);
   const home = tCountry(m.home.name), away = tCountry(m.away.name);
-  // Per-match market settles on the 90-min 3-way for both stages — a draw is valid even
-  // in knockout (the separate "advance/reach-round" product is team-level, elsewhere).
-  const winH = `${home} ${t('prediction.win')}`, winA = `${away} ${t('prediction.win')}`, drawL = t('prediction.drawResult');
-  const best = m.edge?.best;
+
+  // Resolve the active "lens": the 2-way advance product only when the user picked it AND
+  // this is a knockout tie that actually has an advance block (else regulation auto-locks).
+  const adv = m.advance || null;
+  const twoWay = mode === 'advance' && !!m.knockout && !!(adv && adv.model);
+
+  // Outcome labels for the active lens.
+  const winH = twoWay ? t('prediction.advancesLabel', { team: home }) : `${home} ${t('prediction.win')}`;
+  const winA = twoWay ? t('prediction.advancesLabel', { team: away }) : `${away} ${t('prediction.win')}`;
+  const drawL = t('prediction.drawResult');
+
+  // View-model: pick the 3-way or 2-way source for every field the card renders.
+  const vModel: any = twoWay ? adv!.model : m.model;
+  const vKalshi = twoWay ? adv!.kalshi : m.kalshi;
+  const vPoly = twoWay ? adv!.poly_us : m.poly_us;
+  const best = (twoWay ? adv!.edge?.best : m.edge?.best) || null;
+  const dec = (twoWay ? adv!.decision : m.decision) || null;
+
   // Single source of truth for "are we betting this match" + the edge to show: the
-  // production decision model (m.decision) — the SAME brain that writes the advice text
-  // and the bet log. The standalone edge finder (m.edge.best) computes net_edge ~1pp
-  // lower (it nets a fee) and can fall on the other side of the 3% tradable threshold,
-  // which used to make the advice say "buy $1.23" while the colour/★ stayed grey. Colour
-  // and the edge readout now follow the decision, so a bet is uniformly green + starred
-  // and the shown % matches the advice. Falls back to the edge finder when no decision.
-  const dec = m.decision;
+  // decision model (dec). Falls back to the edge finder when no decision.
   const betting = dec ? !!dec.bet : !!(best?.tradable && best.net_edge > 0);
   const edgeView = (betting && dec && dec.side)
     ? { side: dec.side, venue: dec.venue ?? '', net_edge: dec.net_edge ?? 0 }
@@ -80,9 +111,7 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   const edgeColor = betting ? 'var(--success)' : 'var(--text-muted)';
   const Chevron = open ? ChevronDown : ChevronRight;
 
-  // Knockout tie whose teams aren't decided yet: show the placeholder bracket pairing
-  // (e.g. "Winner Group A vs Runner-up Group B") with a TBD note, no prediction. It
-  // upgrades to the real countries + model automatically once the teams are known.
+  // Knockout tie whose teams aren't decided yet: placeholder bracket pairing, no prediction.
   if (m.tentative || !m.model) {
     return (
       <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 300, flex: '1 1 360px' }}>
@@ -99,23 +128,18 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
     );
   }
 
-  // headline = the model's most likely 90-min outcome, spelled out (draw included).
-  const sides: [string, number][] = [[winH, m.model.home], [drawL, m.model.draw], [winA, m.model.away]];
+  // headline = the model's most likely outcome under the active lens, spelled out.
+  const sides: [string, number][] = twoWay
+    ? [[winH, vModel.home], [winA, vModel.away]]
+    : [[winH, vModel.home], [drawL, vModel.draw], [winA, vModel.away]];
   const top = sides.reduce((a, b) => (b[1] > a[1] ? b : a));
 
-  // Plain-language "how to trade" line, generated from the edge data so a first-time
-  // user knows what to do at a glance — what to buy, why, and where to watch in-play —
-  // instead of decoding "edge: kalshi/draw +8.7%". Tradable+positive → a concrete BUY;
-  // otherwise → sit out. Either way, point to the in-play view once the match starts.
-  const sideLabelMap: Record<string, string> = { home: winH, draw: drawL, away: winA };
+  const sideLabelMap: Record<string, string> = twoWay
+    ? { home: winH, away: winA }
+    : { home: winH, draw: drawL, away: winA };
   const venueLabelMap: Record<string, string> = { kalshi: 'Kalshi', poly_us: 'Polymarket US', poly: 'Polymarket US' };
-  // CJK languages don't put a space between full sentences; Latin ones do.
   const lang = i18n.language || '';
   const sep = (lang.startsWith('zh') || lang.startsWith('ja')) ? '' : ' ';
-  // Recent-form clause woven into the "why", picked by which side we recommend:
-  //   home → home team's form, away → away team's form, draw → both teams' closeness.
-  // Strong form reinforces the pick; weak form is flagged as a risk; near-neutral is
-  // omitted so the line stays clean. z-index is the same form feature the model uses.
   const STRONG_Z = 0.5, WEAK_Z = -0.5;
   const formClause = (side: 'home' | 'draw' | 'away'): string => {
     const f = m.form;
@@ -134,48 +158,44 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
   };
   const buildAdvice = (): string => {
     const inplay = t('prediction.adviceInplay');
-    // The production decision model (decide()) takes precedence — same brain as the bet
-    // log + match_signals: it picks the value side, sizes the stake, and says "no bet"
-    // when there's no safe edge (incl. the longshot bar / discipline gate).
     if (dec && !dec.bet) return t('prediction.adviceHold') + sep + inplay;
     let side: 'home' | 'draw' | 'away' | null = null;
-    let venue = '', cents: number | string = '—', model: number | string = '—', edge: string = '—', stakeClause = '';
+    let venue = '', c2: number | string = '—', model: number | string = '—', edge: string = '—', stakeClause = '';
     if (dec && dec.bet && dec.side) {
       side = dec.side as 'home' | 'draw' | 'away';
       venue = dec.venue ?? '';
-      cents = dec.price_cents != null ? Math.round(dec.price_cents) : '—';
+      c2 = dec.price_cents != null ? Math.round(dec.price_cents) : '—';
       model = dec.model_prob != null ? Math.round(dec.model_prob * 100) : '—';
       edge = dec.net_edge != null ? (dec.net_edge * 100).toFixed(1) : '—';
       if (dec.stake_usd != null) stakeClause = t('prediction.adviceStakeClause', { stake: dec.stake_usd.toFixed(2) });
     } else if (best && best.tradable && best.net_edge > 0) {
       side = best.side as 'home' | 'draw' | 'away';
       venue = best.venue;
-      const q = best.venue === 'kalshi' ? m.kalshi : m.poly_us;
-      const c = q?.[side]?.ask_c ?? q?.[side]?.mid_c ?? null;
-      cents = c != null ? Math.round(c) : '—';
-      const mp = (m.model as ThreeWay)[side];
+      const q = best.venue === 'kalshi' ? vKalshi : vPoly;
+      const c = (q as any)?.[side]?.ask_c ?? (q as any)?.[side]?.mid_c ?? null;
+      c2 = c != null ? Math.round(c) : '—';
+      const mp = (vModel as any)[side];
       model = mp != null ? Math.round(mp * 100) : '—';
       edge = (best.net_edge * 100).toFixed(1);
     } else {
       return t('prediction.adviceHold') + sep + inplay;
     }
-    // We HAVE a position → tell the user the EXIT plan (the validated smart-exit cash-out,
-    // our core edge: realised 67% profitable vs 39% holding), not just "watch in-play".
     return t('prediction.adviceBuy', {
       venue: venueLabelMap[venue] ?? venue,
       side: sideLabelMap[side] ?? side,
-      cents, model, edge, form: formClause(side),
-    }) + (stakeClause ? sep + stakeClause : '') + sep + t('prediction.adviceCashout');
+      cents: c2, model, edge, form: formClause(side),
+    }) + (stakeClause ? sep + stakeClause : '') + sep
+      + (twoWay ? t('prediction.adviceSettleAdvance') : t('prediction.adviceCashout'));
   };
 
-  // one labelled 3-way row (probabilities or venue prices), team names spelled out.
-  // hc/dc/ac (optional) render the per-contract ¢ alongside in parentheses.
+  // one labelled row (probabilities or venue prices), team names spelled out. When
+  // twoWay, the draw column is omitted (home / away only).
   const Line = ({ label, h, d, a, fmt, hc, dc, ac }: { label: string; h?: number | null; d?: number | null; a?: number | null; fmt: (v?: number | null) => string; hc?: number | null; dc?: number | null; ac?: number | null }) => {
     const withC = (v: number | null | undefined, c: number | null | undefined) => (c == null ? fmt(v) : `${fmt(v)} (${cents(c)})`);
     return (
       <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginTop: 3, lineHeight: 1.5 }}>
         <span style={{ color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.04em' }}>{label}</span><br />
-        {winH} <b>{withC(h, hc)}</b> · {drawL} <b>{withC(d, dc)}</b> · {winA} <b>{withC(a, ac)}</b>
+        {winH} <b>{withC(h, hc)}</b>{twoWay ? '' : <> · {drawL} <b>{withC(d, dc)}</b></>} · {winA} <b>{withC(a, ac)}</b>
       </div>
     );
   };
@@ -188,7 +208,9 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
             <Chevron className="inline w-3.5 h-3.5" style={{ marginRight: 4, verticalAlign: '-2px', color: 'var(--text-muted)' }} />
             {home} <span style={{ color: 'var(--text-muted)' }}>vs</span> {away}
           </span>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{m.et || ''}</span>
+          <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+            {twoWay ? <span style={{ color: 'var(--accent-primary)', marginRight: 6 }}>{t('prediction.modeAdvance')}</span> : null}{m.et || ''}
+          </span>
         </div>
         {!open && (
           <div className="flex items-center justify-between" style={{ marginTop: 4 }}>
@@ -210,29 +232,27 @@ export default function MatchCard({ m }: { m: UpcomingMatch }) {
             <span style={{ color: betting ? 'var(--success)' : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.04em' }}>{t('prediction.adviceLabel')}</span>
             <span style={{ color: 'var(--text-primary)' }}> · {buildAdvice()}</span>
           </div>
-          {/* DUAL-口径 plan for an actual bet: entry now + planned smart-exit cash-out, and
-              WHY a small edge is still worth it (the cash-out protects marginal bets). */}
-          {m.decision && m.decision.bet && m.decision.side && (
+          {dec && dec.bet && dec.side && (
             <div style={{ marginTop: 4, fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', lineHeight: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <div>{t('prediction.planEntry')}: <b style={{ color: 'var(--text-primary)' }}>{sideLabelMap[m.decision.side] ?? m.decision.side}</b> @ {m.decision.price_cents != null ? Math.round(m.decision.price_cents) : '—'}¢{m.decision.stake_usd != null ? <> · ${m.decision.stake_usd.toFixed(2)}</> : null}</div>
-              <div>{t('prediction.planExit')}: {t('prediction.planExitDesc')}</div>
-              <div style={{ color: 'var(--text-muted)' }}>{t('prediction.planWhy', { edge: m.decision.net_edge != null ? (m.decision.net_edge * 100).toFixed(1) : '—' })}</div>
+              <div>{t('prediction.planEntry')}: <b style={{ color: 'var(--text-primary)' }}>{sideLabelMap[dec.side] ?? dec.side}</b> @ {dec.price_cents != null ? Math.round(dec.price_cents) : '—'}¢{dec.stake_usd != null ? <> · ${dec.stake_usd.toFixed(2)}</> : null}</div>
+              <div>{t('prediction.planExit')}: {twoWay ? t('prediction.planExitAdvance') : t('prediction.planExitDesc')}</div>
+              <div style={{ color: 'var(--text-muted)' }}>{t('prediction.planWhy', { edge: dec.net_edge != null ? (dec.net_edge * 100).toFixed(1) : '—' })}</div>
             </div>
           )}
-          <Line label={t('prediction.ourPrediction')} h={m.model.home} d={m.model.draw} a={m.model.away} fmt={pct}
-            hc={m.model.cents?.home} dc={m.model.cents?.draw} ac={m.model.cents?.away} />
-          {(m.model.over_2_5 != null || m.model.btts != null) && (
+          <Line label={t('prediction.ourPrediction')} h={vModel.home} d={twoWay ? null : vModel.draw} a={vModel.away} fmt={pct}
+            hc={vModel.cents?.home} dc={twoWay ? null : vModel.cents?.draw} ac={vModel.cents?.away} />
+          {!twoWay && (m.model.over_2_5 != null || m.model.btts != null) && (
             <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
               O2.5 {pct(m.model.over_2_5)} · BTTS {pct(m.model.btts)}
             </div>
           )}
-          {m.kalshi
-            ? <><Line label={t('prediction.kalshiPrice')} h={m.kalshi.home?.ask} d={m.kalshi.draw?.ask} a={m.kalshi.away?.ask} fmt={px}
-                hc={m.kalshi.home?.ask_c} dc={m.kalshi.draw?.ask_c} ac={m.kalshi.away?.ask_c} /><VigNote q={m.kalshi} /></>
+          {vKalshi
+            ? <><Line label={t('prediction.kalshiPrice')} h={vKalshi.home?.ask} d={twoWay ? null : vKalshi.draw?.ask} a={vKalshi.away?.ask} fmt={px}
+                hc={vKalshi.home?.ask_c} dc={twoWay ? null : vKalshi.draw?.ask_c} ac={vKalshi.away?.ask_c} /><VigNote q={vKalshi} twoWay={twoWay} /></>
             : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('prediction.kalshiPrice')}: {t('prediction.notListed')}</div>}
-          {m.poly_us
-            ? <><Line label={t('prediction.polyPrice')} h={m.poly_us.home?.ask} d={m.poly_us.draw?.ask} a={m.poly_us.away?.ask} fmt={px}
-                hc={m.poly_us.home?.ask_c} dc={m.poly_us.draw?.ask_c} ac={m.poly_us.away?.ask_c} /><VigNote q={m.poly_us} /></>
+          {vPoly
+            ? <><Line label={t('prediction.polyPrice')} h={vPoly.home?.ask} d={twoWay ? null : vPoly.draw?.ask} a={vPoly.away?.ask} fmt={px}
+                hc={vPoly.home?.ask_c} dc={twoWay ? null : vPoly.draw?.ask_c} ac={vPoly.away?.ask_c} /><VigNote q={vPoly} twoWay={twoWay} /></>
             : <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 3 }}>{t('prediction.polyPrice')}: {t('prediction.notListed')}</div>}
           {edgeView && (
             <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: edgeColor, fontWeight: 700, marginTop: 4 }}>

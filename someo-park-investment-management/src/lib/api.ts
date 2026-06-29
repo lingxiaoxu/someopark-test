@@ -254,6 +254,7 @@ export const getWCRisk         = () => fetchApi<any>('/data/risk_report.json');
 export const getWCCalibration  = () => fetchApi<any>('/data/oos_report.json');
 export const getWCInplay       = () => fetchApi<any>('/data/inplay_signals.json');
 export const getWCInplayLive   = () => fetchApi<any>('/data/inplay_live.json');
+export const getWCInplayLiveAdvance = () => fetchApi<any>('/data/inplay_live_advance.json');
 export const getWCBacktest     = () => fetchApi<any>('/data/backtest.json');
 export const getWCSquad        = () => fetchApi<any>('/data/squad.json');
 export const getWCForm         = () => fetchApi<any>('/data/form.json');

@@ -76,6 +76,39 @@ def _append_review_log(inplay: dict, synced: int) -> None:
             f.write("\n".join(lines) + "\n")
 
 
+def _append_review_log_advance(inplay_adv: dict, synced: int) -> None:
+    """SEPARATE per-match, per-cycle review log for the 2-way ADVANCE product (plan 24 §7) —
+    parallel to _append_review_log, written to a DIFFERENT file
+    (data/logs/inplay_review_advance_<date>.jsonl) so the 3-way and advance records never mix.
+
+    One line per live KNOCKOUT match each cycle: the live ADVANCE model (home/away advance +
+    reg/et/pens split), the 2-way opportunities, and the 2-way hedge suggestion."""
+    ts = datetime.now(timezone.utc).isoformat()
+    day = ts[:10].replace("-", "")
+    path = CONFIG.paths.logs / f"inplay_review_advance_{day}.jsonl"
+    CONFIG.paths.logs.mkdir(parents=True, exist_ok=True)
+    lines = []
+    for mch in inplay_adv.get("matches", []):
+        lines.append(json.dumps({
+            "ts": ts,
+            "fixture_id": mch.get("fixture_id"),
+            "match": f'{mch.get("home", {}).get("name")} v {mch.get("away", {}).get("name")}',
+            "minute": mch.get("minute"),
+            "score": mch.get("score"),
+            "period": mch.get("period"),
+            "reds": mch.get("reds"),
+            "xg": mch.get("xg"),
+            "advance_model": mch.get("model"),          # live 2-way advance (home/away) + reg/et/pens
+            "n_opportunities": len(mch.get("opportunities", [])),
+            "opportunities": mch.get("opportunities", []),
+            "hedge_advance": mch.get("hedge_advance"),
+            "api_synced": synced,
+        }, ensure_ascii=False))
+    if lines:
+        with path.open("a", encoding="utf-8") as f:
+            f.write("\n".join(lines) + "\n")
+
+
 # In-play milestone minute thresholds (FT/PRE are filled by backfill_milestones).
 _MILESTONE_MIN = [("T15", 15), ("T30", 30), ("HT", 45), ("T60", 60), ("T75", 75)]
 
@@ -261,11 +294,19 @@ def refresh_once(conn=None) -> dict:
 
     # 2. Regenerate the in-play export (live model + venue quotes + arb) and the
     #    upcoming export (a just-started match flips out of NS → into the live feed).
-    from prediction_market.ops import inplay_export, upcoming_export
+    from prediction_market.ops import inplay_export, inplay_export_advance, upcoming_export
 
     inplay = inplay_export.build(conn, with_venues=True)
     _write_both("inplay_live.json", inplay)
     _append_review_log(inplay, synced)
+    # 2-way ADVANCE in-play (plan 24) — built + recorded in PARALLEL to the 3-way above.
+    # Separate JSON + separate review-log file; failure-tolerant (never blocks the 3-way path).
+    try:
+        inplay_adv = inplay_export_advance.build(conn, with_venues=True)
+        _write_both("inplay_live_advance.json", inplay_adv)
+        _append_review_log_advance(inplay_adv, synced)
+    except Exception as e:
+        print(f"[warn] advance in-play export skipped: {e}")
     # Record per-milestone price/prob snapshots as live matches cross 15/30/45/60/75',
     # then regenerate the milestone price-track export (PriceTrack / Mark-to-Market view).
     try:
@@ -278,7 +319,7 @@ def refresh_once(conn=None) -> dict:
     except Exception as e:
         print(f"[live_refresh] milestone capture/export skipped: {e}")
     try:
-        rows = upcoming_export.build(limit=6, conn=conn, with_venues=True)
+        rows = upcoming_export.build(limit=16, conn=conn, with_venues=True)
         # Same envelope the daily refresh writes (frontend reads `.matches`).
         # recent_finished surfaces just-ended matches (FT + score) so a live match
         # that finishes is marked ended in the top region, not silently dropped.

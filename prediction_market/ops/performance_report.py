@@ -245,7 +245,28 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
     edges = {k: model[k] - price[k] for k in _SIDE_KEYS}
     result = "home" if gh90 > ga90 else ("draw" if gh90 == ga90 else "away")
     model_pick = max(_SIDE_KEYS, key=lambda k: model[k])
+    model_won = model_pick == result
     stage = "knockout" if knockout else "group"
+
+    # ── Knockout WIN/LOSS standard: the 2-way "who advances" market (ET + penalties),
+    # NOT the 90' 3-way. From the knockout stage on, the prediction is judged right/wrong
+    # by the argmax pick-a-side (the team the model gives ≥50% to advance) vs who ACTUALLY
+    # advanced (`_advancer`, ET-inclusive). Group stage keeps the 3-way result. The 90'
+    # bet/settlement track above is unchanged (it trades the 3-way KXWCGAME/fwc contract).
+    advance = None
+    if knockout:
+        mp_adv = price_match_calibrated(sm, hi, ai, knockout=True, cal=cal, lam_mult=lam_mult)
+        pha = mp_adv.p_home_advance
+        advancer = _advancer(_raw, gh, ga)
+        if pha is not None:
+            adv_pick = "home" if pha >= 0.5 else "away"
+            advance = {"pick": adv_pick, "p_home_advance": round(pha, 4), "advancer": advancer,
+                       "won": (adv_pick == advancer) if advancer else None}
+    # Unified prediction口径: 2-way for knockout (when resolvable), else 3-way.
+    if advance is not None:
+        pred_pick, pred_result, pred_won = advance["pick"], advance["advancer"], advance["won"]
+    else:
+        pred_pick, pred_result, pred_won = model_pick, result, model_won
     # PIT recent-form for the decision's confidence sizing.
     form = None
     if pit and conn is not None:
@@ -273,7 +294,11 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
         cost, edge_val, model_prob = max(price[pick], 1e-6), edges[pick], round(model[pick], 4)
 
     return {"stage": stage, "pick": pick, "model_pick": model_pick, "result": result,
-            "won": (pick == result) if bet else None, "model_won": model_pick == result,
+            "won": (pick == result) if bet else None, "model_won": model_won,
+            # 2-way advance judgment (knockout only; None for group) + the unified
+            # prediction口径 the accuracy track uses (2-way for KO, 3-way for group).
+            "advance": advance, "pred_pick": pred_pick, "pred_result": pred_result,
+            "pred_won": pred_won,
             "bet": bet, "stake_usd": round(stake, 2), "confidence_k": conf_k,
             "cost": cost, "model_prob": model_prob, "edge": round(edge_val, 4), "model": model,
             "motivation": motiv}
@@ -368,6 +393,8 @@ def _bet_log(conn) -> list[dict]:
         pr = pre_px.get(r["api_id"])
         side_label = {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}
 
+        _pr_cols = set(pr.keys()) if (pr is not None and hasattr(pr, "keys")) else set()
+
         def _entry_c(side):
             """Real PRE venue ¢ for a side (Poly then Kalshi) → (cents, source); else None."""
             if pr is None:
@@ -378,6 +405,16 @@ def _bet_log(conn) -> list[dict]:
                 return to_cents(pr[f"kalshi_{side}_ask"]), "kalshi"
             return None
 
+        def _adv_entry_c(side):
+            """Real PRE 2-way advance ¢ for a side (Poly then Kalshi) → (cents, source)."""
+            if pr is None:
+                return None
+            for v in ("poly_adv", "kalshi_adv"):
+                col = f"{v}_{side}_ask"
+                if col in _pr_cols and pr[col] is not None:
+                    return to_cents(pr[col]), ("poly" if v == "poly_adv" else "kalshi")
+            return None
+
         def _clv_c(side, entry_c):
             t75 = t75_px.get(r["api_id"])
             if t75 is None or entry_c is None:
@@ -385,14 +422,20 @@ def _bet_log(conn) -> list[dict]:
             s = t75[f"poly_{side}_ask"] if t75[f"poly_{side}_ask"] is not None else t75[f"kalshi_{side}_ask"]
             return round(to_cents(s) - entry_c, 1) if s is not None else None
 
-        # ── argmax 口径 (model_pick) — recorded for EVERY settled match (all 22) ──
-        am_pick, am_won = mr["model_pick"], mr["model_won"]
-        _ame = _entry_c(am_pick)
+        # ── argmax / prediction口径 — recorded for EVERY settled match ──
+        # The win/loss STANDARD is 2-way (who advances) from the knockout stage on, 3-way
+        # (90' result) for the group stage (mr["pred_*"] already encodes this). The ¢ PnL
+        # marks the 2-way advance contract price for a knockout pick (PRE advance columns),
+        # else the 90' 3-way price for a group pick. am_pick is the side predicted to advance.
+        am_pick, am_won = mr["pred_pick"], mr["pred_won"]
+        _ame = _adv_entry_c(am_pick) if mr.get("advance") is not None else _entry_c(am_pick)
         am_entry_c = _ame[0] if _ame else None
-        am_pnl_c = _pnl_cents(am_entry_c, am_won) if am_entry_c is not None else None
+        am_pnl_c = (_pnl_cents(am_entry_c, am_won)
+                    if (am_entry_c is not None and am_won is not None) else None)
         am_cum_c += (am_pnl_c or 0.0)
-        am_n += 1
-        am_wins += int(am_won)
+        if am_won is not None:        # only count resolvable predictions in the accuracy record
+            am_n += 1
+            am_wins += int(am_won)
 
         # ── decision 口径 (value pick) — populated only when the model actually bet ──
         if mr["bet"]:
@@ -454,10 +497,14 @@ def _bet_log(conn) -> list[dict]:
             "result": result,
             "bet": mr["bet"],
             **dec,
-            # argmax 口径 (model_pick) — present on every row, all 22 matches
+            # prediction口径 (argmax pick) — present on every row. For knockout this is the
+            # 2-way "who advances" pick judged vs the actual advancer; group = 90' 3-way.
             "model_pick": am_pick, "model_pick_team": side_label[am_pick], "model_won": am_won,
-            "argmax_entry_cents": am_entry_c, "argmax_settle_cents": (100.0 if am_won else 0.0),
+            "argmax_entry_cents": am_entry_c,
+            "argmax_settle_cents": (None if am_won is None else (100.0 if am_won else 0.0)),
             "argmax_pnl_cents": am_pnl_c, "argmax_cum_pnl_cents": round(am_cum_c, 1),
+            # explicit 2-way advance block (knockout only; None for group) for the frontend.
+            "advance": mr.get("advance"),
         })
     return log, {"skipped": skipped, "n_bets": n_bets, "model_n": am_n, "model_hits": am_wins,
                  "staked_usd": round(staked, 2), "argmax_pnl_cents_total": round(am_cum_c, 1),

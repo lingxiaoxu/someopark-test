@@ -27,6 +27,7 @@ const FILES = [
   'upcoming.json',
   'inplay_signals.json',
   'inplay_live.json',
+  'inplay_live_advance.json',
   'backtest.json',
   'squad.json',
   'form.json',

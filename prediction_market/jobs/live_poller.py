@@ -128,6 +128,7 @@ def _live_quote_sources(conn) -> dict:
         d = KalshiDiscovery()
         d.match_index()    # warm the 3-way event→market cache once per poll
         d.totals_index()   # warm the KXWCTOTAL over/under cache once per poll
+        d.advance_index()  # warm the KXWCADVANCE 2-way cache (knockout only) once per poll
 
         def kalshi_q(fixture_id: int) -> dict:
             fx = conn.execute("SELECT home_api_id, away_api_id FROM fixture WHERE api_id=?",
@@ -141,8 +142,15 @@ def _live_quote_sources(conn) -> dict:
             hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
             return (d.totals_quotes(hi, ai) or {}) if (hi and ai) else {}
 
+        def kalshi_advance_q(fixture_id: int) -> dict:
+            fx = conn.execute("SELECT home_api_id, away_api_id FROM fixture WHERE api_id=?",
+                              (fixture_id,)).fetchone()
+            hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
+            return (d.advance_quotes(hi, ai) or {}) if (hi and ai) else {}
+
         sources["kalshi"] = kalshi_q
         sources["kalshi_totals"] = kalshi_totals_q
+        sources["kalshi_advance"] = kalshi_advance_q
     except Exception as e:
         log.warning("Kalshi match quotes unavailable: %s", e)
 
@@ -171,8 +179,13 @@ def _live_quote_sources(conn) -> dict:
             hi, ai, et = _et_date(fixture_id)
             return (ud.totals_quotes(hi, ai, et) or {}) if et else {}
 
+        def us_advance_q(fixture_id: int) -> dict:
+            hi, ai, et = _et_date(fixture_id)
+            return (ud.advance_quotes(hi, ai, et) or {}) if et else {}
+
         sources["poly_us"] = us_q
         sources["poly_us_totals"] = us_totals_q
+        sources["poly_us_advance"] = us_advance_q
     except Exception as e:
         log.warning("Polymarket US match quotes unavailable: %s", e)
     return sources

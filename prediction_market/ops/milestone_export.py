@@ -133,17 +133,36 @@ def build(conn=None) -> dict:
         side_label = {"home": name.get(hi, hi), "draw": "Draw", "away": name.get(ai, ai)}
         # argmax 口径 (most-likely side) — the parallel reference shown under our bet, on
         # EVERY settled match (incl. ones the decision model skipped).
+        # argmax / prediction口径 — for knockout this is the 2-way "who advances" pick judged
+        # vs who actually advanced (mr["pred_*"]); for the group stage it's the 90' 3-way
+        # argmax. Entry ¢: the 90' 3-way contract price for the group pick, OR the 2-way
+        # advance price (poly→kalshi) for a knockout pick (from the PRE snapshot's advance
+        # columns; None until that price was captured/backfilled).
+        from prediction_market.util.pricing import to_cents as _to_cents
+
+        def _adv_entry_c(side):
+            if pre_row is None:
+                return None
+            keys = set(pre_row.keys()) if hasattr(pre_row, "keys") else set()
+            for v in ("poly_adv", "kalshi_adv"):
+                col = f"{v}_{side}_ask"
+                if col in keys and pre_row[col] is not None:
+                    return _to_cents(pre_row[col])
+            return None
+
         argmax = None
         if mr is not None:
-            am_pick = mr["model_pick"]
-            am_entry_c = (pre["poly_c"].get(am_pick) or pre["kalshi_c"].get(am_pick)) if pre else None
-            am_won = mr["model_won"]
+            am_pick = mr["pred_pick"]
+            am_won = mr["pred_won"]
+            knockout_adv = mr.get("advance") is not None
+            am_entry_c = (_adv_entry_c(am_pick) if knockout_adv
+                          else ((pre["poly_c"].get(am_pick) or pre["kalshi_c"].get(am_pick)) if pre else None))
             argmax = {
                 "side": am_pick, "pick_team": side_label[am_pick], "entry_cents": am_entry_c,
-                "won": am_won,
+                "won": am_won, "advance": knockout_adv,
                 "mtm": ({"entry_c": am_entry_c, "ft_c": 100.0 if am_won else 0.0,
                          "pnl_c": round((100.0 if am_won else 0.0) - am_entry_c, 1), "won": am_won}
-                        if (settled and am_entry_c is not None) else None),
+                        if (settled and am_entry_c is not None and am_won is not None) else None),
             }
         our_bet = {
             "side": pick, "entry_prob": entry_prob, "entry_cents": entry_c,

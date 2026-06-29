@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
-  getWCRisk, getWCCalibration, getWCInplayLive, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
+  getWCRisk, getWCCalibration, getWCInplayLive, getWCInplayLiveAdvance, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
   getWCMilestoneMarks, getWCSchedule, getWCReachRound, getWCStyles, API_BASE,
 } from '../../lib/api';
 import { useState } from 'react';
@@ -17,6 +17,7 @@ import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
 import { tDyn, overviewHeadline } from '../../i18n/predictionStrings';
 import { usePoll } from './usePoll';
+import { AdvanceModeToggle, useAdvanceMode } from './AdvanceMode';
 
 // ── shared primitives ─────────────────────────────────────────────────────────
 const pct = (v?: number | null, d = 1) => (v == null || isNaN(v) ? '—' : `${(v * 100).toFixed(d)}%`);
@@ -294,41 +295,80 @@ function Methodology() {
 
 function Divergence() {
   const { t: tr } = useTranslation();
+  const { mode } = useAdvanceMode();
   const { data, loading, error } = useApi<any[]>(() => getWCDivergence(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const rows = (data ?? []);
+  const advance = mode === 'advance';
   return (
     <div>
       <Title sub={tr('prediction.subDivergence')}>Model vs Market</Title>
-      <DataTable cols={[tr('prediction.match'), 'Model ¢ H/D/A', 'Book ¢ H/D/A', tr('prediction.colEdge')]}
-        rows={rows.map((m: any) => {
-          const e = m.edge_vs_book || {};
-          const best = Math.max(Math.abs(e.home ?? 0), Math.abs(e.draw ?? 0), Math.abs(e.away ?? 0));
-          const side = best === Math.abs(e.home ?? 0) ? 'H' : best === Math.abs(e.draw ?? 0) ? 'D' : 'A';
-          const val = side === 'H' ? e.home : side === 'D' ? e.draw : e.away;
-          return [
-            `${tCountry(m.home)} v ${tCountry(m.away)}`,
-            `${pcent(m.model?.home)}/${pcent(m.model?.draw)}/${pcent(m.model?.away)}`,
-            `${pcent(m.book_devig?.home)}/${pcent(m.book_devig?.draw)}/${pcent(m.book_devig?.away)}`,
-            <span style={{ color: Math.abs(val) >= 0.05 ? 'var(--success)' : 'var(--text-muted)' }}>{side} {val >= 0 ? '+' : ''}{pct(val, 1)} ({val >= 0 ? '+' : ''}{pcent(val)})</span>,
-          ];
-        })} />
+      <div className="flex justify-end mb-2"><AdvanceModeToggle /></div>
+      {advance ? (
+        // 2-way "advances" lens: model_advance vs the venue advance de-vig (knockout only;
+        // group rows auto-lock → shown as regulation-only "—").
+        <DataTable cols={[tr('prediction.match'), tr('prediction.modelAdvHA'), tr('prediction.marketAdvHA'), tr('prediction.colEdge')]}
+          rows={rows.map((m: any) => {
+            const a = m.advance;
+            if (!a || !a.model) return [`${tCountry(m.home)} v ${tCountry(m.away)}`, '—', '—',
+              <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.regulationOnly')}</span>];
+            const e = a.edge_vs_market || {};
+            const side = Math.abs(e.home ?? 0) >= Math.abs(e.away ?? 0) ? 'H' : 'A';
+            const val = side === 'H' ? (e.home ?? 0) : (e.away ?? 0);
+            return [
+              `${tCountry(m.home)} v ${tCountry(m.away)}`,
+              `${pcent(a.model.home)}/${pcent(a.model.away)}`,
+              a.market_devig ? `${pcent(a.market_devig.home)}/${pcent(a.market_devig.away)}` : '—',
+              <span style={{ color: Math.abs(val) >= 0.05 ? 'var(--success)' : 'var(--text-muted)' }}>{side} {val >= 0 ? '+' : ''}{pct(val, 1)} ({val >= 0 ? '+' : ''}{pcent(val)})</span>,
+            ];
+          })} />
+      ) : (
+        <DataTable cols={[tr('prediction.match'), 'Model ¢ H/D/A', 'Book ¢ H/D/A', tr('prediction.colEdge')]}
+          rows={rows.map((m: any) => {
+            const e = m.edge_vs_book || {};
+            const best = Math.max(Math.abs(e.home ?? 0), Math.abs(e.draw ?? 0), Math.abs(e.away ?? 0));
+            const side = best === Math.abs(e.home ?? 0) ? 'H' : best === Math.abs(e.draw ?? 0) ? 'D' : 'A';
+            const val = side === 'H' ? e.home : side === 'D' ? e.draw : e.away;
+            return [
+              `${tCountry(m.home)} v ${tCountry(m.away)}`,
+              `${pcent(m.model?.home)}/${pcent(m.model?.draw)}/${pcent(m.model?.away)}`,
+              `${pcent(m.book_devig?.home)}/${pcent(m.book_devig?.draw)}/${pcent(m.book_devig?.away)}`,
+              <span style={{ color: Math.abs(val) >= 0.05 ? 'var(--success)' : 'var(--text-muted)' }}>{side} {val >= 0 ? '+' : ''}{pct(val, 1)} ({val >= 0 ? '+' : ''}{pcent(val)})</span>,
+            ];
+          })} />
+      )}
     </div>
   );
 }
 
 function Predictions() {
   const { t: tr } = useTranslation();
+  const { mode } = useAdvanceMode();
   const { data, loading, error } = useApi<any>(() => getWCUpcoming(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const ms = data?.matches ?? [];
+  const advance = mode === 'advance';
   return (
     <div>
       <Title sub={tr('prediction.subPredictions')}>Today's Predictions</Title>
-      <DataTable cols={[tr('prediction.match'), 'ET', 'H', 'H¢', 'D', 'D¢', 'A', 'A¢', 'O2.5']}
-        rows={ms.map((m: any) => [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '',
-          pct(m.model?.home, 0), cc(m.model?.cents?.home), pct(m.model?.draw, 0), cc(m.model?.cents?.draw),
-          pct(m.model?.away, 0), cc(m.model?.cents?.away), pct(m.model?.over_2_5, 0)])} />
+      <div className="flex justify-end mb-2"><AdvanceModeToggle /></div>
+      {advance ? (
+        // 2-way "advances" lens: who advances (incl. ET + penalties). Group rows auto-lock
+        // → shown as regulation-only.
+        <DataTable cols={[tr('prediction.match'), 'ET', tr('prediction.colHomeAdv'), 'H¢', tr('prediction.colAwayAdv'), 'A¢']}
+          rows={ms.map((m: any) => {
+            const a = m.advance;
+            if (!a || !a.model) return [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '',
+              <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.regulationOnly')}</span>, '—', '—', '—'];
+            return [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '',
+              pct(a.model.home, 0), cc(a.model.cents?.home), pct(a.model.away, 0), cc(a.model.cents?.away)];
+          })} />
+      ) : (
+        <DataTable cols={[tr('prediction.match'), 'ET', 'H', 'H¢', 'D', 'D¢', 'A', 'A¢', 'O2.5']}
+          rows={ms.map((m: any) => [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '',
+            pct(m.model?.home, 0), cc(m.model?.cents?.home), pct(m.model?.draw, 0), cc(m.model?.cents?.draw),
+            pct(m.model?.away, 0), cc(m.model?.cents?.away), pct(m.model?.over_2_5, 0)])} />
+      )}
       <Legend />
     </div>
   );
@@ -438,16 +478,30 @@ function renderOppReason(o: any, tr: (k: string, opts?: any) => string): string 
 
 function InPlay() {
   const { t: tr } = useTranslation();
-  // Polls every 20s so the live model + ¢ + tricks refresh during a match (no reload).
-  const { data, loading, updatedAt } = usePoll<any>(() => getWCInplayLive(), 20000);
+  const { mode } = useAdvanceMode();
+  const adv = mode === 'advance';
+  // Poll BOTH the 3-way and the 2-way advance live feeds every 20s, pick by mode (no lag on
+  // toggle). The advance feed is the SEPARATE inplay_live_advance.json (knockout only).
+  const live3 = usePoll<any>(() => getWCInplayLive(), 20000);
+  const liveA = usePoll<any>(() => getWCInplayLiveAdvance(), 20000);
+  const { data, loading, updatedAt } = adv ? liveA : live3;
   const matches = data?.matches ?? [];
   const upd = updatedAt ? new Date(updatedAt).toLocaleTimeString() : '';
   return (
     <div>
       <Title sub={tr('prediction.subInPlay')}>In-Play Arbitrage</Title>
-      <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8, ...mono }}>
-        ● {tr('prediction.autoRefresh')} 20s{upd ? ` · ${tr('prediction.updated')} ${upd}` : ''} · {data?.n_live ?? 0} {tr('prediction.live')}
+      <div className="flex items-center justify-between mb-2">
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>
+          ● {tr('prediction.autoRefresh')} 20s{upd ? ` · ${tr('prediction.updated')} ${upd}` : ''} · {data?.n_live ?? 0} {tr('prediction.live')}
+          {adv && <span style={{ color: 'var(--accent-primary)', marginLeft: 6 }}>{tr('prediction.modeAdvance')}</span>}
+        </div>
+        <AdvanceModeToggle />
       </div>
+      {adv && (
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8, ...mono, fontStyle: 'italic' }}>
+          {tr('prediction.inplayAdvNote')}
+        </div>
+      )}
       {loading && !matches.length ? <Loading /> : !matches.length ? (
         <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{tr('prediction.noLiveMatches')}</div>
       ) : matches.map((m: any) => (
@@ -460,21 +514,31 @@ function InPlay() {
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{m.minute}'{m.reds !== '0-0' ? ` · 🟥 ${m.reds}` : ''}</span>
           </div>
-          {/* live model — probability + per-contract ¢ side by side */}
+          {/* live model — probability + per-contract ¢ side by side. 2-way advance: H/A only
+              (incl. ET+penalties), no draw. */}
           <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)', marginBottom: 2 }}>
-            {tr('prediction.model')}: H {pct(m.model.home, 0)} ({cc(m.prices?.model_c?.home)}) · D {pct(m.model.draw, 0)} ({cc(m.prices?.model_c?.draw)}) · A {pct(m.model.away, 0)} ({cc(m.prices?.model_c?.away)})
+            {tr('prediction.model')}: {adv
+              ? <>{tr('prediction.colHomeAdv')} {pct(m.model.home, 0)} ({cc(m.prices?.model_c?.home)}) · {tr('prediction.colAwayAdv')} {pct(m.model.away, 0)} ({cc(m.prices?.model_c?.away)})</>
+              : <>H {pct(m.model.home, 0)} ({cc(m.prices?.model_c?.home)}) · D {pct(m.model.draw, 0)} ({cc(m.prices?.model_c?.draw)}) · A {pct(m.model.away, 0)} ({cc(m.prices?.model_c?.away)})</>}
           </div>
           {/* live market ¢ (executable) per venue */}
           {(m.prices?.kalshi || m.prices?.poly_us) && (
             <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 2 }}>
               {/* mid_c (not ask_c): a deep in-the-money contract has an empty opposite
                   book so yes_ask is undefined — mid_c falls back to the live bid. */}
-              {m.prices?.kalshi && <>Kalshi: H {cc(m.prices.kalshi.home?.mid_c)} / D {cc(m.prices.kalshi.draw?.mid_c)} / A {cc(m.prices.kalshi.away?.mid_c)}　</>}
-              {m.prices?.poly_us && <>Poly: H {cc(m.prices.poly_us.home?.mid_c)} / D {cc(m.prices.poly_us.draw?.mid_c)} / A {cc(m.prices.poly_us.away?.mid_c)}</>}
+              {adv ? <>
+                {m.prices?.kalshi && <>Kalshi: H {cc(m.prices.kalshi.home?.mid_c)} / A {cc(m.prices.kalshi.away?.mid_c)}　</>}
+                {m.prices?.poly_us && <>Poly: H {cc(m.prices.poly_us.home?.mid_c)} / A {cc(m.prices.poly_us.away?.mid_c)}</>}
+              </> : <>
+                {m.prices?.kalshi && <>Kalshi: H {cc(m.prices.kalshi.home?.mid_c)} / D {cc(m.prices.kalshi.draw?.mid_c)} / A {cc(m.prices.kalshi.away?.mid_c)}　</>}
+                {m.prices?.poly_us && <>Poly: H {cc(m.prices.poly_us.home?.mid_c)} / D {cc(m.prices.poly_us.draw?.mid_c)} / A {cc(m.prices.poly_us.away?.mid_c)}</>}
+              </>}
             </div>
           )}
           <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>
-            xG {m.xg.home ?? '—'} / {m.xg.away ?? '—'} · {tr('prediction.expGoals')} {num(m.model.exp_remaining_goals, 2)}
+            xG {m.xg.home ?? '—'} / {m.xg.away ?? '—'}{adv
+              ? <> · {tr('prediction.advSplit')} {pct(m.model.p_reg_decides, 0)}/{pct(m.model.p_et_decides, 0)}/{pct(m.model.p_pens_decides, 0)}</>
+              : <> · {tr('prediction.expGoals')} {num(m.model.exp_remaining_goals, 2)}</>}
           </div>
           {/* opportunities / tricks — grouped by INTENT (manage a held position / new entry /
               event) so a held-position exit (e.g. overshoot sell) isn't read as contradicting
@@ -516,7 +580,7 @@ function InPlay() {
           })() : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
           {/* Hedge — protect a leading directional position by buying draw (the quant
               math lives in the backend strategy.inplay_hedge; here we only render). */}
-          {m.hedge && (() => {
+          {!adv && m.hedge && (() => {
             const h = m.hedge;
             const homeName = tCountry(m.home.name), awayName = tCountry(m.away.name);
             const planLabel = (b: number) => b === 0 ? tr('prediction.hedge.planNone')
@@ -577,6 +641,57 @@ function InPlay() {
                     ⏱ {tr('prediction.hedge.koNote')}
                   </div>
                 )}
+              </div>
+            );
+          })()}
+          {/* 2-way ADVANCE hedge: protect held "X advances" by buying "opponent advances". */}
+          {adv && m.hedge_advance && (() => {
+            const h = m.hedge_advance;
+            const homeName = tCountry(m.home.name), awayName = tCountry(m.away.name);
+            const planLabel = (b: number) => b === 0 ? tr('prediction.hedge.planNone')
+              : (h.full_hedge_b != null && Math.abs(b - h.full_hedge_b) < 0.01) ? tr('prediction.hedge.planFull')
+              : tr('prediction.hedge.planBe');
+            const sign = (x: number) => (x >= 0 ? '+' : '');
+            const col = (x: number) => <span style={{ color: x >= 0 ? 'var(--success)' : 'var(--error)' }}>{sign(x)}{cc(x)}</span>;
+            const cols = [tr('prediction.hedge.colPlan'), tr('prediction.hedge.colHedgeB'),
+              `${homeName} ${tr('prediction.advancesShort')}`, `${awayName} ${tr('prediction.advancesShort')}`];
+            const hedgeCell = (b: number) => b === 0 ? num(b, 2) : `${num(b, 2)} @${cc(h.away_adv_c, 1)}`;
+            const rows = (h.payoff || []).map((r: any) => [planLabel(r.b), hedgeCell(r.b), col(r.home), col(r.away)]);
+            return (
+              <div style={{ marginTop: 8, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-subtle)' }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--success)', ...mono, marginBottom: 3 }}>
+                  🛡 {tr('prediction.hedge.titleAdvance')}
+                </div>
+                <div style={{ fontSize: 10, ...mono, marginBottom: 2, color: h.lead_state === 'leading' ? 'var(--text-secondary)' : 'var(--warning, #d08b00)' }}>
+                  {tr('prediction.hedge.summaryAdvance', {
+                    team: tCountry(h.held_team), entry: cc(h.entry_c, 1),
+                    state: tr('prediction.hedge.state.' + h.lead_state),
+                    hedge: cc(h.away_adv_c, 1), shares: h.shares_ref,
+                  })}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
+                  {tr('prediction.hedge.breakEven', { b: num(h.break_even_b, 2) })}
+                  {h.profit_if_win_c != null && <> · {tr('prediction.hedge.profitIfWin', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })}</>}
+                </div>
+                <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', ...mono, fontSize: 10, marginTop: 2 }}>
+                  <colgroup>
+                    <col style={{ width: '22%' }} /><col style={{ width: '26%' }} />
+                    <col style={{ width: '26%' }} /><col style={{ width: '26%' }} />
+                  </colgroup>
+                  <thead>
+                    <tr>{cols.map((c, i) => (
+                      <th key={i} style={{ textAlign: i < 2 ? 'left' : 'right', padding: '2px 6px', color: 'var(--text-muted)', fontWeight: 700, borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>{rows.map((r, ri) => (
+                    <tr key={ri}>{r.map((cell, ci) => (
+                      <td key={ci} style={{ textAlign: ci < 2 ? 'left' : 'right', padding: '2px 6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{cell}</td>
+                    ))}</tr>
+                  ))}</tbody>
+                </table>
+                <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 3 }}>
+                  ⏱ {tr('prediction.hedge.advNote')}
+                </div>
               </div>
             );
           })()}

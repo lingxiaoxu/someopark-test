@@ -8,6 +8,7 @@ import SettingsPage from './components/SettingsPage';
 import { AuthDialog } from './components/AuthDialog';
 import { CodePreview } from './components/CodePreview';
 import { ArtifactProvider } from './contexts/ArtifactContext';
+import { AdvanceModeProvider } from './components/prediction/AdvanceMode';
 import { useAuth, ViewType } from './hooks/useAuth';
 import { supabase } from './lib/supabase';
 import { loadUserChats, upsertUserChat, deleteUserChat } from './lib/chatStore';
@@ -368,6 +369,7 @@ export default function App() {
 
   return (
     <ArtifactProvider value={setActiveArtifact}>
+    <AdvanceModeProvider>
     <div ref={appRef} className="flex h-full w-full bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden font-sans">
       <div className="shrink-0 z-20 bg-[var(--bg-primary)] relative flex" style={{ width: sidebarWidth }}>
         <div className="flex-1 min-w-0">
@@ -516,6 +518,7 @@ export default function App() {
         <AuthDialog open={isAuthDialogOpen} setOpen={setIsAuthDialogOpen} supabase={supabase} view={authView} />
       )}
     </div>
+    </AdvanceModeProvider>
     </ArtifactProvider>
   );
 }

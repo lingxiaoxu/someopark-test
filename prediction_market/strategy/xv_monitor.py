@@ -230,8 +230,29 @@ def compare_matches(*, limit: int = 8) -> list[dict]:
     cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
+    # Venue advance-market discovery (knockout 2-way), for the "Advances" view's
+    # market side. Failure-tolerant — a venue that can't load just yields no advance.
+    kd = pd_ = None
+    try:
+        from prediction_market.venues.kalshi.discovery import KalshiDiscovery
+        kd = KalshiDiscovery()
+    except Exception:
+        kd = None
+    try:
+        from prediction_market.venues.polymarket_us.discovery import PolymarketUSDiscovery
+        pd_ = PolymarketUSDiscovery()
+    except Exception:
+        pd_ = None
+
+    def _devig2(asks):
+        if any(a is None for a in asks):
+            return None
+        from prediction_market.strategy.devig import devig
+        p = devig(asks, method="multiplicative")
+        return {"home": round(float(p[0]), 3), "away": round(float(p[1]), 3)}
+
     rows = conn.execute(
-        "SELECT f.api_id, f.home_api_id, f.away_api_id, f.round, "
+        "SELECT f.api_id, f.home_api_id, f.away_api_id, f.round, f.kickoff_ts, "
         "       AVG(o.p_home) bh, AVG(o.p_draw) bd, AVG(o.p_away) ba "
         "FROM fixture f JOIN match_odds o ON o.fixture_api_id = f.api_id "
         "WHERE f.status_short='NS' GROUP BY f.api_id ORDER BY f.kickoff_ts LIMIT ?", (limit,)).fetchall()
@@ -240,16 +261,60 @@ def compare_matches(*, limit: int = 8) -> list[dict]:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        mp = price_match_calibrated(sm, hi, ai, knockout=is_knockout(r["round"]), cal=cal)
-        out.append({
+        ko = is_knockout(r["round"])
+        # 3-way: price the 90' market identically to upcoming_export (knockout=False with
+        # host_neutral=ko) so the Model-vs-Market and Today's-Prediction views agree.
+        mp = price_match_calibrated(sm, hi, ai, knockout=False, host_neutral=ko, cal=cal)
+        row = {
             "home": name_of.get(hi, hi), "away": name_of.get(ai, ai),
+            "knockout": ko,
             "model": {"home": round(mp.p_home, 3), "draw": round(mp.p_draw, 3), "away": round(mp.p_away, 3)},
             "book_devig": {"home": round(r["bh"], 3), "draw": round(r["bd"], 3), "away": round(r["ba"], 3)},
             "edge_vs_book": {"home": round(mp.p_home - r["bh"], 3),
                              "draw": round(mp.p_draw - r["bd"], 3),
                              "away": round(mp.p_away - r["ba"], 3)},
             "us": None,  # populated by us_match_quotes when US match markets are live
-        })
+            "advance": None,
+        }
+        # 2-way advance block (knockout only): model_advance computed IDENTICALLY to
+        # upcoming_export (price_match knockout=True → p_home_advance), market = venue
+        # advance de-vig (Kalshi preferred, else Poly US). So selecting "Advances" here
+        # and in Today's-Prediction yields the same model number for the same match.
+        if ko:
+            mp_adv = price_match_calibrated(sm, hi, ai, knockout=True, cal=cal)
+            pha = mp_adv.p_home_advance
+            if pha is not None:
+                model_adv = {"home": round(pha, 3), "away": round(1.0 - pha, 3)}
+                ka = pa = None
+                et_date = None
+                try:
+                    from datetime import datetime
+                    from zoneinfo import ZoneInfo
+                    et_date = (datetime.fromisoformat(r["kickoff_ts"])
+                               .astimezone(ZoneInfo("America/New_York")).date().isoformat())
+                except Exception:
+                    et_date = None
+                if kd is not None:
+                    try:
+                        ka = kd.advance_quotes(hi, ai)
+                    except Exception:
+                        ka = None
+                if pd_ is not None and et_date:
+                    try:
+                        pa = pd_.advance_quotes(hi, ai, et_date)
+                    except Exception:
+                        pa = None
+                k_dv = _devig2([(ka.get(s) or {}).get("ask") for s in ("home", "away")]) if ka else None
+                p_dv = _devig2([(pa.get(s) or {}).get("ask") for s in ("home", "away")]) if pa else None
+                market_adv = k_dv or p_dv   # prefer Kalshi's de-vig as the market reference
+                row["advance"] = {
+                    "model": model_adv,
+                    "market_devig": market_adv,
+                    "market_source": ("kalshi" if k_dv else ("poly_us" if p_dv else None)),
+                    "edge_vs_market": ({s: round(model_adv[s] - market_adv[s], 3) for s in ("home", "away")}
+                                       if market_adv else None),
+                }
+        out.append(row)
     return out
 
 
