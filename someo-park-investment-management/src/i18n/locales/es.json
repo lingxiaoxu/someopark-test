@@ -279,6 +279,9 @@
     "inplayRegNote": "El arbitraje en vivo opera el contrato de 90 min (reglamentario); la vista Avanza aplica a los paneles previos al partido.",
     "inplayAdvNote": "«Quién avanza» en vivo (prórroga + penales incluidos) — modelo, precios, señales y cobertura sobre el mercado de avance.",
     "advSplit": "Regl./Prór./Pen.",
+    "periodEt": "Prórroga",
+    "periodPens": "Penales",
+    "reg90Settled": "mercado 90' liquidado — tiempo reglamentario bloqueado (el directo sigue en « Avance »)",
     "advancesShort": "avanza",
     "round": {
       "group": "Fase de grupos – J{{n}}",

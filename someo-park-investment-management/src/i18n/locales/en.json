@@ -618,6 +618,9 @@
     "inplayRegNote": "In-play arbitrage trades the 90-min (regulation) contract; the Advances view applies to the pre-match panels.",
     "inplayAdvNote": "Live 2-way \"who advances\" (incl. extra time + penalties) — model, prices, signals and hedge are all on the advance market.",
     "advSplit": "Reg/ET/Pen",
+    "periodEt": "ET",
+    "periodPens": "Penalties",
+    "reg90Settled": "90' market settled — regulation locked (live action continues in Advances)",
     "advancesShort": "advances",
     "round": {
       "group": "Group Stage – Round {{n}}",

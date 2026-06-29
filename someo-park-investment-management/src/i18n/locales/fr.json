@@ -279,6 +279,9 @@
     "inplayRegNote": "L'arbitrage en direct trade le contrat 90 min (temps réglementaire) ; la vue Qualifié s'applique aux panneaux d'avant-match.",
     "inplayAdvNote": "« Qui se qualifie » en direct (prolongation + tirs au but inclus) — modèle, prix, signaux et couverture sur le marché de qualification.",
     "advSplit": "Régl./Prol./TAB",
+    "periodEt": "Prol.",
+    "periodPens": "Tirs au but",
+    "reg90Settled": "marché 90' réglé — temps réglementaire verrouillé (le direct continue dans « Qualification »)",
     "advancesShort": "se qualifie",
     "round": {
       "group": "Phase de groupes – J{{n}}",

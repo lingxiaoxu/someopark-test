@@ -539,7 +539,11 @@ function InPlay() {
               <span style={{ color: 'var(--error)', fontWeight: 700, marginRight: 6 }} className="pulse">● {tr('prediction.liveBadge')}</span>
               {tCountry(m.home.name)} <b>{m.score}</b> {tCountry(m.away.name)}
             </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{m.minute}'{m.reds !== '0-0' ? ` · 🟥 ${m.reds}` : ''}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{
+              m.period === 'pens' ? tr('prediction.periodPens')
+                : m.period === 'et' ? `${tr('prediction.periodEt')} ${m.minute}'`
+                : `${m.minute}'`
+            }{m.reds !== '0-0' ? ` · 🟥 ${m.reds}` : ''}</span>
           </div>
           {/* live model — probability + per-contract ¢ side by side. 2-way advance: H/A only
               (incl. ET+penalties), no draw. */}
@@ -567,6 +571,14 @@ function InPlay() {
               ? <> · {tr('prediction.advSplit')} {pct(m.model.p_reg_decides, 0)}/{pct(m.model.p_et_decides, 0)}/{pct(m.model.p_pens_decides, 0)}</>
               : <> · {tr('prediction.expGoals')} {num(m.model.exp_remaining_goals, 2)}</>}
           </div>
+          {/* Regulation (90' 3-way) is SETTLED once the match passes 90' (ET/penalties): the
+              result is decided, so no new entries / hedge — only "collect a held position".
+              The live action continues in the Advances product. */}
+          {!adv && m.period && m.period !== 'reg' && (
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6, fontStyle: 'italic' }}>
+              {tr('prediction.reg90Settled')}
+            </div>
+          )}
           {/* opportunities / tricks — grouped by INTENT (manage a held position / new entry /
               event) so a held-position exit (e.g. overshoot sell) isn't read as contradicting
               a new-entry buy. Every signal is kept; only the grouping changes. */}

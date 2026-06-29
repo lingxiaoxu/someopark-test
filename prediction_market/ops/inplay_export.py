@@ -22,6 +22,21 @@ from prediction_market.config import CONFIG
 
 _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
 
+# Match period from API-Football status. The 90' THREE-WAY market settles at the regulation
+# whistle, so anything past regulation (extra time / penalties) means the 90' result is DECIDED.
+_ET_STATUS = ("ET", "BT")          # extra time (BT = break before ET)
+_PENS_STATUS = ("P", "PEN")        # penalty shootout in progress
+
+
+def _period_for(status: str) -> str:
+    """'reg' | 'et' | 'pens' from status_short. Mirrors inplay_export_advance._period_for so the
+    two products agree on when regulation is over (kept local to keep the 3-way path standalone)."""
+    if status in _PENS_STATUS:
+        return "pens"
+    if status in _ET_STATUS:
+        return "et"
+    return "reg"
+
 
 def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, *, knockout=False):
     """Hedge suggestion for a live match, or None when not applicable.
@@ -218,9 +233,21 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
                 hedge["held_team"] = name.get(hi, hi) if hedge["held_side"] == "home" else name.get(ai, ai)
         except Exception:
             hedge = None
+        # 90' market settled once the match passes regulation (extra time / penalties). In a
+        # knockout the 3-way settles on 90', so once status flips to ET/BT/P the result is
+        # DECIDED — no new 3-way entry is possible and a directional hedge is moot. Keep only
+        # "manage" intents (collect/sell a HELD 90' position); drop entry/event (e.g. the stale
+        # ko_draw "back the draw" that otherwise keeps firing in extra time); null the hedge.
+        # The minute keeps climbing and is shown as ET / penalties in the UI; the live 2-way
+        # ADVANCE product stays active through ET+pens (see inplay_export_advance).
+        period = _period_for(fx["status_short"])
+        if period != "reg":
+            fixture_opps = [o for o in fixture_opps if o.get("intent") == "manage"]
+            hedge = None
         matches.append({
             "fixture_id": fx["api_id"],
             "status": fx["status_short"],
+            "period": period,
             "minute": minute,
             "score": f"{gh}-{ga}",
             "reds": f"{rh}-{ra}",

@@ -297,6 +297,9 @@
     "inplayRegNote": "盘中套利交易的是90分钟(常规时间)合约;晋级盘视图用于赛前面板。",
     "inplayAdvNote": "实时 2-way「谁晋级」(含加时+点球)——模型、报价、信号、对冲全部基于晋级盘。",
     "advSplit": "常规/加时/点球",
+    "periodEt": "加时",
+    "periodPens": "点球大战",
+    "reg90Settled": "90′ 盘口已结算 — 常规时间已锁定（实时盘请切到「晋级」）",
     "advancesShort": "晋级",
     "round": {
       "group": "小组赛第{{n}}轮",
