@@ -62,7 +62,7 @@
   },
   "prediction": {
     "championOdds": "夺冠概率",
-    "reachRound": "晋级盘",
+    "reachRound": "晋级形势",
     "subReachRound": "球队「晋级到某轮」概率(模型) vs Kalshi + Poly 真实合约价 —— 无平局的晋级产品",
     "rrAdvance": "小组出线",
     "rrR16": "16强",
@@ -281,7 +281,7 @@
     "drawResult": "平局",
     "ourPrediction": "我们的预测",
     "modeRegulation": "常规时间",
-    "modeAdvance": "晋级盘",
+    "modeAdvance": "晋级",
     "modeRegulationHint": "常规时间——90分钟赛果(主胜/平/客胜)。",
     "modeAdvanceHint": "谁晋级——含加时与点球(主/客两选项,无平局)。",
     "advancesLabel": "{{team}} 晋级",

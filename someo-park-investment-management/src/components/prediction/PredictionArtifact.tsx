@@ -34,11 +34,17 @@ function ErrorBox({ e }: { e: string }) {
   return <div className="text-xs py-3" style={{ color: 'var(--error)', ...mono }}>Failed to load: {e}. Run the exporter + <code>npm run sync:wc</code>.</div>;
 }
 // Heading is rendered (translated) by the dispatcher; Title keeps only the sub line.
-function Title({ children, sub }: { children?: ReactNode; sub?: string }) {
+function Title({ children, sub, right }: { children?: ReactNode; sub?: string; right?: ReactNode }) {
   void children;
-  return sub ? (
-    <div className="mb-3" style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{sub}</div>
-  ) : null;
+  if (!sub && !right) return null;
+  // `right` (e.g. the Regulation/Advances selector) sits on the SAME row as the subtitle,
+  // right-aligned, so the control lines up with the view's small header instead of below it.
+  return (
+    <div className="mb-3 flex items-center justify-between" style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, minHeight: 22 }}>
+      <span>{sub}</span>
+      {right}
+    </div>
+  );
 }
 function KV({ rows }: { rows: [string, ReactNode][] }) {
   return (
@@ -302,8 +308,7 @@ function Divergence() {
   const advance = mode === 'advance';
   return (
     <div>
-      <Title sub={tr('prediction.subDivergence')}>Model vs Market</Title>
-      <div className="flex justify-end mb-2"><AdvanceModeToggle /></div>
+      <Title sub={tr('prediction.subDivergence')} right={<AdvanceModeToggle />}>Model vs Market</Title>
       {advance ? (
         // 2-way "advances" lens: model_advance vs the venue advance de-vig (knockout only;
         // group rows auto-lock → shown as regulation-only "—").
@@ -350,8 +355,7 @@ function Predictions() {
   const advance = mode === 'advance';
   return (
     <div>
-      <Title sub={tr('prediction.subPredictions')}>Today's Predictions</Title>
-      <div className="flex justify-end mb-2"><AdvanceModeToggle /></div>
+      <Title sub={tr('prediction.subPredictions')} right={<AdvanceModeToggle />}>Today's Predictions</Title>
       {advance ? (
         // 2-way "advances" lens: who advances (incl. ET + penalties). Group rows auto-lock
         // → shown as regulation-only.
@@ -398,8 +402,7 @@ function MatchPricing() {
     (q?.devig?.[side] ?? (q?.[side]?.mid_c != null ? q[side].mid_c / 100 : null));
   return (
     <div>
-      <Title sub={tr('prediction.subMatchPricing')}>Match Pricing</Title>
-      <div className="flex justify-end mb-2"><AdvanceModeToggle /></div>
+      <Title sub={tr('prediction.subMatchPricing')} right={<AdvanceModeToggle />}>Match Pricing</Title>
       {ms.map((m: any, i: number) => {
         // 2-way "advances" lens: model_advance vs venue advance prices (主/客, no draw).
         // Group / undecided knockout (no advance block) auto-lock to regulation.
@@ -503,13 +506,10 @@ function InPlay() {
   const upd = updatedAt ? new Date(updatedAt).toLocaleTimeString() : '';
   return (
     <div>
-      <Title sub={tr('prediction.subInPlay')}>In-Play Arbitrage</Title>
-      <div className="flex items-center justify-between mb-2">
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>
-          ● {tr('prediction.autoRefresh')} 20s{upd ? ` · ${tr('prediction.updated')} ${upd}` : ''} · {data?.n_live ?? 0} {tr('prediction.live')}
-          {adv && <span style={{ color: 'var(--accent-primary)', marginLeft: 6 }}>{tr('prediction.modeAdvance')}</span>}
-        </div>
-        <AdvanceModeToggle />
+      <Title sub={tr('prediction.subInPlay')} right={<AdvanceModeToggle />}>In-Play Arbitrage</Title>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }} className="mb-2">
+        ● {tr('prediction.autoRefresh')} 20s{upd ? ` · ${tr('prediction.updated')} ${upd}` : ''} · {data?.n_live ?? 0} {tr('prediction.live')}
+        {adv && <span style={{ color: 'var(--accent-primary)', marginLeft: 6 }}>{tr('prediction.modeAdvance')}</span>}
       </div>
       {adv && (
         <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 8, ...mono, fontStyle: 'italic' }}>

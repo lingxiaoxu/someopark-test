@@ -165,8 +165,8 @@ export default function PredictionUpcoming() {
           {!!liveMatches.length && <span className="pulse" style={{ color: 'var(--error)', marginLeft: 8 }}>● {liveMatches.length} {t('prediction.live')}</span>}
         </div>
         <div className="flex items-center gap-2">
-          <AdvanceModeToggle dark />
           <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>World Cup 2026</div>
+          <AdvanceModeToggle dark />
         </div>
       </div>
       {loading ? (
