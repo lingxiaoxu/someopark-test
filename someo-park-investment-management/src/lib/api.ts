@@ -253,8 +253,12 @@ export const getWCPerformance  = () => fetchApi<any>('/data/performance_report.j
 export const getWCRisk         = () => fetchApi<any>('/data/risk_report.json');
 export const getWCCalibration  = () => fetchApi<any>('/data/oos_report.json');
 export const getWCInplay       = () => fetchApi<any>('/data/inplay_signals.json');
-export const getWCInplayLive   = () => fetchApi<any>('/data/inplay_live.json');
-export const getWCInplayLiveAdvance = () => fetchApi<any>('/data/inplay_live_advance.json');
+// Per-minute live feeds — append a unique cache-buster (like getWCReachRound) so the
+// cloudflared/edge cache can't serve EITHER feed stale. Without it the 3-way and the
+// 2-way advance feed (same-cycle on disk) could show different minutes when one URL was
+// edge-cached and the other wasn't (e.g. regulation 117' vs advance 114').
+export const getWCInplayLive   = () => fetchApi<any>(`/data/inplay_live.json?_=${Date.now()}`);
+export const getWCInplayLiveAdvance = () => fetchApi<any>(`/data/inplay_live_advance.json?_=${Date.now()}`);
 export const getWCBacktest     = () => fetchApi<any>('/data/backtest.json');
 export const getWCSquad        = () => fetchApi<any>('/data/squad.json');
 export const getWCForm         = () => fetchApi<any>('/data/form.json');
