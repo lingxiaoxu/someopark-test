@@ -235,14 +235,15 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             hedge = None
         # 90' market settled once the match passes regulation (extra time / penalties). In a
         # knockout the 3-way settles on 90', so once status flips to ET/BT/P the result is
-        # DECIDED — no new 3-way entry is possible and a directional hedge is moot. Keep only
-        # "manage" intents (collect/sell a HELD 90' position); drop entry/event (e.g. the stale
-        # ko_draw "back the draw" that otherwise keeps firing in extra time); null the hedge.
-        # The minute keeps climbing and is shown as ET / penalties in the UI; the live 2-way
-        # ADVANCE product stays active through ET+pens (see inplay_export_advance).
+        # DECIDED: no new entry, no event read, and not even a "lock the draw" exit makes sense
+        # (the draw has already won — it pays $1, so "sell to lock against a late goal" is moot).
+        # The market is fully LOCKED — drop every opportunity and the hedge; the UI shows a
+        # "90' settled — regulation locked" note instead. The minute keeps climbing (shown as
+        # ET / penalties). The live 2-way ADVANCE product stays active through ET+pens
+        # (see inplay_export_advance).
         period = _period_for(fx["status_short"])
         if period != "reg":
-            fixture_opps = [o for o in fixture_opps if o.get("intent") == "manage"]
+            fixture_opps = []
             hedge = None
         matches.append({
             "fixture_id": fx["api_id"],

@@ -616,7 +616,9 @@ function InPlay() {
                 </div>
               );
             });
-          })() : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
+          })() : (!adv && m.period && m.period !== 'reg')
+            ? null  /* settled 90' market — the reg90Settled note already explains the empty list */
+            : <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{tr('prediction.noOpps')}</div>}
           {/* Hedge — protect a leading directional position by buying draw (the quant
               math lives in the backend strategy.inplay_hedge; here we only render). */}
           {!adv && m.hedge && (() => {
