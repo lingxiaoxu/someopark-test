@@ -436,6 +436,8 @@
       "held": "試合前建値 {{entry}} · {{shares}}枚あたり",
       "breakEven": "損益分岐ヘッジ:draw を {{b}} 枚購入 → 引き分けでも回収",
       "profitIfWin": "{{team}} 勝利なら依然 {{profit}}",
+      "breakEvenAdvance": "損益分岐ヘッジ:相手の勝ち上がりを {{b}} 枚買う → 敗退でも回収",
+      "profitIfWinAdvance": "{{team}} が勝ち上がれば依然 {{profit}}",
       "win": "勝",
       "colPlan": "方策",
       "colDrawB": "draw 枚数",

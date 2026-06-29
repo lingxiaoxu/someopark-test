@@ -436,6 +436,8 @@
       "held": "entrée avant-match {{entry}} · par {{shares}}",
       "breakEven": "Couverture seuil nul : acheter {{b}} nul → équilibre même en cas de nul",
       "profitIfWin": "victoire {{team}} rapporte encore {{profit}}",
+      "breakEvenAdvance": "Couverture seuil de rentabilité : achetez {{b}} contrats adversaire-qualifié → récupéré même éliminé",
+      "profitIfWinAdvance": "qualification de {{team}} rapporte encore {{profit}}",
       "win": "gagne",
       "colPlan": "Plan",
       "colDrawB": "Nul ×",

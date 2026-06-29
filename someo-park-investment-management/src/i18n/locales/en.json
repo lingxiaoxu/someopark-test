@@ -783,6 +783,8 @@
       "held": "pre-match entry {{entry}} · per {{shares}}",
       "breakEven": "Break-even hedge: buy {{b}} draw → flat even if drawn",
       "profitIfWin": "{{team}} win still nets {{profit}}",
+      "breakEvenAdvance": "Break-even hedge: buy {{b}} opponent-advance contracts → recoup even if eliminated",
+      "profitIfWinAdvance": "{{team}} advancing still nets {{profit}}",
       "win": "win",
       "colPlan": "Plan",
       "colDrawB": "Draw ×",

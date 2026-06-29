@@ -436,6 +436,8 @@
       "held": "entrada previa {{entry}} · por {{shares}}",
       "breakEven": "Cobertura de equilibrio: comprar {{b}} empate → sin pérdida aun si empata",
       "profitIfWin": "victoria de {{team}} aún gana {{profit}}",
+      "breakEvenAdvance": "Cobertura de equilibrio: compra {{b}} contratos rival-avanza → recuperas aun si eres eliminado",
+      "profitIfWinAdvance": "avance de {{team}} aún gana {{profit}}",
       "win": "gana",
       "colPlan": "Plan",
       "colDrawB": "Empate ×",
