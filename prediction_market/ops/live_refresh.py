@@ -25,15 +25,33 @@ from datetime import datetime, timedelta, timezone
 from prediction_market.config import CONFIG
 
 
+# In-progress statuses (API-Football). A fixture sitting in one of these in OUR DB hasn't been
+# finalized to FT/AET/PEN yet — so we must keep polling it.
+_LIVE_STATUS = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
+
+
 def _in_match_window(conn) -> bool:
-    """True if any fixture is plausibly live now (kicked off ≤3h ago … +5min ahead)."""
+    """True if any fixture is plausibly live now (kicked off ≤3h ago … +5min ahead), OR our DB
+    still holds an in-progress match that hasn't been finalized.
+
+    The second clause matters for knockout ties: extra time + a penalty shootout can push the
+    final whistle PAST kickoff+3h. Without it the window closes first, the cycle's
+    ``sync_results`` (which flips the match to FT/AET/PEN and clears the live card) never runs,
+    and the match stays stuck at its last in-play status (e.g. 'P') showing "进行中" forever.
+    The clause self-terminates — once finalized the match leaves the in-progress set — and an 8h
+    cap stops any ancient never-finalized row from holding the window open indefinitely."""
     now = datetime.now(timezone.utc)
     lo = (now - timedelta(hours=3)).isoformat()
     hi = (now + timedelta(minutes=5)).isoformat()
-    n = conn.execute(
-        "SELECT COUNT(*) n FROM fixture WHERE kickoff_ts BETWEEN ? AND ?", (lo, hi)
-    ).fetchone()["n"]
-    return bool(n)
+    if conn.execute("SELECT COUNT(*) n FROM fixture WHERE kickoff_ts BETWEEN ? AND ?",
+                    (lo, hi)).fetchone()["n"]:
+        return True
+    ph = ",".join("?" * len(_LIVE_STATUS))
+    cap = (now - timedelta(hours=8)).isoformat()
+    stuck = conn.execute(
+        f"SELECT COUNT(*) n FROM fixture WHERE status_short IN ({ph}) AND kickoff_ts >= ?",
+        (*_LIVE_STATUS, cap)).fetchone()["n"]
+    return bool(stuck)
 
 
 def _write_both(name: str, doc) -> None:
