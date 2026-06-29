@@ -166,7 +166,7 @@ export default function PredictionUpcoming() {
         </div>
         <div className="flex items-center gap-2">
           <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>World Cup 2026</div>
-          <AdvanceModeToggle dark />
+          <AdvanceModeToggle />
         </div>
       </div>
       {loading ? (

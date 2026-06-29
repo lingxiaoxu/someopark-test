@@ -31,18 +31,20 @@ export function useAdvanceMode(): Ctx {
 
 /**
  * Two-option segmented selector (Regulation Time / Advances), same look as the
- * stock-strategy switcher in ChatArea. `dark=false` uses theme tokens (for panels
- * with the dashboard background); `dark=true` uses the inverted #111/#fff scheme used
- * on the white cards. Reads/writes the shared AdvanceMode context.
+ * stock-strategy switcher. Uses theme tokens (selected = --text-primary background) so it
+ * renders identically in light + dark and in EVERY location (upcoming panel + artifact title
+ * rows) — no per-location variant. Reads/writes the shared AdvanceMode context.
  */
-export function AdvanceModeToggle({ dark = false }: { dark?: boolean }) {
+export function AdvanceModeToggle() {
   const { mode, setMode } = useAdvanceMode();
   const { t } = useTranslation();
-  const ink = dark ? '#111' : 'var(--text-primary)';
-  const onBg = dark ? '#111' : 'var(--text-primary)';
-  const onFg = dark ? '#fff' : 'var(--bg-primary)';
-  const offFg = dark ? '#555' : 'var(--text-muted)';
-  const offBg = dark ? '#fff' : 'transparent';
+  // Theme-token styling (consistent in light + dark): selected = --text-primary background.
+  // Used identically in every location (upcoming panel + the artifact title rows).
+  const ink = 'var(--text-primary)';
+  const onBg = 'var(--text-primary)';
+  const onFg = 'var(--bg-primary)';
+  const offFg = 'var(--text-muted)';
+  const offBg = 'transparent';
   const opts: [AdvanceMode, string][] = [
     ['regulation', t('prediction.modeRegulation')],
     ['advance', t('prediction.modeAdvance')],
