@@ -308,7 +308,7 @@ function Divergence() {
   const advance = mode === 'advance';
   return (
     <div>
-      <Title sub={tr('prediction.subDivergence')} right={<AdvanceModeToggle />}>Model vs Market</Title>
+      <Title sub={tr('prediction.subDivergence')}>Model vs Market</Title>
       {advance ? (
         // 2-way "advances" lens: model_advance vs the venue advance de-vig (knockout only;
         // group rows auto-lock → shown as regulation-only "—").
@@ -355,7 +355,7 @@ function Predictions() {
   const advance = mode === 'advance';
   return (
     <div>
-      <Title sub={tr('prediction.subPredictions')} right={<AdvanceModeToggle />}>Today's Predictions</Title>
+      <Title sub={tr('prediction.subPredictions')}>Today's Predictions</Title>
       {advance ? (
         // 2-way "advances" lens: who advances (incl. ET + penalties). Group rows auto-lock
         // → shown as regulation-only.
@@ -402,7 +402,7 @@ function MatchPricing() {
     (q?.devig?.[side] ?? (q?.[side]?.mid_c != null ? q[side].mid_c / 100 : null));
   return (
     <div>
-      <Title sub={tr('prediction.subMatchPricing')} right={<AdvanceModeToggle />}>Match Pricing</Title>
+      <Title sub={tr('prediction.subMatchPricing')}>Match Pricing</Title>
       {ms.map((m: any, i: number) => {
         // 2-way "advances" lens: model_advance vs venue advance prices (主/客, no draw).
         // Group / undecided knockout (no advance block) auto-lock to regulation.
@@ -506,7 +506,7 @@ function InPlay() {
   const upd = updatedAt ? new Date(updatedAt).toLocaleTimeString() : '';
   return (
     <div>
-      <Title sub={tr('prediction.subInPlay')} right={<AdvanceModeToggle />}>In-Play Arbitrage</Title>
+      <Title sub={tr('prediction.subInPlay')}>In-Play Arbitrage</Title>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }} className="mb-2">
         ● {tr('prediction.autoRefresh')} 20s{upd ? ` · ${tr('prediction.updated')} ${upd}` : ''} · {data?.n_live ?? 0} {tr('prediction.live')}
         {adv && <span style={{ color: 'var(--accent-primary)', marginLeft: 6 }}>{tr('prediction.modeAdvance')}</span>}
@@ -1231,6 +1231,9 @@ const REGISTRY: Record<string, () => ReactElement> = {
 };
 
 const KEY_BY_TYPE: Record<string, string> = Object.fromEntries(PREDICTION_ITEMS.map(i => [i.type, i.i18nKey]));
+// Artifact types that carry the Regulation/Advances selector — rendered on the artifact's
+// title row (top, right-aligned), matching the stock-mode viewers' header-row selector.
+const ADVANCE_SELECTOR_TYPES = new Set(['wc_match_pricing', 'wc_divergence', 'wc_inplay', 'wc_predictions']);
 
 export default function PredictionArtifact({ type }: { type: string }) {
   const { t } = useTranslation();
@@ -1239,7 +1242,12 @@ export default function PredictionArtifact({ type }: { type: string }) {
   const key = KEY_BY_TYPE[type];
   return (
     <div>
-      {key && <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-primary)', marginBottom: 6, ...mono }}>{t(`prediction.${key}`)}</div>}
+      {key && (
+        <div className="flex items-center justify-between" style={{ marginBottom: 6, minHeight: 22 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono }}>{t(`prediction.${key}`)}</div>
+          {ADVANCE_SELECTOR_TYPES.has(type) && <AdvanceModeToggle />}
+        </div>
+      )}
       <View />
     </div>
   );
