@@ -245,10 +245,25 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         if period != "reg":
             fixture_opps = []
             hedge = None
+        # Live shootout tally (scored per side) for the UI header — same source as the advance
+        # export; None outside pens. The 3-way market is settled here, but both tabs share the
+        # header so the penalty score should read consistently whichever tab is open.
+        shootout = None
+        if period == "pens":
+            sc = {"home": 0, "away": 0}
+            for r in conn.execute(
+                "SELECT team_api_id, COUNT(*) n FROM fixture_event WHERE fixture_api_id=? "
+                "AND comments='Penalty Shootout' AND detail='Penalty' GROUP BY team_api_id", (fx["api_id"],)):
+                if r["team_api_id"] == fx["home_api_id"]:
+                    sc["home"] = r["n"]
+                elif r["team_api_id"] == fx["away_api_id"]:
+                    sc["away"] = r["n"]
+            shootout = sc
         matches.append({
             "fixture_id": fx["api_id"],
             "status": fx["status_short"],
             "period": period,
+            "shootout": shootout,
             "minute": minute,
             "score": f"{gh}-{ga}",
             "reds": f"{rh}-{ra}",

@@ -63,13 +63,17 @@ def _adv_sources(conn):
     return out
 
 
-def _match_hedge_advance(conn, fx, pick_name, hi, ai, sm, gh, ga, minute, lap, prices):
+def _match_hedge_advance(conn, fx, pick_name, hi, ai, sm, gh, ga, minute, lap, prices, *, period="reg"):
     """2-way hedge suggestion (plan 24 §4): protect OUR directional advance position by buying
     the opponent's advance leg. Our pick = the positive-value side vs the PRE advance market;
-    entry from the PRE advance ask. None when not applicable."""
+    entry from the PRE advance ask. None when not applicable.
+
+    Stays live through the penalty shootout: the break-even / payoff math is period-agnostic
+    (it works off the two advance legs), so we only skip on minute<=0 in normal play — during
+    pens `elapsed` is None (minute 0) but the position still needs protecting, so we don't gate."""
     from prediction_market.strategy import inplay_hedge_advance as ih
     from prediction_market.util.pricing import to_cents
-    if minute <= 0:
+    if minute <= 0 and period != "pens":
         return None
     pre_row = conn.execute(
         "SELECT * FROM milestone_snapshot WHERE fixture_api_id=? AND milestone='PRE'",
@@ -181,7 +185,26 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             "AND type='Card' AND detail LIKE '%Red%' GROUP BY team_api_id", (fx["api_id"],))}
         rh, ra = reds.get(fx["home_api_id"], 0), reds.get(fx["away_api_id"], 0)
         lam_h, lam_a = sm.pair_lambdas(hi, ai, knockout=True, host_neutral=True)
-        shootout_home = shootout_win_prob_detailed(sm, hi, ai)
+        # Live penalty-shootout tally (kicks already taken/scored per side) from the stored
+        # shootout events (comments='Penalty Shootout'; detail 'Penalty'=scored, 'Missed
+        # Penalty'=miss). Feeds the shootout DP so the advance prob updates PER KICK during pens
+        # instead of sitting on the static pre-shootout strength prior. Zero outside pens.
+        so_taken = {"home": 0, "away": 0}
+        so_scored = {"home": 0, "away": 0}
+        if period == "pens":
+            for r in conn.execute(
+                "SELECT team_api_id, detail, COUNT(*) n FROM fixture_event WHERE fixture_api_id=? "
+                "AND comments='Penalty Shootout' GROUP BY team_api_id, detail", (fx["api_id"],)):
+                side = ("home" if r["team_api_id"] == fx["home_api_id"]
+                        else "away" if r["team_api_id"] == fx["away_api_id"] else None)
+                if side is None:
+                    continue
+                so_taken[side] += r["n"]
+                if r["detail"] == "Penalty":
+                    so_scored[side] += r["n"]
+        shootout_home = shootout_win_prob_detailed(
+            sm, hi, ai, taken_a=so_taken["home"], scored_a=so_scored["home"],
+            taken_b=so_taken["away"], scored_b=so_scored["away"])
         lap = live_advance_prob(lam_h, lam_a, minute, gh, ga, period=period, shootout_home=shootout_home,
                                 red_home=rh, red_away=ra, xg_home=xg.get(fx["home_api_id"]),
                                 xg_away=xg.get(fx["away_api_id"]), et_home_goals=gh, et_away_goals=ga)
@@ -194,6 +217,14 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             if q:
                 prices[v] = _q2c(q)
         fixture_opps = by_fixture.get(fx["api_id"], [])
+        # During the shootout there is NO open play, so open-play tactics (momentum / xG-chase /
+        # possession / fade / red-card / comeback) are meaningless — keep only model-vs-market
+        # value (relative_value / lock_arb, now driven by the LIVE shootout model) and any
+        # held-position "manage" exits. The 90'+ET reads are already settled.
+        if period == "pens":
+            fixture_opps = [o for o in fixture_opps
+                            if o.get("reason_key") in ("relative_value", "lock_arb")
+                            or o.get("intent") == "manage"]
         # Confidence tier + staking gate on every advance opportunity (same validated rules as
         # the 3-way view; the advance signals are all home/away so the tiering applies directly).
         # Without this the advance opportunities showed an empty 置信 column.
@@ -207,7 +238,7 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         except Exception:
             pass
         try:
-            hedge = _match_hedge_advance(conn, fx, None, hi, ai, sm, gh, ga, minute, lap, prices)
+            hedge = _match_hedge_advance(conn, fx, None, hi, ai, sm, gh, ga, minute, lap, prices, period=period)
             if hedge is not None:
                 hedge["held_team"] = name.get(hi, hi) if hedge["held_side"] == "home" else name.get(ai, ai)
         except Exception:
@@ -219,6 +250,8 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             "period": period,
             "score": f"{gh}-{ga}",
             "reds": f"{rh}-{ra}",
+            # Live shootout tally (scored) for the UI, None outside pens.
+            "shootout": ({"home": so_scored["home"], "away": so_scored["away"]} if period == "pens" else None),
             "home": {"id": hi, "name": name.get(hi, hi), "zh": zh.get(hi, "")},
             "away": {"id": ai, "name": name.get(ai, ai), "zh": zh.get(ai, "")},
             "model": {
