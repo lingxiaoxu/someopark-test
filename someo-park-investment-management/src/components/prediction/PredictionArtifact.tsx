@@ -108,7 +108,7 @@ function Notes({ items, i18nItems }: { items?: string[]; i18nItems?: { key: stri
   // Prefer the structured {key,args} notes → rendered in the active language; fall back to
   // the English prose (tDyn) for any note without a template / older data.
   const list: string[] = (i18nItems && i18nItems.length)
-    ? i18nItems.map((n, i) => t('prediction.note.' + n.key, { ...(n.args || {}), defaultValue: items?.[i] ?? '' }))
+    ? i18nItems.map((n, i) => t('prediction.note.' + n.key, { ...(n.args || {}), defaultValue: items?.[i] ?? '' }) as string)
     : (items ?? []);
   if (!list.length) return null;
   return (
