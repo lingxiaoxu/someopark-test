@@ -440,6 +440,8 @@
       "profitIfWin": "{{team}} 勝利なら依然 {{profit}}",
       "breakEvenAdvance": "損益分岐ヘッジ:相手の勝ち上がりを {{b}} 枚買う → 敗退でも回収",
       "profitIfWinAdvance": "{{team}} が勝ち上がれば依然 {{profit}}",
+      "lossIfWin": "{{team}} が勝っても {{loss}} の損失",
+      "lossIfWinAdvance": "{{team}} が勝ち上がっても {{loss}} の損失",
       "win": "勝",
       "colPlan": "方策",
       "colDrawB": "draw 枚数",

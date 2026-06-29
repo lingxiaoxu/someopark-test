@@ -787,6 +787,8 @@
       "profitIfWin": "{{team}} win still nets {{profit}}",
       "breakEvenAdvance": "Break-even hedge: buy {{b}} opponent-advance contracts → recoup even if eliminated",
       "profitIfWinAdvance": "{{team}} advancing still nets {{profit}}",
+      "lossIfWin": "{{team}} win still costs {{loss}}",
+      "lossIfWinAdvance": "{{team}} advancing still costs {{loss}}",
       "win": "win",
       "colPlan": "Plan",
       "colDrawB": "Draw ×",

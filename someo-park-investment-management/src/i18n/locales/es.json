@@ -440,6 +440,8 @@
       "profitIfWin": "victoria de {{team}} aún gana {{profit}}",
       "breakEvenAdvance": "Cobertura de equilibrio: compra {{b}} contratos rival-avanza → recuperas aun si eres eliminado",
       "profitIfWinAdvance": "avance de {{team}} aún gana {{profit}}",
+      "lossIfWin": "victoria de {{team}} aún pierde {{loss}}",
+      "lossIfWinAdvance": "avance de {{team}} aún pierde {{loss}}",
       "win": "gana",
       "colPlan": "Plan",
       "colDrawB": "Empate ×",

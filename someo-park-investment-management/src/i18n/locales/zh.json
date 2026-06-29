@@ -466,6 +466,8 @@
       "profitIfWin": "{{team}} 仍胜净赚 {{profit}}",
       "breakEvenAdvance": "保本对冲:买 {{b}} 张对手晋级 → 即使被淘汰也回本",
       "profitIfWinAdvance": "{{team}} 晋级则净赚 {{profit}}",
+      "lossIfWin": "{{team}} 仍胜则净亏 {{loss}}",
+      "lossIfWinAdvance": "{{team}} 晋级则净亏 {{loss}}",
       "win": "胜",
       "colPlan": "方案",
       "colDrawB": "draw 张数",

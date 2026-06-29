@@ -638,7 +638,9 @@ function InPlay() {
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
                   {tr('prediction.hedge.breakEven', { b: num(h.break_even_b, 2) })}
-                  {h.profit_if_win_c != null && <> · {tr('prediction.hedge.profitIfWin', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })}</>}
+                  {h.profit_if_win_c != null && <> · {h.profit_if_win_c >= 0
+                    ? tr('prediction.hedge.profitIfWin', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })
+                    : tr('prediction.hedge.lossIfWin', { team: tCountry(h.held_team), loss: cc(Math.abs(h.profit_if_win_c)) })}</>}
                 </div>
                 {/* fixed layout: the three outcome columns are EXACTLY equal width */}
                 <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', ...mono, fontSize: 10, marginTop: 2 }}>
@@ -698,7 +700,9 @@ function InPlay() {
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text-primary)', ...mono, marginBottom: 4 }}>
                   {tr('prediction.hedge.breakEvenAdvance', { b: num(h.break_even_b, 2) })}
-                  {h.profit_if_win_c != null && <> · {tr('prediction.hedge.profitIfWinAdvance', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })}</>}
+                  {h.profit_if_win_c != null && <> · {h.profit_if_win_c >= 0
+                    ? tr('prediction.hedge.profitIfWinAdvance', { team: tCountry(h.held_team), profit: cc(h.profit_if_win_c) })
+                    : tr('prediction.hedge.lossIfWinAdvance', { team: tCountry(h.held_team), loss: cc(Math.abs(h.profit_if_win_c)) })}</>}
                 </div>
                 <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', ...mono, fontSize: 10, marginTop: 2 }}>
                   <colgroup>

@@ -440,6 +440,8 @@
       "profitIfWin": "victoire {{team}} rapporte encore {{profit}}",
       "breakEvenAdvance": "Couverture seuil de rentabilité : achetez {{b}} contrats adversaire-qualifié → récupéré même éliminé",
       "profitIfWinAdvance": "qualification de {{team}} rapporte encore {{profit}}",
+      "lossIfWin": "victoire de {{team}} coûte encore {{loss}}",
+      "lossIfWinAdvance": "qualification de {{team}} coûte encore {{loss}}",
       "win": "gagne",
       "colPlan": "Plan",
       "colDrawB": "Nul ×",
