@@ -231,6 +231,7 @@
       "comeback": "favorito previo ({{pct}}%) perdiendo a {{min}}′ — valor residual, apostar por la remontada{{basisSuffix}}",
       "comeback_adv": "favorito previo ({{pct}}%) perdiendo a {{min}}′ — aún puede avanzar (prórroga/penales), apostar por su avance{{basisSuffix}}",
       "red_card": "tarjeta roja a {{carded}} en {{min}}′ — valor del próximo gol del rival elevado",
+      "red_card_adv": "tarjeta roja a {{carded}} en {{min}}′ — el rival ahora controla la eliminatoria, probabilidad de avance elevada",
       "ko_draw": "eliminatoria {{min}}′ en empate — el empate a 90′ paga (prórroga por venir), comprar el empate",
       "dormant_explosion": "tranquilo {{gh}}:{{ga}} al {{min}}' pero xG combinado {{xg}} — se generan ocasiones, gol probable en la 2ª parte — ir OVER",
       "finishing_uplift_mkt": "OVER {{line}}: modelo {{base}} > mercado {{mkt}}, la definición refuerza a {{fair}}",

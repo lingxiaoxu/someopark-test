@@ -263,8 +263,8 @@ def red_card_value(lp: LiveAdvanceProb, *, carded_side: str | None, card_minute:
     # expected to come — e.g. a red shown deep in stoppage time).
     if 0 <= lp.minute - card_minute <= RED_CARD_WINDOW and lp.exp_remaining_goals >= MIN_REMAINING_GOALS:
         return TradeAction("BUY", opp,
-                           f"red card on {carded_side} at {card_minute}' — opponent's next-goal value elevated", "high",
-                           reason_key="red_card", reason_args={"carded": carded_side, "min": card_minute})
+                           f"red card on {carded_side} at {card_minute}' — opponent now controls the tie, advance equity elevated", "high",
+                           reason_key="red_card_adv", reason_args={"carded": carded_side, "min": card_minute})
     return TradeAction("HOLD", opp, "no red-card window")
 
 

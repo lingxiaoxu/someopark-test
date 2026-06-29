@@ -104,7 +104,7 @@ class Opportunity:
 # momentum, xg_chase, draw_entry, dormant/finishing/formation/late OVER, ko_draw, crossval).
 _MANAGE_KEYS = {"overshoot_lock", "convergence_lock", "convergence_take",
                 "under_lock", "under_take", "late_goal_hold"}   # draw_lock* dropped (2-way)
-_EVENT_KEYS = {"fade_now", "fade_ago", "comeback", "red_card", "possession_trap", "lone_threat"}
+_EVENT_KEYS = {"fade_now", "fade_ago", "comeback_adv", "red_card_adv", "possession_trap", "lone_threat"}
 
 
 def _intent_for(reason_key: str) -> str:

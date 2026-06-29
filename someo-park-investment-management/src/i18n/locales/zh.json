@@ -249,6 +249,7 @@
       "comeback": "赛前热门（{{pct}}%）{{min}}′ 落后 — 仍有翻盘价值，抄底强队{{basisSuffix}}",
       "comeback_adv": "赛前热门（{{pct}}%）{{min}}′ 落后 — 加时点球仍可晋级,押其晋级翻盘{{basisSuffix}}",
       "red_card": "{{carded}} 于 {{min}}′ 染红 — 对手下一球价值抬升",
+      "red_card_adv": "{{carded}} 于 {{min}}′ 染红 — 对手掌控这场对决,晋级概率抬升",
       "ko_draw": "淘汰赛 {{min}}′ 比分平 — 90′ 平局赔付（将进加时），买入平局",
       "dormant_explosion": "{{min}}′ 闷平 {{gh}}:{{ga}} 但合计 xG {{xg}} — 机会在累积,下半场易进球 — 买 OVER",
       "finishing_uplift_mkt": "OVER {{line}}:模型 {{base}} > 市场 {{mkt}},临门倾向强化至 {{fair}}",
