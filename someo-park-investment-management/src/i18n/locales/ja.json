@@ -278,6 +278,15 @@
     "inplayAdvNote": "ライブ 2-way「勝ち上がり」(延長+PK込み)——モデル・価格・シグナル・ヘッジは全て勝ち上がり市場ベース。",
     "advSplit": "通常/延長/PK",
     "advancesShort": "勝ち上がり",
+    "round": {
+      "group": "グループステージ第{{n}}節",
+      "r32": "ラウンド32",
+      "r16": "ラウンド16",
+      "qf": "準々決勝",
+      "sf": "準決勝",
+      "final": "決勝",
+      "third": "3位決定戦"
+    },
     "kalshiPrice": "Kalshi 価格",
     "polyPrice": "Poly US 価格",
     "notListed": "未上場",

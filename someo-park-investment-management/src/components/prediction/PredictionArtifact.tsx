@@ -448,14 +448,27 @@ function Schedule() {
   const upc = useApi<any>(() => getWCUpcoming(), []);
   if ((sched.loading && upc.loading)) return <Loading />;
   const ms = (sched.data?.matches?.length ? sched.data.matches : upc.data?.matches) ?? [];
-  const grp = (r?: string) => (r || '').replace('Group Stage - ', tr('prediction.lblMatchday') + ' ');
+  // Round label: group stage → "小组赛第N轮" (localized); knockout → "1/16 决赛 / Round of 32" etc.
+  // (5 languages, prediction.round.*). Check semi/third BEFORE final (their names contain "final").
+  const roundLabel = (r?: string): string => {
+    const s = (r || '').trim(); const low = s.toLowerCase();
+    const g = s.match(/group stage\s*-\s*(\d+)/i);
+    if (g) return tr('prediction.round.group', { n: g[1] });
+    if (low.includes('round of 32')) return tr('prediction.round.r32');
+    if (low.includes('round of 16')) return tr('prediction.round.r16');
+    if (low.includes('quarter')) return tr('prediction.round.qf');
+    if (low.includes('semi')) return tr('prediction.round.sf');
+    if (low.includes('3rd') || low.includes('third')) return tr('prediction.round.third');
+    if (low.includes('final')) return tr('prediction.round.final');
+    return s;
+  };
   const played = ms.filter((m: any) => m.finished).length;
   return (
     <div>
       <Title sub={`${tr('prediction.subSchedule')} · ${ms.length} ${tr('prediction.lblMatches')}${played ? ` (${played} ${tr('prediction.finished')})` : ''}`}>Schedule</Title>
       <DataTable cols={['ET', tr('prediction.colRound'), tr('prediction.match'), tr('prediction.colResult')]}
         rows={ms.map((m: any) => [
-          m.et ?? m.kickoff, grp(m.round),
+          m.et ?? m.kickoff, roundLabel(m.round),
           `${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`,
           m.finished
             ? <span style={{ fontWeight: 700 }}>{m.score}</span>

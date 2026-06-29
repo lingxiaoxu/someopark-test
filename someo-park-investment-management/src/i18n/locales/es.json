@@ -278,6 +278,15 @@
     "inplayAdvNote": "«Quién avanza» en vivo (prórroga + penales incluidos) — modelo, precios, señales y cobertura sobre el mercado de avance.",
     "advSplit": "Regl./Prór./Pen.",
     "advancesShort": "avanza",
+    "round": {
+      "group": "Fase de grupos – J{{n}}",
+      "r32": "Dieciseisavos",
+      "r16": "Octavos de final",
+      "qf": "Cuartos de final",
+      "sf": "Semifinales",
+      "final": "Final",
+      "third": "Tercer puesto"
+    },
     "kalshiPrice": "Precio Kalshi",
     "polyPrice": "Precio Poly US",
     "notListed": "no listado",

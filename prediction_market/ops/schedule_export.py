@@ -24,7 +24,10 @@ def _et(ts: str | None) -> str | None:
         return None
 
 
-def build(conn=None, *, group_only: bool = True) -> dict:
+def build(conn=None, *, group_only: bool = False) -> dict:
+    # group_only=False (default): include the knockout fixtures too, appended after the
+    # group stage by kickoff — the Schedule view shows the full tournament once the
+    # knockout bracket is drawn (group stage still always present).
     from prediction_market.ingest import store
     from prediction_market.ingest.prior_ingest import load_prior
 
@@ -63,7 +66,8 @@ def main() -> None:
     for d in (CONFIG.paths.output, CONFIG.paths.frontend_data):
         (d / "schedule.json").write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
     played = sum(1 for m in doc["matches"] if m["finished"])
-    print(f"schedule.json: {doc['n']} group matches ({played} played, {doc['n'] - played} upcoming)")
+    ko = sum(1 for m in doc["matches"] if "group" not in (m["round"] or "").lower())
+    print(f"schedule.json: {doc['n']} matches ({played} played, {doc['n'] - played} upcoming; {ko} knockout)")
 
 
 if __name__ == "__main__":

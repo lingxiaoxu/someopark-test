@@ -296,6 +296,15 @@
     "inplayAdvNote": "实时 2-way「谁晋级」(含加时+点球)——模型、报价、信号、对冲全部基于晋级盘。",
     "advSplit": "常规/加时/点球",
     "advancesShort": "晋级",
+    "round": {
+      "group": "小组赛第{{n}}轮",
+      "r32": "1/16 决赛",
+      "r16": "1/8 决赛",
+      "qf": "1/4 决赛",
+      "sf": "半决赛",
+      "final": "决赛",
+      "third": "三四名决赛"
+    },
     "kalshiPrice": "Kalshi 现价",
     "polyPrice": "Poly US 现价",
     "notListed": "未上市",

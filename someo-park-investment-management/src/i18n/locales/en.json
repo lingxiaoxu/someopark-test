@@ -617,6 +617,15 @@
     "inplayAdvNote": "Live 2-way \"who advances\" (incl. extra time + penalties) — model, prices, signals and hedge are all on the advance market.",
     "advSplit": "Reg/ET/Pen",
     "advancesShort": "advances",
+    "round": {
+      "group": "Group Stage – Round {{n}}",
+      "r32": "Round of 32",
+      "r16": "Round of 16",
+      "qf": "Quarter-finals",
+      "sf": "Semi-finals",
+      "final": "Final",
+      "third": "Third place"
+    },
     "kalshiPrice": "Kalshi price",
     "polyPrice": "Poly US price",
     "notListed": "not listed yet",

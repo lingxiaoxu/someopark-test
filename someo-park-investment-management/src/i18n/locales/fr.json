@@ -278,6 +278,15 @@
     "inplayAdvNote": "« Qui se qualifie » en direct (prolongation + tirs au but inclus) — modèle, prix, signaux et couverture sur le marché de qualification.",
     "advSplit": "Régl./Prol./TAB",
     "advancesShort": "se qualifie",
+    "round": {
+      "group": "Phase de groupes – J{{n}}",
+      "r32": "16es de finale",
+      "r16": "8es de finale",
+      "qf": "Quarts de finale",
+      "sf": "Demi-finales",
+      "final": "Finale",
+      "third": "3e place"
+    },
     "kalshiPrice": "Prix Kalshi",
     "polyPrice": "Prix Poly US",
     "notListed": "non listé",
