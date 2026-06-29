@@ -26,6 +26,7 @@ CHAMPION_SERIES = "KXMENWORLDCUP"
 GOLDEN_BOOT_SERIES = "KXWCGOALLEADER"
 MATCH_SERIES = "KXWCGAME"        # single-match 3-way (home / draw=Tie / away)
 TOTALS_SERIES = "KXWCTOTAL"      # single-match total goals (YES = Over N.5; markets per line)
+ADVANCE_SERIES = "KXWCADVANCE"   # single-match 2-way "who advances" (ET+penalty inclusive; no tie)
 
 
 @dataclass(frozen=True)
@@ -79,7 +80,16 @@ class KalshiDiscovery:
             tie = None
             for m in ev.get("markets", []):
                 sub = (m.get("yes_sub_title") or "").strip()
-                if sub.lower() in ("tie", "draw"):
+                # Knockout-round KXWCGAME events title their 3-way "X vs Y: Regulation Time
+                # Moneyline" and prefix each market's sub_title with "Reg Time: " (e.g.
+                # "Reg Time: Colombia" / "Reg Time: Tie"). This is exactly the 90'+stoppage
+                # (no extra time / penalties) outcome the model's home/Tie/away settles on
+                # (see util/pricing.py). Group-stage events use the bare team name. Strip the
+                # prefix so both stages map identically; the separate KXWCADVANCE series carries
+                # the ET/penalty-inclusive "who advances" product.
+                if sub.lower().startswith("reg time:"):
+                    sub = sub.split(":", 1)[1].strip()
+                if sub.lower() in ("tie", "draw") or (m.get("ticker", "").endswith("-TIE")):
                     tie = m["ticker"]
                     continue
                 tid = team_id(canonical_team_name(sub))
@@ -105,6 +115,49 @@ class KalshiDiscovery:
                                 for tid, t in entry["teams"].items()}
         out["draw"] = q(entry["tie"])
         return out
+
+    def advance_index(self) -> dict[frozenset, dict]:
+        """{frozenset(team_id, team_id): {teams:{tid:ticker}, event}} for KXWCADVANCE.
+
+        The per-match 2-way "who advances" product (ET + penalties included — the full
+        knockout-tie winner, NOT the 90' reg-time result that KXWCGAME settles). One event
+        per knockout match ("Colombia vs Ghana"), two markets, each sub_title "<Team>
+        advances" (no tie leg). Parsed by the pair of canonical team_ids; cached per
+        instance. Group-stage matches have no KXWCADVANCE event, so this is naturally empty
+        there and populated 1:1 with KXWCGAME once the knockout bracket is live."""
+        if getattr(self, "_ai", None) is not None:
+            return self._ai
+        idx: dict[frozenset, dict] = {}
+        for ev in self.md.list_events(ADVANCE_SERIES, status="open"):
+            teams: dict[str, str] = {}
+            for m in ev.get("markets", []):
+                sub = (m.get("yes_sub_title") or "").strip()
+                # "<Team> advances" → bare team name (mirror of match_index's prefix strip).
+                if sub.lower().endswith(" advances"):
+                    sub = sub[: -len(" advances")].strip()
+                tid = team_id(canonical_team_name(sub))
+                if tid in self._team_ids:
+                    teams[tid] = m["ticker"]
+            if len(teams) == 2:
+                idx[frozenset(teams)] = {"teams": teams, "event": ev.get("event_ticker")}
+        self._ai = idx
+        return idx
+
+    def advance_quotes(self, home_id: str, away_id: str) -> dict[str, dict] | None:
+        """{home/away: {'ask','bid'}} for a knockout match's 2-way advance (None if no market).
+
+        No draw leg (one team always advances). Mirrors match_quotes for the 3-way book."""
+        entry = self.advance_index().get(frozenset({home_id, away_id}))
+        if not entry:
+            return None
+
+        def q(ticker):
+            ob = self.orderbook(ticker)
+            return {"ask": float(ob.yes_ask) if ob.yes_ask is not None else None,
+                    "bid": float(ob.yes_bid) if ob.yes_bid is not None else None}
+
+        return {("home" if tid == home_id else "away"): q(t)
+                for tid, t in entry["teams"].items()}
 
     def totals_index(self) -> dict[frozenset, dict]:
         """{frozenset(team_id, team_id): {lines:{line: ticker}, event}} for KXWCTOTAL.

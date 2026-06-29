@@ -195,7 +195,7 @@ def main() -> None:
 def _payload_upcoming(conn):
     from datetime import datetime, timezone
     from prediction_market.ops import upcoming_export
-    rows = upcoming_export.build(limit=6, conn=conn)
+    rows = upcoming_export.build(limit=16, conn=conn)
     return {"as_of": datetime.now(timezone.utc).isoformat(), "n": len(rows),
             "note": "Real Kalshi + Polymarket US single-match quotes; venue=null only when unlisted.",
             "matches": rows,

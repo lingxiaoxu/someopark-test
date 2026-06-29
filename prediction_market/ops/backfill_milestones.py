@@ -225,11 +225,96 @@ def backfill(conn=None, *, limit: int | None = None, verbose: bool = False, forc
             print(f"  ✓ {hn} v {an} ({etd}) → {e['slug']}")
 
     conn.commit()
+    # Knockout 2-way advance PRE price (for the price-track's advance entry ¢) — additive,
+    # UPDATE-only, failure-tolerant (never blocks the 3-way backfill above).
+    try:
+        adv = backfill_advance_pre(conn, verbose=verbose)
+    except Exception as e:
+        adv = {"matched": 0, "updated": 0}
+        if verbose:
+            print(f"  advance PRE backfill skipped: {e}")
     if verbose and misses:
         print("  misses (left blank):")
         for m in misses:
             print(f"    – {m}")
-    return {"fixtures": len(fixtures), "matched": n_matched, "rows": n_rows, "misses": misses}
+    return {"fixtures": len(fixtures), "matched": n_matched, "rows": n_rows, "misses": misses,
+            "advance_pre": adv}
+
+
+# Knockout match → the round a team reaches by WINNING it (the "advance" market key).
+_NEXT_ROUND = {"round of 32": "r16", "round of 16": "qf", "quarter-finals": "sf",
+               "quarterfinals": "sf", "quarter finals": "sf",
+               "semi-finals": "final", "semifinals": "final", "semi finals": "final"}
+
+
+def backfill_advance_pre(conn=None, *, verbose: bool = False) -> dict:
+    """Backfill the 2-way ADVANCE entry price into the PRE milestone row of SETTLED
+    knockout matches that don't have it yet (the price-track marks the knockout argmax
+    entry ¢ from these). Source: Polymarket Global's per-team "reach <next round>" YES
+    price history (keyless), sampled ~5 min before kickoff. UPDATE-only (never REPLACE),
+    so it adds the advance columns without touching the existing 3-way PRE prices."""
+    from prediction_market.ingest import store
+    from prediction_market.util.price_history import price_at
+    from prediction_market.venues.polymarket_global.reader import PolymarketGlobalReader
+
+    conn = conn or store.init_db()
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    # Settled knockout fixtures whose PRE row lacks the advance price.
+    rows = conn.execute(
+        "SELECT f.api_id, f.home_api_id, f.away_api_id, f.kickoff_ts, f.round "
+        "FROM fixture f JOIN milestone_snapshot m "
+        "  ON m.fixture_api_id=f.api_id AND m.milestone='PRE' "
+        "WHERE f.status_short IN ('FT','AET','PEN') AND f.home_goals IS NOT NULL "
+        "  AND lower(COALESCE(f.round,'')) NOT LIKE '%group%' "
+        "  AND m.poly_adv_home_ask IS NULL AND m.kalshi_adv_home_ask IS NULL").fetchall()
+    if not rows:
+        return {"matched": 0, "updated": 0}
+    rd = PolymarketGlobalReader()
+    idx_cache: dict[str, dict] = {}
+    n_match = n_upd = 0
+    for r in rows:
+        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
+        rk = _NEXT_ROUND.get((r["round"] or "").strip().lower())
+        if not (hi and ai and rk):
+            continue
+        n_match += 1
+        if rk not in idx_cache:
+            try:
+                idx_cache[rk] = rd.reach_round_index(rk)
+            except Exception as e:
+                if verbose:
+                    print(f"  reach_round_index({rk}) failed: {e}")
+                idx_cache[rk] = {}
+        idx = idx_cache[rk]
+        th, ta = idx.get(hi), idx.get(ai)
+        if not (th and ta):
+            continue
+        try:
+            ko_ts = int(datetime.fromisoformat(r["kickoff_ts"]).timestamp())
+        except Exception:
+            continue
+        when = ko_ts - 5 * 60   # PRE ≈ kickoff − 5 min (matches _MILESTONES PRE)
+
+        def _px(token):
+            try:
+                v, _ = price_at(rd.prices_history(token, fidelity=1), when, key="price")
+                return float(v) if v is not None else None
+            except Exception:
+                return None
+
+        ph, pa = _px(th), _px(ta)
+        if ph is None and pa is None:
+            continue
+        conn.execute(
+            "UPDATE milestone_snapshot SET poly_adv_home_ask=?, poly_adv_home_bid=?, "
+            "poly_adv_away_ask=?, poly_adv_away_bid=? WHERE fixture_api_id=? AND milestone='PRE'",
+            (ph, ph, pa, pa, r["api_id"]))
+        n_upd += 1
+        if verbose:
+            print(f"  ✓ {hi} v {ai} ({rk}) advance PRE: home={ph} away={pa}")
+    conn.commit()
+    return {"matched": n_match, "updated": n_upd}
 
 
 def main() -> None:

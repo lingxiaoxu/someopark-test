@@ -19,6 +19,20 @@ from prediction_market.ingest.prior_ingest import canonical_team_name, team_id
 from prediction_market.util.pricing import to_cents
 
 
+def _sub_team(m: dict) -> str:
+    """Team name from a Kalshi market's yes_sub_title, defensively stripping the
+    knockout-round "Reg Time: " prefix (mirrors venues/kalshi/discovery.match_index).
+
+    Champion (KXMENWORLDCUP) and reach-round (KXWCROUND / KXWCGROUPQUAL) markets are
+    tournament-level, so they carry the bare team name today. This strip is a no-op
+    there, but keeps the parse correct if Kalshi ever prefixes these like the per-match
+    3-way books — so a knockout format change can never blank these columns."""
+    sub = (m.get("yes_sub_title", "") or "").strip()
+    if sub.lower().startswith("reg time:"):
+        sub = sub.split(":", 1)[1].strip()
+    return sub
+
+
 def _kalshi_champ_cents() -> dict[str, float]:
     """{canonical_team_id: champion ¢} from the Kalshi WC-winner event.
 
@@ -39,7 +53,7 @@ def _kalshi_champ_cents() -> dict[str, float]:
     md = KalshiMarketData()
     for ev in md.list_events(CHAMPION_SERIES, status="open"):
         for m in ev.get("markets", []):
-            tid = team_id(canonical_team_name(m.get("yes_sub_title", "") or ""))
+            tid = team_id(canonical_team_name(_sub_team(m)))
             if not tid:
                 continue
             ask = _num(m.get("yes_ask_dollars"))
@@ -119,7 +133,7 @@ def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
 
     def _fill(round_key: str, ev: dict) -> None:
         for m in ev.get("markets", []):
-            tid = team_id(canonical_team_name(m.get("yes_sub_title", "") or ""))
+            tid = team_id(canonical_team_name(_sub_team(m)))
             if not tid:
                 continue
             price = _real_price(m.get("yes_ask_dollars"), m.get("yes_bid_dollars"),

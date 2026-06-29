@@ -90,6 +90,14 @@ CREATE TABLE IF NOT EXISTS price_tick (
     venue TEXT DEFAULT 'poly_global',
     PRIMARY KEY (fixture_api_id, side, ts)
 );
+CREATE TABLE IF NOT EXISTS price_tick_adv (
+    -- 2-way "advance" market per-minute price path (plan 24 §7). SEPARATE from price_tick
+    -- so side='home'/'away' never collides with the 3-way home/away ticks at the same ts.
+    -- Feeds smart_exit_advance + the advance price-track. `rel_min` = minutes since kickoff.
+    fixture_api_id INTEGER, side TEXT, ts INTEGER, rel_min INTEGER, price REAL,
+    venue TEXT DEFAULT 'poly_global',
+    PRIMARY KEY (fixture_api_id, side, ts)
+);
 CREATE TABLE IF NOT EXISTS lineup (
     fixture_api_id INTEGER, team_api_id INTEGER, formation TEXT, coach TEXT,
     raw_json TEXT, fetched_at TEXT,
@@ -208,6 +216,8 @@ CREATE TABLE IF NOT EXISTS milestone_snapshot (
     poly_home_ask REAL, poly_home_bid REAL, poly_draw_ask REAL, poly_draw_bid REAL,
     poly_away_ask REAL, poly_away_bid REAL,
     devig_home REAL, devig_draw REAL, devig_away REAL,
+    kalshi_adv_home_ask REAL, kalshi_adv_home_bid REAL, kalshi_adv_away_ask REAL, kalshi_adv_away_bid REAL,
+    poly_adv_home_ask REAL, poly_adv_home_bid REAL, poly_adv_away_ask REAL, poly_adv_away_bid REAL,
     xg_home REAL, xg_away REAL, reds_home INTEGER, reds_away INTEGER,
     kalshi_ticker_home TEXT, kalshi_ticker_draw TEXT, kalshi_ticker_away TEXT,
     poly_token_home TEXT, poly_token_draw TEXT, poly_token_away TEXT,
@@ -239,9 +249,27 @@ def connect() -> sqlite3.Connection:
     return conn
 
 
+# Columns added to milestone_snapshot after its first release — ALTER-migrated onto
+# existing DBs (CREATE TABLE IF NOT EXISTS won't add columns to a table that exists).
+_MILESTONE_ADDED_COLS = [
+    "kalshi_adv_home_ask", "kalshi_adv_home_bid", "kalshi_adv_away_ask", "kalshi_adv_away_bid",
+    "poly_adv_home_ask", "poly_adv_home_bid", "poly_adv_away_ask", "poly_adv_away_bid",
+]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Idempotent column additions for tables that predate a new column (SQLite ALTER
+    TABLE ADD COLUMN is cheap + safe; skipped when the column already exists)."""
+    have = {r["name"] for r in conn.execute("PRAGMA table_info(milestone_snapshot)")}
+    for col in _MILESTONE_ADDED_COLS:
+        if col not in have:
+            conn.execute(f"ALTER TABLE milestone_snapshot ADD COLUMN {col} REAL")
+
+
 def init_db(conn: sqlite3.Connection | None = None) -> sqlite3.Connection:
     conn = conn or connect()
     conn.executescript(_SCHEMA)
+    _migrate(conn)
     for vid, name, url, flag in _VENUE_SEED:
         upsert(conn, "venue", {"venue_id": vid, "name": name, "base_url": url,
                                "exec_legal_flag": flag}, pk=["venue_id"])

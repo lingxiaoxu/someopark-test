@@ -220,9 +220,130 @@ def _lock_arb(kalshi_q: dict | None, poly_q: dict | None) -> dict | None:
     return best
 
 
-def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q) -> None:
+# ─────────────────────────────────────────────────────────────────────────────
+# 2-WAY "ADVANCE" (knockout who-advances) — parallel block to the 3-way above.
+# The knockout tie has a SEPARATE 2-way market on every venue (Kalshi KXWCADVANCE,
+# Poly US aadc-…-to-advance, Poly Global reach-round): home advances / away advances,
+# NO draw (one team always goes through, incl. ET + penalties). These helpers mirror
+# the 3-way ones over the two sides so the frontend's "Advances" view switches the
+# whole card (model / quotes / edge / decision) to this product. Group-stage matches
+# have no advance market → the whole block is None (the card stays on regulation time).
+# ─────────────────────────────────────────────────────────────────────────────
+_ADV_SIDES = ("home", "away")
+
+
+def _quote_to_cents_2way(q: dict | None) -> dict | None:
+    """{home:{ask,bid},away:{...}} → adds ask_c/bid_c/mid_c per side (ADD ONLY)."""
+    if not q:
+        return None
+    from prediction_market.util.pricing import mid_cents, to_cents
+    out: dict = {}
+    for side in _ADV_SIDES:
+        s = q.get(side)
+        if not s:
+            out[side] = s
+            continue
+        ask, bid = s.get("ask"), s.get("bid")
+        out[side] = {**s, "ask_c": to_cents(ask), "bid_c": to_cents(bid), "mid_c": mid_cents(ask, bid)}
+    return out
+
+
+def _venue_devig_2way(q: dict | None) -> dict | None:
+    """De-vig a venue's 2-way ask quote into fair probs (multiplicative, 2 outcomes)."""
+    if not q:
+        return None
+    from prediction_market.strategy.devig import devig
+    asks = [(q.get(s) or {}).get("ask") for s in _ADV_SIDES]
+    if any(a is None for a in asks):
+        return None
+    p = devig(asks, method="multiplicative")
+    return {"home": round(float(p[0]), 4), "away": round(float(p[1]), 4)}
+
+
+def _best_buy_edge_2way(model: dict, venue_q: dict | None, venue: str, theta: float) -> dict | None:
+    """Best tradable BUY edge (model vs a venue's raw ask) across the 2 advance sides."""
+    if not venue_q:
+        return None
+    from prediction_market.strategy.edge import compute_edge
+    best = None
+    for side in _ADV_SIDES:
+        ask = (venue_q.get(side) or {}).get("ask")
+        if ask is None:
+            continue
+        e = compute_edge(model[side], float(ask), fee=_FEE, theta=theta)
+        if best is None or e.net_edge > best["net_edge"]:
+            best = {"side": side, "venue": venue, "ask": round(float(ask), 4),
+                    "net_edge": round(e.net_edge, 4), "tradable": bool(e.tradable)}
+    return best
+
+
+def _decision_for_2way(model_adv, kalshi_a, poly_a, k_devig_a, p_devig_a, form_row,
+                       calib_conf, gate_open) -> dict | None:
+    """Full 2-way advance DECISION (value side + ¼-Kelly stake + $1-cap), reusing the
+    same decision_model.decide() as the 3-way so the "Advances" trade plan is built by
+    identical logic. Draw is passed as an empty quote (no draw leg) so decide() only
+    considers home/away. Returns None when no venue advance quote exists."""
+    if not (kalshi_a or poly_a):
+        return None
+    from prediction_market.strategy.decision_model import SideQuote, decide
+    dq = {"draw": SideQuote()}
+    for s in _ADV_SIDES:
+        cands = []
+        ka = (kalshi_a.get(s) or {}).get("ask") if kalshi_a else None
+        pa = (poly_a.get(s) or {}).get("ask") if poly_a else None
+        if ka is not None:
+            cands.append((ka, "kalshi", (k_devig_a or {}).get(s)))
+        if pa is not None:
+            cands.append((pa, "poly_us", (p_devig_a or {}).get(s)))
+        if not cands:
+            dq[s] = SideQuote()
+            continue
+        ask, ven, dv = min(cands, key=lambda t: t[0])
+        dq[s] = SideQuote(ask=ask, devig=dv, venue=ven)
+    # model needs a (zero) draw so decide()'s argmax helpers never KeyError.
+    model = {"home": model_adv["home"], "away": model_adv["away"], "draw": 0.0}
+    d = decide(model, dq, calib_confidence=calib_conf, form=form_row, gate_open=gate_open)
+    if d.side is None:
+        return {"bet": False, "side": None, "stake_usd": 0.0, "net_edge": d.net_edge,
+                "confidence_k": d.confidence_k, "knockout": True, "advance": True}
+    ask = dq[d.side].ask
+    cnt = _cap_count(ask)
+    return {"bet": True, "side": d.side, "venue": d.venue, "price_cents": d.price_cents,
+            "model_prob": d.model_prob, "net_edge": d.net_edge, "stake_usd": d.stake_usd,
+            "count": cnt, "capped_notional_usd": round(cnt * ask, 2),
+            "confidence_k": d.confidence_k, "knockout": True, "advance": True}
+
+
+def _lock_arb_2way(kalshi_a: dict | None, poly_a: dict | None) -> dict | None:
+    """Best cross-venue locked arb on the 2-way advance: buy cheapest ask + sell highest bid."""
+    if not (kalshi_a and poly_a):
+        return None
+    from prediction_market.strategy.cross_venue import evaluate_lock
+    best = None
+    for side in _ADV_SIDES:
+        legs = {"kalshi": kalshi_a.get(side), "poly_us": poly_a.get(side)}
+        asks = {v: (q or {}).get("ask") for v, q in legs.items() if (q or {}).get("ask") is not None}
+        bids = {v: (q or {}).get("bid") for v, q in legs.items() if (q or {}).get("bid") is not None}
+        if not asks or not bids:
+            continue
+        buy_v = min(asks, key=asks.get)
+        sell_v = max(bids, key=bids.get)
+        if buy_v == sell_v:
+            continue
+        lock = evaluate_lock(asks[buy_v], bids[sell_v], equiv_verified=True,
+                             fee_cheap=_FEE, fee_expensive=_FEE)
+        if best is None or lock.net_lock > best["net_lock"]:
+            best = {"side": side, "buy_venue": buy_v, "sell_venue": sell_v,
+                    "buy_ask": round(asks[buy_v], 4), "sell_bid": round(bids[sell_v], 4),
+                    "net_lock": round(lock.net_lock, 4), "tradable": bool(lock.tradable)}
+    return best
+
+
+def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q, kalshi_a=None, poly_a=None) -> None:
     """Write a milestone='PRE' snapshot when the match is ≤20 min from kickoff (and
-    not already stored). Captures the live Kalshi/Poly ask/bid as the pre-match entry."""
+    not already stored). Captures the live Kalshi/Poly 3-way ask/bid AND the 2-way
+    advance ask/bid (knockout) as the pre-match entry — so the price-track can mark the
+    knockout 2-way entry ¢."""
     if not kickoff_ts:
         return
     from datetime import timedelta
@@ -243,6 +364,8 @@ def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q) -> None:
 
     kh, khb = ab(kalshi_q, "home"); kd, kdb = ab(kalshi_q, "draw"); ka, kab = ab(kalshi_q, "away")
     ph, phb = ab(poly_q, "home"); pd_, pdb = ab(poly_q, "draw"); pa, pab = ab(poly_q, "away")
+    akh, akhb = ab(kalshi_a, "home"); aka, akab = ab(kalshi_a, "away")   # advance (no draw)
+    aph, aphb = ab(poly_a, "home"); apa, apab = ab(poly_a, "away")
     conn.execute(
         # PRE is captured pre-kickoff (status NS) → the score is 0-0 by definition.
         # Store it explicitly so the price-track view shows "0-0", not "?-?" (null score):
@@ -251,9 +374,12 @@ def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q) -> None:
         "(fixture_api_id, milestone, ts, elapsed, status_short, home_goals, away_goals, "
         " kalshi_home_ask, kalshi_home_bid, kalshi_draw_ask, kalshi_draw_bid, kalshi_away_ask, kalshi_away_bid, "
         " poly_home_ask, poly_home_bid, poly_draw_ask, poly_draw_bid, poly_away_ask, poly_away_bid, "
-        " price_source) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?)",
+        " kalshi_adv_home_ask, kalshi_adv_home_bid, kalshi_adv_away_ask, kalshi_adv_away_bid, "
+        " poly_adv_home_ask, poly_adv_home_bid, poly_adv_away_ask, poly_adv_away_bid, "
+        " price_source) VALUES (?,?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?, ?,?,?,?, ?)",
         (fixture_id, "PRE", now.isoformat(), 0, "NS", 0, 0,
-         kh, khb, kd, kdb, ka, kab, ph, phb, pd_, pdb, pa, pab, "live"))
+         kh, khb, kd, kdb, ka, kab, ph, phb, pd_, pdb, pa, pab,
+         akh, akhb, aka, akab, aph, aphb, apa, apab, "live"))
     conn.commit()
 
 
@@ -340,7 +466,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
                     "away": {"id": None, "name": tent[1], "zh": tent[1]},
                     "model": None, "book_devig": None, "kalshi": None, "poly_us": None,
                     "edge": {"vs_book": None, "vs_kalshi": None, "vs_poly_us": None, "best": None},
-                    "lock_arb": None,
+                    "lock_arb": None, "advance": None,
                 })
             continue
         from prediction_market.util.pricing import model_cents
@@ -376,11 +502,25 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
                 print(f"[warn] PolyUS quote {hi} vs {ai}: {e}")
 
         k_devig, p_devig = _venue_devig(kalshi_q), _venue_devig(poly_q)
+        # Knockout 2-way advance quotes (fetched once here so the PRE stash can store them
+        # AND the advance block below can reuse them — no double fetch).
+        kalshi_a = poly_a = None
+        if ko:
+            if kd is not None:
+                try:
+                    kalshi_a = kd.advance_quotes(hi, ai)
+                except Exception as e:
+                    print(f"[warn] Kalshi advance {hi} vs {ai}: {e}")
+            if pd_ is not None and et_date:
+                try:
+                    poly_a = pd_.advance_quotes(hi, ai, et_date)
+                except Exception as e:
+                    print(f"[warn] PolyUS advance {hi} vs {ai}: {e}")
         # Stash a PRE milestone snapshot once the match is within ~20 min of kickoff,
         # so an in-progress match has a real pre-match entry ¢ before it settles (the
         # backfill later refines PRE from venue history). INSERT OR IGNORE → first
         # near-kickoff write wins; harmless no-op for far-out fixtures.
-        _stash_pre(conn, f["api_id"], f["kickoff_ts"], kalshi_q, poly_q)
+        _stash_pre(conn, f["api_id"], f["kickoff_ts"], kalshi_q, poly_q, kalshi_a, poly_a)
 
         def _edge_vs(devig_probs):
             if not devig_probs:
@@ -396,6 +536,41 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
         decision = _decision_for(model, kalshi_q, poly_q, k_devig, p_devig,
                                  form_row, _calib_conf, _gate_open, ko,
                                  conviction_side=(motiv or {}).get("conviction_side"))
+
+        # ── 2-way ADVANCE block (knockout only) — the SEPARATE who-advances product ──
+        # (ET + penalties; Kalshi KXWCADVANCE / Poly US aadc- / Poly Global reach-round).
+        # The frontend's "Advances" selector renders this whole block in place of the
+        # 3-way one. Group matches have no advance market → adv stays None.
+        adv = None
+        if ko:
+            from prediction_market.util.pricing import to_cents
+            mp_adv = price_match(sm, hi, ai, knockout=True, lam_mult=(mh, ma))  # → p_home_advance
+            pha = mp_adv.p_home_advance
+            if pha is not None:
+                model_adv = {"home": round(pha, 4), "away": round(1.0 - pha, 4),
+                             "cents": {"home": to_cents(pha), "away": to_cents(1.0 - pha)}}
+                # kalshi_a / poly_a already fetched above (reused for the PRE stash).
+                ka_devig, pa_devig = _venue_devig_2way(kalshi_a), _venue_devig_2way(poly_a)
+
+                def _edge_adv(dv):
+                    if not dv:
+                        return None
+                    return {s: round(model_adv[s] - dv[s], 4) for s in _ADV_SIDES}
+
+                buy_adv = [e for e in (_best_buy_edge_2way(model_adv, kalshi_a, "kalshi", theta),
+                                       _best_buy_edge_2way(model_adv, poly_a, "poly_us", theta)) if e]
+                best_adv = max(buy_adv, key=lambda e: e["net_edge"]) if buy_adv else None
+                decision_adv = _decision_for_2way(model_adv, kalshi_a, poly_a, ka_devig, pa_devig,
+                                                  form_row, _calib_conf, _gate_open)
+                adv = {
+                    "model": model_adv,
+                    "kalshi": {**_quote_to_cents_2way(kalshi_a), "devig": ka_devig} if kalshi_a else None,
+                    "poly_us": {**_quote_to_cents_2way(poly_a), "devig": pa_devig} if poly_a else None,
+                    "edge": {"vs_kalshi": _edge_adv(ka_devig), "vs_poly_us": _edge_adv(pa_devig),
+                             "best": best_adv},
+                    "decision": decision_adv,
+                    "lock_arb": _lock_arb_2way(kalshi_a, poly_a),
+                }
 
         out.append({
             "fixture_id": f["api_id"],
@@ -423,6 +598,10 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True) -> list[dict]:
             },
             "decision": decision,   # production decide(): value side + confidence stake + $1 cap
             "lock_arb": _lock_arb(kalshi_q, poly_q),
+            # 2-way knockout "advances" product (null for group stage / no advance market).
+            # Same shape as the 3-way fields above but over {home, away} only — the frontend's
+            # "Advances" selector swaps the card to render from here.
+            "advance": adv,
         })
     return out
 

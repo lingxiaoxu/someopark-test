@@ -29,6 +29,18 @@ from prediction_market.venues.base import OrderBook
 
 _VENUE = "poly_global"
 
+# Per-team "reach round X" events (YES = that team reaches the round). Polymarket Global
+# has NO dedicated per-match advance market (unlike Kalshi KXWCADVANCE / Poly US aadc-…);
+# the 2-way advance for a knockout match is the two teams' reach-NEXT-round YES prices
+# (they sum to ~1 since exactly one advances). Keyed by our round codes.
+REACH_ROUND_SLUGS = {
+    "advance": "world-cup-team-to-advance-to-knockout-stages",  # reach R32 (qualify from group)
+    "r16": "world-cup-nation-to-reach-round-of-16",
+    "qf": "world-cup-nation-to-reach-quarterfinals",
+    "sf": "world-cup-nation-to-reach-semifinals",
+    "final": "world-cup-nation-to-reach-final",
+}
+
 
 def parse_clob_book(payload: dict, token_id: str) -> OrderBook:
     """Normalise a CLOB `/book` response into our two-sided OrderBook.
@@ -200,6 +212,53 @@ class PolymarketGlobalReader:
         """Fetch a single event by exact slug (e.g. 'fifwc-fra-sen-2026-06-16')."""
         evs = self.list_events(slug=slug)
         return evs[0] if evs else None
+
+    # ── Gamma: per-team reach-round (the Global 2-way "advance") ──────────────
+    def reach_round_index(self, round_key: str) -> dict[str, str]:
+        """{canonical_team_id: YES clob token_id} for the per-team "reach <round>" event.
+
+        round_key ∈ REACH_ROUND_SLUGS (advance/r16/qf/sf/final). Cached per (instance,round)."""
+        import json as _json
+        from prediction_market.ingest.prior_ingest import canonical_team_name, team_id
+        cache = getattr(self, "_rri", None)
+        if cache is None:
+            cache = self._rri = {}
+        if round_key in cache:
+            return cache[round_key]
+        slug = REACH_ROUND_SLUGS.get(round_key)
+        idx: dict[str, str] = {}
+        if slug:
+            evs = self.list_events(slug=slug) or []
+            for mk in (evs[0].get("markets", []) if evs else []):
+                tid = team_id(canonical_team_name(mk.get("groupItemTitle", "") or ""))
+                toks = mk.get("clobTokenIds")
+                if isinstance(toks, str):
+                    try:
+                        toks = _json.loads(toks)
+                    except Exception:
+                        toks = None
+                if tid and toks:
+                    idx[tid] = toks[0]
+        cache[round_key] = idx
+        return idx
+
+    def advance_quotes(self, home_id: str, away_id: str, round_key: str) -> dict[str, dict] | None:
+        """{home/away: {'ask','bid'}} 2-way advance for a knockout match (None if not found).
+
+        Derived from the two teams' "reach <round_key>" YES books (no dedicated per-match
+        market on Global). round_key is the match's NEXT round (R32 match → 'r16', R16 → 'qf',
+        QF → 'sf', SF → 'final'). Mirrors the {home/away} shape of the Kalshi/Poly-US advance."""
+        idx = self.reach_round_index(round_key)
+        th, ta = idx.get(home_id), idx.get(away_id)
+        if not (th and ta):
+            return None
+
+        def q(token):
+            ob = self.get_book(token)
+            return {"ask": float(ob.yes_ask) if ob.yes_ask is not None else None,
+                    "bid": float(ob.yes_bid) if ob.yes_bid is not None else None}
+
+        return {"home": q(th), "away": q(ta)}
 
 
 if __name__ == "__main__":
