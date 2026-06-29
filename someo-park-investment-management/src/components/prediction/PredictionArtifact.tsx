@@ -387,38 +387,52 @@ function Legend() {
 
 function MatchPricing() {
   const { t: tr } = useTranslation();
+  const { mode } = useAdvanceMode();
+  const advMode = mode === 'advance';
   const { data, loading, error } = useApi<any>(() => getWCUpcoming(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const ms = data?.matches ?? [];
+  const dual = (prob?: number | null, c?: number | null) =>
+    prob == null && c == null ? '—' : `${pct(prob, 0)} · ${cc(c)}`;
+  const vprob = (q: any, side: string) =>
+    (q?.devig?.[side] ?? (q?.[side]?.mid_c != null ? q[side].mid_c / 100 : null));
   return (
     <div>
       <Title sub={tr('prediction.subMatchPricing')}>Match Pricing</Title>
-      {ms.map((m: any, i: number) => (
+      <div className="flex justify-end mb-2"><AdvanceModeToggle /></div>
+      {ms.map((m: any, i: number) => {
+        // 2-way "advances" lens: model_advance vs venue advance prices (主/客, no draw).
+        // Group / undecided knockout (no advance block) auto-lock to regulation.
+        const adv = advMode && m.advance && m.advance.model ? m.advance : null;
+        return (
         <div key={i} className="card" style={{ marginBottom: 10 }}>
-          <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 6 }}>{tCountry(m.home?.name)} vs {tCountry(m.away?.name)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{m.et}</span></div>
-          {(() => {
-            // Each cell shows probability AND the per-contract ¢ together. Model: its
-            // fair prob + fair ¢ (numerically equal — ¢ = prob×100). Venues: the de-vig
-            // implied probability + the contract price ¢ (these differ by the vig).
-            const dual = (prob?: number | null, c?: number | null) =>
-              prob == null && c == null ? '—' : `${pct(prob, 0)} · ${cc(c)}`;
-            const vprob = (q: any, side: string) =>
-              (q?.devig?.[side] ?? (q?.[side]?.mid_c != null ? q[side].mid_c / 100 : null));
-            return (
-              <DataTable cols={['', tr('prediction.home'), tr('prediction.draw'), tr('prediction.away')]}
-                rows={[
-                  [tr('prediction.model'),
-                    dual(m.model?.home, m.model?.cents?.home), dual(m.model?.draw, m.model?.cents?.draw), dual(m.model?.away, m.model?.cents?.away)],
-                  [tr('prediction.kalshiAsk'),
-                    dual(vprob(m.kalshi, 'home'), m.kalshi?.home?.mid_c), dual(vprob(m.kalshi, 'draw'), m.kalshi?.draw?.mid_c), dual(vprob(m.kalshi, 'away'), m.kalshi?.away?.mid_c)],
-                  [tr('prediction.polyUsAsk'),
-                    dual(vprob(m.poly_us, 'home'), m.poly_us?.home?.mid_c), dual(vprob(m.poly_us, 'draw'), m.poly_us?.draw?.mid_c), dual(vprob(m.poly_us, 'away'), m.poly_us?.away?.mid_c)],
-                ]} />
-            );
-          })()}
+          <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 6 }}>
+            {tCountry(m.home?.name)} vs {tCountry(m.away?.name)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{m.et}</span>
+            {adv && <span style={{ color: 'var(--accent-primary)', marginLeft: 6 }}>{tr('prediction.modeAdvance')}</span>}
+            {advMode && !adv && <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>· {tr('prediction.regulationOnly')}</span>}
+          </div>
+          {adv ? (
+            <DataTable cols={['', tr('prediction.colHomeAdv'), tr('prediction.colAwayAdv')]}
+              rows={[
+                [tr('prediction.model'), dual(adv.model?.home, adv.model?.cents?.home), dual(adv.model?.away, adv.model?.cents?.away)],
+                [tr('prediction.kalshiAsk'), dual(vprob(adv.kalshi, 'home'), adv.kalshi?.home?.mid_c), dual(vprob(adv.kalshi, 'away'), adv.kalshi?.away?.mid_c)],
+                [tr('prediction.polyUsAsk'), dual(vprob(adv.poly_us, 'home'), adv.poly_us?.home?.mid_c), dual(vprob(adv.poly_us, 'away'), adv.poly_us?.away?.mid_c)],
+              ]} />
+          ) : (
+            <DataTable cols={['', tr('prediction.home'), tr('prediction.draw'), tr('prediction.away')]}
+              rows={[
+                [tr('prediction.model'),
+                  dual(m.model?.home, m.model?.cents?.home), dual(m.model?.draw, m.model?.cents?.draw), dual(m.model?.away, m.model?.cents?.away)],
+                [tr('prediction.kalshiAsk'),
+                  dual(vprob(m.kalshi, 'home'), m.kalshi?.home?.mid_c), dual(vprob(m.kalshi, 'draw'), m.kalshi?.draw?.mid_c), dual(vprob(m.kalshi, 'away'), m.kalshi?.away?.mid_c)],
+                [tr('prediction.polyUsAsk'),
+                  dual(vprob(m.poly_us, 'home'), m.poly_us?.home?.mid_c), dual(vprob(m.poly_us, 'draw'), m.poly_us?.draw?.mid_c), dual(vprob(m.poly_us, 'away'), m.poly_us?.away?.mid_c)],
+              ]} />
+          )}
           <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.dualUnitLegend')}</div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
