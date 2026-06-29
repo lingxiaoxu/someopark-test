@@ -568,6 +568,7 @@
       "fade_now": "underdog scored just now — markets over-react (~40%/min, reverts by {{window}}′); fade back the favourite{{basisSuffix}}",
       "fade_ago": "underdog scored {{mins}}′ ago — markets over-react (~40%/min, reverts by {{window}}′); fade back the favourite{{basisSuffix}}",
       "comeback": "pre-match favourite ({{pct}}%) trailing at {{min}}′ — residual equity, back the comeback{{basisSuffix}}",
+      "comeback_adv": "pre-match favourite ({{pct}}%) trailing at {{min}}′ — can still advance via extra time / penalties, back it to go through{{basisSuffix}}",
       "red_card": "red card on {{carded}} at {{min}}′ — opponent's next-goal value elevated",
       "ko_draw": "level knockout at {{min}}′ — 90′ draw pays (extra time ahead), back the draw",
       "dormant_explosion": "quiet {{gh}}:{{ga}} at {{min}}' but combined xG {{xg}} — chances building, 2nd-half goal likely — back OVER",

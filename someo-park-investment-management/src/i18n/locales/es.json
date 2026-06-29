@@ -229,6 +229,7 @@
       "fade_now": "el menos favorito acaba de marcar — el mercado sobrerreacciona (~40%/min, revierte en {{window}}′); comprar a contra el favorito{{basisSuffix}}",
       "fade_ago": "el menos favorito marcó hace {{mins}}′ — el mercado sobrerreacciona (~40%/min, revierte en {{window}}′); comprar a contra el favorito{{basisSuffix}}",
       "comeback": "favorito previo ({{pct}}%) perdiendo a {{min}}′ — valor residual, apostar por la remontada{{basisSuffix}}",
+      "comeback_adv": "favorito previo ({{pct}}%) perdiendo a {{min}}′ — aún puede avanzar (prórroga/penales), apostar por su avance{{basisSuffix}}",
       "red_card": "tarjeta roja a {{carded}} en {{min}}′ — valor del próximo gol del rival elevado",
       "ko_draw": "eliminatoria {{min}}′ en empate — el empate a 90′ paga (prórroga por venir), comprar el empate",
       "dormant_explosion": "tranquilo {{gh}}:{{ga}} al {{min}}' pero xG combinado {{xg}} — se generan ocasiones, gol probable en la 2ª parte — ir OVER",

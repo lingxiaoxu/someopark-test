@@ -247,6 +247,7 @@
       "fade_now": "弱队刚刚进球 — 市场过度反应（约 40%/分钟，{{window}}′ 内回归）；反向买入强队{{basisSuffix}}",
       "fade_ago": "弱队 {{mins}}′ 前进球 — 市场过度反应（约 40%/分钟，{{window}}′ 内回归）；反向买入强队{{basisSuffix}}",
       "comeback": "赛前热门（{{pct}}%）{{min}}′ 落后 — 仍有翻盘价值，抄底强队{{basisSuffix}}",
+      "comeback_adv": "赛前热门（{{pct}}%）{{min}}′ 落后 — 加时点球仍可晋级,押其晋级翻盘{{basisSuffix}}",
       "red_card": "{{carded}} 于 {{min}}′ 染红 — 对手下一球价值抬升",
       "ko_draw": "淘汰赛 {{min}}′ 比分平 — 90′ 平局赔付（将进加时），买入平局",
       "dormant_explosion": "{{min}}′ 闷平 {{gh}}:{{ga}} 但合计 xG {{xg}} — 机会在累积,下半场易进球 — 买 OVER",

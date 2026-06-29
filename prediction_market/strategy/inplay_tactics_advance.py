@@ -248,7 +248,7 @@ def favourite_comeback(lp: LiveAdvanceProb, *, prematch_fav_side: str | None,
     if prematch_fav_prob >= FAV_COMEBACK_MIN_PROB and fav_goals < opp_goals and lp.minute <= FAV_COMEBACK_MAX_MIN:
         return TradeAction("BUY", prematch_fav_side,
                            f"pre-match fav ({prematch_fav_prob:.0%}) trailing at {lp.minute}' — residual equity, back the comeback",
-                           reason_key="comeback",
+                           reason_key="comeback_adv",
                            reason_args={"pct": round(prematch_fav_prob * 100), "min": lp.minute, "basis": fav_basis or "aligned"})
     return TradeAction("HOLD", prematch_fav_side, "favourite not trailing")
 

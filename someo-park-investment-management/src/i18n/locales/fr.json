@@ -229,6 +229,7 @@
       "fade_now": "l'outsider vient de marquer — le marché sur-réagit (~40%/min, retour en {{window}}′) ; contre-acheter le favori{{basisSuffix}}",
       "fade_ago": "l'outsider a marqué il y a {{mins}}′ — le marché sur-réagit (~40%/min, retour en {{window}}′) ; contre-acheter le favori{{basisSuffix}}",
       "comeback": "favori d'avant-match ({{pct}}%) mené à {{min}}′ — équité résiduelle, acheter le retour{{basisSuffix}}",
+      "comeback_adv": "favori d'avant-match ({{pct}}%) mené à {{min}}′ — peut encore se qualifier (prol./TAB), miser sur sa qualification{{basisSuffix}}",
       "red_card": "carton rouge sur {{carded}} à {{min}}′ — valeur du prochain but de l'adversaire accrue",
       "ko_draw": "match couperet {{min}}′ à égalité — le nul à 90′ paie (prolongation à venir), acheter le nul",
       "dormant_explosion": "calme {{gh}}:{{ga}} à {{min}}' mais xG cumulé {{xg}} — occasions en hausse, but probable en 2e période — jouer OVER",

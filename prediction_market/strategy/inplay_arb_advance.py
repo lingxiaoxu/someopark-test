@@ -36,14 +36,10 @@ from prediction_market.model.inplay_advance import LiveAdvanceProb, live_advance
 from prediction_market.model.penalties import shootout_win_prob_detailed
 from prediction_market.strategy.cross_venue import evaluate_lock
 from prediction_market.strategy.edge import compute_edge
-from prediction_market.strategy.inplay_tactics_advance import (  # draw_trade_signal / knockout_late_draw deleted in the 2-way fork
+from prediction_market.strategy.inplay_tactics_advance import (  # draw + totals tactics omitted in the advance view
     convergence_take_profit,
-    dormant_explosion,
     favourite_comeback,
-    finishing_uplift_over,
-    formation_fragility,
     goal_overreaction_fade,
-    late_goal_bias,
     live_momentum_from_store,
     live_odds_crossval,
     lone_threat_removed,
@@ -343,12 +339,10 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
         gh, ga = fx["home_goals"] or 0, fx["away_goals"] or 0
         score = f"{gh}-{ga}"
         lp, fair = live_fair_advance(conn, sm, fx)
-        # Totals (OVER/UNDER 2.5) fair from the live model → enables totals relative
-        # value + the finishing-uplift signal once a totals market is quoted.
-        p_over25 = lp.p_over_total.get(2.5)
-        if p_over25 is not None:
-            fair["over"], fair["under"] = p_over25, 1.0 - p_over25
-        # Live market quotes per venue (3-way + KXWCTOTAL / tsc totals), fetched once.
+        # The advance view is the WHO-ADVANCES product ONLY. Totals (OVER/UNDER 2.5) settle on
+        # the 90' goals market, NOT on who advances, so they are deliberately NOT surfaced here
+        # (they remain in the regulation / 3-way in-play view). So: no fair["over"/"under"], and
+        # the totals tactics (dormant/finishing/late/formation) are dropped from the fan-out below.
         quotes = {v: fn(fx["api_id"]) for v, fn in quote_sources.items()}
 
         def _best_ask(side: str):
@@ -361,8 +355,7 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
             xs = [a for a in xs if a is not None]
             return max(xs) if xs else None
 
-        over_mkt, under_mkt = _best_ask("over"), _best_ask("under")
-        mkt_by_side = {"over": over_mkt, "under": under_mkt}
+        mkt_by_side: dict = {}   # no totals (over/under) in the advance view
 
         # Event-driven context: pre-match favourite (explicit strength+form basis, Part 2),
         # the latest goal + red card, KO flag.
@@ -396,18 +389,14 @@ def find_opportunities_advance(conn=None, sm=None, *, quote_sources: dict | None
 
         # (1b) data-mined tactics (26-match intra-game study) — read the extra live
         # stats once, then fan out. Each gracefully HOLDs when its data is absent.
+        # (combined-xG + formations dropped — only the totals tactics used them.)
         st = _team_live_stats(conn, fx)
-        comb_xg = None
-        if st["home"]["xg"] is not None and st["away"]["xg"] is not None:
-            comb_xg = st["home"]["xg"] + st["away"]["xg"]
-        hf, af = _formations(conn, fx)
         lt_side, lt_player, lt_share, lt_removed = _lone_threat(conn, fx)
         book = _live_book_prob(conn, fx)
+        # Totals tactics (dormant_explosion / finishing_uplift_over / late_goal_bias /
+        # formation_fragility) are OMITTED in the advance view — they target the 90' OVER/UNDER
+        # goals market, not who advances. Only the result/side-relative-value tactics remain.
         mined = [
-            dormant_explosion(lp, combined_xg=comb_xg),
-            finishing_uplift_over(lp, market_over_price=over_mkt),
-            late_goal_bias(lp),
-            formation_fragility(lp, home_formation=hf, away_formation=af),
             xg_dominance_chase(xg_for=st["home"]["xg"], xg_against=st["away"]["xg"],
                                goals_for=gh, goals_against=ga, minute=minute, side="home"),
             xg_dominance_chase(xg_for=st["away"]["xg"], xg_against=st["home"]["xg"],
