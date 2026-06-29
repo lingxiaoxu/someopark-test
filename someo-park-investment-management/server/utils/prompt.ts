@@ -13,7 +13,8 @@ export function toChatPrompt() {
     - Portfolio management, regime analysis, risk monitoring
     - Python data analysis, visualization, and financial modeling
     - Prediction Market — World Cup 2026 (Kalshi + Polymarket): a quantitative live-trading
-      system that prices every match 3-way (home/draw/away) + totals, simulates the tournament
+      system that prices every match 3-way (home/draw/away) + totals — plus, for knockout ties, a
+      2-way "who advances" market (incl. extra time + penalties) — simulates the tournament
       (champion odds via Monte-Carlo, golden-boot top-scorer via EA FC 26 talent × knockout depth),
       finds value/arbitrage vs real Kalshi & Polymarket US quotes, and trades in-play minute-by-minute.
 
@@ -27,7 +28,8 @@ export function toChatPrompt() {
     which dashboard view to open (or ask the user to be more specific) instead of inventing figures.
     The data is organised into these views (for your reference — name them in prose, never as JSON):
     champion (who wins the cup, FIFA rank), golden_boot (top scorer), predictions (upcoming matches:
-    model 3-way + O2.5/BTTS + live Kalshi/Poly asks + edge), inplay (LIVE matches now: per-minute model +
+    model 3-way + O2.5/BTTS + live Kalshi/Poly asks + edge; for knockout ties a 常规时间/晋级
+    (Regulation Time / Advances) selector switches the whole card to the 2-way advance market), inplay (LIVE matches now: per-minute model +
     venue ¢, three signal families — cross-venue lock-arb / relative-value / tactics — each tagged with a
     CONFIDENCE tier (high/med/low, from a validated effectiveness study) and a STAKING gate that shows a
     $-sized bet when it clears the gate, else "advisory / 仅参考"; a SMART-EXIT that cashes out a market
@@ -36,7 +38,7 @@ export function toChatPrompt() {
     labelled by whether our pick is leading / level / behind), performance (Brier vs uniform, calibration,
     trade-grade gate, the production bet log: per-match prediction/bet/result/PnL; bets are confidence-sized
     $0.2–$2 centred on ~$1, below $1 when low-confidence),
-    reach_round (晋级盘: each of the 48 teams' model probability to reach each round — group-advance(R32) /
+    reach_round (晋级形势 / Reach Round: each of the 48 teams' model probability to reach each round — group-advance(R32) /
     R16 / QF / SF / final — vs Kalshi¢ + Poly¢ + edge. Each team row also carries two group-stage cells: a
     小组/积分 (group/points) cell — data fields group (group letter A–L) + group_points (current group
     points), shown as e.g. "J · 6" — and a GROUP-FORM cell, data group_gd / group_played / group_rank,
@@ -51,10 +53,19 @@ export function toChatPrompt() {
     ¢ + probability at each match milestone, with mark-to-market), overview (system map). There are also
     per-team, per-match, multi-team comparison, and betting track-record (cumulative P&L) breakdowns.
     If no match is live, the inplay data says so — relay that there's no in-play arbitrage when nothing is live.
-    Key facts: probabilities are 0-1; venue prices ≈ implied probability. The PER-MATCH market is the
-    90-MINUTE 3-way (home/Tie/away) in BOTH stages — a KNOCKOUT tie at 90' DOES pay the Tie contract (it is
-    settled on the regulation score, not the extra-time final); extra time + penalties only decide the SEPARATE
-    "who advances" (reach-round / champion) product, which is 2-way (no draw, via a team-specific shootout model).
+    Key facts: probabilities are 0-1; venue prices ≈ implied probability. Each match has a 90-MINUTE 3-way
+    market (home/Tie/away) — a KNOCKOUT tie at 90' DOES pay the Tie contract (settled on the regulation score,
+    not the extra-time final). From the knockout stage there is ALSO a per-match 2-way "WHO ADVANCES" market
+    (home/away, NO draw; includes extra time + penalties), traded on Kalshi (KXWCADVANCE), Polymarket US and
+    Polymarket Global. A 常规时间 / 晋级 (Regulation Time / Advances) selector on Today's Predictions,
+    Model-vs-Market, Match Pricing, In-Play and the upcoming-matches panel flips the WHOLE view — model, venue
+    prices, edge, decision and hedge — between the 90' 3-way and the 2-way advance; group matches have no advance
+    market and stay on regulation. From the knockout round a prediction's WIN/LOSS is judged on who ACTUALLY
+    ADVANCED (2-way, extra time + penalties); the group stage is judged on the 90' result. In-play, a live
+    "who advances" probability is recomputed every minute through regulation → extra time → penalties (extra-time
+    fatigue + a sequential best-of-5 / sudden-death shootout model), running a PARALLEL 2-way in-play signal +
+    hedge stack alongside the 3-way (the 2-way hedge buys the opponent's advance leg instead of the draw). The
+    team-level reach-round / champion products are a separate 2-way "who advances" view (the 晋级形势 artifact).
     The model is post-hoc CALIBRATED; live trading is gated (only trades when the calibrated Brier beats the
     uniform baseline) with a hard $1 order cap. "edge" = our model probability minus the venue's ask (devig).
     PER-CONTRACT CENTS (¢): a binary contract settles 100¢ if it wins, 0¢ if it loses, so for ANY single

@@ -197,14 +197,15 @@ Institutional-quality fixed income analytics with FRED data, Nelson-Siegel forwa
 
 ### Prediction Market — World Cup 2026 (get_prediction_market tool)
 A quantitative live-trading system on Kalshi + Polymarket US: prices every match 3-way
-(home/draw/away) + totals, simulates the tournament (champion odds, golden boot), finds
+(home/draw/away) + totals — and, for knockout ties, a 2-way "who advances" market (incl. extra
+time + penalties) — simulates the tournament (champion odds, golden boot), finds
 value/arbitrage vs real venue quotes, and trades in-play minute-by-minute. For ANY World
 Cup / champion / golden-boot / match-prediction / Kalshi / Polymarket / in-play / betting
 question, call **get_prediction_market** with a "view", then answer from the real data:
 - **champion** — who wins the cup (p_champion/final/sf), FIFA rank, rating per team
 - **golden_boot** — top-scorer probabilities (EA FC 26 talent × knockout depth × teammate split)
-- **predictions** — upcoming matches: our model 3-way + O2.5/BTTS, de-vig book, live Kalshi/Poly US asks, edge
-- **inplay** — LIVE matches now: live 3-way, xG, remaining goals, in-play arb/value/tactic signals
+- **predictions** — upcoming matches: our model 3-way + O2.5/BTTS, de-vig book, live Kalshi/Poly US asks, edge. Knockout matches ALSO carry an \`advance\` block (2-way "who advances": model home/away incl. extra time + penalties + venue advance asks + edge); the dashboard's 常规时间/晋级 (Regulation Time / Advances) toggle swaps the card to it.
+- **inplay** — LIVE matches now: live 3-way, xG, remaining goals, in-play arb/value/tactic signals. Knockout ties also run a PARALLEL 2-way "who advances" stack (live advance probability through regulation→extra time→penalties + advance signals + a 2-state hedge), exported separately as inplay_live_advance.json
 - **performance** — Brier vs uniform + calibrated, trade-grade gate, and the production bet log (per-match prediction/bet/result/running P&L)
 - **risk** — pre-trade gates, venue balances, $1 order cap, API budget
 - **schedule** (kickoff times ET/PT + recently finished), **calibration** (OOS reliability: Brier vs uniform, draw rate, goal bias)
@@ -221,9 +222,16 @@ side by side use **compare_wc_teams** (teams=[...]). For the betting track recor
 relay that ("no match is live right now, so there's no in-play arbitrage to show"). These mirror
 get_pair_stats / compare_strategies / get_strategy_performance.
 Key facts: probs are 0-1; venue prices ≈ implied probability; edge = model prob − venue ask (devig).
-GROUP matches can draw; KNOCKOUT matches cannot (extra time + penalty shootout decide it — team-specific
-shootout model). The model is post-hoc CALIBRATED; live trading is gated (only when calibrated Brier beats
-uniform) with a hard $1 order cap. Use "top" to limit champion/golden_boot/predictions rows.
+The per-match 90' market is 3-way (home/Tie/away) in BOTH stages — a KNOCKOUT tie at 90' still pays the Tie
+contract (settled on the regulation score). From the knockout stage there is ALSO a separate per-match 2-way
+"WHO ADVANCES" market (home/away, NO draw; includes extra time + penalties via a sequential best-of-5/
+sudden-death shootout model + extra-time fatigue), traded on Kalshi (KXWCADVANCE) / Polymarket US / Polymarket
+Global. A 常规时间 / 晋级 (Regulation Time / Advances) toggle on the dashboard flips Today's Predictions,
+Model-vs-Market, Match Pricing and In-Play between the two; group matches have no advance market. From the
+knockout round a prediction's WIN/LOSS is judged on who ACTUALLY ADVANCED (2-way); the group stage on the 90'
+result. The team-level reach-round / champion "who advances" products are a separate 2-way view (晋级形势).
+The model is post-hoc CALIBRATED; live trading is gated (only when calibrated Brier beats uniform) with a hard
+$1 order cap. Use "top" to limit champion/golden_boot/predictions rows.
 
 ### Knowledge Base — 42 Research Documents (kb_* tools)
 - **kb_search**: Search across 42 markdown documents (private credit, ABF, regression models, Oaktree/Goldman/Ares/Blackstone strategies, fixed-income arbitrage, covenants, macro). Chinese + English.
