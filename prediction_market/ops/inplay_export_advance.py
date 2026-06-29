@@ -194,6 +194,18 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             if q:
                 prices[v] = _q2c(q)
         fixture_opps = by_fixture.get(fx["api_id"], [])
+        # Confidence tier + staking gate on every advance opportunity (same validated rules as
+        # the 3-way view; the advance signals are all home/away so the tiering applies directly).
+        # Without this the advance opportunities showed an empty 置信 column.
+        try:
+            from prediction_market.strategy import inplay_confidence as ic
+            ctx = ic.match_context(hi, ai, name.get(hi, hi), name.get(ai, ai), gh, ga, minute,
+                                   model={"home": lap.p_home_advance, "away": lap.p_away_advance},
+                                   knockout=True)
+            for _o in fixture_opps:
+                ic.annotate(_o, ctx)
+        except Exception:
+            pass
         try:
             hedge = _match_hedge_advance(conn, fx, None, hi, ai, sm, gh, ga, minute, lap, prices)
             if hedge is not None:
