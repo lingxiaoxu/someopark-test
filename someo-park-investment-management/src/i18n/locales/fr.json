@@ -334,6 +334,7 @@
       ],
       "preT": "Avant le coup d’envoi",
       "pre": [
+        "Les matchs à élimination sont aussi cotés en marché 2-way « qui se qualifie » (prolongation + tirs au but) sur Kalshi / Polymarket US / Global ; un sélecteur Temps réglementaire ↔ Qualification bascule chaque vue d'avant-match entre le 3-way 90' et le 2-way qualification (les matchs de groupe restent en réglementaire). Dès les phases finales, le bilan se juge sur qui s'est réellement qualifié ; la phase de groupes reste sur le résultat à 90'.",
         "Victoire / nul / défaite, total de buts et les deux équipes marquent, pour chaque match",
         "Une simulation de tournoi à 1 000 000 de tirages → titre, finale et qualification",
         "Cotes du Soulier d’Or mêlant talent (EA FC), profondeur en phase finale et partage des buts",
@@ -343,6 +344,8 @@
       ],
       "liveT": "En direct (live)",
       "live": [
+        "Pour les matchs à élimination, une probabilité « qui se qualifie » est recalculée en direct chaque minute, du temps réglementaire → prolongation → tirs au but (décroissance de fatigue en prolongation + modèle de séance de tirs séquentiel meilleur-des-5 / mort subite conditionné au score en direct).",
+        "Couverture en direct / gestion du risque : protégez une position gagnante en achetant la jambe inverse — le nul dans le 3-way 90', ou la qualification de l'adversaire dans le 2-way — avec une matrice de gains seuil de rentabilité / couverture totale.",
         "Prix équitables recalculés chaque minute pendant le match",
         "Réagit au score, au temps restant et à l’état du jeu — qui mène, but d’une grosse/petite équipe, cartons rouges, dernières minutes",
         "Une bibliothèque de tactiques live : retour après but, remontée du favori, valeur carton rouge, valeur du nul tardif, etc.",

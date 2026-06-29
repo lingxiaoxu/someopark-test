@@ -326,6 +326,42 @@ const M: Record<string, Tr> = {
     fr: 'Interrogation en direct à la minute (appelle inplay_arb en interne)',
     es: 'Sondeo en vivo por minuto (llama internamente a inplay_arb)',
   },
+  // ── frontend_overview.json: 2-way "advance" interfaces (plan 24) ──
+  '淘汰赛 2-way 晋级盘报价(含加时+点球):Kalshi KXWCADVANCE / Poly US aadc / Poly Global reach-round;赛前各视图「常规时间/晋级盘」切换器的数据源': {
+    zh: '淘汰赛 2-way 晋级盘报价(含加时+点球):Kalshi KXWCADVANCE / Poly US aadc / Poly Global reach-round;赛前各视图「常规时间/晋级盘」切换器的数据源',
+    en: 'Knockout 2-way "advance" quotes (incl. extra time + penalties): Kalshi KXWCADVANCE / Poly US aadc / Poly Global reach-round; the data source for the Regulation/Advances switch across pre-match views',
+    ja: 'ノックアウト2-way「勝ち上がり」気配(延長+PK込み):Kalshi KXWCADVANCE / Poly US aadc / Poly Global reach-round。試合前ビューの「通常時間/勝ち上がり」切替のデータ源',
+    fr: 'Cotes 2-way « qualification » des phases finales (prolongation + tirs au but) : Kalshi KXWCADVANCE / Poly US aadc / Poly Global reach-round ; source du sélecteur Réglementaire/Qualification des vues d’avant-match',
+    es: 'Cotizaciones 2-way «avance» de eliminatorias (prórroga + penales): Kalshi KXWCADVANCE / Poly US aadc / Poly Global reach-round; fuente del selector Reglamentario/Avance en las vistas previas',
+  },
+  '盘中实时晋级概率:常规→加时→点球逐分钟更新(加时疲劳衰减 + 5轮+突然死亡序列点球 DP)': {
+    zh: '盘中实时晋级概率:常规→加时→点球逐分钟更新(加时疲劳衰减 + 5轮+突然死亡序列点球 DP)',
+    en: 'Live who-advances probability: recomputed each minute through regulation → extra time → penalties (extra-time fatigue decay + a best-of-5/sudden-death sequential shoot-out DP)',
+    ja: 'ライブ勝ち上がり確率:通常→延長→PKを毎分再計算(延長の疲労減衰＋5本制/サドンデスの逐次PK DP)',
+    fr: 'Probabilité « qui se qualifie » en direct : recalculée chaque minute du réglementaire → prolongation → tirs au but (fatigue en prolongation + DP séquentiel meilleur-des-5/mort subite)',
+    es: 'Probabilidad de avance en vivo: recalculada cada minuto a través de reglamentario → prórroga → penales (fatiga en prórroga + DP secuencial al mejor de 5/muerte súbita)',
+  },
+  '盘中 2-way 晋级盘:15 战术晋级版(删平局类 / 过滤平局腿 / 重标定阈值) + 2态对冲 + 按晋级方结算的智能择时;与三向盘并行运行': {
+    zh: '盘中 2-way 晋级盘:15 战术晋级版(删平局类 / 过滤平局腿 / 重标定阈值) + 2态对冲 + 按晋级方结算的智能择时;与三向盘并行运行',
+    en: 'In-play 2-way advance: advance-forked 15 tactics (drop draw-only / filter the draw leg / recalibrate) + 2-state hedge + smart-exit settling on the advancer; runs in parallel with the three-way',
+    ja: 'ライブ2-way勝ち上がり:15戦術の勝ち上がり版(引分系削除/引分脚フィルタ/閾値再調整)＋2状態ヘッジ＋勝ち上がりで決済するスマート手仕舞い。3-wayと並行',
+    fr: '2-way qualification en direct : 15 tactiques forkées (suppr. tirages secs / filtre la jambe nul / recalibrage) + couverture à 2 états + sortie intelligente réglée sur le qualifié ; en parallèle du 3-way',
+    es: '2-way avance en vivo: 15 tácticas adaptadas (quita las de empate / filtra la pata empate / recalibra) + cobertura de 2 estados + salida inteligente liquidada según quién avanza; en paralelo al 3-way',
+  },
+  '盘中晋级盘实时导出(inplay_live_advance.json + 独立复盘 log,与三向并行)': {
+    zh: '盘中晋级盘实时导出(inplay_live_advance.json + 独立复盘 log,与三向并行)',
+    en: 'Live advance export (inplay_live_advance.json + a separate review log, parallel to the three-way)',
+    ja: 'ライブ勝ち上がりエクスポート(inplay_live_advance.json＋独立のレビューログ、3-wayと並行)',
+    fr: 'Export qualification en direct (inplay_live_advance.json + journal de revue séparé, parallèle au 3-way)',
+    es: 'Exportación de avance en vivo (inplay_live_advance.json + un registro de revisión separado, paralelo al 3-way)',
+  },
+  '晋级盘每分钟价格回填(price_tick_adv 表,供晋级盘智能择时)': {
+    zh: '晋级盘每分钟价格回填(price_tick_adv 表,供晋级盘智能择时)',
+    en: 'Advance-market per-minute price backfill (price_tick_adv table, feeds the advance smart-exit)',
+    ja: '勝ち上がり市場の毎分価格バックフィル(price_tick_advテーブル、勝ち上がりスマート手仕舞い用)',
+    fr: 'Backfill du prix à la minute du marché qualification (table price_tick_adv, alimente la sortie intelligente)',
+    es: 'Relleno de precios por minuto del mercado de avance (tabla price_tick_adv, alimenta la salida inteligente)',
+  },
   // ── frontend_overview.json: schedule "when" + "frequency" ──
   '每天一次(赛前)': {
     zh: '每天一次(赛前)', en: 'Once daily (pre-match)', ja: '1日1回(試合前)',

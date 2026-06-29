@@ -32,6 +32,8 @@ INTERFACES = [
     ("数据", "ingest.bootstrap", "一次性拉全量(球队/球员/对阵/赛程),建立增量水位"),
     ("数据", "ingest.refresh", "增量刷新(赛果、比分、live 状态)"),
     ("预测", "model.match_pricing", "单场 3-way 公允价(主/平/客),含点球大战建模"),
+    ("预测", "venues.advance_quotes", "淘汰赛 2-way 晋级盘报价(含加时+点球):Kalshi KXWCADVANCE / Poly US aadc / Poly Global reach-round;赛前各视图「常规时间/晋级盘」切换器的数据源"),
+    ("预测", "model.inplay_advance", "盘中实时晋级概率:常规→加时→点球逐分钟更新(加时疲劳衰减 + 5轮+突然死亡序列点球 DP)"),
     ("预测", "model.tournament", "模拟冠军概率(48 队)"),
     ("预测", "model.golden_boot", "金靴(进球王)球员概率"),
     ("预测", "model.xg_form", "xG-form 评分加成(PIT):球队近期 xG 比比分更低噪,提升预测"),
@@ -43,7 +45,10 @@ INTERFACES = [
     ("策略", "strategy.inplay_arb", "盘中每分钟:套利 / 相对价值 / 15 个战术(8 个数据挖掘:闷平爆发/应得未得/无效控球/阵型脆弱/单点失效/晚段进球/庄家交叉验证/临门修正 + 超调止盈)。信号按 intent 分区(持仓管理/新入场/事件,避免平仓与入场被读成矛盾);庄家交叉验证需「庄家+模型双双>可交易场价」确认(与模型同向);收敛锁定需市场 bid≈公允才卖(否则持有吃满额,不贱卖)"),
     ("运维", "ops.team_styles_export", "球队风格分型(48队×10风格矩阵:每队1-2风格,手策研究先验+live指标混合,每周更新)"),
     ("运维", "ops.reach_round_export", "晋级盘(48 队 × 5 轮:小组出线/16/8/4/决赛,模型%/Kalshi¢/Poly¢/边缘)"),
+    ("策略", "strategy.inplay_arb_advance", "盘中 2-way 晋级盘:15 战术晋级版(删平局类 / 过滤平局腿 / 重标定阈值) + 2态对冲 + 按晋级方结算的智能择时;与三向盘并行运行"),
+    ("运维", "ops.inplay_export_advance", "盘中晋级盘实时导出(inplay_live_advance.json + 独立复盘 log,与三向并行)"),
     ("运维", "ops.backfill_price_ticks", "每分钟价格回填(Poly Global prices-history),供细粒度择时研究"),
+    ("运维", "ops.backfill_price_ticks_advance", "晋级盘每分钟价格回填(price_tick_adv 表,供晋级盘智能择时)"),
     ("运维", "ops.schedule", "赛程表(美东 ET + 美西 PT 双时区)"),
     ("运维", "ops.monitor", "健康报告(数据新鲜度/预算/校准/错误率)"),
     ("运维", "ops.performance_report", "收益/准确度报告(本 PDF)"),
@@ -65,7 +70,7 @@ MODES = [
 SCHEDULE = [
     ("每天一次(赛前)", "ingest.refresh → model.tournament → strategy.compare", "1×/天"),
     ("整点", "jobs.hourly_job", "每小时"),
-    ("比赛进行中", "jobs.live_poller(→ inplay_arb)", "每分钟"),
+    ("比赛进行中", "jobs.live_poller (→ inplay_arb + inplay_arb_advance)", "每分钟"),
     ("随时查看", "ops.schedule / performance_report / risk_report", "按需"),
 ]
 
@@ -81,6 +86,7 @@ OUTPUTS = [
     ("upcoming.json", "近期比赛卡片:决策选边 + 双口径计划(入场 + 计划智能择时离场)"),
     ("xv_matches.json", "模型 vs 市场偏离扫描"),
     ("inplay_live.json / inplay_opportunities.json", "盘中实时模型 + 15 个战术 + totals 盘口 + 套利/相对价值"),
+    ("inplay_live_advance.json", "盘中 2-way 晋级盘:实时晋级概率(常规/加时/点球)+ 晋级版战术 + 2态对冲(独立于三向)"),
     ("match_signals.json", "每日赛前下单决策(decide() 选边定额,$1 硬顶)"),
     ("milestone_marks.json", "价格轨迹 + 智能择时现金出(实现口径:逐场买/卖/实现盈亏)"),
     ("team_styles.json", "球队风格分型(48×10 矩阵,每队1-2风格)"),
@@ -101,6 +107,7 @@ VALUE = [
     "PIT 验证把同一批注从 7W-11L/+114¢(持有)提升到 12-15 注盈利/+486¢(实现口径)。三视图与 PDF 都按「实现 / 持有 / argmax」三口径并列。",
     "跨 Kalshi / Polymarket 的实时错价发现(赛前偏离 + 盘中每分钟 15 个战术,含 8 个数据挖掘战术 + 超调止盈 + totals 总进球盘)。",
     "晋级盘(48 队 × 5 轮)+ 球队风格分型(48 队 × 10 风格矩阵,每队 1-2 风格)+ xG-form / 东道主先验 / 平局纪律等数据驱动的预测增强。",
+    "淘汰赛 2-way「谁晋级」盘全链路:三场馆(Kalshi / Poly US / Poly Global)报价、赛前各视图「常规时间 / 晋级盘」一键切换、淘汰赛胜负按实际晋级方判定(小组赛仍按 90' 结果)、盘中逐分钟实时晋级概率(贯穿常规→加时→点球,含疲劳衰减与序列点球 DP)+ 晋级版 15 战术 + 2态对冲 + 按晋级方结算的智能择时——与原 90' 三向盘完全并行,互不影响。",
     "一套强制纪律——只在模型达标(校准后 Brier 优于均匀基线)且真有可成交边缘时才动钱,每单硬顶 $1。",
     "怎么看到价值:准确度&盈亏、价格轨迹(¢)、模型 vs 市场、校准、风险等视图,加上两份 PDF"
     "(收益/准确度、风险)即是答案——三处逐场战绩同源对账、永远一致。",

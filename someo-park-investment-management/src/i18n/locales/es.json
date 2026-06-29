@@ -334,6 +334,7 @@
       ],
       "preT": "Antes del saque inicial",
       "pre": [
+        "Las eliminatorias también se cotizan como mercado 2-way «quién avanza» (prórroga + penales) en Kalshi / Polymarket US / Global; un selector Tiempo reglamentario ↔ Avance cambia cada vista previa entre el 3-way de 90' y el 2-way de avance (los partidos de grupo siguen en reglamentario). Desde la fase eliminatoria, el acierto se juzga por quién avanzó realmente; la fase de grupos sigue con el resultado a 90'.",
         "Victoria / empate / derrota, goles totales y ambos marcan, para cada partido",
         "Una simulación de torneo de 1.000.000 de iteraciones → título, final y clasificación",
         "Cuotas de la Bota de Oro que combinan talento (EA FC), profundidad en eliminatorias y reparto de goles",
@@ -343,6 +344,8 @@
       ],
       "liveT": "En juego (en vivo)",
       "live": [
+        "En eliminatorias, una probabilidad «quién avanza» se recalcula en vivo cada minuto a través del tiempo reglamentario → prórroga → penales (decaimiento por fatiga en prórroga + modelo secuencial de tanda al mejor de 5 / muerte súbita condicionado al marcador en vivo).",
+        "Cobertura en vivo / gestión de riesgo: protege una posición ganadora comprando la pata opuesta — el empate en el 3-way de 90', o el avance del rival en el 2-way — con una matriz de resultados de equilibrio / cobertura total.",
         "Precios justos recalculados cada minuto mientras el partido está en vivo",
         "Responde al marcador, el tiempo restante y el estado del juego: quién gana, gol de equipo fuerte o débil, tarjetas rojas, minutos finales",
         "Una biblioteca de tácticas en vivo: reversión tras gol, remontada del favorito, valor por tarjeta roja, valor del empate tardío y más",

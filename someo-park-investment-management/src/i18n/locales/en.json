@@ -673,6 +673,7 @@
       ],
       "preT": "Before Kick-off",
       "pre": [
+        "Knockouts are also priced as a 2-way \"who advances\" market (incl. extra time + penalties) on Kalshi / Polymarket US / Polymarket Global; a Regulation-Time ↔ Advances switch flips every pre-match view between the 90' three-way and the advance two-way (group matches stay on regulation). From the knockout stage, prediction win/loss is scored on who actually advanced; the group stage stays on the 90' result.",
         "Fair win / draw / loss, total goals and both-teams-to-score for every match",
         "A 1,000,000-run tournament simulation → each team’s title, final and advancement odds",
         "Golden Boot odds blending player talent (EA FC), knockout depth and intra-squad goal-sharing",
@@ -683,6 +684,8 @@
       ],
       "liveT": "In-Play (Live)",
       "live": [
+        "For knockout ties, a live \"who advances\" probability is recomputed every minute through regulation → extra time → penalties (extra-time fatigue decay + a sequential best-of-5 / sudden-death shoot-out model that conditions on the live shoot-out score).",
+        "In-play hedging / risk management: protect a leading position by buying the offsetting leg — the draw in the 90' three-way, or the opponent's advance in the knockout two-way — with a break-even / full-hedge payoff matrix.",
         "Fair prices recomputed every minute while a match is live",
         "Reacts to the scoreline, time left and game state — who leads, a strong vs weak team scoring, red cards, the closing minutes",
         "A library of in-play tactics: goal-reaction reversion, favourite-comeback, red-card value, late-game draw value and more",
