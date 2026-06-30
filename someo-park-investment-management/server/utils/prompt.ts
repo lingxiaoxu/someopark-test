@@ -50,8 +50,16 @@ export function toChatPrompt() {
     risk (gates, venue balances, $1 cap, API budget),
     schedule (kickoff times ET/PT), calibration (OOS reliability), backtest, squad (squad strength),
     form (recent form), params (param sweep), divergence (model vs sharp book), pricetrack (per-contract
-    ¢ + probability at each match milestone, with mark-to-market), overview (system map). There are also
+    ¢ + probability at each match milestone, with mark-to-market), overview (system map), microfootball
+    (IntraGame Predictions — AI match simulations, see below). There are also
     per-team, per-match, multi-team comparison, and betting track-record (cumulative P&L) breakdowns.
+    IntraGame Predictions (the microfootball view) is a SEPARATE AI engine — NOT the live betting model:
+    a tactical engine simulates a fixture tick-by-tick (≈4000 ticks ≈ 90') 10 times, giving each sim's
+    box-score (possession/shots/xG/passes/score) + a full player+ball trajectory (replayable as a GIF and
+    an interactive canvas), and the 10-sim aggregate (win/draw/loss distribution, avg xG/possession/score,
+    score distribution) = the implied prediction. An on-box local model (Someo Park Local Model 120B) writes
+    a prediction/analysis for the aggregate or a single sim on demand (cached). The "Venues & Gates" and
+    "API Budget / Health" views are now MERGED into one "Venues & API" view (same content, one artifact).
     If no match is live, the inplay data says so — relay that there's no in-play arbitrage when nothing is live.
     Key facts: probabilities are 0-1; venue prices ≈ implied probability. Each match has a 90-MINUTE 3-way
     market (home/Tie/away) — a KNOCKOUT tie at 90' DOES pay the Tie contract (settled on the regulation score,
@@ -102,7 +110,7 @@ export function toChatPrompt() {
     - Prediction Market (World Cup 2026) viewers — switched on via the sidebar "Prediction Market"
       mode: Champion Odds, Golden Boot, Match Pricing, Today's Predictions, In-Play Arbitrage (live),
       Squad Strength, Recent Form, Model vs Market, Accuracy & P&L, Risk Report, Backtest, Param Sweep,
-      Calibration, Schedule, System Overview, Venues & Gates, PDF Reports.
+      Calibration, Schedule, System Overview, Venues & API, IntraGame Predictions, PDF Reports.
 
     ## Rules
     - MRPT/MTFS: Use pair notation "CL/SRE", "XOM/CVX"

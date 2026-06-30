@@ -121,8 +121,9 @@ const ARTIFACT_PATTERNS: Array<{
   //    broad, but detection is MODE-SCOPED (only fires in prediction mode), so they
   //    never collide with the stock-strategy patterns above.
   { type: 'wc_risk',          title: 'Risk & Gates',        keywords: ['risk', 'gate', 'pre-trade', 'order cap', '$1 cap', 'trade-grade', 'discipline gate', '风险', '风控', '闸门', '可交易等级', '硬顶', '下单上限'] },
-  { type: 'wc_venues',        title: 'Venues & Gates',      keywords: ['venue', 'venues', 'kalshi balance', 'poly balance', 'polymarket balance', 'account balance', '场所', '场馆', '余额', '下注场所', '账户余额'] },
-  { type: 'wc_budget',        title: 'API Budget / Health', keywords: ['api budget', 'budget', 'api-football quota', 'request budget', 'api 预算', '预算', '额度', '请求额度', '健康度'] },
+  // Merged "Venues & API" artifact — venue balances/gates AND the API budget/health are now one view.
+  { type: 'wc_venues',        title: 'Venues & API',        keywords: ['venue', 'venues', 'kalshi balance', 'poly balance', 'polymarket balance', 'account balance', 'api budget', 'budget', 'api-football quota', 'request budget', '场所', '场馆', '余额', '下注场所', '账户余额', 'api 预算', '预算', '额度', '请求额度', '健康度'] },
+  { type: 'wc_microfootball', title: 'IntraGame Predictions', keywords: ['intragame', 'intra-game', 'intra game', 'microfootball', 'micro football', 'match simulation', 'simulated match', 'sim match', 'trajectory', 'replay gif', '局内预测', '比赛模拟', '模拟比赛', '微足球', '轨迹', '回放'] },
   { type: 'wc_backtest',      title: 'Backtest',            keywords: ['backtest', 'back-test', 'blend curve', '回测', '混合曲线', '回溯测试'] },
   { type: 'wc_params',        title: 'Parameter Sweep',     keywords: ['param sweep', 'parameter sweep', 'param set', 'parameter set', '参数扫描', '参数集', '参数寻优', '调参', '参数网格'] },
   { type: 'wc_pricetrack',    title: 'Price Track',         keywords: ['price track', 'pricetrack', 'milestone', 'price trajectory', 'mark to market', 'mark-to-market', '价格轨迹', '里程碑', '盯市', '价格追踪'] },

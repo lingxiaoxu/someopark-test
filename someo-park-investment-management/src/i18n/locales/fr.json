@@ -86,6 +86,7 @@
     "calibration": "Calibration (OOS)",
     "systemOverview": "Aperçu du Système",
     "venuesGates": "Places & Barrières",
+    "venuesApi": "Places & API",
     "modelNotes": "Notes du Modèle",
     "apiBudget": "Budget API / Santé",
     "valueHowToSee": "Valeur & Comment Voir",
@@ -406,6 +407,13 @@
         "Dimensionne avec un Kelly fractionnaire (¼ Kelly) et relève le seuil contre le biais favori-outsider ; ignore les matchs sans marge sûre",
         "Tout repose sur l'info d'avant-match (point-in-time) — sans anticipation ; les ordres réels restent plafonnés à 1 $",
         "La valeur de clôture (CLV) est l'indicateur principal (plus fiable que le taux de réussite à petit N) ; la précision argmax est conservée comme référence de qualité du modèle"
+      ],
+      "simT": "Prédictions intra-match (simulation IA)",
+      "sim": [
+        "Un moteur IA distinct simule chaque match tick par tick (≈4000 ticks ≈ 90 minutes) avec des tactiques propres à chaque équipe, produisant une trajectoire complète (chaque joueur et le ballon) et des statistiques (possession, tirs, xG, passes…).",
+        "Chaque affiche est jouée 10 fois ; la distribution des 10 sims est la prédiction implicite : victoire/nul/défaite, xG/possession/score moyens, et la distribution des scores.",
+        "Chaque sim est rejouable en animation (un GIF + un canvas de trajectoire interactif), avec des stats par sim et agrégées.",
+        "Un grand modèle local (Someo Park Local Model 120B, sur la machine) lit l'agrégat ou une sim et rédige une prédiction / analyse concise à la demande ; résultats mis en cache (7 jours, par hachage de contenu)."
       ],
       "otherT": "Calibration, risque et reporting",
       "other": [

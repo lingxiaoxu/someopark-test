@@ -23,7 +23,7 @@ const VIEWS: Record<string, { file: string; about: string }> = {
   performance: { file: 'performance_report.json',  about: 'accuracy (Brier vs uniform, calibrated), trade-grade gate, and the bet log in 3 modes: REALIZED (decision + smart-exit cash-out = the real strategy, e.g. 15W-7L/+486¢), HOLD-to-FT (reference), and ARGMAX (reference) — each with W-L + PnL' },
   reach_round: { file: 'reach_round.json',         about: 'reach-round (晋级形势): each of the 48 teams’ probability to reach each round (group-advance(R32) / R16 / QF / SF / final), model % vs Kalshi¢ (KXWCROUND) vs Poly¢ + edge; refreshed on every settle. Each team row ALSO carries group-stage info: group (group letter A–L) + group_points (current group points) shown as "J · 6"; and group_gd (net goal difference), group_played (group matches played, of 3), group_rank (current in-group rank 1–4) shown as "+1 (2=1) (#3)" = GD +1, (played=remaining where remaining=3−played), (#rank). Computed live from results, reconciled to the official group table (group standings: points→GD→GF). A team drawn into a published knockout fixture is pinned to 100% for that round even pre-kickoff, so model % can be 100% with a negative GD' },
   styles:      { file: 'team_styles.json',         about: 'team style taxonomy as a 48 teams × 10 styles MATRIX (styles: possession / direct / high-press / low-block / dominant-attack / clinical / high-volume / set-piece / balanced / contained). A team can play 1–2 styles — `teams[].styles` is a 1–2 element array, each {code,label,poss,rank} where rank is the team\'s within-style ranking by possession (cells do NOT sum to 100%). Built from a curated research prior blended with live API-Football metrics; refreshed weekly. Backward-compatible: each team also keeps the legacy single `style` (its primary) + `metrics` (possession/xG/directness…). Descriptive scouting aid.' },
-  risk:        { file: 'risk_report.json',         about: 'pre-trade gates, venue balances (Kalshi/Poly), $1 order cap, API budget/health, calibration gate (also the Venues & Gates and API-Budget views)' },
+  risk:        { file: 'risk_report.json',         about: 'pre-trade gates, venue balances (Kalshi/Poly), $1 order cap, API budget/health, calibration gate (also the merged "Venues & API" view — venue balances/gates + API budget/health combined into one artifact)' },
   calibration: { file: 'oos_report.json',          about: 'out-of-sample reliability: Brier vs uniform, log-loss, predicted-vs-observed draw rate, goal-total bias — the directional calibration health check' },
   backtest:    { file: 'backtest.json',            about: 'model vs market vs uniform Brier on settled matches; blend curve; trade-grade verdict' },
   squad:       { file: 'squad.json',               about: 'squad strength z-scores (minutes-weighted club rating + attack); blended into the live model' },
@@ -32,6 +32,7 @@ const VIEWS: Record<string, { file: string; about: string }> = {
   divergence:  { file: 'xv_matches.json',          about: 'model 3-way vs the sharp bookmaker de-vig (where we diverge from the market)' },
   pricetrack:  { file: 'milestone_marks.json',     about: 'per-contract ¢ + probability at each match milestone (PRE/15\'/30\'/HT/60\'/75\'/FT) for home/draw/away from Kalshi+Polymarket, our pre-match pick + entry ¢, the mark-to-market (entry→FT), AND the smart-exit cash-out (when/at what ¢ we sold the over-reaction vs holding to settlement)' },
   overview:    { file: 'frontend_overview.json',   about: 'system overview: interfaces, modes, schedule, inputs/outputs, value, state-aware headline (the System Overview + Model Notes views)' },
+  microfootball: { file: 'microfootball_index.json', about: 'IntraGame Predictions — AI football-match SIMULATIONS (a separate tactical engine, NOT the live betting model). Each matchup is simulated 10× tick-by-tick with team tactics; `matchups[]` each carry every sim\'s box-score (possession/shots/xG/passes/score) + a 10-sim `aggregate` = win/draw/loss record + win_pct, avg xG/possession/shots/score, and score_distribution (the IMPLIED prediction from the sims). Each sim has a replay (gif + trajectory). A local LLM (Someo Park Local Model 120B) can analyze the aggregate or a single sim on demand (cached). Use for ANY question about the SIMULATED / intragame predictions (e.g. Brazil-Japan, Cote d\'Ivoire-Norway): who the sims favour, the score distribution, possession/xG, etc.' },
 }
 
 export const predictionMarketTool: AgentTool = {
@@ -46,7 +47,7 @@ export const predictionMarketTool: AgentTool = {
       '(REALIZED = decision + smart-exit cash-out, HOLD-to-FT, ARGMAX), the trade-grade gate, risk gates / ' +
       'venue balances / API budget, the backtest, squad strength, recent form, the reach-round (晋级盘) ' +
       'per-team advancement probabilities, the team style taxonomy (球队风格), model-vs-market divergence, ' +
-      'the parameter sweep, or the system overview. Pick the `view` for the data you need. Probabilities are 0-1; venue prices are ' +
+      'the parameter sweep, the system overview, or the AI IntraGame match SIMULATIONS (局内预测, view="microfootball" — a separate tactical engine that simulates each fixture 10× and gives a 10-sim aggregate implied prediction). Pick the `view` for the data you need. Probabilities are 0-1; venue prices are ' +
       'contract prices (≈ implied probability). The per-match 90-minute market is 3-way (home/draw/away) in BOTH ' +
       'stages — a knockout tie at 90\' still pays the draw/Tie contract. From the knockout stage there is ALSO a ' +
       'per-match 2-way "who advances" market (home/away, no draw; extra time + penalties) — see the `advance` ' +
@@ -137,6 +138,19 @@ export const predictionMarketTool: AgentTool = {
       if (team) rounds = rounds.map((rd) => ({ ...rd, teams: (rd.teams ?? []).filter((t: any) => matchesTeam(team, t)) }))
       return { as_of: data?.as_of, note: data?.note, rounds }
     }
+    if (view === 'microfootball' && Array.isArray(data?.matchups)) {
+      // Drop the gif/trajectory URLs + tactical prose — keep aggregate + per-sim scores/stats.
+      let mus = data.matchups
+      if (team) mus = mus.filter((m: any) => matchesTeam(team, { name: m.home_name }) || matchesTeam(team, { name: m.away_name }))
+      return {
+        generated_at: data.generated_at,
+        matchups: mus.map((m: any) => ({
+          id: m.id, home_name: m.home_name, away_name: m.away_name, n_sims: m.n_sims,
+          aggregate: m.aggregate,
+          sims: (m.sims || []).map((s: any) => ({ sim_id: s.sim_id, score: s.score, result: s.result, stats: s.stats })),
+        })),
+      }
+    }
     return data
   },
 }
@@ -153,7 +167,7 @@ const WC_TYPE_TO_VIEW: Record<string, string> = {
   wc_risk: 'risk', wc_venues: 'risk', wc_budget: 'risk', wc_calibration: 'calibration',
   wc_backtest: 'backtest', wc_squad: 'squad', wc_form: 'form', wc_params: 'params',
   wc_divergence: 'divergence', wc_pricetrack: 'pricetrack', wc_overview: 'overview',
-  wc_methodology: 'overview',
+  wc_methodology: 'overview', wc_microfootball: 'microfootball',
 }
 
 /** Load the real data behind detected wc_* artifact types as a compact context block so

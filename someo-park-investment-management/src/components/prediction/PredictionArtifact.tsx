@@ -284,7 +284,7 @@ function Methodology() {
   const cap = tr('prediction.cap', { returnObjects: true }) as any;
   const sections: [string, string[]][] = [
     [cap?.dataT, cap?.data], [cap?.preT, cap?.pre], [cap?.decisionT, cap?.decision],
-    [cap?.liveT, cap?.live], [cap?.otherT, cap?.other],
+    [cap?.liveT, cap?.live], [cap?.simT, cap?.sim], [cap?.otherT, cap?.other],
   ];
   return (
     <div>
@@ -1373,6 +1373,10 @@ function MicroFootballSim() {
   );
 }
 
+// Merged "Venues & API" artifact — the Venues & Gates table AND the API Budget/Health panel in
+// one view (both sections kept intact, just combined into a single artifact).
+function VenuesApi() { return <><Venues /><Budget /></>; }
+
 const REGISTRY: Record<string, () => ReactElement> = {
   wc_microfootball: MicroFootballSim,
   wc_pricetrack: PriceTrack,
@@ -1394,8 +1398,8 @@ const REGISTRY: Record<string, () => ReactElement> = {
   wc_backtest: Backtest,
   wc_params: ParamSweep,
   wc_overview: OverviewCard,
-  wc_venues: Venues,
-  wc_budget: Budget,
+  wc_venues: VenuesApi,
+  wc_budget: Budget,   // kept for backward-compat (deep-links/chat); merged into wc_venues in the grid
   wc_pdfs: Pdfs,
 };
 

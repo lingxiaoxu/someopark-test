@@ -425,6 +425,7 @@
     "calibration": "Calibration (OOS)",
     "systemOverview": "System Overview",
     "venuesGates": "Venues & Gates",
+    "venuesApi": "Venues & API",
     "modelNotes": "Model Notes",
     "apiBudget": "API Budget / Health",
     "valueHowToSee": "Value & How to See",
@@ -746,6 +747,13 @@
         "Sizes with fractional Kelly (¼ Kelly) and raises the bar against the favourite-longshot bias; skips matches with no safe edge",
         "Everything uses pre-match (point-in-time) info only — no look-ahead; real orders are still capped at $1",
         "Closing-line value (CLV) is the primary scorecard (more reliable than win-rate at small N); argmax prediction accuracy is kept as a model-quality reference"
+      ],
+      "simT": "IntraGame Predictions (AI match simulation)",
+      "sim": [
+        "A separate AI engine simulates each fixture tick-by-tick (≈4000 ticks ≈ 90 minutes) with team-specific tactics, producing a full match trajectory — every player and the ball — plus box-score stats (possession, shots, xG, passes, …).",
+        "Each fixture is run 10 times; the 10-sim spread is the implied prediction: the win/draw/loss distribution, average xG / possession / scoreline, and the score distribution.",
+        "Each sim is replayable as an animation (a prebuilt GIF and an interactive trajectory canvas), with per-sim and aggregate stats.",
+        "A local large language model (Someo Park Local Model 120B, on-box) reads the aggregate or a single sim and writes a concise prediction / post-match analysis on demand; results are cached (7-day, content-hashed)."
       ],
       "otherT": "Calibration, Risk & Reporting",
       "other": [
