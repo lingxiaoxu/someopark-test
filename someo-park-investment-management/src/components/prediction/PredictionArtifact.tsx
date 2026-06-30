@@ -1254,7 +1254,7 @@ function AiResult({ state, onRun, label }: { state: { loading: boolean; text?: s
       {state.error && <div style={{ fontSize: 11, color: 'var(--error)', ...mono, marginTop: 4 }}>{tr('prediction.mfAiError')}: {state.error}</div>}
       {state.text && (
         <div className="card" style={{ marginTop: 6, padding: '8px 10px', fontSize: 12, lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
-          <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>🤖 {tr('prediction.mfAiTitle')} · nemotron-3-super</div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>🤖 {tr('prediction.mfAiTitle')} · Someo Park Local Model 120B</div>
           {state.text}
         </div>
       )}
@@ -1262,9 +1262,24 @@ function AiResult({ state, onRun, label }: { state: { loading: boolean; text?: s
   );
 }
 
+// Latest scheduled kickoff (ET string) for a matchup, matched by team names in either order
+// against the World Cup schedule — if the same fixture recurs, the latest kickoff wins.
+function scheduleDate(schedMatches: any[], home: string, away: string): string {
+  const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z]/g, '');
+  const nh = norm(home), na = norm(away);
+  const hits = (schedMatches || []).filter((x: any) => {
+    const a1 = norm(x.home?.name), a2 = norm(x.away?.name);
+    return (a1 === nh && a2 === na) || (a1 === na && a2 === nh);
+  });
+  if (!hits.length) return '';
+  hits.sort((p: any, q: any) => String(q.kickoff).localeCompare(String(p.kickoff)));  // latest first
+  return hits[0].et || '';
+}
+
 function MicroFootballSim() {
   const { t: tr, i18n } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCMicrofootball(), []);
+  const { data: schedData } = useApi<any>(() => getWCSchedule(), []);
   const [mIdx, setMIdx] = useState(0);
   const [sIdx, setSIdx] = useState(0);
   const [viz, setViz] = useState<'gif' | 'canvas'>('gif');
@@ -1304,9 +1319,13 @@ function MicroFootballSim() {
   return (
     <div>
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>{tr('prediction.subMicrofootball')}</div>
-      {/* matchup tabs */}
+      {/* matchup tabs — each shows the fixture's scheduled date/time (from the World Cup schedule) */}
       <div style={{ marginBottom: 8 }}>
-        {matchups.map((mm, i) => tab(i === mIdx, () => { setMIdx(i); setSIdx(0); setAiSim({ loading: false }); setAiAgg({ loading: false }); }, `${tCountry(mm.home_name)} v ${tCountry(mm.away_name)}`, mm.id))}
+        {matchups.map((mm, i) => {
+          const dt = scheduleDate(schedData?.matches || [], mm.home_name, mm.away_name);
+          return tab(i === mIdx, () => { setMIdx(i); setSIdx(0); setAiSim({ loading: false }); setAiAgg({ loading: false }); },
+            <span>{tCountry(mm.home_name)} v {tCountry(mm.away_name)}{dt && <span style={{ display: 'block', fontSize: 9, fontWeight: 400, color: 'var(--text-muted)', marginTop: 1 }}>{dt}</span>}</span>, mm.id);
+        })}
       </div>
 
       {/* aggregate panel — the implied prediction across 10 sims */}
@@ -1323,7 +1342,7 @@ function MicroFootballSim() {
           [tr('prediction.mfAvgScore'), <span style={mono}>{H} {a.avg_score.home} – {a.avg_score.away} {A}</span>],
           [tr('prediction.mfAvgXg'), <span style={mono}>{H} {a.avg_xg.home} · {A} {a.avg_xg.away}</span>],
           [tr('prediction.mfAvgPossession'), <span style={mono}>{H} {a.avg_possession.home}% · {A} {a.avg_possession.away}%</span>],
-          [tr('prediction.mfScoreDist'), <span style={mono}>{(a.score_distribution || []).map((d: any) => `${d.score}×${d.count}`).join('  ')}</span>],
+          [tr('prediction.mfScoreDist'), <span style={mono}>{(a.score_distribution || []).map((d: any) => `${d.score} (${Math.round((d.count / m.n_sims) * 100)}%)`).join('　')}</span>],
         ]} />
         <AiResult state={aiAgg} onRun={runAgg} label={tr('prediction.mfAiAnalyze')} />
       </div>
@@ -1346,7 +1365,7 @@ function MicroFootballSim() {
               : <TrajectoryPlayer src={`${API_BASE}${sim.traj_url}`} homeName={H} awayName={A} />}
           </div>
           <DataTable cols={['', H, A]} rows={simRows} />
-          {sim.summary && <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>{sim.summary}</div>}
+          {sim.summary && <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>{sim.summary.replace(/\s*\d+\s*拍\s*\/\s*/, '')}</div>}
           <AiResult state={aiSim} onRun={runSim} label={tr('prediction.mfAiAnalyzeSim')} />
         </div>
       )}

@@ -91,7 +91,7 @@ for (const [name, s] of Object.entries(dirSlug)) {
     const sh = stats.score?.[0] ?? state.score_home ?? 0;
     const sa = stats.score?.[1] ?? state.score_away ?? 0;
     const result = sh > sa ? 'H' : sh < sa ? 'A' : 'D';
-    const summary = tryRead(join(dir, 'summary.txt')).split('\n')[0].trim();
+    const summary = tryRead(join(dir, 'summary.txt')).split('\n')[0].trim().replace(/\s*\d+\s*拍\s*\/\s*/, '');
     const urlBase = `/sim/microfootball/${s}/${encodeURIComponent(sd)}`;
     sims.push({
       sim_id: sd,
