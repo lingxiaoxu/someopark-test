@@ -120,15 +120,15 @@ const ARTIFACT_PATTERNS: Array<{
   // ── previously-uncovered views: now reachable in normal chat too. These words are
   //    broad, but detection is MODE-SCOPED (only fires in prediction mode), so they
   //    never collide with the stock-strategy patterns above.
-  { type: 'wc_risk',          title: 'Risk & Gates',        keywords: ['risk', 'gate', 'pre-trade', 'order cap', '$1 cap', 'trade-grade', 'discipline gate', '风险', '风控', '闸门', '可交易等级', '硬顶', '下单上限'] },
-  // Merged "Venues & API" artifact — venue balances/gates AND the API budget/health are now one view.
-  { type: 'wc_venues',        title: 'Venues & API',        keywords: ['venue', 'venues', 'kalshi balance', 'poly balance', 'polymarket balance', 'account balance', 'api budget', 'budget', 'api-football quota', 'request budget', '场所', '场馆', '余额', '下注场所', '账户余额', 'api 预算', '预算', '额度', '请求额度', '健康度'] },
+  // Merged "Venues & API" artifact — venue balances/gates, API budget/health AND the Risk Report
+  // (gates / $1 order cap / trade-grade / blocked) are now ONE categorized view.
+  { type: 'wc_venues',        title: 'Venues & API',        keywords: ['venue', 'venues', 'kalshi balance', 'poly balance', 'polymarket balance', 'account balance', 'api budget', 'budget', 'api-football quota', 'request budget', 'risk', 'gate', 'pre-trade', 'order cap', '$1 cap', 'trade-grade', 'discipline gate', '场所', '场馆', '余额', '下注场所', '账户余额', 'api 预算', '预算', '额度', '请求额度', '健康度', '风险', '风控', '闸门', '可交易等级', '硬顶', '下单上限'] },
   { type: 'wc_microfootball', title: 'IntraGame Predictions', keywords: ['intragame', 'intra-game', 'intra game', 'microfootball', 'micro football', 'match simulation', 'simulated match', 'sim match', 'trajectory', 'replay gif', '局内预测', '比赛模拟', '模拟比赛', '微足球', '轨迹', '回放'] },
   { type: 'wc_backtest',      title: 'Backtest',            keywords: ['backtest', 'back-test', 'blend curve', '回测', '混合曲线', '回溯测试'] },
   { type: 'wc_params',        title: 'Parameter Sweep',     keywords: ['param sweep', 'parameter sweep', 'param set', 'parameter set', '参数扫描', '参数集', '参数寻优', '调参', '参数网格'] },
   { type: 'wc_pricetrack',    title: 'Price Track',         keywords: ['price track', 'pricetrack', 'milestone', 'price trajectory', 'mark to market', 'mark-to-market', '价格轨迹', '里程碑', '盯市', '价格追踪'] },
-  { type: 'wc_overview',      title: 'System Overview',     keywords: ['system overview', 'overview', 'how the system works', 'system map', '系统总览', '总览', '系统概览', '系统地图'] },
-  { type: 'wc_methodology',   title: 'Methodology',         keywords: ['methodology', 'model notes', 'how it works', '方法论', '模型说明', '建模方法', '原理'] },
+  // Merged "System & Model Notes" — system overview + model methodology in one view.
+  { type: 'wc_overview',      title: 'System & Model Notes', keywords: ['system overview', 'overview', 'how the system works', 'system map', 'methodology', 'model notes', 'how it works', '系统总览', '总览', '系统概览', '系统地图', '方法论', '模型说明', '建模方法', '原理'] },
   { type: 'wc_pdfs',          title: 'PDF Reports',         keywords: ['pdf', 'pdf report', 'download report', 'pdf 报告', '下载报告', 'pdf报告'] },
 ]
 

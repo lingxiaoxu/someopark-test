@@ -47,10 +47,12 @@ export function toChatPrompt() {
     live from match results and reconciled to the official group standings. Seven columns are click-sortable
     (group/points, GD, and each round's model%). A team already DRAWN into a published knockout fixture is
     pinned to 100% for that round even before kickoff; a team's reach-prob can therefore be 100% with a negative GD),
-    risk (gates, venue balances, $1 cap, API budget),
+    risk (gates, venue balances, $1 cap, API budget, calibration gate, blocked summary — all
+    surfaced inside the merged "Venues & API" view),
     schedule (kickoff times ET/PT), calibration (OOS reliability), backtest, squad (squad strength),
     form (recent form), params (param sweep), divergence (model vs sharp book), pricetrack (per-contract
-    ¢ + probability at each match milestone, with mark-to-market), overview (system map), microfootball
+    ¢ + probability at each match milestone, with mark-to-market), overview (system map + the model
+    methodology / model notes — together they are the merged "System & Model Notes" view), microfootball
     (IntraGame Predictions — AI match simulations, see below). There are also
     per-team, per-match, multi-team comparison, and betting track-record (cumulative P&L) breakdowns.
     IntraGame Predictions (the microfootball view) is a SEPARATE AI engine — NOT the live betting model:
