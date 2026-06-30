@@ -370,5 +370,32 @@ class Config:
     decision: DecisionConfig = field(default_factory=DecisionConfig)
 
 
-# Singleton used across the project.
-CONFIG = Config()
+def _apply_selected_params(cfg: "Config") -> "Config":
+    """Override the hand-set ModelConfig structural defaults with the param-sweep SELECTED
+    best set, if present. The daily param_sweep (ops/param_sweep.py) re-scores the grid on all
+    settled matches and writes data/output/param_selected.json — so production automatically
+    adopts the rolling-best structural params (no manual edit, changes still traced in git via
+    the JSON). Only keys that are real ModelConfig fields are applied; the hand-set defaults are
+    the fallback when the file is absent/empty/unreadable. Set PM_DISABLE_PARAM_OVERRIDE=1 to
+    pin the hand-set defaults (e.g. for a controlled backtest)."""
+    if os.environ.get("PM_DISABLE_PARAM_OVERRIDE"):
+        return cfg
+    f = cfg.paths.output / "param_selected.json"
+    try:
+        if not f.exists():
+            return cfg
+        import json
+        from dataclasses import fields, replace
+        sel = (json.loads(f.read_text(encoding="utf-8")) or {}).get("params") or {}
+        valid = {fld.name for fld in fields(cfg.model)}
+        params = {k: v for k, v in sel.items() if k in valid}
+        if not params:
+            return cfg
+        return replace(cfg, model=replace(cfg.model, **params))
+    except Exception:
+        return cfg
+
+
+# Singleton used across the project. The param-sweep selection (if written) overrides the
+# hand-set ModelConfig defaults — production tracks the rolling-best structural params.
+CONFIG = _apply_selected_params(Config())

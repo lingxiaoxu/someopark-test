@@ -43,6 +43,14 @@ GRID = {
     "fc_blend_weight": [0.0, 0.12, 0.24],           # EA FC 26 squad-talent anchor (NEW)
     "squad_blend_weight": [0.0, 0.15],              # club-form squad blend (NEW to the sweep)
     "form_blend_weight": [0.0, 0.10],               # recent-form blend (NEW to the sweep)
+    # ── opponent-adjusted alt-data λ multipliers (NEW to the sweep) ──
+    # These were hand-set in-sample on 19 matches (def=0.45/off=0.25) and drive the biggest
+    # market divergences (e.g. Morocco>Netherlands), so let the optimiser pick them too.
+    # NOTE: the altdata index here is computed once on all data (like the squad/form/fc
+    # anchors above) — NOT point-in-time — so this dimension carries the same mild in-sample
+    # leak as the other anchors; the selected value is directional, re-tune as matches accrue.
+    "oppadj_def_weight": [0.0, 0.25, 0.45],         # opponent-defence λ suppression
+    "oppadj_off_weight": [0.0, 0.25],               # own-attack λ boost
 }
 
 
@@ -101,6 +109,17 @@ def _anchor_indices(conn) -> dict:
         out["fc"] = fc_squad_index(conn)
     except Exception:
         pass
+    # Opponent-adjusted alt-data index (attack/defence z), computed once on baseline ratings
+    # for the opponent-strength weighting — cfg-independent enough to reuse across the grid
+    # (ratings shift only slightly per set). Attached in evaluate() when oppadj weights != 0.
+    try:
+        from prediction_market.model.altdata_adjust import altdata_index
+        from prediction_market.model.strength import build_strength
+        from prediction_market.ingest.prior_ingest import load_prior
+        base_sm = build_strength(load_prior(), CONFIG.model)
+        out["altdata"] = altdata_index(conn, base_sm.ratings)
+    except Exception:
+        pass
     return out
 
 
@@ -133,6 +152,11 @@ def evaluate(params: dict, settled, prior, *, sweeps: int = 30, idx: dict | None
             sm = form_adjusted_ratings(sm, idx["form"], cfg.form_blend_weight)
         if cfg.fc_blend_weight and idx.get("fc"):
             sm = fc_adjusted_ratings(sm, idx["fc"], cfg.fc_blend_weight)
+        # Opponent-adjusted alt-data λ multipliers (attached LAST so pair_lambdas can apply the
+        # def/off multipliers). Only when a weight is non-zero — keeps the off-default fast.
+        if (cfg.oppadj_def_weight or cfg.oppadj_off_weight) and idx.get("altdata"):
+            from dataclasses import replace as _replace
+            sm = _replace(sm, adj=idx["altdata"])
     probs, outs = [], []
     for hi, ai, outcome, _rh, _ra in settled:
         mp = price_match(sm, hi, ai)
