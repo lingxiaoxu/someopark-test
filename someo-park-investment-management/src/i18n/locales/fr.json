@@ -85,6 +85,8 @@
     "riskReport": "Rapport de Risque",
     "calibration": "Calibration (OOS)",
     "systemOverview": "Aperçu du Système",
+    "systemModelNotes": "Système & Notes du modèle",
+    "secGates": "Barrières & contrôles de risque",
     "venuesGates": "Places & Barrières",
     "venuesApi": "Places & API",
     "modelNotes": "Notes du Modèle",

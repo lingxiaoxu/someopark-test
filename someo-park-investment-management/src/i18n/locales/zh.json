@@ -103,6 +103,8 @@
     "riskReport": "风险报告",
     "calibration": "校准（OOS）",
     "systemOverview": "系统总览",
+    "systemModelNotes": "系统 & 模型说明",
+    "secGates": "闸门与风控",
     "venuesGates": "交易场所 & 闸门",
     "venuesApi": "交易场所 & API",
     "modelNotes": "模型说明",

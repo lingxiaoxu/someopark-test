@@ -6,7 +6,7 @@
  */
 import {
   Trophy, Activity, Target, GitCompare, Zap, CalendarClock, Clock,
-  LineChart, ShieldAlert, Gauge, LayoutGrid, Landmark, FileText,
+  LineChart, Gauge, LayoutGrid, Landmark,
   Download, FlaskConical, Users, SlidersHorizontal, TrendingUp, Coins, ChevronsUp, Shapes, Clapperboard,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -30,13 +30,11 @@ export const PREDICTION_ITEMS: Item[] = [
   { type: 'wc_predictions',   i18nKey: 'todaysPredictions', Icon: CalendarClock },
   { type: 'wc_schedule',      i18nKey: 'schedule',         Icon: Clock },
   { type: 'wc_performance',   i18nKey: 'accuracyPnl',      Icon: LineChart },
-  { type: 'wc_risk',          i18nKey: 'riskReport',       Icon: ShieldAlert },
   { type: 'wc_calibration',   i18nKey: 'calibration',      Icon: Gauge },
   { type: 'wc_backtest',      i18nKey: 'backtest',         Icon: FlaskConical },
   { type: 'wc_params',        i18nKey: 'paramSweep',       Icon: SlidersHorizontal },
-  { type: 'wc_overview',      i18nKey: 'systemOverview',   Icon: LayoutGrid },
+  { type: 'wc_overview',      i18nKey: 'systemModelNotes', Icon: LayoutGrid },
   { type: 'wc_venues',        i18nKey: 'venuesApi',        Icon: Landmark },
-  { type: 'wc_methodology',   i18nKey: 'modelNotes',       Icon: FileText },
   { type: 'wc_microfootball', i18nKey: 'microfootballSim', Icon: Clapperboard },
   { type: 'wc_pdfs',          i18nKey: 'downloadReports',  Icon: Download },
 ];

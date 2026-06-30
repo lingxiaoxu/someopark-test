@@ -424,6 +424,8 @@
     "riskReport": "Risk Report",
     "calibration": "Calibration (OOS)",
     "systemOverview": "System Overview",
+    "systemModelNotes": "System & Model Notes",
+    "secGates": "Gates & risk controls",
     "venuesGates": "Venues & Gates",
     "venuesApi": "Venues & API",
     "modelNotes": "Model Notes",

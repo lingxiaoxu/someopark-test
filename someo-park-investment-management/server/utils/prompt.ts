@@ -109,8 +109,10 @@ export function toChatPrompt() {
     - Strategy Performance: equity curves and metrics
     - Prediction Market (World Cup 2026) viewers — switched on via the sidebar "Prediction Market"
       mode: Champion Odds, Golden Boot, Match Pricing, Today's Predictions, In-Play Arbitrage (live),
-      Squad Strength, Recent Form, Model vs Market, Accuracy & P&L, Risk Report, Backtest, Param Sweep,
-      Calibration, Schedule, System Overview, Venues & API, IntraGame Predictions, PDF Reports.
+      Squad Strength, Recent Form, Model vs Market, Accuracy & P&L, Backtest, Param Sweep,
+      Calibration, Schedule, System & Model Notes (system overview + model methodology in one),
+      Venues & API (venue balances + trading gates + risk controls + API budget, merged), IntraGame
+      Predictions, PDF Reports.
 
     ## Rules
     - MRPT/MTFS: Use pair notation "CL/SRE", "XOM/CVX"

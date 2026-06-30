@@ -983,18 +983,51 @@ function OverviewCard() {
   );
 }
 
-// Merged "Venues & API" artifact: the execution-venues/gates table AND the API budget/health,
-// in ONE cohesive view (one table + a compact API line + bar; both sections' notes pooled at the
-// bottom). No content dropped — just combined.
+// Merged "System & Model Notes" — the System Overview (unchanged) followed by the Model-Notes
+// sections rendered as click-to-expand accordions, all on one page.
+function OverviewModelNotes() {
+  const { t: tr } = useTranslation();
+  const cap = tr('prediction.cap', { returnObjects: true }) as any;
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const mn = ([[cap?.dataT, cap?.data], [cap?.preT, cap?.pre], [cap?.decisionT, cap?.decision],
+    [cap?.liveT, cap?.live], [cap?.simT, cap?.sim], [cap?.otherT, cap?.other]] as [string, string[]][])
+    .filter(([t, items]) => t && Array.isArray(items));
+  return (
+    <div>
+      <OverviewCard />
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '16px 0 6px', ...mono, color: 'var(--text-primary)' }}>{tr('prediction.modelNotes')}</div>
+      {mn.map(([title, items]) => {
+        const isOpen = !!open[title];
+        return (
+          <div key={title} style={{ borderTop: '1px solid var(--border-subtle)' }}>
+            <button onClick={() => setOpen((o) => ({ ...o, [title]: !o[title] }))}
+              style={{ width: '100%', textAlign: 'left', padding: '7px 2px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', ...mono, color: 'var(--text-primary)' }}>
+              <span>{title}</span><span style={{ color: 'var(--text-muted)' }}>{isOpen ? '▾' : '▸'}</span>
+            </button>
+            {isOpen && <ul style={{ fontSize: 11.5, lineHeight: 1.6, color: 'var(--text-secondary)', ...mono, padding: '0 0 8px 16px' }}>{items.map((it, i) => <li key={i} style={{ marginBottom: 3 }}>{it}</li>)}</ul>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// Merged "Venues & API" artifact: execution venues/balances, gates & risk controls (from the Risk
+// Report), and API budget/health — ONE view, content categorized by type, nothing dropped, no
+// duplication. All notes (+ the risk "blocked" list) pooled at the bottom.
 function VenuesApi() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCRisk(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const g = data?.gates ?? {}, b = data?.venue_balances ?? {}, ab = data?.api_budget ?? {};
+  const cal = data?.calibration_gate ?? {};
+  const blocked: string[] = data?.blocked_summary ?? [];
   const frac = Math.min(1, (ab.used ?? 0) / (ab.cap ?? 1));
+  const sec = (s: string) => <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '12px 0 4px', ...mono, color: 'var(--text-primary)' }}>{s}</div>;
   return (
     <div>
       <Title sub={tr('prediction.subVenuesApi')}>Venues & API</Title>
+      {/* — Execution venues & balances — */}
       <DataTable cols={[tr('prediction.colVenue'), tr('prediction.colRole'), tr('prediction.colBalance'), tr('prediction.colTrading')]}
         rows={[
           ['Kalshi (demo)', tr('prediction.roleExecute'), money(b.kalshi_demo_usd), String(g.kalshi_trading_enabled)],
@@ -1003,15 +1036,28 @@ function VenuesApi() {
           // Read-only data source (never trades): geoblocked in the US, no account.
           ['Polymarket Global', tr('prediction.roleReference'), money(0), tr('prediction.tradingReadonly')],
         ]} />
-      {/* API request budget / health — one compact line + bar, same artifact (not a 2nd table) */}
-      <div style={{ marginTop: 12, fontSize: 11, ...mono, color: 'var(--text-secondary)' }}>
-        <b>API</b> · {tr('prediction.lblUsedToday')} {ab.used ?? '—'}/{ab.cap ?? '—'} ({pct(ab.pct, 0)}) · {tr('prediction.lblRemaining')} {ab.cap != null && ab.used != null ? (ab.cap - ab.used) : '—'}{ab.month_used != null ? ` · ${tr('prediction.lblMonthBackstop')} ${ab.month_used}/${ab.month_cap}` : ''}
+      {/* — Gates & risk controls (merged from the Risk Report; non-overlapping fields only) — */}
+      {sec(tr('prediction.secGates'))}
+      <KV rows={[
+        [tr('prediction.lblKalshiEnv'), g.kalshi_env],
+        [tr('prediction.lblOrderCap'), money(g.hard_order_cap_usd)],
+        [tr('prediction.lblCalibration'), <span style={{ color: cal.trade_grade ? 'var(--success)' : 'var(--error)' }}>{tDyn(cal.status)}</span>],
+      ]} />
+      {/* — API request budget / health — */}
+      {sec(tr('prediction.lblApiBudget'))}
+      <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)' }}>
+        {tr('prediction.lblUsedToday')} {ab.used ?? '—'}/{ab.cap ?? '—'} ({pct(ab.pct, 0)}) · {tr('prediction.lblRemaining')} {ab.cap != null && ab.used != null ? (ab.cap - ab.used) : '—'}{ab.month_used != null ? ` · ${tr('prediction.lblMonthBackstop')} ${ab.month_used}/${ab.month_cap}` : ''}
       </div>
       <div style={{ height: 10, marginTop: 4, background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }}>
         <div style={{ width: `${frac * 100}%`, height: '100%', background: frac > 0.8 ? 'var(--error)' : 'var(--success)' }} />
       </div>
-      {/* both sections' notes, pooled at the bottom */}
-      <div style={{ marginTop: 10 }}>
+      {/* — Blocked (from the Risk Report) — */}
+      {blocked.length > 0 && <>
+        {sec(tr('prediction.secBlocked'))}
+        <ul style={{ paddingLeft: 16, fontSize: 11, color: 'var(--error)', ...mono }}>{blocked.map((x, i) => <li key={i} style={{ marginBottom: 3 }}>{tDyn(x)}</li>)}</ul>
+      </>}
+      {/* — Notes (all sections pooled) — */}
+      <div style={{ marginTop: 12 }}>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{tr('prediction.lblExecutable')}: {(g.executable_venues ?? []).join(', ')}</div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.venueGlobalNote')}</div>
         <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.budgetResetNote')}</div>
@@ -1408,7 +1454,7 @@ const REGISTRY: Record<string, () => ReactElement> = {
   wc_calibration: Calibration,
   wc_backtest: Backtest,
   wc_params: ParamSweep,
-  wc_overview: OverviewCard,
+  wc_overview: OverviewModelNotes,
   wc_venues: VenuesApi,
   wc_budget: Budget,   // kept for backward-compat (deep-links/chat); merged into wc_venues in the grid
   wc_pdfs: Pdfs,

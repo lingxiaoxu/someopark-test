@@ -85,6 +85,8 @@
     "riskReport": "リスクレポート",
     "calibration": "キャリブレーション（OOS）",
     "systemOverview": "システム概要",
+    "systemModelNotes": "システム & モデル説明",
+    "secGates": "ゲート・リスク管理",
     "venuesGates": "会場 & ゲート",
     "venuesApi": "会場 & API",
     "modelNotes": "モデルノート",
