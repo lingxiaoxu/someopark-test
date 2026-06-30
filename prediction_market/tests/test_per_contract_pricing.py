@@ -226,10 +226,13 @@ def test_bet_log_cents_reconciliation():
     cum = 0.0
     for b in log:
         assert b["entry_cents"] is not None and b["entry_source"] == "poly"
-        expect = (100.0 - b["entry_cents"]) if b["won"] else (-b["entry_cents"])
-        assert abs(b["pnl_cents"] - round(expect, 1)) < 0.05
+        # Position-sized ¢ P&L: per-contract move × contracts (= stake / entry-price).
+        per_contract = (100.0 - b["entry_cents"]) if b["won"] else (-b["entry_cents"])
+        contracts = b["stake_usd"] / (b["entry_cents"] / 100.0)
+        expect = round(contracts * per_contract, 1)
+        assert abs(b["pnl_cents"] - expect) < 0.1
         cum = round(cum + b["pnl_cents"], 1)
-        assert abs(b["cum_pnl_cents"] - cum) < 0.05
+        assert abs(b["cum_pnl_cents"] - cum) < 0.1
     # headline metrics consistent with the rows
     assert abs(rep.pnl_cents_total - round(sum(b["pnl_cents"] for b in log), 1)) < 0.05
     ent = [b["entry_cents"] for b in log]

@@ -450,7 +450,16 @@ def _bet_log(conn) -> list[dict]:
             n_bets += 1
             _de = _entry_c(pick)
             entry_cents, entry_source = (_de[0], _de[1]) if _de else (to_cents(cost), "book_devig")
-            c_pnl = _pnl_cents(entry_cents, won)
+            # Position-sized ¢ P&L: the bet stakes `stake` $ at the entry price, so it buys
+            # contracts = stake / (entry_c/100). The POSITION's ¢ P&L is the per-contract ¢
+            # move × that contract count — NON-linear in entry price (a cheaper entry buys more
+            # contracts, so the same ¢ move pays more). The earlier per-contract-only number
+            # understated bets sized away from $1. (The argmax reference above deliberately stays
+            # per-contract: it's a flat 1-contract benchmark, not a sized position.)
+            c_pnl_unit = _pnl_cents(entry_cents, won)                       # per-contract ¢
+            contracts = (stake / (entry_cents / 100.0)) if entry_cents else 0.0
+            c_pnl = (round(contracts * c_pnl_unit, 1)
+                     if (entry_cents and c_pnl_unit is not None) else c_pnl_unit)
             cum_c += (c_pnl or 0.0)
             sum_entry_c += (entry_cents or 0.0)
             cents_avail += ((100.0 - entry_cents) if won else entry_cents) if entry_cents is not None else 0.0
@@ -465,7 +474,12 @@ def _bet_log(conn) -> list[dict]:
                                                     r["api_id"], pick, entry_cents, hi, ai, r["round"], won)
             except Exception:
                 smart_exit = None
-            realized_c = smart_exit["pnl_c"] if smart_exit else c_pnl
+            # Realised (cash-out) ¢ is also position-sized: per-contract cash-out move ×
+            # contract count. smart_exit["pnl_c"] is per-contract (sold_c − entry_c); when no
+            # cash-out fired it falls back to the held-to-settlement per-contract number.
+            realized_unit = smart_exit["pnl_c"] if smart_exit else c_pnl_unit
+            realized_c = (round(contracts * realized_unit, 1)
+                          if (entry_cents and realized_unit is not None) else realized_unit)
             realized_cum_c += (realized_c or 0.0)
             realized_wins += int((realized_c or 0.0) > 0)
             n_smart_sold += int(bool(smart_exit))
