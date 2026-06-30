@@ -172,6 +172,101 @@ def evaluate(params: dict, settled, prior, *, sweeps: int = 30, idx: dict | None
     return s
 
 
+def _cal_brier_vector(params: dict, settled, prior, *, idx: dict | None = None, sweeps: int = 30) -> list:
+    """Per-match CALIBRATED Brier for one param set — the raw material for bootstrap stability
+    selection. Mirrors evaluate()'s model construction, but returns the length-N vector instead
+    of the aggregate (calibration is fit once on the full sample, then applied per match)."""
+    from prediction_market.model.match_pricing import price_match
+    from prediction_market.model.probability_calibration import apply_calibration, fit_calibration
+    from prediction_market.model.strength import build_strength
+    cfg = replace(CONFIG.model, **params)
+    sm = build_strength(prior, cfg, sweeps=sweeps)
+    idx = idx or {}
+    if idx:
+        from prediction_market.model.fc_strength import fc_adjusted_ratings
+        from prediction_market.model.form_strength import form_adjusted_ratings
+        from prediction_market.model.squad_strength import squad_adjusted_ratings
+        if cfg.squad_blend_weight and idx.get("squad"):
+            sm = squad_adjusted_ratings(sm, idx["squad"], cfg.squad_blend_weight)
+        if cfg.form_blend_weight and idx.get("form"):
+            sm = form_adjusted_ratings(sm, idx["form"], cfg.form_blend_weight)
+        if cfg.fc_blend_weight and idx.get("fc"):
+            sm = fc_adjusted_ratings(sm, idx["fc"], cfg.fc_blend_weight)
+        if (cfg.oppadj_def_weight or cfg.oppadj_off_weight) and idx.get("altdata"):
+            sm = replace(sm, adj=idx["altdata"])
+    probs, outs = [], []
+    for hi, ai, outcome, _rh, _ra in settled:
+        mp = price_match(sm, hi, ai)
+        probs.append([mp.p_home, mp.p_draw, mp.p_away])
+        outs.append(outcome)
+    cal = fit_calibration(probs, outs)
+    cp = [apply_calibration(p, cal) for p in probs]
+    return [sum((cp[i][k] - (1.0 if outs[i] == k else 0.0)) ** 2 for k in range(3)) for i in range(len(outs))]
+
+
+def robust_select(results, settled, prior, *, idx=None, sweeps=30, pool_frac=0.01,
+                  n_boot=2000, seed=12345) -> dict:
+    """Finance-style robust parameter selection — combats the multiple-comparisons optimism of
+    raw argmin over thousands of trials (the in-sample best of N sets is upward-biased; some of
+    its edge is luck, and it tends to sit on grid edges that regress out-of-sample).
+
+      1. ELITE POOL  — the top ``pool_frac`` by calibrated Brier (≈1% ⇒ ~70 sets). These are
+         statistically tied with the best (within sampling noise), so only genuine contenders
+         compete — this is the 1-SE-rule idea applied as a percentile cut (the user's framing).
+      2. BOOTSTRAP STABILITY — resample the matches ``n_boot`` times (seeded ⇒ reproducible);
+         rank every pool member on each resample; SELECT the lowest MEDIAN bootstrap rank — the
+         set that is *consistently* good across resamples, not the single-sample lucky winner.
+         (Same spirit as DSR/PBO: prefer the configuration whose edge survives resampling.)
+
+    Returns {chosen, diagnostics}. Diagnostics include a PBO-style number: how often the
+    in-sample #1 falls OUTSIDE the resampled top-half of the pool (high ⇒ the raw winner is
+    overfit). Calibration is fit once per set on the full sample (standard for stability)."""
+    import numpy as np
+    n_pool = max(2, int(round(len(results) * pool_frac)))
+    pool = results[:n_pool]                       # results arrive pre-sorted by brier_cal
+    vecs = np.array([_cal_brier_vector(r["params"], settled, prior, idx=idx, sweeps=sweeps)
+                     for r in pool])               # (n_pool, n_matches)
+    n_m = vecs.shape[1]
+    rng = np.random.default_rng(seed)
+    boot = np.empty((n_boot, n_pool))
+    for b in range(n_boot):
+        samp = rng.integers(0, n_m, n_m)           # matches resampled with replacement
+        boot[b] = vecs[:, samp].mean(axis=1)       # each set's Brier on this resample
+    ranks = boot.argsort(axis=1).argsort(axis=1)   # per-resample rank, 0 = best
+    med_rank = np.median(ranks, axis=0)
+    se = float(boot[:, 0].std())                   # 1 bootstrap SE of the in-sample best's Brier
+    pbo = float((ranks[:, 0] >= n_pool / 2.0).mean())  # raw-#1 outside resampled top-half
+
+    # Count how many SWEPT params sit on a grid boundary (min or max of their axis). Edges where
+    # the optimum keeps improving if extended = overfit-prone extrapolation. Dims that are
+    # CONSTANT across the pool (e.g. a robustly-selected oppadj_def=0.45) add the same count to
+    # every member, so they don't bias the relative choice — only the genuinely-varying dims do.
+    edge_vals = {k: (min(v), max(v)) for k, v in GRID.items()}
+    def _edges(p):
+        return sum(1 for k, (lo, hi) in edge_vals.items() if p.get(k) in (lo, hi))
+
+    # 1-SE rule: among the sets statistically tied with the best (within 1 bootstrap SE of its
+    # Brier), pick the most INTERIOR (fewest grid-edge params) — the parsimony/regularisation
+    # choice that hedges the boundary overfit. Tie-break toward lower Brier.
+    best_b = pool[0]["brier_cal"]
+    tied = [i for i in range(n_pool) if pool[i]["brier_cal"] <= best_b + se] or [0]
+    win = min(tied, key=lambda i: (_edges(pool[i]["params"]), pool[i]["brier_cal"]))
+    return {
+        "chosen": pool[win],
+        "diagnostics": {
+            "method": "1-SE rule + fewest grid-edges, within top-%g%% bootstrap-stable pool" % (pool_frac * 100),
+            "pool_frac": pool_frac, "pool_size": n_pool, "n_boot": n_boot, "seed": seed,
+            "bootstrap_se": round(se, 4), "n_within_1se": len(tied),
+            "chosen_full_rank": win + 1,
+            "chosen_brier_cal": pool[win]["brier_cal"], "chosen_grid_edges": _edges(pool[win]["params"]),
+            "argmin_brier_cal": pool[0]["brier_cal"], "argmin_grid_edges": _edges(pool[0]["params"]),
+            "chosen_median_boot_rank": round(float(med_rank[win]) + 1, 2),
+            "argmin_median_boot_rank": round(float(med_rank[0]) + 1, 2),
+            "argmin_pbo_outside_top_half": round(pbo, 3),
+        },
+    }
+
+
 def run(conn=None, *, sweeps: int = 30) -> dict:
     from prediction_market.ingest import store
     from prediction_market.ingest.prior_ingest import load_prior
@@ -193,6 +288,10 @@ def run(conn=None, *, sweeps: int = 30) -> dict:
     uni = round(2 / 3, 4)
     best = results[0] if results else None
     n_beat = sum(1 for r in results if r["brier_cal"] < uni)
+    # Robust pick (what production adopts): NOT the raw argmin, but the bootstrap-stable set
+    # within the top-1% elite pool — guards against the multiple-comparisons overfit of argmin.
+    sel = robust_select(results, settled, prior, idx=idx, sweeps=sweeps) if results else None
+    selected = sel["chosen"] if sel else best
 
     from datetime import datetime, timezone
     return {
@@ -203,7 +302,9 @@ def run(conn=None, *, sweeps: int = 30) -> dict:
         "uniform_brier": uni,
         "baseline": {"brier": round(baseline["brier"], 4), "brier_cal": round(baseline["brier_cal"], 4),
                      "log_loss": round(baseline["log_loss"], 4), "acc": round(baseline["acc"], 3)},
-        "best": best,
+        "best": best,            # raw argmin (lowest calibrated Brier) — reference only
+        "selected": selected,    # robust pick that PRODUCTION adopts (bootstrap-stable elite)
+        "selection": (sel["diagnostics"] if sel else None),
         "top10": results[:10],
         # All sets, compact + ranked — drives the frontend "Parameter Sweep" artifact.
         # brier = raw model; brier_cal = after the post-hoc calibration we actually apply.
@@ -336,10 +437,13 @@ def main() -> None:
     CONFIG.paths.ensure()
     (CONFIG.paths.output / "param_sweep.json").write_text(
         json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
-    if doc.get("best"):
+    if doc.get("selected"):
+        # Production adopts the ROBUST pick (bootstrap-stable within the top-1% pool), not the
+        # raw argmin — param_selected.json is what config._apply_selected_params() loads.
         (CONFIG.paths.output / "param_selected.json").write_text(
-            json.dumps({"params": doc["best"]["params"], "brier": doc["best"]["brier"],
-                        "n_settled": doc["n_settled"]}, ensure_ascii=False, indent=2), encoding="utf-8")
+            json.dumps({"params": doc["selected"]["params"], "brier": doc["selected"]["brier"],
+                        "n_settled": doc["n_settled"], "selection": doc.get("selection")},
+                       ensure_ascii=False, indent=2), encoding="utf-8")
 
     print(f"PARAM SWEEP — {doc['n_settled']} settled matches, {doc['n_param_sets']} param sets")
     print(f"  uniform baseline Brier : {doc['uniform_brier']}")
