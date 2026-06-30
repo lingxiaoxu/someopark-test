@@ -457,6 +457,7 @@
     "mfAiNote": "Calling the local model (slow)…",
     "mfAiError": "Analysis failed",
     "mfAiTitle": "Model analysis",
+    "mfCached": "cached",
     "mfPlay": "▶ Play",
     "mfPause": "⏸ Pause",
     "mfTrajLoading": "Loading trajectory…",

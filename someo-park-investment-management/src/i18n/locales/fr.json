@@ -118,6 +118,7 @@
     "mfAiNote": "Appel du modèle local (lent)…",
     "mfAiError": "Échec de l'analyse",
     "mfAiTitle": "Analyse du modèle",
+    "mfCached": "en cache",
     "mfPlay": "▶ Lire",
     "mfPause": "⏸ Pause",
     "mfTrajLoading": "Chargement de la trajectoire…",

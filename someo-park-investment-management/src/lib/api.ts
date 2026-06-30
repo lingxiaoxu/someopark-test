@@ -280,4 +280,4 @@ export const analyzeMicrofootball = (matchup_id: string, sim_id: string | null, 
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...apiHeaders() },
     body: JSON.stringify({ matchup_id, sim_id, lang }),
-  }).then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<{ analysis: string }>; });
+  }).then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<{ analysis: string; cached?: boolean }>; });

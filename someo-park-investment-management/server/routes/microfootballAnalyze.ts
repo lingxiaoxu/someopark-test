@@ -4,9 +4,43 @@ import { getModelClient, LLMModel } from '../utils/models.js'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { readFileSync, existsSync } from 'fs'
+import { createHash } from 'crypto'
+import { spawn } from 'child_process'
+import { homedir } from 'os'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const INDEX = path.join(__dirname, '..', '..', 'public', 'data', 'microfootball_index.json')
+
+// ── On-box analysis cache (lives on ed9f, the nemotron host, NOT the Mac) ──────────
+// A generated analysis is cached on ed9f at ~/mirofootball/ai_cache/. A request reuses the
+// cached text (skipping the slow model) when: the cache is < 7 days old AND the content hasn't
+// changed (the hash covers the matchup's n sims + aggregate, or the single sim's stats — so it
+// invalidates automatically if the 10 sims change in count or content). Best-effort: if ed9f is
+// unreachable the read/write silently no-op and we fall back to a fresh model call.
+const KEY = path.join(homedir(), 'Library/Application Support/NVIDIA/Sync/config/nvsync.key')
+const ED9F = 'someoparkdgx25@100.76.95.43'
+const CACHE_DIR = '~/mirofootball/ai_cache'
+const TTL_MS = 7 * 24 * 60 * 60 * 1000
+
+function ssh(remoteCmd: string, input?: string): Promise<{ code: number; out: string }> {
+  return new Promise((resolve) => {
+    const p = spawn('ssh', ['-i', KEY, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=8', ED9F, remoteCmd])
+    let out = ''
+    p.stdout.on('data', (d) => (out += d))
+    p.on('error', () => resolve({ code: 1, out: '' }))
+    p.on('close', (code) => resolve({ code: code ?? 1, out }))
+    if (input != null) { p.stdin.write(input); p.stdin.end() } else { p.stdin.end() }
+  })
+}
+const safe = (s: string) => (s || '').replace(/[^a-zA-Z0-9_.-]/g, '_')
+async function readCache(file: string): Promise<any | null> {
+  const r = await ssh(`cat ${CACHE_DIR}/${file} 2>/dev/null`)
+  if (r.code !== 0 || !r.out.trim()) return null
+  try { return JSON.parse(r.out) } catch { return null }
+}
+async function writeCache(file: string, obj: any): Promise<void> {
+  await ssh(`mkdir -p ${CACHE_DIR} && cat > ${CACHE_DIR}/${file}`, JSON.stringify(obj))
+}
 
 const router = Router()
 
@@ -91,16 +125,27 @@ router.post('/analyze', async (req: Request, res: Response) => {
     if (!m) return res.status(404).json({ error: `matchup not found: ${matchup_id}` })
 
     const langLine = `Answer in ${LANGS[lang as string] || 'English'}.`
-    let prompts
+    let prompts, hashInput: string
     if (sim_id) {
       const sim = (m.sims || []).find((s: any) => s.sim_id === sim_id)
       if (!sim) return res.status(404).json({ error: `sim not found: ${sim_id}` })
       prompts = simPrompts(m, sim, langLine)
+      hashInput = JSON.stringify({ sim: sim.sim_id, score: sim.score, stats: sim.stats })
     } else {
       prompts = aggregatePrompts(m, langLine)
+      hashInput = JSON.stringify({ n: m.n_sims, agg: m.aggregate })   // changes if the n sims change
+    }
+    const contentHash = createHash('sha256').update(hashInput).digest('hex').slice(0, 16)
+    const file = `${safe(matchup_id)}__${safe(sim_id || 'agg')}__${safe(lang || 'en')}.json`
+
+    // Cache hit (on ed9f): < 7 days old AND content unchanged → skip the (slow) model.
+    const cached = await readCache(file)
+    if (cached && cached.content_hash === contentHash && cached.generated_at &&
+        (Date.now() - new Date(cached.generated_at).getTime()) < TTL_MS) {
+      return res.json({ analysis: cached.analysis, matchup_id, sim_id: sim_id || null, model: NEMO.id, cached: true })
     }
 
-    // Identical call shape to server/routes/chat.ts:219 (the default /v1 generateText path).
+    // Miss → call the model (identical shape to chat.ts:219), then cache on ed9f (best-effort).
     const modelClient = getModelClient(NEMO, {})
     const { text } = await generateText({
       model: modelClient as LanguageModel,
@@ -108,8 +153,10 @@ router.post('/analyze', async (req: Request, res: Response) => {
       messages: [{ role: 'user', content: prompts.user }],
       maxOutputTokens: 1024,
     })
+    const analysis = sanitize(text)
+    writeCache(file, { matchup_id, sim_id: sim_id || null, lang: lang || 'en', content_hash: contentHash, analysis, generated_at: new Date().toISOString() }).catch(() => {})
 
-    res.json({ analysis: sanitize(text), matchup_id, sim_id: sim_id || null, model: NEMO.id })
+    res.json({ analysis, matchup_id, sim_id: sim_id || null, model: NEMO.id, cached: false })
   } catch (error: any) {
     console.error('microfootball analyze error:', error?.message || error)
     res.status(500).json({ error: error?.message || 'analysis failed' })

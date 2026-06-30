@@ -1242,7 +1242,7 @@ function PriceTrack() {
 // AI football-match simulations (10× per matchup): per-sim replay (GIF + interactive trajectory
 // canvas) + stats, a 10-sim aggregate (the implied prediction), and on-demand LOCAL-nemotron
 // analysis (aggregate + single-sim). Index from /data; heavy gif/trajectory from the /sim mount.
-function AiResult({ state, onRun, label }: { state: { loading: boolean; text?: string; error?: string }; onRun: () => void; label: string }) {
+function AiResult({ state, onRun, label }: { state: { loading: boolean; text?: string; error?: string; cached?: boolean }; onRun: () => void; label: string }) {
   const { t: tr } = useTranslation();
   return (
     <div style={{ marginTop: 6 }}>
@@ -1254,7 +1254,7 @@ function AiResult({ state, onRun, label }: { state: { loading: boolean; text?: s
       {state.error && <div style={{ fontSize: 11, color: 'var(--error)', ...mono, marginTop: 4 }}>{tr('prediction.mfAiError')}: {state.error}</div>}
       {state.text && (
         <div className="card" style={{ marginTop: 6, padding: '8px 10px', fontSize: 12, lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
-          <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>🤖 {tr('prediction.mfAiTitle')} · Someo Park Local Model 120B</div>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>🤖 {tr('prediction.mfAiTitle')} · Someo Park Local Model 120B{state.cached ? ` · ⚡ ${tr('prediction.mfCached')}` : ''}</div>
           {state.text}
         </div>
       )}
@@ -1283,8 +1283,8 @@ function MicroFootballSim() {
   const [mIdx, setMIdx] = useState(0);
   const [sIdx, setSIdx] = useState(0);
   const [viz, setViz] = useState<'gif' | 'canvas'>('gif');
-  const [aiAgg, setAiAgg] = useState<{ loading: boolean; text?: string; error?: string }>({ loading: false });
-  const [aiSim, setAiSim] = useState<{ loading: boolean; text?: string; error?: string }>({ loading: false });
+  const [aiAgg, setAiAgg] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
+  const [aiSim, setAiSim] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
   if (loading) return <Loading />;
   if (error) return <ErrorBox e={error} />;
   const matchups: any[] = data?.matchups ?? [];
@@ -1298,8 +1298,8 @@ function MicroFootballSim() {
   const tab = (active: boolean, onClick: () => void, label: ReactNode, key: string) => (
     <button key={key} onClick={onClick} style={{ padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: active ? 700 : 400, color: active ? 'var(--text-primary)' : 'var(--text-muted)', background: active ? 'var(--bg-tertiary)' : 'transparent', border: `1px solid ${active ? 'var(--accent-primary)' : 'var(--border-subtle)'}`, borderRadius: 4, cursor: 'pointer', marginRight: 6, marginBottom: 4 }}>{label}</button>
   );
-  const runAgg = async () => { setAiAgg({ loading: true }); try { const r = await analyzeMicrofootball(m.id, null, i18n.language); setAiAgg({ loading: false, text: r.analysis }); } catch (e: any) { setAiAgg({ loading: false, error: String(e?.message || e) }); } };
-  const runSim = async () => { setAiSim({ loading: true }); try { const r = await analyzeMicrofootball(m.id, sim.sim_id, i18n.language); setAiSim({ loading: false, text: r.analysis }); } catch (e: any) { setAiSim({ loading: false, error: String(e?.message || e) }); } };
+  const runAgg = async () => { setAiAgg({ loading: true }); try { const r = await analyzeMicrofootball(m.id, null, i18n.language); setAiAgg({ loading: false, text: r.analysis, cached: r.cached }); } catch (e: any) { setAiAgg({ loading: false, error: String(e?.message || e) }); } };
+  const runSim = async () => { setAiSim({ loading: true }); try { const r = await analyzeMicrofootball(m.id, sim.sim_id, i18n.language); setAiSim({ loading: false, text: r.analysis, cached: r.cached }); } catch (e: any) { setAiSim({ loading: false, error: String(e?.message || e) }); } };
 
   // stat rows for the per-sim table
   const statRow = (key: string, fmt: (s: any) => ReactNode) => [tr('prediction.' + key), fmt(sim.stats.home), fmt(sim.stats.away)];

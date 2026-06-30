@@ -136,6 +136,7 @@
     "mfAiNote": "正在调用本地模型(较慢)…",
     "mfAiError": "分析失败",
     "mfAiTitle": "模型分析",
+    "mfCached": "缓存",
     "mfPlay": "▶ 播放",
     "mfPause": "⏸ 暂停",
     "mfTrajLoading": "加载轨迹…",

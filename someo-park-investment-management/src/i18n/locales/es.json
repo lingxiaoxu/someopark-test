@@ -118,6 +118,7 @@
     "mfAiNote": "Llamando al modelo local (lento)…",
     "mfAiError": "Error de análisis",
     "mfAiTitle": "Análisis del modelo",
+    "mfCached": "en caché",
     "mfPlay": "▶ Reproducir",
     "mfPause": "⏸ Pausa",
     "mfTrajLoading": "Cargando trayectoria…",
