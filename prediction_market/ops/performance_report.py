@@ -430,8 +430,13 @@ def _bet_log(conn) -> list[dict]:
         am_pick, am_won = mr["pred_pick"], mr["pred_won"]
         _ame = _adv_entry_c(am_pick) if mr.get("advance") is not None else _entry_c(am_pick)
         am_entry_c = _ame[0] if _ame else None
-        am_pnl_c = (_pnl_cents(am_entry_c, am_won)
-                    if (am_entry_c is not None and am_won is not None) else None)
+        # Position-sized like the decision bets, but with a FLAT $1 stake (argmax is the naive
+        # "bet the most-likely side every match" benchmark). contracts = 1$ / (entry_c/100), so
+        # a loss = −100¢ (the whole $1) and a cheap entry buys more contracts (bigger win).
+        am_unit = _pnl_cents(am_entry_c, am_won)                    # per-contract ¢
+        am_contracts = (1.0 / (am_entry_c / 100.0)) if am_entry_c else 0.0
+        am_pnl_c = (round(am_contracts * am_unit, 1)
+                    if (am_entry_c and am_unit is not None) else None)
         am_cum_c += (am_pnl_c or 0.0)
         if am_won is not None:        # only count resolvable predictions in the accuracy record
             am_n += 1
