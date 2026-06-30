@@ -168,6 +168,7 @@
     "subCalibration": "样本外可靠性(可交易闸门)",
     "subOverview": "接口、调度与价值",
     "subVenues": "执行场所、余额与交易闸门",
+    "subVenuesApi": "执行场所、余额与交易闸门 · API 请求预算 / 健康",
     "subBudget": "API-Football 每日请求预算(Pro 7,500/天)",
     "subValue": "本系统交付什么,以及如何看到",
     "subPdfs": "机构风格 PDF 报告",

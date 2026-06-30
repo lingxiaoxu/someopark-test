@@ -489,6 +489,7 @@
     "subCalibration": "Out-of-sample reliability (the trade-grade gate)",
     "subOverview": "Interfaces, schedule & value",
     "subVenues": "Execution venues, balances & trading gates",
+    "subVenuesApi": "Execution venues, balances & trading gates · API request budget / health",
     "subBudget": "API-Football daily request budget (Pro 7,500/day)",
     "subValue": "What this system delivers, and how to see it",
     "subPdfs": "Institutional-style PDF reports",

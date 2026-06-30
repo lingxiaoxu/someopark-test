@@ -150,6 +150,7 @@
     "subCalibration": "Fiabilité hors-échantillon (la barrière de trade)",
     "subOverview": "Interfaces, calendrier et valeur",
     "subVenues": "Places d'exécution, soldes et barrières",
+    "subVenuesApi": "Places d'exécution, soldes et barrières · budget / santé des requêtes API",
     "subBudget": "Budget de requêtes quotidien API-Football (Pro 7 500/jour)",
     "subValue": "Ce que ce système apporte, et comment le voir",
     "subPdfs": "Rapports PDF de style institutionnel",

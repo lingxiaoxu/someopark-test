@@ -150,6 +150,7 @@
     "subCalibration": "Fiabilidad fuera de muestra (la puerta de trade)",
     "subOverview": "Interfaces, calendario y valor",
     "subVenues": "Mercados de ejecución, saldos y controles",
+    "subVenuesApi": "Mercados de ejecución, saldos y controles · presupuesto / salud de solicitudes API",
     "subBudget": "Presupuesto diario de solicitudes API-Football (Pro 7.500/día)",
     "subValue": "Lo que ofrece este sistema, y cómo verlo",
     "subPdfs": "Informes PDF de estilo institucional",

@@ -983,14 +983,18 @@ function OverviewCard() {
   );
 }
 
-function Venues() {
+// Merged "Venues & API" artifact: the execution-venues/gates table AND the API budget/health,
+// in ONE cohesive view (one table + a compact API line + bar; both sections' notes pooled at the
+// bottom). No content dropped — just combined.
+function VenuesApi() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCRisk(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const g = data?.gates ?? {}, b = data?.venue_balances ?? {};
+  const g = data?.gates ?? {}, b = data?.venue_balances ?? {}, ab = data?.api_budget ?? {};
+  const frac = Math.min(1, (ab.used ?? 0) / (ab.cap ?? 1));
   return (
     <div>
-      <Title sub={tr('prediction.subVenues')}>Venues & Gates</Title>
+      <Title sub={tr('prediction.subVenuesApi')}>Venues & API</Title>
       <DataTable cols={[tr('prediction.colVenue'), tr('prediction.colRole'), tr('prediction.colBalance'), tr('prediction.colTrading')]}
         rows={[
           ['Kalshi (demo)', tr('prediction.roleExecute'), money(b.kalshi_demo_usd), String(g.kalshi_trading_enabled)],
@@ -999,8 +1003,19 @@ function Venues() {
           // Read-only data source (never trades): geoblocked in the US, no account.
           ['Polymarket Global', tr('prediction.roleReference'), money(0), tr('prediction.tradingReadonly')],
         ]} />
-      <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{tr('prediction.lblExecutable')}: {(g.executable_venues ?? []).join(', ')}</div>
-      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>{tr('prediction.venueGlobalNote')}</div>
+      {/* API request budget / health — one compact line + bar, same artifact (not a 2nd table) */}
+      <div style={{ marginTop: 12, fontSize: 11, ...mono, color: 'var(--text-secondary)' }}>
+        <b>API</b> · {tr('prediction.lblUsedToday')} {ab.used ?? '—'}/{ab.cap ?? '—'} ({pct(ab.pct, 0)}) · {tr('prediction.lblRemaining')} {ab.cap != null && ab.used != null ? (ab.cap - ab.used) : '—'}{ab.month_used != null ? ` · ${tr('prediction.lblMonthBackstop')} ${ab.month_used}/${ab.month_cap}` : ''}
+      </div>
+      <div style={{ height: 10, marginTop: 4, background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }}>
+        <div style={{ width: `${frac * 100}%`, height: '100%', background: frac > 0.8 ? 'var(--error)' : 'var(--success)' }} />
+      </div>
+      {/* both sections' notes, pooled at the bottom */}
+      <div style={{ marginTop: 10 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{tr('prediction.lblExecutable')}: {(g.executable_venues ?? []).join(', ')}</div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.venueGlobalNote')}</div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.budgetResetNote')}</div>
+      </div>
     </div>
   );
 }
@@ -1372,10 +1387,6 @@ function MicroFootballSim() {
     </div>
   );
 }
-
-// Merged "Venues & API" artifact — the Venues & Gates table AND the API Budget/Health panel in
-// one view (both sections kept intact, just combined into a single artifact).
-function VenuesApi() { return <><Venues /><Budget /></>; }
 
 const REGISTRY: Record<string, () => ReactElement> = {
   wc_microfootball: MicroFootballSim,

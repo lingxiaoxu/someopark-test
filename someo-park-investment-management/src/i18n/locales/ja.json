@@ -150,6 +150,7 @@
     "subCalibration": "サンプル外の信頼性(取引可ゲート)",
     "subOverview": "インターフェース、スケジュール、価値",
     "subVenues": "執行会場、残高、取引ゲート",
+    "subVenuesApi": "執行会場、残高、取引ゲート · APIリクエスト予算 / ヘルス",
     "subBudget": "API-Football 日次リクエスト予算(Pro 7,500/日)",
     "subValue": "本システムの提供価値と、その見方",
     "subPdfs": "機関投資家向けPDFレポート",
