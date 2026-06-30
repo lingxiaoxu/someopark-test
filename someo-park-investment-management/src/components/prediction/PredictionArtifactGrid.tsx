@@ -7,7 +7,7 @@
 import {
   Trophy, Activity, Target, GitCompare, Zap, CalendarClock, Clock,
   LineChart, ShieldAlert, Gauge, LayoutGrid, Landmark, FileText, Cpu,
-  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp, Coins, ChevronsUp, Shapes,
+  Download, FlaskConical, Users, SlidersHorizontal, TrendingUp, Coins, ChevronsUp, Shapes, Clapperboard,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +38,7 @@ export const PREDICTION_ITEMS: Item[] = [
   { type: 'wc_venues',        i18nKey: 'venuesGates',      Icon: Landmark },
   { type: 'wc_methodology',   i18nKey: 'modelNotes',       Icon: FileText },
   { type: 'wc_budget',        i18nKey: 'apiBudget',        Icon: Cpu },
+  { type: 'wc_microfootball', i18nKey: 'microfootballSim', Icon: Clapperboard },
   { type: 'wc_pdfs',          i18nKey: 'downloadReports',  Icon: Download },
 ];
 

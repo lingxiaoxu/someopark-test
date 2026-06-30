@@ -268,3 +268,16 @@ export const getWCMilestoneMarks = () => fetchApi<any>('/data/milestone_marks.js
 export const getWCSchedule       = () => fetchApi<any>('/data/schedule.json');
 export const getWCReachRound     = () => fetchApi<any>(`/data/reach_round.json?_=${Date.now()}`);
 export const getWCStyles         = () => fetchApi<any>('/data/team_styles.json');
+
+// MicroFootball sim artifact: the small index (per-sim stats + gif/trajectory URLs + aggregate).
+// The heavy assets (gif/trajectory) are served from the /sim mount, referenced by URL in the index.
+export const getWCMicrofootball  = () => fetchApi<any>(`/data/microfootball_index.json?_=${Date.now()}`);
+
+// On-demand local-nemotron analysis (slow; called one at a time from the artifact). sim_id omitted
+// ⇒ the 10-sim aggregate prediction; sim_id present ⇒ a single-sim post-match report.
+export const analyzeMicrofootball = (matchup_id: string, sim_id: string | null, lang: string) =>
+  fetch(`${API_BASE}/api/microfootball/analyze`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...apiHeaders() },
+    body: JSON.stringify({ matchup_id, sim_id, lang }),
+  }).then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<{ analysis: string }>; });

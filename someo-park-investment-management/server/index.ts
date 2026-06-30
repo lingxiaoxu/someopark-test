@@ -24,6 +24,7 @@ import riskReportRoutes from './routes/riskReport.js';
 import agentRoutes from './routes/agent.js';
 import sectorRotationRoutes from './routes/sectorRotation.js';
 import semiconductorRoutes from './routes/semiconductor.js';
+import microfootballAnalyzeRoutes from './routes/microfootballAnalyze.js';
 import { registerAllTools } from './tools/index.js';
 
 const app = express();
@@ -32,6 +33,11 @@ app.use(express.json({ limit: '10mb' }));
 
 // Serve static data files (strategy_performance.json, etc.)
 app.use('/data', express.static(path.join(__dirname, '..', 'public', 'data')));
+
+// Heavy MicroFootball-sim assets (replay.gif + 10MB trajectory.jsonl per sim). These live in
+// server/sim_assets/ — OUTSIDE public/ — so `vite build` never copies them into dist/Firebase;
+// they are served over the same cloudflared tunnel as /data. No auth (like /data).
+app.use('/sim', express.static(path.join(__dirname, 'sim_assets')));
 
 // API key guard — only enforced when SP_API_KEY env is set (i.e. when exposed via ngrok)
 const SP_API_KEY = process.env.SP_API_KEY;
@@ -62,6 +68,7 @@ app.use('/api/risk-report', riskReportRoutes);
 app.use('/api/ssrs', sectorRotationRoutes);
 app.use('/api/aiss', semiconductorRoutes);
 app.use('/api/agent', agentRoutes);
+app.use('/api/microfootball', microfootballAnalyzeRoutes);
 
 // Register Someo Agent tools
 registerAllTools();

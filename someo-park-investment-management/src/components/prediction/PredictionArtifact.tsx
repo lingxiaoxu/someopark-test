@@ -11,8 +11,10 @@ import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
   getWCRisk, getWCCalibration, getWCInplayLive, getWCInplayLiveAdvance, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
   getWCMilestoneMarks, getWCSchedule, getWCReachRound, getWCStyles, API_BASE,
+  getWCMicrofootball, analyzeMicrofootball,
 } from '../../lib/api';
 import { useState } from 'react';
+import { TrajectoryPlayer } from './TrajectoryPlayer';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry } from '../../i18n/countries';
 import { tDyn, overviewHeadline } from '../../i18n/predictionStrings';
@@ -1236,7 +1238,124 @@ function PriceTrack() {
 }
 
 // ── dispatcher ────────────────────────────────────────────────────────────────
+// ── MicroFootball Sim ──────────────────────────────────────────────────────────
+// AI football-match simulations (10× per matchup): per-sim replay (GIF + interactive trajectory
+// canvas) + stats, a 10-sim aggregate (the implied prediction), and on-demand LOCAL-nemotron
+// analysis (aggregate + single-sim). Index from /data; heavy gif/trajectory from the /sim mount.
+function AiResult({ state, onRun, label }: { state: { loading: boolean; text?: string; error?: string }; onRun: () => void; label: string }) {
+  const { t: tr } = useTranslation();
+  return (
+    <div style={{ marginTop: 6 }}>
+      <button onClick={onRun} disabled={state.loading}
+        style={{ padding: '3px 12px', fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '.04em', border: '1px solid var(--accent-primary)', borderRadius: 4, background: state.loading ? 'var(--bg-subtle)' : 'var(--bg-tertiary)', color: 'var(--text-primary)', cursor: state.loading ? 'default' : 'pointer' }}>
+        {state.loading ? tr('prediction.mfAiLoading') : label}
+      </button>
+      {state.loading && <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4, fontStyle: 'italic' }}>{tr('prediction.mfAiNote')}</div>}
+      {state.error && <div style={{ fontSize: 11, color: 'var(--error)', ...mono, marginTop: 4 }}>{tr('prediction.mfAiError')}: {state.error}</div>}
+      {state.text && (
+        <div className="card" style={{ marginTop: 6, padding: '8px 10px', fontSize: 12, lineHeight: 1.6, color: 'var(--text-primary)', whiteSpace: 'pre-wrap' }}>
+          <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>🤖 {tr('prediction.mfAiTitle')} · nemotron-3-super</div>
+          {state.text}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MicroFootballSim() {
+  const { t: tr, i18n } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getWCMicrofootball(), []);
+  const [mIdx, setMIdx] = useState(0);
+  const [sIdx, setSIdx] = useState(0);
+  const [viz, setViz] = useState<'gif' | 'canvas'>('gif');
+  const [aiAgg, setAiAgg] = useState<{ loading: boolean; text?: string; error?: string }>({ loading: false });
+  const [aiSim, setAiSim] = useState<{ loading: boolean; text?: string; error?: string }>({ loading: false });
+  if (loading) return <Loading />;
+  if (error) return <ErrorBox e={error} />;
+  const matchups: any[] = data?.matchups ?? [];
+  if (!matchups.length) return <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{tr('prediction.mfNone')}</div>;
+  const m = matchups[Math.min(mIdx, matchups.length - 1)];
+  const sims: any[] = m.sims ?? [];
+  const sim = sims[Math.min(sIdx, sims.length - 1)];
+  const H = tCountry(m.home_name), A = tCountry(m.away_name);
+  const a = m.aggregate;
+
+  const tab = (active: boolean, onClick: () => void, label: ReactNode, key: string) => (
+    <button key={key} onClick={onClick} style={{ padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: active ? 700 : 400, color: active ? 'var(--text-primary)' : 'var(--text-muted)', background: active ? 'var(--bg-tertiary)' : 'transparent', border: `1px solid ${active ? 'var(--accent-primary)' : 'var(--border-subtle)'}`, borderRadius: 4, cursor: 'pointer', marginRight: 6, marginBottom: 4 }}>{label}</button>
+  );
+  const runAgg = async () => { setAiAgg({ loading: true }); try { const r = await analyzeMicrofootball(m.id, null, i18n.language); setAiAgg({ loading: false, text: r.analysis }); } catch (e: any) { setAiAgg({ loading: false, error: String(e?.message || e) }); } };
+  const runSim = async () => { setAiSim({ loading: true }); try { const r = await analyzeMicrofootball(m.id, sim.sim_id, i18n.language); setAiSim({ loading: false, text: r.analysis }); } catch (e: any) { setAiSim({ loading: false, error: String(e?.message || e) }); } };
+
+  // stat rows for the per-sim table
+  const statRow = (key: string, fmt: (s: any) => ReactNode) => [tr('prediction.' + key), fmt(sim.stats.home), fmt(sim.stats.away)];
+  const simRows: ReactNode[][] = [
+    statRow('mfPossession', (s) => `${s.possession_pct}%`),
+    statRow('mfShots', (s) => s.shots),
+    statRow('mfSot', (s) => `${s.shots_on_target_pct}%`),
+    statRow('mfXg', (s) => s.xg),
+    statRow('mfPasses', (s) => s.passes),
+    statRow('mfPassPct', (s) => `${s.pass_completion_pct}%`),
+    statRow('mfOffsides', (s) => s.offsides),
+    statRow('mfSequences', (s) => s.sequences),
+    statRow('mfSaves', (s) => `${s.save_pct}%`),
+    statRow('mfRecovery', (s) => `${s.recovery_sec}s`),
+  ];
+
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 6 }}>{tr('prediction.subMicrofootball')}</div>
+      {/* matchup tabs */}
+      <div style={{ marginBottom: 8 }}>
+        {matchups.map((mm, i) => tab(i === mIdx, () => { setMIdx(i); setSIdx(0); setAiSim({ loading: false }); setAiAgg({ loading: false }); }, `${tCountry(mm.home_name)} v ${tCountry(mm.away_name)}`, mm.id))}
+      </div>
+
+      {/* aggregate panel — the implied prediction across 10 sims */}
+      <div className="card" style={{ marginBottom: 12, padding: '8px 10px' }}>
+        <div style={{ fontSize: 11, fontWeight: 700, ...mono, marginBottom: 6, color: 'var(--text-primary)' }}>{tr('prediction.mfAggregate')} · {m.n_sims} {tr('prediction.mfSims')}</div>
+        {/* W/D/L distribution bar */}
+        <div style={{ display: 'flex', height: 18, borderRadius: 3, overflow: 'hidden', fontSize: 9, ...mono, marginBottom: 6 }}>
+          <div title={`${H} ${a.record.home_wins}`} style={{ width: `${a.win_pct.home * 100}%`, background: '#3b82f6', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{a.record.home_wins}</div>
+          <div title={`draw ${a.record.draws}`} style={{ width: `${a.win_pct.draw * 100}%`, background: 'var(--text-muted)', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{a.record.draws}</div>
+          <div title={`${A} ${a.record.away_wins}`} style={{ width: `${a.win_pct.away * 100}%`, background: '#ef4444', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{a.record.away_wins}</div>
+        </div>
+        <KV rows={[
+          [tr('prediction.mfWinPct'), <span style={mono}>{H} {pct(a.win_pct.home, 0)} · {tr('prediction.drawResult')} {pct(a.win_pct.draw, 0)} · {A} {pct(a.win_pct.away, 0)}</span>],
+          [tr('prediction.mfAvgScore'), <span style={mono}>{H} {a.avg_score.home} – {a.avg_score.away} {A}</span>],
+          [tr('prediction.mfAvgXg'), <span style={mono}>{H} {a.avg_xg.home} · {A} {a.avg_xg.away}</span>],
+          [tr('prediction.mfAvgPossession'), <span style={mono}>{H} {a.avg_possession.home}% · {A} {a.avg_possession.away}%</span>],
+          [tr('prediction.mfScoreDist'), <span style={mono}>{(a.score_distribution || []).map((d: any) => `${d.score}×${d.count}`).join('  ')}</span>],
+        ]} />
+        <AiResult state={aiAgg} onRun={runAgg} label={tr('prediction.mfAiAnalyze')} />
+      </div>
+
+      {/* sim selector */}
+      <div style={{ marginBottom: 6 }}>
+        {sims.map((s, i) => tab(i === sIdx, () => { setSIdx(i); setAiSim({ loading: false }); }, `#${i + 1} (${s.score.home}-${s.score.away})`, s.sim_id))}
+      </div>
+
+      {/* per-sim panel */}
+      {sim && (
+        <div className="card" style={{ padding: '8px 10px' }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, ...mono, color: 'var(--text-primary)' }}>{H} <b>{sim.score.home}-{sim.score.away}</b> {A}</span>
+            <span>{tab(viz === 'gif', () => setViz('gif'), tr('prediction.mfGif'), 'gif')}{tab(viz === 'canvas', () => setViz('canvas'), tr('prediction.mfCanvas'), 'canvas')}</span>
+          </div>
+          <div style={{ textAlign: 'center', marginBottom: 6 }}>
+            {viz === 'gif'
+              ? <img src={`${API_BASE}${sim.gif_url}`} alt="replay" width={300} style={{ borderRadius: 4, display: 'inline-block', maxWidth: '100%' }} />
+              : <TrajectoryPlayer src={`${API_BASE}${sim.traj_url}`} homeName={H} awayName={A} />}
+          </div>
+          <DataTable cols={['', H, A]} rows={simRows} />
+          {sim.summary && <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>{sim.summary}</div>}
+          <AiResult state={aiSim} onRun={runSim} label={tr('prediction.mfAiAnalyzeSim')} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 const REGISTRY: Record<string, () => ReactElement> = {
+  wc_microfootball: MicroFootballSim,
   wc_pricetrack: PriceTrack,
   wc_champion: ChampionOdds,
   wc_reach_round: ReachRound,
