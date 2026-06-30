@@ -92,7 +92,7 @@
     "valueHowToSee": "Valeur & Comment Voir",
     "downloadReports": "Télécharger (PDF)",
     "microfootballSim": "Prédictions intra-match",
-    "subMicrofootball": "Simulations IA · relecture par sim + stats + prédiction agrégée + analyse modèle local",
+    "subMicrofootball": "Modèle de prédiction par cadre de simulation multi-agents IA · relecture par sim + stats + prédiction agrégée + analyse modèle local",
     "mfNone": "Aucune simulation.",
     "mfAggregate": "Agrégat (prédiction implicite)",
     "mfSims": "sims",
@@ -408,7 +408,7 @@
         "Tout repose sur l'info d'avant-match (point-in-time) — sans anticipation ; les ordres réels restent plafonnés à 1 $",
         "La valeur de clôture (CLV) est l'indicateur principal (plus fiable que le taux de réussite à petit N) ; la précision argmax est conservée comme référence de qualité du modèle"
       ],
-      "simT": "Prédictions intra-match (simulation IA)",
+      "simT": "Prédictions intra-match (modèle de prédiction par cadre de simulation multi-agents IA)",
       "sim": [
         "Un moteur IA distinct simule chaque match tick par tick (≈4000 ticks ≈ 90 minutes) avec des tactiques propres à chaque équipe, produisant une trajectoire complète (chaque joueur et le ballon) et des statistiques (possession, tirs, xG, passes…).",
         "Chaque affiche est jouée 10 fois ; la distribution des 10 sims est la prédiction implicite : victoire/nul/défaite, xG/possession/score moyens, et la distribution des scores.",

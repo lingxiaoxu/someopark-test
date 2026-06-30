@@ -431,7 +431,7 @@
     "valueHowToSee": "Value & How to See",
     "downloadReports": "Download Reports (PDF)",
     "microfootballSim": "IntraGame Predictions",
-    "subMicrofootball": "AI match simulations · per-sim replay + stats + aggregate prediction + local-model analysis",
+    "subMicrofootball": "AI multi-agent simulation-framework prediction model · per-sim replay + stats + aggregate prediction + local-model analysis",
     "mfNone": "No simulations available.",
     "mfAggregate": "Aggregate (implied prediction)",
     "mfSims": "sims",
@@ -748,7 +748,7 @@
         "Everything uses pre-match (point-in-time) info only — no look-ahead; real orders are still capped at $1",
         "Closing-line value (CLV) is the primary scorecard (more reliable than win-rate at small N); argmax prediction accuracy is kept as a model-quality reference"
       ],
-      "simT": "IntraGame Predictions (AI match simulation)",
+      "simT": "IntraGame Predictions (AI multi-agent simulation-framework prediction model)",
       "sim": [
         "A separate AI engine simulates each fixture tick-by-tick (≈4000 ticks ≈ 90 minutes) with team-specific tactics, producing a full match trajectory — every player and the ball — plus box-score stats (possession, shots, xG, passes, …).",
         "Each fixture is run 10 times; the 10-sim spread is the implied prediction: the win/draw/loss distribution, average xG / possession / scoreline, and the score distribution.",
