@@ -967,35 +967,24 @@ function Backtest() {
   );
 }
 
-function OverviewCard() {
-  const { t: tr } = useTranslation();
-  const { data, loading, error } = useApi<any>(() => getWCOverview(), []);
-  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  return (
-    <div>
-      <Title sub={data?.as_of ? `as of ${data.as_of}` : undefined}>System Overview</Title>
-      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 10, ...mono }}>{overviewHeadline(data?.performance, data?.headline)}</div>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 4px', ...mono }}>{tr('prediction.secInterfaces')}</div>
-      <DataTable cols={[tr('prediction.colCat'), tr('prediction.colCommand'), tr('prediction.colPurpose')]} rows={(data?.interfaces ?? []).map((i: any) => [<span style={{ whiteSpace: 'nowrap' }}>{tDyn(i.category)}</span>, i.command?.replace('python -m prediction_market.', ''), tDyn(i.purpose)])} />
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '10px 0 4px', ...mono }}>{tr('prediction.secSchedule')}</div>
-      <DataTable cols={[tr('prediction.colWhen'), tr('prediction.colRuns'), tr('prediction.colFreq')]} rows={(data?.schedule ?? []).map((s: any) => [tDyn(s.when), s.runs, tDyn(s.frequency)])} />
-    </div>
-  );
-}
-
-// Merged "System & Model Notes" — the System Overview (unchanged) followed by the Model-Notes
-// sections rendered as click-to-expand accordions, all on one page.
+// Merged "System & Model Notes" — system-overview headline, then the Model-Notes sections as
+// click-to-expand accordions (moved UP to sit right before the interfaces table), then the
+// interfaces + schedule tables. All on one page.
 function OverviewModelNotes() {
   const { t: tr } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getWCOverview(), []);
   const cap = tr('prediction.cap', { returnObjects: true }) as any;
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const mn = ([[cap?.dataT, cap?.data], [cap?.preT, cap?.pre], [cap?.decisionT, cap?.decision],
     [cap?.liveT, cap?.live], [cap?.simT, cap?.sim], [cap?.otherT, cap?.other]] as [string, string[]][])
     .filter(([t, items]) => t && Array.isArray(items));
   return (
     <div>
-      <OverviewCard />
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '16px 0 6px', ...mono, color: 'var(--text-primary)' }}>{tr('prediction.modelNotes')}</div>
+      <Title sub={data?.as_of ? `as of ${data.as_of}` : undefined}>System Overview</Title>
+      <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginBottom: 10, ...mono }}>{overviewHeadline(data?.performance, data?.headline)}</div>
+      {/* — Model Notes (moved up, right before the interfaces section) — */}
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '8px 0 6px', ...mono, color: 'var(--text-primary)' }}>{tr('prediction.modelNotes')}</div>
       {mn.map(([title, items]) => {
         const isOpen = !!open[title];
         return (
@@ -1008,6 +997,11 @@ function OverviewModelNotes() {
           </div>
         );
       })}
+      {/* — Interfaces — */}
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '16px 0 4px', ...mono }}>{tr('prediction.secInterfaces')}</div>
+      <DataTable cols={[tr('prediction.colCat'), tr('prediction.colCommand'), tr('prediction.colPurpose')]} rows={(data?.interfaces ?? []).map((i: any) => [<span style={{ whiteSpace: 'nowrap' }}>{tDyn(i.category)}</span>, i.command?.replace('python -m prediction_market.', ''), tDyn(i.purpose)])} />
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '10px 0 4px', ...mono }}>{tr('prediction.secSchedule')}</div>
+      <DataTable cols={[tr('prediction.colWhen'), tr('prediction.colRuns'), tr('prediction.colFreq')]} rows={(data?.schedule ?? []).map((s: any) => [tDyn(s.when), s.runs, tDyn(s.frequency)])} />
     </div>
   );
 }
@@ -1024,26 +1018,51 @@ function VenuesApi() {
   const blocked: string[] = data?.blocked_summary ?? [];
   const frac = Math.min(1, (ab.used ?? 0) / (ab.cap ?? 1));
   const sec = (s: string) => <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '12px 0 4px', ...mono, color: 'var(--text-primary)' }}>{s}</div>;
+  // Gates & risk controls (merged from the Risk Report; non-overlapping fields only) — folded
+  // into the venue table below as extra label/value rows so it reads as ONE continuous table.
+  const controls: [string, ReactNode][] = [
+    [tr('prediction.lblKalshiEnv'), g.kalshi_env],
+    [tr('prediction.lblOrderCap'), money(g.hard_order_cap_usd)],
+    [tr('prediction.lblCalibration'), <span style={{ color: cal.trade_grade ? 'var(--success)' : 'var(--error)' }}>{tDyn(cal.status)}</span>],
+  ];
   return (
     <div>
       <Title sub={tr('prediction.subVenuesApi')}>Venues & API</Title>
-      {/* — Execution venues & balances — */}
-      <DataTable cols={[tr('prediction.colVenue'), tr('prediction.colRole'), tr('prediction.colBalance'), tr('prediction.colTrading')]}
-        rows={[
-          ['Kalshi (demo)', tr('prediction.roleExecute'), money(b.kalshi_demo_usd), String(g.kalshi_trading_enabled)],
-          ['Polymarket US', tr('prediction.roleExecute'), money(b.polymarket_us_usd), String(g.pmus_trading_enabled)],
-          ['Kalshi (prod)', tr('prediction.roleRealMoney'), tDyn(String(b.kalshi_prod_usd)), tr('prediction.tradingGated')],
-          // Read-only data source (never trades): geoblocked in the US, no account.
-          ['Polymarket Global', tr('prediction.roleReference'), money(0), tr('prediction.tradingReadonly')],
-        ]} />
-      {/* — Gates & risk controls (merged from the Risk Report; non-overlapping fields only) — */}
-      {sec(tr('prediction.secGates'))}
-      <KV rows={[
-        [tr('prediction.lblKalshiEnv'), g.kalshi_env],
-        [tr('prediction.lblOrderCap'), money(g.hard_order_cap_usd)],
-        [tr('prediction.lblCalibration'), <span style={{ color: cal.trade_grade ? 'var(--success)' : 'var(--error)' }}>{tDyn(cal.status)}</span>],
-      ]} />
-      {/* — API request budget / health — */}
+      {/* ONE continuous table — execution venues/balances, then gates & risk controls, then the
+          blocked / guardrails list (all merged from the Risk Report). No isolated sub-tables. */}
+      <table className="table">
+        <thead><tr>
+          <th style={{ textAlign: 'left' }}>{tr('prediction.colVenue')}</th>
+          <th style={{ textAlign: 'right' }}>{tr('prediction.colRole')}</th>
+          <th style={{ textAlign: 'right' }}>{tr('prediction.colBalance')}</th>
+          <th style={{ textAlign: 'right' }}>{tr('prediction.colTrading')}</th>
+        </tr></thead>
+        <tbody>
+          {([
+            ['Kalshi (demo)', tr('prediction.roleExecute'), money(b.kalshi_demo_usd), String(g.kalshi_trading_enabled)],
+            ['Polymarket US', tr('prediction.roleExecute'), money(b.polymarket_us_usd), String(g.pmus_trading_enabled)],
+            ['Kalshi (prod)', tr('prediction.roleRealMoney'), tDyn(String(b.kalshi_prod_usd)), tr('prediction.tradingGated')],
+            // Read-only data source (never trades): geoblocked in the US, no account.
+            ['Polymarket Global', tr('prediction.roleReference'), money(0), tr('prediction.tradingReadonly')],
+          ] as ReactNode[][]).map((r, i) => (
+            <tr key={`v${i}`}>{r.map((c, j) => <td key={j} style={{ textAlign: j === 0 ? 'left' : 'right' }}>{c}</td>)}</tr>
+          ))}
+          {/* gates & risk controls — label left, value right across the remaining columns */}
+          {controls.map(([k, v], i) => (
+            <tr key={`g${i}`}>
+              <td style={{ textAlign: 'left', fontWeight: 700 }}>{k}</td>
+              <td colSpan={3} style={{ textAlign: 'right' }}>{v}</td>
+            </tr>
+          ))}
+          {/* blocked / guardrails — full-width red rows, moved into the table */}
+          {blocked.map((x, i) => (
+            <tr key={`b${i}`}>
+              <td colSpan={4} style={{ textAlign: 'left', color: 'var(--error)' }}>⛔ {tDyn(x)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {/* — API request budget / health (distinct metric widget with its own bar) — */}
       {sec(tr('prediction.lblApiBudget'))}
       <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)' }}>
         {tr('prediction.lblUsedToday')} {ab.used ?? '—'}/{ab.cap ?? '—'} ({pct(ab.pct, 0)}) · {tr('prediction.lblRemaining')} {ab.cap != null && ab.used != null ? (ab.cap - ab.used) : '—'}{ab.month_used != null ? ` · ${tr('prediction.lblMonthBackstop')} ${ab.month_used}/${ab.month_cap}` : ''}
@@ -1051,11 +1070,6 @@ function VenuesApi() {
       <div style={{ height: 10, marginTop: 4, background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }}>
         <div style={{ width: `${frac * 100}%`, height: '100%', background: frac > 0.8 ? 'var(--error)' : 'var(--success)' }} />
       </div>
-      {/* — Blocked (from the Risk Report) — */}
-      {blocked.length > 0 && <>
-        {sec(tr('prediction.secBlocked'))}
-        <ul style={{ paddingLeft: 16, fontSize: 11, color: 'var(--error)', ...mono }}>{blocked.map((x, i) => <li key={i} style={{ marginBottom: 3 }}>{tDyn(x)}</li>)}</ul>
-      </>}
       {/* — Notes (all sections pooled) — */}
       <div style={{ marginTop: 12 }}>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{tr('prediction.lblExecutable')}: {(g.executable_venues ?? []).join(', ')}</div>
