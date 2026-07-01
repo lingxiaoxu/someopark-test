@@ -285,6 +285,73 @@ def _maybe_refresh_champion(conn) -> None:
           f"golden boot {gb['name']} {gb['p_golden_boot']:.1%}")
 
 
+# ── stale-minute retry ───────────────────────────────────────────────────────
+# A single DNS/timeout blip must not freeze the live minute for a whole cycle. After a live sync
+# we sanity-check each in-play fixture's fetched minute against the WALL-CLOCK minute implied by
+# its kickoff; if the data is clearly behind (a stale or failed pull), we re-sync a few times with
+# backoff — a transient blip almost always clears on the next try. (When the network is genuinely
+# down for minutes no retry can help; the frontend staleness banner is the backstop for that.)
+_STALE_TOL_MIN = 6.0            # minutes the fetched minute may lag the wall-clock estimate
+_SYNC_STALE_RETRIES = 3        # extra sync attempts when a lag is detected
+_HALFTIME_MIN = 15.0           # nominal break subtracted for 2nd-half / ET wall-clock math
+_LIVE_PLAYING = ("1H", "2H", "ET")   # statuses where elapsed tracks the wall clock (HT excluded)
+
+
+def _expected_elapsed_min(kickoff_iso, status, now):
+    """Wall-clock minute a live fixture SHOULD be at, or None when not checkable (bad kickoff,
+    or a status like HT/penalties where `elapsed` doesn't track the wall clock)."""
+    if status not in _LIVE_PLAYING or not kickoff_iso:
+        return None
+    try:
+        ko = datetime.fromisoformat(str(kickoff_iso).replace("Z", "+00:00"))
+    except Exception:
+        return None
+    wall = (now - ko).total_seconds() / 60.0
+    if wall < 0:
+        return None
+    if status == "2H":
+        wall -= _HALFTIME_MIN
+    elif status == "ET":
+        wall -= _HALFTIME_MIN + 5.0    # halftime + the short break before extra time
+    return wall
+
+
+def _stale_live_fixtures(conn):
+    """In-play fixtures whose fetched minute lags the wall-clock estimate by more than the
+    tolerance → the last pull was stale. One-directional (only 'behind' counts). Returns
+    [(api_id, elapsed, expected), ...]."""
+    now = datetime.now(timezone.utc)
+    stale = []
+    q = "SELECT api_id, kickoff_ts, status_short, elapsed FROM fixture WHERE status_short IN ({})"
+    for r in conn.execute(q.format(",".join("?" * len(_LIVE_PLAYING))), _LIVE_PLAYING):
+        exp = _expected_elapsed_min(r["kickoff_ts"], r["status_short"], now)
+        el = r["elapsed"]
+        if exp is not None and el is not None and el < exp - _STALE_TOL_MIN:
+            stale.append((r["api_id"], el, round(exp, 1)))
+    return stale
+
+
+def _sync_live_until_fresh(api, conn, si):
+    """sync_live once, then retry (with backoff) while any in-play minute is stale vs the wall
+    clock — catching a transient blip that returned/failed to old data. Returns the synced count.
+    Extra API calls are incurred ONLY when a lag is detected (normal cycles retry zero times)."""
+    synced = si.sync_live(api, conn)
+    for attempt in range(1, _SYNC_STALE_RETRIES + 1):
+        stale = _stale_live_fixtures(conn)
+        if not stale:
+            break
+        fx = stale[0]
+        print(f"[live_refresh] stale minute (fixture {fx[0]}: data {fx[1]}' vs ~{fx[2]}' expected) "
+              f"— re-syncing {attempt}/{_SYNC_STALE_RETRIES}")
+        time.sleep(min(2.0, 0.5 * (2 ** (attempt - 1))))    # 0.5s → 1s → 2s backoff
+        try:
+            synced = si.sync_live(api, conn)
+        except Exception as e:
+            print(f"[live_refresh] retry sync failed ({e}); keeping best-effort state")
+            break
+    return synced
+
+
 def refresh_once(conn=None) -> dict:
     """One in-play refresh cycle. Returns a small status dict for logging."""
     from prediction_market.ingest import store
@@ -302,7 +369,9 @@ def refresh_once(conn=None) -> dict:
         from prediction_market.ingest.api_football import ApiFootball
         from prediction_market.ingest import soccer_ingest as si
         api = ApiFootball(conn)
-        synced = si.sync_live(api, conn)
+        # Retry the live pull if the fetched minute lags the wall clock (a transient blip that
+        # would otherwise freeze the on-screen minute for the whole cycle).
+        synced = _sync_live_until_fresh(api, conn, si)
         # force=True: inside a live window we must catch the FT transition promptly,
         # so bypass the fixtures TTL/watermark (bounded — only runs during the window).
         si.sync_results(api, conn, force=True)   # flip just-ended matches to FT + final score
