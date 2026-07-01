@@ -210,6 +210,7 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         # home-soil edge on a neutral KO venue — decoupled, so only the host term changes.
         lam_h, lam_a = sm.pair_lambdas(hi, ai, host_neutral=knockout)
         lp = live_match_prob(lam_h, lam_a, minute, gh, ga, red_home=rh, red_away=ra,
+                             injury_time=float(stoppage or 0),   # ⑤ real added time extends the window
                              xg_home=xg.get(fx["home_api_id"]), xg_away=xg.get(fx["away_api_id"]))
         # Live venue quotes (¢) per side for this fixture, alongside model-implied ¢.
         prices = {"model_c": model_cents({"home": lp.p_home, "draw": lp.p_draw, "away": lp.p_away})}
