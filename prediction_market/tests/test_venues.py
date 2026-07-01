@@ -50,6 +50,31 @@ def test_reach_round_mark_uses_bid_on_crossed_book():
     assert _real_price("1.00", "0.00", "1.00") is None
 
 
+def test_reach_round_settled_market_uses_result_not_stale_last():
+    """Regression: Kalshi nests FINALIZED per-team markets under the still-open round event, so
+    list_events(status='open') returns them with an empty live book (ask $1.00 / bid $0.00) and a
+    STALE last-trade. The mark MUST come from the settlement result, not that last trade — real
+    case: Morocco RO16 finalized-YES, book empty, last=$0.37 → must be 100¢, not a fake 37¢."""
+    from prediction_market.venues.champion_prices import _reach_market_cents
+    # the exact Morocco RO16 market shape (finalized YES, dead book, stale last).
+    assert _reach_market_cents({
+        "status": "finalized", "result": "yes",
+        "yes_ask_dollars": "1.0000", "yes_bid_dollars": "0.0000", "last_price_dollars": "0.3700",
+    }) == 100.0
+    # an eliminated team's settled-NO market → 0¢ (not its stale last trade either).
+    assert _reach_market_cents({
+        "status": "settled", "result": "no",
+        "yes_ask_dollars": "1.0000", "yes_bid_dollars": "0.0000", "last_price_dollars": "0.1500",
+    }) == 0.0
+    # settled but no result posted yet → no reliable mark.
+    assert _reach_market_cents({"status": "finalized", "result": "", "last_price_dollars": "0.40"}) is None
+    # an ACTIVE market is unchanged — still priced off the live ask/bid/last.
+    assert _reach_market_cents({
+        "status": "active", "yes_ask_dollars": "0.62", "yes_bid_dollars": "0.61",
+        "last_price_dollars": "0.62",
+    }) == 62.0
+
+
 def test_polymarket_global_book_parse():
     # Polymarket returns both bids and asks for a token (unlike Kalshi).
     from prediction_market.venues.polymarket_global.reader import parse_clob_book

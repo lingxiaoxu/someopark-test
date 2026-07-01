@@ -121,12 +121,36 @@ def _real_price(ask, bid, last):
     return None
 
 
+def _reach_market_cents(m: dict) -> float | None:
+    """¢ mark for one Kalshi reach-round per-team market.
+
+    SETTLEMENT-AWARE FIRST — this is the crux. Kalshi keeps FINALIZED per-team markets nested
+    under the still-open round event, so ``list_events(status='open')`` returns them too, with an
+    empty live book (ask $1.00 / bid $0.00) but a STALE last-trade. Reading ask/bid/last there
+    falls back to that stale last (e.g. Morocco RO16 finalized-YES but last=$0.37 → a fake 37¢
+    and a bogus +63% edge, while the contract is actually worth 100¢). A decided market is worth
+    its RESULT (100¢ yes / 0¢ no), not its last trade. Only an ACTIVE market uses _real_price.
+    Returns None when there's no reliable mark (settled-but-unresulted, or a dead book)."""
+    status = str(m.get("status") or "").lower()
+    if status in ("finalized", "settled", "determined"):
+        res = str(m.get("result") or "").lower()
+        if res == "yes":
+            return 100.0
+        if res == "no":
+            return 0.0
+        return None                    # settled without a result yet → no reliable mark
+    price = _real_price(m.get("yes_ask_dollars"), m.get("yes_bid_dollars"),
+                        m.get("last_price_dollars"))
+    return to_cents(price) if price is not None else None
+
+
 def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
     """{round_key: {team_id: ¢}} for advance/r16/qf/sf/final, from the Kalshi reach-round books.
 
     R16→Final live under the KXWCROUND parent (one event per round); 'advance' (reach R32 =
-    qualify from group) lives under KXWCGROUPQUAL (one event per group). Each per-team mark uses
-    _real_price (ask on a well-formed book, else bid/last on a crossed/thin one)."""
+    qualify from group) lives under KXWCGROUPQUAL (one event per group). A SETTLED market is
+    worth its result (100¢ yes / 0¢ no); an active one uses _real_price (ask on a well-formed
+    book, else bid/last on a crossed/thin one)."""
     out: dict[str, dict[str, float]] = {"advance": {}, "r16": {}, "qf": {}, "sf": {}, "final": {}}
     from prediction_market.venues.kalshi.market_data import KalshiMarketData
     md = KalshiMarketData()
@@ -136,10 +160,9 @@ def _kalshi_reach_round_cents() -> dict[str, dict[str, float]]:
             tid = team_id(canonical_team_name(_sub_team(m)))
             if not tid:
                 continue
-            price = _real_price(m.get("yes_ask_dollars"), m.get("yes_bid_dollars"),
-                                m.get("last_price_dollars"))
-            if price is not None:
-                out[round_key][tid] = to_cents(price)
+            c = _reach_market_cents(m)
+            if c is not None:
+                out[round_key][tid] = c
 
     # R16 / QF / SF / Final — KXWCROUND, dispatch each event to its round.
     for ev in md.list_events(REACH_ROUND_PARENT, status="open"):
