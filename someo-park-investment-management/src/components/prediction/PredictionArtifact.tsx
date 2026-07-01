@@ -543,8 +543,8 @@ function InPlay() {
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{
               m.period === 'pens' ? `${tr('prediction.periodPens')}${m.shootout ? ` ${m.shootout.home}-${m.shootout.away}` : ''}`
-                : m.period === 'et' ? `${tr('prediction.periodEt')} ${m.minute}'`
-                : `${m.minute}'`
+                : m.period === 'et' ? `${tr('prediction.periodEt')} ${m.minute}${m.stoppage ? `+${m.stoppage}` : ''}'`
+                : `${m.minute}${m.stoppage ? `+${m.stoppage}` : ''}'`
             }{m.reds !== '0-0' ? ` · 🟥 ${m.reds}` : ''}</span>
           </div>
           {/* live model — probability + per-contract ¢ side by side. 2-way advance: H/A only

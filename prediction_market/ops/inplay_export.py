@@ -153,7 +153,7 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
 
     live = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed, status_short, round "
+        "SELECT api_id, home_api_id, away_api_id, home_goals, away_goals, elapsed, status_short, round, raw_json "
         "FROM fixture WHERE status_short IN ({}) ORDER BY elapsed DESC".format(",".join("?" * len(_LIVE))),
         _LIVE).fetchall()
 
@@ -183,6 +183,16 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
         if not (hi and ai):
             continue
         minute = fx["elapsed"] or 0
+        # Stoppage / added time — DISPLAY ONLY. API-Football pins status.elapsed at 45/90 during
+        # added time and carries the +N minutes in status.extra. That field is already persisted in
+        # raw_json, so we surface it here without any schema/ingest change (purely to render "90+4'").
+        stoppage = None
+        try:
+            _st = (json.loads(fx["raw_json"]).get("fixture") or {}).get("status") or {}
+            _ex = _st.get("extra")
+            stoppage = int(_ex) if _ex not in (None, 0) else None
+        except Exception:
+            stoppage = None
         gh, ga = fx["home_goals"] or 0, fx["away_goals"] or 0
         xg = {r["team_api_id"]: r["xg"] for r in conn.execute(
             "SELECT team_api_id, xg FROM fixture_stats WHERE fixture_api_id=?", (fx["api_id"],))}
@@ -265,6 +275,7 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             "period": period,
             "shootout": shootout,
             "minute": minute,
+            "stoppage": stoppage,   # display-only: +N added minutes (None when not in stoppage)
             "score": f"{gh}-{ga}",
             "reds": f"{rh}-{ra}",
             "home": {"id": hi, "name": name.get(hi, hi), "zh": zh.get(hi, "")},
@@ -297,7 +308,7 @@ def main() -> None:
         n_opp = sum(len(m["opportunities"]) for m in doc["matches"])
         print(f"inplay_live.json: {doc['n_live']} live match(es), {n_opp} opportunities")
         for m in doc["matches"]:
-            print(f"  {m['home']['name']} {m['score']} {m['away']['name']} @{m['minute']}'  "
+            print(f"  {m['home']['name']} {m['score']} {m['away']['name']} @{m['minute']}{('+' + str(m['stoppage'])) if m.get('stoppage') else ''}'  "
                   f"model H{m['model']['home']:.2f}/D{m['model']['draw']:.2f}/A{m['model']['away']:.2f}  "
                   f"{len(m['opportunities'])} opps")
         return doc
