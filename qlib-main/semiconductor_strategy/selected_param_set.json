@@ -1,91 +1,91 @@
 {
-  "param_set": "max_aggression",
-  "signal_version": "v2",
+  "param_set": "pure_momentum",
+  "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
   "selected_at": "2026-07-02",
   "last_updated": "2026-07-02",
-  "mcps_oos_filtered": 1.6835,
-  "recent_sharpe_12m": 3.1336,
-  "full_period_sharpe": 2.0544,
-  "full_period_calmar": 1.4426,
+  "mcps_oos_filtered": 1.7406,
+  "recent_sharpe_12m": 3.4478,
+  "full_period_sharpe": 2.0619,
+  "full_period_calmar": 1.6494,
   "top_candidates": [
     {
-      "name": "max_aggression",
-      "version": "v2",
-      "mcps_score": 1.6835,
-      "full_period_sharpe": 2.0544,
-      "recent_sharpe_12m": 3.1336
+      "name": "pure_momentum",
+      "version": "v1",
+      "mcps_score": 1.7406,
+      "full_period_sharpe": 2.0619,
+      "recent_sharpe_12m": 3.4478
     },
     {
       "name": "external_off",
-      "version": "v2",
-      "mcps_score": 1.6783,
-      "full_period_sharpe": 1.9643,
-      "recent_sharpe_12m": 3.2943
-    },
-    {
-      "name": "derisk_loose",
-      "version": "v2",
-      "mcps_score": 1.6635,
-      "full_period_sharpe": 2.0362,
-      "recent_sharpe_12m": 3.2196
-    },
-    {
-      "name": "no_vix_derisk",
-      "version": "v2",
-      "mcps_score": 1.658,
-      "full_period_sharpe": 1.9737,
-      "recent_sharpe_12m": 3.2197
-    },
-    {
-      "name": "pure_momentum",
-      "version": "v2",
-      "mcps_score": 1.6399,
-      "full_period_sharpe": 1.9491,
-      "recent_sharpe_12m": 3.1272
+      "version": "v1",
+      "mcps_score": 1.7001,
+      "full_period_sharpe": 2.0291,
+      "recent_sharpe_12m": 3.0711
     },
     {
       "name": "opt_equal_weight",
-      "version": "v2",
-      "mcps_score": 1.6395,
-      "full_period_sharpe": 1.9417,
-      "recent_sharpe_12m": 3.262
+      "version": "v1",
+      "mcps_score": 1.6561,
+      "full_period_sharpe": 1.989,
+      "recent_sharpe_12m": 3.0648
     },
     {
-      "name": "no_vol_scaling",
-      "version": "v2",
-      "mcps_score": 1.6341,
-      "full_period_sharpe": 1.9298,
-      "recent_sharpe_12m": 3.0263
-    },
-    {
-      "name": "vol_target_40",
-      "version": "v2",
-      "mcps_score": 1.6325,
-      "full_period_sharpe": 1.9001,
-      "recent_sharpe_12m": 3.1831
-    },
-    {
-      "name": "opt_risk_parity",
-      "version": "v2",
-      "mcps_score": 1.6229,
-      "full_period_sharpe": 1.8755,
-      "recent_sharpe_12m": 3.2195
+      "name": "no_vix_derisk",
+      "version": "v1",
+      "mcps_score": 1.6478,
+      "full_period_sharpe": 1.982,
+      "recent_sharpe_12m": 3.0172
     },
     {
       "name": "quality_defensive",
-      "version": "v2",
-      "mcps_score": 1.6224,
-      "full_period_sharpe": 1.8733,
-      "recent_sharpe_12m": 3.1441
+      "version": "v1",
+      "mcps_score": 1.6426,
+      "full_period_sharpe": 1.9294,
+      "recent_sharpe_12m": 2.9554
+    },
+    {
+      "name": "derisk_loose",
+      "version": "v1",
+      "mcps_score": 1.6379,
+      "full_period_sharpe": 2.0234,
+      "recent_sharpe_12m": 3.0198
+    },
+    {
+      "name": "vol_target_24",
+      "version": "v1",
+      "mcps_score": 1.6378,
+      "full_period_sharpe": 1.9257,
+      "recent_sharpe_12m": 3.022
+    },
+    {
+      "name": "opt_risk_parity",
+      "version": "v1",
+      "mcps_score": 1.6352,
+      "full_period_sharpe": 1.9253,
+      "recent_sharpe_12m": 3.0198
+    },
+    {
+      "name": "max_aggression",
+      "version": "v1",
+      "mcps_score": 1.6341,
+      "full_period_sharpe": 1.9935,
+      "recent_sharpe_12m": 2.9765
+    },
+    {
+      "name": "default",
+      "version": "v1",
+      "mcps_score": 1.6338,
+      "full_period_sharpe": 1.9216,
+      "recent_sharpe_12m": 3.0196
     }
   ],
   "n_candidates": 33,
   "n_oos_survivors": 33,
   "oos_filter_applied": true,
-  "oos_mean_sharpe": 2.0387,
-  "oos_n_selected": 22,
-  "wf_mean_wfe": 1.2891,
+  "oos_mean_sharpe": -0.1518,
+  "oos_n_selected": 1,
+  "wf_mean_wfe": 1.3355,
   "macro_data_days": 1883,
   "switch_history": [],
   "health": {

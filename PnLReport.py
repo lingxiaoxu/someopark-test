@@ -414,6 +414,13 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
         if sig_date < start_ts or sig_date > end_ts:
             continue
         pm = data.get('position_monitor', {})
+        # 口径统一：monitor 事件的 pnl 带当日 regime scale（MONITOR 缺陷 3），
+        # 而 strategy_performance 的 equity 走无 scale 的 inventory MTM。
+        # 读取时除以当日 scale 还原 raw 美元，使汇总与 NAV 真值同口径。
+        _sf = {}
+        for strat in ('mrpt', 'mtfs'):
+            v = data.get(strat, {}).get('scale_factor')
+            _sf[strat] = v if v and v > 0 else 1.0
         # MONITOR §8.2: collect OPEN dates — a later CLOSE is a NEW lifecycle
         # only if an OPEN happened on/after the previous close; otherwise it is
         # a repeated record of the same close (fake-close re-emissions inflated
@@ -432,9 +439,11 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
                     continue
                 action = e.get('action', '')
                 if action in ('CLOSE', 'CLOSE_STOP'):
+                    _pnl = e.get('unrealized_pnl')
                     ev = {
                         'action':      action,
-                        'pnl':         e.get('unrealized_pnl'),
+                        'pnl':         (round(_pnl / _sf[strat], 2)
+                                        if _pnl is not None else None),
                         'note':        e.get('note', ''),
                         'report_date': signal_date_str,
                         'signal_date': signal_date_str,
@@ -466,6 +475,8 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
                 pnl = e.get('unrealized_pnl') or e.get('pnl')
                 if pnl is None:
                     pnl = _last_hold_pnl.get(pair, 0)
+                if pnl is not None:
+                    pnl = round((pnl or 0) / _sf.get(strat, 1.0), 2)
                 ev = {
                     'action':      action,
                     'pnl':         pnl,
@@ -524,7 +535,8 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
         if abs(prior) > 0.01:
             prior_pnl[pair] = prior
 
-    return result, prior_pnl, all_lifecycle_total
+    # 曲线与汇总共用同一事件集（单一事实源）：(pair, signal_date) -> raw pnl
+    return result, prior_pnl, all_lifecycle_total, dict(_best_close)
 
 
 def load_hold_pnl(end_ts) -> dict[str, dict]:
@@ -744,7 +756,8 @@ def _compute_leverage(start_ts, end_ts) -> dict:
     }
 
 
-def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
+def _compute_portfolio_metrics(start_ts, end_ts, positions, prices,
+                               realized_events: dict | None = None) -> dict:
     """
     Build daily portfolio PnL time series from inventory snapshots + market prices,
     then compute max drawdown, Sharpe ratio, and benchmark comparison (SP500, Russell 3000).
@@ -844,13 +857,21 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices) -> dict:
     # signal_date <= current trade_day (meaning this lifecycle was closed).
     _close_sig_dates: dict[str, set[str]] = defaultdict(set)  # pair -> {signal_dates}
 
-    for (pair, sig_date), entries in _close_by_pair_date.items():
-        best_ts, best_pnl, best_fdate = max(entries, key=lambda x: x[0])
-        # Lock realized PnL on signal_date (the close decision is based on
-        # signal_date's closing prices, regardless of when the run executed).
-        exec_date = sig_date
-        _close_sig_dates[pair].add(exec_date)
-        realized_by_date[exec_date] += best_pnl
+    if realized_events is not None:
+        # 单一事实源（MONITOR §8）：与汇总同一套 raw 口径、去重后、含幽灵锚定
+        # 的事件集——不再用本函数自己的重复扫描（旧扫描不去重、不含幽灵、
+        # 且平仓值带 scale，与 HOLD 的 raw 口径自相矛盾）。
+        for (pair, sig_date), pnl in realized_events.items():
+            _close_sig_dates[pair].add(sig_date)
+            realized_by_date[sig_date] += pnl or 0
+    else:
+        for (pair, sig_date), entries in _close_by_pair_date.items():
+            best_ts, best_pnl, best_fdate = max(entries, key=lambda x: x[0])
+            # Lock realized PnL on signal_date (the close decision is based on
+            # signal_date's closing prices, regardless of when the run executed).
+            exec_date = sig_date
+            _close_sig_dates[pair].add(exec_date)
+            realized_by_date[exec_date] += best_pnl
 
     # ── Step 2: Daily portfolio PnL = cum_realized + open_positions_mtm ──
     daily_pnl = []
@@ -1018,7 +1039,8 @@ def build_report_data(start: str, end: str) -> dict:
     end_ts   = pd.Timestamp(end)
 
     positions   = load_positions(start_ts, end_ts)
-    close_evs, prior_lifecycle_pnl, all_lifecycle_total = load_close_events(start_ts, end_ts)
+    (close_evs, prior_lifecycle_pnl, all_lifecycle_total,
+     realized_events) = load_close_events(start_ts, end_ts)
     hold_pnl    = load_hold_pnl(end_ts)
 
     if not positions:
@@ -1087,6 +1109,11 @@ def build_report_data(start: str, end: str) -> dict:
                     except Exception:
                         pass
                 sys_pnl = mtm_fallback if mtm_fallback is not None else 0
+                # 单一事实源：无 monitor 事件的平仓（幽灵仓位）把锚定 realized
+                # 注入统一事件集，equity 曲线与汇总从此同一套数字（此前曲线
+                # 完全丢失这些已实现 ≈ +$39.8k → curve 系统性偏低）。
+                _anchor_dt = p['last_pnl_date'] or p.get('_closed_as_of') or end
+                realized_events[(pair, _anchor_dt)] = sys_pnl
             exit_dt    = p['last_pnl_date'] or p.get('_closed_as_of') or end
             action     = 'CLOSE'
             close_note = 'Closed by signal (no monitor event)'
@@ -1355,7 +1382,8 @@ def build_report_data(start: str, end: str) -> dict:
     except Exception as e:
         print(f'  MongoDB prices failed ({e}), falling back to yfinance')
         metrics_prices = prices
-    port_metrics = _compute_portfolio_metrics(start_ts, end_ts, positions, metrics_prices)
+    port_metrics = _compute_portfolio_metrics(start_ts, end_ts, positions, metrics_prices,
+                                              realized_events=realized_events)
     totals['portfolio'] = port_metrics
 
     # Sanity check: summary grand total vs equity curve end value
