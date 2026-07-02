@@ -8,6 +8,27 @@ import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 import { API_BASE, apiHeaders } from '../../lib/api';
 
+// Render children only after the fixed-height wrapper has a measured width.
+// The right panel mounts charts during its open animation, when the container
+// briefly measures 0/-1 wide — Recharts' ResponsiveContainer logs
+// "width(-1) and height(-1) ... should be greater than 0" once per chart.
+const SizedChart: React.FC<{ height: number; children: React.ReactNode }> = ({ height, children }) => {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const check = () => {
+      if (el.clientWidth > 0) setReady(true);
+    };
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return <div ref={ref} style={{ height }}>{ready ? children : null}</div>;
+};
+
 interface DayData {
   date: string;
   mrpt_equity: number;
@@ -395,7 +416,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
           {t('strategyPerf.equityCurveTitle')}
         </div>
-        <div style={{ height: 280 }}>
+        <SizedChart height={280}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
@@ -436,7 +457,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
               <Line yAxisId="eq" type="monotone" dataKey={`${totalKey}_equity`} stroke="transparent" strokeWidth={0} dot={false} />
             </LineChart>
           </ResponsiveContainer>
-        </div>
+        </SizedChart>
       </div>
 
       {/* Drawdown (% and $) */}
@@ -444,7 +465,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
           {t('strategyPerf.drawdownTitle')}
         </div>
-        <div style={{ height: 180 }}>
+        <SizedChart height={180}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
@@ -477,7 +498,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
               <Area yAxisId="right" type="monotone" dataKey={`${totalKey}_dd_dollar`} stroke="transparent" fill="transparent" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </SizedChart>
       </div>
 
       {/* Daily P&L ($ and %) */}
@@ -485,7 +506,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
         <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: '12px' }}>
           {t('strategyPerf.dailyPnLTitle')}
         </div>
-        <div style={{ height: 160 }}>
+        <SizedChart height={160}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
@@ -518,7 +539,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
               <Area yAxisId="right" type="stepAfter" dataKey={`${totalKey}_pnl_pct`} stroke="transparent" fill="transparent" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
-        </div>
+        </SizedChart>
       </div>
 
       {/* Footer metadata */}
