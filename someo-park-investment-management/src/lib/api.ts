@@ -167,11 +167,17 @@ export const getPnlReportUrl = (date?: string, strategy?: string) => {
 // ═══════════════════════════════════════════════════════════════════════
 // Risk Management Report
 // ═══════════════════════════════════════════════════════════════════════
-export const getRiskReportList = () =>
-  fetchApi<{ date: string; timestamp: string; filename: string }[]>('/api/risk-report');
-export const getRiskReportUrl = (ts?: string) => {
+// ssrs/aiss serve portfolio_ledger risk_report_YYYYMMDD.pdf via ?strategy=
+// (added 2026-07-02; pairs source/behavior unchanged when strategy omitted).
+export const getRiskReportList = (strategy?: string) =>
+  fetchApi<{ date: string; timestamp: string; filename: string }[]>(
+    `/api/risk-report${QLIB(strategy) ? `?strategy=${strategy}` : ''}`);
+export const getRiskReportUrl = (ts?: string, strategy?: string) => {
   const p = ts ? `/api/risk-report/${ts}` : '/api/risk-report/latest';
-  const keyParam = API_KEY ? `?key=${API_KEY}` : '';
+  const params: string[] = [];
+  if (QLIB(strategy)) params.push(`strategy=${strategy}`);
+  if (API_KEY) params.push(`key=${API_KEY}`);
+  const keyParam = params.length ? `?${params.join('&')}` : '';
   return `${API_BASE}${p}${keyParam}`;
 };
 
