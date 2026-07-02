@@ -1017,7 +1017,10 @@ function VenuesApi() {
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
   const g = data?.gates ?? {}, b = data?.venue_balances ?? {}, ab = data?.api_budget ?? {};
   const cal = data?.calibration_gate ?? {};
-  const blocked: string[] = data?.blocked_summary ?? [];
+  // Dedupe: blocked_summary always ends with the static "Every order hard-capped at $X notional."
+  // guardrail line — the Order-cap row above already shows exactly that, so drop it here. (Kept
+  // in the backend JSON: the PDF risk report and tests still consume the full list.)
+  const blocked: string[] = (data?.blocked_summary ?? []).filter((x: string) => !/hard-capped/i.test(x));
   const overBudget = (ab.pct ?? 0) > 0.8;
   // Gates & risk controls + API budget — label/value rows folded into the one table below.
   const controls: [string, ReactNode][] = [
