@@ -216,7 +216,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
             <div className="text-sm font-medium mb-4 text-[var(--text-primary)]">{activeSheet.replace(/_/g, ' ')}</div>
             <div className="flex-1 min-h-[300px]">
               <SizedChart className="h-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 200 }}>
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
                   <XAxis dataKey="_date" stroke="var(--text-muted)" fontSize={10} tickMargin={8} minTickGap={30} />

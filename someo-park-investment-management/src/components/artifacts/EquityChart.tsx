@@ -94,7 +94,7 @@ export default function EquityChart({ params }: { params?: any }) {
 
       <div className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-4 min-h-[300px]">
         <SizedChart className="h-full">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 200 }}>
           <LineChart data={enrichedData} margin={{ top: 5, right: 50, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
             <XAxis dataKey="Date" stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} minTickGap={40} />

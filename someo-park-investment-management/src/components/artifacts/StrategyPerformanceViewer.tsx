@@ -398,7 +398,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
           {t('strategyPerf.equityCurveTitle')}
         </div>
         <SizedChart height={280}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 200 }}>
             <LineChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
               <XAxis dataKey="label" fontSize={9} stroke="#999" tickLine={false} axisLine={false} minTickGap={50} />
@@ -447,7 +447,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
           {t('strategyPerf.drawdownTitle')}
         </div>
         <SizedChart height={180}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 200 }}>
             <AreaChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
               <XAxis dataKey="label" fontSize={9} stroke="#999" tickLine={false} axisLine={false} minTickGap={50} />
@@ -488,7 +488,7 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
           {t('strategyPerf.dailyPnLTitle')}
         </div>
         <SizedChart height={160}>
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 300, height: 200 }}>
             <AreaChart data={windowData} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
               <XAxis dataKey="label" fontSize={9} stroke="#999" tickLine={false} axisLine={false} minTickGap={50} />
