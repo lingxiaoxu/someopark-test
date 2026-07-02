@@ -1,13 +1,7 @@
-{"date": "2026-05-01", "ticker": "XLE", "side": "SELL", "shares": 119, "price": 58.4288, "gross": 6953.02, "avg_cost_at_trade": 56.87, "realized_pnl": 185.49, "dedup_key": "2026-05-01-XLE-SELL"}
-{"date": "2026-05-01", "ticker": "XLU", "side": "SELL", "shares": 5940, "price": 46.2542, "gross": 274750.01, "avg_cost_at_trade": 46.18, "realized_pnl": 440.81, "dedup_key": "2026-05-01-XLU-SELL"}
-{"date": "2026-05-01", "ticker": "XLB", "side": "BUY", "shares": 122, "price": 51.1585, "gross": -6241.33, "dedup_key": "2026-05-01-XLB-BUY"}
-{"date": "2026-05-01", "ticker": "XLI", "side": "BUY", "shares": 7, "price": 172.5354, "gross": -1207.75, "dedup_key": "2026-05-01-XLI-BUY"}
-{"date": "2026-05-01", "ticker": "XLV", "side": "BUY", "shares": 1795, "price": 144.5224, "gross": -259417.66, "dedup_key": "2026-05-01-XLV-BUY"}
-{"date": "2026-05-01", "ticker": "", "side": "FEE", "gross": -216.73, "dedup_key": "2026-05-01-FEE"}
-{"date": "2026-06-01", "ticker": "XLB", "side": "SELL", "shares": 1001, "price": 50.7301, "gross": 50780.81, "avg_cost_at_trade": 51.900887, "realized_pnl": -1171.98, "dedup_key": "2026-06-01-XLB-SELL"}
+{"date": "2026-06-01", "ticker": "XLB", "side": "SELL", "shares": 1001, "price": 50.7301, "gross": 50780.81, "avg_cost_at_trade": 51.92, "realized_pnl": -1191.11, "dedup_key": "2026-06-01-XLB-SELL"}
 {"date": "2026-06-01", "ticker": "XLE", "side": "SELL", "shares": 615, "price": 56.8899, "gross": 34987.26, "avg_cost_at_trade": 56.87, "realized_pnl": 12.21, "dedup_key": "2026-06-01-XLE-SELL"}
-{"date": "2026-06-01", "ticker": "XLI", "side": "SELL", "shares": 309, "price": 171.9768, "gross": 53140.83, "avg_cost_at_trade": 172.470303, "realized_pnl": -152.49, "dedup_key": "2026-06-01-XLI-SELL"}
-{"date": "2026-06-01", "ticker": "XLV", "side": "SELL", "shares": 1795, "price": 147.1906, "gross": 264207.13, "avg_cost_at_trade": 144.522373, "realized_pnl": 4789.47, "dedup_key": "2026-06-01-XLV-SELL"}
+{"date": "2026-06-01", "ticker": "XLI", "side": "SELL", "shares": 309, "price": 171.9768, "gross": 53140.83, "avg_cost_at_trade": 172.47, "realized_pnl": -152.4, "dedup_key": "2026-06-01-XLI-SELL"}
+{"date": "2026-06-01", "ticker": "XLV", "side": "SELL", "shares": 1795, "price": 147.1906, "gross": 264207.13, "avg_cost_at_trade": 145.99, "realized_pnl": 2155.08, "dedup_key": "2026-06-01-XLV-SELL"}
 {"date": "2026-06-01", "ticker": "XLRE", "side": "BUY", "shares": 5211, "price": 42.894, "gross": -223520.53, "dedup_key": "2026-06-01-XLRE-BUY"}
 {"date": "2026-06-01", "ticker": "XLY", "side": "BUY", "shares": 1559, "price": 117.9547, "gross": -183891.42, "dedup_key": "2026-06-01-XLY-BUY"}
 {"date": "2026-06-01", "ticker": "", "side": "FEE", "gross": -424.66, "dedup_key": "2026-06-01-FEE"}
@@ -16,9 +10,9 @@
 {"date": "2026-06-22", "ticker": "XLI", "side": "DIV", "shares": 1200, "price": 0.444094, "gross": 532.91, "dedup_key": "2026-06-22-XLI-DIV"}
 {"date": "2026-06-22", "ticker": "XLRE", "side": "DIV", "shares": 5211, "price": 0.381148, "gross": 1986.16, "dedup_key": "2026-06-22-XLRE-DIV"}
 {"date": "2026-06-22", "ticker": "XLY", "side": "DIV", "shares": 1559, "price": 0.23322, "gross": 363.59, "dedup_key": "2026-06-22-XLY-DIV"}
-{"date": "2026-07-01", "ticker": "XLB", "side": "SELL", "shares": 356, "price": 51.02, "gross": 18163.12, "avg_cost_at_trade": 51.900887, "realized_pnl": -313.6, "dedup_key": "2026-07-01-XLB-SELL"}
+{"date": "2026-07-01", "ticker": "XLB", "side": "SELL", "shares": 356, "price": 51.02, "gross": 18163.12, "avg_cost_at_trade": 51.92, "realized_pnl": -320.4, "dedup_key": "2026-07-01-XLB-SELL"}
 {"date": "2026-07-01", "ticker": "XLE", "side": "SELL", "shares": 3142, "price": 52.81, "gross": 165929.02, "avg_cost_at_trade": 56.87, "realized_pnl": -12756.52, "dedup_key": "2026-07-01-XLE-SELL"}
-{"date": "2026-07-01", "ticker": "XLI", "side": "SELL", "shares": 174, "price": 183.36, "gross": 31904.64, "avg_cost_at_trade": 172.470303, "realized_pnl": 1894.81, "dedup_key": "2026-07-01-XLI-SELL"}
+{"date": "2026-07-01", "ticker": "XLI", "side": "SELL", "shares": 174, "price": 183.36, "gross": 31904.64, "avg_cost_at_trade": 172.47, "realized_pnl": 1894.86, "dedup_key": "2026-07-01-XLI-SELL"}
 {"date": "2026-07-01", "ticker": "XLRE", "side": "SELL", "shares": 513, "price": 44.18, "gross": 22664.34, "avg_cost_at_trade": 42.893979, "realized_pnl": 659.73, "dedup_key": "2026-07-01-XLRE-SELL"}
 {"date": "2026-07-01", "ticker": "XLY", "side": "SELL", "shares": 1559, "price": 118.09, "gross": 184102.31, "avg_cost_at_trade": 117.95473, "realized_pnl": 210.89, "dedup_key": "2026-07-01-XLY-SELL"}
 {"date": "2026-07-01", "ticker": "XLK", "side": "BUY", "shares": 988, "price": 185.62, "gross": -183392.56, "dedup_key": "2026-07-01-XLK-BUY"}

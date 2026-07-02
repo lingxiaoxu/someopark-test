@@ -2,16 +2,16 @@
   "as_of": "2026-07-01",
   "base_currency": "USD",
   "initial_cash": 1000000.0,
-  "cash": 12097.52,
+  "cash": 8961.11,
   "positions": {
     "XLB": {
       "shares": 3504,
-      "avg_cost": 51.900887,
+      "avg_cost": 51.92,
       "entry_date": "2026-04-27"
     },
     "XLI": {
       "shares": 1026,
-      "avg_cost": 172.470303,
+      "avg_cost": 172.47,
       "entry_date": "2026-04-27"
     },
     "XLRE": {
@@ -30,11 +30,11 @@
       "entry_date": "2026-07-01"
     }
   },
-  "cumulative_realized": -6201.18,
+  "cumulative_realized": -9487.66,
   "cumulative_dividends": 4837.86,
-  "cumulative_fees": 952.8,
-  "equity": 1011811.8,
+  "cumulative_fees": 736.07,
+  "equity": 1008675.39,
   "liabilities": {},
-  "unrealized": 14127.93,
+  "unrealized": 14061.27,
   "position_value": 999714.28
 }

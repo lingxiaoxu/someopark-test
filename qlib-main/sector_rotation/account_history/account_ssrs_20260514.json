@@ -2,7 +2,7 @@
   "as_of": "2026-05-14",
   "base_currency": "USD",
   "initial_cash": 1000000.0,
-  "cash": 14783.42,
+  "cash": 11647.01,
   "positions": {
     "XLE": {
       "shares": 3757,
@@ -11,25 +11,25 @@
     },
     "XLB": {
       "shares": 4861,
-      "avg_cost": 51.900887,
+      "avg_cost": 51.92,
       "entry_date": "2026-04-27"
     },
     "XLI": {
       "shares": 1509,
-      "avg_cost": 172.470303,
+      "avg_cost": 172.47,
       "entry_date": "2026-04-27"
     },
     "XLV": {
       "shares": 1795,
-      "avg_cost": 144.522373,
+      "avg_cost": 145.99,
       "entry_date": "2026-05-01"
     }
   },
-  "cumulative_realized": 626.3,
+  "cumulative_realized": 0.0,
   "cumulative_dividends": 0.0,
-  "cumulative_fees": 216.73,
-  "equity": 1006355.73,
+  "cumulative_fees": 0.0,
+  "equity": 1003219.32,
   "liabilities": {},
-  "unrealized": 5946.16,
+  "unrealized": 3219.32,
   "position_value": 991572.31
 }

@@ -42,10 +42,11 @@ STRATEGIES = {
         "snap_glob": "inventory_history/inventory_sector_rotation_*.json",
         "holdings_key": "holdings",
         "store_dir": os.path.join(PRICE_DATA, "sector_etfs", "polygon"),
-        # 策略首个 daily 产出日（首快照 as_of=4/27，5/1 调仓必须入账）。
+        # 账本起点（用户指定 2026-05-01 = 首次月度调仓日；4/27 为初始建仓/
+        # 孵化期不计入）。5/1 快照（调仓后持仓@成本）作 opening balance。
         # 注意 ≠ UpdateMasterPerformance.SR_LIVE_START(5/8)——那是 master 曲线的
         # 回测拼接点，不是账本起点。
-        "live_start": "2026-04-27",
+        "live_start": "2026-05-01",
         "report_glob": "trading_signals/sr_daily_report_*.json",
         "benchmarks": ["SPY"],
     },
