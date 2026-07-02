@@ -673,6 +673,22 @@ def run_daily_signal(
     # ── 1. Load config ────────────────────────────────────────────
     cfg = load_config(config_path or CONFIG_PATH)
 
+    # ── 1a. 复利 sizing（ledger Phase 4）：capital = 账本真实 equity ────────
+    # 利润按策略隔离复投（SSRS 赚的归 SSRS）。无账本/异常 → 回退名义 capital
+    # 并响亮告警（宁名义勿假值）。equity 为上一交易日收盘 mark。
+    try:
+        from portfolio_ledger.ledger import Account as _LedgerAccount
+        _acct = _LedgerAccount.load("ssrs")
+        if _acct and _acct.data.get("equity"):
+            log.info(f"[LEDGER] compounding sizing: capital ${capital:,.0f} → "
+                     f"account equity ${_acct.data['equity']:,.2f} "
+                     f"(as_of {_acct.data['as_of']})")
+            capital = float(_acct.data["equity"])
+        else:
+            log.warning("[LEDGER] account 无 equity — sizing 保持名义 capital")
+    except Exception as _ledger_cap_e:
+        log.warning(f"[LEDGER] compounding sizing 不可用（{_ledger_cap_e}）— 名义 capital")
+
     # ── 1b. Smart param select (P2) or static fallback ──────────
     _sel_path = CONFIG_PATH.parent / "selected_param_set.json"
     _smart_result = None  # will be set if smart_select succeeds

@@ -3,7 +3,7 @@
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
   "selected_at": "2026-07-01",
-  "last_updated": "2026-07-01",
+  "last_updated": "2026-07-02",
   "mcps_oos_filtered": 1.2799,
   "recent_sharpe_12m": 1.2441,
   "full_period_sharpe": 1.1382,
@@ -12,62 +12,62 @@
     {
       "name": "dovish_macro",
       "version": "v1",
-      "composite": 0.7982,
-      "mcps_score": 0.9182
+      "composite": 0.7967,
+      "mcps_score": 0.9188
     },
     {
       "name": "equal_weight_optimizer",
       "version": "v1",
-      "composite": 0.6881,
-      "mcps_score": 0.94
+      "composite": 0.6869,
+      "mcps_score": 0.9407
     },
     {
       "name": "skip_heavy",
       "version": "v1",
-      "composite": 0.4924,
-      "mcps_score": 0.9348
+      "composite": 0.4939,
+      "mcps_score": 0.9357
     },
     {
       "name": "value_proxy",
       "version": "v1",
-      "composite": 0.4924,
-      "mcps_score": 0.9348
+      "composite": 0.4939,
+      "mcps_score": 0.9357
     },
     {
       "name": "early_recovery",
       "version": "v1",
-      "composite": -0.0114,
-      "mcps_score": 0.8925
+      "composite": -0.0131,
+      "mcps_score": 0.893
     },
     {
       "name": "low_turnover",
       "version": "v1",
-      "composite": -0.3291,
-      "mcps_score": 0.8705
+      "composite": -0.3261,
+      "mcps_score": 0.8713
     },
     {
       "name": "diversified_5_rp",
       "version": "v1",
-      "composite": -0.4858,
-      "mcps_score": 0.8781
+      "composite": -0.4856,
+      "mcps_score": 0.8787
     },
     {
       "name": "rate_hike_cycle",
       "version": "v1",
-      "composite": -0.5218,
-      "mcps_score": 0.8902
+      "composite": -0.5221,
+      "mcps_score": 0.8908
     },
     {
       "name": "stagflation",
       "version": "v1",
-      "composite": -0.5341,
-      "mcps_score": 0.8667
+      "composite": -0.5347,
+      "mcps_score": 0.8672
     },
     {
       "name": "risk_parity_lw",
       "version": "v1",
-      "composite": -0.5889,
-      "mcps_score": 0.8764
+      "composite": -0.59,
+      "mcps_score": 0.8769
     }
   ],
   "n_candidates": 53,
@@ -79,10 +79,10 @@
   "macro_data_days": 2007,
   "switch_history": [],
   "health": {
-    "days_since_switch": 1,
+    "days_since_switch": 3,
     "current_rank": 0,
     "anomaly_detected": false,
-    "_consecutive_best_days": 1,
+    "_consecutive_best_days": 3,
     "_prev_best_param": "dovish_macro"
   },
   "mcps_score": null,

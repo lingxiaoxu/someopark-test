@@ -3,7 +3,7 @@
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
   "selected_at": "2026-07-01",
-  "last_updated": "2026-07-01",
+  "last_updated": "2026-07-02",
   "mcps_oos_filtered": 1.8608,
   "recent_sharpe_12m": 3.4882,
   "full_period_sharpe": 2.0813,
@@ -12,62 +12,62 @@
     {
       "name": "pure_momentum",
       "version": "v1",
-      "composite": 0.9738,
-      "mcps_score": 1.5506
+      "composite": 0.9742,
+      "mcps_score": 1.5512
     },
     {
       "name": "max_aggression",
       "version": "v1",
-      "composite": 0.8725,
-      "mcps_score": 1.5742
+      "composite": 0.8711,
+      "mcps_score": 1.5746
     },
     {
       "name": "external_off",
       "version": "v1",
-      "composite": 0.7449,
-      "mcps_score": 1.5576
+      "composite": 0.7454,
+      "mcps_score": 1.5582
     },
     {
       "name": "derisk_loose",
       "version": "v1",
-      "composite": -0.1044,
-      "mcps_score": 1.5081
+      "composite": -0.1045,
+      "mcps_score": 1.5087
     },
     {
       "name": "opt_equal_weight",
       "version": "v1",
-      "composite": -0.128,
-      "mcps_score": 1.4933
+      "composite": -0.1272,
+      "mcps_score": 1.494
     },
     {
       "name": "no_vol_scaling",
       "version": "v1",
-      "composite": -0.2165,
-      "mcps_score": 1.5377
+      "composite": -0.2152,
+      "mcps_score": 1.5384
     },
     {
       "name": "vol_target_40",
       "version": "v1",
-      "composite": -0.2289,
-      "mcps_score": 1.5011
+      "composite": -0.2291,
+      "mcps_score": 1.5017
     },
     {
       "name": "no_vix_derisk",
       "version": "v1",
-      "composite": -0.2925,
-      "mcps_score": 1.4905
+      "composite": -0.2928,
+      "mcps_score": 1.4911
     },
     {
       "name": "opt_risk_parity",
       "version": "v1",
-      "composite": -0.4171,
-      "mcps_score": 1.4795
+      "composite": -0.4175,
+      "mcps_score": 1.4801
     },
     {
       "name": "default",
       "version": "v1",
-      "composite": -1.2039,
-      "mcps_score": 1.4797
+      "composite": -1.2043,
+      "mcps_score": 1.4803
     }
   ],
   "n_candidates": 33,
@@ -79,14 +79,14 @@
   "macro_data_days": 1882,
   "switch_history": [],
   "health": {
-    "days_since_switch": 1,
+    "days_since_switch": 2,
     "current_rank": 1,
     "anomaly_detected": false,
-    "_consecutive_best_days": 1,
+    "_consecutive_best_days": 2,
     "_prev_best_param": "pure_momentum"
   },
-  "mcps_score": 1.5506,
-  "composite_score": 0.9738,
+  "mcps_score": 1.5512,
+  "composite_score": 0.9742,
   "version_selector": {
     "recommended": "v1",
     "v1_confidence": 0.775

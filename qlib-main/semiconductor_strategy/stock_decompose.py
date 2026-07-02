@@ -162,12 +162,17 @@ def decompose_to_stocks(
 def build_stock_trades(
     by_ticker: Dict[str, dict],
     prev_stock_holdings: Optional[Dict[str, dict]],
+    prices_today: Optional[dict] = None,
 ) -> List[dict]:
     """Per-ticker delta orders between target shares and previously-held shares.
 
     ``prev_stock_holdings`` is the inventory ``stock_holdings`` dict from the last
     run: {ticker: {shares, last_price, ...}}.  Returns one trade per ticker whose
     share count changes (BUY / SELL with dollar value).
+
+    ``prices_today``: 当日价格（Series/dict）。全清仓的 ticker 不在 by_ticker 里，
+    没有它会回落到 prev.last_price（前日价）——2026-07-01 ALAB SELL 记录因此
+    偏差 12%（真实 430.86 vs 记录 483.02）。价格链：by_ticker → 当日价 → 前日价。
     """
     prev = prev_stock_holdings or {}
     trades: List[dict] = []
@@ -177,7 +182,14 @@ def build_stock_trades(
         delta = tgt - cur
         if delta == 0:
             continue
+        _px_today = 0.0
+        if prices_today is not None:
+            try:
+                _px_today = float(prices_today.get(tk, 0.0) or 0.0)
+            except (TypeError, ValueError):
+                _px_today = 0.0
         price = float(by_ticker.get(tk, {}).get("price", 0.0)) \
+            or _px_today \
             or float(prev.get(tk, {}).get("last_price", 0.0))
         trades.append({
             "ticker":         tk,

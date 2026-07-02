@@ -225,8 +225,16 @@ def _load_live_equity_from_inventory(
 
 def load_sr_equity_live(backtest_normalized: pd.Series,
                         trading_days: pd.DatetimeIndex) -> pd.Series:
-    """Load SR equity from live inventory snapshots + real ETF prices (Polygon,
-    same source as AISS, yfinance fallback) so SR and AISS live are identical."""
+    """SR live equity：优先 portfolio_ledger 账户（Phase 5，账本自 4/27 起、
+    此处从 SR_LIVE_START 拼接段取收益率）；无账本时回退旧 inventory-MTM 合成。"""
+    acct = _load_account_equity('ssrs')
+    if len(acct):
+        s = _chain_account_live(acct, SR_LIVE_START, backtest_normalized, 'sr')
+        if len(s):
+            print(f'  sr: live via LEDGER account equity ({len(s)} days, '
+                  f'book ${acct.iloc[-1]:,.0f})')
+            return s
+    print('  ⚠️  sr: NO LEDGER ACCOUNT — falling back to inventory-MTM chaining')
     return _load_live_equity_from_inventory(
         inv_dir=SR_INVENTORY_DIR,
         inv_prefix='inventory_sector_rotation',
@@ -279,13 +287,54 @@ def _polygon_fallback_alert(label, reason):
     print('  ' + msg)
 
 
+def _load_account_equity(strategy: str) -> pd.Series:
+    """portfolio_ledger 账户每日 equity 序列（真实 cash/分红/费用全含）。"""
+    dirs = {'aiss': 'semiconductor_strategy', 'ssrs': 'sector_rotation'}
+    hd = os.path.join(BASE_DIR, 'qlib-main', dirs[strategy], 'account_history')
+    out = {}
+    for fp in sorted(glob.glob(os.path.join(hd, f'account_{strategy}_*.json'))):
+        try:
+            with open(fp) as f:
+                d = json.load(f)
+            if d.get('equity') is not None:
+                out[pd.Timestamp(d['as_of'])] = float(d['equity'])
+        except Exception:
+            continue
+    return pd.Series(out).sort_index()
+
+
+def _chain_account_live(account_eq: pd.Series, live_start: str,
+                        backtest_normalized: pd.Series, label: str) -> pd.Series:
+    """账本 equity 日收益率链到回测拼接点（ledger Phase 5）。
+    与旧的 inventory-MTM 合成相比：收益率来自真实账本（含分红/费用/复利），
+    无需价格加载、无 flow 问题。live_start 前若有账本值，首日即有真实收益。"""
+    live = account_eq[account_eq.index >= pd.Timestamp(live_start)]
+    if live.empty:
+        return pd.Series(dtype=float)
+    prev_vals = account_eq[account_eq.index < pd.Timestamp(live_start)]
+    prev = float(prev_vals.iloc[-1]) if len(prev_vals) else None
+    cur = float(backtest_normalized.iloc[-1])
+    results = {}
+    for ts, v in live.items():
+        if prev is not None and prev > 0:
+            cur = cur * (float(v) / prev)
+        results[str(ts.date())] = round(cur, 2)
+        prev = float(v)
+    return pd.Series(results, name=label)
+
+
 def load_aiss_equity_live(backtest_normalized: pd.Series,
                           trading_days: pd.DatetimeIndex) -> pd.Series:
-    """Load AISS equity from live inventory snapshots + real stock prices.
-    AISS inventory uses 'stock_holdings' (individual stocks, 80/15/5 decomposed
-    and cross-subsector aggregated by ticker). Prices come from the Polygon store
-    (aiss_fetch_prices), with yfinance as fallback.
-    """
+    """AISS live equity：优先 portfolio_ledger 账户（Phase 5）；无账本时回退
+    旧的 inventory-MTM 合成（响亮告警）。"""
+    acct = _load_account_equity('aiss')
+    if len(acct):
+        s = _chain_account_live(acct, AISS_LIVE_START, backtest_normalized, 'aiss')
+        if len(s):
+            print(f'  aiss: live via LEDGER account equity ({len(s)} days, '
+                  f'book ${acct.iloc[-1]:,.0f})')
+            return s
+    print('  ⚠️  aiss: NO LEDGER ACCOUNT — falling back to inventory-MTM chaining')
     return _load_live_equity_from_inventory(
         inv_dir=AISS_INVENTORY_DIR,
         inv_prefix='inventory_aiss',

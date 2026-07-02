@@ -782,6 +782,22 @@ def run_daily_signal(
         cfg.setdefault("signals", {})["signal_version"] = force_signal_version
         log.info(f"[VERSION] Forced signal_version={force_signal_version} (overrides smart_select)")
 
+    # ── 1a. 复利 sizing（ledger Phase 4）：capital = 账本真实 equity ────────
+    # 利润按策略隔离复投（AISS 赚的归 AISS）。无账本/异常 → 回退名义 capital
+    # 并响亮告警（宁名义勿假值）。equity 为上一交易日收盘 mark。
+    try:
+        from portfolio_ledger.ledger import Account as _LedgerAccount
+        _acct = _LedgerAccount.load("aiss")
+        if _acct and _acct.data.get("equity"):
+            log.info(f"[LEDGER] compounding sizing: capital ${capital:,.0f} → "
+                     f"account equity ${_acct.data['equity']:,.2f} "
+                     f"(as_of {_acct.data['as_of']})")
+            capital = float(_acct.data["equity"])
+        else:
+            log.warning("[LEDGER] account 无 equity — sizing 保持名义 capital")
+    except Exception as _ledger_cap_e:
+        log.warning(f"[LEDGER] compounding sizing 不可用（{_ledger_cap_e}）— 名义 capital")
+
     # ── 1b. Smart param select (P2) or static fallback ──────────
     _sel_path = CONFIG_PATH.parent / "selected_param_set.json"
     _smart_result = None  # will be set if smart_select succeeds
@@ -1284,7 +1300,8 @@ def run_daily_signal(
         min_history_months=int(cfg.get("universe", {}).get("min_history_months", 24)),
         unavailable=_unavailable,
     )
-    stock_trades = build_stock_trades(stock_decomp["by_ticker"], prev_stock_holdings) if will_rebalance else []
+    stock_trades = build_stock_trades(stock_decomp["by_ticker"], prev_stock_holdings,
+                                      prices_today=stock_prices_today) if will_rebalance else []
     log.info(
         f"Stock layer: {len(stock_decomp['by_ticker'])} stocks across "
         f"{len(_held_subsector_w)} subsectors; {len(stock_trades)} stock trades"
@@ -1382,7 +1399,11 @@ def run_daily_signal(
         _act = actions.get(_sub, ACTION_HOLD) if _sub else ACTION_HOLD
         _prev = prev_stock_holdings.get(_tk, {})
         _px = float(_h.get("last_price", 0.0) or 0.0)
-        if will_rebalance and _act == ACTION_ENTER:
+        if will_rebalance and _act == ACTION_ENTER \
+                and not (_prev.get("shares") and _prev.get("cost_basis") is not None):
+            # 真正的新建仓才重置成本。股票昨天已持有、只是换了子板块归属
+            # （ARM 6/30 ai_gpu → 7/1 logic_cpu）时走下一分支继承成本/入场日/
+            # 天数——仓位级历史不因子板块换血而断裂。
             _h["cost_basis"] = round(_px, 4)
             _h["entry_date"] = _today_str
             _h["days_held"]  = 1
