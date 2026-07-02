@@ -1027,7 +1027,16 @@ function VenuesApi() {
     [tr('prediction.lblApiBudget'), <span style={{ color: overBudget ? 'var(--error)' : undefined }}>
       {ab.used ?? '—'}/{ab.cap ?? '—'} ({pct(ab.pct, 0)}) · {tr('prediction.lblRemaining')} {ab.cap != null && ab.used != null ? (ab.cap - ab.used) : '—'}
     </span>],
-    ...(ab.month_used != null ? [[tr('prediction.lblMonthBackstop'), `${ab.month_used}/${ab.month_cap}`] as [string, ReactNode]] : []),
+    // Month backstop keeps the little utilisation bar (inline, inside this row).
+    ...(ab.month_used != null ? [(() => {
+      const mfrac = Math.min(1, (ab.month_used ?? 0) / (ab.month_cap ?? 1));
+      return [tr('prediction.lblMonthBackstop'), <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        {ab.month_used}/{ab.month_cap}
+        <span style={{ display: 'inline-block', width: 110, height: 8, background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }}>
+          <span style={{ display: 'block', width: `${mfrac * 100}%`, height: '100%', background: mfrac > 0.8 ? 'var(--error)' : 'var(--success)' }} />
+        </span>
+      </span>] as [string, ReactNode];
+    })()] : []),
   ];
   return (
     <div>
