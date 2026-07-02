@@ -126,6 +126,11 @@ inventory_sector_rotation.json                        ← 当前持仓（月首�
 inventory_history/inventory_sector_rotation_<ts>.json ← 每次变更的快照
 selected_param_set.json                               ← 每日更新（smart_select 动态状态）
 logs/sr_daily_YYYYMMDD.log                            ← 完整运行日志
+account_ssrs.json                                     ← portfolio_ledger 账户（真实 cash/持仓/equity）
+account_history/account_ssrs_YYYYMMDD.json            ← 每日账户快照
+trade_ledger_ssrs.jsonl                               ← append-only 台账（realized 定格于成交日）
+trading_signals/pnl_reports/pnl_report_YYYYMMDD.pdf   ← 每日 PnL 报告（daily signal 后自动）
+trading_signals/risk_management/risk_report_YYYYMMDD.{json,txt,pdf} + risk_workbook_YYYYMMDD.xlsx
 ```
 
 **日报 JSON 新增 `smart_select` 字段**（P2/P3/P5 诊断信息）：

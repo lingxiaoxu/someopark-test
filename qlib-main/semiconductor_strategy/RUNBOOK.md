@@ -94,6 +94,11 @@ trading_signals/aiss_daily_report_<date>_<ts>.{json,txt}   (subsector layer + st
 inventory_aiss.json                 (+ inventory_history/ snapshots; records param_set/signal_version + stock_holdings)
 selected_param_set.json             (updated by select / daily_backtest; restored to V1)
 logs/aiss_<mode>_<YYYYMMDD_HHMMSS>.log   (timestamped — find latest with ls -t)
+account_aiss.json                   (portfolio_ledger 账户：真实 cash/持仓/equity，恒等式校验)
+account_history/account_aiss_YYYYMMDD.json      (每日账户快照)
+trade_ledger_aiss.jsonl             (append-only 交易/分红/费用台账，realized 定格于成交日)
+trading_signals/pnl_reports/pnl_report_YYYYMMDD.pdf        (每日 PnL 报告，daily signal 后自动生成)
+trading_signals/risk_management/risk_report_YYYYMMDD.{json,txt,pdf} + risk_workbook_YYYYMMDD.xlsx
 ```
 
 **Two-layer signal (one level deeper than SSRS):** SSRS trades 11 ETFs, so its
