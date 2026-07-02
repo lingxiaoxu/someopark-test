@@ -5,12 +5,24 @@ import { getBackendPath } from '../config.js';
 
 const router = Router();
 
-const PNL_DIR = 'trading_signals/pnl_reports';
+// Per-strategy PnL report dirs. All use the same pnl_report_YYYYMMDD.pdf naming.
+// ssrs/aiss switched to portfolio_ledger reports on 2026-07-02.
+// Legacy sources (switch back by pointing these entries at the old dirs /
+// reverting api.ts to the /api/{strategy}/tearsheet endpoints):
+//   ssrs: qlib tearsheets  qlib-main/sector_rotation/report/output/tearsheet_*.pdf
+//   aiss: qlib tearsheets  qlib-main/semiconductor_strategy/report/output/tearsheet_*.pdf
+const PNL_DIRS: Record<string, string> = {
+  mrpt: 'trading_signals/pnl_reports',                                   // MRPT/MTFS pairs
+  ssrs: 'qlib-main/sector_rotation/trading_signals/pnl_reports',        // portfolio_ledger
+  aiss: 'qlib-main/semiconductor_strategy/trading_signals/pnl_reports', // portfolio_ledger
+};
+const pnlDir = (strategy?: any): string =>
+  PNL_DIRS[typeof strategy === 'string' ? strategy : 'mrpt'] || PNL_DIRS.mrpt;
 
 // GET /api/pnl-report/latest — returns the latest PnL report PDF (by date in filename)
-router.get('/latest', (_req, res) => {
+router.get('/latest', (req, res) => {
   try {
-    const dir = getBackendPath(PNL_DIR);
+    const dir = getBackendPath(pnlDir(req.query.strategy));
     if (!fs.existsSync(dir)) {
       return res.status(404).json({ error: 'PnL reports directory not found' });
     }
@@ -40,7 +52,7 @@ router.get('/:date', (req, res) => {
   try {
     const { date } = req.params;
     const filename = `pnl_report_${date}.pdf`;
-    const filePath = getBackendPath(path.join(PNL_DIR, filename));
+    const filePath = getBackendPath(path.join(pnlDir(req.query.strategy), filename));
 
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: `PnL report for ${date} not found` });
@@ -56,9 +68,9 @@ router.get('/:date', (req, res) => {
 });
 
 // GET /api/pnl-report/list — returns available report dates
-router.get('/', (_req, res) => {
+router.get('/', (req, res) => {
   try {
-    const dir = getBackendPath(PNL_DIR);
+    const dir = getBackendPath(pnlDir(req.query.strategy));
     if (!fs.existsSync(dir)) {
       return res.json([]);
     }

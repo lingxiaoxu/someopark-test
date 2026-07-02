@@ -1,13 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download } from 'lucide-react';
-import { getPnlReportList, getPnlReportUrl, API_BASE, apiHeaders } from '../../lib/api';
+import { getPnlReportList, getPnlReportUrl } from '../../lib/api';
 import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 
-// 'mrpt' = MRPT/MTFS PnL PDFs; 'ssrs'/'aiss' = qlib tearsheet PDFs (selected by filename)
+// All three tabs serve pnl_report_YYYYMMDD.pdf with identical UX:
+//   mrpt = MRPT/MTFS pairs (trading_signals/pnl_reports)
+//   ssrs/aiss = portfolio_ledger reports (qlib-main/{dir}/trading_signals/pnl_reports)
+//
+// ── Legacy (switch back if needed) ──────────────────────────────────────────
+// ssrs/aiss previously served qlib tearsheet PDFs selected by filename:
+//   list: `${API_BASE}/api/${strategy}/tearsheet/list`
+//   file: `${API_BASE}/api/${strategy}/tearsheet/${filename}?key=...`
+//   const isQlib = (m: Mode) => m === 'ssrs' || m === 'aiss';
+//   const formatTearsheetLabel = (f: any) => {
+//     const match = f.filename?.match(/tearsheet_(.+)_(v[12])_(IS(?:-OOS)?)_(\d{8})_(\d{6})\.pdf/);
+//     if (match) return `${match[1]} [${match[2]} ${match[3]}] ${match[4].slice(0,4)}-${match[4].slice(4,6)}-${match[4].slice(6,8)}`;
+//     return f.filename || f.timestamp || '—';
+//   };
+// (server-side legacy dirs are documented in server/routes/pnlReport.ts)
 type Mode = 'mrpt' | 'ssrs' | 'aiss';
-const isQlib = (m: Mode) => m === 'ssrs' || m === 'aiss';
 
 export default function PnlReportViewer({ params }: { params?: any }) {
   const { t } = useTranslation();
@@ -22,11 +35,11 @@ export default function PnlReportViewer({ params }: { params?: any }) {
     setLoading(true);
     setError(null);
     setSelectedItem('');
-    getPnlReportList(isQlib(strategy) ? strategy : undefined)
+    getPnlReportList(strategy)
       .then(list => {
         setDates(list || []);
         if (list && list.length > 0) {
-          setSelectedItem(isQlib(strategy) ? list[0].filename : list[0].date);
+          setSelectedItem(list[0].date);
         }
         setLoading(false);
       })
@@ -38,22 +51,10 @@ export default function PnlReportViewer({ params }: { params?: any }) {
 
   const handleDownload = () => {
     if (!selectedItem) return;
-    const url = isQlib(strategy)
-      ? `${API_BASE}/api/${strategy}/tearsheet/${selectedItem}${apiHeaders()['x-api-key'] ? '?key=' + apiHeaders()['x-api-key'] : ''}`
-      : getPnlReportUrl(selectedItem);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = isQlib(strategy) ? selectedItem : `pnl_report_${selectedItem}.pdf`;
+    a.href = getPnlReportUrl(selectedItem, strategy);
+    a.download = `pnl_report_${selectedItem}.pdf`;
     a.click();
-  };
-
-  // tearsheet_<param>_<v1|v2>_<IS|IS-OOS>_<ts>.pdf → readable label
-  const formatTearsheetLabel = (f: any) => {
-    const match = f.filename?.match(/tearsheet_(.+)_(v[12])_(IS(?:-OOS)?)_(\d{8})_(\d{6})\.pdf/);
-    if (match) {
-      return `${match[1]} [${match[2]} ${match[3]}] ${match[4].slice(0,4)}-${match[4].slice(4,6)}-${match[4].slice(6,8)}`;
-    }
-    return f.filename || f.timestamp || '—';
   };
 
   const formatDateLabel = (d: string) => {
@@ -72,7 +73,7 @@ export default function PnlReportViewer({ params }: { params?: any }) {
   );
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={error} onRetry={() => { setError(null); setLoading(true); getPnlReportList(isQlib(strategy) ? strategy : undefined).then(l => { setDates(l || []); setLoading(false); }).catch(e => { setError(e.message); setLoading(false); }); }} />;
+  if (error) return <ErrorState message={error} onRetry={() => { setError(null); setLoading(true); getPnlReportList(strategy).then(l => { setDates(l || []); setLoading(false); }).catch(e => { setError(e.message); setLoading(false); }); }} />;
   if (dates.length === 0) return (
     <div className="flex flex-col h-full">
       <div className="flex justify-end mb-3 shrink-0"><Tabs /></div>
@@ -80,11 +81,7 @@ export default function PnlReportViewer({ params }: { params?: any }) {
     </div>
   );
 
-  const pdfUrl = selectedItem
-    ? (isQlib(strategy)
-      ? `${API_BASE}/api/${strategy}/tearsheet/${encodeURIComponent(selectedItem)}${apiHeaders()['x-api-key'] ? '?key=' + apiHeaders()['x-api-key'] : ''}`
-      : getPnlReportUrl(selectedItem))
-    : '';
+  const pdfUrl = selectedItem ? getPnlReportUrl(selectedItem, strategy) : '';
 
   return (
     <div className="flex flex-col h-full gap-3">
@@ -94,15 +91,9 @@ export default function PnlReportViewer({ params }: { params?: any }) {
           onChange={e => setSelectedItem(e.target.value)}
           className="text-xs font-mono bg-[var(--bg-primary)] border border-[var(--border-subtle)] px-2 py-1.5 text-[var(--text-primary)] max-w-[450px]"
         >
-          {isQlib(strategy) ? (
-            dates.map((f: any) => (
-              <option key={f.filename} value={f.filename}>{formatTearsheetLabel(f)}</option>
-            ))
-          ) : (
-            dates.map((d: any) => (
-              <option key={d.date} value={d.date}>{formatDateLabel(d.date)}</option>
-            ))
-          )}
+          {dates.map((d: any) => (
+            <option key={d.date} value={d.date}>{formatDateLabel(d.date)}</option>
+          ))}
         </select>
 
         <div className="flex items-center gap-2">
@@ -115,11 +106,11 @@ export default function PnlReportViewer({ params }: { params?: any }) {
 
       <div className="flex-1 border border-[var(--border-subtle)] rounded-xl overflow-hidden min-h-[400px]">
         <iframe
-          key={selectedItem}
+          key={`${strategy}-${selectedItem}`}
           src={pdfUrl}
           className="w-full h-full"
           style={{ border: 'none', minHeight: '100%' }}
-          title={isQlib(strategy) ? `${strategy.toUpperCase()} Tearsheet` : 'PnL Report'}
+          title={`${strategy.toUpperCase()} PnL Report`}
         />
       </div>
     </div>

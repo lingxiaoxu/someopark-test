@@ -147,18 +147,20 @@ export const getDiagnosticSheet = (sheet: string, strategy?: string) =>
 // ═══════════════════════════════════════════════════════════════════════
 // PnL Report / Tearsheet
 // ═══════════════════════════════════════════════════════════════════════
+// ssrs/aiss now serve portfolio_ledger pnl_report_YYYYMMDD.pdf via the unified
+// /api/pnl-report endpoints (?strategy=). Legacy qlib tearsheet endpoints kept
+// for switchback:
+//   list: /api/${strategy}/tearsheet/list
+//   file: /api/${strategy}/tearsheet/${filename}
 export const getPnlReportList = (strategy?: string) =>
-  QLIB(strategy)
-    ? fetchApi<any[]>(`/api/${strategy}/tearsheet/list`)
-    : fetchApi<{ date: string; filename: string }[]>('/api/pnl-report');
+  fetchApi<{ date: string; filename: string }[]>(
+    `/api/pnl-report${QLIB(strategy) ? `?strategy=${strategy}` : ''}`);
 export const getPnlReportUrl = (date?: string, strategy?: string) => {
-  if (QLIB(strategy)) {
-    const p = date ? `/api/${strategy}/tearsheet/${date}` : `/api/${strategy}/tearsheet/list`;
-    const keyParam = API_KEY ? `?key=${API_KEY}` : '';
-    return `${API_BASE}${p}${keyParam}`;
-  }
   const p = date ? `/api/pnl-report/${date}` : '/api/pnl-report/latest';
-  const keyParam = API_KEY ? `?key=${API_KEY}` : '';
+  const params: string[] = [];
+  if (QLIB(strategy)) params.push(`strategy=${strategy}`);
+  if (API_KEY) params.push(`key=${API_KEY}`);
+  const keyParam = params.length ? `?${params.join('&')}` : '';
   return `${API_BASE}${p}${keyParam}`;
 };
 
