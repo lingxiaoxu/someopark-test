@@ -74,9 +74,17 @@ const mean = (arr) => (arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length 
 const matchups = [];
 for (const [name, s] of Object.entries(dirSlug)) {
   const base = join(ASSETS, s);
-  const simDirs = readdirSync(base, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
+  const entries = readdirSync(base, { withFileTypes: true });
+  const simDirs = entries.filter((d) => d.isDirectory()).map((d) => d.name).sort();
   // Only index a dir that actually holds sim records (skips any stray non-matchup folder).
   if (!simDirs.some((sd) => existsSync(join(base, sd, 'stats.json')))) { rmSync(base, { recursive: true, force: true }); continue; }
+  // Only index a COMPLETED batch: the generator writes a `_summary_<N>games.txt` marker into the
+  // matchup dir when the whole batch finishes. A dir without it is still generating (e.g. 2/10
+  // sims done) — hide it from the frontend entirely; the next sync after completion picks it up.
+  if (!entries.some((e) => e.isFile() && /^_summary_.*games.*\.txt$/i.test(e.name))) {
+    console.log(`[mf-sync] ${name}: batch in progress (no _summary marker) — skipped from index`);
+    continue;
+  }
 
   let homeName = name.split('_vs_')[0], awayName = name.split('_vs_')[1];
   const sims = [];
