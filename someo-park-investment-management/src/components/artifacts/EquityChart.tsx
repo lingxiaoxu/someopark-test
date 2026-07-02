@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import SizedChart from './SizedChart';
 import { useApi } from '../../hooks/useApi';
 import { getOOSEquityCurve, getWFSummary } from '../../lib/api';
 import LoadingState from '../LoadingState';
@@ -92,6 +93,7 @@ export default function EquityChart({ params }: { params?: any }) {
       </div>
 
       <div className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-xl p-4 min-h-[300px]">
+        <SizedChart className="h-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={enrichedData} margin={{ top: 5, right: 50, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
@@ -121,6 +123,7 @@ export default function EquityChart({ params }: { params?: any }) {
             <Line yAxisId="right" type="monotone" dataKey="_returnPct" stroke="transparent" strokeWidth={0} dot={false} name="Return" />
           </LineChart>
         </ResponsiveContainer>
+        </SizedChart>
       </div>
     </div>
   );

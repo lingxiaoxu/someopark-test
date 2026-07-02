@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
+import SizedChart from './SizedChart';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import { getMonitorHistoryList, getMonitorHistorySheets, getMonitorHistorySheet } from '../../lib/api';
@@ -214,6 +215,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
           <div className="h-full flex flex-col">
             <div className="text-sm font-medium mb-4 text-[var(--text-primary)]">{activeSheet.replace(/_/g, ' ')}</div>
             <div className="flex-1 min-h-[300px]">
+              <SizedChart className="h-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
@@ -234,6 +236,7 @@ export default function PortfolioHistoryViewer({ params }: { params?: any }) {
                   ))}
                 </LineChart>
               </ResponsiveContainer>
+              </SizedChart>
             </div>
           </div>
         ) : (

@@ -7,27 +7,8 @@ import {
 import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
 import { API_BASE, apiHeaders } from '../../lib/api';
+import SizedChart from './SizedChart';
 
-// Render children only after the fixed-height wrapper has a measured width.
-// The right panel mounts charts during its open animation, when the container
-// briefly measures 0/-1 wide — Recharts' ResponsiveContainer logs
-// "width(-1) and height(-1) ... should be greater than 0" once per chart.
-const SizedChart: React.FC<{ height: number; children: React.ReactNode }> = ({ height, children }) => {
-  const ref = React.useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const check = () => {
-      if (el.clientWidth > 0) setReady(true);
-    };
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-  return <div ref={ref} style={{ height }}>{ready ? children : null}</div>;
-};
 
 interface DayData {
   date: string;
