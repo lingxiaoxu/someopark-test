@@ -1071,6 +1071,34 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
     return signals
 
 
+def _deploy_dashboard():
+    """构建并发布前端到 Firebase Hosting（非致命）。
+
+    托管站 someopark.web.app 的数据 JSON 是 vite build 时从 public/ 烤进 dist 的
+    静态快照——master/strategy JSON 更新后必须 rebuild + deploy 托管站才会变新
+    （本地 express 的 /data 路由直读 public/，不受影响）。"""
+    import shutil
+    import subprocess
+    app_dir = os.path.join(BASE_DIR, 'someo-park-investment-management')
+    npm = shutil.which('npm')
+    fb = shutil.which('firebase')
+    if not npm or not fb:
+        log.warning(f"[DEPLOY] npm/firebase 不在 PATH（npm={npm}, firebase={fb}）"
+                    f"— 跳过托管站发布")
+        return
+    r1 = subprocess.run([npm, 'run', 'build'], cwd=app_dir,
+                        capture_output=True, timeout=300)
+    if r1.returncode != 0:
+        log.warning(f"[DEPLOY] npm build failed: {r1.stderr.decode()[-300:]}")
+        return
+    r2 = subprocess.run([fb, 'deploy', '--only', 'hosting'], cwd=app_dir,
+                        capture_output=True, timeout=420)
+    if r2.returncode != 0:
+        log.warning(f"[DEPLOY] firebase deploy failed: {r2.stderr.decode()[-300:]}")
+        return
+    log.info("[DEPLOY] dashboard rebuilt + deployed → someopark.web.app")
+
+
 # ── Inventory update ───────────────────────────────────────────────────────────
 
 def _build_wf_source_for_pair(pair_key: str, strategy: str) -> dict:
@@ -2226,6 +2254,7 @@ def run_daily_signal(
                                capture_output=True, timeout=120)
                 log.info(f"[PERF_UPDATE] strategy + BDC + master performance updated "
                          f"(start={_perf_start} end={_perf_end})")
+                _deploy_dashboard()
             except Exception as e:
                 log.warning(f"[PERF_UPDATE] performance update failed (non-fatal): {e}")
 
@@ -2328,6 +2357,7 @@ def run_daily_signal(
                            capture_output=True, timeout=120)
             log.info(f"[PERF_UPDATE] strategy + BDC + master performance updated "
                      f"(start={_perf_start} end={_perf_end})")
+            _deploy_dashboard()
         except Exception as e:
             log.warning(f"[PERF_UPDATE] performance update failed (non-fatal): {e}")
 
