@@ -1113,6 +1113,21 @@ def run_daily_signal(
 
     save_inventory(inv, dry_run=dry_run)
 
+    # ── 10b. Ledger 记账 + 当日 PnL/Risk 报告（非致命；报告需 reportlab →
+    #        由 someopark_run 子进程生成，本进程只做纯 pandas 记账）──────────
+    if not dry_run:
+        try:
+            from portfolio_ledger.ledger import daily_update as _ledger_update
+            if _ledger_update("ssrs") > 0:
+                import subprocess
+                subprocess.Popen(
+                    ["conda", "run", "-n", "someopark_run", "python", "-m",
+                     "portfolio_ledger.reports", "ssrs"],
+                    cwd=str(Path(__file__).resolve().parent.parent),
+                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as _ledger_e:
+            log.warning(f"[ledger] non-fatal: {_ledger_e}")
+
     # ── 11. Get macro snapshot for report ─────────────────────────
     macro_last = macro_recent.iloc[-1] if not macro_recent.empty else pd.Series(dtype=float)
 

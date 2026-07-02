@@ -1,0 +1,60 @@
+{
+  "as_of": "2026-06-01",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 19652.04,
+  "positions": {
+    "KLAC": {
+      "shares": 1370,
+      "avg_cost": 192.171,
+      "entry_date": "2026-05-29"
+    },
+    "LRCX": {
+      "shares": 157,
+      "avg_cost": 317.9341,
+      "entry_date": "2026-05-29"
+    },
+    "AMAT": {
+      "shares": 36,
+      "avg_cost": 450.06,
+      "entry_date": "2026-05-29"
+    },
+    "MU": {
+      "shares": 257,
+      "avg_cost": 971.0,
+      "entry_date": "2026-05-29"
+    },
+    "WDC": {
+      "shares": 91,
+      "avg_cost": 531.0715,
+      "entry_date": "2026-05-29"
+    },
+    "SIMO": {
+      "shares": 62,
+      "avg_cost": 276.4002,
+      "entry_date": "2026-05-29"
+    },
+    "AMD": {
+      "shares": 522,
+      "avg_cost": 516.1,
+      "entry_date": "2026-05-29"
+    },
+    "INTC": {
+      "shares": 457,
+      "avg_cost": 114.68,
+      "entry_date": "2026-05-29"
+    },
+    "ARM": {
+      "shares": 40,
+      "avg_cost": 353.29,
+      "entry_date": "2026-05-29"
+    }
+  },
+  "cumulative_realized": 0.0,
+  "cumulative_dividends": 0.0,
+  "cumulative_fees": 0.0,
+  "equity": 1016641.49,
+  "liabilities": {},
+  "unrealized": 16641.48,
+  "position_value": 996989.45
+}

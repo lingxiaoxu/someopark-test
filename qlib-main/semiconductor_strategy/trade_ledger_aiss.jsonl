@@ -1,0 +1,26 @@
+{"date": "2026-06-02", "ticker": "AMAT", "side": "SELL", "shares": 3, "price": 489.6189, "gross": 1468.86, "avg_cost_at_trade": 450.06, "realized_pnl": 118.68, "dedup_key": "2026-06-02-AMAT-SELL"}
+{"date": "2026-06-02", "ticker": "AMD", "side": "SELL", "shares": 522, "price": 521.54, "gross": 272243.88, "avg_cost_at_trade": 516.1, "realized_pnl": 2839.68, "dedup_key": "2026-06-02-AMD-SELL"}
+{"date": "2026-06-02", "ticker": "INTC", "side": "SELL", "shares": 457, "price": 107.93, "gross": 49324.01, "avg_cost_at_trade": 114.68, "realized_pnl": -3084.75, "dedup_key": "2026-06-02-INTC-SELL"}
+{"date": "2026-06-02", "ticker": "KLAC", "side": "SELL", "shares": 100, "price": 204.52, "gross": 20452.0, "avg_cost_at_trade": 192.171, "realized_pnl": 1234.9, "dedup_key": "2026-06-02-KLAC-SELL"}
+{"date": "2026-06-02", "ticker": "LRCX", "side": "SELL", "shares": 11, "price": 334.1746, "gross": 3675.92, "avg_cost_at_trade": 317.9341, "realized_pnl": 178.65, "dedup_key": "2026-06-02-LRCX-SELL"}
+{"date": "2026-06-02", "ticker": "MU", "side": "SELL", "shares": 73, "price": 1063.9391, "gross": 77667.56, "avg_cost_at_trade": 971.0, "realized_pnl": 6784.56, "dedup_key": "2026-06-02-MU-SELL"}
+{"date": "2026-06-02", "ticker": "SIMO", "side": "SELL", "shares": 22, "price": 300.7676, "gross": 6616.89, "avg_cost_at_trade": 276.4002, "realized_pnl": 536.08, "dedup_key": "2026-06-02-SIMO-SELL"}
+{"date": "2026-06-02", "ticker": "WDC", "side": "SELL", "shares": 26, "price": 562.9532, "gross": 14636.78, "avg_cost_at_trade": 531.0715, "realized_pnl": 828.93, "dedup_key": "2026-06-02-WDC-SELL"}
+{"date": "2026-06-02", "ticker": "ALAB", "side": "BUY", "shares": 180, "price": 355.76, "gross": -64036.8, "dedup_key": "2026-06-02-ALAB-BUY"}
+{"date": "2026-06-02", "ticker": "ARM", "side": "BUY", "shares": 13, "price": 402.71, "gross": -5235.23, "dedup_key": "2026-06-02-ARM-BUY"}
+{"date": "2026-06-02", "ticker": "NVDA", "side": "BUY", "shares": 1539, "price": 222.5606, "gross": -342520.77, "dedup_key": "2026-06-02-NVDA-BUY"}
+{"date": "2026-06-04", "ticker": "NVDA", "side": "DIV", "shares": 1539, "price": 0.25, "gross": 384.75, "dedup_key": "2026-06-04-NVDA-DIV"}
+{"date": "2026-06-05", "ticker": "WDC", "side": "DIV", "shares": 65, "price": 0.15, "gross": 9.75, "dedup_key": "2026-06-05-WDC-DIV"}
+{"date": "2026-06-17", "ticker": "LRCX", "side": "DIV", "shares": 146, "price": 0.26, "gross": 37.96, "dedup_key": "2026-06-17-LRCX-DIV"}
+{"date": "2026-07-01", "ticker": "ALAB", "side": "SELL", "shares": 180, "price": 430.86, "gross": 77554.8, "avg_cost_at_trade": 355.76, "realized_pnl": 13518.0, "dedup_key": "2026-07-01-ALAB-SELL"}
+{"date": "2026-07-01", "ticker": "AMAT", "side": "SELL", "shares": 22, "price": 650.3373, "gross": 14307.42, "avg_cost_at_trade": 450.06, "realized_pnl": 4406.1, "dedup_key": "2026-07-01-AMAT-SELL"}
+{"date": "2026-07-01", "ticker": "ARM", "side": "SELL", "shares": 33, "price": 337.47, "gross": 11136.51, "avg_cost_at_trade": 365.411887, "realized_pnl": -922.08, "dedup_key": "2026-07-01-ARM-SELL"}
+{"date": "2026-07-01", "ticker": "KLAC", "side": "SELL", "shares": 805, "price": 266.19, "gross": 214282.95, "avg_cost_at_trade": 192.171, "realized_pnl": 59585.3, "dedup_key": "2026-07-01-KLAC-SELL"}
+{"date": "2026-07-01", "ticker": "LRCX", "side": "SELL", "shares": 87, "price": 391.26, "gross": 34039.62, "avg_cost_at_trade": 317.9341, "realized_pnl": 6379.35, "dedup_key": "2026-07-01-LRCX-SELL"}
+{"date": "2026-07-01", "ticker": "MU", "side": "SELL", "shares": 90, "price": 1032.1239, "gross": 92891.15, "avg_cost_at_trade": 971.0, "realized_pnl": 5501.15, "dedup_key": "2026-07-01-MU-SELL"}
+{"date": "2026-07-01", "ticker": "NVDA", "side": "SELL", "shares": 1539, "price": 197.58, "gross": 304075.62, "avg_cost_at_trade": 222.560605, "realized_pnl": -38445.15, "dedup_key": "2026-07-01-NVDA-SELL"}
+{"date": "2026-07-01", "ticker": "SIMO", "side": "SELL", "shares": 21, "price": 316.4514, "gross": 6645.48, "avg_cost_at_trade": 276.4002, "realized_pnl": 841.08, "dedup_key": "2026-07-01-SIMO-SELL"}
+{"date": "2026-07-01", "ticker": "WDC", "side": "SELL", "shares": 35, "price": 598.37, "gross": 20942.95, "avg_cost_at_trade": 531.0715, "realized_pnl": 2355.45, "dedup_key": "2026-07-01-WDC-SELL"}
+{"date": "2026-07-01", "ticker": "AMD", "side": "BUY", "shares": 199, "price": 540.88, "gross": -107635.12, "dedup_key": "2026-07-01-AMD-BUY"}
+{"date": "2026-07-01", "ticker": "INTC", "side": "BUY", "shares": 159, "price": 127.02, "gross": -20196.18, "dedup_key": "2026-07-01-INTC-BUY"}
+{"date": "2026-07-01", "ticker": "", "side": "FEE", "gross": -336.24, "dedup_key": "2026-07-01-FEE"}
