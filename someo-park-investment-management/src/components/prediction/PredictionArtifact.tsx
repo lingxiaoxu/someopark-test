@@ -1007,8 +1007,10 @@ function OverviewModelNotes() {
 }
 
 // Merged "Venues & API" artifact: execution venues/balances, gates & risk controls (from the Risk
-// Report), and API budget/health — ONE view, content categorized by type, nothing dropped, no
-// duplication. All notes (+ the risk "blocked" list) pooled at the bottom.
+// Report), API budget/health, and the blocked/guardrail list — ALL in ONE table, followed by a
+// single uniform small-print notes list. Nothing dropped; overlapping info deduped (the separate
+// executable-venues line duplicated the table's Trading column, and the budget bar duplicated the
+// utilisation % already shown in the API-budget row).
 function VenuesApi() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCRisk(), []);
@@ -1016,20 +1018,22 @@ function VenuesApi() {
   const g = data?.gates ?? {}, b = data?.venue_balances ?? {}, ab = data?.api_budget ?? {};
   const cal = data?.calibration_gate ?? {};
   const blocked: string[] = data?.blocked_summary ?? [];
-  const frac = Math.min(1, (ab.used ?? 0) / (ab.cap ?? 1));
-  const sec = (s: string) => <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.1em', margin: '12px 0 4px', ...mono, color: 'var(--text-primary)' }}>{s}</div>;
-  // Gates & risk controls (merged from the Risk Report; non-overlapping fields only) — folded
-  // into the venue table below as extra label/value rows so it reads as ONE continuous table.
+  const overBudget = (ab.pct ?? 0) > 0.8;
+  // Gates & risk controls + API budget — label/value rows folded into the one table below.
   const controls: [string, ReactNode][] = [
     [tr('prediction.lblKalshiEnv'), g.kalshi_env],
     [tr('prediction.lblOrderCap'), money(g.hard_order_cap_usd)],
     [tr('prediction.lblCalibration'), <span style={{ color: cal.trade_grade ? 'var(--success)' : 'var(--error)' }}>{tDyn(cal.status)}</span>],
+    [tr('prediction.lblApiBudget'), <span style={{ color: overBudget ? 'var(--error)' : undefined }}>
+      {ab.used ?? '—'}/{ab.cap ?? '—'} ({pct(ab.pct, 0)}) · {tr('prediction.lblRemaining')} {ab.cap != null && ab.used != null ? (ab.cap - ab.used) : '—'}
+    </span>],
+    ...(ab.month_used != null ? [[tr('prediction.lblMonthBackstop'), `${ab.month_used}/${ab.month_cap}`] as [string, ReactNode]] : []),
   ];
   return (
     <div>
       <Title sub={tr('prediction.subVenuesApi')}>Venues & API</Title>
-      {/* ONE continuous table — execution venues/balances, then gates & risk controls, then the
-          blocked / guardrails list (all merged from the Risk Report). No isolated sub-tables. */}
+      {/* THE one table — venues/balances, then gates & controls & API budget as label/value
+          rows, then the blocked/guardrail rows. No sub-sections, no separate widgets. */}
       <table className="table">
         <thead><tr>
           <th style={{ textAlign: 'left' }}>{tr('prediction.colVenue')}</th>
@@ -1047,14 +1051,14 @@ function VenuesApi() {
           ] as ReactNode[][]).map((r, i) => (
             <tr key={`v${i}`}>{r.map((c, j) => <td key={j} style={{ textAlign: j === 0 ? 'left' : 'right' }}>{c}</td>)}</tr>
           ))}
-          {/* gates & risk controls — label left, value right across the remaining columns */}
+          {/* gates & risk controls + API budget — label left, value right across the row */}
           {controls.map(([k, v], i) => (
             <tr key={`g${i}`}>
               <td style={{ textAlign: 'left', fontWeight: 700 }}>{k}</td>
               <td colSpan={3} style={{ textAlign: 'right' }}>{v}</td>
             </tr>
           ))}
-          {/* blocked / guardrails — full-width red rows, moved into the table */}
+          {/* blocked / guardrails — full-width red rows */}
           {blocked.map((x, i) => (
             <tr key={`b${i}`}>
               <td colSpan={4} style={{ textAlign: 'left', color: 'var(--error)' }}>⛔ {tDyn(x)}</td>
@@ -1062,20 +1066,12 @@ function VenuesApi() {
           ))}
         </tbody>
       </table>
-      {/* — API request budget / health (distinct metric widget with its own bar) — */}
-      {sec(tr('prediction.lblApiBudget'))}
-      <div style={{ fontSize: 11, ...mono, color: 'var(--text-secondary)' }}>
-        {tr('prediction.lblUsedToday')} {ab.used ?? '—'}/{ab.cap ?? '—'} ({pct(ab.pct, 0)}) · {tr('prediction.lblRemaining')} {ab.cap != null && ab.used != null ? (ab.cap - ab.used) : '—'}{ab.month_used != null ? ` · ${tr('prediction.lblMonthBackstop')} ${ab.month_used}/${ab.month_cap}` : ''}
-      </div>
-      <div style={{ height: 10, marginTop: 4, background: 'var(--bg-tertiary)', border: '1px solid var(--border-subtle)' }}>
-        <div style={{ width: `${frac * 100}%`, height: '100%', background: frac > 0.8 ? 'var(--error)' : 'var(--success)' }} />
-      </div>
-      {/* — Notes (all sections pooled) — */}
-      <div style={{ marginTop: 12 }}>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{tr('prediction.lblExecutable')}: {(g.executable_venues ?? []).join(', ')}</div>
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.venueGlobalNote')}</div>
-        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.budgetResetNote')}</div>
-      </div>
+      {/* — Notes: one uniform small-print list. (The executable-venues line was deduped — it
+          repeated the Trading column above; the budget bar was deduped — it repeated the %.) — */}
+      <ul style={{ marginTop: 10, paddingLeft: 16, fontSize: 10, color: 'var(--text-muted)', ...mono }}>
+        <li style={{ marginBottom: 4 }}>{tr('prediction.venueGlobalNote')}</li>
+        <li style={{ marginBottom: 4 }}>{tr('prediction.budgetResetNote')}</li>
+      </ul>
     </div>
   );
 }
