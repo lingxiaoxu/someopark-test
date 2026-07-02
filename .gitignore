@@ -22,6 +22,7 @@ chronos-2-finetuned/
 qlib-main/*
 !qlib-main/sector_rotation
 !qlib-main/semiconductor_strategy
+!qlib-main/portfolio_ledger
 !qlib-main/qlib_run_conda_export.txt
 !qlib-main/qlib_run_env.yml
 !qlib-main/qlib_run_requirements.txt
