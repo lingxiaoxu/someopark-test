@@ -7,7 +7,7 @@
   },
   {
     "s1": "AMAT",
-    "s2": "FOXA",
+    "s2": "ICE",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
@@ -19,19 +19,25 @@
   },
   {
     "s1": "GLW",
-    "s2": "BR",
+    "s2": "FOXA",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "LRCX",
-    "s2": "FISV",
+    "s2": "T",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "LRCX",
-    "s2": "ICE",
+    "s2": "CPRT",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "TER",
+    "s2": "KKR",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
@@ -42,46 +48,40 @@
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "TER",
+    "s1": "FFIV",
+    "s2": "CBOE",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "FFIV",
+    "s2": "NEM",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "CAT",
+    "s2": "WDAY",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "CAT",
+    "s2": "CCI",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "JBHT",
     "s2": "NKE",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "CAT",
-    "s2": "KLAC",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
   },
   {
-    "s1": "CAT",
-    "s2": "ADBE",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "KMX",
-    "s2": "TYL",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "KMX",
-    "s2": "PTC",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "IRM",
-    "s2": "KKR",
-    "sector": "realestate",
-    "spread_col": "Momentum_Spread_realestate"
-  },
-  {
-    "s1": "IRM",
+    "s1": "JBHT",
     "s2": "NDAQ",
-    "sector": "realestate",
-    "spread_col": "Momentum_Spread_realestate"
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
   },
   {
     "s1": "CVS",

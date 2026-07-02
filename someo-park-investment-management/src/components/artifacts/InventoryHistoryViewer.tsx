@@ -207,8 +207,15 @@ function AissSnapshotDetail({ data }: { data: any }) {
   (view.subsectors || []).forEach((g: any) => { stocksBySub[g.subsector] = g.stocks || []; });
 
   const active = Object.entries(holdings).filter(([, h]: any) => (h as any).weight > 0.01);
-  const totalValue = active.reduce((s, [, h]: any) => s + (h.shares || 0) * (h.last_price || 0), 0);
-  const totalCost = active.reduce((s, [, h]: any) => s + (h.shares || 0) * (h.cost_basis || 0), 0);
+  // Header PnL from STOCK-level aggregation (same source as the subsector cards).
+  // Subsector holdings are synthetic-index units whose recorded cost_basis can sit
+  // in a different index vintage after a constituent split (KLAC 1:10 → fake +130%);
+  // stock rows are split-adjusted at the source and always correct.
+  const allStocks: any[] = (view.stocks && view.stocks.length)
+    ? view.stocks
+    : (view.subsectors || []).flatMap((g: any) => g.stocks || []);
+  const totalValue = allStocks.reduce((s: number, st: any) => s + (st.shares || 0) * (st.last_price || 0), 0);
+  const totalCost = allStocks.reduce((s: number, st: any) => s + (st.shares || 0) * (st.cost_basis || 0), 0);
   const totalPnl = totalValue - totalCost;
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
 

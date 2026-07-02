@@ -1,83 +1,84 @@
 {
-  "as_of": "2026-06-26",
-  "last_updated": "2026-06-01",
-  "last_daily_update": "2026-06-26",
+  "as_of": "2026-07-01",
+  "last_updated": "2026-07-01",
+  "last_daily_update": "2026-07-01",
   "capital": 1000000,
   "holdings": {
-    "XLE": {
-      "weight": 0.176869,
-      "shares": 3142,
-      "last_price": 53.84,
-      "cost_basis": 56.87,
-      "entry_date": "2026-04-27",
-      "last_rebalance_date": "2026-06-01",
-      "days_held": 35,
-      "action_today": "DECREASE"
-    },
     "XLB": {
-      "weight": 0.197449,
-      "shares": 3860,
-      "last_price": 51.6,
+      "weight": 0.17879,
+      "shares": 3504,
+      "last_price": 51.02,
       "cost_basis": 51.92,
       "entry_date": "2026-04-27",
-      "last_rebalance_date": "2026-06-01",
-      "days_held": 35,
-      "action_today": "DECREASE"
+      "last_rebalance_date": "2026-07-01",
+      "days_held": 38,
+      "action_today": "HOLD"
     },
     "XLI": {
-      "weight": 0.207918,
-      "shares": 1200,
-      "last_price": 181.2,
+      "weight": 0.188269,
+      "shares": 1026,
+      "last_price": 183.36,
       "cost_basis": 172.47,
       "entry_date": "2026-04-27",
-      "last_rebalance_date": "2026-06-01",
-      "days_held": 35,
-      "action_today": "DECREASE"
-    },
-    "XLY": {
-      "weight": 0.188514,
-      "shares": 1559,
-      "last_price": 114.37,
-      "cost_basis": 120.87,
-      "entry_date": "2026-06-01",
-      "last_rebalance_date": "2026-06-01",
-      "days_held": 16,
-      "action_today": "ENTER"
+      "last_rebalance_date": "2026-07-01",
+      "days_held": 38,
+      "action_today": "HOLD"
     },
     "XLRE": {
-      "weight": 0.229249,
-      "shares": 5211,
-      "last_price": 45.24,
+      "weight": 0.207585,
+      "shares": 4698,
+      "last_price": 44.18,
       "cost_basis": 43.99,
       "entry_date": "2026-06-01",
-      "last_rebalance_date": "2026-06-01",
-      "days_held": 16,
+      "last_rebalance_date": "2026-07-01",
+      "days_held": 19,
+      "action_today": "HOLD"
+    },
+    "XLV": {
+      "weight": 0.241934,
+      "shares": 1516,
+      "last_price": 159.54,
+      "cost_basis": 159.54,
+      "entry_date": "2026-07-01",
+      "last_rebalance_date": "2026-07-01",
+      "days_held": 1,
+      "action_today": "ENTER"
+    },
+    "XLK": {
+      "weight": 0.183422,
+      "shares": 988,
+      "last_price": 185.62,
+      "cost_basis": 185.62,
+      "entry_date": "2026-07-01",
+      "last_rebalance_date": "2026-07-01",
+      "days_held": 1,
       "action_today": "ENTER"
     }
   },
   "cash_weight": 0.0,
   "prev_weights": {
-    "XLE": 0.176869,
-    "XLB": 0.197449,
-    "XLI": 0.207918,
-    "XLV": 0.0,
-    "XLY": 0.188514,
-    "XLP": 0.0,
-    "XLF": 0.0,
-    "XLRE": 0.229249
+    "XLE": 0.0,
+    "XLB": 0.17879,
+    "XLI": 0.188269,
+    "XLY": 0.0,
+    "XLRE": 0.207585,
+    "XLV": 0.241934,
+    "XLK": 0.183422,
+    "XLC": 0.0,
+    "XLU": 0.0
   },
   "prev_composite_scores": {
-    "XLE": 1.4156,
-    "XLB": 1.2891,
-    "XLI": 0.1437,
-    "XLY": 0.4354,
-    "XLP": -1.2909,
-    "XLV": -0.355,
-    "XLF": 0.1438,
-    "XLK": -0.2811,
-    "XLC": -2.0223,
-    "XLU": 0.2049,
-    "XLRE": 0.3168
+    "XLE": 0.0647,
+    "XLB": 1.2743,
+    "XLI": 0.0264,
+    "XLY": -0.3465,
+    "XLP": -1.6534,
+    "XLV": 1.8906,
+    "XLF": -0.1078,
+    "XLK": 0.275,
+    "XLC": -1.1911,
+    "XLU": -0.5691,
+    "XLRE": 0.3369
   },
   "rebalance_history": [
     {
@@ -168,6 +169,36 @@
         "XLC": -2.0223,
         "XLU": 0.2049,
         "XLRE": 0.3168
+      }
+    },
+    {
+      "date": "2026-07-01",
+      "reason": "monthly_rebalance",
+      "regime": "risk_on",
+      "weights": {
+        "XLE": 0.0,
+        "XLB": 0.17879,
+        "XLI": 0.188269,
+        "XLY": 0.0,
+        "XLRE": 0.207585,
+        "XLV": 0.241934,
+        "XLK": 0.183422,
+        "XLC": 0.0,
+        "XLU": 0.0
+      },
+      "cash_weight": 0.0,
+      "composite_scores": {
+        "XLE": 0.0647,
+        "XLB": 1.2743,
+        "XLI": 0.0264,
+        "XLY": -0.3465,
+        "XLP": -1.6534,
+        "XLV": 1.8906,
+        "XLF": -0.1078,
+        "XLK": 0.275,
+        "XLC": -1.1911,
+        "XLU": -0.5691,
+        "XLRE": 0.3369
       }
     }
   ],

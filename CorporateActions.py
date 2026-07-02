@@ -626,7 +626,8 @@ def adjust_position_view(pos: dict, s1: str, s2: str, snapshot_as_of: str = '',
 
 
 def adjust_stock_holding_view(holding: dict, ticker: str,
-                              splits_by_ticker: dict | None = None) -> dict:
+                              splits_by_ticker: dict | None = None,
+                              ref_price: float | None = None) -> dict:
     """
     单 ticker 版的 adjust_position_view（用于 AISS/SR 的 stock_holdings / ETF
     holdings 历史快照）。返回 holding 副本，把旧口径的 shares/cost_basis/last_price
@@ -635,11 +636,15 @@ def adjust_stock_holding_view(holding: dict, ticker: str,
     供 UpdateMasterPerformance._load_live_equity_from_inventory 在用当前价 MTM
     历史快照时调用，消除拆股日的 shares 口径跳变（KLAC 1:10 → AISS live 假 +40%）。
 
-    三重守卫与 adjust_position_view 完全一致（只是字段名不同：单 ticker 用
+    四重守卫（1-3 与 adjust_position_view 一致；字段名：单 ticker 用
     `shares`/`cost_basis`/`last_price`，建仓日字段为 `entry_date`）：
       1. polygon_id 不在 holding 的 applied_corporate_actions 留痕中
       2. entry_date < execution_date（拆股前建仓；拆股后建的天然新口径）
       3. execution_date <= today
+      4. ref_price（价格源在快照 as_of 当日的价）与 holding.last_price 口径一致
+         （比值 ∈ (0.5, 2)）→ 快照已是新口径，跳过。防"调仓重写丢留痕 +
+         entry_date 早于拆股"的 holding 被误调（2026-07-01 KLAC 465→4650 股
+         假 +32% 事故）。拆股 factor 最小为 2，正常单日波动到不了 ±50%。
     """
     if splits_by_ticker is None:
         splits_by_ticker = {}
@@ -657,6 +662,14 @@ def adjust_stock_holding_view(holding: dict, ticker: str,
             continue                           # 该快照已是调整后口径
         if entry_date and entry_date >= ed:
             continue                           # 拆股后建仓 → 天然新口径
+        _hp = holding.get('last_price')
+        if ref_price and _hp:
+            try:
+                _r = float(_hp) / float(ref_price)
+                if 0.5 < _r < 2.0:
+                    continue                   # 守卫4：与价格源同口径 → 已调整
+            except (TypeError, ValueError, ZeroDivisionError):
+                pass
         factor = float(sp['split_to']) / float(sp['split_from'])
         if out.get('shares'):
             out['shares'] = int(round(out['shares'] * factor))

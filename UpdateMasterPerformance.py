@@ -150,58 +150,75 @@ def _load_live_equity_from_inventory(
             print(f'  [WARN] Failed to download {label} ticker prices: {e}')
             return pd.Series(dtype=float)
 
-    # Compute raw MTM for each live day
-    raw_mtm = {}
-    for td in live_days:
-        td_str = td.strftime('%Y-%m-%d')
-        candidates = [d for d in sorted(snap_map.keys()) if d <= td_str]
-        if not candidates:
-            continue
-        with open(snap_map[candidates[-1]]) as f:
+    def _mark_snapshot(snap_path: str, price_day: str) -> tuple:
+        """MTM one snapshot's holdings at price_day close. Returns (total, cash_weight).
+
+        Corporate actions: historical snapshots store entry-era shares; the price
+        series (prices[ticker]) is split-adjusted (current caliber). Without the
+        adjust, a split (KLAC 1:10) makes a snapshot's old-caliber shares ×
+        new-caliber price spike the MTM (AISS live jumped +40% on 6/12).
+        ref_price = source price at the snapshot's OWN as_of date — guard 4:
+        holdings rewritten by a rebalance (marker lost, entry_date pre-split,
+        shares already current-caliber) must NOT be re-adjusted (KLAC 465→4650
+        faked +32% on 7/1)."""
+        with open(snap_path) as f:
             inv = json.load(f)
+        snap_as_of = inv.get('as_of', inv.get('date', price_day)) or price_day
         total = 0.0
         for ticker, holding in inv.get(holdings_key, {}).items():
-            # Corporate actions: historical snapshots store entry-era shares; the
-            # price series (prices[ticker]) is split-adjusted (current caliber).
-            # Without this, a split (KLAC 1:10) makes a snapshot's old-caliber
-            # shares × new-caliber price spike the raw MTM, faking a ~10x daily
-            # return on the split day (AISS live jumped +40% on 6/12). Adjust the
-            # holding's shares to current caliber before MTM. Idempotent (marker /
-            # entry_date guards); no-op when no split applies. Does NOT touch the
-            # backtest/live splice — only the live-segment per-day mark.
             try:
                 from CorporateActions import adjust_stock_holding_view
-                holding = adjust_stock_holding_view(holding, ticker)
+                _ref = None
+                try:
+                    _ps0 = prices[ticker].loc[:snap_as_of].dropna()
+                    _ref = float(_ps0.iloc[-1]) if len(_ps0) else None
+                except Exception:
+                    pass
+                holding = adjust_stock_holding_view(holding, ticker, ref_price=_ref)
             except Exception:
                 pass
             shares = holding.get('shares', 0)
             if shares == 0 or ticker not in prices.columns:
                 continue
             try:
-                ps = prices[ticker].loc[:td].dropna()
+                ps = prices[ticker].loc[:price_day].dropna()
                 if len(ps) > 0:
                     total += shares * float(ps.iloc[-1])
             except Exception:
                 continue
-        if total > 0:
-            raw_mtm[td_str] = total
+        cw = inv.get('cash_weight', 0.0) or 0.0
+        return total, float(cw)
 
-    if not raw_mtm:
-        return pd.Series(dtype=float)
-
-    # Chain daily returns from backtest last day
+    # Chain daily returns from backtest last day — FLOW-NEUTRAL: each day-pair
+    # (d_prev, d) is marked with the SAME snapshot (latest as_of <= d_prev), so
+    # rebalance buys/sells never leak into the return (7/1 AISS moved to 58.75%
+    # cash; the old per-day-snapshot chaining booked the flow as a -64% "return").
+    # Cash earns 0: portfolio return = invested return × (1 − cash_weight).
     bt_last_equity = float(backtest_normalized.iloc[-1])
-    live_dates = sorted(raw_mtm.keys())
+    snap_dates = sorted(snap_map.keys())
     results = {}
-    prev_raw = None
     current_equity = bt_last_equity
+    prev_td_str = None
 
-    for d in live_dates:
-        if prev_raw is not None:
-            daily_ret = (raw_mtm[d] - prev_raw) / prev_raw
-            current_equity = current_equity * (1 + daily_ret)
-        prev_raw = raw_mtm[d]
-        results[d] = round(current_equity, 2)
+    for td in live_days:
+        td_str = td.strftime('%Y-%m-%d')
+        if not any(d <= td_str for d in snap_dates):
+            continue   # no snapshot yet → live segment hasn't started
+        if prev_td_str is not None:
+            prev_candidates = [d for d in snap_dates if d <= prev_td_str]
+            snap_path = snap_map[prev_candidates[-1]]
+            mtm_prev, cw = _mark_snapshot(snap_path, prev_td_str)
+            mtm_cur, _ = _mark_snapshot(snap_path, td_str)
+            if mtm_prev > 0 and mtm_cur > 0:
+                invested_ret = mtm_cur / mtm_prev - 1.0
+                port_ret = invested_ret * max(0.0, 1.0 - cw)
+                current_equity = current_equity * (1.0 + port_ret)
+            # mtm_prev == 0 → fully in cash on prev day → return 0, equity unchanged
+        results[td_str] = round(current_equity, 2)
+        prev_td_str = td_str
+
+    if not results:
+        return pd.Series(dtype=float)
 
     return pd.Series(results, name=label)
 

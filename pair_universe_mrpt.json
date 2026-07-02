@@ -6,14 +6,8 @@
     "z_col": "Z_food"
   },
   {
-    "s1": "EXR",
-    "s2": "WY",
-    "sector": "realestate",
-    "z_col": "Z_realestate"
-  },
-  {
     "s1": "AON",
-    "s2": "KKR",
+    "s2": "BR",
     "sector": "finance",
     "z_col": "Z_finance"
   },
@@ -30,14 +24,26 @@
     "z_col": "Z_tech"
   },
   {
-    "s1": "CME",
-    "s2": "DE",
+    "s1": "EXR",
+    "s2": "WY",
+    "sector": "realestate",
+    "z_col": "Z_realestate"
+  },
+  {
+    "s1": "APO",
+    "s2": "MCO",
     "sector": "finance",
     "z_col": "Z_finance"
   },
   {
     "s1": "AON",
-    "s2": "BR",
+    "s2": "KKR",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "CME",
+    "s2": "DE",
     "sector": "finance",
     "z_col": "Z_finance"
   },
@@ -48,20 +54,14 @@
     "z_col": "Z_finance"
   },
   {
-    "s1": "APO",
-    "s2": "MCO",
-    "sector": "finance",
-    "z_col": "Z_finance"
-  },
-  {
     "s1": "BSX",
     "s2": "PFE",
     "sector": "health",
     "z_col": "Z_health"
   },
   {
-    "s1": "AIG",
-    "s2": "NTRS",
+    "s1": "CINF",
+    "s2": "FISV",
     "sector": "finance",
     "z_col": "Z_finance"
   },
@@ -72,21 +72,21 @@
     "z_col": "Z_industrial"
   },
   {
+    "s1": "AIG",
+    "s2": "PFG",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
     "s1": "AAPL",
     "s2": "CINF",
     "sector": "tech",
     "z_col": "Z_tech"
   },
   {
-    "s1": "CINF",
-    "s2": "FISV",
-    "sector": "finance",
-    "z_col": "Z_finance"
-  },
-  {
-    "s1": "CL",
-    "s2": "PM",
-    "sector": "food",
-    "z_col": "Z_food"
+    "s1": "BIIB",
+    "s2": "HCA",
+    "sector": "health",
+    "z_col": "Z_health"
   }
 ]

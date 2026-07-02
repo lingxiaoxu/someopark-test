@@ -445,6 +445,44 @@ def _build_trade_list(
 # Inventory update  (幂等)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _reanchor_subsector_holdings(holdings: dict, subsector_prices: pd.DataFrame,
+                                 capital: float) -> None:
+    """把子板块簿记字段统一重锚定到当前 vintage 的合成指数序列（in-place）。
+
+    子板块价格是收益复利合成指数，每次运行从个股 store 重建。成分股拆股的
+    回溯调整（KLAC 1:10 @2026-06-12）或 store 历史变化会整体平移指数水平
+    （vintage 漂移）——冻结在 inventory 里的 cost_basis 与新 vintage 的
+    last_price 错配（equipment 曾显示 +130% 假盈亏）。修法 = 锚定原则
+    （镜像 CorporateActions 守卫 4）：三个字段每次都从当前序列按语义日期重取：
+      cost_basis = 指数在 entry_date 的水平
+      last_price = 指数最新水平
+      shares     = weight × capital ÷ 指数在 last_rebalance_date 的水平
+    展示层已改用个股聚合；这些字段是内部簿记，重导出无副作用、幂等。
+    """
+    cols = list(getattr(subsector_prices, "columns", []))
+    for sub, h in (holdings or {}).items():
+        if sub not in cols:
+            continue
+        s = subsector_prices[sub].dropna()
+        if s.empty:
+            continue
+        try:
+            h["last_price"] = round(float(s.iloc[-1]), 4)
+            entry = h.get("entry_date") or ""
+            if entry:
+                cb = s.loc[:entry]
+                if len(cb):
+                    h["cost_basis"] = round(float(cb.iloc[-1]), 4)
+            reb = h.get("last_rebalance_date") or entry
+            if reb and h.get("weight"):
+                rb = s.loc[:reb]
+                if len(rb) and float(rb.iloc[-1]) > 0:
+                    h["shares"] = int(float(h["weight"]) * float(capital)
+                                      / float(rb.iloc[-1]))
+        except Exception:
+            continue
+
+
 def _update_inventory(
     inv: dict,
     signal_date: date,
@@ -1307,6 +1345,9 @@ def run_daily_signal(
             inv["as_of"] = today_str
             inv["last_daily_update"] = today_str
 
+    # 子板块簿记重锚定到当前指数 vintage（拆股回溯调整免疫；两条路径都走）
+    _reanchor_subsector_holdings(inv.get("holdings", {}), prices_all, capital)
+
     # Record the active param set + signal version on the inventory (auditability:
     # which config generated these positions). smart_select pick > static
     # selected_param_set > "default". signal_version reflects the resolved cfg.
@@ -1350,6 +1391,12 @@ def run_daily_signal(
             _h["entry_date"] = _prev.get("entry_date", _today_str)
             # increment once per calendar day (idempotent on same-day re-runs)
             _h["days_held"]  = _prev.get("days_held", 0) + (0 if _already else 1)
+            # Carry corporate-actions provenance through rebalance rewrites.
+            # Without it, a rewritten holding keeps a pre-split entry_date but
+            # loses the "already adjusted" marker → adjust_stock_holding_view
+            # re-applies the split (KLAC 465→4650 shares, fake +32% on 7/1).
+            if _prev.get("applied_corporate_actions"):
+                _h["applied_corporate_actions"] = _prev["applied_corporate_actions"]
         else:
             # backfill legacy: inherit subsector entry/days; cost = price on entry date
             _subh = _sub_holdings.get(_sub, {}) if _sub else {}

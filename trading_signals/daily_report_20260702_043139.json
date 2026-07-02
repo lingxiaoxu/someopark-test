@@ -1,0 +1,1380 @@
+{
+  "report_type": "combined",
+  "signal_date": "2026-07-01",
+  "generated_at": "2026-07-02T04:31:39",
+  "total_capital": 1000000.0,
+  "regime": {
+    "regime_score": 42.0,
+    "regime_label": "neutral",
+    "mrpt_weight": 0.548,
+    "mtfs_weight": 0.452,
+    "interpretation": "中性: 两策略均可运行，按历史权重分配",
+    "indicators": {
+      "vix_level": {
+        "name": "VIX",
+        "description": "Equity volatility index",
+        "raw_value": 16.950001,
+        "formatted": "17.0",
+        "interpretation": "正常",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-02",
+          "prev_val": 16.59,
+          "prev_date": "2026-07-01",
+          "change_abs": 0.360001,
+          "change_pct": 0.0217,
+          "avg30": 17.504,
+          "avg90": 20.092111,
+          "vs30_pct": -0.03165,
+          "vs90_pct": -0.156385
+        }
+      },
+      "vix_z": {
+        "name": "VIX z-score",
+        "description": "相对252天历史",
+        "raw_value": -0.350492,
+        "formatted": "-0.35",
+        "interpretation": "正常"
+      },
+      "move_level": {
+        "name": "MOVE指数",
+        "description": "Bond vol",
+        "raw_value": 66.790001,
+        "formatted": "66.8",
+        "interpretation": "债券波动正常",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-06-26",
+          "prev_val": 67.099998,
+          "prev_date": "2026-06-25",
+          "change_abs": -0.309998,
+          "change_pct": -0.00462,
+          "avg30": 73.143666,
+          "avg90": 76.427666,
+          "vs30_pct": -0.086866,
+          "vs90_pct": -0.126102
+        }
+      },
+      "hy_spread_level": {
+        "name": "HY利差",
+        "description": "High-yield credit spread (OAS)",
+        "raw_value": 2.75,
+        "formatted": "2.75%",
+        "interpretation": "信用风险低",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-06-30",
+          "prev_val": 2.8,
+          "prev_date": "2026-06-29",
+          "change_abs": -0.05,
+          "change_pct": -0.017857,
+          "avg30": 2.732333,
+          "avg90": 2.909111,
+          "vs30_pct": 0.006466,
+          "vs90_pct": -0.054694
+        }
+      },
+      "ig_spread_level": {
+        "name": "IG利差",
+        "description": "Investment-grade spread (OAS)",
+        "raw_value": 0.76,
+        "formatted": "0.76%",
+        "interpretation": "极低",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-06-30",
+          "prev_val": 0.76,
+          "prev_date": "2026-06-29",
+          "change_abs": 0.0,
+          "change_pct": 0.0,
+          "avg30": 0.744,
+          "avg90": 0.803333,
+          "vs30_pct": 0.021505,
+          "vs90_pct": -0.053942
+        }
+      },
+      "yield_curve_level": {
+        "name": "收益率曲线(10Y-2Y)",
+        "description": "Treasury yield curve spread",
+        "raw_value": 0.31,
+        "formatted": "+0.31%",
+        "interpretation": "平坦",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": 0.3,
+          "prev_date": "2026-06-30",
+          "change_abs": 0.01,
+          "change_pct": 0.033333,
+          "avg30": 0.390333,
+          "avg90": 0.479222,
+          "vs30_pct": -0.205807,
+          "vs90_pct": -0.353118
+        }
+      },
+      "effr_level": {
+        "name": "联储基金利率",
+        "description": "Effective Fed Funds Rate",
+        "raw_value": 3.63,
+        "formatted": "3.63%",
+        "interpretation": "中性",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-06-30",
+          "prev_val": 3.63,
+          "prev_date": "2026-06-29",
+          "change_abs": 0.0,
+          "change_pct": 0.0,
+          "avg30": 3.624,
+          "avg90": 3.633889,
+          "vs30_pct": 0.001656,
+          "vs90_pct": -0.00107
+        }
+      },
+      "effr_1y_change": {
+        "name": "EFFR年变化",
+        "description": "过去1年利率变化",
+        "raw_value": -0.7,
+        "formatted": "-0.70%",
+        "interpretation": "降息"
+      },
+      "breakeven_10y_level": {
+        "name": "10Y盈亏平衡通胀",
+        "description": "10yr inflation breakeven",
+        "raw_value": 2.23,
+        "formatted": "2.23%",
+        "interpretation": "通胀预期正常",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": 2.24,
+          "prev_date": "2026-06-30",
+          "change_abs": -0.01,
+          "change_pct": -0.004464,
+          "avg30": 2.321,
+          "avg90": 2.357111,
+          "vs30_pct": -0.039207,
+          "vs90_pct": -0.053927
+        }
+      },
+      "fin_stress_level": {
+        "name": "圣路易斯金融压力指数",
+        "description": "St. Louis Financial Stress Index",
+        "raw_value": -0.6445,
+        "formatted": "-0.6445",
+        "interpretation": "金融宽松",
+        "history": {
+          "freq": "weekly",
+          "cur_date": "2026-06-26",
+          "prev_val": -0.9566,
+          "prev_date": "2026-06-19",
+          "change_abs": 0.3121,
+          "change_pct": -0.32626,
+          "avg30": -0.584507,
+          "avg90": -0.584647,
+          "vs30_pct": 0.102639,
+          "vs90_pct": 0.102374
+        }
+      },
+      "nfci_level": {
+        "name": "国家金融状况指数(NFCI)",
+        "description": "National Financial Conditions Index",
+        "raw_value": -0.504,
+        "formatted": "-0.5040",
+        "interpretation": "金融宽松",
+        "history": {
+          "freq": "weekly",
+          "cur_date": "2026-06-26",
+          "prev_val": -0.503,
+          "prev_date": "2026-06-19",
+          "change_abs": -0.001,
+          "change_pct": 0.001988,
+          "avg30": -0.5109,
+          "avg90": -0.511123,
+          "vs30_pct": -0.013506,
+          "vs90_pct": -0.013936
+        }
+      },
+      "consumer_sent_level": {
+        "name": "密歇根消费者信心",
+        "description": "U. Michigan Consumer Sentiment",
+        "raw_value": 44.8,
+        "formatted": "44.8",
+        "interpretation": "消费者悲观",
+        "history": {
+          "freq": "monthly",
+          "cur_date": "2026-05-01",
+          "prev_val": 49.8,
+          "prev_date": "2026-04-01",
+          "change_abs": -5.0,
+          "change_pct": -0.100402,
+          "avg30": 54.330769,
+          "avg90": 54.330769,
+          "vs30_pct": -0.175421,
+          "vs90_pct": -0.175421
+        }
+      },
+      "recession_flag": {
+        "name": "NBER衰退指标",
+        "description": "0=非衰退, 1=衰退",
+        "raw_value": 0,
+        "formatted": "0",
+        "interpretation": "非衰退",
+        "history": {
+          "freq": "monthly",
+          "cur_date": "2026-06-01",
+          "prev_val": 0.0,
+          "prev_date": "2026-05-01",
+          "change_abs": 0.0,
+          "change_pct": null,
+          "avg30": 0.0,
+          "avg90": 0.0,
+          "vs30_pct": null,
+          "vs90_pct": null
+        }
+      },
+      "nvda_20d": {
+        "name": "NVDA 20日涨跌",
+        "description": "NVIDIA 20d return (AI sentiment)",
+        "raw_value": -0.112242,
+        "formatted": "-11.2%",
+        "interpretation": "AI回调",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": -0.107135,
+          "prev_date": "2026-06-30",
+          "change_abs": -0.005107,
+          "change_pct": 0.047667,
+          "avg30": -0.017425,
+          "avg90": 0.025646,
+          "vs30_pct": 5.44149,
+          "vs90_pct": -5.376625
+        }
+      },
+      "arkk_20d": {
+        "name": "ARKK 20日涨跌",
+        "description": "ARK Innovation (投机情绪)",
+        "raw_value": 0.024277,
+        "formatted": "+2.4%",
+        "interpretation": "中性",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": -0.005415,
+          "prev_date": "2026-06-30",
+          "change_abs": 0.029692,
+          "change_pct": -5.483541,
+          "avg30": 0.005892,
+          "avg90": 0.016045,
+          "vs30_pct": 3.120614,
+          "vs90_pct": 0.51311
+        }
+      },
+      "soxx_20d": {
+        "name": "半导体(SOXX) 20日",
+        "description": "Semiconductor 20d return",
+        "raw_value": -0.008322,
+        "formatted": "-0.8%",
+        "interpretation": "中性",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": 0.120879,
+          "prev_date": "2026-06-30",
+          "change_abs": -0.129201,
+          "change_pct": -1.068849,
+          "avg30": 0.164859,
+          "avg90": 0.136443,
+          "vs30_pct": -1.050482,
+          "vs90_pct": -1.060995
+        }
+      },
+      "gld_20d": {
+        "name": "黄金(GLD) 20日涨跌",
+        "description": "避险资产 / 地缘政治代理",
+        "raw_value": -0.100376,
+        "formatted": "-10.0%",
+        "interpretation": "无明显避险",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": -0.104265,
+          "prev_date": "2026-06-30",
+          "change_abs": 0.003889,
+          "change_pct": -0.037296,
+          "avg30": -0.066068,
+          "avg90": -0.037193,
+          "vs30_pct": 0.519285,
+          "vs90_pct": 1.698777
+        }
+      },
+      "uso_20d": {
+        "name": "原油(USO) 20日涨跌",
+        "description": "地缘政治 / 通胀代理",
+        "raw_value": -0.247687,
+        "formatted": "-24.8%",
+        "interpretation": "油价回落",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": -0.214465,
+          "prev_date": "2026-06-30",
+          "change_abs": -0.033222,
+          "change_pct": 0.154907,
+          "avg30": -0.09449,
+          "avg90": 0.121858,
+          "vs30_pct": 1.621316,
+          "vs90_pct": -3.032581
+        }
+      },
+      "uup_20d": {
+        "name": "美元(UUP) 20日涨跌",
+        "description": "Dollar index 20d return",
+        "raw_value": 0.026297,
+        "formatted": "+2.6%",
+        "interpretation": "美元走强(risk-off)",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": 0.023415,
+          "prev_date": "2026-06-30",
+          "change_abs": 0.002882,
+          "change_pct": 0.123077,
+          "avg30": 0.016721,
+          "avg90": 0.010699,
+          "vs30_pct": 0.57268,
+          "vs90_pct": 1.457813
+        }
+      },
+      "spy_20d": {
+        "name": "SPY 20日涨跌",
+        "description": "S&P 500 20d momentum",
+        "raw_value": -0.015652,
+        "formatted": "-1.6%",
+        "interpretation": "横盘",
+        "history": {
+          "freq": "daily",
+          "cur_date": "2026-07-01",
+          "prev_val": -0.01298,
+          "prev_date": "2026-06-30",
+          "change_abs": -0.002672,
+          "change_pct": 0.205822,
+          "avg30": 0.016139,
+          "avg90": 0.018465,
+          "vs30_pct": -1.969801,
+          "vs90_pct": -1.847635
+        }
+      },
+      "tnx_level": {
+        "name": "10Y美债收益率",
+        "description": "10-year Treasury yield",
+        "raw_value": 4.372,
+        "formatted": "4.37%",
+        "interpretation": "正常"
+      },
+      "unrate_level": {
+        "name": "失业率",
+        "description": "U.S. Unemployment Rate (monthly)",
+        "raw_value": 4.3,
+        "formatted": "4.3%",
+        "interpretation": "正常",
+        "history": {
+          "freq": "monthly",
+          "cur_date": "2026-05-01",
+          "prev_val": 4.3,
+          "prev_date": "2026-04-01",
+          "change_abs": 0.0,
+          "change_pct": 0.0,
+          "avg30": 4.325,
+          "avg90": 4.325,
+          "vs30_pct": -0.00578,
+          "vs90_pct": -0.00578
+        }
+      },
+      "payems_mom": {
+        "name": "非农就业变化(千人)",
+        "description": "Nonfarm Payrolls MoM change (k)",
+        "raw_value": 172.0,
+        "formatted": "+172k",
+        "interpretation": "正常",
+        "history": {
+          "freq": "monthly",
+          "cur_date": "2026-05-01",
+          "prev_val": 179.0,
+          "prev_date": "2026-04-01",
+          "change_abs": -7.0,
+          "change_pct": -0.039106,
+          "avg30": 41.916667,
+          "avg90": 41.916667,
+          "vs30_pct": 3.10338,
+          "vs90_pct": 3.10338
+        }
+      },
+      "icsa_level": {
+        "name": "初领失业金(万人)",
+        "description": "Initial Jobless Claims (weekly)",
+        "raw_value": 215000.0,
+        "formatted": "21.5万",
+        "interpretation": "正常",
+        "history": {
+          "freq": "weekly",
+          "cur_date": "2026-06-20",
+          "prev_val": 227000.0,
+          "prev_date": "2026-06-13",
+          "change_abs": -12000.0,
+          "change_pct": -0.052863,
+          "avg30": 213600.0,
+          "avg90": 221089.285714,
+          "vs30_pct": 0.006554,
+          "vs90_pct": -0.027542
+        }
+      },
+      "ccsa_level": {
+        "name": "续领失业金(万人)",
+        "description": "Continuing Claims (weekly)",
+        "raw_value": 1821000.0,
+        "formatted": "182.1万",
+        "interpretation": "失业延续偏高",
+        "history": {
+          "freq": "weekly",
+          "cur_date": "2026-06-13",
+          "prev_val": 1800000.0,
+          "prev_date": "2026-06-06",
+          "change_abs": 21000.0,
+          "change_pct": 0.011667,
+          "avg30": 1833466.666667,
+          "avg90": 1883000.0,
+          "vs30_pct": -0.0068,
+          "vs90_pct": -0.032926
+        }
+      }
+    },
+    "component_scores": {
+      "volatility": {
+        "aggregate_score": 0.4588,
+        "bias": "neutral",
+        "weight_in_regime": 0.3,
+        "contribution": 0.1376,
+        "sub_scores": {
+          "vol_composite": 0.4746,
+          "eq_vix_level": 0.2953,
+          "eq_vix_z": 0.535,
+          "eq_long": 0.4152,
+          "eq_short": 0.5642,
+          "equity_vol": 0.4748,
+          "rt_move_level": 0.258,
+          "rt_move_z": 0.5794,
+          "rt_long": 0.4187,
+          "rt_short": 0.5575,
+          "rates_vol": 0.4742
+        }
+      },
+      "credit": {
+        "aggregate_score": 0.0208,
+        "bias": "MRPT-favoring",
+        "weight_in_regime": 0.11,
+        "contribution": 0.0023,
+        "sub_scores": {
+          "hy_spread": 0.0,
+          "ig_spread": 0.0,
+          "hy_level": 0.0625
+        }
+      },
+      "rates": {
+        "aggregate_score": 0.4313,
+        "bias": "MRPT-favoring",
+        "weight_in_regime": 0.1,
+        "contribution": 0.0431,
+        "sub_scores": {
+          "yield_curve": 0.576,
+          "effr": 0.426,
+          "breakeven": 0.292
+        }
+      },
+      "momentum_ai": {
+        "aggregate_score": 0.6006,
+        "bias": "MTFS-favoring",
+        "weight_in_regime": 0.18,
+        "contribution": 0.1081,
+        "sub_scores": {
+          "nvda": 0.1633,
+          "arkk": 0.5607,
+          "soxx": 0.4792,
+          "tech_premium": 0.9,
+          "xlk_premium": 0.9
+        }
+      },
+      "macro_stress": {
+        "aggregate_score": 0.4676,
+        "bias": "neutral",
+        "weight_in_regime": 0.14,
+        "contribution": 0.0655,
+        "sub_scores": {
+          "fin_stress": 0.2889,
+          "nfci": 0.2988,
+          "consumer_sent": 0.815
+        }
+      },
+      "geopolitical": {
+        "aggregate_score": 0.2644,
+        "bias": "MRPT-favoring",
+        "weight_in_regime": 0.09,
+        "contribution": 0.0238,
+        "sub_scores": {
+          "gold_safe_haven": 0.1,
+          "oil_source": 0.15,
+          "usd_gold_joint": 0.1833,
+          "oil_persistence": 0.4799,
+          "gold_level_momentum": 0.4088
+        }
+      },
+      "strategy_vol": {
+        "aggregate_score": 0.5,
+        "bias": "neutral",
+        "weight_in_regime": 0.08,
+        "contribution": 0.04,
+        "sub_scores": {}
+      }
+    },
+    "strategy_vol_ratio": {
+      "mrpt_vol": 49634.390289,
+      "mtfs_vol": null,
+      "vol_ratio": null
+    },
+    "weight_rationale": "Regime score: 42.0/100  →  MRPT 55%  MTFS 45%\n\n  Volatility   : VIX=17.0 (z=-0.35)\n  Credit       : HY spread=2.75% IG=0.76\n  Rates        : Yield curve (10y-2y)=+0.31  EFFR=3.63\n  AI/Momentum  : NVDA 20d=-11.2%  ARKK 20d=+2.4%\n  Macro stress : St.Louis FSI=-0.6445  NFCI=-0.504\n  Geopolitical : GLD 20d=-10.0%  USO 20d=-24.8%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [█████████░░░░░░░░░░░] 0.46\n    credit         : [░░░░░░░░░░░░░░░░░░░░] 0.02\n    rates          : [████████░░░░░░░░░░░░] 0.43\n    momentum_ai    : [████████████░░░░░░░░] 0.60\n    macro_stress   : [█████████░░░░░░░░░░░] 0.47\n    geopolitical   : [█████░░░░░░░░░░░░░░░] 0.26\n    strategy_vol   : [██████████░░░░░░░░░░] 0.50"
+  },
+  "position_monitor": {
+    "has_positions": true,
+    "mrpt": [
+      {
+        "pair": "HAS/YUM",
+        "action": "CLOSE",
+        "direction": "long",
+        "open_date": "2026-06-30",
+        "days_held": 0,
+        "param_set": "aggressive",
+        "z_score": -1.445,
+        "momentum_spread": null,
+        "entry_threshold": null,
+        "exit_threshold": 0.0,
+        "s1": {
+          "symbol": "HAS",
+          "shares": 2455,
+          "side": "BUY",
+          "price": 82.59,
+          "est_value": 202758.0
+        },
+        "s2": {
+          "symbol": "YUM",
+          "shares": -1326,
+          "side": "SELL_SHORT",
+          "price": 159.86,
+          "est_value": 211974.0
+        },
+        "unrealized_pnl": -6690.2,
+        "unrealized_pnl_pct": -1.604,
+        "note": "signal=-1.445 passed exit threshold 0.0 — close long"
+      }
+    ],
+    "mtfs": [
+      {
+        "pair": "GLW/FOX",
+        "action": "HOLD",
+        "direction": "long",
+        "open_date": "2026-06-25",
+        "days_held": 1,
+        "param_set": "monthly_aligned_windows",
+        "z_score": null,
+        "momentum_spread": 1.436,
+        "entry_threshold": 0.274,
+        "exit_threshold": 0.318,
+        "s1": {
+          "symbol": "GLW",
+          "shares": 575,
+          "side": "BUY",
+          "price": 255.43,
+          "est_value": 146872.0
+        },
+        "s2": {
+          "symbol": "FOX",
+          "shares": -1306,
+          "side": "SELL_SHORT",
+          "price": 46.84,
+          "est_value": 61173.0
+        },
+        "unrealized_pnl": 26596.99,
+        "unrealized_pnl_pct": 14.975,
+        "note": "Holding long, signal=1.436, exit at 0.318"
+      },
+      {
+        "pair": "IRM/EFX",
+        "action": "CLOSE_STOP",
+        "direction": "long",
+        "open_date": "2026-06-23",
+        "days_held": 0,
+        "param_set": "raw_momentum_kalman",
+        "z_score": null,
+        "momentum_spread": 0.226,
+        "entry_threshold": null,
+        "exit_threshold": null,
+        "s1": {},
+        "s2": {},
+        "unrealized_pnl": -6096.54,
+        "unrealized_pnl_pct": -3.948,
+        "note": "Injected position closed in simulation on 2026-06-30 (Pair P&L Stop Loss (-3.95%)). Simulation stopped — synthetic re-entry suppressed."
+      },
+      {
+        "pair": "TER/ISRG",
+        "action": "HOLD",
+        "direction": "long",
+        "open_date": "2026-06-23",
+        "days_held": 1,
+        "param_set": "long_term_kalman",
+        "z_score": null,
+        "momentum_spread": 1.228,
+        "entry_threshold": 0.166,
+        "exit_threshold": 0.389,
+        "s1": {
+          "symbol": "TER",
+          "shares": 169,
+          "side": "BUY",
+          "price": 483.84,
+          "est_value": 81769.0
+        },
+        "s2": {
+          "symbol": "ISRG",
+          "shares": -127,
+          "side": "SELL_SHORT",
+          "price": 397.68,
+          "est_value": 50505.0
+        },
+        "unrealized_pnl": 5204.22,
+        "unrealized_pnl_pct": 4.058,
+        "note": "Holding long, signal=1.228, exit at 0.389"
+      },
+      {
+        "pair": "PWR/NKE",
+        "action": "HOLD",
+        "direction": "long",
+        "open_date": "2026-06-23",
+        "days_held": 0,
+        "param_set": "aggressive",
+        "z_score": null,
+        "momentum_spread": 0.867,
+        "entry_threshold": 0.17,
+        "exit_threshold": 0.287,
+        "s1": {
+          "symbol": "PWR",
+          "shares": 104,
+          "side": "BUY",
+          "price": 719.93,
+          "est_value": 74873.0
+        },
+        "s2": {
+          "symbol": "NKE",
+          "shares": -1790,
+          "side": "SELL_SHORT",
+          "price": 41.05,
+          "est_value": 73480.0
+        },
+        "unrealized_pnl": 1729.4,
+        "unrealized_pnl_pct": 1.121,
+        "note": "Holding long, signal=0.867, exit at 0.287"
+      },
+      {
+        "pair": "GLW/FOXA",
+        "action": "HOLD",
+        "direction": "long",
+        "open_date": "2026-06-25",
+        "days_held": 2,
+        "param_set": "monthly_aligned_windows",
+        "z_score": null,
+        "momentum_spread": 1.402,
+        "entry_threshold": 0.272,
+        "exit_threshold": 0.319,
+        "s1": {
+          "symbol": "GLW",
+          "shares": 575,
+          "side": "BUY",
+          "price": 255.43,
+          "est_value": 146872.0
+        },
+        "s2": {
+          "symbol": "FOXA",
+          "shares": -1191,
+          "side": "SELL_SHORT",
+          "price": 52.16,
+          "est_value": 62123.0
+        },
+        "unrealized_pnl": 25707.48,
+        "unrealized_pnl_pct": 14.472,
+        "note": "Holding long, signal=1.402, exit at 0.319"
+      },
+      {
+        "pair": "CAT/ADBE",
+        "action": "HOLD",
+        "direction": "long",
+        "open_date": "2026-06-29",
+        "days_held": 1,
+        "param_set": "aggressive",
+        "z_score": null,
+        "momentum_spread": 0.804,
+        "entry_threshold": 0.19,
+        "exit_threshold": 0.273,
+        "s1": {
+          "symbol": "CAT",
+          "shares": 154,
+          "side": "BUY",
+          "price": 1064.9,
+          "est_value": 163995.0
+        },
+        "s2": {
+          "symbol": "ADBE",
+          "shares": -456,
+          "side": "SELL_SHORT",
+          "price": 205.02,
+          "est_value": 93489.0
+        },
+        "unrealized_pnl": 9319.28,
+        "unrealized_pnl_pct": 3.794,
+        "note": "Holding long, signal=0.804, exit at 0.273"
+      },
+      {
+        "pair": "CVS/NKE",
+        "action": "HOLD",
+        "direction": "long",
+        "open_date": "2026-06-30",
+        "days_held": 0,
+        "param_set": "aggressive",
+        "z_score": null,
+        "momentum_spread": 0.826,
+        "entry_threshold": 0.141,
+        "exit_threshold": 0.306,
+        "s1": {
+          "symbol": "CVS",
+          "shares": 1382,
+          "side": "BUY",
+          "price": 103.45,
+          "est_value": 142968.0
+        },
+        "s2": {
+          "symbol": "NKE",
+          "shares": -1726,
+          "side": "SELL_SHORT",
+          "price": 41.05,
+          "est_value": 70852.0
+        },
+        "unrealized_pnl": 562.38,
+        "unrealized_pnl_pct": 0.262,
+        "note": "Holding long, signal=0.826, exit at 0.306"
+      }
+    ],
+    "total_open": 6,
+    "total_close": 2
+  },
+  "portfolio": {
+    "total_capital": 1000000.0,
+    "mrpt_allocation": 548000.0,
+    "mtfs_allocation": 452000.0,
+    "mrpt_weight": 0.548,
+    "mtfs_weight": 0.452,
+    "total_open_count": 0,
+    "total_close_count": 0
+  },
+  "mrpt": {
+    "strategy": "MRPT",
+    "capital": 548000.0,
+    "sim_capital": 500000.0,
+    "scale_factor": 1.096,
+    "scaling_note": "$548,000 / $1,000,000 backtest = 1.0960× | PnL/DD × 1.0960",
+    "signal_date": "2026-07-01",
+    "summary": {
+      "n_open": 0,
+      "n_close": 0,
+      "n_hold": 0,
+      "n_veto": 0,
+      "n_flat": 4,
+      "n_blackout": 0,
+      "n_no_data": 0,
+      "n_excluded_pairs": 10
+    },
+    "active_signals": [],
+    "flat_signals": [
+      {
+        "pair": "BSX/PFE",
+        "action": "FLAT",
+        "z_score": 0.643,
+        "entry_threshold": 0.764,
+        "distance_to_entry": 0.121,
+        "s1_price": 42.68,
+        "s2_price": 24.08,
+        "note": "No position, signal=0.643 within ±0.764 — wait",
+        "oos_sharpe": 0.9471,
+        "oos_pnl_$1m": 4675.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1
+      },
+      {
+        "pair": "HWM/ROP",
+        "action": "FLAT",
+        "z_score": -0.581,
+        "entry_threshold": 0.75,
+        "distance_to_entry": 0.169,
+        "s1_price": 268.86,
+        "s2_price": 338.39,
+        "note": "No position, signal=-0.581 within ±0.75 — wait",
+        "oos_sharpe": 0.079,
+        "oos_pnl_$1m": 380.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 3
+      },
+      {
+        "pair": "EXR/WY",
+        "action": "FLAT",
+        "z_score": 0.432,
+        "entry_threshold": 1.471,
+        "distance_to_entry": 1.039,
+        "s1_price": 145.3,
+        "s2_price": 23.94,
+        "note": "No position, signal=0.432 within ±1.471 — wait",
+        "oos_sharpe": 1.9595,
+        "oos_pnl_$1m": 5629.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1
+      },
+      {
+        "pair": "BIIB/HCA",
+        "action": "FLAT",
+        "z_score": 0.11,
+        "entry_threshold": 1.497,
+        "distance_to_entry": 1.387,
+        "s1_price": 216.06,
+        "s2_price": 389.89,
+        "note": "No position, signal=0.11 within ±1.497 — wait",
+        "oos_sharpe": 1.5525,
+        "oos_pnl_$1m": 5019.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1
+      }
+    ],
+    "blackout_signals": [],
+    "no_data_signals": [],
+    "excluded_pairs": [
+      {
+        "pair": "AIG/CFG",
+        "oos_sharpe": -2.8141,
+        "oos_pnl_$1m": -10804.0,
+        "oos_maxdd_$1m": -11046.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-2.81<-0.1, PnL=$-10,804<$-1,000"
+      },
+      {
+        "pair": "APO/MCO",
+        "oos_sharpe": -2.1944,
+        "oos_pnl_$1m": -15992.0,
+        "oos_maxdd_$1m": -16181.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-2.19<-0.1, PnL=$-15,992<$-1,000"
+      },
+      {
+        "pair": "CME/DE",
+        "oos_sharpe": -2.0896,
+        "oos_pnl_$1m": -10392.0,
+        "oos_maxdd_$1m": -12751.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-2.09<-0.1, PnL=$-10,392<$-1,000"
+      },
+      {
+        "pair": "AAPL/CINF",
+        "oos_sharpe": -2.0852,
+        "oos_pnl_$1m": -7454.0,
+        "oos_maxdd_$1m": -9036.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-2.09<-0.1, PnL=$-7,454<$-1,000"
+      },
+      {
+        "pair": "CINF/FISV",
+        "oos_sharpe": -1.6434,
+        "oos_pnl_$1m": -4406.0,
+        "oos_maxdd_$1m": -5289.0,
+        "pos_windows": "5/6",
+        "exclusion_reason": "Sharpe=-1.64<-0.1, PnL=$-4,406<$-1,000"
+      },
+      {
+        "pair": "AIG/PFG",
+        "oos_sharpe": -1.2563,
+        "oos_pnl_$1m": -3242.0,
+        "oos_maxdd_$1m": -5149.0,
+        "pos_windows": "5/6",
+        "exclusion_reason": "Sharpe=-1.26<-0.1, PnL=$-3,242<$-1,000"
+      },
+      {
+        "pair": "AON/KKR",
+        "oos_sharpe": -0.4636,
+        "oos_pnl_$1m": -1771.0,
+        "oos_maxdd_$1m": -5564.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-0.46<-0.1, PnL=$-1,771<$-1,000"
+      },
+      {
+        "pair": "DUK/PPL",
+        "oos_sharpe": -0.459,
+        "oos_pnl_$1m": -1440.0,
+        "oos_maxdd_$1m": -3827.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-0.46<-0.1, PnL=$-1,440<$-1,000"
+      },
+      {
+        "pair": "AON/BR",
+        "oos_sharpe": -0.4243,
+        "oos_pnl_$1m": -1922.0,
+        "oos_maxdd_$1m": -8283.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-0.42<-0.1, PnL=$-1,922<$-1,000"
+      },
+      {
+        "pair": "AKAM/MSFT",
+        "oos_sharpe": -0.1484,
+        "oos_pnl_$1m": -1434.0,
+        "oos_maxdd_$1m": -15145.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-0.15<-0.1, PnL=$-1,434<$-1,000"
+      }
+    ]
+  },
+  "mtfs": {
+    "strategy": "MTFS",
+    "capital": 452000.0,
+    "sim_capital": 500000.0,
+    "scale_factor": 0.904,
+    "scaling_note": "$452,000 / $1,000,000 backtest = 0.9040× | PnL/DD × 0.9040",
+    "signal_date": "2026-07-01",
+    "summary": {
+      "n_open": 0,
+      "n_close": 0,
+      "n_hold": 2,
+      "n_veto": 7,
+      "n_flat": 2,
+      "n_blackout": 0,
+      "n_no_data": 0,
+      "n_excluded_pairs": 4
+    },
+    "active_signals": [
+      {
+        "pair": "AMAT/ICE",
+        "action": "MACRO_VETO",
+        "direction": "long",
+        "momentum_spread": 0.845,
+        "entry_threshold": 0.297,
+        "exit_threshold": null,
+        "days_held": 0,
+        "s1": {
+          "symbol": "AMAT",
+          "shares": 163,
+          "side": "BUY",
+          "price": 723.0,
+          "est_value": 117849.0
+        },
+        "s2": {
+          "symbol": "ICE",
+          "shares": -479,
+          "side": "SELL_SHORT",
+          "price": 123.11,
+          "est_value": 58970.0
+        },
+        "s1_price": 723.0,
+        "s2_price": 123.11,
+        "s1_shares": 163,
+        "s2_shares": -479,
+        "total_notional": 176819.0,
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
+        "oos_sharpe": 1.8449,
+        "oos_pnl_$1m": 26201.0,
+        "oos_maxdd_$1m": -6735.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1,
+        "original_action": "OPEN_LONG",
+        "macro_gate": {
+          "vix_term_slope_5d_chg": 2.65,
+          "block_new_opens": true,
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
+        }
+      },
+      {
+        "pair": "JBHT/NKE",
+        "action": "MACRO_VETO",
+        "direction": "long",
+        "momentum_spread": 0.599,
+        "entry_threshold": 0.0,
+        "exit_threshold": null,
+        "days_held": 0,
+        "s1": {
+          "symbol": "JBHT",
+          "shares": 203,
+          "side": "BUY",
+          "price": 289.43,
+          "est_value": 58754.0
+        },
+        "s2": {
+          "symbol": "NKE",
+          "shares": -1437,
+          "side": "SELL_SHORT",
+          "price": 41.05,
+          "est_value": 58989.0
+        },
+        "s1_price": 289.43,
+        "s2_price": 41.05,
+        "s1_shares": 203,
+        "s2_shares": -1437,
+        "total_notional": 117743.0,
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
+        "oos_sharpe": 1.5015,
+        "oos_pnl_$1m": 14203.0,
+        "oos_maxdd_$1m": -9224.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1,
+        "original_action": "OPEN_LONG",
+        "macro_gate": {
+          "vix_term_slope_5d_chg": 2.65,
+          "block_new_opens": true,
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
+        }
+      },
+      {
+        "pair": "LRCX/T",
+        "action": "MACRO_VETO",
+        "direction": "long",
+        "momentum_spread": 0.908,
+        "entry_threshold": 0.3,
+        "exit_threshold": null,
+        "days_held": 0,
+        "s1": {
+          "symbol": "LRCX",
+          "shares": 271,
+          "side": "BUY",
+          "price": 433.33,
+          "est_value": 117432.0
+        },
+        "s2": {
+          "symbol": "T",
+          "shares": -2851,
+          "side": "SELL_SHORT",
+          "price": 20.7,
+          "est_value": 59016.0
+        },
+        "s1_price": 433.33,
+        "s2_price": 20.7,
+        "s1_shares": 271,
+        "s2_shares": -2851,
+        "total_notional": 176448.0,
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
+        "oos_sharpe": 1.4389,
+        "oos_pnl_$1m": 21349.0,
+        "oos_maxdd_$1m": -6517.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1,
+        "original_action": "OPEN_LONG",
+        "macro_gate": {
+          "vix_term_slope_5d_chg": 2.65,
+          "block_new_opens": true,
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
+        }
+      },
+      {
+        "pair": "AMAT/CSGP",
+        "action": "MACRO_VETO",
+        "direction": "long",
+        "momentum_spread": 0.837,
+        "entry_threshold": 0.299,
+        "exit_threshold": null,
+        "days_held": 0,
+        "s1": {
+          "symbol": "AMAT",
+          "shares": 163,
+          "side": "BUY",
+          "price": 723.0,
+          "est_value": 117849.0
+        },
+        "s2": {
+          "symbol": "CSGP",
+          "shares": -2084,
+          "side": "SELL_SHORT",
+          "price": 28.32,
+          "est_value": 59019.0
+        },
+        "s1_price": 723.0,
+        "s2_price": 28.32,
+        "s1_shares": 163,
+        "s2_shares": -2084,
+        "total_notional": 176868.0,
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
+        "oos_sharpe": 1.3724,
+        "oos_pnl_$1m": 25062.0,
+        "oos_maxdd_$1m": -7121.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1,
+        "original_action": "OPEN_LONG",
+        "macro_gate": {
+          "vix_term_slope_5d_chg": 2.65,
+          "block_new_opens": true,
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
+        }
+      },
+      {
+        "pair": "TER/KKR",
+        "action": "MACRO_VETO",
+        "direction": "long",
+        "momentum_spread": 0.7,
+        "entry_threshold": 0.253,
+        "exit_threshold": null,
+        "days_held": 0,
+        "s1": {
+          "symbol": "TER",
+          "shares": 61,
+          "side": "BUY",
+          "price": 483.84,
+          "est_value": 29514.0
+        },
+        "s2": {
+          "symbol": "KKR",
+          "shares": -321,
+          "side": "SELL_SHORT",
+          "price": 91.78,
+          "est_value": 29461.0
+        },
+        "s1_price": 483.84,
+        "s2_price": 91.78,
+        "s1_shares": 61,
+        "s2_shares": -321,
+        "total_notional": 58975.0,
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
+        "oos_sharpe": 1.2072,
+        "oos_pnl_$1m": 14652.0,
+        "oos_maxdd_$1m": -11383.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1,
+        "original_action": "OPEN_LONG",
+        "macro_gate": {
+          "vix_term_slope_5d_chg": 2.65,
+          "block_new_opens": true,
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
+        }
+      },
+      {
+        "pair": "CAT/CCI",
+        "action": "MACRO_VETO",
+        "direction": "long",
+        "momentum_spread": 0.542,
+        "entry_threshold": 0.3,
+        "exit_threshold": null,
+        "days_held": 0,
+        "s1": {
+          "symbol": "CAT",
+          "shares": 55,
+          "side": "BUY",
+          "price": 1064.9,
+          "est_value": 58570.0
+        },
+        "s2": {
+          "symbol": "CCI",
+          "shares": -779,
+          "side": "SELL_SHORT",
+          "price": 75.73,
+          "est_value": 58994.0
+        },
+        "s1_price": 1064.9,
+        "s2_price": 75.73,
+        "s1_shares": 55,
+        "s2_shares": -779,
+        "total_notional": 117564.0,
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
+        "oos_sharpe": 1.1785,
+        "oos_pnl_$1m": 11851.0,
+        "oos_maxdd_$1m": -6653.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1,
+        "original_action": "OPEN_LONG",
+        "macro_gate": {
+          "vix_term_slope_5d_chg": 2.65,
+          "block_new_opens": true,
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
+        }
+      },
+      {
+        "pair": "LRCX/CPRT",
+        "action": "MACRO_VETO",
+        "direction": "long",
+        "momentum_spread": 0.608,
+        "entry_threshold": 0.283,
+        "exit_threshold": null,
+        "days_held": 0,
+        "s1": {
+          "symbol": "LRCX",
+          "shares": 271,
+          "side": "BUY",
+          "price": 433.33,
+          "est_value": 117432.0
+        },
+        "s2": {
+          "symbol": "CPRT",
+          "shares": -2094,
+          "side": "SELL_SHORT",
+          "price": 28.19,
+          "est_value": 59030.0
+        },
+        "s1_price": 433.33,
+        "s2_price": 28.19,
+        "s1_shares": 271,
+        "s2_shares": -2094,
+        "total_notional": 176462.0,
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
+        "oos_sharpe": 0.9216,
+        "oos_pnl_$1m": 17348.0,
+        "oos_maxdd_$1m": -12848.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1,
+        "original_action": "OPEN_LONG",
+        "macro_gate": {
+          "vix_term_slope_5d_chg": 2.65,
+          "block_new_opens": true,
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
+        }
+      },
+      {
+        "pair": "GLW/FOX",
+        "action": "HOLD",
+        "direction": "long",
+        "momentum_spread": 1.436,
+        "entry_threshold": 0.274,
+        "exit_threshold": 0.318,
+        "days_held": 1,
+        "s1": {
+          "symbol": "GLW",
+          "shares": 575,
+          "side": "BUY",
+          "price": 255.43,
+          "est_value": 146872.0
+        },
+        "s2": {
+          "symbol": "FOX",
+          "shares": -1306,
+          "side": "SELL_SHORT",
+          "price": 46.84,
+          "est_value": 61173.0
+        },
+        "s1_price": 255.43,
+        "s2_price": 46.84,
+        "s1_shares": 575,
+        "s2_shares": -1306,
+        "total_notional": 208045.0,
+        "note": "Holding long, signal=1.436, exit at 0.318",
+        "oos_sharpe": 0.5931,
+        "oos_pnl_$1m": 8277.0,
+        "oos_maxdd_$1m": -18114.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 2
+      },
+      {
+        "pair": "GLW/FOXA",
+        "action": "HOLD",
+        "direction": "long",
+        "momentum_spread": 1.402,
+        "entry_threshold": 0.272,
+        "exit_threshold": 0.319,
+        "days_held": 2,
+        "s1": {
+          "symbol": "GLW",
+          "shares": 575,
+          "side": "BUY",
+          "price": 255.43,
+          "est_value": 146872.0
+        },
+        "s2": {
+          "symbol": "FOXA",
+          "shares": -1191,
+          "side": "SELL_SHORT",
+          "price": 52.16,
+          "est_value": 62123.0
+        },
+        "s1_price": 255.43,
+        "s2_price": 52.16,
+        "s1_shares": 575,
+        "s2_shares": -1191,
+        "total_notional": 208995.0,
+        "note": "Holding long, signal=1.402, exit at 0.319",
+        "oos_sharpe": 0.31,
+        "oos_pnl_$1m": 5201.0,
+        "oos_maxdd_$1m": -21627.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 2
+      }
+    ],
+    "flat_signals": [
+      {
+        "pair": "CVS/MSFT",
+        "action": "FLAT",
+        "momentum_spread": 0.508,
+        "entry_threshold": 0.145,
+        "distance_to_entry": 0.363,
+        "s1_price": 103.45,
+        "s2_price": 373.02,
+        "note": "No position, signal=0.508 within ±0.145 — wait",
+        "oos_sharpe": 1.7803,
+        "oos_pnl_$1m": 6703.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1
+      },
+      {
+        "pair": "CAT/WDAY",
+        "action": "FLAT",
+        "momentum_spread": 0.746,
+        "entry_threshold": 0.236,
+        "distance_to_entry": 0.51,
+        "s1_price": 1064.9,
+        "s2_price": 122.42,
+        "note": "No position, signal=0.746 within ±0.236 — wait",
+        "oos_sharpe": 1.8494,
+        "oos_pnl_$1m": 29851.0,
+        "oos_pos_windows": "6/6",
+        "oos_tier": 1
+      }
+    ],
+    "blackout_signals": [],
+    "no_data_signals": [],
+    "excluded_pairs": [
+      {
+        "pair": "FFIV/CBOE",
+        "oos_sharpe": -2.4805,
+        "oos_pnl_$1m": -11490.0,
+        "oos_maxdd_$1m": -13338.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-2.48<-0.1, PnL=$-11,490<$-1,000"
+      },
+      {
+        "pair": "TER/CME",
+        "oos_sharpe": -0.4463,
+        "oos_pnl_$1m": -6838.0,
+        "oos_maxdd_$1m": -21646.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-0.45<-0.1, PnL=$-6,838<$-1,000"
+      },
+      {
+        "pair": "FFIV/NEM",
+        "oos_sharpe": -0.3787,
+        "oos_pnl_$1m": -3080.0,
+        "oos_maxdd_$1m": -15182.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-0.38<-0.1, PnL=$-3,080<$-1,000"
+      },
+      {
+        "pair": "JBHT/NDAQ",
+        "oos_sharpe": -0.1576,
+        "oos_pnl_$1m": -629.0,
+        "oos_maxdd_$1m": -3112.0,
+        "pos_windows": "6/6",
+        "exclusion_reason": "Sharpe=-0.16<-0.1"
+      }
+    ]
+  }
+}
