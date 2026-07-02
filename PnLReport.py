@@ -250,9 +250,13 @@ def load_positions(start_ts, end_ts) -> list[dict]:
             if '/' not in pair_name:
                 continue
             if not p.get('direction'):
-                # Pair was closed in this snapshot — mark it but keep the record
+                # Pair was closed in this snapshot — mark it but keep the record.
+                # Record the FIRST null-snapshot as_of: the MTM anchor for closes
+                # that have no monitor event (MONITOR plan §8.1 — without an
+                # anchor these "realized" values float with the report end date).
                 if pair_name in positions:
                     closed_pairs.add(pair_name)
+                    positions[pair_name].setdefault('_closed_as_of', str(day.date()))
                 continue
             # Active snapshot — only un-close if this is a genuinely NEW position
             # (different open_date).  If the open_date is the same as the already-
@@ -265,6 +269,7 @@ def load_positions(start_ts, end_ts) -> list[dict]:
                     continue   # stale snapshot — skip
                 # Genuine re-entry with a new open_date
                 closed_pairs.discard(pair_name)
+                positions.get(pair_name, {}).pop('_closed_as_of', None)
             s1, s2 = pair_name.split('/', 1)
             # Corporate actions：旧口径快照换算为当前价格口径
             # （marker 判据：已调整快照自带 applied_corporate_actions 留痕 → 跳过）
@@ -315,6 +320,7 @@ def load_positions(start_ts, end_ts) -> list[dict]:
             if not p.get('direction'):
                 if pair_name in positions:
                     closed_pairs.add(pair_name)
+                    positions[pair_name].setdefault('_closed_as_of', inv_as_of)
                 continue
             if pair_name in positions:
                 continue  # history snapshot already captured this pair — don't overwrite
@@ -351,8 +357,20 @@ def load_positions(start_ts, end_ts) -> list[dict]:
     # live inventory reflects the CURRENT state, not the state as-of end_ts,
     # so the check would incorrectly mark positions that were open on end_ts
     # but closed later as ghost HOLDs.
-    _today = pd.Timestamp.now().normalize()
-    _is_current_report = (end_ts >= _today - pd.Timedelta(days=3))
+    # MONITOR §8.3: "current" = the live inventory's OWN as_of is not ahead of
+    # the report end (wall-clock windows misclassify recent historical reruns —
+    # a 7/2 rerun of end=6/30 retro-closed IRM/EFX that was open on 6/30).
+    _inv_as_of_max = ''
+    for _f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
+               os.path.join(BASE_DIR, 'inventory_mtfs.json')):
+        try:
+            with open(_f) as _fh:
+                _inv_as_of_max = max(_inv_as_of_max,
+                                     json.load(_fh).get('as_of', '') or '')
+        except Exception:
+            pass
+    _is_current_report = bool(_inv_as_of_max) and \
+        pd.Timestamp(_inv_as_of_max) <= end_ts + pd.Timedelta(days=1)
     if _is_current_report:
         _live_open = set()
         for inv_f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
@@ -380,6 +398,7 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
     """Latest CLOSE/CLOSE_STOP per pair, excluding those superseded by a later HOLD."""
     all_ev: dict[str, list] = {}
     hold_ts: dict[str, pd.Timestamp] = {}
+    open_dates: dict[str, set] = {}
 
     for fpath in sorted(glob.glob(os.path.join(SIG_DIR, 'daily_report_*.json'))):
         day, full = _parse_ts(fpath)
@@ -395,6 +414,15 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
         if sig_date < start_ts or sig_date > end_ts:
             continue
         pm = data.get('position_monitor', {})
+        # MONITOR §8.2: collect OPEN dates — a later CLOSE is a NEW lifecycle
+        # only if an OPEN happened on/after the previous close; otherwise it is
+        # a repeated record of the same close (fake-close re-emissions inflated
+        # prior_pnl by ~$25k) and must be dropped.
+        for strat in ('mrpt', 'mtfs'):
+            for e in data.get(strat, {}).get('active_signals', []) or []:
+                if isinstance(e, dict) and e.get('action') in ('OPEN_LONG', 'OPEN_SHORT') \
+                        and e.get('pair'):
+                    open_dates.setdefault(e['pair'], set()).add(signal_date_str)
         for strat in ('mrpt', 'mtfs'):
             for e in pm.get(strat, []):
                 if not isinstance(e, dict):
@@ -447,6 +475,21 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
                     '_ts':         full,
                 }
                 all_ev.setdefault(pair, []).append(ev)
+
+    # MONITOR §8.2: lifecycle dedup — between two CLOSEs of a pair there must be
+    # an OPEN (same-day reopen counts); otherwise the later close is a repeated
+    # record of the SAME lifecycle (e.g. HAS/PFE 6/16 zombie retro-close,
+    # CSX/AIG 4/29+5/1 double record) and is dropped from accounting.
+    for pair, evs in list(all_ev.items()):
+        opens = open_dates.get(pair, set())
+        kept: list = []
+        for ev in sorted(evs, key=lambda e: (e.get('signal_date', ''), e['_ts'])):
+            if kept and ev['signal_date'] != kept[-1]['signal_date']:
+                prev_sd = kept[-1]['signal_date']
+                if not any(prev_sd <= od <= ev['signal_date'] for od in opens):
+                    continue          # same lifecycle repeat — drop
+            kept.append(ev)
+        all_ev[pair] = kept
 
     # Prior lifecycle PnL: compute from ALL close events BEFORE hold-filtering.
     # Group by (pair, signal_date), keep latest per group — same as curve logic.
@@ -1024,11 +1067,19 @@ def build_report_data(start: str, end: str) -> dict:
                 # Fallback: compute MTM from inventory shares × Close prices.
                 # The position was never monitored, so we reconstruct its PnL
                 # from the last available close price before it disappeared.
+                # MONITOR §8.1: anchor the MTM to the position's own close date
+                # (last monitor evidence, else the first null-snapshot as_of) —
+                # NEVER the report end date, or the "realized" value floats with
+                # the market on every rerun (6 pairs drifted −$63.9k on 7/1).
+                _exit_anchor = p.get('last_pnl_date') or p.get('_closed_as_of') or end
                 mtm_fallback = None
                 if s1_sh and s2_sh and op1 and op2:
                     try:
-                        cp1 = prices[s1].dropna().iloc[-1] if s1 in prices.columns else None
-                        cp2 = prices[s2].dropna().iloc[-1] if s2 in prices.columns else None
+                        _a = pd.Timestamp(_exit_anchor)
+                        cp1 = (prices[s1].loc[:_a].dropna().iloc[-1]
+                               if s1 in prices.columns else None)
+                        cp2 = (prices[s2].loc[:_a].dropna().iloc[-1]
+                               if s2 in prices.columns else None)
                         if cp1 is not None and cp2 is not None:
                             mtm_fallback = round(
                                 (s1_sh * float(cp1) + s2_sh * float(cp2))
@@ -1036,7 +1087,7 @@ def build_report_data(start: str, end: str) -> dict:
                     except Exception:
                         pass
                 sys_pnl = mtm_fallback if mtm_fallback is not None else 0
-            exit_dt    = p['last_pnl_date'] or end
+            exit_dt    = p['last_pnl_date'] or p.get('_closed_as_of') or end
             action     = 'CLOSE'
             close_note = 'Closed by signal (no monitor event)'
         elif hold_ev:
@@ -1204,21 +1255,27 @@ def build_report_data(start: str, end: str) -> dict:
                     # Guard: if the current inventory shows this pair as closed
                     # (direction=null), the HOLD record is stale — skip it.
                     # Without this, cron-gap orphan-closes leave ghost HOLDs.
-                    # Note: _inv_main only has pairs with s1_shares, so for
-                    # null-direction pairs we check the raw inventory files.
+                    # MONITOR §8.3: only valid for CURRENT reports — for a
+                    # historical rerun the live inventory reflects TODAY's state,
+                    # not the state as of end_ts, and would wrongly drop
+                    # positions that were genuinely open then.
+                    _inv_asof_g = ''
                     _is_closed_now = False
                     for _inv_f in (os.path.join(BASE_DIR, 'inventory_mrpt.json'),
                                    os.path.join(BASE_DIR, 'inventory_mtfs.json')):
                         try:
                             with open(_inv_f) as _f:
                                 _inv_raw = json.load(_f)
+                            _inv_asof_g = max(_inv_asof_g,
+                                              _inv_raw.get('as_of', '') or '')
                             _pair_state = _inv_raw.get('pairs', {}).get(pair)
                             if _pair_state is not None and not _pair_state.get('direction'):
                                 _is_closed_now = True
-                                break
                         except Exception:
                             pass
-                    if _is_closed_now:
+                    _guard_valid = bool(_inv_asof_g) and \
+                        pd.Timestamp(_inv_asof_g) <= end_ts + pd.Timedelta(days=1)
+                    if _is_closed_now and _guard_valid:
                         continue
                     upnl = e.get('unrealized_pnl', 0) or 0
                     raw_upnl = round(upnl / sf, 2) if sf != 1.0 else upnl
