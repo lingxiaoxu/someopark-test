@@ -628,6 +628,41 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
 
     # CLOSE (normal exit)
     if not in_long and not in_short and inv_direction:
+        # ── MONITOR Step 3(b) (2026-07-03): 模拟空仓 ≠ 退出规则成立（缺陷 2）。
+        # 模拟可能因注入时序/blackout/容量 gate 而空仓——不信任模拟状态，
+        # 显式评估真实退出规则；不成立或数据缺失 → HOLD（保守）。
+        # CLOSE_STOP 与 original_position_closed 路径不经过此分支，不受影响。
+        _rule_met = None
+        try:
+            if strategy == 'mrpt':
+                # MRPT 退出规则：short 平仓 iff z < exit_z；long 平仓 iff z > -exit_z
+                if not np.isnan(signal_value) and exit_thr is not None \
+                        and not np.isnan(float(exit_thr)):
+                    _rule_met = (signal_value < float(exit_thr)) if inv_direction == 'short' \
+                                else (signal_value > -float(exit_thr))
+            else:
+                # MTFS 真实退出规则（plan 勘误1）：动量一致性衰减，方向无关——
+                # avg(Consistency_1, Consistency_2) < Exit_Threshold
+                # （PortfolioMTFSRun.py L411-413；不是 momentum_spread）
+                _c1 = today_rv.get('Consistency_1')
+                _c2 = today_rv.get('Consistency_2')
+                if _c1 is not None and _c2 is not None and exit_thr is not None \
+                        and not np.isnan(float(exit_thr)):
+                    _rule_met = ((float(_c1) + float(_c2)) / 2.0) < float(exit_thr)
+        except (TypeError, ValueError):
+            _rule_met = None
+        if _rule_met is not True:
+            log.warning(f"[MONITOR_GUARD] {pair_key}: sim flat but exit rule not met "
+                        f"(strategy={strategy}, sv={sv}, exit={ext}, "
+                        f"rule_met={_rule_met}) — holding real position")
+            d = {**base, 'action': 'HOLD', 'direction': inv_direction,
+                 'entry_threshold': et, 'exit_threshold': ext,
+                 's1_shares': s1_shares, 's2_shares': s2_shares,
+                 'days_held': days_held,
+                 'note': f'sim flat but exit rule not met (sv={sv}, exit={ext}) '
+                         f'— holding real position [MONITOR_GUARD]'}
+            d.update(_legs(inv_direction))
+            return d
         upnl, upnl_pct = _compute_close_upnl(inv_direction)
         d = {**base, 'action': 'CLOSE', 'direction': inv_direction,
              'exit_threshold': ext,
@@ -1448,6 +1483,22 @@ def _run_position_monitor(
         log.warning(f"[monitor] {pair_key}: open_ts_data {open_ts_data.date()} > effective_ts "
                     f"{effective_ts.date()}, falling back to effective_ts injection")
         open_ts_data = effective_ts
+
+    # ── MONITOR Step 3(a) (2026-07-03): 开仓 bar == 最后一根 bar → 注入发生在
+    # 最后一次 handle_data 之后，模拟从未带仓跑过任何 bar → 模拟必然空仓，
+    # _build_signal 会把它误判成退出信号（缺陷 2 的机理）。无东西可评估 → HOLD。
+    # 缺陷 1 修复后此情形只剩"当日开仓/数据缺失"，防护仍必须在。
+    if open_ts_data >= effective_ts:
+        log.info(f"[MONITOR_GUARD] {pair_key}: opened on latest bar "
+                 f"({open_ts_data.date()}) — nothing to evaluate yet, HOLD")
+        return {'pair': pair_key, 'action': 'HOLD',
+                'direction': direction,
+                's1': s1, 's2': s2,
+                's1_shares': inv_pair.get('s1_shares'),
+                's2_shares': inv_pair.get('s2_shares'),
+                'days_held': inv_pair.get('days_held', 0),
+                'note': f'opened on latest bar {open_ts_data.date()} — '
+                        f'nothing to evaluate yet [MONITOR_GUARD]'}
 
     log.info(f"[monitor] {pair_key}: warmup ends {open_ts_data.date()}, "
              f"position held {open_ts_data.date()} → {effective_ts.date()}")
