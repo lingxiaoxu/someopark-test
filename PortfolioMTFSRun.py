@@ -812,7 +812,12 @@ def load_historical_data_mongo(start_date, end_date, symbols):
     start_dt = pd.Timestamp(start_date)
     end_dt   = pd.Timestamp(end_date)
     start_ms = int(start_dt.timestamp() * 1000)
-    end_ms   = int(end_dt.timestamp() * 1000)
+    # MONITOR Step 2 (2026-07-03): Mongo 日线 bar 时间戳是当天 04:00 UTC（美东午夜），
+    # 而 end_dt 是当天 00:00 UTC —— `$lte end_ms` 永远取不到 end 当天的 bar，
+    # 全系统因此永远用 T-1 收盘（缺陷 1）。+1day 含当天 bar 且不会多取次日
+    # （次日 bar ≥ 次日 04:00 UTC > 次日 00:00 UTC）。与 PnLReport/UpdateSP 的
+    # 既有写法一致。分界日 2026-07-06（首个生效交易日）：此后 signal_date=T 用 T 收盘。
+    end_ms   = int((end_dt + pd.Timedelta(days=1)).timestamp() * 1000)
     min_expected_rows = max(1, int((end_dt - start_dt).days * 0.5))
 
     log.info("=" * 60)
