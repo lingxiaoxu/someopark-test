@@ -1,6 +1,9 @@
 # Cross-Day Cooling Period — Complete Implementation Plan
 
-> Created: 2026-06-29  |  Updated: 2026-07-01 (v5 — 交叉审计 MONITOR_INTEGRITY_FIX_PLAN 后：前提修正 + 实施顺序依赖 + signal_ts 滞后修正)
+> Created: 2026-06-29  |  Updated: 2026-07-03 (v6 — **已实施**：Changes 1-4 全部落地，
+> 前置 MONITOR Step 1-3 同日完成；验收全过——日历 6 用例、元数据+None 保留+幂等、
+> 判定 6 场景（含 HAS/YUM 7/1→7/2 拦截）、E2E 沙盒回归。)
+> （v5 历史：交叉审计 MONITOR_INTEGRITY_FIX_PLAN 后：前提修正 + 实施顺序依赖 + signal_ts 滞后修正）
 
 ## ⚠️ 0. 与 MONITOR_INTEGRITY_FIX_PLAN 的依赖关系（v5 新增，实施前必读）
 

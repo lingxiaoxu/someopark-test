@@ -107,8 +107,39 @@ INVENTORY_HISTORY_DIR = os.path.join(BASE_DIR, 'inventory_history')
 # 回测基准资本（order_target_percent 基于此，scaling 以此为分母）
 BACKTEST_BASE_CAPITAL = 1_000_000.0
 
+# Cross-day cooling（COOLING plan v5）：平仓后重入冷却（交易日）
+_COOLING_PROFIT_DAYS = 1    # 确认盈利平仓（CLOSE 且 pnl 已知 且 >=0）
+_COOLING_LOSS_DAYS   = 3    # 亏损 / CLOSE_STOP / pnl 未知（保守归类）
+
 
 # ── Date helpers ───────────────────────────────────────────────────────────────
+
+def trading_days_between(d1, d2) -> int:
+    """Count NYSE trading days strictly between d1 and d2 (exclusive both ends).
+    Returns 0 if d2 <= d1 or same/adjacent trading day.（COOLING plan Change 1）"""
+    try:
+        import pandas_market_calendars as mcal
+        t1 = pd.Timestamp(d1)
+        t2 = pd.Timestamp(d2)
+        if t2 <= t1:
+            return 0
+        nyse = mcal.get_calendar('NYSE')
+        start = (t1 + pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+        end   = (t2 - pd.Timedelta(days=1)).strftime('%Y-%m-%d')
+        if start > end:
+            return 0
+        valid = nyse.valid_days(start, end)
+        return len(valid)
+    except Exception:
+        count = 0
+        d = pd.Timestamp(d1) + pd.Timedelta(days=1)
+        end = pd.Timestamp(d2)
+        while d < end:
+            if d.weekday() < 5:
+                count += 1
+            d += pd.Timedelta(days=1)
+        return count
+
 
 def prev_weekday(d: date) -> date:
     """Return the most recent NYSE trading day on or before d.
@@ -1236,6 +1267,33 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
                 )
                 log.info(f"[ANTI_CHURN] {pair_key}: vetoed {original_action}")
 
+        # Cross-day cooling（COOLING plan Change 4）: block re-entry after a close.
+        # Confirmed-profit CLOSE: 1 trading day.  Loss / CLOSE_STOP / unknown pnl: 3.
+        # 冷却是延迟不是取消：被 veto 的信号不进 inventory，冷却到期自然放行。
+        if sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
+            _inv_pair = inventory.get('pairs', {}).get(pair_key, {})
+            _lcd = _inv_pair.get('last_close_date')
+            if _lcd:
+                _sig_date_str = (signal_ts.date().isoformat()
+                                 if hasattr(signal_ts, 'date') else str(signal_ts))
+                _td = trading_days_between(_lcd, _sig_date_str)
+                _lcd_pnl = _inv_pair.get('last_close_pnl')
+                _lcd_act = _inv_pair.get('last_close_action')
+                _is_profit = (_lcd_act == 'CLOSE'
+                              and _lcd_pnl is not None and _lcd_pnl >= 0)
+                _cool = _COOLING_PROFIT_DAYS if _is_profit else _COOLING_LOSS_DAYS
+                if _td < _cool:
+                    original_action = sig['action']
+                    sig['action'] = 'MACRO_VETO'
+                    sig['original_action'] = original_action
+                    _pnl_str = f"${_lcd_pnl:+,.0f}" if _lcd_pnl is not None else "unknown"
+                    sig['note'] = (
+                        f"Cross-day cooling — {pair_key} closed {_td} trading day(s) ago "
+                        f"({_lcd_act}, pnl={_pnl_str}, need {_cool}td)"
+                    )
+                    log.info(f"[COOLING] {pair_key}: vetoed {original_action} — "
+                             f"closed {_lcd} ({_td}td ago, need {_cool}td)")
+
         # Fix 6A: Min signal guard — MTFS only, veto if |ms| too weak
         if strategy == 'mtfs' and sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
             ms_val = sig.get('momentum_spread', 0) or 0
@@ -1444,7 +1502,17 @@ def update_inventory_from_signals(
             }
 
         elif action in ('CLOSE', 'CLOSE_STOP'):
-            inv['pairs'][pair] = {'direction': None}
+            # COOLING plan Change 3: 保留平仓元数据供跨日冷却判定。
+            # last_close_pnl 保留 None（未知），不 or 0 —— None 由 Change 4
+            # 保守归类为 3 天冷却（写 0 会被当盈利只冷 1 天，止损会漏放）。
+            _prev = inv['pairs'].get(pair, {})
+            inv['pairs'][pair] = {
+                'direction': None,
+                'last_close_date': signal_date,
+                'last_close_pnl': sig.get('unrealized_pnl'),
+                'last_close_action': action,
+                'last_close_param_set': _prev.get('param_set'),
+            }
 
         elif action == 'HOLD':
             if pair in inv['pairs'] and inv['pairs'][pair].get('direction'):
