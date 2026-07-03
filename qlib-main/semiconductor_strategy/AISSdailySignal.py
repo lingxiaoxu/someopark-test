@@ -326,6 +326,7 @@ def _should_rebalance(
     cfg: dict,
     force: bool = False,
     emergency_active: bool = False,
+    vol_derisk_ctx: Optional[dict] = None,   # 防线 A: {'triggered': bool, 'target_cash': float}
 ) -> Tuple[bool, str]:
     """
     Returns (should_rebalance: bool, reason: str).
@@ -356,6 +357,21 @@ def _should_rebalance(
         mid = _mid_month_trading_day(signal_date.year, signal_date.month)
         if mid is not None and signal_date == mid:
             return True, "semimonthly_rebalance"
+
+    # ── 防线 A（RISK_DEFENSE plan §1）：vol-scaling 连续触发的临时降险调仓 ──
+    # 背景：2026-06-23~30 vol-scaling 连续 6 个交易日要求半仓、被月度节奏挡住，
+    # 满仓穿越 7/1 崩盘。只在常规调仓日之外补位（放在 monthly/semimonthly 之后：调仓日走原 reason，目标现金本就会被应用）。
+    # 守卫：连续 K=3 天触发（防单日噪声）+ 现金缺口 >20pp（天然只降不升）
+    # + 每月最多 2 次（防抖动）。streak 由 daily 路径幂等维护（含今日 +1）。
+    if vol_derisk_ctx and vol_derisk_ctx.get("triggered"):
+        streak_today = int(inv.get("vol_derisk_streak", 0) or 0) + 1   # 含今日
+        gap = (float(vol_derisk_ctx.get("target_cash") or 0)
+               - float(inv.get("cash_weight", 0) or 0))
+        n_month = sum(1 for r in inv.get("rebalance_history", [])
+                      if r.get("reason") == "vol_derisk"
+                      and str(r.get("date", ""))[:7] == signal_date.strftime("%Y-%m"))
+        if streak_today >= 3 and gap > 0.20 and n_month < 2:
+            return True, "vol_derisk"
 
     return False, "no_rebalance"
 
@@ -1195,6 +1211,11 @@ def run_daily_signal(
         signal_date, inv, macro_recent, cfg,
         force=force_rebalance,
         emergency_active=emergency_active,
+        # 防线 A：risk_flags 在 macro-anomaly 分支可能被覆盖成 str → getattr 兜底 False
+        vol_derisk_ctx={
+            "triggered": bool(getattr(risk_flags, "vol_scaling_triggered", False)),
+            "target_cash": float(cash_weight),
+        },
     )
     # Persist emergency state: set True on trigger, False on recovery or monthly rebalance
     if rebalance_reason == "emergency_vix":
@@ -1202,6 +1223,18 @@ def run_daily_signal(
     elif rebalance_reason == "monthly_rebalance":
         emergency_active = False   # Monthly rebalance resets emergency mode
     inv["emergency_mode_active"] = emergency_active
+
+    # ── 防线 A：vol_derisk streak 幂等维护（同日重跑不重复计数，与 last_daily_update 同模式）──
+    if str(inv.get("vol_derisk_streak_date") or "") != str(signal_date):
+        if will_rebalance and rebalance_reason == "vol_derisk":
+            inv["vol_derisk_streak"] = 0        # 触发执行 → 清零重新累计
+        else:
+            _vs_trig = bool(getattr(risk_flags, "vol_scaling_triggered", False))
+            inv["vol_derisk_streak"] = (int(inv.get("vol_derisk_streak", 0) or 0) + 1) if _vs_trig else 0
+        inv["vol_derisk_streak_date"] = str(signal_date)
+    if will_rebalance and rebalance_reason == "vol_derisk":
+        log.warning(f"[VOL_DERISK] interim de-risk rebalance triggered: "
+                    f"target_cash={float(cash_weight):.1%} current_cash={float(inv.get('cash_weight', 0) or 0):.1%}")
 
     log.info(f"Rebalance: {will_rebalance}  reason={rebalance_reason}")
 

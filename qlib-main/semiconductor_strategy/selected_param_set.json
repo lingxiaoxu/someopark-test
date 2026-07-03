@@ -79,10 +79,10 @@
   "macro_data_days": 1883,
   "switch_history": [],
   "health": {
-    "days_since_switch": 1,
+    "days_since_switch": 2,
     "current_rank": 2,
     "anomaly_detected": false,
-    "_consecutive_best_days": 1,
+    "_consecutive_best_days": 2,
     "_prev_best_param": "max_aggression"
   },
   "mcps_score": 1.5165,
