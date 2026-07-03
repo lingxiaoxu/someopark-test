@@ -896,6 +896,137 @@ _event_dr_cache: dict = {}   # (date, strategy) -> result; evaluated ONCE per ru
                              # (single state-machine advance + single heartbeat line).
 
 
+# ── 防线 B（RISK_DEFENSE plan §2）: pairs 组合熔断 + 限额执行环 ────────────────
+# 影子期（plan §2.4）：只记 [CIRCUIT_BREAKER][SHADOW] 日志、不产生任何动作。
+# 自 2026-07-06 起观察 5 个干净交易日（约 2026-07-13）后人工置 False 放开。
+_CB_SHADOW = True
+_CB_DAILY_LOSS_USD = 50_000.0     # 触发器阈值：−5% × $1M 组合现金基数
+_CB_CACHE: dict = {}
+
+
+def _compute_circuit_breaker(signal_date) -> dict:
+    """与 _compute_event_derisk 同形返回 {'active','close_set','reason'}，在其两个
+    消费点做并集。close_set 一律整对全平（框架不支持部分平仓）。
+    触发器（每晨从既有数据文件重估，无持久状态）：
+      1 快通道: 最近两份 daily_report 的 monitor upnl 合计单日恶化 < −$50k
+      2 慢通道: strategy_performance 最后一行 combined_pnl < −5% × 前日 equity
+      3 限额:   最新 pairs risk_report_*.json 的 limits[] 任一 status=='red'
+    选仓：全组合 open pairs 按最新报告 upnl 最差排序，取前 ⌈N/2⌉ 整对。
+    注意：读的是生产输出文件的真实路径（只读）；沙盒重定向不影响本函数输入。"""
+    off = {'active': False, 'close_set': set(), 'reason': ''}
+    key = str(signal_date)
+    if key in _CB_CACHE:
+        return _CB_CACHE[key]
+    try:
+        reasons = []
+        # ── 触发器 1（快通道）：最近两个 signal_date 的 monitor upnl 合计 ──
+        by_date: dict = {}          # signal_date -> (file_ts, {pair: upnl}, total)
+        for fp in sorted(glob.glob(os.path.join(BASE_DIR, 'trading_signals',
+                                                'daily_report_*.json')))[-14:]:
+            try:
+                with open(fp) as f:
+                    dr = json.load(f)
+            except Exception:
+                continue
+            sd = dr.get('signal_date')
+            if not sd or sd >= key:
+                continue            # 只用早于当前 signal_date 的已完成报告
+            pm = dr.get('position_monitor', {})
+            pair_upnl: dict = {}
+            for strat in ('mrpt', 'mtfs'):
+                for e in pm.get(strat, []):
+                    if isinstance(e, dict) and e.get('pair') and \
+                            e.get('action') in ('HOLD', 'CLOSE', 'CLOSE_STOP'):
+                        pair_upnl[e['pair']] = float(e.get('unrealized_pnl') or 0)
+            prev = by_date.get(sd)
+            if prev is None or fp > prev[0]:      # 同日多份取最新
+                by_date[sd] = (fp, pair_upnl, sum(pair_upnl.values()))
+        recent = sorted(by_date.keys())[-2:]
+        latest_pair_upnl: dict = by_date[recent[-1]][1] if recent else {}
+        if len(recent) == 2:
+            delta = by_date[recent[1]][2] - by_date[recent[0]][2]
+            if delta < -_CB_DAILY_LOSS_USD:
+                reasons.append(f"monitor upnl {recent[0]}→{recent[1]} "
+                               f"worsened ${delta:,.0f}")
+        # ── 触发器 2（慢通道）：strategy_performance 最后一行 ──
+        try:
+            _perf = os.path.join(BASE_DIR, 'someo-park-investment-management',
+                                 'public', 'data', 'strategy_performance.json')
+            with open(_perf) as f:
+                rows = json.load(f)
+            # 按 signal_date 过滤（防历史重跑/沙盒的前视泄漏；实时时 = 最后两行）
+            rows = [r for r in rows if str(r.get('date', '')) < key]
+            if len(rows) >= 2:
+                _pnl = float(rows[-1].get('combined_pnl') or 0)
+                _base = float(rows[-2].get('combined_equity') or 0)
+                if _base > 0 and _pnl / _base < -0.05:
+                    reasons.append(f"combined 1d {rows[-1]['date']} "
+                                   f"{_pnl/_base:+.1%}")
+        except Exception:
+            pass
+        # ── 触发器 3（限额执行环）：最新 risk json 的 red breach ──
+        try:
+            _rj = sorted(glob.glob(os.path.join(BASE_DIR, 'trading_signals',
+                                                'risk_management',
+                                                'risk_report_*.json')))
+            # 只用 signal_date 之前的风险报告（同样防前视）
+            _risk = None
+            for _fp in reversed(_rj):
+                try:
+                    with open(_fp) as f:
+                        _cand = json.load(f)
+                    if str(_cand.get('signal_date', '')) < key:
+                        _risk = _cand
+                        break
+                except Exception:
+                    continue
+            if _risk:
+                _reds = [l.get('name') for l in _risk.get('limits', [])
+                         if isinstance(l, dict) and l.get('status') == 'red']
+                if _reds:
+                    reasons.append(f"RED limits: {sorted(set(_reds))}")
+        except Exception:
+            pass
+
+        if not reasons:
+            _CB_CACHE[key] = off
+            return off
+
+        # ── 选仓：全组合 open pairs，最新报告 upnl 最差在前，取 ⌈N/2⌉ 整对 ──
+        open_pairs = []
+        for strat in ('mrpt', 'mtfs'):
+            try:
+                _inv = load_inventory(strat)
+                for pk, pos in _inv.get('pairs', {}).items():
+                    if isinstance(pos, dict) and pos.get('direction') and '/' in pk:
+                        open_pairs.append(pk)
+            except Exception:
+                pass
+        ranked = sorted(open_pairs,
+                        key=lambda pk: latest_pair_upnl.get(pk, 0.0))
+        n_close = (len(ranked) + 1) // 2
+        close_set = set(ranked[:n_close])
+        reason = "circuit_breaker: " + "; ".join(reasons)
+
+        if _CB_SHADOW:
+            log.warning(f"[CIRCUIT_BREAKER][SHADOW] would activate — {reason} | "
+                        f"would close {sorted(close_set)} "
+                        f"({n_close}/{len(ranked)} open pairs) + veto all opens "
+                        f"(shadow mode: no action taken)")
+            _CB_CACHE[key] = off
+            return off
+
+        log.warning(f"[CIRCUIT_BREAKER] ACTIVE — {reason} | "
+                    f"closing {sorted(close_set)} + vetoing all new opens")
+        cb = {'active': True, 'close_set': close_set, 'reason': reason}
+        _CB_CACHE[key] = cb
+        return cb
+    except Exception as e:
+        log.warning(f"[CIRCUIT_BREAKER] evaluation failed (non-fatal, off): {e}")
+        _CB_CACHE[key] = off
+        return off
+
+
 def _compute_event_derisk(signal_ts, inventory: dict, strategy: str = 'mtfs') -> dict:
     """Evaluate the semi event-risk overlay for this run. Returns
     {active, reduce, close_set, reason, semi_set}. Reuses the shared EventRiskDetector
@@ -981,6 +1112,8 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
 
     # ── Semi event-risk overlay (default off): reduce set + veto flag ──────
     event_dr = _compute_event_derisk(signal_ts, inventory, strategy)
+    # ── 防线 B: 组合熔断（与 event_derisk 同形，两处并集消费）──
+    _cb = _compute_circuit_breaker(signal_ts.date() if hasattr(signal_ts, 'date') else signal_ts)
 
     # ── Position count & ticker exposure: count across existing positions ──
     from collections import Counter
@@ -1007,8 +1140,11 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
             continue
         sig = _build_signal(pair_key, s1, s2, today_rv, inventory, context,
                             prices_today, strategy, scale_factor,
-                            event_close=(pair_key in event_dr['close_set']),
-                            event_close_reason=event_dr['reason'])
+                            event_close=(pair_key in event_dr['close_set']
+                                         or pair_key in _cb['close_set']),
+                            event_close_reason=(event_dr['reason']
+                                                if pair_key in event_dr['close_set']
+                                                else _cb['reason']))
 
         # Semi event-risk veto: block new opens whose LONG leg is a semiconductor
         # (long->s1 / short->s2). Reuses the MACRO_VETO representation (zero frontend change).
@@ -1020,6 +1156,14 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
                 sig['original_action'] = original_action
                 sig['note'] = f"Semi event risk — {_ll} long-leg veto ({event_dr['reason']})"
                 log.info(f"[SEMI_EVENT_VETO] {pair_key}: vetoed {original_action} — {_ll}")
+
+        # 防线 B: 熔断激活期间 veto 全部新开仓（复用 MACRO_VETO 表示，零前端改动）
+        if _cb['active'] and sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
+            original_action = sig['action']
+            sig['action'] = 'MACRO_VETO'
+            sig['original_action'] = original_action
+            sig['note'] = f"CIRCUIT_BREAKER — {_cb['reason']}"
+            log.info(f"[CIRCUIT_BREAKER_VETO] {pair_key}: vetoed {original_action}")
 
         # Apply macro gate: veto new opens only; HOLDs and CLOSEs are unaffected
         if macro_gate.get('block_new_opens') and sig.get('action') in ('OPEN_LONG', 'OPEN_SHORT'):
@@ -1795,6 +1939,7 @@ def monitor_existing_positions(
         sim_capital = float(inventory.get('capital', BACKTEST_BASE_CAPITAL))
         # Semi event-risk REDUCE: which held pairs to close (cached; shared with veto)
         _event_dr = _compute_event_derisk(signal_date, inventory, strategy)
+        _cb_m = _compute_circuit_breaker(signal_date)
 
         # Actual capital for scaling
         if strategy == 'mrpt':
@@ -1821,8 +1966,11 @@ def monitor_existing_positions(
                     inv_pair=inv_pair,
                     signal_date=signal_date,
                     scale_factor=scale_factor,
-                    event_close=(pair_key in _event_dr['close_set']),
-                    event_close_reason=_event_dr['reason'],
+                    event_close=(pair_key in _event_dr['close_set']
+                                 or pair_key in _cb_m['close_set']),
+                    event_close_reason=(_event_dr['reason']
+                                        if pair_key in _event_dr['close_set']
+                                        else _cb_m['reason']),
                 )
             except Exception as e:
                 log.error(f"[monitor] {pair_key}: monitor failed: {e}", exc_info=True)
