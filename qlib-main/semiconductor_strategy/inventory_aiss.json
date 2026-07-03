@@ -1,36 +1,36 @@
 {
-  "as_of": "2026-07-01",
+  "as_of": "2026-07-02",
   "last_updated": "2026-07-01",
-  "capital": 1000000,
+  "capital": 1111666.99,
   "holdings": {
     "equipment": {
       "weight": 0.154914,
-      "shares": 10,
-      "last_price": 14555.7234,
+      "shares": 11,
+      "last_price": 13239.7959,
       "cost_basis": 10662.2909,
       "entry_date": "2026-05-29",
       "last_rebalance_date": "2026-07-01",
-      "days_held": 22,
+      "days_held": 23,
       "action_today": "DECREASE"
     },
     "memory_hbm": {
       "weight": 0.12242,
-      "shares": 27,
-      "last_price": 4530.1164,
+      "shares": 30,
+      "last_price": 4329.3251,
       "cost_basis": 4182.5476,
       "entry_date": "2026-05-29",
       "last_rebalance_date": "2026-07-01",
-      "days_held": 22,
+      "days_held": 23,
       "action_today": "DECREASE"
     },
     "logic_cpu": {
       "weight": 0.135163,
-      "shares": 35,
-      "last_price": 3788.5712,
+      "shares": 39,
+      "last_price": 3649.0665,
       "cost_basis": 3788.5712,
       "entry_date": "2026-07-01",
       "last_rebalance_date": "2026-07-01",
-      "days_held": 1,
+      "days_held": 2,
       "action_today": "ENTER"
     }
   },
@@ -181,7 +181,7 @@
     }
   ],
   "emergency_mode_active": false,
-  "last_daily_update": "2026-07-01",
+  "last_daily_update": "2026-07-02",
   "param_set": "pure_momentum",
   "signal_version": "v1",
   "stock_holdings": {
@@ -191,12 +191,12 @@
       ],
       "portfolio_weight": 0.123931,
       "shares": 465,
-      "last_price": 266.19,
+      "last_price": 241.0,
       "target_value": 123931.05,
       "cost_basis": 192.171,
       "entry_date": "2026-05-29",
-      "days_held": 22,
-      "action_today": "DECREASE",
+      "days_held": 23,
+      "action_today": "HOLD",
       "applied_corporate_actions": [
         {
           "ticker": "KLAC",
@@ -225,12 +225,12 @@
       ],
       "portfolio_weight": 0.023237,
       "shares": 59,
-      "last_price": 391.26,
+      "last_price": 362.63,
       "target_value": 23237.07,
       "cost_basis": 317.9326,
       "entry_date": "2026-05-29",
-      "days_held": 22,
-      "action_today": "DECREASE"
+      "days_held": 23,
+      "action_today": "HOLD"
     },
     "AMAT": {
       "subsectors": [
@@ -238,12 +238,12 @@
       ],
       "portfolio_weight": 0.007746,
       "shares": 11,
-      "last_price": 650.38,
+      "last_price": 601.89,
       "target_value": 7745.69,
       "cost_basis": 450.06,
       "entry_date": "2026-05-29",
-      "days_held": 22,
-      "action_today": "DECREASE"
+      "days_held": 23,
+      "action_today": "HOLD"
     },
     "MU": {
       "subsectors": [
@@ -251,12 +251,12 @@
       ],
       "portfolio_weight": 0.097936,
       "shares": 94,
-      "last_price": 1032.13,
+      "last_price": 992.01,
       "target_value": 97935.85,
       "cost_basis": 971.0,
       "entry_date": "2026-05-29",
-      "days_held": 22,
-      "action_today": "DECREASE"
+      "days_held": 23,
+      "action_today": "HOLD"
     },
     "WDC": {
       "subsectors": [
@@ -264,12 +264,12 @@
       ],
       "portfolio_weight": 0.018363,
       "shares": 30,
-      "last_price": 598.37,
+      "last_price": 556.38,
       "target_value": 18362.97,
       "cost_basis": 531.0685,
       "entry_date": "2026-05-29",
-      "days_held": 22,
-      "action_today": "DECREASE"
+      "days_held": 23,
+      "action_today": "HOLD"
     },
     "SIMO": {
       "subsectors": [
@@ -277,12 +277,12 @@
       ],
       "portfolio_weight": 0.006121,
       "shares": 19,
-      "last_price": 316.48,
+      "last_price": 299.33,
       "target_value": 6120.99,
       "cost_basis": 276.4105,
       "entry_date": "2026-05-29",
-      "days_held": 22,
-      "action_today": "DECREASE"
+      "days_held": 23,
+      "action_today": "HOLD"
     },
     "AMD": {
       "subsectors": [
@@ -290,12 +290,12 @@
       ],
       "portfolio_weight": 0.10813,
       "shares": 199,
-      "last_price": 540.88,
+      "last_price": 520.58,
       "target_value": 108130.35,
       "cost_basis": 540.88,
       "entry_date": "2026-07-01",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "INTC": {
       "subsectors": [
@@ -303,12 +303,12 @@
       ],
       "portfolio_weight": 0.020274,
       "shares": 159,
-      "last_price": 127.02,
+      "last_price": 123.0995,
       "target_value": 20274.44,
       "cost_basis": 127.02,
       "entry_date": "2026-07-01",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     },
     "ARM": {
       "subsectors": [
@@ -316,12 +316,12 @@
       ],
       "portfolio_weight": 0.006758,
       "shares": 20,
-      "last_price": 337.47,
+      "last_price": 322.8401,
       "target_value": 6758.15,
       "cost_basis": 337.47,
       "entry_date": "2026-07-01",
-      "days_held": 1,
-      "action_today": "ENTER"
+      "days_held": 2,
+      "action_today": "HOLD"
     }
   },
   "event_derisk_active": false,
