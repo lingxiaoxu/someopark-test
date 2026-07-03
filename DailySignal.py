@@ -608,7 +608,10 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
             upnl = (open_p1 - s1_price) * abs(inv_s1) + (s2_price - open_p2) * abs(inv_s2)
         cost_basis = open_p1 * abs(inv_s1) + open_p2 * abs(inv_s2)
         upnl_pct = round(upnl / cost_basis * 100, 3) if cost_basis > 0 else None
-        return round(upnl * scale_factor, 2), upnl_pct
+        # MONITOR Step 1 (2026-07-03): inventory 股数算出的已是真实美元，
+        # 不再乘当日 scale（scale 的正确用途仅是 OPEN 时换算回测股数，L498-499）。
+        # 历史 monitor_log 的 ±11% 失真不回改，以此日期为分界。
+        return round(upnl, 2), upnl_pct
 
     # CLOSE (stop loss)
     if stop_triggered and (in_long or in_short) and inv_direction:
@@ -1558,7 +1561,7 @@ def _run_position_monitor(
                 upnl = (open_p1 - p1_now) * abs(s1s) + (p2_now - open_p2) * abs(s2s)
             cost_basis = open_p1 * abs(s1s) + open_p2 * abs(s2s)
             upnl_pct = round(upnl / cost_basis * 100, 3) if cost_basis > 0 else None
-            upnl = round(upnl * scale_factor, 2)
+            upnl = round(upnl, 2)   # MONITOR Step 1: 实际股数即真实美元，不再 ×scale
 
         # Export partial monitor history up to stop date
         monitor_history_file = None
@@ -1688,7 +1691,7 @@ def _run_position_monitor(
         else:
             # short: sold s1, bought s2
             upnl = (open_p1 - p1_now) * abs(s1s) + (p2_now - open_p2) * abs(s2s)
-        sig['unrealized_pnl'] = round(upnl * scale_factor, 2)
+        sig['unrealized_pnl'] = round(upnl, 2)   # MONITOR Step 1: 不再 ×scale
         sig['unrealized_pnl_pct'] = round(
             upnl / (open_p1 * abs(s1s) + open_p2 * abs(s2s)) * 100, 3) if (
             open_p1 * abs(s1s) + open_p2 * abs(s2s)) > 0 else None
