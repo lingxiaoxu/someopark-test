@@ -1135,12 +1135,20 @@ def run_daily_signal(
         try:
             from portfolio_ledger.ledger import daily_update as _ledger_update
             if _ledger_update("ssrs") > 0:
+                # 同步执行（勿改回 Popen fire-and-forget：cron 包装器在主进程
+                # 退出时回收进程组，子进程在 conda 启动阶段就被杀 —— 2026-07-02
+                # AISS 首战报告因此丢失）。
                 import subprocess
-                subprocess.Popen(
+                _rp = subprocess.run(
                     ["conda", "run", "-n", "someopark_run", "python", "-m",
                      "portfolio_ledger.reports", "ssrs"],
                     cwd=str(Path(__file__).resolve().parent.parent),
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    capture_output=True, timeout=300)
+                if _rp.returncode == 0:
+                    log.info("[ledger] 当日 PnL/Risk 报告已生成")
+                else:
+                    log.warning(f"[ledger] 报告生成失败 rc={_rp.returncode}: "
+                                f"{_rp.stderr.decode()[-200:]}")
         except Exception as _ledger_e:
             log.warning(f"[ledger] non-fatal: {_ledger_e}")
 

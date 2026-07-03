@@ -13,59 +13,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -79,59 +79,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -145,59 +145,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -211,59 +211,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -277,59 +277,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -343,59 +343,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -409,59 +409,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -475,59 +475,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -541,59 +541,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -607,59 +607,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -673,59 +673,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -739,59 +739,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -805,59 +805,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -871,59 +871,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -937,59 +937,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1003,59 +1003,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1069,59 +1069,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1135,59 +1135,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1201,59 +1201,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1267,59 +1267,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1333,59 +1333,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1399,59 +1399,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1465,59 +1465,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1531,59 +1531,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1597,59 +1597,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1663,59 +1663,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1729,59 +1729,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1795,59 +1795,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1861,59 +1861,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1927,59 +1927,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     },
@@ -1993,59 +1993,59 @@
         ],
         [
           "AMAT",
-          "ICE"
-        ],
-        [
-          "GLW",
-          "FOX"
-        ],
-        [
-          "GLW",
-          "FOXA"
-        ],
-        [
-          "LRCX",
-          "T"
-        ],
-        [
-          "LRCX",
-          "CPRT"
-        ],
-        [
-          "TER",
-          "KKR"
-        ],
-        [
-          "TER",
-          "CME"
-        ],
-        [
-          "FFIV",
           "CBOE"
         ],
         [
+          "GLW",
+          "T"
+        ],
+        [
+          "GLW",
+          "KKR"
+        ],
+        [
+          "CNC",
+          "CME"
+        ],
+        [
+          "CNC",
+          "CPRT"
+        ],
+        [
+          "AXON",
+          "WYNN"
+        ],
+        [
+          "AXON",
+          "HAS"
+        ],
+        [
           "FFIV",
-          "NEM"
+          "APO"
         ],
         [
-          "CAT",
-          "WDAY"
-        ],
-        [
-          "CAT",
+          "FFIV",
           "CCI"
         ],
         [
-          "JBHT",
+          "CVS",
           "NKE"
+        ],
+        [
+          "CVS",
+          "WMT"
+        ],
+        [
+          "JBHT",
+          "IDXX"
         ],
         [
           "JBHT",
           "NDAQ"
         ],
         [
-          "CVS",
-          "MSFT"
+          "BAX",
+          "DVN"
         ]
       ]
     }

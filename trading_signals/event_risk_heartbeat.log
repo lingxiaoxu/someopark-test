@@ -53,3 +53,7 @@
 2026-07-02T04:30:24 [MTFS] asof=2026-07-01 hit=False beta_used=3.143 smh_beta=3.143 triggers=[] active_next=False reduce_next=False close=[]
 2026-07-02T04:31:00 [MRPT] asof=2026-06-30 hit=False beta_used=3.116 smh_beta=3.116 triggers=[] active_next=False reduce_next=False close=[]
 2026-07-02T04:31:39 [MTFS] asof=2026-06-30 hit=False beta_used=3.116 smh_beta=3.116 triggers=[] active_next=False reduce_next=False close=[]
+2026-07-03T04:43:27 [MRPT] asof=2026-07-02 hit=False beta_used=3.211 smh_beta=3.211 triggers=[] active_next=False reduce_next=False close=[]
+2026-07-03T04:43:27 [MTFS] asof=2026-07-02 hit=False beta_used=3.211 smh_beta=3.211 triggers=[] active_next=False reduce_next=False close=[]
+2026-07-03T04:44:24 [MRPT] asof=2026-07-01 hit=True beta_used=3.143 smh_beta=3.143 triggers=['beta+NFP (β=3.14>2.5, NFP in 2td)'] active_next=True reduce_next=True close=[]
+2026-07-03T04:45:13 [MTFS] asof=2026-07-01 hit=True beta_used=3.143 smh_beta=3.143 triggers=['beta+NFP (β=3.14>2.5, NFP in 2td)'] active_next=True reduce_next=True close=['PWR/NKE']
