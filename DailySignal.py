@@ -803,8 +803,10 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
              's1_shares': s1_shares, 's2_shares': s2_shares,
              'days_held': days_held,
              'unrealized_pnl': upnl, 'unrealized_pnl_pct': upnl_pct,
-             'note': f'Semi event de-risk — close {inv_direction}'
-                     + (f' ({event_close_reason})' if event_close_reason else '')}
+             'note': (('Circuit breaker' if str(event_close_reason).startswith('circuit_breaker')
+                       else 'Semi event de-risk')
+                      + f' — close {inv_direction}'
+                      + (f' ({event_close_reason})' if event_close_reason else ''))}
         d.update(_legs(inv_direction))
         return d
 

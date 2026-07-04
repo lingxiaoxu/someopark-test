@@ -662,16 +662,30 @@ DailySignal.py 在每日信号生成过程中设置了多层质量检查，防�
 
 | 顺序 | Gate | 适用策略 | 触发条件 | 日志标签 |
 |------|------|---------|---------|---------|
-| 1 | **Macro Gate** | MTFS | VIX term slope 5 日变化 > 1.5pt（恐慌→平静过渡期，动量信号不可靠） | `[MACRO_GATE]` |
-| 2 | **Capacity Gate** | MRPT + MTFS | 同时持仓 pair 数已达上限（MRPT/MTFS 各 8 对），等现有仓位退出后才允许新开仓 | `[CAPACITY]` |
-| 3 | **Concentration Gate** | MRPT + MTFS | 单个 ticker 已出现在 ≥ 2 个持仓 pair 中（防集中度风险） | `[CONCENTRATION]` |
-| 4 | **Correlation Gate** | MRPT | 60 日 daily return 相关性 < 0.16（pair 不构成有效配对；dev toggle: 0.20 strict / 0.16 relaxed）。不适用 MTFS——MTFS v2 pair 是跨行业动量分化设计，低 corr 是预期行为 | `[CORRELATION]` |
-| 5 | **Anti-Churn Guard** | MRPT + MTFS | pair 今天被 Step 1 monitor 亏损关仓（upnl < 0），阻止 Step 2 同日重开 | `[ANTI_CHURN]` |
-| 6 | **Min Signal Guard** | MTFS | |momentum_spread| < 0.05（信号太弱，无方向性信息） | `[WEAK_SIGNAL]` |
+| 1 | **Semi Event Veto** | MRPT + MTFS | 半导体事件降险激活且做多腿 ∈ semi_set（overlay 默认关） | `[SEMI_EVENT_VETO]` |
+| 2 | **Circuit Breaker**（2026-07-03） | MRPT + MTFS | 组合熔断激活（单日 monitor 恶化 >$50k / 单日 −5% / risk RED breach）→ 拦全部新开仓；影子期至约 7/13（`_CB_SHADOW`） | `[CIRCUIT_BREAKER_VETO]` |
+| 3 | **Macro Gate** | MTFS | VIX term slope 5 日变化 > 1.5pt（恐慌→平静过渡期，动量信号不可靠） | `[MACRO_GATE]` |
+| 4 | **Capacity Gate** | MRPT + MTFS | 同时持仓 pair 数已达上限（MRPT/MTFS 各 8 对），等现有仓位退出后才允许新开仓 | `[CAPACITY]` |
+| 5 | **Concentration Gate** | MRPT + MTFS | 单个 ticker 已出现在 ≥ 2 个持仓 pair 中（防集中度风险） | `[CONCENTRATION]` |
+| 6 | **Correlation Gate** | MRPT | 60 日 daily return 相关性 < 0.16（pair 不构成有效配对；dev toggle: 0.20 strict / 0.16 relaxed）。不适用 MTFS——MTFS v2 pair 是跨行业动量分化设计，低 corr 是预期行为 | `[CORRELATION]` |
+| 7 | **Anti-Churn Guard** | MRPT + MTFS | pair 今天被 Step 1 monitor 亏损关仓（upnl < 0），阻止 Step 2 同日重开 | `[ANTI_CHURN]` |
+| 8 | **Cross-Day Cooling**（2026-07-03） | MRPT + MTFS | 平仓后重入冷却：确认盈利 CLOSE 1 交易日；亏损/CLOSE_STOP/pnl 未知 3 交易日（NYSE 日历；元数据 `last_close_*` 自 2026-07-06 起累积） | `[COOLING]` |
+| 9 | **Min Signal Guard** | MTFS | |momentum_spread| < 0.05（信号太弱，无方向性信息） | `[WEAK_SIGNAL]` |
 
 **Concentration Gate 的双层架构**：除 DailySignal 运行时层外，WalkForward DSR pair selection 阶段也有 `MAX_TICKER_IN_SELECTION = 2` 限制（在 `MRPTWalkForward.py` / `MTFSWalkForward.py` 的 `select_pairs_with_dsr` 中）。
 
 **Anti-Churn 只拦截亏损关仓**：盈利关仓（包括止盈平仓）允许 Step 2 重开——"锁定利润 + 重新评估"而非"锁定利润 + 走人"。
+
+**Monitor CLOSE 语义与口径分界（MONITOR_INTEGRITY_FIX_PLAN，2026-07-03 实施）**：
+- **monitor CLOSE 的含义**：自 2026-07-03 起，"模拟空仓"不再直接视为退出信号——
+  `_build_signal` 显式评估真实退出规则（MRPT：short 平 iff z<exit_z、long 平 iff
+  z>−exit_z；MTFS：avg(Consistency_1,2) < Exit_Threshold），不成立则
+  `[MONITOR_GUARD]` HOLD。开仓 bar==最后 bar 时（无带仓 bar 可评估）直接 HOLD。
+- **T 收盘生效分界 = 2026-07-06**：此前 Mongo loader 边界 bug 导致全系统永远用
+  T-1 收盘；修复后 signal_date=T 用 T 收盘。分界前后的 monitor 价格/WF OOS 统计
+  不可直接对比。
+- **PnL 口径分界 = 2026-07-03**：monitor upnl 不再乘当日 regime scale（此前
+  ±11% 失真）；历史 monitor_log 不回改。
 
 ### 3. Profit-Taking — MTFS 止盈机制
 

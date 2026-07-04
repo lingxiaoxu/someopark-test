@@ -834,3 +834,15 @@ npm run build && firebase deploy --only hosting
 ```
 
 > `VITE_*` 变量和 `public/data/` 静态文件都是构建时/部署时注入的，改了必须重新 deploy。
+
+## 附注：2026-07-03 交易路径修复分界（MONITOR/RISK_DEFENSE/COOLING 三计划）
+
+7/3-7/5 休市窗口内上线，详情见 `.claude/plan/strategies-plan/EXECUTION_LOG_RISK_BATCH.md`：
+
+| 分界 | 内容 |
+|------|------|
+| **2026-07-03（口径）** | monitor upnl 去掉 ×当日 regime scale（此前 ±11% 失真）；历史 monitor_log 不回改 |
+| **2026-07-06（数据）** | Mongo loader 含当日 bar：signal_date=T 起用 T 收盘（此前永远 T-1）。WF OOS 统计跨此分界不可直接对比 |
+| **2026-07-03（语义）** | 模拟空仓不再直接算退出——显式评估退出规则，不成立打 `[MONITOR_GUARD]` HOLD；开仓 bar==最后 bar 直接 HOLD |
+| **新 veto** | Cross-day cooling（盈 1td / 其他 3td）+ 组合熔断（影子期 `_CB_SHADOW` 至约 7/13，确认无误报后置 False）|
+| **观察项** | 每日 `[MONITOR_GUARD]`（频率应≈每日 1 次且递减）、`[CIRCUIT_BREAKER][SHADOW]`（would-close 合理性）、`[COOLING]` 首例 |
