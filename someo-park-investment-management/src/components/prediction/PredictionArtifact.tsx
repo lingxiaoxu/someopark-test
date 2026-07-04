@@ -1384,19 +1384,21 @@ function MicroFootballSim() {
   const runAgg = async () => { setAiAgg({ loading: true }); try { const r = await analyzeMicrofootball(m.id, null, i18n.language); setAiAgg({ loading: false, text: r.analysis, cached: r.cached }); } catch (e: any) { setAiAgg({ loading: false, error: String(e?.message || e) }); } };
   const runSim = async () => { setAiSim({ loading: true }); try { const r = await analyzeMicrofootball(m.id, sim.sim_id, i18n.language); setAiSim({ loading: false, text: r.analysis, cached: r.cached }); } catch (e: any) { setAiSim({ loading: false, error: String(e?.message || e) }); } };
 
-  // stat rows for the per-sim table
+  // stat rows for the per-sim table. Null-safe: an undefined stat renders '—', not "null%" —
+  // e.g. save_pct is null when the keeper faced ZERO on-target shots (0/0 has no save rate).
+  const v = (x: any, suffix = '') => (x == null ? '—' : `${x}${suffix}`);
   const statRow = (key: string, fmt: (s: any) => ReactNode) => [tr('prediction.' + key), fmt(sim.stats.home), fmt(sim.stats.away)];
   const simRows: ReactNode[][] = [
-    statRow('mfPossession', (s) => `${s.possession_pct}%`),
-    statRow('mfShots', (s) => s.shots),
-    statRow('mfSot', (s) => `${s.shots_on_target_pct}%`),
-    statRow('mfXg', (s) => s.xg),
-    statRow('mfPasses', (s) => s.passes),
-    statRow('mfPassPct', (s) => `${s.pass_completion_pct}%`),
-    statRow('mfOffsides', (s) => s.offsides),
-    statRow('mfSequences', (s) => s.sequences),
-    statRow('mfSaves', (s) => `${s.save_pct}%`),
-    statRow('mfRecovery', (s) => `${s.recovery_sec}s`),
+    statRow('mfPossession', (s) => v(s.possession_pct, '%')),
+    statRow('mfShots', (s) => v(s.shots)),
+    statRow('mfSot', (s) => v(s.shots_on_target_pct, '%')),
+    statRow('mfXg', (s) => v(s.xg)),
+    statRow('mfPasses', (s) => v(s.passes)),
+    statRow('mfPassPct', (s) => v(s.pass_completion_pct, '%')),
+    statRow('mfOffsides', (s) => v(s.offsides)),
+    statRow('mfSequences', (s) => v(s.sequences)),
+    statRow('mfSaves', (s) => v(s.save_pct, '%')),
+    statRow('mfRecovery', (s) => v(s.recovery_sec, 's')),
   ];
 
   return (
