@@ -599,7 +599,10 @@ function BracketView() {
     // Half row: name wraps (up to 3 lines), vertically centered in its EXACT 50% half.
     // Left bracket half: name left-aligned, goals pinned right. Right half: mirrored.
     const half = (t: BrTeam, goals: string | null) => {
-      const win = isH && n.winner && t && t.team_id === n.winner.team_id;
+      // Winner is BOLD at rest (advanced vs eliminated readable without hovering);
+      // hover adds the green/dimmed emphasis on top.
+      const won = !!(n.winner && t && t.team_id === n.winner.team_id);
+      const win = isH && won;
       const lose = isH && n.winner && t && t.team_id !== n.winner.team_id;
       const nameEl = (
         <div style={{ flex: 1, fontSize: 9, lineHeight: '11px', ...mono,
@@ -607,7 +610,8 @@ function BracketView() {
           display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any,
           wordBreak: 'break-word',
           color: t ? 'var(--text-secondary)' : 'var(--text-muted)',
-          ...(win ? { fontWeight: 700, color: 'var(--success)' } : {}),
+          ...(won ? { fontWeight: 700, color: 'var(--text-primary)' } : {}),
+          ...(win ? { color: 'var(--success)' } : {}),
         }}>{nameOf(t)}</div>
       );
       const goalEl = goals != null && (
