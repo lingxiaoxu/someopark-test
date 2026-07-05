@@ -40,7 +40,8 @@ def build(conn=None, *, group_only: bool = False) -> dict:
 
     where = "WHERE round LIKE 'Group%'" if group_only else ""
     rows = conn.execute(
-        "SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, home_goals, away_goals "
+        "SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, home_goals, away_goals, "
+        "venue_name, venue_city "
         f"FROM fixture {where} ORDER BY kickoff_ts").fetchall()
     out = []
     for r in rows:
@@ -88,6 +89,10 @@ def build(conn=None, *, group_only: bool = False) -> dict:
                        ("draw" if finished and gh == ga else ("away" if finished else None))),
             "scorers": scorers,
             "shootout": shootout,
+            # Stadium + city (API-Football fixture venue; null when the feed lacks it — the
+            # bracket view falls back to its static knockout-venue table for those).
+            "venue": ({"name": r["venue_name"], "city": r["venue_city"]}
+                      if (r["venue_name"] or r["venue_city"]) else None),
         })
     return {"as_of": datetime.now(timezone.utc).isoformat(), "n": len(out), "matches": out}
 

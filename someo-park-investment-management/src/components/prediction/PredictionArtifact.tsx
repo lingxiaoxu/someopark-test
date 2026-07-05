@@ -453,6 +453,22 @@ const BR_FLAG: Record<string, string> = {
   portugal: '🇵🇹', senegal: '🇸🇳', south_africa: '🇿🇦', spain: '🇪🇸', sweden: '🇸🇪',
   switzerland: '🇨🇭', united_states: '🇺🇸',
 };
+// Static knockout metadata (official schedule): kickoff + venue are FIXED before the
+// pairings are decided, so TBD slots can already show when/where they will be played; also
+// venue fallbacks for the few fixtures whose API feed lacks venue. Keyed by tree node id.
+const BR_META: Record<string, { et?: string; venue?: string }> = {
+  'r16-2': { venue: 'Arlington · AT&T Stadium' },
+  'r16-6': { venue: 'Atlanta · Mercedes-Benz Stadium' },
+  'r16-7': { venue: 'Vancouver · BC Place' },
+  'qf-0': { et: '07-09 16:00 ET', venue: 'Foxborough · Gillette Stadium' },
+  'qf-1': { et: '07-10 15:00 ET', venue: 'Inglewood · SoFi Stadium' },
+  'qf-2': { et: '07-11 17:00 ET', venue: 'Miami Gardens · Hard Rock Stadium' },
+  'qf-3': { et: '07-11 21:00 ET', venue: 'Kansas City · Arrowhead Stadium' },
+  'sf-0': { et: '07-14 15:00 ET', venue: 'Arlington · AT&T Stadium' },
+  'sf-1': { et: '07-15 15:00 ET', venue: 'Atlanta · Mercedes-Benz Stadium' },
+  'final-0': { et: '07-19 15:00 ET', venue: 'East Rutherford · MetLife Stadium' },
+};
+
 type BrTeam = { team_id: string; name: string; zh?: string } | null;
 type BrNode = { id: string; a: BrTeam; b: BrTeam; fx: any; winner: BrTeam };
 
@@ -618,17 +634,39 @@ function BracketView() {
         <span style={{ fontSize: 11, fontWeight: 700, ...mono,
           color: win ? 'var(--success)' : 'var(--text-primary)' }}>{goals}</span>
       );
+      const flagEl = t && (
+        <span style={{ fontSize: 12, flexShrink: 0, lineHeight: 1 }}>{flagOf(t)}</span>
+      );
       return (
         <div style={{ height: '50%', display: 'flex', alignItems: 'center', gap: 5,
           padding: '0 7px', ...(lose ? { opacity: 0.35 } : {}) }}>
-          {p.right ? <>{goalEl}{nameEl}</> : <>{nameEl}{goalEl}</>}
+          {p.right ? <>{goalEl}{nameEl}{flagEl}</> : <>{flagEl}{nameEl}{goalEl}</>}
         </div>
       );
     };
     // hover card — flags + score, shootout line, regulation-time scorers (home left, away right)
+    const meta = BR_META[n.id];
+    const venueStr = (n.fx?.venue
+      ? [n.fx.venue.city, n.fx.venue.name].filter(Boolean).join(' · ')
+      : '') || meta?.venue || '';
+    const venueEl = venueStr && (
+      <div style={{ fontSize: 8.5, color: 'var(--text-muted)', marginTop: 3, letterSpacing: '.03em' }}>
+        {venueStr}
+      </div>
+    );
     const card = () => {
-      if (!n.fx) return <>{tr('prediction.brTbd')}</>;
-      if (!n.fx.finished) return <>{tr('prediction.brUpcoming')} · {n.fx.et}</>;
+      if (!n.fx) return (
+        <div style={{ textAlign: 'center' }}>
+          <div>{tr('prediction.brTbd')}{meta?.et ? ` · ${meta.et}` : ''}</div>
+          {venueEl}
+        </div>
+      );
+      if (!n.fx.finished) return (
+        <div style={{ textAlign: 'center' }}>
+          <div>{tr('prediction.brUpcoming')} · {n.fx.et}</div>
+          {venueEl}
+        </div>
+      );
       const sc: { home: { name: string; min: number }[]; away: { name: string; min: number }[] } =
         n.fx.scorers ?? { home: [], away: [] };
       const homeIsTop = n.fx.home?.id === top?.team_id;
@@ -656,6 +694,7 @@ function BracketView() {
               </div>
             </div>
           )}
+          {venueEl}
         </div>
       );
     };
