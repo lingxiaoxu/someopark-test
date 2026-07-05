@@ -443,29 +443,11 @@ function MatchPricing() {
 }
 
 // ── knockout bracket view (Schedule's second mode) ─────────────────────────────
-const BR_FLAG: Record<string, string> = {
-  algeria: '🇩🇿', argentina: '🇦🇷', australia: '🇦🇺', austria: '🇦🇹', belgium: '🇧🇪',
-  bosnia_and_herzegovina: '🇧🇦', brazil: '🇧🇷', canada: '🇨🇦', cape_verde: '🇨🇻', colombia: '🇨🇴',
-  cote_divoire: '🇨🇮', croatia: '🇭🇷', dr_congo: '🇨🇩', ecuador: '🇪🇨', egypt: '🇪🇬',
-  england: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', france: '🇫🇷', germany: '🇩🇪', ghana: '🇬🇭', japan: '🇯🇵',
-  mexico: '🇲🇽', morocco: '🇲🇦', netherlands: '🇳🇱', norway: '🇳🇴', paraguay: '🇵🇾',
-  portugal: '🇵🇹', senegal: '🇸🇳', south_africa: '🇿🇦', spain: '🇪🇸', sweden: '🇸🇪',
-  switzerland: '🇨🇭', united_states: '🇺🇸',
-};
-const BR_CODE: Record<string, string> = {
-  algeria: 'ALG', argentina: 'ARG', australia: 'AUS', austria: 'AUT', belgium: 'BEL',
-  bosnia_and_herzegovina: 'BIH', brazil: 'BRA', canada: 'CAN', cape_verde: 'CPV', colombia: 'COL',
-  cote_divoire: 'CIV', croatia: 'CRO', dr_congo: 'COD', ecuador: 'ECU', egypt: 'EGY',
-  england: 'ENG', france: 'FRA', germany: 'GER', ghana: 'GHA', japan: 'JPN',
-  mexico: 'MEX', morocco: 'MAR', netherlands: 'NED', norway: 'NOR', paraguay: 'PAR',
-  portugal: 'POR', senegal: 'SEN', south_africa: 'RSA', spain: 'ESP', sweden: 'SWE',
-  switzerland: 'SUI', united_states: 'USA',
-};
 type BrTeam = { team_id: string; name: string; zh?: string } | null;
 type BrNode = { id: string; a: BrTeam; b: BrTeam; fx: any; winner: BrTeam };
 
-// The 16 R32 pairings in OFFICIAL tree order (top half rows 0-7, bottom half 8-15; adjacent
-// pairs cascade upward: R16_i = winners of (2i, 2i+1), QF_i = winners of R16 (2i, 2i+1), ...).
+// The 16 R32 pairings in OFFICIAL tree order (left half rows 0-7, right half 8-15; adjacent
+// pairs cascade inward: R16_i = winners of (2i, 2i+1), QF_i = winners of R16 (2i, 2i+1), ...).
 // These pairings are settled facts (the R32 fixtures are all drawn/played); the model's
 // knockout_bracket.json uses an approximate slotting and disagrees with the real draw, so the
 // real fixture list + this fixed order is the single source of truth. Verified against the
@@ -547,38 +529,79 @@ function BracketView() {
   };
   const r16 = up(r32, 'r16'), qf = up(r16, 'qf'), sf = up(qf, 'sf'), fin = up(sf, 'final');
   if (r32.length < 16 || !sf.length || !fin.length) {
-    return <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>knockout_bracket.json missing / incomplete</div>;
+    return <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>schedule.json missing knockout fixtures</div>;
   }
   const champ = fin[0].winner;
 
-  const flag = (t: BrTeam) => (t ? (BR_FLAG[t.team_id] ?? '🏳') : '');
-  const code = (t: BrTeam) => (t ? (BR_CODE[t.team_id] ?? (t.name || '').slice(0, 3).toUpperCase()) : tr('prediction.brTbd'));
-  // `key?` in the props type: Box is used inside .map(); React consumes key specially.
-  const Box = ({ n, label }: { n: BrNode; label: string; key?: string }) => {
-    const empty = !n.a && !n.b;
+  // ── horizontal layout: left half → center final ← right half, SVG route lines ──
+  const BOX_W = 112, BOX_H = 40, ROW = 50, GAP = 30, HDR = 22;
+  const STEP = BOX_W + GAP;
+  const colX = (k: number) => k * STEP;                       // 9 columns, 0..8
+  const H = HDR + 8 * ROW + 8;
+  const W = colX(8) + BOX_W;
+  const yR32 = (i: number) => HDR + ((i % 8) + 0.5) * ROW;    // i: tree index 0-15
+  const yR16 = (j: number) => (yR32(2 * (j % 4)) + yR32(2 * (j % 4) + 1)) / 2;
+  const yQF = (k: number) => (yR16(2 * (k % 2)) + yR16(2 * (k % 2) + 1)) / 2;
+  const ySF = (yQF(0) + yQF(1)) / 2;
+  // (column, y-center, side) per node — left half feeds rightward, right half leftward.
+  const pos: Record<string, { x: number; y: number; right: boolean }> = {};
+  r32.forEach((n, i) => { pos[n.id] = { x: colX(i < 8 ? 0 : 8), y: yR32(i), right: i >= 8 }; });
+  r16.forEach((n, j) => { pos[n.id] = { x: colX(j < 4 ? 1 : 7), y: yR16(j), right: j >= 4 }; });
+  qf.forEach((n, k) => { pos[n.id] = { x: colX(k < 2 ? 2 : 6), y: yQF(k), right: k >= 2 }; });
+  sf.forEach((n, s) => { pos[n.id] = { x: colX(s === 0 ? 3 : 5), y: ySF, right: s === 1 }; });
+  pos[fin[0].id] = { x: colX(4), y: ySF, right: false };
+  const champY = ySF - 1.9 * ROW;
+
+  // Route lines: elbow from each feeder to its child slot. WHITE (= --text-primary) once the
+  // feeder is decided (someone advanced along it), grey while undecided.
+  const lines: { d: string; on: boolean }[] = [];
+  const elbow = (from: BrNode, to: BrNode) => {
+    const f = pos[from.id], t0 = pos[to.id];
+    if (!f || !t0) return;
+    const x1 = f.right ? f.x : f.x + BOX_W;
+    const x2 = t0.right ? t0.x + BOX_W : t0.x;
+    const midX = (x1 + x2) / 2;
+    lines.push({ d: `M ${x1} ${f.y} H ${midX} V ${t0.y} H ${x2}`, on: !!from.winner });
+  };
+  const link = (prev: BrNode[], next: BrNode[]) => {
+    next.forEach((n, i) => { elbow(prev[2 * i], n); elbow(prev[2 * i + 1], n); });
+  };
+  link(r32, r16); link(r16, qf); link(qf, sf);
+  elbow(sf[0], fin[0]);
+  // right SF → final's right edge (elbow() handles direction via pos.right flags)
+  { const f = pos[sf[1].id], t0 = pos[fin[0].id];
+    lines.push({ d: `M ${f.x} ${f.y} H ${(f.x + t0.x + BOX_W) / 2} V ${t0.y} H ${t0.x + BOX_W}`, on: !!sf[1].winner }); }
+  // final → champion (vertical)
+  lines.push({ d: `M ${colX(4) + BOX_W / 2} ${ySF - BOX_H / 2} V ${champY}`, on: !!champ });
+
+  const nameOf = (t: BrTeam) => (t ? tCountry(t.name) : tr('prediction.brTbd'));
+  const Box = ({ n }: { n: BrNode; key?: string }) => {
+    const p = pos[n.id];
     const isH = hover === n.id;
     const row = (t: BrTeam) => (
       <div style={{
-        display: 'flex', gap: 5, alignItems: 'center', fontSize: 10.5, ...mono, lineHeight: 1.75,
-        ...(t ? {} : { color: 'var(--text-muted)' }),
+        fontSize: 9.5, ...mono, lineHeight: '17px', whiteSpace: 'nowrap', overflow: 'hidden',
+        textOverflow: 'ellipsis', padding: '0 7px',
+        ...(t ? { color: 'var(--text-secondary)' } : { color: 'var(--text-muted)' }),
         ...(isH && n.winner && t ? (t.team_id === n.winner.team_id
           ? { fontWeight: 700, color: 'var(--success)' } : { opacity: 0.35 }) : {}),
-      }}>
-        <span style={{ fontSize: 13, width: 16 }}>{flag(t)}</span>{code(t)}
-      </div>
+      }}>{nameOf(t)}</div>
     );
     return (
       <div onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
-        style={{ position: 'relative', border: '1px solid var(--border-subtle)', borderRadius: 9,
-          padding: '5px 9px', minWidth: 66, background: 'var(--bg-tertiary)',
-          cursor: n.fx ? 'pointer' : 'default' }}>
-        {empty
-          ? <div style={{ fontSize: 9.5, color: 'var(--text-muted)', ...mono, textAlign: 'center', padding: '7px 2px' }}>{label}</div>
-          : <>{row(n.a)}{row(n.b)}</>}
-        {isH && !empty && (
-          <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 40,
-            marginTop: 5, whiteSpace: 'nowrap', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)',
-            borderRadius: 6, padding: '5px 9px', fontSize: 10, ...mono, boxShadow: '0 4px 14px rgba(0,0,0,.45)' }}>
+        style={{ position: 'absolute', left: p.x, top: p.y - BOX_H / 2, width: BOX_W, height: BOX_H,
+          display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          border: `1px solid ${isH ? 'var(--text-primary)' : 'var(--border-subtle)'}`,
+          background: 'var(--bg-secondary)', cursor: n.fx ? 'pointer' : 'default', zIndex: isH ? 30 : 2,
+          transition: 'border-color .1s' }}>
+        {row(n.a)}
+        <div style={{ height: 1, background: 'var(--border-subtle)', margin: '0 5px' }} />
+        {row(n.b)}
+        {isH && (
+          <div style={{ position: 'absolute', top: BOX_H + 4, left: '50%', transform: 'translateX(-50%)',
+            zIndex: 40, whiteSpace: 'nowrap', background: 'var(--bg-primary)',
+            border: '1px solid var(--border-subtle)', padding: '5px 9px', fontSize: 10, ...mono,
+            boxShadow: '0 4px 14px rgba(0,0,0,.45)' }}>
             {n.fx
               ? (n.fx.finished
                 ? <>✓ {tr('prediction.brDone')} · {n.fx.et} · <b>{n.fx.score}</b>{n.fx.status === 'PEN' ? ' (PEN)' : n.fx.status === 'AET' ? ' (AET)' : ''}</>
@@ -589,37 +612,41 @@ function BracketView() {
       </div>
     );
   };
-  const Row = ({ gap, children }: { gap?: number; children: ReactNode }) => (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: gap ?? 10, margin: '9px 0' }}>{children}</div>
-  );
-  const L = { qf: tr('prediction.round.qf'), sf: tr('prediction.round.sf'), fin: tr('prediction.round.final') };
-  const pairRow = (idx: number[]) => (
-    <Row gap={26}>{idx.map((g) => (
-      <div key={g} style={{ display: 'flex', gap: 8 }}>
-        <Box n={r32[2 * g]} label="" /><Box n={r32[2 * g + 1]} label="" />
-      </div>
-    ))}</Row>
-  );
+  // column headers — uppercase mono, mirroring the project's section-label style
+  const hdrs: [number, string][] = [
+    [0, tr('prediction.round.r32')], [1, tr('prediction.round.r16')], [2, tr('prediction.round.qf')],
+    [3, tr('prediction.round.sf')], [4, tr('prediction.round.final')], [5, tr('prediction.round.sf')],
+    [6, tr('prediction.round.qf')], [7, tr('prediction.round.r16')], [8, tr('prediction.round.r32')],
+  ];
+  const all = [...r32, ...r16, ...qf, ...sf, ...fin];
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <div style={{ minWidth: 700, padding: '4px 2px' }}>
-        {pairRow([0, 1, 2, 3])}
-        <Row gap={70}>{r16.slice(0, 4).map((n) => <Box key={n.id} n={n} label={tr('prediction.round.r16')} />)}</Row>
-        <Row gap={180}>{qf.slice(0, 2).map((n) => <Box key={n.id} n={n} label={L.qf} />)}</Row>
-        <Row><Box n={sf[0]} label={L.sf} /></Row>
-        <Row gap={18}>
-          <Box n={fin[0]} label={L.fin} />
-          <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 9, padding: '6px 12px', minWidth: 84, textAlign: 'center', background: 'var(--bg-tertiary)' }}>
-            <div style={{ fontSize: 9.5, color: 'var(--text-muted)', ...mono }}>{tr('prediction.brChampions')}</div>
-            {champ
-              ? <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2 }}>{flag(champ)} {tCountry(champ.name)}</div>
-              : <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>—</div>}
+    <div style={{ overflowX: 'auto', paddingBottom: 6 }}>
+      <div style={{ position: 'relative', width: W, height: H }}>
+        <svg width={W} height={H} style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' }}>
+          {lines.map((l, i) => (
+            <path key={i} d={l.d} fill="none"
+              stroke={l.on ? 'var(--text-primary)' : 'var(--border-subtle)'}
+              strokeWidth={l.on ? 1.6 : 1} />
+          ))}
+        </svg>
+        {hdrs.map(([k, label]) => (
+          <div key={k} style={{ position: 'absolute', left: colX(k), top: 0, width: BOX_W, textAlign: 'center',
+            fontSize: 8.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
+            color: 'var(--text-muted)', ...mono, whiteSpace: 'nowrap', overflow: 'hidden' }}>{label}</div>
+        ))}
+        {all.map((n) => <Box key={n.id} n={n} />)}
+        {/* champion — centered above the final */}
+        <div style={{ position: 'absolute', left: colX(4), top: champY - BOX_H / 2, width: BOX_W,
+          border: `1px solid ${champ ? 'var(--text-primary)' : 'var(--border-subtle)'}`,
+          background: 'var(--bg-secondary)', textAlign: 'center', padding: '4px 6px', zIndex: 2 }}>
+          <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
+            color: 'var(--text-muted)', ...mono }}>{tr('prediction.brChampions')}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, ...mono, marginTop: 1,
+            color: champ ? 'var(--text-primary)' : 'var(--text-muted)', whiteSpace: 'nowrap',
+            overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {champ ? nameOf(champ) : '—'}
           </div>
-        </Row>
-        <Row><Box n={sf[1]} label={L.sf} /></Row>
-        <Row gap={180}>{qf.slice(2, 4).map((n) => <Box key={n.id} n={n} label={L.qf} />)}</Row>
-        <Row gap={70}>{r16.slice(4, 8).map((n) => <Box key={n.id} n={n} label={tr('prediction.round.r16')} />)}</Row>
-        {pairRow([4, 5, 6, 7])}
+        </div>
       </div>
     </div>
   );
@@ -649,22 +676,30 @@ function Schedule() {
     return s;
   };
   const played = ms.filter((m: any) => m.finished).length;
-  const togBtn = (v: 'list' | 'bracket', label: string) => (
-    <button onClick={() => setView(v)} style={{
-      padding: '3px 10px', fontSize: 10.5, ...mono, cursor: 'pointer', borderRadius: 6,
-      border: '1px solid var(--border-subtle)',
-      background: view === v ? 'var(--text-primary)' : 'transparent',
-      color: view === v ? 'var(--bg-primary)' : 'var(--text-secondary)', fontWeight: view === v ? 700 : 400,
-    }}>{label}</button>
+  // Segmented list/bracket switcher — same look + placement as the Regulation/Advances
+  // toggle (AdvanceModeToggle): 2px pixel border, uppercase mono, selected = inverted.
+  const ink = 'var(--text-primary)';
+  const opts: ['list' | 'bracket', string][] = [
+    ['list', tr('prediction.schedList')], ['bracket', tr('prediction.schedBracket')],
+  ];
+  const toggle = (
+    <div className="flex overflow-hidden" style={{ border: `2px solid ${ink}`, flexShrink: 0 }}>
+      {opts.map(([val, label], i) => (
+        <button key={val} onClick={() => setView(val)}
+          style={{ padding: '3px 12px', fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700,
+            letterSpacing: '.06em', textTransform: 'uppercase', transition: 'all .1s',
+            background: view === val ? ink : 'transparent',
+            color: view === val ? 'var(--bg-primary)' : 'var(--text-muted)',
+            border: 'none', borderLeft: i > 0 ? `2px solid ${ink}` : 'none',
+            cursor: 'pointer', whiteSpace: 'nowrap' }}>{label}</button>
+      ))}
+    </div>
   );
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <Title sub={`${tr('prediction.subSchedule')} · ${ms.length} ${tr('prediction.lblMatches')}${played ? ` (${played} ${tr('prediction.finished')})` : ''}`}>Schedule</Title>
-        <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginTop: 2 }}>
-          {togBtn('list', tr('prediction.schedList'))}
-          {togBtn('bracket', tr('prediction.schedBracket'))}
-        </div>
+        {toggle}
       </div>
       {view === 'bracket' ? <BracketView /> : (
         <DataTable cols={['ET', tr('prediction.colRound'), tr('prediction.match'), tr('prediction.colResult')]}
