@@ -278,6 +278,13 @@ def _maybe_refresh_champion(conn) -> None:
         _write_both("reach_round.json", reach_round_export.build(conn))
     except Exception as e:
         print(f"[live_refresh] reach_round refresh skipped: {e}")
+    # Schedule (list + bracket views): a just-settled match must show its result — and the
+    # NEXT round's now-determined pairing — immediately, not on the next daily refresh.
+    try:
+        from prediction_market.ops import schedule_export
+        _write_both("schedule.json", schedule_export.build(conn))
+    except Exception as e:
+        print(f"[live_refresh] schedule refresh skipped: {e}")
     wm.write_text(str(settled))
     top = pl["champion"][0]
     gb = pl["golden_boot"][0]

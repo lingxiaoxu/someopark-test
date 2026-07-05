@@ -442,8 +442,192 @@ function MatchPricing() {
   );
 }
 
+// ── knockout bracket view (Schedule's second mode) ─────────────────────────────
+const BR_FLAG: Record<string, string> = {
+  algeria: '🇩🇿', argentina: '🇦🇷', australia: '🇦🇺', austria: '🇦🇹', belgium: '🇧🇪',
+  bosnia_and_herzegovina: '🇧🇦', brazil: '🇧🇷', canada: '🇨🇦', cape_verde: '🇨🇻', colombia: '🇨🇴',
+  cote_divoire: '🇨🇮', croatia: '🇭🇷', dr_congo: '🇨🇩', ecuador: '🇪🇨', egypt: '🇪🇬',
+  england: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', france: '🇫🇷', germany: '🇩🇪', ghana: '🇬🇭', japan: '🇯🇵',
+  mexico: '🇲🇽', morocco: '🇲🇦', netherlands: '🇳🇱', norway: '🇳🇴', paraguay: '🇵🇾',
+  portugal: '🇵🇹', senegal: '🇸🇳', south_africa: '🇿🇦', spain: '🇪🇸', sweden: '🇸🇪',
+  switzerland: '🇨🇭', united_states: '🇺🇸',
+};
+const BR_CODE: Record<string, string> = {
+  algeria: 'ALG', argentina: 'ARG', australia: 'AUS', austria: 'AUT', belgium: 'BEL',
+  bosnia_and_herzegovina: 'BIH', brazil: 'BRA', canada: 'CAN', cape_verde: 'CPV', colombia: 'COL',
+  cote_divoire: 'CIV', croatia: 'CRO', dr_congo: 'COD', ecuador: 'ECU', egypt: 'EGY',
+  england: 'ENG', france: 'FRA', germany: 'GER', ghana: 'GHA', japan: 'JPN',
+  mexico: 'MEX', morocco: 'MAR', netherlands: 'NED', norway: 'NOR', paraguay: 'PAR',
+  portugal: 'POR', senegal: 'SEN', south_africa: 'RSA', spain: 'ESP', sweden: 'SWE',
+  switzerland: 'SUI', united_states: 'USA',
+};
+type BrTeam = { team_id: string; name: string; zh?: string } | null;
+type BrNode = { id: string; a: BrTeam; b: BrTeam; fx: any; winner: BrTeam };
+
+// The 16 R32 pairings in OFFICIAL tree order (top half rows 0-7, bottom half 8-15; adjacent
+// pairs cascade upward: R16_i = winners of (2i, 2i+1), QF_i = winners of R16 (2i, 2i+1), ...).
+// These pairings are settled facts (the R32 fixtures are all drawn/played); the model's
+// knockout_bracket.json uses an approximate slotting and disagrees with the real draw, so the
+// real fixture list + this fixed order is the single source of truth. Verified against the
+// played R16 fixtures (PAR-FRA, CAN-MAR, MEX-ENG all match the adjacent-cascade).
+const R32_TREE: [string, string][] = [
+  ['germany', 'paraguay'], ['france', 'sweden'], ['south_africa', 'canada'], ['netherlands', 'morocco'],
+  ['portugal', 'croatia'], ['spain', 'austria'], ['united_states', 'bosnia_and_herzegovina'], ['belgium', 'senegal'],
+  ['brazil', 'japan'], ['cote_divoire', 'norway'], ['mexico', 'ecuador'], ['england', 'dr_congo'],
+  ['argentina', 'cape_verde'], ['australia', 'egypt'], ['switzerland', 'algeria'], ['colombia', 'ghana'],
+];
+
+function BracketView() {
+  const { t: tr } = useTranslation();
+  const sched = useApi<any>(() => getWCSchedule(), []);
+  const [hover, setHover] = useState<string | null>(null);
+  if (sched.loading) return <Loading />;
+  if (sched.error) return <ErrorBox e={sched.error} />;
+  const ms: any[] = sched.data?.matches ?? [];
+  const rnd = (r?: string) => {
+    const low = (r || '').toLowerCase();
+    if (low.includes('round of 32')) return 'r32';
+    if (low.includes('round of 16')) return 'r16';
+    if (low.includes('quarter')) return 'qf';
+    if (low.includes('semi')) return 'sf';
+    if (low.includes('3rd') || low.includes('third')) return 'third';
+    if (low.includes('final')) return 'final';
+    return '';
+  };
+  const T = (l: any): BrTeam => (l ? { team_id: l.team_id, name: l.name, zh: l.zh } : null);
+  const findFx = (round: string, s1: Set<string>, s2: Set<string>) =>
+    ms.find((m) => rnd(m.round) === round && m.home?.id && m.away?.id &&
+      ((s1.has(m.home.id) && s2.has(m.away.id)) || (s2.has(m.home.id) && s1.has(m.away.id)))) || null;
+  // Winner from the fixture result. A knockout decided on penalties has result='draw'
+  // (level after 90/120) — its winner is BACK-FILLED from the next round's actual fixture
+  // (whoever advanced appears there), inside up().
+  const winOf = (n: BrNode): BrTeam => {
+    if (!n.fx?.finished || !n.a || !n.b) return n.winner;
+    if (n.fx.result === 'home' || n.fx.result === 'away') {
+      const wid = n.fx.result === 'home' ? n.fx.home.id : n.fx.away.id;
+      return n.a.team_id === wid ? n.a : n.b.team_id === wid ? n.b : null;
+    }
+    return n.winner;
+  };
+  // R32 nodes from the fixed tree order; team display objects come from the fixture itself
+  // (authoritative names/zh), falling back to the id when a fixture is somehow absent.
+  const r32: BrNode[] = R32_TREE.map(([ida, idb], i) => {
+    const fx = findFx('r32', new Set([ida]), new Set([idb]));
+    const fxTeam = (tid: string): BrTeam => {
+      if (fx?.home?.id === tid) return T({ team_id: tid, name: fx.home.name, zh: fx.home.zh });
+      if (fx?.away?.id === tid) return T({ team_id: tid, name: fx.away.name, zh: fx.away.zh });
+      return T({ team_id: tid, name: tid.replace(/_/g, ' ') });
+    };
+    const n: BrNode = { id: `r32-${i}`, a: fxTeam(ida), b: fxTeam(idb), fx, winner: null };
+    n.winner = winOf(n);
+    return n;
+  });
+  const up = (prev: BrNode[], round: string): BrNode[] => {
+    const out: BrNode[] = [];
+    for (let i = 0; i + 1 < prev.length; i += 2) {
+      const f1 = prev[i], f2 = prev[i + 1];
+      const s1 = new Set([f1.a?.team_id, f1.b?.team_id].filter(Boolean) as string[]);
+      const s2 = new Set([f2.a?.team_id, f2.b?.team_id].filter(Boolean) as string[]);
+      const fx = findFx(round, s1, s2);
+      let a = f1.winner, b = f2.winner;
+      if (fx) {
+        const pick = (f: BrNode, sset: Set<string>): BrTeam => {
+          const tid = sset.has(fx.home.id) ? fx.home.id : sset.has(fx.away.id) ? fx.away.id : null;
+          return tid ? (f.a?.team_id === tid ? f.a : f.b?.team_id === tid ? f.b : null) : null;
+        };
+        a = pick(f1, s1) ?? a; b = pick(f2, s2) ?? b;
+        if (!f1.winner && a) f1.winner = a;   // back-fill a PEN-decided feeder
+        if (!f2.winner && b) f2.winner = b;
+      }
+      const n: BrNode = { id: `${round}-${i / 2}`, a, b, fx, winner: null };
+      n.winner = winOf(n);
+      out.push(n);
+    }
+    return out;
+  };
+  const r16 = up(r32, 'r16'), qf = up(r16, 'qf'), sf = up(qf, 'sf'), fin = up(sf, 'final');
+  if (r32.length < 16 || !sf.length || !fin.length) {
+    return <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>knockout_bracket.json missing / incomplete</div>;
+  }
+  const champ = fin[0].winner;
+
+  const flag = (t: BrTeam) => (t ? (BR_FLAG[t.team_id] ?? '🏳') : '');
+  const code = (t: BrTeam) => (t ? (BR_CODE[t.team_id] ?? (t.name || '').slice(0, 3).toUpperCase()) : tr('prediction.brTbd'));
+  // `key?` in the props type: Box is used inside .map(); React consumes key specially.
+  const Box = ({ n, label }: { n: BrNode; label: string; key?: string }) => {
+    const empty = !n.a && !n.b;
+    const isH = hover === n.id;
+    const row = (t: BrTeam) => (
+      <div style={{
+        display: 'flex', gap: 5, alignItems: 'center', fontSize: 10.5, ...mono, lineHeight: 1.75,
+        ...(t ? {} : { color: 'var(--text-muted)' }),
+        ...(isH && n.winner && t ? (t.team_id === n.winner.team_id
+          ? { fontWeight: 700, color: 'var(--success)' } : { opacity: 0.35 }) : {}),
+      }}>
+        <span style={{ fontSize: 13, width: 16 }}>{flag(t)}</span>{code(t)}
+      </div>
+    );
+    return (
+      <div onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
+        style={{ position: 'relative', border: '1px solid var(--border-subtle)', borderRadius: 9,
+          padding: '5px 9px', minWidth: 66, background: 'var(--bg-tertiary)',
+          cursor: n.fx ? 'pointer' : 'default' }}>
+        {empty
+          ? <div style={{ fontSize: 9.5, color: 'var(--text-muted)', ...mono, textAlign: 'center', padding: '7px 2px' }}>{label}</div>
+          : <>{row(n.a)}{row(n.b)}</>}
+        {isH && !empty && (
+          <div style={{ position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)', zIndex: 40,
+            marginTop: 5, whiteSpace: 'nowrap', background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)',
+            borderRadius: 6, padding: '5px 9px', fontSize: 10, ...mono, boxShadow: '0 4px 14px rgba(0,0,0,.45)' }}>
+            {n.fx
+              ? (n.fx.finished
+                ? <>✓ {tr('prediction.brDone')} · {n.fx.et} · <b>{n.fx.score}</b>{n.fx.status === 'PEN' ? ' (PEN)' : n.fx.status === 'AET' ? ' (AET)' : ''}</>
+                : <>{tr('prediction.brUpcoming')} · {n.fx.et}</>)
+              : <>{tr('prediction.brTbd')}</>}
+          </div>
+        )}
+      </div>
+    );
+  };
+  const Row = ({ gap, children }: { gap?: number; children: ReactNode }) => (
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: gap ?? 10, margin: '9px 0' }}>{children}</div>
+  );
+  const L = { qf: tr('prediction.round.qf'), sf: tr('prediction.round.sf'), fin: tr('prediction.round.final') };
+  const pairRow = (idx: number[]) => (
+    <Row gap={26}>{idx.map((g) => (
+      <div key={g} style={{ display: 'flex', gap: 8 }}>
+        <Box n={r32[2 * g]} label="" /><Box n={r32[2 * g + 1]} label="" />
+      </div>
+    ))}</Row>
+  );
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <div style={{ minWidth: 700, padding: '4px 2px' }}>
+        {pairRow([0, 1, 2, 3])}
+        <Row gap={70}>{r16.slice(0, 4).map((n) => <Box key={n.id} n={n} label={tr('prediction.round.r16')} />)}</Row>
+        <Row gap={180}>{qf.slice(0, 2).map((n) => <Box key={n.id} n={n} label={L.qf} />)}</Row>
+        <Row><Box n={sf[0]} label={L.sf} /></Row>
+        <Row gap={18}>
+          <Box n={fin[0]} label={L.fin} />
+          <div style={{ border: '1px solid var(--border-subtle)', borderRadius: 9, padding: '6px 12px', minWidth: 84, textAlign: 'center', background: 'var(--bg-tertiary)' }}>
+            <div style={{ fontSize: 9.5, color: 'var(--text-muted)', ...mono }}>{tr('prediction.brChampions')}</div>
+            {champ
+              ? <div style={{ fontSize: 12, fontWeight: 700, marginTop: 2 }}>{flag(champ)} {tCountry(champ.name)}</div>
+              : <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>—</div>}
+          </div>
+        </Row>
+        <Row><Box n={sf[1]} label={L.sf} /></Row>
+        <Row gap={180}>{qf.slice(2, 4).map((n) => <Box key={n.id} n={n} label={L.qf} />)}</Row>
+        <Row gap={70}>{r16.slice(4, 8).map((n) => <Box key={n.id} n={n} label={tr('prediction.round.r16')} />)}</Row>
+        {pairRow([4, 5, 6, 7])}
+      </div>
+    </div>
+  );
+}
+
 function Schedule() {
   const { t: tr } = useTranslation();
+  const [view, setView] = useState<'list' | 'bracket'>('list');
   // Full fixed group-stage schedule (all 72, played + upcoming); knockouts auto-append
   // once they're drawn. Falls back to upcoming.json if schedule.json isn't synced yet.
   const sched = useApi<any>(() => getWCSchedule(), []);
@@ -465,17 +649,33 @@ function Schedule() {
     return s;
   };
   const played = ms.filter((m: any) => m.finished).length;
+  const togBtn = (v: 'list' | 'bracket', label: string) => (
+    <button onClick={() => setView(v)} style={{
+      padding: '3px 10px', fontSize: 10.5, ...mono, cursor: 'pointer', borderRadius: 6,
+      border: '1px solid var(--border-subtle)',
+      background: view === v ? 'var(--text-primary)' : 'transparent',
+      color: view === v ? 'var(--bg-primary)' : 'var(--text-secondary)', fontWeight: view === v ? 700 : 400,
+    }}>{label}</button>
+  );
   return (
     <div>
-      <Title sub={`${tr('prediction.subSchedule')} · ${ms.length} ${tr('prediction.lblMatches')}${played ? ` (${played} ${tr('prediction.finished')})` : ''}`}>Schedule</Title>
-      <DataTable cols={['ET', tr('prediction.colRound'), tr('prediction.match'), tr('prediction.colResult')]}
-        rows={ms.map((m: any) => [
-          m.et ?? m.kickoff, roundLabel(m.round),
-          `${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`,
-          m.finished
-            ? <span style={{ fontWeight: 700 }}>{m.score}</span>
-            : <span style={{ color: 'var(--text-muted)' }}>{m.status === 'NS' ? '—' : m.status}</span>,
-        ])} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+        <Title sub={`${tr('prediction.subSchedule')} · ${ms.length} ${tr('prediction.lblMatches')}${played ? ` (${played} ${tr('prediction.finished')})` : ''}`}>Schedule</Title>
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginTop: 2 }}>
+          {togBtn('list', tr('prediction.schedList'))}
+          {togBtn('bracket', tr('prediction.schedBracket'))}
+        </div>
+      </div>
+      {view === 'bracket' ? <BracketView /> : (
+        <DataTable cols={['ET', tr('prediction.colRound'), tr('prediction.match'), tr('prediction.colResult')]}
+          rows={ms.map((m: any) => [
+            m.et ?? m.kickoff, roundLabel(m.round),
+            `${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`,
+            m.finished
+              ? <span style={{ fontWeight: 700 }}>{m.score}</span>
+              : <span style={{ color: 'var(--text-muted)' }}>{m.status === 'NS' ? '—' : m.status}</span>,
+          ])} />
+      )}
     </div>
   );
 }

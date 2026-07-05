@@ -273,7 +273,10 @@ export const getWCForm         = () => fetchApi<any>('/data/form.json');
 export const getWCParams       = () => fetchApi<any>('/data/param_sweep.json');
 export const getWCUpcoming     = () => fetchApi<any>('/data/upcoming.json');
 export const getWCMilestoneMarks = () => fetchApi<any>('/data/milestone_marks.json');
-export const getWCSchedule       = () => fetchApi<any>('/data/schedule.json');
+export const getWCSchedule       = () => fetchApi<any>(`/data/schedule.json?_=${Date.now()}`);
+// Official R32 bracket (FIFA matches 73–88, slot descriptors + resolved occupants) — the
+// bracket view's topology source; results/kickoffs come from schedule.json.
+export const getWCKnockout       = () => fetchApi<any>(`/data/knockout_bracket.json?_=${Date.now()}`);
 export const getWCReachRound     = () => fetchApi<any>(`/data/reach_round.json?_=${Date.now()}`);
 export const getWCStyles         = () => fetchApi<any>('/data/team_styles.json');
 
