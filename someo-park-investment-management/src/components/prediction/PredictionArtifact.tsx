@@ -443,6 +443,16 @@ function MatchPricing() {
 }
 
 // ── knockout bracket view (Schedule's second mode) ─────────────────────────────
+// Flag emoji for the hover card (team_id → flag).
+const BR_FLAG: Record<string, string> = {
+  algeria: '🇩🇿', argentina: '🇦🇷', australia: '🇦🇺', austria: '🇦🇹', belgium: '🇧🇪',
+  bosnia_and_herzegovina: '🇧🇦', brazil: '🇧🇷', canada: '🇨🇦', cape_verde: '🇨🇻', colombia: '🇨🇴',
+  cote_divoire: '🇨🇮', croatia: '🇭🇷', dr_congo: '🇨🇩', ecuador: '🇪🇨', egypt: '🇪🇬',
+  england: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', france: '🇫🇷', germany: '🇩🇪', ghana: '🇬🇭', japan: '🇯🇵',
+  mexico: '🇲🇽', morocco: '🇲🇦', netherlands: '🇳🇱', norway: '🇳🇴', paraguay: '🇵🇾',
+  portugal: '🇵🇹', senegal: '🇸🇳', south_africa: '🇿🇦', spain: '🇪🇸', sweden: '🇸🇪',
+  switzerland: '🇨🇭', united_states: '🇺🇸',
+};
 type BrTeam = { team_id: string; name: string; zh?: string } | null;
 type BrNode = { id: string; a: BrTeam; b: BrTeam; fx: any; winner: BrTeam };
 
@@ -534,7 +544,7 @@ function BracketView() {
   const champ = fin[0].winner;
 
   // ── horizontal layout: left half → center final ← right half, SVG route lines ──
-  const BOX_W = 112, BOX_H = 40, ROW = 50, GAP = 30, HDR = 22;
+  const BOX_W = 78, BOX_H = 80, ROW = 88, GAP = 30, HDR = 22;
   const STEP = BOX_W + GAP;
   const colX = (k: number) => k * STEP;                       // 9 columns, 0..8
   const H = HDR + 8 * ROW + 8;
@@ -550,7 +560,7 @@ function BracketView() {
   qf.forEach((n, k) => { pos[n.id] = { x: colX(k < 2 ? 2 : 6), y: yQF(k), right: k >= 2 }; });
   sf.forEach((n, s) => { pos[n.id] = { x: colX(s === 0 ? 3 : 5), y: ySF, right: s === 1 }; });
   pos[fin[0].id] = { x: colX(4), y: ySF, right: false };
-  const champY = ySF - 1.9 * ROW;
+  const champY = ySF - 1.5 * ROW;
 
   // Route lines: elbow from each feeder to its child slot. WHITE (= --text-primary) once the
   // feeder is decided (someone advanced along it), grey while undecided.
@@ -575,38 +585,92 @@ function BracketView() {
   lines.push({ d: `M ${colX(4) + BOX_W / 2} ${ySF - BOX_H / 2} V ${champY}`, on: !!champ });
 
   const nameOf = (t: BrTeam) => (t ? tCountry(t.name) : tr('prediction.brTbd'));
+  const flagOf = (t: BrTeam) => (t ? (BR_FLAG[t.team_id] ?? '🏳') : '');
   const Box = ({ n }: { n: BrNode; key?: string }) => {
     const p = pos[n.id];
     const isH = hover === n.id;
-    const row = (t: BrTeam) => (
-      <div style={{
-        fontSize: 9.5, ...mono, lineHeight: '17px', whiteSpace: 'nowrap', overflow: 'hidden',
-        textOverflow: 'ellipsis', padding: '0 7px',
-        ...(t ? { color: 'var(--text-secondary)' } : { color: 'var(--text-muted)' }),
-        ...(isH && n.winner && t ? (t.team_id === n.winner.team_id
-          ? { fontWeight: 700, color: 'var(--success)' } : { opacity: 0.35 }) : {}),
-      }}>{nameOf(t)}</div>
-    );
+    // OFFICIAL home/away ordering: the fixture's home team occupies the TOP half, away the
+    // BOTTOM half. Before the fixture exists, fall back to the feeder-derived order.
+    const byId = (tid?: string): BrTeam =>
+      tid ? (n.a?.team_id === tid ? n.a : n.b?.team_id === tid ? n.b : null) : null;
+    const top = (n.fx ? byId(n.fx.home?.id) : null) ?? n.a;
+    const bot = (n.fx ? byId(n.fx.away?.id) : null) ?? n.b;
+    const [gh, ga] = n.fx?.finished && n.fx.score ? String(n.fx.score).split('-') : [null, null];
+    // Half row: name wraps (up to 3 lines), vertically centered in its EXACT 50% half.
+    // Left bracket half: name left-aligned, goals pinned right. Right half: mirrored.
+    const half = (t: BrTeam, goals: string | null) => {
+      const win = isH && n.winner && t && t.team_id === n.winner.team_id;
+      const lose = isH && n.winner && t && t.team_id !== n.winner.team_id;
+      const nameEl = (
+        <div style={{ flex: 1, fontSize: 9, lineHeight: '11px', ...mono,
+          textAlign: p.right ? 'right' : 'left', overflow: 'hidden',
+          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical' as any,
+          wordBreak: 'break-word',
+          color: t ? 'var(--text-secondary)' : 'var(--text-muted)',
+          ...(win ? { fontWeight: 700, color: 'var(--success)' } : {}),
+        }}>{nameOf(t)}</div>
+      );
+      const goalEl = goals != null && (
+        <span style={{ fontSize: 11, fontWeight: 700, ...mono,
+          color: win ? 'var(--success)' : 'var(--text-primary)' }}>{goals}</span>
+      );
+      return (
+        <div style={{ height: '50%', display: 'flex', alignItems: 'center', gap: 5,
+          padding: '0 7px', ...(lose ? { opacity: 0.35 } : {}) }}>
+          {p.right ? <>{goalEl}{nameEl}</> : <>{nameEl}{goalEl}</>}
+        </div>
+      );
+    };
+    // hover card — flags + score, shootout line, regulation-time scorers (home left, away right)
+    const card = () => {
+      if (!n.fx) return <>{tr('prediction.brTbd')}</>;
+      if (!n.fx.finished) return <>{tr('prediction.brUpcoming')} · {n.fx.et}</>;
+      const sc: { home: { name: string; min: number }[]; away: { name: string; min: number }[] } =
+        n.fx.scorers ?? { home: [], away: [] };
+      const homeIsTop = n.fx.home?.id === top?.team_id;
+      const fl = (t: BrTeam) => flagOf(t);
+      return (
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ color: 'var(--text-muted)', fontSize: 9 }}>✓ {tr('prediction.brDone')} · {n.fx.et}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, margin: '3px 0 1px' }}>
+            {fl(homeIsTop ? top : bot)} {n.fx.score?.replace('-', ' : ')} {fl(homeIsTop ? bot : top)}
+          </div>
+          {n.fx.shootout && (
+            <div style={{ fontSize: 10, color: 'var(--text-secondary)' }}>PEN {n.fx.shootout}</div>
+          )}
+          {(sc.home.length > 0 || sc.away.length > 0) && (
+            <div style={{ display: 'flex', gap: 14, justifyContent: 'space-between', marginTop: 4 }}>
+              <div style={{ textAlign: 'left' }}>
+                {sc.home.map((s, i) => (
+                  <div key={i} style={{ fontSize: 9, color: 'var(--text-secondary)' }}>⚽ {s.name} {s.min}′</div>
+                ))}
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                {sc.away.map((s, i) => (
+                  <div key={i} style={{ fontSize: 9, color: 'var(--text-secondary)' }}>{s.name} {s.min}′ ⚽</div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
     return (
       <div onMouseEnter={() => setHover(n.id)} onMouseLeave={() => setHover(null)}
         style={{ position: 'absolute', left: p.x, top: p.y - BOX_H / 2, width: BOX_W, height: BOX_H,
-          display: 'flex', flexDirection: 'column', justifyContent: 'center',
+          display: 'flex', flexDirection: 'column',
           border: `1px solid ${isH ? 'var(--text-primary)' : 'var(--border-subtle)'}`,
           background: 'var(--bg-secondary)', cursor: n.fx ? 'pointer' : 'default', zIndex: isH ? 30 : 2,
           transition: 'border-color .1s' }}>
-        {row(n.a)}
-        <div style={{ height: 1, background: 'var(--border-subtle)', margin: '0 5px' }} />
-        {row(n.b)}
+        {half(top, gh)}
+        <div style={{ height: 1, flexShrink: 0, background: 'var(--border-subtle)' }} />
+        {half(bot, ga)}
         {isH && (
-          <div style={{ position: 'absolute', top: BOX_H + 4, left: '50%', transform: 'translateX(-50%)',
-            zIndex: 40, whiteSpace: 'nowrap', background: 'var(--bg-primary)',
-            border: '1px solid var(--border-subtle)', padding: '5px 9px', fontSize: 10, ...mono,
-            boxShadow: '0 4px 14px rgba(0,0,0,.45)' }}>
-            {n.fx
-              ? (n.fx.finished
-                ? <>✓ {tr('prediction.brDone')} · {n.fx.et} · <b>{n.fx.score}</b>{n.fx.status === 'PEN' ? ' (PEN)' : n.fx.status === 'AET' ? ' (AET)' : ''}</>
-                : <>{tr('prediction.brUpcoming')} · {n.fx.et}</>)
-              : <>{tr('prediction.brTbd')}</>}
+          <div style={{ position: 'absolute', top: BOX_H + 4, zIndex: 40, whiteSpace: 'nowrap',
+            ...(p.right ? { right: 0 } : { left: 0 }),
+            background: 'var(--bg-primary)', border: '1px solid var(--border-subtle)',
+            padding: '6px 10px', fontSize: 10, ...mono, boxShadow: '0 4px 14px rgba(0,0,0,.45)' }}>
+            {card()}
           </div>
         )}
       </div>
@@ -641,9 +705,10 @@ function BracketView() {
           background: 'var(--bg-secondary)', textAlign: 'center', padding: '4px 6px', zIndex: 2 }}>
           <div style={{ fontSize: 8.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
             color: 'var(--text-muted)', ...mono }}>{tr('prediction.brChampions')}</div>
-          <div style={{ fontSize: 10.5, fontWeight: 700, ...mono, marginTop: 1,
-            color: champ ? 'var(--text-primary)' : 'var(--text-muted)', whiteSpace: 'nowrap',
-            overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ fontSize: 10, fontWeight: 700, ...mono, marginTop: 1,
+            color: champ ? 'var(--text-primary)' : 'var(--text-muted)',
+            overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any,
+            wordBreak: 'break-word' }}>
             {champ ? nameOf(champ) : '—'}
           </div>
         </div>

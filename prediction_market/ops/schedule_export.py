@@ -40,13 +40,43 @@ def build(conn=None, *, group_only: bool = False) -> dict:
 
     where = "WHERE round LIKE 'Group%'" if group_only else ""
     rows = conn.execute(
-        "SELECT home_api_id, away_api_id, kickoff_ts, round, status_short, home_goals, away_goals "
+        "SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, home_goals, away_goals "
         f"FROM fixture {where} ORDER BY kickoff_ts").fetchall()
     out = []
     for r in rows:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         finished = r["status_short"] in _FINISHED and r["home_goals"] is not None
         gh, ga = r["home_goals"], r["away_goals"]
+        # Regulation-time scorers + (when it went to a shootout) the shootout score — consumed by
+        # the bracket view's hover card. Shootout kicks live in fixture_event with
+        # comments='Penalty Shootout' (same convention inplay_export uses) and are excluded from
+        # the scorer list; own goals / in-match penalties are annotated (OG)/(P).
+        scorers, shootout = None, None
+        if finished:
+            scorers = {"home": [], "away": []}
+            pens = {"home": 0, "away": 0}
+            for e in conn.execute(
+                "SELECT team_api_id, minute, extra, detail, comments, raw_json FROM fixture_event "
+                "WHERE fixture_api_id=? AND type='Goal' ORDER BY seq", (r["api_id"],)):
+                side = "home" if e["team_api_id"] == r["home_api_id"] else "away"
+                if (e["comments"] or "") == "Penalty Shootout":
+                    if (e["detail"] or "") == "Penalty":
+                        pens[side] += 1
+                    continue
+                if (e["detail"] or "") == "Missed Penalty":
+                    continue
+                try:
+                    nm = (json.loads(e["raw_json"]).get("player") or {}).get("name")
+                except Exception:
+                    nm = None
+                label = nm or "?"
+                if e["detail"] == "Own Goal":
+                    label += " (OG)"
+                elif e["detail"] == "Penalty":
+                    label += " (P)"
+                scorers[side].append({"name": label, "min": (e["minute"] or 0) + (e["extra"] or 0)})
+            if r["status_short"] == "PEN":
+                shootout = f"{pens['home']}-{pens['away']}"
         out.append({
             "kickoff": r["kickoff_ts"], "et": _et(r["kickoff_ts"]), "round": r["round"] or "",
             "home": {"id": hi, "name": name.get(hi, hi) if hi else "TBD", "zh": zh.get(hi, "") if hi else ""},
@@ -56,6 +86,8 @@ def build(conn=None, *, group_only: bool = False) -> dict:
             "score": (f"{gh}-{ga}" if finished else None),
             "result": ("home" if finished and gh > ga else
                        ("draw" if finished and gh == ga else ("away" if finished else None))),
+            "scorers": scorers,
+            "shootout": shootout,
         })
     return {"as_of": datetime.now(timezone.utc).isoformat(), "n": len(out), "matches": out}
 
