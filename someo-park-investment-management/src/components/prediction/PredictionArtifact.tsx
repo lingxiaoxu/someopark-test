@@ -246,7 +246,15 @@ function GoldenBoot() {
   const { t: tr } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCChampion(), []);
   if (loading) return <Loading />; if (error) return <ErrorBox e={error} />;
-  const gb = (data?.golden_boot ?? []).slice(0, 16);
+  // The model array is sorted by p_golden_boot only — 220 of 231 players tie at 0%, where the
+  // order degrades to team-alphabetical (a wall of Algeria rows). Tie-break by actual goals,
+  // then expected goals, BEFORE slicing, so the tail shows the leading scorers instead.
+  const gb = (data?.golden_boot ?? [])
+    .slice()
+    .sort((a: any, b: any) => (b.p_golden_boot - a.p_golden_boot)
+      || ((b.goals ?? 0) - (a.goals ?? 0))
+      || ((b.e_goals ?? 0) - (a.e_goals ?? 0)))
+    .slice(0, 16);
   return (
     <div>
       <Title sub={tr('prediction.subGoldenBoot')}>Golden Boot</Title>
