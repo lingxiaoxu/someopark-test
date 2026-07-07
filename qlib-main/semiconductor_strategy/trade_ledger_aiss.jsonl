@@ -24,3 +24,4 @@
 {"date": "2026-07-01", "ticker": "AMD", "side": "BUY", "shares": 199, "price": 540.88, "gross": -107635.12, "dedup_key": "2026-07-01-AMD-BUY"}
 {"date": "2026-07-01", "ticker": "INTC", "side": "BUY", "shares": 159, "price": 127.02, "gross": -20196.18, "dedup_key": "2026-07-01-INTC-BUY"}
 {"date": "2026-07-01", "ticker": "", "side": "FEE", "gross": -336.24, "dedup_key": "2026-07-01-FEE"}
+{"date": "2026-07-06", "ticker": "MU", "side": "DIV", "shares": 94, "price": 0.15, "gross": 14.1, "dedup_key": "2026-07-06-MU-DIV"}

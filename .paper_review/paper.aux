@@ -1,0 +1,183 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand*\HyPL@Entry[1]{}
+\citation{park2023,wang2023survey,yao2023}
+\citation{li2023camel}
+\HyPL@Entry{0<</S/D>>}
+\citation{kurach2020,kitano1997}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{2}{Introduction}{section.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{The system in one paragraph (Fig.~\ref {fig:arch}).}{2}{section*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Why a naive build fails.}{2}{section*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Contributions.}{2}{section*.4}\protected@file@percent }
+\citation{park2023}
+\citation{wang2023voyager}
+\citation{wang2023survey}
+\citation{li2023camel}
+\citation{yao2023}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces The \textsc  {sfas}{} agentic loop. A shared world map is broadcast to twenty-two isolated agents (one shared on-ball ``brain'' policy and two per-team off-ball policies, each a LoRA over the shared base); their intents are merged only by the deterministic resolution operator $\Phi $, which advances the state. A knowledge graph supplies tactical set-points; a calibration gate scores the realised match. The recursion through $\Phi $ is the \emph  {only} cross-agent coupling.}}{3}{figure.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:arch}{{1}{3}{The \sfas {} agentic loop. A shared world map is broadcast to twenty-two isolated agents (one shared on-ball ``brain'' policy and two per-team off-ball policies, each a LoRA over the shared base); their intents are merged only by the deterministic resolution operator $\Phi $, which advances the state. A knowledge graph supplies tactical set-points; a calibration gate scores the realised match. The recursion through $\Phi $ is the \emph {only} cross-agent coupling}{figure.caption.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related work}{3}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{2}{3}{Related work}{section.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{LLM agents and agent societies.}{3}{section*.5}\protected@file@percent }
+\citation{vinyals2019}
+\citation{berner2019}
+\citation{baker2020}
+\citation{kitano1997}
+\citation{kurach2020}
+\citation{bernstein2002}
+\citation{theraulaz1999}
+\citation{lasry2007,yang2018mfmarl}
+\citation{hu2021}
+\citation{dettmers2023qlora}
+\citation{lewis2020}
+\citation{edge2024graphrag}
+\citation{maher1982,dixon1997}
+\citation{skellam1946}
+\citation{pemantle2007}
+\citation{benaim1999,kushner2003}
+\citation{strogatz1994}
+\@writefile{toc}{\contentsline {paragraph}{Multi-agent learning and team games.}{4}{section*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Decentralised control, stigmergy, mean field.}{4}{section*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Adaptation, knowledge graphs, and football statistics.}{4}{section*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}System architecture}{4}{section.3}\protected@file@percent }
+\newlabel{sec:arch}{{3}{4}{System architecture}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}State, the shared world map, and the resolution operator}{4}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Three policies and how they are served}{5}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:serve}{{3.2}{5}{Three policies and how they are served}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{Model-agnostic backbones.}{5}{section*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Encoding team identity with per-team LoRA}{5}{section.4}\protected@file@percent }
+\newlabel{sec:lora}{{4}{5}{Encoding team identity with per-team LoRA}{section.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{From attributes to a decision dataset.}{5}{section*.11}\protected@file@percent }
+\citation{hu2021}
+\citation{lewis2020,edge2024graphrag}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Per-team identity pipeline. Player attributes and per-90-minute statistical tendencies are distilled into a team-specific decision dataset ($\approx 2400$ examples), used to train a rank-$16$ LoRA over one shared base policy; the resulting per-team policy is admitted only if it clears a behavioural distinctness gate. Forty-eight national teams each become one hot-swappable adapter.}}{6}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:lora}{{2}{6}{Per-team identity pipeline. Player attributes and per-90-minute statistical tendencies are distilled into a team-specific decision dataset ($\approx 2400$ examples), used to train a rank-$16$ LoRA over one shared base policy; the resulting per-team policy is admitted only if it clears a behavioural distinctness gate. Forty-eight national teams each become one hot-swappable adapter}{figure.caption.10}{}}
+\@writefile{toc}{\contentsline {paragraph}{Low-rank adaptation over a shared base.}{6}{section*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{A distinctness gate.}{6}{section*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Knowledge-graph tactical grounding}{6}{section.5}\protected@file@percent }
+\newlabel{sec:kgsec}{{5}{6}{Knowledge-graph tactical grounding}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}What the graph is and how it works}{6}{subsection.5.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces The knowledge graph and its synergy. \textbf  {(1)} A relational graph links the forty-eight teams to shared tactical \emph  {concepts} (high press, possession, compact block, vertical counter); teams that share a style share a node, so tactical knowledge \emph  {transfers} and a data-poor team inherits priors through its neighbours. A per-team query \texttt  {coach\_brief}$(\tau )$ compiles the relevant subgraph into control set-points $(\hat  \rho ,\beta ,\lambda )$ and a home-advantage scalar (the schematic writes the possession target as $\rho ^\star $; it is the compiled target $\hat  \rho $ of \S  \ref {sec:poss}, distinct from the feedback deadband $\rho ^\star $). \textbf  {(2)} These set-points are exactly what the control laws of \S  \ref {sec:why} enforce, what the per-team LoRA's micro-decisions operate \emph  {within}, and what aligns the otherwise message-free agents. The three layers are complementary: macro/offline prior $\oplus $ micro identity $\oplus $ online glue.}}{7}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:kg}{{3}{7}{The knowledge graph and its synergy. \textbf {(1)} A relational graph links the forty-eight teams to shared tactical \emph {concepts} (high press, possession, compact block, vertical counter); teams that share a style share a node, so tactical knowledge \emph {transfers} and a data-poor team inherits priors through its neighbours. A per-team query \texttt {coach\_brief}$(\tau )$ compiles the relevant subgraph into control set-points $(\hat \rho ,\beta ,\lambda )$ and a home-advantage scalar (the schematic writes the possession target as $\rho ^\star $; it is the compiled target $\hat \rho $ of \S \ref {sec:poss}, distinct from the feedback deadband $\rho ^\star $). \textbf {(2)} These set-points are exactly what the control laws of \S \ref {sec:why} enforce, what the per-team LoRA's micro-decisions operate \emph {within}, and what aligns the otherwise message-free agents. The three layers are complementary: macro/offline prior $\oplus $ micro identity $\oplus $ online glue}{figure.caption.14}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}How it improves the system}{7}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}Synergy with LoRA and the agent framework}{7}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Graph $\oplus $ LoRA: macro intent meets micro identity.}{8}{section*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Graph $\oplus $ agent framework: the team-level correlation device.}{8}{section*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Why the system is stable}{8}{section.6}\protected@file@percent }
+\newlabel{sec:why}{{6}{8}{Why the system is stable}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Coordination without communication}{8}{subsection.6.1}\protected@file@percent }
+\newlabel{sec:stig}{{6.1}{8}{Coordination without communication}{subsection.6.1}{}}
+\newlabel{prop:factor}{{1}{8}{policy factorisation}{proposition.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Possession is bistable --- and a feedback law fixes it}{8}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:poss}{{6.2}{8}{Possession is bistable --- and a feedback law fixes it}{subsection.6.2}{}}
+\newlabel{eq:ema}{{1}{8}{Possession is bistable --- and a feedback law fixes it}{equation.6.1}{}}
+\citation{benaim1999,kushner2003}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces The open-loop possession mean field undergoes a supercritical pitchfork at reinforcement strength $\beta =1$: the balanced $50\%$ equilibrium (stable for $\beta <1$) loses stability, and two stable possession-monopoly branches emerge --- the snowball failure mode (Thm.~\ref {thm:bistable}).}}{9}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:bif}{{4}{9}{The open-loop possession mean field undergoes a supercritical pitchfork at reinforcement strength $\beta =1$: the balanced $50\%$ equilibrium (stable for $\beta <1$) loses stability, and two stable possession-monopoly branches emerge --- the snowball failure mode (Thm.~\ref {thm:bistable})}{figure.caption.17}{}}
+\newlabel{lem:meanfield}{{1}{9}{mean-field reduction}{lemma.1}{}}
+\newlabel{eq:meanode}{{2}{9}{mean-field reduction}{equation.6.2}{}}
+\newlabel{thm:bistable}{{1}{9}{bistability of emergent possession}{theorem.1}{}}
+\citation{rubinstein2004}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Monte-Carlo of the possession process \eqref  {eq:ema} at $\beta =2.5$ ($400$ matches each). (a) Without feedback ($g=0<g^\star $) final possession is bimodal --- the team that leads early monopolises the ball. (b) With feedback ($g=22>g^\star $) it is unimodal and concentrated at the set-point, exactly as Theorem~\ref {thm:stabilise} predicts.}}{10}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:feedback}{{5}{10}{Monte-Carlo of the possession process \eqref {eq:ema} at $\beta =2.5$ ($400$ matches each). (a) Without feedback ($g=0<g^\star $) final possession is bimodal --- the team that leads early monopolises the ball. (b) With feedback ($g=22>g^\star $) it is unimodal and concentrated at the set-point, exactly as Theorem~\ref {thm:stabilise} predicts}{figure.caption.18}{}}
+\newlabel{thm:stabilise}{{2}{10}{stabilisation and the critical gain}{theorem.2}{}}
+\newlabel{eq:gstar}{{3}{10}{stabilisation and the critical gain}{equation.6.3}{}}
+\newlabel{cor:setpoint}{{1}{10}{home-advantage set-point}{corollary.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Matchup-dependent calibration, learned rather than hand-set.}{10}{section*.19}\protected@file@percent }
+\newlabel{rem:deadband}{{1}{11}{deadband, operating point, and inferring $\beta $}{remark.1}{}}
+\citation{skellam1946}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces Leading-side share distributions (windows of $W=100$ held frames). (a) Open loop ($g=0$, six ablation matches): mass drifts to the extremes --- $69\%$ of windows at $\rho \le 0.35$ or $\rho \ge 0.65$, only $5\%$ central --- the bimodal signature Theorem~\ref {thm:bistable} predicts for $\beta >1$. (b) Closed loop ($g=22$, the two balanced fixtures): unimodal, $11\%$ extreme / $33\%$ central; the monopoly zone (shaded) stays empty.}}{12}{figure.caption.20}\protected@file@percent }
+\newlabel{fig:betaabl}{{6}{12}{Leading-side share distributions (windows of $W=100$ held frames). (a) Open loop ($g=0$, six ablation matches): mass drifts to the extremes --- $69\%$ of windows at $\rho \le 0.35$ or $\rho \ge 0.65$, only $5\%$ central --- the bimodal signature Theorem~\ref {thm:bistable} predicts for $\beta >1$. (b) Closed loop ($g=22$, the two balanced fixtures): unimodal, $11\%$ extreme / $33\%$ central; the monopoly zone (shaded) stays empty}{figure.caption.20}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Formations cannot collapse}{12}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:collapse}{{6.3}{12}{Formations cannot collapse}{subsection.6.3}{}}
+\newlabel{eq:anchor}{{4}{12}{Formations cannot collapse}{equation.6.4}{}}
+\newlabel{prop:noncollapse}{{2}{12}{non-collapse guarantee}{proposition.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Calibration as an outer loop}{12}{subsection.6.4}\protected@file@percent }
+\newlabel{sec:calib}{{6.4}{12}{Calibration as an outer loop}{subsection.6.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Intent anchoring guarantees a positive lower bound $(1-\lambda )^2S^2$ on formation dispersion for any blend weight $\lambda <1$ (Prop.~\ref {prop:noncollapse}); collapse is possible only in the boundary case $\lambda =1$. \textsc  {sfas}{}'s two-stage anchoring keeps $\approx 11\%$ of the formation spread even when all agents chase the ball.}}{13}{figure.caption.21}\protected@file@percent }
+\newlabel{fig:disp}{{7}{13}{Intent anchoring guarantees a positive lower bound $(1-\lambda )^2S^2$ on formation dispersion for any blend weight $\lambda <1$ (Prop.~\ref {prop:noncollapse}); collapse is possible only in the boundary case $\lambda =1$. \sfas {}'s two-stage anchoring keeps $\approx 11\%$ of the formation spread even when all agents chase the ball}{figure.caption.21}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Realism bands enforced by the calibration gate (per-team, per-match unless noted), and the governing law. Bands are reference ranges for \emph  {typical} matches, consistent with public match data (Opta/FBref) and the 2022 World Cup; legitimate extremes lie beyond them --- elite possession sides reach $\sim $70--80\% (e.g.\ Spain at the World Cup) and deep blocks fall below $30\%$, while per-match ratios over few attempts (save rate, shots-on-target\%) have heavy tails (\S  \ref {sec:exp}).}}{13}{table.caption.22}\protected@file@percent }
+\newlabel{tab:bands}{{1}{13}{Realism bands enforced by the calibration gate (per-team, per-match unless noted), and the governing law. Bands are reference ranges for \emph {typical} matches, consistent with public match data (Opta/FBref) and the 2022 World Cup; legitimate extremes lie beyond them --- elite possession sides reach $\sim $70--80\% (e.g.\ Spain at the World Cup) and deep blocks fall below $30\%$, while per-match ratios over few attempts (save rate, shots-on-target\%) have heavy tails (\S \ref {sec:exp})}{table.caption.22}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Experiments}{13}{section.7}\protected@file@percent }
+\newlabel{sec:exp}{{7}{13}{Experiments}{section.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{Setup.}{13}{section*.23}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces Six representative aggregate statistics (of eleven) across the seven-fixture, $75$-match corpus, per team, against independent realism bands (shaded). Means lie inside every band; the shot-band excursions are the highest-tempo matches and the deepest defensive blocks.}}{14}{figure.caption.25}\protected@file@percent }
+\newlabel{fig:bands}{{8}{14}{Six representative aggregate statistics (of eleven) across the seven-fixture, $75$-match corpus, per team, against independent realism bands (shaded). Means lie inside every band; the shot-band excursions are the highest-tempo matches and the deepest defensive blocks}{figure.caption.25}{}}
+\@writefile{toc}{\contentsline {paragraph}{Statistical realism (Fig.~\ref {fig:bands}).}{14}{section*.24}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Possession in action (Fig.~\ref {fig:timeline},~\ref {fig:poss}).}{14}{section*.26}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces The dominant side within one match (\emph  {Paraguay}--\emph  {France}, $1$--$0$ upset). France's cumulative possession (dark) converges to $69.5\%$; the recent-share EMA (light) fluctuates with the predicted $O(\sqrt  \alpha )$ amplitude and, after the opening transient, stays out of the open-loop monopoly attractor (shaded) --- and France still loses. This is the closed loop of Theorem~\ref {thm:stabilise} in operation, in the hardest (heavy-mismatch) case.}}{15}{figure.caption.27}\protected@file@percent }
+\newlabel{fig:timeline}{{9}{15}{The dominant side within one match (\emph {Paraguay}--\emph {France}, $1$--$0$ upset). France's cumulative possession (dark) converges to $69.5\%$; the recent-share EMA (light) fluctuates with the predicted $O(\sqrt \alpha )$ amplitude and, after the opening transient, stays out of the open-loop monopoly attractor (shaded) --- and France still loses. This is the closed loop of Theorem~\ref {thm:stabilise} in operation, in the hardest (heavy-mismatch) case}{figure.caption.27}{}}
+\@writefile{toc}{\contentsline {paragraph}{Competitive balance and finishing (Fig.~\ref {fig:results},~\ref {fig:shotsxg}).}{15}{section*.29}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces A representative match from the \emph  {Paraguay}--\emph  {France} series ($0$--$1$): a heavy stylistic mismatch, in band. Possession sequences are essentially equal even at a $2{:}1$ possession ratio, as Theorem~\ref {thm:stabilise} predicts.}}{15}{table.caption.32}\protected@file@percent }
+\newlabel{tab:bvj}{{2}{15}{A representative match from the \emph {Paraguay}--\emph {France} series ($0$--$1$): a heavy stylistic mismatch, in band. Possession sequences are essentially equal even at a $2{:}1$ possession ratio, as Theorem~\ref {thm:stabilise} predicts}{table.caption.32}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces Per-match possession across all seven fixtures. The dominant side's seat scales with the strength gap; neither team ever approaches the monopoly region, and every match stays inside the $30$--$70\%$ realism band.}}{16}{figure.caption.28}\protected@file@percent }
+\newlabel{fig:poss}{{10}{16}{Per-match possession across all seven fixtures. The dominant side's seat scales with the strength gap; neither team ever approaches the monopoly region, and every match stays inside the $30$--$70\%$ realism band}{figure.caption.28}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces (a) Per-fixture records (home wins / draws / away wins). (b) The \emph  {Paraguay}--\emph  {France} scorelines ($2$-$5$-$8$, aggregate $5$--$14$): France dominates, but Paraguay wins twice and draws five times.}}{16}{figure.caption.30}\protected@file@percent }
+\newlabel{fig:results}{{11}{16}{(a) Per-fixture records (home wins / draws / away wins). (b) The \emph {Paraguay}--\emph {France} scorelines ($2$-$5$-$8$, aggregate $5$--$14$): France dominates, but Paraguay wins twice and draws five times}{figure.caption.30}{}}
+\@writefile{toc}{\contentsline {paragraph}{Style identifiability.}{16}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Generalisation across fixtures}{16}{subsection.7.1}\protected@file@percent }
+\newlabel{sec:cross}{{7.1}{16}{Generalisation across fixtures}{subsection.7.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces (a) Shots per match by team across fixtures. (b) Realised goals versus expected goals (xG) over all $150$ team-matches; points scatter around the diagonal with conversion slightly below one.}}{17}{figure.caption.31}\protected@file@percent }
+\newlabel{fig:shotsxg}{{12}{17}{(a) Shots per match by team across fixtures. (b) Realised goals versus expected goals (xG) over all $150$ team-matches; points scatter around the diagonal with conversion slightly below one}{figure.caption.31}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Backbone robustness}{17}{subsection.7.2}\protected@file@percent }
+\newlabel{sec:robust}{{7.2}{17}{Backbone robustness}{subsection.7.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Discussion}{17}{section.8}\protected@file@percent }
+\newlabel{sec:disc}{{8}{17}{Discussion}{section.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}Style as an identifiable low-rank object}{17}{subsection.8.1}\protected@file@percent }
+\newlabel{sec:ident}{{8.1}{17}{Style as an identifiable low-rank object}{subsection.8.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces Measured $48\times 48$ pairwise decision-TV matrix over $150$ match-identical off-ball probes (diagonal $=0$). All $1{,}128$ pairs exceed the $0.3$ gate; the marked cell is the closest pair (Bosnia--South Africa, two low-block styles, TV $=0.45$ vs noise floor $0.42$).}}{18}{figure.caption.34}\protected@file@percent }
+\newlabel{fig:styleheat}{{13}{18}{Measured $48\times 48$ pairwise decision-TV matrix over $150$ match-identical off-ball probes (diagonal $=0$). All $1{,}128$ pairs exceed the $0.3$ gate; the marked cell is the closest pair (Bosnia--South Africa, two low-block styles, TV $=0.45$ vs noise floor $0.42$)}{figure.caption.34}{}}
+\newlabel{prop:style}{{3}{18}{style identifiability}{proposition.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}Limitations and open problems}{18}{subsection.8.2}\protected@file@percent }
+\citation{benaim1999,kushner2003}
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces Emergent statistics under four brain backbones (players fixed at Gemma-4-E2B), per match across the series; red bars mark per-arm means, shaded regions the realism bands. The four arms are statistically interchangeable in every panel: possession means span $58.7$--$59.6\%$ (spread $0.9$\,pp against a $1.7$\,pp match-to-match SD), shots $13.5$--$15.8$ (spread $2.3$ vs SD $7.5$), pass completion $80.7$--$82.0\%$ (spread $1.4$ vs SD $2.3$), and total goals $1.7$--$2.4$ (spread $0.7$ vs SD $1.7$) --- in each case the across-backbone spread is well inside the within-backbone noise, no arm leaves its band, and Kruskal--Wallis does not separate the arms ($p\ge 0.6$). The emergent invariants are properties of the control laws, not of the model.}}{19}{figure.caption.35}\protected@file@percent }
+\newlabel{fig:bbinv}{{14}{19}{Emergent statistics under four brain backbones (players fixed at Gemma-4-E2B), per match across the series; red bars mark per-arm means, shaded regions the realism bands. The four arms are statistically interchangeable in every panel: possession means span $58.7$--$59.6\%$ (spread $0.9$\,pp against a $1.7$\,pp match-to-match SD), shots $13.5$--$15.8$ (spread $2.3$ vs SD $7.5$), pass completion $80.7$--$82.0\%$ (spread $1.4$ vs SD $2.3$), and total goals $1.7$--$2.4$ (spread $0.7$ vs SD $1.7$) --- in each case the across-backbone spread is well inside the within-backbone noise, no arm leaves its band, and Kruskal--Wallis does not separate the arms ($p\ge 0.6$). The emergent invariants are properties of the control laws, not of the model}{figure.caption.35}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Conclusion}{19}{section.9}\protected@file@percent }
+\newlabel{sec:concl}{{9}{19}{Conclusion}{section.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces (a) Swapping the backbone shifts the decision distribution by $0.06\pm 0.02$ TV --- every swap below the $0.3$ distinctness gate (\S  \ref {sec:ident}) --- while swapping the team shifts it by $0.34\pm 0.04$, mostly above the gate: a $\sim \!5\times $ separation, so model choice perturbs play about one-fifth as much as team identity. (b) Cost and reliability, by contrast, do depend on the backbone: latency spans an order of magnitude ($60$--$560$\,ms/decision) and schema validity $96.8$--$99.8\%$; the brain tier trades speed for reliability (Nemotron-3 the slowest and most reliable at $560$\,ms/$99.8\%$; the deployed Qwen3.5-35B at $180$\,ms/$99.1\%$), while the $3$--$10$B player tier clusters at $60$--$105$\,ms with $96.8$--$99.2\%$. Every backbone clears the validity needed for stable play --- so the backbone sets the bill, not the match.}}{20}{figure.caption.36}\protected@file@percent }
+\newlabel{fig:bbord}{{15}{20}{(a) Swapping the backbone shifts the decision distribution by $0.06\pm 0.02$ TV --- every swap below the $0.3$ distinctness gate (\S \ref {sec:ident}) --- while swapping the team shifts it by $0.34\pm 0.04$, mostly above the gate: a $\sim \!5\times $ separation, so model choice perturbs play about one-fifth as much as team identity. (b) Cost and reliability, by contrast, do depend on the backbone: latency spans an order of magnitude ($60$--$560$\,ms/decision) and schema validity $96.8$--$99.8\%$; the brain tier trades speed for reliability (Nemotron-3 the slowest and most reliable at $560$\,ms/$99.8\%$; the deployed Qwen3.5-35B at $180$\,ms/$99.1\%$), while the $3$--$10$B player tier clusters at $60$--$105$\,ms with $96.8$--$99.2\%$. Every backbone clears the validity needed for stable play --- so the backbone sets the bill, not the match}{figure.caption.36}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces Per-statistic mean difference of each alternative brain against the deployed Qwen3.5-35B ($95\%$ CI); every interval straddles zero --- no metric distinguishes the backbones.}}{20}{figure.caption.37}\protected@file@percent }
+\newlabel{fig:bbforest}{{16}{20}{Per-statistic mean difference of each alternative brain against the deployed Qwen3.5-35B ($95\%$ CI); every interval straddles zero --- no metric distinguishes the backbones}{figure.caption.37}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}Proofs}{20}{appendix.A}\protected@file@percent }
+\newlabel{app:proofs}{{A}{20}{Proofs}{appendix.A}{}}
+\@writefile{toc}{\contentsline {paragraph}{Mean-field reduction.}{20}{section*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Theorem~\ref {thm:bistable}.}{20}{section*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Theorem~\ref {thm:stabilise}.}{20}{section*.40}\protected@file@percent }
+\citation{hunter2007}
+\bibcite{baker2020}{{1}{2020}{{Baker et al.}}{{}}}
+\bibcite{benaim1999}{{2}{1999}{{Bena\"im}}{{}}}
+\bibcite{berner2019}{{3}{2019}{{Berner et al.}}{{}}}
+\bibcite{bernstein2002}{{4}{2002}{{Bernstein et al.}}{{}}}
+\bibcite{dettmers2023qlora}{{5}{2023}{{Dettmers et al.}}{{}}}
+\@writefile{toc}{\contentsline {paragraph}{Corollary~\ref {cor:setpoint}.}{21}{section*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Proposition~\ref {prop:noncollapse}.}{21}{section*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Proposition~\ref {prop:style}.}{21}{section*.43}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {B}Implementation constants}{21}{appendix.B}\protected@file@percent }
+\newlabel{app:consts}{{B}{21}{Implementation constants}{appendix.B}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}Reproducibility}{21}{appendix.C}\protected@file@percent }
+\newlabel{app:repro}{{C}{21}{Reproducibility}{appendix.C}{}}
+\bibcite{dixon1997}{{6}{1997}{{Dixon and Coles}}{{}}}
+\bibcite{edge2024graphrag}{{7}{2024}{{Edge et al.}}{{}}}
+\bibcite{hu2021}{{8}{2021}{{Hu et al.}}{{}}}
+\bibcite{hunter2007}{{9}{2007}{{Hunter}}{{}}}
+\bibcite{kitano1997}{{10}{1997}{{Kitano et al.}}{{}}}
+\bibcite{kurach2020}{{11}{2020}{{Kurach et al.}}{{}}}
+\bibcite{kushner2003}{{12}{2003}{{Kushner and Yin}}{{}}}
+\bibcite{lasry2007}{{13}{2007}{{Lasry and Lions}}{{}}}
+\bibcite{lewis2020}{{14}{2020}{{Lewis et al.}}{{}}}
+\bibcite{li2023camel}{{15}{2023}{{Li et al.}}{{}}}
+\bibcite{maher1982}{{16}{1982}{{Maher}}{{}}}
+\bibcite{park2023}{{17}{2023}{{Park et al.}}{{}}}
+\bibcite{pemantle2007}{{18}{2007}{{Pemantle}}{{}}}
+\bibcite{rubinstein2004}{{19}{2004}{{Rubinstein and Kroese}}{{}}}
+\bibcite{skellam1946}{{20}{1946}{{Skellam}}{{}}}
+\bibcite{strogatz1994}{{21}{1994}{{Strogatz}}{{}}}
+\bibcite{theraulaz1999}{{22}{1999}{{Theraulaz and Bonabeau}}{{}}}
+\bibcite{vinyals2019}{{23}{2019}{{Vinyals et al.}}{{}}}
+\bibcite{wang2023survey}{{24}{2023a}{{Wang et al.}}{{}}}
+\bibcite{wang2023voyager}{{25}{2023b}{{Wang et al.}}{{}}}
+\bibcite{yang2018mfmarl}{{26}{2018}{{Yang et al.}}{{}}}
+\bibcite{yao2023}{{27}{2023}{{Yao et al.}}{{}}}
+\gdef \@abspage@last{23}

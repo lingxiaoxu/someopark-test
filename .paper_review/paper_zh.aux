@@ -1,0 +1,184 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand*\HyPL@Entry[1]{}
+\citation{park2023,wang2023survey,yao2023}
+\citation{li2023camel}
+\HyPL@Entry{0<</S/D>>}
+\citation{kurach2020,kitano1997}
+\@writefile{toc}{\contentsline {section}{\numberline {1}引言}{2}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{2}{引言}{section.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{一段话讲清系统（图~\ref {fig:arch}）。}{2}{paragraph*.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{为何朴素搭建会失败。}{2}{paragraph*.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{贡献。}{2}{paragraph*.4}\protected@file@percent }
+\citation{park2023}
+\citation{wang2023voyager}
+\citation{wang2023survey}
+\citation{li2023camel}
+\citation{yao2023}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces \textsc  {sfas}{} 的智能体循环。一份共享世界地图被广播给二十二个彼此隔离的智能体（一个共享的持球“大脑”策略，与两个按队的无球策略，各为叠加在共享基座上的一个 LoRA）；它们的意图仅由确定性解算算子 $\Phi $ 合并，后者推进状态。知识图谱提供战术设定点；校准门为已完成的比赛打分。经由 $\Phi $ 的递归是\emph  {唯一}的跨智能体耦合。}}{3}{figure.caption.2}\protected@file@percent }
+\providecommand*\caption@xref[2]{\@setref\relax\@undefined{#1}}
+\newlabel{fig:arch}{{1}{3}{\sfas {} 的智能体循环。一份共享世界地图被广播给二十二个彼此隔离的智能体（一个共享的持球“大脑”策略，与两个按队的无球策略，各为叠加在共享基座上的一个 LoRA）；它们的意图仅由确定性解算算子 $\Phi $ 合并，后者推进状态。知识图谱提供战术设定点；校准门为已完成的比赛打分。经由 $\Phi $ 的递归是\emph {唯一}的跨智能体耦合。}{figure.caption.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2}相关工作}{3}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{2}{3}{相关工作}{section.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{LLM 智能体与智能体社会。}{3}{paragraph*.5}\protected@file@percent }
+\citation{vinyals2019}
+\citation{berner2019}
+\citation{baker2020}
+\citation{kitano1997}
+\citation{kurach2020}
+\citation{bernstein2002}
+\citation{theraulaz1999}
+\citation{lasry2007,yang2018mfmarl}
+\citation{dettmers2023qlora}
+\citation{hu2021}
+\citation{lewis2020}
+\citation{edge2024graphrag}
+\citation{maher1982,dixon1997}
+\citation{skellam1946}
+\citation{pemantle2007}
+\citation{benaim1999,kushner2003}
+\citation{strogatz1994}
+\citation{rubinstein2004}
+\@writefile{toc}{\contentsline {paragraph}{多智能体学习与团队博弈。}{4}{paragraph*.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{去中心化控制、stigmergy、平均场。}{4}{paragraph*.7}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{适配、知识图谱与足球统计。}{4}{paragraph*.8}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}系统架构}{4}{section.3}\protected@file@percent }
+\newlabel{sec:arch}{{3}{4}{系统架构}{section.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}状态、共享世界地图与解算算子}{4}{subsection.3.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}三种策略及其部署}{5}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:serve}{{3.2}{5}{三种策略及其部署}{subsection.3.2}{}}
+\@writefile{toc}{\contentsline {paragraph}{模型无关的 backbone。}{5}{paragraph*.9}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}用按队 LoRA 编码球队身份}{5}{section.4}\protected@file@percent }
+\newlabel{sec:lora}{{4}{5}{用按队 LoRA 编码球队身份}{section.4}{}}
+\@writefile{toc}{\contentsline {paragraph}{从属性到决策数据集。}{5}{paragraph*.11}\protected@file@percent }
+\citation{hu2021}
+\citation{lewis2020,edge2024graphrag}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces 按队身份流水线。球员属性与每 90 分钟统计倾向被蒸馏成一个按队的决策数据集（约 $2400$ 条），用于在同一共享基座上训练一个秩 $16$ 的 LoRA；所得按队策略须通过一道行为可区分性门方可被采纳。四十八支国家队各自成为一个可热插拔的适配器。}}{6}{figure.caption.10}\protected@file@percent }
+\newlabel{fig:lora}{{2}{6}{按队身份流水线。球员属性与每 90 分钟统计倾向被蒸馏成一个按队的决策数据集（约 $2400$ 条），用于在同一共享基座上训练一个秩 $16$ 的 LoRA；所得按队策略须通过一道行为可区分性门方可被采纳。四十八支国家队各自成为一个可热插拔的适配器。}{figure.caption.10}{}}
+\@writefile{toc}{\contentsline {paragraph}{在共享基座上的低秩适配。}{6}{paragraph*.12}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{一道可区分性门。}{6}{paragraph*.13}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}知识图谱战术锚定}{6}{section.5}\protected@file@percent }
+\newlabel{sec:kgsec}{{5}{6}{知识图谱战术锚定}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}图谱是什么、如何运作}{6}{subsection.5.1}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces 知识图谱及其协同。\textbf  {(1)} 一张关系图把四十八支球队连到共享的战术\emph  {概念}（高逼抢、控球、紧凑防守、纵向反击）；共享同一风格的球队共享一个节点，故战术知识得以\emph  {迁移}，数据稀缺的球队经由其邻居继承先验。一次按队查询 \texttt  {coach\_brief}$(\tau )$ 把相关子图编译成控制设定点 $(\hat  \rho ,\beta ,\lambda )$ 与一个主场优势标量。\textbf  {(2)} 这些设定点恰是 \S  \ref {sec:why} 控制律所执行的、按队 LoRA 微观决策在其中运作的、以及对齐本来无消息智能体的对象。三层互补：宏观/离线先验 $\oplus $ 微观身份 $\oplus $ 在线黏合。}}{7}{figure.caption.14}\protected@file@percent }
+\newlabel{fig:kg}{{3}{7}{知识图谱及其协同。\textbf {(1)} 一张关系图把四十八支球队连到共享的战术\emph {概念}（高逼抢、控球、紧凑防守、纵向反击）；共享同一风格的球队共享一个节点，故战术知识得以\emph {迁移}，数据稀缺的球队经由其邻居继承先验。一次按队查询 \texttt {coach\_brief}$(\tau )$ 把相关子图编译成控制设定点 $(\hat \rho ,\beta ,\lambda )$ 与一个主场优势标量。\textbf {(2)} 这些设定点恰是 \S \ref {sec:why} 控制律所执行的、按队 LoRA 微观决策在其中运作的、以及对齐本来无消息智能体的对象。三层互补：宏观/离线先验 $\oplus $ 微观身份 $\oplus $ 在线黏合。}{figure.caption.14}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}它如何提升系统}{7}{subsection.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3}与 LoRA 和智能体框架的协同}{7}{subsection.5.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{图谱 $\oplus $ LoRA：宏观意图遇上微观身份。}{8}{paragraph*.15}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{图谱 $\oplus $ 智能体框架：球队级的相关化装置。}{8}{paragraph*.16}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}系统为何稳定}{8}{section.6}\protected@file@percent }
+\newlabel{sec:why}{{6}{8}{系统为何稳定}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}无通信的协调}{8}{subsection.6.1}\protected@file@percent }
+\newlabel{sec:stig}{{6.1}{8}{无通信的协调}{subsection.6.1}{}}
+\newlabel{prop:factor}{{1}{8}{策略分解}{proposition.1}{}}
+\citation{benaim1999,kushner2003}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}控球是双稳态的——而一条反馈律能修复它}{9}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:poss}{{6.2}{9}{控球是双稳态的——而一条反馈律能修复它}{subsection.6.2}{}}
+\newlabel{eq:ema}{{1}{9}{控球是双稳态的——而一条反馈律能修复它}{equation.6.1}{}}
+\newlabel{lem:meanfield}{{1}{9}{平均场约化}{lemma.1}{}}
+\newlabel{eq:meanode}{{2}{9}{平均场约化}{equation.6.2}{}}
+\newlabel{thm:bistable}{{1}{9}{涌现控球的双稳态}{theorem.1}{}}
+\newlabel{thm:stabilise}{{2}{9}{稳定化与临界增益}{theorem.2}{}}
+\newlabel{eq:gstar}{{3}{9}{稳定化与临界增益}{equation.6.3}{}}
+\citation{rubinstein2004}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces 开环控球平均场在强化强度 $\beta =1$ 处发生超临界 pitchfork：$50\%$ 的均衡（$\beta <1$ 时稳定）失稳，并涌现两条稳定的控球垄断分支——即滚雪球失败模式（定理~\ref {thm:bistable}）。}}{10}{figure.caption.17}\protected@file@percent }
+\newlabel{fig:bif}{{4}{10}{开环控球平均场在强化强度 $\beta =1$ 处发生超临界 pitchfork：$50\%$ 的均衡（$\beta <1$ 时稳定）失稳，并涌现两条稳定的控球垄断分支——即滚雪球失败模式（定理~\ref {thm:bistable}）。}{figure.caption.17}{}}
+\newlabel{cor:setpoint}{{1}{10}{主场优势设定点}{corollary.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{对阵相关标定——由学习给出，而非手工设定。}{10}{paragraph*.19}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces 在 $\beta =2.5$ 下对控球过程~\eqref  {eq:ema} 的 Monte-Carlo（各 $400$ 场）。(a) 无反馈（$g=0<g^\star $）时最终控球呈双峰——早早领先的一方垄断球权。(b) 有反馈（$g=22>g^\star $）时呈单峰并集中于设定点，恰如定理~\ref {thm:stabilise} 所预言。}}{11}{figure.caption.18}\protected@file@percent }
+\newlabel{fig:feedback}{{5}{11}{在 $\beta =2.5$ 下对控球过程~\eqref {eq:ema} 的 Monte-Carlo（各 $400$ 场）。(a) 无反馈（$g=0<g^\star $）时最终控球呈双峰——早早领先的一方垄断球权。(b) 有反馈（$g=22>g^\star $）时呈单峰并集中于设定点，恰如定理~\ref {thm:stabilise} 所预言。}{figure.caption.18}{}}
+\newlabel{rem:deadband}{{1}{11}{死区、工作点与 $\beta $ 的实测}{remark.1}{}}
+\citation{skellam1946}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces 领先方份额分布（$W=100$ 持球帧窗口）。(a) 开环（$g=0$，六场消融）：质量漂向极端——$69\%$ 的窗口落在 $\rho \le 0.35$ 或 $\rho \ge 0.65$、仅 $5\%$ 中央——定理~\ref {thm:bistable} 对 $\beta >1$ 预言的双峰签名。(b) 闭环（$g=22$，两组均势对阵）：单峰，极端 $11\%$ / 中央 $33\%$；垄断区（阴影）保持为空。}}{12}{figure.caption.20}\protected@file@percent }
+\newlabel{fig:betaabl}{{6}{12}{领先方份额分布（$W=100$ 持球帧窗口）。(a) 开环（$g=0$，六场消融）：质量漂向极端——$69\%$ 的窗口落在 $\rho \le 0.35$ 或 $\rho \ge 0.65$、仅 $5\%$ 中央——定理~\ref {thm:bistable} 对 $\beta >1$ 预言的双峰签名。(b) 闭环（$g=22$，两组均势对阵）：单峰，极端 $11\%$ / 中央 $33\%$；垄断区（阴影）保持为空。}{figure.caption.20}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}阵型不会坍缩}{12}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:collapse}{{6.3}{12}{阵型不会坍缩}{subsection.6.3}{}}
+\newlabel{eq:anchor}{{4}{12}{阵型不会坍缩}{equation.6.4}{}}
+\newlabel{prop:noncollapse}{{2}{12}{不坍缩保证}{proposition.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}校准作为外环}{12}{subsection.6.4}\protected@file@percent }
+\newlabel{sec:calib}{{6.4}{12}{校准作为外环}{subsection.6.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces 意图锚定对任意混合权重 $\lambda <1$ 保证阵型离散度有正下界 $(1-\lambda )^2S^2$（命题~\ref {prop:noncollapse}）；唯有在边界情形 $\lambda =1$ 才可能坍缩。\textsc  {sfas}{} 的两阶段锚定即便在全员追球时也保留约 $11\%$ 的阵型展开。}}{13}{figure.caption.21}\protected@file@percent }
+\newlabel{fig:disp}{{7}{13}{意图锚定对任意混合权重 $\lambda <1$ 保证阵型离散度有正下界 $(1-\lambda )^2S^2$（命题~\ref {prop:noncollapse}）；唯有在边界情形 $\lambda =1$ 才可能坍缩。\sfas {} 的两阶段锚定即便在全员追球时也保留约 $11\%$ 的阵型展开。}{figure.caption.21}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}实验}{13}{section.7}\protected@file@percent }
+\newlabel{sec:exp}{{7}{13}{实验}{section.7}{}}
+\@writefile{toc}{\contentsline {paragraph}{设置。}{13}{paragraph*.23}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{统计真实性（图~\ref {fig:bands}）。}{13}{paragraph*.24}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces 校准门所执行的真实区间（除注明外为按队、按场），及其支配律。区间是\emph  {典型}比赛的参考范围，与公开赛事数据（Opta/FBref）及 2022 世界杯一致；合理的极端值落在其外——控球占优的强队达 $\sim $70--80\%（如世界杯的西班牙），深度防守队低于 $30\%$，而对少数尝试求比的逐场比率（扑救率、射正率）有重尾（\S  \ref {sec:exp}）。}}{14}{table.caption.22}\protected@file@percent }
+\newlabel{tab:bands}{{1}{14}{校准门所执行的真实区间（除注明外为按队、按场），及其支配律。区间是\emph {典型}比赛的参考范围，与公开赛事数据（Opta/FBref）及 2022 世界杯一致；合理的极端值落在其外——控球占优的强队达 $\sim $70--80\%（如世界杯的西班牙），深度防守队低于 $30\%$，而对少数尝试求比的逐场比率（扑救率、射正率）有重尾（\S \ref {sec:exp}）。}{table.caption.22}{}}
+\@writefile{toc}{\contentsline {paragraph}{控球的实战表现（图~\ref {fig:timeline}、~\ref {fig:poss}）。}{14}{paragraph*.26}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{竞争均衡与终结（图~\ref {fig:results}、~\ref {fig:shotsxg}）。}{14}{paragraph*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{风格可辨识性。}{14}{paragraph*.33}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {8}{\ignorespaces 七对阵、$75$ 场语料中六项有代表性的聚合统计量（共十一项），按队，对照独立真实区间（阴影）。均值（深色横条）落在每个区间内；仅两场高节奏比赛超出保守的射门区间，与真实足球一致。}}{15}{figure.caption.25}\protected@file@percent }
+\newlabel{fig:bands}{{8}{15}{七对阵、$75$ 场语料中六项有代表性的聚合统计量（共十一项），按队，对照独立真实区间（阴影）。均值（深色横条）落在每个区间内；仅两场高节奏比赛超出保守的射门区间，与真实足球一致。}{figure.caption.25}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}跨对阵的泛化}{15}{subsection.7.1}\protected@file@percent }
+\newlabel{sec:cross}{{7.1}{15}{跨对阵的泛化}{subsection.7.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Backbone 鲁棒性}{15}{subsection.7.2}\protected@file@percent }
+\newlabel{sec:robust}{{7.2}{15}{Backbone 鲁棒性}{subsection.7.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {9}{\ignorespaces 单场比赛内的优势方（\emph  {巴拉圭}--\emph  {法国}，$1$--$0$ 爆冷）。法国的累计控球（深色）收敛到 $69.5\%$；近期份额 EMA（浅色）以所预言的 $O(\sqrt  \alpha )$ 幅度波动，开局瞬态之后不再进入开环垄断吸引区（阴影）——而法国仍然输球。这是定理~\ref {thm:stabilise} 闭环在最难（悬殊对碰）情形下的实际运作。}}{16}{figure.caption.27}\protected@file@percent }
+\newlabel{fig:timeline}{{9}{16}{单场比赛内的优势方（\emph {巴拉圭}--\emph {法国}，$1$--$0$ 爆冷）。法国的累计控球（深色）收敛到 $69.5\%$；近期份额 EMA（浅色）以所预言的 $O(\sqrt \alpha )$ 幅度波动，开局瞬态之后不再进入开环垄断吸引区（阴影）——而法国仍然输球。这是定理~\ref {thm:stabilise} 闭环在最难（悬殊对碰）情形下的实际运作。}{figure.caption.27}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {10}{\ignorespaces 全部七组对阵的各场控球。优势方的落位随实力差平滑变化；两队均从不接近垄断区，且每场都留在 $30$--$70\%$ 的真实区间内。}}{16}{figure.caption.28}\protected@file@percent }
+\newlabel{fig:poss}{{10}{16}{全部七组对阵的各场控球。优势方的落位随实力差平滑变化；两队均从不接近垄断区，且每场都留在 $30$--$70\%$ 的真实区间内。}{figure.caption.28}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {11}{\ignorespaces (a) 各对阵战绩（主胜/平/客胜）。(b) \emph  {巴拉圭}--\emph  {法国}各场比分（$2$-$5$-$8$，总进球 $5$--$14$）：法国压制，但巴拉圭赢下两场、逼平五场。}}{17}{figure.caption.30}\protected@file@percent }
+\newlabel{fig:results}{{11}{17}{(a) 各对阵战绩（主胜/平/客胜）。(b) \emph {巴拉圭}--\emph {法国}各场比分（$2$-$5$-$8$，总进球 $5$--$14$）：法国压制，但巴拉圭赢下两场、逼平五场。}{figure.caption.30}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {12}{\ignorespaces (a) 各对阵各队每场射门数。(b) 全部 $150$ 个队·场的已实现进球对期望进球（xG）；点散布在对角线两侧，转化率略低于 $1$。}}{17}{figure.caption.31}\protected@file@percent }
+\newlabel{fig:shotsxg}{{12}{17}{(a) 各对阵各队每场射门数。(b) 全部 $150$ 个队·场的已实现进球对期望进球（xG）；点散布在对角线两侧，转化率略低于 $1$。}{figure.caption.31}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}讨论}{17}{section.8}\protected@file@percent }
+\newlabel{sec:disc}{{8}{17}{讨论}{section.8}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.1}风格作为可辨识的低秩对象}{17}{subsection.8.1}\protected@file@percent }
+\newlabel{sec:ident}{{8.1}{17}{风格作为可辨识的低秩对象}{subsection.8.1}{}}
+\newlabel{prop:style}{{3}{17}{风格可辨识性}{proposition.3}{}}
+\citation{benaim1999,kushner2003}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces \emph  {巴拉圭}--\emph  {法国}系列中一场代表性比赛（$0$--$1$）：重度风格错配，全部在带内。即便控球比为 $2{:}1$，控球段数仍基本相等，恰如定理~\ref {thm:stabilise} 所预言。}}{18}{table.caption.32}\protected@file@percent }
+\newlabel{tab:bvj}{{2}{18}{\emph {巴拉圭}--\emph {法国}系列中一场代表性比赛（$0$--$1$）：重度风格错配，全部在带内。即便控球比为 $2{:}1$，控球段数仍基本相等，恰如定理~\ref {thm:stabilise} 所预言。}{table.caption.32}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.2}局限与开放问题}{18}{subsection.8.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {9}结论}{18}{section.9}\protected@file@percent }
+\newlabel{sec:concl}{{9}{18}{结论}{section.9}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {13}{\ignorespaces 在 $150$ 个与比赛完全一致的无球探针上实测的 $48\times 48$ 成对决策 TV 矩阵（对角线 $=0$）。全部 $1{,}128$ 对均超过 $0.3$ 门；标记格为最接近的一对（波黑--南非，两支低位防反队，TV $=0.45$，噪声地板 $0.42$）。}}{19}{figure.caption.34}\protected@file@percent }
+\newlabel{fig:styleheat}{{13}{19}{在 $150$ 个与比赛完全一致的无球探针上实测的 $48\times 48$ 成对决策 TV 矩阵（对角线 $=0$）。全部 $1{,}128$ 对均超过 $0.3$ 门；标记格为最接近的一对（波黑--南非，两支低位防反队，TV $=0.45$，噪声地板 $0.42$）。}{figure.caption.34}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {A}证明}{19}{appendix.A}\protected@file@percent }
+\newlabel{app:proofs}{{A}{19}{证明}{appendix.A}{}}
+\@writefile{toc}{\contentsline {paragraph}{平均场约化。}{19}{paragraph*.38}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{定理~\ref {thm:bistable}。}{19}{paragraph*.39}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{定理~\ref {thm:stabilise}。}{19}{paragraph*.40}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {14}{\ignorespaces 四个大脑 backbone 下的涌现统计（球员固定为 Gemma-4-E2B），系列中逐场；红色横线为各臂均值，阴影为真实区间。四臂在每个面板上都统计不可区分：控球均值横跨 $58.7$--$59.6\%$（离散 $0.9$ 个百分点，对比 $1.7$ 个百分点的场间标准差）、射门 $13.5$--$15.8$（离散 $2.3$ 对 SD $7.5$）、传球成功率 $80.7$--$82.0\%$（离散 $1.4$ 对 SD $2.3$）、总进球 $1.7$--$2.4$（离散 $0.7$ 对 SD $1.7$）——每一项的跨 backbone 离散都远在同 backbone 噪声之内，没有任何一臂离开区间，Kruskal--Wallis 也无法区分各臂（$p\ge 0.6$）。涌现不变量是控制律的性质，而非模型的性质。}}{20}{figure.caption.35}\protected@file@percent }
+\newlabel{fig:bbinv}{{14}{20}{四个大脑 backbone 下的涌现统计（球员固定为 Gemma-4-E2B），系列中逐场；红色横线为各臂均值，阴影为真实区间。四臂在每个面板上都统计不可区分：控球均值横跨 $58.7$--$59.6\%$（离散 $0.9$ 个百分点，对比 $1.7$ 个百分点的场间标准差）、射门 $13.5$--$15.8$（离散 $2.3$ 对 SD $7.5$）、传球成功率 $80.7$--$82.0\%$（离散 $1.4$ 对 SD $2.3$）、总进球 $1.7$--$2.4$（离散 $0.7$ 对 SD $1.7$）——每一项的跨 backbone 离散都远在同 backbone 噪声之内，没有任何一臂离开区间，Kruskal--Wallis 也无法区分各臂（$p\ge 0.6$）。涌现不变量是控制律的性质，而非模型的性质。}{figure.caption.35}{}}
+\@writefile{toc}{\contentsline {paragraph}{推论~\ref {cor:setpoint}。}{20}{paragraph*.41}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{命题~\ref {prop:noncollapse}。}{20}{paragraph*.42}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{命题~\ref {prop:style}。}{20}{paragraph*.43}\protected@file@percent }
+\citation{hunter2007}
+\@writefile{lof}{\contentsline {figure}{\numberline {15}{\ignorespaces （a）换 backbone 使决策分布移动 $0.06\pm 0.02$ TV——每次交换都低于 $0.3$ 可区分性门（\S  \ref {sec:ident}）——而换球队使其移动 $0.34\pm 0.04$、多数高于门：约 $5$ 倍的分离，即换模型对打法的扰动只有换球队身份的约五分之一。（b）成本与可靠性则确实依赖 backbone：延迟横跨一个数量级（$60$--$560$\,ms/决策）、schema 合法率 $96.8$--$99.8\%$；大脑层以速度换可靠性（Nemotron-3 最慢也最可靠，$560$\,ms/$99.8\%$；部署的 Qwen3.5-35B 为 $180$\,ms/$99.1\%$），$3$--$10$B 球员层聚在 $60$--$105$\,ms、$96.8$--$99.2\%$。所有 backbone 都达到稳定比赛所需合法率——backbone 决定账单，不决定比赛。}}{21}{figure.caption.36}\protected@file@percent }
+\newlabel{fig:bbord}{{15}{21}{（a）换 backbone 使决策分布移动 $0.06\pm 0.02$ TV——每次交换都低于 $0.3$ 可区分性门（\S \ref {sec:ident}）——而换球队使其移动 $0.34\pm 0.04$、多数高于门：约 $5$ 倍的分离，即换模型对打法的扰动只有换球队身份的约五分之一。（b）成本与可靠性则确实依赖 backbone：延迟横跨一个数量级（$60$--$560$\,ms/决策）、schema 合法率 $96.8$--$99.8\%$；大脑层以速度换可靠性（Nemotron-3 最慢也最可靠，$560$\,ms/$99.8\%$；部署的 Qwen3.5-35B 为 $180$\,ms/$99.1\%$），$3$--$10$B 球员层聚在 $60$--$105$\,ms、$96.8$--$99.2\%$。所有 backbone 都达到稳定比赛所需合法率——backbone 决定账单，不决定比赛。}{figure.caption.36}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {16}{\ignorespaces 各替代大脑对部署 Qwen3.5-35B 的逐项统计均值差（$95\%$ CI）；每个区间都横跨零——没有任何指标能区分 backbone。}}{21}{figure.caption.37}\protected@file@percent }
+\newlabel{fig:bbforest}{{16}{21}{各替代大脑对部署 Qwen3.5-35B 的逐项统计均值差（$95\%$ CI）；每个区间都横跨零——没有任何指标能区分 backbone。}{figure.caption.37}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {B}实现常数}{21}{appendix.B}\protected@file@percent }
+\newlabel{app:consts}{{B}{21}{实现常数}{appendix.B}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {C}可复现性}{21}{appendix.C}\protected@file@percent }
+\newlabel{app:repro}{{C}{21}{可复现性}{appendix.C}{}}
+\bibcite{baker2020}{{1}{2020}{{Baker et al.}}{{}}}
+\bibcite{benaim1999}{{2}{1999}{{Bena\"im}}{{}}}
+\bibcite{berner2019}{{3}{2019}{{Berner et al.}}{{}}}
+\bibcite{bernstein2002}{{4}{2002}{{Bernstein et al.}}{{}}}
+\bibcite{dettmers2023qlora}{{5}{2023}{{Dettmers et al.}}{{}}}
+\bibcite{dixon1997}{{6}{1997}{{Dixon and Coles}}{{}}}
+\bibcite{edge2024graphrag}{{7}{2024}{{Edge et al.}}{{}}}
+\bibcite{hu2021}{{8}{2021}{{Hu et al.}}{{}}}
+\bibcite{hunter2007}{{9}{2007}{{Hunter}}{{}}}
+\bibcite{kitano1997}{{10}{1997}{{Kitano et al.}}{{}}}
+\bibcite{kurach2020}{{11}{2020}{{Kurach et al.}}{{}}}
+\bibcite{kushner2003}{{12}{2003}{{Kushner and Yin}}{{}}}
+\bibcite{lasry2007}{{13}{2007}{{Lasry and Lions}}{{}}}
+\bibcite{lewis2020}{{14}{2020}{{Lewis et al.}}{{}}}
+\bibcite{li2023camel}{{15}{2023}{{Li et al.}}{{}}}
+\bibcite{maher1982}{{16}{1982}{{Maher}}{{}}}
+\bibcite{park2023}{{17}{2023}{{Park et al.}}{{}}}
+\bibcite{pemantle2007}{{18}{2007}{{Pemantle}}{{}}}
+\bibcite{rubinstein2004}{{19}{2004}{{Rubinstein and Kroese}}{{}}}
+\bibcite{skellam1946}{{20}{1946}{{Skellam}}{{}}}
+\bibcite{strogatz1994}{{21}{1994}{{Strogatz}}{{}}}
+\bibcite{theraulaz1999}{{22}{1999}{{Theraulaz and Bonabeau}}{{}}}
+\bibcite{vinyals2019}{{23}{2019}{{Vinyals et al.}}{{}}}
+\bibcite{wang2023survey}{{24}{2023a}{{Wang et al.}}{{}}}
+\bibcite{wang2023voyager}{{25}{2023b}{{Wang et al.}}{{}}}
+\bibcite{yang2018mfmarl}{{26}{2018}{{Yang et al.}}{{}}}
+\bibcite{yao2023}{{27}{2023}{{Yao et al.}}{{}}}
+\gdef \@abspage@last{23}

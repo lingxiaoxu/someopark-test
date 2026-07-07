@@ -1,92 +1,86 @@
 [
   {
-    "s1": "AMAT",
-    "s2": "CSGP",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "AMAT",
-    "s2": "CBOE",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "GLW",
+    "s1": "ANET",
     "s2": "T",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "GLW",
-    "s2": "KKR",
+    "s1": "ANET",
+    "s2": "HAS",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "CNC",
-    "s2": "CME",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
+    "s1": "VLO",
+    "s2": "KLAC",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
   },
   {
-    "s1": "CNC",
-    "s2": "CPRT",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
+    "s1": "VLO",
+    "s2": "ORCL",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
   },
   {
-    "s1": "AXON",
+    "s1": "DAL",
+    "s2": "CCI",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "DAL",
     "s2": "WYNN",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
   },
   {
-    "s1": "AXON",
-    "s2": "HAS",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "FFIV",
-    "s2": "APO",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "FFIV",
-    "s2": "CCI",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "CVS",
-    "s2": "NKE",
+    "s1": "BAX",
+    "s2": "TAP",
     "sector": "health",
     "spread_col": "Momentum_Spread_health"
   },
   {
-    "s1": "CVS",
+    "s1": "BAX",
+    "s2": "DIS",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "CAH",
+    "s2": "FDX",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "CAH",
     "s2": "WMT",
     "sector": "health",
     "spread_col": "Momentum_Spread_health"
   },
   {
-    "s1": "JBHT",
-    "s2": "IDXX",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "JBHT",
-    "s2": "NDAQ",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "BAX",
-    "s2": "DVN",
+    "s1": "ABBV",
+    "s2": "APO",
     "sector": "health",
     "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "ABBV",
+    "s2": "BLK",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "WST",
+    "s2": "VICI",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "BEN",
+    "s2": "PFE",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
   }
 ]

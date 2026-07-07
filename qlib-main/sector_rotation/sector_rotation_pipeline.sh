@@ -334,6 +334,21 @@ daily)
     check_nyse_open
     run_eps_auto_refresh
 
+    # Step 0.5: SR live-MTM Polygon store 增量刷新（portfolio_ledger 的价格源）。
+    # 原来只在 weekly 分支刷；Phase 5 后 master 改读账本、不再顺带更新此 store，
+    # 导致 17:15 的 daily run 时 store 缺当日 EOD → ledger 落后一天
+    # （2026-07-06 实测 "ledger 更新 0 天"）。增量 + 非致命，约数秒。
+    set -a && source "$REPO/.env" && set +a
+    log "Step 0.5: SR live-MTM store refresh (12 tickers, incremental)"
+    PYTHONPATH="$REPO/qlib-main:$REPO" $CONDA_QLIB python - <<'PYEOF' 2>&1 | tee -a "$LOGFILE" || log "  WARN: SR store refresh failed (non-fatal; ledger will catch up next run)"
+import sys, pathlib
+sys.path.insert(0, 'qlib-main')
+from semiconductor_strategy.data import aiss_fetch_prices as fp
+TICKERS = ['XLE','XLB','XLI','XLY','XLP','XLV','XLF','XLK','XLC','XLU','XLRE','SPY']
+fp.update_all(tickers=TICKERS, prices_dir=pathlib.Path('price_data/sector_etfs/polygon'))
+print('SR live-MTM store refreshed (incremental)')
+PYEOF
+
     SIGNAL_ARGS=$(build_signal_args)
     run_python 1 "DailySignal ($SIGNAL_ARGS)" \
         qlib-main/sector_rotation/SectorRotationDailySignal.py $SIGNAL_ARGS
