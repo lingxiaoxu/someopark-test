@@ -128,3 +128,5 @@ prediction_market/docs/REMOTE_DATA_ACCESS.md
 # dfm + crypto-dev: local-only projects, do not track (2026-07-06)
 dfm/
 crypto-dev/
+.brv/
+.paper_review/
