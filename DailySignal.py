@@ -669,8 +669,11 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
                 # MRPT 退出规则：short 平仓 iff z < exit_z；long 平仓 iff z > -exit_z
                 if not np.isnan(signal_value) and exit_thr is not None \
                         and not np.isnan(float(exit_thr)):
-                    _rule_met = (signal_value < float(exit_thr)) if inv_direction == 'short' \
-                                else (signal_value > -float(exit_thr))
+                    # bool() 强转：signal_value 是 numpy float，比较结果是 np.bool_，
+                    # 而 np.bool_(True) is True == False → 下面的 `is not True`
+                    # 会把真正满足退出规则的仓位误判为"未满足"而错误 HOLD。
+                    _rule_met = bool((signal_value < float(exit_thr)) if inv_direction == 'short'
+                                     else (signal_value > -float(exit_thr)))
             else:
                 # MTFS 真实退出规则（plan 勘误1）：动量一致性衰减，方向无关——
                 # avg(Consistency_1, Consistency_2) < Exit_Threshold
@@ -679,7 +682,7 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
                 _c2 = today_rv.get('Consistency_2')
                 if _c1 is not None and _c2 is not None and exit_thr is not None \
                         and not np.isnan(float(exit_thr)):
-                    _rule_met = ((float(_c1) + float(_c2)) / 2.0) < float(exit_thr)
+                    _rule_met = bool(((float(_c1) + float(_c2)) / 2.0) < float(exit_thr))
         except (TypeError, ValueError):
             _rule_met = None
         if _rule_met is not True:
