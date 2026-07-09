@@ -933,11 +933,12 @@ _event_dr_cache: dict = {}   # (date, strategy) -> result; evaluated ONCE per ru
 
 
 # ── 防线 B（RISK_DEFENSE plan §2）: pairs 组合熔断 + 限额执行环 ────────────────
-# 影子期 2026-07-06~07-08 连续 3 个交易日零误报、每次判断均正确（崩盘日/红线日），
-# 且 7/8 账簿实盘恶化到 gross 2.67x/6 红线 → 用户裁定提前放开（2026-07-09）：
-# 周四(7/9)收盘运行起 live，周五(7/10)凌晨出结果时已实际执行否决+强平。
-# 影子历史日志前缀 [CIRCUIT_BREAKER][SHADOW]；live 后为 [CIRCUIT_BREAKER]。
-_CB_SHADOW = False
+# 影子期 2026-07-06~ 连续零误报、每次判断均正确（崩盘日/红线日）。
+# 用户裁定（2026-07-09 二次确认）：signal_date >= 2026-07-10 起 live——
+# 即周五(7/10)收盘运行执行否决+强平，周一(7/13)交易生效；
+# 今晚(7/9)及之前仍走影子（只记 [CIRCUIT_BREAKER][SHADOW] 不动作）。
+# 日期门控而非手动翻旗：无需人工在周五准时改，signal_date 到点自动 live。
+_CB_GO_LIVE_DATE = "2026-07-10"
 _CB_DAILY_LOSS_USD = 50_000.0     # 触发器阈值：−5% × $1M 组合现金基数
 _CB_CACHE: dict = {}
 
@@ -1046,11 +1047,11 @@ def _compute_circuit_breaker(signal_date) -> dict:
         close_set = set(ranked[:n_close])
         reason = "circuit_breaker: " + "; ".join(reasons)
 
-        if _CB_SHADOW:
+        if key < _CB_GO_LIVE_DATE:          # 日期门控：go-live 之前仍走影子
             log.warning(f"[CIRCUIT_BREAKER][SHADOW] would activate — {reason} | "
                         f"would close {sorted(close_set)} "
                         f"({n_close}/{len(ranked)} open pairs) + veto all opens "
-                        f"(shadow mode: no action taken)")
+                        f"(shadow until {_CB_GO_LIVE_DATE}: no action taken)")
             _CB_CACHE[key] = off
             return off
 
