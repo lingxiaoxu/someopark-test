@@ -933,9 +933,11 @@ _event_dr_cache: dict = {}   # (date, strategy) -> result; evaluated ONCE per ru
 
 
 # ── 防线 B（RISK_DEFENSE plan §2）: pairs 组合熔断 + 限额执行环 ────────────────
-# 影子期（plan §2.4）：只记 [CIRCUIT_BREAKER][SHADOW] 日志、不产生任何动作。
-# 自 2026-07-06 起观察 5 个干净交易日（约 2026-07-13）后人工置 False 放开。
-_CB_SHADOW = True
+# 影子期 2026-07-06~07-08 连续 3 个交易日零误报、每次判断均正确（崩盘日/红线日），
+# 且 7/8 账簿实盘恶化到 gross 2.67x/6 红线 → 用户裁定提前放开（2026-07-09）：
+# 周四(7/9)收盘运行起 live，周五(7/10)凌晨出结果时已实际执行否决+强平。
+# 影子历史日志前缀 [CIRCUIT_BREAKER][SHADOW]；live 后为 [CIRCUIT_BREAKER]。
+_CB_SHADOW = False
 _CB_DAILY_LOSS_USD = 50_000.0     # 触发器阈值：−5% × $1M 组合现金基数
 _CB_CACHE: dict = {}
 
