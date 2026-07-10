@@ -80,10 +80,20 @@ def _best_backtest_column(df: pd.DataFrame, label: str) -> str:
 
 
 def load_sr_equity_backtest() -> pd.Series:
-    """Load SR equity from backtest CSV — best-looking param column (dynamic, not hardcoded)."""
+    """SR 固定回测段：钉死到冻结的 param + vintage CSV（可复现）。
+    无冻结元数据时回退旧的 best-column（响亮告警）。"""
+    fz = _load_splice_freeze('ssrs')
+    if fz and fz.get('frozen_vintage_csv') and fz.get('frozen_param'):
+        vpath = os.path.join(SR_EQUITY_DIR, fz['frozen_vintage_csv'])
+        if os.path.exists(vpath):
+            df = pd.read_csv(vpath, index_col=0, parse_dates=True)
+            if fz['frozen_param'] in df.columns:
+                return df[fz['frozen_param']].dropna()
+        print(f"  ⚠️  SR: 冻结 vintage/param 不可用 — 用冻结值兜底")
     files = sorted(glob.glob(os.path.join(SR_EQUITY_DIR, 'sr_batch_equity_*.csv')))
     if not files:
         sys.exit('[ERROR] No sr_batch_equity CSV found')
+    print('  ⚠️  SR: 无 splice-freeze 元数据 — 回退 best-column（不可复现！）')
     df = pd.read_csv(files[-1], index_col=0, parse_dates=True)
     return df[_best_backtest_column(df, 'SR')].dropna()
 
@@ -247,12 +257,44 @@ def load_sr_equity_live(backtest_normalized: pd.Series,
     )
 
 
+# ── Splice-freeze v2 (2026-07-09) ────────────────────────────────────────────
+# 固定回测段永久冻结到 **真实交易的 param**（AISS pure_momentum / SSRS low_turnover）
+# + 当日 vintage CSV，写进 aiss_ssrs_splice_freeze.json。
+# 原因（诊断确认）：回测用 AdjClose，Polygon 每次新分红/拆股（KLAC 6/12 的 10:1、
+# ARM/LRCX/WDC/INTC 分红）触发全历史 refetch → 回测不可复现（同一 param 同一历史
+# 日曾漂移 +134%）；且旧逻辑每晚 auto-select "最优列"，5 周换了 5 次 param、且都
+# 不是实际交易的那个。冻结后固定段锁死，live 段走 ledger 真实持仓。
+SPLICE_FREEZE_JSON = os.path.join(BASE_DIR, 'someo-park-investment-management',
+                                  'public', 'data', 'aiss_ssrs_splice_freeze.json')
+
+
+def _load_splice_freeze(strat_key: str) -> dict | None:
+    """读冻结元数据。strat_key ∈ {'aiss','ssrs'}。"""
+    if not os.path.exists(SPLICE_FREEZE_JSON):
+        return None
+    try:
+        with open(SPLICE_FREEZE_JSON) as f:
+            return json.load(f).get(strat_key)
+    except Exception:
+        return None
+
+
 def load_aiss_equity_backtest() -> pd.Series:
-    """Load AISS equity from backtest CSV — best-looking param column (dynamic, not hardcoded).
-    Live segment (>= AISS_LIVE_START) follows the actual traded param via inventory MTM."""
+    """AISS 固定回测段：钉死到冻结的 param + vintage CSV（可复现）。
+    无冻结元数据时回退旧的 best-column（响亮告警）。"""
+    fz = _load_splice_freeze('aiss')
+    if fz and fz.get('frozen_vintage_csv') and fz.get('frozen_param'):
+        vpath = os.path.join(AISS_EQUITY_DIR, fz['frozen_vintage_csv'])
+        if os.path.exists(vpath):
+            df = pd.read_csv(vpath, index_col=0, parse_dates=True)
+            if fz['frozen_param'] in df.columns:
+                return df[fz['frozen_param']].dropna()
+        print(f"  ⚠️  AISS: 冻结 vintage/param 不可用（{fz.get('frozen_vintage_csv')}/"
+              f"{fz.get('frozen_param')}）— 用冻结值兜底")
     files = sorted(glob.glob(os.path.join(AISS_EQUITY_DIR, 'aiss_batch_equity_*.csv')))
     if not files:
         sys.exit('[ERROR] No aiss_batch_equity CSV found')
+    print('  ⚠️  AISS: 无 splice-freeze 元数据 — 回退 best-column（不可复现！）')
     df = pd.read_csv(files[-1], index_col=0, parse_dates=True)
     return df[_best_backtest_column(df, 'AISS')].dropna()
 
@@ -359,8 +401,23 @@ def _freeze_backtest_segment(bt_normalized: pd.Series, key: str) -> pd.Series:
       SR 2026-05-08、AISS 2026-06-01（本脚本拼接）。
     固定段此前每次运行都从"最新回测 CSV + auto-select 最优参数"动态重建 →
     参数换赢家时整条固定历史被重写（实测 AISS 固定段曾整体 +13% 漂移）。
-    现改为：固定段一经写入 master JSON 即原样保留，永不重算；live 链的基点
-    也因此钉在冻结值上（拼接点无跳变）。"""
+    v2（2026-07-09）：权威来源改为 aiss_ssrs_splice_freeze.json 里冻结的
+    fixed_segment 值（param+vintage 已钉死）；元数据缺失时回退旧的 master JSON
+    保留逻辑。这样即使 backtest CSV 因 AdjClose retro-adjust 漂移，固定段也纹丝不动。"""
+    # 权威：冻结元数据的 fixed_segment
+    fz = _load_splice_freeze('ssrs' if key == 'sr' else key)
+    frozen = (fz or {}).get('fixed_segment') or {}
+    if frozen:
+        vals = []
+        for ts in bt_normalized.index:
+            v = frozen.get(str(ts.date()))
+            vals.append(float(v) if v is not None else float(bt_normalized.loc[ts]))
+        out = pd.Series(vals, index=bt_normalized.index, name=bt_normalized.name)
+        hit = sum(1 for ts in bt_normalized.index if str(ts.date()) in frozen)
+        print(f'  {key}: splice freeze v2 — 固定段 {hit}/{len(out)} 天锁定自冻结元数据'
+              f'（param={fz.get("frozen_param")}, 永不随回测漂移）')
+        return out
+    # 回退：旧的 master JSON 保留
     if not os.path.exists(MASTER_JSON):
         return bt_normalized
     try:
@@ -377,8 +434,7 @@ def _freeze_backtest_segment(bt_normalized: pd.Series, key: str) -> pd.Series:
             vals.append(float(bt_normalized.loc[ts]))
     out = pd.Series(vals, index=bt_normalized.index, name=bt_normalized.name)
     if hits:
-        print(f'  {key}: splice freeze — 固定段 {hits}/{len(out)} 天从现有 JSON 保留'
-              f'（不随回测 CSV/auto-select 重算）')
+        print(f'  {key}: splice freeze (fallback) — 固定段 {hits}/{len(out)} 天从现有 JSON 保留')
     return out
 
 
