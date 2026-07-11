@@ -224,16 +224,31 @@ router.get('/stock-universe', async (_req, res) => {
         weight: g.subsector_weight || 0,
         held: !!g.held,
         composite_score: g.composite_score ?? null,
-        stocks: (g.stocks || []).map((s: any) => ({
-          ticker: s.ticker,
-          tier_role: s.tier_role,
-          weight: s.portfolio_weight || 0,        // portfolio-level weight
-          within_weight: s.within_weight || 0,    // within-subsector tier weight
-          last_price: s.price || 0,
-          shares: inv.stock_holdings?.[s.ticker]?.shares || 0,
-          target_value: inv.stock_holdings?.[s.ticker]?.target_value || 0,
-          held: (inv.stock_holdings?.[s.ticker]?.shares || 0) !== 0,
-        })),
+        stocks: (g.stocks || []).map((s: any) => {
+          // A stock can be a MEMBER of multiple subsectors (e.g. ARM/AMD list
+          // under both logic_cpu and ai_gpu), but its shares are held via ONE
+          // subsector only (inventory `subsectors` field). Attribute the
+          // shares/market-value to that owning subsector so a 0%-weight
+          // subsector (ai_gpu here) shows "—" instead of duplicating the
+          // logic_cpu holding. Fallback to per-context weight for older data
+          // without a `subsectors` field.
+          const holding = inv.stock_holdings?.[s.ticker];
+          const attributed = holding?.subsectors;
+          const ownsHere = Array.isArray(attributed) && attributed.length
+            ? attributed.includes(g.subsector)
+            : (s.portfolio_weight || 0) > 0.0001;
+          const sh = ownsHere ? (holding?.shares || 0) : 0;
+          return {
+            ticker: s.ticker,
+            tier_role: s.tier_role,
+            weight: s.portfolio_weight || 0,        // portfolio-level weight (per subsector context)
+            within_weight: s.within_weight || 0,    // within-subsector tier weight
+            last_price: s.price || 0,
+            shares: sh,
+            target_value: ownsHere ? (holding?.target_value || 0) : 0,
+            held: sh !== 0,
+          };
+        }),
       }));
       const stocks = subsectors.flatMap((g: any) => g.stocks);
       return res.json({
