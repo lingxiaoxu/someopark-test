@@ -107,6 +107,56 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
     return a < b ? a : b;
   })();
 
+  // ── Sector ETF sort (row-level asc/desc on any column) ──
+  const secVal = (s: any, key: string): any => {
+    switch (key) {
+      case 'etf': return (s.ticker || '').toLowerCase();
+      case 'weight': return s.weight || 0;
+      case 'entry': return s.entry_date || '';
+      case 'cost': return s.cost_basis || 0;
+      case 'held': return s.held ? 1 : 0;
+      default: return 0;
+    }
+  };
+  const sortedSectors = (() => {
+    const arr = [...(srSectors?.sectors || [])];
+    if (!sortKey) return arr;
+    return arr.sort((a, b) => {
+      const va = secVal(a, sortKey), vb = secVal(b, sortKey);
+      const cmp = typeof va === 'string' ? va.localeCompare(vb) : (va - vb);
+      return sortAsc ? cmp : -cmp;
+    });
+  })();
+
+  // ── AISS semiconductor sort: reorder SUBSECTOR GROUPS; within a group the
+  //    stocks stay fixed in holding-weight (descending) order (never sorted). ──
+  const grpVal = (grp: any, key: string): any => {
+    const stocks = grp.stocks || [];
+    const sumShares = stocks.reduce((a: number, s: any) => a + (s.shares || 0), 0);
+    const sumMv = stocks.reduce((a: number, s: any) => a + (s.target_value || 0), 0);
+    switch (key) {
+      case 'stock': return (grp.display || grp.subsector || '').toLowerCase();
+      case 'shares': return sumShares;
+      case 'weight': return grp.weight || 0;
+      case 'price': return sumShares > 0 ? sumMv / sumShares : 0;
+      case 'mv': return sumMv;
+      default: return grp.weight || 0;
+    }
+  };
+  const sortedSubsectors = (() => {
+    // within-group: fixed holding-weight desc (per spec — subsector 内部不排序)
+    const arr = (aissStocks?.subsectors || []).map((g: any) => ({
+      ...g,
+      stocks: [...(g.stocks || [])].sort((x: any, y: any) => (y.weight || 0) - (x.weight || 0)),
+    }));
+    if (!sortKey) return arr;
+    return arr.sort((a: any, b: any) => {
+      const va = grpVal(a, sortKey), vb = grpVal(b, sortKey);
+      const cmp = typeof va === 'string' ? va.localeCompare(vb) : (va - vb);
+      return sortAsc ? cmp : -cmp;
+    });
+  })();
+
   const tabMeta: Record<string, string> = {
     selected: fmtDate(selectedUpdatedAt),
     coint: fmtDate(cointData?.day),
@@ -131,7 +181,7 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
         {tabs.map((tab: any) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => { setActiveTab(tab.id); setSortKey(null); setSortAsc(true); }}
             className={`px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors ${
               activeTab === tab.id ? 'bg-[var(--accent-primary)] text-white' :
               'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)]'
@@ -159,15 +209,15 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
             <table className="w-full text-sm text-left">
               <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 font-medium">{t('aiss.colStock')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.shares')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.weight')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('aiss.colLastPrice')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('aiss.colMarketValue')}</th>
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('stock')}>{t('aiss.colStock')}{sortArrow('stock')}</th>
+                  <th className="px-4 py-3 font-medium text-right cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('shares')}>{t('ssrs.shares')}{sortArrow('shares')}</th>
+                  <th className="px-4 py-3 font-medium text-right cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('weight')}>{t('ssrs.weight')}{sortArrow('weight')}</th>
+                  <th className="px-4 py-3 font-medium text-right cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('price')}>{t('aiss.colLastPrice')}{sortArrow('price')}</th>
+                  <th className="px-4 py-3 font-medium text-right cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('mv')}>{t('aiss.colMarketValue')}{sortArrow('mv')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {(aissStocks?.subsectors || []).map((grp: any) => [
+                {sortedSubsectors.map((grp: any) => [
                   /* subsector group header (grouping label + weight; NOT a tradable row) */
                   <tr key={`grp-${grp.subsector}`} className="bg-[var(--bg-secondary)]">
                     <td className="px-4 py-2 font-mono text-xs font-bold text-[var(--text-primary)]" colSpan={2}>
@@ -211,15 +261,15 @@ export default function PairUniverseViewer({ params }: { params?: any }) {
             <table className="w-full text-sm text-left">
               <thead className="text-[10px] text-[var(--text-muted)] uppercase bg-[var(--bg-secondary)] sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 font-medium">{t('ssrs.etf')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.weight')}</th>
-                  <th className="px-4 py-3 font-medium">{t('ssrs.entryDate')}</th>
-                  <th className="px-4 py-3 font-medium text-right">{t('ssrs.costBasis')}</th>
-                  <th className="px-4 py-3 font-medium">{t('common.status')}</th>
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('etf')}>{t('ssrs.etf')}{sortArrow('etf')}</th>
+                  <th className="px-4 py-3 font-medium text-right cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('weight')}>{t('ssrs.weight')}{sortArrow('weight')}</th>
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('entry')}>{t('ssrs.entryDate')}{sortArrow('entry')}</th>
+                  <th className="px-4 py-3 font-medium text-right cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('cost')}>{t('ssrs.costBasis')}{sortArrow('cost')}</th>
+                  <th className="px-4 py-3 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => toggleSort('held')}>{t('common.status')}{sortArrow('held')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {(srSectors?.sectors || []).map((s: any) => (
+                {sortedSectors.map((s: any) => (
                   <tr key={s.ticker} className={`hover:bg-[var(--bg-secondary)] ${s.held ? 'bg-[var(--accent-primary)]/5' : 'opacity-50'}`}>
                     <td className="px-4 py-3"><PairBadge pair={s.ticker} direction={s.held ? 'long' : null} strategy="ssrs" compact details={s.held ? { weight: s.weight, shares: s.shares, costBasis: s.cost_basis, openDate: s.entry_date } : undefined} /></td>
                     <td className="px-4 py-3 text-right font-mono">{s.held ? (s.weight * 100).toFixed(1) + '%' : '—'}</td>
