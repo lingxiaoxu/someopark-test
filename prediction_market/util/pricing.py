@@ -104,3 +104,23 @@ def pnl_cents(entry_cents, won: bool):
     if entry_cents is None:
         return None
     return round((100.0 - float(entry_cents)) if won else (-float(entry_cents)), 1)
+
+
+def contracts_for(entry_cents, stake_usd):
+    """How many contracts a $stake buys at entry_cents (a $1 stake at 25¢ buys 4)."""
+    return (stake_usd / (float(entry_cents) / 100.0)) if entry_cents else 0.0
+
+
+def sized_pnl_cents(entry_cents, per_contract_pnl, stake_usd):
+    """$-sized realised ¢ for ONE position — the SINGLE sizing+P&L function shared by the
+    pre-match AND in-play streams so the two are computed identically:
+
+        contracts = stake / (entry/100)              # $1 @ 25¢ → 4 contracts
+        sized ¢   = contracts × per_contract_pnl     # win: 4 × (100−25)=+300 ; lose: 4 × −25=−100
+
+    ``per_contract_pnl`` is the per-contract result: a hold-to-FT ``pnl_cents(entry, won)``,
+    or a mid-game cash-out (sold−entry). Falls back to the per-contract number when there is
+    no entry price."""
+    if entry_cents is None or per_contract_pnl is None:
+        return per_contract_pnl
+    return round(contracts_for(entry_cents, stake_usd) * float(per_contract_pnl), 1)

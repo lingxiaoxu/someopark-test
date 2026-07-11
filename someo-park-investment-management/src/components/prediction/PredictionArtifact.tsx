@@ -11,12 +11,14 @@ import {
   getWCChampion, getWCDivergence, getWCUpcoming, getWCPerformance,
   getWCRisk, getWCCalibration, getWCInplayLive, getWCInplayLiveAdvance, getWCOverview, getWCBacktest, getWCSquad, getWCParams, getWCForm,
   getWCMilestoneMarks, getWCSchedule, getWCReachRound, getWCStyles, API_BASE,
-  getWCMicrofootball, analyzeMicrofootball,
+  getWCMicrofootball, analyzeMicrofootball, getWCDfm,
 } from '../../lib/api';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { TrajectoryPlayer } from './TrajectoryPlayer';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
-import { tCountry } from '../../i18n/countries';
+import { tCountry, countryKey } from '../../i18n/countries';
+import CountryName from './CountryName';
+import { PredictionFocusContext, usePredictionFocus, useCountryFocusScroll } from '../../contexts/PredictionFocusContext';
 import { tDyn, overviewHeadline } from '../../i18n/predictionStrings';
 import { usePoll } from './usePoll';
 import { AdvanceModeToggle, useAdvanceMode } from './AdvanceMode';
@@ -120,6 +122,12 @@ function Notes({ items, i18nItems }: { items?: string[]; i18nItems?: { key: stri
   );
 }
 
+// Clickable country label for the cross-artifact navigator — drop-in for tCountry() at
+// country render sites; also the scroll/highlight anchor. VS renders a "Home <sep> Away"
+// pair. Both return nodes, so they slot into DataTable cells (ReactNode) and JSX alike.
+const CN = (code?: string | null) => <CountryName code={code} />;
+const VS = (h?: string | null, a?: string | null, sep: string = ' v ') => <>{CN(h)}{sep}{CN(a)}</>;
+
 // ── viewers ───────────────────────────────────────────────────────────────────
 function ChampionOdds() {
   const { t: tr } = useTranslation();
@@ -130,7 +138,7 @@ function ChampionOdds() {
     <div>
       <Title sub={`${tr('prediction.subChampion')} · ${data?.meta?.n_sims?.toLocaleString?.() ?? ''} sims`}>Champion Odds</Title>
       <DataTable cols={[tr('prediction.team'), 'FIFA', 'Grp', tr('prediction.colChamp'), 'Kalshi¢', 'Poly¢', tr('prediction.colFinal'), 'SF', tr('prediction.colRating')]}
-        rows={champ.map((c: any) => [tCountry(c.name), c.fifa_rank != null ? `#${c.fifa_rank}` : '—', c.group, pct(c.p_champion),
+        rows={champ.map((c: any) => [CN(c.name), c.fifa_rank != null ? `#${c.fifa_rank}` : '—', c.group, pct(c.p_champion),
           cc(c.kalshi_champ_c), cc(c.poly_champ_c), pct(c.p_final), pct(c.p_sf), num(c.rating, 3)])}
         sortableCols={[1, 2, 3, 4, 5, 6, 7, 8]}
         sortVals={champ.map((c: any) => [null, c.fifa_rank, c.group, c.p_champion, c.kalshi_champ_c, c.poly_champ_c, c.p_final, c.p_sf, c.rating])}
@@ -223,7 +231,7 @@ function ReachRound() {
           <tbody>
             {teams.map((e: any, i: number) => (
               <tr key={i} style={{ borderBottom: '1px solid var(--hairline)' }}>
-                <td style={{ ...td, textAlign: 'left', color: 'var(--text-primary)', fontWeight: 600, ...mono }}>{tCountry(e.name)}</td>
+                <td style={{ ...td, textAlign: 'left', color: 'var(--text-primary)', fontWeight: 600, ...mono }}>{CN(e.name)}</td>
                 <td style={{ ...td, borderLeft: bd, padding: '3px 3px', fontSize: 9.5, color: 'var(--text-secondary)', ...mono }}>{e.group ? `${e.group} · ${e.points ?? 0}` : '—'}</td>
                 <td style={{ ...td, borderLeft: bd, padding: '3px 3px', fontSize: 9.5, color: 'var(--text-secondary)', ...mono }}>{gdLabel(e)}</td>
                 {rounds.map((r) => { const t = e.byRound[r.key]; return [
@@ -259,7 +267,7 @@ function GoldenBoot() {
     <div>
       <Title sub={tr('prediction.subGoldenBoot')}>Golden Boot</Title>
       <DataTable cols={[tr('prediction.colPlayer'), tr('prediction.colTeam'), tr('prediction.colGoals'), 'P(boot)', 'E[goals]']}
-        rows={gb.map((p: any) => [p.name, tCountry(p.team), p.goals ?? 0, pct(p.p_golden_boot), num(p.e_goals, 2)])} />
+        rows={gb.map((p: any) => [p.name, CN(p.team), p.goals ?? 0, pct(p.p_golden_boot), num(p.e_goals, 2)])} />
     </div>
   );
 }
@@ -274,7 +282,7 @@ function SquadStrength() {
       <Title sub={tr('prediction.subSquad')}>Squad Strength</Title>
       <DataTable cols={['FIFA', tr('prediction.team'), tr('prediction.colSquadScore'), tr('prediction.colRating'), 'GA/90', tr('prediction.colTopPlayers')]}
         rows={teams.map((t: any) => [
-          t.fifa_rank != null ? `#${t.fifa_rank}` : '—', tCountry(t.name), (t.score_z >= 0 ? '+' : '') + t.score_z.toFixed(2),
+          t.fifa_rank != null ? `#${t.fifa_rank}` : '—', CN(t.name), (t.score_z >= 0 ? '+' : '') + t.score_z.toFixed(2),
           t.mw_rating?.toFixed(2), t.ga_per90?.toFixed(2),
           (t.top_players ?? []).slice(0, 3).map((p: any) => `${p.name} (${p.goals}g)`).join(', '),
         ])}
@@ -325,13 +333,13 @@ function Divergence() {
         <DataTable cols={[tr('prediction.match'), tr('prediction.modelAdvHA'), tr('prediction.marketAdvHA'), tr('prediction.colEdge')]}
           rows={rows.map((m: any) => {
             const a = m.advance;
-            if (!a || !a.model) return [`${tCountry(m.home)} v ${tCountry(m.away)}`, '—', '—',
+            if (!a || !a.model) return [VS(m.home, m.away), '—', '—',
               <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.regulationOnly')}</span>];
             const e = a.edge_vs_market || {};
             const side = Math.abs(e.home ?? 0) >= Math.abs(e.away ?? 0) ? 'H' : 'A';
             const val = side === 'H' ? (e.home ?? 0) : (e.away ?? 0);
             return [
-              `${tCountry(m.home)} v ${tCountry(m.away)}`,
+              VS(m.home, m.away),
               `${pcent(a.model.home)}/${pcent(a.model.away)}`,
               a.market_devig ? `${pcent(a.market_devig.home)}/${pcent(a.market_devig.away)}` : '—',
               <span style={{ color: Math.abs(val) >= 0.05 ? 'var(--success)' : 'var(--text-muted)' }}>{side} {val >= 0 ? '+' : ''}{pct(val, 1)} ({val >= 0 ? '+' : ''}{pcent(val)})</span>,
@@ -345,7 +353,7 @@ function Divergence() {
             const side = best === Math.abs(e.home ?? 0) ? 'H' : best === Math.abs(e.draw ?? 0) ? 'D' : 'A';
             const val = side === 'H' ? e.home : side === 'D' ? e.draw : e.away;
             return [
-              `${tCountry(m.home)} v ${tCountry(m.away)}`,
+              VS(m.home, m.away),
               `${pcent(m.model?.home)}/${pcent(m.model?.draw)}/${pcent(m.model?.away)}`,
               `${pcent(m.book_devig?.home)}/${pcent(m.book_devig?.draw)}/${pcent(m.book_devig?.away)}`,
               <span style={{ color: Math.abs(val) >= 0.05 ? 'var(--success)' : 'var(--text-muted)' }}>{side} {val >= 0 ? '+' : ''}{pct(val, 1)} ({val >= 0 ? '+' : ''}{pcent(val)})</span>,
@@ -372,14 +380,14 @@ function Predictions() {
         <DataTable cols={[tr('prediction.match'), 'ET', tr('prediction.colHomeAdv'), 'H¢', tr('prediction.colAwayAdv'), 'A¢']}
           rows={ms.map((m: any) => {
             const a = m.advance;
-            if (!a || !a.model) return [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '',
+            if (!a || !a.model) return [VS(m.home?.name, m.away?.name), m.et ?? '',
               <span style={{ color: 'var(--text-muted)' }}>{tr('prediction.regulationOnly')}</span>, '—', '—', '—'];
-            return [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '',
+            return [VS(m.home?.name, m.away?.name), m.et ?? '',
               pct(a.model.home, 0), cc(a.model.cents?.home), pct(a.model.away, 0), cc(a.model.cents?.away)];
           })} />
       ) : (
         <DataTable cols={[tr('prediction.match'), 'ET', 'H', 'H¢', 'D', 'D¢', 'A', 'A¢', 'O2.5']}
-          rows={ms.map((m: any) => [`${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`, m.et ?? '',
+          rows={ms.map((m: any) => [VS(m.home?.name, m.away?.name), m.et ?? '',
             pct(m.model?.home, 0), cc(m.model?.cents?.home), pct(m.model?.draw, 0), cc(m.model?.cents?.draw),
             pct(m.model?.away, 0), cc(m.model?.cents?.away), pct(m.model?.over_2_5, 0)])} />
       )}
@@ -420,7 +428,7 @@ function MatchPricing() {
         return (
         <div key={i} className="card" style={{ marginBottom: 10 }}>
           <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 6 }}>
-            {tCountry(m.home?.name)} vs {tCountry(m.away?.name)} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{m.et}</span>
+            {VS(m.home?.name, m.away?.name, ' vs ')} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{m.et}</span>
             {adv && <span style={{ color: 'var(--accent-primary)', marginLeft: 6 }}>{tr('prediction.modeAdvance')}</span>}
             {advMode && !adv && <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>· {tr('prediction.regulationOnly')}</span>}
           </div>
@@ -821,7 +829,7 @@ function Schedule() {
         <DataTable cols={['ET', tr('prediction.colRound'), tr('prediction.match'), tr('prediction.colResult')]}
           rows={ms.map((m: any) => [
             m.et ?? m.kickoff, roundLabel(m.round),
-            `${tCountry(m.home?.name)} v ${tCountry(m.away?.name)}`,
+            VS(m.home?.name, m.away?.name),
             m.finished
               ? <span style={{ fontWeight: 700 }}>{m.score}</span>
               : <span style={{ color: 'var(--text-muted)' }}>{m.status === 'NS' ? '—' : m.status}</span>,
@@ -890,7 +898,7 @@ function InPlay() {
           <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
             <span style={{ fontWeight: 700, fontSize: 13, ...mono, color: 'var(--text-primary)' }}>
               <span style={{ color: 'var(--error)', fontWeight: 700, marginRight: 6 }} className="pulse">● {tr('prediction.liveBadge')}</span>
-              {tCountry(m.home.name)} <b>{m.score}</b> {tCountry(m.away.name)}
+              {CN(m.home.name)} <b>{m.score}</b> {CN(m.away.name)}
             </span>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{
               m.period === 'pens' ? `${tr('prediction.periodPens')}${m.shootout ? ` ${m.shootout.home}-${m.shootout.away}` : ''}`
@@ -952,7 +960,10 @@ function InPlay() {
               confBadge(o),
               stakeCell(o),
               tr('prediction.action.' + o.action, { defaultValue: o.action }),
-              tr('prediction.side.' + o.side, { defaultValue: o.side }),
+              // corner-total signal shares kind="tactic" but trades the corners book, not the
+              // goal-totals book — label its 方向 as 角球小球/角球大球 so it never reads as a
+              // goal Under/Over in the same column.
+              tr('prediction.side.' + (o.venue === 'corners' ? 'corner_' + o.side : o.side), { defaultValue: o.side }),
               cc(o.market_c), o.edge != null ? num(o.edge, 3) : '—',
               <span style={{ color: (o.edge_c ?? 0) > 0 ? 'var(--success)' : 'var(--ink)' }}>{o.edge_c != null ? `${o.edge_c > 0 ? '+' : ''}${cc(o.edge_c)}` : '—'}</span>,
               renderOppReason(o, tr),
@@ -1137,11 +1148,14 @@ function BetLog({ data }: { data: any }) {
   const log: any[] = data?.bet_log ?? [];
   const [mode, setMode] = useState<'cashout' | 'hold' | 'argmax'>('cashout');
   if (!log.length) return null;
-  const sideLabel = (b: any) => (b.pick === 'draw' ? tr('prediction.drawResult') : tCountry(b.pick_team));
-  const argmaxLabel = (b: any) => (b.model_pick === 'draw' ? tr('prediction.drawResult') : tCountry(b.model_pick_team));
+  // 下注 side label; a "·热门/fav" tag flags the HYBRID argmax fills (no pre-match edge → bet the
+  // favourite at flat $1, same contract calc), so value vs argmax bets are distinguishable.
+  const sideLabel = (b: any) => (<>{b.pick === 'draw' ? tr('prediction.drawResult') : CN(b.pick_team)}{b.bet_kind === 'argmax'
+    ? <span style={{ color: 'var(--text-muted)', fontSize: 9 }}> ·{tr('prediction.betKindArgmax')}</span> : null}</>);
+  const argmaxLabel = (b: any) => (b.model_pick === 'draw' ? tr('prediction.drawResult') : CN(b.model_pick_team));
   const wl = (won: boolean) => <span style={{ color: won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>{won ? tr('prediction.betWon') : tr('prediction.betLost')}</span>;
   const cVal = (v: number | null | undefined): ReactNode => v == null ? '—' : <span style={{ color: v >= 0 ? 'var(--success)' : 'var(--error)' }}>{v >= 0 ? '+' : ''}{cc(v)}</span>;
-  const matchup = (b: any) => `${tCountry(b.home)} ${b.score} ${tCountry(b.away)}`;
+  const matchup = (b: any) => <>{CN(b.home)} {b.score} {CN(b.away)}</>;
 
   const tab = (m: typeof mode, label: string) => (
     <button key={m} onClick={() => setMode(m)} style={{ padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono)', fontWeight: mode === m ? 700 : 400, color: mode === m ? 'var(--text-primary)' : 'var(--text-muted)', background: mode === m ? 'var(--bg-tertiary)' : 'transparent', border: `1px solid ${mode === m ? 'var(--accent-primary)' : 'var(--border-subtle)'}`, borderRadius: 4, cursor: 'pointer', marginRight: 6 }}>{label}</button>
@@ -1152,35 +1166,53 @@ function BetLog({ data }: { data: any }) {
     <><b>{record}</b> · {cVal(pnl)} · <span style={{ color: 'var(--text-muted)' }}>{context}</span></>;
   const nb = data.n_decision_bets ?? log.length;
   const headline = (): ReactNode => {
-    if (mode === 'cashout') return hl(data.realized_record, data.realized_pnl_cents_total, <>{nb} {tr('prediction.lblBets')} · {data.n_smart_sold ?? 0} {tr('prediction.lblCashedOut')}</>);
+    // cashout headline = the COMBINED cumulative (smart-exit realised + in-play entry), with
+    // the two streams broken out in the context line.
+    if (mode === 'cashout') return hl(data.realized_record, data.combined_pnl_cents_total,
+      <>{tr('prediction.colRealizedC')} {cc(data.realized_pnl_cents_total)} + {tr('prediction.colInplayRealized')} {data.inplay_record} {cc(data.inplay_pnl_cents_total)} = {tr('prediction.colCombinedCum')}</>);
     if (mode === 'hold') return hl(data.hold_record || data.pnl_record, data.hold_pnl_cents_total, <>{nb} {tr('prediction.lblBets')} · {data.n_skipped ?? 0} {tr('prediction.lblSkipped')}</>);
     return hl(data.argmax_record, data.argmax_pnl_cents_total, <>{log.length} {tr('prediction.lblMatchesAll')} · {tr('prediction.lblModelAcc')} {pct(data.model_pred_accuracy, 0)}</>);
   };
   const note = (): string => mode === 'cashout'
-    ? tr('prediction.noteCashout', { entry: cc(data.avg_entry_cents), clv: ((data.avg_clv_cents ?? 0) >= 0 ? '+' : '') + cc(data.avg_clv_cents) })
+    // pass RAW ¢ numbers — the noteCashout template already writes the ¢ unit (avoid the ¢¢ dup).
+    ? tr('prediction.noteCashout', { entry: data.avg_entry_cents == null ? '—' : Math.round(data.avg_entry_cents), clv: ((data.avg_clv_cents ?? 0) >= 0 ? '+' : '') + Math.round(data.avg_clv_cents ?? 0) })
     : mode === 'hold' ? tr('prediction.noteHold') : tr('prediction.noteArgmax');
 
   const cols = mode === 'argmax'
     ? [tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colRealizedC'), 'Cum¢']
+    // cashout: pre-match stream (下注/离场/入场¢/实现¢/赛前Cum) MIRRORED by the in-play stream
+    // (盘中下注/盘中离场/盘中入场¢/盘中实现¢/盘中Cum), both $-sized identically, then 合计Cum.
     : mode === 'cashout'
-      ? [tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colExit'), tr('prediction.colEntryC'), tr('prediction.colRealizedC'), 'Cum¢']
+      ? [tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colExit'), tr('prediction.colEntryC'), tr('prediction.colRealizedC'), tr('prediction.colPreCum'), tr('prediction.colInplayBet'), tr('prediction.colInplayExit'), tr('prediction.colInplayEntryC'), tr('prediction.colInplayRealized'), tr('prediction.colInplayCum'), tr('prediction.colCombinedCum')]
       : [tr('prediction.colDate'), tr('prediction.colMatchup'), tr('prediction.colOurPick'), tr('prediction.colStake'), tr('prediction.colResult'), tr('prediction.colEntryC'), tr('prediction.colPnlC'), 'Cum¢'];
 
   const muted = (x: ReactNode) => <span style={{ color: 'var(--text-muted)' }}>{x}</span>;
+  // Shared exit cell (pre-match OR in-play): smart-exit sold min/price if it fired, else the
+  // settle W/L — one function so both streams show 离场/盘中离场 identically.
+  const exitCell = (se: any, won: boolean) => se
+    ? <span style={{ color: se.pnl_c >= 0 ? 'var(--success)' : 'var(--error)' }}>{tr('prediction.smartExitSold', { min: se.sold_min, c: Math.round(se.sold_c) })}</span>
+    : <span style={{ color: won ? 'var(--success)' : 'var(--error)' }}>{tr(won ? 'prediction.exitSettleWon' : 'prediction.exitSettleLost')}</span>;
+  // In-play 盘中下注 side + milestone (colour by win); other in-play cells are — when no entry.
+  const inplayBet = (b: any) => b.inplay_side
+    ? <span style={{ color: b.inplay_won ? 'var(--success)' : 'var(--error)' }}>{(b.inplay_side === 'draw' ? tr('prediction.drawResult') : CN(b.inplay_side_team))} {b.inplay_milestone}</span>
+    : muted('—');
+  // The 5 in-play columns for a cashout row: 盘中下注 / 盘中离场 / 盘中入场¢ / 盘中实现¢ / 盘中Cum¢.
+  const inplayCells = (b: any) => b.inplay_side
+    ? [inplayBet(b), exitCell(b.inplay_exit, b.inplay_won), cc(b.inplay_entry_cents), cVal(b.inplay_pnl_cents), cVal(b.inplay_cum_pnl_cents)]
+    : [muted('—'), muted('—'), '—', '—', cVal(b.inplay_cum_pnl_cents)];
   const rows = log.map((b: any) => {
     if (mode === 'argmax')
       return [b.date?.slice(5), matchup(b), argmaxLabel(b), wl(b.model_won), cc(b.argmax_entry_cents), cVal(b.argmax_pnl_cents), cVal(b.argmax_cum_pnl_cents)];
     if (b.bet === false) {
       const base = [b.date?.slice(5), matchup(b), muted(tr('prediction.noBetShort')), muted('$0')];
-      return mode === 'cashout' ? [...base, muted('—'), '—', '—', '—'] : [...base, muted('—'), '—', '—', '—'];
+      // cashout view: a no-bet match has empty pre-match cells but can still carry an IN-PLAY
+      // entry → 赛前Cum unchanged, the in-play columns + 合计Cum reflect it.
+      return mode === 'cashout'
+        ? [...base, muted('—'), '—', '—', cVal(b.pre_cum_pnl_cents), ...inplayCells(b), cVal(b.combined_cum_pnl_cents)]
+        : [...base, muted('—'), '—', '—', '—'];
     }
-    if (mode === 'cashout') {
-      const se = b.smart_exit;
-      const exit = se
-        ? <span style={{ color: se.pnl_c >= 0 ? 'var(--success)' : 'var(--error)' }}>{tr('prediction.smartExitSold', { min: se.sold_min, c: Math.round(se.sold_c) })}</span>
-        : <span style={{ color: b.won ? 'var(--success)' : 'var(--error)' }}>{tr(b.won ? 'prediction.exitSettleWon' : 'prediction.exitSettleLost')}</span>;
-      return [b.date?.slice(5), matchup(b), sideLabel(b), `$${num(b.stake_usd, 2)}`, exit, cc(b.entry_cents), cVal(b.realized_pnl_cents), cVal(b.realized_cum_pnl_cents)];
-    }
+    if (mode === 'cashout')
+      return [b.date?.slice(5), matchup(b), sideLabel(b), `$${num(b.stake_usd, 2)}`, exitCell(b.smart_exit, b.won), cc(b.entry_cents), cVal(b.realized_pnl_cents), cVal(b.pre_cum_pnl_cents), ...inplayCells(b), cVal(b.combined_cum_pnl_cents)];
     return [b.date?.slice(5), matchup(b), sideLabel(b), `$${num(b.stake_usd, 2)}`, wl(b.won), cc(b.entry_cents), cVal(b.pnl_cents), cVal(b.cum_pnl_cents)];
   });
 
@@ -1310,7 +1342,7 @@ function Backtest() {
       </div>
       <DataTable cols={[tr('prediction.match'), 'Score', tr('prediction.colResult'), tr('prediction.model'), 'Book']}
         rows={(data?.matches ?? []).map((m: any) => [
-          `${tCountry(m.home)} v ${tCountry(m.away)}`, m.score, m.result,
+          VS(m.home, m.away), m.score, m.result,
           `${m.model_pick} ${m.model_p != null ? pct(m.model_p, 0) : ''}`,
           m.book_pick ? `${m.book_pick} ${pct(m.book_p, 0)}` : '—',
         ])} />
@@ -1472,7 +1504,7 @@ function FormCard() {
       <Title sub={tr('prediction.subForm')}>Recent Form</Title>
       <DataTable cols={['FIFA', tr('prediction.team'), tr('prediction.colForm'), 'wGD', tr('prediction.colRecent')]}
         rows={teams.map((t: any) => [
-          t.fifa_rank != null ? `#${t.fifa_rank}` : '—', tCountry(t.name), (t.form_z >= 0 ? '+' : '') + t.form_z.toFixed(2),
+          t.fifa_rank != null ? `#${t.fifa_rank}` : '—', CN(t.name), (t.form_z >= 0 ? '+' : '') + t.form_z.toFixed(2),
           (t.weighted_gd >= 0 ? '+' : '') + t.weighted_gd.toFixed(2),
           (t.recent ?? []).join(' '),
         ])}
@@ -1541,7 +1573,7 @@ function TeamStyles() {
           <tbody>
             {rows.map((t: any) => (
               <tr key={t.team_id}>
-                <td style={{ ...td, position: 'sticky', left: 0, background: 'var(--bg-primary)', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--text-primary)' }}>{tCountry(t.name)}</td>
+                <td style={{ ...td, position: 'sticky', left: 0, background: 'var(--bg-primary)', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--text-primary)' }}>{CN(t.name)}</td>
                 {styles.map((s: any) => {
                   const c = cellOf(t, s.code);
                   return (
@@ -1620,7 +1652,7 @@ function PriceTrack() {
           return (
             <div key={m.fixture_id} className="card" style={{ marginBottom: 12 }}>
               <div style={{ fontWeight: 700, fontSize: 12, ...mono, marginBottom: 4 }}>
-                {tCountry(m.home?.name)} vs {tCountry(m.away?.name)}
+                {VS(m.home?.name, m.away?.name, ' vs ')}
                 {m.settled && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {m.score}</span>}
               </div>
               <div style={{ fontSize: 10.5, ...mono, marginBottom: 6, color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -1630,7 +1662,7 @@ function PriceTrack() {
                   const s = m.smart_exit;
                   return (<>
                     {/* line 1: what we bet — side · type · stake */}
-                    <div>{tr('prediction.ptBet')}: <b style={{ color: 'var(--text-primary)' }}>{tCountry(b.pick_team)}</b> <span style={{ color: 'var(--text-muted)' }}>· {tr('prediction.ptSingle')}</span>{b.stake_usd != null ? <> · ${num(b.stake_usd, 2)}</> : null}</div>
+                    <div>{tr('prediction.ptBet')}: <b style={{ color: 'var(--text-primary)' }}>{CN(b.pick_team)}</b> <span style={{ color: 'var(--text-muted)' }}>· {tr('prediction.ptSingle')}</span>{b.stake_usd != null ? <> · ${num(b.stake_usd, 2)}</> : null}</div>
                     {/* line 2: the realised path — buy(when/price) → sell(when/price) · realised · mode */}
                     {s ? (
                       <div>　{tr('prediction.ptBuy')} <b>PRE {cc(b.entry_cents)}</b> → {tr('prediction.ptSell')} <b>{s.sold_min}′ {Math.round(s.sold_c)}¢</b> · {tr('prediction.lblRealized')} <b style={{ color: s.pnl_c >= 0 ? 'var(--success)' : 'var(--error)' }}>{s.pnl_c >= 0 ? '+' : ''}{cc(s.pnl_c)}</b> <span style={{ color: 'var(--accent-primary)' }}>{tr('prediction.ptTagTiming')}</span></div>
@@ -1643,12 +1675,22 @@ function PriceTrack() {
                     )}
                   </>);
                 })()}
+                {/* in-play entry line — the SECOND stream, on the same trajectory (三视图统一):
+                    盘中 <side> <milestone> · buy entry¢ → sell/settle · realised¢ (per-contract). */}
+                {m.inplay && (() => {
+                  const ip = m.inplay; const ix = ip.exit; const rc = ip.realized_pnl_cents;
+                  return (
+                    <div style={{ color: 'var(--accent-primary)' }}>{tr('prediction.ptInplay')}: <b style={{ color: 'var(--text-primary)' }}>{CN(ip.pick_team)}</b> {ip.milestone} · {tr('prediction.ptBuy')} <b>{cc(ip.entry_cents)}</b> → {ix
+                      ? <>{tr('prediction.ptSell')} <b>{ix.sold_min}′ {Math.round(ix.sold_c)}¢</b></>
+                      : <>{tr('prediction.lblSettle')} <b>{cc(ip.won ? 100 : 0)}</b></>} · {tr('prediction.lblRealized')} <b style={{ color: rc >= 0 ? 'var(--success)' : 'var(--error)' }}>{rc >= 0 ? '+' : ''}{cc(rc)}</b></div>
+                  );
+                })()}
                 {/* argmax reference line */}
                 {b.argmax && (() => {
                   const a = b.argmax; const am = a.mtm;
                   const aColor = am ? (am.pnl_c > 0 ? 'var(--success)' : am.pnl_c < 0 ? 'var(--error)' : 'var(--text-muted)') : 'var(--text-muted)';
                   return (
-                    <div style={{ color: 'var(--text-muted)' }}>{tr('prediction.argmaxShort')}: <b>{tCountry(a.pick_team)}</b>{am && <> · {cc(am.entry_c)} → {cc(am.ft_c)} · <span style={{ color: aColor }}>{am.pnl_c >= 0 ? '+' : ''}{cc(am.pnl_c)}</span></>}</div>
+                    <div style={{ color: 'var(--text-muted)' }}>{tr('prediction.argmaxShort')}: <b>{CN(a.pick_team)}</b>{am && <> · {cc(am.entry_c)} → {cc(am.ft_c)} · <span style={{ color: aColor }}>{am.pnl_c >= 0 ? '+' : ''}{cc(am.pnl_c)}</span></>}</div>
                   );
                 })()}
               </div>
@@ -1656,8 +1698,9 @@ function PriceTrack() {
                 cols={[tr('prediction.colMilestone'), tr('prediction.colScore'), `${sideName.home}¢`, `${sideName.draw}¢`, `${sideName.away}¢`]}
                 rows={(m.marks ?? []).map((mk: any) => {
                   const hl = (side: string) => ({ fontWeight: b.side === side ? 700 : 400, color: b.side === side ? 'var(--text-primary)' : 'var(--ink)' });
+                  const ipHere = m.inplay && mk.milestone === m.inplay.milestone;   // ◆ = 盘中入场 here
                   return [
-                    <b>{mk.milestone}</b>, mk.score,
+                    <b>{mk.milestone}{ipHere ? <span style={{ color: 'var(--accent-primary)' }}> ◆</span> : null}</b>, mk.score,
                     <span style={hl('home')}>{cc(mk.poly_c?.home)}</span>,
                     <span style={hl('draw')}>{cc(mk.poly_c?.draw)}</span>,
                     <span style={hl('away')}>{cc(mk.poly_c?.away)}</span>,
@@ -1714,11 +1757,22 @@ function MicroFootballSim() {
   const { t: tr, i18n } = useTranslation();
   const { data, loading, error } = useApi<any>(() => getWCMicrofootball(), []);
   const { data: schedData } = useApi<any>(() => getWCSchedule(), []);
+  const { data: dfmData } = useApi<any>(() => getWCDfm(), []);
   const [mIdx, setMIdx] = useState(0);
   const [sIdx, setSIdx] = useState(0);
   const [viz, setViz] = useState<'gif' | 'canvas'>('gif');
+  const [dfmMode, setDfmMode] = useState<'real_anchored' | 'engine_faithful'>('real_anchored');
   const [aiAgg, setAiAgg] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
   const [aiSim, setAiSim] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
+  // Cross-artifact focus: if we arrived by clicking a country elsewhere, open the matchup
+  // that team plays in (so the scroll/highlight lands, not a random default matchup).
+  const focus = usePredictionFocus();
+  useEffect(() => {
+    if (!focus.country) return;
+    const mus: any[] = data?.matchups ?? [];
+    const i = mus.findIndex((mm) => countryKey(mm.home_name) === focus.country || countryKey(mm.away_name) === focus.country);
+    if (i >= 0) { setMIdx(i); setSIdx(0); }
+  }, [focus.country, focus.nonce, data]);
   if (loading) return <Loading />;
   if (error) return <ErrorBox e={error} />;
   const matchups: any[] = data?.matchups ?? [];
@@ -1726,7 +1780,10 @@ function MicroFootballSim() {
   const m = matchups[Math.min(mIdx, matchups.length - 1)];
   const sims: any[] = m.sims ?? [];
   const sim = sims[Math.min(sIdx, sims.length - 1)];
-  const H = tCountry(m.home_name), A = tCountry(m.away_name);
+  // Hs/As = plain strings (titles, canvas props, table headers). H/A = clickable nodes
+  // (the cross-artifact country navigator) used in the display rows below.
+  const Hs = tCountry(m.home_name), As = tCountry(m.away_name);
+  const H = CN(m.home_name), A = CN(m.away_name);
   const a = m.aggregate;
 
   const tab = (active: boolean, onClick: () => void, label: ReactNode, key: string) => (
@@ -1769,9 +1826,9 @@ function MicroFootballSim() {
         <div style={{ fontSize: 11, fontWeight: 700, ...mono, marginBottom: 6, color: 'var(--text-primary)' }}>{tr('prediction.mfAggregate')} · {m.n_sims} {tr('prediction.mfSims')}</div>
         {/* W/D/L distribution bar */}
         <div style={{ display: 'flex', height: 18, borderRadius: 3, overflow: 'hidden', fontSize: 9, ...mono, marginBottom: 6 }}>
-          <div title={`${H} ${a.record.home_wins}`} style={{ width: `${a.win_pct.home * 100}%`, background: '#3b82f6', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{a.record.home_wins}</div>
+          <div title={`${Hs} ${a.record.home_wins}`} style={{ width: `${a.win_pct.home * 100}%`, background: '#3b82f6', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{a.record.home_wins}</div>
           <div title={`draw ${a.record.draws}`} style={{ width: `${a.win_pct.draw * 100}%`, background: 'var(--text-muted)', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{a.record.draws}</div>
-          <div title={`${A} ${a.record.away_wins}`} style={{ width: `${a.win_pct.away * 100}%`, background: '#ef4444', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{a.record.away_wins}</div>
+          <div title={`${As} ${a.record.away_wins}`} style={{ width: `${a.win_pct.away * 100}%`, background: '#ef4444', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{a.record.away_wins}</div>
         </div>
         <KV rows={[
           [tr('prediction.mfWinPct'), <span style={mono}>{H} {pct(a.win_pct.home, 0)} · {tr('prediction.drawResult')} {pct(a.win_pct.draw, 0)} · {A} {pct(a.win_pct.away, 0)}</span>],
@@ -1782,6 +1839,56 @@ function MicroFootballSim() {
         ]} />
         <AiResult state={aiAgg} onRun={runAgg} label={tr('prediction.mfAiAnalyze')} />
       </div>
+
+      {/* DFM amplification panel — the diffusion model's 5000-sample distribution for this
+          matchup (dfm/football production snapshot). Two views of the same samples:
+          real_anchored (tournament-level intensity calibration, for real-match prediction)
+          and engine_faithful (the sims' own distribution, amplified). */}
+      {(() => {
+        const d = dfmData?.matchups?.[m.id];
+        if (!d) return null;
+        const mode = d[dfmMode] ?? d.real_anchored;
+        const st = (ch: string) => mode.stats?.[ch];
+        const q = (ch: string, mul = 1, fix = 1, suffix = '') => {
+          const s = st(ch);
+          if (!s) return ['—', '—'];
+          return [s.home, s.away].map((x: any) =>
+            `${(x.p50 * mul).toFixed(fix)}${suffix} [${(x.p5 * mul).toFixed(fix)}–${(x.p95 * mul).toFixed(fix)}]`);
+        };
+        const [posH, posA] = q('poss_share', 100, 0, '%');
+        const [shH, shA] = q('shots', 1, 0);
+        const [coH, coA] = q('corners', 1, 0);
+        const [xgH, xgA] = q('xg', 1, 1);
+        return (
+          <div className="card" style={{ marginBottom: 12, padding: '8px 10px' }}>
+            <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, ...mono, color: 'var(--text-primary)' }}>
+                {tr('prediction.dfmTitle')} · {d.n_samples} ({tr('prediction.dfmFromSims', { n: d.n_source_sims })})
+              </span>
+              <span>
+                {tab(dfmMode === 'real_anchored', () => setDfmMode('real_anchored'), tr('prediction.dfmModeAnchored'), 'dfm-ra')}
+                {tab(dfmMode === 'engine_faithful', () => setDfmMode('engine_faithful'), tr('prediction.dfmModeEngine'), 'dfm-ef')}
+              </span>
+            </div>
+            <div style={{ display: 'flex', height: 18, borderRadius: 3, overflow: 'hidden', fontSize: 9, ...mono, marginBottom: 6 }}>
+              <div title={Hs} style={{ width: `${mode.wdl.home * 100}%`, background: '#3b82f6', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{pct(mode.wdl.home, 0)}</div>
+              <div title="draw" style={{ width: `${mode.wdl.draw * 100}%`, background: 'var(--text-muted)', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{pct(mode.wdl.draw, 0)}</div>
+              <div title={As} style={{ width: `${mode.wdl.away * 100}%`, background: '#ef4444', color: '#fff', textAlign: 'center', lineHeight: '18px' }}>{pct(mode.wdl.away, 0)}</div>
+            </div>
+            <KV rows={[
+              [tr('prediction.mfWinPct'), <span style={mono}>{H} {pct(mode.wdl.home, 1)} · {tr('prediction.drawResult')} {pct(mode.wdl.draw, 1)} · {A} {pct(mode.wdl.away, 1)}</span>],
+              [tr('prediction.mfAvgScore'), <span style={mono}>{H} {mode.avg_goals?.replace('-', ' – ')} {A}</span>],
+              [tr('prediction.mfScoreDist'), <span style={mono}>{(mode.scoreline_top10 || []).slice(0, 6).map((l: any) => `${l.score} (${Math.round(l.pct * 100)}%)`).join('　')}</span>],
+              [tr('prediction.mfPossession'), <span style={mono}>{H} {posH} · {A} {posA}</span>],
+              [tr('prediction.mfShots'), <span style={mono}>{H} {shH} · {A} {shA}</span>],
+              [tr('prediction.dfmCorners'), <span style={mono}>{H} {coH} · {A} {coA}</span>],
+              [tr('prediction.mfXg'), <span style={mono}>{H} {xgH} · {A} {xgA}</span>],
+              [tr('prediction.dfmCards'), <span style={mono}>🟨 {mode.cards_per_match?.yellow} · 🟥 {mode.cards_per_match?.red}</span>],
+            ]} />
+            <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.dfmNote')} · {d.ts}</div>
+          </div>
+        );
+      })()}
 
       {/* sim selector */}
       <div style={{ marginBottom: 6 }}>
@@ -1798,9 +1905,9 @@ function MicroFootballSim() {
           <div style={{ textAlign: 'center', marginBottom: 6 }}>
             {viz === 'gif'
               ? <img src={`${API_BASE}${sim.gif_url}`} alt="replay" width={300} style={{ borderRadius: 4, display: 'inline-block', maxWidth: '100%' }} />
-              : <TrajectoryPlayer src={`${API_BASE}${sim.traj_url}`} homeName={H} awayName={A} />}
+              : <TrajectoryPlayer src={`${API_BASE}${sim.traj_url}`} homeName={Hs} awayName={As} />}
           </div>
-          <DataTable cols={['', H, A]} rows={simRows} />
+          <DataTable cols={['', Hs, As]} rows={simRows} />
           {sim.summary && <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>{sim.summary.replace(/\s*\d+\s*拍\s*\/\s*/, '')}</div>}
           <AiResult state={aiSim} onRun={runSim} label={tr('prediction.mfAiAnalyzeSim')} />
         </div>
@@ -1840,21 +1947,29 @@ const KEY_BY_TYPE: Record<string, string> = Object.fromEntries(PREDICTION_ITEMS.
 // title row (top, right-aligned), matching the stock-mode viewers' header-row selector.
 const ADVANCE_SELECTOR_TYPES = new Set(['wc_match_pricing', 'wc_divergence', 'wc_inplay', 'wc_predictions']);
 
-export default function PredictionArtifact({ type }: { type: string }) {
+export default function PredictionArtifact({ type, params }: { type: string; params?: any }) {
   const { t } = useTranslation();
+  // Cross-artifact country focus (set when the user clicks a country in another artifact).
+  const focusCountry: string | null = params?.focusCountry ?? null;
+  const focusNonce: number = params?.focusNonce ?? 0;
+  const containerRef = useRef<HTMLDivElement>(null);
+  useCountryFocusScroll(containerRef, focusCountry, focusNonce);
+
   const View = REGISTRY[type];
   if (!View) return <div className="text-xs py-3" style={{ color: 'var(--text-muted)', ...mono }}>Unknown artifact: {type}</div>;
   const key = KEY_BY_TYPE[type];
   return (
-    <div>
-      {key && (
-        <div className="flex items-center justify-between" style={{ marginBottom: 6, minHeight: 22 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono }}>{t(`prediction.${key}`)}</div>
-          {ADVANCE_SELECTOR_TYPES.has(type) && <AdvanceModeToggle />}
-        </div>
-      )}
-      <View />
-    </div>
+    <PredictionFocusContext.Provider value={{ country: focusCountry, nonce: focusNonce, selfType: type }}>
+      <div ref={containerRef}>
+        {key && (
+          <div className="flex items-center justify-between" style={{ marginBottom: 6, minHeight: 22 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono }}>{t(`prediction.${key}`)}</div>
+            {ADVANCE_SELECTOR_TYPES.has(type) && <AdvanceModeToggle />}
+          </div>
+        )}
+        <View />
+      </div>
+    </PredictionFocusContext.Provider>
   );
 }
 

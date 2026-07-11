@@ -584,8 +584,15 @@
       "draw": "Draw",
       "away": "Away",
       "under": "Under",
-      "over": "Over"
+      "over": "Over",
+      "corner_under": "Corner U",
+      "corner_over": "Corner O"
     },
+    "countryAppearsIn": "Appears in",
+    "countryNoOther": "No other views",
+    "countryNavHint": "See where this country appears in other views",
+    "wcRound": { "advance": "R32", "r16": "R16", "qf": "QF", "sf": "SF", "final": "Final" },
+    "wcStatus": { "reached": "Reached {{round}}", "out": "Out in {{round}}", "outGroup": "Out (group stage)", "group": "Group stage" },
     "action": {
       "BUY": "Buy",
       "SELL": "Sell",
@@ -625,7 +632,8 @@
       "late_goal_hold": "hold UNDER {{line}} cautiously: {{min}}' but {{exp}} goals still expected (late-goal-rich)",
       "odds_crossval_lead": "{{side}}: live book {{book}} moved above model {{model}} — sharp money leading, watch for entry",
       "odds_crossval_venue": "{{side}}: book {{book}} & model {{model}} both > venue {{venue}} — sharp book confirms, venue lagging",
-      "overshoot_lock": "if holding {{side}}: market {{mkt}} over-reacted above live fair {{fair}} — SELL to lock the overshoot"
+      "overshoot_lock": "if holding {{side}}: market {{mkt}} over-reacted above live fair {{fair}} — SELL to lock the overshoot",
+      "corner_value": "corners {{corners}} at {{min}}′ — {{side}} {{line}}+ fair {{fair}} vs ask {{ask}} (edge {{edge}})"
     },
     "noOpps": "No actionable signal this minute — model view only.",
     "backtest": "Backtest (OOS)",
@@ -807,6 +815,14 @@
     "modeArgmax": "Argmax (pick only)",
     "colExit": "Exit",
     "colRealizedC": "Realized¢",
+    "colInplay": "In-play¢",
+    "colPreCum": "Pre Cum¢",
+    "colInplayBet": "Live bet",
+    "colInplayExit": "Live exit",
+    "colInplayEntryC": "Live entry¢",
+    "colInplayRealized": "Live real¢",
+    "colInplayCum": "Live Cum¢",
+    "colCombinedCum": "Σ Cum¢",
     "exitSettleWon": "settled W",
     "exitSettleLost": "settled L",
     "noteCashout": "Realized = the decision model backs the most-underpriced side (sized $0.2–$2 by confidence) and CASHES OUT when the market over-reacts above live fair. The Exit column shows when/at what ¢ we sold, or settled W/L; ¢ is the realized result. Avg entry {{entry}}¢ · avg CLV {{clv}}¢.",
@@ -814,6 +830,8 @@
     "noteArgmax": "Argmax = bet the single most-likely side every match (the old naive rule). Full-sample reference, not our betting strategy.",
     "ptBet": "Bet",
     "ptSingle": "single side",
+    "betKindArgmax": "fav",
+    "ptInplay": "Live",
     "ptBuy": "Buy",
     "ptSell": "Sell",
     "ptIfHeld": "if held to settle",
@@ -875,7 +893,14 @@
     },
     "advisory": "advisory",
     "kickingOff": "Kicking off",
-    "kickoffWaiting": "awaiting feed"
+    "kickoffWaiting": "awaiting feed",
+    "dfmTitle": "DFM diffusion amplification",
+    "dfmFromSims": "from {{n}} sims",
+    "dfmModeAnchored": "real-anchored",
+    "dfmModeEngine": "engine-faithful",
+    "dfmCorners": "Corners (p50 [p5–p95])",
+    "dfmCards": "Cards / match",
+    "dfmNote": "5000 diffusion-generated matches; median [5–95%] intervals; real-anchored = intensities calibrated to real-tournament level"
   },
   "sidebar": {
     "appName": "Someo Park",

@@ -71,6 +71,12 @@ class PerformanceReport:
     n_smart_sold: int = 0                # bets where the smart-exit cashed out the over-reaction
     hold_record: str = ""                # the hold-to-FT W-L (reference)
     hold_pnl_cents_total: float = 0.0    # hold-to-FT ¢ P&L (reference)
+    # IN-PLAY ENTRY 口径 — the causal relative-value entry (frozen), a SECOND P&L stream that
+    # trades matches the pre-match model skipped. Combined = smart-exit realised + in-play.
+    inplay_record: str = ""              # in-play entry W-L
+    inplay_pnl_cents_total: float = 0.0  # ¢ P&L from the in-play entries (flat $1)
+    n_inplay: int = 0                    # matches with a tradable in-play entry
+    combined_pnl_cents_total: float = 0.0  # smart-exit realised + in-play entry (the one cum)
 
 
 def _settled(conn, sm=None):
@@ -282,15 +288,19 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
         d = decide(model, quotes, calib_confidence=calib_confidence, form=form, gate_open=gate_open,
                    conviction_side=(motiv or {}).get("conviction_side"))
         if d.side is not None:
-            pick, bet, stake, conf_k = d.side, True, d.stake_usd, d.confidence_k
+            # VALUE bet: a tradable edge → the most-underpriced side, confidence-sized [$0.2,$2].
+            pick, bet, stake, conf_k, bet_kind = d.side, True, d.stake_usd, d.confidence_k, "value"
             cost = max((d.price_cents or 0.0) / 100.0, 1e-6)   # real entry ask we'd pay
             edge_val, model_prob = d.net_edge, round(model[pick], 4)
         else:
-            pick, bet, stake, conf_k = model_pick, False, 0.0, d.confidence_k
+            # HYBRID (no tradable edge): instead of skipping, bet the model ARGMAX (most-likely
+            # side) at the flat base stake ($1), sized through the SAME contract calc. Turns the
+            # previously-skipped matches into argmax bets — bet where we have edge, else favourite.
+            pick, bet, stake, conf_k, bet_kind = model_pick, True, base_stake, d.confidence_k, "argmax"
             cost, edge_val, model_prob = max(price[model_pick], 1e-6), edges[model_pick], round(model[model_pick], 4)
     else:
         # legacy (no venue quotes): bet the model argmax at the book price.
-        pick, bet, stake, conf_k = model_pick, True, base_stake, None
+        pick, bet, stake, conf_k, bet_kind = model_pick, True, base_stake, None, "argmax"
         cost, edge_val, model_prob = max(price[pick], 1e-6), edges[pick], round(model[pick], 4)
 
     return {"stage": stage, "pick": pick, "model_pick": model_pick, "result": result,
@@ -299,7 +309,7 @@ def match_pick(sm, cal, hi: str, ai: str, fx_row, book_row=None, *, conn=None,
             # prediction口径 the accuracy track uses (2-way for KO, 3-way for group).
             "advance": advance, "pred_pick": pred_pick, "pred_result": pred_result,
             "pred_won": pred_won,
-            "bet": bet, "stake_usd": round(stake, 2), "confidence_k": conf_k,
+            "bet": bet, "bet_kind": bet_kind, "stake_usd": round(stake, 2), "confidence_k": conf_k,
             "cost": cost, "model_prob": model_prob, "edge": round(edge_val, 4), "model": model,
             "motivation": motiv}
 
@@ -356,7 +366,11 @@ def _bet_log(conn) -> list[dict]:
         _FINISHED).fetchall()
 
     from prediction_market.strategy.decision_model import quotes_from_milestone_row
-    from prediction_market.util.pricing import to_cents, pnl_cents as _pnl_cents
+    from prediction_market.ops.settle_bets import frozen_pick, frozen_inplay
+    from prediction_market.util.pricing import to_cents, pnl_cents as _pnl_cents, sized_pnl_cents
+    base_stake = CONFIG.decision.base_stake_usd     # flat $1 sizing for the in-play entry stream
+    inplay_cum_c = 0.0; inplay_w = 0; inplay_n = 0  # in-play entry P&L stream
+    combined_cum_c = 0.0                            # smart-exit realised + in-play entry (one cum)
     log: list[dict] = []
     cum = 0.0
     staked = 0.0
@@ -378,13 +392,12 @@ def _bet_log(conn) -> list[dict]:
         hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
         if not (hi and ai):
             continue
-        # Shared DECISION (value/Kelly on the PRE venue quotes, PIT) — the SAME call the
-        # price-track uses with the SAME quotes, so the two views reconcile by construction.
+        # FROZEN DECISION (PIT strength + PIT calibration, computed once at settle) — read the
+        # ledger, never recompute, so the track record never mutates as later matches settle.
+        # The price-track reads the SAME frozen row → the two views reconcile by construction.
         pr = pre_px.get(r["api_id"])
         quotes = quotes_from_milestone_row(pr) if pr is not None else None
-        mr = match_pick(sm, cal, hi, ai, r, book.get(r["api_id"]),
-                        conn=conn, quotes=quotes, calib_confidence=calib_conf,
-                        gate_open=True, pit=True)
+        mr = frozen_pick(conn, r, hi, ai, quotes, book.get(r["api_id"]))
         if mr is None:
             continue   # knockout level after ET with no winner flag yet — can't settle
         knockout = mr["stage"] == "knockout"
@@ -462,9 +475,7 @@ def _bet_log(conn) -> list[dict]:
             # understated bets sized away from $1. (The argmax reference above deliberately stays
             # per-contract: it's a flat 1-contract benchmark, not a sized position.)
             c_pnl_unit = _pnl_cents(entry_cents, won)                       # per-contract ¢
-            contracts = (stake / (entry_cents / 100.0)) if entry_cents else 0.0
-            c_pnl = (round(contracts * c_pnl_unit, 1)
-                     if (entry_cents and c_pnl_unit is not None) else c_pnl_unit)
+            c_pnl = sized_pnl_cents(entry_cents, c_pnl_unit, stake)         # $-sized hold ¢ (shared fn)
             cum_c += (c_pnl or 0.0)
             sum_entry_c += (entry_cents or 0.0)
             cents_avail += ((100.0 - entry_cents) if won else entry_cents) if entry_cents is not None else 0.0
@@ -479,16 +490,15 @@ def _bet_log(conn) -> list[dict]:
                                                     r["api_id"], pick, entry_cents, hi, ai, r["round"], won)
             except Exception:
                 smart_exit = None
-            # Realised (cash-out) ¢ is also position-sized: per-contract cash-out move ×
-            # contract count. smart_exit["pnl_c"] is per-contract (sold_c − entry_c); when no
-            # cash-out fired it falls back to the held-to-settlement per-contract number.
+            # Realised = the SAME $-sizing (sized_pnl_cents) on the per-contract cash-out move
+            # (sold_c − entry_c) or the held-to-FT per-contract number when no cash-out fired.
             realized_unit = smart_exit["pnl_c"] if smart_exit else c_pnl_unit
-            realized_c = (round(contracts * realized_unit, 1)
-                          if (entry_cents and realized_unit is not None) else realized_unit)
+            realized_c = sized_pnl_cents(entry_cents, realized_unit, stake)   # $-sized realised ¢
             realized_cum_c += (realized_c or 0.0)
             realized_wins += int((realized_c or 0.0) > 0)
             n_smart_sold += int(bool(smart_exit))
             dec = {"pick": pick, "pick_team": side_label[pick], "won": won,
+                   "bet_kind": mr.get("bet_kind", "value"),   # value (edge) | argmax (no-edge fallback)
                    "stake_usd": round(stake, 2), "model_prob": model_prob,
                    "price": round(cost, 4), "dec_odds": round(dec_odds, 3),
                    "edge": round(edge_val, 4), "confidence_k": mr.get("confidence_k"),
@@ -506,9 +516,41 @@ def _bet_log(conn) -> list[dict]:
                    "pnl": None, "cum_pnl": None, "entry_cents": None, "entry_source": None,
                    "settle_cents": None, "pnl_cents": None, "cum_pnl_cents": None, "clv_cents": None}
 
+        # SECOND P&L stream: the frozen causal in-play entry (relative-value, PIT). The combined
+        # cumulative = smart-exit realised (this bet, if any) + in-play entry, so the two streams
+        # roll up into one column in the view.
+        ip = frozen_inplay(conn, r["api_id"])
+        inplay_c = None
+        ip_dec: dict = {"inplay_side": None}
+        if ip:
+            # SAME $-sizing function (sized_pnl_cents) as the pre-match bet, but EDGE-WEIGHTED:
+            # the frozen in-play entry carries its own stake_usd ($0.2–$2 by in-play edge, mirror
+            # of the pre-match envelope). 盘中离场 = the frozen in-play smart-exit; realised =
+            # cash-out or hold, per-contract, sized. Falls back to the flat base for old rows.
+            ip_stake = ip.get("stake_usd") or base_stake
+            inplay_c = sized_pnl_cents(ip["entry_cents"], ip["realized_pnl_cents"], ip_stake)
+            inplay_hold_c = sized_pnl_cents(ip["entry_cents"], ip["hold_pnl_cents"], ip_stake)
+            inplay_cum_c += (inplay_c or 0.0)
+            inplay_n += 1
+            inplay_w += int((inplay_c or 0.0) > 0)     # W = profitable realised (as pre-match realized)
+            ip_dec = {"inplay_milestone": ip["milestone"], "inplay_side": ip["side"],
+                      "inplay_side_team": side_label[ip["side"]], "inplay_entry_cents": ip["entry_cents"],
+                      "inplay_won": ip["won"], "inplay_edge": ip["edge"], "inplay_exit": ip.get("exit"),
+                      "inplay_stake_usd": round(ip_stake, 2),
+                      "inplay_hold_cents": inplay_hold_c, "inplay_pnl_cents": inplay_c}
+        realized_this = dec.get("realized_pnl_cents") or 0.0
+        combined_this = realized_this + (inplay_c or 0.0)
+        combined_cum_c += combined_this
+
         log.append({
             "stage": "knockout" if knockout else "group",
             "date": (r["kickoff_ts"] or "")[:10],
+            **ip_dec,
+            "combined_pnl_cents": round(combined_this, 1),
+            # three cumulatives: pre-match (smart-exit realised), in-play, and the combined total.
+            "pre_cum_pnl_cents": round(realized_cum_c, 1),
+            "inplay_cum_pnl_cents": round(inplay_cum_c, 1),
+            "combined_cum_pnl_cents": round(combined_cum_c, 1),
             "home": name.get(hi, hi), "away": name.get(ai, ai),
             "home_id": hi, "away_id": ai,
             "home_zh": zh.get(hi, ""), "away_zh": zh.get(ai, ""),
@@ -534,7 +576,11 @@ def _bet_log(conn) -> list[dict]:
                  "realized_pnl_cents_total": round(realized_cum_c, 1),
                  "realized_record": f"{realized_wins}W-{n_bets - realized_wins}L",
                  "n_smart_sold": n_smart_sold, "hold_pnl_cents_total": round(cum_c, 1),
-                 "hold_record": f"{wins}W-{n_bets - wins}L"}
+                 "hold_record": f"{wins}W-{n_bets - wins}L",
+                 # IN-PLAY ENTRY stream + the COMBINED cumulative (smart-exit + in-play).
+                 "inplay_pnl_cents_total": round(inplay_cum_c, 1),
+                 "inplay_record": f"{inplay_w}W-{inplay_n - inplay_w}L", "n_inplay": inplay_n,
+                 "combined_pnl_cents_total": round(combined_cum_c, 1)}
 
 
 def build(conn=None) -> PerformanceReport:
@@ -683,6 +729,10 @@ def build(conn=None) -> PerformanceReport:
         n_smart_sold=betmeta["n_smart_sold"],
         hold_record=betmeta["hold_record"],
         hold_pnl_cents_total=betmeta["hold_pnl_cents_total"],
+        inplay_record=betmeta["inplay_record"],
+        inplay_pnl_cents_total=betmeta["inplay_pnl_cents_total"],
+        n_inplay=betmeta["n_inplay"],
+        combined_pnl_cents_total=betmeta["combined_pnl_cents_total"],
     )
 
 
@@ -778,32 +828,48 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
             f"{rep.n_decision_bets} 注 · {rep.n_skipped} 跳过(无边际)",
             ps.body_style))
         story.append(Paragraph(
+            f"<b>盘中入场(相对价值,同一 $ 计算)</b> {rep.inplay_record} · 累计 {rep.inplay_pnl_cents_total:+.0f}¢ · "
+            f"{rep.n_inplay} 注 &nbsp;→&nbsp; <b>合计(实现 + 盘中)</b> {rep.combined_pnl_cents_total:+.0f}¢",
+            ps.body_style))
+        story.append(Paragraph(
             f"argmax 口径(参考) {rep.argmax_record} · 累计 {rep.argmax_pnl_cents_total:+.0f}¢/张 · "
             f"{len(rep.bet_log)} 场 · 准确率 {rep.model_pred_accuracy:+.0%}",
             ps.body_style))
         story.append(Paragraph(
             f"平均入场 {rep.avg_entry_cents:.0f}¢ · 价格空间捕获率 {rep.cents_capture_rate:+.0%} · 平均 CLV {rep.avg_clv_cents:+.0f}¢",
             ps.note_style))
+        # Pre-match stream (下注→赛前Cum) MIRRORED by the in-play stream (盘中下注→盘中Cum),
+        # both $-sized identically, then 合计Cum — the SAME layout as the frontend BetLog (三视图统一).
         data = [[ps.H("日期"), ps.H("对阵"), ps.H("下注边"), ps.H("金额", "RIGHT"), ps.H("离场"),
-                 ps.H("入场¢", "RIGHT"), ps.H("实现¢", "RIGHT"), ps.H("累计¢", "RIGHT"),
-                 ps.H("argmax(边·输赢·¢)")]]
+                 ps.H("入场¢", "RIGHT"), ps.H("实现¢", "RIGHT"), ps.H("赛前Cum", "RIGHT"),
+                 ps.H("盘中(边·离场·实现¢)"), ps.H("盘中Cum", "RIGHT"), ps.H("合计Cum", "RIGHT")]]
+
+        def _exit_txt(se, won):
+            if se:
+                return _col(se["pnl_c"], f'{se["sold_min"]}′卖{se["sold_c"]:.0f}¢')
+            return _col(1 if won else -1, "结算赢" if won else "结算输")
 
         for b in rep.bet_log:
             bet = b.get("bet", True)
             ec = f'{b["entry_cents"]:.0f}' if b.get("entry_cents") is not None else "—"
             se = b.get("smart_exit")
             rpc = b.get("realized_pnl_cents")
-            rcum = b.get("realized_cum_pnl_cents")
-            apc = b.get("argmax_pnl_cents")
-            am_res = _col(1 if b["model_won"] else -1, "赢" if b["model_won"] else "输")
-            am_txt = (f'{b["model_pick_team"]} {am_res}'
-                      + (f' {_col(apc, f"{apc:+.0f}")}' if apc is not None else ''))
+            pcum = b.get("pre_cum_pnl_cents")
             if not bet:
                 exit_txt = '<font color="#888">—</font>'
-            elif se:
-                exit_txt = _col(se["pnl_c"], f'{se["sold_min"]}′卖{se["sold_c"]:.0f}¢')
             else:
-                exit_txt = _col(1 if b["won"] else -1, "结算赢" if b["won"] else "结算输")
+                exit_txt = _exit_txt(se, b["won"])
+            # 盘中 stream: 边·离场·实现¢ folded into one cell (width), Cum kept separate.
+            if b.get("inplay_side"):
+                ip_res = _exit_txt(b.get("inplay_exit"), b.get("inplay_won"))
+                ipc = b.get("inplay_pnl_cents")
+                ip_txt = (f'{b.get("inplay_side_team")} {b.get("inplay_milestone")} · {ip_res}'
+                          + (f' · {_col(ipc, f"{ipc:+.0f}")}' if ipc is not None else ''))
+                ipcum = b.get("inplay_cum_pnl_cents")
+            else:
+                ip_txt = '<font color="#888">—</font>'
+                ipcum = b.get("inplay_cum_pnl_cents")
+            ccum = b.get("combined_cum_pnl_cents")
             data.append([
                 ps.C(b["date"][5:]),
                 ps.C(f'{b["home"]} {b["score"]} {b["away"]}'),
@@ -812,11 +878,13 @@ def build_pdf(rep: PerformanceReport, output_path: str, *, as_of: str = "") -> s
                 ps.C(exit_txt),
                 ps.C(ec if bet else "—", "RIGHT"),
                 ps.C(_col(rpc if rpc is not None else 0, f'{rpc:+.0f}') if (bet and rpc is not None) else "—", "RIGHT"),
-                ps.C(_col(rcum if rcum is not None else 0, f'{rcum:+.0f}') if (bet and rcum is not None) else "—", "RIGHT"),
-                ps.C(am_txt),
+                ps.C(_col(pcum if pcum is not None else 0, f'{pcum:+.0f}') if pcum is not None else "—", "RIGHT"),
+                ps.C(ip_txt),
+                ps.C(_col(ipcum if ipcum is not None else 0, f'{ipcum:+.0f}') if ipcum is not None else "—", "RIGHT"),
+                ps.C(_col(ccum if ccum is not None else 0, f'{ccum:+.0f}') if ccum is not None else "—", "RIGHT"),
             ])
-        story.append(ps.make_table(data, [1.4 * cm, 4.0 * cm, 1.9 * cm, 1.2 * cm, 2.0 * cm,
-                                          1.2 * cm, 1.2 * cm, 1.2 * cm, 3.0 * cm]))
+        story.append(ps.make_table(data, [1.15 * cm, 3.0 * cm, 1.5 * cm, 1.0 * cm, 1.7 * cm,
+                                          1.0 * cm, 1.0 * cm, 1.1 * cm, 3.2 * cm, 1.1 * cm, 1.1 * cm]))
 
     # 八、校准 P&L(纸面,公允赔率诊断)
     ps.section(story, "八、校准 P&L(纸面,按公允赔率下注模型选边 — 过度/不足自信诊断)")

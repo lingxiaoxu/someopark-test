@@ -245,8 +245,15 @@
       "draw": "Nul",
       "away": "Ext.",
       "under": "Moins",
-      "over": "Plus"
+      "over": "Plus",
+      "corner_under": "Corner -",
+      "corner_over": "Corner +"
     },
+    "countryAppearsIn": "Apparaît dans",
+    "countryNoOther": "Aucune autre vue",
+    "countryNavHint": "Voir où ce pays apparaît dans les autres vues",
+    "wcRound": { "advance": "Top 32", "r16": "Top 16", "qf": "Quarts", "sf": "Demies", "final": "Finale" },
+    "wcStatus": { "reached": "Atteint {{round}}", "out": "Éliminé en {{round}}", "outGroup": "Éliminé (groupes)", "group": "Phase de groupes" },
     "action": {
       "BUY": "Acheter",
       "SELL": "Vendre",
@@ -286,7 +293,8 @@
       "late_goal_hold": "tenir UNDER {{line}} prudemment : {{min}}' mais {{exp}} buts encore attendus (buts tardifs fréquents)",
       "odds_crossval_lead": "{{side}} : la cote live {{book}} dépasse le modèle {{model}} — l'argent avisé mène, surveiller l'entrée",
       "odds_crossval_venue": "{{side}} : cote {{book}} et modèle {{model}} > plateforme {{venue}} — la cote confirme, la plateforme retarde",
-      "overshoot_lock": "si position {{side}} : marché {{mkt}} a sur-réagi au-dessus de la juste valeur live {{fair}} — VENDRE pour verrouiller"
+      "overshoot_lock": "si position {{side}} : marché {{mkt}} a sur-réagi au-dessus de la juste valeur live {{fair}} — VENDRE pour verrouiller",
+      "corner_value": "corners {{corners}} à {{min}}′ — {{side}} {{line}}+ juste {{fair}} vs cote {{ask}} (marge {{edge}})"
     },
     "noOpps": "Aucun signal exploitable cette minute — vue modèle seulement.",
     "backtest": "Backtest (OOS)",
@@ -460,6 +468,14 @@
     "modeArgmax": "Argmax (choix seul)",
     "colExit": "Sortie",
     "colRealizedC": "Réalisé¢",
+    "colInplay": "Live¢",
+    "colPreCum": "Pré Cum¢",
+    "colInplayBet": "Pari live",
+    "colInplayExit": "Sortie live",
+    "colInplayEntryC": "Entrée live¢",
+    "colInplayRealized": "Réal live¢",
+    "colInplayCum": "Live Cum¢",
+    "colCombinedCum": "Σ Cum¢",
     "exitSettleWon": "réglé G",
     "exitSettleLost": "réglé P",
     "noteCashout": "Réalisé = le modèle mise sur le côté le plus sous-évalué ($0,2–$2 selon confiance) et ENCAISSE quand le marché sur-réagit au-dessus de la juste valeur live. La colonne Sortie montre quand/à quel ¢ on a vendu, ou réglé G/P. Entrée moy. {{entry}}¢ · CLV moy. {{clv}}¢.",
@@ -467,6 +483,8 @@
     "noteArgmax": "Argmax = miser sur le côté le plus probable à chaque match (ancienne règle). Référence, pas notre stratégie.",
     "ptBet": "Pari",
     "ptSingle": "côté unique",
+    "betKindArgmax": "favori",
+    "ptInplay": "Live",
     "ptBuy": "Achat",
     "ptSell": "Vente",
     "ptIfHeld": "si tenu au règlement",
@@ -528,7 +546,14 @@
     },
     "advisory": "indicatif",
     "kickingOff": "Coup d'envoi",
-    "kickoffWaiting": "en attente du flux"
+    "kickoffWaiting": "en attente du flux",
+    "dfmTitle": "Amplification par diffusion DFM",
+    "dfmFromSims": "depuis {{n}} sims",
+    "dfmModeAnchored": "ancré réel",
+    "dfmModeEngine": "fidèle moteur",
+    "dfmCorners": "Corners (p50 [p5–p95])",
+    "dfmCards": "Cartons / match",
+    "dfmNote": "5000 matchs générés par diffusion ; médiane [5–95%] ; ancré réel = intensités calibrées au niveau réel du tournoi"
   },
   "sidebar": {
     "appName": "Someo Park",

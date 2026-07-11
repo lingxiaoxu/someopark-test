@@ -328,11 +328,14 @@ class DecisionConfig:
     form_ref: float = 1.0         # form z that saturates the form component
 
     # Base net-edge threshold for the PRE-MATCH decision (separate from the in-play
-    # risk.min_net_edge=0.03). Lowered to 0.02 because the smart-exit cash-out PROTECTS
-    # marginal bets (sell the over-reaction before a settlement loss) — so we don't need
-    # as much pre-match edge. PIT-validated (ops threshold sweep): 0.03→0.02 cut no-bets
-    # 9→5 and lifted realised PnL +302→+448¢ (ROI 16.8→20.4%), robust across 0.02–0.01.
-    min_net_edge: float = 0.02
+    # risk.min_net_edge=0.03). Set low because the smart-exit cash-out PROTECTS marginal
+    # bets (sell the over-reaction before a settlement loss) — so we don't need as much
+    # pre-match edge. PIT threshold sweep (frozen-ledger, no look-ahead, 98 settled):
+    # realised PnL peaks at 0.01 — 0.02→0.01 cuts no-bets 23→18 and lifts realised
+    # +1080→+1140¢; below 0.01 it flattens/declines. NOTE: the added marginal bets are
+    # hold-to-FT LOSERS (hold PnL 366→-72¢) rescued only by the smart-exit — the extra
+    # profit is exit-driven, not accuracy-driven (win rate dips 49→47.5%).
+    min_net_edge: float = 0.01
     # Favourite–longshot bias: longshots are systematically overpriced (arXiv 1710.02824),
     # so a sub-threshold-cents pick must clear EXTRA edge (or it's skipped).
     longshot_cents: float = 15.0

@@ -99,12 +99,14 @@ def build(conn=None) -> dict:
         # book-independent, so we get the identical pick without bookmaker odds. match_pick
         # returns None only when the score isn't final yet → fall back to the plain argmax
         # pick (live / undecided), with no MTM.
-        from prediction_market.ops.performance_report import _pit_strength, match_pick
+        from prediction_market.ops.performance_report import _pit_strength
+        from prediction_market.ops.settle_bets import frozen_inplay, frozen_pick
         from prediction_market.strategy.decision_model import quotes_from_milestone_row
         pre_row = next((r for r in rows if r["milestone"] == "PRE"), None)
         quotes = quotes_from_milestone_row(pre_row) if pre_row is not None else None
-        mr = match_pick(sm, cal, hi, ai, fx, None, conn=conn, quotes=quotes,
-                        calib_confidence=calib_conf, gate_open=True, pit=True) if settled else None
+        # FROZEN decision (PIT strength + PIT calibration, computed once at settle) — read the
+        # ledger, never recompute, so PriceTrack never mutates as later matches settle.
+        mr = frozen_pick(conn, fx, hi, ai, quotes, None) if settled else None
         bet = bool(mr and mr["bet"])
         if mr is not None:
             # The decision side (value pick) when we bet; else the model argmax for display.
@@ -193,6 +195,13 @@ def build(conn=None) -> dict:
             except Exception:
                 smart_exit = None
 
+        # FROZEN causal in-play entry (relative-value, PIT) — the SECOND P&L stream, surfaced on
+        # the SAME price trajectory so PriceTrack reconciles with the accuracy/PnL views
+        # (三视图统一). Its `milestone` marks WHERE on the PRE→FT path we entered, `exit` is its
+        # own 盘中离场 smart-exit. Per-contract ¢ (the price-track unit); the report $-sizes it.
+        ip = frozen_inplay(conn, fid) if settled else None
+        inplay = ({**ip, "pick_team": side_label[ip["side"]]} if ip else None)
+
         matches.append({
             "fixture_id": fid,
             "home": {"id": hi, "name": name.get(hi, hi), "zh": zh.get(hi, "")},
@@ -208,6 +217,7 @@ def build(conn=None) -> dict:
             "our_bet": our_bet,
             "mtm": mtm,
             "smart_exit": smart_exit,
+            "inplay": inplay,
             "marks": marks,
         })
 

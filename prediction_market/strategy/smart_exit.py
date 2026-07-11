@@ -42,7 +42,7 @@ def _match_minute(rel_min: int) -> int:
 
 
 def smart_exit_cashout(conn, sm, fid, pick, entry_c, hi, ai, round_name, won,
-                       *, margin: float = OVERSHOOT_MARGIN):
+                       *, margin: float = OVERSHOOT_MARGIN, entry_min: int = 0):
     """Return {sold_min, sold_c, pnl_c, vs_hold_c} for a settled pick, or None if no price
     ticks / the overshoot never triggered (then the bet is simply held to FT).
 
@@ -57,9 +57,11 @@ def smart_exit_cashout(conn, sm, fid, pick, entry_c, hi, ai, round_name, won,
     raw = conn.execute(
         "SELECT rel_min, price FROM price_tick WHERE fixture_api_id=? AND side=? AND rel_min BETWEEN 1 AND ? "
         "ORDER BY ts", (fid, pick, _SCAN_MAX_RELMIN)).fetchall()
-    # Map each tick to its match minute and keep only the regulation window (≤ 95 match-min).
+    # Map each tick to its match minute and keep only the post-entry regulation window
+    # (≤ 95 match-min). entry_min > 0 for an IN-PLAY entry → only exit on overshoots AFTER
+    # we entered (a pre-match entry uses entry_min=0 → the whole match).
     ticks = [(_match_minute(r["rel_min"]), r["price"]) for r in raw]
-    ticks = [(mn, px) for (mn, px) in ticks if 1 <= mn <= _REG_MAX_MATCH_MIN]
+    ticks = [(mn, px) for (mn, px) in ticks if max(1, entry_min) <= mn <= _REG_MAX_MATCH_MIN]
     if len(ticks) < 10:
         return None
     from prediction_market.model.inplay import live_match_prob

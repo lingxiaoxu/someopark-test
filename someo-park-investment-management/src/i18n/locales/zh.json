@@ -263,8 +263,15 @@
       "draw": "平",
       "away": "客",
       "under": "小球",
-      "over": "大球"
+      "over": "大球",
+      "corner_under": "角球小球",
+      "corner_over": "角球大球"
     },
+    "countryAppearsIn": "出现在这些视图",
+    "countryNoOther": "暂无其他视图",
+    "countryNavHint": "查看该国家在其他视图中的位置",
+    "wcRound": { "advance": "32强", "r16": "16强", "qf": "8强", "sf": "4强", "final": "决赛" },
+    "wcStatus": { "reached": "已晋级{{round}}", "out": "止步{{round}}", "outGroup": "小组赛淘汰", "group": "小组赛" },
     "action": {
       "BUY": "买入",
       "SELL": "卖出",
@@ -304,7 +311,8 @@
       "late_goal_hold": "谨慎持有 UNDER {{line}}：{{min}}′ 仍预期 {{exp}} 球(晚段进球高发)",
       "odds_crossval_lead": "{{side}}：实时庄家盘 {{book}} 高于模型 {{model}} — 聪明钱领先,留意入场",
       "odds_crossval_venue": "{{side}}：庄家 {{book}} 与模型 {{model}} 均 > 交易所 {{venue}} — 庄家确认,交易所滞后",
-      "overshoot_lock": "若持有 {{side}}:市场 {{mkt}} 超调、高于实时公允价 {{fair}} — 卖出锁定过度反应"
+      "overshoot_lock": "若持有 {{side}}:市场 {{mkt}} 超调、高于实时公允价 {{fair}} — 卖出锁定过度反应",
+      "corner_value": "角球 {{corners}} 个 · {{min}}′ — {{side}} {{line}}+ 模型 {{fair}} vs 报价 {{ask}}（edge {{edge}}）"
     },
     "noOpps": "本分钟无可执行信号 — 仅模型视图。",
     "backtest": "回测(OOS)",
@@ -486,6 +494,14 @@
     "modeArgmax": "argmax 只选边",
     "colExit": "离场",
     "colRealizedC": "实现¢",
+    "colInplay": "盘中入场¢",
+    "colPreCum": "赛前Cum¢",
+    "colInplayBet": "盘中下注",
+    "colInplayExit": "盘中离场",
+    "colInplayEntryC": "盘中入场¢",
+    "colInplayRealized": "盘中实现¢",
+    "colInplayCum": "盘中Cum¢",
+    "colCombinedCum": "合计Cum¢",
     "exitSettleWon": "结算 赢",
     "exitSettleLost": "结算 输",
     "noteCashout": "实现口径 = 决策模型选「最被低估」的一边(按置信度 $0.2–$2 定额),并在市场超调高于实时公允价时现金出离场。「离场」列显示卖出时刻/价格,或结算赢/输;¢ 为实现盈亏。平均入场 {{entry}}¢ · 平均 CLV {{clv}}¢。",
@@ -493,6 +509,8 @@
     "noteArgmax": "argmax 口径 = 每场都押模型概率最高的一边(旧的天真规则)。全样本对照,不是我们的下注策略。",
     "ptBet": "下注",
     "ptSingle": "单边",
+    "betKindArgmax": "热门",
+    "ptInplay": "盘中",
     "ptBuy": "买",
     "ptSell": "卖",
     "ptIfHeld": "若持有到结算",
@@ -554,7 +572,14 @@
     },
     "advisory": "仅参考",
     "kickingOff": "即将开球",
-    "kickoffWaiting": "等待数据"
+    "kickoffWaiting": "等待数据",
+    "dfmTitle": "DFM 扩散放大",
+    "dfmFromSims": "源 {{n}} 场模拟",
+    "dfmModeAnchored": "真实锚定",
+    "dfmModeEngine": "引擎忠实",
+    "dfmCorners": "角球 (p50 [p5–p95])",
+    "dfmCards": "牌 / 场",
+    "dfmNote": "5000 场扩散生成;中位数 [5–95%] 区间;真实锚定=强度按真实锦标赛水平校准"
   },
   "sidebar": {
     "appName": "Someo Park",

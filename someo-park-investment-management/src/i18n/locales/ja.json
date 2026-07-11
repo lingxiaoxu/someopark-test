@@ -245,8 +245,15 @@
       "draw": "引分",
       "away": "アウェイ",
       "under": "アンダー",
-      "over": "オーバー"
+      "over": "オーバー",
+      "corner_under": "CKアンダー",
+      "corner_over": "CKオーバー"
     },
+    "countryAppearsIn": "表示される画面",
+    "countryNoOther": "他の画面はありません",
+    "countryNavHint": "この国が他の画面のどこに出るか表示",
+    "wcRound": { "advance": "ベスト32", "r16": "ベスト16", "qf": "準々決勝", "sf": "準決勝", "final": "決勝" },
+    "wcStatus": { "reached": "{{round}}進出", "out": "{{round}}敗退", "outGroup": "グループ敗退", "group": "グループリーグ" },
     "action": {
       "BUY": "買い",
       "SELL": "売り",
@@ -286,7 +293,8 @@
       "late_goal_hold": "UNDER {{line}} は慎重に保持：{{min}}′ でも残り {{exp}} 得点予想（終盤得点多）",
       "odds_crossval_lead": "{{side}}：ライブのブック {{book}} がモデル {{model}} を上回る — スマートマネー先行、エントリー注視",
       "odds_crossval_venue": "{{side}}：ブック {{book}} とモデル {{model}} が共に取引所 {{venue}} を上回る — ブック確認、取引所遅延",
-      "overshoot_lock": "{{side}} 保有なら：市場 {{mkt}} がライブ公正値 {{fair}} を超過（過剰反応）— 売却して利益確定"
+      "overshoot_lock": "{{side}} 保有なら：市場 {{mkt}} がライブ公正値 {{fair}} を超過（過剰反応）— 売却して利益確定",
+      "corner_value": "コーナー {{corners}} 本 {{min}}′ — {{side}} {{line}}+ フェア {{fair}} 対 提示 {{ask}}（エッジ {{edge}}）"
     },
     "noOpps": "この分は実行可能なシグナルなし — モデルビューのみ。",
     "backtest": "バックテスト(OOS)",
@@ -460,6 +468,14 @@
     "modeArgmax": "argmax(選択のみ)",
     "colExit": "決済",
     "colRealizedC": "実現¢",
+    "colInplay": "ライブ¢",
+    "colPreCum": "事前Cum¢",
+    "colInplayBet": "ライブ賭け",
+    "colInplayExit": "ライブ決済",
+    "colInplayEntryC": "ライブ入¢",
+    "colInplayRealized": "ライブ実現¢",
+    "colInplayCum": "ライブCum¢",
+    "colCombinedCum": "合計Cum¢",
     "exitSettleWon": "決済 勝",
     "exitSettleLost": "決済 負",
     "noteCashout": "実現 = 判断モデルが最も過小評価された側に賭け(信頼度で$0.2–$2)、市場がライブ公正値を超えて過剰反応した時に利確。決済列は売却時刻/価格、または決済勝敗を表示。平均エントリー {{entry}}¢ · 平均CLV {{clv}}¢。",
@@ -467,6 +483,8 @@
     "noteArgmax": "argmax = 毎試合で最有力の側に賭ける(旧ルール)。全サンプル参考、賭け戦略ではない。",
     "ptBet": "賭け",
     "ptSingle": "単一側",
+    "betKindArgmax": "本命",
+    "ptInplay": "ライブ",
     "ptBuy": "買",
     "ptSell": "売",
     "ptIfHeld": "決済まで保持なら",
@@ -528,7 +546,14 @@
     },
     "advisory": "参考のみ",
     "kickingOff": "まもなくキックオフ",
-    "kickoffWaiting": "データ待ち"
+    "kickoffWaiting": "データ待ち",
+    "dfmTitle": "DFM 拡散増幅",
+    "dfmFromSims": "{{n}} 試合のシムから",
+    "dfmModeAnchored": "実戦アンカー",
+    "dfmModeEngine": "エンジン忠実",
+    "dfmCorners": "コーナー (p50 [p5–p95])",
+    "dfmCards": "カード / 試合",
+    "dfmNote": "拡散モデル生成 5000 試合;中央値 [5–95%] 区間;実戦アンカー=強度を実大会水準に校正"
   },
   "sidebar": {
     "appName": "Someo Park",
