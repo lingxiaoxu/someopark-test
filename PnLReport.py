@@ -652,7 +652,18 @@ def download_open_prices(tickers: set, price_start: str, price_end: str) -> pd.D
         if split_tickers:
             from PriceDataStore import PriceDataStore
             store = PriceDataStore('price_data', os.environ.get('POLYGON_API_KEY', ''))
-            poly = store.load(sorted(split_tickers), price_start, end_plus)
+            # 取数终点钳制到今天:end_plus(报告末+2天)在周末/假日重生成时会落到
+            # 未来日期,Polygon 对未来起点回 403 → store 三连重试后 raise → 整个
+            # overlay 被跳过 → KLAC 退回 yfinance 错误拆股价(section-6 虚高 10×)。
+            # 钳制后增量起点不会越过今天;仍失败则降级为纯缓存读取(end=报告末,
+            # fetched_through 已覆盖 → 零网络),绝不因取数失败丢掉拆股修正。
+            _poly_end = min(end_plus, str(pd.Timestamp.now().normalize().date()))
+            try:
+                poly = store.load(sorted(split_tickers), price_start, _poly_end)
+            except Exception as _pe:
+                print(f'  [CA][WARN] exec-Open store fetch failed ({_pe}); '
+                      f'falling back to cached range ≤ {price_end}')
+                poly = store.load(sorted(split_tickers), price_start, price_end)
             # Polygon store indexes at 04:00 ET, yfinance at 00:00 → normalize to
             # calendar date on both sides before reindex, else all-NaN (silently
             # drops the row from section 6 instead of correcting it).
