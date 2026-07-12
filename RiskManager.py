@@ -84,6 +84,17 @@ LIMITS_SPEC = {
 }
 
 
+def _trunc_param(name, n=24):
+    """PDF 表格显示:超长 param_set 中段省略,保留首尾(尾部含 _fc/_fc_skip 等
+    区分后缀,避免尾截造成歧义)。只影响 PDF 单元格,json/xlsx 保留全名。"""
+    s = str(name or '')
+    if len(s) <= n:
+        return s
+    head = (n - 1) // 2
+    tail = n - 1 - head
+    return s[:head] + '…' + s[-tail:]
+
+
 def _round(x, n=2):
     """NaN/inf-safe round → float or None."""
     try:
@@ -1849,7 +1860,7 @@ class RiskWorkbookExporter:
                 leg_dir = 'long' if (leg['shares'] or 0) >= 0 else 'short'
                 self._row(ws, r, [p['strategy'].upper(), p['pair'], leg['ticker'], leg_dir,
                                   leg['shares'], _round(px), _round(mv), leg['sector'],
-                                  p['days_held'], p['param_set']],
+                                  p['days_held'], _trunc_param(p['param_set'])],
                           num_cols=(5,), money_cols=(6, 7), alt=(r % 2 == 0))
                 r += 1
         self._autofit(ws, [10, 14, 10, 6, 10, 12, 14, 12, 9, 22])
@@ -1870,7 +1881,7 @@ class RiskWorkbookExporter:
                 if px:
                     gross += abs(leg['shares'] * px)
             self._row(ws, r, [p['strategy'].upper(), p['pair'], _round(upnl), _round(gross),
-                              p['days_held'], p['param_set'], p['direction']],
+                              p['days_held'], _trunc_param(p['param_set']), p['direction']],
                       money_cols=(3, 4), alt=(r % 2 == 0))
             r += 1
         self._autofit(ws, [10, 14, 16, 16, 9, 22, 9])

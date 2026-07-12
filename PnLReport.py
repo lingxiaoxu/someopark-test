@@ -46,6 +46,17 @@ MAX_ACCOUNT  = 2_000_000.0  # 最大账户规模 = 现金 + 100% margin loan
 # Font
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def _trunc_param(name, n=24):
+    """PDF 表格显示:超长 param_set 中段省略,保留首尾(尾部含 _fc/_fc_skip 等
+    区分后缀,避免尾截造成歧义)。只影响 PDF 单元格,json/xlsx 保留全名。"""
+    s = str(name or '')
+    if len(s) <= n:
+        return s
+    head = (n - 1) // 2
+    tail = n - 1 - head
+    return s[:head] + '…' + s[-tail:]
+
+
 def _register_cjk() -> str:
     for path in [
         '/System/Library/Fonts/PingFang.ttc',
@@ -1670,7 +1681,7 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
             C(r['pair']),
             C(r['direction'].capitalize()),
             C(status),
-            C(r['param_set']),
+            C(_trunc_param(r['param_set'])),
             C(r['open_date'][5:] if r['open_date'] else '?'),
             C(f'{ss:,.0f}' if ss else '—', 'RIGHT'),
             Paragraph(money(pnl_v), S('_m', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
