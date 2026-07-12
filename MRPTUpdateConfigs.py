@@ -52,7 +52,10 @@ log = logging.getLogger(__name__)
 MIN_PNL    = 0      # pair-level final acc_pnl must be > this
 MIN_TRADES = 3      # pair's number of open orders must be >= this
 MIN_DSR    = 0.5    # Deflated Sharpe Ratio p-value must be > this (multiple-comparison correction)
-N_TRIALS   = 32     # number of param_sets tested (for DSR benchmark)
+# DSR 试验数 = 实际参赛 param_set 数。默认 32;main() 里用 summary CSV 的真实
+# distinct param_set 数覆盖——与 MTFSUpdateConfigs 完全 mirror(2026-07-12):
+# 不 import 重依赖链(那条链 import 时就要 POLYGON_API_KEY),对老 CSV 历史准确。
+N_TRIALS   = 32   # fallback; overridden from the summary CSV in main()
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -162,6 +165,11 @@ def main(csv_path=None, train_start=None):
     log.info(f'Reading summary: {csv_path}')
 
     summary = pd.read_csv(csv_path)
+    # DSR 试验数取本 CSV 的真实 distinct param_set 数(与 MTFS 侧 mirror)
+    global N_TRIALS
+    if 'param_set' in summary.columns and summary['param_set'].nunique() > 0:
+        N_TRIALS = int(summary['param_set'].nunique())
+        log.info(f'N_TRIALS (DSR) = {N_TRIALS} distinct param_sets in this summary')
     log.info(f'Total runs in summary: {len(summary)}')
 
     # Build records: for each (pair, param_set) extract pair-level stats from Excel
