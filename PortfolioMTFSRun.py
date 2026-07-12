@@ -532,6 +532,13 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
                             _ok = bool(_f_now > _f_ref and _s_now > _s_ref)
                         else:
                             _ok = bool(_f_now < _f_ref and _s_now < _s_ref)
+                        # 留痕进 recorded_vars(仅 fc set 评估时写;母 set 永不进此块,
+                        # excel 输出保持逐 bit 不变)。事后审计:recorded_vars tab 可见
+                        # gate 每次评估的快/慢窗收益与判定。
+                        record_vars(context,
+                                    FastConfirm_OK=int(_ok),
+                                    FastConfirm_Fast=round(_f_now / _f_ref - 1, 6),
+                                    FastConfirm_Slow=round(_s_now / _s_ref - 1, 6))
                         if not _ok:
                             log.info(f"[FAST_CONFIRM] {pair_key}: blocked "
                                      f"{'OPEN_LONG' if open_long_pair else 'OPEN_SHORT'} — "
