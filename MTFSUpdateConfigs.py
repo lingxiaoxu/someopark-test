@@ -51,10 +51,11 @@ log = logging.getLogger(__name__)
 MIN_PNL    = 0      # pair-level final acc_pnl must be > this
 MIN_TRADES = 3      # pair's number of open orders must be >= this
 MIN_DSR    = 0.5    # Deflated Sharpe Ratio p-value must be > this (multiple-comparison correction)
-# DSR 试验数 = 实际参赛 param_set 数(2026-07-12 起 35:31 母 + 4 fc 变体)。
-# 改为动态取值,避免再加/减 set 时此处过期(全面扫荡时发现的功能性硬编码)。
-from PortfolioMTFSStrategyRuns import PARAM_SETS as _MTFS_PARAM_SETS
-N_TRIALS   = len(_MTFS_PARAM_SETS)   # number of param_sets tested (for DSR benchmark)
+# DSR 试验数 = 实际参赛 param_set 数。默认 35(2026-07-12 起:31 母 + 4 fc 变体);
+# main() 里会用 summary CSV 中的真实 distinct param_set 数覆盖——对老 CSV(31)
+# 也历史准确,且避免 import PortfolioMTFSStrategyRuns 的重依赖链
+# (那条链在 import 时就要求 POLYGON_API_KEY,会让无 env 的运行直接崩)。
+N_TRIALS   = 35   # fallback; overridden from the summary CSV in main()
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
@@ -165,6 +166,11 @@ def main(csv_path=None, train_start=None):
     log.info(f'Reading summary: {csv_path}')
 
     summary = pd.read_csv(csv_path)
+    # DSR 试验数取本 CSV 的真实 distinct param_set 数(老 CSV=31,新=35,自适应)
+    global N_TRIALS
+    if 'param_set' in summary.columns and summary['param_set'].nunique() > 0:
+        N_TRIALS = int(summary['param_set'].nunique())
+        log.info(f'N_TRIALS (DSR) = {N_TRIALS} distinct param_sets in this summary')
     log.info(f'Total runs in summary: {len(summary)}')
 
     # Build records: for each (pair, param_set) extract pair-level stats from Excel
