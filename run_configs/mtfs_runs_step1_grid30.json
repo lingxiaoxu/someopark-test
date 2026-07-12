@@ -1304,6 +1304,174 @@
           "ORLY"
         ]
       ]
+    },
+    {
+      "label": "all15_monthly_aligned_windows_fc",
+      "param_set": "monthly_aligned_windows_fc",
+      "pairs": [
+        [
+          "DVA",
+          "HAS"
+        ],
+        [
+          "DVA",
+          "CCI"
+        ],
+        [
+          "ANET",
+          "DIS"
+        ],
+        [
+          "ANET",
+          "TAP"
+        ],
+        [
+          "BBY",
+          "APO"
+        ],
+        [
+          "BBY",
+          "VICI"
+        ],
+        [
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
+        ]
+      ]
+    },
+    {
+      "label": "all15_short_term_beta_neutral_fc",
+      "param_set": "short_term_beta_neutral_fc",
+      "pairs": [
+        [
+          "DVA",
+          "HAS"
+        ],
+        [
+          "DVA",
+          "CCI"
+        ],
+        [
+          "ANET",
+          "DIS"
+        ],
+        [
+          "ANET",
+          "TAP"
+        ],
+        [
+          "BBY",
+          "APO"
+        ],
+        [
+          "BBY",
+          "VICI"
+        ],
+        [
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
+        ]
+      ]
+    },
+    {
+      "label": "all15_fast_strict_fc",
+      "param_set": "fast_strict_fc",
+      "pairs": [
+        [
+          "DVA",
+          "HAS"
+        ],
+        [
+          "DVA",
+          "CCI"
+        ],
+        [
+          "ANET",
+          "DIS"
+        ],
+        [
+          "ANET",
+          "TAP"
+        ],
+        [
+          "BBY",
+          "APO"
+        ],
+        [
+          "BBY",
+          "VICI"
+        ],
+        [
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
+        ]
+      ]
+    },
+    {
+      "label": "all15_monthly_aligned_windows_fc_skip",
+      "param_set": "monthly_aligned_windows_fc_skip",
+      "pairs": [
+        [
+          "DVA",
+          "HAS"
+        ],
+        [
+          "DVA",
+          "CCI"
+        ],
+        [
+          "ANET",
+          "DIS"
+        ],
+        [
+          "ANET",
+          "TAP"
+        ],
+        [
+          "BBY",
+          "APO"
+        ],
+        [
+          "BBY",
+          "VICI"
+        ],
+        [
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
+        ]
+      ]
     }
   ]
 }

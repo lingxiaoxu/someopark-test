@@ -1135,6 +1135,19 @@ PARAM_SETS = {
     },
 }
 
+# ── MTP fast-confirm 竞争变体(LPTT plan Part II,2026-07-12)────────────────
+# 衍生自生产实战在用的 3 个母 set(inventory 核实);第 4 个为论文脚注12对齐版
+# (快窗跳过最近 2 日,规避个股短期反转)。母 set 一字不动;fc 键在 MTFSExecution
+# 有 None/0 默认,未带键的 set 行为逐 bit 不变。参赛还需 grid30.json 加 run 条目。
+for _fc_base in ('monthly_aligned_windows', 'short_term_beta_neutral', 'fast_strict'):
+    PARAM_SETS[f'{_fc_base}_fc'] = {**PARAM_SETS[_fc_base],
+        'fast_confirm_window': 10, 'slow_confirm_window': 40}
+PARAM_SETS['monthly_aligned_windows_fc_skip'] = {
+    **PARAM_SETS['monthly_aligned_windows'],
+    'fast_confirm_window': 10, 'slow_confirm_window': 40, 'fast_confirm_skip': 2}
+del _fc_base
+
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~ CONFIG LOADING ~~~~~~~~~~~~~~~~~~~~~~
 

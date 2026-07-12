@@ -2710,6 +2710,14 @@ class MTFSExecution:
         self.sma_long = 50
         self.require_trend_confirmation = True  # gate opens on SMA alignment
 
+        # ── MTP fast-confirm gate(JFE 2023 双速确认;LPTT plan Part II)──
+        # None/0 = 关(全部既有 param set 的默认——行为不变)。
+        # 必须在类上有默认值:initialize 的 hasattr 守卫会静默丢弃未知参数,
+        # per-pair 覆盖的 getattr 也无默认值(plan v7 实施审查)。
+        self.fast_confirm_window = None   # 快窗(交易日),如 10
+        self.slow_confirm_window = None   # 慢窗,如 40
+        self.fast_confirm_skip = 0        # 快窗跳过最近 N 日(论文脚注12,个股短期反转)
+
         # ── Momentum entry/exit thresholds ────────────────────────────────
         # Composite momentum score must exceed this to open a position.
         # For the long stock: composite > entry_momentum_threshold

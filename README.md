@@ -676,6 +676,17 @@ DailySignal.py 在每日信号生成过程中设置了多层质量检查，防�
 
 **Anti-Churn 只拦截亏损关仓**：盈利关仓（包括止盈平仓）允许 Step 2 重开——"锁定利润 + 重新评估"而非"锁定利润 + 走人"。
 
+**MTP fast-confirm 双速确认(2026-07-12,回测内 param 门控——非 veto 链)**:
+- 规则:开仓时主腿 s1 的慢窗(40d)与快窗(10d)收益符号必须与方向一致
+  (JFE 2023 "Momentum Turning Points" 的 Bull 态入场;Correction 态禁入)。
+- 实现:`fast_confirm_window`/`slow_confirm_window`/`fast_confirm_skip` 三个
+  param 键(MTFSExecution 默认 None/0=关);4 个竞争 set
+  (`monthly_aligned_windows_fc`、`short_term_beta_neutral_fc`、`fast_strict_fc`、
+  `monthly_aligned_windows_fc_skip`)经 WF/DSR 竞争,胜出才进生产——
+  **31 个既有 param set 行为逐 bit 不变**(基线对比验证)。
+- 条件长在 sim 入场规则里(PortfolioMTFSRun 入场判定),回测/生产信号/监控
+  三方天然一致,无生产层 veto。日志标签 `[FAST_CONFIRM]`。
+
 **Monitor CLOSE 语义与口径分界（MONITOR_INTEGRITY_FIX_PLAN，2026-07-03 实施）**：
 - **monitor CLOSE 的含义**：自 2026-07-03 起，"模拟空仓"不再直接视为退出信号——
   `_build_signal` 显式评估真实退出规则（MRPT：short 平 iff z<exit_z、long 平 iff

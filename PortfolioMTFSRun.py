@@ -205,6 +205,7 @@ def process_pair(pair, context, data):
         'volatility_stop_loss_multiplier', 'max_holding_period', 'cooling_off_period',
         'pair_stop_loss_pct', 'rebalance_frequency',
         'mean_back', 'std_back', 'v_back',
+        'fast_confirm_window', 'slow_confirm_window', 'fast_confirm_skip',
     ]
     if pair_key in context.pair_params:
         pp = context.pair_params[pair_key]
@@ -509,6 +510,37 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
                         open_short_pair = True
             else:
                 open_short_pair = True
+
+        # ── MTP fast-confirm gate(param 控制;None=off;LPTT plan Part II)──
+        # 规则:主腿 s1 的慢窗与快窗收益符号必须与方向一致(只在 Bull 态入场,
+        # Correction 态禁入)。口径与 153 笔回放逐 bar 一致:
+        #   fast: P.iloc[-1-skip] vs P.iloc[-skip-fcw](span=fcw-1 bar,skip 默认 0)
+        #   slow: P.iloc[-1] vs P.iloc[-scw](span=scw-1 bar)
+        # fail-open:参数关/数据不足/NaN → 不改变原决策。
+        _fcw = getattr(context.execution, 'fast_confirm_window', None)
+        if _fcw and (open_long_pair or open_short_pair):
+            _scw = getattr(context.execution, 'slow_confirm_window', None) or 40
+            _skip = getattr(context.execution, 'fast_confirm_skip', 0) or 0
+            _need = max(_scw, _fcw + _skip) + 1
+            if len(stock_1_P) >= _need:
+                try:
+                    _p = stock_1_P.iloc          # Series → 位置索引(勿用 label 索引)
+                    _f_now, _f_ref = float(_p[-1 - _skip]), float(_p[-_skip - _fcw])
+                    _s_now, _s_ref = float(_p[-1]), float(_p[-_scw])
+                    if all(v == v for v in (_f_now, _f_ref, _s_now, _s_ref)):  # NaN 防护
+                        if open_long_pair:
+                            _ok = bool(_f_now > _f_ref and _s_now > _s_ref)
+                        else:
+                            _ok = bool(_f_now < _f_ref and _s_now < _s_ref)
+                        if not _ok:
+                            log.info(f"[FAST_CONFIRM] {pair_key}: blocked "
+                                     f"{'OPEN_LONG' if open_long_pair else 'OPEN_SHORT'} — "
+                                     f"fast {_f_now/_f_ref-1:+.2%} / slow {_s_now/_s_ref-1:+.2%} "
+                                     f"(fcw={_fcw} scw={_scw} skip={_skip})")
+                            open_long_pair = False
+                            open_short_pair = False
+                except (TypeError, ValueError, IndexError):
+                    pass                          # fail-open
 
         if open_long_pair:
             # Long stock_1, short stock_2 (dollar-neutral via hedge ratio)

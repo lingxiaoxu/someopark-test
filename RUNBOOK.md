@@ -846,3 +846,14 @@ npm run build && firebase deploy --only hosting
 | **2026-07-03（语义）** | 模拟空仓不再直接算退出——显式评估退出规则，不成立打 `[MONITOR_GUARD]` HOLD；开仓 bar==最后 bar 直接 HOLD |
 | **新 veto** | Cross-day cooling（盈 1td / 其他 3td）+ 组合熔断（影子期 `_CB_SHADOW` 至约 7/13，确认无误报后置 False）|
 | **观察项** | 每日 `[MONITOR_GUARD]`（频率应≈每日 1 次且递减）、`[CIRCUIT_BREAKER][SHADOW]`（would-close 合理性）、`[COOLING]` 首例 |
+
+## 附注:MTFS fast-confirm 竞争变体(2026-07-12 上线)
+
+- `PARAM_SETS` 35 个(31 母 + 4 fc 变体);`grid30.json` 同步 35 个 run 条目
+  (文件名 grid30 为历史命名)。fc 变体自 **2026-07-13(周一)WF** 起参赛,
+  DSR 选中才进生产。
+- **回滚规程(重要)**:只从 grid30.json 移除 run 条目;`PARAM_SETS` 里的
+  set 定义**必须保留**,直至下次 WF 的 selected_pairs 不再引用它且所有 fc
+  持仓已平——extract_signals 的 `_resolve_param_set` 对未知 set 名直接 raise。
+- 验收记录:基线逐 bit 对比 35 sheets 零差异;fc 冒烟 40 次拦截语义正确;
+  load_config 解析 35 runs ✓。详见 `.claude/plan/systemic strategies/` 的 plan。
