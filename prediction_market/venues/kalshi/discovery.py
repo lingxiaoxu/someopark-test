@@ -26,6 +26,7 @@ CHAMPION_SERIES = "KXMENWORLDCUP"
 GOLDEN_BOOT_SERIES = "KXWCGOALLEADER"
 MATCH_SERIES = "KXWCGAME"        # single-match 3-way (home / draw=Tie / away)
 TOTALS_SERIES = "KXWCTOTAL"      # single-match total goals (YES = Over N.5; markets per line)
+CORNERS_SERIES = "KXWCCORNERS"   # single-match total corners (YES = "X+", i.e. Over (X-1).5)
 ADVANCE_SERIES = "KXWCADVANCE"   # single-match 2-way "who advances" (ET+penalty inclusive; no tie)
 
 
@@ -203,6 +204,56 @@ class KalshiDiscovery:
         under_bid = (1.0 - over_ask) if over_ask is not None else None
         return {"over": {"ask": over_ask, "bid": over_bid},
                 "under": {"ask": under_ask, "bid": under_bid}}
+
+    def corners_index(self) -> dict[frozenset, dict]:
+        """{frozenset(team_id, team_id): {lines:{over_line: ticker}, event}} for
+        KXWCCORNERS. Each event ("X vs Y: Total Corners") has one market per "N+"
+        threshold (cap_strike/floor_strike N ⇒ YES = at least N = Over (N-0.5)); we
+        key by the OVER half-integer line so it matches the model's `p_over` keys."""
+        if getattr(self, "_ci", None) is not None:
+            return self._ci
+        idx: dict[frozenset, dict] = {}
+        for ev in self.md.list_events(CORNERS_SERIES, status="open"):
+            title = ev.get("title") or ""
+            head = title.split(":")[0]
+            parts = re.split(r"\s+vs\.?\s+", head, flags=re.IGNORECASE)
+            if len(parts) != 2:
+                continue
+            t1 = team_id(canonical_team_name(parts[0].strip()))
+            t2 = team_id(canonical_team_name(parts[1].strip()))
+            if not (t1 in self._team_ids and t2 in self._team_ids):
+                continue
+            lines: dict[float, str] = {}
+            for m in ev.get("markets", []):
+                # "N+" threshold → OVER (N-0.5). floor_strike is the integer N.
+                n = m.get("floor_strike")
+                if n is None:
+                    n = m.get("cap_strike")
+                if n is not None:
+                    lines[float(n) - 0.5] = m["ticker"]
+            if lines:
+                idx[frozenset({t1, t2})] = {"lines": lines, "event": ev.get("event_ticker")}
+        self._ci = idx
+        return idx
+
+    def corners_quotes(self, home_id: str, away_id: str) -> dict[float, dict] | None:
+        """{over_line(float): {'ask','bid','under_ask','under_bid'}} across a match's
+        whole corner ladder (None if no market). 'ask'/'bid' are the OVER (YES) book;
+        the UNDER side is the complement, matching corner_total_signal's expected shape."""
+        entry = self.corners_index().get(frozenset({home_id, away_id}))
+        if not entry:
+            return None
+        out: dict[float, dict] = {}
+        for line, ticker in entry["lines"].items():
+            ob = self.orderbook(ticker)
+            over_ask = float(ob.yes_ask) if ob.yes_ask is not None else None
+            over_bid = float(ob.yes_bid) if ob.yes_bid is not None else None
+            out[line] = {
+                "ask": over_ask, "bid": over_bid,
+                "under_ask": (1.0 - over_bid) if over_bid is not None else None,
+                "under_bid": (1.0 - over_ask) if over_ask is not None else None,
+            }
+        return out or None
 
 
 if __name__ == "__main__":

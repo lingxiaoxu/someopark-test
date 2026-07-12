@@ -140,3 +140,44 @@ const gifCount = matchups.reduce((a, m) => a + m.sims.length, 0);
 const bytes = (() => { let t = 0; const walk = (d) => readdirSync(d, { withFileTypes: true }).forEach((e) => { const p = join(d, e.name); e.isDirectory() ? walk(p) : (t += statSync(p).size); }); existsSync(ASSETS) && walk(ASSETS); return t; })();
 console.log(`[mf-sync] ${matchups.map((m) => `${m.home_name}-${m.away_name}:${m.n_sims}`).join('  ')}`);
 console.log(`[mf-sync] assets ${(bytes / 1e6).toFixed(0)}MB in ${ASSETS}  (${gifCount} sims) ; index → ${INDEX}`);
+
+// ── Phase C: DFM amplification (extract → production → public/data/dfm_index.json) ──
+// The diffusion amplifier (dfm/football/) turns each matchup's 10-15 sims into 5000
+// synthetic matches (W/D/L, scorelines, 16-channel stat quantiles, cards — engine-faithful
+// + real-anchored views). Runs after every sync so NEW matchups get their DFM snapshot
+// automatically (~15 min of training/generation; `--skip-dfm` for a quick asset-only sync).
+// Official timestamped outputs stay in dfm/football/production_runs/ (audit-kept); the
+// frontend only receives the small per-matchup summary index.
+const DFM_DIR = resolve(__dirname, '../../dfm/football');
+const DFM_INDEX = resolve(__dirname, '../public/data/dfm_index.json');
+if (process.argv.includes('--skip-dfm')) {
+  console.log('[mf-sync] --skip-dfm: DFM amplification skipped (dfm_index.json unchanged)');
+} else {
+  console.log('[mf-sync] DFM amplification: extract → production (trains + generates, ~15 min)…');
+  try {
+    execFileSync('bash', ['-c',
+      `cd "${DFM_DIR}" && conda run -n someopark_run --no-capture-output bash -c "python extract.py && python production.py"`],
+      { stdio: ['ignore', 'inherit', 'inherit'], maxBuffer: 1 << 30 });
+  } catch (e) {
+    console.error(`[mf-sync] DFM pipeline failed: ${e.message} — frontend keeps the previous dfm_index.json`);
+    process.exit(1);
+  }
+  const runsDir = join(DFM_DIR, 'production_runs');
+  const manifests = readdirSync(runsDir).filter((f) => /^manifest_\d{8}_\d{6}\.json$/.test(f)).sort();
+  const manifest = readJson(join(runsDir, manifests.at(-1)));
+  const entries = {};
+  for (const f of manifest.files) {
+    const doc = readJson(join(runsDir, f));
+    entries[doc.matchup] = {
+      home: doc.home, away: doc.away, ts: doc.ts,
+      n_source_sims: doc.n_source_sims, n_samples: doc.n_samples,
+      engine_faithful: { ...doc.engine_faithful, events_sample: undefined },
+      real_anchored: { ...doc.real_anchored, events_sample: undefined },
+    };
+  }
+  writeFileSync(DFM_INDEX, JSON.stringify({
+    generated_at: new Date().toISOString(), ts: manifest.ts,
+    corpus_sha1: manifest.corpus.sha1, matchups: entries,
+  }, null, 1), 'utf8');
+  console.log(`[mf-sync] DFM index → ${DFM_INDEX} (${Object.keys(entries).length} matchups, snapshot ${manifest.ts})`);
+}

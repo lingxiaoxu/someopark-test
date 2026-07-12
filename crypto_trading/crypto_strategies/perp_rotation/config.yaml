@@ -1,0 +1,59 @@
+# Plan 05 config (mirrors crypto-dev/05_perp_rotation.md §9; control surface =
+# SSRS config.yaml shape). WF replaces the `signals` block once enough Kalshi
+# history exists; until then these are scaffold defaults.
+strategy: perp_rotation
+env: demo
+universe:
+  source: kalshi_listed
+  min_perps_to_activate: 6
+  depth_qualify: { min_top_depth_contracts: 100, min_daily_notional_usd: 100000 }
+  listing_history_floor_days: 30
+signals:
+  weights: { cross_sectional_momentum: 0.40, ts_momentum: 0.15, carry: 0.20, regime_adjustment: 0.25 }
+  cs_lookback: 30          # days (24/7)
+  cs_skip: 1
+  cs_zscore_window: 90
+  ts_lookback: 30
+  ts_crash_mult: 0.0
+  carry_lookback_days: 90
+  carry_favor: long_receives   # measured: alt funding negative → long collects
+  low_vol_window: 30
+  regime:
+    method: rules
+    # inputs: btc_rvol, funding, basis_dispersion (+ btc_dominance) — built by run_backtest
+portfolio:
+  optimizer: inv_vol
+  cov: { method: ledoit_wolf, lookback_days: 365, min_periods: 21 }
+  top_n: 4
+  min_zscore: -0.5
+  constraints: { max_weight: 0.45, min_weight: 0.0 }
+rebalance:
+  frequency: daily           # 24/7, no holiday calendar (schedule 00:05 UTC live)
+  zscore_change_threshold: 0.5
+  max_turnover: 0.80
+  emergency_derisk_rvol: 60.0
+  emergency_cash_pct: 0.50
+risk:
+  target_vol_annual: 0.40
+  vol_scaling_enabled: true
+  dd_halve_threshold: -0.10
+  max_daily_loss_pct: 0.06
+  rvol_progressive_derisk:
+    enabled: true
+    tiers:
+      - { rvol_above: 45.0, cash_pct: 0.25 }
+      - { rvol_above: 52.0, cash_pct: 0.40 }
+stop_loss:
+  enabled: true
+  cooling_off_days: 10
+  portfolio_circuit_breaker: { enabled: true, benchmark_3d_limit: -0.15 }
+  sector_collapse: { enabled: true, max_dd_from_entry: -0.20 }
+  trailing_stop: { enabled: true, max_dd_from_peak: -0.25 }
+costs:
+  fee_scenario: projected    # zero | projected (validation gate uses projected)
+  slippage_bps: 5.0
+  funding: true
+backtest:
+  initial_capital: 1000
+  annualization_days: 365
+  benchmarks: [KXBTCPERP_HODL, EW_PERP_BASKET]

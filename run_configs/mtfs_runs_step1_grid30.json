@@ -8,60 +8,40 @@
       "param_set": "default",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -70,60 +50,40 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -132,60 +92,40 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -194,60 +134,40 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -256,60 +176,40 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -318,60 +218,40 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -380,60 +260,40 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -442,60 +302,40 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -504,60 +344,40 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -566,60 +386,40 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -628,60 +428,40 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -690,60 +470,40 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -752,60 +512,40 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -814,60 +554,40 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -876,60 +596,40 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -938,60 +638,40 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1000,60 +680,40 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1062,60 +722,40 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1124,60 +764,40 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1186,60 +806,40 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1248,60 +848,40 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1310,60 +890,40 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1372,60 +932,40 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1434,60 +974,40 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1496,60 +1016,40 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1558,60 +1058,40 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1620,60 +1100,40 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1682,60 +1142,40 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1744,60 +1184,40 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1806,60 +1226,40 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     },
@@ -1868,60 +1268,40 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "ANET",
-          "T"
-        ],
-        [
-          "ANET",
+          "DVA",
           "HAS"
         ],
         [
-          "VLO",
-          "KLAC"
-        ],
-        [
-          "VLO",
-          "ORCL"
-        ],
-        [
-          "DAL",
+          "DVA",
           "CCI"
         ],
         [
-          "DAL",
-          "WYNN"
-        ],
-        [
-          "BAX",
-          "TAP"
-        ],
-        [
-          "BAX",
+          "ANET",
           "DIS"
         ],
         [
-          "CAH",
-          "FDX"
+          "ANET",
+          "TAP"
         ],
         [
-          "CAH",
-          "WMT"
-        ],
-        [
-          "ABBV",
+          "BBY",
           "APO"
         ],
         [
-          "ABBV",
-          "BLK"
-        ],
-        [
-          "WST",
+          "BBY",
           "VICI"
         ],
         [
-          "BEN",
-          "PFE"
+          "CDW",
+          "HSY"
+        ],
+        [
+          "CDW",
+          "COST"
+        ],
+        [
+          "VLO",
+          "ORLY"
         ]
       ]
     }

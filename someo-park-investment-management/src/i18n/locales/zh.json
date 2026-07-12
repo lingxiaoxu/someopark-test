@@ -133,6 +133,7 @@
     "mfSequences": "控球段数",
     "mfSaves": "扑救率",
     "mfRecovery": "平均回收球时间",
+    "dfmAiAnalyze": "AI 分析（扩散模型）",
     "mfAiAnalyze": "AI 分析（聚合）",
     "mfAiAnalyzeSim": "AI 分析（本场）",
     "mfAiLoading": "分析中…",

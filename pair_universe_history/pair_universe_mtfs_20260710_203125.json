@@ -1,0 +1,86 @@
+[
+  {
+    "s1": "DVA",
+    "s2": "HAS",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "DVA",
+    "s2": "CCI",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "ANET",
+    "s2": "T",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "ANET",
+    "s2": "TAP",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "VLO",
+    "s2": "APO",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "VLO",
+    "s2": "HSY",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "STT",
+    "s2": "DIS",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "STT",
+    "s2": "WMT",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "CDW",
+    "s2": "VICI",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "CDW",
+    "s2": "WY",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "TRGP",
+    "s2": "SWKS",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "TRGP",
+    "s2": "ORLY",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "MOH",
+    "s2": "COST",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "MOH",
+    "s2": "WYNN",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  }
+]

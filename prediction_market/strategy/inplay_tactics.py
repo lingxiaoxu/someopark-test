@@ -511,6 +511,81 @@ def knockout_late_draw(lp: LiveMatchProb, *, knockout: bool) -> TradeAction:
     return TradeAction("HOLD", "draw", "not a late level knockout")
 
 
+# ── corner-total signal (corner cross-section) ───────────────────────────────
+MIN_CORNER_MINUTE = 12       # early corner stats are sparse/noisy — no signal before this
+MAX_CORNER_MINUTE = 89       # inside the last minute the market is settling — stand aside
+MIN_CORNER_EDGE = 0.07       # model fair must beat the quote by ≥ this to fire (net of noise)
+
+
+def corner_total_signal(
+    corners_now: int | None,
+    minute: int,
+    home_goals: int,
+    away_goals: int,
+    *,
+    quotes: dict | None = None,      # {line(float): {'ask','bid'} for the OVER (YES) book}
+    nu_full: float | None = None,    # per-fixture pre-match corner prior (else module default)
+) -> TradeAction:
+    """Live total-corners value: fair P(final corners > line) vs the corner market.
+
+    Mirrors finishing_uplift_over's discipline — it NEVER creates an edge from the
+    model alone, it only fires when a REAL corner quote is mispriced against the fair
+    value AND every guard passes. No quote, missing corner count, too early/too late,
+    or sub-threshold edge → HOLD. Returns the single best (largest-edge) line."""
+    from prediction_market.model.inplay_corners import CORNER_TOTAL_PRIOR, live_corners_fair
+
+    # (g1) data present, in a sane range, inside the tradable window
+    if corners_now is None or minute is None:
+        return TradeAction("HOLD", "over", "no live corner count yet")
+    if not (0 <= corners_now <= 40) or not (MIN_CORNER_MINUTE <= minute <= MAX_CORNER_MINUTE):
+        return TradeAction("HOLD", "over", "corners outside tradable window")
+    # (g2) need a real market to value against
+    if not quotes:
+        return TradeAction("HOLD", "over", "no corner market to value against")
+
+    lines = tuple(sorted(float(L) for L in quotes))
+    fair = live_corners_fair(int(corners_now), int(minute), int(home_goals), int(away_goals),
+                             lines=lines,
+                             nu_full=CORNER_TOTAL_PRIOR if nu_full is None else float(nu_full))
+    if not fair.valid:
+        return TradeAction("HOLD", "over", "corner inputs unusable")
+
+    # (g3) the line with the largest actionable edge on either the OVER or UNDER side
+    best = None                      # (edge, side, line, fair_side, ask)
+    for L in lines:
+        q = quotes.get(L) or quotes.get(float(L)) or {}
+        p_over = fair.p_over.get(float(L))
+        if p_over is None:
+            continue
+        over_ask = q.get("ask")
+        if over_ask is not None and 0.0 < over_ask < 1.0:
+            e = p_over - over_ask
+            if e >= MIN_CORNER_EDGE and (best is None or e > best[0]):
+                best = (e, "over", L, p_over, over_ask)
+        under_ask = q.get("under_ask")
+        if under_ask is None and q.get("bid") is not None:
+            under_ask = 1.0 - q["bid"]
+        if under_ask is not None and 0.0 < under_ask < 1.0:
+            e = (1.0 - p_over) - under_ask
+            if e >= MIN_CORNER_EDGE and (best is None or e > best[0]):
+                best = (e, "under", L, 1.0 - p_over, under_ask)
+
+    if best is None:
+        return TradeAction("HOLD", "over", "no corner line beats the market by the edge threshold")
+
+    edge, side, L, fair_side, ask = best
+    disp = int(L + 0.5)              # "X+" line label (over 8.5 → the 9+ market)
+    return TradeAction(
+        "BUY", side,
+        f"corners {corners_now} at {minute}' — fair {side} {disp}+ {fair_side:.0%} vs ask {ask:.0%} "
+        f"(edge {edge:+.0%})",
+        "high" if edge >= 2 * MIN_CORNER_EDGE else "normal",
+        reason_key="corner_value",
+        reason_args={"corners": int(corners_now), "min": int(minute), "line": disp,
+                     "side": side, "fair": round(fair_side, 3), "ask": round(ask, 3),
+                     "edge": round(edge, 3)})
+
+
 if __name__ == "__main__":
     from prediction_market.ingest.prior_ingest import load_prior
     from prediction_market.model.inplay import live_from_strength

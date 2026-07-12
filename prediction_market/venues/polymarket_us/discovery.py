@@ -109,10 +109,13 @@ class PolymarketUSDiscovery:
     def advance_quotes(self, home_id: str, away_id: str, et_date: str) -> dict[str, dict] | None:
         """Raw 2-way {home, away} advance prices for a knockout match (None if not found).
 
-        Poly US lists a dedicated per-match advance market inside the same ``fwc-`` event:
-        ``aadc-fwc-{home}-{away}-{date}-to-advance-{teamcode}`` ("Will <Team> advance against
-        <Opp> on <date>?") — YES = that team advances the tie (ET + penalties included). No
-        draw leg. Mirrors match_quotes; ``et_date`` is the ET 'YYYY-MM-DD' slug date."""
+        Poly US lists the per-match advance market as ONE ``soccer_game_to_advance`` moneyline
+        market inside the ``fwc-`` event: ``aadc-fwc-{home}-{away}-{date}-to-advance`` ("Which
+        team will advance…") — a single instrument, NOT two per-team ``…-to-advance-{code}``
+        markets. Its ``marketSides`` carries the two teams; the ``long`` side is the priced
+        instrument (bbo = its bid/ask) and the other team is the complement (1 − price), since
+        exactly one team advances (ET + penalties included, no draw leg). ``et_date`` is the ET
+        'YYYY-MM-DD' slug date."""
         codes = self.code_map()
         hc, ac = codes.get(home_id), codes.get(away_id)
         if not (hc and ac):
@@ -122,22 +125,25 @@ class PolymarketUSDiscovery:
                 ev = self.c.events.retrieve_by_slug(ev_slug).get("event") or {}
             except Exception:
                 continue
-            markets = ev.get("markets") or []
-            if not markets:
+            m = next((x for x in (ev.get("markets") or [])
+                      if x.get("slug") == f"aadc-{ev_slug}-to-advance"), None)
+            if not m:
                 continue
-            prefix = f"aadc-{ev_slug}-to-advance-"
-            out: dict[str, dict] = {}
-            for m in markets:
-                s = m.get("slug", "")
-                if not s.startswith(prefix):
-                    continue
-                code = s[len(prefix):]
-                if code == hc:
-                    out["home"] = self._price(s)
-                elif code == ac:
-                    out["away"] = self._price(s)
-            if {"home", "away"} <= set(out):
-                return out
+            # The 'long' marketSide is the priced team; bbo gives its bid/ask.
+            long_side = next((s for s in (m.get("marketSides") or []) if s.get("long")), None)
+            if not long_side:
+                continue
+            inst_tid = team_id(canonical_team_name((long_side.get("description") or "").strip()))
+            px = self._price(m.get("slug", ""))
+            if not px or px.get("bid") is None or px.get("ask") is None:
+                continue
+            inst = {"ask": px["ask"], "bid": px["bid"]}
+            # buy the other team = sell the instrument → complementary book (1 − price)
+            comp = {"ask": round(1.0 - px["bid"], 4), "bid": round(1.0 - px["ask"], 4)}
+            if inst_tid == home_id:
+                return {"home": inst, "away": comp}
+            if inst_tid == away_id:
+                return {"away": inst, "home": comp}
         return None
 
     def totals_quotes(self, home_id: str, away_id: str, et_date: str,

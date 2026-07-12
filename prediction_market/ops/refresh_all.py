@@ -93,6 +93,23 @@ def main() -> None:
     except Exception as e:
         print(f"  ✗ calibration.json: {e}")
 
+    # FREEZE newly-settled bets (append-only) so the Accuracy/PnL, PriceTrack and PnL-report
+    # views never rewrite history: each match's decision is computed ONCE with point-in-time
+    # strength + point-in-time calibration and persisted. Backfill PRE milestones first so the
+    # freeze sees the real pre-match entry quotes (also fixes performance_report reading
+    # milestones before the marks-view backfill below).
+    from prediction_market.ops import backfill_milestones as _bm, settle_bets as _sb
+    try:
+        _bm.backfill(conn)
+    except Exception as e:
+        print(f"  ✗ milestone backfill (pre-freeze): {e}")
+    try:
+        _n_froze = _sb.freeze_settled_bets(conn)
+        _n_total = conn.execute("SELECT COUNT(*) FROM settled_bet").fetchone()[0]
+        print(f"  ✓ settled_bet ledger (+{_n_froze} frozen, {_n_total} total)")
+    except Exception as e:
+        print(f"  ✗ settled_bet freeze: {e}")
+
     # Regenerate every export the frontend reads, all on the CURRENT sample.
     from prediction_market.ops import (backtest_export, form_export, frontend_export,
                                        inplay_export, milestone_export, performance_report,

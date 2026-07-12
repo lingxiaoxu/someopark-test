@@ -147,7 +147,7 @@ export default function RightPanel({ artifact, appMode, onClose, onMaximize, isM
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {isPredictionArtifact(artifact.type)   && <PredictionArtifact type={artifact.type} />}
+        {isPredictionArtifact(artifact.type)   && <PredictionArtifact type={artifact.type} params={params} />}
         {artifact.type === 'chart'             && <EquityChart params={params} />}
         {artifact.type === 'table'             && <SignalTable params={params} />}
         {artifact.type === 'dashboard'         && <RegimeDashboard params={params} />}

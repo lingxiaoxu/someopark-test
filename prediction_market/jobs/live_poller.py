@@ -148,9 +148,16 @@ def _live_quote_sources(conn) -> dict:
             hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
             return (d.advance_quotes(hi, ai) or {}) if (hi and ai) else {}
 
+        def kalshi_corners_q(fixture_id: int) -> dict:
+            fx = conn.execute("SELECT home_api_id, away_api_id FROM fixture WHERE api_id=?",
+                              (fixture_id,)).fetchone()
+            hi, ai = cmap.get(fx["home_api_id"]), cmap.get(fx["away_api_id"])
+            return (d.corners_quotes(hi, ai) or {}) if (hi and ai) else {}
+
         sources["kalshi"] = kalshi_q
         sources["kalshi_totals"] = kalshi_totals_q
         sources["kalshi_advance"] = kalshi_advance_q
+        sources["kalshi_corners"] = kalshi_corners_q
     except Exception as e:
         log.warning("Kalshi match quotes unavailable: %s", e)
 

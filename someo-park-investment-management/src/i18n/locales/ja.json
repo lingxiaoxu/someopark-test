@@ -115,6 +115,7 @@
     "mfSequences": "ポゼッション数",
     "mfSaves": "セーブ率",
     "mfRecovery": "平均回収時間",
+    "dfmAiAnalyze": "AI分析（拡散モデル）",
     "mfAiAnalyze": "AI分析（集計）",
     "mfAiAnalyzeSim": "AI分析（この試合）",
     "mfAiLoading": "分析中…",

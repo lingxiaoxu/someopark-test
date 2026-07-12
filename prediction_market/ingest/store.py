@@ -224,6 +224,16 @@ CREATE TABLE IF NOT EXISTS milestone_snapshot (
     price_source TEXT,
     PRIMARY KEY (fixture_api_id, milestone)
 );
+-- Frozen bet ledger: each settled match's decision computed ONCE (point-in-time strength
+-- + point-in-time calibration) and persisted, so the reported track record never mutates
+-- as later matches settle. Append-only — history is never recomputed (ops/settle_bets.py).
+CREATE TABLE IF NOT EXISTS settled_bet (
+    fixture_api_id INTEGER PRIMARY KEY,
+    payload TEXT NOT NULL,                            -- JSON: frozen match_pick() output
+    inplay_json TEXT,                                 -- JSON: frozen causal in-play entry (or NULL)
+    cal_method TEXT, cal_param REAL, cal_n INTEGER,   -- the PIT calibration used (audit)
+    settled_at TEXT NOT NULL                          -- when first frozen
+);
 CREATE INDEX IF NOT EXISTS ix_fixture_status ON fixture (status_short);
 CREATE INDEX IF NOT EXISTS ix_fixture_kickoff ON fixture (kickoff_ts);
 CREATE INDEX IF NOT EXISTS ix_api_call_ts ON api_call (ts);

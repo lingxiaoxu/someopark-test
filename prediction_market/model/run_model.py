@@ -164,8 +164,14 @@ def build_payload(prior: PriorSnapshot, n_sims: int, seed: int, *,
         _rank = {lvl: i for i, lvl in enumerate(REACH_LADDER)}
         for r in champion:
             lvl = _conf.get(r["team_id"])
-            if lvl is None or r.get("eliminated"):
+            if lvl is None:
                 continue
+            # NB: applies to ELIMINATED teams too — a team knocked out in (say) the R16 still
+            # REACHED the group-advance and R16 rounds, so those realized levels must read 100%
+            # (history), not the 0 the elimination overlay above set. The deeper rounds it never
+            # reached were already zeroed there and stay 0 via the s==0 / conditional branch, so
+            # only the confirmed-and-shallower levels get pinned. (Previously eliminated teams
+            # were skipped here, wrongly collapsing every completed round to 0.)
             li = _rank[lvl]
             s = r[_fld[REACH_LADDER[li]]]            # sim prob of reaching the confirmed level
             for k, lv in enumerate(REACH_LADDER):

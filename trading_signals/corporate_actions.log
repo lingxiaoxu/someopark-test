@@ -66,3 +66,21 @@
 2026-07-03T08:41:40Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=10 applicable-splits=none pending=none applied=0
 2026-07-06T21:36:28Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
 2026-07-06T22:41:28Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-07-07T08:34:17Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=6 applicable-splits=none pending=none applied=0
+2026-07-07T08:34:17Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-07T21:37:04Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-07T22:41:28Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-07-08T07:23:42Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=4 applicable-splits=none pending=none applied=0
+2026-07-08T07:23:42Z [CA][mtfs] status=NO-POSITIONS | no open pairs
+2026-07-08T21:35:49Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-08T22:41:24Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-07-09T07:59:59Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-07-09T07:59:59Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=6 applicable-splits=none pending=none applied=0
+2026-07-09T21:37:00Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-09T22:41:32Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-07-10T08:28:15Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-07-10T08:28:15Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=13 applicable-splits=none pending=none applied=0
+2026-07-10T21:37:42Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-10T22:41:30Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-07-11T07:02:35Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-07-11T07:02:35Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=11 applicable-splits=none pending=none applied=0

@@ -283,12 +283,20 @@ export const getWCStyles         = () => fetchApi<any>('/data/team_styles.json')
 // MicroFootball sim artifact: the small index (per-sim stats + gif/trajectory URLs + aggregate).
 // The heavy assets (gif/trajectory) are served from the /sim mount, referenced by URL in the index.
 export const getWCMicrofootball  = () => fetchApi<any>(`/data/microfootball_index.json?_=${Date.now()}`);
+// DFM diffusion amplification of the sims (dfm/football production snapshot): per-matchup
+// W/D/L + scorelines + stat quantiles + cards, in engine-faithful and real-anchored views.
+export const getWCDfm            = () => fetchApi<any>(`/data/dfm_index.json?_=${Date.now()}`);
 
 // On-demand local-nemotron analysis (slow; called one at a time from the artifact). sim_id omitted
 // ⇒ the 10-sim aggregate prediction; sim_id present ⇒ a single-sim post-match report.
-export const analyzeMicrofootball = (matchup_id: string, sim_id: string | null, lang: string) =>
+// opts.mode='dfm' ⇒ analyse the DFM diffusion snapshot (dfm_index.json) for the chosen view
+// (opts.dfm_mode = real_anchored | engine_faithful); cached on box A identically to agg/sim.
+export const analyzeMicrofootball = (
+  matchup_id: string, sim_id: string | null, lang: string,
+  opts?: { mode?: 'dfm'; dfm_mode?: string },
+) =>
   fetch(`${API_BASE}/api/microfootball/analyze`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...apiHeaders() },
-    body: JSON.stringify({ matchup_id, sim_id, lang }),
+    body: JSON.stringify({ matchup_id, sim_id, lang, ...opts }),
   }).then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<{ analysis: string; cached?: boolean }>; });

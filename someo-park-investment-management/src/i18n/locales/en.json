@@ -454,6 +454,7 @@
     "mfSequences": "Possession sequences",
     "mfSaves": "Save %",
     "mfRecovery": "Avg recovery time",
+    "dfmAiAnalyze": "AI analysis (diffusion)",
     "mfAiAnalyze": "AI analysis (aggregate)",
     "mfAiAnalyzeSim": "AI analysis (this sim)",
     "mfAiLoading": "Analyzing…",

@@ -1764,6 +1764,7 @@ function MicroFootballSim() {
   const [dfmMode, setDfmMode] = useState<'real_anchored' | 'engine_faithful'>('real_anchored');
   const [aiAgg, setAiAgg] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
   const [aiSim, setAiSim] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
+  const [aiDfm, setAiDfm] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
   // Cross-artifact focus: if we arrived by clicking a country elsewhere, open the matchup
   // that team plays in (so the scroll/highlight lands, not a random default matchup).
   const focus = usePredictionFocus();
@@ -1791,6 +1792,8 @@ function MicroFootballSim() {
   );
   const runAgg = async () => { setAiAgg({ loading: true }); try { const r = await analyzeMicrofootball(m.id, null, i18n.language); setAiAgg({ loading: false, text: r.analysis, cached: r.cached }); } catch (e: any) { setAiAgg({ loading: false, error: String(e?.message || e) }); } };
   const runSim = async () => { setAiSim({ loading: true }); try { const r = await analyzeMicrofootball(m.id, sim.sim_id, i18n.language); setAiSim({ loading: false, text: r.analysis, cached: r.cached }); } catch (e: any) { setAiSim({ loading: false, error: String(e?.message || e) }); } };
+  // DFM analysis of the currently-shown diffusion view; cached on box A the same way as agg/sim.
+  const runDfm = async () => { setAiDfm({ loading: true }); try { const r = await analyzeMicrofootball(m.id, null, i18n.language, { mode: 'dfm', dfm_mode: dfmMode }); setAiDfm({ loading: false, text: r.analysis, cached: r.cached }); } catch (e: any) { setAiDfm({ loading: false, error: String(e?.message || e) }); } };
 
   // stat rows for the per-sim table. Null-safe: an undefined stat renders '—', not "null%" —
   // e.g. save_pct is null when the keeper faced ZERO on-target shots (0/0 has no save rate).
@@ -1816,7 +1819,7 @@ function MicroFootballSim() {
       <div style={{ marginBottom: 8 }}>
         {matchups.map((mm, i) => {
           const dt = scheduleDate(schedData?.matches || [], mm.home_name, mm.away_name);
-          return tab(i === mIdx, () => { setMIdx(i); setSIdx(0); setAiSim({ loading: false }); setAiAgg({ loading: false }); },
+          return tab(i === mIdx, () => { setMIdx(i); setSIdx(0); setAiSim({ loading: false }); setAiAgg({ loading: false }); setAiDfm({ loading: false }); },
             <span>{tCountry(mm.home_name)} v {tCountry(mm.away_name)}{dt && <span style={{ display: 'block', fontSize: 9, fontWeight: 400, color: 'var(--text-muted)', marginTop: 1 }}>{dt}</span>}</span>, mm.id);
         })}
       </div>
@@ -1886,6 +1889,7 @@ function MicroFootballSim() {
               [tr('prediction.dfmCards'), <span style={mono}>🟨 {mode.cards_per_match?.yellow} · 🟥 {mode.cards_per_match?.red}</span>],
             ]} />
             <div style={{ fontSize: 9, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{tr('prediction.dfmNote')} · {d.ts}</div>
+            <AiResult state={aiDfm} onRun={runDfm} label={tr('prediction.dfmAiAnalyze')} />
           </div>
         );
       })()}

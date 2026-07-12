@@ -8,10 +8,6 @@
       "param_set": "default",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -20,20 +16,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -48,24 +52,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -74,10 +74,6 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -86,20 +82,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -114,24 +118,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -140,10 +140,6 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -152,20 +148,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -180,24 +184,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -206,10 +206,6 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -218,20 +214,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -246,24 +250,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -272,10 +272,6 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -284,20 +280,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -312,24 +316,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -338,10 +338,6 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -350,20 +346,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -378,24 +382,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -404,10 +404,6 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -416,20 +412,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -444,24 +448,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -470,10 +470,6 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -482,20 +478,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -510,24 +514,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -536,10 +536,6 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -548,20 +544,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -576,24 +580,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -602,10 +602,6 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -614,20 +610,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -642,24 +646,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -668,10 +668,6 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -680,20 +676,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -708,24 +712,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -734,10 +734,6 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -746,20 +742,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -774,24 +778,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -800,10 +800,6 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -812,20 +808,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -840,24 +844,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -866,10 +866,6 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -878,20 +874,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -906,24 +910,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -932,10 +932,6 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -944,20 +940,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -972,24 +976,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -998,10 +998,6 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1010,20 +1006,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1038,24 +1042,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1064,10 +1064,6 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1076,20 +1072,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1104,24 +1108,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1130,10 +1130,6 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1142,20 +1138,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1170,24 +1174,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1196,10 +1196,6 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1208,20 +1204,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1236,24 +1240,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1262,10 +1262,6 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1274,20 +1270,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1302,24 +1306,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1328,10 +1328,6 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1340,20 +1336,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1368,24 +1372,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1394,10 +1394,6 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1406,20 +1402,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1434,24 +1438,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1460,10 +1460,6 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1472,20 +1468,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1500,24 +1504,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1526,10 +1526,6 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1538,20 +1534,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1566,24 +1570,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1592,10 +1592,6 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1604,20 +1600,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1632,24 +1636,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1658,10 +1658,6 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1670,20 +1666,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1698,24 +1702,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1724,10 +1724,6 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1736,20 +1732,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1764,24 +1768,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1790,10 +1790,6 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1802,20 +1798,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1830,24 +1834,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1856,10 +1856,6 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1868,20 +1864,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1896,24 +1900,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1922,10 +1922,6 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -1934,20 +1930,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -1962,24 +1966,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -1988,10 +1988,6 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -2000,20 +1996,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -2028,24 +2032,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     },
@@ -2054,10 +2054,6 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "HAS",
-          "YUM"
-        ],
-        [
           "DUK",
           "PPL"
         ],
@@ -2066,20 +2062,28 @@
           "BR"
         ],
         [
-          "APO",
-          "MCO"
-        ],
-        [
-          "BKR",
-          "WMB"
+          "HAS",
+          "YUM"
         ],
         [
           "EXR",
           "WY"
         ],
         [
-          "ACGL",
-          "USB"
+          "BKR",
+          "WMB"
+        ],
+        [
+          "APO",
+          "MCO"
+        ],
+        [
+          "HWM",
+          "VLTO"
+        ],
+        [
+          "CINF",
+          "FISV"
         ],
         [
           "AKAM",
@@ -2094,24 +2098,20 @@
           "CFG"
         ],
         [
+          "NSC",
+          "UNP"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
           "CME",
           "DE"
         ],
         [
-          "CINF",
-          "FISV"
-        ],
-        [
-          "BSX",
-          "PFE"
-        ],
-        [
-          "CL",
-          "PM"
-        ],
-        [
-          "AIG",
-          "PFG"
+          "IDXX",
+          "STE"
         ]
       ]
     }

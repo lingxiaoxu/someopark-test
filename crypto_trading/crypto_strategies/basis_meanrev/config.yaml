@@ -1,0 +1,30 @@
+# Plan 01 config (mirrors crypto-dev/01_basis_meanrev.md §9). PIT/WF: the
+# `signal` block is the sweep surface — values here are the live defaults,
+# replaced by walk-forward-selected params once WF has enough recorded data.
+strategy: basis_meanrev
+env: demo
+instrument: KXBTCPERP            # margin API (probe-verified ticker)
+asset: BTC
+bar: { type: snapshot, interval_sec: 5 }
+index: { source: spot_composite_proxy }   # spot_composite_proxy | licensed_brti
+signal:
+  zscore_window_min: 30
+  entry_k: 2.5
+  exit_k: 0.5
+  time_stop_min: 90
+  half_life_max_min: 60
+  half_life_window_min: 240
+  min_abs_bps: 5.0
+filters: { min_top_depth_contracts: 50, max_spread_bps: 25 }
+regime: { widen_entry_high_vol: 1.5, size_mult_high_vol: 0.5 }   # wired after calibration
+costs: { use_launch_zero_fee: true, also_test_projected: true }
+risk:
+  leverage_max: 2.0
+  max_daily_loss_pct: 0.05
+  daily_loss_amber_pct: 0.03
+  kelly_fraction: 0.25
+  staleness_max_s: 30
+sizing: { target_vol_annual: 0.40, min_contracts: 1 }
+backtest:
+  note: v1 candle tape (synthetic depth). Switch tape to recorded poll/WS books
+        as they accumulate; validation gate runs on projected fees.

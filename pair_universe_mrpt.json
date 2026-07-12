@@ -1,11 +1,5 @@
 [
   {
-    "s1": "HAS",
-    "s2": "YUM",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
     "s1": "DUK",
     "s2": "PPL",
     "sector": "utilities",
@@ -18,16 +12,10 @@
     "z_col": "Z_finance"
   },
   {
-    "s1": "APO",
-    "s2": "MCO",
-    "sector": "finance",
-    "z_col": "Z_finance"
-  },
-  {
-    "s1": "BKR",
-    "s2": "WMB",
-    "sector": "energy",
-    "z_col": "Z_energy"
+    "s1": "HAS",
+    "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
   },
   {
     "s1": "EXR",
@@ -36,8 +24,26 @@
     "z_col": "Z_realestate"
   },
   {
-    "s1": "ACGL",
-    "s2": "USB",
+    "s1": "BKR",
+    "s2": "WMB",
+    "sector": "energy",
+    "z_col": "Z_energy"
+  },
+  {
+    "s1": "APO",
+    "s2": "MCO",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "HWM",
+    "s2": "VLTO",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
+    "s1": "CINF",
+    "s2": "FISV",
     "sector": "finance",
     "z_col": "Z_finance"
   },
@@ -60,33 +66,27 @@
     "z_col": "Z_finance"
   },
   {
+    "s1": "NSC",
+    "s2": "UNP",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
+    "s1": "HWM",
+    "s2": "ROP",
+    "sector": "industrial",
+    "z_col": "Z_industrial"
+  },
+  {
     "s1": "CME",
     "s2": "DE",
     "sector": "finance",
     "z_col": "Z_finance"
   },
   {
-    "s1": "CINF",
-    "s2": "FISV",
-    "sector": "finance",
-    "z_col": "Z_finance"
-  },
-  {
-    "s1": "BSX",
-    "s2": "PFE",
+    "s1": "IDXX",
+    "s2": "STE",
     "sector": "health",
     "z_col": "Z_health"
-  },
-  {
-    "s1": "CL",
-    "s2": "PM",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
-    "s1": "AIG",
-    "s2": "PFG",
-    "sector": "finance",
-    "z_col": "Z_finance"
   }
 ]

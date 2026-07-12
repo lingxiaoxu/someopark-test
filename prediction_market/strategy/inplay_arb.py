@@ -26,6 +26,7 @@ from prediction_market.strategy.cross_venue import evaluate_lock
 from prediction_market.strategy.edge import compute_edge
 from prediction_market.strategy.inplay_tactics import (
     convergence_take_profit,
+    corner_total_signal,
     dormant_explosion,
     draw_trade_signal,
     favourite_comeback,
@@ -192,14 +193,15 @@ def _team_live_stats(conn, fixture_row) -> dict:
     """Per-side live xG / possession / shots from fixture_stats → {'home':{...},'away':{...}}.
     Keyed by side so the data-mined tactics don't need team-id plumbing."""
     rows = {r["team_api_id"]: r for r in conn.execute(
-        "SELECT team_api_id, xg, possession, shots_total FROM fixture_stats WHERE fixture_api_id=?",
-        (fixture_row["api_id"],))}
+        "SELECT team_api_id, xg, possession, shots_total, corners FROM fixture_stats "
+        "WHERE fixture_api_id=?", (fixture_row["api_id"],))}
     out = {}
     for side, tid in (("home", fixture_row["home_api_id"]), ("away", fixture_row["away_api_id"])):
         r = rows.get(tid)
         out[side] = {"xg": r["xg"] if r else None,
                      "possession": r["possession"] if r else None,
-                     "shots": r["shots_total"] if r else None}
+                     "shots": r["shots_total"] if r else None,
+                     "corners": r["corners"] if r else None}
     return out
 
 
@@ -407,6 +409,21 @@ def find_opportunities(conn=None, sm=None, *, quote_sources: dict | None = None,
                                         reason_key=sig.reason_key, reason_args=sig.reason_args,
                                         intent=_intent_for(sig.reason_key)))
                 # kind stays "tactic" so ranking / frontend colour / i18n are unchanged.
+
+        # (1c) corner-total signal — its own market (Kalshi KXWCCORNERS ladder), separate
+        # from the goal-totals book. Fires only against a REAL corner quote with edge; the
+        # signal HOLDs on missing/early/stale corners, so a no-quote match adds nothing.
+        ch, ca = st["home"]["corners"], st["away"]["corners"]
+        corners_now = (ch + ca) if (ch is not None and ca is not None) else None
+        corner_q = next((quotes.get(v) for v in ("kalshi_corners", "poly_us_corners")
+                         if quotes.get(v)), None)
+        csig = corner_total_signal(corners_now, minute, gh, ga, quotes=corner_q)
+        if csig and csig.act != "HOLD":
+            opps.append(Opportunity(fx["api_id"], m, minute, score, "tactic", csig.side,
+                                    "corners", csig.reason_args.get("fair"),
+                                    csig.reason_args.get("ask"), None, csig.act, csig.reason,
+                                    reason_key=csig.reason_key, reason_args=csig.reason_args,
+                                    intent=_intent_for(csig.reason_key)))
 
         # (2) market-dependent: relative value + cross-venue lock arb (3-way + totals).
         # Quote per outcome is {'ask','bid'} (or a plain float = ask==bid).

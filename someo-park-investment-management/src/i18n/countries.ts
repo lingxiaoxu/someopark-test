@@ -68,3 +68,20 @@ export function tCountry(name?: string | null): string {
   }
   return name;
 }
+
+/**
+ * Canonical English names of all tracked teams. This is the anchor key used by the
+ * cross-artifact country navigator (CountryName + countryIndex): data everywhere keys
+ * countries by these exact English strings, so they double as the `data-country` value.
+ */
+export const COUNTRY_NAMES: ReadonlySet<string> = new Set(Object.keys(COUNTRIES));
+
+/** Normalise a country string (as it appears in the prediction data) to its anchor key. */
+export function countryKey(s?: string | null): string {
+  return (s || '').trim();
+}
+
+/** True if `s` is one of the tracked country names (used to sift country strings out of JSON). */
+export function isCountryName(s?: string | null): boolean {
+  return !!s && COUNTRY_NAMES.has(s.trim());
+}

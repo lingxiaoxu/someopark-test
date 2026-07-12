@@ -10,6 +10,7 @@ import { homedir } from 'os'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const INDEX = path.join(__dirname, '..', '..', 'public', 'data', 'microfootball_index.json')
+const DFM_INDEX = path.join(__dirname, '..', '..', 'public', 'data', 'dfm_index.json')
 
 // ── On-box analysis cache (lives on ed9f, the nemotron host, NOT the Mac) ──────────
 // A generated analysis is cached on ed9f at ~/mirofootball/ai_cache/. A request reuses the
@@ -71,6 +72,13 @@ function loadMatchup(id: string): any | null {
   return (doc.matchups || []).find((m: any) => m.id === id) || null
 }
 
+// DFM diffusion-amplification snapshot for a matchup (dfm_index.json is a {matchups:{id:{…}}} map).
+function loadDfm(id: string): any | null {
+  if (!existsSync(DFM_INDEX)) return null
+  const doc = JSON.parse(readFileSync(DFM_INDEX, 'utf8'))
+  return (doc.matchups || {})[id] || null
+}
+
 const pct = (x: number) => `${Math.round((x || 0) * 100)}%`
 
 function aggregatePrompts(m: any, langLine: string) {
@@ -115,28 +123,76 @@ function simPrompts(m: any, sim: any, langLine: string) {
   return { system, user }
 }
 
-// POST /api/microfootball/analyze  { matchup_id, sim_id?, lang? }
+// DFM diffusion-amplification analysis: summarise the 5000-sample distribution (one of the two
+// views — real_anchored / engine_faithful). `d` is the dfm_index matchup entry; `view` is d[mode].
+function dfmPrompts(d: any, view: any, mode: string, langLine: string) {
+  const H = d.home, A = d.away
+  const p50 = (ch: string, side: 'home' | 'away', mul = 1, fix = 1) => {
+    const s = view.stats?.[ch]?.[side]
+    return s ? (s.p50 * mul).toFixed(fix) : 'n/a'
+  }
+  const dist = (view.scoreline_top10 || []).slice(0, 6).map((l: any) => `${l.score} ${pct(l.pct)}`).join(', ')
+  const viewName = mode === 'engine_faithful'
+    ? 'engine-faithful (the amplified distribution of the source sims as-is)'
+    : 'real-anchored (rescaled to tournament-level intensity + calibrated cards — for real-match prediction)'
+  const system =
+    `You are a professional football match analyst. You are given a DIFFUSION-MODEL amplification ` +
+    `of ${d.n_source_sims} AI match simulations into ${d.n_samples} synthetic matches for one fixture ` +
+    `(the ${viewName} view). You get the win/draw/loss probabilities, expected scoreline, the score ` +
+    `distribution, and median per-team possession, shots, corners, xG and cards. Write ONE concise ` +
+    `paragraph: the most likely outcome and its probability, the expected scoreline, and the single ` +
+    `most important statistical edge driving it. Use ONLY the numbers provided; do not invent stats. ${langLine}`
+  const user =
+    `Fixture: ${H} (home) vs ${A} (away)\n` +
+    `Diffusion samples: ${d.n_samples} (from ${d.n_source_sims} sims) — ${viewName}\n` +
+    `Win probability: ${H} ${pct(view.wdl.home)}, draw ${pct(view.wdl.draw)}, ${A} ${pct(view.wdl.away)}\n` +
+    `Expected scoreline: ${H} ${(view.avg_goals || '').replace('-', ' - ')} ${A}\n` +
+    `Top scorelines: ${dist}\n` +
+    `Median possession: ${H} ${p50('poss_share', 'home', 100, 0)}%, ${A} ${p50('poss_share', 'away', 100, 0)}%\n` +
+    `Median shots: ${H} ${p50('shots', 'home', 1, 0)}, ${A} ${p50('shots', 'away', 1, 0)}\n` +
+    `Median corners: ${H} ${p50('corners', 'home', 1, 0)}, ${A} ${p50('corners', 'away', 1, 0)}\n` +
+    `Median xG: ${H} ${p50('xg', 'home')}, ${A} ${p50('xg', 'away')}\n` +
+    `Cards per match: ${view.cards_per_match?.yellow} yellow, ${view.cards_per_match?.red} red`
+  return { system, user }
+}
+
+// POST /api/microfootball/analyze  { matchup_id, sim_id?, lang?, mode?, dfm_mode? }
 // On-demand only — the local model is slow; the frontend calls one request at a time.
 router.post('/analyze', async (req: Request, res: Response) => {
   try {
-    const { matchup_id, sim_id, lang } = req.body || {}
+    const { matchup_id, sim_id, lang, mode, dfm_mode } = req.body || {}
     if (!matchup_id) return res.status(400).json({ error: 'matchup_id required' })
-    const m = loadMatchup(matchup_id)
-    if (!m) return res.status(404).json({ error: `matchup not found: ${matchup_id}` })
 
     const langLine = `Answer in ${LANGS[lang as string] || 'English'}.`
-    let prompts, hashInput: string
-    if (sim_id) {
-      const sim = (m.sims || []).find((s: any) => s.sim_id === sim_id)
-      if (!sim) return res.status(404).json({ error: `sim not found: ${sim_id}` })
-      prompts = simPrompts(m, sim, langLine)
-      hashInput = JSON.stringify({ sim: sim.sim_id, score: sim.score, stats: sim.stats })
+    let prompts, hashInput: string, slot: string
+    if (mode === 'dfm') {
+      // DFM diffusion-amplification analysis (reads dfm_index.json, not the sim index).
+      const d = loadDfm(matchup_id)
+      if (!d) return res.status(404).json({ error: `dfm matchup not found: ${matchup_id}` })
+      const dm = dfm_mode === 'engine_faithful' ? 'engine_faithful' : 'real_anchored'
+      const view = d[dm] || d.real_anchored
+      prompts = dfmPrompts(d, view, dm, langLine)
+      // content-hash the snapshot so a NEW DFM run (or view toggle) regenerates; else the cache holds.
+      hashInput = JSON.stringify({ ts: d.ts, mode: dm, wdl: view.wdl, avg_goals: view.avg_goals,
+        top: (view.scoreline_top10 || []).slice(0, 6), cards: view.cards_per_match })
+      slot = `dfm_${dm}`
     } else {
-      prompts = aggregatePrompts(m, langLine)
-      hashInput = JSON.stringify({ n: m.n_sims, agg: m.aggregate })   // changes if the n sims change
+      const m = loadMatchup(matchup_id)
+      if (!m) return res.status(404).json({ error: `matchup not found: ${matchup_id}` })
+      if (sim_id) {
+        const sim = (m.sims || []).find((s: any) => s.sim_id === sim_id)
+        if (!sim) return res.status(404).json({ error: `sim not found: ${sim_id}` })
+        prompts = simPrompts(m, sim, langLine)
+        hashInput = JSON.stringify({ sim: sim.sim_id, score: sim.score, stats: sim.stats })
+        slot = safe(sim_id)
+      } else {
+        prompts = aggregatePrompts(m, langLine)
+        hashInput = JSON.stringify({ n: m.n_sims, agg: m.aggregate })   // changes if the n sims change
+        slot = 'agg'
+      }
     }
     const contentHash = createHash('sha256').update(hashInput).digest('hex').slice(0, 16)
-    const file = `${safe(matchup_id)}__${safe(sim_id || 'agg')}__${safe(lang || 'en')}.json`
+    const file = `${safe(matchup_id)}__${slot}__${safe(lang || 'en')}.json`
 
     // Cache hit (on ed9f): < 7 days old AND content unchanged → skip the (slow) model.
     const cached = await readCache(file)

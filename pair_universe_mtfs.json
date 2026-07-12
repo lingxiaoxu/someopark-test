@@ -1,86 +1,56 @@
 [
   {
-    "s1": "ANET",
-    "s2": "T",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "ANET",
+    "s1": "DVA",
     "s2": "HAS",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "DVA",
+    "s2": "CCI",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "ANET",
+    "s2": "DIS",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "ANET",
+    "s2": "TAP",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "BBY",
+    "s2": "APO",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "BBY",
+    "s2": "VICI",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "CDW",
+    "s2": "HSY",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "CDW",
+    "s2": "COST",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "VLO",
-    "s2": "KLAC",
+    "s2": "ORLY",
     "sector": "energy",
     "spread_col": "Momentum_Spread_energy"
-  },
-  {
-    "s1": "VLO",
-    "s2": "ORCL",
-    "sector": "energy",
-    "spread_col": "Momentum_Spread_energy"
-  },
-  {
-    "s1": "DAL",
-    "s2": "CCI",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "DAL",
-    "s2": "WYNN",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "BAX",
-    "s2": "TAP",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "BAX",
-    "s2": "DIS",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "CAH",
-    "s2": "FDX",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "CAH",
-    "s2": "WMT",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "ABBV",
-    "s2": "APO",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "ABBV",
-    "s2": "BLK",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "WST",
-    "s2": "VICI",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
-  },
-  {
-    "s1": "BEN",
-    "s2": "PFE",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
   }
 ]

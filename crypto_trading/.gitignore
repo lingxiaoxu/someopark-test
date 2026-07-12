@@ -1,0 +1,11 @@
+# Secrets — never commit
+.env
+
+# Market data + generated outputs (large, regenerable/recorded)
+price_data/
+trading_signals/
+logs/
+
+__pycache__/
+*.pyc
+.pytest_cache/

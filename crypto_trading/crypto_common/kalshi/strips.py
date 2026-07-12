@@ -1,0 +1,135 @@
+"""Event strike-strip recorder (Plan 02 milestone 1 — "start now").
+
+Captures the raw material for the implied-distribution work: for each
+configured threshold series (probe-verified: KXBTCD / KXBTC / KXETHD / KXETH,
+strike_type='greater', floor_strike=$level), snapshot the open markets at the
+nearest horizons and the orderbooks of strikes near ATM.
+
+ATM reference = perp mark / contract_size (margin API, public). All public —
+no key needed. Raw payloads persisted as-is (parse at load time).
+
+Layout:
+    price_data/kalshi/event_strips/<env>/<SERIES>/markets/<date>.jsonl
+    price_data/kalshi/event_strips/<env>/<SERIES>/orderbook/<date>.jsonl
+    price_data/kalshi/event_strips/<env>/heartbeat.json
+
+CLI:
+    conda run -n someopark_run python -m crypto_trading.crypto_common.kalshi.strips \
+        [--env prod] [--interval 60] [--horizons 2] [--atm-window 0.15] [--cycles 0]
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import time
+from collections import defaultdict
+
+from crypto_trading.crypto_common.config import PRICE_DATA
+from crypto_trading.crypto_common.io_jsonl import DailyJsonlWriter
+from crypto_trading.crypto_common.kalshi.rest_event import KalshiEventClient
+from crypto_trading.crypto_common.kalshi.rest_margin import KalshiMarginClient
+
+logger = logging.getLogger(__name__)
+
+# series -> perp ticker used for the ATM reference
+DEFAULT_SERIES = {
+    "KXBTCD": "KXBTCPERP", "KXBTC": "KXBTCPERP",
+    "KXETHD": "KXETHPERP", "KXETH": "KXETHPERP",
+}
+
+
+def spot_estimate(margin: KalshiMarginClient, perp_ticker: str) -> float | None:
+    """Underlying-level estimate = perp mark / contract_size (decimal dollars)."""
+    m = margin.market(perp_ticker)
+    try:
+        price, size = float(m.get("price", 0)), float(m.get("contract_size", 0))
+        return price / size if price > 0 and size > 0 else None
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
+class StripRecorder:
+    def __init__(self, *, env: str = "prod", series: dict[str, str] | None = None,
+                 horizons: int = 2, atm_window: float = 0.15, interval: float = 60.0):
+        self.env = env
+        self.series = dict(series or DEFAULT_SERIES)
+        self.horizons = horizons
+        self.atm_window = atm_window
+        self.interval = interval
+        self.event = KalshiEventClient(env=env)
+        self.margin = KalshiMarginClient(env=env, min_interval=0.15)
+        self.root = PRICE_DATA / "kalshi" / "event_strips" / env
+        self.writer = DailyJsonlWriter(self.root)
+        self.counts = {"markets": 0, "orderbooks": 0, "errors": 0}
+
+    def capture_series(self, series_ticker: str, perp_ticker: str) -> None:
+        now = time.time()
+        spot = spot_estimate(self.margin, perp_ticker)
+        markets = self.event.list_markets(series_ticker=series_ticker, status="open")
+        by_close: dict[str, list[dict]] = defaultdict(list)
+        for m in markets:
+            by_close[m.get("close_time", "")].append(m)
+        horizons = sorted(by_close)[: self.horizons]
+
+        for close_time in horizons:
+            strip = by_close[close_time]
+            self.writer.write(f"{series_ticker}/markets", {
+                "recv_ts": now, "close_time": close_time, "spot_est": spot,
+                "n_markets": len(strip), "markets": strip,
+            })
+            self.counts["markets"] += len(strip)
+            for m in strip:
+                strike = m.get("floor_strike") or m.get("cap_strike")
+                if spot and strike and abs(float(strike) / spot - 1.0) > self.atm_window:
+                    continue                      # only book-snapshot strikes near ATM
+                ob = self.event.orderbook_raw(m["ticker"])
+                self.writer.write(f"{series_ticker}/orderbook", {
+                    "recv_ts": now, "ticker": m["ticker"], "close_time": close_time,
+                    "strike": strike, "spot_est": spot, "ob": ob,
+                })
+                self.counts["orderbooks"] += 1
+
+    def heartbeat(self) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        (self.root / "heartbeat.json").write_text(json.dumps(
+            {"ts": time.time(), "env": self.env, "series": list(self.series),
+             "counts": self.counts}, indent=1))
+
+    def run(self, cycles: int = 0) -> None:
+        n = 0
+        try:
+            while True:
+                started = time.time()
+                for st, perp in self.series.items():
+                    try:
+                        self.capture_series(st, perp)
+                    except Exception:
+                        self.counts["errors"] += 1
+                        logger.exception("strip capture failed for %s — continuing", st)
+                self.heartbeat()
+                n += 1
+                if cycles and n >= cycles:
+                    break
+                time.sleep(max(0.0, self.interval - (time.time() - started)))
+        finally:
+            self.writer.close()
+            logger.info("strip recorder stopped after %d cycles: %s", n, self.counts)
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--env", default="prod", choices=["prod", "demo"])
+    ap.add_argument("--interval", type=float, default=60.0)
+    ap.add_argument("--horizons", type=int, default=2)
+    ap.add_argument("--atm-window", type=float, default=0.15)
+    ap.add_argument("--cycles", type=int, default=0, help="0 = run until killed")
+    args = ap.parse_args(argv)
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    StripRecorder(env=args.env, horizons=args.horizons, atm_window=args.atm_window,
+                  interval=args.interval).run(args.cycles)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

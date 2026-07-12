@@ -625,6 +625,15 @@
     50%      { opacity: .4; }
   }
   .pulse { animation: pulse-dot 2s infinite; }
+
+  /* Cross-artifact country navigator: 2s highlight on the focused row/card. */
+  @keyframes countryFocusFlash {
+    0%   { background-color: color-mix(in srgb, var(--accent-primary) 34%, transparent);
+           box-shadow: inset 0 0 0 2px var(--accent-primary); }
+    100% { background-color: transparent;
+           box-shadow: inset 0 0 0 2px transparent; }
+  }
+  .country-focus-flash { animation: countryFocusFlash 2s ease-out; border-radius: 4px; }
 }
 
 /* ════════════════════════════════════════════════════════════

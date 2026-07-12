@@ -1,92 +1,92 @@
 {
-  "param_set": "sensitive_dd",
+  "param_set": "low_turnover",
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "selected_at": "2026-07-06",
-  "last_updated": "2026-07-06",
-  "mcps_oos_filtered": 1.2516,
-  "recent_sharpe_12m": 1.2481,
-  "full_period_sharpe": 1.1485,
-  "full_period_calmar": 0.8197,
+  "selected_at": "2026-07-10",
+  "last_updated": "2026-07-10",
+  "mcps_oos_filtered": 1.255,
+  "recent_sharpe_12m": 1.5408,
+  "full_period_sharpe": 1.1132,
+  "full_period_calmar": 0.7199,
   "top_candidates": [
     {
       "name": "skip_heavy",
       "version": "v1",
-      "composite": 1.2471,
-      "mcps_score": 0.9495
+      "composite": 1.284,
+      "mcps_score": 0.9382
     },
     {
       "name": "value_proxy",
       "version": "v1",
-      "composite": 1.0373,
-      "mcps_score": 0.9495
+      "composite": 1.0954,
+      "mcps_score": 0.9382
     },
     {
       "name": "equal_weight_optimizer",
       "version": "v1",
-      "composite": 0.77,
-      "mcps_score": 0.9531
+      "composite": 0.7462,
+      "mcps_score": 0.9394
     },
     {
       "name": "dovish_macro",
       "version": "v1",
-      "composite": 0.2169,
-      "mcps_score": 0.9307
-    },
-    {
-      "name": "low_turnover",
-      "version": "v1",
-      "composite": -0.2561,
-      "mcps_score": 0.8776
+      "composite": 0.1381,
+      "mcps_score": 0.9128
     },
     {
       "name": "early_recovery",
       "version": "v1",
-      "composite": -0.2818,
-      "mcps_score": 0.9077
+      "composite": -0.2889,
+      "mcps_score": 0.8922
+    },
+    {
+      "name": "low_turnover",
+      "version": "v1",
+      "composite": -0.4225,
+      "mcps_score": 0.8655
     },
     {
       "name": "rate_hike_cycle",
       "version": "v1",
-      "composite": -0.5069,
-      "mcps_score": 0.9024
+      "composite": -0.5539,
+      "mcps_score": 0.8909
     },
     {
       "name": "diversified_5_rp",
       "version": "v1",
-      "composite": -0.6866,
-      "mcps_score": 0.8884
+      "composite": -0.591,
+      "mcps_score": 0.8797
     },
     {
       "name": "stagflation",
       "version": "v1",
-      "composite": -0.7149,
-      "mcps_score": 0.8805
+      "composite": -0.6632,
+      "mcps_score": 0.8667
     },
     {
       "name": "risk_parity_lw",
       "version": "v1",
-      "composite": -0.825,
-      "mcps_score": 0.8874
+      "composite": -0.7442,
+      "mcps_score": 0.8779
     }
   ],
   "n_candidates": 54,
   "n_oos_survivors": 54,
   "oos_filter_applied": true,
-  "oos_mean_sharpe": 0.9887,
-  "oos_n_selected": 6,
+  "oos_mean_sharpe": null,
+  "oos_n_selected": null,
   "wf_mean_wfe": 0.9017,
-  "macro_data_days": 2009,
+  "macro_data_days": 2013,
   "switch_history": [],
   "health": {
-    "days_since_switch": 1,
-    "current_rank": 0,
+    "days_since_switch": 2,
+    "current_rank": 6,
     "anomaly_detected": false,
-    "_consecutive_best_days": 1,
+    "_consecutive_best_days": 2,
     "_prev_best_param": "skip_heavy"
   },
-  "mcps_score": null,
-  "composite_score": null,
+  "mcps_score": 0.8655,
+  "composite_score": -0.4225,
   "version_selector": {
     "recommended": "v1",
     "v1_confidence": 0.775
