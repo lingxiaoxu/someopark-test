@@ -42,7 +42,7 @@ Deflated Sharpe Ratio (Bailey & López de Prado, 2014):
     SR_benchmark = sqrt(V[SR]) * ((1-gamma)*Z(1-1/N) + gamma*Z(1-1/(N*e)))
 
 MTFS-specific notes:
-  - 31 param_sets (vs 32 for MRPT) — more focused momentum-parameter grid
+  - len(PARAM_SETS) param_sets (35 as of 2026-07-12: 31 + 4 fast-confirm variants; MRPT has 32)
   - OOS window = 20 trading days (vs 25 for MRPT) — monthly cadence
   - All 4 stop-loss mechanisms are momentum-specific: Momentum Decay, Pair P&L,
     Volatility Stop, Time-based exits
@@ -228,7 +228,7 @@ def deflated_sharpe_ratio(is_sharpe, n_trials, n_obs, skew=0.0, kurt=3.0):
         scaling cancels in the formula).
     n_trials : int
         Number of independent trials (param_sets tested for this pair).
-        For MTFS this is len(Runs.PARAM_SETS) = 29 or 30.
+        For MTFS this is len(Runs.PARAM_SETS) (35 as of 2026-07-12).
     n_obs : int
         Number of observations (trading days) in the IS window.
     skew : float
@@ -456,7 +456,7 @@ def select_pairs_with_dsr(summary_csv, window, n_trials=None):
     Read grid summary, compute per-pair IS Sharpe + DSR, select best param_set.
 
     n_trials defaults to len(Runs.PARAM_SETS) to automatically pick up the
-    correct number of MTFS param_sets (31).
+    correct number of MTFS param_sets (dynamic; 35 as of 2026-07-12).
 
     Returns list of [s1, s2, best_param_set] for pairs that pass DSR filter.
     """

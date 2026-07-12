@@ -122,7 +122,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | 文件 | 说明 |
 |------|------|
 | `PortfolioMTFSRun.py` | MTFS 策略主逻辑（动量评分 + SMA 趋势 + 动量止损 + 财报黑名单） |
-| `PortfolioMTFSStrategyRuns.py` | JSON 驱动的批量回测入口，含全部 31 个 param_set 定义 |
+| `PortfolioMTFSStrategyRuns.py` | JSON 驱动的批量回测入口，含全部 35 个 param_set 定义（31 母 + 4 个 fast-confirm 竞争变体，2026-07-12）|
 | `MTFSUpdateConfigs.py` | 读取 Step 1 结果，DSR 过滤后生成 Step 2 / Step 3 config |
 | `MTFSWalkForward.py` | Walk-forward 优化：6 窗口 × 27 OOS 交易日，DSR 选参 |
 | `MTFSWalkForwardReport.py` | 读取最近一次 walk-forward 结果，生成完整 OOS 报告（含止损类型分解） |
@@ -407,7 +407,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | Window 5 | 2024-03-11 → 2026-02-03 | 2026-02-04 → 2026-03-11 |
 | Window 6 | 2024-03-11 → 2026-03-11 | 2026-03-12 → 2026-04-16 |
 
-#### MTFS Walk-Forward 窗口（6×27，expanding，基于 31 个 param_set）
+#### MTFS Walk-Forward 窗口（6×27，expanding，基于 35 个 param_set：31 母 + 4 fc 变体）
 
 | 窗口 | 训练期 | 测试期（样本外） |
 |------|--------|----------------|

@@ -2,7 +2,7 @@
 MTFSUpdateConfigs.py — Read Step 1 grid search results and
 auto-fill Step 2 (backtest) and Step 3 (forward) config files.
 
-Step 1 runs all 15 pairs × 31 param_sets = 31 runs.
+Step 1 runs all 15 pairs × len(PARAM_SETS) param_sets (35 as of 2026-07-12: 31 + 4 fc variants).
 Each run's Excel output contains per-pair PnL in the acc_pair_trade_pnl_history sheet
 and day-over-day PnL in the dod_pair_trade_pnl_history sheet.
 This script reads every run's Excel, extracts per-pair PnL + Sharpe, applies
@@ -51,7 +51,10 @@ log = logging.getLogger(__name__)
 MIN_PNL    = 0      # pair-level final acc_pnl must be > this
 MIN_TRADES = 3      # pair's number of open orders must be >= this
 MIN_DSR    = 0.5    # Deflated Sharpe Ratio p-value must be > this (multiple-comparison correction)
-N_TRIALS   = 31     # number of param_sets tested (for DSR benchmark)
+# DSR 试验数 = 实际参赛 param_set 数(2026-07-12 起 35:31 母 + 4 fc 变体)。
+# 改为动态取值,避免再加/减 set 时此处过期(全面扫荡时发现的功能性硬编码)。
+from PortfolioMTFSStrategyRuns import PARAM_SETS as _MTFS_PARAM_SETS
+N_TRIALS   = len(_MTFS_PARAM_SETS)   # number of param_sets tested (for DSR benchmark)
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
