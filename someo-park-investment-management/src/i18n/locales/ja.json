@@ -554,6 +554,7 @@
     "dfmModeEngine": "エンジン忠実",
     "dfmCorners": "コーナー (p50 [p5–p95])",
     "dfmCards": "カード / 試合",
+    "dfmScoreOther": "その他",
     "dfmNote": "拡散モデル生成 5000 試合;中央値 [5–95%] 区間;実戦アンカー=強度を実大会水準に校正"
   },
   "sidebar": {

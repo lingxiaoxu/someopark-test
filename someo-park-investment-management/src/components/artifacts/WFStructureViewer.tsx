@@ -73,7 +73,7 @@ const fileSystem: FileNode[] = [
       { name: 'oos_pair_summary_20260321.csv', type: 'csv', description: 'wfStructure.fsDesc.oosPairSummary' },
       { name: 'oos_report_20260321.txt', type: 'txt', description: 'wfStructure.fsDesc.oosReport' },
       {
-        name: 'window06_2024-02-15_2026-02-12',
+        name: 'window09_2024-10-04_2026-05-01',
         type: 'folder',
         description: 'wfStructure.fsDesc.rollingWindow',
         children: [
@@ -83,7 +83,7 @@ const fileSystem: FileNode[] = [
             type: 'folder',
             description: 'wfStructure.fsDesc.oosResults',
             children: [
-              { name: 'portfolio_history_wf_test_window06_2026-02-13_2026-03-20_1.xlsx', type: 'excel', description: 'wfStructure.fsDesc.oosPerformance' }
+              { name: 'portfolio_history_wf_test_window09_2026-05-04_2026-07-15_1.xlsx', type: 'excel', description: 'wfStructure.fsDesc.oosPerformance' }
             ]
           },
           {
@@ -97,11 +97,11 @@ const fileSystem: FileNode[] = [
             type: 'folder',
             description: 'wfStructure.fsDesc.oosLogs',
             children: [
-              { name: 'run_wf_test_window06_1.log', type: 'log' }
+              { name: 'run_wf_test_window09_1.log', type: 'log' }
             ]
           },
           {
-            name: 'wf_window06_2024-02-15_2026-02-12',
+            name: 'wf_window09_2024-10-04_2026-05-01',
             type: 'folder',
             description: 'wfStructure.fsDesc.isGridSearch',
             children: [
@@ -523,6 +523,10 @@ export default function WFStructureViewer({ data, params }: { data?: any; params
 
   // Derive window info from summary
   const windows = useMemo(() => wfSummary?.windows || [], [wfSummary]);
+  // 默认选中最后一窗(部署窗);窗口数不再固定 6,随 summary 自适应
+  useEffect(() => {
+    if (windows.length) setWindowIdx(windows[windows.length - 1].window_idx);
+  }, [windows]);
   const selectedWindow = useMemo(() => windows.find((w: any) => w.window_idx === windowIdx), [windows, windowIdx]);
   const selectedPairs: [string, string, string][] = useMemo(() => selectedWindow?.selected_pairs || [], [selectedWindow]);
   const paramSets = strategy === 'MRPT' ? MRPT_PARAM_SETS : MTFS_PARAM_SETS;

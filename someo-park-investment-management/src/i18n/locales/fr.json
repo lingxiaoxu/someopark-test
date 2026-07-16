@@ -554,6 +554,7 @@
     "dfmModeEngine": "fidèle moteur",
     "dfmCorners": "Corners (p50 [p5–p95])",
     "dfmCards": "Cartons / match",
+    "dfmScoreOther": "autres",
     "dfmNote": "5000 matchs générés par diffusion ; médiane [5–95%] ; ancré réel = intensités calibrées au niveau réel du tournoi"
   },
   "sidebar": {

@@ -19,7 +19,12 @@ from pathlib import Path
 CRYPTO_ROOT = Path(__file__).resolve().parents[1]          # crypto_trading/
 REPO_ROOT = CRYPTO_ROOT.parent                             # someopark-test/
 PRICE_DATA = CRYPTO_ROOT / "price_data"
-SIGNALS_DIR = CRYPTO_ROOT / "trading_signals"
+# Outputs (reports, WF artifacts, backtests, inventories, bracket/halt state) go
+# here. Redirectable via CRYPTO_SIGNALS_DIR so a test/dry run can write to a temp
+# dir instead of polluting the real production output tree. Reads (PRICE_DATA)
+# are NOT redirectable — tests read the real recorded data, write elsewhere.
+SIGNALS_DIR = Path(os.environ.get("CRYPTO_SIGNALS_DIR")
+                   or (CRYPTO_ROOT / "trading_signals"))
 
 
 def _parse_env_file(path: Path) -> dict[str, str]:

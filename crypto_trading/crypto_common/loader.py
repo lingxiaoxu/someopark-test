@@ -38,11 +38,17 @@ def _utc_index(df: pd.DataFrame, ts_col: str = "ts", unit: str = "s") -> pd.Data
     return df.drop(columns=[ts_col]).sort_index()
 
 
+def _utc_ts(x) -> pd.Timestamp:
+    """Coerce to a tz-aware UTC Timestamp, whether input is naive or aware."""
+    t = pd.Timestamp(x)
+    return t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
+
+
 def _clip(df: pd.DataFrame, start=None, end=None) -> pd.DataFrame:
     if start is not None:
-        df = df[df.index >= pd.Timestamp(start, tz="UTC")]
+        df = df[df.index >= _utc_ts(start)]
     if end is not None:
-        df = df[df.index <= pd.Timestamp(end, tz="UTC")]
+        df = df[df.index <= _utc_ts(end)]
     return df
 
 
@@ -226,5 +232,6 @@ def build_basis_frame(ticker: str = "KXBTCPERP", asset: str = "BTC", *,
     frame = frame.dropna()
     frame["b_t"] = (frame.mark_mid_underlying - frame.index_proxy) / frame.index_proxy
     frame["b_t_bps"] = 1e4 * frame.b_t
-    assert not frame.isna().any().any(), "no-NaN contract violated"
+    if frame.isna().any().any():   # explicit raise (survives python -O, unlike assert)
+        raise ValueError("no-NaN contract violated in build_basis_frame")
     return frame

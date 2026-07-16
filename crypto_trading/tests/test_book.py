@@ -47,3 +47,28 @@ def test_yes_no_side_aliases():
     b.apply_snapshot({"yes_dollars": [["0.40", "10"]], "no_dollars": [["0.55", "4"]]}, seq=1)
     assert b.best_bid() == (Decimal("0.40"), Decimal("10"))
     assert b.best_ask() == (Decimal("0.55"), Decimal("4"))
+
+
+def test_official_margin_ws_snapshot_format():
+    # EXACT format from docs.kalshi.com/margin-ws/websockets/orderbook-updates:
+    # singular bid/ask keys, market_ticker alongside, [price, count] string pairs.
+    msg = {"market_ticker": "KXBTCPERP",
+           "bid": [["0.50", "100.5"], ["0.49", "50.0"]],
+           "ask": [["0.51", "75.5"], ["0.52", "200.0"]]}
+    b = BookMirror("KXBTCPERP")
+    b.apply_snapshot(msg, seq=123)
+    assert b.best_bid() == (Decimal("0.50"), Decimal("100.5"))
+    assert b.best_ask() == (Decimal("0.51"), Decimal("75.5"))
+
+
+def test_official_margin_ws_delta_format():
+    # EXACT delta format: msg has market_ticker, price, delta, side (bid/ask).
+    b = BookMirror("KXBTCPERP")
+    b.apply_snapshot({"market_ticker": "KXBTCPERP", "bid": [["0.50", "100"]],
+                      "ask": [["0.51", "75"]]}, seq=1)
+    assert b.apply_delta({"market_ticker": "KXBTCPERP", "price": "0.50",
+                          "delta": "-40", "side": "bid"}, seq=2)
+    assert b.bids[Decimal("0.50")] == Decimal("60")
+    assert b.apply_delta({"market_ticker": "KXBTCPERP", "price": "0.53",
+                          "delta": "10", "side": "ask"}, seq=3)
+    assert b.asks[Decimal("0.53")] == Decimal("10")

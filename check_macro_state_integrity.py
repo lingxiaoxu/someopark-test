@@ -12,6 +12,8 @@ MacroStateStore 数据完整性检查。
   6. FRED 覆盖年份：hy_spread / ig_spread 必须从 2016 起有值
   7. vix3m 缺口：2017-2019 vix3m 为 NaN 是预期行为（文档化，不报错）
   8. 总行数不低于预期（2017-今天约 9 × 252 行）
+  9. 日频序列新鲜度：vix / vix3m / vix9d / move 的 source parquet 末观测须在
+     FRESH_MAX_GAP 天内，否则判为 feed 冻结 → FAIL（不再静默 PASS）
 
 退出码：0 = 全部通过，1 = 有 FAIL 或 WARN
 """
@@ -57,7 +59,7 @@ print(f"  MacroStateStore Integrity Check")
 print(f"  backfill_start={BACKFILL_START}  sr_start={CHECK_START}  today={TODAY}")
 print(f"{'═'*70}\n")
 
-print("[1/8] 加载全量数据...")
+print("[1/9] 加载全量数据...")
 df = STORE.load(str(BACKFILL_START), str(TODAY))
 if df.empty:
     print("\n  FATAL: 无数据，请先运行 --init")
@@ -69,7 +71,7 @@ print(f"  日期范围: {df.index[0].date()} → {df.index[-1].date()}\n")
 # ════════════════════════════════════════════════════════════════════════════
 # 2. 文件覆盖（周文件完整性）
 # ════════════════════════════════════════════════════════════════════════════
-print("[2/8] 周文件覆盖...")
+print("[2/9] 周文件覆盖...")
 weekly_files = sorted(STORE._weekly_dir.glob("week_*.parquet"))
 expected_mondays: set[date] = set()
 # First Monday on or after BACKFILL_START (not the Monday of BACKFILL_START's week,
@@ -101,7 +103,7 @@ else:
 # ════════════════════════════════════════════════════════════════════════════
 # 3. 日期连续性（交易日间距 & 重复索引）
 # ════════════════════════════════════════════════════════════════════════════
-print("\n[3/8] 日期连续性...")
+print("\n[3/9] 日期连续性...")
 
 # 重复索引
 dupes = df.index[df.index.duplicated()]
@@ -129,7 +131,7 @@ if not sr_df.empty:
 # ════════════════════════════════════════════════════════════════════════════
 # 4. SIMILARITY_FEATURES 填充率（每年）
 # ════════════════════════════════════════════════════════════════════════════
-print("\n[4/8] SIMILARITY_FEATURES 填充率...")
+print("\n[4/9] SIMILARITY_FEATURES 填充率...")
 
 avail_sf = [f for f in SIMILARITY_FEATURES if f in df.columns]
 missing_sf = [f for f in SIMILARITY_FEATURES if f not in df.columns]
@@ -168,7 +170,7 @@ if avail_sf:
 # ════════════════════════════════════════════════════════════════════════════
 # 5. Z-score 合理性（全局分布）
 # ════════════════════════════════════════════════════════════════════════════
-print("\n[5/8] Z-score 全局分布（mean ≈ 0, std ≈ 1）...")
+print("\n[5/9] Z-score 全局分布（mean ≈ 0, std ≈ 1）...")
 
 Z_COLS = [f for f in ["vix_z", "baa_spread_z", "fin_stress_z",
                        "xlk_spy_z", "yield_curve_z"] if f in df.columns]
@@ -192,7 +194,7 @@ for col in Z_COLS:
 # ════════════════════════════════════════════════════════════════════════════
 # 6. 跨年边界一致性（检测基准漂移）
 # ════════════════════════════════════════════════════════════════════════════
-print("\n[6/8] 跨年边界一致性（z-score 均值年际差）...")
+print("\n[6/9] 跨年边界一致性（z-score 均值年际差）...")
 
 boundary_fail = False
 for col in Z_COLS:
@@ -220,7 +222,7 @@ if not boundary_fail:
 # ════════════════════════════════════════════════════════════════════════════
 # 7. FRED 覆盖年份（hy_spread / ig_spread 必须从 2016 起）
 # ════════════════════════════════════════════════════════════════════════════
-print("\n[7/8] FRED 关键序列覆盖年份...")
+print("\n[7/9] FRED 关键序列覆盖年份...")
 
 # baa_spread (BAA10Y) must have full history back to SR backtest start
 for fred_col, expect_yr, note in [
@@ -260,7 +262,7 @@ for fred_col in ["hy_spread", "ig_spread"]:
 # ════════════════════════════════════════════════════════════════════════════
 # 8. vix3m 缺口记录（预期行为，仅文档化）
 # ════════════════════════════════════════════════════════════════════════════
-print("\n[8/8] vix3m 缺口文档化（2017-2019 期望 NaN）...")
+print("\n[8/9] vix3m 缺口文档化（2017-2019 期望 NaN）...")
 
 if "vix3m" in df.columns:
     vix3m = df["vix3m"]
@@ -277,6 +279,33 @@ if "vix3m" in df.columns:
                f"  |  2020+ 填充率 {post_fill:.1f}%（正常）")
 else:
     record("vix3m_present", WARN, "vix3m 列不存在（不影响 MCPS）")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# 9. 日频序列新鲜度（检测 feed 冻结：source parquet 末观测必须在 N 天内）
+# ════════════════════════════════════════════════════════════════════════════
+print("\n[9/9] 日频序列新鲜度（source parquet 末观测 ≤ FRESH_MAX_GAP 天）...")
+
+# 日频序列每交易日更新；正常长周末/假期间隔 ≤ 4-5 天。>7 天视为 feed 冻结/未更新。
+FRESH_MAX_GAP = 7
+try:
+    from MacroDataStore import MacroDataStore
+    _mds = MacroDataStore()
+    for _name in ("vix", "vix3m", "vix9d", "move"):
+        s = _mds.load(_name)
+        if s is None or len(s) == 0:
+            record(f"freshness_{_name}", FAIL, f"{_name}: 无数据（source parquet 为空）")
+            continue
+        last = pd.Timestamp(s.index.max()).date()
+        gap = (TODAY - last).days
+        if gap > FRESH_MAX_GAP:
+            record(f"freshness_{_name}", FAIL,
+                   f"{_name}: 末观测 {last} 距今 {gap} 天 > {FRESH_MAX_GAP}（feed 冻结/未更新）")
+        else:
+            record(f"freshness_{_name}", PASS,
+                   f"{_name}: 末观测 {last}（距今 {gap} 天，新鲜）")
+except Exception as e:
+    record("freshness_check", FAIL, f"新鲜度检查异常: {e}")
 
 
 # ════════════════════════════════════════════════════════════════════════════

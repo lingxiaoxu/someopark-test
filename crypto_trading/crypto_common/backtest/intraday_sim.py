@@ -42,6 +42,8 @@ class SimConfig:
     initial_cash: float = 1000.0
     mark_to: str = "mid"                   # equity marking
     force_flat_at_end: bool = True
+    fee_role_override: str | None = None   # None = fill's natural role; "maker"/"taker"
+                                           # forces the fee role (models passive execution)
 
 
 @dataclass
@@ -115,7 +117,8 @@ class IntradaySim:
     def _apply_fill(self, ts: float, side: str, qty: float, price: float,
                     role: str, tag: str) -> None:
         s = self.state
-        fee = fee_dollars(qty * price, role=role, scenario=self.cfg.fee_scenario,
+        fee_role = self.cfg.fee_role_override or role   # force maker/taker if configured
+        fee = fee_dollars(qty * price, role=fee_role, scenario=self.cfg.fee_scenario,
                           ticker=self.cfg.ticker)
         signed = qty if side == "buy" else -qty
         # realized P&L on the reducing portion

@@ -580,6 +580,7 @@
     "dfmModeEngine": "引擎忠实",
     "dfmCorners": "角球 (p50 [p5–p95])",
     "dfmCards": "牌 / 场",
+    "dfmScoreOther": "其余",
     "dfmNote": "5000 场扩散生成;中位数 [5–95%] 区间;真实锚定=强度按真实锦标赛水平校准"
   },
   "sidebar": {

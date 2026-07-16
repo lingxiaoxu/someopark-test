@@ -44,7 +44,11 @@ import numpy as np
 import pandas as pd
 
 from crypto_trading.crypto_common.config import PRICE_DATA, SIGNALS_DIR
-from crypto_trading.crypto_common.loader import _read_jsonl_days, load_poll_market_stats
+from crypto_trading.crypto_common.loader import (_read_jsonl_days, load_funding,
+                                                 load_perp_candles,
+                                                 load_poll_market_stats)
+from crypto_trading.crypto_strategies.event_perp.signals.dislocation import (
+    DislocationParams, rolling_z, snapshot_factors)
 from crypto_trading.crypto_strategies.event_perp.signals.implied_dist import (
     _nearest_survival, event_fee, find_violations, implied_distribution,
     implied_distribution_from_bins, parse_bins, parse_strip, tile_arb)
@@ -166,7 +170,8 @@ def _perp_spot_from_record(rec: dict) -> float | None:
         return None
 
 
-def _implied_mean(rec: dict) -> float | None:
+def _dist_and_quotes(rec: dict):
+    """(ImpliedDist|None, surv_quotes, bins, tail_lo, tail_hi) for one record."""
     markets = rec.get("markets") or []
     surv = parse_strip(markets)
     bins = parse_bins(markets)
@@ -177,6 +182,11 @@ def _implied_mean(rec: dict) -> float | None:
         tail_hi = _nearest_survival(surv, bins[-1].k_hi, gap)
     dist = (implied_distribution_from_bins(bins, tail_lo=tail_lo, tail_hi=tail_hi)
             or implied_distribution(surv))
+    return dist, surv, bins, tail_lo, tail_hi
+
+
+def _implied_mean(rec: dict) -> float | None:
+    dist, *_ = _dist_and_quotes(rec)
     return dist.mean if dist is not None else None
 
 
@@ -282,24 +292,181 @@ def run_dislocation_ic(series: str, *, fwd: int = 3, zwin: int = 60,
     }
 
 
+# ── sub-backtest 3: per-FACTOR IC (dislocation.py factors) ───────────────────
+
+def _realized_vol_lookup(perp: str) -> "tuple[np.ndarray, np.ndarray] | None":
+    """(ts, realized_vol) from 1h candles — rolling std of log returns (24h)."""
+    try:
+        c = load_perp_candles(perp, "1h")
+    except Exception:
+        return None
+    px = c["price_close"].dropna()
+    if len(px) < 30:
+        return None
+    rv = np.log(px).diff().rolling(24, min_periods=8).std()
+    ts = px.index.view("int64") / 1e9
+    return ts, rv.to_numpy()
+
+
+def _funding_lookup(perp: str) -> "tuple[np.ndarray, np.ndarray] | None":
+    try:
+        f = load_funding(perp)
+    except Exception:
+        return None
+    if not len(f):
+        return None
+    return f.index.view("int64") / 1e9, f["funding_rate"].to_numpy()
+
+
+def _asof(ts_arr, val_arr, t, max_gap=None):
+    """Most recent val at or before t (as-of backward)."""
+    if ts_arr is None:
+        return None
+    j = int(np.searchsorted(ts_arr, t, side="right")) - 1
+    if j < 0:
+        return None
+    if max_gap is not None and (t - ts_arr[j]) > max_gap:
+        return None
+    return float(val_arr[j])
+
+
+def run_factor_ic(series: str, *, fwd: int = 3, zwin: int = 60,
+                  days: list[str] | None = None,
+                  params: DislocationParams | None = None) -> dict:
+    """Build all four dislocation factors per snapshot, z-score within horizon,
+    and report the IC of each factor + the composite against forward perp
+    convergence. fair_value is the directional one; vol/skew are reported but are
+    not price-directional (they drive vol/skew trades, not perp convergence)."""
+    params = params or DislocationParams(zwin=zwin)
+    perp = SERIES_TO_PERP.get(series)
+    rv = _realized_vol_lookup(perp) if perp else None
+    fund = _funding_lookup(perp) if perp else None
+
+    rows = []
+    for rec in read_snapshots(series, days=days):
+        ts = rec.get("recv_ts")
+        ps = _perp_spot_from_record(rec)
+        if ts is None or ps is None:
+            continue
+        dist, surv, bins, tlo, thi = _dist_and_quotes(rec)
+        if dist is None:
+            continue
+        realized = _asof(*rv, float(ts), max_gap=7200) if rv else None
+        funding = _asof(*fund, float(ts), max_gap=86400) if fund else None
+        fac = snapshot_factors(dist, perp_spot=ps, realized_vol=realized,
+                               funding_rate=funding, surv_quotes=surv, bins=bins,
+                               tail_lo=tlo, tail_hi=thi, params=params)
+        rows.append({"recv_ts": float(ts), "perp_spot": ps,
+                     "implied_mean": dist.mean, "close_time": rec.get("close_time"),
+                     **fac})
+    if len(rows) < fwd + 20:
+        return {"series": series, "n": len(rows),
+                "note": f"insufficient snapshots ({len(rows)}) for factor IC"}
+    df = pd.DataFrame(rows).sort_values("recv_ts").reset_index(drop=True)
+
+    # forward perp convergence toward implied (same target as run_dislocation_ic)
+    per_factor = {}
+    for factor in ("fair_value_gap", "vol_gap", "skew_gap", "arb_violation"):
+        gz_all, fd_all = [], []
+        for _, g in df.groupby("close_time", sort=False):
+            g = g.sort_values("recv_ts")
+            if len(g) < max(fwd + 20, zwin // 2):
+                continue
+            z = (g[factor] if factor == "arb_violation"          # magnitude, not z
+                 else rolling_z(g[factor], zwin))
+            d = g["perp_spot"] - g["implied_mean"]
+            fwd_dd = d.shift(-fwd) - d
+            pair = pd.DataFrame({"z": z, "fd": fwd_dd}).dropna()
+            gz_all.append(pair["z"].to_numpy())
+            fd_all.append(pair["fd"].to_numpy())
+        gz = np.concatenate(gz_all) if gz_all else np.array([])
+        fd = np.concatenate(fd_all) if fd_all else np.array([])
+        ic = _spearman(gz, fd) if len(gz) >= 20 else float("nan")
+        # a constant factor (e.g. arb_violation all-0 = no free money) has no
+        # variance → undefined correlation; report None, not nan
+        per_factor[factor] = {
+            "n": int(len(gz)),
+            "IC": round(ic, 4) if np.isfinite(ic) else None,
+            "hit_rate": (round(float(np.mean(np.sign(gz) * fd > 0)), 4)
+                         if len(gz) >= 20 and np.isfinite(ic) else None),
+            "note": ("no variance (all ~0 — no fee-positive arb)"
+                     if factor == "arb_violation" and not np.isfinite(ic) else None),
+        }
+    return {
+        "series": series, "perp": perp, "n_snapshots": int(len(df)),
+        "realized_vol_available": rv is not None, "funding_available": fund is not None,
+        "fwd_snaps": fwd, "z_window": zwin,
+        "per_factor_IC": per_factor,
+        "note": ("fair_value_gap is the directional factor (should carry the IC); "
+                 "vol_gap/skew_gap are NOT price-directional — they drive vol/skew "
+                 "trades, so ~0 IC vs perp convergence is EXPECTED, not a failure. "
+                 "arb_violation ~0 (no free money). ~7-day sample: preliminary."),
+    }
+
+
 # ── orchestration ────────────────────────────────────────────────────────────
+
+def _n_strip_days(series_list: list[str]) -> int:
+    import glob
+    days = set()
+    for s in series_list:
+        for f in glob.glob(str(STRIPS_DIR / "prod" / s / "markets" / "*")):
+            days.add(f.split("/")[-1][:10])
+    return len(days)
+
+
+def _series_days(series: str) -> list[str]:
+    import glob
+    days = {f.split("/")[-1][:10]
+            for f in glob.glob(str(STRIPS_DIR / "prod" / series / "markets" / "*"))}
+    return sorted(days)
+
+
+def run_signal_ic_wf(series: str = "KXBTC", *, is_days: int = 3, oos_days: int = 2,
+                     step: int = 1, fwd: int = 3, zwin: int = 60) -> dict:
+    """SIGNAL-IC walk-forward (NOT P&L — the two-leg hedge is deferred, Plan 02 §10).
+
+    Rolls the recorded strip days into IS/OOS windows and measures the
+    fair-value-gap dislocation IC on each OOS window only (causal). Writes
+    trading_signals/walk_forward/event_perp_oos_ic.csv (fold,oos_start,oos_end,
+    oos_ic,n). validate_event_perp() consumes it. FAIL-safe: too few days →
+    fewer/zero folds, and the gate then reports insufficient data.
+    """
+    all_days = _series_days(series)
+    folds = []
+    i = is_days
+    fold_id = 0
+    while i + oos_days <= len(all_days):
+        oos = all_days[i:i + oos_days]
+        r = run_dislocation_ic(series, fwd=fwd, zwin=zwin, days=oos)
+        ic = r.get("IC_spearman_gapz_vs_fwd_convergence")
+        folds.append({"fold": fold_id, "oos_start": oos[0], "oos_end": oos[-1],
+                      "oos_ic": ic, "n": r.get("n", 0)})
+        fold_id += 1
+        i += step
+    return {"series": series, "n_days": len(all_days), "n_folds": len(folds),
+            "folds": folds, "is_days": is_days, "oos_days": oos_days}
+
 
 def run(series_list: list[str], *, fee_rate: float = 0.07, fwd: int = 3,
         zwin: int = 60, days: list[str] | None = None) -> dict:
+    ndays = _n_strip_days(series_list)
     out = {"PRELIMINARY": True,
-           "caveat": "~4-day self-recorded sample; mechanism check only, NOT a "
-                     "validation gate (crypto-dev/02 §8/§10.2).",
+           "caveat": f"~{ndays}-day self-recorded sample; mechanism check only, NOT "
+                     "a validation gate (crypto-dev/02 §8/§10.2).",
            "fee_rate": fee_rate, "series": {}}
     for s in series_list:
         arb = run_static_arb(s, fee_rate=fee_rate, days=days)
         disloc = run_dislocation_ic(s, fwd=fwd, zwin=zwin, days=days)
-        out["series"][s] = {"static_arb": arb.summary(), "dislocation": disloc}
+        factors = run_factor_ic(s, fwd=fwd, zwin=zwin, days=days)
+        out["series"][s] = {"static_arb": arb.summary(), "dislocation": disloc,
+                            "factor_ic": factors}
     return out
 
 
 def _print_report(res: dict) -> None:
     print("=" * 66)
-    print("Plan 02 event×perp — PRELIMINARY backtest (~4-day captured strips)")
+    print("Plan 02 event×perp — PRELIMINARY backtest (self-recorded strips)")
     print("  " + res["caveat"])
     print("=" * 66)
     for s, r in res["series"].items():
@@ -327,6 +494,18 @@ def _print_report(res: dict) -> None:
                   % (100 * d["reversion_trade_hit_rate"], d["fwd_snaps"], d["z_window"]))
         else:
             print("  [dislocation] " + d.get("note", "n/a"))
+        f = r.get("factor_ic", {})
+        if f.get("per_factor_IC"):
+            print("  [per-factor IC vs perp convergence] rvol=%s funding=%s"
+                  % (f["realized_vol_available"], f["funding_available"]))
+            for name, fi in f["per_factor_IC"].items():
+                ic = fi["IC"]
+                print("     %-14s IC=%s  hit=%s  (n=%d)"
+                      % (name, f"{ic:+.3f}" if ic is not None else "n/a",
+                         f"{100*fi['hit_rate']:.0f}%" if fi["hit_rate"] is not None else "n/a",
+                         fi["n"]))
+        elif f.get("note"):
+            print("  [per-factor IC] " + f["note"])
     print("=" * 66)
 
 

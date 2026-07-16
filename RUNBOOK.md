@@ -205,7 +205,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
-## 7. MRPTWalkForward.py — MRPT Walk-Forward 6窗口
+## 7. MRPTWalkForward.py — MRPT Walk-Forward 9窗口(rolling 19mo,50td,重叠10)
 
 **换配对后需先运行 `UpdateStep1Configs.py`（WalkForward 内部读 `runs_20260304_step1_grid32.json` 的 param_set + pairs 做 grid search）。**
 
@@ -214,7 +214,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
 
 # 标准运行（6个OOS窗口，expanding模式，输出到 historical_runs/walk_forward/）
-set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTWalkForward.py --oos-windows 6
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTWalkForward.py --mode rolling --train-months 19 --oos-windows 9 --oos-window-days 50 --oos-overlap 10
 
 # 常用可选参数
 #   --mode expanding|rolling     窗口模式（默认 expanding）
@@ -229,7 +229,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
-## 8. MTFSWalkForward.py — MTFS Walk-Forward 6窗口
+## 8. MTFSWalkForward.py — MTFS Walk-Forward 9窗口(rolling 19mo,50td,重叠10)
 
 **换配对后需先运行 `UpdateStep1Configs.py`（WalkForward 内部读 `mtfs_runs_step1_grid30.json` 的 param_set + pairs 做 grid search）。**
 
@@ -238,7 +238,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python UpdateStep1Configs.py
 
 # 标准运行（6个OOS窗口，expanding模式，输出到 historical_runs/walk_forward_mtfs/）
-set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MTFSWalkForward.py --oos-windows 6
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MTFSWalkForward.py --mode rolling --train-months 19 --oos-windows 9 --oos-window-days 50 --oos-overlap 10
 
 # 常用可选参数
 #   --mode expanding|rolling     窗口模式（默认 expanding）
@@ -461,7 +461,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `OOS_PnL_Heatmap` | 配对 × 窗口 PnL 热图（宽表，直接从 portfolio xlsx 读取 `dod_pair_trade_pnl_history`） |
 | `OOS_PnL_Detail` | 每个配对每窗口的 WinRate、N_Days_Active、N_Stops 明细 |
 | `OOS_Curve_Comparison` | MRPT vs MTFS 每日 PnL 相关系数，评估双策略分散化效果 |
-| `MRPT_Equity_Curve` / `MTFS_Equity_Curve` | 拼接 6 窗口的逐日权益曲线 |
+| `MRPT_Equity_Curve` / `MTFS_Equity_Curve` | 拼接全部窗口(去重)的逐日权益曲线 |
 
 > 所有文件自动按 mtime 查找最新版本，无需指定日期或路径。
 
@@ -515,13 +515,13 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MacroStateStore.py --update
 
 # 1. MRPT Walk-Forward
-set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTWalkForward.py --oos-windows 6
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTWalkForward.py --mode rolling --train-months 19 --oos-windows 9 --oos-window-days 50 --oos-overlap 10
 
 # 2. MRPT Walk-Forward Report
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MRPTWalkForwardReport.py
 
 # 3. MTFS Walk-Forward
-set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MTFSWalkForward.py --oos-windows 6
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MTFSWalkForward.py --mode rolling --train-months 19 --oos-windows 9 --oos-window-days 50 --oos-overlap 10
 
 # 4. MTFS Walk-Forward Report
 set -a && source .env && set +a && conda run -n someopark_run --no-capture-output python MTFSWalkForwardReport.py

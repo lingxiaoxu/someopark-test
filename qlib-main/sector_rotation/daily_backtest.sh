@@ -133,7 +133,7 @@ log "Step 5/6: V1 Tearsheet (param=$V1_PARAM, 59 IS-OOS Excel + PDF)"
 # selected_param_set.json already has V1
 if run_qlib bash "$SR_DIR/sector_rotation_pipeline.sh" tearsheet >> "$LOG" 2>&1; then
     V1_TS_EXCEL=$(ls historical_runs/sector_rotation/sr_portfolio_*_v1_IS-OOS_tearsheet_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
-    V1_TS_PDF=$(ls "$SR_DIR/report/output/tearsheet_*v1*${DATE}*.pdf" 2>/dev/null | wc -l | tr -d ' ')
+    V1_TS_PDF=$(ls "$SR_DIR"/report/output/tearsheet_*v1*${DATE}*.pdf 2>/dev/null | wc -l | tr -d ' ')
     log "  ✅ V1 tearsheet: $V1_TS_EXCEL Excel + $V1_TS_PDF PDF"
 else
     log "  ⚠️ V1 tearsheet failed (RC=$?) — continuing to V2"
@@ -149,7 +149,7 @@ log "  Switched to V2: $(get_param) ($(get_ver))"
 
 if run_qlib bash "$SR_DIR/sector_rotation_pipeline.sh" tearsheet >> "$LOG" 2>&1; then
     V2_TS_EXCEL=$(ls historical_runs/sector_rotation/sr_portfolio_*_v2_IS-OOS_tearsheet_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
-    V2_TS_PDF=$(ls "$SR_DIR/report/output/tearsheet_*v2*${DATE}*.pdf" 2>/dev/null | wc -l | tr -d ' ')
+    V2_TS_PDF=$(ls "$SR_DIR"/report/output/tearsheet_*v2*${DATE}*.pdf 2>/dev/null | wc -l | tr -d ' ')
     log "  ✅ V2 tearsheet: $V2_TS_EXCEL Excel + $V2_TS_PDF PDF"
 else
     log "  ⚠️ V2 tearsheet failed (RC=$?) — continuing to restore"

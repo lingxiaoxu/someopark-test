@@ -69,9 +69,9 @@ def build_portfolio(inception_date: str, target_start: float) -> tuple[pd.Series
     if close_prices.empty:
         sys.exit('[ERROR] No price data downloaded')
 
-    # Get dividends for BDC tickers
+    # Get dividends for BDC tickers + BIL (cash sleeve distributes its yield monthly)
     dividends: dict[str, pd.Series] = {}
-    for ticker in BDC_TICKERS:
+    for ticker in BDC_TICKERS + [CASH_TICKER]:
         t = yf.Ticker(ticker)
         divs = t.dividends
         divs = divs[divs.index >= inception_date]
@@ -94,7 +94,7 @@ def build_portfolio(inception_date: str, target_start: float) -> tuple[pd.Series
 
     # Track stats
     div_stats: dict[str, dict] = {t: {'count': 0, 'total_per_share': 0.0, 'total_cash': 0.0}
-                                   for t in BDC_TICKERS}
+                                   for t in BDC_TICKERS + [CASH_TICKER]}
 
     # Build daily equity
     equity_series = {}
@@ -113,6 +113,17 @@ def build_portfolio(inception_date: str, target_start: float) -> tuple[pd.Series
                     div_stats[ticker]['count'] += 1
                     div_stats[ticker]['total_per_share'] += div_per_share
                     div_stats[ticker]['total_cash'] += div_cash
+
+        # DRIP: reinvest BIL monthly distributions (T-bill yield is paid out, not in price)
+        if CASH_TICKER in dividends and date_idx in dividends[CASH_TICKER].index:
+            div_per_share = float(dividends[CASH_TICKER][date_idx])
+            div_cash = cash_shares * div_per_share
+            close_today = close_prices[CASH_TICKER].get(date_idx)
+            if close_today is not None and not pd.isna(close_today) and float(close_today) > 0:
+                cash_shares += div_cash / float(close_today)
+                div_stats[CASH_TICKER]['count'] += 1
+                div_stats[CASH_TICKER]['total_per_share'] += div_per_share
+                div_stats[CASH_TICKER]['total_cash'] += div_cash
 
         # Compute BDC equity
         bdc_eq = 0.0
@@ -176,7 +187,9 @@ def main():
         wt = BDC_WEIGHTS[t] * 100
         print(f'    {t} ({wt:.0f}%): final_shares={meta["final_shares_bdc"][t]:.0f} '
               f'divs={ds["count"]} div_cash=${ds["total_cash"]:,.0f}')
-    print(f'  Cash (BIL): {meta["cash_shares"]:.0f} shares')
+    bil_ds = meta['div_stats'][CASH_TICKER]
+    print(f'  Cash (BIL): {meta["cash_shares"]:.0f} shares '
+          f'divs={bil_ds["count"]} div_cash=${bil_ds["total_cash"]:,.0f}')
 
     # Build records
     records = []

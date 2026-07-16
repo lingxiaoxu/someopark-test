@@ -112,7 +112,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `PortfolioMRPTRun.py` | MRPT 策略主逻辑（均值回归 + 财报黑名单） |
 | `PortfolioMRPTStrategyRuns.py` | JSON 驱动的批量回测入口，含全部 32 个 param_set 定义 |
 | `MRPTUpdateConfigs.py` | 读取 Step 1 结果，DSR 过滤后生成 Step 2 / Step 3 config |
-| `MRPTWalkForward.py` | Walk-forward 优化：6 窗口 × 27 OOS 交易日，DSR 选参 |
+| `MRPTWalkForward.py` | Walk-forward 优化：rolling 19mo × 9 窗口 × 50 OOS 交易日(相邻重叠10td)，DSR 选参 |
 | `MRPTWalkForwardReport.py` | 读取最近一次 walk-forward 结果，生成完整 OOS 报告 |
 | `MRPTGenerateReport.py` | 生成回测 vs 验证期对比报告 |
 | `MRPTFetchEarnings.py` | 从 Polygon 拉取并缓存 S&P 500 全量财报日期（`--full` / `--incremental`），DailySignal 每日自动增量更新 |
@@ -124,7 +124,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `PortfolioMTFSRun.py` | MTFS 策略主逻辑（动量评分 + SMA 趋势 + 动量止损 + 财报黑名单） |
 | `PortfolioMTFSStrategyRuns.py` | JSON 驱动的批量回测入口，含全部 35 个 param_set 定义（31 母 + 4 个 fast-confirm 竞争变体，2026-07-12）|
 | `MTFSUpdateConfigs.py` | 读取 Step 1 结果，DSR 过滤后生成 Step 2 / Step 3 config |
-| `MTFSWalkForward.py` | Walk-forward 优化：6 窗口 × 27 OOS 交易日，DSR 选参 |
+| `MTFSWalkForward.py` | Walk-forward 优化：rolling 19mo × 9 窗口 × 50 OOS 交易日(相邻重叠10td)，DSR 选参 |
 | `MTFSWalkForwardReport.py` | 读取最近一次 walk-forward 结果，生成完整 OOS 报告（含止损类型分解） |
 | `MTFSGenerateReport.py` | 生成回测 vs 验证期对比报告 |
 
@@ -394,7 +394,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `expanding`（默认） | train_start 固定锚定，训练集随窗口递增 |
 | `rolling` | 训练集长度固定（始终 18 个月），train_start 随窗口右移 |
 
-默认配置：**6 窗口 × 27 NYSE 交易日 OOS**（共 162 个 OOS 交易日），训练期 18 个月。
+默认配置：**rolling 训练 19 个月 × 9 窗口 × 50 NYSE 交易日 OOS**（相邻窗重叠 10td，去重后共 370 个 OOS 交易日）。
 
 #### MRPT Walk-Forward 窗口（6×27，expanding，基于 32 个 param_set）
 
@@ -483,7 +483,7 @@ conda run -n someopark_run python MTFSWalkForwardReport.py
 
 报告包含：
 - **窗口级汇总**：每个 OOS 窗口的 PnL / Sharpe / MaxDD / 天数
-- **拼接 OOS 总览**：跨 6 窗口的 GROSS TOTAL（含 first-day interest 修正）→ Interest → NET TOTAL；利息拆分
+- **拼接 OOS 总览**：跨全部窗口(重叠部分去重)的 GROSS TOTAL（含 first-day interest 修正）→ Interest → NET TOTAL；利息拆分
 - **配对级明细**：各配对在全部窗口的总 PnL / Sharpe / 胜率 / 交易次数
 - **各窗口入选配对**：DSR 过滤后实际参与 OOS 的配对列表
 - **止损分解（MTFS 专属）**：各类止损触发次数及占比
@@ -527,7 +527,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `OOS_PnL_Heatmap` | 配对 × 窗口 PnL 热图（宽表，直接从 portfolio xlsx 读取 dod_pair_trade_pnl_history） |
 | `OOS_PnL_Detail` | 每个配对每窗口的 WinRate、N_Days_Active、N_Stops 明细 |
 | `OOS_Curve_Comparison` | MRPT vs MTFS 每日 PnL 相关系数，评估双策略分散化效果 |
-| `MRPT_Equity_Curve` / `MTFS_Equity_Curve` | 拼接 6 窗口的逐日权益曲线 |
+| `MRPT_Equity_Curve` / `MTFS_Equity_Curve` | 拼接全部窗口(去重)的逐日权益曲线 |
 
 ---
 

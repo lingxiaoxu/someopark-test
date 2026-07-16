@@ -73,15 +73,35 @@ STRESS_SCENARIOS = [
 ]
 
 # Limit thresholds (amber, red). Shared/enforcement limits import from DailySignal.
+#
+# ── 阈值标定 2026-07-15(依据:2026-06-02→07-15 全部 31 份风险报告实测分布
+#    + 策略设计容量 + 学术文献锚点;熔断白名单见 DailySignal._CB_RED_LIMIT_WHITELIST)──
+# 设计容量:每策略 _MAX_OPEN_PAIRS=8 对、_MAX_TICKER_EXPOSURE=2 对/票。
+# 满账本(8对)实测包络:gross ≤5.2×、|net| ≤2.2×、VaR95 ≤4.0%、|β| ≤1.9。
+# 标定原则:amber ≈ 设计包络上沿(越过=比历史任何正常满账本日都热,仅告警);
+#   red ≈ 1.4-1.6× 包络(设计内不可达,仅结构性失控可触及)。
+# 事件回验:2026-07-10 STT 双仓事故 56.9% ≥ red 45 仍触发 ✓;
+#   6/3-6/6 及 7/9 正常满账本日在新阈值下无 red ✓(旧阈值下天天 red = 告警疲劳)。
+# 文献锚:Khandani & Lo (2007) 2007-08 量化地震——stat-arb 去杠杆灾难区在
+#   ~8×+ 总杠杆(gross red=8.0 即此线);Patton (2009, RFS) 市场中性基金 β 实证
+#   ——本账本 MTFS 为动量倾斜设计(β 非中性承诺),β 限额定位"失控监测"而非
+#   "中性强制",red=3.0 高于历史极值 2.66;Jorion (VaR 3e) 限额 ≈ 2× 运营中位
+#   (VaR95 中位 2.77% → red 5.5%,amber 4.0 高于 P95=4.05)。
+# max_pair/sector_net 为展示性集中度指标,不入熔断白名单;max_pair 在
+#   总持仓 <4 对时数学退化(1 对必=100%),届时仅展示不评级(见 limits())。
 LIMITS_SPEC = {
-    'gross_leverage':    {'amber': 3.0,  'red': 4.0,  'fmt': 'x'},
-    'net_leverage_abs':  {'amber': 0.5,  'red': 1.0,  'fmt': 'x'},
-    'single_name_gross': {'amber': 15.0, 'red': 25.0, 'fmt': '%'},   # % of capital
-    'sector_net':        {'amber': 30.0, 'red': 50.0, 'fmt': '%'},   # % of gross
-    'max_pair':          {'amber': 20.0, 'red': 35.0, 'fmt': '%'},   # % of gross
-    'net_market_beta':   {'amber': 0.30, 'red': 0.50, 'fmt': 'b'},
-    'var_95_1d':         {'amber': 3.0,  'red': 5.0,  'fmt': '%'},   # % of capital
+    'gross_leverage':    {'amber': 5.5,  'red': 8.0,  'fmt': 'x'},   # per-scope, × sim capital
+    'net_leverage_abs':  {'amber': 2.0,  'red': 3.0,  'fmt': 'x'},   # per-scope; 动量对设计带净敞口
+    'single_name_gross': {'amber': 30.0, 'red': 45.0, 'fmt': '%'},   # % of capital; 2对/票设计上限≈35%
+    'sector_net':        {'amber': 30.0, 'red': 50.0, 'fmt': '%'},   # % of gross(展示)
+    'max_pair':          {'amber': 20.0, 'red': 35.0, 'fmt': '%'},   # % of gross(展示;n<4 不评级)
+    'net_market_beta':   {'amber': 2.0,  'red': 3.0,  'fmt': 'b'},   # combined; 历史极值 2.66
+    'var_95_1d':         {'amber': 4.0,  'red': 5.5,  'fmt': '%'},   # % of capital; 历史极值 4.47
 }
+
+# max_pair 集中度限额的最小评估持仓数:总持仓 <4 对时该比例数学退化
+# (1 对必=100%、2 对必≥50%),不构成有效集中度信号,仅展示不评级。
+MAX_PAIR_MIN_N = 4
 
 
 def _trunc_param(name, n=24):
@@ -1169,7 +1189,18 @@ class RiskManager:
         if worst_sec:
             add('sector_net', worst_sec[0], abs(worst_sec[1]['net_pct_of_gross'] or 0),
                 LIMITS_SPEC['sector_net'])
-        add('max_pair', 'combined', concentration['max_pair_pct'], LIMITS_SPEC['max_pair'])
+        # max_pair:总持仓 <MAX_PAIR_MIN_N 对时数学退化(1 对必=100%),仅展示不评级
+        _n_total_pairs = ((exposure['mrpt']['n_open_pairs'] or 0)
+                          + (exposure['mtfs']['n_open_pairs'] or 0))
+        if _n_total_pairs >= MAX_PAIR_MIN_N:
+            add('max_pair', 'combined', concentration['max_pair_pct'], LIMITS_SPEC['max_pair'])
+        elif concentration['max_pair_pct'] is not None:
+            # 阈值置 None(同 open_pairs 行先例):避免"value=100 ≥ red=35 却绿灯"
+            # 的表观矛盾——该行仅展示数值,明确标注不评级
+            checks.append({'name': 'max_pair', 'scope': f'combined n={_n_total_pairs}<{MAX_PAIR_MIN_N} n/a',
+                           'value': _round(concentration['max_pair_pct']),
+                           'amber': None, 'red': None,
+                           'fmt': LIMITS_SPEC['max_pair']['fmt'], 'status': 'green'})
         add('net_market_beta', 'combined', abs(factor_block.get('net_market_beta') or 0),
             LIMITS_SPEC['net_market_beta'])
         var95 = (var_block.get('method_param') or {}).get('var_95_1d')

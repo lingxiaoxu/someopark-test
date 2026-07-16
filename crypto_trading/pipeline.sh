@@ -14,11 +14,12 @@
 #   implied    Plan 02 implied-dist + static-arb scan of today's captured strips
 #   idxrecord  live 5s spot-composite recorder daemon (BTC,ETH)                [daemon]
 #   liqrecord  offshore liquidation-stream recorder daemon (OKX proxy)         [daemon]
-#   wf         walk-forward CLI (crypto_common.walk_forward passthrough)
+#   wf         run walk-forward + write validate artifacts: --strategy basis_meanrev|liq_reversion|perp_rotation|event_perp
 #   select     MCPS daily param selection (smart_select; --build-centroids first time)
-#   validate   PASS/FAIL gate: --strategy basis_meanrev|perp_rotation (exit 0=PASS)
+#   validate   PASS/FAIL gate: --strategy basis_meanrev|liq_reversion|perp_rotation|event_perp (exit 0=PASS)
 #   review     weekly parameter health review (perp_rotation)
 #   diskmon    disk free + growth-rate monitor; alerts (macOS notif + log) on breach
+#   brackets   TP/SL bracket watcher daemon (enforces armed stops; dry-run unless --live) [daemon]
 #   status     heartbeats + storage usage + last data timestamps
 #   test       pytest, no network
 set -euo pipefail
@@ -48,11 +49,12 @@ case "$MODE" in
     ;;
   idxrecord) exec "${PY[@]}" -m crypto_trading.crypto_common.refdata.index record --assets BTC,ETH "$@" ;;
   liqrecord) exec "${PY[@]}" -m crypto_trading.crypto_common.refdata.derivs liq-record "$@" ;;
-  wf)        exec "${PY[@]}" -m crypto_trading.crypto_common.walk_forward "$@" ;;
+  wf)        exec "${PY[@]}" -m crypto_trading.crypto_common.run_wf "$@" ;;
   select)    exec "${PY[@]}" -m crypto_trading.crypto_common.smart_select "$@" ;;
   validate)  exec "${PY[@]}" -m crypto_trading.crypto_common.validate "$@" ;;
   review)    exec "${PY[@]}" -m crypto_trading.crypto_strategies.perp_rotation.weekly_review "$@" ;;
   diskmon)   exec "${PY[@]}" -m crypto_trading.ops.disk_monitor "$@" ;;
+  brackets)  exec "${PY[@]}" -m crypto_trading.crypto_common.bracket_watcher "$@" ;;
   daily)
     "${PY[@]}" -m crypto_trading.ops.disk_monitor --quiet || true   # once/day = clean rate sample
     "${PY[@]}" -m crypto_trading.crypto_common.kalshi.backfill || true

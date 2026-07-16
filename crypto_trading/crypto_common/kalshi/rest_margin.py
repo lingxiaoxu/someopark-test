@@ -120,3 +120,19 @@ class KalshiMarginClient:
 
     def balance(self) -> dict:
         return self._get("/margin/balance", authed=True)
+
+    def positions(self) -> list[dict]:
+        """Open perp positions (authed). Verified fields (real fill 2026-07-12):
+        market_ticker, position (signed decimal string, '-1.00'=short), entry_price,
+        unrealized_pnl, fees, margin_used, roe, subaccount, is_portfolio."""
+        return self._get("/margin/positions", authed=True).get("positions", [])
+
+    def fills(self, *, limit: int = 100, cursor: str | None = None) -> list[dict]:
+        """Recent fills (authed). Verified fields: fill_id, order_id, ticker, side
+        (bid/ask), count, price, entry_price, fees, is_taker, realized_pnl,
+        order_source, created_time."""
+        params = {"limit": limit}
+        if cursor:
+            params["cursor"] = cursor
+        r = self._get("/margin/fills", params, authed=True)
+        return r.get("fills", r) if isinstance(r, dict) else r

@@ -65,6 +65,59 @@ def build_regime_inputs(prices: pd.DataFrame, funding: pd.DataFrame,
     return frame
 
 
+# ── walk-forward wiring (Plan 05 §8) ─────────────────────────────────────────
+WF_PARAM_SETS: dict[str, dict] = {
+    f"top{n}_{freq}_lev{lv}": {"top_n": n, "frequency": freq, "leverage_max": lv}
+    for n in (3, 4, 6)
+    for freq in ("daily", "weekly")
+    for lv in (1.0, 2.0)
+}   # 12 sets
+
+
+def _relax_short_history(cfg: dict, n_days: int) -> None:
+    """Same short-history relaxation main() applies (scaffold-grade < 60 days)."""
+    if n_days >= 60:
+        return
+    cfg.setdefault("universe", {})["listing_history_floor_days"] = max(5, n_days // 3)
+    cfg.setdefault("portfolio", {}).setdefault("cov", {})["min_periods"] = max(10, n_days // 3)
+    sig = cfg.setdefault("signals", {})
+    sig["cs_lookback"] = min(sig.get("cs_lookback", 30), max(5, n_days // 3))
+    sig["ts_lookback"] = min(sig.get("ts_lookback", 30), max(5, n_days // 3))
+    sig["cs_zscore_window"] = 0
+    sig["carry_lookback_days"] = min(sig.get("carry_lookback_days", 90), max(10, n_days // 2))
+
+
+def wf_run_backtest(params: dict, start, end) -> dict:
+    """WF engine on the Kalshi perp panel → {"equity_curve", +benchmark cols}."""
+    cfg = load_config()
+    cfg.setdefault("costs", {})["fee_scenario"] = params.get("fee_scenario", "projected")
+    if "top_n" in params:
+        cfg.setdefault("portfolio", {})["top_n"] = int(params["top_n"])
+    if "leverage_max" in params:
+        cfg.setdefault("portfolio", {})["leverage_max"] = float(params["leverage_max"])
+    if "frequency" in params:
+        cfg.setdefault("rebalance", {})["frequency"] = params["frequency"]
+    prices, volumes, oi = build_perp_panel(start=str(start), end=str(end))
+    funding = build_funding_panel(start=str(start), end=str(end))
+    _relax_short_history(cfg, len(prices))
+    regime = build_regime_inputs(prices, funding)
+    result = PerpRotationBacktest(cfg).run(prices, funding, regime,
+                                           volumes_notional=volumes, oi_notional=oi,
+                                           start=str(start), end=str(end))
+    out = {"equity_curve": result.equity_curve}
+    if result.benchmark_equity is not None:
+        out["btc_hodl_equity"] = result.benchmark_equity
+    if getattr(result, "benchmark_ew_equity", None) is not None:
+        out["ew_basket_equity"] = result.benchmark_ew_equity
+    return out
+
+
+def wf_prices() -> pd.DataFrame:
+    """Daily reference frame defining the fold grid (the Kalshi perp panel index)."""
+    prices, _, _ = build_perp_panel()
+    return prices
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--proxy", action="store_true",

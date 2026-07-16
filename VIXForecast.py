@@ -69,17 +69,23 @@ def _load_vix_data() -> pd.DataFrame:
     返回 DataFrame，列：vix, vix9d, vix3m
     vix9d / vix3m 若不存在则填 NaN（协变量在 build_input 中会被跳过）
     """
+    def _read_dt(f):
+        # Normalize each file's index to datetime BEFORE concat: vix-variant year files
+        # can mix index dtypes (legacy str vs .date), and sort_index() on a mixed
+        # str/date index raises. Convert per-file (same pattern as DailySignal._load).
+        d = pd.read_parquet(f)
+        d.index = pd.to_datetime(d.index)
+        return d
+
     files = sorted(glob.glob('price_data/macro/vix/vix_*.parquet'))
     if not files:
         raise FileNotFoundError('找不到 price_data/macro/vix/vix_*.parquet')
-    df = pd.concat([pd.read_parquet(f) for f in files]).sort_index()
-    df.index = pd.to_datetime(df.index)
+    df = pd.concat([_read_dt(f) for f in files]).sort_index()
     result = df[['close']].rename(columns={'close': 'vix'})
 
     files9d = sorted(glob.glob('price_data/macro/vix/vix9d_*.parquet'))
     if files9d:
-        df9 = pd.concat([pd.read_parquet(f) for f in files9d]).sort_index()
-        df9.index = pd.to_datetime(df9.index)
+        df9 = pd.concat([_read_dt(f) for f in files9d]).sort_index()
         col = 'close' if 'close' in df9.columns else df9.columns[0]
         result['vix9d'] = df9[col]
     else:
@@ -87,8 +93,7 @@ def _load_vix_data() -> pd.DataFrame:
 
     files3m = sorted(glob.glob('price_data/macro/vix/vix3m_*.parquet'))
     if files3m:
-        df3 = pd.concat([pd.read_parquet(f) for f in files3m]).sort_index()
-        df3.index = pd.to_datetime(df3.index)
+        df3 = pd.concat([_read_dt(f) for f in files3m]).sort_index()
         col = 'close' if 'close' in df3.columns else df3.columns[0]
         result['vix3m'] = df3[col]
     else:

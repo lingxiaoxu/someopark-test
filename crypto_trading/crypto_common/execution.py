@@ -9,12 +9,19 @@ Anything else ⇒ orders are DRY-RUN: fully constructed, logged to
     trading_signals/orders_dryrun/<strategy>/<date>.jsonl
 and NOT sent. There is deliberately NO override path in code.
 
-Wire notes: margin order endpoints mirror the event API under /margin/*
-(order body: decimal-dollar `price`, string `count`, `side` buy/sell,
-`client_order_id` idempotency). Exact paths carry VERIFY tags — the account
-isn't margin-enabled yet, so they are unexercised; verify against
-docs.kalshi.com/margin on first enabled use. Sequential orders only (no batch
-on margin — Plan 00 §3.4).
+Wire format VERIFIED against docs.kalshi.com/margin-rest/orders/create-order +
+a real prod fill (2026-07-12) — the order body matches the official spec exactly:
+  POST /trade-api/v2/margin/orders
+  side  = "bid" (long) | "ask" (short)          NOT buy/sell (Kalshi uses bid/ask;
+          the real short fill returned side="ask")
+  count = fixed-point decimal string, 2 dp, min granularity 0.01 ("1.00")
+  price = fixed-point dollars string, up to 6 dp (tick_size governs; "6.4015")
+  time_in_force = fill_or_kill | good_till_canceled | immediate_or_cancel
+  self_trade_prevention_type = taker_at_cross | maker
+  subaccount = integer (default 0) — MUST match where the margin balance lives
+               (the real account traded on subaccount 64, not 0)
+Cancel: DELETE /trade-api/v2/margin/orders/{order_id}. Success = HTTP 201.
+Sequential orders only (no batch on margin — Plan 00 §3.4).
 """
 from __future__ import annotations
 
@@ -35,7 +42,8 @@ from crypto_trading.crypto_common.kalshi.ratelimit import KalshiRateLimiter
 
 logger = logging.getLogger(__name__)
 
-# VERIFY on first margin-enabled use (mirror of event /portfolio/events/orders)
+# Verified against docs.kalshi.com/margin-rest/orders (2026-07-12):
+# POST /margin/orders (create, 201), DELETE /margin/orders/{order_id} (cancel).
 ORDERS_PATH = "/margin/orders"
 ORDER_PATH = "/margin/orders/{order_id}"
 
@@ -44,22 +52,76 @@ class LiveOrderRefused(RuntimeError):
     """Raised when a live send is requested but the hard gate is not fully open."""
 
 
+_SIDES = ("bid", "ask")          # Kalshi: bid = long, ask = short (verified via fill)
+_TIFS = ("fill_or_kill", "good_till_canceled", "immediate_or_cancel")
+_STPS = ("taker_at_cross", "maker")
+
+
 @dataclass(frozen=True)
 class Order:
     ticker: str
-    side: str                    # "buy" | "sell"
-    count: int                   # integer contracts (fractional trading off)
-    price: float                 # decimal dollars, ≤4 dp
+    side: str                    # "bid" (long) | "ask" (short) — Kalshi enum, NOT buy/sell
+    count: float                 # contracts; fixed-point 2 dp on the wire, min/step 0.01
+    price: float                 # decimal dollars (up to 6 dp; snapped to tick_size if given)
     tif: str = "good_till_canceled"
     post_only: bool = False
     reduce_only: bool = False
+    subaccount: int = 0          # MUST match the trading subaccount (real acct = 64)
+    stp: str = "taker_at_cross"  # taker_at_cross | maker
+    tick_size: float | None = None   # if set, price is snapped to a multiple before sending
     client_order_id: str = field(default_factory=lambda: str(uuid.uuid4()))
 
+    def __post_init__(self):
+        if self.side not in _SIDES:
+            raise ValueError(f"side must be 'bid'(long) or 'ask'(short), got {self.side!r}")
+        if self.tif not in _TIFS:
+            raise ValueError(f"time_in_force must be one of {_TIFS}, got {self.tif!r}")
+        if self.stp not in _STPS:
+            raise ValueError(f"self_trade_prevention_type must be one of {_STPS}")
+        if self.count < 0.01:
+            raise ValueError(f"count {self.count} below min granularity 0.01")
+        # count must be a whole multiple of 0.01 (silent rounding is a quantity mismatch)
+        if abs(round(self.count / 0.01) * 0.01 - self.count) > 1e-9:
+            raise ValueError(f"count {self.count} must be a multiple of 0.01")
+        if self.reduce_only and self.tif == "good_till_canceled":
+            # official: reduce_only is rejected unless IOC/FOK
+            raise ValueError("reduce_only requires IOC or FOK time_in_force")
+
+    @classmethod
+    def from_signed(cls, ticker: str, signed_contracts: float, price: float, **kw):
+        """Convenience: +contracts → long (bid), −contracts → short (ask)."""
+        side = "bid" if signed_contracts > 0 else "ask"
+        return cls(ticker, side, abs(signed_contracts), price, **kw)
+
+    def wire_price(self) -> float:
+        """Price snapped to tick_size (if known). Kalshi rejects off-tick prices.
+
+        Snaps CONSERVATIVELY: a bid rounds DOWN (never pay more than intended), an
+        ask rounds UP (never sell cheaper than intended)."""
+        if not self.tick_size or self.tick_size <= 0:
+            return self.price
+        import math
+        n = self.price / self.tick_size
+        snapped = (math.floor(n) if self.side == "bid" else math.ceil(n)) * self.tick_size
+        return round(snapped, 6)
+
+    def _price_decimals(self) -> int:
+        """Decimals to format price at: from tick_size (up to 6), else 4."""
+        if not self.tick_size or self.tick_size <= 0:
+            return 4
+        s = f"{self.tick_size:.6f}".rstrip("0")
+        return min(6, max(4, len(s.split(".")[1]) if "." in s else 0))
+
     def body(self) -> dict:
-        b = {"ticker": self.ticker, "side": self.side, "count": str(int(self.count)),
-             "price": f"{self.price:.4f}", "time_in_force": self.tif,
+        # format to the tick's precision (up to 6dp) so tick-snapping isn't
+        # truncated away for perps with a finer tick than 0.0001
+        b = {"ticker": self.ticker, "side": self.side,
+             "count": f"{self.count:.2f}",              # "1.00", 2-dp fixed point
+             "price": f"{self.wire_price():.{self._price_decimals()}f}",
+             "time_in_force": self.tif,
              "client_order_id": self.client_order_id,
-             "self_trade_prevention_type": "taker_at_cross"}
+             "self_trade_prevention_type": self.stp,
+             "subaccount": int(self.subaccount)}
         if self.post_only:
             b["post_only"] = True
         if self.reduce_only:
@@ -117,7 +179,7 @@ class ExecutionRouter:
             record["mode"] = "dry_run"
             self._dry_writer.write(".", record)
             self._sent_ids.add(order.client_order_id)
-            logger.info("[%s] DRY-RUN %s %d %s @ %.4f", self.strategy, order.side,
+            logger.info("[%s] DRY-RUN %s %.2f %s @ %.4f", self.strategy, order.side,
                         order.count, order.ticker, order.price)
             return {"status": "dry_run", **record}
 
@@ -158,22 +220,37 @@ class ExecutionRouter:
         return r.json() if r.text else {"order_id": order_id, "status": "canceled"}
 
     # ── reconciliation (Plan 00 §5: desync → halt+alert) ──────────────────
-    def reconcile(self, inventory_positions: dict[str, float]) -> dict:
-        """Compare inventory vs venue positions. Returns {'breaks': {...}}.
+    def reconcile(self, inventory_positions: dict[str, float], *,
+                  subaccount: int | None = None, tol: float = 1e-9) -> dict:
+        """Compare our inventory vs the venue's actual positions.
 
-        Positions come via the margin client (authed read). While the account
-        is not margin-enabled this returns all-breaks=unknown gracefully.
+        Uses the verified /margin/positions schema (market_ticker + signed
+        decimal 'position', '-1.00' = short 1) — and is **subaccount-aware**: the
+        real account holds the same ticker across subaccounts (e.g. #64 and #0),
+        so positions are NETTED per ticker across the relevant subaccounts, not
+        last-wins. Pass ``subaccount`` to restrict to one; None = net all.
         """
+        if self._margin is None:
+            return {"ok": False, "error": "no margin client", "breaks": None}
         try:
-            bal = self._margin.balance() if self._margin else None
+            raw = self._margin.positions()
         except Exception as e:
             return {"ok": False, "error": f"positions unavailable: {str(e)[:120]}",
                     "breaks": None}
-        venue = {}   # VERIFY: extract positions once /margin/balance|positions is enabled
-        breaks = {t: {"inventory": c, "venue": venue.get(t)}
-                  for t, c in inventory_positions.items()
-                  if venue.get(t) != c}
-        return {"ok": not breaks, "breaks": breaks, "venue_raw": bal}
+        venue: dict[str, float] = {}
+        for p in raw:
+            t = p.get("market_ticker")
+            if t is None:
+                continue
+            if subaccount is not None and int(p.get("subaccount", 0)) != subaccount:
+                continue
+            venue[t] = venue.get(t, 0.0) + float(p["position"])   # NET, don't overwrite
+        tickers = set(inventory_positions) | set(venue)
+        breaks = {t: {"inventory": inventory_positions.get(t, 0.0),
+                      "venue": venue.get(t, 0.0)}
+                  for t in tickers
+                  if abs(inventory_positions.get(t, 0.0) - venue.get(t, 0.0)) > tol}
+        return {"ok": not breaks, "breaks": breaks, "venue_positions": venue}
 
     def close(self) -> None:
         self._dry_writer.close()

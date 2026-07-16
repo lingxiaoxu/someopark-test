@@ -5,6 +5,8 @@ strategy: basis_meanrev
 env: demo
 instrument: KXBTCPERP            # margin API (probe-verified ticker)
 asset: BTC
+subaccount: 0                    # MUST match where perps live (real account = 64);
+                                 # orders + TP/SL brackets both target this subaccount
 bar: { type: snapshot, interval_sec: 5 }
 index: { source: spot_composite_proxy }   # spot_composite_proxy | licensed_brti
 signal:
@@ -24,6 +26,11 @@ risk:
   daily_loss_amber_pct: 0.03
   kelly_fraction: 0.25
   staleness_max_s: 30
+# TP/SL bracket (client-side trigger — no native Kalshi stop; fires a reduce_only
+# IOC close when the underlying crosses a level). % are of the entry underlying
+# price; null disables that leg. This is a SAFETY BACKSTOP on top of the strategy's
+# own z-reversion / time-stop exits, not the primary exit.
+bracket: { enabled: true, take_profit_pct: 0.010, stop_loss_pct: 0.020 }
 sizing: { target_vol_annual: 0.40, min_contracts: 1 }
 backtest:
   note: v1 candle tape (synthetic depth). Switch tape to recorded poll/WS books

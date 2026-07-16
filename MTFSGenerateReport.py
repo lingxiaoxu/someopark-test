@@ -130,21 +130,15 @@ PAIR_ORDER     = mtfs_pair_keys()
 
 # PARAM_MAP is used only as a display fallback; actual params come from the Step 2/3 Excel files.
 PARAM_MAP = {
-    'ALL/GS':  'aggressive',
-    'ALL/SPG':  'monthly_aligned_windows',
-    'BK/ALL':  'monthly_aligned_windows',
-    'XOM/V':  'short_term_tilt',
-    'CB/ACGL':  'short_term_tilt',
-    'CTRA/ACGL':  'fast_strict',
-    'MCD/ACGL':  'default',
-    'AEE/BKR':  'sensitive_reversal',
-    'RSG/AFL':  'long_term_tilt',
-    'AIG/HST':  'no_reversal_protection',
-    'JNJ/AIG':  'beta_neutral',
-    'RSG/AIG':  'aggressive',
-    'ETR/AVB':  'weekly_aligned_windows',
-    'EVRG/AVB':  'no_reversal_protection',
-    'C/GS':  'monthly_aligned_windows'
+    'DVA/HAS':  'vol_sized_conservative',
+    'DVA/CCI':  'default',
+    'ANET/DIS':  'monthly_aligned_windows',
+    'ANET/TAP':  'sensitive_reversal',
+    'BBY/APO':  'raw_momentum_kalman',
+    'BBY/VICI':  'entry_threshold_strong',
+    'CDW/HSY':  'long_term_kalman',
+    'CDW/COST':  'monthly_aligned_windows',
+    'VLO/ORLY':  'kalman_aggressive'
 }
 
 

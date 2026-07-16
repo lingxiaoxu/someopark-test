@@ -2,34 +2,30 @@
 MRPTWalkForward.py — Walk-forward optimization for MRPT strategy.
 
 Methodology:
-  - Expanding training window (anchored at auto-computed train_start)
-  - Equal trading-day OOS windows (NYSE calendar aware)
+  - Rolling training window (fixed 19-month sliding train, default) or expanding
+  - Equal trading-day OOS windows (NYSE calendar aware), optionally overlapping
   - Each training window runs the 32-param grid search (Step 1)
   - Best param_set per pair selected using Deflated Sharpe Ratio (DSR) to
     correct for multiple-comparison bias (32 trials per pair)
   - Selected pairs/params run on the next out-of-sample test window
   - OOS windows are concatenated into a single walk-forward equity curve
+    (重叠模式下按"每窗非重叠头部"去重后拼接)
 
-Window design (default: 18mo train, 6 windows × 25 NYSE trading days):
-  OOS period  = last 150 NYSE trading days ending at most-recent available date
+Window design (default: 19mo rolling train, 9 windows × 50 NYSE trading days,
+               相邻窗重叠 10td → OOS 总跨度 = 50 + 40×8 = 370td):
+  OOS period  = last 370 NYSE trading days ending at most-recent available date
 
-  Expanding mode (default): train_start is fixed at 18mo before first OOS window.
-    Each subsequent window trains on more data (anchor stays the same).
-
-  Rolling mode (--mode rolling): train window is a fixed 18-month sliding window.
+  Rolling mode (default): train window is a fixed 19-month sliding window.
     train_start moves forward with each OOS window, keeping train length constant.
 
-  Example expanding (run on 2026-03-05, last data = 2026-03-04):
-    train_start = 2024-01-30  (18mo before 2025-07-30, fixed for all windows)
-    Window 1: train 2024-01-30 -> 2025-07-29  |  OOS 2025-07-30 -> 2025-09-03
-    Window 2: train 2024-01-30 -> 2025-09-03  |  OOS 2025-09-04 -> 2025-10-08
-    ...
-    Window 6: train 2024-01-30 -> 2026-01-27  |  OOS 2026-01-28 -> 2026-03-04
+  Expanding mode (--mode expanding): train_start is fixed at 19mo before first
+    OOS window. Each subsequent window trains on more data (anchor stays the same).
 
-  Example rolling (same dates):
-    Window 1: train 2024-01-30 -> 2025-07-29  |  OOS 2025-07-30 -> 2025-09-03
-    Window 2: train 2024-03-06 -> 2025-09-03  |  OOS 2025-09-04 -> 2025-10-08
-    ...  (train_start shifts right by one OOS window each time)
+  Overlap 语义:
+    - 窗口级评估(summary windows 的 oos_sharpe/oos_pnl)用完整 50td;
+    - 跨窗聚合(链式曲线、report 的 oos_pair_summary)按
+      "每窗只取 [test_start_i, test_start_{i+1}) 头部"去重,末窗取满;
+    - overlap=0(或显式 --oos-days)时与旧连续切窗行为完全一致。
 
 Deflated Sharpe Ratio (Bailey & López de Prado, 2014):
   Corrects the IS Sharpe ratio for the number of trials (param_sets tested),
@@ -45,10 +41,12 @@ Usage:
   export $(cat .env | xargs) && conda run -n someopark_run python MRPTWalkForward.py [options]
 
 Options:
-  --mode expanding|rolling  Window mode: expanding (fixed anchor) or rolling (fixed length) (default: expanding)
-  --oos-windows N     Number of OOS windows (default: 6)
-  --oos-days N        Total OOS trading days across all windows (default: 150 = 6×25)
-  --train-months N    Training period length in months (default: 18)
+  --mode expanding|rolling  Window mode: rolling (fixed length, default) or expanding (fixed anchor)
+  --oos-windows N     Number of OOS windows (default: 9)
+  --oos-window-days N OOS trading days per window (default: 50)
+  --oos-overlap N     Overlap between consecutive OOS windows (default: 10; 0 = contiguous)
+  --oos-days N        LEGACY: total OOS days, equal non-overlapping split (overrides the two above)
+  --train-months N    Training period length in months (default: 19)
   --last-date DATE    Last available data date (default: auto = most recent NYSE trading day <= today)
   --output-dir DIR    Where to write results (default: historical_runs/walk_forward/)
   --skip-grid         Skip grid search if summary CSV already exists for a window
@@ -119,8 +117,8 @@ def next_trading_day(date_str, tdays=None):
     return tdays[idx].strftime('%Y-%m-%d')
 
 
-def build_windows(last_date=None, n_windows=6, oos_days=150, train_months=18,
-                  mode='expanding'):
+def build_windows(last_date=None, n_windows=9, oos_days=None, train_months=19,
+                  mode='rolling', window_days=50, overlap_days=10):
     """
     Build walk-forward window definitions using NYSE trading days.
 
@@ -130,16 +128,23 @@ def build_windows(last_date=None, n_windows=6, oos_days=150, train_months=18,
         Last available data date (YYYY-MM-DD). Defaults to most recent NYSE
         trading day on or before today.
     n_windows : int
-        Number of OOS windows (default 6).
-    oos_days : int
-        Total OOS trading days across all windows (default 150 = 6×25).
+        Number of OOS windows (default 9).
+    oos_days : int or None
+        LEGACY 兼容参数：显式给出时按旧语义"等分不重叠"切窗
+        (window_days = oos_days // n_windows, overlap = 0)。默认 None = 新语义。
     train_months : int
-        Training period length in months (default 18).
+        Training period length in months (default 19).
     mode : str
-        'expanding' (default): train_start is fixed at train_months before first OOS day.
-                               Each window trains on more data as OOS progresses.
-        'rolling': train window is a fixed train_months sliding window.
+        'rolling' (default): train window is a fixed train_months sliding window.
                    train_start moves forward with each OOS window.
+        'expanding': train_start is fixed at train_months before first OOS day.
+                     Each window trains on more data as OOS progresses.
+    window_days : int
+        每个 OOS 测试窗的 NYSE 交易日数 (default 50)。
+    overlap_days : int
+        相邻 OOS 窗的重叠交易日数 (default 10)。0 = 连续不重叠(旧行为)。
+        语义约定：窗口级评估用完整 window_days；跨窗聚合(链式曲线/配对汇总)
+        由消费方按"每窗只取 [test_start_i, test_start_{i+1}) 头部"去重。
 
     Returns
     -------
@@ -150,6 +155,14 @@ def build_windows(last_date=None, n_windows=6, oos_days=150, train_months=18,
     if mode not in ('expanding', 'rolling'):
         raise ValueError(f"mode must be 'expanding' or 'rolling', got {mode!r}")
 
+    # LEGACY: 显式 oos_days → 等分不重叠(旧语义,向后兼容旧调用/回归测试)
+    if oos_days is not None:
+        window_days = oos_days // n_windows
+        overlap_days = 0
+    if not (0 <= overlap_days < window_days):
+        raise ValueError(f'overlap_days must be in [0, window_days), '
+                         f'got overlap={overlap_days} window={window_days}')
+
     tdays = _get_nyse_trading_days()
 
     if last_date is None:
@@ -158,15 +171,14 @@ def build_windows(last_date=None, n_windows=6, oos_days=150, train_months=18,
     else:
         last_td = _last_trading_day_on_or_before(tdays, last_date)
 
-    # OOS period = last `oos_days` trading days ending at last_td
+    # OOS period = last `span` trading days ending at last_td
+    # span = window_days + stride×(n−1)；overlap=0 时 = n×window_days(旧行为)
+    stride = window_days - overlap_days
+    span   = window_days + stride * (n_windows - 1)
     last_idx = tdays.get_loc(last_td)
-    if last_idx < oos_days - 1:
-        raise ValueError(f'Not enough trading days: need {oos_days}, have {last_idx + 1}')
-    oos_tdays = tdays[last_idx - oos_days + 1 : last_idx + 1]
-
-    # Split OOS into n_windows equal chunks
-    window_size = oos_days // n_windows
-    remainder   = oos_days % n_windows  # distribute remainder to last windows
+    if last_idx < span - 1:
+        raise ValueError(f'Not enough trading days: need {span}, have {last_idx + 1}')
+    oos_tdays = tdays[last_idx - span + 1 : last_idx + 1]
 
     # Expanding: fixed anchor = train_months before first OOS day
     first_oos_start = oos_tdays[0]
@@ -175,14 +187,10 @@ def build_windows(last_date=None, n_windows=6, oos_days=150, train_months=18,
     anchor_str = anchor_td.strftime('%Y-%m-%d')
 
     windows = []
-    offset = 0
     for i in range(n_windows):
-        # Distribute remainder: last `remainder` windows get one extra day
-        extra = 1 if i >= (n_windows - remainder) else 0
-        w_size = window_size + extra
+        offset  = i * stride
         w_start = oos_tdays[offset]
-        w_end   = oos_tdays[offset + w_size - 1]
-        offset += w_size
+        w_end   = oos_tdays[offset + window_days - 1]
 
         # train_end = trading day immediately before w_start
         w_start_idx  = tdays.get_loc(w_start)
@@ -643,6 +651,15 @@ def build_oos_curve(window_results):
     Stitch together the OOS equity curves from all test windows.
     Returns a DataFrame with columns: Date, OOS_Equity, OOS_DailyPnL, Window.
     """
+    # 重叠去重：每窗只贡献 [test_start_i, test_start_{i+1}) 的"非重叠头部"，
+    # 末窗取满。连续模式(overlap=0)下 next_start = test_end+1td → 等价于全窗(无操作)。
+    _ordered = sorted([wr for wr in window_results if wr[1] is not None],
+                      key=lambda wr: wr[0]['window_idx'])
+    _next_start = {}
+    for _i, (_w, _) in enumerate(_ordered):
+        _next_start[_w['window_idx']] = (pd.Timestamp(_ordered[_i + 1][0]['test_start'])
+                                         if _i + 1 < len(_ordered) else None)
+
     segments = []
     for winfo, result in window_results:
         if result is None:
@@ -659,10 +676,13 @@ def build_oos_curve(window_results):
 
         eq['Date'] = pd.to_datetime(eq['Date'])
 
-        # Keep only the OOS test period
+        # Keep only the OOS test period (clipped at next window's test_start)
         test_start = pd.Timestamp(winfo['test_start'])
         test_end   = pd.Timestamp(winfo['test_end'])
+        _ns = _next_start.get(winfo['window_idx'])
         eq_oos = eq[(eq['Date'] >= test_start) & (eq['Date'] <= test_end)].copy()
+        if _ns is not None and _ns <= test_end:
+            eq_oos = eq_oos[eq_oos['Date'] < _ns].copy()
 
         if eq_oos.empty:
             continue
@@ -778,16 +798,22 @@ def _try_load_existing_oos(window, window_dir):
 
 def main():
     parser = argparse.ArgumentParser(description='Walk-forward optimization for MRPT')
-    parser.add_argument('--mode', default='expanding', choices=['expanding', 'rolling'],
-                        help='Window mode: expanding (fixed anchor) or rolling (fixed length) (default: expanding)')
+    parser.add_argument('--mode', default='rolling', choices=['expanding', 'rolling'],
+                        help='Window mode: rolling (fixed 19mo sliding train, default) or expanding (fixed anchor)')
     parser.add_argument('--windows',    type=int, default=4,
                         help='Number of OOS monthly windows (default: 4)')
-    parser.add_argument('--oos-windows', type=int, default=6,
-                        help='Number of OOS windows (default: 6)')
-    parser.add_argument('--oos-days',    type=int, default=150,
-                        help='Total OOS NYSE trading days across all windows (default: 150 = 6×25)')
-    parser.add_argument('--train-months', type=int, default=18,
-                        help='Training period length in months (default: 18)')
+    parser.add_argument('--oos-windows', type=int, default=9,
+                        help='Number of OOS windows (default: 9)')
+    parser.add_argument('--oos-days',    type=int, default=None,
+                        help='LEGACY: total OOS days, equal non-overlapping split '
+                             '(overrides --oos-window-days/--oos-overlap when given)')
+    parser.add_argument('--oos-window-days', type=int, default=50,
+                        help='OOS trading days per window (default: 50)')
+    parser.add_argument('--oos-overlap', type=int, default=10,
+                        help='Overlapping trading days between consecutive OOS windows '
+                             '(default: 10; 0 = contiguous legacy behaviour)')
+    parser.add_argument('--train-months', type=int, default=19,
+                        help='Training period length in months (default: 19)')
     parser.add_argument('--last-date', default=None,
                         help='Last available data date YYYY-MM-DD (default: auto = most recent NYSE trading day <= today)')
     parser.add_argument('--output-dir', default=None,
@@ -809,13 +835,19 @@ def main():
         oos_days=args.oos_days,
         train_months=args.train_months,
         mode=args.mode,
+        window_days=args.oos_window_days,
+        overlap_days=args.oos_overlap,
     )
+    # 实际生效的窗长/重叠(legacy oos_days 显式给出时覆盖新参数)
+    _eff_window = (args.oos_days // args.oos_windows) if args.oos_days is not None else args.oos_window_days
+    _eff_overlap = 0 if args.oos_days is not None else args.oos_overlap
 
     log.info('=' * 65)
     log.info('Walk-Forward Optimization')
     log.info(f'  Mode:        {args.mode}')
     log.info(f'  Train start: {train_start}  ({args.train_months}mo training)')
-    log.info(f'  OOS windows: {args.oos_windows} × {args.oos_days // args.oos_windows} NYSE trading days')
+    log.info(f'  OOS windows: {args.oos_windows} × {_eff_window} NYSE trading days'
+             f'  (overlap {_eff_overlap}td)')
     log.info(f'  OOS period:  {windows[0]["test_start"]} → {windows[-1]["test_end"]}')
     log.info(f'  Output dir:  {output_dir}')
     log.info('=' * 65)
@@ -917,7 +949,10 @@ def main():
         'train_start': train_start,
         'train_months': args.train_months,
         'oos_windows': args.oos_windows,
-        'oos_days': args.oos_days,
+        # oos_days = 去重后的 OOS 总跨度(交易日);window/overlap 为每窗口径
+        'oos_days': _eff_window + (_eff_window - _eff_overlap) * (args.oos_windows - 1),
+        'window_days': _eff_window,
+        'overlap_days': _eff_overlap,
         'windows': [
             {
                 'window_idx':     w['window_idx'],

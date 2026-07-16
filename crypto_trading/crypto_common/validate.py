@@ -53,6 +53,10 @@ BASIS_SHARPE_FLOOR = 0.5
 BASIS_MAXDD_BUDGET = -0.15
 BASIS_SLIPPAGE_RATIO_CAP = 1.5       # realized ≤ 1.5× modeled
 ROTATION_MAXDD_BUDGET = -0.35
+LIQ_SHARPE_FLOOR = 0.5
+LIQ_MAXDD_BUDGET = -0.20
+EVENT_IC_FLOOR = 0.05               # Plan 02 SIGNAL gate: OOS fair-value-gap IC
+EVENT_MIN_FOLDS = 6                  # ≥ this many OOS folds with consistent sign
 
 
 def _metrics(returns: pd.Series) -> dict:
@@ -78,10 +82,18 @@ def _wf_dir() -> Path:
     return _config.SIGNALS_DIR / "walk_forward"
 
 
+def _rel(p: Path) -> str:
+    """Repo-relative path for messages; falls back to the name if outside repo."""
+    try:
+        return str(p.relative_to(_config.CRYPTO_ROOT))
+    except ValueError:
+        return p.name
+
+
 def _load_oos_equity(strategy: str) -> tuple[pd.DataFrame | None, str]:
     p = _wf_dir() / f"{strategy}_oos_equity.csv"
     if not p.exists():
-        return None, f"missing {p.relative_to(_config.CRYPTO_ROOT)}"
+        return None, f"missing {_rel(p)}"
     df = pd.read_csv(p)
     date_col = "date" if "date" in df.columns else df.columns[0]
     df[date_col] = pd.to_datetime(df[date_col], utc=True)
@@ -94,7 +106,7 @@ def _load_oos_equity(strategy: str) -> tuple[pd.DataFrame | None, str]:
 def _load_wf_detail(strategy: str) -> tuple[dict | None, str]:
     p = _wf_dir() / f"{strategy}_detail.json"
     if not p.exists():
-        return None, f"missing {p.relative_to(_config.CRYPTO_ROOT)}"
+        return None, f"missing {_rel(p)}"
     try:
         return json.loads(p.read_text()), ""
     except Exception as e:
@@ -264,16 +276,85 @@ def validate_perp_rotation() -> dict:
     return report
 
 
+def validate_liq_reversion() -> dict:
+    """Plan 04 §8 gate: OOS net Sharpe ≥ floor (projected fees, maker) + maxDD
+    budget. FAIL-safe on missing artifacts."""
+    report: dict = {"strategy": "liq_reversion", "gates": {}, "missing": []}
+    oos, why = _load_oos_equity("liq_reversion")
+    if oos is None:
+        report["missing"].append(f"walk-forward OOS equity ({why})")
+        report["PASS"] = False
+        report["reason"] = "insufficient data: " + "; ".join(report["missing"])
+        return report
+    rets = oos["equity"].pct_change().dropna()
+    m = _metrics(rets)
+    report["oos_metrics"] = m
+    report["gates"]["oos_sharpe"] = {
+        "ok": bool(m["sharpe"] >= LIQ_SHARPE_FLOOR),
+        "detail": f"OOS net Sharpe {m['sharpe']:.2f} vs floor {LIQ_SHARPE_FLOOR} "
+                  "(projected fees, maker/liquidity-provision)"}
+    report["gates"]["max_dd"] = {
+        "ok": bool(m["max_dd"] >= LIQ_MAXDD_BUDGET),
+        "detail": f"OOS maxDD {m['max_dd']:.1%} vs budget {LIQ_MAXDD_BUDGET:.0%}"}
+    report["PASS"] = all(g["ok"] for g in report["gates"].values())
+    if not report["PASS"]:
+        report["reason"] = "; ".join(f"{k}: {g['detail']}"
+                                     for k, g in report["gates"].items() if not g["ok"])
+    return report
+
+
+def validate_event_perp() -> dict:
+    """Plan 02 SIGNAL gate (NOT P&L — the two-leg hedge/settlement is deferred).
+    PASS iff the fair-value-gap dislocation IC holds out-of-sample: mean OOS IC ≥
+    floor across ≥ MIN_FOLDS folds with a consistent (positive) sign."""
+    report: dict = {"strategy": "event_perp", "gates": {}, "missing": [],
+                    "note": "SIGNAL validation (OOS IC), not P&L — two-leg hedge deferred"}
+    p = _wf_dir() / "event_perp_oos_ic.csv"
+    if not p.exists():
+        report["PASS"] = False
+        report["reason"] = f"insufficient data: missing {p.name} (run wf --strategy event_perp)"
+        return report
+    df = pd.read_csv(p)
+    ic = pd.to_numeric(df.get("oos_ic"), errors="coerce").dropna()
+    n = len(ic)
+    if n < EVENT_MIN_FOLDS:
+        report["PASS"] = False
+        report["reason"] = (f"insufficient data: only {n} OOS-IC folds "
+                            f"(need ≥ {EVENT_MIN_FOLDS}; more strip days required)")
+        return report
+    mean_ic = float(ic.mean())
+    frac_pos = float((ic > 0).mean())
+    report["oos_ic"] = {"mean": round(mean_ic, 4), "n_folds": n,
+                        "fraction_positive": round(frac_pos, 2)}
+    report["gates"]["mean_oos_ic"] = {
+        "ok": bool(mean_ic >= EVENT_IC_FLOOR),
+        "detail": f"mean OOS IC {mean_ic:.3f} vs floor {EVENT_IC_FLOOR}"}
+    report["gates"]["sign_consistency"] = {
+        "ok": bool(frac_pos >= 0.6),
+        "detail": f"{frac_pos:.0%} of folds positive (need ≥ 60%)"}
+    report["PASS"] = all(g["ok"] for g in report["gates"].values())
+    if not report["PASS"]:
+        report["reason"] = "; ".join(f"{k}: {g['detail']}"
+                                     for k, g in report["gates"].items() if not g["ok"])
+    return report
+
+
 def _print(report: dict) -> None:
     """Template's verdict printout shape."""
     print("=" * 78)
     print(f"VALIDATION GATE — {report['strategy']}")
     print("=" * 78)
+    if report.get("note"):
+        print(f"  ({report['note']})")
     for key in ("oos_metrics", "perp_rotation_metrics", "btc_hodl", "ew_basket"):
         m = report.get(key)
         if m:
             print(f"{key:24}: CAGR {m['cagr']:8.1%}  Sharpe {m['sharpe']:6.2f}  "
                   f"MaxDD {m['max_dd']:7.1%}")
+    if report.get("oos_ic"):
+        o = report["oos_ic"]
+        print(f"{'oos_ic':24}: mean {o['mean']:+.3f}  folds {o['n_folds']}  "
+              f"positive {o['fraction_positive']:.0%}")
     for name, g in report.get("gates", {}).items():
         print(f"  gate {name:16}: {'PASS' if g['ok'] else 'fail'} — {g['detail']}")
     print("-" * 78)
@@ -288,15 +369,20 @@ def main(argv=None) -> None:
     logging.basicConfig(level=logging.WARNING)
     ap = argparse.ArgumentParser(description="Crypto strategy validation gates")
     ap.add_argument("--strategy", required=True,
-                    choices=["basis_meanrev", "perp_rotation"])
+                    choices=["basis_meanrev", "perp_rotation", "liq_reversion",
+                             "event_perp"])
     ap.add_argument("--allow-no-live", action="store_true",
                     help="basis gate: waive the live-slippage check (paper verdict)")
     ap.add_argument("--json", default=None, help="write full report JSON here")
     args = ap.parse_args(argv)
     if args.strategy == "basis_meanrev":
         report = validate_basis(allow_no_live=args.allow_no_live)
-    else:
+    elif args.strategy == "perp_rotation":
         report = validate_perp_rotation()
+    elif args.strategy == "liq_reversion":
+        report = validate_liq_reversion()
+    else:
+        report = validate_event_perp()
     _print(report)
     if args.json:
         Path(args.json).write_text(json.dumps(report, indent=2, default=float))

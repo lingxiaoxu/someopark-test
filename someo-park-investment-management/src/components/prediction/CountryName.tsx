@@ -43,12 +43,18 @@ export default function CountryName({ code, bold }: { code?: string | null; bold
       setOpen(false);
     };
     const onLeave = () => setOpen(false);
+    // Close when the PAGE scrolls (our fixed position would go stale) — but not when the
+    // scroll originates inside the popover's own list, or the user could never scroll it.
+    const onScroll = (e: Event) => {
+      if (popRef.current && e.target instanceof Node && popRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
     document.addEventListener('mousedown', onDown);
-    window.addEventListener('scroll', onLeave, true);
+    window.addEventListener('scroll', onScroll, true);
     window.addEventListener('resize', onLeave);
     return () => {
       document.removeEventListener('mousedown', onDown);
-      window.removeEventListener('scroll', onLeave, true);
+      window.removeEventListener('scroll', onScroll, true);
       window.removeEventListener('resize', onLeave);
     };
   }, [open]);

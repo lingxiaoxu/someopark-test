@@ -84,3 +84,15 @@
 2026-07-10T22:41:30Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
 2026-07-11T07:02:35Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
 2026-07-11T07:02:35Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=11 applicable-splits=none pending=none applied=0
+2026-07-13T21:34:00Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-13T22:41:18Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-07-14T08:00:15Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-07-14T08:00:15Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-14T21:35:10Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-14T22:41:20Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-07-15T08:51:35Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-07-15T08:51:35Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-07-15T21:36:25Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=5 applicable-splits=none pending=none applied=0
+2026-07-15T22:41:20Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-07-16T07:44:31Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-07-16T07:44:31Z [CA][mtfs] status=NO-POSITIONS | no open pairs

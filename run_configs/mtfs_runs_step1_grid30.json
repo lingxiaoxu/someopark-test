@@ -8,40 +8,64 @@
       "param_set": "default",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -50,40 +74,64 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -92,40 +140,64 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -134,40 +206,64 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -176,40 +272,64 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -218,40 +338,64 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -260,40 +404,64 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -302,40 +470,64 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -344,40 +536,64 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -386,40 +602,64 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -428,40 +668,64 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -470,40 +734,64 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -512,40 +800,64 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -554,40 +866,64 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -596,40 +932,64 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -638,40 +998,64 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -680,40 +1064,64 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -722,40 +1130,64 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -764,40 +1196,64 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -806,40 +1262,64 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -848,40 +1328,64 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -890,40 +1394,64 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -932,40 +1460,64 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -974,40 +1526,64 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1016,40 +1592,64 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1058,40 +1658,64 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1100,40 +1724,64 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1142,40 +1790,64 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1184,40 +1856,64 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1226,40 +1922,64 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1268,40 +1988,64 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1310,40 +2054,64 @@
       "param_set": "monthly_aligned_windows_fc",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1352,40 +2120,64 @@
       "param_set": "short_term_beta_neutral_fc",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1394,40 +2186,64 @@
       "param_set": "fast_strict_fc",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     },
@@ -1436,40 +2252,64 @@
       "param_set": "monthly_aligned_windows_fc_skip",
       "pairs": [
         [
-          "DVA",
-          "HAS"
+          "KMX",
+          "ORCL"
         ],
         [
-          "DVA",
-          "CCI"
+          "KMX",
+          "PNR"
+        ],
+        [
+          "BBY",
+          "HCA"
+        ],
+        [
+          "BBY",
+          "RMD"
+        ],
+        [
+          "VLO",
+          "LOW"
+        ],
+        [
+          "VLO",
+          "HSY"
+        ],
+        [
+          "STT",
+          "ORLY"
+        ],
+        [
+          "STT",
+          "COST"
+        ],
+        [
+          "ANET",
+          "LKQ"
         ],
         [
           "ANET",
           "DIS"
         ],
         [
-          "ANET",
-          "TAP"
+          "MOH",
+          "PEP"
         ],
         [
-          "BBY",
-          "APO"
+          "MOH",
+          "MCD"
         ],
         [
-          "BBY",
-          "VICI"
+          "NTRS",
+          "UBER"
         ],
         [
-          "CDW",
-          "HSY"
+          "NTRS",
+          "TSLA"
         ],
         [
-          "CDW",
-          "COST"
-        ],
-        [
-          "VLO",
-          "ORLY"
+          "PSX",
+          "GEHC"
         ]
       ]
     }

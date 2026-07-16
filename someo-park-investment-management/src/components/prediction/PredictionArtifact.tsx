@@ -1881,7 +1881,13 @@ function MicroFootballSim() {
             <KV rows={[
               [tr('prediction.mfWinPct'), <span style={mono}>{H} {pct(mode.wdl.home, 1)} · {tr('prediction.drawResult')} {pct(mode.wdl.draw, 1)} · {A} {pct(mode.wdl.away, 1)}</span>],
               [tr('prediction.mfAvgScore'), <span style={mono}>{H} {mode.avg_goals?.replace('-', ' – ')} {A}</span>],
-              [tr('prediction.mfScoreDist'), <span style={mono}>{(mode.scoreline_top10 || []).slice(0, 6).map((l: any) => `${l.score} (${Math.round(l.pct * 100)}%)`).join('　')}</span>],
+              [tr('prediction.mfScoreDist'), <span style={mono}>{(() => {
+                const top = (mode.scoreline_top10 || []).slice(0, 6);
+                if (!top.length) return '';
+                const rest = Math.max(0, 1 - top.reduce((s: number, l: any) => s + (l.pct || 0), 0));
+                return top.map((l: any) => `${l.score} (${Math.round(l.pct * 100)}%)`).join('　')
+                  + `　${tr('prediction.dfmScoreOther')} (~${Math.round(rest * 100)}%)`;
+              })()}</span>],
               [tr('prediction.mfPossession'), <span style={mono}>{H} {posH} · {A} {posA}</span>],
               [tr('prediction.mfShots'), <span style={mono}>{H} {shH} · {A} {shA}</span>],
               [tr('prediction.dfmCorners'), <span style={mono}>{H} {coH} · {A} {coA}</span>],

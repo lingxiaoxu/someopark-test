@@ -92,10 +92,17 @@ conda run -n qlib_run --no-capture-output python "$REPO/RefreshEventRiskData.py"
     && log "[event-risk] data refresh done" \
     || log "[event-risk] WARN: data refresh failed (non-fatal, continuing)"
 
-run_step 3 "MRPTWalkForward.py --oos-windows 6" "MRPTWalkForward"
+run_step 3 "MRPTWalkForward.py --mode rolling --train-months 19 --oos-windows 9 --oos-window-days 50 --oos-overlap 10" "MRPTWalkForward"
 run_step 4 "MRPTWalkForwardReport.py" "MRPTWalkForwardReport"
-run_step 5 "MTFSWalkForward.py --oos-windows 6" "MTFSWalkForward"
+run_step 5 "MTFSWalkForward.py --mode rolling --train-months 19 --oos-windows 9 --oos-window-days 50 --oos-overlap 10" "MTFSWalkForward"
 run_step 6 "MTFSWalkForwardReport.py" "MTFSWalkForwardReport"
+# MacroSimilarity 增量更新(黄金窗口相似度存储;冻结 encoder,秒级)。
+# NON-FATAL:失败不 abort(DailySignal 对缺失存储有完整回退)。
+log "[macro-sim] updating similarity store (non-fatal)..."
+conda run -n someopark_run --no-capture-output python "$REPO/MacroSimilarity.py" --update >> "$LOGFILE" 2>&1 \
+    && log "[macro-sim] update done" \
+    || log "[macro-sim] WARN: update failed (non-fatal, DailySignal falls back to last-window)"
+
 run_step 7 "DailySignal.py --strategy both --vix-forecast --vix-forecast-finetune" "DailySignal"
 run_step 8 "WalkForwardDiagnostic.py" "WalkForwardDiagnostic"
 run_step 9 "PnLReport.py --start 2026-03-19" "PnLReport"

@@ -554,6 +554,7 @@
     "dfmModeEngine": "fiel al motor",
     "dfmCorners": "Córners (p50 [p5–p95])",
     "dfmCards": "Tarjetas / partido",
+    "dfmScoreOther": "otros",
     "dfmNote": "5000 partidos generados por difusión; mediana [5–95%]; anclado real = intensidades calibradas al nivel real del torneo"
   },
   "sidebar": {

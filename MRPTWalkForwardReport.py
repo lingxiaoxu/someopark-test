@@ -35,6 +35,26 @@ ALL_PAIRS = mrpt_pair_keys()
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 
+def _dirs_from_summary(wf_dir):
+    """最新 walk_forward_summary_*.json 里逐窗口的 train_start/train_end 可以
+    精确重建目录名 window{NN}_{train_start}_{train_end}——expanding/rolling 两种
+    模式都成立(rolling 下各窗口 train_start 不同,旧的"共享 anchor"启发式会把
+    run 碎成单窗分组,只报出 1 个窗口)。全部目录存在才返回;否则 None 走兜底。"""
+    summaries = sorted(glob.glob(os.path.join(wf_dir, 'walk_forward_summary_*.json')))
+    if not summaries:
+        return None
+    try:
+        with open(summaries[-1]) as f:
+            wf = json.load(f)
+    except Exception:
+        return None
+    wanted = [os.path.join(wf_dir, f"window{w['window_idx']:02d}_"
+                                   f"{w['train_start']}_{w['train_end']}")
+              for w in wf.get('windows', [])]
+    found = [d for d in wanted if os.path.isdir(d)]
+    return found if (found and len(found) == len(wanted)) else None
+
+
 def _find_oos_windows(wf_dir, run_prefix=None):
     """
     Auto-detect OOS test windows in wf_dir.
@@ -43,8 +63,10 @@ def _find_oos_windows(wf_dir, run_prefix=None):
       {window_idx, test_start, test_end, xlsx, wdir, selected_pairs}
 
     If run_prefix is given (e.g. '2024-02-01'), only windows whose directory
-    name contains that prefix are included. Otherwise uses the most recent run
-    (highest window count, latest mtime).
+    name contains that prefix are included. Otherwise prefers the exact window
+    dirs recorded in the latest walk_forward_summary JSON (mode-agnostic:
+    works for expanding and rolling), falling back to the shared-anchor
+    heuristic for legacy runs without a summary.
     """
     # Find all windowNN_* dirs
     pattern = os.path.join(wf_dir, 'window*_????-??-??_????-??-??')
@@ -53,10 +75,14 @@ def _find_oos_windows(wf_dir, run_prefix=None):
     # Filter by prefix if given
     if run_prefix:
         all_dirs = [d for d in all_dirs if run_prefix in os.path.basename(d)]
+    elif (_sel := _dirs_from_summary(wf_dir)) is not None:
+        # summary 精确定位(rolling 模式必需;expanding 同样更稳)
+        all_dirs = _sel
     else:
         # Exclude old-format runs (e.g. 2024-10-01 anchor = old run)
         # Heuristic: pick the set of window dirs that share the same train_start anchor
         # Group by train_start (part after windowNN_)
+        # NOTE: 仅适用于 expanding(共享 anchor);rolling run 依赖上面的 summary 路径
         from collections import defaultdict
         groups = defaultdict(list)
         for d in all_dirs:
@@ -216,6 +242,59 @@ def _pair_stats(pair, all_dod, all_trades, all_interest_total):
     }
 
 
+# ── overlap 去重(2026-07-15)────────────────────────────────────────────────
+# 重叠窗口模式(WF --oos-overlap>0)下,跨窗聚合必须去重:每窗只保留
+# [test_start_i, test_start_{i+1}) 的"非重叠头部",末窗取满。
+# 连续模式下 next_start = test_end+1td → 全部无操作,行为与旧版完全一致。
+# 窗口级评估(WINDOW-LEVEL 段、oos_pair_windows CSV)仍用完整窗口。
+def _clip_overlap(windows_data):
+    ordered = sorted(windows_data, key=lambda wd: wd[0]['window_idx'])
+    clipped = []
+    for i, (w, dfs) in enumerate(ordered):
+        ns = (pd.Timestamp(ordered[i + 1][0]['test_start'])
+              if i + 1 < len(ordered) else None)
+        if ns is None or ns > pd.Timestamp(w['test_end']):
+            clipped.append((w, dfs))
+            continue
+        new_dfs = tuple(df[df['Date'] < ns].copy() if (not df.empty and 'Date' in df.columns) else df
+                        for df in dfs)
+        clipped.append((w, new_dfs))
+    return clipped
+
+
+def _write_pair_windows_csv(windows_data, wf_dir, ts):
+    """每窗×每对 OOS 统计(完整窗口口径,供 DailySignal 黄金窗口评估读取)。"""
+    rows = []
+    for w, (eq, dpnl, dod, trades, interest) in windows_data:
+        if dod.empty:
+            continue
+        for pair, grp in dod.groupby('Pair'):
+            daily = grp.sort_values('Date')['PnL Dollar'].values
+            n = len(daily)
+            if n == 0:
+                continue
+            mean_d = float(np.mean(daily))
+            std_d = float(np.std(daily, ddof=1)) if n > 1 else 0.0
+            cum = np.cumsum(daily)
+            peak = np.maximum.accumulate(cum)
+            active = daily[daily != 0]
+            rows.append({
+                'window_idx': w['window_idx'],
+                'test_start': w['test_start'], 'test_end': w['test_end'],
+                'Pair': pair,
+                'pnl': float(np.sum(daily)),
+                'sharpe': mean_d / std_d * math.sqrt(252) if std_d > 0 else 0.0,
+                'maxdd': float((cum - peak).min()),
+                'win_rate': float((active > 0).sum() / len(active)) if len(active) else None,
+                'n_days': n,
+            })
+    if not rows:
+        return None
+    path = os.path.join(wf_dir, f'oos_pair_windows_{ts}.csv')
+    pd.DataFrame(rows).to_csv(path, index=False)
+    return path
+
+
 # ── chained equity curve ──────────────────────────────────────────────────────
 
 def _build_chained_curve(windows_data):
@@ -321,8 +400,11 @@ def generate_report(wf_dir=None, run_prefix=None):
 
     lines.append('-' * 72)
 
+    # 跨窗聚合去重(重叠模式;连续模式无操作)
+    windows_data_dedup = _clip_overlap(windows_data)
+
     # Chained curve & overall stats
-    curve = _build_chained_curve(windows_data)
+    curve = _build_chained_curve(windows_data_dedup)
     cs    = _chained_stats(curve)
 
     n_pos = sum(1 for _, ws in window_stats_list if ws['pnl'] > 0)
@@ -345,7 +427,7 @@ def generate_report(wf_dir=None, run_prefix=None):
     # this to reconcile PAIR SUM → GROSS TOTAL.
     total_interest = 0.0
     first_day_interest = 0.0
-    for w, (eq, dpnl, dod, trades, interest) in windows_data:
+    for w, (eq, dpnl, dod, trades, interest) in windows_data_dedup:
         if not interest.empty and 'Value' in interest.columns:
             total_interest += float(interest['Value'].sum())
             first_day_interest += float(interest['Value'].iloc[0])
@@ -356,8 +438,8 @@ def generate_report(wf_dir=None, run_prefix=None):
         lines.append('')
 
     # ── Section 3: Pair-level breakdown ──────────────────────────────────────
-    all_dod    = pd.concat([dod    for _, (eq, dpnl, dod, trades, interest) in windows_data], ignore_index=True)
-    all_trades = pd.concat([trades for _, (eq, dpnl, dod, trades, interest) in windows_data], ignore_index=True)
+    all_dod    = pd.concat([dod    for _, (eq, dpnl, dod, trades, interest) in windows_data_dedup], ignore_index=True)
+    all_trades = pd.concat([trades for _, (eq, dpnl, dod, trades, interest) in windows_data_dedup], ignore_index=True)
 
     pair_rows = []
     for pair in ALL_PAIRS:
@@ -425,6 +507,11 @@ def generate_report(wf_dir=None, run_prefix=None):
 
     pair_path = os.path.join(wf_dir, f'oos_pair_summary_{ts}.csv')
     pair_df.to_csv(pair_path, index=False)
+
+    # 每窗×每对统计(完整窗口口径) — DailySignal 黄金窗口评估的输入
+    pw_path = _write_pair_windows_csv(windows_data, wf_dir, ts)
+    if pw_path:
+        print(f'Pair-window stats:  {pw_path}')
     print(f'Pair summary: {pair_path}')
 
     return pair_df, curve, cs

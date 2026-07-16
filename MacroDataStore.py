@@ -59,8 +59,10 @@ BASE_DIR   = Path(__file__).parent / 'price_data' / 'macro'
 START_DATE = date(2006, 1, 1)    # 初始拉取起点
 
 TICKERS = {
-    'vix':  '^VIX',
-    'move': '^MOVE',
+    'vix':   '^VIX',
+    'vix3m': '^VIX3M',   # 3-month VIX (term-structure numerator; MTFS macro gate)
+    'vix9d': '^VIX9D',   # 9-day VIX (short end of the term structure)
+    'move':  '^MOVE',
 }
 
 # Hourly 品种：VIX（真正 hourly）+ VXTLT（30年国债波动率，替代 MOVE hourly）
@@ -89,14 +91,38 @@ class MacroDataStore:
     def __init__(self, base_dir: Path | str = BASE_DIR):
         self.base_dir = Path(base_dir)
 
+    # VIX term-structure variants share the single vix/ directory with spot vix
+    # (price_data/macro/vix/{vix,vix3m,vix9d}_YYYY.parquet). That is where every
+    # consumer reads them (MacroStateStore._load_vix_variant, DailySignal term-slope
+    # gate), so they MUST be written there — not into per-key subdirs.
+    _SUBDIR = {'vix3m': 'vix', 'vix9d': 'vix'}
+
     def _year_path(self, name: str, year: int) -> Path:
-        return self.base_dir / name / f'{name}_{year}.parquet'
+        sub = self._SUBDIR.get(name, name)
+        return self.base_dir / sub / f'{name}_{year}.parquet'
+
+    @staticmethod
+    def _normalize_close(df: pd.DataFrame) -> pd.DataFrame:
+        """把任意列格式压平成单列 'close'。
+
+        历史上 vix3m/vix9d 曾以 MultiIndex 列 ('close','^VIX3M') 落盘，而
+        _fetch_yf 写的是单层 'close'。若不归一化，增量 update() 的 concat 会
+        因列不一致而生成 NaN 列，价值层拿到伪空值。这里统一压平，保证读/写一致。
+        """
+        if df.empty:
+            return df
+        if isinstance(df.columns, pd.MultiIndex):
+            df = df.copy()
+            df.columns = ['_'.join(str(c) for c in col).strip('_') for col in df.columns]
+        close_cols = [c for c in df.columns if 'close' in str(c).lower()]
+        col = close_cols[0] if close_cols else df.columns[0]
+        return df[[col]].rename(columns={col: 'close'})
 
     def _load_year(self, name: str, year: int) -> pd.DataFrame:
-        """读取单年文件，不存在返回空 DataFrame。"""
+        """读取单年文件，不存在返回空 DataFrame。列名归一化为单层 'close'。"""
         p = self._year_path(name, year)
         if p.exists():
-            return pd.read_parquet(p)
+            return self._normalize_close(pd.read_parquet(p))
         return pd.DataFrame(columns=['date', 'close']).set_index('date')
 
     def _save_year(self, name: str, year: int, df: pd.DataFrame) -> None:

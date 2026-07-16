@@ -73,7 +73,7 @@ def router(tmp_path, monkeypatch):
 
 
 def test_dry_run_default_writes_record(router, tmp_path):
-    res = router.submit(Order("KXBTCPERP", "buy", 2, 6.3800))
+    res = router.submit(Order("KXBTCPERP", "bid", 2, 6.3800))
     assert res["status"] == "dry_run"
     router.close()
     files = list((tmp_path / "signals" / "orders_dryrun" / "teststrat").rglob("*.jsonl"))
@@ -81,7 +81,7 @@ def test_dry_run_default_writes_record(router, tmp_path):
 
 
 def test_duplicate_client_order_id_deduped(router):
-    o = Order("KXBTCPERP", "buy", 1, 6.38)
+    o = Order("KXBTCPERP", "bid", 1, 6.38)
     assert router.submit(o)["status"] == "dry_run"
     assert router.submit(o)["status"] == "duplicate"
 
@@ -89,13 +89,97 @@ def test_duplicate_client_order_id_deduped(router):
 def test_live_refused_when_gate_closed(router):
     # demo env + no dedicated key + margin not enabled → every condition fails
     with pytest.raises(LiveOrderRefused):
-        router.submit(Order("KXBTCPERP", "buy", 1, 6.38), live=True)
+        router.submit(Order("KXBTCPERP", "bid", 1, 6.38), live=True)
     gate = router.gate_status()
     assert not gate["live_open"] and not gate["env_prod"]
 
 
-def test_order_body_wire_format():
-    o = Order("KXBTCPERP", "sell", 3, 6.3819, post_only=True)
+def test_order_body_matches_official_spec():
+    # short (ask), like the real 2026-07-12 fill; body must match create-order spec
+    o = Order("KXBTCPERP", "ask", 3, 6.3819, post_only=True, subaccount=64)
     b = o.body()
-    assert b["count"] == "3" and b["price"] == "6.3819"
+    assert b["side"] == "ask"                       # bid/ask, NOT buy/sell
+    assert b["count"] == "3.00"                     # 2-dp fixed point, NOT "3"
+    assert b["price"] == "6.3819"
+    assert b["subaccount"] == 64                    # targets the right subaccount
+    assert b["self_trade_prevention_type"] == "taker_at_cross"
+    assert b["time_in_force"] == "good_till_canceled"
     assert b["post_only"] is True and "client_order_id" in b
+
+
+def test_order_rejects_buy_sell_and_bad_enums():
+    import pytest
+    with pytest.raises(ValueError):
+        Order("KXBTCPERP", "buy", 1, 6.38)          # buy/sell no longer accepted
+    with pytest.raises(ValueError):
+        Order("KXBTCPERP", "bid", 1, 6.38, tif="gtc")   # invalid TIF
+    with pytest.raises(ValueError):
+        Order("KXBTCPERP", "bid", 0.005, 6.38)      # below 0.01 granularity
+
+
+def test_from_signed_maps_sign_to_side():
+    assert Order.from_signed("KXBTCPERP", -1, 6.40).side == "ask"   # short
+    assert Order.from_signed("KXBTCPERP", +2, 6.40).side == "bid"   # long
+
+
+def test_reduce_only_requires_ioc_fok():
+    import pytest
+    with pytest.raises(ValueError):
+        Order("KXBTCPERP", "ask", 1, 6.40, reduce_only=True)        # gtc + reduce_only
+    ok = Order("KXBTCPERP", "ask", 1, 6.40, reduce_only=True,
+               tif="immediate_or_cancel")
+    assert ok.body()["reduce_only"] is True
+
+
+class _FakeMargin:
+    """Returns positions in the EXACT /margin/positions schema (real fill 2026-07-12)."""
+    def __init__(self, positions):
+        self._p = positions
+
+    def positions(self):
+        return self._p
+
+
+def test_reconcile_matches_real_position_schema(router):
+    # venue = short 1 KXBTCPERP (position "-1.00"), matching the real account
+    router._margin = _FakeMargin([
+        {"market_ticker": "KXBTCPERP", "position": "-1.00", "entry_price": "6.4015",
+         "unrealized_pnl": "-0.0014", "subaccount": 64}])
+    # inventory agrees → no break
+    assert router.reconcile({"KXBTCPERP": -1.0})["ok"]
+    # inventory disagrees (thinks we're long 1) → break flagged
+    r = router.reconcile({"KXBTCPERP": 1.0})
+    assert not r["ok"]
+    assert r["breaks"]["KXBTCPERP"] == {"inventory": 1.0, "venue": -1.0}
+    # venue has a position we don't know about → break
+    r2 = router.reconcile({})
+    assert not r2["ok"] and r2["breaks"]["KXBTCPERP"]["venue"] == -1.0
+
+
+def test_reconcile_nets_same_ticker_across_subaccounts(router):
+    # real account holds KXBTCPERP in BOTH subaccount 64 (-1) and 0 (+2) → net +1
+    router._margin = _FakeMargin([
+        {"market_ticker": "KXBTCPERP", "position": "-1.00", "subaccount": 64},
+        {"market_ticker": "KXBTCPERP", "position": "2.00", "subaccount": 0}])
+    # netted (not last-wins) → +1
+    assert router.reconcile({"KXBTCPERP": 1.0})["ok"], "should NET to +1, not overwrite"
+    # restrict to subaccount 64 only → -1
+    r = router.reconcile({"KXBTCPERP": -1.0}, subaccount=64)
+    assert r["ok"] and r["venue_positions"]["KXBTCPERP"] == -1.0
+
+
+def test_order_price_snapped_to_tick_size():
+    # off-tick price must snap; bid rounds DOWN, ask rounds UP
+    bid = Order("KXBTCPERP", "bid", 1, 6.40125, tick_size=0.001)
+    assert bid.wire_price() == pytest.approx(6.401) and bid.body()["price"] == "6.4010"
+    ask = Order("KXBTCPERP", "ask", 1, 6.40125, tick_size=0.001)
+    assert ask.wire_price() == pytest.approx(6.402)
+    # no tick_size → unchanged
+    assert Order("KXBTCPERP", "bid", 1, 6.4015).wire_price() == pytest.approx(6.4015)
+
+
+def test_order_count_must_be_multiple_of_001():
+    import pytest as _p
+    with _p.raises(ValueError):
+        Order("KXBTCPERP", "bid", 1.005, 6.40)      # not a 0.01 multiple
+    assert Order("KXBTCPERP", "bid", 1.50, 6.40).body()["count"] == "1.50"

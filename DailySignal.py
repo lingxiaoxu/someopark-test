@@ -320,7 +320,117 @@ def _load_wf_configs(strategy: str) -> tuple[list, dict]:
     log.info(f"[wf_config] {strategy.upper()}: {len(pair_configs)} pairs selected, "
              f"{n_excl} excluded "
              f"(Sharpe<{_WF_EXCLUDE_SHARPE} AND PnL<${_WF_EXCLUDE_PNL:,})")
+
+    # ── 黄金窗口(宏观相似度)评估+参数覆盖;任何异常完整回退旧行为 ──
+    _gold_meta[strategy] = {'n_windows': n_windows}
+    try:
+        _gold = _gold_windows_for(wf)
+        if _gold:
+            _apply_gold_windows(strategy, wf, wf_dir, _gold, pair_configs, oos_perf)
+            log.info(f"[GOLD] {strategy.upper()}: 黄金评估窗口 = "
+                     f"{_gold['gold_windows']} (参考日 {_gold['ref_day']})")
+    except Exception as _ge:
+        log.warning(f"[GOLD] {strategy.upper()}: 黄金窗口不可用,回退末窗评估 ({_ge})")
     return pair_configs, oos_perf
+
+
+# ── 黄金窗口(宏观相似度)评估 —— 2026-07-15 ──────────────────────────────────
+# 评估不再只看最后一窗:用 MacroSimilarity.py 预计算的相似度存储,找到与
+# "最近 10 个交易日"宏观环境最相似的历史 10 日段(限当前 WF OOS 覆盖内),
+# 该段所在窗口(≤2,重叠窗时一天可属两窗) ∪ 最后一窗 = 黄金窗口(1-3 个)。
+# - 相似段就在末窗内 → 黄金 = 末窗(与旧行为一致)
+# - 评估: per-pair 黄金窗口聚合统计(gold_sharpe/gold_pnl,天数加权)
+# - 参数覆盖: pair 在黄金宏观窗被选中、param 不同、且该窗 OOS Sharpe 高于
+#   末窗 → 用宏观窗 param(log [GOLD]);pair 列表本身仍取末窗(不引入旧对)。
+# - 任何文件缺失/异常 → 完整回退旧行为(仅末窗),只 log warning。
+_GOLD_SIM_STORE = os.path.join(BASE_DIR, 'macro_similarity', 'similarity_store.json')
+_gold_sim_cache: dict = {}
+_gold_meta: dict = {}     # strategy -> {'n_windows','gold_windows','span','ref_day'}
+
+
+def _gold_windows_for(wf: dict):
+    """从相似度存储解析黄金窗口。返回 {'ref_day','span','gold_windows'} 或 None。"""
+    windows = wf.get('windows', [])
+    if not windows:
+        return None
+    if 'store' not in _gold_sim_cache:
+        with open(_GOLD_SIM_STORE) as f:
+            _gold_sim_cache['store'] = json.load(f)
+    store = _gold_sim_cache['store']
+    days = store['days']
+    all_days = sorted(days.keys())
+    ref_day = all_days[-1]
+    rec = days.get(ref_day, {})
+    span_n = int(store.get('span', 10))
+    cands = rec.get('span10_recent') or rec.get('span10_topk') or []
+    if not cands:
+        return None
+    oos_start, oos_end = windows[0]['test_start'], windows[-1]['test_end']
+    idx = {d: i for i, d in enumerate(all_days)}
+    best = None
+    for end_d, dist in cands:
+        i = idx.get(end_d)
+        if i is None or i < span_n - 1:
+            continue
+        start_d = all_days[i - (span_n - 1)]
+        if start_d >= oos_start and end_d <= oos_end:
+            best = (start_d, end_d, float(dist))
+            break
+    last_idx = windows[-1]['window_idx']
+    if best is None:
+        gold_idx = [last_idx]
+    else:
+        s, e, _ = best
+        hit = [w['window_idx'] for w in windows
+               if not (w['test_end'] < s or w['test_start'] > e)]
+        gold_idx = sorted(set(hit[:2] + [last_idx]))
+    return {'ref_day': ref_day, 'span': best, 'gold_windows': gold_idx}
+
+
+def _apply_gold_windows(strategy, wf, wf_dir, gold, pair_configs, oos_perf):
+    """黄金窗口聚合统计写入 oos_perf + 参数覆盖(就地修改 pair_configs)。"""
+    windows = wf['windows']
+    last_idx = windows[-1]['window_idx']
+    _gold_meta[strategy] = {'n_windows': len(windows), **gold}
+    pw_csvs = sorted(glob.glob(os.path.join(wf_dir, 'oos_pair_windows_*.csv')),
+                     key=os.path.getmtime)
+    if not pw_csvs:
+        log.info(f"[GOLD] {strategy.upper()}: 无 oos_pair_windows CSV(旧 run)"
+                 f" — 黄金窗口 {gold['gold_windows']} 仅记录,无统计/覆盖")
+        return
+    pw = pd.read_csv(pw_csvs[-1])
+    gset = set(gold['gold_windows'])
+    sub = pw[pw['window_idx'].isin(gset)]
+    for pair_key, grp in sub.groupby('Pair'):
+        wts = grp['n_days'].clip(lower=1).astype(float)
+        if pair_key in oos_perf:
+            oos_perf[pair_key]['gold_sharpe'] = round(
+                float((grp['sharpe'] * wts).sum() / wts.sum()), 4)
+            oos_perf[pair_key]['gold_pnl'] = round(float(grp['pnl'].sum()), 0)
+            oos_perf[pair_key]['gold_windows'] = gold['gold_windows']
+    # 参数覆盖:黄金宏观窗(非末窗)同 pair 不同 param 且 OOS Sharpe 更高
+    ps_by_win = {w['window_idx']: {f"{s1}/{s2}": ps
+                                   for s1, s2, ps in w.get('selected_pairs', [])}
+                 for w in windows}
+    sharpe_by = {(int(r.window_idx), r.Pair): float(r.sharpe)
+                 for r in sub.itertuples()}
+    for i, (s1, s2, ps_last) in enumerate(pair_configs):
+        pk = f'{s1}/{s2}'
+        best_ps = ps_last
+        best_sh = sharpe_by.get((last_idx, pk), float('-inf'))
+        best_w = last_idx
+        for gw in gold['gold_windows']:
+            if gw == last_idx:
+                continue
+            alt = ps_by_win.get(gw, {}).get(pk)
+            if alt and alt != ps_last:
+                alt_sh = sharpe_by.get((gw, pk), float('-inf'))
+                if alt_sh > best_sh:
+                    best_ps, best_sh, best_w = alt, alt_sh, gw
+        if best_ps != ps_last:
+            log.info(f"[GOLD] {strategy.upper()} {pk}: param {ps_last} → {best_ps} "
+                     f"(宏观窗 W{best_w} OOS Sharpe {best_sh:+.2f} 优于末窗)")
+            pair_configs[i] = (s1, s2, best_ps)
 
 
 # Module-level cache — loaded once per process, refreshed on next run
@@ -870,9 +980,13 @@ def _compute_vix_term_slope_chg(signal_date) -> float | None:
             # Flatten MultiIndex columns (e.g. vix3m has ('close', '^VIX3M'))
             if isinstance(df.columns, pd.MultiIndex):
                 df.columns = [c[0] if isinstance(c, tuple) else c for c in df.columns]
-            dfs_out.append(df[['close']].rename(columns={'close': name}))
+            df = df[['close']].rename(columns={'close': name})
+            # Normalize each file's index to datetime BEFORE concat: year files can mix
+            # index dtypes (legacy Timestamp vs newly-appended str-serialized dates), and
+            # sort_index() on a mixed str/date index raises. Convert per-file to be safe.
+            df.index = pd.to_datetime(df.index)
+            dfs_out.append(df)
         s = pd.concat(dfs_out).sort_index()[name]
-        s.index = pd.to_datetime(s.index)
         return s
 
     try:
@@ -885,7 +999,18 @@ def _compute_vix_term_slope_chg(signal_date) -> float | None:
         vix3m_s = vix3m_s[vix3m_s.index <= pd.Timestamp(sd)]
         if len(vix_s) < 6 or vix3m_s.empty:
             return None
-        # vix3m may lag behind (raw file not yet updated) → forward-fill onto vix dates
+        # Staleness guard: if vix3m's newest observation trails the signal date by more
+        # than _VIX3M_STALE_DAYS calendar days, the term-structure numerator is stale
+        # (feed outage). ffill'ing a frozen constant silently degenerates this gate into a
+        # spot-VIX-only proxy (the vix3m term cancels in the 5d diff), so fail safe: disable
+        # the gate (return None) and alert, rather than emit a mis-calibrated pseudo-value.
+        vix3m_gap = (pd.Timestamp(sd) - vix3m_s.index.max()).days
+        if vix3m_gap > _VIX3M_STALE_DAYS:
+            log.warning(f"[macro_gate] vix3m STALE by {vix3m_gap}d "
+                        f"(last={vix3m_s.index.max().date()}, signal={sd}) — "
+                        f"MTFS term-slope gate DISABLED (fail-safe, not ffilled)")
+            return None
+        # vix3m may lag behind by a day or two → forward-fill onto vix dates
         vix3m_aligned = vix3m_s.reindex(vix_s.index, method='ffill')
         slope = vix3m_aligned - vix_s
         slope = slope.dropna()
@@ -898,6 +1023,11 @@ def _compute_vix_term_slope_chg(signal_date) -> float | None:
 
 
 _MTFS_SLOPE_CHG_THRESHOLD = 1.5   # VIX term slope 5d change threshold for MTFS gate
+# Max calendar-day gap between vix3m's last observation and the signal date before the
+# term-slope gate is treated as stale and disabled. Daily VIX3M prints every trading day,
+# so a normal long weekend/holiday gap is ≤4d; 7d catches a real feed freeze with no
+# false positives.
+_VIX3M_STALE_DAYS = 7
 
 
 _MAX_TICKER_EXPOSURE = 2   # max times a single ticker can appear across open positions
@@ -940,6 +1070,16 @@ _event_dr_cache: dict = {}   # (date, strategy) -> result; evaluated ONCE per ru
 # 日期门控而非手动翻旗：无需人工在周五准时改，signal_date 到点自动 live。
 _CB_GO_LIVE_DATE = "2026-07-10"
 _CB_DAILY_LOSS_USD = 50_000.0     # 触发器阈值：−5% × $1M 组合现金基数
+# 触发器 3 白名单（2026-07-15）：仅下列限额的 red 驱动熔断动作。风险报告仍
+# 完整显示全部限额红绿灯，只是白名单外的 red 不再触发平仓/否决。
+# 排除 max_pair / sector_net / open_pairs 等比例型集中度指标——持仓对数少时
+# 数学退化（1 对 → max_pair 必=100%），2026-07-14/15 曾造成"越平仓越触发"的
+# 棘轮误动作（MTFS 唯一持仓 STT/VICI 盈利中被强平 + 8 个开仓被否决）。
+# 阈值标定依据（实测分布 + 设计容量 + 文献锚）见 RiskManager.LIMITS_SPEC 注释。
+_CB_RED_LIMIT_WHITELIST = frozenset({
+    'gross_leverage', 'net_leverage_abs', 'single_name_gross',
+    'var_95_1d', 'net_market_beta',
+})
 _CB_CACHE: dict = {}
 
 
@@ -949,7 +1089,8 @@ def _compute_circuit_breaker(signal_date) -> dict:
     触发器（每晨从既有数据文件重估，无持久状态）：
       1 快通道: 最近两份 daily_report 的 monitor upnl 合计单日恶化 < −$50k
       2 慢通道: strategy_performance 最后一行 combined_pnl < −5% × 前日 equity
-      3 限额:   最新 pairs risk_report_*.json 的 limits[] 任一 status=='red'
+      3 限额:   最新 pairs risk_report_*.json 的 limits[] 中白名单限额
+                （_CB_RED_LIMIT_WHITELIST）任一 status=='red'
     选仓：全组合 open pairs 按最新报告 upnl 最差排序，取前 ⌈N/2⌉ 整对。
     注意：读的是生产输出文件的真实路径（只读）；沙盒重定向不影响本函数输入。"""
     off = {'active': False, 'close_set': set(), 'reason': ''}
@@ -1021,7 +1162,8 @@ def _compute_circuit_breaker(signal_date) -> dict:
                     continue
             if _risk:
                 _reds = [l.get('name') for l in _risk.get('limits', [])
-                         if isinstance(l, dict) and l.get('status') == 'red']
+                         if isinstance(l, dict) and l.get('status') == 'red'
+                         and l.get('name') in _CB_RED_LIMIT_WHITELIST]
                 if _reds:
                     reasons.append(f"RED limits: {sorted(set(_reds))}")
         except Exception:
@@ -3461,7 +3603,18 @@ def write_report_txt(report: dict, path: str):
             blank()
 
         # ── OOS performance ref for active pairs ──────────────────────────
-        h2(f'  📊 {strat.upper()} 在用配对 OOS 历史表现参考 (6窗口 Walk-Forward)')
+        _get_oos_perf(strat)   # 先触发 _load_wf_configs,确保 _gold_meta 已填充(冷缓存防御)
+        _gm = _gold_meta.get(strat, {})
+        _nw = _gm.get('n_windows', '?')
+        h2(f'  📊 {strat.upper()} 在用配对 OOS 历史表现参考 ({_nw}窗口 Walk-Forward)')
+        if _gm.get('gold_windows'):
+            _sp = _gm.get('span')
+            _gw_str = '、'.join(f'W{w}' for w in _gm['gold_windows'])
+            if _sp:
+                lines.append(f'  黄金评估窗口: {_gw_str}  '
+                             f'(宏观最相似10日段 {_sp[0]}→{_sp[1]}, 参考日 {_gm.get("ref_day")})')
+            else:
+                lines.append(f'  黄金评估窗口: {_gw_str}  (相似段不在 OOS 内 → 仅末窗)')
         blank()
         lines.append(f'  {"配对":<12}  {"Tier":>5}  {"OOS Sharpe":>11}  {"OOS PnL($1M)":>13}  '
                      f'{"MaxDD($1M)":>11}  {"盈利窗口/总窗口":>14}  DSR参数集')
@@ -3477,8 +3630,10 @@ def write_report_txt(report: dict, path: str):
             oos_pw = perf.get('pos_windows', '')
             tier   = perf.get('tier', '')
             oos_sh_str = f'{oos_sh:+.3f}' if isinstance(oos_sh, float) else str(oos_sh)
+            _gsh = perf.get('gold_sharpe')
+            _gtail = f'  |金窗Sharpe {_gsh:+.2f}' if isinstance(_gsh, float) else ''
             lines.append(f'  {pair:<12}  {str(tier):>5}  {oos_sh_str:>11}  ${oos_pl:>+12,.0f}  '
-                         f'${oos_dd:>+10,.0f}  {str(oos_pw):>14}  {ps}')
+                         f'${oos_dd:>+10,.0f}  {str(oos_pw):>14}  {ps}{_gtail}')
         blank()
 
     # ── Scaling reference table ───────────────────────────────────────────
@@ -3503,7 +3658,7 @@ def write_report_txt(report: dict, path: str):
                      f'${mrpt_pnl_1m*sf:>+13,.0f}  ${mtfs_pnl_1m*sf:>+13,.0f}  '
                      f'${mrpt_dd_1m*sf:>+11,.0f}')
     blank()
-    lines.append(f'  注: 以上基于 OOS walk-forward 6窗口历史表现，非未来保证')
+    lines.append(f'  注: 以上基于 OOS walk-forward 全窗口历史表现（窗口数见上），非未来保证')
     blank()
 
     sep()

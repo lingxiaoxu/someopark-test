@@ -901,6 +901,7 @@
     "dfmModeEngine": "engine-faithful",
     "dfmCorners": "Corners (p50 [p5–p95])",
     "dfmCards": "Cards / match",
+    "dfmScoreOther": "other",
     "dfmNote": "5000 diffusion-generated matches; median [5–95%] intervals; real-anchored = intensities calibrated to real-tournament level"
   },
   "sidebar": {

@@ -464,7 +464,7 @@ def build_executive_summary(df_macro, df_regime, df_summary, df_coint, all_windo
         ('2. Regime变化', '宏观环境', '收益率曲线从IS近倒挂(+0.08%)→OOS正常陡峭(+0.53~0.69%)；VIX从IS均值17.6→OOS波动15-22；联储从紧缩转降息。整个利率/波动率体制发生了结构性变化。'),
         ('3. Correlation崩塌', '配对关系', 'IS期间牛市环境下pair之间的correlation被人为抬高。OOS市场震荡后，pair关系瓦解。MTFS受害更深(BK/ALL 0.39→0.04, ETR/AVB 0.38→-0.04)，因为动量策略更依赖方向一致性。'),
         ('4. 单腿价格跳跃', '集中风险', 'CL(Colgate)在W5暴涨+22.3%导致3个MRPT pair连锁亏损；WST在W3/W5深跌-16~18%影响3个pair；GRMN在W3暴跌-23.5%。Ticker重叠放大了单一事件的冲击。'),
-        ('5. MTFS特有问题', '策略缺陷', 'MTFS W1(2025.07-08)暴亏-$28k，因为IS学到的"动量方向"在新窗口完全反转。W6(2026.02-03)再次暴亏-$21k，美股大跌(SPY-3.4%)触发系统性动量反转。MTFS对market regime敏感度远高于MRPT。'),
+        ('5. MTFS特有问题', '策略缺陷', '(2026-03 run 历史评注) MTFS 当时W1(2025.07-08)暴亏-$28k，因为IS学到的"动量方向"在新窗口完全反转。W6(2026.02-03)再次暴亏-$21k，美股大跌(SPY-3.4%)触发系统性动量反转。MTFS对market regime敏感度远高于MRPT。'),
         ('6. 利息侵蚀', '成本结构', 'MRPT Gross PnL +$16.5k被利息-$9.9k吃掉60%；MTFS利息-$10.7k在亏损上雪上加霜。$500k本金的margin成本年化约2.7%，在Sharpe<0.5时几乎无法覆盖。'),
     ]
     for title, category, detail in conclusions:
@@ -538,19 +538,19 @@ def _find_oos_xlsx(wf_dir, wf_data, strategy):
     For each OOS window in wf_data, find the latest portfolio_history OOS test xlsx.
 
     Logic:
-      1. anchor = wf_data['windows'][0]['train_start']
-      2. window dir = wf_dir/window{NN}_{anchor}_*  (matches the run, not just any window)
-      3. within window dir, search recursively for *wf_test_window{NN}*.xlsx
-      4. sort by mtime, take latest (handles multiple reruns)
+      1. window dir = wf_dir/window{NN}_{该窗口自己的 train_start}_*
+         (expanding 时各窗口 train_start 相同 = 原 anchor 行为;rolling 时
+          各窗口 train_start 不同,必须逐窗口取 —— 否则 W2-W6 全部 miss)
+      2. within window dir, search recursively for *wf_test_window{NN}*.xlsx
+      3. sort by mtime, take latest (handles multiple reruns)
 
     Returns dict: {window_idx: (xlsx_path, test_start, test_end)}
     """
-    anchor = wf_data['windows'][0]['train_start']
     prefix = 'MTFS' if strategy == 'MTFS' else 'MRPT'
     result = {}
     for w in wf_data['windows']:
         widx = w['window_idx']
-        dirs = glob.glob(os.path.join(wf_dir, f'window{widx:02d}_{anchor}_*'))
+        dirs = glob.glob(os.path.join(wf_dir, f'window{widx:02d}_{w["train_start"]}_*'))
         if not dirs:
             continue
         wdir = dirs[0]
@@ -621,7 +621,7 @@ def build_is_oos_decay(dsr_log, oos_pair_summary, wf_data, strategy):
       - OOS actual Sharpe, PnL, MaxDD, WinRate (from oos_pair_summary)
       - Decay = OOS_Sharpe / IS_Best_Sharpe
       - Robustness label: Fragile (1), Moderate (2-4), Robust (5+)
-      - W6 selected? (from wf_data last window)
+      - LastW selected? (from wf_data last window)
     """
     if dsr_log.empty or oos_pair_summary.empty:
         return pd.DataFrame()
@@ -640,21 +640,21 @@ def build_is_oos_decay(dsr_log, oos_pair_summary, wf_data, strategy):
     passed = dsr_log[(dsr_log['dsr_pvalue'] > 0.5) & (dsr_log['pair_sharpe'] > 0)]
     robust_counts = passed.groupby('pair_key')['param_set'].count().rename('N_Passed_DSR').reset_index()
 
-    # W6 DSR stats specifically
+    # 最后一窗(LastW) DSR stats
     w6 = dsr_log[dsr_log['window_idx'] == dsr_log['window_idx'].max()]
     w6_best = w6.groupby('pair_key').agg(
-        W6_Best_Sharpe=('pair_sharpe', 'max'),
-        W6_Best_DSR=('dsr_pvalue', 'max'),
+        LastW_Best_Sharpe=('pair_sharpe', 'max'),
+        LastW_Best_DSR=('dsr_pvalue', 'max'),
     ).reset_index()
     w6_passed = w6[(w6['dsr_pvalue'] > 0.5) & (w6['pair_sharpe'] > 0)]
-    w6_robust = w6_passed.groupby('pair_key')['param_set'].count().rename('W6_N_Passed_DSR').reset_index()
+    w6_robust = w6_passed.groupby('pair_key')['param_set'].count().rename('LastW_N_Passed_DSR').reset_index()
 
     # Merge
     df = is_best.merge(robust_counts, on='pair_key', how='left')
     df = df.merge(w6_best, on='pair_key', how='left')
     df = df.merge(w6_robust, on='pair_key', how='left')
     df['N_Passed_DSR'] = df['N_Passed_DSR'].fillna(0).astype(int)
-    df['W6_N_Passed_DSR'] = df['W6_N_Passed_DSR'].fillna(0).astype(int)
+    df['LastW_N_Passed_DSR'] = df['LastW_N_Passed_DSR'].fillna(0).astype(int)
 
     # OOS actual performance
     oos = oos_pair_summary.rename(columns={'Pair': 'pair_key'})
@@ -673,11 +673,11 @@ def build_is_oos_decay(dsr_log, oos_pair_summary, wf_data, strategy):
     df['Robustness'] = df['N_Passed_DSR'].apply(
         lambda n: 'Fragile(1)' if n <= 1 else ('Moderate(2-4)' if n <= 4 else 'Robust(5+)')
     )
-    df['W6_Selected'] = df['pair_key'].isin(selected_keys)
+    df['LastW_Selected'] = df['pair_key'].isin(selected_keys)
     df['Strategy'] = strategy
 
     cols = ['Strategy', 'pair_key', 'IS_Best_Sharpe', 'IS_Best_DSR', 'N_Passed_DSR', 'Robustness',
-            'W6_Best_Sharpe', 'W6_Best_DSR', 'W6_N_Passed_DSR', 'W6_Selected',
+            'LastW_Best_Sharpe', 'LastW_Best_DSR', 'LastW_N_Passed_DSR', 'LastW_Selected',
             'OOS_Sharpe', 'OOS_PnL', 'OOS_MaxDD', 'OOS_MaxDD_pct', 'OOS_WinRate', 'OOS_N_Trades',
             'Sharpe_Decay']
     return df[[c for c in cols if c in df.columns]].sort_values('OOS_PnL', ascending=False)
@@ -732,15 +732,24 @@ def build_oos_pnl_heatmap(oos_xlsx_map, strategy):
     """
     OOS PnL heatmap: pair × window → cumulative PnL from dod_pair_trade_pnl_history.
 
-    Returns wide DataFrame: rows=pairs, cols=W1..W6 + Total
+    Returns wide DataFrame: rows=pairs, cols=W1..Wn + Total (窗口数自适应)
     Also returns long DataFrame for detailed analysis.
     """
     if not oos_xlsx_map:
         return pd.DataFrame(), pd.DataFrame()
 
+    # 重叠窗去重:每窗只取 [test_start_i, test_start_{i+1}) 的非重叠头部,
+    # 连续窗时无操作 —— 保证 Total 列跨窗求和无双计
+    _sorted_w = sorted(oos_xlsx_map.items())
+    _next_ts = {w: (pd.Timestamp(_sorted_w[k+1][1][1]) if k+1 < len(_sorted_w) else None)
+                for k, (w, _) in enumerate(_sorted_w)}
+
     long_rows = []
     for widx, (xlsx, test_start, test_end) in sorted(oos_xlsx_map.items()):
         ts, te = pd.Timestamp(test_start), pd.Timestamp(test_end)
+        _ns = _next_ts.get(widx)
+        if _ns is not None and _ns <= te:
+            te = _ns - pd.Timedelta(days=1)
         try:
             dod = pd.read_excel(xlsx, sheet_name='dod_pair_trade_pnl_history')
             dod['Date'] = pd.to_datetime(dod['Date'])
@@ -1361,7 +1370,7 @@ def main():
   4. 单腿价格跳跃+Ticker集中: CL(Colgate)在W5暴涨+22%导致3个MRPT pair连锁亏损；WST在W3/W5
      深跌-16~18%影响3个pair。Ticker重叠将单一事件放大为系统性损失。
 
-  5. MTFS策略缺陷: MTFS对market regime变化极度敏感——W1暴亏-$28k(动量方向反转)，W6暴亏-$21k
+  5. MTFS策略缺陷(2026-03 run 历史评注): MTFS对market regime变化极度敏感——当时W1暴亏-$28k(动量方向反转)，W6暴亏-$21k
      (美股大跌触发系统性动量反转)。MTFS在非趋势市场中基本无法盈利。
 
   6. 利息成本侵蚀: MRPT Gross +$16.5k被利息-$9.9k吃掉60%。$500k本金年化利息约2.7%，

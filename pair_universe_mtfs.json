@@ -1,15 +1,57 @@
 [
   {
-    "s1": "DVA",
-    "s2": "HAS",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
+    "s1": "KMX",
+    "s2": "ORCL",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "DVA",
-    "s2": "CCI",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
+    "s1": "KMX",
+    "s2": "PNR",
+    "sector": "industrial",
+    "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "BBY",
+    "s2": "HCA",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "BBY",
+    "s2": "RMD",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "VLO",
+    "s2": "LOW",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "VLO",
+    "s2": "HSY",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "STT",
+    "s2": "ORLY",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "STT",
+    "s2": "COST",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "ANET",
+    "s2": "LKQ",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "ANET",
@@ -18,38 +60,32 @@
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "ANET",
-    "s2": "TAP",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "MOH",
+    "s2": "PEP",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
   },
   {
-    "s1": "BBY",
-    "s2": "APO",
-    "sector": "food",
-    "spread_col": "Momentum_Spread_food"
+    "s1": "MOH",
+    "s2": "MCD",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
   },
   {
-    "s1": "BBY",
-    "s2": "VICI",
-    "sector": "food",
-    "spread_col": "Momentum_Spread_food"
+    "s1": "NTRS",
+    "s2": "UBER",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "CDW",
-    "s2": "HSY",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "NTRS",
+    "s2": "TSLA",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
   },
   {
-    "s1": "CDW",
-    "s2": "COST",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "VLO",
-    "s2": "ORLY",
+    "s1": "PSX",
+    "s2": "GEHC",
     "sector": "energy",
     "spread_col": "Momentum_Spread_energy"
   }
