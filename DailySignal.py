@@ -639,6 +639,20 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
     s1_shares = scale_shares(s1_shares_raw, scale_factor)
     s2_shares = scale_shares(s2_shares_raw, scale_factor)
 
+    # ── 对账口径统一(2026-07-25)──────────────────────────────────────────────
+    # 在持仓位(inv_direction 非空)的展示/腿股数一律改用 inventory 真实持仓,
+    # 与 risk workbook Position Detail 对齐(大原则: 两报告细节必须一致+记录真实
+    # 持仓)。当日 regime 缩放目标另存 target_s1/s2_shares(纯加法字段,不改名,
+    # 现有消费者零破坏);目标 vs 实持的偏离=regime 权重变化未调仓的幅度信号。
+    # OPEN 新开仓(inv_direction 为空)不受影响,仍用缩放股数作为入场指令。
+    # 未来引入 ADJUST 调仓订单(含持仓均价稀释管理)时再升级此处。
+    target_s1_shares, target_s2_shares = s1_shares, s2_shares
+    if inv_direction:
+        _inv_s1 = inv_pair.get('s1_shares')
+        _inv_s2 = inv_pair.get('s2_shares')
+        if _inv_s1 is not None and _inv_s2 is not None:
+            s1_shares, s2_shares = _inv_s1, _inv_s2
+
     stop_triggered = today_rv.get('stop_loss_triggered', False)
 
     # ── Strategy-specific signal value ────────────────────────────────────
@@ -721,6 +735,10 @@ def _build_signal(pair_key, s1, s2, today_rv, inventory, context,
         's1_price': p1,
         's2_price': p2,
     }
+    if inv_direction:
+        # 加法字段: 当日 regime 目标股数(与 shares 实持并列,供对账/偏离观察)
+        base['target_s1_shares'] = target_s1_shares
+        base['target_s2_shares'] = target_s2_shares
 
     def _legs(action_dir: str) -> dict:
         """Build execution legs for open/hold actions."""
@@ -1091,7 +1109,14 @@ def _compute_circuit_breaker(signal_date) -> dict:
       2 慢通道: strategy_performance 最后一行 combined_pnl < −5% × 前日 equity
       3 限额:   最新 pairs risk_report_*.json 的 limits[] 中白名单限额
                 （_CB_RED_LIMIT_WHITELIST）任一 status=='red'
-    选仓：全组合 open pairs 按最新报告 upnl 最差排序，取前 ⌈N/2⌉ 整对。
+    选仓（2026-07-17 修复①②）：
+      - 排序键 = (最新报告 upnl, -库存 gross)：day-0 仓位报告无 upnl（并列 0）时
+        按敞口大者先平，替代旧版的字典序抽签；
+      - 触发源仅为 single_name_gross 时【定向】只平"含违规票的对"，等份估算
+        平到该票 < red 即止；违规票已不在持仓（报告滞后）→ 视为已解除，
+        全部解除且无其他触发 → 不熔断；
+      - 其他触发（快/慢通道、gross/net/var/beta red、混合）：传统路径，
+        全组合最差前 ⌈N/2⌉ 整对。
     注意：读的是生产输出文件的真实路径（只读）；沙盒重定向不影响本函数输入。"""
     off = {'active': False, 'close_set': set(), 'reason': ''}
     key = str(signal_date)
@@ -1145,6 +1170,9 @@ def _compute_circuit_breaker(signal_date) -> dict:
         except Exception:
             pass
         # ── 触发器 3（限额执行环）：最新 risk json 的 red breach ──
+        _n_t12 = len(reasons)      # 触发器1/2是否已触发（修复②的定向判定用）
+        _sn_rows: list = []        # 违规单票 [(ticker, value, red_threshold)]
+        _other_reds: set = set()   # single_name_gross 之外的白名单 red
         try:
             _rj = sorted(glob.glob(os.path.join(BASE_DIR, 'trading_signals',
                                                 'risk_management',
@@ -1166,6 +1194,17 @@ def _compute_circuit_breaker(signal_date) -> dict:
                          and l.get('name') in _CB_RED_LIMIT_WHITELIST]
                 if _reds:
                     reasons.append(f"RED limits: {sorted(set(_reds))}")
+                # 修复②(2026-07-17): 记录违规单票明细,供定向平仓
+                for l in _risk.get('limits', []):
+                    if isinstance(l, dict) and l.get('status') == 'red' \
+                            and l.get('name') == 'single_name_gross':
+                        try:
+                            _sn_rows.append((str(l.get('scope')),
+                                             float(l.get('value')),
+                                             float(l.get('red') or 45.0)))
+                        except Exception:
+                            pass
+                _other_reds = set(_reds) - {'single_name_gross'}
         except Exception:
             pass
 
@@ -1173,20 +1212,64 @@ def _compute_circuit_breaker(signal_date) -> dict:
             _CB_CACHE[key] = off
             return off
 
-        # ── 选仓：全组合 open pairs，最新报告 upnl 最差在前，取 ⌈N/2⌉ 整对 ──
+        # ── 选仓：open pairs + 库存 gross（股数×开仓价，修复①的平局仲裁）──
+        # day-0 仓位在"最新已完成报告"里没有 upnl 记录 → 默认 0 并列，旧版退化为
+        # 字典插入顺序抽签（2026-07-17 曾误伤盈利对/放过更大亏损对）。
+        # 修复①: 并列时按库存 gross 降序 —— 敞口大者先平（无需行情数据，无前视）。
         open_pairs = []
+        _pair_gross: dict = {}
         for strat in ('mrpt', 'mtfs'):
             try:
                 _inv = load_inventory(strat)
                 for pk, pos in _inv.get('pairs', {}).items():
                     if isinstance(pos, dict) and pos.get('direction') and '/' in pk:
                         open_pairs.append(pk)
+                        try:
+                            _pair_gross[pk] = (
+                                abs(float(pos.get('s1_shares') or 0)
+                                    * float(pos.get('open_s1_price') or 0))
+                                + abs(float(pos.get('s2_shares') or 0)
+                                      * float(pos.get('open_s2_price') or 0)))
+                        except Exception:
+                            _pair_gross[pk] = 0.0
             except Exception:
                 pass
-        ranked = sorted(open_pairs,
-                        key=lambda pk: latest_pair_upnl.get(pk, 0.0))
-        n_close = (len(ranked) + 1) // 2
-        close_set = set(ranked[:n_close])
+        _rank_key = lambda pk: (latest_pair_upnl.get(pk, 0.0),
+                                -_pair_gross.get(pk, 0.0))
+
+        # ── 修复②(2026-07-17): 触发源仅为 single_name_gross 时定向平仓 ──
+        # 只平"含违规票的对"（upnl 最差/敞口最大者先），等份估算平到该票 < red
+        # 即止 —— 不再盲平 ⌈N/2⌉ 误伤无关对。违规票已不在任何持仓对（昨日已平，
+        # 报告滞后一天）→ 视为已解除；全部解除且无其他触发 → 不熔断
+        # （防隔日 stale red 重复触发、再砍剩余账本）。
+        targeted_only_sn = (_n_t12 == 0 and _sn_rows and not _other_reds)
+        if targeted_only_sn:
+            close_set = set()
+            _resolved = []
+            for _tkr, _val, _red_th in sorted(_sn_rows, key=lambda x: -x[1]):
+                containing = [pk for pk in open_pairs
+                              if _tkr in pk.split('/') and pk not in close_set]
+                if not containing:
+                    _resolved.append(_tkr)
+                    continue
+                containing.sort(key=_rank_key)
+                _n = len(containing)
+                _k = next((k for k in range(1, _n + 1)
+                           if _val * (_n - k) / _n < _red_th), _n)
+                close_set.update(containing[:_k])
+            if not close_set:
+                log.info(f"[CIRCUIT_BREAKER] single_name red 已解除（违规票 "
+                         f"{_resolved} 不在任何持仓对，报告滞后）— 不触发")
+                _CB_CACHE[key] = off
+                return off
+            ranked = open_pairs            # 仅作日志分母
+            n_close = len(close_set)
+            reasons.append(f"targeted close ({len(_sn_rows)} name(s))")
+        else:
+            # 传统路径：全组合按 (upnl, -gross) 最差在前，取 ⌈N/2⌉ 整对
+            ranked = sorted(open_pairs, key=_rank_key)
+            n_close = (len(ranked) + 1) // 2
+            close_set = set(ranked[:n_close])
         reason = "circuit_breaker: " + "; ".join(reasons)
 
         if key < _CB_GO_LIVE_DATE:          # 日期门控：go-live 之前仍走影子
@@ -1666,13 +1749,24 @@ def update_inventory_from_signals(
 
         elif action == 'HOLD':
             if pair in inv['pairs'] and inv['pairs'][pair].get('direction'):
-                # Only increment days_held once per calendar day (idempotent re-runs)
-                last_updated = inv['pairs'][pair].get('last_updated')
-                if last_updated != signal_date:
-                    inv['pairs'][pair]['days_held'] = inv['pairs'][pair].get('days_held', 0) + 1
                 inv['pairs'][pair]['last_updated'] = signal_date
                 # Do NOT update shares on HOLD — open shares are fixed at entry and
                 # must not drift with regime-driven capital/scale changes each day.
+
+    # ── days_held 收尾重算（2026-07-25 修复）─────────────────────────────────
+    # 旧逻辑在 HOLD 分支 +1，但 HOLD 由模拟盘状态驱动：模拟盘未持有该 pair 时发
+    # "观望"，计数永不自增（实测 AIG/CFG 持 17 天显示 0）。改为对全部在持仓位
+    # 按 open_date → signal_date 的交易日数直接重算，不依赖信号动作，天然幂等。
+    for pair, rec in inv['pairs'].items():
+        if not rec.get('direction'):
+            continue
+        od = rec.get('open_date')
+        if not od:
+            continue
+        try:
+            rec['days_held'] = int(np.busday_count(od, signal_date))
+        except (TypeError, ValueError):
+            pass   # open_date 异常时保留原值，不让记账字段炸掉主流程
     return inv
 
 
@@ -2371,9 +2465,13 @@ def _print_signals(signals, signal_date, strategy, dry_run,
                 days     = sig.get('days_held', '')
                 val_str2 = (f"${v1:,.0f}" if v1 else '') + (' / ' if v1 and v2 else '') + (f"${v2:,.0f}" if v2 else '')
                 days_str = f"  {days}d held" if days else ""
+                # 实持 vs regime 目标并排(偏离=权重变化未调仓幅度;相同则不显示)
+                t1, t2 = sig.get('target_s1_shares'), sig.get('target_s2_shares')
+                tgt_str = (f"  [目标 {t1:+d}/{t2:+d}]"
+                           if t1 is not None and (t1 != sh1 or t2 != sh2) else "")
                 print(f"  {label}  {pair:<12}  {val_str:<10}  "
                       f"{s1} {sh1:+d}@{p1}  {s2} {sh2:+d}@{p2}  "
-                      f"{val_str2}{days_str}")
+                      f"{val_str2}{days_str}{tgt_str}")
                 if sig['action'] == 'MACRO_VETO':
                     print(f"             ↳ {sig.get('note','')}")
             elif sig['action'] == 'BLACKOUT':
@@ -3017,6 +3115,9 @@ def _build_strategy_report_section(strategy: str, out: dict) -> dict:
             entry['original_action'] = s['original_action']
         if s.get('macro_gate'):
             entry['macro_gate'] = s['macro_gate']
+        if s.get('target_s1_shares') is not None:
+            entry['target_s1_shares'] = s['target_s1_shares']
+            entry['target_s2_shares'] = s.get('target_s2_shares')
         active_rich.append(entry)
 
     # Flat signals: enrich with how far signal is from threshold
@@ -3163,6 +3264,10 @@ def _build_monitor_report_section(monitor: dict) -> dict:
                 'unrealized_pnl_pct': s.get('unrealized_pnl_pct'),
                 'note':            s.get('note', ''),
             }
+            # 加法字段: regime 目标股数(shares=实持;两者偏离=权重变化未调仓幅度)
+            if s.get('target_s1_shares') is not None:
+                entry['target_s1_shares'] = s['target_s1_shares']
+                entry['target_s2_shares'] = s.get('target_s2_shares')
             out.append(entry)
         return out
 

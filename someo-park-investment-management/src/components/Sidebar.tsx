@@ -1,4 +1,4 @@
-import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2 } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2, Landmark } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -19,6 +19,7 @@ export default function Sidebar({
   setAgentMode,
   appMode,
   onToggleAppMode,
+  onToggleMacroMode,
   isLocalConnected,
   onSettingsClick,
   session,
@@ -33,8 +34,9 @@ export default function Sidebar({
   onConnectClick: () => void,
   agentMode: 'cloud' | 'local',
   setAgentMode: (mode: 'cloud' | 'local') => void,
-  appMode: 'stock' | 'prediction',
+  appMode: 'stock' | 'prediction' | 'macro',
   onToggleAppMode: () => void,
+  onToggleMacroMode?: () => void,
   isLocalConnected: boolean,
   onSettingsClick?: () => void,
   session: Session | null,
@@ -139,6 +141,33 @@ export default function Sidebar({
             </span>
             <span style={{ fontSize: '10px', color: appMode === 'prediction' ? '#555' : '#ccc' }}>
               {appMode === 'prediction' ? t('sidebar.aiQuantSwitch') : t('sidebar.wcSwitch')}
+            </span>
+          </div>
+        </button>
+
+        {/* Macro Markets (Kalshi macro paper-trading) — second app-mode button, same
+            styling pattern as the WC button above: inverted (white bg) when active. */}
+        <button
+          onClick={onToggleMacroMode}
+          className="flex items-center gap-3 px-3 py-2.5 transition-all w-full"
+          style={{
+            marginTop: '8px',
+            background: appMode === 'macro' ? '#fff' : '#111',
+            color: appMode === 'macro' ? '#111' : '#fff',
+            border: '2px solid var(--ink)',
+            borderLeft: '4px solid var(--ink)',
+            boxShadow: 'var(--shadow-pixel-sm)',
+            fontFamily: 'var(--font-mono)',
+            cursor: 'pointer',
+          }}
+        >
+          <Landmark className="w-4 h-4" style={{ color: appMode === 'macro' ? '#111' : '#fff' }} />
+          <div className="flex flex-col items-start flex-1">
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+              {t('sidebar.macroMarket')}
+            </span>
+            <span style={{ fontSize: '10px', color: appMode === 'macro' ? '#555' : '#ccc' }}>
+              {t('sidebar.macroMarketSub')}
             </span>
           </div>
         </button>

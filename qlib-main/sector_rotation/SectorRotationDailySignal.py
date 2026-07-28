@@ -122,6 +122,34 @@ def load_inventory() -> dict:
     }
 
 
+def _load_ledger_equity_curve(min_points: int = 2):
+    """实盘 DD 断路器净值源(2026-07-22): account_history 每日账本快照的真实 equity。
+
+    回测-实盘不对称修复: MCPS 按带断路器保护的回测曲线选参,实盘此前不执行断路器。
+    快照缺失/过短时返回 None → 断路器保持不触发(优雅降级,行为同修复前)。
+    关闭开关: config risk.drawdown.live_dd_enabled: false
+    """
+    try:
+        rows = {}
+        for p in sorted((_THIS_DIR / "account_history").glob("account_ssrs_*.json")):
+            try:
+                d = json.loads(p.read_text())
+                if d.get("as_of") and d.get("equity") is not None:
+                    rows[pd.Timestamp(d["as_of"])] = float(d["equity"])
+            except Exception:
+                continue
+        cur = _THIS_DIR / "account_ssrs.json"
+        if cur.exists():
+            d = json.loads(cur.read_text())
+            if d.get("as_of") and d.get("equity") is not None:
+                rows[pd.Timestamp(d["as_of"])] = float(d["equity"])
+        if len(rows) < min_points:
+            return None
+        return pd.Series(rows).sort_index()
+    except Exception:
+        return None
+
+
 def save_inventory(inv: dict, dry_run: bool = False) -> None:
     if dry_run:
         log.info("[DRY RUN] Inventory not saved.")
@@ -766,12 +794,14 @@ def run_daily_signal(
                         f"reason={_smart_result.get('switch_reason')}"
                     )
 
-                # Persist updated state
-                try:
-                    _smart_result["signal_date"] = signal_date
-                    save_state(_sel, _smart_result)
-                except Exception:
-                    pass
+                # Persist updated state (dry-run 不写: 影子/周检不应推进防抖计数器
+                # 与 selected_param_set.json —— 2026-07-22, 镜像 AISS 整改)
+                if not dry_run:
+                    try:
+                        _smart_result["signal_date"] = signal_date
+                        save_state(_sel, _smart_result)
+                    except Exception:
+                        pass
             else:
                 log.warning(f"[SMART SELECT] Unknown param '{_ps_name}' — static fallback")
                 _smart_available = False
@@ -941,6 +971,9 @@ def run_daily_signal(
         weights=target_weights_raw,
         portfolio_returns=portfolio_returns,
         macro=macro_recent,
+        # 实盘 DD 断路器(2026-07-22,镜像 AISS): 账本真实 equity 序列
+        equity_curve=(_load_ledger_equity_curve()
+                      if risk_cfg.get("drawdown", {}).get("live_dd_enabled", True) else None),
         sector_returns=daily_returns,
         benchmark_returns=(
             bench_prices[benchmark].pct_change().dropna()
@@ -952,10 +985,12 @@ def run_daily_signal(
         vol_historical_window=risk_cfg.get("vol_scaling", {}).get("historical_window", 252),
         vol_scale_threshold=risk_cfg.get("vol_scaling", {}).get("scale_threshold", 1.5),
         vol_scaling_enabled=risk_cfg.get("vol_scaling", {}).get("enabled", True),
+        vol_downside_only=risk_cfg.get("vol_scaling", {}).get("downside_only", False),
         vix_emergency_threshold=reb_cfg.get("emergency_derisk_vix", 35.0),
         emergency_cash_pct=reb_cfg.get("emergency_cash_pct", 0.50),
         dd_halve_threshold=risk_cfg.get("drawdown", {}).get("cumulative_dd_halve", -0.15),
         dd_recovery_threshold=risk_cfg.get("drawdown", {}).get("cumulative_dd_recovery", -0.10),
+        dd_release_rebound=risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
         max_weight=port_cfg.get("constraints", {}).get("max_weight", 0.40),
         vix_progressive_tiers=prog_tiers,
     )

@@ -19,6 +19,7 @@
 #   validate   PASS/FAIL gate: --strategy basis_meanrev|liq_reversion|perp_rotation|event_perp (exit 0=PASS)
 #   review     weekly parameter health review (perp_rotation)
 #   diskmon    disk free + growth-rate monitor; alerts (macOS notif + log) on breach
+#   backup     tar the IRREPLACEABLE self-recorded data → ~/crypto_data_backup (repo-external)
 #   brackets   TP/SL bracket watcher daemon (enforces armed stops; dry-run unless --live) [daemon]
 #   status     heartbeats + storage usage + last data timestamps
 #   test       pytest, no network
@@ -54,8 +55,10 @@ case "$MODE" in
   validate)  exec "${PY[@]}" -m crypto_trading.crypto_common.validate "$@" ;;
   review)    exec "${PY[@]}" -m crypto_trading.crypto_strategies.perp_rotation.weekly_review "$@" ;;
   diskmon)   exec "${PY[@]}" -m crypto_trading.ops.disk_monitor "$@" ;;
+  backup)    exec "${PY[@]}" -m crypto_trading.ops.backup_data "$@" ;;
   brackets)  exec "${PY[@]}" -m crypto_trading.crypto_common.bracket_watcher "$@" ;;
   daily)
+    "${PY[@]}" -m crypto_trading.ops.backup_data --keep 5 || true    # protect recorded data FIRST
     "${PY[@]}" -m crypto_trading.ops.disk_monitor --quiet || true   # once/day = clean rate sample
     "${PY[@]}" -m crypto_trading.crypto_common.kalshi.backfill || true
     "${PY[@]}" -m crypto_trading.crypto_common.refdata.index backfill --assets BTC,ETH --days 3 || true

@@ -150,7 +150,7 @@ bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh [MODE] [OPTIONS]
 | `monthly` | `daily_backtest`（V1+V2 选参刷新 P0，恢复 V1）+ force-rebalance（**节假日感知**） | 20–40 min |
 | `dry-run` | 只读每日信号，不写 inventory，随时可运行 | 1–2 min |
 | `backtest` | 用 active/selected 参数集跑全期回测 | ~2 s（数据已缓存） |
-| `batch` | 批量运行全部 **33** 个参数集 → 排名 CSV/Excel | ~2–3 min |
+| `batch` | 批量运行全部 **39** 个参数集 → 排名 CSV/Excel | ~2–3 min |
 | `select` | batch + WF OOS 过滤 + MCPS 选参 → `selected_param_set.json` | 5–15 min |
 | `daily_backtest` | **V1+V2 全套**：batch IS + WF IS-OOS + diagnostic + PDF + select + validate（刷新 smart_select 的 P0 缓存，结束恢复 V1）（**节假日感知**） | 20–40 min |
 | `walk-forward` / `wf` | 独立 Walk-Forward IS/OOS（anchored + rolling） | 3–8 min |
@@ -305,7 +305,7 @@ qlib-main/semiconductor_strategy/
 ├── validate.py                     胜负门槛裁决（vs SOXX/SMH）
 ├── AISSdailySignal.py              每日信号生成 + inventory（含 smart_select + 个股分解）
 ├── stock_decompose.py              subsector 权重 → 个股持仓/订单（PIT，按 ticker 聚合）
-├── AISSStrategyRuns.py             33 个命名参数集（组 A–H, M）
+├── AISSStrategyRuns.py             39 个命名参数集（组 A–H, M；2026-07-22 起含 semivol×3 / recovery_tiers_30 / dd_release×2）
 ├── AISSBatchRun.py                 批量参数扫描 + P0 持久化 + --signal-version
 ├── smart_select.py                 每日宏观条件选参引擎（MCPS + version_selector）
 ├── walk_forward.py                 Walk-Forward IS/OOS 分析器
@@ -330,7 +330,7 @@ qlib-main/semiconductor_strategy/
 │
 ├── portfolio/
 │   ├── optimizer.py                逆波动率 / 风险平价 / GMV / 等权 + Ledoit-Wolf
-│   ├── risk.py                     波动率缩放 + VIX 阶梯去风险 + 回撤断路器 + beta
+│   ├── risk.py                     波动率缩放（可选下行半波动口径）+ VIX 阶梯去风险 + 回撤断路器（含离底反弹释放；2026-07-21 修复 qlib 路径 equity 接线后真正生效）+ beta
 │   ├── rebalance.py                月度/半月度调度 + 阈值过滤 + 换手率上限
 │   ├── stop_loss.py                极端止损（circuit breaker + sector collapse + trailing）
 │   └── strategy.py                 AISSWeightStrategy（qlib WeightStrategyBase 适配）
@@ -377,7 +377,7 @@ someopark-test/                                            项目根目录
     ├── inventory_history/inventory_aiss_{ts}.json         持仓变更快照（ENTER/CLOSE 各一次/日）
     ├── trading_signals/aiss_daily_report_{date}_{ts}.{json,txt}   日报（subsector 层 + 个股层 stock_holdings/stock_breakdown/stock_trades）
     ├── backtest_results/
-    │   ├── aiss_batch_summary_{ts}.csv                    33 集 batch 汇总
+    │   ├── aiss_batch_summary_{ts}.csv                    39 集 batch 汇总
     │   ├── param_oos_by_regime{,_v1,_v2}.json             P0: smart_select 缓存（含版本标记）
     │   ├── weekly_review*.json                            周报输出
     │   └── …                                              其它 P0 缓存
@@ -415,9 +415,9 @@ wf_diagnostic_aiss_{v1|v2}_IS-OOS_{anchored|rolling}_{select|wf|tearsheet}_{ts}.
 | **dry-run** | `trading_signals/` JSON+TXT | — | — | 不写 inventory |
 | **weekly** | dry-run 报告 | data/PIT verify + weekly_review | — | weekly_review 非致命 |
 | **monthly** | = daily 调仓 | = daily_backtest 全部 | = daily_backtest | 两步合一，结束恢复 V1 |
-| **batch** | — | `aiss_batch_summary_*.csv` | （`--save-equity` 时 ×33） | 33 集汇总 |
+| **batch** | — | `aiss_batch_summary_*.csv` | （`--save-equity` 时 ×39） | 39 集汇总 |
 | **select** | — | P0 缓存, `selected_param_set.json` | 最优集 + `wf_diagnostic_*` | 生产选参 |
-| **daily_backtest** | — | V1+V2 各 33 batch IS + WF IS-OOS + select + validate | 33×2 IS + 33×2 IS-OOS + WF diag | 全套；生产恢复 V1 |
+| **daily_backtest** | — | V1+V2 各 39 batch IS + WF IS-OOS + select + validate | 39×2 IS + 39×2 IS-OOS + WF diag | 全套；生产恢复 V1（幂等 gate：当日已 COMPLETE 秒退，`--force` 重跑） |
 | **walk-forward** | — | fold 汇总 | `wf_diagnostic_*` | IS/OOS 分析 |
 | **validate** | console PASS/FAIL | — | — | 胜负门槛 |
 | **tearsheet** | — | IS-OOS Excel + PDF | `wf_diagnostic_*` | 含 SOXX/SMH 叠加页 |
@@ -465,8 +465,8 @@ wf_diagnostic_aiss_{v1|v2}_IS-OOS_{anchored|rolling}_{select|wf|tearsheet}_{ts}.
 | # | Sheet | 内容 |
 |---|---|---|
 | 1 | fold_summary | 每折 × (IS/OOS dates, Selected, Method) |
-| 2 | param_oos_matrix | 33 param × fold 的 OOS Sharpe 矩阵 |
-| 3 | param_by_regime | 33 param × regime 的 mean OOS Sharpe |
+| 2 | param_oos_matrix | 39 param × fold 的 OOS Sharpe 矩阵 |
+| 3 | param_by_regime | 39 param × regime 的 mean OOS Sharpe |
 | 4 | synthetic_equity | 合成 OOS 净值曲线 |
 | 5 | selection_log | 每折选参决策记录 |
 
@@ -622,7 +622,7 @@ Tier 1（NVDA/AVGO/AMD/QCOM/TSM/MU/TXN/INTC/ASML）3 bps · Tier 2（KLAC/LRCX/A
 
 | 入口 | 用途 |
 |---|---|
-| `AISSBatchRun.py`（默认） | 33 参数集 × 全期回测，纯 IS，输出 CSV/Excel |
+| `AISSBatchRun.py`（默认） | 39 参数集 × 全期回测，纯 IS，输出 CSV/Excel |
 | `AISSBatchRun.py --select` | 三阶段生产选参：WF OOS 过滤 → MCPS（全周期 equity + 今日宏观向量）→ 近 12 月 Sharpe 兜底 → `selected_param_set.json` |
 | `walk_forward.py` | IS/OOS 滚动窗口回测（anchored + rolling），输出 fold 汇总 / 合成 OOS 净值 |
 | `daily_backtest.sh` | V1+V2 全套（batch IS + WF IS-OOS + diagnostic + PDF + select + validate），刷新 smart_select 的 P0 缓存，结束恢复 V1 |
@@ -630,7 +630,7 @@ Tier 1（NVDA/AVGO/AMD/QCOM/TSM/MU/TXN/INTC/ASML）3 bps · Tier 2（KLAC/LRCX/A
 
 ### IS-only vs IS-OOS
 
-- **IS-only**（默认 batch）：全周期既训练又评估，无"未见数据"验证，Sharpe 可能偏高（33 参数集多重测试偏差），用于快速筛选/建立基线。
+- **IS-only**（默认 batch）：全周期既训练又评估，无"未见数据"验证，Sharpe 可能偏高（39 参数集多重测试偏差），用于快速筛选/建立基线。
 - **IS-OOS Walk-Forward**：每折在 IS 上选参 → embargo 隔离 → 在 OOS（未来数据）上验证；合成 OOS 净值 = 拼接各折 OOS 段（无重叠、无前视）。`daily_backtest` / `walk-forward` / `tearsheet` 产出。
 
 ### 日度信号的两层输出（subsector → 个股）
@@ -655,7 +655,7 @@ Tier 1（NVDA/AVGO/AMD/QCOM/TSM/MU/TXN/INTC/ASML）3 bps · Tier 2（KLAC/LRCX/A
 
 ---
 
-## 参数集扫描（AISSStrategyRuns，33 个）
+## 参数集扫描（AISSStrategyRuns，39 个；2026-07-22 起含 semivol×3 / recovery_tiers_30 / dd_release×2）
 
 `conda run -n qlib_run python -m semiconductor_strategy.AISSStrategyRuns` 打印全部。
 

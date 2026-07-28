@@ -39,12 +39,30 @@ getp() { PY -c "import json;print(json.load(open('$SEL')).get('param_set','?'),j
 # Pass --skip-holiday to bypass (backfill / manual runs).
 # ── Option parsing (mirrors SSRS while/case style) ────────────────────────────
 SKIP_HOLIDAY=0
+FORCE_RERUN=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --skip-holiday)   SKIP_HOLIDAY=1;   shift ;;
+        --force)          FORCE_RERUN=1;    shift ;;
         *)                shift ;;
     esac
 done
+
+# ── Idempotency gate (2026-07-22, mirrors SSRS) ──────────────────────────────
+# 场景: cron 外层 agent 汇报失败被判 error → 调度器自动重试已成功的重型管道
+# (2026-07-21 事故: 产物翻倍)。当天已有完成标记则只汇报不重跑;手动重跑加 --force。
+# 注意: 只写 stdout(进 cron 汇总日志),不新建带日期日志——否则 agent tail 最新
+# 日期日志会看到只有 skip 行的文件而误判失败。
+if [ "$FORCE_RERUN" -eq 0 ]; then
+    _done_log=$(grep -l "AISS DAILY BACKTEST COMPLETE" \
+        "$LOG_DIR"/aiss_daily_backtest_$(date +%Y%m%d)_*.log 2>/dev/null | head -1)
+    if [ -n "$_done_log" ]; then
+        echo "[$(date +%H:%M:%S)] AISS daily_backtest already completed today" \
+             "($(basename "$_done_log")) — idempotent skip, exit 0. Re-run with --force."
+        exit 0
+    fi
+fi
+
 if [ "$SKIP_HOLIDAY" -eq 0 ]; then
     NYSE_STATUS=$(PY -c "
 import sys

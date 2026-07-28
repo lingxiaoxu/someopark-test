@@ -130,6 +130,8 @@ def compute_composite_signals(
         lookback_days=signal_kwargs.get("carry_lookback_days", 90),
         missing_data_weight=signal_kwargs.get("carry_missing_weight", 0.0),
         favor=signal_kwargs.get("carry_favor", "long_receives"),
+        mode=signal_kwargs.get("carry_mode", "percentile"),
+        level_smooth_days=signal_kwargs.get("carry_level_smooth_days", 7),
     )
     carry_aligned = carry_sig.reindex(cs_mom.index, method="ffill").fillna(0.0)
 

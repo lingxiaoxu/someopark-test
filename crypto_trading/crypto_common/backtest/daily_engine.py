@@ -156,7 +156,15 @@ class PerpRotationBacktest:
             raise ValueError("no tickers qualify — nothing to backtest")
         perp_prices = prices[tickers]
 
-        # Signals (full history — template step 2)
+        # Signals (full history — template step 2). regime_multipliers /
+        # defensive_bonus are optional config pass-throughs (research/regime
+        # conditioning); absent → compute_composite_signals defaults, behavior
+        # unchanged.
+        _sig_extra = {}
+        if self.sig_cfg.get("regime_multipliers") is not None:
+            _sig_extra["regime_multipliers"] = self.sig_cfg["regime_multipliers"]
+        if self.sig_cfg.get("defensive_bonus") is not None:
+            _sig_extra["defensive_bonus"] = float(self.sig_cfg["defensive_bonus"])
         composite, regime_daily, components = compute_composite_signals(
             perp_prices,
             funding.reindex(columns=tickers).fillna(0.0),
@@ -164,6 +172,7 @@ class PerpRotationBacktest:
             weights=self.sig_cfg.get("weights"),
             regime_method=self.sig_cfg.get("regime", {}).get("method", "rules"),
             signal_kwargs=self.sig_cfg,
+            **_sig_extra,
         )
 
         rebalance_dates = get_rebalance_dates(
@@ -278,7 +287,57 @@ class PerpRotationBacktest:
 
             if dt in rebalance_date_set or trigger_emergency:
                 avail_scores = composite.loc[:dt].dropna(how="all")
-                if not avail_scores.empty:
+                if not avail_scores.empty and self.port_cfg.get("long_short", False):
+                    # ── LONG-SHORT branch (config-gated; long-only path below is
+                    # untouched when portfolio.long_short is absent/false) ──
+                    latest_scores = avail_scores.iloc[-1]
+                    scores_records[dt] = latest_scores.to_dict()
+                    from crypto_trading.crypto_strategies.perp_rotation.long_short import (
+                        build_long_short_weights, ls_risk_scale)
+                    ls_cfg = self.port_cfg.get("ls", {})
+                    raw_ls = build_long_short_weights(
+                        latest_scores, prev_weights=current_weights,
+                        k=ls_cfg.get("k_per_side", 3),
+                        gross=ls_cfg.get("gross", 1.0),
+                        band=ls_cfg.get("rank_band", 0),
+                        max_weight=self.port_cfg.get("constraints", {})
+                            .get("max_weight", 0.45),
+                    )
+                    regime_slice = (regime_inputs.loc[:dt]
+                                    if dt in regime_inputs.index else regime_inputs)
+                    ec_so_far = equity_curve.dropna()
+                    scale, flags = ls_risk_scale(
+                        portfolio_daily_returns.iloc[-365:]
+                            if len(portfolio_daily_returns) > 0 else pd.Series(dtype=float),
+                        regime_slice,
+                        ec_so_far if len(ec_so_far) > 0 else None,
+                        vol_target=self.risk_cfg.get("target_vol_annual", 0.20),
+                        vol_target_mode=self.risk_cfg.get("vol_target_mode", "absolute"),
+                        rvol_emergency_threshold=rvol_threshold,
+                        emergency_cash_pct=self.reb_cfg.get("emergency_cash_pct", 0.50),
+                        dd_halve_threshold=self.risk_cfg.get("dd_halve_threshold", -0.12),
+                        dd_flat_threshold=self.risk_cfg.get("dd_flat_threshold", -0.25),
+                    )
+                    adj_weights = raw_ls * scale
+
+                    cost_result = self._rebalance_cost(current_weights, adj_weights,
+                                                       portfolio_value)
+                    costs_records.append({"date": dt, **cost_result})
+                    pending_cost_usd += cost_result["total_cost_usd"]
+                    for ticker in tickers:
+                        delta_w = float(adj_weights.get(ticker, 0.0)) - \
+                            float(current_weights.get(ticker, 0.0))
+                        if abs(delta_w) > 1e-4:
+                            trade_orders_list.append({
+                                "date": str(dt), "ticker": ticker,
+                                "side": "buy" if delta_w > 0 else "sell",
+                                "notional_usd": abs(delta_w) * portfolio_value,
+                            })
+                    current_weights = adj_weights
+                    prev_scores = latest_scores.copy()
+                    weights_records[dt] = current_weights.to_dict()
+                    risk_flags_records.append({"date": dt, **flags.to_dict()})
+                elif not avail_scores.empty:
                     latest_scores = avail_scores.iloc[-1]
                     scores_records[dt] = latest_scores.to_dict()
 
@@ -322,9 +381,11 @@ class PerpRotationBacktest:
                         equity_curve=ec_so_far if len(ec_so_far) > 0 else None,
                         vol_target=self.risk_cfg.get("target_vol_annual", 0.40),
                         vol_scaling_enabled=self.risk_cfg.get("vol_scaling_enabled", True),
+                        vol_target_mode=self.risk_cfg.get("vol_target_mode", "spike"),
                         rvol_emergency_threshold=rvol_threshold,
                         emergency_cash_pct=self.reb_cfg.get("emergency_cash_pct", 0.50),
                         dd_halve_threshold=self.risk_cfg.get("dd_halve_threshold", -0.10),
+                        dd_flat_threshold=self.risk_cfg.get("dd_flat_threshold"),
                         max_weight=self.port_cfg.get("constraints", {}).get("max_weight", 0.45),
                         rvol_progressive_tiers=prog_tiers,
                     )

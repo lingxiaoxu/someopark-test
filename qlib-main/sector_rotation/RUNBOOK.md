@@ -183,6 +183,25 @@ print('as_of:', d.get('as_of'), '  last_updated:', d.get('last_updated'))
 bash qlib-main/sector_rotation/daily_backtest.sh
 ```
 
+> **2026-07-22 风控三修复（当日生效）**：① DD 断路器接线复活（qlib 生产路径此前
+> equity_curve=None 死代码；实测历史 MaxDX -17.2% 未破 -20% 阈值 → v1 曲线不变）；
+> ② v2 Risk Overlay 接入 qlib 路径（此前只在 native 备用路径；v2 曲线自此含入场闸门/
+> 市场乘数/DD 三档乘数，Sharpe 0.850→0.790 属保护代价）；③ 实盘 daily 接账本真实
+> equity 做 DD 断路器（account_history 快照；关闭开关 risk.drawdown.live_dd_enabled）。
+> 参数池 59→**66**（semivol_070/085/100 下行半波动 + dd_loose_25/30 + dd_release_08/12）。
+>
+> **幂等 gate（2026-07-22，镜像 AISS）**：当天日志已以 "SSRS DAILY BACKTEST
+> COMPLETE" 结尾时秒退 exit 0（防调度器在"脚本已成功、仅汇报失败"时自动重试
+> 重跑整套管道——2026-07-21 AISS 曾因此产物翻倍）。手动重跑加 `--force`。
+> skip 消息只进 stdout/cron 汇总日志，不追加进当日日志。
+>
+> **沙盒旗标（2026-07-22，镜像 AISS）**：测试跑必须用
+> `SectorRotationBatchRun --no-prod-write --output-dir /tmp/...`（守卫
+> selected_param_set.json 双写与全部硬写 historical_runs/ 的 Excel）、
+> `walk_forward --output-dir /tmp/...`（跳过 WF 诊断 Excel）。
+> daily `--dry-run` 不再写 smart_select 状态；`trade_audit.py` 已加
+> main() 守卫（import 无副作用）并支持 `--output-dir`。
+
 **6 步流程**：
 
 | 步骤 | 内容 | 耗时 | selected_param_set.json |
@@ -499,7 +518,7 @@ bash qlib-main/sector_rotation/sector_rotation_pipeline.sh dry-run --skip-holida
 | 频率 | 时间（ET） | 命令 | 预计耗时 | 人工操作 |
 |------|-----------|------|---------|---------|
 | 每个工作日 | 17:15 PM（cron） | `daily` | 4–6 分钟 | 月首：审阅交易清单 + 次日执行 |
-| **每个工作日** | **18:00 PM（cron）** | **`daily_backtest.sh`** | **60–90 分钟** | **审阅日志（可选）** |
+| **每个工作日** | **18:00 PM（cron）** | **`daily_backtest.sh`**（幂等 gate：当日已 COMPLETE 秒退，`--force` 重跑） | **60–90 分钟** | **审阅日志（可选）** |
 | 每周日 | 01:00 AM（cron） | `weekly` | 8–20 分钟 | 审阅 weekly_review.json（可选） |
 | **每月首交易日** | monthly（自动） | **`monthly`** | 10–15 分钟 | 审阅 selected_param_set.json + 交易清单 |
 | 每季度末 | 任意 | `eps-full` | 5 分钟 | 无 |

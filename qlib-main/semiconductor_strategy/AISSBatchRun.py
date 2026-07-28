@@ -455,6 +455,15 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--no-prod-write", action="store_true",
+        help=(
+            "Sandbox mode for --select: write selected_param_set.json only to "
+            "--output-dir (archive), never to the production copy in "
+            "semiconductor_strategy/. Use for test runs so production param "
+            "selection is untouched."
+        ),
+    )
+    parser.add_argument(
         "--verbose", action="store_true",
         help="Enable INFO-level logging during backtest runs.",
     )
@@ -602,7 +611,8 @@ def main() -> None:
 
     # ── Generate portfolio Excel for all param sets (--save-equity) ──────────
     # Normally skipped under --select, but --tearsheet wants the full IS set too.
-    if args.save_equity and not ok.empty and (not args.select or args.tearsheet):
+    if (args.save_equity and not ok.empty and (not args.select or args.tearsheet)
+            and not args.no_prod_write):  # sandbox: Excel hard-writes historical_runs/
         try:
             from semiconductor_strategy.portfolio_record import SectorRotationRecord
             _rec_cfg = base_cfg.get("portfolio_record", {})
@@ -813,10 +823,14 @@ def main() -> None:
                 },
             }
             # Write to backtest_results/ (archive) AND semiconductor_strategy/ (production)
+            # --no-prod-write (sandbox): archive copy only, production untouched
             archive_path = out_dir / "selected_param_set.json"
             prod_path    = _THIS_DIR / "selected_param_set.json"
-            for p in (archive_path, prod_path):
+            _sel_targets = (archive_path,) if args.no_prod_write else (archive_path, prod_path)
+            for p in _sel_targets:
                 p.write_text(_json.dumps(sel_info, indent=2))
+            if args.no_prod_write:
+                print("  [sandbox] --no-prod-write: production selected_param_set.json untouched")
 
             # ── P0: Persist batch data for daily smart-select ─────────
             _ver_tag = args.signal_version or "v1"  # for dual-version file naming
@@ -960,18 +974,24 @@ def main() -> None:
                 print(f"  Macro days : {_n_macro}  (insufficient for MCPS — "
                       f"run 'MacroStateStore.py --init --start 2017-01-01')")
             print(f"  Full-period Sharpe : {sel_info['full_period_sharpe']:.3f}")
-            print(f"  Written to : {prod_path}")
-            print(f"  → DailySignal will use this param set on next run")
+            if args.no_prod_write:
+                print(f"  Written to : {archive_path}  (sandbox — production untouched)")
+            else:
+                print(f"  Written to : {prod_path}")
+                print(f"  → DailySignal will use this param set on next run")
             print(f"{'═'*60}\n")
 
             # ── Portfolio History Excel (26 sheets) for best param set ───
+            # (writes to historical_runs/ archive — skipped in sandbox mode)
+            if args.no_prod_write:
+                print("  [sandbox] --no-prod-write: best-set Excel / WF diagnostic skipped")
             try:
                 from semiconductor_strategy.portfolio_record import (
                     SectorRotationRecord, export_wf_diagnostic_excel,
                 )
                 _rec_cfg = base_cfg.get("portfolio_record", {})
                 _best_eq = {s.name: s for s in equity_frames if not s.empty}.get(_best_ps)
-                if _best_eq is not None:
+                if _best_eq is not None and not args.no_prod_write:
                     # Re-run best param to get full BacktestResult
                     _best_cfg = apply_param_set(base_cfg, PARAM_SETS[_best_ps])
                     if args.signal_version:
@@ -989,8 +1009,8 @@ def main() -> None:
                     )
                     _record.export_portfolio_excel(mode="select", span="IS-OOS")
 
-                # WF Diagnostic Excel
-                if _oos_filter_applied:
+                # WF Diagnostic Excel (硬写 historical_runs/ — 沙盒跳过)
+                if _oos_filter_applied and not args.no_prod_write:
                     export_wf_diagnostic_excel(
                         _wf_result, mode="select",
                         signal_version=args.signal_version or "v1")

@@ -210,6 +210,8 @@ import modelList from '../lib/models.json'
 import PairBadge from './PairBadge'
 import PredictionArtifactGrid from './prediction/PredictionArtifactGrid'
 import PredictionUpcoming from './prediction/PredictionUpcoming'
+import MacroArtifactGrid from './macro/MacroArtifactGrid'
+import MacroUpcoming from './macro/MacroUpcoming'
 import { useApi } from '../hooks/useApi'
 import { getInventory, API_BASE, apiHeaders, callAgent, answerAgentQuestion } from '../lib/api'
 import { db } from '../lib/firebase'
@@ -240,7 +242,7 @@ export default function ChatArea({
   onMessagesChange,
 }: {
   agentMode: 'cloud' | 'local'
-  appMode: 'stock' | 'prediction'
+  appMode: 'stock' | 'prediction' | 'macro'
   isLocalConnected: boolean
   setActiveArtifact: (a: any) => void
   onCodePreview?: (preview: { stanseAgent: DeepPartial<StanseAgentSchema>; result?: ExecutionResult; isLoading?: boolean }) => void
@@ -821,9 +823,11 @@ export default function ChatArea({
                 <p style={{ fontSize: '12px', color: 'var(--ink-dim)', textAlign: 'center', maxWidth: '28rem', fontFamily: 'var(--font-mono)' }}>{t('chat.welcomeDesc')}</p>
               </div>
 
-              {/* Active Pairs (stock) ↔ Upcoming Matches (prediction) */}
+              {/* Active Pairs (stock) ↔ Upcoming Matches (prediction) ↔ Recent Data (macro) */}
               {appMode === 'prediction' ? (
                 <PredictionUpcoming />
+              ) : appMode === 'macro' ? (
+                <MacroUpcoming />
               ) : (
               <div className="p-4 relative" style={{ background: '#fff', border: '3px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
                 {/* Corner dots */}
@@ -891,6 +895,9 @@ export default function ChatArea({
               {appMode === 'prediction' ? (
                 /* Prediction artifacts are public static data → open directly (no sign-in gate). */
                 <PredictionArtifactGrid onOpen={(a) => setActiveArtifact(a)} />
+              ) : appMode === 'macro' ? (
+                /* Macro artifacts are public static data too → open directly. */
+                <MacroArtifactGrid onOpen={(a) => setActiveArtifact(a)} />
               ) : (
               <div className="grid grid-cols-2 gap-2">
                 <button onClick={() => guardedSetArtifact({ type: 'pair_universe', title: 'Pair Universe', params: { strategy: selectedStrategy } })} className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]">

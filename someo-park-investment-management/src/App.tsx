@@ -3,6 +3,7 @@ import { PanelLeftOpen } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import RightPanel from './components/RightPanel';
+import MacroRightPanel from './components/macro/MacroRightPanel';
 import ConnectionModal from './components/ConnectionModal';
 import SettingsPage from './components/SettingsPage';
 import { AuthDialog } from './components/AuthDialog';
@@ -115,19 +116,29 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentMode>('cloud');
   const [isLocalConnected, setIsLocalConnected] = useState(false);
-  // Prediction Market mode: 'stock' (default, pixel-identical to before) | 'prediction'.
+  // App mode: 'stock' (default, pixel-identical to before) | 'prediction' | 'macro'.
   // The attribute lives on <html> so the whole viewport (incl. <body>) inverts.
-  const [appMode, setAppMode] = useLocalStorage<'stock' | 'prediction'>('sp-appMode', 'stock');
+  const [appModeRaw, setAppMode] = useLocalStorage<'stock' | 'prediction' | 'macro'>('sp-appMode', 'stock');
+  // Unknown/legacy stored values fall back to 'stock'.
+  const appMode: 'stock' | 'prediction' | 'macro' =
+    appModeRaw === 'prediction' || appModeRaw === 'macro' ? appModeRaw : 'stock';
   const [activeArtifact, setActiveArtifact] = useState<any>(null);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-mode', appMode);
   }, [appMode]);
 
+  // WC button: stock/macro → 'prediction'; prediction → 'stock' (unchanged semantics).
   const toggleAppMode = useCallback(() => {
     setActiveArtifact(null);   // drop any open artifact so modes never cross-render
     setShowSettings(false);
     setAppMode(m => (m === 'prediction' ? 'stock' : 'prediction'));
+  }, [setAppMode]);
+  // Macro button: stock/prediction → 'macro'; macro → 'stock'.
+  const toggleMacroMode = useCallback(() => {
+    setActiveArtifact(null);
+    setShowSettings(false);
+    setAppMode(m => (m === 'macro' ? 'stock' : 'macro'));
   }, [setAppMode]);
   const [lastClosedArtifact, setLastClosedArtifact] = useState<any>(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -379,6 +390,7 @@ export default function App() {
             setAgentMode={setAgentMode}
             appMode={appMode}
             onToggleAppMode={toggleAppMode}
+            onToggleMacroMode={toggleMacroMode}
             isLocalConnected={isLocalConnected}
             onSettingsClick={() => { setShowSettings(true); setActiveArtifact(null); setCodePreview(null); }}
             session={session}
@@ -488,13 +500,24 @@ export default function App() {
             </div>
             <div className="shrink-0 z-20 bg-[var(--bg-primary)] overflow-hidden" style={{ width: isMaximized ? (appRef.current ? appRef.current.getBoundingClientRect().width * 0.6 : rightPanelWidth) : rightPanelWidth }}>
               {activeArtifact ? (
+                // macro_* artifacts render in their own shell (RightPanel untouched);
+                // everything else keeps the existing RightPanel path verbatim.
+                String(activeArtifact.type || '').startsWith('macro_') ? (
+                  <MacroRightPanel
+                    artifact={activeArtifact}
+                    onClose={() => { setLastClosedArtifact(activeArtifact); setActiveArtifact(null); setIsMaximized(false); }}
+                    onMaximize={() => setIsMaximized(m => !m)}
+                    isMaximized={isMaximized}
+                  />
+                ) : (
                 <RightPanel
                   artifact={activeArtifact}
-                  appMode={appMode}
+                  appMode={appMode === 'macro' ? undefined : appMode}
                   onClose={() => { setLastClosedArtifact(activeArtifact); setActiveArtifact(null); setIsMaximized(false); }}
                   onMaximize={() => setIsMaximized(m => !m)}
                   isMaximized={isMaximized}
                 />
+                )
               ) : codePreview ? (
                 <CodePreview
                   stanseAgent={codePreview.stanseAgent}

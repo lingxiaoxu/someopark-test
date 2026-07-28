@@ -56,29 +56,44 @@ def compute_carry_signal(
     missing_data_weight: float = 0.0,
     favor: str = "long_receives",
     min_history_days: int = 21,
+    mode: str = "percentile",
+    level_smooth_days: int = 7,
 ) -> pd.DataFrame:
     """Carry signal from the daily funding panel (template:
     ``compute_value_signal`` with P/E → funding).
 
-    Signal = 1 − funding_percentile for favor="long_receives" (funding LOW vs
-    own history → long collects → high signal), then cross-sectionally
-    z-scored; tickers with insufficient history get ``missing_data_weight``.
+    mode="percentile" (template shape): signal = 1 − rolling percentile vs the
+      ticker's OWN history — a time-series-relative tilt.
+    mode="level" (upgrade — measured Kalshi cross-section is rich: BTC +5.4%/yr
+      vs BCH −12.8%/yr): signal = −funding LEVEL (smoothed over
+      ``level_smooth_days``), so the perp whose funding a LONG collects most
+      (most negative funding) scores highest ACROSS the panel — the long-short-
+      aware ranking, using the cross-section directly instead of own-history.
+    Both are then cross-sectionally z-scored; insufficient history →
+    ``missing_data_weight``.
     """
     if favor not in ("long_receives", "short_receives"):
         raise ValueError(f"unknown favor={favor!r}")
+    if mode not in ("percentile", "level"):
+        raise ValueError(f"unknown mode={mode!r}")
 
-    pct = pd.DataFrame(index=funding_panel.index, columns=funding_panel.columns,
-                       dtype=float)
-    for col in funding_panel.columns:
-        if funding_panel[col].notna().sum() >= min_history_days:
-            pct[col] = funding_to_percentile(funding_panel[col],
-                                             lookback_days=lookback_days,
-                                             window_min_periods=min_history_days)
-        else:
-            pct[col] = np.nan
-            logger.debug(f"Insufficient funding history for {col}; missing_data_weight.")
-
-    carry_raw = (1.0 - pct) if favor == "long_receives" else pct
+    if mode == "level":
+        smooth = funding_panel.rolling(level_smooth_days,
+                                       min_periods=max(2, level_smooth_days // 2)).mean()
+        # long collects −funding: most-negative funding → highest raw score
+        carry_raw = -smooth if favor == "long_receives" else smooth
+    else:
+        pct = pd.DataFrame(index=funding_panel.index, columns=funding_panel.columns,
+                           dtype=float)
+        for col in funding_panel.columns:
+            if funding_panel[col].notna().sum() >= min_history_days:
+                pct[col] = funding_to_percentile(funding_panel[col],
+                                                 lookback_days=lookback_days,
+                                                 window_min_periods=min_history_days)
+            else:
+                pct[col] = np.nan
+                logger.debug(f"Insufficient funding history for {col}; missing_data_weight.")
+        carry_raw = (1.0 - pct) if favor == "long_receives" else pct
 
     def cs_zscore_row(row):
         valid = row.dropna()

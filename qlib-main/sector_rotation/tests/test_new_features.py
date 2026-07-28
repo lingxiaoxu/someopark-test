@@ -799,9 +799,13 @@ class TestSectorRepresentatives(unittest.TestCase):
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestParamSets(unittest.TestCase):
-    def test_59_param_sets(self):
-        from sector_rotation.SectorRotationStrategyRuns import PARAM_SETS
-        self.assertEqual(len(PARAM_SETS), 59, f"Expected 59, got {len(PARAM_SETS)}")
+    def test_param_sets_pool(self):
+        # 2026-07-22: 池会演化(59→66,加 semivol/dd 探针),不再写死计数;
+        # 改验下限 + 名称/描述一致性(与 openclaw runbook 同口径:计数只观察)
+        from sector_rotation.SectorRotationStrategyRuns import (
+            PARAM_SETS, _PARAM_SET_DESCRIPTIONS)
+        self.assertGreaterEqual(len(PARAM_SETS), 59)
+        self.assertEqual(set(PARAM_SETS), set(_PARAM_SET_DESCRIPTIONS))
 
     def test_all_weights_sum_to_1(self):
         from sector_rotation.SectorRotationStrategyRuns import PARAM_SETS

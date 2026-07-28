@@ -1586,6 +1586,22 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         'signals.short_term_momentum.weight_bonus':    0.05,
     },
 
+
+    # ═══ 2026-07-22 新增探针(镜像 AISS I-1/I-3;经 v2 波动口径与 DD 断路器修复后入池) ═══
+    # semivol: 下行半波动缩放(行业标准 Sortino 口径)。对称市况 semivol≈总波动/√2,
+    # target 相应折算: 0.085≈0.12/√2 为等效基线,0.07/0.10 为紧/松探针。
+    'semivol_070': {'risk.vol_scaling.downside_only': True,
+                    'risk.vol_scaling.target_vol_annual': 0.07},
+    'semivol_085': {'risk.vol_scaling.downside_only': True,
+                    'risk.vol_scaling.target_vol_annual': 0.085},
+    'semivol_100': {'risk.vol_scaling.downside_only': True,
+                    'risk.vol_scaling.target_vol_annual': 0.10},
+    # dd_loose: 用户令"断路器更难触发"探针(config 现值 -0.20)
+    'dd_loose_25': {'risk.drawdown.cumulative_dd_halve': -0.25},
+    'dd_loose_30': {'risk.drawdown.cumulative_dd_halve': -0.30},
+    # dd_release: 离底反弹释放(DD 仍深但净值离本轮谷底反弹≥X% → 跳过砍半)
+    'dd_release_08': {'risk.drawdown.recovery_release_rebound': 0.08},
+    'dd_release_12': {'risk.drawdown.recovery_release_rebound': 0.12},
 }
 
 
@@ -1667,6 +1683,13 @@ _PARAM_SET_DESCRIPTIONS: Dict[str, str] = {
     'value_proxy':                'M2 — 孤立测试：value_source=proxy 价格代理（快速） (11 params)',
     'acceleration_on':            'M3 — 孤立测试：acceleration=True，weight_boost=0.05 (11 params)',
     'acceleration_off':           'M4 — 孤立测试：acceleration=False（对照组，量化贡献） (10 params)',
+    'semivol_070':  'C5 — 下行半波动缩放 target 7%(紧探针,2026-07-22)',
+    'semivol_085':  'C6 — 下行半波动缩放 target 8.5%(≈12%/√2 等效基线)',
+    'semivol_100':  'C7 — 下行半波动缩放 target 10%(松探针)',
+    'dd_loose_25':  'C8 — DD 断路器 -25%(比 config -20% 更难触发)',
+    'dd_loose_30':  'C9 — DD 断路器 -30%(极端事件才触发)',
+    'dd_release_08': 'C10 — DD 离底反弹 8% 释放砍半',
+    'dd_release_12': 'C11 — DD 离底反弹 12% 释放(保守档)',
 }
 
 

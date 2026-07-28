@@ -482,6 +482,11 @@ class AISSBacktest:
             risk_cfg=self.risk_cfg,
             cost_cfg=self.cost_cfg,
             initial_capital=initial_capital,
+            # v2 Risk Overlay 接线(2026-07-22): qlib 路径此前从不应用该层
+            signal_version=self.cfg.get("signals", {}).get("signal_version", "v1"),
+            risk_overlay_cfg=self.cfg.get("risk_overlay", {}),
+            bench_series=(bench_prices.iloc[:, 0] if bench_prices is not None
+                          and len(bench_prices.columns) > 0 else None),
             common_infra=common_infra,
         )
 
@@ -678,9 +683,11 @@ class AISSBacktest:
                         equity_curve=ec_so_far if len(ec_so_far) > 0 else None,
                         vol_target=self.risk_cfg.get("vol_scaling", {}).get("target_vol_annual", 0.12),
                         vol_scaling_enabled=self.risk_cfg.get("vol_scaling", {}).get("enabled", True),
+                        vol_downside_only=self.risk_cfg.get("vol_scaling", {}).get("downside_only", False),
                         vix_emergency_threshold=self.reb_cfg.get("emergency_derisk_vix", 35.0),
                         emergency_cash_pct=self.reb_cfg.get("emergency_cash_pct", 0.50),
                         dd_halve_threshold=self.risk_cfg.get("drawdown", {}).get("cumulative_dd_halve", -0.15),
+                        dd_release_rebound=self.risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
                         max_weight=self.port_cfg.get("constraints", {}).get("max_weight", 0.40),
                         vix_progressive_tiers=prog_tiers,
                     )

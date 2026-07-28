@@ -444,6 +444,11 @@ class SectorRotationBacktest:
             risk_cfg=self.risk_cfg,
             cost_cfg=self.cost_cfg,
             initial_capital=initial_capital,
+            # v2 Risk Overlay + DD 接线(2026-07-22, 镜像 AISS)
+            signal_version=self.cfg.get("signals", {}).get("signal_version", "v1"),
+            risk_overlay_cfg=self.cfg.get("risk_overlay", {}),
+            bench_series=(bench_prices.iloc[:, 0] if bench_prices is not None
+                          and len(bench_prices.columns) > 0 else None),
             common_infra=common_infra,
         )
 

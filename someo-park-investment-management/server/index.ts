@@ -25,6 +25,7 @@ import agentRoutes from './routes/agent.js';
 import sectorRotationRoutes from './routes/sectorRotation.js';
 import semiconductorRoutes from './routes/semiconductor.js';
 import microfootballAnalyzeRoutes from './routes/microfootballAnalyze.js';
+import macroAnalyzeRoutes from './routes/macroAnalyze.js';
 import { registerAllTools } from './tools/index.js';
 
 const app = express();
@@ -69,6 +70,7 @@ app.use('/api/ssrs', sectorRotationRoutes);
 app.use('/api/aiss', semiconductorRoutes);
 app.use('/api/agent', agentRoutes);
 app.use('/api/microfootball', microfootballAnalyzeRoutes);
+app.use('/api/macro', macroAnalyzeRoutes);
 
 // Register Someo Agent tools
 registerAllTools();

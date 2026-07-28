@@ -112,6 +112,9 @@ else:
             risk_cfg: dict,
             cost_cfg: dict,
             initial_capital: float = 1_000_000.0,
+            signal_version: str = "v1",
+            risk_overlay_cfg: Optional[dict] = None,
+            bench_series: Optional[pd.Series] = None,
             **kwargs,
         ) -> None:
             # WeightStrategyBase requires `signal` kwarg; we pass None because
@@ -127,6 +130,10 @@ else:
             self._risk_cfg = risk_cfg
             self._cost_cfg = cost_cfg
             self._initial_capital = initial_capital
+            # v2 Risk Overlay 接线(2026-07-22): 此前只在 native 路径生效
+            self._signal_version = signal_version
+            self._risk_overlay_cfg = risk_overlay_cfg
+            self._bench_series = bench_series
 
             # Mutable per-step state
             self._current_weights: pd.Series = pd.Series(dtype=float)
@@ -209,14 +216,38 @@ else:
                 weights=filtered_weights,
                 portfolio_returns=self._portfolio_daily_returns.iloc[-252:] if len(self._portfolio_daily_returns) > 0 else pd.Series(dtype=float),
                 macro=macro_slice,
-                equity_curve=None,
+                # DD-circuit fix(2026-07-22,镜像 AISS): qlib 路径此前恒传 None → 断路器死代码。
+                # 用自维护日收益累乘重建全期净值(归一化;DD/rebound 尺度无关)。
+                equity_curve=((1.0 + self._portfolio_daily_returns).cumprod()
+                              if len(self._portfolio_daily_returns) > 0 else None),
                 vol_target=self._risk_cfg.get("vol_scaling", {}).get("target_vol_annual", 0.12),
                 vol_scaling_enabled=self._risk_cfg.get("vol_scaling", {}).get("enabled", True),
+                vol_downside_only=self._risk_cfg.get("vol_scaling", {}).get("downside_only", False),
                 vix_emergency_threshold=self._reb_cfg.get("emergency_derisk_vix", 35.0),
                 emergency_cash_pct=self._reb_cfg.get("emergency_cash_pct", 0.50),
                 dd_halve_threshold=self._risk_cfg.get("drawdown", {}).get("cumulative_dd_halve", -0.15),
+                dd_release_rebound=self._risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
                 max_weight=self._port_cfg.get("constraints", {}).get("max_weight", 0.40),
             )
+
+            # ── Risk Overlay (v2) — 2026-07-22 接线,镜像 native 路径的同名块
+            # (此前 qlib 生产路径从不应用: 入场闸门+市场乘数+DD 三档乘数)
+            if (self._signal_version == "v2" and self._risk_overlay_cfg is not None
+                    and self._risk_overlay_cfg.get("enabled", True)):
+                try:
+                    from ..signals.risk_overlay import apply_risk_overlay
+                    adj_weights = apply_risk_overlay(
+                        target_weights=adj_weights,
+                        sector_prices=self._etf_prices,
+                        benchmark_prices=self._bench_series,
+                        portfolio_equity=((1.0 + self._portfolio_daily_returns).cumprod()
+                                          if len(self._portfolio_daily_returns) > 0 else None),
+                        vix=self._macro.get("vix") if "vix" in self._macro.columns else None,
+                        rebalance_date=trade_start_time,
+                        config=self._risk_overlay_cfg,
+                    )
+                except Exception as _oe:
+                    logger.warning(f"risk_overlay (v2) failed non-fatally: {_oe}")
 
             # Transaction costs tracking
             portfolio_value = current_temp.calculate_value() if current_temp.get_stock_list() else self._equity_level
@@ -279,6 +310,11 @@ else:
                 weights=proposed_weights,
                 portfolio_returns=self._portfolio_daily_returns.iloc[-252:] if len(self._portfolio_daily_returns) > 0 else pd.Series(dtype=float),
                 macro=macro_slice,
+                # fallback 路径先天不读 cfg(既有设计);2026-07-22 镜像 AISS 仅接开关类参数
+                equity_curve=((1.0 + self._portfolio_daily_returns).cumprod()
+                              if len(self._portfolio_daily_returns) > 0 else None),
+                vol_downside_only=self._risk_cfg.get("vol_scaling", {}).get("downside_only", False),
+                dd_release_rebound=self._risk_cfg.get("drawdown", {}).get("recovery_release_rebound", 0.0),
             )
             return {
                 ticker: float(adj_weights.get(ticker, 0.0))

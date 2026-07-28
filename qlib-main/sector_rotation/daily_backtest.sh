@@ -65,6 +65,20 @@ LOG="$LOG_DIR/daily_backtest_${DATE}.log"
 
 mkdir -p "$LOG_DIR"
 
+# ── Idempotency gate (2026-07-22, mirrors AISS) ──────────────────────
+# 场景: cron 外层 agent 汇报失败被判 error → 调度器自动重试已成功的重型管道
+# (2026-07-21 AISS 事故: 产物翻倍)。当天日志已有完成标记则只汇报不重跑;
+# 手动重跑加 --force。skip 消息只写 stdout(进 cron 汇总日志),不追加进 $LOG——
+# SSRS 日志按天单文件,追加会破坏"日志以 SSRS DAILY BACKTEST COMPLETE 结尾"的成功判据。
+FORCE_RERUN=0
+for _arg in "$@"; do [ "$_arg" = "--force" ] && FORCE_RERUN=1; done
+if [ "$FORCE_RERUN" -eq 0 ] && [ -f "$LOG" ] \
+   && grep -q "SSRS DAILY BACKTEST COMPLETE" "$LOG"; then
+    echo "[$(date +%H:%M:%S)] SSRS daily_backtest already completed today" \
+         "($(basename "$LOG")) — idempotent skip, exit 0. Re-run with --force."
+    exit 0
+fi
+
 # ── Helpers ──────────────────────────────────────────────────────────
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 run_qlib() { set -a && source .env && set +a && conda run -n qlib_run --no-capture-output "$@"; }
@@ -105,9 +119,9 @@ cp "$SEL_JSON" "$BACKUP_V2"
 cp "$BACKUP_V1" "$SEL_JSON"
 log "  Restored V1: $(get_param)"
 
-# ── Step 3: V1 Batch (59 IS-only Excel) ──────────────────────────────
+# ── Step 3: V1 Batch (all-set IS-only Excel) ──────────────────────────────
 log ""
-log "Step 3/6: V1 Batch --save-equity (59 IS-only portfolio Excel)"
+log "Step 3/6: V1 Batch --save-equity (all-set IS-only portfolio Excel)"
 if run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --save-equity --signal-version v1 >> "$LOG" 2>&1; then
     V1_BATCH=$(ls historical_runs/sector_rotation/sr_portfolio_*_v1_IS_batch_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
     log "  ✅ V1 batch: $V1_BATCH Excel files"
@@ -116,9 +130,9 @@ else
     log "  ⚠️ V1 batch failed (RC=$?)"
 fi
 
-# ── Step 4: V2 Batch (59 IS-only Excel) ──────────────────────────────
+# ── Step 4: V2 Batch (all-set IS-only Excel) ──────────────────────────────
 log ""
-log "Step 4/6: V2 Batch --save-equity (59 IS-only portfolio Excel)"
+log "Step 4/6: V2 Batch --save-equity (all-set IS-only portfolio Excel)"
 if run_qlib python "$SR_DIR/SectorRotationBatchRun.py" --save-equity --signal-version v2 >> "$LOG" 2>&1; then
     V2_BATCH=$(ls historical_runs/sector_rotation/sr_portfolio_*_v2_IS_batch_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
     log "  ✅ V2 batch: $V2_BATCH Excel files"
@@ -127,9 +141,9 @@ else
     log "  ⚠️ V2 batch failed (RC=$?)"
 fi
 
-# ── Step 5: V1 Tearsheet (59 IS-OOS Excel + PDF) ────────────────────
+# ── Step 5: V1 Tearsheet (all-set IS-OOS Excel + PDF) ────────────────────
 log ""
-log "Step 5/6: V1 Tearsheet (param=$V1_PARAM, 59 IS-OOS Excel + PDF)"
+log "Step 5/6: V1 Tearsheet (param=$V1_PARAM, all-set IS-OOS Excel + PDF)"
 # selected_param_set.json already has V1
 if run_qlib bash "$SR_DIR/sector_rotation_pipeline.sh" tearsheet >> "$LOG" 2>&1; then
     V1_TS_EXCEL=$(ls historical_runs/sector_rotation/sr_portfolio_*_v1_IS-OOS_tearsheet_*${DATE}*.xlsx 2>/dev/null | wc -l | tr -d ' ')
@@ -140,9 +154,9 @@ else
     V1_TS_EXCEL=0; V1_TS_PDF=0
 fi
 
-# ── Step 6: V2 Tearsheet (59 IS-OOS Excel + PDF) ────────────────────
+# ── Step 6: V2 Tearsheet (all-set IS-OOS Excel + PDF) ────────────────────
 log ""
-log "Step 6/6: V2 Tearsheet (param=$V2_PARAM, 59 IS-OOS Excel + PDF)"
+log "Step 6/6: V2 Tearsheet (param=$V2_PARAM, all-set IS-OOS Excel + PDF)"
 # Temporarily switch to V2
 cp "$BACKUP_V2" "$SEL_JSON"
 log "  Switched to V2: $(get_param) ($(get_ver))"

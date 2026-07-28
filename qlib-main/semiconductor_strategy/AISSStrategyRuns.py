@@ -98,6 +98,21 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
     "vol_target_30":   {"risk.vol_scaling.target_vol_annual": 0.30},
     "vol_target_40":   {"risk.vol_scaling.target_vol_annual": 0.40},
     "no_vol_scaling":  {"risk.vol_scaling.enabled": False},
+    # semivol(I-1, 2026-07-21): 下行半波动缩放——反弹期的向上波动不再压制仓位。
+    # 对称市况下 semivol≈总波动/√2,target 相应折算: 0.21≈0.30/√2 为等效基线,
+    # 0.18/0.24 为紧/松标定探针。经 Batch→WF→MCPS 竞争采纳,不手动切换。
+    "semivol_18": {"risk.vol_scaling.downside_only": True,
+                   "risk.vol_scaling.target_vol_annual": 0.18},
+    "semivol_21": {"risk.vol_scaling.downside_only": True,
+                   "risk.vol_scaling.target_vol_annual": 0.21},
+    "semivol_24": {"risk.vol_scaling.downside_only": True,
+                   "risk.vol_scaling.target_vol_annual": 0.24},
+    # I-3(2026-07-21): DD 断路器曾是死代码(qlib 路径 equity_curve=None 硬编码);
+    # 当日晚已修复 strategy.py 接线(自维护日收益累乘重建净值)→ 断路器复活,
+    # 离底反弹释放探针随之生效: DD<-25% 但净值离本轮谷底反弹≥X% → 跳过逐日砍半
+    # (崩塌下行段 rebound≈0,保护不变)。daily 实盘路径仍不传 equity_curve(选参域生效)。
+    "dd_release_08": {"risk.drawdown.recovery_release_rebound": 0.08},
+    "dd_release_12": {"risk.drawdown.recovery_release_rebound": 0.12},
 
     # ===== Group D — VIX de-risk aggressiveness =========================
     "derisk_tight": {
@@ -155,6 +170,14 @@ PARAM_SETS: Dict[str, Dict[str, Any]] = {
         **_w(0.20, 0.55, 0.15, 0.10),
         "portfolio.top_n_sectors": 3, "signals.supply_chain.use_external_macro": True,
     },
+    # recovery_tiers_30(I-3): 中间档——默认(28/32,紧急36)与 derisk_loose(32/36,紧急40)
+    # 之间的新频谱点。注: 曾试 recovery_deploy(=loose tiers+休眠 release 键),W4 证明与
+    # derisk_loose 逐位相同 → 撤销以免重复候选双倍加权;release 探针待 equity 修复后再加。
+    "recovery_tiers_30": {
+        "rebalance.emergency_derisk_vix": 38.0, "rebalance.emergency_cash_pct": 0.40,
+        "risk.vix_progressive_derisk.tiers": [
+            {"vix_above": 30, "cash_pct": 0.10}, {"vix_above": 34, "cash_pct": 0.25}],
+    },
 
     # ===== Group M — isolated single-factor tests =======================
     "pure_momentum":     _w(1.0, 0.0, 0.0, 0.0),
@@ -174,6 +197,12 @@ _PARAM_SET_DESCRIPTIONS: Dict[str, str] = {
     "standard_3":        "B2 top-3, max_weight 0.55 (production default concentration)",
     "diversified_4":     "B3 top-4, max_weight 0.45",
     "broad_5":           "B4 top-5, max_weight 0.35 — diversified",
+    "semivol_18":        "C5 semivol: downside-only vol scaling, target 18% (tight probe)",
+    "semivol_21":        "C6 semivol: downside-only vol scaling, target 21% (≈30%/√2 baseline)",
+    "semivol_24":        "C7 semivol: downside-only vol scaling, target 24% (loose probe)",
+    "recovery_tiers_30": "D4 intermediate VIX tiers (30/34, emergency 38) — between default and loose",
+    "dd_release_08":     "C8 DD off-bottom release: rebound ≥8% off trough skips daily halve",
+    "dd_release_12":     "C9 DD off-bottom release: rebound ≥12% (conservative probe)",
     "vol_target_24":     "C1 vol target 24% — modest sizing",
     "vol_target_30":     "C2 vol target 30% (default)",
     "vol_target_40":     "C3 vol target 40% — run hot",

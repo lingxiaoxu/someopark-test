@@ -328,7 +328,12 @@ def expected_max_sharpe(n_trials: int, var_sharpes: float) -> float:
     gamma = 0.5772156649  # Euler–Mascheroni
     std_sr = np.sqrt(var_sharpes)
     z1 = scipy.stats.norm.ppf(1.0 - 1.0 / max(n_trials, 2))
-    z2 = scipy.stats.norm.ppf(1.0 - 1.0 / (max(n_trials, 2) * np.exp(-1)))
+    # BLdP Eq.7: Φ⁻¹(1 − 1/(N·e)). Template had np.exp(-1) (= N/e) — a REAL math
+    # bug: NaN for small N, under-deflated (too-lenient) DSR for large N. Found
+    # 2026-07-26. NOTE: the bug exists in the sector_rotation ORIGINAL too
+    # (walk_forward.py:295) — reported to the operator; original untouched
+    # per isolation rules.
+    z2 = scipy.stats.norm.ppf(1.0 - 1.0 / (max(n_trials, 2) * np.e))
     return std_sr * ((1 - gamma) * z1 + gamma * z2)
 
 

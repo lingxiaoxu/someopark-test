@@ -106,6 +106,23 @@ def compute_historical_vol(
     return float(hist.std() * np.sqrt(252))
 
 
+def compute_downside_vol(
+    returns: pd.Series,
+    window: int = 20,
+) -> float:
+    """下行半波动(年化,镜像 AISS 2026-07-22): sqrt(mean(min(r,0)^2))*sqrt(252)。
+
+    行业标准的 Sortino 式下行偏差——上涨行情的向上波动不再计入风险口径,
+    只有下行日贡献;对称市况下 semivol≈总波动/√2(target 需相应折算)。
+    """
+    min_obs = window if window <= 30 else window // 2
+    if len(returns) < min_obs:
+        return float("nan")
+    recent = returns.iloc[-window:]
+    neg = np.minimum(recent.values, 0.0)
+    return float(np.sqrt(np.mean(neg ** 2)) * np.sqrt(252))
+
+
 def vol_scaling_factor(
     realized_vol: float,
     historical_vol: float,
@@ -196,10 +213,12 @@ def apply_risk_controls(
     vol_historical_window: int = 252,
     vol_scale_threshold: float = 1.5,
     vol_scaling_enabled: bool = True,
+    vol_downside_only: bool = False,   # 2026-07-22 镜像 AISS: 分子分母同用下行半波动
     vix_emergency_threshold: float = 35.0,
     emergency_cash_pct: float = 0.50,
     dd_halve_threshold: float = -0.15,
     dd_recovery_threshold: float = -0.10,
+    dd_release_rebound: float = 0.0,   # 2026-07-22 镜像 AISS: 离底反弹≥此值→跳过砍半; 0=关闭
     beta_min: float = 0.85,
     beta_max: float = 1.15,
     max_weight: float = 0.40,
@@ -314,33 +333,57 @@ def apply_risk_controls(
     # 2. Drawdown circuit breaker
     # -------------------------------------------------------------------
     current_dd = 0.0
+    dd_rebound = 0.0   # 镜像 AISS: 本轮回撤事件内,净值相对谷底的反弹幅度
     if equity_curve is not None and len(equity_curve) > 0:
         peak = equity_curve.expanding().max()
         dd_series = (equity_curve / peak) - 1.0
         current_dd = float(dd_series.iloc[-1])
         flags.current_dd_pct = current_dd
+        if dd_release_rebound > 0 and len(equity_curve) > 1:
+            at_peak = dd_series >= -1e-12
+            ep_start = at_peak[at_peak].index[-1] if at_peak.any() else equity_curve.index[0]
+            trough = float(equity_curve.loc[ep_start:].min())
+            if trough > 0:
+                dd_rebound = float(equity_curve.iloc[-1]) / trough - 1.0
 
     if current_dd < dd_halve_threshold:
-        logger.warning(
-            f"DRAWDOWN CIRCUIT: DD={current_dd:.2%} < {dd_halve_threshold:.2%}. "
-            "Halving position size."
-        )
-        # Additional 50% reduction (on top of any VIX-triggered reduction)
-        additional_cash = (1.0 - cash_pct) * 0.5
-        cash_pct = min(cash_pct + additional_cash, 0.90)  # Cap at 90% cash
-        # Renormalize to new invested_pct (1 - cash_pct)
-        if adjusted_weights.sum() > 0:
-            adjusted_weights = adjusted_weights / adjusted_weights.sum() * (1.0 - cash_pct)
-        flags.dd_circuit_triggered = True
-        flags.cash_pct = cash_pct
-        flags.notes.append(f"DD circuit breaker: {current_dd:.2%}")
+        if dd_release_rebound > 0 and dd_rebound >= dd_release_rebound:
+            flags.notes.append(
+                f"DD release: rebound {dd_rebound:.1%} ≥ {dd_release_rebound:.0%} "
+                f"off trough (DD={current_dd:.2%}) — halve skipped"
+            )
+            logger.info(
+                f"DD circuit released: DD={current_dd:.2%} but rebound "
+                f"{dd_rebound:.1%} ≥ {dd_release_rebound:.0%} off trough."
+            )
+        else:
+            logger.warning(
+                f"DRAWDOWN CIRCUIT: DD={current_dd:.2%} < {dd_halve_threshold:.2%}. "
+                "Halving position size."
+            )
+            # Additional 50% reduction (on top of any VIX-triggered reduction)
+            additional_cash = (1.0 - cash_pct) * 0.5
+            cash_pct = min(cash_pct + additional_cash, 0.90)  # Cap at 90% cash
+            # Renormalize to new invested_pct (1 - cash_pct)
+            if adjusted_weights.sum() > 0:
+                adjusted_weights = adjusted_weights / adjusted_weights.sum() * (1.0 - cash_pct)
+            flags.dd_circuit_triggered = True
+            flags.cash_pct = cash_pct
+            flags.notes.append(f"DD circuit breaker: {current_dd:.2%}")
 
     # -------------------------------------------------------------------
     # 3. Volatility scaling
     # -------------------------------------------------------------------
     if vol_scaling_enabled and len(portfolio_returns) >= vol_estimation_window:
-        realized_vol = compute_realized_vol(portfolio_returns, window=vol_estimation_window)
-        historical_vol = compute_historical_vol(portfolio_returns, window=vol_historical_window)
+        if vol_downside_only:
+            # 镜像 AISS: 分子分母同族(下行 vs 下行),触发语义不变——下行波动异常
+            # 放大才缩仓;纯上涨期 semivol→0 → 不触发(反弹不再被向上波动误伤)
+            realized_vol = compute_downside_vol(portfolio_returns, window=vol_estimation_window)
+            historical_vol = compute_downside_vol(portfolio_returns, window=vol_historical_window)
+            flags.notes.append("vol_mode=downside")
+        else:
+            realized_vol = compute_realized_vol(portfolio_returns, window=vol_estimation_window)
+            historical_vol = compute_historical_vol(portfolio_returns, window=vol_historical_window)
         flags.realized_vol_annual = realized_vol
         flags.historical_vol_annual = historical_vol
 

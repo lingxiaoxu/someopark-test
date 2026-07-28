@@ -49,6 +49,26 @@ ANALYSIS_SUBPERIODS = [
 ]
 
 
+def _dynamic_subperiods(index) -> list:
+    """近期动态子期(2026-07-26,与 metrics._dynamic_subperiods 同理):
+    静态清单止于 2024-12-31,2025+ 短窗整表为空 → 按 index 动态补年段与 Trailing。"""
+    if index is None or len(index) == 0:
+        return []
+    import pandas as _pd
+    end = _pd.Timestamp(index.max())
+    out = []
+    for y in range(2025, end.year + 1):
+        label = str(y) if (y < end.year or end.month == 12) else f"{y} YTD"
+        out.append((label, f"{y}-01-01", f"{y}-12-31", f"Calendar year {y}"))
+    out.append(("Trailing 12M",
+                (end - _pd.Timedelta(days=365)).strftime("%Y-%m-%d"),
+                end.strftime("%Y-%m-%d"), "Most recent 12 months"))
+    out.append(("Trailing 6M",
+                (end - _pd.Timedelta(days=182)).strftime("%Y-%m-%d"),
+                end.strftime("%Y-%m-%d"), "Most recent 6 months"))
+    return out
+
+
 def subperiod_analysis(
     portfolio_returns: pd.Series,
     benchmark_returns: Optional[pd.Series] = None,
@@ -76,7 +96,8 @@ def subperiod_analysis(
     """
     from .metrics import compute_metrics
 
-    subperiods = subperiods or ANALYSIS_SUBPERIODS
+    subperiods = subperiods or (ANALYSIS_SUBPERIODS
+                                + _dynamic_subperiods(portfolio_returns.index))
     rows = []
 
     for item in subperiods:
@@ -113,8 +134,17 @@ def subperiod_analysis(
             "total_return": m.get("total_return", float("nan")),
         })
 
-    df = pd.DataFrame(rows).set_index("subperiod")
-    return df
+    if not rows:
+        return pd.DataFrame(
+            columns=[
+                "description", "start", "end", "n_days", "cagr", "vol",
+                "sharpe", "max_dd", "calmar", "cvar_95", "win_rate",
+                "info_ratio", "active_return", "total_return",
+            ],
+            index=pd.Index([], name="subperiod"),
+        )
+
+    return pd.DataFrame(rows).set_index("subperiod")
 
 
 # ---------------------------------------------------------------------------
@@ -656,7 +686,10 @@ if __name__ == "__main__":
     # Sub-period test
     sp = subperiod_analysis(ret, bench)
     print("\n=== Sub-period Analysis ===")
-    print(sp[["cagr", "sharpe", "max_dd"]].round(3))
+    if sp.empty:
+        print("  (no subperiod with >=20 days in window)")
+    else:
+        print(sp[["cagr", "sharpe", "max_dd"]].round(3))
 
     # Stress test
     st = stress_test(ret, bench)

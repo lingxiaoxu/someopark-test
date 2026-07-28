@@ -790,3 +790,136 @@
 }
 [data-mode="prediction"] .auth-light input::placeholder,
 [data-mode="prediction"] .auth-light textarea::placeholder { color: var(--text-muted) !important; }
+
+/* ════════════════════════════════════════════════════════════
+   MACRO MARKETS MODE — dark shell (mirror of prediction mode)
+   ────────────────────────────────────────────────────────────
+   Activated ONLY by [data-mode="macro"] on the app root. Every rule is
+   scoped under [data-mode="macro"], so stock AND prediction modes are
+   pixel-identical to before — this block is purely additive (nothing
+   above is modified). Same near-black palette as prediction mode, but
+   with a distinct COOL-BLUE accent (--accent-primary) so the two dark
+   families are visually distinguishable at a glance.
+   ════════════════════════════════════════════════════════════ */
+
+[data-mode="macro"] {
+  /* — semantic tokens flip (same dark shell as prediction) — */
+  --ink:       #f4f4f4;
+  --paper:     #15171b;   /* dark surface, a hint cooler than prediction */
+  --ink-soft:  #cfcfcf;
+  --ink-dim:   #9a9a9a;
+  --ink-mute:  #8a8a8a;
+  --page:      #0a0c10;   /* near-black page, cool cast */
+  --hairline:  #39404a;
+
+  /* — legacy :root aliases (artifact components consume var(--*)) — */
+  --bg-primary:    #15171b;
+  --bg-secondary:  #0a0c10;
+  --bg-tertiary:   #1c2027;
+  --text-primary:  #f4f4f4;
+  --text-secondary:#cfcfcf;
+  --text-muted:    #8a8a8a;
+  --border-subtle: #f4f4f4;
+  --accent-primary:#6ec6ff;   /* macro accent: cool blue (vs prediction's white) */
+  --success:       #19e08a;
+  --error:         #ff5a5a;
+
+  /* — @theme palette (body / scrollbar / links / tables consume these) — */
+  --color-bg:          #0a0c10;
+  --color-surface:     #15171b;
+  --color-pixel-black: #f4f4f4;
+  --color-pixel-white: #15171b;
+  --color-pixel-gray:  #8a8a8a;
+
+  /* — pixel shadows become light on dark — */
+  --shadow-pixel:    4px 4px 0 0 #f4f4f4;
+  --shadow-pixel-lg: 6px 6px 0 0 #f4f4f4;
+  --shadow-pixel-sm: 2px 2px 0 0 #f4f4f4;
+}
+
+[data-mode="macro"],
+[data-mode="macro"] .sidebar,
+[data-mode="macro"] .right-panel,
+[data-mode="macro"] .card,
+[data-mode="macro"] .message-content > p {
+  transition: background-color .35s ease, color .35s ease, border-color .35s ease;
+}
+
+[data-mode="macro"] body { background: var(--page); color: var(--ink); }
+
+[data-mode="macro"] .sidebar { background: var(--paper); }
+[data-mode="macro"] .section-label { color: var(--ink-mute); }
+
+[data-mode="macro"] .chat-item { color: var(--ink-soft); }
+[data-mode="macro"] .chat-item:hover {
+  background: var(--page); color: var(--ink); border-left-color: var(--ink-mute); border-color: var(--hairline);
+}
+[data-mode="macro"] .chat-item.active {
+  background: var(--ink); color: var(--page); border-color: var(--ink); border-left-color: var(--ink);
+}
+[data-mode="macro"] .chat-item.active svg { color: var(--page) !important; }
+
+[data-mode="macro"] .button { border-color: var(--ink); }
+[data-mode="macro"] .button-primary   { background: var(--ink);   color: var(--page); }
+[data-mode="macro"] .button-secondary { background: var(--paper); color: var(--ink); }
+[data-mode="macro"] .button-ghost:hover { background: var(--page); color: var(--ink); border-color: var(--hairline); }
+
+[data-mode="macro"] .chat-input { background: var(--paper); border-color: var(--ink); }
+[data-mode="macro"] .chat-input::before { color: var(--ink-mute); }
+[data-mode="macro"] .chat-textarea { color: var(--ink); caret-color: var(--ink); }
+[data-mode="macro"] .chat-textarea::placeholder { color: var(--ink-mute); }
+
+[data-mode="macro"] .message-user { background: var(--ink); color: var(--page); border-color: var(--ink); }
+[data-mode="macro"] .message-user::before { color: var(--ink-mute); }
+[data-mode="macro"] .message-user .text-white { color: var(--page); }
+[data-mode="macro"] .message-content > p { background: var(--paper); border-color: var(--ink); color: var(--ink); }
+
+[data-mode="macro"] .grid.grid-cols-2 > button,
+[data-mode="macro"] .grid.grid-cols-2 > a {
+  background: var(--paper) !important; border-color: var(--ink) !important; color: var(--ink-soft) !important;
+}
+[data-mode="macro"] .grid.grid-cols-2 > button:hover,
+[data-mode="macro"] .grid.grid-cols-2 > a:hover {
+  background: var(--ink) !important; color: var(--page) !important; border-color: var(--ink) !important;
+}
+[data-mode="macro"] .grid.grid-cols-2 > button:hover svg,
+[data-mode="macro"] .grid.grid-cols-2 > a:hover svg { color: var(--page) !important; }
+[data-mode="macro"] .grid.grid-cols-2 > button svg,
+[data-mode="macro"] .grid.grid-cols-2 > a svg { color: var(--accent-primary); }
+
+[data-mode="macro"] .table th { color: var(--ink); border-bottom-color: var(--ink); }
+[data-mode="macro"] .table td { color: var(--ink-soft); border-bottom-color: var(--hairline); }
+[data-mode="macro"] .table tr:hover td { color: var(--ink); }
+
+[data-mode="macro"] .pixel-card,
+[data-mode="macro"] .card,
+[data-mode="macro"] .pair-card,
+[data-mode="macro"] .inventory-box { background: var(--paper); border-color: var(--ink); }
+[data-mode="macro"] .pixel-card::before,
+[data-mode="macro"] .pixel-card::after { background: var(--ink); }
+[data-mode="macro"] .inventory-box { border-left-color: var(--ink); }
+[data-mode="macro"] .card-header { color: var(--ink); border-bottom-color: var(--ink); }
+[data-mode="macro"] .right-panel { background: var(--bg-tertiary); border-left-color: var(--ink); }
+
+[data-mode="macro"] input,
+[data-mode="macro"] textarea,
+[data-mode="macro"] select {
+  color: var(--ink) !important; background: var(--paper); border-color: var(--ink);
+}
+[data-mode="macro"] input::placeholder,
+[data-mode="macro"] textarea::placeholder { color: var(--ink-mute) !important; }
+[data-mode="macro"] ::-webkit-scrollbar-thumb { background: var(--ink); border-color: var(--page); }
+[data-mode="macro"] ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
+[data-mode="macro"] ::selection { background: var(--ink); color: var(--page); }
+[data-mode="macro"] a:hover { color: var(--ink-soft); }
+
+/* Auth dialog inputs keep the light styling in macro mode (mirror of prediction). */
+[data-mode="macro"] .auth-light input,
+[data-mode="macro"] .auth-light textarea,
+[data-mode="macro"] .auth-light select {
+  color: var(--text-primary) !important;
+  background: var(--bg-secondary);
+  border-color: var(--border-subtle);
+}
+[data-mode="macro"] .auth-light input::placeholder,
+[data-mode="macro"] .auth-light textarea::placeholder { color: var(--text-muted) !important; }

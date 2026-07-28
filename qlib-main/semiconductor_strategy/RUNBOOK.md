@@ -84,9 +84,30 @@ contention:
 | `aiss-daily` | weekdays 19:20 | `bash …/semiconductor_pipeline.sh daily` |
 | `aiss-weekly` | Sun 02:00 | `bash …/semiconductor_pipeline.sh weekly` |
 
-> The benign `qlib backtest execution failed …, falling back to native loop`
-> warning appears on every backtest in **both** AISS and SSRS — native is the
-> production engine by design. It must **not** be counted as success-degraded.
+> **2026-07-22 risk fixes:** live daily now feeds the DD circuit with REAL ledger
+> equity (account_history snapshots; disable via risk.drawdown.live_dd_enabled=false;
+> current DD -11.0% vs -25% threshold → inert today). The v2 Risk Overlay is now
+> wired into the qlib production path too — but AISS config keeps it **enabled:false
+> by design** (the SSRS-style MA gate would cap the high-beta exposure AISS needs).
+>
+> **Idempotency gate (2026-07-22):** `daily_backtest.sh` exits 0 in seconds if
+> today's dated log already ends with AISS DAILY BACKTEST COMPLETE (protects
+> against scheduler auto-retry after reporting-phase failures — the 2026-07-21
+> double-run incident). Manual re-runs: pass `--force`. The skip message goes to
+> stdout/cron log only; it never creates or appends a dated log.
+>
+> **Sandbox flags (2026-07-22):** test runs must use `AISSBatchRun
+> --no-prod-write --output-dir /tmp/...` (guards selected_param_set.json + all
+> Excel hard-writes) and `walk_forward --output-dir /tmp/...` (skips the WF
+> diagnostic Excel). `--dry-run` daily no longer writes smart_select state.
+> `trade_audit.py` is now import-safe (main() guard) and takes `--output-dir`.
+
+> Engine path note (updated 2026-07-21): the qlib path (`_run_qlib` →
+> `portfolio/strategy.py`) now runs **successfully** and is the live production
+> path (stack-frame verified: all risk-control calls come from
+> `AISSWeightStrategy.generate_trade_decision`); `_run_native` is the fallback.
+> If you ever see `qlib backtest execution failed …, falling back to native
+> loop`, that fallback is benign by design — not success-degraded.
 
 **Outputs (all inside the package):**
 ```
@@ -156,7 +177,7 @@ Exit code 0 = PASS (AISS beats SOXX **and** SMH on Sharpe **and** CAGR).
 ## 3. Research: batch, selection, walk-forward, tearsheet
 
 ```bash
-# Rank all 33 param sets (CSV + per-set Excel in historical_runs/, equity cache)
+# Rank all 39 param sets (CSV + per-set Excel in historical_runs/, equity cache)
 bash qlib-main/semiconductor_strategy/semiconductor_pipeline.sh batch
 
 # Production selection (batch + WF OOS filter + MCPS) -> selected_param_set.json

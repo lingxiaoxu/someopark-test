@@ -13,7 +13,7 @@ import {
   getWCMilestoneMarks, getWCSchedule, getWCReachRound, getWCStyles, API_BASE,
   getWCMicrofootball, analyzeMicrofootball, getWCDfm,
 } from '../../lib/api';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { TrajectoryPlayer } from './TrajectoryPlayer';
 import { PREDICTION_ITEMS } from './PredictionArtifactGrid';
 import { tCountry, countryKey } from '../../i18n/countries';
@@ -574,6 +574,18 @@ function BracketView() {
     return <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>schedule.json missing knockout fixtures</div>;
   }
   const champ = fin[0].winner;
+  // third-place playoff: the two SF losers. Teams come from the fixture itself when the
+  // schedule has them assigned; otherwise derived as the semifinal losers.
+  const loseOf = (n: BrNode): BrTeam =>
+    n.winner && n.a && n.b ? (n.a.team_id === n.winner.team_id ? n.b : n.a) : null;
+  const thirdFx = ms.find((m) => rnd(m.round) === 'third') || null;
+  const thirdTeam = (side: 'home' | 'away', fallback: BrTeam): BrTeam => {
+    const l = thirdFx?.[side];
+    return l?.id ? T({ team_id: l.id, name: l.name, zh: l.zh }) : fallback;
+  };
+  const third: BrNode = { id: 'third-0', a: thirdTeam('home', loseOf(sf[0])), b: thirdTeam('away', loseOf(sf[1])), fx: thirdFx, winner: null };
+  third.winner = winOf(third);
+  const showThird = !!(third.fx || third.a || third.b);
 
   // ── horizontal layout: left half → center final ← right half, SVG route lines ──
   const BOX_W = 78, BOX_H = 80, ROW = 88, GAP = 30, HDR = 22;
@@ -593,10 +605,12 @@ function BracketView() {
   sf.forEach((n, s) => { pos[n.id] = { x: colX(s === 0 ? 3 : 5), y: ySF, right: s === 1 }; });
   pos[fin[0].id] = { x: colX(4), y: ySF, right: false };
   const champY = ySF - 1.5 * ROW;
+  const thirdY = ySF + 1.5 * ROW;                 // mirrored below the final
+  if (showThird) pos[third.id] = { x: colX(4), y: thirdY, right: false };
 
   // Route lines: elbow from each feeder to its child slot. WHITE (= --text-primary) once the
   // feeder is decided (someone advanced along it), grey while undecided.
-  const lines: { d: string; on: boolean }[] = [];
+  const lines: { d: string; on: boolean; dash?: boolean }[] = [];
   const elbow = (from: BrNode, to: BrNode) => {
     const f = pos[from.id], t0 = pos[to.id];
     if (!f || !t0) return;
@@ -615,6 +629,11 @@ function BracketView() {
     lines.push({ d: `M ${f.x} ${f.y} H ${(f.x + t0.x + BOX_W) / 2} V ${t0.y} H ${t0.x + BOX_W}`, on: !!sf[1].winner }); }
   // final → champion (vertical)
   lines.push({ d: `M ${colX(4) + BOX_W / 2} ${ySF - BOX_H / 2} V ${champY}`, on: !!champ });
+  // SF losers → third-place playoff (dashed: the consolation path, not an advancement)
+  if (showThird) {
+    lines.push({ d: `M ${colX(3) + BOX_W / 2} ${ySF + BOX_H / 2} V ${thirdY} H ${colX(4)}`, on: false, dash: true });
+    lines.push({ d: `M ${colX(5) + BOX_W / 2} ${ySF + BOX_H / 2} V ${thirdY} H ${colX(4) + BOX_W}`, on: false, dash: true });
+  }
 
   const nameOf = (t: BrTeam) => (t ? tCountry(t.name) : tr('prediction.brTbd'));
   const flagOf = (t: BrTeam) => (t ? (BR_FLAG[t.team_id] ?? '🏳') : '');
@@ -741,7 +760,7 @@ function BracketView() {
     [3, tr('prediction.round.sf')], [4, tr('prediction.round.final')], [5, tr('prediction.round.sf')],
     [6, tr('prediction.round.qf')], [7, tr('prediction.round.r16')], [8, tr('prediction.round.r32')],
   ];
-  const all = [...r32, ...r16, ...qf, ...sf, ...fin];
+  const all = [...r32, ...r16, ...qf, ...sf, ...fin, ...(showThird ? [third] : [])];
   return (
     <div style={{ overflowX: 'auto', paddingBottom: 6 }}>
       <div style={{ position: 'relative', width: W, height: H }}>
@@ -749,7 +768,7 @@ function BracketView() {
           {lines.map((l, i) => (
             <path key={i} d={l.d} fill="none"
               stroke={l.on ? 'var(--text-primary)' : 'var(--border-subtle)'}
-              strokeWidth={l.on ? 1.6 : 1} />
+              strokeWidth={l.on ? 1.6 : 1} strokeDasharray={l.dash ? '3 3' : undefined} />
           ))}
         </svg>
         {hdrs.map(([k, label]) => (
@@ -758,6 +777,12 @@ function BracketView() {
             color: 'var(--text-muted)', ...mono, whiteSpace: 'nowrap', overflow: 'hidden' }}>{label}</div>
         ))}
         {all.map((n) => <Box key={n.id} n={n} />)}
+        {/* third-place label — above its box, mirroring the column headers */}
+        {showThird && (
+          <div style={{ position: 'absolute', left: colX(4) - GAP, top: thirdY - BOX_H / 2 - 13, width: BOX_W + 2 * GAP,
+            textAlign: 'center', fontSize: 8.5, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase',
+            color: 'var(--text-muted)', ...mono, whiteSpace: 'nowrap' }}>{tr('prediction.round.third')}</div>
+        )}
         {/* champion — centered above the final */}
         <div style={{ position: 'absolute', left: colX(4), top: champY - BOX_H / 2, width: BOX_W,
           border: `1px solid ${champ ? 'var(--text-primary)' : 'var(--border-subtle)'}`,
@@ -1739,18 +1764,34 @@ function AiResult({ state, onRun, label }: { state: { loading: boolean; text?: s
   );
 }
 
-// Latest scheduled kickoff (ET string) for a matchup, matched by team names in either order
+// Latest scheduled fixture entry for a matchup, matched by team names in either order
 // against the World Cup schedule — if the same fixture recurs, the latest kickoff wins.
-function scheduleDate(schedMatches: any[], home: string, away: string): string {
+function scheduleHit(schedMatches: any[], home: string, away: string): any | null {
   const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z]/g, '');
   const nh = norm(home), na = norm(away);
   const hits = (schedMatches || []).filter((x: any) => {
     const a1 = norm(x.home?.name), a2 = norm(x.away?.name);
     return (a1 === nh && a2 === na) || (a1 === na && a2 === nh);
   });
-  if (!hits.length) return '';
+  if (!hits.length) return null;
   hits.sort((p: any, q: any) => String(q.kickoff).localeCompare(String(p.kickoff)));  // latest first
-  return hits[0].et || '';
+  return hits[0];
+}
+
+// Short localized round tag ("决赛 / 半决赛 / 1/8 决赛 …") from the schedule's round string.
+// Same mapping as ScheduleView's roundLabel; kept tiny for the matchup chips.
+function wcRoundText(tr: (k: string, o?: any) => string, r?: string): string {
+  const s = (r || '').trim(); const low = s.toLowerCase();
+  if (!s) return '';
+  const g = s.match(/group stage\s*-\s*(\d+)/i);
+  if (g) return tr('prediction.round.group', { n: g[1] });
+  if (low.includes('round of 32')) return tr('prediction.round.r32');
+  if (low.includes('round of 16')) return tr('prediction.round.r16');
+  if (low.includes('quarter')) return tr('prediction.round.qf');
+  if (low.includes('semi')) return tr('prediction.round.sf');
+  if (low.includes('3rd') || low.includes('third')) return tr('prediction.round.third');
+  if (low.includes('final')) return tr('prediction.round.final');
+  return s;
 }
 
 function MicroFootballSim() {
@@ -1765,18 +1806,27 @@ function MicroFootballSim() {
   const [aiAgg, setAiAgg] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
   const [aiSim, setAiSim] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
   const [aiDfm, setAiDfm] = useState<{ loading: boolean; text?: string; error?: string; cached?: boolean }>({ loading: false });
+  // Display order: newest fixture first (final → semis → … ), by scheduled kickoff.
+  // Pure presentation — the underlying index data is untouched.
+  const sortedMatchups = useMemo(() => {
+    const arr: any[] = [...(data?.matchups ?? [])];
+    const key = (mm: any) => {
+      const h = scheduleHit(schedData?.matches || [], mm.home_name, mm.away_name);
+      return String(h?.kickoff || h?.et || '');
+    };
+    return arr.sort((p, q) => key(q).localeCompare(key(p)));
+  }, [data, schedData]);
   // Cross-artifact focus: if we arrived by clicking a country elsewhere, open the matchup
   // that team plays in (so the scroll/highlight lands, not a random default matchup).
   const focus = usePredictionFocus();
   useEffect(() => {
     if (!focus.country) return;
-    const mus: any[] = data?.matchups ?? [];
-    const i = mus.findIndex((mm) => countryKey(mm.home_name) === focus.country || countryKey(mm.away_name) === focus.country);
+    const i = sortedMatchups.findIndex((mm) => countryKey(mm.home_name) === focus.country || countryKey(mm.away_name) === focus.country);
     if (i >= 0) { setMIdx(i); setSIdx(0); }
-  }, [focus.country, focus.nonce, data]);
+  }, [focus.country, focus.nonce, sortedMatchups]);
   if (loading) return <Loading />;
   if (error) return <ErrorBox e={error} />;
-  const matchups: any[] = data?.matchups ?? [];
+  const matchups: any[] = sortedMatchups;
   if (!matchups.length) return <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{tr('prediction.mfNone')}</div>;
   const m = matchups[Math.min(mIdx, matchups.length - 1)];
   const sims: any[] = m.sims ?? [];
@@ -1818,9 +1868,17 @@ function MicroFootballSim() {
       {/* matchup tabs — each shows the fixture's scheduled date/time (from the World Cup schedule) */}
       <div style={{ marginBottom: 8 }}>
         {matchups.map((mm, i) => {
-          const dt = scheduleDate(schedData?.matches || [], mm.home_name, mm.away_name);
+          const hit = scheduleHit(schedData?.matches || [], mm.home_name, mm.away_name);
+          const dt = hit?.et || '';
+          const round = wcRoundText(tr, hit?.round);
+          const isFinal = (hit?.round || '').toLowerCase() === 'final';
           return tab(i === mIdx, () => { setMIdx(i); setSIdx(0); setAiSim({ loading: false }); setAiAgg({ loading: false }); setAiDfm({ loading: false }); },
-            <span>{tCountry(mm.home_name)} v {tCountry(mm.away_name)}{dt && <span style={{ display: 'block', fontSize: 9, fontWeight: 400, color: 'var(--text-muted)', marginTop: 1 }}>{dt}</span>}</span>, mm.id);
+            <span>{tCountry(mm.home_name)} v {tCountry(mm.away_name)}{(round || dt) && (
+              <span style={{ display: 'block', fontSize: 9, fontWeight: 400, color: 'var(--text-muted)', marginTop: 1 }}>
+                {round && <span style={{ color: isFinal ? '#f5c518' : 'var(--accent-primary)', fontWeight: 700 }}>{round}</span>}
+                {round && dt ? ' · ' : ''}{dt}
+              </span>
+            )}</span>, mm.id);
         })}
       </div>
 

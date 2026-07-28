@@ -226,6 +226,48 @@ class TestSubperiodAnalysis(unittest.TestCase):
         sp = subperiod_analysis(ret, subperiods=subperiods)
         self.assertLessEqual(len(sp), 2)
 
+    def test_no_matching_subperiods_returns_empty_dataframe(self):
+        ret = _make_returns_series(n=10)
+        sp = subperiod_analysis(ret)
+        self.assertIsInstance(sp, pd.DataFrame)
+        self.assertTrue(sp.empty)
+        self.assertEqual(sp.index.name, "subperiod")
+
+    def test_empty_schema_has_core_metric_columns(self):
+        ret = _make_returns_series(n=10)
+        sp = subperiod_analysis(ret)
+        for col in ("annual_return", "annual_vol", "sharpe", "max_drawdown",
+                    "start", "end", "n_days"):
+            self.assertIn(col, sp.columns)
+
+    def test_dynamic_recent_subperiods_cover_2025_plus(self):
+        idx = pd.bdate_range("2025-09-01", periods=180)
+        ret = pd.Series(0.001, index=idx)
+        sp = subperiod_analysis(ret)
+        self.assertFalse(sp.empty)
+        self.assertTrue(any("Trailing" in str(i) for i in sp.index))
+
+
+class TestExpectedMaxSharpe(unittest.TestCase):
+    """BLdP Eq.7 修复回归(2026-07-26): N·e 而非 N/e;N=2 不 NaN、单调、量级正确。"""
+
+    def _f(self):
+        from sector_rotation.walk_forward import expected_max_sharpe
+        return expected_max_sharpe
+
+    def test_small_n_no_nan(self):
+        f = self._f()
+        self.assertFalse(np.isnan(f(2, 0.05)))
+        self.assertGreater(f(2, 0.05), 0.0)
+
+    def test_n4_magnitude(self):
+        self.assertGreater(self._f()(4, 0.05), 0.2)   # ≈0.235(修复前 0.004)
+
+    def test_monotone_in_n(self):
+        f = self._f()
+        xs = [f(n, 0.05) for n in (2, 4, 8, 16, 32)]
+        self.assertTrue(all(a < b for a, b in zip(xs, xs[1:])))
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

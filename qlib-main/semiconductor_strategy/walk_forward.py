@@ -292,7 +292,10 @@ def expected_max_sharpe(n_trials: int, var_sharpes: float) -> float:
     gamma = 0.5772156649  # Euler–Mascheroni
     std_sr = np.sqrt(var_sharpes)
     z1 = scipy.stats.norm.ppf(1.0 - 1.0 / max(n_trials, 2))
-    z2 = scipy.stats.norm.ppf(1.0 - 1.0 / (max(n_trials, 2) * np.exp(-1)))
+    # BLdP(2014) Eq.7: 第二分位点分母是 N·e(乘 e)。旧代码 np.exp(-1)=除以 e:
+    # N=2 时 ppf 参数为负 → NaN;N=3 为负值;N≥4 系统性低估 sr_0 22-98% →
+    # DSR 通缩不足、闸门偏松(2026-07-26 修复;根目录 pairs 版 math.e 一直正确)
+    z2 = scipy.stats.norm.ppf(1.0 - 1.0 / (max(n_trials, 2) * np.e))
     return std_sr * ((1 - gamma) * z1 + gamma * z2)
 
 
@@ -1469,14 +1472,19 @@ if __name__ == "__main__":
             wf_r.fold_summary_df.to_csv(csv_path, index=False)
             print(f"  Fold summary → {csv_path}")
         # WF Diagnostic Excel (use anchored result)
-        try:
-            from semiconductor_strategy.portfolio_record import export_wf_diagnostic_excel
-            if "anchored" in results:
-                export_wf_diagnostic_excel(
-                    results["anchored"], mode="wf",
-                    signal_version=args.signal_version or "v1")
-        except Exception as _e:
-            logger.warning(f"WF diagnostic Excel failed: {_e}")
+        # 沙盒守卫(2026-07-21): 显式 --output-dir 视为沙盒跑 → 跳过硬写
+        # historical_runs/ 的 Excel(export_wf_diagnostic_excel 路径不可重定向)
+        if args.output_dir:
+            print("  [sandbox] --output-dir set: WF diagnostic Excel skipped")
+        else:
+            try:
+                from semiconductor_strategy.portfolio_record import export_wf_diagnostic_excel
+                if "anchored" in results:
+                    export_wf_diagnostic_excel(
+                        results["anchored"], mode="wf",
+                        signal_version=args.signal_version or "v1")
+            except Exception as _e:
+                logger.warning(f"WF diagnostic Excel failed: {_e}")
     else:
         analyzer = WalkForwardAnalyzer(
             base_cfg=base_cfg,
@@ -1490,11 +1498,14 @@ if __name__ == "__main__":
         csv_path = out_dir / f"wf_{args.mode}_fold_summary.csv"
         wf_r.fold_summary_df.to_csv(csv_path, index=False)
         print(f"  Fold summary → {csv_path}")
-        # WF Diagnostic Excel
-        try:
-            from semiconductor_strategy.portfolio_record import export_wf_diagnostic_excel
-            export_wf_diagnostic_excel(
-                wf_r, mode="wf",
-                signal_version=args.signal_version or "v1")
-        except Exception as _e:
-            logger.warning(f"WF diagnostic Excel failed: {_e}")
+        # WF Diagnostic Excel (沙盒守卫同上)
+        if args.output_dir:
+            print("  [sandbox] --output-dir set: WF diagnostic Excel skipped")
+        else:
+            try:
+                from semiconductor_strategy.portfolio_record import export_wf_diagnostic_excel
+                export_wf_diagnostic_excel(
+                    wf_r, mode="wf",
+                    signal_version=args.signal_version or "v1")
+            except Exception as _e:
+                logger.warning(f"WF diagnostic Excel failed: {_e}")

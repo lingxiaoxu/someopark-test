@@ -599,6 +599,35 @@ SUBPERIODS = [
     ("Recent", "2023-01-01", "2024-12-31"),
 ]
 
+# 恒在核心指标列(compute_metrics 无条件写入的键;qlib_*/bench 系列为条件键,
+# 空表 schema 只承诺核心列——与非空路径的"条件列随环境增减"语义一致)
+CORE_METRIC_COLS = [
+    "annual_vol", "sharpe", "annual_return", "max_drawdown",
+    "max_drawdown_days", "calmar", "cvar_95", "cvar_99",
+    "monthly_win_rate", "skewness", "kurtosis", "total_return",
+]
+
+
+def _dynamic_subperiods(index) -> list:
+    """近期动态子期(2026-07-26): 静态 SUBPERIODS 止于 2024-12-31,6m/1y 短窗
+    起点在其后时整表为空(weekly multi-horizon 曾因此 KeyError→qlib 回退)。
+    按数据 index 动态补 2025+ 自然年与 Trailing 12M/6M;仍受 ≥20 天过滤。"""
+    if index is None or len(index) == 0:
+        return []
+    import pandas as _pd
+    end = _pd.Timestamp(index.max())
+    out = []
+    for y in range(2025, end.year + 1):
+        label = str(y) if (y < end.year or end.month == 12) else f"{y} YTD"
+        out.append((label, f"{y}-01-01", f"{y}-12-31"))
+    out.append(("Trailing 12M",
+                (end - _pd.Timedelta(days=365)).strftime("%Y-%m-%d"),
+                end.strftime("%Y-%m-%d")))
+    out.append(("Trailing 6M",
+                (end - _pd.Timedelta(days=182)).strftime("%Y-%m-%d"),
+                end.strftime("%Y-%m-%d")))
+    return out
+
 
 def subperiod_analysis(
     portfolio_returns: pd.Series,
@@ -611,7 +640,7 @@ def subperiod_analysis(
     Returns a DataFrame with subperiod names as index and metrics as columns.
     """
     if subperiods is None:
-        subperiods = SUBPERIODS
+        subperiods = SUBPERIODS + _dynamic_subperiods(portfolio_returns.index)
 
     rows = []
     for name, start, end in subperiods:
@@ -631,6 +660,14 @@ def subperiod_analysis(
         m["end"] = end
         m["n_days"] = len(sub_ret)
         rows.append(m)
+
+    if not rows:
+        # schema 与非空路径的恒在列一致(条件列 qlib_*/bench 系随环境增减,
+        # 非空路径本就如此;消费方选列如 sharpe/annual_return 空表下不再 KeyError)
+        return pd.DataFrame(
+            columns=CORE_METRIC_COLS + ["start", "end", "n_days"],
+            index=pd.Index([], name="subperiod"),
+        )
 
     return pd.DataFrame(rows).set_index("subperiod")
 
@@ -664,4 +701,7 @@ if __name__ == "__main__":
 
     print("\n=== Subperiod Analysis ===")
     sp = subperiod_analysis(ret, bench)
-    print(sp[["annual_return", "annual_vol", "sharpe", "max_drawdown"]].round(3))
+    if sp.empty:
+        print("  (no subperiod with >=20 days in window)")
+    else:
+        print(sp[["annual_return", "annual_vol", "sharpe", "max_drawdown"]].round(3))

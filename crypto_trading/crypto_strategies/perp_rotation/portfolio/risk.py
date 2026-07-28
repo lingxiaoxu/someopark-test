@@ -81,11 +81,30 @@ def vol_scaling_factor(
     historical_vol: float,
     target_vol: float = 0.40,
     scale_threshold: float = 1.5,
+    mode: str = "spike",
 ) -> float:
-    """min(target/realized, 1) when realized > threshold × historical (verbatim)."""
-    if np.isnan(realized_vol) or np.isnan(historical_vol):
+    """Volatility scaling factor.
+
+    mode="spike" (template verbatim): scale = min(target/realized, 1) ONLY when
+      realized > threshold × historical. A RELATIVE spike detector — with
+      crypto's persistently high vol (realized ≈ historical ≈ 50%+) it almost
+      never fires, so "target_vol" does NOT actually target vol in steady state
+      (root cause of the −51% maxDD in the uncalibrated proxy run).
+    mode="absolute": scale = min(target/realized, 1) UNCONDITIONALLY — a true
+      vol target that binds whenever realized vol exceeds target.
+    """
+    if np.isnan(realized_vol) or realized_vol <= 0:
         return 1.0
 
+    if mode == "absolute":
+        factor = min(target_vol / realized_vol, 1.0)
+        if factor < 1.0:
+            logger.info(f"Vol target (absolute): realized={realized_vol:.2%} > "
+                        f"target={target_vol:.2%}. Scale: {factor:.3f}")
+        return factor
+
+    if np.isnan(historical_vol):
+        return 1.0
     if realized_vol > scale_threshold * historical_vol:
         factor = min(target_vol / realized_vol, 1.0)
         logger.info(
@@ -141,9 +160,11 @@ def apply_risk_controls(
     vol_historical_window: int = 365,
     vol_scale_threshold: float = 1.5,
     vol_scaling_enabled: bool = True,
+    vol_target_mode: str = "spike",        # "spike" (template) | "absolute" (true target)
     rvol_emergency_threshold: float = 60.0,
     emergency_cash_pct: float = 0.50,
     dd_halve_threshold: float = -0.10,
+    dd_flat_threshold: Optional[float] = None,   # e.g. −0.20 → ~flat (90% cash); None=off
     dd_recovery_threshold: float = -0.05,
     beta_min: float = 0.85,
     beta_max: float = 1.15,
@@ -211,7 +232,19 @@ def apply_risk_controls(
         current_dd = float(dd_series.iloc[-1])
         flags.current_dd_pct = current_dd
 
-    if current_dd < dd_halve_threshold:
+    if dd_flat_threshold is not None and current_dd < dd_flat_threshold:
+        # deeper tier: go ~flat (90% cash) until the curve recovers
+        logger.warning(
+            f"DRAWDOWN FLAT TIER: DD={current_dd:.2%} < {dd_flat_threshold:.2%}. "
+            "Going ~flat (90% cash)."
+        )
+        cash_pct = 0.90
+        if adjusted_weights.sum() > 0:
+            adjusted_weights = adjusted_weights / adjusted_weights.sum() * (1.0 - cash_pct)
+        flags.dd_circuit_triggered = True
+        flags.cash_pct = cash_pct
+        flags.notes.append(f"DD flat tier: {current_dd:.2%}")
+    elif current_dd < dd_halve_threshold:
         logger.warning(
             f"DRAWDOWN CIRCUIT: DD={current_dd:.2%} < {dd_halve_threshold:.2%}. "
             "Halving position size."
@@ -236,6 +269,7 @@ def apply_risk_controls(
             historical_vol=historical_vol,
             target_vol=vol_target,
             scale_threshold=vol_scale_threshold,
+            mode=vol_target_mode,
         )
 
         if scale < 1.0:

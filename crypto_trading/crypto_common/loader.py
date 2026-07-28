@@ -131,7 +131,10 @@ def load_poll_trades(ticker: str, *, env: str = "prod",
         # dedupe by trade_id: raw tape can carry duplicates from WS reconnect
         # replays or overlapping-recorder windows — the id is the source of truth
         df = df.drop_duplicates("trade_id", keep="first")
-        df.index = pd.DatetimeIndex(pd.to_datetime(df.created_time, utc=True))
+        # ISO8601: trade timestamps mix microsecond ("…46.14Z") and second
+        # ("…46Z") precision — format='ISO8601' parses both (plain inference crashes)
+        df.index = pd.DatetimeIndex(pd.to_datetime(df.created_time, utc=True,
+                                                   format="ISO8601"))
         df.index.name = "dt"
         df = df.drop(columns=["created_time"]).sort_index()
         df = df.dropna(subset=["price", "count"])

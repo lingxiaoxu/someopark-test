@@ -90,7 +90,7 @@ router.post('/', async (req: Request, res: Response) => {
     model: LLMModel
     config: LLMModelConfig
     selectedTemplate?: string
-    appMode?: 'stock' | 'prediction'
+    appMode?: 'stock' | 'prediction' | 'macro'
     think?: boolean   // local (ollama) reasoning toggle; undefined/true = thinking ON (default)
   } = req.body
 
@@ -205,6 +205,20 @@ router.post('/', async (req: Request, res: Response) => {
         }
       } catch (e) {
         console.error('prediction grounding failed (continuing without it):', e)
+      }
+    }
+
+    // Macro grounding (symmetric to the prediction block above): if a macro_* view was
+    // detected in Macro Markets mode, hand the model the SAME real data the panel shows.
+    // Purely additive — the coding-approach system prompts are untouched.
+    const macroTypes = detectedArtifacts.map(a => a.type).filter(t => t.startsWith('macro_'))
+    if (appMode === 'macro' && macroTypes.length > 0) {
+      try {
+        const { macroContextForArtifacts } = await import('../tools/macroMarketTool.js')
+        const ctx = await macroContextForArtifacts(macroTypes)
+        if (ctx) chatSystem += '\n\n' + ctx
+      } catch (e) {
+        console.error('macro grounding failed (continuing without it):', e)
       }
     }
 

@@ -298,12 +298,43 @@ def version_selector(
             else:
                 novelty_score = 0.5
 
-    # ── Combine (regime 30%, VIX 25%, OOS 30%, novelty 15%)
+    # ── Dimension 5: Recovery / vol-crush (I-2, 2026-07-21)
+    # 崩后修复期识别: VIX 从近期峰值显著回落 = vol crush → 半月节奏(V2)的
+    # 再入场价值上升;长期深度平静(非修复)仍偏 V1。中性 0.5 不影响判定。
+    recovery_score = 0.5
+    if not macro_df.empty and "vix" in macro_df.columns:
+        _vix_r = macro_df["vix"].dropna()
+        if len(_vix_r) >= 25:
+            # 无状态平滑(S2 回放发现逐日峰值滑窗致条件闪烁/27次穿越):
+            # 对最近 5 个交易日各自评估 crush 条件,≥3 日成立才触发——
+            # 函数保持纯函数(仅依赖 macro_df),防抖不引入持久状态
+            _crush_days = 0
+            for _k in range(5):
+                _sub = _vix_r.iloc[: len(_vix_r) - _k]
+                _now_k = float(_sub.iloc[-1])
+                _peak_k = float(_sub.tail(20).max())
+                if _peak_k > 26 and _now_k < 0.80 * _peak_k:
+                    _crush_days += 1
+            vix_now_r = float(_vix_r.iloc[-1])
+            vix_peak_20d = float(_vix_r.tail(20).max())
+            if _crush_days >= 3:
+                recovery_score = 0.0     # vol crush(稳定确认) → 修复期 → 偏 V2
+            elif vix_now_r < 18 and vix_peak_20d < 22:
+                recovery_score = 1.0     # 长期平静(非修复) → 偏 V1
+
+    # ── Combine (I-2 重分配: regime 25%, VIX 20%, OOS 30%, novelty 10%, recovery 15%)
     v1_confidence = (
-        0.30 * regime_score +
-        0.25 * vix_score +
+        0.25 * regime_score +
+        0.20 * vix_score +
         0.30 * oos_score +
-        0.15 * novelty_score
+        0.10 * novelty_score +
+        0.15 * recovery_score
+    )
+
+    log.info(
+        f"[version_selector] regime={regime_score:.2f} vix={vix_score:.2f} "
+        f"oos={oos_score:.2f} novelty={novelty_score:.2f} recovery={recovery_score:.2f} "
+        f"→ v1_confidence={v1_confidence:.3f}"
     )
 
     if v1_confidence > 0.6:

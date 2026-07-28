@@ -1,3 +1,5 @@
+import { MACRO_KEYWORD_PATTERNS } from '../tools/macroMarketTool.js'
+
 export interface ArtifactTrigger {
   type: string
   title: string
@@ -132,11 +134,26 @@ const ARTIFACT_PATTERNS: Array<{
   { type: 'wc_pdfs',          title: 'PDF Reports',         keywords: ['pdf', 'pdf report', 'download report', 'pdf 报告', '下载报告', 'pdf报告'] },
 ]
 
-export function detectArtifacts(message: string, mode?: 'stock' | 'prediction'): ArtifactTrigger[] {
+export function detectArtifacts(message: string, mode?: 'stock' | 'prediction' | 'macro'): ArtifactTrigger[] {
   if (!message) return []
 
   const lowerMessage = message.toLowerCase()
   const detected: ArtifactTrigger[] = []
+
+  // Macro Markets mode: detect ONLY macro_* types using the macro keyword dictionary
+  // (kept in macroMarketTool next to the grounding loader). Fully additive — this
+  // branch returns early, so stock/prediction/no-mode behaviour below is unchanged.
+  if (mode === 'macro') {
+    for (const pattern of MACRO_KEYWORD_PATTERNS) {
+      for (const keyword of pattern.keywords) {
+        if (lowerMessage.includes(keyword.toLowerCase())) {
+          detected.push({ type: pattern.type, title: pattern.title })
+          break // one match per artifact type is enough
+        }
+      }
+    }
+    return detected
+  }
 
   for (const pattern of ARTIFACT_PATTERNS) {
     // Mode-scoped detection: prediction mode considers ONLY the wc_* (World Cup) views;
