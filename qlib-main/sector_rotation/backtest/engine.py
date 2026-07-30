@@ -580,15 +580,27 @@ class SectorRotationBacktest:
                 _stop_loss_cfg = {"enabled": False}
         vix_recovery     = vix_threshold * self.reb_cfg.get("vix_recovery_factor", 0.80)
 
+        # ── PIT alignment(2026-07-28 审计;参照 crypto_trading daily_engine 已验证修法)──
+        # dt 日的决策(VIX 紧急/渐进减仓、止损、overlay、协方差)只可见 ≤dt-1 收盘:
+        # 旧代码同 bar 取 day-T 收盘触发当日砍仓,再把 day-T 暴跌记给已砍权重 ——
+        # "预知式躲崩盘"(2024-08-05 实证: 当日 1.00→0.50,当日仅 -1.51%)。
+        # 日频输入整体 shift(1);day-T 收益随后记给新权重 = "以隔夜信息于 T 开盘执行",
+        # 与实盘(盘后决策、次日执行)一致。
+        # composite 不 shift: 月频、行标=日历月末,调仓日=次月首交易日,天然滞后;
+        # shift 会过度滞后一个月(2026-07-28 审计验证,报告 §2.1 于此通道言过其实)。
+        macro_pit  = macro.shift(1)
+        prices_pit = etf_prices.shift(1)
+        bench_pit  = bench_series.shift(1) if bench_series is not None else None
+
         for dt in all_dates:
             # Update emergency_active state: clear when VIX recovers
-            if emergency_active and "vix" in macro.columns and dt in macro.index:
-                current_vix = float(macro.loc[dt, "vix"]) if not pd.isna(macro.loc[dt, "vix"]) else vix_threshold
+            if emergency_active and "vix" in macro_pit.columns and dt in macro_pit.index:
+                current_vix = float(macro_pit.loc[dt, "vix"]) if not pd.isna(macro_pit.loc[dt, "vix"]) else vix_threshold
                 if current_vix < vix_recovery:
                     emergency_active = False
 
             trigger_emergency = should_emergency_rebalance(
-                macro.loc[:dt] if dt in macro.index else macro,
+                macro_pit.loc[:dt] if dt in macro_pit.index else macro_pit,
                 current_weights,
                 vix_threshold=vix_threshold,
                 emergency_active=emergency_active,
@@ -602,7 +614,7 @@ class SectorRotationBacktest:
                     latest_scores = avail_scores.iloc[-1]
                     scores_records[dt] = latest_scores.to_dict()
 
-                    hist_ret = etf_daily_ret.loc[:dt].iloc[
+                    hist_ret = etf_daily_ret[etf_daily_ret.index < dt].iloc[
                         -self.port_cfg.get("cov", {}).get("lookback_days", 252):
                     ]
                     proposed_weights = optimize_weights(
@@ -628,7 +640,7 @@ class SectorRotationBacktest:
                     max_to = self.reb_cfg.get("max_monthly_turnover", 0.80)
                     filtered_weights = cap_turnover(filtered_weights, current_weights, max_to)
 
-                    macro_slice = macro.loc[:dt] if dt in macro.index else macro
+                    macro_slice = macro_pit.loc[:dt] if dt in macro_pit.index else macro_pit
                     # equity_curve is a pd.Series of portfolio values; dropna() gives
                     # only the completed trading days prior to today's rebalance.
                     ec_so_far = equity_curve.dropna()
@@ -659,25 +671,25 @@ class SectorRotationBacktest:
                             from ..signals.risk_overlay import apply_risk_overlay
                             adj_weights = apply_risk_overlay(
                                 target_weights=adj_weights,
-                                sector_prices=etf_prices,
-                                benchmark_prices=bench_series,
+                                sector_prices=prices_pit,
+                                benchmark_prices=bench_pit,
                                 portfolio_equity=ec_so_far if len(ec_so_far) > 0 else None,
-                                vix=macro.get("vix") if "vix" in macro.columns else None,
+                                vix=macro_pit.get("vix") if "vix" in macro_pit.columns else None,
                                 rebalance_date=dt,
                                 config=risk_overlay_cfg,
                             )
 
                     # ── Update position tracker BEFORE stop-loss check ──
                     if _position_tracker is not None:
-                        _position_tracker.update(dt, adj_weights, etf_prices)
+                        _position_tracker.update(dt, adj_weights, prices_pit)
 
                     # ── Stop-loss (extreme events only) ──────────────
                     if _stop_loss_cfg.get("enabled", False):
                         _stopped, _sl_events, _halve = _stop_loss_fn(
                             current_weights=adj_weights,
                             position_tracker=_position_tracker,
-                            sector_prices=etf_prices,
-                            spy_prices=bench_series,
+                            sector_prices=prices_pit,
+                            spy_prices=bench_pit,
                             rebalance_date=dt,
                             config=_stop_loss_cfg,
                         )
@@ -717,7 +729,8 @@ class SectorRotationBacktest:
                     # Record position states after stop-loss adjustments
                     if _position_tracker is not None:
                         # Re-update with final weights (after stops may have zeroed some)
-                        _position_tracker.update(dt, current_weights, etf_prices)
+                        # PIT: tracker 状态供下一日止损决策,只可含 ≤dt-1 收盘
+                        _position_tracker.update(dt, current_weights, prices_pit)
                         _position_states_history[dt] = _position_tracker.get_all_states()
 
             # Daily mark-to-market

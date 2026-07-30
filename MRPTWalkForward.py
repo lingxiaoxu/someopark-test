@@ -369,6 +369,40 @@ def run_grid_for_window(window, output_dir, skip_if_exists=False):
     return summaries[0]
 
 
+def _has_internal_gap(sub_df):
+    """sub_df 是单只票的 OHLCV 6列。只看它自己第一条有效记录之后有没有 NaN——
+    上市前的合法空白不算。"""
+    valid = sub_df.dropna(how='all')
+    if valid.empty:
+        return False
+    return sub_df.loc[valid.index[0]:].isna().any().any()
+
+
+def _sweep_and_repair_nan(historical_data, symbols, start_date, end_date):
+    """预加载完的宽表做一次全量 NaN 扫描，命中的股票单独重拉补丁。
+    只跑一次，同一份 historical_data 被多个 param set / test window 复用时不用重复扫。"""
+    nan_syms = [s for s in symbols
+                if any(c[1] == s for c in historical_data.columns)
+                and _has_internal_gap(historical_data[[c for c in historical_data.columns if c[1] == s]])]
+    if not nan_syms:
+        return historical_data
+
+    log.warning(f'[NaN-SWEEP] internal gap(s) detected for {nan_syms}, re-fetching individually ...')
+    for sym in nan_syms:
+        cols = [c for c in historical_data.columns if c[1] == sym]
+        try:
+            fixed = PortfolioRun.load_historical_data(start_date, end_date, [sym]).reindex(historical_data.index)
+            historical_data.update(fixed)
+            if _has_internal_gap(historical_data[cols]):
+                log.warning(f'[NaN-SWEEP] {sym}: still has internal gap after re-fetch — '
+                            f'leaving as-is (per-day try/except will skip affected pair-days, run continues)')
+            else:
+                log.warning(f'[NaN-SWEEP] {sym}: repaired via individual re-fetch')
+        except Exception as e:
+            log.error(f'[NaN-SWEEP] {sym}: repair attempt failed ({e}), leaving as-is')
+    return historical_data
+
+
 def _run_grid_direct(train_cfg, window, window_dir):
     """
     Execute each run in train_cfg directly via PortfolioRun.main(),
@@ -398,6 +432,7 @@ def _run_grid_direct(train_cfg, window, window_dir):
     sym_key = tuple(all_symbols)
     log.info(f'    Pre-loading {len(all_symbols)} symbols ...')
     data_cache[sym_key] = PortfolioRun.load_historical_data(start_date, end_date, list(all_symbols))
+    data_cache[sym_key] = _sweep_and_repair_nan(data_cache[sym_key], all_symbols, start_date, end_date)
 
     all_results = []
     charts_dir = os.path.join(window_dir, 'charts')
@@ -625,6 +660,7 @@ def run_test_window(window, selected_pairs, window_dir):
     except SystemExit:
         log.warning(f'  [Window {window["window_idx"]}] Data load failed (future dates / API error) — skipping.')
         return None
+    historical_data = _sweep_and_repair_nan(historical_data, all_symbols, start_date, end_date)
 
     run_label = f'wf_test_window{window["window_idx"]:02d}_{window["test_start"]}_{window["test_end"]}'
     log.info(f'  [Window {window["window_idx"]}] Running OOS test: {run_label}')

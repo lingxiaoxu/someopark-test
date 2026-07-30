@@ -1,86 +1,92 @@
 [
   {
-    "s1": "VLO",
+    "s1": "INCY",
+    "s2": "BLDR",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "INCY",
     "s2": "PNR",
-    "sector": "energy",
-    "spread_col": "Momentum_Spread_energy"
-  },
-  {
-    "s1": "VLO",
-    "s2": "NKE",
-    "sector": "energy",
-    "spread_col": "Momentum_Spread_energy"
-  },
-  {
-    "s1": "PSX",
-    "s2": "CCI",
-    "sector": "energy",
-    "spread_col": "Momentum_Spread_energy"
-  },
-  {
-    "s1": "PSX",
-    "s2": "CMCSA",
-    "sector": "energy",
-    "spread_col": "Momentum_Spread_energy"
-  },
-  {
-    "s1": "BBY",
-    "s2": "GOOGL",
-    "sector": "food",
-    "spread_col": "Momentum_Spread_food"
-  },
-  {
-    "s1": "BBY",
-    "s2": "MSCI",
-    "sector": "food",
-    "spread_col": "Momentum_Spread_food"
-  },
-  {
-    "s1": "HWM",
-    "s2": "AMZN",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "HWM",
-    "s2": "LOW",
-    "sector": "industrial",
-    "spread_col": "Momentum_Spread_industrial"
-  },
-  {
-    "s1": "DGX",
-    "s2": "UBER",
     "sector": "health",
     "spread_col": "Momentum_Spread_health"
   },
   {
-    "s1": "DGX",
-    "s2": "CCL",
+    "s1": "IQV",
+    "s2": "LII",
     "sector": "health",
     "spread_col": "Momentum_Spread_health"
   },
   {
-    "s1": "JPM",
-    "s2": "RMD",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "JPM",
-    "s2": "IDXX",
-    "sector": "finance",
-    "spread_col": "Momentum_Spread_finance"
-  },
-  {
-    "s1": "UNP",
+    "s1": "IQV",
     "s2": "AKAM",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "BBY",
+    "s2": "ON",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "BBY",
+    "s2": "MPWR",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
+  },
+  {
+    "s1": "DGX",
+    "s2": "AMZN",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "DGX",
+    "s2": "CHRW",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
+  },
+  {
+    "s1": "PSX",
+    "s2": "CARR",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "PSX",
+    "s2": "DOV",
+    "sector": "energy",
+    "spread_col": "Momentum_Spread_energy"
+  },
+  {
+    "s1": "PRU",
+    "s2": "UPS",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "PRU",
+    "s2": "GOOGL",
+    "sector": "finance",
+    "spread_col": "Momentum_Spread_finance"
+  },
+  {
+    "s1": "PAYX",
+    "s2": "NVDA",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
   },
   {
-    "s1": "UNP",
-    "s2": "GILD",
+    "s1": "PAYX",
+    "s2": "SPGI",
     "sector": "industrial",
     "spread_col": "Momentum_Spread_industrial"
+  },
+  {
+    "s1": "ROST",
+    "s2": "TXT",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
   }
 ]

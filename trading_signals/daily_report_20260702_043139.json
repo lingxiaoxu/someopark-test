@@ -593,19 +593,22 @@
           "symbol": "GLW",
           "shares": 575,
           "side": "BUY",
-          "price": 255.43,
-          "est_value": 146872.0
+          "price": 220.63,
+          "est_value": 126862.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "s2": {
           "symbol": "FOX",
           "shares": -1306,
           "side": "SELL_SHORT",
-          "price": 46.84,
-          "est_value": 61173.0
+          "price": 48.42,
+          "est_value": 63237.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
-        "unrealized_pnl": 26596.99,
-        "unrealized_pnl_pct": 14.975,
-        "note": "Holding long, signal=1.436, exit at 0.318"
+        "unrealized_pnl": 4526.7,
+        "unrealized_pnl_pct": 2.549,
+        "note": "Holding long, signal=1.436, exit at 0.318",
+        "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
       },
       {
         "pair": "IRM/EFX",
@@ -697,19 +700,22 @@
           "symbol": "GLW",
           "shares": 575,
           "side": "BUY",
-          "price": 255.43,
-          "est_value": 146872.0
+          "price": 220.63,
+          "est_value": 126862.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "s2": {
           "symbol": "FOXA",
           "shares": -1191,
           "side": "SELL_SHORT",
-          "price": 52.16,
-          "est_value": 62123.0
+          "price": 54.13,
+          "est_value": 64469.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
-        "unrealized_pnl": 25707.48,
-        "unrealized_pnl_pct": 14.472,
-        "note": "Holding long, signal=1.402, exit at 0.319"
+        "unrealized_pnl": 3352.97,
+        "unrealized_pnl_pct": 1.887,
+        "note": "Holding long, signal=1.402, exit at 0.319",
+        "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
       },
       {
         "pair": "CAT/ADBE",
@@ -1253,27 +1259,30 @@
           "symbol": "GLW",
           "shares": 575,
           "side": "BUY",
-          "price": 255.43,
-          "est_value": 146872.0
+          "price": 220.63,
+          "est_value": 126862.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "s2": {
           "symbol": "FOX",
           "shares": -1306,
           "side": "SELL_SHORT",
-          "price": 46.84,
-          "est_value": 61173.0
+          "price": 48.42,
+          "est_value": 63237.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
-        "s1_price": 255.43,
-        "s2_price": 46.84,
+        "s1_price": 220.63,
+        "s2_price": 48.42,
         "s1_shares": 575,
         "s2_shares": -1306,
-        "total_notional": 208045.0,
+        "total_notional": 190099.0,
         "note": "Holding long, signal=1.436, exit at 0.318",
         "oos_sharpe": 0.5931,
         "oos_pnl_$1m": 8277.0,
         "oos_maxdd_$1m": -18114.0,
         "oos_pos_windows": "6/6",
-        "oos_tier": 2
+        "oos_tier": 2,
+        "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
       },
       {
         "pair": "GLW/FOXA",
@@ -1287,27 +1296,30 @@
           "symbol": "GLW",
           "shares": 575,
           "side": "BUY",
-          "price": 255.43,
-          "est_value": 146872.0
+          "price": 220.63,
+          "est_value": 126862.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "s2": {
           "symbol": "FOXA",
           "shares": -1191,
           "side": "SELL_SHORT",
-          "price": 52.16,
-          "est_value": 62123.0
+          "price": 54.13,
+          "est_value": 64469.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
-        "s1_price": 255.43,
-        "s2_price": 52.16,
+        "s1_price": 220.63,
+        "s2_price": 54.13,
         "s1_shares": 575,
         "s2_shares": -1191,
-        "total_notional": 208995.0,
+        "total_notional": 191331.0,
         "note": "Holding long, signal=1.402, exit at 0.319",
         "oos_sharpe": 0.31,
         "oos_pnl_$1m": 5201.0,
         "oos_maxdd_$1m": -21627.0,
         "oos_pos_windows": "6/6",
-        "oos_tier": 2
+        "oos_tier": 2,
+        "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
       }
     ],
     "flat_signals": [

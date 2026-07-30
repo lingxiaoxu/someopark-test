@@ -418,7 +418,7 @@ def composite_score(
         for name in mcps_scores:
             if name in eq_cache.columns:
                 eq = eq_cache[name].dropna()
-                tail = eq[eq.index <= sd].tail(60)
+                tail = eq[eq.index < sd].tail(60)   # PIT(2026-07-28): 回放态剔 signal-date 当日行;live 语义=昨日完整行,两态一致
                 if len(tail) >= 30:
                     rets = tail.pct_change().dropna()
                     if len(rets) > 5 and rets.std() > 0:

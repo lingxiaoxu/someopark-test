@@ -160,7 +160,9 @@ def macro_positioning(signal_date: date, macro_df: pd.DataFrame,
         if len(sub) < 60 or len(feats) < 2:
             return result
         sd = pd.Timestamp(signal_date, tz="UTC")
-        upto = sub[sub.index <= sd]
+        # PIT: strictly before signal_date — the row AT sd is that day's own
+        # (still-forming) bar; including it is lookahead in any replay/backtest
+        upto = sub[sub.index < sd]
         if upto.empty:
             return result
         today_raw = upto.iloc[-1].to_numpy(dtype=float)
@@ -212,7 +214,7 @@ def mcps_realtime_scores(signal_date: date, macro_df: pd.DataFrame,
     if not feats:
         return scores
     sd = pd.Timestamp(signal_date, tz="UTC" if macro_df.index.tz else None)
-    upto = macro_df[macro_df.index <= sd]
+    upto = macro_df[macro_df.index < sd]      # PIT: exclude signal_date's own bar
     if upto.empty:
         return scores
     today_vec = {f: float(upto[f].dropna().iloc[-1])
@@ -399,7 +401,7 @@ def composite_score(mcps_scores: Dict[str, float], cluster_oos: dict,
         for name in mcps_scores:
             if name in eq_cache.columns:
                 eq = eq_cache[name].dropna()
-                tail = eq[eq.index <= sd].tail(60)
+                tail = eq[eq.index < sd].tail(60)   # PIT: exclude signal_date's own bar
                 if len(tail) >= 30:
                     rets = tail.pct_change().dropna()
                     if len(rets) > 5 and rets.std() > 0:
@@ -481,7 +483,7 @@ def macro_weight_tilt(target_weights: pd.Series, macro_df: pd.DataFrame,
         if len(sub) < 60 or not feats:
             return target_weights
         sd = pd.Timestamp(signal_date, tz="UTC" if sub.index.tz else None)
-        upto = sub[sub.index <= sd]
+        upto = sub[sub.index < sd]            # PIT: exclude signal_date's own bar
         if upto.empty:
             return target_weights
         today = upto.iloc[-1].to_numpy(dtype=float)

@@ -80,10 +80,10 @@
 
   策略    配对            方向        持有天    z/ms     uPnL($)   uPnL%  参数集
   ------------------------------------------------------------------------
-  MTFS  GLW/FOX       long        1  +1.436    $+26,597 +14.97%  monthly_aligned_windows
+  MTFS  GLW/FOX       long        1  +1.436     $+4,527  +2.55%  monthly_aligned_windows  [MANUAL FIX 07-28]
   MTFS  TER/ISRG      long        1  +1.228     $+5,204  +4.06%  long_term_kalman
   MTFS  PWR/NKE       long        0  +0.867     $+1,729  +1.12%  aggressive
-  MTFS  GLW/FOXA      long        2  +1.402    $+25,707 +14.47%  monthly_aligned_windows
+  MTFS  GLW/FOXA      long        2  +1.402     $+3,353  +1.89%  monthly_aligned_windows  [MANUAL FIX 07-28]
   MTFS  CAT/ADBE      long        1  +0.804     $+9,319  +3.79%  aggressive
   MTFS  CVS/NKE       long        0  +0.826       $+562  +0.26%  aggressive
 
@@ -231,9 +231,9 @@
   │  Momentum Spread       : +1.4360  (entry threshold: ±0.274)
   │  Exit threshold      : ±0.318
   │  Days held           : 1
-  │  执行腿 1            : BUY          GLW  +575股 @$255.43  ≈ $146,872
-  │  执行腿 2            : SELL_SHORT   FOX  -1306股 @$46.84  ≈ $61,173
-  │  合计名义市值        : $208,045
+  │  执行腿 1            : BUY          GLW  +575股 @$220.63  ≈ $126,862  [MANUAL FIX 07-28: 原$255.43系6/30陈旧收盘]
+  │  执行腿 2            : SELL_SHORT   FOX  -1306股 @$48.42  ≈ $63,237  [MANUAL FIX 07-28: 原$46.84同上]
+  │  合计名义市值        : $190,099  [MANUAL FIX 07-28]
   │  OOS参考 (Tier 2)  : Sharpe=+0.593  PnL=+8,277  MaxDD=-18,114  正收益窗口=6/6
   │  备注                : Holding long, signal=1.436, exit at 0.318
   └────────────────────────────────────────────────────────────
@@ -242,9 +242,9 @@
   │  Momentum Spread       : +1.4020  (entry threshold: ±0.272)
   │  Exit threshold      : ±0.319
   │  Days held           : 2
-  │  执行腿 1            : BUY          GLW  +575股 @$255.43  ≈ $146,872
-  │  执行腿 2            : SELL_SHORT   FOXA  -1191股 @$52.16  ≈ $62,123
-  │  合计名义市值        : $208,995
+  │  执行腿 1            : BUY          GLW  +575股 @$220.63  ≈ $126,862  [MANUAL FIX 07-28: 原$255.43系6/30陈旧收盘]
+  │  执行腿 2            : SELL_SHORT   FOXA  -1191股 @$54.13  ≈ $64,469  [MANUAL FIX 07-28: 原$52.16同上]
+  │  合计名义市值        : $191,331  [MANUAL FIX 07-28]
   │  OOS参考 (Tier 2)  : Sharpe=+0.310  PnL=+5,201  MaxDD=-21,627  正收益窗口=6/6
   │  备注                : Holding long, signal=1.402, exit at 0.319
   └────────────────────────────────────────────────────────────

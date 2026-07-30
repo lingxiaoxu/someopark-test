@@ -62,7 +62,11 @@ def build_regime_inputs(prices: pd.DataFrame, funding: pd.DataFrame,
         dom_s = pd.Series(dom.btc_dominance_pct.values,
                           index=pd.DatetimeIndex(dom.date).tz_localize("UTC"))
         frame["btc_dominance"] = dom_s.reindex(frame.index, method="ffill")
-    return frame
+    # PIT: every column is measured WITH day-T information (rvol includes
+    # r(T); funding settles during T) yet is consumed at the day-T rebalance
+    # before r(T) accrues — the emergency/progressive de-risk would otherwise
+    # dodge the very crash bar that triggers it. Lag one day.
+    return frame.shift(1)
 
 
 # ── walk-forward wiring (Plan 05 §8) ─────────────────────────────────────────

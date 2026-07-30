@@ -274,7 +274,7 @@ router.post('/', async (req, res) => {
         : Array.isArray(lastUser?.content)
           ? lastUser.content.filter((b: any) => b.type === 'text').map((b: any) => b.text).join(' ')
           : ''
-      const artifacts = detectArtifacts(qText)
+      const artifacts = detectArtifacts(qText, (req.body as any)?.appMode)
       if (artifacts.length > 0) send({ type: 'artifact', artifacts })
     } catch { /* best-effort, never block the agent */ }
 

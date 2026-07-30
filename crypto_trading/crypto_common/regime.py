@@ -427,7 +427,9 @@ def compute_regime_hmm(
         raise ValueError(f"No regime features available. Expected: {features}")
 
     macro_z = normalize_macro(macro[available])
-    X = macro_z.ffill().bfill().values
+    # PIT: ffill only — bfill would seed early rows with future values; leading
+    # NaN rows are dropped by valid_mask below
+    X = macro_z.ffill().values
 
     # Drop rows with any NaN
     valid_mask = ~np.isnan(X).any(axis=1)

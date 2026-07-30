@@ -228,6 +228,16 @@ class PerpRotationBacktest:
     ) -> BacktestResult:
         bench_series = (perp_prices[BENCHMARK_TICKER]
                         if BENCHMARK_TICKER in perp_prices.columns else None)
+        # ── PIT alignment (2026-07-28 audit): a rebalance at row dt may only use
+        # information through the PREVIOUS row's close. composite rows are
+        # stamped the day their inputs complete (carry uses day-T funding,
+        # low-vol/market-risk channels use day-T closes) and the same row's
+        # return then accrues to the new weights — lag the whole signal frame.
+        # Stops likewise trigger on the prior close, never the close they would
+        # be dodging.
+        composite = composite.shift(1)
+        stop_prices = perp_prices.shift(1)
+        stop_bench = bench_series.shift(1) if bench_series is not None else None
         portfolio_value = initial_capital
         current_weights = pd.Series(0.0, index=tickers)
         prev_scores = pd.Series(0.0, index=tickers)
@@ -341,7 +351,9 @@ class PerpRotationBacktest:
                     latest_scores = avail_scores.iloc[-1]
                     scores_records[dt] = latest_scores.to_dict()
 
-                    hist_ret = perp_daily_ret.loc[:dt].iloc[
+                    hist_ret = perp_daily_ret.loc[:dt]
+                    # PIT: row dt's return has not happened at rebalance time
+                    hist_ret = hist_ret[hist_ret.index < dt].iloc[
                         -self.port_cfg.get("cov", {}).get("lookback_days", 365):
                     ]
                     proposed_weights = optimize_weights(
@@ -390,16 +402,17 @@ class PerpRotationBacktest:
                         rvol_progressive_tiers=prog_tiers,
                     )
 
-                    # position tracker + stop-loss — template verbatim
+                    # position tracker + stop-loss — template mechanics, but on
+                    # LAGGED prices (see PIT note above)
                     if _position_tracker is not None:
-                        _position_tracker.update(dt, adj_weights, perp_prices)
+                        _position_tracker.update(dt, adj_weights, stop_prices)
 
                     if _stop_loss_cfg.get("enabled", False):
                         _stopped, _sl_events, _halve = _stop_loss_fn(
                             current_weights=adj_weights,
                             position_tracker=_position_tracker,
-                            sector_prices=perp_prices,
-                            benchmark_prices=bench_series,
+                            sector_prices=stop_prices,
+                            benchmark_prices=stop_bench,
                             rebalance_date=dt,
                             config=_stop_loss_cfg,
                         )
@@ -436,7 +449,7 @@ class PerpRotationBacktest:
                     risk_flags_records.append({"date": dt, **flags.to_dict()})
 
                     if _position_tracker is not None:
-                        _position_tracker.update(dt, current_weights, perp_prices)
+                        _position_tracker.update(dt, current_weights, stop_prices)
                         _position_states_history[dt] = _position_tracker.get_all_states()
 
             # Daily mark-to-market — template + FUNDING ACCRUAL (crypto)

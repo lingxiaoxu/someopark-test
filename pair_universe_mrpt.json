@@ -18,6 +18,12 @@
     "z_col": "Z_tech"
   },
   {
+    "s1": "JNJ",
+    "s2": "PFE",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
     "s1": "TPR",
     "s2": "YUM",
     "sector": "food",
@@ -28,6 +34,18 @@
     "s2": "HIG",
     "sector": "finance",
     "z_col": "Z_finance"
+  },
+  {
+    "s1": "RMD",
+    "s2": "SYK",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
+    "s1": "INTC",
+    "s2": "NVDA",
+    "sector": "tech",
+    "z_col": "Z_tech"
   },
   {
     "s1": "DUK",
@@ -42,8 +60,8 @@
     "z_col": "Z_industrial"
   },
   {
-    "s1": "RMD",
-    "s2": "SYK",
+    "s1": "IDXX",
+    "s2": "STE",
     "sector": "health",
     "z_col": "Z_health"
   },
@@ -66,27 +84,9 @@
     "z_col": "Z_finance"
   },
   {
-    "s1": "JNJ",
-    "s2": "PFE",
-    "sector": "health",
-    "z_col": "Z_health"
-  },
-  {
-    "s1": "INTC",
-    "s2": "NVDA",
-    "sector": "tech",
-    "z_col": "Z_tech"
-  },
-  {
     "s1": "ADI",
     "s2": "AKAM",
     "sector": "tech",
     "z_col": "Z_tech"
-  },
-  {
-    "s1": "IDXX",
-    "s2": "STE",
-    "sector": "health",
-    "z_col": "Z_health"
   }
 ]

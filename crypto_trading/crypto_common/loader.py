@@ -19,6 +19,7 @@ import json
 import logging
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from crypto_trading.crypto_common.config import PRICE_DATA
@@ -160,16 +161,63 @@ def load_poll_market_stats(ticker: str, *, env: str = "prod",
     if len(df):
         df = df.drop_duplicates("recv_ts", keep="first")   # overlap-safe
         df = _utc_index(df, "recv_ts", unit="s")
+        df = _drop_quote_outliers(df, ticker)
+    return df
+
+
+def _drop_quote_outliers(df: pd.DataFrame, ticker: str, max_ratio: float = 5.0,
+                         max_spread_bps: float = 500.0) -> pd.DataFrame:
+    """Null out corrupt bid/ask prints.
+
+    Observed corruption: a sentinel value 4.61169e14 appears in KXDOGE/KXSOL/
+    KXLINK poll rows and PERSISTS for 30+ minutes, so a local rolling-median
+    reference is itself contaminated. The reference must therefore be GLOBAL:
+    these markets move a few percent over the sample, so anything beyond a
+    factor of ``max_ratio`` from the全-sample median mid is garbage, not price.
+    Only the price columns are nulled; OI/contract_size on the row survive.
+    """
+    bid, ask = df["bid"], df["ask"]
+    mid = (bid + ask) / 2.0
+    # A quote is TRADEABLE only with both sides present and uncrossed. A missing
+    # bid (observed venue-wide at 2026-07-09 07:00) makes mid = ask/2 — a
+    # phantom 50% crash that fabricates enormous "returns" on every alt.
+    one_sided = (bid <= 0) | (ask <= 0) | ~np.isfinite(bid) | ~np.isfinite(ask) | (ask < bid)
+    finite = mid[~one_sided & (mid > 0) & np.isfinite(mid)]
+    if len(finite) < 50:
+        return df
+    ref = float(finite.median())
+    if not np.isfinite(ref) or ref <= 0:
+        return df
+    spread_bps = 1e4 * (ask - bid) / mid.replace(0.0, np.nan)
+    bad = (one_sided | (mid <= 0) | ~np.isfinite(mid)
+           | (mid > ref * max_ratio) | (mid < ref / max_ratio)
+           | (spread_bps > max_spread_bps))
+    n_bad = int(bad.sum())
+    if n_bad:
+        logger.warning("%s: nulled %d corrupt quote rows (median %.4g, worst %.4g)",
+                       ticker, n_bad, ref, float(mid[bad].abs().max()))
+        df.loc[bad, ["bid", "ask", "price"]] = np.nan
     return df
 
 
 # ── index proxy ─────────────────────────────────────────────────────────────
 
 def load_index_composite(asset: str, *, start=None, end=None) -> pd.DataFrame:
+    """1m spot composite, re-labeled to bar END so a row at T is knowable at T.
+
+    Exchange candle APIs (Coinbase/Kraken/Bitstamp) stamp bars at their START:
+    the raw parquet row labeled T holds trades from [T, T+60) — future data
+    relative to its own label. Kalshi candles use end_period_ts (bar END).
+    Joining the two raw series therefore hands the index side ~60s of lookahead
+    (verified empirically against the 5s live index feed, 2026-07-28). The +1min
+    shift here aligns both to the PIT-safe end-label convention.
+    """
     path = INDEX_DIR / f"{asset}_composite_1m.parquet"
     if not path.exists():
         raise FileNotFoundError(f"no composite for {asset} — run refdata.index backfill")
-    return _clip(_utc_index(pd.read_parquet(path)), start, end)
+    df = _utc_index(pd.read_parquet(path))
+    df.index = df.index + pd.Timedelta(minutes=1)
+    return _clip(df, start, end)
 
 
 def load_index_live(asset: str, *, days: list[str] | None = None) -> pd.DataFrame:
@@ -193,7 +241,16 @@ def load_offshore(kind: str, symbol: str, *, driver: str | None = None) -> pd.Da
         if path.exists():
             df = pd.read_parquet(path)
             ts_col = "ts" if "ts" in df.columns else "funding_time"
-            return _utc_index(df, ts_col)
+            df = _utc_index(df, ts_col)
+            # PIT: exchange klines stamp bars at their START (OKX 1d additionally
+            # on the Hong-Kong day boundary, 16:00 UTC) — re-label to bar END so a
+            # row at T is knowable at T, same fix as load_index_composite.
+            # funding rows are settlement events (known at their timestamp): no shift.
+            if kind == "klines_1h":
+                df.index = df.index + pd.Timedelta(hours=1)
+            elif kind == "klines_1d":
+                df.index = df.index + pd.Timedelta(days=1)
+            return df
     raise FileNotFoundError(f"no offshore {kind} for {symbol}")
 
 

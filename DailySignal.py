@@ -1753,11 +1753,25 @@ def update_inventory_from_signals(
                 # Do NOT update shares on HOLD — open shares are fixed at entry and
                 # must not drift with regime-driven capital/scale changes each day.
 
-    # ── days_held 收尾重算（2026-07-25 修复）─────────────────────────────────
-    # 旧逻辑在 HOLD 分支 +1，但 HOLD 由模拟盘状态驱动：模拟盘未持有该 pair 时发
-    # "观望"，计数永不自增（实测 AIG/CFG 持 17 天显示 0）。改为对全部在持仓位
-    # 按 open_date → signal_date 的交易日数直接重算，不依赖信号动作，天然幂等。
-    for pair, rec in inv['pairs'].items():
+    _recompute_days_held(inv, signal_date)
+    return inv
+
+
+def _recompute_days_held(inv: dict, signal_date) -> None:
+    """days_held 重算（2026-07-25 修复,2026-07-28 提前到信号构建前调用）。
+
+    旧逻辑在 HOLD 分支 +1，但 HOLD 由模拟盘状态驱动：模拟盘未持有该 pair 时发
+    "观望"，计数永不自增（实测 AIG/CFG 持 17 天显示 0）。改为对全部在持仓位
+    按 open_date → signal_date 的交易日数直接重算，不依赖信号动作，天然幂等。
+
+    调用时机(2026-07-28 补丁): 原来只在 update_inventory_from_signals 尾部调用
+    （落盘前），但报告/信号里嵌的 days_held 取自本次运行*开始时*读入的
+    inventory（早于该次重算写回），导致报告永远显示"上一交易日"的值——首次
+    验证时 ANET/LKQ 报告显示 0 而库存已是 8（10 步交易日）即此滞后的实例。
+    现在改为 in-place 原地修改传入的 inv dict,并在每个 load_inventory() 之后、
+    构建任何信号/报告之前也调用一次（幂等：同一 signal_date 内多次调用得到
+    相同结果），消灭报告与库存之间的一日滞后。"""
+    for pair, rec in inv.get('pairs', {}).items():
         if not rec.get('direction'):
             continue
         od = rec.get('open_date')
@@ -1767,7 +1781,6 @@ def update_inventory_from_signals(
             rec['days_held'] = int(np.busday_count(od, signal_date))
         except (TypeError, ValueError):
             pass   # open_date 异常时保留原值，不让记账字段炸掉主流程
-    return inv
 
 
 # ── Simulation runner ──────────────────────────────────────────────────────────
@@ -1847,6 +1860,48 @@ def _run_simulation(strategy, pair_configs, signal_date, inventory):
 
 
 # ── Existing-position monitor (isolated from new-signal logic) ─────────────────
+
+def _mongo_close_fallback(symbol: str, date_str: str) -> float | None:
+    """价格滞后时的当场补救(2026-07-28)。
+
+    qlib 模拟引擎的价格源在启动时一次性预加载(PortfolioMRPTRun.py 的
+    data.history(...)),若那次加载时当日数据尚未到位,整次运行里该价格永远
+    陈旧、无重试机制(2026-07-01 实例: GLW 当日暴跌 -13.6%,系统却读到 6/30
+    收盘价当 7/1 用,报出方向错误的浮盈,掩盖了正在发生的崩跌)。
+
+    Mongo `stock_data` 是独立刷新的另一条数据管线,节奏未必与 qlib 数据包
+    同步——查一次经常能补上缺口。严格短超时 + 全面 try/except:任何失败
+    (含 Mongo 不可用/超时/字段缺失)都安全返回 None,退回既有的"价格缺失"
+    安全分支,绝不让批处理因此卡住或崩溃。
+    """
+    try:
+        uri = os.environ.get("MONGO_URI")
+        if not uri:
+            return None
+        from pymongo import MongoClient
+        cli = MongoClient(uri, tz_aware=True, serverSelectionTimeoutMS=4000,
+                          socketTimeoutMS=6000, connectTimeoutMS=4000)
+        col = cli["someopark"]["stock_data"]
+        day_start = int(pd.Timestamp(date_str).timestamp() * 1000)
+        day_end = day_start + 86_400_000
+        doc = col.find_one({"symbol": symbol, "t": {"$gte": day_start, "$lt": day_end}},
+                           {"c": 1, "_id": 0})
+        if not doc or doc.get("c") is None:
+            return None
+        close = float(doc["c"])
+        # 与主查询路径同款拆股调整(as-traded → 当前口径),避免跨拆股期错配
+        try:
+            from CorporateActions import adjust_price_df
+            sdf = pd.DataFrame({"c": [close]}, index=[pd.Timestamp(date_str)])
+            adjust_price_df(sdf, symbol, volume_col=None)
+            close = float(sdf["c"].iloc[0])
+        except Exception:
+            pass
+        return close
+    except Exception as e:  # noqa: BLE001
+        log.debug(f"[monitor] Mongo 兜底查询失败 {symbol}@{date_str}: {e}")
+        return None
+
 
 def _run_position_monitor(
     pair_key: str,
@@ -2169,15 +2224,39 @@ def _run_position_monitor(
         }
 
     # Today's price
+    # 2026-07-28 修复(根因): effective_ts 早于 signal_date 时(§1936-38 已探测到
+    # "no data for {signal_date}; using {effective_ts.date()}",但探测结果此前
+    # 未阻断下游)—— price_history 最新一条其实是*昨天*的收盘价。若仍当作今天
+    # 的价格算 uPnL,会用陈旧价格掩盖当日真实波动(2026-07-01 实例: GLW 当日
+    # 崩跌 -13.6%,系统却读到 6/30 收盘 $255.43 当 7/1 用,报出 +$26,597 浮盈,
+    # 而 7/1 真实收盘 $220.63 对应浮盈仅 +$5,006——错误方向掩盖了正在发生的
+    # 暴跌)。当场补救: 先试一次 Mongo 独立数据源(_mongo_close_fallback,与
+    # qlib 数据包节奏未必同步,查一次经常能补上);两边都没有才真的走"价格
+    # 缺失"分支(不显示误导数字,而非显示错误数字),note 里显式标注原因。
+    stale_data = effective_ts.date() < signal_date
     prices_today = {}
-    for sym in (s1, s2):
-        ph = context.portfolio.price_history.get(sym)
-        if ph:
-            prices_today[sym] = ph[-1][1]
+    if not stale_data:
+        for sym in (s1, s2):
+            ph = context.portfolio.price_history.get(sym)
+            if ph:
+                prices_today[sym] = ph[-1][1]
+    else:
+        sd_str = signal_date.isoformat() if hasattr(signal_date, "isoformat") else str(signal_date)
+        for sym in (s1, s2):
+            px = _mongo_close_fallback(sym, sd_str)
+            if px is not None:
+                prices_today[sym] = px
+        if len(prices_today) == 2:
+            log.info(f"[monitor] {pair_key}: 模拟引擎价格滞后(最新 {effective_ts.date()})"
+                     f"— 已用 Mongo 独立数据源补上 {signal_date} 收盘价")
 
     sig = _build_signal(pair_key, s1, s2, today_rv, {'pairs': {pair_key: inv_pair}},
                         context, prices_today, strategy, scale_factor=scale_factor,
                         event_close=event_close, event_close_reason=event_close_reason)
+    if stale_data and len(prices_today) < 2:
+        sig['note'] = (f"[STALE_PRICE] 模拟引擎数据滞后(最新 {effective_ts.date()},"
+                       f"signal_date {signal_date}),Mongo 兜底也未取到 — uPnL 挂起不计算,"
+                       f"避免用昨日收盘冒充今日 | {sig.get('note', '')}").strip(' |')
 
     # Tag as coming from position monitor (not new-signal selection)
     sig['monitored']  = True
@@ -2247,6 +2326,9 @@ def monitor_existing_positions(
 
     for strategy in ('mrpt', 'mtfs'):
         inventory = load_inventory(strategy)
+        # 2026-07-28: 信号构建前先重算 days_held(消灭报告与库存间的一日滞后,
+        # 详见 _recompute_days_held 文档)
+        _recompute_days_held(inventory, signal_date)
         pairs_inv = inventory.get('pairs', {})
         sim_capital = float(inventory.get('capital', BACKTEST_BASE_CAPITAL))
         # Semi event-risk REDUCE: which held pairs to close (cached; shared with veto)
@@ -2909,6 +2991,8 @@ def _run_single(strategy: str, signal_date: date, dry_run: bool,
     """Run one strategy, return output dict."""
     pair_configs = get_pair_configs_mrpt() if strategy == 'mrpt' else get_pair_configs_mtfs()
     inventory    = load_inventory(strategy)
+    # 2026-07-28: 信号构建前先重算 days_held(消灭报告与库存间的一日滞后)
+    _recompute_days_held(inventory, signal_date)
     sim_capital  = float(inventory.get('capital', BACKTEST_BASE_CAPITAL))
     scale_factor = compute_scale_factor(capital, sim_capital)
 

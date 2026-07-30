@@ -571,9 +571,9 @@
   "sidebar": {
     "appName": "Someo Park",
     "appMode": "Modo App",
-    "predictionMarket": "Mercado de Predicción",
+    "predictionMarket": "Mercado de Predicción Mundial",
     "wcLive": "Mundial 2026 · EN VIVO",
-    "wcSwitch": "Cambiar a modo Mundial",
+    "wcSwitch": "Mundial 2026",
     "agentRuntime": "Entorno de ejecución",
     "cloudVps": "SomeoClaw en Cloud VPS",
     "cloudHosted": "Alojado por Someo Park",
@@ -605,8 +605,8 @@
     "aboutDevTitle": "Sobre el desarrollador",
     "aboutDevBio": "Lingxiao fue Estratega Cuantitativo Senior, Vicepresidente (VP) en Goldman Sachs, posee un MBA de la Yale School of Management y se graduó del departamento de IEOR de la Columbia School of Engineering. Anteriormente, Lingxiao gestionó operaciones en el grupo de Derivados Estructurados de Renta Variable en UBS Investment Bank y también trabajó en Bank of America Merrill Lynch. Lingxiao es el Campeón del Goldman Sachs Global Engineering Hackathon en 2024 y fue premiado en el GDPS 2026 (Conferencia Global de Pioneros del Desarrollo 2026, Shanghái) en el hackathon global por una aplicación AI Agentic.",
     "aiQuant": "Estrategia cuant IA",
-    "aiQuantSwitch": "Volver a acciones",
-    "macroMarket": "Mercados macro",
+    "aiQuantSwitch": "Acciones · Portafolio",
+    "macroMarket": "Mercado de Predicción Macro",
     "macroMarketSub": "Fed · IPC · Empleo · Kalshi"
   },
   "chat": {
@@ -1175,6 +1175,7 @@
     "overviewText1": "Macro Markets es un sistema de paper trading en los mercados de predicción macro de Kalshi: modela las publicaciones macro de EE. UU. — decisiones de la Fed, inflación CPI/PCE, solicitudes de desempleo, nóminas no agrícolas y tasa de paro — y valora los contratos Kalshi correspondientes.",
     "overviewText2": "Cada predicción sigue la disciplina point-in-time (PIT): los modelos solo ven datos disponibles en el momento de la predicción, para un historial fuera de muestra honesto.",
     "overviewText3": "El sistema se actualiza a diario a las 05:00 ET: renueva los datos fuente, revalúa cada serie/período abierto, clasifica la divergencia modelo-mercado y registra decisiones (entrada/salida/pasar) con mark-to-market de las posiciones.",
-    "overviewText4": "Solo opera con dinero de papel hasta pasar las puertas: el Brier fuera de muestra del modelo debe superar al del mercado, y los límites de riesgo (por evento / familia / clúster / bruto) acotan la exposición antes de considerar dinero real."
+    "overviewText4": "Solo opera con dinero de papel hasta pasar las puertas: el Brier fuera de muestra del modelo debe superar al del mercado, y los límites de riesgo (por evento / familia / clúster / bruto) acotan la exposición antes de considerar dinero real.",
+    "rateLadderTitle": "Nivel de tasas post-reunión (KXFED)"
   }
 }

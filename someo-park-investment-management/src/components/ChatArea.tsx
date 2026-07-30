@@ -436,7 +436,7 @@ export default function ChatArea({
         s.type === 'text' ? s.text : `\n![${s.alt}](${s.src})\n`
       ).join('')
 
-      for await (const evt of callAgent(apiMessages, { id: languageModel.model }, sessionIdRef.current, session?.access_token)) {
+      for await (const evt of callAgent(apiMessages, { id: languageModel.model }, sessionIdRef.current, session?.access_token, appMode)) {
         if (evt.type === 'thinking') {
           steps.push({ type: 'thinking', text: evt.text })
         } else if (evt.type === 'tool_call') {

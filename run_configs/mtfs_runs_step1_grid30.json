@@ -8,60 +8,64 @@
       "param_set": "default",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -70,60 +74,64 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -132,60 +140,64 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -194,60 +206,64 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -256,60 +272,64 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -318,60 +338,64 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -380,60 +404,64 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -442,60 +470,64 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -504,60 +536,64 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -566,60 +602,64 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -628,60 +668,64 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -690,60 +734,64 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -752,60 +800,64 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -814,60 +866,64 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -876,60 +932,64 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -938,60 +998,64 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1000,60 +1064,64 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1062,60 +1130,64 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1124,60 +1196,64 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1186,60 +1262,64 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1248,60 +1328,64 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1310,60 +1394,64 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1372,60 +1460,64 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1434,60 +1526,64 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1496,60 +1592,64 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1558,60 +1658,64 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1620,60 +1724,64 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1682,60 +1790,64 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1744,60 +1856,64 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1806,60 +1922,64 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1868,60 +1988,64 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1930,60 +2054,64 @@
       "param_set": "monthly_aligned_windows_fc",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -1992,60 +2120,64 @@
       "param_set": "short_term_beta_neutral_fc",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -2054,60 +2186,64 @@
       "param_set": "fast_strict_fc",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     },
@@ -2116,60 +2252,64 @@
       "param_set": "monthly_aligned_windows_fc_skip",
       "pairs": [
         [
-          "VLO",
+          "INCY",
+          "BLDR"
+        ],
+        [
+          "INCY",
           "PNR"
         ],
         [
-          "VLO",
-          "NKE"
+          "IQV",
+          "LII"
         ],
         [
-          "PSX",
-          "CCI"
-        ],
-        [
-          "PSX",
-          "CMCSA"
-        ],
-        [
-          "BBY",
-          "GOOGL"
-        ],
-        [
-          "BBY",
-          "MSCI"
-        ],
-        [
-          "HWM",
-          "AMZN"
-        ],
-        [
-          "HWM",
-          "LOW"
-        ],
-        [
-          "DGX",
-          "UBER"
-        ],
-        [
-          "DGX",
-          "CCL"
-        ],
-        [
-          "JPM",
-          "RMD"
-        ],
-        [
-          "JPM",
-          "IDXX"
-        ],
-        [
-          "UNP",
+          "IQV",
           "AKAM"
         ],
         [
-          "UNP",
-          "GILD"
+          "BBY",
+          "ON"
+        ],
+        [
+          "BBY",
+          "MPWR"
+        ],
+        [
+          "DGX",
+          "AMZN"
+        ],
+        [
+          "DGX",
+          "CHRW"
+        ],
+        [
+          "PSX",
+          "CARR"
+        ],
+        [
+          "PSX",
+          "DOV"
+        ],
+        [
+          "PRU",
+          "UPS"
+        ],
+        [
+          "PRU",
+          "GOOGL"
+        ],
+        [
+          "PAYX",
+          "NVDA"
+        ],
+        [
+          "PAYX",
+          "SPGI"
+        ],
+        [
+          "ROST",
+          "TXT"
         ]
       ]
     }

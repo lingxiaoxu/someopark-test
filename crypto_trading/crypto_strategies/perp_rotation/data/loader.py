@@ -34,7 +34,12 @@ PROXY_SYMBOLS: Dict[str, str] = {
 
 
 def _to_daily_utc(s: pd.Series) -> pd.Series:
-    return s.resample("1D").last()
+    # End-labeled candles: the point at exactly T+1 00:00 is day T's close.
+    # Bin (T, T+1] labeled T puts each day's close on its own calendar day so
+    # the price panel lines up with the funding panel (day-T settlements at
+    # label T). Default label-left put day-T's close on row T+1, leaving the
+    # two panels one day apart. PIT holds because the engine lags decisions.
+    return s.resample("1D", label="left", closed="right").last()
 
 
 def build_perp_panel(

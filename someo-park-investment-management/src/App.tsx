@@ -128,17 +128,12 @@ export default function App() {
     document.documentElement.setAttribute('data-mode', appMode);
   }, [appMode]);
 
-  // WC button: stock/macro → 'prediction'; prediction → 'stock' (unchanged semantics).
-  const toggleAppMode = useCallback(() => {
+  // Three direct-entry mode buttons (no more toggle/flip semantics) — clicking a
+  // button always enters that mode; clicking the already-active one is a no-op.
+  const enterAppMode = useCallback((m: 'stock' | 'prediction' | 'macro') => {
     setActiveArtifact(null);   // drop any open artifact so modes never cross-render
     setShowSettings(false);
-    setAppMode(m => (m === 'prediction' ? 'stock' : 'prediction'));
-  }, [setAppMode]);
-  // Macro button: stock/prediction → 'macro'; macro → 'stock'.
-  const toggleMacroMode = useCallback(() => {
-    setActiveArtifact(null);
-    setShowSettings(false);
-    setAppMode(m => (m === 'macro' ? 'stock' : 'macro'));
+    setAppMode(m);
   }, [setAppMode]);
   const [lastClosedArtifact, setLastClosedArtifact] = useState<any>(null);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -389,8 +384,7 @@ export default function App() {
             agentMode={agentMode}
             setAgentMode={setAgentMode}
             appMode={appMode}
-            onToggleAppMode={toggleAppMode}
-            onToggleMacroMode={toggleMacroMode}
+            onSetAppMode={enterAppMode}
             isLocalConnected={isLocalConnected}
             onSettingsClick={() => { setShowSettings(true); setActiveArtifact(null); setCodePreview(null); }}
             session={session}

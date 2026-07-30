@@ -380,7 +380,7 @@ def compute_regime_hmm(
         raise ValueError(f"No macro features available. Expected: {features}")
 
     macro_z = normalize_macro(macro[available])
-    X = macro_z.ffill().bfill().values
+    X = macro_z.ffill().values   # PIT(2026-07-28): bfill 以未来值回填早期行;前导 NaN 由 valid_mask 丢弃
 
     # Drop rows with any NaN
     valid_mask = ~np.isnan(X).any(axis=1)

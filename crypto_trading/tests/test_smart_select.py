@@ -111,10 +111,15 @@ def test_anomaly_detection_far_from_clusters(sandbox):
     macro = _macro()
     ss.build_centroids(macro, n_clusters=3)
     shocked = macro.copy()
-    shocked.iloc[-1] = [200.0, 0.05, 100.0, 20.0]    # absurd regime vector
-    pos = ss.macro_positioning(date(2026, 7, 19), shocked)
+    shocked.iloc[-1] = [200.0, 0.05, 100.0, 20.0]    # absurd regime vector (2026-07-19)
+    # PIT: signal_date's own bar is excluded, so query the NEXT day — the
+    # shocked row is then the last completed bar
+    pos = ss.macro_positioning(date(2026, 7, 20), shocked)
     assert pos["available"] and pos["anomaly"] is True
     assert pos["anomaly_action"] == "auto_conservative"
+    # and on 07-19 itself the shocked bar must be invisible → no anomaly
+    pos_same_day = ss.macro_positioning(date(2026, 7, 19), shocked)
+    assert pos_same_day["available"] and pos_same_day["anomaly"] is False
 
 
 def test_save_state_persists(sandbox):

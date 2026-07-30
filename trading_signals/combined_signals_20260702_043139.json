@@ -151,7 +151,7 @@
       "mtfs_vol": null,
       "vol_ratio": null
     },
-    "weight_rationale": "Regime score: 42.0/100  \u2192  MRPT 55%  MTFS 45%\n\n  Volatility   : VIX=17.0 (z=-0.35)\n  Credit       : HY spread=2.75% IG=0.76\n  Rates        : Yield curve (10y-2y)=+0.31  EFFR=3.63\n  AI/Momentum  : NVDA 20d=-11.2%  ARKK 20d=+2.4%\n  Macro stress : St.Louis FSI=-0.6445  NFCI=-0.504\n  Geopolitical : GLD 20d=-10.0%  USO 20d=-24.8%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.46\n    credit         : [\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.02\n    rates          : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.43\n    momentum_ai    : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.60\n    macro_stress   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.47\n    geopolitical   : [\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.26\n    strategy_vol   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.50",
+    "weight_rationale": "Regime score: 42.0/100  →  MRPT 55%  MTFS 45%\n\n  Volatility   : VIX=17.0 (z=-0.35)\n  Credit       : HY spread=2.75% IG=0.76\n  Rates        : Yield curve (10y-2y)=+0.31  EFFR=3.63\n  AI/Momentum  : NVDA 20d=-11.2%  ARKK 20d=+2.4%\n  Macro stress : St.Louis FSI=-0.6445  NFCI=-0.504\n  Geopolitical : GLD 20d=-10.0%  USO 20d=-24.8%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [█████████░░░░░░░░░░░] 0.46\n    credit         : [░░░░░░░░░░░░░░░░░░░░] 0.02\n    rates          : [████████░░░░░░░░░░░░] 0.43\n    momentum_ai    : [████████████░░░░░░░░] 0.60\n    macro_stress   : [█████████░░░░░░░░░░░] 0.47\n    geopolitical   : [█████░░░░░░░░░░░░░░░] 0.26\n    strategy_vol   : [██████████░░░░░░░░░░] 0.50",
     "indicator_history": {
       "vol_eq_vix_level": [
         0.266486,
@@ -1350,7 +1350,7 @@
         "days_held": 0,
         "unrealized_pnl": -6690.2,
         "unrealized_pnl_pct": -1.604,
-        "note": "signal=-1.445 passed exit threshold 0.0 \u2014 close long",
+        "note": "signal=-1.445 passed exit threshold 0.0 — close long",
         "leg_s1": {
           "symbol": "HAS",
           "shares": 2455,
@@ -1377,8 +1377,8 @@
         "s1": "GLW",
         "s2": "FOX",
         "momentum_spread": 1.436,
-        "s1_price": 255.43,
-        "s2_price": 46.84,
+        "s1_price": 220.63,
+        "s2_price": 48.42,
         "action": "HOLD",
         "direction": "long",
         "entry_threshold": 0.274,
@@ -1391,22 +1391,25 @@
           "symbol": "GLW",
           "shares": 575,
           "side": "BUY",
-          "price": 255.43,
-          "est_value": 146872.0
+          "price": 220.63,
+          "est_value": 126862.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "leg_s2": {
           "symbol": "FOX",
           "shares": -1306,
           "side": "SELL_SHORT",
-          "price": 46.84,
-          "est_value": 61173.0
+          "price": 48.42,
+          "est_value": 63237.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "monitored": true,
         "open_date": "2026-06-25",
         "param_set": "monthly_aligned_windows",
-        "unrealized_pnl": 26596.99,
-        "unrealized_pnl_pct": 14.975,
-        "monitor_history_file": "trading_signals/monitor_history/monitor_mtfs_GLW_FOX_20260702_043025.xlsx"
+        "unrealized_pnl": 4526.7,
+        "unrealized_pnl_pct": 2.549,
+        "monitor_history_file": "trading_signals/monitor_history/monitor_mtfs_GLW_FOX_20260702_043025.xlsx",
+        "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
       },
       {
         "pair": "IRM/EFX",
@@ -1419,7 +1422,7 @@
         "momentum_spread": 0.226,
         "unrealized_pnl": -6096.54,
         "unrealized_pnl_pct": -3.948,
-        "note": "Injected position closed in simulation on 2026-06-30 (Pair P&L Stop Loss (-3.95%)). Simulation stopped \u2014 synthetic re-entry suppressed.",
+        "note": "Injected position closed in simulation on 2026-06-30 (Pair P&L Stop Loss (-3.95%)). Simulation stopped — synthetic re-entry suppressed.",
         "monitor_history_file": "trading_signals/monitor_history/monitor_mtfs_IRM_EFX_20260702_043027.xlsx"
       },
       {
@@ -1499,8 +1502,8 @@
         "s1": "GLW",
         "s2": "FOXA",
         "momentum_spread": 1.402,
-        "s1_price": 255.43,
-        "s2_price": 52.16,
+        "s1_price": 220.63,
+        "s2_price": 54.13,
         "action": "HOLD",
         "direction": "long",
         "entry_threshold": 0.272,
@@ -1513,22 +1516,25 @@
           "symbol": "GLW",
           "shares": 575,
           "side": "BUY",
-          "price": 255.43,
-          "est_value": 146872.0
+          "price": 220.63,
+          "est_value": 126862.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "leg_s2": {
           "symbol": "FOXA",
           "shares": -1191,
           "side": "SELL_SHORT",
-          "price": 52.16,
-          "est_value": 62123.0
+          "price": 54.13,
+          "est_value": 64469.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "monitored": true,
         "open_date": "2026-06-25",
         "param_set": "monthly_aligned_windows",
-        "unrealized_pnl": 25707.48,
-        "unrealized_pnl_pct": 14.472,
-        "monitor_history_file": "trading_signals/monitor_history/monitor_mtfs_GLW_FOXA_20260702_043032.xlsx"
+        "unrealized_pnl": 3352.97,
+        "unrealized_pnl_pct": 1.887,
+        "monitor_history_file": "trading_signals/monitor_history/monitor_mtfs_GLW_FOXA_20260702_043032.xlsx",
+        "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
       },
       {
         "pair": "CAT/ADBE",
@@ -1761,7 +1767,7 @@
         "mtfs_vol": null,
         "vol_ratio": null
       },
-      "weight_rationale": "Regime score: 42.0/100  \u2192  MRPT 55%  MTFS 45%\n\n  Volatility   : VIX=17.0 (z=-0.35)\n  Credit       : HY spread=2.75% IG=0.76\n  Rates        : Yield curve (10y-2y)=+0.31  EFFR=3.63\n  AI/Momentum  : NVDA 20d=-11.2%  ARKK 20d=+2.4%\n  Macro stress : St.Louis FSI=-0.6445  NFCI=-0.504\n  Geopolitical : GLD 20d=-10.0%  USO 20d=-24.8%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.46\n    credit         : [\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.02\n    rates          : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.43\n    momentum_ai    : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.60\n    macro_stress   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.47\n    geopolitical   : [\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.26\n    strategy_vol   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.50",
+      "weight_rationale": "Regime score: 42.0/100  →  MRPT 55%  MTFS 45%\n\n  Volatility   : VIX=17.0 (z=-0.35)\n  Credit       : HY spread=2.75% IG=0.76\n  Rates        : Yield curve (10y-2y)=+0.31  EFFR=3.63\n  AI/Momentum  : NVDA 20d=-11.2%  ARKK 20d=+2.4%\n  Macro stress : St.Louis FSI=-0.6445  NFCI=-0.504\n  Geopolitical : GLD 20d=-10.0%  USO 20d=-24.8%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [█████████░░░░░░░░░░░] 0.46\n    credit         : [░░░░░░░░░░░░░░░░░░░░] 0.02\n    rates          : [████████░░░░░░░░░░░░] 0.43\n    momentum_ai    : [████████████░░░░░░░░] 0.60\n    macro_stress   : [█████████░░░░░░░░░░░] 0.47\n    geopolitical   : [█████░░░░░░░░░░░░░░░] 0.26\n    strategy_vol   : [██████████░░░░░░░░░░] 0.50",
       "indicator_history": {
         "vol_eq_vix_level": [
           0.266486,
@@ -2953,7 +2959,7 @@
         "s2_price": 23.94,
         "action": "FLAT",
         "entry_threshold": 1.471,
-        "note": "No position, signal=0.432 within \u00b11.471 \u2014 wait"
+        "note": "No position, signal=0.432 within ±1.471 — wait"
       },
       {
         "pair": "BIIB/HCA",
@@ -2964,7 +2970,7 @@
         "s2_price": 389.89,
         "action": "FLAT",
         "entry_threshold": 1.497,
-        "note": "No position, signal=0.11 within \u00b11.497 \u2014 wait"
+        "note": "No position, signal=0.11 within ±1.497 — wait"
       },
       {
         "pair": "BSX/PFE",
@@ -2975,7 +2981,7 @@
         "s2_price": 24.08,
         "action": "FLAT",
         "entry_threshold": 0.764,
-        "note": "No position, signal=0.643 within \u00b10.764 \u2014 wait"
+        "note": "No position, signal=0.643 within ±0.764 — wait"
       },
       {
         "pair": "HWM/ROP",
@@ -2986,7 +2992,7 @@
         "s2_price": 338.39,
         "action": "FLAT",
         "entry_threshold": 0.75,
-        "note": "No position, signal=-0.581 within \u00b10.75 \u2014 wait"
+        "note": "No position, signal=-0.581 within ±0.75 — wait"
       }
     ],
     "step1_closes": []
@@ -3147,7 +3153,7 @@
         "mtfs_vol": null,
         "vol_ratio": null
       },
-      "weight_rationale": "Regime score: 42.0/100  \u2192  MRPT 55%  MTFS 45%\n\n  Volatility   : VIX=17.0 (z=-0.35)\n  Credit       : HY spread=2.75% IG=0.76\n  Rates        : Yield curve (10y-2y)=+0.31  EFFR=3.63\n  AI/Momentum  : NVDA 20d=-11.2%  ARKK 20d=+2.4%\n  Macro stress : St.Louis FSI=-0.6445  NFCI=-0.504\n  Geopolitical : GLD 20d=-10.0%  USO 20d=-24.8%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.46\n    credit         : [\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.02\n    rates          : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.43\n    momentum_ai    : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.60\n    macro_stress   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.47\n    geopolitical   : [\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.26\n    strategy_vol   : [\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591] 0.50",
+      "weight_rationale": "Regime score: 42.0/100  →  MRPT 55%  MTFS 45%\n\n  Volatility   : VIX=17.0 (z=-0.35)\n  Credit       : HY spread=2.75% IG=0.76\n  Rates        : Yield curve (10y-2y)=+0.31  EFFR=3.63\n  AI/Momentum  : NVDA 20d=-11.2%  ARKK 20d=+2.4%\n  Macro stress : St.Louis FSI=-0.6445  NFCI=-0.504\n  Geopolitical : GLD 20d=-10.0%  USO 20d=-24.8%\n\n  Category scores (0=MRPT, 1=MTFS):\n    volatility     : [█████████░░░░░░░░░░░] 0.46\n    credit         : [░░░░░░░░░░░░░░░░░░░░] 0.02\n    rates          : [████████░░░░░░░░░░░░] 0.43\n    momentum_ai    : [████████████░░░░░░░░] 0.60\n    macro_stress   : [█████████░░░░░░░░░░░] 0.47\n    geopolitical   : [█████░░░░░░░░░░░░░░░] 0.26\n    strategy_vol   : [██████████░░░░░░░░░░] 0.50",
       "indicator_history": {
         "vol_eq_vix_level": [
           0.266486,
@@ -4339,7 +4345,7 @@
         "s2_price": 122.42,
         "action": "FLAT",
         "entry_threshold": 0.236,
-        "note": "No position, signal=0.746 within \u00b10.236 \u2014 wait"
+        "note": "No position, signal=0.746 within ±0.236 — wait"
       },
       {
         "pair": "AMAT/ICE",
@@ -4355,7 +4361,7 @@
         "s2_shares": -479,
         "open_hedge_ratio": 5.872796685890667,
         "open_price_level_stop": null,
-        "note": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading",
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
         "leg_s1": {
           "symbol": "AMAT",
           "shares": 163,
@@ -4374,7 +4380,7 @@
         "macro_gate": {
           "vix_term_slope_5d_chg": 2.65,
           "block_new_opens": true,
-          "block_reason": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading"
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
         }
       },
       {
@@ -4386,7 +4392,7 @@
         "s2_price": 373.02,
         "action": "FLAT",
         "entry_threshold": 0.145,
-        "note": "No position, signal=0.508 within \u00b10.145 \u2014 wait"
+        "note": "No position, signal=0.508 within ±0.145 — wait"
       },
       {
         "pair": "JBHT/NKE",
@@ -4402,7 +4408,7 @@
         "s2_shares": -1437,
         "open_hedge_ratio": 7.050669914738125,
         "open_price_level_stop": null,
-        "note": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading",
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
         "leg_s1": {
           "symbol": "JBHT",
           "shares": 203,
@@ -4421,7 +4427,7 @@
         "macro_gate": {
           "vix_term_slope_5d_chg": 2.65,
           "block_new_opens": true,
-          "block_reason": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading"
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
         }
       },
       {
@@ -4438,7 +4444,7 @@
         "s2_shares": -2851,
         "open_hedge_ratio": 20.933816425120774,
         "open_price_level_stop": null,
-        "note": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading",
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
         "leg_s1": {
           "symbol": "LRCX",
           "shares": 271,
@@ -4457,7 +4463,7 @@
         "macro_gate": {
           "vix_term_slope_5d_chg": 2.65,
           "block_new_opens": true,
-          "block_reason": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading"
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
         }
       },
       {
@@ -4474,7 +4480,7 @@
         "s2_shares": -2084,
         "open_hedge_ratio": 25.529661016949152,
         "open_price_level_stop": null,
-        "note": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading",
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
         "leg_s1": {
           "symbol": "AMAT",
           "shares": 163,
@@ -4493,7 +4499,7 @@
         "macro_gate": {
           "vix_term_slope_5d_chg": 2.65,
           "block_new_opens": true,
-          "block_reason": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading"
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
         }
       },
       {
@@ -4510,7 +4516,7 @@
         "s2_shares": -321,
         "open_hedge_ratio": 5.271736761821748,
         "open_price_level_stop": null,
-        "note": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading",
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
         "leg_s1": {
           "symbol": "TER",
           "shares": 61,
@@ -4529,7 +4535,7 @@
         "macro_gate": {
           "vix_term_slope_5d_chg": 2.65,
           "block_new_opens": true,
-          "block_reason": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading"
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
         }
       },
       {
@@ -4546,7 +4552,7 @@
         "s2_shares": -779,
         "open_hedge_ratio": 14.061798494652054,
         "open_price_level_stop": null,
-        "note": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading",
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
         "leg_s1": {
           "symbol": "CAT",
           "shares": 55,
@@ -4565,7 +4571,7 @@
         "macro_gate": {
           "vix_term_slope_5d_chg": 2.65,
           "block_new_opens": true,
-          "block_reason": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading"
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
         }
       },
       {
@@ -4582,7 +4588,7 @@
         "s2_shares": -2094,
         "open_hedge_ratio": 15.371763036537779,
         "open_price_level_stop": null,
-        "note": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading",
+        "note": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading",
         "leg_s1": {
           "symbol": "LRCX",
           "shares": 271,
@@ -4601,7 +4607,7 @@
         "macro_gate": {
           "vix_term_slope_5d_chg": 2.65,
           "block_new_opens": true,
-          "block_reason": "VIX term slope +2.65pt/5d > 1.5 \u2014 market transitioning from panic to calm, MTFS momentum likely fading"
+          "block_reason": "VIX term slope +2.65pt/5d > 1.5 — market transitioning from panic to calm, MTFS momentum likely fading"
         }
       },
       {
@@ -4609,8 +4615,8 @@
         "s1": "GLW",
         "s2": "FOX",
         "momentum_spread": 1.436,
-        "s1_price": 255.43,
-        "s2_price": 46.84,
+        "s1_price": 220.63,
+        "s2_price": 48.42,
         "action": "HOLD",
         "direction": "long",
         "entry_threshold": 0.274,
@@ -4623,24 +4629,27 @@
           "symbol": "GLW",
           "shares": 575,
           "side": "BUY",
-          "price": 255.43,
-          "est_value": 146872.0
+          "price": 220.63,
+          "est_value": 126862.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "leg_s2": {
           "symbol": "FOX",
           "shares": -1306,
           "side": "SELL_SHORT",
-          "price": 46.84,
-          "est_value": 61173.0
-        }
+          "price": 48.42,
+          "est_value": 63237.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
+        },
+        "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
       },
       {
         "pair": "GLW/FOXA",
         "s1": "GLW",
         "s2": "FOXA",
         "momentum_spread": 1.402,
-        "s1_price": 255.43,
-        "s2_price": 52.16,
+        "s1_price": 220.63,
+        "s2_price": 54.13,
         "action": "HOLD",
         "direction": "long",
         "entry_threshold": 0.272,
@@ -4653,16 +4662,19 @@
           "symbol": "GLW",
           "shares": 575,
           "side": "BUY",
-          "price": 255.43,
-          "est_value": 146872.0
+          "price": 220.63,
+          "est_value": 126862.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
         },
         "leg_s2": {
           "symbol": "FOXA",
           "shares": -1191,
           "side": "SELL_SHORT",
-          "price": 52.16,
-          "est_value": 62123.0
-        }
+          "price": 54.13,
+          "est_value": 64469.0,
+          "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
+        },
+        "_manual_fix_note": "[MANUAL FIX 2026-07-28] 原值用陈旧价格(6/30收盘,数据滞后未到)误当7/1价格计算,已用 Mongo 核实的 7/1 真实收盘价重算(GLW $220.63/FOX $48.42/FOXA $54.13)。根因: effective_ts<signal_date 时未阻断 uPnL 计算,已在 DailySignal.py 修复(stale_data guard)。"
       }
     ],
     "step1_closes": []

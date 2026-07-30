@@ -571,9 +571,9 @@
   "sidebar": {
     "appName": "Someo Park",
     "appMode": "Mode App",
-    "predictionMarket": "Marché de Prédiction",
+    "predictionMarket": "Marché de Prédiction Coupe du Monde",
     "wcLive": "Coupe du Monde 2026 · LIVE",
-    "wcSwitch": "Passer en mode CM",
+    "wcSwitch": "Coupe du Monde 2026",
     "agentRuntime": "Environnement d'exécution",
     "cloudVps": "SomeoClaw sur Cloud VPS",
     "cloudHosted": "Hébergé par Someo Park",
@@ -605,8 +605,8 @@
     "aboutDevTitle": "À propos du développeur",
     "aboutDevBio": "Lingxiao était Stratégiste Quantitatif Senior, Vice-Président (VP) chez Goldman Sachs, titulaire d'un MBA de la Yale School of Management et diplômé du département IEOR de la Columbia School of Engineering. Auparavant, Lingxiao a géré des opérations au sein du groupe Equity Structured Derivatives chez UBS Investment Bank et a également travaillé chez Bank of America Merrill Lynch. Lingxiao est le Champion du Goldman Sachs Global Engineering Hackathon en 2024 et a été récompensé au GDPS 2026 (Conférence mondiale des pionniers du développement 2026, Shanghai) lors du hackathon mondial pour une application AI Agentic.",
     "aiQuant": "Stratégie quant IA",
-    "aiQuantSwitch": "Revenir aux actions",
-    "macroMarket": "Marchés macro",
+    "aiQuantSwitch": "Actions · Portefeuille",
+    "macroMarket": "Marché de Prédiction Macro",
     "macroMarketSub": "Fed · CPI · Emploi · Kalshi"
   },
   "chat": {
@@ -1175,6 +1175,7 @@
     "overviewText1": "Macro Markets est un système de paper trading sur les marchés prédictifs macro de Kalshi : il modélise les publications macro US — décisions de la Fed, inflation CPI/PCE, inscriptions au chômage, emplois non agricoles et taux de chômage — et valorise les contrats Kalshi correspondants.",
     "overviewText2": "Chaque prédiction respecte la discipline point-in-time (PIT) : les modèles ne voient que les données disponibles au moment de la prédiction, pour un historique hors échantillon honnête.",
     "overviewText3": "Le système se rafraîchit chaque jour à 05h00 ET : mise à jour des données sources, revalorisation de chaque série/période ouverte, classement des divergences modèle-marché et journalisation des décisions (entrée/sortie/passe) avec mark-to-market des positions.",
-    "overviewText4": "Il ne trade qu'en argent fictif tant que les garde-fous ne sont pas franchis : le Brier hors échantillon du modèle doit battre celui du marché, et les limites de risque (par événement / famille / cluster / brut) plafonnent l'exposition avant tout argent réel."
+    "overviewText4": "Il ne trade qu'en argent fictif tant que les garde-fous ne sont pas franchis : le Brier hors échantillon du modèle doit battre celui du marché, et les limites de risque (par événement / famille / cluster / brut) plafonnent l'exposition avant tout argent réel.",
+    "rateLadderTitle": "Taux post-réunion (KXFED)"
   }
 }

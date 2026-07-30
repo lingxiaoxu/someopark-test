@@ -18,8 +18,7 @@ export default function Sidebar({
   agentMode,
   setAgentMode,
   appMode,
-  onToggleAppMode,
-  onToggleMacroMode,
+  onSetAppMode,
   isLocalConnected,
   onSettingsClick,
   session,
@@ -35,8 +34,7 @@ export default function Sidebar({
   agentMode: 'cloud' | 'local',
   setAgentMode: (mode: 'cloud' | 'local') => void,
   appMode: 'stock' | 'prediction' | 'macro',
-  onToggleAppMode: () => void,
-  onToggleMacroMode?: () => void,
+  onSetAppMode: (mode: 'stock' | 'prediction' | 'macro') => void,
   isLocalConnected: boolean,
   onSettingsClick?: () => void,
   session: Session | null,
@@ -109,16 +107,41 @@ export default function Sidebar({
         </a>
       </div>
 
-      {/* App Mode Selector — World Cup 2026 Prediction Market.
-          Sits between the logo and AGENT RUNTIME. The button INVERTS vs the agent
-          buttons: black in stock mode, white in prediction mode (the active look on
-          the inverted dark shell). Click toggles the whole-site mode. */}
+      {/* App Mode Selector — three direct-entry buttons (stock / WC prediction /
+          macro prediction). Each button always shows ITS OWN mode's label and
+          enters it on click (no more toggle/flip-label semantics); the active
+          button INVERTS (white bg) same as before. */}
       <div className="mb-5">
         <div className="section-label">{t('sidebar.appMode')}</div>
         <button
-          onClick={onToggleAppMode}
+          onClick={() => onSetAppMode('stock')}
           className="flex items-center gap-3 px-3 py-2.5 transition-all w-full"
           style={{
+            background: appMode === 'stock' ? '#fff' : '#111',
+            color: appMode === 'stock' ? '#111' : '#fff',
+            border: '2px solid var(--ink)',
+            borderLeft: '4px solid var(--ink)',
+            boxShadow: 'var(--shadow-pixel-sm)',
+            fontFamily: 'var(--font-mono)',
+            cursor: 'pointer',
+          }}
+        >
+          <Brain className="w-4 h-4" style={{ color: appMode === 'stock' ? '#111' : '#fff' }} />
+          <div className="flex flex-col items-start flex-1">
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+              {t('sidebar.aiQuant')}
+            </span>
+            <span style={{ fontSize: '10px', color: appMode === 'stock' ? '#555' : '#ccc' }}>
+              {t('sidebar.aiQuantSwitch')}
+            </span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => onSetAppMode('prediction')}
+          className="flex items-center gap-3 px-3 py-2.5 transition-all w-full"
+          style={{
+            marginTop: '8px',
             background: appMode === 'prediction' ? '#fff' : '#111',
             color: appMode === 'prediction' ? '#111' : '#fff',
             border: '2px solid var(--ink)',
@@ -128,27 +151,20 @@ export default function Sidebar({
             cursor: 'pointer',
           }}
         >
-          {/* The button shows the DESTINATION mode (where a click takes you): in
-              prediction mode it reads "AI Quant Strategy" (click → back to stocks);
-              in stock mode it reads "Prediction Market" (click → World Cup). Label only;
-              onToggleAppMode is unchanged. */}
-          {appMode === 'prediction'
-            ? <Brain className="w-4 h-4" style={{ color: '#111' }} />
-            : <Trophy className="w-4 h-4" style={{ color: '#fff' }} />}
+          <Trophy className="w-4 h-4" style={{ color: appMode === 'prediction' ? '#111' : '#fff' }} />
           <div className="flex flex-col items-start flex-1">
             <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-              {appMode === 'prediction' ? t('sidebar.aiQuant') : t('sidebar.predictionMarket')}
+              {t('sidebar.predictionMarket')}
             </span>
             <span style={{ fontSize: '10px', color: appMode === 'prediction' ? '#555' : '#ccc' }}>
-              {appMode === 'prediction' ? t('sidebar.aiQuantSwitch') : t('sidebar.wcSwitch')}
+              {t('sidebar.wcSwitch')}
             </span>
           </div>
         </button>
 
-        {/* Macro Markets (Kalshi macro paper-trading) — second app-mode button, same
-            styling pattern as the WC button above: inverted (white bg) when active. */}
+        {/* Macro Markets (Kalshi macro paper-trading) — same styling pattern. */}
         <button
-          onClick={onToggleMacroMode}
+          onClick={() => onSetAppMode('macro')}
           className="flex items-center gap-3 px-3 py-2.5 transition-all w-full"
           style={{
             marginTop: '8px',

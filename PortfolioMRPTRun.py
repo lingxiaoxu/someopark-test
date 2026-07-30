@@ -787,6 +787,19 @@ def load_historical_data_mongo(start_date, end_date, symbols):
         df = df.set_index('date')
         df = df[~df.index.duplicated(keep='last')]
 
+        # ── Internal-gap check（区间"中段"缺口，非上市前正常无数据）────────
+        # 一次瞬时的部分读取（网络/驱动层）可能让 min_expected_rows（≥50%总天数）
+        # 这种粗阈值放过一个局部缺口——阈值 >5 天：NYSE 最长合法连休是 4 天
+        # （周四收盘→周五休市→周末→周一开盘），留 1 天余量。
+        gap_days = df.index.to_series().diff().dt.days.fillna(0)
+        max_gap = gap_days.max()
+        if max_gap > 5:
+            bad_dates = [str(d.date()) for d in df.index[gap_days.values > 5]]
+            log.warning(f"[DataLoader/MRPT] {symbol}  FALLBACK  reason=internal_gap  "
+                        f"max_gap={int(max_gap)}d  gap_dates={bad_dates[:5]}")
+            fallback_symbols.append(symbol)
+            continue
+
         log.info(f"[DataLoader/MRPT] {symbol}  mongo OK  rows={n_rows}  "
                  f"coverage={actual_start}→{actual_end}")
 

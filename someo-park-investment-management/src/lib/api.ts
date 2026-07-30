@@ -214,12 +214,13 @@ export async function* callAgent(
   model: any,
   sessionId: string,
   accessToken?: string,
+  appMode?: string,
 ): AsyncGenerator<any> {
   const res = await fetch(`${API_BASE}/api/agent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...apiHeaders() },
     // lang → server localizes the usage-limit (quota) message in the user's language.
-    body: JSON.stringify({ messages, model, sessionId, accessToken, lang: i18n.language }),
+    body: JSON.stringify({ messages, model, sessionId, accessToken, lang: i18n.language, appMode }),
   })
   if (!res.ok) throw new Error(`Agent API error: ${res.status}`)
 

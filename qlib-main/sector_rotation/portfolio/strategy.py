@@ -124,6 +124,14 @@ else:
             self._composite_signals = composite_signals
             self._etf_prices = etf_prices
             self._macro = macro
+            # ── PIT alignment(2026-07-28 审计续查): qlib 生产路径 generate_trade_decision
+            # 此前对 macro/etf_prices/bench_series 直接同 bar 切片(.loc[:trade_start_time]
+            # 含当日行)——与 _run_native 循环是同一类泄露的独立第二处(此路径原始 bug
+            # 报告明确声明"未审";AISS RUNBOOK 确认 qlib 路径是其生产实际执行路径,
+            # 故此处修复对 AISS 而言优先级不亚于 native 循环)。
+            # 决策专用滞后视图,与上面三行原始帧并存(MTM/qlib 账本仍用原始帧)。
+            self._macro_pit = macro.shift(1)
+            self._etf_prices_pit = etf_prices.shift(1)
             self._rebalance_dates: Set[pd.Timestamp] = set(rebalance_dates)
             self._port_cfg = port_cfg
             self._reb_cfg = reb_cfg
@@ -134,6 +142,7 @@ else:
             self._signal_version = signal_version
             self._risk_overlay_cfg = risk_overlay_cfg
             self._bench_series = bench_series
+            self._bench_pit = bench_series.shift(1) if bench_series is not None else None
 
             # Mutable per-step state
             self._current_weights: pd.Series = pd.Series(dtype=float)
@@ -174,7 +183,7 @@ else:
             # Non-rebalance day: return empty decision immediately
             if trade_start_time not in self._rebalance_dates:
                 # Check emergency re-balance condition
-                macro_slice = self._macro.loc[:trade_start_time] if trade_start_time in self._macro.index else self._macro
+                macro_slice = self._macro_pit.loc[:trade_start_time] if trade_start_time in self._macro_pit.index else self._macro_pit
                 if not should_emergency_rebalance(
                     macro_slice,
                     self._current_weights,
@@ -211,7 +220,7 @@ else:
             filtered_weights = cap_turnover(filtered_weights, self._current_weights, max_to)
 
             # Risk controls (vol scaling, VIX emergency, DD circuit)
-            macro_slice = self._macro.loc[:trade_start_time] if trade_start_time in self._macro.index else self._macro
+            macro_slice = self._macro_pit.loc[:trade_start_time] if trade_start_time in self._macro_pit.index else self._macro_pit
             adj_weights, cash_pct, flags = apply_risk_controls(
                 weights=filtered_weights,
                 portfolio_returns=self._portfolio_daily_returns.iloc[-252:] if len(self._portfolio_daily_returns) > 0 else pd.Series(dtype=float),
@@ -238,11 +247,11 @@ else:
                     from ..signals.risk_overlay import apply_risk_overlay
                     adj_weights = apply_risk_overlay(
                         target_weights=adj_weights,
-                        sector_prices=self._etf_prices,
-                        benchmark_prices=self._bench_series,
+                        sector_prices=self._etf_prices_pit,
+                        benchmark_prices=self._bench_pit,
                         portfolio_equity=((1.0 + self._portfolio_daily_returns).cumprod()
                                           if len(self._portfolio_daily_returns) > 0 else None),
-                        vix=self._macro.get("vix") if "vix" in self._macro.columns else None,
+                        vix=self._macro_pit.get("vix") if "vix" in self._macro_pit.columns else None,
                         rebalance_date=trade_start_time,
                         config=self._risk_overlay_cfg,
                     )
@@ -332,7 +341,7 @@ else:
             as_of: pd.Timestamp,
         ) -> pd.Series:
             """Run optimize_weights for this rebalance date."""
-            hist_ret = self._etf_daily_ret.loc[:as_of].iloc[
+            hist_ret = self._etf_daily_ret[self._etf_daily_ret.index < as_of].iloc[
                 -self._port_cfg.get("cov", {}).get("lookback_days", 252):
             ]
             return optimize_weights(
