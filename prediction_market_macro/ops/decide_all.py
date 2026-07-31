@@ -201,6 +201,20 @@ def run(conn, settings) -> int:
             # skill-aware defense: trailing OOS Brier behind the market ⇒ the
             # computed edge is mostly model error — double the bar, halve the size
             from prediction_market_macro.strategy import skill
+            blk = skill.blocked(conn, spec.ticker)
+            if blk is not None:
+                # WAY behind (ratio>1.5): model-path bets are fee donations. Pass
+                # outright; scoring keeps accruing from preds (no bet required),
+                # and arb/snipe (structural edges) already executed above.
+                from prediction_market_macro.strategy.decision import Decision
+                ledger.record(conn, series=spec.ticker, period=key,
+                              decision=Decision("pass", None, 0.0, 0,
+                                                (f"skill_blocked ratio={blk:.2f}",),
+                                                gates_eff),
+                              pred_inputs={}, model_version=pr["model_version"])
+                set_coverage(conn, spec.ticker, key, "passed")
+                n += 1
+                continue
             sk = skill.defensive(conn, spec.ticker)
             if sk is not None:
                 gates_eff["min_net_edge"] *= 2.0

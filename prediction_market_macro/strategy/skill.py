@@ -11,7 +11,10 @@ automatically the moment the model earns parity — no manual switch.
 from __future__ import annotations
 
 TRAIL = 20
-RATIO_MAX = 1.10
+RATIO_MAX = 1.05          # behind by >5%: defensive (double bar, half size)
+BLOCK_RATIO = 1.50        # behind by >50%: model-path bets are fee donations —
+                          # BLOCKED entirely (arb/snipe/favorite paths unaffected;
+                          # OOS scoring continues from preds, which need no bets)
 MIN_PAIRED = 6
 
 
@@ -41,3 +44,11 @@ def defensive(conn, series: str) -> float | None:
     """Ratio if the series should trade defensively, else None."""
     r = skill_ratio(conn, series)
     return r if (r is not None and r > RATIO_MAX) else None
+
+
+def blocked(conn, series: str) -> float | None:
+    """Ratio if model-path bets should be blocked outright (way behind the
+    market — every 'edge' is model error; a calibrated-but-not-better model
+    betting disagreements is a coin flip minus fees)."""
+    r = skill_ratio(conn, series)
+    return r if (r is not None and r > BLOCK_RATIO) else None

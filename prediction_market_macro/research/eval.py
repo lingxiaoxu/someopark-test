@@ -107,9 +107,14 @@ def _candle_quote(conn, ticker: str, asof: datetime):
 
 def decision_replay(conn, series: str, offset_hours: float = 1.0,
                     max_events: int = 200, bankroll: float = 100.0) -> dict:
-    """For every settled event: rebuild the book at asof from candles, run the SAME
-    enumerate_structs + decide() the production path uses, settle the opened structure
-    against real results, and account PnL net of fees.
+    """For every settled event: rebuild the book from candles, run the SAME
+    enumerate_structs + decide() the production path uses, settle the opened
+    structure against real results, and account PnL net of fees.
+
+    ENTRY POLICY = PRODUCTION POLICY: scan daily from close−max_days_to_close to
+    close−offset_hours and open on the FIRST day the gates clear (the lead sweep
+    proved −1h-only entry is the WORST timing — evaluating the strategy at a
+    timing it never uses was systematically pessimistic).
 
     Candles carry no depth ⇒ the depth gate is waived here (recorded in the output).
     The entropy gate applies as in prod (pure function of the model pmf). The
@@ -142,51 +147,64 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
         if not key or not ev["ct"]:
             continue
         close_ts = datetime.fromisoformat(ev["ct"].replace("Z", "+00:00"))
-        asof = close_ts - timedelta(hours=offset_hours)
         legs = conn.execute(
             "SELECT c.ticker, c.floor_strike strike, c.cap_strike, c.strike_type,"
             " c.close_time, s.result FROM contracts c"
             " JOIN settlements s ON s.ticker=c.ticker"
             " WHERE c.series=? AND s.period=? AND s.result IN ('yes','no')",
             (series, ev["period"])).fetchall()
-        meta, results = [], {}
-        for l in legs:
-            b, a = _candle_quote(conn, l["ticker"], asof)
-            if b is None and a is None:
-                continue
-            meta.append({"ticker": l["ticker"], "strike": l["strike"],
-                         "cap_strike": l["cap_strike"], "strike_type": l["strike_type"],
-                         "close_time": l["close_time"], "yes_bid": b, "yes_ask": a,
-                         "bid_depth": 1e9, "ask_depth": 1e9})
-            results[l["ticker"]] = l["result"]
-        if not meta:
-            continue
-        try:
-            pred = fn(conn, asof, key, series=series)
-        except Exception:                                  # noqa: BLE001
-            skipped += 1
-            continue
-        import math as _math
-        model_mean, entropy_norm = None, None
-        if isinstance(pred.dist, Categorical):
-            structs = _structs_categorical(meta, pred.dist.probs)
-            pv = [v for v in pred.dist.probs.values() if v > 0]
-            if len(pv) > 1:
-                entropy_norm = -sum(p * _math.log(p) for p in pv) / _math.log(len(pv))
-        else:
-            pmf = grid_pmf(pred.dist, spec.round_rule)
-            model_mean = float(sum(k * v for k, v in pmf.items()))
-            pv = [v for v in pmf.values() if v > 0]
-            if len(pv) > 1:
-                entropy_norm = -sum(p * _math.log(p) for p in pv) / _math.log(len(pv))
-            structs = enumerate_structs(meta, pmf, strict=spec.strict_gt)
         rel = conn.execute("SELECT scheduled_ts FROM releases WHERE cal=? AND period=?",
                            (spec.calendar, key)).fetchone()
         release_ts = datetime.fromisoformat(rel["scheduled_ts"]) if rel else None
-        d = decide(structs, now=asof, close_time=close_ts, release_ts=release_ts,
-                   market_implied=None, already_open=False, bankroll=bankroll,
-                   gates=gates, entropy_norm=entropy_norm)
-        if d.action != "open" or d.struct is None:
+        # production entry scan: earliest qualifying day inside the entry window
+        max_lead = float(gates.get("max_days_to_close", 7.0))
+        asof_candidates = []
+        step = close_ts - timedelta(days=max_lead)
+        step = step.replace(hour=16, minute=0, second=0, microsecond=0)
+        while step < close_ts - timedelta(hours=offset_hours):
+            asof_candidates.append(step)
+            step += timedelta(days=1)
+        asof_candidates.append(close_ts - timedelta(hours=offset_hours))
+        d, st, asof, meta, results = None, None, None, [], {}
+        import math as _math
+        model_mean = None
+        for cand in asof_candidates:
+            meta, results = [], {}
+            for l in legs:
+                b, a = _candle_quote(conn, l["ticker"], cand)
+                if b is None and a is None:
+                    continue
+                meta.append({"ticker": l["ticker"], "strike": l["strike"],
+                             "cap_strike": l["cap_strike"],
+                             "strike_type": l["strike_type"],
+                             "close_time": l["close_time"], "yes_bid": b, "yes_ask": a,
+                             "bid_depth": 1e9, "ask_depth": 1e9})
+                results[l["ticker"]] = l["result"]
+            if not meta:
+                continue
+            try:
+                pred = fn(conn, cand, key, series=series)
+            except Exception:                              # noqa: BLE001
+                continue
+            model_mean, entropy_norm = None, None
+            if isinstance(pred.dist, Categorical):
+                structs = _structs_categorical(meta, pred.dist.probs)
+                pv = [v for v in pred.dist.probs.values() if v > 0]
+            else:
+                pmf = grid_pmf(pred.dist, spec.round_rule)
+                model_mean = float(sum(k * v for k, v in pmf.items()))
+                pv = [v for v in pmf.values() if v > 0]
+                structs = enumerate_structs(meta, pmf, strict=spec.strict_gt)
+            entropy_norm = (-sum(p * _math.log(p) for p in pv) / _math.log(len(pv))
+                            if len(pv) > 1 else None)
+            cand_d = decide(structs, now=cand, close_time=close_ts,
+                            release_ts=release_ts, market_implied=None,
+                            already_open=False, bankroll=bankroll,
+                            gates=gates, entropy_norm=entropy_norm)
+            if cand_d.action == "open" and cand_d.struct is not None:
+                d, asof = cand_d, cand
+                break
+        if d is None:
             continue
         st, count = d.struct, d.count
         realized = 0.0
