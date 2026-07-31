@@ -311,6 +311,51 @@ def run_series(conn, series: str) -> dict:
                     (series, p["period"], src, "-1h", round(p[keyn], 6),
                      p.get("n_legs-1h"), now_iso))
     conn.commit()
+    # walk-forward POOLED source (improvement C): per-leg binary log-pool of model
+    # and market probs with inverse-MSPE weights learned ONLY from past events —
+    # measures what the ensemble would have scored, no leakage. When the market is
+    # sharper, pooling drags fair toward it and kills the false edges the decision
+    # replay showed realizing as losses.
+    pooled_b, mkt_b_paired = [], []
+    cum_m, cum_k, n_seen = 0.0, 0.0, 0
+    for p in per:
+        legs = p.get("legs-1h") or []
+        bm, bk = p.get("brier_model-1h"), p.get("brier_market-1h")
+        if legs and n_seen >= 3:
+            wm_raw = 1.0 / max(cum_m / n_seen, 1e-6)
+            wk_raw = 1.0 / max(cum_k / n_seen, 1e-6)
+            wm = max(0.10, min(0.90, wm_raw / (wm_raw + wk_raw)))
+            wk = 1.0 - wm
+            bs, n = 0.0, 0
+            for f, mp, out in legs:
+                f = min(max(f, 1e-4), 1 - 1e-4)
+                mp = min(max(mp, 1e-4), 1 - 1e-4)
+                num = (f ** wm) * (mp ** wk)
+                den = num + ((1 - f) ** wm) * ((1 - mp) ** wk)
+                pp = num / den
+                bs += (pp - out) ** 2
+                n += 1
+            if n:
+                pooled_b.append(bs / n)
+                mkt_b_paired.append(bk)
+                conn.execute(
+                    "INSERT OR REPLACE INTO source_scores(series, period, source,"
+                    " offset, brier, n_legs, created_ts) VALUES(?,?,?,?,?,?,?)",
+                    (series, p["period"], "pooled", "-1h", round(bs / n, 6), n,
+                     now_iso))
+        if bm is not None and bk is not None:
+            cum_m += bm
+            cum_k += bk
+            n_seen += 1
+    if pooled_b:
+        _store(conn, "pooled_replay", series, f"n{len(pooled_b)}", {
+            "n": len(pooled_b),
+            "brier_model-1h": round(float(np.mean(pooled_b)), 5),
+            "brier_market-1h": round(float(np.mean(
+                [b for b in mkt_b_paired if b is not None])), 5),
+            "n_scored-1h": len(pooled_b),
+            "note": "pooled = walk-forward log-pool(model, market), no leakage"})
+    conn.commit()
     # isotonic calibration map refit (OOS pairs only, §19-3)
     from prediction_market_macro.strategy.calibration import (fit_map, store_map,
                                                               store_named_map)

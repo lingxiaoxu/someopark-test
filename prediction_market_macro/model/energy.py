@@ -31,7 +31,7 @@ import pandas as pd
 from prediction_market_macro.model.common import Empirical, GaussianMix, Pred
 from prediction_market_macro.model.features import FeatureStore
 
-VERSION = "energy/0.1.0"
+VERSION = "energy/0.3.0"          # 0.3.0: AAA drift regression (settled-mid targets)
 
 _FUT_ROOT = {"KXWTIW": "CL", "KXNATGASW": "NG"}
 _N_SAMPLES = 20_000
@@ -72,6 +72,63 @@ def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
                 data_horizon=datetime.fromisoformat(horizon))
 
 
+def _aaa_settled_mids(conn, asof: datetime) -> list[tuple[datetime, float]]:
+    """(settle_ts, interval-censored print mid) for every PAST settled AAA event:
+    the print lies in (max YES strike, min NO strike] on the 0.002 grid."""
+    rows = conn.execute(
+        "SELECT s.period, s.settled_ts, c.floor_strike, s.result FROM settlements s"
+        " JOIN contracts c ON c.ticker=s.ticker WHERE s.series='KXAAAGASW'"
+        " AND s.result IN ('yes','no') AND c.floor_strike IS NOT NULL"
+        " AND s.settled_ts <= ?", (asof.isoformat(),)).fetchall()
+    by_ev: dict[str, dict] = {}
+    for r in rows:
+        ev = by_ev.setdefault(r["period"], {"yes": [], "no": [], "ts": r["settled_ts"]})
+        ev[r["result"]].append(float(r["floor_strike"]))
+    out = []
+    for ev in by_ev.values():
+        if not ev["yes"] or not ev["no"]:
+            continue
+        lo, hi = max(ev["yes"]), min(ev["no"])
+        if hi <= lo:
+            continue
+        out.append((datetime.fromisoformat(ev["ts"].replace("Z", "+00:00")),
+                    (lo + hi) / 2.0))
+    out.sort()
+    return out
+
+
+def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
+    """Walk-forward drift regression for the AAA weekly settle (2026-07-31, after
+    the decision replay exposed the failure): the settle-vs-proxy gap is NOT a
+    level offset — it is the CURRENT week's price move, sign-flipping with the
+    gasoline trend, which a damped 4-week average chronically lags. Regress
+    (settled mid − latest GASREGW) on [last GASREGW weekly diff, RB futures
+    10-bday move] over past settled events (PIT: everything <= asof).
+    Returns (coef intercept/b1/b2, resid_sigma, n) or None when n < 10."""
+    mids = _aaa_settled_mids(conn, asof)
+    if len(mids) < 10:
+        return None
+    X, y = [], []
+    for ts, mid in mids:
+        g, _ = fs.fred_series("GASREGW", ts)
+        if len(g) < 6:
+            continue
+        g_last = float(g.iloc[-1])
+        g_diff = float(g.iloc[-1] - g.iloc[-2])
+        rb, _h = fs.fut_closes("RB", ts, n=15)
+        rb_mv = (float(rb.iloc[-1] / rb.iloc[0] - 1) * g_last
+                 if len(rb) >= 10 else 0.0)
+        X.append([1.0, g_diff, rb_mv])
+        y.append(mid - g_last)
+    if len(y) < 10:
+        return None
+    Xa, ya = np.asarray(X), np.asarray(y)
+    coef = np.linalg.lstsq(Xa, ya, rcond=None)[0]
+    resid = ya - Xa @ coef
+    sigma = max(float(np.std(resid)), 0.02)
+    return coef, sigma, len(y)
+
+
 def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
     fs = FeatureStore(conn)
     s, horizon = fs.fred_series("GASREGW", asof)
@@ -79,19 +136,31 @@ def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
         raise RuntimeError(f"KXAAAGASW: GASREGW history too short at {asof} (n={len(s)})")
     last = float(s.iloc[-1])
     dw = s.diff().dropna()
-    trend_w = float(dw.tail(4).mean()) * 0.5                   # damped weekly trend
     sig_w = max(1.4826 * float(np.median(np.abs(dw.tail(52) - dw.tail(52).median()))),
                 0.01)
     weeks = max((pd.Timestamp(period) - pd.Timestamp(s.index[-1])).days / 7.0, 0.15)
-    mu = last + trend_w * weeks
-    sigma = sig_w * 1.5 * math.sqrt(weeks)                     # x1.5: EIA-vs-AAA proxy noise
+    fit = _aaa_drift_fit(conn, fs, asof)
+    if fit is not None:
+        coef, resid_sig, n_fit = fit
+        g_diff = float(s.iloc[-1] - s.iloc[-2])
+        rb, _h = fs.fut_closes("RB", asof, n=15)
+        rb_mv = (float(rb.iloc[-1] / rb.iloc[0] - 1) * last
+                 if len(rb) >= 10 else 0.0)
+        drift = float(coef[0] + coef[1] * g_diff + coef[2] * rb_mv)
+        mu = last + drift
+        sigma = resid_sig * math.sqrt(max(weeks, 1.0))
+        mode = f"drift_regression(n={n_fit})"
+    else:
+        trend_w = float(dw.tail(4).mean()) * 0.5           # cold-start fallback
+        mu = last + trend_w * weeks
+        sigma = sig_w * 1.5 * math.sqrt(weeks)
+        drift, mode = trend_w * weeks, "damped_trend_fallback"
     dist = GaussianMix(((1.0, mu, sigma),))
     return Pred(series="KXAAAGASW", period=period, dist=dist, asof=asof,
                 model_version=VERSION,
-                inputs={"anchor_gasregw": round(last, 3), "trend_w": round(trend_w, 4),
-                        "sigma_w": round(sig_w, 4), "weeks": round(weeks, 2),
-                        "mu": round(mu, 3), "sigma": round(sigma, 4),
-                        "proxy_note": "GASREGW anchor; AAA level offset uncalibrated"},
+                inputs={"anchor_gasregw": round(last, 3), "drift": round(drift, 4),
+                        "mode": mode, "weeks": round(weeks, 2),
+                        "mu": round(mu, 3), "sigma": round(sigma, 4)},
                 data_horizon=datetime.fromisoformat(horizon))
 
 

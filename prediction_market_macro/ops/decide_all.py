@@ -198,6 +198,15 @@ def run(conn, settings) -> int:
             # envelope ⇒ halve size until it re-enters
             from prediction_market_macro.strategy import conformal
             gates_eff["max_size_usd"] *= conformal.sizing_factor(conn, spec.ticker)
+            # skill-aware defense: trailing OOS Brier behind the market ⇒ the
+            # computed edge is mostly model error — double the bar, halve the size
+            from prediction_market_macro.strategy import skill
+            sk = skill.defensive(conn, spec.ticker)
+            if sk is not None:
+                gates_eff["min_net_edge"] *= 2.0
+                gates_eff["max_size_usd"] *= 0.5
+                gates_eff["fav_min_edge_per_day"] = \
+                    gates_eff.get("fav_min_edge_per_day", 0.008) * 2.0
             # §23.2-3a: wide book ⇒ devigged market prob is noise ⇒ sanity gate
             # falls back to raw cost
             from prediction_market_macro.model.ensemble import WIDE_SPREAD, median_spread
