@@ -70,19 +70,54 @@ def _open_settled_events(conn, asof: datetime, now: datetime) -> list[dict]:
 
 
 def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
-        max_lead_days: float | None = None) -> dict:
+        max_lead_days: float | None = None, fair_mode: str = "model") -> dict:
     """max_lead_days: entry allowed only when days-to-close <= this (the sweep
-    knob — each lead sees DIFFERENT data and different predictions at its asof)."""
+    knob — each lead sees DIFFERENT data and different predictions at its asof).
+
+    fair_mode='pooled': decision fair = walk-forward log-pool of the model pmf
+    with the DEVIGGED market pmf, weights ∝ 1/MSPE learned strictly inside the
+    simulated timeline — an event's own outcome only enters the weights AFTER its
+    close date passes in simulation (pending-score flush), so the pool at day D
+    knows nothing later than D. Pooling with a sharper market kills fictional
+    edges; surviving disagreements are where betting still makes sense."""
+    from prediction_market_macro.model.ensemble import finite_pmf, log_pool
+    from prediction_market_macro.strategy import devig as _devig
     now = datetime.now(timezone.utc)
     gates = dict(GATES)
     gates["min_leg_depth_usd"] = 0.0               # candles carry no depth
     if max_lead_days is not None:
         gates["max_days_to_close"] = float(max_lead_days)
+    # walk-forward pool state (per series): cumulative Brier per source + pending
+    # scores that unlock only when their event's close date passes in simulation
+    pool_runner: dict[str, dict[str, list[float]]] = {}
+    pending_scores: list[tuple[datetime, str, float, float]] = []  # (close, series, bm, bk)
+
+    def _pool_weights(series: str) -> dict[str, float] | None:
+        r = pool_runner.get(series)
+        if not r or len(r.get("model", [])) < 3:
+            return None
+        mm = sum(r["model"]) / len(r["model"])
+        mk = sum(r["market"]) / len(r["market"])
+        wm_raw, wk_raw = 1.0 / max(mm, 1e-6), 1.0 / max(mk, 1e-6)
+        wm = max(0.10, min(0.90, wm_raw / (wm_raw + wk_raw)))
+        return {"model": wm, "market": 1.0 - wm}
     opened: dict[tuple[str, str], dict] = {}       # (series, key) -> trade
     daily: list[dict] = []
     for d in range(days, 0, -1):
         day = (now - timedelta(days=d)).replace(hour=offset_hour, minute=0,
                                                 second=0, microsecond=0)
+        # flush pending pool scores whose events have CLOSED by simulated `day`
+        # (an event's own outcome must never influence its own pool weights)
+        if fair_mode == "pooled":
+            still = []
+            for cts, ser, bm, bk in pending_scores:
+                if cts <= day:
+                    r = pool_runner.setdefault(ser, {"model": [], "market": []})
+                    r["model"].append(bm)
+                    r["market"].append(bk)
+                else:
+                    still.append((cts, ser, bm, bk))
+            pending_scores[:] = still
         day_trades = 0
         for ev in _open_settled_events(conn, day, now):
             key = kalshi_period_to_key(ev["tok"])
@@ -117,12 +152,62 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
             import math as _math
             entropy_norm = None
             if isinstance(pred.dist, Categorical):
-                structs = _structs_categorical(meta, pred.dist.probs)
-                pv = [v for v in pred.dist.probs.values() if v > 0]
+                probs = dict(pred.dist.probs)
+                if fair_mode == "pooled":
+                    asks = {l["ticker"].rsplit("-", 1)[-1]: l["yes_ask"]
+                            for l in meta if l.get("yes_ask")}
+                    tot = sum(asks.values())
+                    w = _pool_weights(ev["series"])
+                    if tot > 0 and w:
+                        mkp = {k: v / tot for k, v in asks.items()}
+                        lp = {k: w["model"] * _math.log(max(probs.get(k, 0), 1e-6))
+                              + w["market"] * _math.log(max(mkp.get(k, 0), 1e-6))
+                              for k in set(probs) | set(mkp)}
+                        mx = max(lp.values())
+                        ex = {k: _math.exp(v - mx) for k, v in lp.items()}
+                        z = sum(ex.values())
+                        probs = {k: v / z for k, v in ex.items()}
+                structs = _structs_categorical(meta, probs)
+                pv = [v for v in probs.values() if v > 0]
             else:
                 pmf = grid_pmf(pred.dist, spec.round_rule)
+                mk_pmf = None
+                if fair_mode == "pooled":
+                    impl = _devig.ladder_implied(
+                        [{"strike": m["strike"], "yes_bid": m["yes_bid"],
+                          "yes_ask": m["yes_ask"], "ticker": m["ticker"]}
+                         for m in meta])
+                    mk_pmf = finite_pmf({float(k): v
+                                         for k, v in (impl.get("pmf") or {}).items()})
+                    w = _pool_weights(ev["series"])
+                    if mk_pmf and w:
+                        pmf = log_pool({"model": pmf, "market": mk_pmf}, w)
                 structs = enumerate_structs(meta, pmf, strict=spec.strict_gt)
                 pv = [v for v in pmf.values() if v > 0]
+                # queue this event's model/market scores for post-close flush
+                if fair_mode == "pooled" and mk_pmf:
+                    from prediction_market_macro.model.common import leg_fair
+                    bm_s, bk_s, n_l = 0.0, 0.0, 0
+                    raw_pmf = grid_pmf(pred.dist, spec.round_rule)
+                    for m in meta:
+                        res = results.get(m["ticker"])
+                        if res is None or m["strike"] is None:
+                            continue
+                        try:
+                            fm = leg_fair(raw_pmf, m["strike_type"] or "greater",
+                                          m["strike"], m["cap_strike"])
+                            fk = leg_fair(mk_pmf, m["strike_type"] or "greater",
+                                          m["strike"], m["cap_strike"])
+                        except Exception:                  # noqa: BLE001
+                            continue
+                        out01 = 1.0 if res == "yes" else 0.0
+                        bm_s += (fm - out01) ** 2
+                        bk_s += (fk - out01) ** 2
+                        n_l += 1
+                    if n_l and not any(s2 == ev["series"] and c2 == ev["close_ts"]
+                                       for c2, s2, *_ in pending_scores):
+                        pending_scores.append((ev["close_ts"], ev["series"],
+                                               bm_s / n_l, bk_s / n_l))
             if len(pv) > 1:
                 entropy_norm = -sum(p * _math.log(p) for p in pv) / _math.log(len(pv))
             dec = decide(structs, now=day, close_time=ev["close_ts"],
@@ -177,7 +262,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
         b["realized"] = round(b["realized"] + t["realized"], 4)
     tot_staked = sum(t["staked"] for t in trades)
     tot_real = sum(t["realized"] for t in trades)
-    out = {"days": days, "n_trades": len(trades),
+    out = {"days": days, "fair_mode": fair_mode, "n_trades": len(trades),
            "win_rate": round(sum(1 for t in trades if t["won"]) / len(trades), 4)
            if trades else None,
            "staked": round(tot_staked, 4), "realized": round(tot_real, 4),
@@ -189,7 +274,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
         " metrics_json, created_ts) VALUES('daily_walkforward',?,'*',?,?,?)",
-        (f"d{days}:{now.date().isoformat()}", f"{days}d",
+        (f"d{days}:{fair_mode}:{now.date().isoformat()}", f"{days}d:{fair_mode}",
          json.dumps(out, ensure_ascii=False), now.isoformat()))
     conn.commit()
     return out
@@ -233,7 +318,7 @@ def sweep(conn, days: int = 30, leads=(1.0, 3.0, 5.0, 7.0)) -> dict:
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
         " metrics_json, created_ts) VALUES('walkforward_sweep',?,'*',?,?,?)",
-        (f"d{days}:{now.date().isoformat()}", f"{days}d",
+        (f"d{days}:{fair_mode}:{now.date().isoformat()}", f"{days}d:{fair_mode}",
          json.dumps(out, ensure_ascii=False), now.isoformat()))
     conn.commit()
     return out
@@ -245,6 +330,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=30)
     ap.add_argument("--sweep", action="store_true")
+    ap.add_argument("--pooled", action="store_true")
     args = ap.parse_args()
     s = load_settings()
     conn = init_db(s.db_path)
@@ -257,7 +343,8 @@ def main():
                              for k, v in out["coverage"].items()}}
         print(json.dumps(slim, indent=1, ensure_ascii=False))
         return
-    out = run(conn, days=args.days)
+    out = run(conn, days=args.days,
+              fair_mode="pooled" if args.pooled else "model")
     print(json.dumps({k: v for k, v in out.items() if k not in ("trades", "curve")},
                      indent=1, ensure_ascii=False))
 
