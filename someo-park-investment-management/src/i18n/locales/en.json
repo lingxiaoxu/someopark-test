@@ -1185,7 +1185,7 @@
     "riskEnforceNote": "Limits are enforced per order by risk.check before every fill (breach = rejected); scenario = max estimated loss of current positions under stress.",
     "wfAsIfLive": "Production started {{days}}d ago · live track record (strict PIT — each day uses only that day's information)",
     "mlTitle": "ML bet selector (candidate, not adopted)",
-    "mlNote": "Same-track comparison: all three lines run on the ML selector's dataset (one PIT entry point per event) — a different scan than the daily bet log below, so favourite counts differ between the two (each is internally consistent). Baseline = defer-to-market favourite replica; ML = expanding-window logistic; smart switch follows the better pre-entry settled record. Candidates are NOT live: adoption needs a win on BOTH windows plus a doubled sample — live betting still runs the hybrid (edge+favourite) rule",
+    "mlNote": "Favourite rows = live scope, the exact numbers of the Favourite bet-log tab (last30/last60 from the full 30d/60d PIT runs). ML/smart-switch run on the selector dataset (one PIT entry per event — fewer opportunities than the daily scan), so lower counts are expected; compare ROI and win rate. Candidates are NOT live: adoption needs a win on BOTH windows plus a doubled sample — live betting still runs the hybrid (edge+favourite) rule",
     "wfBets": "bets",
     "wfEntryDay": "Entry",
     "wfBetCol": "Bet",

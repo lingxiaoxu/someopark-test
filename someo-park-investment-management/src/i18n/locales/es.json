@@ -1156,7 +1156,7 @@
     "riskEnforceNote": "Los límites se aplican por orden vía risk.check antes de cada operación (exceso = rechazo); escenario = pérdida máx. estimada bajo estrés.",
     "wfAsIfLive": "En producción desde hace {{days}}d · historial real (PIT estricto)",
     "mlTitle": "Selector ML (candidato, no adoptado)",
-    "mlNote": "Comparación en la misma pista: las tres líneas corren sobre el dataset del selector ML (una entrada PIT por evento) — distinto del escaneo diario del registro de abajo, por eso el favorito difiere en conteo. Candidatos NO en producción: adopción = ganar en AMBAS ventanas + muestra duplicada; el real sigue con la regla híbrida",
+    "mlNote": "Filas Favorito = alcance real, cifras idénticas a la pestaña Favorito del registro (last30/last60 de los runs PIT completos de 30/60 días). ML/cambio corren sobre el dataset del selector (una entrada PIT por evento) — menos oportunidades. Candidatos NO en producción: adopción = ganar en AMBAS ventanas + muestra duplicada",
     "wfBets": "apuestas",
     "wfEntryDay": "Entrada",
     "wfBetCol": "Apuesta",

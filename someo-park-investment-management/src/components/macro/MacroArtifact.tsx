@@ -906,10 +906,27 @@ function WalkforwardView() {
           ? <Chip color={LEAD_COLORS[bestLead] ?? 'var(--success)'}>{bestLead}</Chip> : '—'],
       ]} />
       {data?.ml && (data.ml.last30?.n_trades != null) && (() => {
-        const lines: [string, any][] = [
-          ['stream_argmax_rep', data.ml.baseline], ['stream_ml', data.ml],
-          ['stream_blend', data.ml.blend]];
+        // baseline rows = the LIVE-scope favourite stream (identical numbers to
+        // the bet-log Favourite tab): last30 from the 30d run, last60 from the
+        // 60d run. ML/blend run on the selector dataset (fewer entry points).
+        const streamWin = (run: any, w: string) => {
+          const s = run?.streams?.argmax;
+          if (s?.n_trades == null) return null;
+          const won = s.won ?? Math.round((s.win_rate ?? 0) * s.n_trades);
+          return { ...s, won, window: w };
+        };
+        const argmaxRows = [streamWin(data.daily, 'last30'), streamWin(data.daily60, 'last60')]
+          .filter(Boolean) as any[];
         const rows: any[] = [];
+        argmaxRows.forEach((v) => rows.push([
+          <span style={mono}>{t('macro.stream_argmax')}</span>,
+          <span style={mono}>{v.window}</span>, v.n_trades,
+          `${v.won}W-${v.n_trades - v.won}L`, pct(v.win_rate),
+          <span style={{ ...mono, color: (v.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
+          <span style={{ ...mono, color: (v.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(v.roi)}</span>,
+        ]));
+        const lines: [string, any][] = [
+          ['stream_ml', data.ml], ['stream_blend', data.ml.blend]];
         lines.forEach(([label, ln]) => (['last30', 'last60'] as const).forEach((w) => {
           const v = ln?.[w];
           if (v?.n_trades == null) return;

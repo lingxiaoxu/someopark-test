@@ -1156,7 +1156,7 @@
     "riskEnforceNote": "Limites imposées par risk.check avant chaque ordre (dépassement = rejet) ; scénario = perte max estimée des positions sous stress.",
     "wfAsIfLive": "En production depuis {{days}}j · historique réel (PIT strict)",
     "mlTitle": "Sélecteur ML (candidat, non adopté)",
-    "mlNote": "Comparaison sur même piste : les trois lignes tournent sur le dataset du sélecteur ML (une entrée PIT par événement) — périmètre différent du journal quotidien ci-dessous, d'où des comptes différents pour le favori. Candidats NON en production : adoption = victoire sur les DEUX fenêtres + échantillon doublé ; le réel reste la règle hybride",
+    "mlNote": "Lignes Favori = périmètre réel, chiffres identiques à l'onglet Favori du journal (last30/last60 des runs PIT 30j/60j complets). ML/bascule tournent sur le dataset du sélecteur (une entrée PIT par événement) — moins d'opportunités. Candidats NON en production : adoption = victoire sur les DEUX fenêtres + échantillon doublé",
     "wfBets": "paris",
     "wfEntryDay": "Entrée",
     "wfBetCol": "Pari",

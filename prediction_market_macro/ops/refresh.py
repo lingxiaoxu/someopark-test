@@ -144,6 +144,11 @@ def run(weekly: bool = False) -> dict:
              lambda: json.dumps({k: {"roi": v.get("roi"), "n": v.get("n_trades")}
                                  for k, v in walkforward.sweep(
                                      conn, days=30)["leads"].items()}))
+        # 60d run feeds the comparison table's last60 baseline column
+        step("weekly_walkforward_60d",
+             lambda: json.dumps({k: {"roi": v.get("roi"), "n": v.get("n_trades")}
+                                 for k, v in walkforward.run(
+                                     conn, days=60)["streams"].items()}))
         # canonical as-if-live 30d run LAST (sweep's per-lead runs overwrite the
         # daily_walkforward row; this one is what the frontend headlines)
         step("weekly_walkforward_30d",

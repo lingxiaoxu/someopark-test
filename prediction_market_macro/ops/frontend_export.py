@@ -267,11 +267,18 @@ def run_extended(conn, settings) -> str:
 
     # ── macro_walkforward.json: the WF lab artifact (sweep + latest daily run) ──
     wf_doc = {"generated_at": now.isoformat()}
-    for name, key in (("walkforward_sweep", "sweep"), ("daily_walkforward", "daily"),
-                      ("ml_selector", "ml")):
-        r = conn.execute(
-            "SELECT metrics_json, created_ts FROM experiments WHERE name=?"
-            " ORDER BY created_ts DESC LIMIT 1", (name,)).fetchone()
+    # 'daily'/'daily60' filter on window explicitly — the latest daily_walkforward
+    # row depends on run order (sweep's per-lead runs, 60d vs 30d), never rely on it
+    for name, key, wfilter in (("walkforward_sweep", "sweep", None),
+                               ("daily_walkforward", "daily", "30d%"),
+                               ("daily_walkforward", "daily60", "60d%"),
+                               ("ml_selector", "ml", None)):
+        q = "SELECT metrics_json, created_ts FROM experiments WHERE name=?"
+        args = [name]
+        if wfilter:
+            q += " AND window LIKE ?"
+            args.append(wfilter)
+        r = conn.execute(q + " ORDER BY created_ts DESC LIMIT 1", args).fetchone()
         if r:
             try:
                 wf_doc[key] = json.loads(r["metrics_json"])
