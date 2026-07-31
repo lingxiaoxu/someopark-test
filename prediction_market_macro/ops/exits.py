@@ -85,13 +85,23 @@ def run(conn, settings) -> int:
                 n += 1
             continue
 
-        # rule 1 — edge reversal (needs a fresh ladder pred)
+        # rule 1 — edge reversal against the CURRENT model. Ladder series price
+        # via the latest ladder pmf; CATEGORICAL series (Fed) via the latest
+        # probs — they were previously never re-evaluated at all (blind spot:
+        # the deep-OTM Fed lottery legs from the pre-gate era just sat there).
         pr = conn.execute(
-            "SELECT ladder_json FROM preds WHERE series=? AND period=?"
+            "SELECT ladder_json, dist_json FROM preds WHERE series=? AND period=?"
             " ORDER BY asof DESC LIMIT 1", (pos["series"], pos["period"])).fetchone()
-        if pr is None or not pr["ladder_json"]:
+        if pr is None:
             continue
-        pmf = {float(k): v for k, v in json.loads(pr["ladder_json"]).items()}
+        pmf = ({float(k): v for k, v in json.loads(pr["ladder_json"]).items()}
+               if pr["ladder_json"] else None)
+        probs = None
+        if pmf is None:
+            d0 = json.loads(pr["dist_json"] or "{}")
+            probs = d0.get("probs") if isinstance(d0.get("probs"), dict) else None
+            if probs is None:
+                continue
         from prediction_market_macro.model.common import leg_fair
         hold_edges, legs_exit = [], []
         for f in pos["fills"]:
@@ -99,31 +109,54 @@ def run(conn, settings) -> int:
                 "SELECT floor_strike, cap_strike, strike_type FROM contracts"
                 " WHERE ticker=?", (f["ticker"],)).fetchone()
             q = _quote(conn, f["ticker"])
-            if c is None or q is None or (c["floor_strike"] is None
-                                          and c["cap_strike"] is None):
+            if q is None:
                 hold_edges = []
                 break
-            # the leg's OWN strike metadata — between buckets and less-type legs
-            # priced correctly, not as bare survival(floor)
-            try:
-                fair_yes = leg_fair(pmf, c["strike_type"] or "greater",
-                                    c["floor_strike"], c["cap_strike"])
-            except Exception:                             # noqa: BLE001
-                hold_edges = []
-                break
-            fair = fair_yes if f["side"] == "yes" else 1 - fair_yes
+            base_side = f["side"].replace("close_", "")
+            if probs is not None:                        # categorical leg
+                cat = f["ticker"].rsplit("-", 1)[-1]
+                fair_yes = float(probs.get(cat, 0.0))
+            else:
+                if c is None or (c["floor_strike"] is None
+                                 and c["cap_strike"] is None):
+                    hold_edges = []
+                    break
+                # the leg's OWN strike metadata — between buckets and less-type
+                # legs priced correctly, not as bare survival(floor)
+                try:
+                    fair_yes = leg_fair(pmf, c["strike_type"] or "greater",
+                                        c["floor_strike"], c["cap_strike"])
+                except Exception:                         # noqa: BLE001
+                    hold_edges = []
+                    break
+            fair = fair_yes if base_side == "yes" else 1 - fair_yes
             if q["yes_bid"] is None or q["yes_ask"] is None:
                 hold_edges = []
                 break
             mid = (q["yes_bid"] + q["yes_ask"]) / 2
-            mid_side = mid if f["side"] == "yes" else 1 - mid
+            mid_side = mid if base_side == "yes" else 1 - mid
             hold_edges.append(fair - mid_side)
-            exit_px = (q["yes_bid"] if f["side"] == "yes" else 1 - q["yes_ask"])
-            depth = q["bid_depth"] if f["side"] == "yes" else q["ask_depth"]
+            exit_px = (q["yes_bid"] if base_side == "yes" else 1 - q["yes_ask"])
+            depth = q["bid_depth"] if base_side == "yes" else q["ask_depth"]
             legs_exit.append((f, max(exit_px - SLIP, 0.01), depth))
         if not hold_edges:
             continue
         worst = min(hold_edges)
+        # rule 3 — regime review: a position that today's structural gates would
+        # REFUSE to open (penny-lottery entry) and whose CURRENT model sees no
+        # positive holding edge is dead capital — release it while any meaningful
+        # value remains (recoverable ≥ 2c/contract; below that fees eat the exit)
+        from prediction_market_macro.strategy.decision import GATES as _G
+        regime_bad = (any(f["price"] < _G.get("min_leg_price", 0.10)
+                          for f in pos["fills"])
+                      and worst < 0.0
+                      and all(px >= 0.02 for _, px, _ in legs_exit))
+        if regime_bad:
+            _write_exit(conn, pos, now.isoformat(), worst, legs_exit,
+                        f"regime_review_exit worst={worst:.4f} (penny-entry,"
+                        f" no current edge)")
+            n += 1
+            continue
         if worst >= EXIT_EDGE or any(d < 20 for _, _, d in legs_exit):
             continue
         _write_exit(conn, pos, now.isoformat(), worst, legs_exit,
