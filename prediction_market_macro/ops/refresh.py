@@ -49,12 +49,17 @@ def run(weekly: bool = False) -> dict:
     print(f"[refresh] {datetime.now(timezone.utc).isoformat()} weekly={weekly}")
     # ── §8.0 step 1: ingest (incl. new-event auto-discovery) ─────────────
     step("calendars", lambda: calendars.sync_to_db(conn))
+    step("calendar_actuals", lambda: calendars.reconcile_actuals(conn))
+    if weekly:
+        step("calendar_web_check", lambda: calendars.refresh_from_web(conn))
     from prediction_market_macro.venues.kalshi import account
     step("bankroll", lambda: account.refresh_bankroll(conn))
     step("fred_core", lambda: sum(fred.pull_core().values()))
     step("futures", lambda: market_data.pull_futures(conn))
     step("fx", lambda: market_data.pull_fx(conn, s.polygon_api_key))
     step("news", lambda: market_data.pull_news(conn, s.polygon_api_key))
+    from prediction_market_macro.ingest import fed_text
+    step("fed_statements", lambda: fed_text.fetch_statements(conn))
     for spec in REGISTRY.values():
         step(f"kalshi:{spec.ticker}", lambda t=spec.ticker: md.snapshot_series(t))
         step(f"settle:{spec.ticker}", lambda t=spec.ticker: md.sync_settlements(t))
@@ -90,6 +95,11 @@ def run(weekly: bool = False) -> dict:
     # ── model-free cross-market consistency (§11 四件套) ─────────────────
     from prediction_market_macro.strategy import consistency
     step("consistency", lambda: consistency.run(conn))
+    # ── LLM annotation layer (§10/§19-8, serial + degradable, never blocking) ──
+    from prediction_market_macro.analysis import llm as llm_mod
+    step("news_flags", lambda: llm_mod.apply_news_flags(conn, s))
+    step("statement_risk", lambda: (llm_mod.statement_risk_pass(conn, s) or {}
+                                    ).get("hawk_score"))
     try:
         from prediction_market_macro.research import health
         step("health", lambda: health.daily_health(conn, s))

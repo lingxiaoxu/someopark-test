@@ -94,14 +94,28 @@ def _weekly_events(cal: str, weekday: int, hh: int, mm: int,
     return out
 
 
+# ── BEA GDP advance estimates (quarter -> release), 08:30 ET ─────────────────
+_GDP = {
+    "2026-Q2": date(2026, 7, 30), "2026-Q3": date(2026, 10, 29),
+    "2026-Q4": date(2027, 1, 28),
+}
+
+
 def build_calendars() -> dict[str, list[ReleaseEvent]]:
     cals: dict[str, list[ReleaseEvent]] = {
         "BLS_CPI": [ReleaseEvent("BLS_CPI", p, _et(d, 8, 30)) for p, d in _CPI.items()],
         "BLS_JOBS": [ReleaseEvent("BLS_JOBS", p, _et(d, 8, 30)) for p, d in _JOBS.items()],
         "BEA_PCE": [ReleaseEvent("BEA_PCE", p, _et(d, 8, 30)) for p, d in _PCE.items()],
+        "BEA_GDP": [ReleaseEvent("BEA_GDP", p, _et(d, 8, 30), note="advance")
+                    for p, d in _GDP.items()],
         "FOMC": [ReleaseEvent("FOMC", p, _et(d, 14, 0), note="SEP" if sep else "")
                  for p, d, sep in _FOMC],
         "DOL_CLAIMS": _claims_events(date(2026, 7, 1), date(2027, 12, 31)),
+        # EIA weekly reports (status data for energy models; not tradable series yet)
+        "EIA_PETRO": _weekly_events("EIA_PETRO", 2, 10, 30, date(2026, 7, 1),
+                                    date(2027, 12, 31), "EIA weekly petroleum status"),
+        "EIA_NG": _weekly_events("EIA_NG", 3, 10, 30, date(2026, 7, 1),
+                                 date(2027, 12, 31), "EIA weekly nat gas storage"),
         # energy weekly settles: WTI/NG Friday NYMEX close, AAA gas Monday morning read
         "WTI_WEEKLY": _weekly_events("WTI_WEEKLY", 4, 14, 30, date(2026, 7, 1),
                                      date(2027, 12, 31), "WTI front-month Friday close"),
@@ -149,3 +163,95 @@ def sync_to_db(conn) -> int:
             n += 1
     conn.commit()
     return n
+
+
+# scheduled-vs-actual reconciliation (§5-bis.4-4): which first print settles which cal
+_CAL_SID = {"BLS_CPI": "CPIAUCSL", "BLS_JOBS": "PAYEMS", "BEA_PCE": "PCEPILFE",
+            "DOL_CLAIMS": "ICSA", "FOMC": "DFEDTARU", "AAA_WEEKLY": "GASREGW"}
+
+
+def reconcile_actuals(conn, now: datetime | None = None) -> dict:
+    """Fill releases.actual_ts from the label's first-print knowledge_time; releases
+    >26h overdue with no print flip coverage to 'postponed' + alert (shutdown/delay
+    handling, §19-8 operational leg)."""
+    from datetime import timezone as _tz
+    now = now or datetime.now(_tz.utc)
+    filled, postponed = 0, 0
+    rows = conn.execute(
+        "SELECT cal, period, scheduled_ts FROM releases WHERE actual_ts IS NULL"
+        " AND scheduled_ts < ?", ((now - timedelta(hours=2)).isoformat(),)).fetchall()
+    for r in rows:
+        sid = _CAL_SID.get(r["cal"])
+        if sid is None:
+            continue
+        sch = datetime.fromisoformat(r["scheduled_ts"])
+        kt = conn.execute(
+            "SELECT MIN(knowledge_time) m FROM fred_obs WHERE sid=? AND"
+            " knowledge_time BETWEEN ? AND ?",
+            (sid, (sch - timedelta(days=3)).isoformat(),
+             (sch + timedelta(days=3)).isoformat())).fetchone()
+        if kt and kt["m"]:
+            conn.execute("UPDATE releases SET actual_ts=? WHERE cal=? AND period=?",
+                         (kt["m"], r["cal"], r["period"]))
+            filled += 1
+        elif (now - sch) > timedelta(hours=26):
+            for spec_ticker in [row["series"] for row in conn.execute(
+                    "SELECT DISTINCT series FROM coverage WHERE period=?",
+                    (r["period"],)).fetchall()]:
+                conn.execute(
+                    "UPDATE coverage SET state='postponed', updated_ts=? WHERE"
+                    " series=? AND period=? AND state='scheduled'",
+                    (now.isoformat(), spec_ticker, r["period"]))
+            conn.execute(
+                "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                (now.isoformat(), "warn", "calendar",
+                 f"POSTPONED? {r['cal']}/{r['period']} scheduled {r['scheduled_ts']}"
+                 f" but no first print within 26h"))
+            postponed += 1
+    conn.commit()
+    return {"actual_filled": filled, "postponed_flagged": postponed}
+
+
+def refresh_from_web(conn) -> dict:
+    """Weekly drift check of the hardcoded forward schedule against official sources
+    (BLS CPI + Employment Situation pages). Detect-and-alert only — the hardcoded
+    schedule stays the source of truth until hand-verified. Degradable."""
+    import re as _re
+
+    import requests as _rq
+    from datetime import timezone as _tz
+    now = datetime.now(_tz.utc)
+    checked, drifts = 0, []
+    pages = {"BLS_CPI": "https://www.bls.gov/schedule/news_release/cpi.htm",
+             "BLS_JOBS": "https://www.bls.gov/schedule/news_release/empsit.htm"}
+    months = {m: i for i, m in enumerate(
+        ["January", "February", "March", "April", "May", "June", "July", "August",
+         "September", "October", "November", "December"], 1)}
+    for cal, url in pages.items():
+        try:
+            html = _rq.get(url, timeout=30,
+                           headers={"User-Agent": "someopark-macro/0.1"}).text
+        except Exception as e:                                # noqa: BLE001
+            conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                         (now.isoformat(), "warn", "calendar",
+                          f"refresh_from_web {cal}: {e}"))
+            continue
+        web_dates = set()
+        for m in _re.finditer(r"(January|February|March|April|May|June|July|August|"
+                              r"September|October|November|December)\s+(\d{1,2}),\s+(20\d\d)",
+                              html):
+            web_dates.add(date(int(m.group(3)), months[m.group(1)], int(m.group(2))))
+        if not web_dates:
+            continue
+        src = _CPI if cal == "BLS_CPI" else _JOBS
+        for period, d in src.items():
+            if d < now.date():
+                continue
+            checked += 1
+            if d not in web_dates:
+                drifts.append(f"{cal}/{period}: local {d} not on official schedule page")
+    for msg in drifts:
+        conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                     (now.isoformat(), "error", "calendar", f"SCHEDULE-DRIFT {msg}"))
+    conn.commit()
+    return {"checked": checked, "drifts": len(drifts)}

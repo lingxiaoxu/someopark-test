@@ -136,6 +136,17 @@ CREATE TABLE IF NOT EXISTS source_scores(          -- per-event per-source OOS B
   offset TEXT NOT NULL,                            -- '-1h' | '-24h'
   brier REAL, n_legs INTEGER, created_ts TEXT NOT NULL,
   PRIMARY KEY(series, period, source, offset));    -- ensemble weight learning (§19-2)
+
+CREATE TABLE IF NOT EXISTS fed_statements(         -- FOMC statement text (§7 fed, §10)
+  period TEXT PRIMARY KEY,                         -- meeting period '2026-07'
+  url TEXT NOT NULL, text TEXT NOT NULL, fetched_ts TEXT NOT NULL);
+
+CREATE TABLE IF NOT EXISTS event_flags(            -- LLM structural-break layer (§19-8)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts TEXT NOT NULL, tag TEXT NOT NULL,             -- mass_layoffs|energy_shock|...
+  direction TEXT, family TEXT NOT NULL,            -- affected series family
+  severity INTEGER NOT NULL DEFAULT 1,             -- 1..5
+  expires_ts TEXT NOT NULL);
 """
 
 

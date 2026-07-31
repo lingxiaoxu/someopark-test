@@ -145,3 +145,71 @@ def weekly_narrative(conn, settings) -> str | None:
     _annotate(conn, "weekly_narrative", settings.ollama_model, payload,
               {"text": txt} if txt else None)
     return txt
+
+
+# ── wiring: the two previously-dead use cases land here (PLAN_EXTENSION #18/#23) ──
+
+_TAG_FAMILY = {"mass_layoffs": ("labor",), "energy_shock": ("energy", "inflation"),
+               "fed_speak": ("fed",), "inflation_surprise": ("inflation",)}
+
+
+def statement_risk_pass(conn, settings) -> dict | None:
+    """Diff the two latest stored FOMC statements (ingest/fed_text) → hawk/dove score
+    annotation + an alert when the language shift is large. Cached by text hash, so
+    this is a no-op except in the days after a new statement lands."""
+    from prediction_market_macro.ingest.fed_text import latest_two
+    pair = latest_two(conn)
+    if pair is None:
+        return None
+    new, old = pair
+    out = fomc_statement_diff(conn, settings, old["text"][:6000], new["text"][:6000])
+    if out and abs(float(out.get("hawk_score") or 0.0)) >= 0.5:
+        conn.execute(
+            "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+            (datetime.now(timezone.utc).isoformat(), "warn", "statement_risk",
+             f"FOMC {new['period']} language shift hawk_score="
+             f"{out['hawk_score']:+.2f}: {'; '.join(out.get('key_changes', [])[:3])}"))
+        conn.commit()
+    return out
+
+
+def apply_news_flags(conn, settings, ttl_days: float = 5.0) -> int:
+    """news_risk_tags → event_flags rows (§19-8). Severity = tag count in the window
+    (capped 5). decide_all reads active flags and tightens gates for the family.
+    Degradable: no nemo ⇒ no flags ⇒ unchanged behavior."""
+    out = news_risk_tags(conn, settings)
+    if not out or not out.get("tags"):
+        return 0
+    now = datetime.now(timezone.utc)
+    counts: dict[tuple[str, str, str], int] = {}
+    for t in out["tags"]:
+        tag = t.get("tag")
+        fams = _TAG_FAMILY.get(tag)
+        if not fams:
+            continue
+        for fam in fams:
+            k = (tag, t.get("direction") or "neutral", fam)
+            counts[k] = counts.get(k, 0) + 1
+    n = 0
+    for (tag, direction, fam), c in counts.items():
+        dup = conn.execute(
+            "SELECT 1 FROM event_flags WHERE tag=? AND family=? AND expires_ts>?",
+            (tag, fam, now.isoformat())).fetchone()
+        if dup:
+            continue
+        conn.execute(
+            "INSERT INTO event_flags(ts, tag, direction, family, severity, expires_ts)"
+            " VALUES(?,?,?,?,?,?)",
+            (now.isoformat(), tag, direction, fam, min(c, 5),
+             (now + timedelta(days=ttl_days)).isoformat()))
+        n += 1
+    conn.commit()
+    return n
+
+
+def active_flags(conn, family: str) -> list[dict]:
+    now = datetime.now(timezone.utc).isoformat()
+    rows = conn.execute(
+        "SELECT tag, direction, severity FROM event_flags WHERE family=?"
+        " AND expires_ts>?", (family, now)).fetchall()
+    return [dict(r) for r in rows]

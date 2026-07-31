@@ -174,10 +174,20 @@ def run(conn, settings) -> int:
             closes = [l["close_time"] for l in legs if l.get("close_time")]
             close_ts = min((datetime.fromisoformat(c.replace("Z", "+00:00")) for c in closes),
                            default=None)
+            # §19-8: active structural-break flags tighten the gates for this family
+            from prediction_market_macro.analysis.llm import active_flags
+            from prediction_market_macro.strategy.decision import GATES as _G
+            gates_eff = dict(_G)
+            flags = active_flags(conn, spec.family)
+            if flags:
+                sev = max(f["severity"] for f in flags)
+                gates_eff["max_size_usd"] = _G["max_size_usd"] * 0.5
+                gates_eff["max_entropy_norm"] = _G["max_entropy_norm"] - 0.02 * sev
             d = decide(structs, now=now, close_time=close_ts, release_ts=release_ts,
                        market_implied=market_fairs,
                        already_open=ledger.has_open(conn, spec.ticker, key),
-                       bankroll=_bankroll(conn, settings), entropy_norm=entropy_norm)
+                       bankroll=_bankroll(conn, settings), entropy_norm=entropy_norm,
+                       gates=gates_eff)
             if d.action == "open":
                 from prediction_market_macro.ops import risk
                 veto = risk.check(conn, spec.ticker, key, d.size_usd)
