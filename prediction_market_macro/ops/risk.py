@@ -1,12 +1,18 @@
-"""ops/risk.py — exposure limits + circuit breaker (PLAN §12).
+"""ops/risk.py — exposure limits + circuit breaker (PLAN §12, §9.6-4).
 
 check() is called by decide_all BEFORE recording an open; a Veto turns the decision into
 a pass with the veto reason in the ledger note. Clusters: all contracts of the same
 (family, period) count together (CPI MoM/YoY/COMBO of one print move together).
+
+circuit_breaker(): trips a series (or '*' for global) by writing an alerts row with
+source='circuit_breaker'. Consumers: exec.trading_allowed (blocks real orders 7d),
+decide_all (blocks NEW paper opens 24h), exits.run (forces position exit). Trip paths:
+health red lights (research/health.py §9.6-4) and the rolling-20 realized-PnL check.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.config.registry import REGISTRY
 
@@ -54,6 +60,49 @@ def check(conn, series: str, period: str, size_usd: float) -> Veto | None:
         return Veto(f"risk_cluster {cl + size_usd:.2f}>{LIMITS['per_cluster_usd']}")
     if gross + size_usd > LIMITS["gross_usd"]:
         return Veto(f"risk_gross {gross + size_usd:.2f}>{LIMITS['gross_usd']}")
+    return None
+
+
+def circuit_breaker(conn, series: str, reason: str) -> None:
+    """Trip the breaker for `series` ('*' = global). Idempotent per (series, reason,
+    day): re-tripping the same day is a no-op so daily health runs don't spam."""
+    now = datetime.now(timezone.utc)
+    day = now.date().isoformat()
+    msg = f"{series}: {reason}"
+    dup = conn.execute(
+        "SELECT 1 FROM alerts WHERE source='circuit_breaker' AND message=? AND ts>=?",
+        (msg, day)).fetchone()
+    if dup:
+        return
+    conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                 (now.isoformat(), "error", "circuit_breaker", msg))
+    conn.commit()
+
+
+def breaker_tripped(conn, series: str, within_hours: float = 24.0) -> str | None:
+    """Reason string if `series` (or the global '*') tripped within the window."""
+    cut = (datetime.now(timezone.utc) - timedelta(hours=within_hours)).isoformat()
+    r = conn.execute(
+        "SELECT message FROM alerts WHERE source='circuit_breaker' AND ts>=? AND"
+        " (message LIKE ? OR message LIKE '*:%') ORDER BY ts DESC LIMIT 1",
+        (cut, f"{series}:%")).fetchone()
+    return r["message"] if r else None
+
+
+def check_rolling20(conn) -> str | None:
+    """PLAN §12: rolling-20-settlement drawdown breaker. If the last 20 settle_note
+    rows sum to a realized loss beyond 2x per_event limit, trip globally."""
+    rows = conn.execute(
+        "SELECT size_usd FROM decisions WHERE kind='settle_note'"
+        " ORDER BY id DESC LIMIT 20").fetchall()
+    if len(rows) < 20:
+        return None
+    total = sum(r["size_usd"] or 0.0 for r in rows)
+    thresh = -2.0 * LIMITS["per_event_usd"]
+    if total < thresh:
+        reason = f"rolling20_pnl {total:.2f} < {thresh:.2f}"
+        circuit_breaker(conn, "*", reason)
+        return reason
     return None
 
 

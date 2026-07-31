@@ -80,6 +80,39 @@ def run(conn, settings) -> int:
             legs = _legs_meta(conn, spec.ticker, tok)
             if not legs:
                 continue
+            # circuit breaker (铁律 10): tripped series open NOTHING new
+            from prediction_market_macro.ops import risk
+            trip = risk.breaker_tripped(conn, spec.ticker)
+            if trip:
+                from prediction_market_macro.strategy.decision import Decision, GATES
+                ledger.record(conn, series=spec.ticker, period=key,
+                              decision=Decision("pass", None, 0.0, 0,
+                                                (f"circuit_breaker [{trip[:100]}]",),
+                                                dict(GATES)),
+                              pred_inputs={}, model_version=pr["model_version"])
+                set_coverage(conn, spec.ticker, key, "passed")
+                n += 1
+                continue
+            # staleness hard gate (§8.2-5): stale inputs ⇒ forced PASS, never a
+            # decision on old data. Pred >26h or freshest quote >6h old ⇒ stale.
+            pred_age_h = (now - datetime.fromisoformat(pr["asof"])
+                          ).total_seconds() / 3600.0
+            qt = conn.execute(
+                "SELECT MAX(q.ts) m FROM quotes q JOIN contracts c ON c.ticker=q.ticker"
+                " WHERE c.series=? AND c.period=?", (spec.ticker, tok)).fetchone()
+            quote_age_h = ((now - datetime.fromisoformat(qt["m"])).total_seconds()
+                           / 3600.0) if qt and qt["m"] else None
+            if pred_age_h > 26 or quote_age_h is None or quote_age_h > 6:
+                from prediction_market_macro.strategy.decision import Decision, GATES
+                reason = (f"stale_inputs pred={pred_age_h:.0f}h"
+                          f" quotes={quote_age_h if quote_age_h is None else round(quote_age_h, 1)}h")
+                ledger.record(conn, series=spec.ticker, period=key,
+                              decision=Decision("pass", None, 0.0, 0, (reason,),
+                                                dict(GATES)),
+                              pred_inputs={}, model_version=pr["model_version"])
+                set_coverage(conn, spec.ticker, key, "passed")
+                n += 1
+                continue
             if spec.structure == "categorical":
                 dist = json.loads(pr["dist_json"])
                 probs = dist.get("probs") or {}

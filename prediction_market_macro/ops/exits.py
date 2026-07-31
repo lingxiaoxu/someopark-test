@@ -2,7 +2,8 @@
 
 Default: hold to settlement. Early exit only when:
   1. edge reversal: holding edge (fair - current mid) < -0.06 with exit-side depth
-  2. red-light: series health-degraded (health table lands M4; hook ready via alerts)
+  2. red-light: series circuit breaker tripped (health red / ledger mismatch /
+     rolling-20 drawdown) → FORCED exit at market regardless of edge (铁律 10)
 Freeze window (10 min pre-release) blocks exits too. Every exit = new ledger rows
 (kind='exit') + paper fills at mid - $0.01 slippage; append-only always.
 """
@@ -25,7 +26,25 @@ def _quote(conn, ticker):
         " ORDER BY ts DESC LIMIT 1", (ticker,)).fetchone()
 
 
+def _write_exit(conn, pos, ts: str, worst, legs_exit, note: str) -> None:
+    cur = conn.execute(
+        "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair, ask,"
+        " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (ts, pos["series"], pos["period"], pos["structure_json"], "exit",
+         None, None, worst, pos["size_usd"],
+         json.dumps({"exit_note": note}), pos["model_version"], "{}", note))
+    did = cur.lastrowid
+    for f, px, _ in legs_exit:
+        conn.execute(
+            "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
+            " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
+            (did, ts, f["ticker"], f"close_{f['side']}", px, f["count"],
+             taker_fee(px, f["count"])))
+
+
 def run(conn, settings) -> int:
+    from prediction_market_macro.ops import risk
     now = datetime.now(timezone.utc)
     n = 0
     for pos in open_positions(conn):
@@ -38,6 +57,26 @@ def run(conn, settings) -> int:
             dt_min = (datetime.fromisoformat(rel["scheduled_ts"]) - now).total_seconds() / 60
             if 0 <= dt_min <= 10:
                 continue                                    # freeze window: no exits
+
+        # rule 2 — red light: breaker tripped ⇒ forced market exit, no edge check
+        trip = risk.breaker_tripped(conn, pos["series"])
+        if trip:
+            legs_exit, ok = [], True
+            for f in pos["fills"]:
+                q = _quote(conn, f["ticker"])
+                if q is None or q["yes_bid"] is None or q["yes_ask"] is None:
+                    ok = False
+                    break
+                exit_px = (q["yes_bid"] if f["side"] == "yes" else 1 - q["yes_ask"])
+                depth = q["bid_depth"] if f["side"] == "yes" else q["ask_depth"]
+                legs_exit.append((f, max(exit_px - SLIP, 0.01), depth))
+            if ok and legs_exit:
+                _write_exit(conn, pos, now.isoformat(), None, legs_exit,
+                            f"health_red_forced_exit [{trip[:120]}]")
+                n += 1
+            continue
+
+        # rule 1 — edge reversal (needs a fresh ladder pred)
         pr = conn.execute(
             "SELECT ladder_json FROM preds WHERE series=? AND period=?"
             " ORDER BY asof DESC LIMIT 1", (pos["series"], pos["period"])).fetchone()
@@ -70,21 +109,8 @@ def run(conn, settings) -> int:
         worst = min(hold_edges)
         if worst >= EXIT_EDGE or any(d < 20 for _, _, d in legs_exit):
             continue
-        ts = now.isoformat()
-        cur = conn.execute(
-            "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair, ask,"
-            " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (ts, pos["series"], pos["period"], pos["structure_json"], "exit",
-             None, None, worst, pos["size_usd"], json.dumps({"hold_edges": hold_edges}),
-             pos["model_version"], "{}", f"edge_reversal worst={worst:.4f}"))
-        did = cur.lastrowid
-        for f, px, _ in legs_exit:
-            conn.execute(
-                "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
-                " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
-                (did, ts, f["ticker"], f"close_{f['side']}", px, f["count"],
-                 taker_fee(px, f["count"])))
+        _write_exit(conn, pos, now.isoformat(), worst, legs_exit,
+                    f"edge_reversal worst={worst:.4f}")
         n += 1
     conn.commit()
     return n

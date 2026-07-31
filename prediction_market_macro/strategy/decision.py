@@ -4,7 +4,8 @@ discipline: production, backtest and reports ALL call this one pure function).
 Gates (all configurable, PLAN §11):
   net_edge >= 0.04 ; per-leg depth >= $50 ; |fair - market_implied| <= 0.25 (sanity);
   > 30 min to close ; no re-entry on the same (series, period);
-  freeze window: no decisions within 10 min before the scheduled release.
+  freeze window: no decisions within 10 min before the scheduled release;
+  size <= 20% of the thinnest leg's depth (铁律 5 — never eat the book).
 """
 from __future__ import annotations
 
@@ -20,6 +21,7 @@ GATES = {
     "min_minutes_to_close": 30.0,
     "freeze_minutes_before_release": 10.0,
     "max_size_usd": 1.0,
+    "max_depth_frac": 0.20,          # 铁律 5: size ≤ 20% of thinnest-leg depth
 }
 
 
@@ -70,6 +72,13 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
     usd = quarter_kelly_usd(st.fair, st.cost, bankroll, cap=gates["max_size_usd"])
     if usd <= 0.0:
         return Decision("pass", None, 0.0, 0, ("kelly_zero",), dict(gates))
+    # 铁律 5 first half: never take more than max_depth_frac of the thinnest leg
+    depth_cap = gates.get("max_depth_frac", 0.20) * min(l.depth for l in st.legs)
+    if depth_cap < st.cost:                      # can't even fit one contract
+        return Decision("pass", None, 0.0, 0,
+                        (f"depth_cap {depth_cap:.2f}<cost {st.cost:.2f}",), dict(gates))
+    if usd > depth_cap:
+        usd = round(depth_cap, 2)
     count = max(1, int(usd / max(st.cost, 0.01)))
     return Decision("open", st, usd, count,
                     (f"net_edge={ne:.4f}", f"fair={st.fair:.4f}", f"cost={st.cost:.4f}"),

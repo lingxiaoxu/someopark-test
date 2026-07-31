@@ -109,6 +109,11 @@ def run(weekly: bool = False) -> dict:
         step("weekly_dfm_gate",
              lambda: {k: v for k, v in dfm_bridge.gate_check(conn, s).items()
                       if k.startswith(("pass", "cov_"))})
+        from prediction_market_macro.research import eval as eval_mod
+        step("weekly_eval_gates",
+             lambda: json.dumps({k: {"real": v.get("real"), "roi": v.get("roi"),
+                                     "dm_p": v.get("dm_p")}
+                                 for k, v in eval_mod.run_all(conn).items()})[:400])
         step("report_weekly", lambda: report.weekly_pdf(conn, s))
     step("watchdog_inline", lambda: len(scheduler.watchdog(conn)))
 

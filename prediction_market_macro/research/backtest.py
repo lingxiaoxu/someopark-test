@@ -131,7 +131,7 @@ def replay_claims(conn, n_releases: int = 26, asof_offsets=("-24h", "-1h")) -> d
 
 
 def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
-                  max_events: int = 200) -> dict:
+                  max_events: int = 200, collect_legs: bool = False) -> dict:
     """Generic settled-history replay for ANY ladder/categorical series.
 
     Brier needs no y: settled leg results ARE the outcomes. For each settled event,
@@ -178,6 +178,7 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
             else:
                 pmf = grid_pmf(pred.dist, spec.round_rule)
             bs_m, bs_k, n_legs = 0.0, 0.0, 0
+            leg_pairs = []
             for l in legs:
                 mp = _market_leg_prob(conn, l["ticker"], asof)
                 if mp is None:
@@ -195,10 +196,14 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 bs_m += (fair - out) ** 2
                 bs_k += (mp - out) ** 2
                 n_legs += 1
+                if collect_legs:
+                    leg_pairs.append((round(fair, 5), round(mp, 5), out))
             if n_legs:
                 rec[f"brier_model{off}"] = bs_m / n_legs
                 rec[f"brier_market{off}"] = bs_k / n_legs
                 rec[f"n_legs{off}"] = n_legs
+                if collect_legs:
+                    rec[f"legs{off}"] = leg_pairs
         if rec:
             per.append(rec)
     agg = {"n": len(per), "skipped": skipped}
