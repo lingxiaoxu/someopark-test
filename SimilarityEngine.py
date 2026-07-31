@@ -97,6 +97,10 @@ _ROLLING_Z_FEATURES = {
 }
 ROLLING_Z_WINDOW = 252
 _ROLLING_Z_MIN_PERIODS = 60   # 首年内用扩张窗(min 20)防 NaN,首 20 行置 0
+# z 截断: 阶梯型序列(effr/unrate 等月更或平台期)在平台后首次跳变时滚动 sd≈0.03,
+# z 会爆到 ±15(2024-09 首降息 -15.8σ / COVID unrate +15σ),单轴平方距离 225
+# 淹没其余 22 维。截 ±4 保留"极端"排序信息但不让单轴独裁(2026-07-31 数据体检)。
+_ROLLING_Z_CLIP = 4.0
 
 
 def _smart_normalize_column(
@@ -137,12 +141,12 @@ def _smart_normalize_column(
         sd_e = s.expanding(min_periods=20).std()
         mu_r = mu_r.fillna(mu_e)
         sd_r = sd_r.fillna(sd_e)
-        z = (s - mu_r) / sd_r.replace(0.0, np.nan)
+        z = ((s - mu_r) / sd_r.replace(0.0, np.nan)).clip(-_ROLLING_Z_CLIP, _ROLLING_Z_CLIP)
         col = z.fillna(0.0).values
         # today 用序列尾部的滚动统计(col 已含 signal-date 行时即最后一行的窗口)
         mu_t = float(mu_r.iloc[-1]) if np.isfinite(mu_r.iloc[-1]) else 0.0
         sd_t = float(sd_r.iloc[-1]) if np.isfinite(sd_r.iloc[-1]) and sd_r.iloc[-1] > 0 else 1.0
-        today_val = (today_val - mu_t) / sd_t
+        today_val = float(np.clip((today_val - mu_t) / sd_t, -_ROLLING_Z_CLIP, _ROLLING_Z_CLIP))
         return col, today_val
 
     # Z-score normalize (static, 平稳特征)
