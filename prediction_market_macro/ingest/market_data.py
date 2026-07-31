@@ -27,15 +27,38 @@ def _kt(d: date, hh: int, mm: int = 0) -> str:
     return datetime.combine(d, time(hh, mm), tzinfo=ET).astimezone(timezone.utc).isoformat()
 
 
+_ZQ_MONTH = "FGHJKMNQUVXZ"                    # CME month codes Jan..Dec
+
+
+def _zq_contracts(today) -> dict[str, str]:
+    """root 'ZQU26' → yfinance 'ZQU26.CBT' for the current month through +7 —
+    covers the next ~5 FOMC meetings for the FedWatch chain (model/fed.py)."""
+    out = {}
+    y, m = today.year, today.month
+    for k in range(0, 8):
+        mm = (m - 1 + k) % 12 + 1
+        yy = y + (m - 1 + k) // 12
+        code = f"ZQ{_ZQ_MONTH[mm - 1]}{yy % 100:02d}"
+        out[code] = f"{code}.CBT"
+    return out
+
+
 def pull_futures(conn, roots: list[str] | None = None, lookback_days: int = 900) -> int:
     import yfinance as yf
     now = datetime.now(timezone.utc).isoformat()
     today = datetime.now(ET).date()
     n = 0
-    for root in roots or list(FUT_ROOTS):
-        tkr = FUT_ROOTS[root]
-        df = yf.Ticker(tkr).history(period=f"{lookback_days}d", interval="1d",
-                                    auto_adjust=False)
+    all_roots = {**FUT_ROOTS, **_zq_contracts(today)} if roots is None \
+        else {r: FUT_ROOTS[r] for r in roots}
+    for root in all_roots:
+        tkr = all_roots[root]
+        try:
+            df = yf.Ticker(tkr).history(period=f"{lookback_days}d", interval="1d",
+                                        auto_adjust=False)
+        except Exception:                            # noqa: BLE001 — dead contract
+            continue
+        if df is None or df.empty:
+            continue
         for ts, r in df.iterrows():
             d = ts.date()
             if d >= today:                      # §5-bis 口2: today's bar is incomplete

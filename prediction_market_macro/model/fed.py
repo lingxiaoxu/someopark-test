@@ -24,9 +24,74 @@ from prediction_market_macro.model.common import Categorical, Pred
 from prediction_market_macro.model.features import FeatureStore
 from prediction_market_macro.strategy.devig import ladder_implied
 
-VERSION = "fed/0.1.0"
+VERSION = "fed/0.2.0"             # 0.2.0: + FF-futures (ZQ) FedWatch chain source
 CATS = ["C26", "C25", "H0", "H25", "H26"]
-W_RULE, W_MKT = 0.4, 0.6
+W_RULE, W_MKT = 0.4, 0.6          # two-source weights (fallback when no ZQ data)
+W3_RULE, W3_MKT, W3_FF = 0.15, 0.35, 0.50   # three-source: FF futures deepest
+
+_ZQ_MONTH = "FGHJKMNQUVXZ"
+
+
+def _zq_root(y: int, m: int) -> str:
+    return f"ZQ{_ZQ_MONTH[m - 1]}{y % 100:02d}"
+
+
+def _ff_probs(fs: FeatureStore, conn, asof: datetime,
+              meeting: datetime) -> tuple[dict | None, str | None]:
+    """CME-FedWatch-style probabilities from 30-day Fed Funds futures (ZQ monthly
+    contracts, PIT via fut_daily). Chain-solve month by month: a month's implied
+    average rate is the day-weighted mix of the pre- and post-meeting rates; each
+    meeting's post-rate is the unknown. Expected move at the TARGET meeting maps
+    to the 5 buckets by splitting between the two adjacent 25bp quanta."""
+    import calendar as _cal
+    from prediction_market_macro.ingest.calendars import CALENDARS
+    r0 = fs.fred_scalar_latest("DFEDTARU", asof)
+    if r0 is None:
+        return None, None
+    rate = float(r0) - 0.125                   # upper bound → corridor midpoint
+    meetings = [e.scheduled_ts for e in CALENDARS["FOMC"]
+                if e.scheduled_ts > asof]      # future meetings, chronological
+    horizon = None
+    exp_move = None
+    cur = (asof.year, asof.month)
+    for _ in range(8):                          # walk months forward
+        y, m = cur
+        days_in_m = _cal.monthrange(y, m)[1]
+        mts = [mt for mt in meetings if (mt.year, mt.month) == (y, m)]
+        root = _zq_root(y, m)
+        closes, h = fs.fut_closes(root, asof, n=10)
+        if mts and len(closes) >= 1:
+            implied = 100.0 - float(closes.iloc[-1])
+            d_meet = mts[0].day
+            w_pre = d_meet / days_in_m          # meeting-day split (FedWatch)
+            if 1.0 - w_pre > 0.05:              # solvable only with post-days left
+                r_post = (implied - w_pre * rate) / (1.0 - w_pre)
+                move = r_post - rate
+                if mts[0] == meetings[0]:       # the TARGET (next) meeting
+                    exp_move = move
+                    horizon = h
+                rate = r_post                   # chain forward
+        elif mts:
+            return None, None                   # meeting month without ZQ data
+        cur = (y + (m == 12), m % 12 + 1)
+        if exp_move is not None and (meeting.year, meeting.month) <= (y, m):
+            break
+    if exp_move is None:
+        return None, None
+    # map E[Δ] to the 5 buckets: probability split between adjacent 25bp quanta
+    quanta = [-0.50, -0.25, 0.0, 0.25, 0.50]
+    keys = ["C26", "C25", "H0", "H25", "H26"]
+    x = max(min(exp_move, 0.50), -0.50)
+    probs = dict.fromkeys(keys, 1e-4)
+    for i in range(len(quanta) - 1):
+        lo, hi = quanta[i], quanta[i + 1]
+        if lo <= x <= hi:
+            f = (x - lo) / (hi - lo)
+            probs[keys[i]] = max(1.0 - f, 1e-4)
+            probs[keys[i + 1]] = max(f, 1e-4)
+            break
+    z = sum(probs.values())
+    return {k: v / z for k, v in probs.items()}, horizon
 
 
 def _rule_probs(fs: FeatureStore, conn, asof: datetime) -> tuple[dict, dict]:
@@ -131,14 +196,31 @@ def predict(conn, asof: datetime, period: str, series: str = "KXFEDDECISION") ->
     fs = FeatureStore(conn)
     rule, meta = _rule_probs(fs, conn, asof)
     mkt, mkt_ts = _market_prior(conn, asof, period)
+    # third source (v0.2): FF-futures FedWatch chain — the deepest read on the
+    # meeting outcome, and the INDEPENDENT information Kalshi quotes lag
+    from prediction_market_macro.ingest.calendars import CALENDARS
+    meeting = next((e.scheduled_ts for e in CALENDARS["FOMC"]
+                    if e.period == period), None)
+    ff, ff_ts = (None, None)
+    if meeting is not None:
+        try:
+            ff, ff_ts = _ff_probs(fs, conn, asof, meeting)
+        except Exception:                              # noqa: BLE001
+            ff = None
+    sources = {"rule": (rule, W3_RULE if ff else W_RULE)}
     if mkt is not None:
-        logp = {k: W_RULE * math.log(max(rule[k], 1e-4)) + W_MKT * math.log(max(mkt[k], 1e-4))
-                for k in CATS}
+        sources["market"] = (mkt, W3_MKT if ff else W_MKT)
+    if ff is not None:
+        sources["ff"] = (ff, W3_FF)
+    if len(sources) > 1:
+        tot_w = sum(w for _, w in sources.values())
+        logp = {k: sum(w / tot_w * math.log(max(p[k], 1e-4))
+                       for p, w in sources.values()) for k in CATS}
         mx = max(logp.values())
         expd = {k: math.exp(v - mx) for k, v in logp.items()}
         tot = sum(expd.values())
         probs = {k: round(v / tot, 6) for k, v in expd.items()}
-        mode = "rule+market"
+        mode = "+".join(sources)
     else:
         probs = {k: round(v, 6) for k, v in rule.items()}
         mode = "rule_only"
@@ -146,13 +228,15 @@ def predict(conn, asof: datetime, period: str, series: str = "KXFEDDECISION") ->
     kmax = max(probs, key=probs.get)
     probs[kmax] = round(probs[kmax] + rem, 6)
     horizons = [meta["horizon"]]
-    if mkt_ts:
-        horizons.append(mkt_ts)
+    for ts_ in (mkt_ts, ff_ts):
+        if ts_:
+            horizons.append(ts_)
     return Pred(series="KXFEDDECISION", period=period, dist=Categorical(probs), asof=asof,
                 model_version=VERSION,
                 inputs={**meta["feats"], "mode": mode,
                         "rule": {k: round(v, 4) for k, v in rule.items()},
-                        "market": {k: round(v, 4) for k, v in (mkt or {}).items()}},
+                        "market": {k: round(v, 4) for k, v in (mkt or {}).items()},
+                        "ff": {k: round(v, 4) for k, v in (ff or {}).items()}},
                 data_horizon=datetime.fromisoformat(max(horizons)))
 
 
