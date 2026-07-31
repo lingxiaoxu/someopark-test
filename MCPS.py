@@ -74,6 +74,13 @@ def gaussian_sim(v1: list[float], v2: list[float], sigma: float) -> float:
     return math.exp(-_dist2(v1, v2) / (2 * sigma ** 2))
 
 
+# MCPS 选参域的核带宽(2026-07-31 ESS 修复): σ = scale × median(dists)。
+# 1.0 时 ESS≈90%(核几乎平坦,宏观条件化≈全期Sharpe);收紧到目标 ESS 10-30%
+# 让"相似"真正挑人。取值由真实数据带宽扫描确定(见修复记录)。
+# 只作用于 MCPS 打分路径;MacroSimilarity 金窗 store 是 top-K 排序,不受带宽影响。
+MCPS_SIGMA_SCALE = 0.35
+
+
 def macro_cond_sharpe(
     equity,
     macro_df,
@@ -82,6 +89,7 @@ def macro_cond_sharpe(
     min_overlap: int = 60,
     normalize: bool = True,
     similarity_method: str | None = "autoencoder",
+    sigma_scale: float | None = None,
 ) -> float:
     """
     Gaussian-kernel-weighted Sharpe ratio — 宏观条件化夏普比率。
@@ -129,7 +137,9 @@ def macro_cond_sharpe(
     # ── Delegate to SimilarityEngine if requested ─────────────────────
     if similarity_method is not None:
         from SimilarityEngine import SimilarityEngine
-        engine = SimilarityEngine(method=similarity_method, normalize=normalize)
+        _ss = MCPS_SIGMA_SCALE if sigma_scale is None else sigma_scale
+        engine = SimilarityEngine(method=similarity_method, normalize=normalize,
+                                  sigma_scale=_ss)
         weights, w_index = engine.compute_weights(macro_df, today_vec, features)
         if len(weights) == 0:
             return float("nan")

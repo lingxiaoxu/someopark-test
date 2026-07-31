@@ -718,9 +718,20 @@ def main() -> None:
             if str(_PROJECT_DIR) not in sys.path:
                 sys.path.insert(0, str(_PROJECT_DIR))
             from MacroStateStore import MacroStateStore as _MSS          # type: ignore
-            from MacroStateStore import SIMILARITY_FEATURES as _SF       # type: ignore
+            from SimilarityEngine import AUTOENCODER_FEATURES as _SF     # type: ignore
+            # 2026-07-31: autoencoder 必须喂满 23 维(旧 6 维=零压缩伪AE);
+            # 质量门:缺>1/3(即>7)特征跳过 macro-cond 阶段并大声告警;缺≤7由引擎按可用子空间打分。
             _store   = _MSS()
-            _today_v = _store.get(datetime.now().date())
+            _today_v = _store.get(datetime.now().date(), features=list(_SF))
+            _miss = [f for f in _SF if _today_v.get(f) is None
+                     or (isinstance(_today_v.get(f), float) and _today_v[f] != _today_v[f])]
+            if len(_miss) > len(_SF) // 3:
+                log.warning(f"[SELECT] today_vec 缺 {len(_miss)}/23 特征 {_miss} — "
+                            f"维度残缺过多,跳过 macro-cond 阶段(需修上游 store)")
+                raise RuntimeError("macro features incomplete")
+            if _miss:
+                log.warning(f"[SELECT] today_vec 缺 {len(_miss)} 特征,"
+                            f"引擎按可用子空间打分(请修上游 store): {_miss}")
             if any(v is not None for v in _today_v.values()):
                 _bs = base_cfg.get("backtest", {}).get("start_date", "2018-07-01")
                 _macro_df = _store.load(_bs)

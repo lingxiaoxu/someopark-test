@@ -181,11 +181,28 @@ def mcps_realtime_scores(
             sys.path.insert(0, str(_PROJECT_DIR))
         from MCPS import macro_cond_sharpe
         from MacroStateStore import MacroStateStore, SIMILARITY_FEATURES
+        from SimilarityEngine import AUTOENCODER_FEATURES
 
         store = MacroStateStore()
-        today_vec = store.get(str(signal_date))
+        # 2026-07-31 修复: autoencoder 必须喂满 23 维 AUTOENCODER_FEATURES。
+        # 旧代码 store.get() 默认只取 6 维 SIMILARITY_FEATURES → AE 零压缩,
+        # "23维宏观共动学习"在 MCPS 打分路径上名不副实。
+        today_vec = store.get(str(signal_date), features=list(AUTOENCODER_FEATURES))
         if not today_vec or all(v is None for v in today_vec.values()):
             return scores
+        # 数据质量门(2026-07-31): 缺特征必须大声暴露。缺≤1/3 → 引擎剔除缺失列,
+        # 用可用子空间(如 23缺3 → 20维)继续打分并报警;缺>1/3 → 维度太残缺,
+        # 跳过 MCPS(保持现任参数集,由复合分其余成分决策)。绝不静默。
+        _missing = [f for f in AUTOENCODER_FEATURES
+                    if today_vec.get(f) is None
+                    or (isinstance(today_vec.get(f), float) and today_vec[f] != today_vec[f])]
+        if len(_missing) > len(AUTOENCODER_FEATURES) // 3:
+            log.warning(f"[SMART SELECT] today_vec 缺 {len(_missing)}/23 特征 "
+                        f"{_missing} — 维度残缺过多,跳过 MCPS 打分(需修上游 store)")
+            return scores
+        if _missing:
+            log.warning(f"[SMART SELECT] today_vec 缺 {len(_missing)} 特征,"
+                        f"引擎将按 {23-len(_missing)} 维可用子空间打分(请修上游 store): {_missing}")
 
         for cand in top_candidates:
             name = cand.get("name", cand.get("param_set", ""))
@@ -199,7 +216,7 @@ def mcps_realtime_scores(
                     equity=eq,
                     macro_df=macro_df,
                     today_vec=today_vec,
-                    features=list(SIMILARITY_FEATURES),
+                    features=list(AUTOENCODER_FEATURES),
                     similarity_method="autoencoder",
                 )
                 if not np.isnan(sc):

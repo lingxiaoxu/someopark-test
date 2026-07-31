@@ -391,6 +391,12 @@ def _load_wf_configs(strategy: str) -> tuple[list, dict]:
 #   末窗 → 用宏观窗 param(log [GOLD]);pair 列表本身仍取末窗(不引入旧对)。
 # - 任何文件缺失/异常 → 完整回退旧行为(仅末窗),只 log warning。
 _GOLD_SIM_STORE = os.path.join(BASE_DIR, 'macro_similarity', 'similarity_store.json')
+# 段级禁区(交易日): 相似段的段末必须距 ref_day 至少这么多交易日。
+# 2026-07-31: 相似度量修复(rolling-z+23维)后度量更锐利,"最相似段"会平凡地
+# 命中当前情景自身(如7月末查到7月上半月) → 金窗塌缩成末窗。禁区把"当前
+# 事件的延续"排除,让金窗找到真正独立的历史类比(v1旧store顶部候选距ref
+# 74td,此禁区对旧store是无操作,已验证)。
+_GOLD_SPAN_EMBARGO_TD = 30
 _gold_sim_cache: dict = {}
 _gold_meta: dict = {}     # strategy -> {'n_windows','gold_windows','span','ref_day'}
 
@@ -415,9 +421,13 @@ def _gold_windows_for(wf: dict):
     oos_start, oos_end = windows[0]['test_start'], windows[-1]['test_end']
     idx = {d: i for i, d in enumerate(all_days)}
     best = None
+    ref_i = idx.get(ref_day)
     for end_d, dist in cands:
         i = idx.get(end_d)
         if i is None or i < span_n - 1:
+            continue
+        # 段级禁区: 距 ref 过近的段是"当前情景自身",不是独立历史类比 → 跳过
+        if ref_i is not None and (ref_i - i) < _GOLD_SPAN_EMBARGO_TD:
             continue
         start_d = all_days[i - (span_n - 1)]
         if start_d >= oos_start and end_d <= oos_end:

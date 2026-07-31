@@ -78,16 +78,29 @@ def _load_feature_matrix() -> pd.DataFrame:
 
 
 def _train_encoder(sub: pd.DataFrame) -> AutoencoderMethod:
+    """norm_version=2(2026-07-31): 训练前对非平稳水平量做 rolling-z 预变换,
+    与 AutoencoderMethod.compute_weights / _embed(nv=2) 完全同一变换。"""
     ae = AutoencoderMethod(latent_dim=LATENT_DIM, seed=SEED)
-    ae._build_and_train(sub.values.copy(), list(sub.columns))
+    mat = sub.values.copy().astype(float)
+    mat, _ = AutoencoderMethod.regime_prepass(mat, None, list(sub.columns))
+    ae._build_and_train(mat, list(sub.columns))
     return ae
 
 
-def _embed(ae: AutoencoderMethod, sub: pd.DataFrame) -> pd.DataFrame:
-    """用(已训练/已加载的)encoder 把每日特征嵌入到隐空间。"""
-    mat = sub.values.copy()
+def _embed(ae: AutoencoderMethod, sub: pd.DataFrame,
+           norm_version: int = 2) -> pd.DataFrame:
+    """用(已训练/已加载的)encoder 把每日特征嵌入到隐空间。
+
+    norm_version: 必须与 encoder 训练时的归一化版本一致(encoder_meta 记录)。
+      1 = 旧口径(全部 raw 特征 log+静态scaler) — 兼容旧 store 的冻结路径
+      2 = rolling-z 预变换 7 个非平稳水平量后再 log/scaler(2026-07-31)
+    版本不匹配 = 新变换喂旧 scaler(或反之) → 嵌入失真,故由调用方从 meta 读取。"""
+    from SimilarityEngine import _ROLLING_Z_FEATURES
+    mat = sub.values.copy().astype(float)
+    if norm_version >= 2:
+        mat, _ = AutoencoderMethod.regime_prepass(mat, None, list(sub.columns))
     for i, f in enumerate(sub.columns):
-        if f in _LOG_TRANSFORM_FEATURES:
+        if f in _LOG_TRANSFORM_FEATURES and not (norm_version >= 2 and f in _ROLLING_Z_FEATURES):
             floor = max(float(mat[:, i].min()), 0.01)
             mat[:, i] = np.log(np.maximum(mat[:, i], floor))
     x = (mat - ae._scaler_mean) / ae._scaler_std
@@ -103,6 +116,7 @@ def _save_encoder(ae: AutoencoderMethod, sub: pd.DataFrame, store_dir: str) -> N
         'scaler_mean': [float(v) for v in ae._scaler_mean],
         'scaler_std': [float(v) for v in ae._scaler_std],
         'log_features': sorted(f for f in sub.columns if f in _LOG_TRANSFORM_FEATURES),
+        'norm_version': 2,   # 2 = rolling-z 预变换(2026-07-31);缺失=1(旧口径)
         'trained_through': str(sub.index.max().date()),
         'is_pca': bool(getattr(ae, '_is_pca', False)),
         'built_at': datetime.now().isoformat(),
@@ -202,7 +216,7 @@ def build(store_dir: str) -> None:
     sub = _load_feature_matrix()
     ae = _train_encoder(sub)
     _save_encoder(ae, sub, store_dir)
-    latent = _embed(ae, sub)
+    latent = _embed(ae, sub, norm_version=2)
     latent.to_parquet(os.path.join(store_dir, 'latent.parquet'))
     records = _compute_records(latent)
     store = {
@@ -231,7 +245,8 @@ def update(store_dir: str) -> None:
     if missing:
         raise RuntimeError(f'快照缺少 encoder 训练时的特征列: {missing}')
     sub = sub[feats]
-    latent = _embed(ae, sub)                    # 全历史重嵌入(冻结 encoder,确定性)
+    _nv = int(meta.get('norm_version', 1))      # 旧store缺字段=1,变换必须配套
+    latent = _embed(ae, sub, norm_version=_nv)  # 全历史重嵌入(冻结 encoder,确定性)
     latent.to_parquet(os.path.join(store_dir, 'latent.parquet'))
     with open(sp) as f:
         store = json.load(f)

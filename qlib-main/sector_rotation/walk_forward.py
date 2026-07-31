@@ -385,6 +385,9 @@ def _macro_cond_sharpe_is(
         today_vec=today_vec,
         features=features,
         min_overlap=min_overlap,
+        # 2026-07-31: fold 向量域是 6 维 SIMILARITY_FEATURES(与历史 fold 存档
+        # 可比性约束),如实声明 euclidean;默认 autoencoder 对 6 维=零压缩伪AE。
+        similarity_method="euclidean",
     )
 
 

@@ -85,6 +85,19 @@ _LOG_TRANSFORM_FEATURES = {
     'arkk_20d', 'nvda_20d', 'soxx_20d', 'uso_20d',
 }
 
+# ── 非平稳"水平量"特征 → rolling z-score(2026-07-31 修复) ──────────────────
+# 这7个是宏观水平序列(利率/失业率/通胀预期/信心指数等),存在多年期 regime 漂移:
+# 静态全样本 z-score 无法去除趋势——如 consumer_sent 低迷数月后,近期所有日子
+# 共享同一个极端 z 值,把"相似度"退化成"近因"。改用 252 日 rolling z(与
+# MacroStateStore._rolling_z 同窗口口径),恢复平稳性。
+# 要求: 输入列必须按时间升序(本仓库所有调用方 store.load/MacroSimilarity 均满足)。
+_ROLLING_Z_FEATURES = {
+    'effr', 'unrate', 'tnx', 'yield_curve', 'nfci',
+    'consumer_sent', 'breakeven_10y',
+}
+ROLLING_Z_WINDOW = 252
+_ROLLING_Z_MIN_PERIODS = 60   # 首年内用扩张窗(min 20)防 NaN,首 20 行置 0
+
 
 def _smart_normalize_column(
     col: np.ndarray,
@@ -96,8 +109,10 @@ def _smart_normalize_column(
 
     Rules:
       - Feature ends with '_z': already z-scored by MacroStateStore → skip
-      - Feature in _LOG_TRANSFORM_FEATURES: log-transform first, then z-score
-      - Otherwise: plain z-score normalization
+      - Feature in _LOG_TRANSFORM_FEATURES: log-transform first
+      - Feature in _ROLLING_Z_FEATURES: 252d rolling z-score(去 regime 漂移,
+        要求列按时间升序;today 用尾窗统计归一)
+      - Otherwise: static full-sample z-score
 
     Returns (normalized_col, normalized_today)
     """
@@ -111,7 +126,26 @@ def _smart_normalize_column(
         col = np.log(np.maximum(col, floor))
         today_val = np.log(max(today_val, floor))
 
-    # Z-score normalize
+    if feature_name in _ROLLING_Z_FEATURES:
+        # Rolling z-score(非平稳水平量): 每行用其前 252 日窗口统计
+        import pandas as _pd
+        s = _pd.Series(col)
+        mu_r = s.rolling(ROLLING_Z_WINDOW, min_periods=_ROLLING_Z_MIN_PERIODS).mean()
+        sd_r = s.rolling(ROLLING_Z_WINDOW, min_periods=_ROLLING_Z_MIN_PERIODS).std()
+        # 首年 warmup: 扩张窗(min 20)填充,再早置 0(2017 年头几周,权重噪声可忽略)
+        mu_e = s.expanding(min_periods=20).mean()
+        sd_e = s.expanding(min_periods=20).std()
+        mu_r = mu_r.fillna(mu_e)
+        sd_r = sd_r.fillna(sd_e)
+        z = (s - mu_r) / sd_r.replace(0.0, np.nan)
+        col = z.fillna(0.0).values
+        # today 用序列尾部的滚动统计(col 已含 signal-date 行时即最后一行的窗口)
+        mu_t = float(mu_r.iloc[-1]) if np.isfinite(mu_r.iloc[-1]) else 0.0
+        sd_t = float(sd_r.iloc[-1]) if np.isfinite(sd_r.iloc[-1]) and sd_r.iloc[-1] > 0 else 1.0
+        today_val = (today_val - mu_t) / sd_t
+        return col, today_val
+
+    # Z-score normalize (static, 平稳特征)
     mu = float(col.mean())
     sd = float(col.std())
     if sd > 0:
@@ -131,8 +165,11 @@ class EuclideanMethod(SimilarityMethod):
       - Other raw features: plain z-score
     """
 
-    def __init__(self, normalize: bool = True):
+    def __init__(self, normalize: bool = True, sigma_scale: float = 1.0):
         self.normalize = normalize
+        # 核带宽系数: σ = sigma_scale × median(dists)。1.0=旧行为;
+        # <1 收紧核让"相似"真正挑人(2026-07-31 ESS 修复,MCPS 路径用)
+        self.sigma_scale = sigma_scale
 
     def compute_weights(
         self,
@@ -152,7 +189,7 @@ class EuclideanMethod(SimilarityMethod):
         diffs = mat - today
         dists = np.sqrt((diffs ** 2).sum(axis=1))
 
-        sigma = max(float(np.median(dists)), 1e-3)
+        sigma = max(float(np.median(dists)) * self.sigma_scale, 1e-3)
         weights = np.exp(-(dists ** 2) / (2.0 * sigma ** 2))
         return weights
 
@@ -186,23 +223,42 @@ class AutoencoderMethod(SimilarityMethod):
         epochs: int = 100,
         lr: float = 0.003,
         seed: int = 42,
+        sigma_scale: float = 1.0,
     ):
         self.latent_dim = latent_dim
         self.epochs = epochs
         self.lr = lr
         self.seed = seed
+        self.sigma_scale = sigma_scale   # 核带宽系数(同 EuclideanMethod)
         self._encoder = None
         self._scaler_mean = None
         self._scaler_std = None
         self._trained = False
 
+    @staticmethod
+    def regime_prepass(mat: np.ndarray, today: 'np.ndarray | None',
+                       feature_names: List[str]):
+        """非平稳水平量的 rolling-z 预变换(2026-07-31,norm_version=2)。
+        训练/嵌入/today 三处必须用同一变换 — MacroSimilarity 与本类共用此入口。
+        today=None 时只变换矩阵(全历史嵌入场景)。原地修改并返回 (mat, today)。"""
+        for i, f in enumerate(feature_names):
+            if f in _ROLLING_Z_FEATURES:
+                tv = float(today[i]) if today is not None else float(mat[-1, i])
+                mat[:, i], tv_n = _smart_normalize_column(mat[:, i], tv, f)
+                if today is not None:
+                    today[i] = tv_n
+        return mat, today
+
     def _build_and_train(self, macro_matrix: np.ndarray, feature_names: List[str]) -> None:
-        """Build and train the autoencoder on the provided macro data."""
+        """Build and train the autoencoder on the provided macro data.
+
+        期望输入: 已经过 regime_prepass 的矩阵(7个非平稳特征已是 rolling-z 空间,
+        本函数的 log 循环会跳过它们防止对 z 值取对数)。"""
         # Smart normalization: log-transform large-range features, skip _z features
         self._feature_names = feature_names
         mat = macro_matrix.copy()
         for i, f in enumerate(feature_names):
-            if f in _LOG_TRANSFORM_FEATURES:
+            if f in _LOG_TRANSFORM_FEATURES and f not in _ROLLING_Z_FEATURES:
                 floor = max(float(mat[:, i].min()), 0.01)
                 mat[:, i] = np.log(np.maximum(mat[:, i], floor))
 
@@ -300,14 +356,30 @@ class AutoencoderMethod(SimilarityMethod):
         today_vector: np.ndarray,
         feature_names: List[str],
     ) -> np.ndarray:
-        if not self._trained:
-            self._build_and_train(macro_matrix, feature_names)
+        # ── 守卫(2026-07-31): 输入维度 ≤ latent_dim 时 AE 零压缩,是昂贵的
+        # 伪恒等映射 → 明确降级为 Euclidean 并大声告警。正常路径(23维)不触发;
+        # 数据质量应由调用方保证(喂满特征),此守卫只是最后防线。
+        if macro_matrix.shape[1] <= self.latent_dim:
+            logger.warning(
+                f"AutoencoderMethod: n_features={macro_matrix.shape[1]} <= "
+                f"latent_dim={self.latent_dim} — no compression possible; "
+                f"delegating to EuclideanMethod. 调用方应喂满 AUTOENCODER_FEATURES!"
+            )
+            return EuclideanMethod(
+                normalize=True, sigma_scale=self.sigma_scale
+            ).compute_weights(macro_matrix, today_vector, feature_names)
 
-        # Apply same log-transform as training
+        # ── 非平稳特征预变换(norm_version=2): 训练与编码同变换 ──
         mat = macro_matrix.copy()
         today = today_vector.copy()
+        mat, today = self.regime_prepass(mat, today, feature_names)
+
+        if not self._trained:
+            self._build_and_train(mat, feature_names)
+
+        # Apply same log-transform as training(rolling-z 特征已在 z 空间,跳过)
         for i, f in enumerate(feature_names):
-            if f in _LOG_TRANSFORM_FEATURES:
+            if f in _LOG_TRANSFORM_FEATURES and f not in _ROLLING_Z_FEATURES:
                 floor = max(float(mat[:, i].min()), 0.01)
                 mat[:, i] = np.log(np.maximum(mat[:, i], floor))
                 today[i] = np.log(max(today[i], floor))
@@ -323,7 +395,7 @@ class AutoencoderMethod(SimilarityMethod):
         # Gaussian kernel in latent space
         diffs = latent_mat - latent_today
         dists = np.sqrt((diffs ** 2).sum(axis=1))
-        sigma = max(float(np.median(dists)), 1e-3)
+        sigma = max(float(np.median(dists)) * self.sigma_scale, 1e-3)
         weights = np.exp(-(dists ** 2) / (2.0 * sigma ** 2))
         return weights
 
@@ -375,8 +447,8 @@ class SimilarityEngine:
     def __init__(self, method: str = "euclidean", **kwargs):
         self.method_name = method
 
-        _euc_keys = {'normalize'}
-        _ae_keys = {'latent_dim', 'epochs', 'lr', 'seed'}
+        _euc_keys = {'normalize', 'sigma_scale'}
+        _ae_keys = {'latent_dim', 'epochs', 'lr', 'seed', 'sigma_scale'}
 
         if method == "ensemble":
             self._methods = [
@@ -441,10 +513,21 @@ class SimilarityEngine:
             # ALL features missing → cannot compute similarity
             return np.array([]), pd.DatetimeIndex([])
         if n_missing > 0:
-            # Partial missing → fill with column median (graceful degradation)
-            for i, (f, v) in enumerate(zip(avail, today_v)):
-                if v is None or (isinstance(v, float) and v != v):
-                    today_v[i] = float(sub[f].median())
+            # Partial missing → 子空间降级(2026-07-31,用户指定行为): 剔除缺失
+            # 特征列,用可用维度继续计算(如 23 缺 3 → 20 维),并大声报警。
+            # 不用中位数填充——填充=虚构今日值,子空间=诚实地只比可比的维度。
+            _dropped = [f for f, v in zip(avail, today_v)
+                        if v is None or (isinstance(v, float) and v != v)]
+            logger.warning(
+                f"SimilarityEngine: today_vec 缺 {n_missing}/{len(avail)} 特征 "
+                f"{_dropped} — 降维至 {len(avail)-n_missing} 维可用子空间继续"
+                f"(应修复上游数据!)"
+            )
+            keep = [i for i, v in enumerate(today_v)
+                    if not (v is None or (isinstance(v, float) and v != v))]
+            avail = [avail[i] for i in keep]
+            today_v = [today_v[i] for i in keep]
+            sub = sub[avail]
 
         today_arr = np.array([float(v) for v in today_v])
         weights = method.compute_weights(sub.values, today_arr, avail)

@@ -86,8 +86,13 @@ def run_multi_horizon(
     try:
         from MCPS import macro_cond_sharpe
         from MacroStateStore import MacroStateStore, SIMILARITY_FEATURES
+        from SimilarityEngine import AUTOENCODER_FEATURES
         store = MacroStateStore()
-        today_vec = store.get(str(date.today()))
+        today_vec = store.get(str(date.today()), features=list(AUTOENCODER_FEATURES))
+        # 2026-07-31: MCPS 打分用 MacroStateStore 完整帧(23维全有)——策略自身
+        # loader 的 macro 帧列不全(SSRS 仅7列)会把 AE 打回守卫降级。与 BatchRun
+        # 的 _store.load 做法对齐;策略引擎自身回测仍用原 macro 帧,互不影响。
+        mcps_macro = store.load("2017-01-01")
         if today_vec and any(v is not None for v in today_vec.values()):
             mcps_available = True
     except Exception as e:
@@ -147,9 +152,9 @@ def run_multi_horizon(
                     try:
                         mcps_score = macro_cond_sharpe(
                             equity=result.equity_curve,
-                            macro_df=macro_h,
+                            macro_df=mcps_macro[mcps_macro.index >= start],
                             today_vec=today_vec,
-                            features=list(SIMILARITY_FEATURES),
+                            features=list(AUTOENCODER_FEATURES),
                         )
                         entry["mcps"] = round(float(mcps_score), 4) if not np.isnan(mcps_score) else None
                     except Exception:
