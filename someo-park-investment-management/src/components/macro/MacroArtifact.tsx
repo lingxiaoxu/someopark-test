@@ -6,7 +6,7 @@
  * macro_coverage, macro_risk). Mirrors the PredictionArtifact dispatch pattern;
  * styling uses CSS vars / .table & .card classes, so it inverts with the theme.
  */
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentType, CSSProperties, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
@@ -752,9 +752,16 @@ function OverviewView() {
   );
 }
 
+// EXACT copy of the WC Pdfs kit (prediction/PredictionArtifact.tsx::Pdfs) — same
+// tab styling, open↗ link, per-mount cache-buster, full-height framed iframe.
+// Only difference: the report list is dynamic (macro generates a PDF per day/week).
 function ReportsView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_reports');
+  const [active, setActive] = useState<string | null>(null);
+  // Cache-buster: PDFs are served with a fixed URL over the tunnel and browsers
+  // cache them hard — a per-mount version token forces a fresh fetch per open.
+  const [v] = useState(() => Date.now());
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const reports: MacroReportEntry[] = data?.reports ?? [];
   if (!reports.length) {
@@ -767,20 +774,43 @@ function ReportsView() {
       </div>
     );
   }
+  const label = (r: MacroReportEntry) => {
+    const m = r.name.match(/(\d{4})(\d{2})(\d{2})/);
+    const d = m ? `${m[2]}-${m[3]}` : '';
+    return `${r.kind === 'weekly' ? t('macro.pdfWeekly') : t('macro.pdfDaily')} ${d}`;
+  };
+  const cur = reports.find((r) => r.url === active) ?? reports[0];
+  const url = `${macroFileUrl(cur.url)}?v=${v}`;
+  const tab = (on: boolean): CSSProperties => ({
+    padding: '6px 14px', border: '2px solid var(--ink)', cursor: 'pointer', ...mono,
+    fontSize: 12, fontWeight: 700,
+    background: on ? 'var(--ink)' : 'var(--paper)',
+    color: on ? 'var(--paper)' : 'var(--ink)', marginRight: 8, marginBottom: 6,
+  });
   return (
-    <div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Generated ts={data?.generated_at} />
-      <DataTable
-        cols={[t('macro.colName'), t('macro.colKind'), t('macro.colTime'), '']}
-        rows={reports.map((r) => [
-          <span style={mono}>{r.name}</span>,
-          <Chip color={r.kind === 'weekly' ? 'var(--accent-primary)' : 'var(--text-muted)'}>{r.kind ?? '—'}</Chip>,
-          <span style={{ ...mono, fontSize: 10 }}>{dt(r.mtime)}</span>,
-          <a href={macroFileUrl(r.url)} target="_blank" rel="noreferrer"
-            style={{ ...mono, fontSize: 10.5, color: 'var(--accent-primary)', textDecoration: 'underline' }}>
-            {t('macro.download')}
-          </a>,
-        ])} />
+      <div className="flex items-center justify-between" style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap' }}>
+          {reports.map((r) => (
+            <button key={r.url} style={tab(r.url === cur.url)}
+              onClick={() => setActive(r.url)}>{label(r)}</button>
+          ))}
+        </div>
+        <a href={url} target="_blank" rel="noreferrer"
+          style={{ ...mono, fontSize: 11, color: 'var(--text-muted)',
+            textDecoration: 'underline', whiteSpace: 'nowrap' }}>
+          {t('macro.open')} ↗
+        </a>
+      </div>
+      {/* Fill to the bottom edge: viewport-relative min-height so the viewer is
+          tall regardless of the flex chain through the overflow-auto panel. */}
+      <div style={{ flex: 1, minHeight: 'calc(100vh - 150px)',
+        border: '2px solid var(--ink)', background: '#fff' }}>
+        <iframe key={cur.url} src={url} title={label(cur)}
+          style={{ width: '100%', height: '100%',
+            minHeight: 'calc(100vh - 150px)', border: 'none' }} />
+      </div>
     </div>
   );
 }
