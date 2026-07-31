@@ -176,7 +176,7 @@ def run_extended(conn, settings) -> str:
         " ORDER BY created_ts DESC LIMIT 20").fetchall()]
     gates = [dict(r) for r in conn.execute(
         "SELECT * FROM experiments WHERE name IN ('dfm_gate','series_gate')"
-        " ORDER BY created_ts DESC LIMIT 10").fetchall()]
+        " ORDER BY created_ts DESC LIMIT 40").fetchall()]
     _write(out_dir / "macro_oos.json",
            {"generated_at": now.isoformat(), "experiments": exps,
             "component_gates": gates,
