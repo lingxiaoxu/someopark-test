@@ -303,3 +303,52 @@ regime-switching动态权重、以及"剔除最差再组合"的trimmed-mean都�
    daily_snapshot/quarterly lane,与第3步并行但独立排期(新数据源接入,遵循§5-bis PIT全套)。
 9. **PnL 归因 + PDF 前端导出**(#29/#30):结算 z 归因喂给误差反馈闭环(§22-17),PDF 同步进
    `public/data/` 让 Reports 方块有内容可渲染(配合 §21.3 的报告分组)。
+
+---
+
+## §24. Polymarket 策略文对照与深化路线(2026-07-31,来源: coinsbench "Top 10 Polymarket Trading Strategies")
+
+逐条对照 10 个策略对 macro 模式的适用性。结论:4 条已内建、2 条不适用、**4 条是真正的深化机会**(按价值排序 A-D)。
+
+### 已内建(印证现有设计,无需动作)
+- **#4 规则/结算边缘**(headline≠resolution):我们的 settle_source 逐条 rulebook 核实 + strict/gte 语义 + 未取整卷积正是此策略的系统化版本——文章把它当"边缘",我们把它当地基。
+- **#9 Mention-market No bias**:本质是 favorite-longshot 偏差,我们的 FL 修正图(§23.2-3b)已统计化处理。
+- **#1/#2 的侦测半边**:YES+NO<1 与 bundle<1 的侦测 = consistency 的 MONOTONE-ARB/PARTITION-ARB 扫描(每快照必跑)——但只报警不下单,见深化 A。
+
+### 不适用
+- **#10 鲸鱼跟单**:Kalshi 无公开钱包/排行榜。
+- **#7 跨平台套利**:方向对但需接入 Polymarket 宏观市场(新 venue 全套 + 双腿同时成交风控);列为远期 roadmap,可复用 prediction_market/ 的 PM 基建。
+
+### 深化机会(按预期价值排序)
+
+**A. 把已侦测的免费套利真正下单(#1/#2 的执行半边)** — 价值最高、风险最低
+现状:consistency 每天真实抓到 MONOTONE/PARTITION-ARB(告警可见)但零执行。
+深化:新增 `strategy/arb.py` 执行路径——束买(YES_i + NO_j 或全 bundle),
+零模型风险(数学锁定),独立小额度(如 $2/束),独立 kind='arb' 台账。
+额外收益:这是系统里唯一"确定赚"的钱,且为 edge_capture/滑点校准提供真实成交样本。
+风控:深度门 + 手续费前置(净差>fee 才动)+ 铁律5 流动性帽照常适用。
+
+**B. 发布后狙击(post-print sniper,#3 催化剂动量的宏观特化)** — 第二优先
+宏观独有优势:发布后 print 是公开确定值(BLS/BEA 官网 8:30 挂出),但 Kalshi
+报价收敛需要分钟级时间;此窗口内结算方向已确定的 legs 若仍 mispriced ≈ 无风险。
+基建已备:事件窗加密轮询(±10min 1 分钟快照)+ T+3m reassess 任务 + releases.actual_ts。
+深化:reassess 处理器内加"print-known 分支"——若 fred 首印 kt ≤ now(或 fed_text
+已抓到声明),对照结算规则算出已确定 legs,吃仍在旧价的一侧;kind='snipe' 独立记账。
+风险:结算规则误读(铁律2:每系列先 paper 两个 print 验证)+ 数据源比 Kalshi 慢的场景要探测(claims FRED vintage 有延迟时禁用,改抓 DOL 官网?v0.1 仅在 kt 确认后动)。
+
+**C. 期限结构一致性(#5/#6 的宏观版)** — 中期
+同系列跨期(Fed 会议曲线、CPI 月度序列、claims 周序列)模型隐含曲线 vs 市场曲线:
+新增 consistency 第五件套 `term_structure()`——模型说 8 月与 9 月 CPI 相关(基数效应
+确定性),市场曲线若与模型曲线形状背离超阈值 → 告警 + (P2) 对冲对交易(买错价期
+卖对价期,方差最小化 hedge ratio 复用 pce 桥回归框架)。
+
+**D. 年化收益率视角的 favorite 策略(#8)** — 与现有门互补
+现状:min_net_edge=0.04 绝对值门会拒掉 95¢ 买入 2-3¢ edge 的高确定短久期机会,
+但那类机会按年化看可能极优(5.2%/72h)。
+深化:decide() 增加第二条准入路径——`edge_per_day = net_edge / max(days_to_settle,0.5)`
+超阈值(如 0.008/天)且 fair>0.90 时放行,尺寸独立小帽;与 FL 修正互洽(FL 统计上
+说明 favorites 被低估,正是此策略的学术根基)。
+
+### 实施顺序建议
+A(1 天,零模型风险)→ B(2-3 天,需两 print 验证期)→ D(半天,decide 小改)→
+C(consistency 新件套先侦测后交易)。全部先 paper,过各自小闸门再谈规模。
