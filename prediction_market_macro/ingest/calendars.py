@@ -135,7 +135,8 @@ CALENDARS = build_calendars()
 RELEASE_TIME_ET: dict[str, tuple[int, int]] = {
     "CPIAUCSL": (8, 30), "CPILFESL": (8, 30), "PCEPILFE": (8, 30),
     "UNRATE": (8, 30), "PAYEMS": (8, 30), "ICSA": (8, 30),
-    "GDPC1": (8, 30), "DFEDTARU": (14, 0),
+    "GDPC1": (8, 30), "A191RL1Q225SBEA": (8, 30), "GDPNOW": (11, 0),
+    "DFEDTARU": (14, 0),
 }
 
 

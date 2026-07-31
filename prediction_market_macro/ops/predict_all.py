@@ -28,6 +28,7 @@ SERIES_DISPATCH: dict[str, tuple[str, str]] = {
     "KXWTIW": ("prediction_market_macro.model.energy", "predict"),
     "KXNATGASW": ("prediction_market_macro.model.energy", "predict"),
     "KXAAAGASW": ("prediction_market_macro.model.energy", "predict"),
+    "KXGDP": ("prediction_market_macro.model.gdp", "predict"),
 }
 
 

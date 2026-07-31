@@ -97,6 +97,13 @@ _CARDS: list[ModelSpec] = [
     ModelSpec("KXFED", "fed", "fed/0.1.0", {},
               ["decision categorical → 上界梯子 Empirical"], _TT, True,
               "fed/0.1.0 的梯子投影;失效同 KXFEDDECISION。"),
+    ModelSpec("KXGDP", "gdp", "gdp/0.1.0",
+              {"anchor": "GDPNow", "sigma_floor": 0.5},
+              ["GDPNOW ALFRED vintages (PIT)", "A191RL1Q225SBEA 首印误差 σ"],
+              _TT, True,
+              "**gdp/0.1.0** — GDPNow 锚 + 历史 nowcast-vs-首印误差 σ。已知失效: "
+              "季度早期(GDPNow 数据覆盖不足月)、政府停摆(源数据断供)、"
+              "基准修订季。上线前提: Kalshi KXGDP 合约结构实测 + 两个 paper print(铁律2)。"),
     ModelSpec("KXWTIW", "energy", "energy/0.1.0",
               {"n_samples": 20000, "vol_window": 20, "vol_floor": 0.008, "rng_seed": 0},
               ["CL front-month closes (fut_daily, PIT)", "20d MAD vol"], _TT, True,

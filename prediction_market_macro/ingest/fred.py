@@ -24,7 +24,7 @@ ET = ZoneInfo("America/New_York")
 # stored through the same path with knowledge_time = event date 18:00 ET (post-close).
 CORE_SIDS = ["CPIAUCSL", "CPILFESL", "PCEPILFE", "UNRATE", "PAYEMS", "ICSA",
              "DFEDTARU", "DGS2", "DGS5", "DGS10", "DGS30", "T5YIE", "GASREGW",
-             "DCOILWTICO", "GDPC1"]
+             "DCOILWTICO", "GDPC1", "A191RL1Q225SBEA"]
 _MARKET_SIDS = {"DGS2", "DGS5", "DGS10", "DGS30", "T5YIE", "DCOILWTICO", "DFEDTARU", "GASREGW"}
 
 

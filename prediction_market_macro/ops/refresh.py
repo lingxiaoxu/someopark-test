@@ -55,6 +55,8 @@ def run(weekly: bool = False) -> dict:
     from prediction_market_macro.venues.kalshi import account
     step("bankroll", lambda: account.refresh_bankroll(conn))
     step("fred_core", lambda: sum(fred.pull_core().values()))
+    from prediction_market_macro.ingest import nowcast
+    step("gdpnow", lambda: nowcast.pull_gdpnow(fred, conn))
     step("futures", lambda: market_data.pull_futures(conn))
     step("fx", lambda: market_data.pull_fx(conn, s.polygon_api_key))
     step("news", lambda: market_data.pull_news(conn, s.polygon_api_key))

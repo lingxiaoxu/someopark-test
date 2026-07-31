@@ -122,6 +122,16 @@ REGISTRY: dict[str, SeriesSpec] = {s.ticker: s for s in [
         structure="ladder", unit="$gal", round_rule=0.001, strict_gt=True,
         model="energy", prior_source=None, priority=1, lanes=("weekly_close",),
         fred_first_release="GASREGW"),
+    SeriesSpec(
+        ticker="KXGDP", family="gdp", cadence="quarterly", calendar="BEA_GDP",
+        settle_source=("BEA advance estimate of real GDP growth, annualized SAAR, "
+                       "first print as published 08:30 ET on the scheduled release day "
+                       "(bea.gov). Ladder legs per Kalshi KXGDP rulebook; PAPER-ONLY "
+                       "until the live contract structure is measured (铁律 2: two "
+                       "paper prints minimum before any gate consideration)."),
+        structure="ladder", unit="pct_saar", round_rule=0.1, strict_gt=True,
+        model="gdp", prior_source=None, priority=1, lanes=("quarterly",),
+        fred_first_release="A191RL1Q225SBEA"),
 ]}
 
 

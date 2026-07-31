@@ -41,7 +41,8 @@ def materialize(conn, now: datetime | None = None, horizon_days: int = 30) -> in
     n = 0
     for spec in REGISTRY.values():
         lane = ("fomc_week" if spec.calendar == "FOMC" else
-                "weekly_close" if spec.calendar.endswith("_WEEKLY") else "release_day")
+                "weekly_close" if spec.calendar.endswith("_WEEKLY") else
+                "quarterly" if spec.calendar == "BEA_GDP" else "release_day")
         for ev in cal.releases_between(spec.calendar, now - timedelta(days=2), end):
             for task, off in _OFFSETS:
                 due = ev.scheduled_ts + off
