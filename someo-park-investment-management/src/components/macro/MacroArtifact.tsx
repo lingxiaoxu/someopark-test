@@ -907,7 +907,7 @@ function WalkforwardView() {
       ]} />
       {data?.ml && (data.ml.last30?.n_trades != null) && (() => {
         const lines: [string, any][] = [
-          ['stream_argmax', data.ml.baseline], ['stream_ml', data.ml],
+          ['stream_argmax_rep', data.ml.baseline], ['stream_ml', data.ml],
           ['stream_blend', data.ml.blend]];
         const rows: any[] = [];
         lines.forEach(([label, ln]) => (['last30', 'last60'] as const).forEach((w) => {
