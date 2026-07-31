@@ -51,10 +51,11 @@ def weekly_attribution(conn) -> dict:
            "by_series": by_series, "by_feature": by_feature,
            "misses": misses[:30]}
     now = datetime.now(timezone.utc).isoformat()
+    wk = datetime.now(timezone.utc).strftime("%G-W%V")
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
-        " metrics_json, created_ts) VALUES('error_attribution','weekly','*',?,?,?)",
-        (f"n{total}", json.dumps(out, ensure_ascii=False), now))
+        " metrics_json, created_ts) VALUES('error_attribution',?,'*',?,?,?)",
+        (f"weekly:{wk}", f"n{total}", json.dumps(out, ensure_ascii=False), now))
     for s, c in by_series.items():
         if c >= 3:
             conn.execute(

@@ -218,7 +218,11 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
 
 def _store_experiment(conn, name: str, series: str, window: str, agg: dict,
                       cfg: dict) -> None:
-    cfg_hash = hashlib.sha1(json.dumps(cfg, sort_keys=True).encode()).hexdigest()[:12]
+    # ISO week in the hash → one row per (series, week) ACCUMULATES instead of
+    # replacing forever — health's 2-window/CRPS-spike detectors need history
+    wk = datetime.now(timezone.utc).strftime("%G-W%V")
+    cfg_hash = hashlib.sha1(
+        json.dumps({**cfg, "week": wk}, sort_keys=True).encode()).hexdigest()[:12]
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
         " metrics_json, created_ts) VALUES(?,?,?,?,?,?)",

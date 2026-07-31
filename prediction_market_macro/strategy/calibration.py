@@ -42,8 +42,8 @@ def fit_map(pairs: list[tuple[float, float]]) -> dict | None:
 def store_map(conn, series: str, cal_map: dict | None) -> None:
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
-        " metrics_json, created_ts) VALUES('calibration_map','iso',?,?,?,?)",
-        (series, f"n{(cal_map or {}).get('n_pairs', 0)}",
+        " metrics_json, created_ts) VALUES('calibration_map',?,?,?,?,?)",
+        (f"iso:{series}", series, f"n{(cal_map or {}).get('n_pairs', 0)}",
          json.dumps(cal_map) if cal_map else json.dumps({"identity": True}),
          datetime.now(timezone.utc).isoformat()))
     conn.commit()
@@ -55,8 +55,8 @@ def store_named_map(conn, series: str, name: str, cal_map: dict | None) -> None:
     'market_calibration_map' fit on (market prob, outcome) pairs)."""
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
-        " metrics_json, created_ts) VALUES(?,'iso',?,?,?,?)",
-        (name, series, f"n{(cal_map or {}).get('n_pairs', 0)}",
+        " metrics_json, created_ts) VALUES(?,?,?,?,?,?)",
+        (name, f"iso:{series}", series, f"n{(cal_map or {}).get('n_pairs', 0)}",
          json.dumps(cal_map) if cal_map else json.dumps({"identity": True}),
          datetime.now(timezone.utc).isoformat()))
     conn.commit()

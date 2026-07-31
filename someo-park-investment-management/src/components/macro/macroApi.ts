@@ -6,11 +6,15 @@
  */
 import { API_BASE, apiHeaders } from '../../lib/api';
 
-/** Fetch one macro_*.json data file (name without extension, e.g. "macro_board"). */
+/** Fetch one macro_*.json data file (name without extension, e.g. "macro_board").
+ * Defensive parse: Python's json module can emit bare NaN/Infinity, which strict
+ * JSON.parse rejects — sanitize to null first so one bad float never blanks a
+ * whole view (the exporter also sanitizes; this is the second belt). */
 export async function getMacroJson<T = any>(name: string): Promise<T> {
   const res = await fetch(`${API_BASE}/data/${name}.json`, { headers: apiHeaders(), cache: 'no-store' });
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
-  return res.json();
+  const text = await res.text();
+  return JSON.parse(text.replace(/(?<![\w"'-])-?(?:NaN|Infinity)(?![\w"])/g, 'null'));
 }
 
 /** Absolute URL for a server-relative macro data file (e.g. report PDFs under /data/). */
@@ -80,7 +84,8 @@ export function predSummary(dist: any): string {
     return `${mu.toFixed(3)} ± ${sigma.toFixed(3)}`;
   }
   if (dist.kind === 'empirical' && Array.isArray(dist.quantiles) && dist.quantiles.length) {
-    const q = dist.quantiles;
+    const q = dist.quantiles.filter((v: any) => Number.isFinite(v));
+    if (!q.length) return '—';
     const at = (i: number) => q[Math.min(i, q.length - 1)];
     return `${at(100)} [${at(10)}, ${at(190)}]`;
   }

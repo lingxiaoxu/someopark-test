@@ -22,11 +22,14 @@ def _dist_mu_sigma(dist: dict) -> tuple[float, float] | None:
         mu = sum(ci[0] * ci[1] for ci in comps)
         var = sum(ci[0] * (ci[2] ** 2 + (ci[1] - mu) ** 2) for ci in comps)
         return mu, math.sqrt(max(var, 1e-12))
-    vals = dist.get("values")
+    vals = dist.get("values") or dist.get("quantiles")   # Empirical emits quantiles
     if vals and len(vals) > 3:
-        n = len(vals)
-        mu = sum(vals) / n
-        var = sum((v - mu) ** 2 for v in vals) / (n - 1)
+        finite = [v for v in vals if v is not None and math.isfinite(v)]
+        if len(finite) < 4:
+            return None
+        n = len(finite)
+        mu = sum(finite) / n
+        var = sum((v - mu) ** 2 for v in finite) / (n - 1)
         return mu, math.sqrt(max(var, 1e-12))
     return None
 
@@ -37,6 +40,29 @@ def _first_print_value(conn, sid: str, event_like: str) -> float | None:
         " AND event_time LIKE ? GROUP BY event_time LIMIT 1",
         (sid, event_like + "%")).fetchone()
     return float(r["value"]) if r and r["value"] is not None else None
+
+
+def _same_vintage_pair(conn, sid: str, month: str, prev: str) -> tuple[float, float] | None:
+    """(value_month, value_prev) BOTH read from month's first-print vintage — the
+    published MoM% divides same-vintage levels (SA factors revise annually, so
+    mixing vintages can shift MoM by a grid step)."""
+    v = conn.execute(
+        "SELECT vintage_date, MIN(knowledge_time) FROM fred_obs WHERE sid=?"
+        " AND event_time LIKE ? GROUP BY event_time LIMIT 1",
+        (sid, month + "%")).fetchone()
+    if v is None:
+        return None
+    vd = v["vintage_date"]
+    a = conn.execute(
+        "SELECT value FROM fred_obs WHERE sid=? AND event_time LIKE ?"
+        " AND vintage_date=?", (sid, month + "%", vd)).fetchone()
+    b = conn.execute(
+        "SELECT value FROM fred_obs WHERE sid=? AND event_time LIKE ?"
+        " AND vintage_date<=? ORDER BY vintage_date DESC LIMIT 1",
+        (sid, prev + "%", vd)).fetchone()
+    if a is None or b is None or a["value"] is None or b["value"] is None:
+        return None
+    return float(a["value"]), float(b["value"])
 
 
 def _prev_month(period: str, k: int = 1) -> str:
@@ -59,9 +85,12 @@ def _realized_print(conn, series: str, period: str) -> float | None:
     sid = spec.fred_first_release
     if len(period) == 7:                              # monthly 'YYYY-MM'
         if spec.unit == "%mom":
-            a = _first_print_value(conn, sid, period)
-            b = _first_print_value(conn, sid, _prev_month(period))
-            return round((a / b - 1) * 100, 4) if a and b else None
+            pair = _same_vintage_pair(conn, sid, period, _prev_month(period))
+            if pair is None:
+                a = _first_print_value(conn, sid, period)
+                b = _first_print_value(conn, sid, _prev_month(period))
+                pair = (a, b) if a and b else None
+            return round((pair[0] / pair[1] - 1) * 100, 4) if pair else None
         if spec.unit == "%yoy":
             a = _first_print_value(conn, sid, period)
             b = _first_print_value(conn, sid, _prev_month(period, 12))

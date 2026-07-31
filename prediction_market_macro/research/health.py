@@ -246,6 +246,11 @@ def _ledger_selfcheck(conn, now: datetime, k: int = 3) -> list[str]:
                 continue                                   # dist form not replayable
             if leg["side"] == "no":
                 fair = 1 - fair
+            # decisions.fair is the CALIBRATED value the gates consumed — replay
+            # must walk through the same map or a live calibration map would
+            # false-trip the global breaker on every selfcheck
+            from prediction_market_macro.strategy import calibration as _cal
+            fair = _cal.apply(conn, d["series"], fair)
             if abs(fair - float(d["fair"])) > 1e-6:
                 bad.append(f"ledger_replay_mismatch:id={d['id']}"
                            f":{fair:.6f}!={d['fair']:.6f}")

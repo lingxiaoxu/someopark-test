@@ -6,11 +6,29 @@ Small JSONs only; the frontend macro views (M7) read these at runtime via /data.
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime, timezone
 
 from prediction_market_macro.config.registry import REGISTRY
 from prediction_market_macro.ingest import calendars as cal
 from prediction_market_macro.util.periods import kalshi_period_to_key
+
+
+def _sanitize(o):
+    """Browsers' JSON.parse rejects bare NaN/Infinity (Python emits them by
+    default) — every export goes through here: non-finite floats → null."""
+    if isinstance(o, float) and not math.isfinite(o):
+        return None
+    if isinstance(o, dict):
+        return {k: _sanitize(v) for k, v in o.items()}
+    if isinstance(o, (list, tuple)):
+        return [_sanitize(v) for v in o]
+    return o
+
+
+def _write(path, obj) -> None:
+    path.write_text(json.dumps(_sanitize(obj), ensure_ascii=False, indent=1,
+                               allow_nan=False))
 
 
 def run(conn, settings) -> str:
@@ -34,9 +52,13 @@ def run(conn, settings) -> str:
             key = kalshi_period_to_key(r["period"])
             if not key:
                 continue
+            # PRODUCTION model preds only — shadow members (chronos2/bridge/
+            # ensemble) must never drive the board display
             pr = conn.execute(
-                "SELECT asof, model_version, dist_json, ladder_json FROM preds WHERE series=?"
-                " AND period=? ORDER BY asof DESC LIMIT 1", (spec.ticker, key)).fetchone()
+                "SELECT asof, model_version, dist_json, ladder_json FROM preds"
+                " WHERE series=? AND period=? AND model_version LIKE ?"
+                " ORDER BY asof DESC LIMIT 1",
+                (spec.ticker, key, spec.model + "/%")).fetchone()
             de = conn.execute(
                 "SELECT ts_utc, kind, fair, ask, net_edge, size_usd, note, structure_json"
                 " FROM decisions WHERE series=? AND period=? AND kind IN ('open','pass','exit')"
@@ -49,7 +71,7 @@ def run(conn, settings) -> str:
         board["series"][spec.ticker] = {"family": spec.family, "cadence": spec.cadence,
                                         "structure": spec.structure, "entries": entries}
     board["next_releases"].sort(key=lambda x: x["scheduled_ts"])
-    (out_dir / "macro_board.json").write_text(json.dumps(board, ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_board.json", board)
     written.append("macro_board.json")
 
     # ── macro_decisions.json: full ledger tail + open positions + marks ──
@@ -57,9 +79,8 @@ def run(conn, settings) -> str:
         "SELECT * FROM decisions ORDER BY id DESC LIMIT 200").fetchall()]
     marks = [dict(r) for r in conn.execute(
         "SELECT * FROM marks WHERE ts=(SELECT MAX(ts) FROM marks)").fetchall()]
-    (out_dir / "macro_decisions.json").write_text(json.dumps(
-        {"generated_at": now.isoformat(), "decisions": dec, "latest_marks": marks},
-        ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_decisions.json",
+           {"generated_at": now.isoformat(), "decisions": dec, "latest_marks": marks})
     written.append("macro_decisions.json")
 
     # ── macro_coverage.json: lifecycle matrix + MISSED + alerts tail ──
@@ -69,15 +90,15 @@ def run(conn, settings) -> str:
         "SELECT * FROM runs WHERE status='MISSED' ORDER BY due_ts DESC LIMIT 50").fetchall()]
     alerts = [dict(r) for r in conn.execute(
         "SELECT * FROM alerts WHERE acked=0 ORDER BY id DESC LIMIT 50").fetchall()]
-    (out_dir / "macro_coverage.json").write_text(json.dumps(
-        {"generated_at": now.isoformat(), "coverage": cov, "missed": missed,
-         "alerts": alerts}, ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_coverage.json",
+           {"generated_at": now.isoformat(), "coverage": cov, "missed": missed,
+            "alerts": alerts})
     written.append("macro_coverage.json")
 
-    # ── macro_health.json: copy from output dir if the health step produced it ──
+    # ── macro_health.json: re-serialize through the sanitizer (never raw-copy) ──
     hp = settings.output_dir / "macro_health.json"
     if hp.exists():
-        (out_dir / "macro_health.json").write_text(hp.read_text())
+        _write(out_dir / "macro_health.json", json.loads(hp.read_text()))
         written.append("macro_health.json")
 
     written.append(run_extended(conn, settings))
@@ -101,8 +122,9 @@ def run_extended(conn, settings) -> str:
             if not key:
                 continue
             pr = conn.execute(
-                "SELECT asof, dist_json, ladder_json FROM preds WHERE series=? AND period=?"
-                " ORDER BY asof DESC LIMIT 1", (spec.ticker, key)).fetchone()
+                "SELECT asof, dist_json, ladder_json FROM preds WHERE series=?"
+                " AND period=? AND model_version LIKE ? ORDER BY asof DESC LIMIT 1",
+                (spec.ticker, key, spec.model + "/%")).fetchone()
             legs = [dict(x) for x in conn.execute(
                 "SELECT c.ticker, c.floor_strike strike, q.yes_bid, q.yes_ask FROM contracts c"
                 " LEFT JOIN quotes q ON q.ticker=c.ticker AND q.ts="
@@ -125,12 +147,13 @@ def run_extended(conn, settings) -> str:
                         mean_mkt = sum(k * v for k, v in finite.items()) / sum(finite.values())
                         rng = max(xs) - min(xs) or 1.0
                         gap = abs(mean_model - mean_mkt) / rng
+                        if not _m.isfinite(gap):
+                            gap = None
             rows.append({"series": spec.ticker, "period": key, "asof": pr["asof"],
                          "gap_norm": round(gap, 4) if gap is not None else None,
                          "n_legs": len(legs)})
     rows.sort(key=lambda x: -(x["gap_norm"] or -1))
-    (out_dir / "macro_divergence.json").write_text(json.dumps(
-        {"generated_at": now.isoformat(), "rows": rows}, ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_divergence.json", {"generated_at": now.isoformat(), "rows": rows})
     written.append("macro_divergence.json")
 
     # ── macro_performance.json ──
@@ -143,7 +166,7 @@ def run_extended(conn, settings) -> str:
     perf.update({"generated_at": now.isoformat(), "unrealized_usd": marks_total,
                  "bankroll_usd": current_bankroll(conn), "bankroll_source": "kalshi_demo",
                  "mode": "paper"})
-    (out_dir / "macro_performance.json").write_text(json.dumps(perf, ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_performance.json", perf)
     written.append("macro_performance.json")
 
     # ── macro_oos.json — calibration replays ONLY (experiments also holds non-OOS
@@ -154,17 +177,18 @@ def run_extended(conn, settings) -> str:
     gates = [dict(r) for r in conn.execute(
         "SELECT * FROM experiments WHERE name IN ('dfm_gate','series_gate')"
         " ORDER BY created_ts DESC LIMIT 10").fetchall()]
-    (out_dir / "macro_oos.json").write_text(json.dumps(
-        {"generated_at": now.isoformat(), "experiments": exps, "component_gates": gates,
-         "gate_note": "brier_model must beat brier_market before real money (paper until then)"},
-        ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_oos.json",
+           {"generated_at": now.isoformat(), "experiments": exps,
+            "component_gates": gates,
+            "gate_note": "brier_model must beat brier_market before real money"
+                         " (paper until then)"})
     written.append("macro_oos.json")
 
     # ── macro_risk.json ──
     riskdoc = {"generated_at": now.isoformat(), "limits": _risk.LIMITS,
                "scenario": _risk.scenario_var(conn),
                "open_exposure": _risk._open_exposure(conn)}
-    (out_dir / "macro_risk.json").write_text(json.dumps(riskdoc, ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_risk.json", riskdoc)
     written.append("macro_risk.json")
 
     # ── macro_pricetrack.json: intraday mark history (mother price-track port) ──
@@ -176,9 +200,9 @@ def run_extended(conn, settings) -> str:
         "SELECT d.series, ROUND(SUM(m.pnl_usd),4) pnl_usd FROM marks m"
         " JOIN decisions d ON d.id=m.decision_id"
         " WHERE m.ts=(SELECT MAX(ts) FROM marks) GROUP BY d.series").fetchall()]
-    (out_dir / "macro_pricetrack.json").write_text(json.dumps(
-        {"generated_at": now.isoformat(), "track": track, "latest_by_series": per_series},
-        ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_pricetrack.json",
+           {"generated_at": now.isoformat(), "track": track,
+            "latest_by_series": per_series})
     written.append("macro_pricetrack.json")
 
     # ── PDF reports → public/data/macro_reports/ + index (0-bis whitelist (a):
@@ -199,21 +223,22 @@ def run_extended(conn, settings) -> str:
                             "mtime": datetime.fromtimestamp(
                                 p.stat().st_mtime, tz=timezone.utc).isoformat(),
                             "kind": "weekly" if "weekly" in p.name else "daily"})
-    (out_dir / "macro_reports.json").write_text(json.dumps(
-        {"generated_at": now.isoformat(), "reports": reports},
-        ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_reports.json",
+           {"generated_at": now.isoformat(), "reports": reports})
     written.append("macro_reports.json")
 
     # ── macro_fed.json: meeting-level detail with evidence chain ──
     meetings = []
     for r in conn.execute(
-            "SELECT period, asof, dist_json, inputs_json FROM preds WHERE series='KXFEDDECISION'"
+            "SELECT period, asof, dist_json, inputs_json FROM preds"
+            " WHERE series='KXFEDDECISION' AND model_version LIKE 'fed/%'"
             " AND asof=(SELECT MAX(asof) FROM preds p2 WHERE p2.series='KXFEDDECISION'"
+            " AND p2.model_version LIKE 'fed/%'"
             " AND p2.period=preds.period) ORDER BY period").fetchall():
         meetings.append({"period": r["period"], "asof": r["asof"],
                          "probs": json.loads(r["dist_json"]).get("probs"),
                          "inputs": json.loads(r["inputs_json"] or "{}")})
-    (out_dir / "macro_fed.json").write_text(json.dumps(
-        {"generated_at": now.isoformat(), "meetings": meetings}, ensure_ascii=False, indent=1))
+    _write(out_dir / "macro_fed.json",
+           {"generated_at": now.isoformat(), "meetings": meetings})
     written.append("macro_fed.json")
     return ",".join(written)

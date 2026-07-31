@@ -66,8 +66,8 @@ def evaluate(conn, series: str) -> dict:
     st = evaluate_sequence(scores)
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
-        " metrics_json, created_ts) VALUES('conformal_state','aci',?,?,?,?)",
-        (series, f"n{st['n']}", json.dumps(st),
+        " metrics_json, created_ts) VALUES('conformal_state',?,?,?,?,?)",
+        (f"aci:{series}", series, f"n{st['n']}", json.dumps(st),
          datetime.now(timezone.utc).isoformat()))
     conn.commit()
     return st

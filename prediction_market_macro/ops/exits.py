@@ -27,13 +27,22 @@ def _quote(conn, ticker):
 
 
 def _write_exit(conn, pos, ts: str, worst, legs_exit, note: str) -> None:
+    # realized PnL of the early close: exit proceeds − entry cost − both fees.
+    # Stored in inputs_json so the rolling-20 drawdown breaker and reports see
+    # exit losses, not just settlement losses.
+    realized = 0.0
+    for f, px, _ in legs_exit:
+        realized += (px - f["price"]) * f["count"] \
+            - taker_fee(px, f["count"]) - (f["fee_usd"] or 0.0)
     cur = conn.execute(
         "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair, ask,"
         " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
         " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (ts, pos["series"], pos["period"], pos["structure_json"], "exit",
          None, None, worst, pos["size_usd"],
-         json.dumps({"exit_note": note}), pos["model_version"], "{}", note))
+         json.dumps({"exit_note": note, "realized_usd": round(realized, 4)}),
+         pos["model_version"], "{}",
+         f"{note} realized={realized:+.4f}"))
     did = cur.lastrowid
     for f, px, _ in legs_exit:
         conn.execute(
@@ -83,17 +92,25 @@ def run(conn, settings) -> int:
         if pr is None or not pr["ladder_json"]:
             continue
         pmf = {float(k): v for k, v in json.loads(pr["ladder_json"]).items()}
-        from prediction_market_macro.model.common import survival
+        from prediction_market_macro.model.common import leg_fair
         hold_edges, legs_exit = [], []
         for f in pos["fills"]:
-            c = conn.execute("SELECT floor_strike, strike_type FROM contracts WHERE ticker=?",
-                             (f["ticker"],)).fetchone()
+            c = conn.execute(
+                "SELECT floor_strike, cap_strike, strike_type FROM contracts"
+                " WHERE ticker=?", (f["ticker"],)).fetchone()
             q = _quote(conn, f["ticker"])
-            if c is None or q is None or c["floor_strike"] is None:
+            if c is None or q is None or (c["floor_strike"] is None
+                                          and c["cap_strike"] is None):
                 hold_edges = []
                 break
-            strict = (c["strike_type"] == "greater")
-            fair_yes = survival(pmf, float(c["floor_strike"]), strict=strict)
+            # the leg's OWN strike metadata — between buckets and less-type legs
+            # priced correctly, not as bare survival(floor)
+            try:
+                fair_yes = leg_fair(pmf, c["strike_type"] or "greater",
+                                    c["floor_strike"], c["cap_strike"])
+            except Exception:                             # noqa: BLE001
+                hold_edges = []
+                break
             fair = fair_yes if f["side"] == "yes" else 1 - fair_yes
             if q["yes_bid"] is None or q["yes_ask"] is None:
                 hold_edges = []

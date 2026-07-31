@@ -80,8 +80,8 @@ def circuit_breaker(conn, series: str, reason: str) -> None:
     day = now.date().isoformat()
     msg = f"{series}: {reason}"
     dup = conn.execute(
-        "SELECT 1 FROM alerts WHERE source='circuit_breaker' AND message=? AND ts>=?",
-        (msg, day)).fetchone()
+        "SELECT 1 FROM alerts WHERE source='circuit_breaker' AND message=? AND ts>=?"
+        " AND acked=0", (msg, day)).fetchone()
     if dup:
         return
     conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
@@ -103,15 +103,27 @@ def breaker_tripped(conn, series: str, within_hours: float = 24.0) -> str | None
 
 
 def check_rolling20(conn) -> str | None:
-    """PLAN §12: rolling-20-settlement drawdown breaker. If the last 20 settle_note
-    rows sum to a realized loss beyond 2x per_event limit, trip globally."""
-    rows = conn.execute(
-        "SELECT size_usd FROM (SELECT series, period, size_usd, MIN(id) mid"
-        " FROM decisions WHERE kind='settle_note' GROUP BY series, period)"
-        " ORDER BY mid DESC LIMIT 20").fetchall()
+    """PLAN §12: rolling-20-closure drawdown breaker — settlements AND early exits
+    both count (a string of exit losses must be able to trip it)."""
+    import json as _json
+    settles = conn.execute(
+        "SELECT size_usd pnl, mid FROM (SELECT series, period, size_usd, MIN(id) mid"
+        " FROM decisions WHERE kind='settle_note' GROUP BY series, period)").fetchall()
+    exits_ = conn.execute(
+        "SELECT inputs_json, id mid FROM decisions WHERE kind='exit'").fetchall()
+    closures = [(r["mid"], r["pnl"] or 0.0) for r in settles]
+    for r in exits_:
+        try:
+            rz = _json.loads(r["inputs_json"] or "{}").get("realized_usd")
+        except _json.JSONDecodeError:
+            rz = None
+        if rz is not None:
+            closures.append((r["mid"], float(rz)))
+    closures.sort(key=lambda x: -x[0])
+    rows = closures[:20]
     if len(rows) < 20:
         return None
-    total = sum(r["size_usd"] or 0.0 for r in rows)
+    total = sum(p for _, p in rows)
     thresh = -2.0 * LIMITS["per_event_usd"]
     if total < thresh:
         reason = f"rolling20_pnl {total:.2f} < {thresh:.2f}"

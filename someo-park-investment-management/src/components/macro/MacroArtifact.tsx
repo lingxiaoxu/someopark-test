@@ -174,12 +174,13 @@ function ProbBars({ probs, keys }: { probs: Record<string, number>; keys?: strin
 
 /** Empirical quantile array (201 pts of a discrete dist) → level probabilities. */
 function quantileLevels(qs: number[] | undefined): Record<string, number> {
-  if (!qs?.length) return {};
+  const finite = (qs ?? []).filter((v) => Number.isFinite(v));
+  if (!finite.length) return {};
   const counts: Record<string, number> = {};
-  qs.forEach((v) => { const k = v.toFixed(2); counts[k] = (counts[k] ?? 0) + 1; });
+  finite.forEach((v) => { const k = v.toFixed(2); counts[k] = (counts[k] ?? 0) + 1; });
   const out: Record<string, number> = {};
   Object.keys(counts).sort((a, b) => Number(a) - Number(b))
-    .forEach((k) => { out[k] = counts[k] / qs.length; });
+    .forEach((k) => { out[k] = counts[k] / finite.length; });
   return out;
 }
 

@@ -111,8 +111,12 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
     enumerate_structs + decide() the production path uses, settle the opened structure
     against real results, and account PnL net of fees.
 
-    Candles carry no depth ⇒ the depth gate is waived here (recorded in the output);
-    every other gate (net-edge, sanity, freeze, Kelly) applies exactly as in prod."""
+    Candles carry no depth ⇒ the depth gate is waived here (recorded in the output).
+    The entropy gate applies as in prod (pure function of the model pmf). The
+    calibration map and the per-strike capture filter are deliberately EXCLUDED:
+    both are fit ON this very replay — using them inside it would be self-referential
+    leakage. Consequence: replay ROI measures the raw strategy; the live path is
+    strictly more conservative (fewer/smaller trades)."""
     import importlib
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.model.common import Categorical, grid_pmf
@@ -162,19 +166,26 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
         except Exception:                                  # noqa: BLE001
             skipped += 1
             continue
-        model_mean = None
+        import math as _math
+        model_mean, entropy_norm = None, None
         if isinstance(pred.dist, Categorical):
             structs = _structs_categorical(meta, pred.dist.probs)
+            pv = [v for v in pred.dist.probs.values() if v > 0]
+            if len(pv) > 1:
+                entropy_norm = -sum(p * _math.log(p) for p in pv) / _math.log(len(pv))
         else:
             pmf = grid_pmf(pred.dist, spec.round_rule)
             model_mean = float(sum(k * v for k, v in pmf.items()))
+            pv = [v for v in pmf.values() if v > 0]
+            if len(pv) > 1:
+                entropy_norm = -sum(p * _math.log(p) for p in pv) / _math.log(len(pv))
             structs = enumerate_structs(meta, pmf, strict=spec.strict_gt)
         rel = conn.execute("SELECT scheduled_ts FROM releases WHERE cal=? AND period=?",
                            (spec.calendar, key)).fetchone()
         release_ts = datetime.fromisoformat(rel["scheduled_ts"]) if rel else None
         d = decide(structs, now=asof, close_time=close_ts, release_ts=release_ts,
                    market_implied=None, already_open=False, bankroll=bankroll,
-                   gates=gates)
+                   gates=gates, entropy_norm=entropy_norm)
         if d.action != "open" or d.struct is None:
             continue
         st, count = d.struct, d.count
@@ -253,10 +264,14 @@ def gate_verdict(replay_agg: dict, dec: dict, dm: dict) -> dict:
 
 
 def _store(conn, name: str, series: str, window: str, metrics: dict) -> None:
+    # experiments PK is (name, config_hash) — the hash MUST carry the series or
+    # every series' row REPLACEs the previous one (series_gate would only ever
+    # exist for the last-evaluated series and exec's gate read goes blind)
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
         " metrics_json, created_ts) VALUES(?,?,?,?,?,?)",
-        (name, "eval", series, window, json.dumps(metrics, ensure_ascii=False),
+        (name, f"eval:{series}", series, window,
+         json.dumps(metrics, ensure_ascii=False),
          datetime.now(timezone.utc).isoformat()))
     conn.commit()
 

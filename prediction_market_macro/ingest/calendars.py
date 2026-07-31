@@ -196,13 +196,16 @@ def reconcile_actuals(conn, now: datetime | None = None) -> dict:
                          (kt["m"], r["cal"], r["period"]))
             filled += 1
         elif (now - sch) > timedelta(hours=26):
-            for spec_ticker in [row["series"] for row in conn.execute(
-                    "SELECT DISTINCT series FROM coverage WHERE period=?",
-                    (r["period"],)).fetchall()]:
+            # only the series bound to THIS calendar — period strings like
+            # '2026-07' are shared across calendars and must not cross-flag
+            from prediction_market_macro.config.registry import REGISTRY
+            for spec in REGISTRY.values():
+                if spec.calendar != r["cal"]:
+                    continue
                 conn.execute(
                     "UPDATE coverage SET state='postponed', updated_ts=? WHERE"
                     " series=? AND period=? AND state='scheduled'",
-                    (now.isoformat(), spec_ticker, r["period"]))
+                    (now.isoformat(), spec.ticker, r["period"]))
             conn.execute(
                 "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                 (now.isoformat(), "warn", "calendar",
@@ -225,9 +228,12 @@ def refresh_from_web(conn) -> dict:
     checked, drifts = 0, []
     pages = {"BLS_CPI": "https://www.bls.gov/schedule/news_release/cpi.htm",
              "BLS_JOBS": "https://www.bls.gov/schedule/news_release/empsit.htm"}
-    months = {m: i for i, m in enumerate(
-        ["January", "February", "March", "April", "May", "June", "July", "August",
-         "September", "October", "November", "December"], 1)}
+    months = {}
+    for i, m in enumerate(["January", "February", "March", "April", "May", "June",
+                           "July", "August", "September", "October", "November",
+                           "December"], 1):
+        months[m] = i
+        months[m[:3]] = i                    # BLS pages abbreviate ("Jan. 13, 2026")
     for cal, url in pages.items():
         try:
             html = _rq.get(url, timeout=30,
@@ -238,11 +244,16 @@ def refresh_from_web(conn) -> dict:
                           f"refresh_from_web {cal}: {e}"))
             continue
         web_dates = set()
-        for m in _re.finditer(r"(January|February|March|April|May|June|July|August|"
-                              r"September|October|November|December)\s+(\d{1,2}),\s+(20\d\d)",
-                              html):
+        for m in _re.finditer(
+                r"(January|February|March|April|May|June|July|August|September|"
+                r"October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|"
+                r"Oct|Nov|Dec)\.?\s+(\d{1,2}),?\s+(20\d\d)", html):
             web_dates.add(date(int(m.group(3)), months[m.group(1)], int(m.group(2))))
         if not web_dates:
+            conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                         (now.isoformat(), "warn", "calendar",
+                          f"refresh_from_web {cal}: page fetched but zero dates"
+                          f" parsed — check regex vs page format"))
             continue
         src = _CPI if cal == "BLS_CPI" else _JOBS
         for period, d in src.items():

@@ -55,9 +55,19 @@ def learn_weights(conn, series: str, offset: str = "-1h") -> dict[str, float]:
     return {k: round(v / tot, 4) for k, v in w.items()}
 
 
+def finite_pmf(pmf: dict[float, float]) -> dict[float, float]:
+    """Drop non-finite keys (devig emits an `inf` bucket for mass above the top
+    strike) and renormalize — an inf grid point poisons quantiles/means downstream."""
+    out = {k: v for k, v in pmf.items() if math.isfinite(k) and math.isfinite(v)}
+    z = sum(out.values())
+    return {k: v / z for k, v in out.items()} if z > 0 else {}
+
+
 def log_pool(pmfs: dict[str, dict[float, float]], weights: dict[str, float],
              eps: float = 1e-6) -> dict[float, float]:
     """Weighted geometric pool over the UNION grid, renormalized."""
+    pmfs = {s: finite_pmf(p) for s, p in pmfs.items()}
+    pmfs = {s: p for s, p in pmfs.items() if p}
     keys = sorted({k for p in pmfs.values() for k in p})
     used = {s: w for s, w in weights.items() if s in pmfs and w > 0}
     tot_w = sum(used.values())
@@ -135,7 +145,9 @@ def _market_pmf(conn, series: str, tok: str) -> tuple[dict, float | None] | None
     pmf = impl.get("pmf")
     if not pmf:
         return None
-    pmf = {float(k): v for k, v in pmf.items()}
+    pmf = finite_pmf({float(k): v for k, v in pmf.items()})
+    if not pmf:
+        return None
     # favorite-longshot correction through the stored market calibration map
     from prediction_market_macro.strategy import calibration as _cal
     entry = _cal._load_named(conn, series, "market_calibration_map")
@@ -160,12 +172,17 @@ def shadow_run(conn, settings) -> int:
                 if m is None:
                     continue
                 model_pmf, horizon = m
+                model_pmf = finite_pmf(model_pmf)
+                if not model_pmf:
+                    continue
                 pmfs = {"model": model_pmf}
                 spread = None
                 mk = _market_pmf(conn, spec.ticker, tok)
                 if mk:
                     pmfs["market"], spread = mk
                 br = _bridge_pmf(conn, spec.ticker, key)
+                if br:
+                    br = finite_pmf(br)
                 if br:
                     pmfs["bridge"] = br
                 if len(pmfs) < 2:

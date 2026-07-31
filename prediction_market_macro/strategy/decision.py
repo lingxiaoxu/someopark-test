@@ -92,7 +92,11 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
                         (f"depth_cap {depth_cap:.2f}<cost {st.cost:.2f}",), dict(gates))
     if usd > depth_cap:
         usd = round(depth_cap, 2)
-    count = max(1, int(usd / max(st.cost, 0.01)))
+    if usd < st.cost:                            # Kelly sized below one contract
+        return Decision("pass", None, 0.0, 0,
+                        (f"kelly_below_one_contract {usd:.2f}<{st.cost:.2f}",),
+                        dict(gates))
+    count = int(usd / max(st.cost, 0.01))
     return Decision("open", st, usd, count,
                     (f"net_edge={ne:.4f}", f"fair={st.fair:.4f}", f"cost={st.cost:.4f}"),
                     dict(gates))
