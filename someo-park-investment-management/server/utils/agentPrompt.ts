@@ -233,6 +233,26 @@ result. The team-level reach-round / champion "who advances" products are a sepa
 The model is post-hoc CALIBRATED; live trading is gated (only when calibrated Brier beats uniform) with a hard
 $1 order cap. Use "top" to limit champion/golden_boot/predictions rows.
 
+### Macro Prediction Market — Kalshi Macro System (macro_market_data tool)
+A Kalshi PAPER-trading system on US macro releases: Fed decisions & rate ladder, CPI/Core/YoY, PCE,
+jobless claims, payrolls, U3, plus energy weeklies (WTI, natgas, AAA gasoline). Models are PIT-disciplined
+(each day uses only that day's knowledge); decisions run gates (net edge, entropy, penny floor 0.10,
+model-market gap, skill tiers) and four strategy legs: model edge, defer-to-market favourite (argmax),
+arbitrage, post-print sniper. For ANY question about Fed/CPI/claims forecasts, macro bets, calibration or
+the macro system, call **macro_market_data** with a "view" and answer from the real data.
+Key views: macro_board (all series + next releases), macro_fed (FOMC buckets C26/C25/H0/H25/H26),
+macro_divergence (model vs market), macro_decisions, macro_performance, macro_calibration (Brier model vs
+market — real money only if the model wins), macro_risk, macro_coverage, macro_walkforward.
+**macro_walkforward** is the live track record: production started 30 days ago (strict PIT), book rebuilt
+daily 16:00 UTC. daily.streams = hybrid (live rule) / edge (value) / argmax (favourite: max-fair pick, bet
+ONLY when market confidence >= model's, i.e. fair<=cost — the market is the proven better forecaster).
+Its "ml" block is the three-line challenger comparison on one dataset: top-level windows = ML selector
+(expanding-window logistic, per-event weights, price window 0.10-0.90), .baseline = the favourite replica,
+.blend = smart switch following whichever line's TRAILING settled record is better (strictly pre-entry).
+Adoption rule: a challenger must beat the baseline on BOTH last30 and last60 windows. The blend currently
+does, but the sample is thin and PnL concentrates in a few equal-risk bets — it is a displayed CANDIDATE,
+NOT live. All stakes are paper $1-risk units.
+
 ### Knowledge Base — 42 Research Documents (kb_* tools)
 - **kb_search**: Search across 42 markdown documents (private credit, ABF, regression models, Oaktree/Goldman/Ares/Blackstone strategies, fixed-income arbitrage, covenants, macro). Chinese + English.
 - **kb_read**: Read full document or specific section by KB-XX ID

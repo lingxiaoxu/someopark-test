@@ -10,7 +10,9 @@ export const macroMarketDataTool: AgentTool = {
     description:
       'Authoritative data from the Someo Park macro prediction-market system (Kalshi paper trading): ' +
       'FOMC decision probabilities (model vs market), CPI/PCE/jobs/claims forecasts with ladders, ' +
-      'open paper positions & PnL, model-vs-market divergence, OOS calibration, ops coverage & health. ' +
+      'open paper positions & PnL, model-vs-market divergence, OOS calibration, ops coverage & health, ' +
+      'and the walk-forward lab (30d live PIT track record: hybrid/edge/favourite bet streams, ' +
+      'entry-lead sweep, three-line ML comparison — baseline favourite vs ML selector vs smart-switch). ' +
       'Use for any question about Fed decisions, inflation prints, jobless claims, macro bets or the ' +
       'macro system itself. `view` selects the data slice.',
     input_schema: {
@@ -22,7 +24,8 @@ export const macroMarketDataTool: AgentTool = {
           description:
             'Data slice: macro_board (all series + next releases), macro_fed (FOMC), ' +
             'macro_inflation, macro_labor, macro_divergence, macro_decisions (positions), ' +
-            'macro_performance, macro_calibration (OOS), macro_coverage (ops), macro_risk.',
+            'macro_performance, macro_calibration (OOS), macro_coverage (ops), macro_risk, ' +
+            'macro_walkforward (30d live PIT track record + three-line ML comparison).',
         },
       },
       required: ['view'],

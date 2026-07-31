@@ -12,11 +12,12 @@ import { fileURLToPath } from 'url'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const dataDir = path.resolve(__dirname, '..', '..', 'public', 'data')
 
-// The 13 macro artifact types (mirrors MACRO_ITEMS in the frontend grid).
+// The 14 macro artifact types (mirrors MACRO_ITEMS in the frontend grid).
 export const MACRO_ARTIFACT_TYPES = [
   'macro_board', 'macro_fed', 'macro_inflation', 'macro_labor', 'macro_energy',
   'macro_divergence', 'macro_decisions', 'macro_performance', 'macro_calibration',
   'macro_coverage', 'macro_risk', 'macro_overview', 'macro_reports',
+  'macro_walkforward',
 ] as const
 
 // EN + ZH keyword dictionary for mode-scoped artifact detection (macro mode only).
@@ -34,6 +35,7 @@ export const MACRO_KEYWORD_PATTERNS: Array<{ type: string; title: string; keywor
   { type: 'macro_risk',        title: 'Risk Limits',        keywords: ['risk', 'limits', 'exposure', 'scenario', 'max loss', '风险', '风控', '敞口', '限额', '最大损失'] },
   { type: 'macro_overview',    title: 'System Overview',    keywords: ['overview', 'how it works', 'system overview', 'methodology', 'what is this', '总览', '概览', '系统说明', '方法论', '原理'] },
   { type: 'macro_reports',     title: 'Reports',            keywords: ['report', 'reports', 'download', 'pdf', '报告', '下载'] },
+  { type: 'macro_walkforward', title: 'Walk-Forward Lab',   keywords: ['walk-forward', 'walkforward', 'wf lab', 'bet log', 'bet history', 'ml selector', 'smart switch', 'favourite line', 'edge line', 'entry lead', '走前', '实验室', 'ML 线', 'ML选注', '智能切换', '大热线', '边际线', '三线', 'bet 历史', '逐注', '30天前上线', '入场提前'] },
 ]
 
 // artifact type → the macro_*.json file(s) that back it. Family views (inflation /
@@ -53,6 +55,7 @@ const TYPE_TO_FILES: Record<string, string[]> = {
   macro_risk:        ['macro_risk.json'],
   macro_overview:    ['macro_board.json', 'macro_performance.json', 'macro_oos.json'],
   macro_reports:     ['macro_performance.json'],
+  macro_walkforward: ['macro_walkforward.json'],
 }
 
 const ABOUT: Record<string, string> = {
@@ -69,6 +72,7 @@ const ABOUT: Record<string, string> = {
   macro_risk:        'risk limits (per event/family/cluster/gross), scenario max loss, open exposure per series+period',
   macro_overview:    'system digest: board + performance + OOS gate',
   macro_reports:     'report generation ships with M8; performance summary meanwhile',
+  macro_walkforward: 'the live 30d track record (production started 30d ago, strict PIT — each day used only that day\'s information) rebuilt daily at 16:00 UTC. daily.streams = hybrid (live rule) / edge (value) / argmax (defer-to-market favourite: max-fair pick, bet only when fair<=cost). ml = three-line walk-forward comparison on the same dataset: top-level windows (last30/last60/all) = ML selector (expanding-window logistic, per-event weights, 0.10-0.90 price window); .baseline = defer-to-market favourite replica; .blend = smart switch that per event follows whichever line has the better trailing settled record (strictly pre-entry). Adoption rule: a challenger must beat the baseline on BOTH windows; blend currently does but the sample is thin and PnL concentrates in few equal-risk bets, so it is displayed as candidate, NOT live. sweep = one full PIT walk-forward per entry lead (1/3/5/7d) + per-series coverage',
 }
 
 // Family-filter the big board file so inflation/labor/energy grounding stays compact.
@@ -107,6 +111,34 @@ function slimBoard(board: any, family?: string): any {
 
 function slimFile(file: string, data: any, type: string): any {
   if (file === 'macro_board.json') return slimBoard(data, FAMILY_OF_TYPE[type])
+  if (file === 'macro_walkforward.json') {
+    // trades arrays + per-lead curves blow the cap — keep window summaries,
+    // the last 8 trades per stream, and the three-line (baseline/ml/blend) table
+    const win = (w: any) => w && ({ n_trades: w.n_trades, won: w.won,
+      win_rate: w.win_rate, staked: w.staked, realized: w.realized, roi: w.roi })
+    const line = (l: any) => l && ({ last30: win(l.last30), last60: win(l.last60), all: win(l.all) })
+    const streams: Record<string, any> = {}
+    for (const [k, v] of Object.entries<any>(data?.daily?.streams ?? {})) {
+      streams[k] = { ...win(v), trades_tail: (v?.trades ?? []).slice(-5) }
+    }
+    const cov = Object.entries<any>(data?.sweep?.coverage ?? {})
+    // ml FIRST — the per-view cap truncates from the tail, and the three-line
+    // comparison is the part the user asks about most
+    return {
+      generated_at: data?.generated_at,
+      ml: data?.ml ? { note: data.ml.note, ml: line(data.ml),
+        baseline: line(data.ml.baseline), blend: line(data.ml.blend) } : undefined,
+      daily: data?.daily ? { days: data.daily.days, streams } : undefined,
+      sweep: data?.sweep ? {
+        days: data.sweep.days,
+        leads: Object.fromEntries(Object.entries<any>(data.sweep.leads ?? {})
+          .map(([k, v]) => [k, win(v)])),
+        coverage_testable: cov.filter(([, v]) => v?.testable).length,
+        coverage_total: cov.length,
+        coverage_events: Object.fromEntries(cov.map(([k, v]) => [k, v?.events_in_window])),
+      } : undefined,
+    }
+  }
   if (file === 'macro_decisions.json') {
     return {
       generated_at: data?.generated_at,

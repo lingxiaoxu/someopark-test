@@ -58,3 +58,30 @@
   **这正是闸门该说的话**。决策重放显示当前策略在历史上会亏钱(claims ROI −105%),
   所以准确率路线 v2(ensemble/校准/微观结构)的价值将由每周 eval 的 Brier/ROI 变化检验。
 - 测试 81/81;replay 金丝雀 5/5 字节一致;launchd 4 job 载入;上次 refresh 零失败。
+
+## 六、2026-07-31 追加:WF 实验室三线 + 生产/chat 接线
+
+- **research/selector.py(新)**:ML 选注器(扩窗逻辑回归)。数据集=每个已结算带
+  K 线事件的全部候选结构(PIT 入场 asof,特征只用 kt≤asof 读数;训练集只含入场日
+  之前已结算的事件)。修过两个致命 bug:①bucket 结构 cost=有效价但真实支出 1+eff、
+  错桶仍有一腿赔付 → 首跑 39W-1L/+3686% 是记账假象(settle_cash() 修正,
+  test_selector.py 钉死);②class_weight=balanced 使 p̂ 系统虚高(p̂0.8 实胜 29%)+
+  无便士下限(60d"盈利"=两张 <0.10 彩票)→ 去平衡、每事件等权、下注限 0.10-0.90。
+- **三线对比(同数据集走前)**:baseline=大热顺市复刻;ml=上述;blend=智能切换
+  (逐事件比较两线入场前已结算滚动战绩 TRAIL=10,ML 需 MIN_SWITCH=5 注结算才可领先,
+  被选线弃权落到另一线)。**采纳规矩:挑战者须两窗(last30+last60)同时胜基线**。
+  blend 当前形式上过线(30d 7W-1L / 60d 17W-5L +25.1%)但样本薄、盈利集中于单笔
+  等风险注 → 仅前端展示为候选,不接实盘。
+- **生产接线**:refresh --weekly 依次跑 sweep → 标准 30d run(必须最后,sweep 分
+  lead 跑会覆盖 daily_walkforward 行)→ selector.walkforward_eval → 周报 →
+  **frontend_export_postweekly**(主导出在 weekly 块之前,不补跑则新数字要等次日);
+  macroweekly launchd 原样触发,无需新 job。顺手修 sweep() 的 fair_mode NameError。
+- **前端**:WF 实验室 = 唯一入口(标题"30 天前上线 · 实盘口径(严格 PIT)",按用户
+  指令不用"假装"字样):入场提前对比/曲线/覆盖表 + 三线对比表(线路×窗口×W-L/胜率/
+  PnL/ROI)+ Bet 历史五标签(混合/边际/大热/ML/智能切换)。
+- **chat 接入**:macro_walkforward 注册为第 14 个 artifact 类型(macroMarketTool
+  类型表/关键词/文件映射/ABOUT/slim——ml 块置前防截断)。SomeoAgent 路线:
+  agentPrompt.ts 新增 macro 段 + macro_market_data 工具描述更新;非 agent 宏观模式
+  经 chat.ts 既有 mode==='macro' 分支自动获得(chat.ts/toPrompt/templates.ts 零改动,
+  coding 路线纯净);WF 实验室 Ai 按钮(macroAnalyze VALID_VIEWS 自动含新类型,修复
+  此前 400 拒答)。

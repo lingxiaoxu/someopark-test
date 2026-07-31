@@ -157,6 +157,11 @@ def run(weekly: bool = False) -> dict:
                                  for k, v in selector.walkforward_eval(conn).items()
                                  if isinstance(v, dict) and "n_trades" in v}))
         step("report_weekly", lambda: report.weekly_pdf(conn, s))
+        # re-export AFTER the weekly WF/ML evals — the main export step ran
+        # before this block, so without this the fresh numbers would sit in
+        # experiments until the next daily refresh
+        from prediction_market_macro.ops import frontend_export as fe_post
+        step("frontend_export_postweekly", lambda: fe_post.run(conn, s))
     step("watchdog_inline", lambda: len(scheduler.watchdog(conn)))
 
     out = {"ts": datetime.now(timezone.utc).isoformat(), "weekly": weekly, "steps": results}
