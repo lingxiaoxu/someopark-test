@@ -1137,6 +1137,7 @@
     "colGap": "乖離度",
     "colLegs": "レッグ数",
     "colOpenN": "建玉数",
+    "colSettledN": "決済件数",
     "colStaked": "投入額",
     "colHorizon": "ホライズン",
     "colVerdict": "判定",

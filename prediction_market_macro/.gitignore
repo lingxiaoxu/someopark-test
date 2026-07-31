@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+data/macro.db
+data/macro.db-*
+data/ckpt/
+data/dfm_ckpt/
+data/logs/
+data/output/

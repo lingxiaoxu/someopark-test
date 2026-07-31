@@ -1164,6 +1164,7 @@
     "colGap": "分歧度",
     "colLegs": "腿数",
     "colOpenN": "持仓数",
+    "colSettledN": "结算笔数",
     "colStaked": "投入",
     "colHorizon": "视窗",
     "colVerdict": "判定",

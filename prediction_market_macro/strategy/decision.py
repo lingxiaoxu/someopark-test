@@ -1,0 +1,76 @@
+"""strategy/decision.py — gates + the single decide() entry (PLAN §11; mother-template
+discipline: production, backtest and reports ALL call this one pure function).
+
+Gates (all configurable, PLAN §11):
+  net_edge >= 0.04 ; per-leg depth >= $50 ; |fair - market_implied| <= 0.25 (sanity);
+  > 30 min to close ; no re-entry on the same (series, period);
+  freeze window: no decisions within 10 min before the scheduled release.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+
+from prediction_market_macro.strategy.edge import Struct, quarter_kelly_usd
+
+GATES = {
+    "min_net_edge": 0.04,
+    "min_leg_depth_usd": 50.0,
+    "max_model_market_gap": 0.25,
+    "min_minutes_to_close": 30.0,
+    "freeze_minutes_before_release": 10.0,
+    "max_size_usd": 1.0,
+}
+
+
+@dataclass(frozen=True)
+class Decision:
+    action: str                 # "open" | "pass"
+    struct: Struct | None
+    size_usd: float
+    count: int
+    reasons: tuple[str, ...]
+    gate_snapshot: dict
+
+
+def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
+           release_ts: datetime | None, market_implied: dict[float, float] | None,
+           already_open: bool, bankroll: float, gates: dict = GATES) -> Decision:
+    reasons: list[str] = []
+    if already_open:
+        return Decision("pass", None, 0.0, 0, ("already_open_no_averaging_down",), dict(gates))
+    if release_ts is not None:
+        dt_min = (release_ts - now).total_seconds() / 60.0
+        if 0 <= dt_min <= gates["freeze_minutes_before_release"]:
+            return Decision("pass", None, 0.0, 0, ("freeze_window",), dict(gates))
+    if close_time is not None:
+        if (close_time - now).total_seconds() / 60.0 < gates["min_minutes_to_close"]:
+            return Decision("pass", None, 0.0, 0, ("too_close_to_close",), dict(gates))
+
+    best: tuple[float, Struct] | None = None
+    for st in structs:
+        ne = st.net_edge()
+        if ne < gates["min_net_edge"]:
+            continue
+        if any(l.depth < gates["min_leg_depth_usd"] for l in st.legs):
+            reasons.append(f"depth_fail:{st.desc}")
+            continue
+        # sanity gate is UNCONDITIONAL: cost is itself the market's price — a model that
+        # disagrees with the market by >0.25 is presumed wrong, whatever the structure type
+        gap = abs(st.fair - st.cost)
+        if gap > gates["max_model_market_gap"]:
+            reasons.append(f"sanity_gap:{st.desc}:{gap:.2f}")
+            continue
+        if best is None or ne > best[0]:
+            best = (ne, st)
+    if best is None:
+        reasons.append("no_struct_cleared_gates")
+        return Decision("pass", None, 0.0, 0, tuple(reasons), dict(gates))
+    ne, st = best
+    usd = quarter_kelly_usd(st.fair, st.cost, bankroll, cap=gates["max_size_usd"])
+    if usd <= 0.0:
+        return Decision("pass", None, 0.0, 0, ("kelly_zero",), dict(gates))
+    count = max(1, int(usd / max(st.cost, 0.01)))
+    return Decision("open", st, usd, count,
+                    (f"net_edge={ne:.4f}", f"fair={st.fair:.4f}", f"cost={st.cost:.4f}"),
+                    dict(gates))
