@@ -153,18 +153,43 @@ def _detect_chronos(conn, series: str) -> str | None:
     return None
 
 
+# series where the FRED first print IS the settlement value in contract units —
+# only these can be fused honestly (CPI/PCE need index→% transforms with their own
+# rounding conventions; AAA settles on AAA readings, GASREGW is only a model proxy)
+_FUSE_SERIES = ("KXJOBLESSCLAIMS", "KXU3")
+
+
+def _leg_expected(y: float, strike_type: str | None, floor, cap,
+                  default_strict: bool) -> str | None:
+    st = strike_type or ("greater" if default_strict else "greater_or_equal")
+    if st == "greater":
+        return "yes" if y > floor else "no"
+    if st == "greater_or_equal":
+        return "yes" if y >= floor else "no"
+    if st == "less":
+        return "yes" if y < cap else "no"
+    if st == "less_or_equal":
+        return "yes" if y <= cap else "no"
+    if st == "between" and floor is not None and cap is not None:
+        return "yes" if floor <= y <= cap else "no"
+    return None
+
+
 def _settle_label_check(conn, now: datetime) -> list[str]:
-    """铁律 2 cross-check: every settled ladder leg's YES/NO must agree with the
-    first-print label vs its strike. A mismatch means our settlement understanding
-    (or the label pipe) is wrong — series halts via circuit breaker."""
+    """铁律 2 cross-check: settled leg YES/NO must agree with the first-print label
+    vs its strike, honoring the leg's own strike_type. Restricted to series whose
+    label is directly in contract units (_FUSE_SERIES). A mismatch means our
+    settlement understanding (or the label pipe) is wrong — global breaker."""
+    from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.ops.pnl import _realized_print
-    bad = []
-    rows = conn.execute(
-        "SELECT s.series, s.period, s.ticker, s.result, c.floor_strike, c.strike_type"
-        " FROM settlements s JOIN contracts c ON c.ticker=s.ticker"
-        " WHERE s.result IN ('yes','no') AND c.floor_strike IS NOT NULL"
-        " ORDER BY s.settled_ts DESC LIMIT 120").fetchall()
     from prediction_market_macro.util.periods import kalshi_period_to_key
+    bad = []
+    ph = ",".join("?" for _ in _FUSE_SERIES)
+    rows = conn.execute(
+        f"SELECT s.series, s.period, s.ticker, s.result, c.floor_strike, c.cap_strike,"
+        f" c.strike_type FROM settlements s JOIN contracts c ON c.ticker=s.ticker"
+        f" WHERE s.result IN ('yes','no') AND s.series IN ({ph})"
+        f" ORDER BY s.settled_ts DESC LIMIT 120", _FUSE_SERIES).fetchall()
     cache: dict[tuple[str, str], float | None] = {}
     for r in rows:
         key = kalshi_period_to_key(r["period"]) if r["period"] else None
@@ -176,12 +201,12 @@ def _settle_label_check(conn, now: datetime) -> list[str]:
         y = cache[ck]
         if y is None:
             continue
-        strict = (r["strike_type"] == "greater")
-        expected = "yes" if (y > r["floor_strike"] if strict
-                             else y >= r["floor_strike"]) else "no"
-        if expected != r["result"]:
+        expected = _leg_expected(y, r["strike_type"], r["floor_strike"],
+                                 r["cap_strike"], REGISTRY[r["series"]].strict_gt)
+        if expected is not None and expected != r["result"]:
             bad.append(f"settle_label_mismatch:{r['ticker']}:label={y}"
-                       f" strike={r['floor_strike']} expect={expected} got={r['result']}")
+                       f" strike={r['floor_strike']}/{r['cap_strike']}"
+                       f" expect={expected} got={r['result']}")
     return bad[:10]
 
 
@@ -298,11 +323,20 @@ def daily_health(conn, settings) -> str:
             conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                          (now.isoformat(), "error", "health",
                           f"RED {spec.ticker}: {s_rep['notes']}"))
-            # 铁律 10: red light auto-demotes — trip the breaker (blocks new opens,
-            # forces exits, keeps exec locked) until a green day releases it
-            from prediction_market_macro.ops import risk
-            risk.circuit_breaker(conn, spec.ticker,
-                                 "health_red:" + ",".join(s_rep["notes"])[:180])
+            # 铁律 10 nuance: QUALITY reds (model losing to the market) demote to
+            # paper — which is already where we are; paper must keep trading or the
+            # OOS sample that could ever pass the gate stops accruing. Only
+            # INTEGRITY reds (data/code/pipeline broken — even paper output is
+            # garbage) trip the breaker that halts paper decisions too.
+            quality = {"brier_behind_market_2win"}
+            integrity_notes = [n for n in s_rep["notes"]
+                               if n.split(":")[0] not in quality
+                               and not n.startswith("crps_spike")
+                               and not n.startswith("entropy_rise")]
+            if integrity_notes:
+                from prediction_market_macro.ops import risk
+                risk.circuit_breaker(conn, spec.ticker,
+                                     "health_red:" + ",".join(integrity_notes)[:180])
 
     # 4. rolling OOS from the latest replay experiment
     ex = conn.execute(

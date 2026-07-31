@@ -31,23 +31,52 @@ def _dist_mu_sigma(dist: dict) -> tuple[float, float] | None:
     return None
 
 
+def _first_print_value(conn, sid: str, event_like: str) -> float | None:
+    r = conn.execute(
+        "SELECT value, MIN(knowledge_time) FROM fred_obs WHERE sid=?"
+        " AND event_time LIKE ? GROUP BY event_time LIMIT 1",
+        (sid, event_like + "%")).fetchone()
+    return float(r["value"]) if r and r["value"] is not None else None
+
+
+def _prev_month(period: str, k: int = 1) -> str:
+    y, m = int(period[:4]), int(period[5:7])
+    m -= k
+    while m <= 0:
+        m += 12
+        y -= 1
+    return f"{y:04d}-{m:02d}"
+
+
 def _realized_print(conn, series: str, period: str) -> float | None:
-    """First-print label for the settled period via the registry's ALFRED sid."""
+    """First-print label for the settled period, in the CONTRACT'S unit (the
+    registry sid may be an index level — %mom/%yoy/k_jobs need transformation).
+    Returns None when no honest label exists in contract units."""
     from prediction_market_macro.config.registry import REGISTRY
     spec = REGISTRY.get(series)
     if spec is None or not spec.fred_first_release:
         return None
     sid = spec.fred_first_release
     if len(period) == 7:                              # monthly 'YYYY-MM'
-        r = conn.execute(
-            "SELECT value, MIN(knowledge_time) kt FROM fred_obs WHERE sid=?"
-            " AND event_time LIKE ? GROUP BY event_time LIMIT 1",
-            (sid, period + "%")).fetchone()
-    else:                                             # claims: release-date period
-        r = conn.execute(
-            "SELECT value, MIN(knowledge_time) kt FROM fred_obs WHERE sid=?"
-            " AND DATE(knowledge_time)=? GROUP BY event_time LIMIT 1",
-            (sid, period)).fetchone()
+        if spec.unit == "%mom":
+            a = _first_print_value(conn, sid, period)
+            b = _first_print_value(conn, sid, _prev_month(period))
+            return round((a / b - 1) * 100, 4) if a and b else None
+        if spec.unit == "%yoy":
+            a = _first_print_value(conn, sid, period)
+            b = _first_print_value(conn, sid, _prev_month(period, 12))
+            return round((a / b - 1) * 100, 4) if a and b else None
+        if spec.unit == "k_jobs":                     # PAYEMS level → change in jobs
+            a = _first_print_value(conn, sid, period)
+            b = _first_print_value(conn, sid, _prev_month(period))
+            return round((a - b) * 1000, 1) if a is not None and b is not None else None
+        return _first_print_value(conn, sid, period)  # pct levels (U3, rates)
+    # claims: period = RELEASE date. Pick the event whose true first print landed
+    # that day — filter on the aggregated MIN(kt), never on raw rows (a same-day
+    # REVISION of the prior week would otherwise masquerade as the print)
+    r = conn.execute(
+        "SELECT event_time, value, MIN(knowledge_time) kt FROM fred_obs WHERE sid=?"
+        " GROUP BY event_time HAVING DATE(kt)=? LIMIT 1", (sid, period)).fetchone()
     return float(r["value"]) if r and r["value"] is not None else None
 
 

@@ -90,11 +90,14 @@ def circuit_breaker(conn, series: str, reason: str) -> None:
 
 
 def breaker_tripped(conn, series: str, within_hours: float = 24.0) -> str | None:
-    """Reason string if `series` (or the global '*') tripped within the window."""
+    """Reason string if `series` (or the global '*') tripped within the window.
+    Acked alerts are released — acking a circuit_breaker alert IS the manual
+    operator release (人工复核才复活, 铁律 10)."""
     cut = (datetime.now(timezone.utc) - timedelta(hours=within_hours)).isoformat()
     r = conn.execute(
         "SELECT message FROM alerts WHERE source='circuit_breaker' AND ts>=? AND"
-        " (message LIKE ? OR message LIKE '*:%') ORDER BY ts DESC LIMIT 1",
+        " acked=0 AND (message LIKE ? OR message LIKE '*:%')"
+        " ORDER BY ts DESC LIMIT 1",
         (cut, f"{series}:%")).fetchone()
     return r["message"] if r else None
 
