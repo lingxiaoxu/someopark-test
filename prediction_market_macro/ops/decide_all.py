@@ -130,6 +130,11 @@ def run(conn, settings) -> int:
                     conn.execute(
                         "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                         (now.isoformat(), "info", "consistency", msg))
+                # §24-A: detected free money gets TRADED (paper), not just alerted
+                if impl["violations"]:
+                    from prediction_market_macro.strategy import arb
+                    n += arb.execute(conn, spec.ticker, key, legs,
+                                     impl["violations"])
                 if not pr["ladder_json"]:
                     continue
                 pmf = {float(k): v for k, v in json.loads(pr["ladder_json"]).items()}

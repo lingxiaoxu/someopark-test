@@ -156,9 +156,61 @@ def ladder_monotone(conn, asof: datetime) -> list[dict]:
     return findings
 
 
+def term_structure(conn, asof: datetime) -> list[dict]:
+    """§24-C fifth check: same series, consecutive periods — the MODEL's implied
+    curve slope vs the MARKET's. When the two curves disagree in DIRECTION and the
+    magnitude gap is large, one side is mispricing the term structure (base
+    effects across CPI months, meeting-path for Fed). Detection only (P2 trades)."""
+    import json as _json
+    from prediction_market_macro.config.registry import REGISTRY
+    from prediction_market_macro.strategy.devig import ladder_implied
+    from prediction_market_macro.util.periods import kalshi_period_to_key
+    findings = []
+    for spec in REGISTRY.values():
+        if spec.structure != "ladder":
+            continue
+        toks = [r["period"] for r in conn.execute(
+            "SELECT DISTINCT period FROM contracts WHERE series=? AND status='active'",
+            (spec.ticker,)).fetchall()]
+        pts = []                                   # (key, model_mean, market_mean)
+        for tok in sorted(toks):
+            key = kalshi_period_to_key(tok)
+            if not key:
+                continue
+            pr = conn.execute(
+                "SELECT ladder_json FROM preds WHERE series=? AND period=?"
+                " AND model_version LIKE ? ORDER BY asof DESC LIMIT 1",
+                (spec.ticker, key, spec.model + "/%")).fetchone()
+            if pr is None or not pr["ladder_json"]:
+                continue
+            pmf = {float(k): v for k, v in _json.loads(pr["ladder_json"]).items()}
+            m_model = sum(k * v for k, v in pmf.items())
+            legs = _latest_legs(conn, spec.ticker, tok)
+            impl = ladder_implied(legs)
+            finite = {k: v for k, v in impl["pmf"].items() if k != float("inf")}
+            if sum(finite.values()) < 0.5:
+                continue
+            m_mkt = sum(k * v for k, v in finite.items()) / sum(finite.values())
+            pts.append((key, m_model, m_mkt))
+        pts.sort()
+        for (k1, mo1, mk1), (k2, mo2, mk2) in zip(pts[:-1], pts[1:]):
+            d_model, d_mkt = mo2 - mo1, mk2 - mk1
+            scale = max(abs(mo1), abs(mk1), spec.round_rule * 10, 1e-9)
+            if (d_model * d_mkt < 0
+                    and abs(d_model - d_mkt) / scale > 0.10):
+                msg = (f"TERM-STRUCTURE {spec.ticker} {k1}->{k2}: model slope"
+                       f" {d_model:+.4g} vs market {d_mkt:+.4g}")
+                _alert(conn, msg)
+                findings.append({"series": spec.ticker, "from": k1, "to": k2,
+                                 "d_model": round(d_model, 5),
+                                 "d_market": round(d_mkt, 5)})
+    return findings
+
+
 def run(conn) -> dict:
     now = datetime.now(timezone.utc)
     out = {"fed_mutual": fed_mutual(conn, now), "cpi_mom_yoy": cpi_mom_yoy(conn, now),
-           "combo": combo_vs_legs(conn, now), "monotone": ladder_monotone(conn, now)}
+           "combo": combo_vs_legs(conn, now), "monotone": ladder_monotone(conn, now),
+           "term_structure": term_structure(conn, now)}
     conn.commit()
     return {k: len(v) for k, v in out.items()}

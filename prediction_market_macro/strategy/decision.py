@@ -25,6 +25,12 @@ GATES = {
     "max_size_usd": 1.0,
     "max_depth_frac": 0.20,          # 铁律 5: size ≤ 20% of thinnest-leg depth
     "max_entropy_norm": 0.95,        # §19-4: flat pmf ⇒ no informational edge ⇒ PASS
+    # §24-D favorite-compounder second entry path: small absolute edges on
+    # near-certain short-dated legs, admitted by ANNUALIZED yield instead
+    "fav_min_fair": 0.90,
+    "fav_min_edge_per_day": 0.008,   # net edge per day to settlement
+    "fav_min_net_edge": 0.005,       # still must clear fees with margin
+    "fav_size_frac": 0.5,            # half the normal size cap
 }
 
 
@@ -60,11 +66,12 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
         return Decision("pass", None, 0.0, 0,
                         (f"entropy_gate:{entropy_norm:.3f}",), dict(gates))
 
+    days_to_close = (max((close_time - now).total_seconds() / 86400.0, 0.5)
+                     if close_time is not None else None)
     best: tuple[float, Struct] | None = None
+    fav_best: tuple[float, Struct] | None = None      # (edge_per_day, struct)
     for st in structs:
         ne = st.net_edge()
-        if ne < gates["min_net_edge"]:
-            continue
         if any(l.depth < gates["min_leg_depth_usd"] for l in st.legs):
             reasons.append(f"depth_fail:{st.desc}")
             continue
@@ -76,13 +83,29 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
         if gap > gates["max_model_market_gap"]:
             reasons.append(f"sanity_gap:{st.desc}:{gap:.2f}")
             continue
-        if best is None or ne > best[0]:
-            best = (ne, st)
+        if ne >= gates["min_net_edge"]:
+            if best is None or ne > best[0]:
+                best = (ne, st)
+        elif (days_to_close is not None
+              and st.fair >= gates.get("fav_min_fair", 0.90)
+              and ne >= gates.get("fav_min_net_edge", 0.005)):
+            # §24-D: small edge, near-certain, short-dated — annualized lens
+            epd = ne / days_to_close
+            if epd >= gates.get("fav_min_edge_per_day", 0.008):
+                if fav_best is None or epd > fav_best[0]:
+                    fav_best = (epd, st)
+    fav_path = False
+    if best is None and fav_best is not None:
+        best = (fav_best[1].net_edge(), fav_best[1])
+        fav_path = True
+        reasons.append(f"favorite_path epd={fav_best[0]:.4f}")
     if best is None:
         reasons.append("no_struct_cleared_gates")
         return Decision("pass", None, 0.0, 0, tuple(reasons), dict(gates))
     ne, st = best
-    usd = quarter_kelly_usd(st.fair, st.cost, bankroll, cap=gates["max_size_usd"])
+    size_cap = gates["max_size_usd"] * (gates.get("fav_size_frac", 0.5)
+                                        if fav_path else 1.0)
+    usd = quarter_kelly_usd(st.fair, st.cost, bankroll, cap=size_cap)
     if usd <= 0.0:
         return Decision("pass", None, 0.0, 0, ("kelly_zero",), dict(gates))
     # 铁律 5 first half: never take more than max_depth_frac of the thinnest leg
@@ -93,10 +116,14 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
     if usd > depth_cap:
         usd = round(depth_cap, 2)
     if usd < st.cost:                            # Kelly sized below one contract
-        return Decision("pass", None, 0.0, 0,
-                        (f"kelly_below_one_contract {usd:.2f}<{st.cost:.2f}",),
-                        dict(gates))
+        if fav_path and depth_cap >= st.cost:
+            usd = st.cost                        # favorites cost ~0.9+: buy exactly 1
+        else:
+            return Decision("pass", None, 0.0, 0,
+                            (f"kelly_below_one_contract {usd:.2f}<{st.cost:.2f}",),
+                            dict(gates))
     count = int(usd / max(st.cost, 0.01))
-    return Decision("open", st, usd, count,
-                    (f"net_edge={ne:.4f}", f"fair={st.fair:.4f}", f"cost={st.cost:.4f}"),
-                    dict(gates))
+    open_reasons = [f"net_edge={ne:.4f}", f"fair={st.fair:.4f}", f"cost={st.cost:.4f}"]
+    if fav_path:
+        open_reasons.insert(0, "favorite_path")
+    return Decision("open", st, usd, count, tuple(open_reasons), dict(gates))

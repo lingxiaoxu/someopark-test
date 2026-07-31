@@ -33,6 +33,13 @@ def _exec_task(conn, s, md, r) -> str:
         predict_all.run(conn, s)
         decide_all.run(conn, s)
         exits.run(conn, s)
+    if task == "reassess" and series in REGISTRY:
+        # §24-B: the print is public by T+3m — snipe legs whose settlement is
+        # already determined but still mispriced
+        from prediction_market_macro.strategy import snipe
+        ns = snipe.run_for(conn, series, r["period"])
+        if ns:
+            return f"snipes={ns}"
     if task == "freeze":
         scheduler.set_coverage(conn, series, r["period"], "frozen")
     if task == "reconcile":

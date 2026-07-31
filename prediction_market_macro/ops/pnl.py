@@ -181,6 +181,7 @@ def settle_pass(conn) -> int:
             (now, pos["series"], pos["period"], pos["structure_json"], "settle_note",
              pos["fair"], pos["ask"], pos["net_edge"], round(realized, 4),
              json.dumps({"realized_usd": round(realized, 4), "results": results,
+                         "origin": pos["kind"],
                          "z": round(z, 3) if z is not None else None,
                          "attribution": attribution}), pos["model_version"], "{}",
              note))
@@ -200,5 +201,20 @@ def report(conn) -> dict:
         "  SELECT series, period, size_usd, MIN(id) FROM decisions"
         "  WHERE kind='settle_note' GROUP BY series, period)"
         " GROUP BY series").fetchall()
+    # §24 strategy split: model opens vs arb vs snipe (origin recorded at settle)
+    by_origin = conn.execute(
+        "SELECT COALESCE(json_extract(inputs_json,'$.origin'),'open') origin,"
+        " COUNT(*) n, ROUND(SUM(size_usd),4) realized FROM ("
+        "  SELECT inputs_json, size_usd, MIN(id) FROM decisions"
+        "  WHERE kind='settle_note' GROUP BY series, period)"
+        " GROUP BY origin").fetchall()
+    open_kind = conn.execute(
+        "SELECT kind, COUNT(*) n, ROUND(SUM(size_usd),4) staked FROM decisions d"
+        " WHERE d.kind IN ('open','arb','snipe') AND NOT EXISTS"
+        " (SELECT 1 FROM decisions e WHERE e.series=d.series AND e.period=d.period"
+        "  AND e.kind IN ('exit','cancel','settle_note') AND e.id>d.id)"
+        " GROUP BY kind").fetchall()
     return {"open_by_series": [dict(r) for r in rows],
-            "settled_by_series": [dict(r) for r in settled]}
+            "settled_by_series": [dict(r) for r in settled],
+            "settled_by_origin": [dict(r) for r in by_origin],
+            "open_by_kind": [dict(r) for r in open_kind]}

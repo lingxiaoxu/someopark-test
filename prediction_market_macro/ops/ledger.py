@@ -57,7 +57,8 @@ def open_positions(conn) -> list[dict]:
     settle_note counts as closed — otherwise settle_pass re-settles (and marks keep
     marking) finished positions forever."""
     rows = conn.execute(
-        "SELECT d.* FROM decisions d WHERE d.kind='open' AND NOT EXISTS"
+        "SELECT d.* FROM decisions d WHERE d.kind IN ('open','arb','snipe')"
+        " AND NOT EXISTS"
         " (SELECT 1 FROM decisions e WHERE e.series=d.series AND e.period=d.period"
         "  AND e.kind IN ('exit','cancel','settle_note') AND e.id>d.id)").fetchall()
     out = []

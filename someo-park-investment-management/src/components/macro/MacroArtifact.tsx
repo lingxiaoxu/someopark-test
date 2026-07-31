@@ -54,10 +54,20 @@ const dt = (iso?: string | null) => {
 };
 const shortSeries = (s: string) => s.replace(/^KX/, '');
 
+const KIND_COLOR: Record<string, string> = {
+  pass: 'var(--text-muted)',
+  open: 'var(--success)',
+  arb: 'var(--accent-primary)',       // §24-A riskless arbitrage
+  snipe: 'var(--warning)',            // §24-B post-print sniper
+  exit: 'var(--text-secondary)',
+  settle_note: 'var(--text-secondary)',
+};
+const kindColor = (k?: string) => KIND_COLOR[k ?? ''] ?? 'var(--success)';
+
 function decisionChip(t: (k: string) => string, d?: MacroDecision | null): ReactNode {
   if (!d || !d.kind) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
   const isPass = d.kind === 'pass';
-  return <Chip color={isPass ? 'var(--text-muted)' : 'var(--success)'}>{isPass ? t('macro.statusPass') : d.kind}</Chip>;
+  return <Chip color={kindColor(d.kind)}>{isPass ? t('macro.statusPass') : d.kind}</Chip>;
 }
 
 function countdownStr(t: (k: string, o?: any) => string, iso: string): string {
@@ -368,7 +378,7 @@ function DecisionsView() {
           rows={decisions.map((d) => [
             <span style={{ ...mono, fontSize: 10 }}>{dt(d.ts_utc)}</span>,
             <span style={mono}>{shortSeries(d.series)}</span>, d.period,
-            <Chip color={d.kind === 'pass' ? 'var(--text-muted)' : 'var(--success)'}>{d.kind}</Chip>,
+            <Chip color={kindColor(d.kind)}>{d.kind}</Chip>,
             d.fair != null ? fmt(d.fair, 3) : '—', d.ask != null ? fmt(d.ask, 3) : '—',
             d.net_edge != null ? fmt(d.net_edge, 3) : '—',
             d.size_usd ? money(d.size_usd) : '—',
@@ -406,6 +416,8 @@ function PerformanceView() {
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const open: any[] = data?.open_by_series ?? [];
   const settled: any[] = data?.settled_by_series ?? [];
+  const byOrigin: any[] = data?.settled_by_origin ?? [];
+  const openKind: any[] = data?.open_by_kind ?? [];
   const track = pt?.track ?? [];
   return (
     <div>
@@ -430,6 +442,27 @@ function PerformanceView() {
           })} />
       ) : (
         <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{t('macro.noneSettled')}</div>
+      )}
+      {(byOrigin.length > 0 || openKind.length > 0) && (
+        <>
+          <SectionTitle>{t('macro.byStrategy')}</SectionTitle>
+          <DataTable
+            cols={[t('macro.colOrigin'), t('macro.colOpenN'), t('macro.colStaked'),
+              t('macro.colSettledN'), t('macro.colPnl')]}
+            rows={['open', 'arb', 'snipe'].map((k) => {
+              const o = openKind.find((r) => r.kind === k);
+              const s = byOrigin.find((r) => (r.origin ?? 'open') === k);
+              if (!o && !s) return null;
+              const pnl = s?.realized;
+              return [
+                <Chip color={kindColor(k)}>{t(`macro.origin_${k}`)}</Chip>,
+                o?.n ?? 0, o?.staked != null ? money(o.staked) : '—',
+                s?.n ?? 0,
+                pnl != null
+                  ? <span style={{ ...mono, color: pnl >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(pnl)}</span>
+                  : '—'];
+            }).filter(Boolean) as any[]} />
+        </>
       )}
       {track.length > 0 && (
         <>

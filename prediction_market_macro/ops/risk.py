@@ -34,7 +34,8 @@ class Veto:
 
 def _open_exposure(conn) -> list[dict]:
     rows = conn.execute(
-        "SELECT d.series, d.period, d.size_usd FROM decisions d WHERE d.kind='open'"
+        "SELECT d.series, d.period, d.size_usd FROM decisions d"
+        " WHERE d.kind IN ('open','arb','snipe')"
         " AND NOT EXISTS (SELECT 1 FROM decisions e WHERE e.series=d.series AND"
         " e.period=d.period AND e.kind IN ('exit','cancel','settle_note') AND e.id>d.id)"
     ).fetchall()
