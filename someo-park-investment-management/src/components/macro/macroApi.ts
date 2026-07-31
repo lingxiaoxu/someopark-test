@@ -74,6 +74,13 @@ export type MacroBoard = {
 /** Compact human summary of a prediction distribution:
  *  gmix → "mu ± sigma"; empirical → "p50 [p5, p95]" (quantile idx 10/100/190);
  *  categorical → top-2 probs. */
+/** Compact number: at most 4 decimals, trailing zeros stripped (display-wide rule). */
+export const nice = (v: any): string => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return '—';
+  return String(Number(n.toFixed(4)));
+};
+
 export function predSummary(dist: any): string {
   if (!dist || !dist.kind) return '—';
   if (dist.kind === 'gmix' && Array.isArray(dist.comps) && dist.comps.length) {
@@ -81,13 +88,13 @@ export function predSummary(dist: any): string {
     let mu = 0, m2 = 0;
     for (const [w, m, s] of dist.comps) { mu += w * m; m2 += w * (s * s + m * m); }
     const sigma = Math.sqrt(Math.max(0, m2 - mu * mu));
-    return `${mu.toFixed(3)} ± ${sigma.toFixed(3)}`;
+    return `${nice(mu)} ± ${nice(sigma)}`;
   }
   if (dist.kind === 'empirical' && Array.isArray(dist.quantiles) && dist.quantiles.length) {
     const q = dist.quantiles.filter((v: any) => Number.isFinite(v));
     if (!q.length) return '—';
     const at = (i: number) => q[Math.min(i, q.length - 1)];
-    return `${at(100)} [${at(10)}, ${at(190)}]`;
+    return `${nice(at(100))} [${nice(at(10))}, ${nice(at(190))}]`;
   }
   if (dist.kind === 'categorical' && dist.probs) {
     const top = Object.entries(dist.probs as Record<string, number>)
