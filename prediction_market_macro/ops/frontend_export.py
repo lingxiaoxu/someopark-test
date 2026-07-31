@@ -267,7 +267,8 @@ def run_extended(conn, settings) -> str:
 
     # ── macro_walkforward.json: the WF lab artifact (sweep + latest daily run) ──
     wf_doc = {"generated_at": now.isoformat()}
-    for name, key in (("walkforward_sweep", "sweep"), ("daily_walkforward", "daily")):
+    for name, key in (("walkforward_sweep", "sweep"), ("daily_walkforward", "daily"),
+                      ("ml_selector", "ml")):
         r = conn.execute(
             "SELECT metrics_json, created_ts FROM experiments WHERE name=?"
             " ORDER BY created_ts DESC LIMIT 1", (name,)).fetchone()

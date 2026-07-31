@@ -919,11 +919,37 @@ function WalkforwardView() {
               ? <Chip color="var(--success)">{t('macro.wfTestable')}</Chip>
               : <Chip color="var(--text-muted)">{t('macro.wfNoData')}</Chip>,
           ])} />
+      {data?.ml && (data.ml.last30?.n_trades != null) && (
+        <>
+          <SectionTitle>{t('macro.mlTitle')}</SectionTitle>
+          <DataTable
+            cols={[t('macro.wfWindow'), t('macro.colTrades'), t('macro.winRate'),
+              t('macro.colPnl'), 'ROI']}
+            rows={(['last30', 'last60', 'all'] as const)
+              .filter((w) => data.ml[w]?.n_trades != null)
+              .map((w) => {
+                const v = data.ml[w];
+                return [
+                  <span style={mono}>{w}</span>, v.n_trades, pct(v.win_rate),
+                  <span style={{ ...mono, color: (v.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
+                  <span style={{ ...mono, color: (v.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(v.roi)}</span>,
+                ];
+              })} />
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '2px 0 6px' }}>
+            {t('macro.mlNote')}
+          </div>
+        </>
+      )}
       {daily?.streams && (() => {
-        const streams: Record<string, any> = daily.streams;
-        const names = ['hybrid', 'edge', 'argmax'].filter((k) => streams[k]);
+        const streams: Record<string, any> = { ...daily.streams };
+        if (data?.ml?.last30?.trades?.length) streams.ml = data.ml.last30;
+        const names = ['hybrid', 'edge', 'argmax', 'ml'].filter((k) => streams[k]);
         return (
-          <div className="flex items-center" style={{ margin: '10px 0 2px' }}>
+          <>
+          <div style={{ fontSize: 11, ...mono, margin: '10px 0 4px', color: 'var(--accent-primary)', fontWeight: 700 }}>
+            {t('macro.wfAsIfLive', { days: daily.days })}
+          </div>
+          <div className="flex items-center" style={{ margin: '0 0 2px' }}>
             {names.map((k) => (
               <button key={k} onClick={() => setStream(k)}
                 style={{ padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono)',
@@ -936,10 +962,11 @@ function WalkforwardView() {
               </button>
             ))}
           </div>
+          </>
         );
       })()}
       {(() => {
-        const sdata = daily?.streams?.[stream];
+        const sdata = stream === 'ml' ? data?.ml?.last30 : daily?.streams?.[stream];
         const tradeList: any[] = sdata?.trades ?? daily?.trades ?? [];
         if (!tradeList.length) return null;
         return (() => {

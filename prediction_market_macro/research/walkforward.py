@@ -371,7 +371,7 @@ def sweep(conn, days: int = 30, leads=(1.0, 3.0, 5.0, 7.0)) -> dict:
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
         " metrics_json, created_ts) VALUES('walkforward_sweep',?,'*',?,?,?)",
-        (f"d{days}:{fair_mode}:{now.date().isoformat()}", f"{days}d:{fair_mode}",
+        (f"d{days}:model:{now.date().isoformat()}", f"{days}d:model",
          json.dumps(out, ensure_ascii=False), now.isoformat()))
     conn.commit()
     return out

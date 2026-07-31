@@ -144,6 +144,18 @@ def run(weekly: bool = False) -> dict:
              lambda: json.dumps({k: {"roi": v.get("roi"), "n": v.get("n_trades")}
                                  for k, v in walkforward.sweep(
                                      conn, days=30)["leads"].items()}))
+        # canonical as-if-live 30d run LAST (sweep's per-lead runs overwrite the
+        # daily_walkforward row; this one is what the frontend headlines)
+        step("weekly_walkforward_30d",
+             lambda: json.dumps({k: {"roi": v.get("roi"), "n": v.get("n_trades")}
+                                 for k, v in walkforward.run(
+                                     conn, days=30)["streams"].items()}))
+        from prediction_market_macro.research import selector
+        step("weekly_ml_selector",
+             lambda: json.dumps({k: {"roi": (v or {}).get("roi"),
+                                     "n": (v or {}).get("n_trades")}
+                                 for k, v in selector.walkforward_eval(conn).items()
+                                 if isinstance(v, dict) and "n_trades" in v}))
         step("report_weekly", lambda: report.weekly_pdf(conn, s))
     step("watchdog_inline", lambda: len(scheduler.watchdog(conn)))
 
