@@ -171,15 +171,35 @@ def run_extended(conn, settings) -> str:
 
     # ── macro_oos.json — calibration replays ONLY (experiments also holds non-OOS
     # rows: 'bankroll' balance cache, 'dfm_gate' — those are not calibration cards) ──
+    # scoring replays only (Brier cards) — decision_replay rows carry ROI metrics
+    # and get their own section; latest row per (name, series)
     exps = [dict(r) for r in conn.execute(
-        "SELECT * FROM experiments WHERE name LIKE '%replay%'"
-        " ORDER BY created_ts DESC LIMIT 20").fetchall()]
+        "SELECT * FROM experiments e WHERE name LIKE '%replay%'"
+        " AND name != 'decision_replay'"
+        " AND created_ts=(SELECT MAX(created_ts) FROM experiments e2"
+        "  WHERE e2.name=e.name AND COALESCE(e2.series,'')=COALESCE(e.series,''))"
+        " ORDER BY e.series").fetchall()]
+    dec_replays = []
+    for r in conn.execute(
+            "SELECT * FROM experiments e WHERE name='decision_replay'"
+            " AND created_ts=(SELECT MAX(created_ts) FROM experiments e2"
+            "  WHERE e2.name='decision_replay'"
+            "  AND COALESCE(e2.series,'')=COALESCE(e.series,''))"
+            " ORDER BY e.series").fetchall():
+        try:
+            m = json.loads(r["metrics_json"] or "{}")
+        except json.JSONDecodeError:
+            m = {}
+        dec_replays.append({"series": r["series"], "n_trades": m.get("n_trades"),
+                            "staked": m.get("staked"), "realized": m.get("realized"),
+                            "roi": m.get("roi"), "edge_capture": m.get("edge_capture"),
+                            "n_events": m.get("n_events")})
     gates = [dict(r) for r in conn.execute(
         "SELECT * FROM experiments WHERE name IN ('dfm_gate','series_gate')"
         " ORDER BY created_ts DESC LIMIT 40").fetchall()]
     _write(out_dir / "macro_oos.json",
            {"generated_at": now.isoformat(), "experiments": exps,
-            "component_gates": gates,
+            "decision_replays": dec_replays, "component_gates": gates,
             "gate_note": "brier_model must beat brier_market before real money"
                          " (paper until then)"})
     written.append("macro_oos.json")

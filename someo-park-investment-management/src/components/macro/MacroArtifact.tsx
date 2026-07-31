@@ -493,11 +493,37 @@ function CalibrationView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_oos');
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
-  const experiments: any[] = data?.experiments ?? [];
+  const experiments: any[] = (data?.experiments ?? [])
+    .filter((ex: any) => ex.name !== 'decision_replay');
+  const decReplays: any[] = data?.decision_replays ?? [];
   const gates: any[] = data?.component_gates ?? [];
   return (
     <div>
       <Generated ts={data?.generated_at} />
+      {decReplays.length > 0 && (
+        <>
+          <SectionTitle>{t('macro.decisionReplay')}</SectionTitle>
+          <DataTable
+            cols={[t('macro.colSeries'), t('macro.colTrades'), t('macro.colStaked'),
+              t('macro.colPnl'), 'ROI', 'edge_capture']}
+            rows={decReplays.map((r) => [
+              <span style={mono}>{shortSeries(r.series || '')}</span>,
+              r.n_trades ?? '—',
+              r.staked != null ? money(r.staked) : '—',
+              r.realized != null
+                ? <span style={{ ...mono, color: r.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(r.realized)}</span>
+                : '—',
+              r.roi != null
+                ? <span style={{ ...mono, color: r.roi >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(r.roi)}</span>
+                : '—',
+              r.edge_capture != null ? fmt(r.edge_capture, 2) : '—',
+            ])} />
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>
+            {t('macro.decisionReplayNote')}
+          </div>
+        </>
+      )}
+      {experiments.length > 0 && <SectionTitle>{t('macro.scoringReplays')}</SectionTitle>}
       {experiments.map((ex, i) => {
         let metrics: Record<string, number> = {};
         try { metrics = JSON.parse(ex.metrics_json || '{}'); } catch { /* keep empty */ }
