@@ -31,6 +31,16 @@ GATES = {
     "fav_min_edge_per_day": 0.008,   # net edge per day to settlement
     "fav_min_net_edge": 0.005,       # still must clear fees with margin
     "fav_size_frac": 0.5,            # half the normal size cap
+    # entry-timing gate (30d daily WF diagnostic, 2026-07-31): every model anchors
+    # on the latest print — beyond one weekly refresh cycle it extrapolates blind
+    # while the market keeps absorbing information (>7d entries went 0/4). A
+    # PRIOR-justified structural cap, not a tuned threshold; live-forward judges.
+    "max_days_to_close": 7.0,
+    # penny-lottery floor: at p<0.10 the ceil'd taker fee alone is 10-25% of the
+    # price, and favorite-longshot bias (our own FL map measures it) says cheap
+    # tails are systematically OVERpriced — fat model tails "clear" the edge gate
+    # on fiction. Fee geometry + documented bias ⇒ structural, not tuned.
+    "min_leg_price": 0.10,
 }
 
 
@@ -61,6 +71,10 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
     if close_time is not None:
         if (close_time - now).total_seconds() / 60.0 < gates["min_minutes_to_close"]:
             return Decision("pass", None, 0.0, 0, ("too_close_to_close",), dict(gates))
+        dtc = (close_time - now).total_seconds() / 86400.0
+        if dtc > gates.get("max_days_to_close", 7.0):
+            return Decision("pass", None, 0.0, 0,
+                            (f"too_far_from_close {dtc:.1f}d",), dict(gates))
     if (entropy_norm is not None
             and entropy_norm > gates.get("max_entropy_norm", 0.95)):
         return Decision("pass", None, 0.0, 0,
@@ -74,6 +88,9 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
         ne = st.net_edge()
         if any(l.depth < gates["min_leg_depth_usd"] for l in st.legs):
             reasons.append(f"depth_fail:{st.desc}")
+            continue
+        if any(l.price < gates.get("min_leg_price", 0.10) for l in st.legs):
+            reasons.append(f"penny_leg:{st.desc}")
             continue
         # sanity gate is UNCONDITIONAL: compare against the devigged market prob when
         # available (spread noise removed), else raw cost — a model that disagrees with

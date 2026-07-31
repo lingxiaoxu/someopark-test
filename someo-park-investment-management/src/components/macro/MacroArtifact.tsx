@@ -497,9 +497,35 @@ function CalibrationView() {
     .filter((ex: any) => ex.name !== 'decision_replay');
   const decReplays: any[] = data?.decision_replays ?? [];
   const gates: any[] = data?.component_gates ?? [];
+  const wf: any = data?.walkforward;
   return (
     <div>
       <Generated ts={data?.generated_at} />
+      {wf && (
+        <>
+          <SectionTitle>{t('macro.walkforward', { days: wf.days })}</SectionTitle>
+          <KV rows={[
+            [t('macro.colTrades'), <span style={mono}>{wf.n_trades}</span>],
+            [t('macro.winRate'), <span style={mono}>{pct(wf.win_rate)}</span>],
+            [t('macro.colPnl'), <span style={{ ...mono,
+              color: (wf.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>
+              {money(wf.realized)} ({pct(wf.roi)})</span>],
+          ]} />
+          {wf.by_series && (
+            <DataTable
+              cols={[t('macro.colSeries'), t('macro.colTrades'), 'W', t('macro.colPnl')]}
+              rows={Object.entries(wf.by_series as Record<string, any>)
+                .sort((a, b) => b[1].realized - a[1].realized)
+                .map(([k, v]) => [
+                  <span style={mono}>{shortSeries(k)}</span>, v.n, v.won,
+                  <span style={{ ...mono, color: v.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
+                ])} />
+          )}
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>
+            {t('macro.walkforwardNote')}
+          </div>
+        </>
+      )}
       {decReplays.length > 0 && (
         <>
           <SectionTitle>{t('macro.decisionReplay')}</SectionTitle>

@@ -197,9 +197,22 @@ def run_extended(conn, settings) -> str:
     gates = [dict(r) for r in conn.execute(
         "SELECT * FROM experiments WHERE name IN ('dfm_gate','series_gate')"
         " ORDER BY created_ts DESC LIMIT 40").fetchall()]
+    wf_row = conn.execute(
+        "SELECT metrics_json FROM experiments WHERE name='daily_walkforward'"
+        " ORDER BY created_ts DESC LIMIT 1").fetchone()
+    walkforward = None
+    if wf_row:
+        try:
+            w = json.loads(wf_row["metrics_json"])
+            walkforward = {k: w.get(k) for k in
+                           ("days", "n_trades", "win_rate", "staked", "realized",
+                            "roi", "by_series", "lead_buckets", "curve", "note")}
+        except json.JSONDecodeError:
+            pass
     _write(out_dir / "macro_oos.json",
            {"generated_at": now.isoformat(), "experiments": exps,
             "decision_replays": dec_replays, "component_gates": gates,
+            "walkforward": walkforward,
             "gate_note": "brier_model must beat brier_market before real money"
                          " (paper until then)"})
     written.append("macro_oos.json")
