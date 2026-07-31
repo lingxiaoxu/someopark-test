@@ -136,6 +136,11 @@ def run(weekly: bool = False) -> dict:
         step("weekly_attribution",
              lambda: {k: v for k, v in attribution.weekly_attribution(conn).items()
                       if k in ("n_settled_scored", "n_misses", "by_series")})
+        from prediction_market_macro.research import walkforward
+        step("weekly_walkforward_sweep",
+             lambda: json.dumps({k: {"roi": v.get("roi"), "n": v.get("n_trades")}
+                                 for k, v in walkforward.sweep(
+                                     conn, days=30)["leads"].items()}))
         step("report_weekly", lambda: report.weekly_pdf(conn, s))
     step("watchdog_inline", lambda: len(scheduler.watchdog(conn)))
 

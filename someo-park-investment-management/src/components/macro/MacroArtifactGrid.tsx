@@ -10,7 +10,7 @@
 import {
   LayoutDashboard, Landmark, TrendingUp, Users, Flame, GitCompare,
   ClipboardList, LineChart, Gauge, LayoutGrid, Shield, BookOpen, Download,
-  BarChart3, ShieldCheck,
+  BarChart3, ShieldCheck, FlaskConical,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,6 +33,7 @@ export const MACRO_ITEMS: Item[] = [
   { type: 'macro_risk',        i18nKey: 'risk',        Icon: Shield },
   { type: 'macro_overview',    i18nKey: 'overview',    Icon: BookOpen },
   { type: 'macro_reports',     i18nKey: 'reports',     Icon: Download },
+  { type: 'macro_walkforward', i18nKey: 'wfLab',       Icon: FlaskConical },
 ];
 
 // ── §21.3 five-group IA — every legacy type belongs to exactly one group ─────
@@ -50,7 +51,7 @@ export const MACRO_GROUPS: MacroGroup[] = [
   { key: 'trading',  i18nKey: 'groupTrading',  Icon: ClipboardList,
     types: ['macro_decisions', 'macro_performance', 'macro_divergence'] },
   { key: 'quality',  i18nKey: 'groupQuality',  Icon: ShieldCheck,
-    types: ['macro_calibration', 'macro_coverage', 'macro_risk'] },
+    types: ['macro_calibration', 'macro_walkforward', 'macro_coverage', 'macro_risk'] },
   { key: 'reports',  i18nKey: 'groupReports',  Icon: Download,
     types: ['macro_reports'] },
 ];

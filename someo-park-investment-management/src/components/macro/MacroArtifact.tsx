@@ -786,6 +786,104 @@ function ReportsView() {
 }
 
 // ── dispatcher ────────────────────────────────────────────────────────────────
+// ── Walk-Forward Lab (dedicated smart artifact, WC-style) ────────────────────
+const LEAD_COLORS: Record<string, string> = {
+  '1d': 'var(--error)', '3d': 'var(--warning)',
+  '5d': 'var(--text-secondary)', '7d': 'var(--success)',
+};
+
+function WalkforwardView() {
+  const { t } = useTranslation();
+  const { data, loading, error } = useMacro<any>('macro_walkforward');
+  if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
+  const sweep = data?.sweep;
+  const daily = data?.daily;
+  const leads: [string, any][] = Object.entries(sweep?.leads ?? {});
+  const cov: [string, any][] = Object.entries(sweep?.coverage ?? {});
+  const testable = cov.filter(([, v]) => v.testable).length;
+  // merge lead curves into one chart series: [{day, '1d': pnl, '3d': pnl, ...}]
+  const chart: Record<string, any>[] = [];
+  const byDay: Record<string, any> = {};
+  leads.forEach(([lk, lv]) => (lv.curve ?? []).forEach((p: any) => {
+    byDay[p.day] = byDay[p.day] ?? { day: p.day };
+    byDay[p.day][lk] = p.pnl;
+  }));
+  Object.keys(byDay).sort().forEach((d) => chart.push(byDay[d]));
+  const bestLead = leads.length
+    ? leads.reduce((a, b) => ((b[1].roi ?? -9) > (a[1].roi ?? -9) ? b : a))[0] : null;
+  return (
+    <div>
+      <Generated ts={sweep?.generated_at ?? data?.generated_at} />
+      <KV rows={[
+        [t('macro.wfWindow'), <span style={mono}>{sweep?.days ?? daily?.days ?? '—'}d</span>],
+        [t('macro.wfCoverage'), <span style={mono}>{testable}/{cov.length} {t('macro.wfSeriesTestable')}</span>],
+        [t('macro.wfBestLead'), bestLead
+          ? <Chip color={LEAD_COLORS[bestLead] ?? 'var(--success)'}>{bestLead}</Chip> : '—'],
+      ]} />
+      <SectionTitle>{t('macro.wfLeadCompare')}</SectionTitle>
+      <DataTable
+        cols={[t('macro.wfLead'), t('macro.colTrades'), t('macro.winRate'),
+          t('macro.colPnl'), 'ROI']}
+        rows={leads.map(([lk, lv]) => [
+          <Chip color={LEAD_COLORS[lk] ?? 'var(--text-muted)'}>{lk}</Chip>,
+          lv.n_trades ?? '—', pct(lv.win_rate),
+          <span style={{ ...mono, color: (lv.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(lv.realized)}</span>,
+          <span style={{ ...mono, color: (lv.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(lv.roi)}</span>,
+        ])} />
+      {chart.length > 1 && (
+        <>
+          <SectionTitle>{t('macro.wfCurves')}</SectionTitle>
+          <div style={{ width: '100%', height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chart} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <XAxis dataKey="day" hide />
+                <YAxis width={46} tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }} stroke="var(--text-muted)" />
+                <Tooltip contentStyle={{ background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-subtle)', fontSize: 10,
+                  fontFamily: 'var(--font-mono)' }} />
+                {leads.map(([lk]) => (
+                  <Line key={lk} type="monotone" dataKey={lk} connectNulls
+                    stroke={LEAD_COLORS[lk] ?? 'var(--accent-primary)'}
+                    strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+      <SectionTitle>{t('macro.wfCoverageTitle')}</SectionTitle>
+      <DataTable
+        cols={[t('macro.colSeries'), t('macro.wfEvents'), '']}
+        rows={cov.sort((a, b) => b[1].events_in_window - a[1].events_in_window)
+          .map(([k, v]) => [
+            <span style={mono}>{shortSeries(k)}</span>, v.events_in_window,
+            v.testable
+              ? <Chip color="var(--success)">{t('macro.wfTestable')}</Chip>
+              : <Chip color="var(--text-muted)">{t('macro.wfNoData')}</Chip>,
+          ])} />
+      {daily?.trades?.length > 0 && (
+        <>
+          <SectionTitle>{t('macro.wfRecentTrades')}</SectionTitle>
+          <div style={{ overflowX: 'auto' }}>
+            <DataTable
+              cols={[t('macro.colSeries'), t('macro.colPeriod'), t('macro.colNote'),
+                t('macro.colPnl')]}
+              rows={daily.trades.slice(-15).reverse().map((tr: any) => [
+                <span style={mono}>{shortSeries(tr.series)}</span>, tr.period,
+                <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{trunc(tr.desc, 34)}</span>,
+                <span style={{ ...mono, color: tr.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(tr.realized)}</span>,
+              ])} />
+          </div>
+        </>
+      )}
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>
+        {t('macro.wfLabNote')}
+      </div>
+      <Ai view="macro_walkforward" />
+    </div>
+  );
+}
+
 export const REGISTRY: Record<string, ComponentType<any>> = {
   macro_board: BoardView,
   macro_fed: FedView,
@@ -800,6 +898,7 @@ export const REGISTRY: Record<string, ComponentType<any>> = {
   macro_risk: RiskView,
   macro_overview: OverviewView,
   macro_reports: ReportsView,
+  macro_walkforward: WalkforwardView,
 };
 
 const KEY_BY_TYPE: Record<string, string> = Object.fromEntries(MACRO_ITEMS.map((i) => [i.type, i.i18nKey]));

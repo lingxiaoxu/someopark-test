@@ -69,10 +69,15 @@ def _open_settled_events(conn, asof: datetime, now: datetime) -> list[dict]:
     return out
 
 
-def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0) -> dict:
+def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
+        max_lead_days: float | None = None) -> dict:
+    """max_lead_days: entry allowed only when days-to-close <= this (the sweep
+    knob — each lead sees DIFFERENT data and different predictions at its asof)."""
     now = datetime.now(timezone.utc)
     gates = dict(GATES)
     gates["min_leg_depth_usd"] = 0.0               # candles carry no depth
+    if max_lead_days is not None:
+        gates["max_days_to_close"] = float(max_lead_days)
     opened: dict[tuple[str, str], dict] = {}       # (series, key) -> trade
     daily: list[dict] = []
     for d in range(days, 0, -1):
@@ -190,14 +195,68 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0) ->
     return out
 
 
+def coverage(conn, days: int = 30) -> dict:
+    """Which registered bets the window can even test: settled events with candled
+    legs per series, plus the registered-but-untestable ones (no settle in window)."""
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(days=days)
+    out = {}
+    for spec in REGISTRY.values():
+        r = conn.execute(
+            "SELECT COUNT(DISTINCT s.period) n FROM settlements s"
+            " JOIN contracts c ON c.ticker=s.ticker"
+            " JOIN candles cd ON cd.ticker=s.ticker"
+            " WHERE s.series=? AND s.result IN ('yes','no') AND s.settled_ts>=?",
+            (spec.ticker, since.isoformat())).fetchone()
+        out[spec.ticker] = {"family": spec.family, "cadence": spec.cadence,
+                            "events_in_window": r["n"],
+                            "testable": r["n"] > 0,
+                            "in_dispatch": spec.ticker in SERIES_DISPATCH}
+    return out
+
+
+def sweep(conn, days: int = 30, leads=(1.0, 3.0, 5.0, 7.0)) -> dict:
+    """Full WF per entry-lead: at lead L an entry opens the first day within L
+    days of close (fresher data, different prediction, different price)."""
+    now = datetime.now(timezone.utc)
+    per_lead = {}
+    for lead in leads:
+        r = run(conn, days=days, max_lead_days=lead)
+        per_lead[f"{lead:g}d"] = {k: r.get(k) for k in
+                                  ("n_trades", "win_rate", "staked", "realized",
+                                   "roi", "by_series", "curve")}
+    cov = coverage(conn, days)
+    out = {"days": days, "leads": per_lead, "coverage": cov,
+           "generated_at": now.isoformat(),
+           "note": "one full PIT walk-forward per lead; per-series cells have tiny"
+                   " n — read the GLOBAL row, treat per-series as anecdotes"}
+    conn.execute(
+        "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
+        " metrics_json, created_ts) VALUES('walkforward_sweep',?,'*',?,?,?)",
+        (f"d{days}:{now.date().isoformat()}", f"{days}d",
+         json.dumps(out, ensure_ascii=False), now.isoformat()))
+    conn.commit()
+    return out
+
+
 def main():
     from prediction_market_macro.config.settings import load_settings
     from prediction_market_macro.ingest.store import init_db
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=30)
+    ap.add_argument("--sweep", action="store_true")
     args = ap.parse_args()
     s = load_settings()
     conn = init_db(s.db_path)
+    if args.sweep:
+        out = sweep(conn, days=args.days)
+        slim = {"leads": {k: {kk: v[kk] for kk in ("n_trades", "win_rate",
+                                                   "realized", "roi")}
+                          for k, v in out["leads"].items()},
+                "coverage": {k: v["events_in_window"]
+                             for k, v in out["coverage"].items()}}
+        print(json.dumps(slim, indent=1, ensure_ascii=False))
+        return
     out = run(conn, days=args.days)
     print(json.dumps({k: v for k, v in out.items() if k not in ("trades", "curve")},
                      indent=1, ensure_ascii=False))
