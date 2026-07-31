@@ -101,7 +101,8 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
         wm_raw, wk_raw = 1.0 / max(mm, 1e-6), 1.0 / max(mk, 1e-6)
         wm = max(0.10, min(0.90, wm_raw / (wm_raw + wk_raw)))
         return {"model": wm, "market": 1.0 - wm}
-    opened: dict[tuple[str, str], dict] = {}       # (series, key) -> trade
+    opened: dict[tuple[str, str], dict] = {}       # (series, key) -> edge trade
+    opened_argmax: dict[tuple[str, str], dict] = {}  # favourite (argmax) stream
     daily: list[dict] = []
     for d in range(days, 0, -1):
         day = (now - timedelta(days=d)).replace(hour=offset_hour, minute=0,
@@ -121,8 +122,9 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
         day_trades = 0
         for ev in _open_settled_events(conn, day, now):
             key = kalshi_period_to_key(ev["tok"])
-            if not key or (ev["series"], key) in opened:
-                continue
+            if not key or ((ev["series"], key) in opened
+                           and (ev["series"], key) in opened_argmax):
+                continue                       # both streams already entered
             spec = REGISTRY[ev["series"]]
             legs_rows = conn.execute(
                 "SELECT c.ticker, c.floor_strike, c.cap_strike, c.strike_type,"
@@ -210,33 +212,54 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                                                bm_s / n_l, bk_s / n_l))
             if len(pv) > 1:
                 entropy_norm = -sum(p * _math.log(p) for p in pv) / _math.log(len(pv))
+
+            def _settle_struct(st, count):
+                realized = 0.0
+                for leg in st.legs:
+                    res = results.get(leg.ticker)
+                    if res is None:
+                        return None
+                    won = (res == leg.side)
+                    realized += ((1.0 if won else 0.0) - leg.price) * count \
+                        - taker_fee(leg.price, count)
+                return realized
+
+            def _trade_row(st, count, realized):
+                lead_days = (ev["close_ts"] - day).total_seconds() / 86400.0
+                return {"series": ev["series"], "period": key,
+                        "day": day.date().isoformat(), "desc": st.desc,
+                        "count": count,
+                        "staked": round(sum(l.price for l in st.legs) * count, 4),
+                        "realized": round(realized, 4), "won": realized > 0,
+                        "lead_days": round(lead_days, 1),
+                        "settle": ev["close_ts"].date().isoformat()}
+
+            # ── stream 1: EDGE (value) line — the existing gated decision ──
             dec = decide(structs, now=day, close_time=ev["close_ts"],
-                         release_ts=None, market_implied=None, already_open=False,
+                         release_ts=None, market_implied=None,
+                         already_open=(ev["series"], key) in opened,
                          bankroll=bankroll, gates=gates, entropy_norm=entropy_norm)
-            if dec.action != "open" or dec.struct is None:
-                continue
-            st, count = dec.struct, dec.count
-            realized = 0.0
-            ok = True
-            for leg in st.legs:
-                res = results.get(leg.ticker)
-                if res is None:
-                    ok = False
-                    break
-                won = (res == leg.side)
-                realized += ((1.0 if won else 0.0) - leg.price) * count \
-                    - taker_fee(leg.price, count)
-            if not ok:
-                continue
-            lead_days = (ev["close_ts"] - day).total_seconds() / 86400.0
-            opened[(ev["series"], key)] = {
-                "series": ev["series"], "period": key, "day": day.date().isoformat(),
-                "desc": st.desc, "count": count,
-                "staked": round(sum(l.price for l in st.legs) * count, 4),
-                "realized": round(realized, 4), "won": realized > 0,
-                "lead_days": round(lead_days, 1),
-                "settle": ev["close_ts"].date().isoformat()}
-            day_trades += 1
+            if dec.action == "open" and dec.struct is not None:
+                realized = _settle_struct(dec.struct, dec.count)
+                if realized is not None:
+                    opened[(ev["series"], key)] = _trade_row(dec.struct, dec.count,
+                                                             realized)
+                    day_trades += 1
+            # ── stream 2: ARGMAX (favourite) line — WC hybrid's other leg: buy
+            # the MODEL's most likely structure, flat $1, no edge requirement.
+            # Price window [0.10, 0.90] keeps payoff room net of fees. ──
+            if (ev["series"], key) not in opened_argmax:
+                inside = ((ev["close_ts"] - day).total_seconds() / 86400.0
+                          <= gates.get("max_days_to_close", 7.0))
+                cands = [st for st in structs
+                         if 0.10 <= st.cost <= 0.90 and st.fair > 0.5]
+                if inside and cands:
+                    st_a = max(cands, key=lambda x: x.fair)
+                    count_a = max(1, int(1.0 / st_a.cost))
+                    realized_a = _settle_struct(st_a, count_a)
+                    if realized_a is not None:
+                        opened_argmax[(ev["series"], key)] = _trade_row(
+                            st_a, count_a, realized_a)
         daily.append({"day": day.date().isoformat(), "n_opened": day_trades})
 
     trades = sorted(opened.values(), key=lambda t: t["settle"])
@@ -262,7 +285,27 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
         b["realized"] = round(b["realized"] + t["realized"], 4)
     tot_staked = sum(t["staked"] for t in trades)
     tot_real = sum(t["realized"] for t in trades)
-    out = {"days": days, "fair_mode": fair_mode, "n_trades": len(trades),
+
+    def _stream_summary(ts_list):
+        stk = sum(x["staked"] for x in ts_list)
+        rl = sum(x["realized"] for x in ts_list)
+        return {"n_trades": len(ts_list),
+                "won": sum(1 for x in ts_list if x["won"]),
+                "win_rate": round(sum(1 for x in ts_list if x["won"])
+                                  / len(ts_list), 4) if ts_list else None,
+                "staked": round(stk, 4), "realized": round(rl, 4),
+                "roi": round(rl / stk, 5) if stk > 0 else None,
+                "trades": sorted(ts_list, key=lambda x: x["settle"])[-60:]}
+
+    argmax_trades = list(opened_argmax.values())
+    # hybrid = WC live rule: edge bet where it fired, favourite where it passed
+    hybrid = list(trades) + [t for k2, t in opened_argmax.items()
+                             if k2 not in opened]
+    streams = {"edge": _stream_summary(trades),
+               "argmax": _stream_summary(argmax_trades),
+               "hybrid": _stream_summary(hybrid)}
+    out = {"days": days, "fair_mode": fair_mode, "streams": streams,
+           "n_trades": len(trades),
            "win_rate": round(sum(1 for t in trades if t["won"]) / len(trades), 4)
            if trades else None,
            "staked": round(tot_staked, 4), "realized": round(tot_real, 4),

@@ -210,7 +210,7 @@ def report(conn) -> dict:
         " GROUP BY origin").fetchall()
     open_kind = conn.execute(
         "SELECT kind, COUNT(*) n, ROUND(SUM(size_usd),4) staked FROM decisions d"
-        " WHERE d.kind IN ('open','arb','snipe') AND NOT EXISTS"
+        " WHERE d.kind IN ('open','argmax','arb','snipe') AND NOT EXISTS"
         " (SELECT 1 FROM decisions e WHERE e.series=d.series AND e.period=d.period"
         "  AND e.kind IN ('exit','cancel','settle_note') AND e.id>d.id)"
         " GROUP BY kind").fetchall()

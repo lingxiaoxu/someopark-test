@@ -51,6 +51,52 @@ def _legs_meta(conn, series: str, kalshi_tok: str) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _has_any_open(conn, series: str, period: str) -> bool:
+    r = conn.execute(
+        "SELECT SUM(CASE WHEN kind IN ('open','argmax','arb','snipe') THEN 1 ELSE 0"
+        " END) o, SUM(CASE WHEN kind IN ('exit','cancel','settle_note') THEN 1 ELSE 0"
+        " END) x FROM decisions WHERE series=? AND period=?",
+        (series, period)).fetchone()
+    return (r["o"] or 0) > (r["x"] or 0)
+
+
+def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> bool:
+    """WC-hybrid favourite leg: no edge cleared ⇒ buy the MODEL's most likely
+    structure flat $1 (kind='argmax'). Price window [0.10, 0.90] keeps payoff
+    room net of fees; one per (series, period); risk limits still apply."""
+    from prediction_market_macro.ops import risk
+    cands = [st for st in structs if 0.10 <= st.cost <= 0.90 and st.fair > 0.5]
+    if not cands or _has_any_open(conn, spec.ticker, key):
+        return False
+    st = max(cands, key=lambda x: x.fair)
+    count = max(1, int(1.0 / st.cost))
+    size = round(st.cost * count, 2)
+    if risk.check(conn, spec.ticker, key, size) is not None:
+        return False
+    now_iso = now.isoformat()
+    from prediction_market_macro.strategy.edge import taker_fee
+    cur = conn.execute(
+        "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair,"
+        " ask, net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (now_iso, spec.ticker, key,
+         json.dumps({"kind": "argmax", "desc": st.desc,
+                     "legs": [{"ticker": l.ticker, "side": l.side,
+                               "price": l.price} for l in st.legs]}),
+         "argmax", st.fair, st.cost, st.net_edge(), size,
+         json.dumps({"stream": "argmax"}), "argmax/1.0", "{}",
+         f"ARGMAX fav fair={st.fair:.3f} {note_extra}".strip()))
+    for leg in st.legs:
+        px = round(min(leg.price + 0.01, 0.99), 4)
+        conn.execute(
+            "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count,"
+            " fee_usd, mode) VALUES(?,?,?,?,?,?,?, 'paper')",
+            (cur.lastrowid, now_iso, leg.ticker, leg.side, px, count,
+             taker_fee(px, count)))
+    conn.commit()
+    return True
+
+
 def _bankroll(conn, settings) -> float:
     """Live demo-account balance (cached in db by the refresh bankroll step);
     static seed only if never fetched."""
@@ -241,6 +287,12 @@ def run(conn, settings) -> int:
             ledger.record(conn, series=spec.ticker, period=key, decision=d,
                           pred_inputs=json.loads(pr["dist_json"]),
                           model_version=pr["model_version"])
+            # WC-hybrid second leg: edge stream passed ⇒ favourite (argmax) flat
+            # bet inside the entry window (freeze/close gates already vetted)
+            if d.action == "pass" and close_ts is not None:
+                dtc = (close_ts - now).total_seconds() / 86400.0
+                if 0.03 <= dtc <= gates_eff.get("max_days_to_close", 7.0):
+                    _place_argmax(conn, spec, key, structs, now)
             set_coverage(conn, spec.ticker, key,
                          "decided" if d.action == "open" else "passed")
             n += 1

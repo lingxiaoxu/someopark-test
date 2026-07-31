@@ -57,6 +57,7 @@ const shortSeries = (s: string) => s.replace(/^KX/, '');
 const KIND_COLOR: Record<string, string> = {
   pass: 'var(--text-muted)',
   open: 'var(--success)',
+  argmax: 'var(--accent-primary)',    // WC-hybrid favourite leg
   arb: 'var(--accent-primary)',       // §24-A riskless arbitrage
   snipe: 'var(--warning)',            // §24-B post-print sniper
   exit: 'var(--text-secondary)',
@@ -851,6 +852,7 @@ const LEAD_COLORS: Record<string, string> = {
 function WalkforwardView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_walkforward');
+  const [stream, setStream] = useState('hybrid');
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const sweep = data?.sweep;
   const daily = data?.daily;
@@ -917,10 +919,33 @@ function WalkforwardView() {
               ? <Chip color="var(--success)">{t('macro.wfTestable')}</Chip>
               : <Chip color="var(--text-muted)">{t('macro.wfNoData')}</Chip>,
           ])} />
-      {daily?.trades?.length > 0 && (() => {
+      {daily?.streams && (() => {
+        const streams: Record<string, any> = daily.streams;
+        const names = ['hybrid', 'edge', 'argmax'].filter((k) => streams[k]);
+        return (
+          <div className="flex items-center" style={{ margin: '10px 0 2px' }}>
+            {names.map((k) => (
+              <button key={k} onClick={() => setStream(k)}
+                style={{ padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono)',
+                  fontWeight: stream === k ? 700 : 400,
+                  color: stream === k ? 'var(--text-primary)' : 'var(--text-muted)',
+                  background: stream === k ? 'var(--bg-tertiary)' : 'transparent',
+                  border: `1px solid ${stream === k ? 'var(--accent-primary)' : 'var(--border-subtle)'}`,
+                  borderRadius: 4, cursor: 'pointer', marginRight: 6 }}>
+                {t(`macro.stream_${k}`)}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
+      {(() => {
+        const sdata = daily?.streams?.[stream];
+        const tradeList: any[] = sdata?.trades ?? daily?.trades ?? [];
+        if (!tradeList.length) return null;
+        return (() => {
         // WC BetLog pattern: headline "<W-L> · <PnL> · <context>" + full log with
         // per-bet W/L chips and a cumulative column.
-        const trades: any[] = daily.trades;
+        const trades: any[] = tradeList;
         const wins = trades.filter((x) => x.won).length;
         let cum = 0;
         const withCum = trades.map((x) => { cum += x.realized; return { ...x, cum }; });
@@ -956,6 +981,7 @@ function WalkforwardView() {
             </div>
           </>
         );
+        })();
       })()}
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>
         {t('macro.wfLabNote')}
