@@ -7,9 +7,8 @@ future); snapshot/reconcile tasks may catch up.
 
 Tasks per (series, period):
   arm        T-24h   release_day lanes: full ingest + draft predict
-  snapshot   T-2h    single orderbook snapshot at the T-2h mark (densified 5-min
-                     polling inside the event window is NOT implemented yet — the
-                     tick launchd job runs at a fixed 15-min interval)
+  snapshot   T-2h    snapshot at the T-2h mark; tick.linger() then densifies inside
+                     the event window (5-min snaps, 1-min inside ±10min — §8.1)
   decide     T-1h    final predict + decision window        [decision-class]
   freeze     T-10m   no new entries/exits marker
   reassess   T+3m    post-release re-estimation             [decision-class]
