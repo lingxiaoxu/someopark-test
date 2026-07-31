@@ -1,8 +1,10 @@
 """strategy/decision.py — gates + the single decide() entry (PLAN §11; mother-template
 discipline: production, backtest and reports ALL call this one pure function).
 
-Gates (all configurable, PLAN §11):
-  net_edge >= 0.04 ; per-leg depth >= $50 ; |fair - market_implied| <= 0.25 (sanity);
+Gates (all configurable, PLAN §11 + §19-4):
+  net_edge >= 0.04 ; per-leg depth >= $50 ; |fair - market_devig| <= 0.25 (sanity,
+  against the DEVIGGED market prob when available, raw cost otherwise);
+  entropy gate: normalized pmf entropy > 0.95 ⇒ the model claims no information ⇒ PASS;
   > 30 min to close ; no re-entry on the same (series, period);
   freeze window: no decisions within 10 min before the scheduled release;
   size <= 20% of the thinnest leg's depth (铁律 5 — never eat the book).
@@ -22,6 +24,7 @@ GATES = {
     "freeze_minutes_before_release": 10.0,
     "max_size_usd": 1.0,
     "max_depth_frac": 0.20,          # 铁律 5: size ≤ 20% of thinnest-leg depth
+    "max_entropy_norm": 0.95,        # §19-4: flat pmf ⇒ no informational edge ⇒ PASS
 }
 
 
@@ -36,8 +39,12 @@ class Decision:
 
 
 def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
-           release_ts: datetime | None, market_implied: dict[float, float] | None,
-           already_open: bool, bankroll: float, gates: dict = GATES) -> Decision:
+           release_ts: datetime | None, market_implied: dict[str, float] | None,
+           already_open: bool, bankroll: float, gates: dict = GATES,
+           entropy_norm: float | None = None) -> Decision:
+    """market_implied: {struct.desc: devigged market prob} — the sanity gate compares
+    fair against the DEVIGGED mid when present (PLAN §11), raw cost otherwise.
+    entropy_norm: H(pmf)/log(K) of the model distribution — flat ⇒ PASS (§19-4)."""
     reasons: list[str] = []
     if already_open:
         return Decision("pass", None, 0.0, 0, ("already_open_no_averaging_down",), dict(gates))
@@ -48,6 +55,10 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
     if close_time is not None:
         if (close_time - now).total_seconds() / 60.0 < gates["min_minutes_to_close"]:
             return Decision("pass", None, 0.0, 0, ("too_close_to_close",), dict(gates))
+    if (entropy_norm is not None
+            and entropy_norm > gates.get("max_entropy_norm", 0.95)):
+        return Decision("pass", None, 0.0, 0,
+                        (f"entropy_gate:{entropy_norm:.3f}",), dict(gates))
 
     best: tuple[float, Struct] | None = None
     for st in structs:
@@ -57,9 +68,11 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
         if any(l.depth < gates["min_leg_depth_usd"] for l in st.legs):
             reasons.append(f"depth_fail:{st.desc}")
             continue
-        # sanity gate is UNCONDITIONAL: cost is itself the market's price — a model that
-        # disagrees with the market by >0.25 is presumed wrong, whatever the structure type
-        gap = abs(st.fair - st.cost)
+        # sanity gate is UNCONDITIONAL: compare against the devigged market prob when
+        # available (spread noise removed), else raw cost — a model that disagrees with
+        # the market by >0.25 is presumed wrong, whatever the structure type
+        mkt = (market_implied or {}).get(st.desc, st.cost)
+        gap = abs(st.fair - mkt)
         if gap > gates["max_model_market_gap"]:
             reasons.append(f"sanity_gap:{st.desc}:{gap:.2f}")
             continue

@@ -137,6 +137,37 @@ def run(conn, settings) -> int:
             # §19-3: Kelly and every gate consume CALIBRATED probabilities
             from prediction_market_macro.strategy.calibration import calibrate_structs
             structs = calibrate_structs(conn, spec.ticker, structs)
+            # §19-4 support signals: normalized entropy + devigged market fair per
+            # struct + per-strike capture memory
+            import math as _math
+            entropy_norm, market_fairs, model_mean = None, None, None
+            if spec.structure != "categorical" and pr["ladder_json"]:
+                pmf_probs = [v for v in pmf.values() if v > 0]
+                if len(pmf_probs) > 1:
+                    h = -sum(p * _math.log(p) for p in pmf_probs)
+                    entropy_norm = h / _math.log(len(pmf_probs))
+                model_mean = sum(k * v for k, v in pmf.items())
+                if impl.get("pmf"):
+                    mk_pmf = {float(k): v for k, v in impl["pmf"].items()}
+                    market_fairs = {ms.desc: ms.fair for ms in
+                                    enumerate_structs(legs, mk_pmf,
+                                                      strict=spec.strict_gt)}
+            elif spec.structure == "categorical":
+                pvals = [v for v in probs.values() if v > 0]
+                if len(pvals) > 1:
+                    h = -sum(p * _math.log(p) for p in pvals)
+                    entropy_norm = h / _math.log(len(pvals))
+            from prediction_market_macro.strategy import capture as cap_mod
+            caps = cap_mod.load_strike_capture(conn, spec.ticker)
+            if caps and model_mean is not None:
+                strikes = {l["ticker"]: l.get("strike") for l in legs}
+                structs, cap_drops = cap_mod.filter_structs(
+                    structs, caps, model_mean, spec.round_rule, strikes)
+                for cd in cap_drops:
+                    conn.execute(
+                        "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                        (now.isoformat(), "info", "capture_gate",
+                         f"{spec.ticker}/{key}: {cd}"))
             rel = conn.execute("SELECT scheduled_ts FROM releases WHERE cal=? AND period=?",
                                (spec.calendar, key)).fetchone()
             release_ts = datetime.fromisoformat(rel["scheduled_ts"]) if rel else None
@@ -144,9 +175,9 @@ def run(conn, settings) -> int:
             close_ts = min((datetime.fromisoformat(c.replace("Z", "+00:00")) for c in closes),
                            default=None)
             d = decide(structs, now=now, close_time=close_ts, release_ts=release_ts,
-                       market_implied=impl["pmf"] or None,
+                       market_implied=market_fairs,
                        already_open=ledger.has_open(conn, spec.ticker, key),
-                       bankroll=_bankroll(conn, settings))
+                       bankroll=_bankroll(conn, settings), entropy_norm=entropy_norm)
             if d.action == "open":
                 from prediction_market_macro.ops import risk
                 veto = risk.check(conn, spec.ticker, key, d.size_usd)
