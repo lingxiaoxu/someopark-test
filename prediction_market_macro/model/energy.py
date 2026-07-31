@@ -48,12 +48,18 @@ def _remaining_bdays(horizon: datetime, settle: pd.Timestamp) -> float:
                0.05)
 
 
-def _ng_storage_tilt(conn, fs: FeatureStore, asof: datetime) -> tuple[float, int]:
-    """v0.4 NG drift term from the weekly storage surprise (activates only when
-    ingest/eia.py has data — needs EIA_API_KEY). Surprise = latest weekly build
-    vs the 5y same-week average; sign: bigger-than-normal build ⇒ bearish.
-    Coefficient fit walk-forward on past (surprise, next-close-move) pairs."""
-    st, _h = fs.fred_series("NG_STORAGE_WEEKLY", asof)
+_STORAGE_SID = {"NG": "NG_STORAGE_WEEKLY", "CL": "CRUDE_STOCKS_WEEKLY"}
+
+
+def _storage_tilt(conn, fs: FeatureStore, asof: datetime, root: str) -> tuple[float, int]:
+    """v0.4 drift term from the weekly EIA inventory surprise (NG storage / crude
+    stocks ex-SPR). Surprise = latest weekly change vs the 5y same-week seasonal
+    average; bigger-than-normal build ⇒ bearish. Coefficient fit walk-forward on
+    past (surprise, next-3-bday move) pairs — all reads kt<=asof."""
+    sid = _STORAGE_SID.get(root)
+    if sid is None:
+        return 0.0, 0
+    st, _h = fs.fred_series(sid, asof)
     if len(st) < 60:
         return 0.0, len(st)
     chg = st.diff().dropna()
@@ -63,7 +69,7 @@ def _ng_storage_tilt(conn, fs: FeatureStore, asof: datetime) -> tuple[float, int
         return 0.0, len(st)
     seasonal = chg.groupby(weeks.values).transform("mean")
     surprise = (chg - seasonal).dropna()
-    closes, _h2 = fs.fut_closes("NG", asof, n=600)
+    closes, _h2 = fs.fut_closes(root, asof, n=600)
     if len(closes) < 60 or len(surprise) < 30:
         return 0.0, len(st)
     xs, ys = [], []
@@ -94,12 +100,11 @@ def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
     sig = sigma_d * math.sqrt(h)
     drift = 0.0
     n_stor = 0
-    if series == "KXNATGASW":
-        try:
-            drift, n_stor = _ng_storage_tilt(conn, fs, asof)
-            drift = float(np.clip(drift, -0.05, 0.05))    # ≤5% weekly tilt cap
-        except Exception:                                 # noqa: BLE001
-            drift = 0.0
+    try:
+        drift, n_stor = _storage_tilt(conn, fs, asof, root)
+        drift = float(np.clip(drift, -0.05, 0.05))        # ≤5% weekly tilt cap
+    except Exception:                                     # noqa: BLE001
+        drift = 0.0
     z = np.random.default_rng(0).standard_normal(_N_SAMPLES)
     samples = s0 * np.exp(drift - 0.5 * sig * sig + sig * z)   # GBM (+storage tilt)
     dist = Empirical(tuple(np.round(samples, 4).tolist()))
@@ -149,6 +154,15 @@ def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
     mids = _aaa_settled_mids(conn, asof)
     if len(mids) < 10:
         return None
+
+    def _stocks_chg(ts) -> float:
+        """Latest visible weekly gasoline-stocks % change (supply draw ⇒ price up).
+        0.0 until the EIA feed has data at that asof."""
+        gs, _hh = fs.fred_series("GASOLINE_STOCKS_WEEKLY", ts)
+        if len(gs) < 3:
+            return 0.0
+        return float(gs.iloc[-1] / gs.iloc[-2] - 1)
+
     X, y = [], []
     for ts, mid in mids:
         g, _ = fs.fred_series("GASREGW", ts)
@@ -159,7 +173,7 @@ def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
         rb, _h = fs.fut_closes("RB", ts, n=15)
         rb_mv = (float(rb.iloc[-1] / rb.iloc[0] - 1) * g_last
                  if len(rb) >= 10 else 0.0)
-        X.append([1.0, g_diff, rb_mv])
+        X.append([1.0, g_diff, rb_mv, _stocks_chg(ts) * g_last])
         y.append(mid - g_last)
     if len(y) < 10:
         return None
@@ -211,7 +225,11 @@ def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
         rb, _h = fs.fut_closes("RB", asof, n=15)
         rb_mv = (float(rb.iloc[-1] / rb.iloc[0] - 1) * last
                  if len(rb) >= 10 else 0.0)
-        drift = float(coef[0] + coef[1] * g_diff + coef[2] * rb_mv)
+        gs, _hh = fs.fred_series("GASOLINE_STOCKS_WEEKLY", asof)
+        stocks_f = (float(gs.iloc[-1] / gs.iloc[-2] - 1) * last
+                    if len(gs) >= 3 else 0.0)
+        drift = float(coef[0] + coef[1] * g_diff + coef[2] * rb_mv
+                      + coef[3] * stocks_f)
         mu = last + drift
         sigma = resid_sig * math.sqrt(max(weeks, 1.0))
         mode = f"drift_regression(n={n_fit})"

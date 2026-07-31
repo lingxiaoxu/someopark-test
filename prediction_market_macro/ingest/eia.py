@@ -39,6 +39,9 @@ FEEDS = [
     {"name": "gasoline_stocks_weekly", "route": "petroleum/stoc/wstk",
      "series": "WGTSTUS1", "sid": "GASOLINE_STOCKS_WEEKLY",
      "pub_weekday": 2},                       # Wednesday
+    {"name": "crude_stocks_weekly", "route": "petroleum/stoc/wstk",
+     "series": "WCESTUS1", "sid": "CRUDE_STOCKS_WEEKLY",
+     "pub_weekday": 2},                       # Wednesday (same report)
 ]
 
 
