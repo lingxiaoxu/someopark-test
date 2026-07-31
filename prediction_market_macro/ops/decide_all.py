@@ -65,10 +65,14 @@ def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> b
     structure flat $1 (kind='argmax'). Price window [0.10, 0.90] keeps payoff
     room net of fees; one per (series, period); risk limits still apply."""
     from prediction_market_macro.ops import risk
+    # defer-to-market: favourite only when market confidence >= model's
+    # (fair <= cost) — dual-window validated 27W-2L; fair>cost is adverse selection
     cands = [st for st in structs if 0.10 <= st.cost <= 0.90 and st.fair > 0.5]
     if not cands or _has_any_open(conn, spec.ticker, key):
         return False
     st = max(cands, key=lambda x: x.fair)
+    if st.fair > st.cost:                  # select-THEN-filter (see note above)
+        return False
     count = max(1, int(1.0 / st.cost))
     size = round(st.cost * count, 2)
     if risk.check(conn, spec.ticker, key, size) is not None:

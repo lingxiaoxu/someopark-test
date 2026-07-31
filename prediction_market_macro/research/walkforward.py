@@ -228,6 +228,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 lead_days = (ev["close_ts"] - day).total_seconds() / 86400.0
                 return {"series": ev["series"], "period": key,
                         "day": day.date().isoformat(), "desc": st.desc,
+                        "fair": round(st.fair, 4), "cost": round(st.cost, 4),
                         "count": count,
                         "staked": round(sum(l.price for l in st.legs) * count, 4),
                         "realized": round(realized, 4), "won": realized > 0,
@@ -251,13 +252,22 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
             if (ev["series"], key) not in opened_argmax:
                 inside = ((ev["close_ts"] - day).total_seconds() / 86400.0
                           <= gates.get("max_days_to_close", 7.0))
+                # defer-to-the-stronger-forecaster: bet the favourite only when
+                # the MARKET's confidence >= the model's (fair <= cost). A weaker
+                # model claiming the favourite is underpriced is adverse
+                # selection (dual-window: fair>cost lost -15%/-26%; fair<=cost
+                # won 27W-2L across 60d+30d)
                 cands = [st for st in structs
                          if 0.10 <= st.cost <= 0.90 and st.fair > 0.5]
                 if inside and cands:
                     st_a = max(cands, key=lambda x: x.fair)
-                    count_a = max(1, int(1.0 / st_a.cost))
-                    realized_a = _settle_struct(st_a, count_a)
-                    if realized_a is not None:
+                    # select-THEN-filter: the favourite is the max-fair pick; it
+                    # qualifies only when the market's confidence >= the model's
+                    if st_a.fair > st_a.cost:
+                        st_a = None
+                    count_a = max(1, int(1.0 / st_a.cost)) if st_a else 0
+                    realized_a = _settle_struct(st_a, count_a) if st_a else None
+                    if st_a and realized_a is not None:
                         opened_argmax[(ev["series"], key)] = _trade_row(
                             st_a, count_a, realized_a)
         daily.append({"day": day.date().isoformat(), "n_opened": day_trades})
