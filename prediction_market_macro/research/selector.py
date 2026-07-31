@@ -167,11 +167,22 @@ def build_dataset(conn, max_events: int = 400) -> list[dict]:
     return data
 
 
+TRAIL = 10               # trailing settled bets compared when switching lines
+MIN_SWITCH = 5           # ML must have this many settled bets before it can lead
+
+
 def walkforward_eval(conn, window_days: int = 30, max_events: int = 400) -> dict:
-    """Expanding-window logistic selector: for each event (chronological), train on
-    all rows whose event CLOSED before this event's entry day, pick the best-EV
-    structure with EV = p̂(win)·payoff1 − cost − fee ≥ EV_MIN, flat $1.
-    Reports the last `window_days` as the headline (the as-if-live window)."""
+    """Three walk-forward lines from the same per-structure dataset:
+      ml       — expanding-window logistic (UNweighted classes: balanced weights
+                 inflated p̂ to 0.8+ on 29%-win bets; per-event sample weights
+                 because an event's structures are one correlated observation;
+                 bets confined to the production price window [0.10, 0.90] —
+                 the first run's 60d "profit" was two sub-0.10 lottery hits)
+      baseline — the defer-to-market favourite replicated on this dataset
+      blend    — per event, follow whichever line's TRAILING settled record
+                 (PIT: settle < entry day) is better; baseline until the ML
+                 line has MIN_SWITCH settled bets; fall through to the other
+                 line's pick when the chosen line passes."""
     from sklearn.linear_model import LogisticRegression
     from sklearn.preprocessing import StandardScaler
     data = build_dataset(conn, max_events)
@@ -182,41 +193,71 @@ def walkforward_eval(conn, window_days: int = 30, max_events: int = 400) -> dict
     for r in data:
         events.setdefault((r["series"], r["period"], r["close"]), []).append(r)
     ev_keys = sorted(events, key=lambda k: k[2])
-    trades = []
+
+    def _trade(r, count):
+        realized = settle_cash(r["payoff"], r["leg_prices"], count)
+        return {"series": r["series"], "period": r["period"],
+                "day": r["entry_day"], "desc": r["desc"][:40],
+                "lead_days": r["lead_days"], "cost": r["cost"], "count": count,
+                "staked": round(r["outlay"] * count, 4),
+                "realized": round(realized, 4), "won": realized > 0,
+                "settle": r["close"].date().isoformat()}
+
+    ml_trades, base_trades, blend_trades = [], [], []
     for k in ev_keys:
         rows = events[k]
         entry_day = rows[0]["entry_day"]
+        # ── baseline pick: max-fair favourite, market must be >= as confident ──
+        b_cands = [r for r in rows if 0.10 <= r["cost"] <= 0.90 and r["x"][0] > 0.5]
+        base_pick = max(b_cands, key=lambda r: r["x"][0]) if b_cands else None
+        if base_pick is not None and base_pick["x"][0] > base_pick["cost"]:
+            base_pick = None
+        # ── ml pick ──
+        ml_pick, ml_p, ml_ev = None, None, None
         train = [r for r in data if r["close"].date().isoformat() < entry_day]
-        if len(train) < MIN_TRAIN:
-            continue
-        Xt = np.array([r["x"] for r in train])
-        yt = np.array([r["y"] for r in train])
-        if len(set(yt)) < 2:
-            continue
-        sc = StandardScaler().fit(Xt)
-        clf = LogisticRegression(max_iter=500, class_weight="balanced")
-        clf.fit(sc.transform(Xt), yt)
-        best = None
-        for r in rows:
-            p = float(clf.predict_proba(sc.transform([r["x"]]))[0, 1])
-            fee1 = sum(taker_fee(pr, 1) for pr in r["leg_prices"])
-            # p̂ = P(profitable); win nets ≈ 1−cost, loss nets ≈ −cost (eff basis)
-            ev_ = p * 1.0 - r["cost"] - fee1
-            if ev_ >= EV_MIN and (best is None or ev_ > best[0]):
-                best = (ev_, p, r)
-        if best is None:
-            continue
-        ev_, p, r = best
-        count = max(1, int(STAKE / max(r["cost"], 0.10)))   # risk ≤ $1, ≤10 lots
-        realized = settle_cash(r["payoff"], r["leg_prices"], count)
-        trades.append({"series": r["series"], "period": r["period"],
-                       "day": r["entry_day"], "desc": r["desc"][:40],
-                       "lead_days": r["lead_days"],
-                       "p_win": round(p, 3), "ev": round(ev_, 3),
-                       "cost": r["cost"], "count": count,
-                       "staked": round(r["outlay"] * count, 4),
-                       "realized": round(realized, 4), "won": realized > 0,
-                       "settle": r["close"].date().isoformat()})
+        if len(train) >= MIN_TRAIN and len({r["y"] for r in train}) >= 2:
+            Xt = np.array([r["x"] for r in train])
+            yt = np.array([r["y"] for r in train])
+            n_ev: dict[tuple, int] = {}
+            for r in train:
+                kk = (r["series"], r["period"])
+                n_ev[kk] = n_ev.get(kk, 0) + 1
+            wt = np.array([1.0 / n_ev[(r["series"], r["period"])] for r in train])
+            sc = StandardScaler().fit(Xt)
+            clf = LogisticRegression(max_iter=500)
+            clf.fit(sc.transform(Xt), yt, sample_weight=wt)
+            best = None
+            for r in rows:
+                if not (0.10 <= r["cost"] <= 0.90):
+                    continue
+                p = float(clf.predict_proba(sc.transform([r["x"]]))[0, 1])
+                fee1 = sum(taker_fee(pr, 1) for pr in r["leg_prices"])
+                ev_ = p * 1.0 - r["cost"] - fee1
+                if ev_ >= EV_MIN and (best is None or ev_ > best[0]):
+                    best = (ev_, p, r)
+            if best is not None:
+                ml_ev, ml_p, ml_pick = best
+        # each line keeps its OWN full record (feeds the trailing comparison)
+        if base_pick is not None:
+            base_trades.append(_trade(base_pick,
+                                      max(1, int(STAKE / base_pick["cost"]))))
+        if ml_pick is not None:
+            t = _trade(ml_pick, max(1, int(STAKE / max(ml_pick["cost"], 0.10))))
+            t["p_win"] = round(ml_p, 3)
+            t["ev"] = round(ml_ev, 3)
+            ml_trades.append(t)
+        # ── blend: trailing settled-record switch (strictly pre-entry info) ──
+        def _trail(ts):
+            return [t["realized"] for t in ts if t["settle"] < entry_day][-TRAIL:]
+        mt, bt = _trail(ml_trades), _trail(base_trades)
+        use_ml = len(mt) >= MIN_SWITCH and sum(mt) > sum(bt)
+        pick = ((ml_pick if use_ml else base_pick)
+                or (base_pick if use_ml else ml_pick))
+        if pick is not None:
+            t = _trade(pick, max(1, int(STAKE / max(pick["cost"], 0.10))))
+            t["used"] = "ml" if pick is ml_pick else "base"
+            blend_trades.append(t)
+
     def _sm(ts):
         stk = sum(t["staked"] for t in ts)
         rl = sum(t["realized"] for t in ts)
@@ -229,11 +270,18 @@ def walkforward_eval(conn, window_days: int = 30, max_events: int = 400) -> dict
     now = datetime.now(timezone.utc)
     cut30 = (now - timedelta(days=window_days)).date().isoformat()
     cut60 = (now - timedelta(days=60)).date().isoformat()
-    out = {"all": _sm(trades),
-           "last30": _sm([t for t in trades if t["day"] >= cut30]),
-           "last60": _sm([t for t in trades if t["day"] >= cut60]),
+
+    def _windows(ts):
+        return {"all": _sm(ts),
+                "last30": _sm([t for t in ts if t["day"] >= cut30]),
+                "last60": _sm([t for t in ts if t["day"] >= cut60])}
+    out = {**_windows(ml_trades),
+           "baseline": _windows(base_trades),
+           "blend": _windows(blend_trades),
            "n_dataset_rows": len(data), "n_events": len(ev_keys),
-           "note": "expanding-window logistic; baseline to beat ="
+           "note": "expanding-window logistic (per-event weights, no class"
+                   " balancing, price window 0.10-0.90); blend follows the"
+                   " better trailing settled record; baseline to beat ="
                    " defer-to-market argmax"}
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
@@ -254,10 +302,15 @@ def main():
     s = load_settings()
     conn = init_db(s.db_path)
     out = walkforward_eval(conn, max_events=args.events)
-    slim = {k: {kk: v[kk] for kk in ("n_trades", "won", "win_rate", "realized",
-                                     "roi")}
-            for k, v in out.items() if isinstance(v, dict) and "n_trades" in v}
-    print(json.dumps({**slim, "rows": out.get("n_dataset_rows"),
+
+    def _slim(d):
+        return {k: {kk: v[kk] for kk in ("n_trades", "won", "win_rate",
+                                         "realized", "roi")}
+                for k, v in d.items() if isinstance(v, dict) and "n_trades" in v}
+    print(json.dumps({"ml": _slim(out),
+                      "baseline": _slim(out.get("baseline", {})),
+                      "blend": _slim(out.get("blend", {})),
+                      "rows": out.get("n_dataset_rows"),
                       "events": out.get("n_events")}, indent=1))
 
 

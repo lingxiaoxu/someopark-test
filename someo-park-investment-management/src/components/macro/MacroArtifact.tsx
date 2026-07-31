@@ -919,31 +919,40 @@ function WalkforwardView() {
               ? <Chip color="var(--success)">{t('macro.wfTestable')}</Chip>
               : <Chip color="var(--text-muted)">{t('macro.wfNoData')}</Chip>,
           ])} />
-      {data?.ml && (data.ml.last30?.n_trades != null) && (
-        <>
-          <SectionTitle>{t('macro.mlTitle')}</SectionTitle>
-          <DataTable
-            cols={[t('macro.wfWindow'), t('macro.colTrades'), t('macro.winRate'),
-              t('macro.colPnl'), 'ROI']}
-            rows={(['last30', 'last60', 'all'] as const)
-              .filter((w) => data.ml[w]?.n_trades != null)
-              .map((w) => {
-                const v = data.ml[w];
-                return [
-                  <span style={mono}>{w}</span>, v.n_trades, pct(v.win_rate),
-                  <span style={{ ...mono, color: (v.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
-                  <span style={{ ...mono, color: (v.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(v.roi)}</span>,
-                ];
-              })} />
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '2px 0 6px' }}>
-            {t('macro.mlNote')}
-          </div>
-        </>
-      )}
+      {data?.ml && (data.ml.last30?.n_trades != null) && (() => {
+        const lines: [string, any][] = [
+          ['stream_argmax', data.ml.baseline], ['stream_ml', data.ml],
+          ['stream_blend', data.ml.blend]];
+        const rows: any[] = [];
+        lines.forEach(([label, ln]) => (['last30', 'last60'] as const).forEach((w) => {
+          const v = ln?.[w];
+          if (v?.n_trades == null) return;
+          rows.push([
+            <span style={mono}>{t(`macro.${label}`)}</span>,
+            <span style={mono}>{w}</span>, v.n_trades,
+            `${v.won}W-${v.n_trades - v.won}L`, pct(v.win_rate),
+            <span style={{ ...mono, color: (v.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
+            <span style={{ ...mono, color: (v.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(v.roi)}</span>,
+          ]);
+        }));
+        return (
+          <>
+            <SectionTitle>{t('macro.mlTitle')}</SectionTitle>
+            <DataTable
+              cols={[t('macro.colLine'), t('macro.wfWindow'), t('macro.colTrades'),
+                'W-L', t('macro.winRate'), t('macro.colPnl'), 'ROI']}
+              rows={rows} />
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '2px 0 6px' }}>
+              {t('macro.mlNote')}
+            </div>
+          </>
+        );
+      })()}
       {daily?.streams && (() => {
         const streams: Record<string, any> = { ...daily.streams };
         if (data?.ml?.last30?.trades?.length) streams.ml = data.ml.last30;
-        const names = ['hybrid', 'edge', 'argmax', 'ml'].filter((k) => streams[k]);
+        if (data?.ml?.blend?.last30?.trades?.length) streams.blend = data.ml.blend.last30;
+        const names = ['hybrid', 'edge', 'argmax', 'ml', 'blend'].filter((k) => streams[k]);
         return (
           <>
           <div style={{ fontSize: 11, ...mono, margin: '10px 0 4px', color: 'var(--accent-primary)', fontWeight: 700 }}>
@@ -966,7 +975,8 @@ function WalkforwardView() {
         );
       })()}
       {(() => {
-        const sdata = stream === 'ml' ? data?.ml?.last30 : daily?.streams?.[stream];
+        const sdata = stream === 'ml' ? data?.ml?.last30
+          : stream === 'blend' ? data?.ml?.blend?.last30 : daily?.streams?.[stream];
         const tradeList: any[] = sdata?.trades ?? daily?.trades ?? [];
         if (!tradeList.length) return null;
         return (() => {
