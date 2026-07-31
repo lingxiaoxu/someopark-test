@@ -183,6 +183,16 @@ def run(conn, settings) -> int:
                 sev = max(f["severity"] for f in flags)
                 gates_eff["max_size_usd"] = _G["max_size_usd"] * 0.5
                 gates_eff["max_entropy_norm"] = _G["max_entropy_norm"] - 0.02 * sev
+            # §23.2-4: ACI conformal throttle — model outside its own error
+            # envelope ⇒ halve size until it re-enters
+            from prediction_market_macro.strategy import conformal
+            gates_eff["max_size_usd"] *= conformal.sizing_factor(conn, spec.ticker)
+            # §23.2-3a: wide book ⇒ devigged market prob is noise ⇒ sanity gate
+            # falls back to raw cost
+            from prediction_market_macro.model.ensemble import WIDE_SPREAD, median_spread
+            sp = median_spread(legs)
+            if sp is not None and sp > WIDE_SPREAD:
+                market_fairs = None
             d = decide(structs, now=now, close_time=close_ts, release_ts=release_ts,
                        market_implied=market_fairs,
                        already_open=ledger.has_open(conn, spec.ticker, key),

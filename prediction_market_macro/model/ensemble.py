@@ -92,7 +92,39 @@ def _bridge_pmf(conn, series: str, key: str) -> dict | None:
     return {float(k): v for k, v in json.loads(r["ladder_json"]).items()}
 
 
-def _market_pmf(conn, series: str, tok: str) -> dict | None:
+def median_spread(legs: list[dict]) -> float | None:
+    """Median yes bid-ask spread across quoted legs — the market-noise gauge
+    (PLAN_EXTENSION §23.2-3a)."""
+    sp = [l["yes_ask"] - l["yes_bid"] for l in legs
+          if l.get("yes_ask") is not None and l.get("yes_bid") is not None]
+    if not sp:
+        return None
+    sp.sort()
+    return sp[len(sp) // 2]
+
+
+WIDE_SPREAD = 0.08       # beyond this the devigged market prob is mostly noise
+
+
+def fl_correct_pmf(pmf: dict[float, float], cal) -> dict[float, float]:
+    """Favorite-longshot bias correction (§23.2-3b): recalibrate the market pmf's
+    survival curve through the isotonic map fit on (market prob, outcome) history,
+    then re-derive the pmf. cal: p -> corrected p (monotone)."""
+    ks = sorted(pmf)
+    sv = []
+    run = 1.0
+    for k in ks:
+        sv.append(cal(min(1.0, max(0.0, run))))
+        run -= pmf[k]
+    out = {}
+    for i, k in enumerate(ks):
+        nxt = sv[i + 1] if i + 1 < len(ks) else cal(0.0)
+        out[k] = max(sv[i] - nxt, 0.0)
+    z = sum(out.values())
+    return {k: v / z for k, v in out.items()} if z > 0 else pmf
+
+
+def _market_pmf(conn, series: str, tok: str) -> tuple[dict, float | None] | None:
     from prediction_market_macro.ops.decide_all import _legs_meta
     from prediction_market_macro.strategy import devig
     legs = _legs_meta(conn, series, tok)
@@ -103,7 +135,13 @@ def _market_pmf(conn, series: str, tok: str) -> dict | None:
     pmf = impl.get("pmf")
     if not pmf:
         return None
-    return {float(k): v for k, v in pmf.items()}
+    pmf = {float(k): v for k, v in pmf.items()}
+    # favorite-longshot correction through the stored market calibration map
+    from prediction_market_macro.strategy import calibration as _cal
+    entry = _cal._load_named(conn, series, "market_calibration_map")
+    if entry is not None:
+        pmf = fl_correct_pmf(pmf, lambda p: _cal.interp(entry, p))
+    return pmf, median_spread(legs)
 
 
 def shadow_run(conn, settings) -> int:
@@ -123,15 +161,23 @@ def shadow_run(conn, settings) -> int:
                     continue
                 model_pmf, horizon = m
                 pmfs = {"model": model_pmf}
+                spread = None
                 mk = _market_pmf(conn, spec.ticker, tok)
                 if mk:
-                    pmfs["market"] = mk
+                    pmfs["market"], spread = mk
                 br = _bridge_pmf(conn, spec.ticker, key)
                 if br:
                     pmfs["bridge"] = br
                 if len(pmfs) < 2:
                     continue             # nothing to pool
                 w = learn_weights(conn, spec.ticker)
+                # §23.2-3a: a wide book means the market prob is mostly noise —
+                # halve its weight for this pool and renormalize
+                if spread is not None and spread > WIDE_SPREAD and "market" in w:
+                    w = dict(w)
+                    w["market"] *= 0.5
+                    tot = sum(w.values())
+                    w = {k: v / tot for k, v in w.items()}
                 pooled = log_pool(pmfs, w)
                 # encode the pooled pmf; grid values ARE the support (already on the
                 # settlement grid) — store as ladder + an Empirical stub dist

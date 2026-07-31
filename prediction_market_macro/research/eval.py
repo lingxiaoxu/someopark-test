@@ -297,8 +297,15 @@ def run_series(conn, series: str) -> dict:
                      p.get("n_legs-1h"), now_iso))
     conn.commit()
     # isotonic calibration map refit (OOS pairs only, §19-3)
-    from prediction_market_macro.strategy.calibration import fit_map, store_map
+    from prediction_market_macro.strategy.calibration import (fit_map, store_map,
+                                                              store_named_map)
     store_map(conn, series, fit_map(pairs))
+    # favorite-longshot map for the MARKET input (§23.2-3b): (market prob, outcome)
+    mkt_pairs = [(mp, o) for p in per for _f, mp, o in p.get("legs-1h", [])]
+    store_named_map(conn, series, "market_calibration_map", fit_map(mkt_pairs))
+    # ACI conformal throttle state (§23.2-4) — uses the rows written above
+    from prediction_market_macro.strategy import conformal
+    conformal.evaluate(conn, series)
     _store(conn, "decision_replay", series, f"n{dec['n_trades']}", dec)
     _store(conn, "calibration", series, f"n{len(pairs)}",
            {"bins": calib, "n_pairs": len(pairs)})

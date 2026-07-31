@@ -50,6 +50,51 @@ def store_map(conn, series: str, cal_map: dict | None) -> None:
     _CACHE.pop(series, None)
 
 
+def store_named_map(conn, series: str, name: str, cal_map: dict | None) -> None:
+    """Same breakpoint format under any experiments name (e.g. the favorite-longshot
+    'market_calibration_map' fit on (market prob, outcome) pairs)."""
+    conn.execute(
+        "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
+        " metrics_json, created_ts) VALUES(?,'iso',?,?,?,?)",
+        (name, series, f"n{(cal_map or {}).get('n_pairs', 0)}",
+         json.dumps(cal_map) if cal_map else json.dumps({"identity": True}),
+         datetime.now(timezone.utc).isoformat()))
+    conn.commit()
+    _CACHE.pop(f"{name}:{series}", None)
+
+
+def _load_named(conn, series: str, name: str):
+    key = f"{name}:{series}"
+    r = conn.execute(
+        "SELECT metrics_json, created_ts FROM experiments WHERE name=?"
+        " AND series=? ORDER BY created_ts DESC LIMIT 1", (name, series)).fetchone()
+    if r is None:
+        return None
+    cached = _CACHE.get(key)
+    if cached and cached[0] == r["created_ts"]:
+        return cached if cached[1] is not None else None
+    m = json.loads(r["metrics_json"] or "{}")
+    entry = ((r["created_ts"], m["x"], m["y"]) if m.get("x") and m.get("y")
+             else (r["created_ts"], None, None))
+    _CACHE[key] = entry
+    return entry if entry[1] is not None else None
+
+
+def interp(entry, p: float) -> float:
+    """Piecewise-linear interpolation through a loaded breakpoint entry."""
+    _, xs, ys = entry
+    if p <= xs[0]:
+        return float(ys[0])
+    if p >= xs[-1]:
+        return float(ys[-1])
+    import bisect
+    i = bisect.bisect_right(xs, p) - 1
+    x0, x1, y0, y1 = xs[i], xs[i + 1], ys[i], ys[i + 1]
+    if x1 == x0:
+        return float(y0)
+    return float(y0 + (y1 - y0) * (p - x0) / (x1 - x0))
+
+
 def _load(conn, series: str):
     r = conn.execute(
         "SELECT metrics_json, created_ts FROM experiments WHERE name='calibration_map'"
