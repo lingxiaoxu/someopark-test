@@ -282,6 +282,13 @@ def run_extended(conn, settings) -> str:
     written.append("macro_walkforward.json")
 
     # ── macro_fed.json: meeting-level detail with evidence chain ──
+    # decided meetings leave the probability board (a settled decision has no
+    # probabilities to show — the outcome lives in decisions/performance views)
+    from prediction_market_macro.util.periods import kalshi_period_to_key as _k2k
+    settled_meets = {_k2k(r["period"]) for r in conn.execute(
+        "SELECT DISTINCT period FROM settlements WHERE series='KXFEDDECISION'"
+        " AND result IN ('yes','no')").fetchall()}
+    settled_meets.discard(None)
     meetings = []
     for r in conn.execute(
             "SELECT period, asof, dist_json, inputs_json FROM preds"
@@ -289,6 +296,8 @@ def run_extended(conn, settings) -> str:
             " AND asof=(SELECT MAX(asof) FROM preds p2 WHERE p2.series='KXFEDDECISION'"
             " AND p2.model_version LIKE 'fed/%'"
             " AND p2.period=preds.period) ORDER BY period").fetchall():
+        if r["period"] in settled_meets:
+            continue
         meetings.append({"period": r["period"], "asof": r["asof"],
                          "probs": json.loads(r["dist_json"]).get("probs"),
                          "inputs": json.loads(r["inputs_json"] or "{}")})
