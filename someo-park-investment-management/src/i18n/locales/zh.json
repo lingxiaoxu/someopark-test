@@ -1204,6 +1204,24 @@
     "overviewText2": "所有预测遵循 PIT（时点数据）纪律：模型只使用预测时点已发布的数据，确保样本外记录真实可信。",
     "overviewText3": "系统每日 05:00（美东）刷新：更新数据源、为每个在市系列/期数重新定价、按模型-市场分歧排序，并记录进/出/观望决策及持仓盯市。",
     "overviewText4": "在闸门通过前只做纸面交易：模型样本外 Brier 必须优于市场，且风险限额（单事件/族/簇/总敞口）先约束敞口，之后才考虑真实资金。",
-    "rateLadderTitle": "会后利率水平 (KXFED)"
+    "rateLadderTitle": "会后利率水平 (KXFED)",
+    "groupOverview": "总览",
+    "groupSeries": "各系列",
+    "groupTrading": "交易与持仓",
+    "groupQuality": "质量与风控",
+    "groupReports": "报告",
+    "generatedAt": "数据生成于",
+    "systemHealth": "系统健康",
+    "healthFlags": "标记 {{n}}",
+    "componentGates": "组件闸门",
+    "gateReal": "可上真钱",
+    "gatePaper": "继续纸面",
+    "consistencyAlerts": "一致性/模型告警",
+    "opsAlerts": "运行告警",
+    "truncatedNote": "显示 {{shown}} / 共 {{total}} 条",
+    "priceTrack": "盯市曲线",
+    "colName": "名称",
+    "download": "下载",
+    "skipped": "跳过"
   }
 }

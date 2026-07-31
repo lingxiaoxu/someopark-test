@@ -1206,6 +1206,24 @@
     "overviewText2": "Every prediction is point-in-time (PIT) disciplined: models only see data that was available at the moment the prediction was made, so the out-of-sample record stays honest.",
     "overviewText3": "The system refreshes daily at 05:00 ET: it updates source data, re-prices every open series/period, ranks model-vs-market divergence, and logs enter/exit/pass decisions with mark-to-market on open positions.",
     "overviewText4": "It trades paper money only until the gates pass: the model's out-of-sample Brier must beat the market's, and risk limits (per event / family / cluster / gross) cap exposure before any real money is considered.",
-    "rateLadderTitle": "Post-meeting rate level (KXFED)"
+    "rateLadderTitle": "Post-meeting rate level (KXFED)",
+    "groupOverview": "Overview",
+    "groupSeries": "Series",
+    "groupTrading": "Trading & Positions",
+    "groupQuality": "Quality & Risk",
+    "groupReports": "Reports",
+    "generatedAt": "Generated",
+    "systemHealth": "System Health",
+    "healthFlags": "flags {{n}}",
+    "componentGates": "Component Gates",
+    "gateReal": "real-money OK",
+    "gatePaper": "stays paper",
+    "consistencyAlerts": "Consistency / Model Alerts",
+    "opsAlerts": "Operational Alerts",
+    "truncatedNote": "showing {{shown}} of {{total}}",
+    "priceTrack": "Mark-to-Market Curve",
+    "colName": "Name",
+    "download": "Download",
+    "skipped": "skipped"
   }
 }

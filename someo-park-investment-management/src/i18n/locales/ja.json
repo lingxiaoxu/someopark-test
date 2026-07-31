@@ -1177,6 +1177,24 @@
     "overviewText2": "すべての予測は PIT（ポイント・イン・タイム）規律に従います。モデルは予測時点で入手可能だったデータのみを使用し、アウトオブサンプルの記録を正直に保ちます。",
     "overviewText3": "システムは毎日 05:00 ET に更新されます。ソースデータを更新し、全シリーズ/期間を再価格付けし、モデルと市場の乖離をランク付けし、エントリー/エグジット/見送りの判断と建玉の時価評価を記録します。",
     "overviewText4": "ゲートを通過するまではペーパーマネーのみで運用します。モデルのアウトオブサンプル Brier が市場を上回り、リスク限度（イベント/ファミリー/クラスター/グロス）がエクスポージャーを抑えて初めて実資金を検討します。",
-    "rateLadderTitle": "会合後の金利水準 (KXFED)"
+    "rateLadderTitle": "会合後の金利水準 (KXFED)",
+    "groupOverview": "概要",
+    "groupSeries": "各シリーズ",
+    "groupTrading": "取引とポジション",
+    "groupQuality": "品質とリスク管理",
+    "groupReports": "レポート",
+    "generatedAt": "生成時刻",
+    "systemHealth": "システム健全性",
+    "healthFlags": "フラグ {{n}}",
+    "componentGates": "コンポーネントゲート",
+    "gateReal": "実取引可",
+    "gatePaper": "ペーパー継続",
+    "consistencyAlerts": "整合性・モデル警報",
+    "opsAlerts": "運用警報",
+    "truncatedNote": "{{total}} 件中 {{shown}} 件を表示",
+    "priceTrack": "時価評価カーブ",
+    "colName": "名称",
+    "download": "ダウンロード",
+    "skipped": "スキップ"
   }
 }

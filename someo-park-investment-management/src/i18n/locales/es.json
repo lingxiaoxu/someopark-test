@@ -1177,6 +1177,24 @@
     "overviewText2": "Cada predicción sigue la disciplina point-in-time (PIT): los modelos solo ven datos disponibles en el momento de la predicción, para un historial fuera de muestra honesto.",
     "overviewText3": "El sistema se actualiza a diario a las 05:00 ET: renueva los datos fuente, revalúa cada serie/período abierto, clasifica la divergencia modelo-mercado y registra decisiones (entrada/salida/pasar) con mark-to-market de las posiciones.",
     "overviewText4": "Solo opera con dinero de papel hasta pasar las puertas: el Brier fuera de muestra del modelo debe superar al del mercado, y los límites de riesgo (por evento / familia / clúster / bruto) acotan la exposición antes de considerar dinero real.",
-    "rateLadderTitle": "Nivel de tasas post-reunión (KXFED)"
+    "rateLadderTitle": "Nivel de tasas post-reunión (KXFED)",
+    "groupOverview": "Resumen",
+    "groupSeries": "Series",
+    "groupTrading": "Trading y posiciones",
+    "groupQuality": "Calidad y riesgo",
+    "groupReports": "Informes",
+    "generatedAt": "Generado",
+    "systemHealth": "Salud del sistema",
+    "healthFlags": "flags {{n}}",
+    "componentGates": "Compuertas de componentes",
+    "gateReal": "dinero real OK",
+    "gatePaper": "sigue en papel",
+    "consistencyAlerts": "Alertas de consistencia / modelo",
+    "opsAlerts": "Alertas operativas",
+    "truncatedNote": "mostrando {{shown}} de {{total}}",
+    "priceTrack": "Curva mark-to-market",
+    "colName": "Nombre",
+    "download": "Descargar",
+    "skipped": "omitidos"
   }
 }

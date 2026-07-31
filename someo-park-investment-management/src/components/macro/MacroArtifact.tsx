@@ -9,13 +9,15 @@
 import type { ComponentType, ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getMacroJson, analyzeMacro, predSummary } from './macroApi';
-import type { MacroBoard, MacroDecision } from './macroApi';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
+import { getMacroJson, analyzeMacro, predSummary, macroFileUrl, getMacroHealth, getMacroPricetrack } from './macroApi';
+import type { MacroBoard, MacroDecision, MacroHealth, MacroPricetrack, MacroReportEntry } from './macroApi';
 import {
-  mono, fmt, pct, money, Loading, ErrorBox, KV, DataTable, Chip,
+  mono, fmt, pct, money, Loading, ErrorBox, KV, DataTable, Chip, TabButton, Generated,
   AiResult, useMacroPoll, type AiState,
 } from './primitives';
-import { MACRO_ITEMS } from './MacroArtifactGrid';
+import { MACRO_ITEMS, groupOfType } from './MacroArtifactGrid';
+import { useSetArtifact } from '../../contexts/ArtifactContext';
 
 // ── shared hooks / helpers ────────────────────────────────────────────────────
 const useMacro = <T = any,>(name: string) => useMacroPoll<T>(() => getMacroJson<T>(name), 60000);
@@ -76,6 +78,36 @@ function SectionTitle({ children }: { children: ReactNode }) {
   );
 }
 
+// ── System health strip (macro_health.json red/yellow/green lights) ──────────
+const healthColor = (st?: string) =>
+  st === 'green' ? 'var(--success)' : st === 'yellow' ? 'var(--warning)'
+    : st === 'red' ? 'var(--error)' : 'var(--text-muted)';
+
+function HealthStrip() {
+  const { t } = useTranslation();
+  const { data } = useMacroPoll<MacroHealth>(getMacroHealth, 60000);
+  if (!data) return null;
+  const series: NonNullable<MacroHealth['series']> = data.series ?? {};
+  const flags: any[] = data.flags ?? [];
+  return (
+    <div className="flex items-center flex-wrap" style={{ gap: 8, marginBottom: 8 }}>
+      <span style={{ fontSize: 10, fontWeight: 700, ...mono, textTransform: 'uppercase',
+        letterSpacing: '.06em', color: 'var(--text-primary)' }}>
+        {t('macro.systemHealth')}
+      </span>
+      {Object.entries(series).map(([name, s]) => (
+        <span key={name} title={(s.notes ?? []).join('; ') || (s.status ?? '')}
+          style={{ fontSize: 9.5, ...mono, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+          <span style={{ color: healthColor(s.status) }}>●</span> {shortSeries(name)}
+        </span>
+      ))}
+      <Chip color={flags.length ? 'var(--error)' : 'var(--text-muted)'}>
+        {t('macro.healthFlags', { n: flags.length })}
+      </Chip>
+    </div>
+  );
+}
+
 // ── Board ─────────────────────────────────────────────────────────────────────
 function BoardView() {
   const { t } = useTranslation();
@@ -86,6 +118,8 @@ function BoardView() {
   const series: NonNullable<MacroBoard['series']> = data?.series ?? {};
   return (
     <div>
+      <Generated ts={data?.generated_at} />
+      <HealthStrip />
       <SectionTitle>{t('macro.nextReleases')}</SectionTitle>
       <DataTable
         cols={[t('macro.colSeries'), t('macro.colPeriod'), t('macro.colTime'), t('macro.colCountdown')]}
@@ -167,6 +201,7 @@ function FedView({ params }: { params?: any }) {
   const hl = (on: boolean) => (on ? { outline: '2px solid var(--accent-primary)', outlineOffset: 2, borderRadius: 4 } : {});
   return (
     <div>
+      <Generated ts={data?.generated_at} />
       <div ref={decRef} style={hl(focus === 'decision')}>
       <SectionTitle>{t('macro.meetingsTitle')}</SectionTitle>
       {meetings.map((m) => (
@@ -222,8 +257,17 @@ function FamilyCards({ seriesNames }: { seriesNames: string[] }) {
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const series = data?.series ?? {};
   const hits = seriesNames.filter((n) => series[n]);
-  if (!hits.length) return <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{t('macro.noUpcoming')}</div>;
+  if (!hits.length) {
+    return (
+      <div>
+        <Generated ts={data?.generated_at} />
+        <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{t('macro.noUpcoming')}</div>
+      </div>
+    );
+  }
   return (
+    <div>
+    <Generated ts={data?.generated_at} />
     <div className="flex flex-wrap gap-2">
       {hits.flatMap((name) =>
         (series[name].entries ?? []).map((e) => (
@@ -249,6 +293,7 @@ function FamilyCards({ seriesNames }: { seriesNames: string[] }) {
           </div>
         )))}
     </div>
+    </div>
   );
 }
 
@@ -264,18 +309,15 @@ function LaborView() {
 }
 
 function EnergyView() {
-  const { t } = useTranslation();
   const { data } = useMacro<MacroBoard>('macro_board');
-  // Series aren't modeled yet (P1); still surface any energy-family board entries if they appear.
+  // Energy models (KXWTIW / KXNATGASW / KXAAAGASW) are live — render whatever
+  // energy-family series the board carries.
   const allSeries: NonNullable<MacroBoard['series']> = data?.series ?? {};
   const energyNames = Object.entries(allSeries)
     .filter(([, s]) => s.family === 'energy').map(([n]) => n);
   return (
     <div>
-      <div className="card" style={{ padding: '10px 12px', fontSize: 12, lineHeight: 1.6, color: 'var(--text-secondary)', ...mono }}>
-        {t('macro.energyPending')}
-      </div>
-      {energyNames.length > 0 && <div style={{ marginTop: 10 }}><FamilyCards seriesNames={energyNames} /></div>}
+      <FamilyCards seriesNames={energyNames} />
       <Ai view="macro_energy" />
     </div>
   );
@@ -289,6 +331,7 @@ function DivergenceView() {
   const rows: any[] = data?.rows ?? [];
   return (
     <div>
+      <Generated ts={data?.generated_at} />
       <DataTable
         cols={[t('macro.colSeries'), t('macro.colPeriod'), t('macro.colGap'), t('macro.colLegs')]}
         rows={rows.map((r) => [
@@ -310,10 +353,12 @@ function DecisionsView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_decisions');
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
+  const total = (data?.decisions ?? []).length;
   const decisions: any[] = (data?.decisions ?? []).slice(0, DECISIONS_CAP);
   const marks: any[] = data?.latest_marks ?? [];
   return (
     <div>
+      <Generated ts={data?.generated_at} />
       <SectionTitle>{t('macro.decisions')}</SectionTitle>
       <div style={{ overflowX: 'auto' }}>
         <DataTable
@@ -329,6 +374,11 @@ function DecisionsView() {
             <span style={{ color: 'var(--text-muted)' }}>{trunc(d.note, 30)}</span>,
           ])} />
       </div>
+      {total > DECISIONS_CAP && (
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>
+          {t('macro.truncatedNote', { shown: DECISIONS_CAP, total })}
+        </div>
+      )}
       <SectionTitle>{t('macro.latestMarks')}</SectionTitle>
       {marks.length ? (
         <DataTable
@@ -351,11 +401,14 @@ function DecisionsView() {
 function PerformanceView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_performance');
+  const { data: pt } = useMacroPoll<MacroPricetrack>(getMacroPricetrack, 60000);
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const open: any[] = data?.open_by_series ?? [];
   const settled: any[] = data?.settled_by_series ?? [];
+  const track = pt?.track ?? [];
   return (
     <div>
+      <Generated ts={data?.generated_at} />
       <KV rows={[
         [t('macro.bankroll'), <span style={mono}>{money(data?.bankroll_usd)}</span>],
         [t('macro.unrealized'), <span style={{ ...mono, color: (data?.unrealized_usd ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(data?.unrealized_usd)}</span>],
@@ -377,6 +430,25 @@ function PerformanceView() {
       ) : (
         <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{t('macro.noneSettled')}</div>
       )}
+      {track.length > 0 && (
+        <>
+          <SectionTitle>{t('macro.priceTrack')}</SectionTitle>
+          <div style={{ width: '100%', height: 160 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={track} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <XAxis dataKey="ts" hide />
+                <YAxis width={46} tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }} stroke="var(--text-muted)" />
+                <Tooltip
+                  formatter={(v: any) => [money(Number(v)), 'PnL']}
+                  labelFormatter={(l: any) => dt(String(l))}
+                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)',
+                    fontSize: 10, fontFamily: 'var(--font-mono)' }} />
+                <Line type="monotone" dataKey="pnl_usd" stroke="var(--accent-primary)" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
       <Ai view="macro_performance" />
     </div>
   );
@@ -388,8 +460,10 @@ function CalibrationView() {
   const { data, loading, error } = useMacro<any>('macro_oos');
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const experiments: any[] = data?.experiments ?? [];
+  const gates: any[] = data?.component_gates ?? [];
   return (
     <div>
+      <Generated ts={data?.generated_at} />
       {experiments.map((ex, i) => {
         let metrics: Record<string, number> = {};
         try { metrics = JSON.parse(ex.metrics_json || '{}'); } catch { /* keep empty */ }
@@ -397,6 +471,10 @@ function CalibrationView() {
         const horizons = [...new Set(Object.keys(metrics)
           .filter((k) => k.startsWith('brier_model-'))
           .map((k) => k.slice('brier_model-'.length)))];
+        const extras: string[] = [];
+        if (metrics['crps-24h'] != null) extras.push(`CRPS 24h ${fmt(metrics['crps-24h'], 1)}`);
+        if (metrics['crps-1h'] != null) extras.push(`CRPS 1h ${fmt(metrics['crps-1h'], 1)}`);
+        if (metrics.skipped != null && metrics.skipped > 0) extras.push(`${t('macro.skipped')}: ${metrics.skipped}`);
         return (
           <div key={i} className="card" style={{ marginBottom: 10, padding: '8px 10px' }}>
             <div style={{ fontSize: 11, fontWeight: 700, ...mono, color: 'var(--text-primary)', marginBottom: 4 }}>
@@ -414,9 +492,39 @@ function CalibrationView() {
                     {behind ? t('macro.behindMarket') : t('macro.beatsMarket')}
                   </Chip>];
               })} />
+            {extras.length > 0 && (
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 4 }}>{extras.join(' · ')}</div>
+            )}
           </div>
         );
       })}
+      {gates.length > 0 && (
+        <>
+          <SectionTitle>{t('macro.componentGates')}</SectionTitle>
+          {gates.map((g, i) => {
+            let m: any = {};
+            try { m = JSON.parse(g.metrics_json || '{}'); } catch { /* keep empty */ }
+            const real = m.real === true || m.pass === true;
+            return (
+              <div key={i} className="card" style={{ marginBottom: 8, padding: '8px 10px' }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, ...mono, color: 'var(--text-primary)' }}>
+                    {g.name} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {shortSeries(g.series || '')} · {g.window}</span>
+                  </span>
+                  <Chip color={real ? 'var(--success)' : 'var(--error)'}>
+                    {real ? t('macro.gateReal') : t('macro.gatePaper')}
+                  </Chip>
+                </div>
+                {g.name === 'series_gate' && Array.isArray(m.reasons) && m.reasons.length > 0 && (
+                  <ul style={{ paddingLeft: 14, fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 0 }}>
+                    {m.reasons.map((r: string, j: number) => <li key={j}>{r}</li>)}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
+        </>
+      )}
       {data?.gate_note && (
         <div style={{ fontSize: 10.5, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>
           {t('macro.gateNote')}: {data.gate_note}
@@ -438,6 +546,26 @@ const STATE_COLOR: Record<string, string> = {
   missed: 'var(--error)',
 };
 
+/** Consistency/model-quality alert sources; everything else counts as operational. */
+const MODEL_ALERT_SOURCES = new Set([
+  'consistency', 'health', 'dfm_gate', 'drift', 'attribution',
+  'capture_gate', 'statement_risk', 'circuit_breaker',
+]);
+
+function AlertList({ items }: { items: any[] }) {
+  if (!items.length) return <div className="text-xs py-1" style={{ color: 'var(--text-muted)', ...mono }}>—</div>;
+  return (
+    <ul style={{ paddingLeft: 16, fontSize: 11, ...mono }}>
+      {items.map((a, i) => (
+        <li key={i} style={{ marginBottom: 3, color: a.level === 'error' ? 'var(--error)' : 'var(--text-secondary)' }}>
+          <Chip color={a.level === 'error' ? 'var(--error)' : 'var(--text-muted)'}>{a.source ?? '—'}</Chip>
+          {' '}[{a.level}] {a.message} <span style={{ color: 'var(--text-muted)' }}>· {dt(a.ts)}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function CoverageView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_coverage');
@@ -445,11 +573,14 @@ function CoverageView() {
   const cov: any[] = data?.coverage ?? [];
   const missed: any[] = data?.missed ?? [];
   const alerts: any[] = data?.alerts ?? [];
+  const modelAlerts = alerts.filter((a) => MODEL_ALERT_SOURCES.has(a.source));
+  const opsAlerts = alerts.filter((a) => !MODEL_ALERT_SOURCES.has(a.source));
   const seriesList = [...new Set(cov.map((r) => r.series))];
   const periods = [...new Set(cov.map((r) => r.period))].sort();
   const stateOf = (s: string, p: string) => cov.find((r) => r.series === s && r.period === p)?.state;
   return (
     <div>
+      <Generated ts={data?.generated_at} />
       <SectionTitle>{t('macro.coverage')}</SectionTitle>
       <div style={{ overflowX: 'auto' }}>
         <table className="table">
@@ -483,18 +614,10 @@ function CoverageView() {
       ) : (
         <div className="text-xs py-1" style={{ color: 'var(--text-muted)', ...mono }}>—</div>
       )}
-      <SectionTitle>{t('macro.alerts')}</SectionTitle>
-      {alerts.length ? (
-        <ul style={{ paddingLeft: 16, fontSize: 11, ...mono }}>
-          {alerts.map((a, i) => (
-            <li key={i} style={{ marginBottom: 3, color: a.level === 'error' ? 'var(--error)' : 'var(--text-secondary)' }}>
-              [{a.level}] {a.message} <span style={{ color: 'var(--text-muted)' }}>· {dt(a.ts)}</span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="text-xs py-1" style={{ color: 'var(--text-muted)', ...mono }}>—</div>
-      )}
+      <SectionTitle>{t('macro.consistencyAlerts')}</SectionTitle>
+      <AlertList items={modelAlerts} />
+      <SectionTitle>{t('macro.opsAlerts')}</SectionTitle>
+      <AlertList items={opsAlerts} />
       <Ai view="macro_coverage" />
     </div>
   );
@@ -510,6 +633,7 @@ function RiskView() {
   const exposure: any[] = data?.open_exposure ?? [];
   return (
     <div>
+      <Generated ts={data?.generated_at} />
       <SectionTitle>{t('macro.limits')}</SectionTitle>
       <KV rows={Object.entries(limits).map(([k, v]) => [k, <span style={mono}>{money(v as number)}</span>] as [string, ReactNode])} />
       <SectionTitle>{t('macro.scenario')}</SectionTitle>
@@ -541,9 +665,33 @@ function OverviewView() {
 
 function ReportsView() {
   const { t } = useTranslation();
+  const { data, loading, error } = useMacro<any>('macro_reports');
+  if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
+  const reports: MacroReportEntry[] = data?.reports ?? [];
+  if (!reports.length) {
+    return (
+      <div>
+        <Generated ts={data?.generated_at} />
+        <div className="card" style={{ padding: '14px 12px', textAlign: 'center' }}>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', ...mono }}>{t('macro.noReports')}</div>
+        </div>
+      </div>
+    );
+  }
   return (
-    <div className="card" style={{ padding: '14px 12px', textAlign: 'center' }}>
-      <div style={{ fontSize: 12, color: 'var(--text-muted)', ...mono }}>{t('macro.noReports')}</div>
+    <div>
+      <Generated ts={data?.generated_at} />
+      <DataTable
+        cols={[t('macro.colName'), t('macro.colKind'), t('macro.colTime'), '']}
+        rows={reports.map((r) => [
+          <span style={mono}>{r.name}</span>,
+          <Chip color={r.kind === 'weekly' ? 'var(--accent-primary)' : 'var(--text-muted)'}>{r.kind ?? '—'}</Chip>,
+          <span style={{ ...mono, fontSize: 10 }}>{dt(r.mtime)}</span>,
+          <a href={macroFileUrl(r.url)} target="_blank" rel="noreferrer"
+            style={{ ...mono, fontSize: 10.5, color: 'var(--accent-primary)', textDecoration: 'underline' }}>
+            {t('macro.download')}
+          </a>,
+        ])} />
     </div>
   );
 }
@@ -567,6 +715,28 @@ export const REGISTRY: Record<string, ComponentType<any>> = {
 
 const KEY_BY_TYPE: Record<string, string> = Object.fromEntries(MACRO_ITEMS.map((i) => [i.type, i.i18nKey]));
 
+/** §21.3 second-level tab bar: sibling artifacts of the current type's group. */
+function GroupTabs({ current }: { current: string }) {
+  const { t } = useTranslation();
+  const setArtifact = useSetArtifact();
+  const group = groupOfType(current);
+  if (!group || group.types.length < 2) return null;
+  return (
+    <div style={{ marginBottom: 8 }}>
+      {group.types.map((tp) => {
+        const label = t(`macro.${KEY_BY_TYPE[tp]}`);
+        return (
+          <span key={tp} style={{ display: 'contents' }}>
+            <TabButton active={tp === current}
+              onClick={() => { if (tp !== current) setArtifact({ type: tp, title: label }); }}
+              label={label} />
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function MacroArtifact({ artifact }: { artifact: { type: string; title?: string; params?: any } }) {
   const { t } = useTranslation();
   const View = REGISTRY[artifact.type];
@@ -581,6 +751,7 @@ export default function MacroArtifact({ artifact }: { artifact: { type: string; 
           </div>
         </div>
       )}
+      <GroupTabs current={artifact.type} />
       <View params={artifact.params} />
     </div>
   );

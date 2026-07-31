@@ -1177,6 +1177,24 @@
     "overviewText2": "Chaque prédiction respecte la discipline point-in-time (PIT) : les modèles ne voient que les données disponibles au moment de la prédiction, pour un historique hors échantillon honnête.",
     "overviewText3": "Le système se rafraîchit chaque jour à 05h00 ET : mise à jour des données sources, revalorisation de chaque série/période ouverte, classement des divergences modèle-marché et journalisation des décisions (entrée/sortie/passe) avec mark-to-market des positions.",
     "overviewText4": "Il ne trade qu'en argent fictif tant que les garde-fous ne sont pas franchis : le Brier hors échantillon du modèle doit battre celui du marché, et les limites de risque (par événement / famille / cluster / brut) plafonnent l'exposition avant tout argent réel.",
-    "rateLadderTitle": "Taux post-réunion (KXFED)"
+    "rateLadderTitle": "Taux post-réunion (KXFED)",
+    "groupOverview": "Vue d'ensemble",
+    "groupSeries": "Séries",
+    "groupTrading": "Trading & positions",
+    "groupQuality": "Qualité & risques",
+    "groupReports": "Rapports",
+    "generatedAt": "Généré",
+    "systemHealth": "Santé du système",
+    "healthFlags": "drapeaux {{n}}",
+    "componentGates": "Portes de composants",
+    "gateReal": "argent réel OK",
+    "gatePaper": "reste papier",
+    "consistencyAlerts": "Alertes cohérence / modèle",
+    "opsAlerts": "Alertes d'exploitation",
+    "truncatedNote": "{{shown}} affichés sur {{total}}",
+    "priceTrack": "Courbe mark-to-market",
+    "colName": "Nom",
+    "download": "Télécharger",
+    "skipped": "ignorés"
   }
 }
