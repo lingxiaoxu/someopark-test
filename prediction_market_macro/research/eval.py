@@ -285,6 +285,20 @@ def run_series(conn, series: str) -> dict:
              f"{series}: trailing Brier {dr['trail_mean']} vs prior {dr['prior_mean']}"))
         conn.commit()
     verdict = gate_verdict(agg, dec, dm)
+    # per-event source scores → ensemble weight learning (§19-2)
+    now_iso = datetime.now(timezone.utc).isoformat()
+    for p in per:
+        for src, keyn in (("model", "brier_model-1h"), ("market", "brier_market-1h")):
+            if p.get(keyn) is not None:
+                conn.execute(
+                    "INSERT OR REPLACE INTO source_scores(series, period, source,"
+                    " offset, brier, n_legs, created_ts) VALUES(?,?,?,?,?,?,?)",
+                    (series, p["period"], src, "-1h", round(p[keyn], 6),
+                     p.get("n_legs-1h"), now_iso))
+    conn.commit()
+    # isotonic calibration map refit (OOS pairs only, §19-3)
+    from prediction_market_macro.strategy.calibration import fit_map, store_map
+    store_map(conn, series, fit_map(pairs))
     _store(conn, "decision_replay", series, f"n{dec['n_trades']}", dec)
     _store(conn, "calibration", series, f"n{len(pairs)}",
            {"bins": calib, "n_pairs": len(pairs)})

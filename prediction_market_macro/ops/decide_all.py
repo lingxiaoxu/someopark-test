@@ -134,6 +134,9 @@ def run(conn, settings) -> int:
                     continue
                 pmf = {float(k): v for k, v in json.loads(pr["ladder_json"]).items()}
                 structs = enumerate_structs(legs, pmf, strict=spec.strict_gt)
+            # §19-3: Kelly and every gate consume CALIBRATED probabilities
+            from prediction_market_macro.strategy.calibration import calibrate_structs
+            structs = calibrate_structs(conn, spec.ticker, structs)
             rel = conn.execute("SELECT scheduled_ts FROM releases WHERE cal=? AND period=?",
                                (spec.calendar, key)).fetchone()
             release_ts = datetime.fromisoformat(rel["scheduled_ts"]) if rel else None

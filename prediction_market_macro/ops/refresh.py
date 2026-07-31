@@ -83,6 +83,10 @@ def run(weekly: bool = False) -> dict:
     # ── shadow members (§7-bis stage 1: preds only, never decisions) ─────
     from prediction_market_macro.model import ts_foundation
     step("chronos_shadow", lambda: ts_foundation.shadow_run(conn, s))
+    from prediction_market_macro.model import bridge as bridge_model
+    step("bridge_shadow", lambda: bridge_model.shadow_run(conn, s))
+    from prediction_market_macro.model import ensemble as ensemble_model
+    step("ensemble_shadow", lambda: ensemble_model.shadow_run(conn, s))
     # ── model-free cross-market consistency (§11 四件套) ─────────────────
     from prediction_market_macro.strategy import consistency
     step("consistency", lambda: consistency.run(conn))

@@ -130,6 +130,12 @@ CREATE TABLE IF NOT EXISTS nowcast_vintages(       -- GDPNow / Cleveland Fed (§
   source TEXT NOT NULL, target TEXT NOT NULL, event_time TEXT NOT NULL,
   value REAL, knowledge_time TEXT NOT NULL, first_seen_ts TEXT NOT NULL,
   PRIMARY KEY(source, target, knowledge_time));
+
+CREATE TABLE IF NOT EXISTS source_scores(          -- per-event per-source OOS Brier
+  series TEXT NOT NULL, period TEXT NOT NULL, source TEXT NOT NULL,  -- model|market|bridge
+  offset TEXT NOT NULL,                            -- '-1h' | '-24h'
+  brier REAL, n_legs INTEGER, created_ts TEXT NOT NULL,
+  PRIMARY KEY(series, period, source, offset));    -- ensemble weight learning (§19-2)
 """
 
 
