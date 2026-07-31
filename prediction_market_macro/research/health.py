@@ -264,7 +264,11 @@ def daily_health(conn, settings) -> str:
     report: dict = {"ts": now.isoformat(), "sources": {}, "series": {}, "flags": []}
 
     # 1. source freshness
-    for sid, max_age_d in (("ICSA", 9), ("CPIAUCSL", 40), ("DFEDTARU", 5), ("UNRATE", 40)):
+    for sid, max_age_d in (("ICSA", 9), ("CPIAUCSL", 40), ("DFEDTARU", 5),
+                           ("UNRATE", 40), ("GDPNOW", 12),
+                           ("AAA_DAILY", 3), ("NG_STORAGE_WEEKLY", 9),
+                           ("GASOLINE_STOCKS_WEEKLY", 9),
+                           ("CRUDE_STOCKS_WEEKLY", 9)):
         r = conn.execute("SELECT MAX(knowledge_time) m FROM fred_obs WHERE sid=?",
                          (sid,)).fetchone()
         age = None

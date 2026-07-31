@@ -155,14 +155,6 @@ def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
     if len(mids) < 10:
         return None
 
-    def _stocks_chg(ts) -> float:
-        """Latest visible weekly gasoline-stocks % change (supply draw ⇒ price up).
-        0.0 until the EIA feed has data at that asof."""
-        gs, _hh = fs.fred_series("GASOLINE_STOCKS_WEEKLY", ts)
-        if len(gs) < 3:
-            return 0.0
-        return float(gs.iloc[-1] / gs.iloc[-2] - 1)
-
     X, y = [], []
     for ts, mid in mids:
         g, _ = fs.fred_series("GASREGW", ts)
@@ -173,7 +165,10 @@ def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
         rb, _h = fs.fut_closes("RB", ts, n=15)
         rb_mv = (float(rb.iloc[-1] / rb.iloc[0] - 1) * g_last
                  if len(rb) >= 10 else 0.0)
-        X.append([1.0, g_diff, rb_mv, _stocks_chg(ts) * g_last])
+        # NOTE: a gasoline-stocks 4th regressor was tried 2026-07-31 and
+        # REVERTED — with only ~28 fit points it overfit (60d WF: AAA
+        # +9.32 → +2.44). Revisit when the settled sample doubles.
+        X.append([1.0, g_diff, rb_mv])
         y.append(mid - g_last)
     if len(y) < 10:
         return None
@@ -225,11 +220,7 @@ def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
         rb, _h = fs.fut_closes("RB", asof, n=15)
         rb_mv = (float(rb.iloc[-1] / rb.iloc[0] - 1) * last
                  if len(rb) >= 10 else 0.0)
-        gs, _hh = fs.fred_series("GASOLINE_STOCKS_WEEKLY", asof)
-        stocks_f = (float(gs.iloc[-1] / gs.iloc[-2] - 1) * last
-                    if len(gs) >= 3 else 0.0)
-        drift = float(coef[0] + coef[1] * g_diff + coef[2] * rb_mv
-                      + coef[3] * stocks_f)
+        drift = float(coef[0] + coef[1] * g_diff + coef[2] * rb_mv)
         mu = last + drift
         sigma = resid_sig * math.sqrt(max(weeks, 1.0))
         mode = f"drift_regression(n={n_fit})"

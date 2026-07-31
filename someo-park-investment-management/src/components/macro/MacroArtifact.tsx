@@ -99,21 +99,47 @@ function HealthStrip() {
   if (!data) return null;
   const series: NonNullable<MacroHealth['series']> = data.series ?? {};
   const flags: any[] = data.flags ?? [];
+  const sources: Record<string, any> = data.sources ?? {};
   return (
-    <div className="flex items-center flex-wrap" style={{ gap: 8, marginBottom: 8 }}>
-      <span style={{ fontSize: 10, fontWeight: 700, ...mono, textTransform: 'uppercase',
-        letterSpacing: '.06em', color: 'var(--text-primary)' }}>
-        {t('macro.systemHealth')}
-      </span>
-      {Object.entries(series).map(([name, s]) => (
-        <span key={name} title={(s.notes ?? []).join('; ') || (s.status ?? '')}
-          style={{ fontSize: 9.5, ...mono, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-          <span style={{ color: healthColor(s.status) }}>●</span> {shortSeries(name)}
+    <div style={{ marginBottom: 8 }}>
+      <div className="flex items-center flex-wrap" style={{ gap: 8 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, ...mono, textTransform: 'uppercase',
+          letterSpacing: '.06em', color: 'var(--text-primary)' }}>
+          {t('macro.systemHealth')}
         </span>
-      ))}
-      <Chip color={flags.length ? 'var(--error)' : 'var(--text-muted)'}>
-        {t('macro.healthFlags', { n: flags.length })}
-      </Chip>
+        {Object.entries(series).map(([name, s]) => (
+          <span key={name} title={(s.notes ?? []).join('; ') || (s.status ?? '')}
+            style={{ fontSize: 9.5, ...mono, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+            <span style={{ color: healthColor(s.status) }}>●</span> {shortSeries(name)}
+          </span>
+        ))}
+        <Chip color={flags.length ? 'var(--error)' : 'var(--text-muted)'}>
+          {t('macro.healthFlags', { n: flags.length })}
+        </Chip>
+      </div>
+      {Object.keys(sources).length > 0 && (
+        <div className="flex items-center flex-wrap" style={{ gap: 8, marginTop: 4 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, ...mono, textTransform: 'uppercase',
+            letterSpacing: '.06em', color: 'var(--text-muted)' }}>
+            {t('macro.dataFeeds')}
+          </span>
+          {Object.entries(sources).map(([sid, v]) => {
+            const age = v?.age_days ?? v?.age_hours;
+            const stale = age == null || (v?.age_days != null && v.age_days > 9)
+              || (v?.age_hours != null && v.age_hours > 26);
+            const label = sid.replace(/_WEEKLY$/, '').replace(/_/g, ' ').toLowerCase();
+            return (
+              <span key={sid}
+                title={`${sid}: ${v?.latest_kt ?? ''}`}
+                style={{ fontSize: 9.5, ...mono, whiteSpace: 'nowrap',
+                  color: stale ? 'var(--warning)' : 'var(--text-secondary)' }}>
+                <span style={{ color: stale ? 'var(--warning)' : 'var(--success)' }}>●</span>
+                {' '}{label}{age != null ? ` ${age}${v?.age_days != null ? 'd' : 'h'}` : ''}
+              </span>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -891,21 +917,46 @@ function WalkforwardView() {
               ? <Chip color="var(--success)">{t('macro.wfTestable')}</Chip>
               : <Chip color="var(--text-muted)">{t('macro.wfNoData')}</Chip>,
           ])} />
-      {daily?.trades?.length > 0 && (
-        <>
-          <SectionTitle>{t('macro.wfRecentTrades')}</SectionTitle>
-          <div style={{ overflowX: 'auto' }}>
-            <DataTable
-              cols={[t('macro.colSeries'), t('macro.colPeriod'), t('macro.colNote'),
-                t('macro.colPnl')]}
-              rows={daily.trades.slice(-15).reverse().map((tr: any) => [
-                <span style={mono}>{shortSeries(tr.series)}</span>, tr.period,
-                <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{trunc(tr.desc, 34)}</span>,
-                <span style={{ ...mono, color: tr.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(tr.realized)}</span>,
-              ])} />
-          </div>
-        </>
-      )}
+      {daily?.trades?.length > 0 && (() => {
+        // WC BetLog pattern: headline "<W-L> · <PnL> · <context>" + full log with
+        // per-bet W/L chips and a cumulative column.
+        const trades: any[] = daily.trades;
+        const wins = trades.filter((x) => x.won).length;
+        let cum = 0;
+        const withCum = trades.map((x) => { cum += x.realized; return { ...x, cum }; });
+        return (
+          <>
+            <SectionTitle>{t('macro.wfBetLog')}</SectionTitle>
+            <div style={{ fontSize: 11, ...mono, marginBottom: 6 }}>
+              <b>{wins}W-{trades.length - wins}L</b>
+              {' · '}
+              <span style={{ color: cum >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(cum)}</span>
+              {' · '}
+              <span style={{ color: 'var(--text-muted)' }}>
+                {trades.length} {t('macro.wfBets')} / {daily.days}d
+              </span>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <DataTable
+                cols={[t('macro.wfEntryDay'), t('macro.colSeries'), t('macro.wfBetCol'),
+                  t('macro.wfLead'), t('macro.colStaked'), t('macro.colVerdict'),
+                  t('macro.colPnl'), 'Cum$']}
+                rows={withCum.slice().reverse().map((tr: any) => [
+                  <span style={{ ...mono, fontSize: 10 }}>{tr.day?.slice(5)}</span>,
+                  <span style={mono}>{shortSeries(tr.series)}</span>,
+                  <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{trunc(tr.desc, 30)}</span>,
+                  <span style={{ ...mono, fontSize: 10 }}>{tr.lead_days}d</span>,
+                  money(tr.staked),
+                  <span style={{ color: tr.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>
+                    {tr.won ? t('macro.betWon') : t('macro.betLost')}
+                  </span>,
+                  <span style={{ ...mono, color: tr.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(tr.realized)}</span>,
+                  <span style={{ ...mono, color: tr.cum >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(tr.cum)}</span>,
+                ])} />
+            </div>
+          </>
+        );
+      })()}
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>
         {t('macro.wfLabNote')}
       </div>
