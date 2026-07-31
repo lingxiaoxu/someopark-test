@@ -61,21 +61,34 @@ export const groupOfType = (type: string): MacroGroup | undefined =>
 
 export default function MacroArtifactGrid({ onOpen }: { onOpen: (a: Artifact) => void }) {
   const { t } = useTranslation();
-  const keyByType: Record<string, string> = Object.fromEntries(MACRO_ITEMS.map((i) => [i.type, i.i18nKey]));
+  const itemByType: Record<string, Item> = Object.fromEntries(MACRO_ITEMS.map((i) => [i.type, i]));
+  // §21.3 organized, §21.1 undeleted: group HEADERS with every one of the 13
+  // member tiles visible underneath — nothing is hidden behind a click.
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {MACRO_GROUPS.map(({ key, i18nKey, Icon, types }) => {
-        const first = types[0];
-        return (
-          <button
-            key={key}
-            onClick={() => onOpen({ type: first, title: t(`macro.${keyByType[first]}`) })}
-            className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]"
-          >
-            <Icon className="w-4 h-4 text-[var(--accent-primary)]" /> {t(`macro.${i18nKey}`)}
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-3">
+      {MACRO_GROUPS.map(({ key, i18nKey, Icon: GIcon, types }) => (
+        <div key={key}>
+          <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+            <GIcon className="w-3 h-3" /> {t(`macro.${i18nKey}`)}
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {types.map((type) => {
+              const it = itemByType[type];
+              if (!it) return null;
+              const { Icon } = it;
+              return (
+                <button
+                  key={type}
+                  onClick={() => onOpen({ type, title: t(`macro.${it.i18nKey}`) })}
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]"
+                >
+                  <Icon className="w-4 h-4 text-[var(--accent-primary)]" /> {t(`macro.${it.i18nKey}`)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
