@@ -1,7 +1,7 @@
 """ops/report.py — daily / weekly PDF reports (PLAN §12).
 
 Daily: decisions + marks + COVERAGE MATRIX + MISSED alerts + 7-day release calendar.
-Weekly (adds): llm narrative (nemotron, degradable) + calibration (settled Brier by
+Weekly (adds): llm narrative (Someo Park Local Model 120B, degradable) + calibration (settled Brier by
 series) + backtest/OOS snapshot + DFM gate status.
 House style copied from prediction_market/ops/pdf_style.py (visual only, 铁律: copy
 not import). Output: data/output/reports/macro_{daily,weekly}_YYYYMMDD.pdf.
@@ -155,7 +155,7 @@ def weekly_pdf(conn, settings) -> str:
     except Exception:                              # noqa: BLE001
         txt = None
     if txt:
-        section(story, "Narrative (nemotron)")
+        section(story, "Narrative (Someo Park Local Model 120B)")
         from reportlab.platypus import Paragraph
         for para in txt.split("\n\n")[:4]:
             story.append(Paragraph(para.strip(), note_style))

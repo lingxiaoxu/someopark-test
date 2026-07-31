@@ -48,6 +48,7 @@ const router = Router()
 // The LOCAL nemotron model — identical descriptor to src/lib/models.json's default chat model,
 // resolved by getModelClient to createOpenAI({ baseURL: OLLAMA_BASE_URL, apiKey:'ollama' }).chat(id),
 // exactly as server/routes/chat.ts does. The model runs on box A (ed9f) via OLLAMA_BASE_URL.
+const NEMO_DISPLAY = 'Someo Park Local Model 120B'  // customer-facing name
 const NEMO: LLMModel = {
   id: 'nemotron-3-super:120b',
   name: 'Someo Park Local Model 120B',
@@ -198,7 +199,7 @@ router.post('/analyze', async (req: Request, res: Response) => {
     const cached = await readCache(file)
     if (cached && cached.content_hash === contentHash && cached.generated_at &&
         (Date.now() - new Date(cached.generated_at).getTime()) < TTL_MS) {
-      return res.json({ analysis: cached.analysis, matchup_id, sim_id: sim_id || null, model: NEMO.id, cached: true })
+      return res.json({ analysis: cached.analysis, matchup_id, sim_id: sim_id || null, model: NEMO_DISPLAY, cached: true })
     }
 
     // Miss → call the model (identical shape to chat.ts:219), then cache on ed9f (best-effort).
@@ -212,7 +213,7 @@ router.post('/analyze', async (req: Request, res: Response) => {
     const analysis = sanitize(text)
     writeCache(file, { matchup_id, sim_id: sim_id || null, lang: lang || 'en', content_hash: contentHash, analysis, generated_at: new Date().toISOString() }).catch(() => {})
 
-    res.json({ analysis, matchup_id, sim_id: sim_id || null, model: NEMO.id, cached: false })
+    res.json({ analysis, matchup_id, sim_id: sim_id || null, model: NEMO_DISPLAY, cached: false })
   } catch (error: any) {
     console.error('microfootball analyze error:', error?.message || error)
     res.status(500).json({ error: error?.message || 'analysis failed' })
