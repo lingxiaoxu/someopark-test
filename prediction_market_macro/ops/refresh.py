@@ -59,6 +59,9 @@ def run(weekly: bool = False) -> dict:
     step("fred_core", lambda: sum(fred.pull_core().values()))
     from prediction_market_macro.ingest import nowcast
     step("gdpnow", lambda: nowcast.pull_gdpnow(fred, conn))
+    from prediction_market_macro.ingest import aaa_daily, eia
+    step("aaa_daily", lambda: aaa_daily.fetch_daily(conn))
+    step("eia_storage", lambda: eia.pull_storage(conn))
     step("futures", lambda: market_data.pull_futures(conn))
     step("fx", lambda: market_data.pull_fx(conn, s.polygon_api_key))
     step("news", lambda: market_data.pull_news(conn, s.polygon_api_key))

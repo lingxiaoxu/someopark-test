@@ -294,6 +294,80 @@ def _store(conn, name: str, series: str, window: str, metrics: dict) -> None:
     conn.commit()
 
 
+def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | None:
+    """Chronos-2 HISTORICAL replay scoring (backlog item): ts_foundation.predict is
+    PIT by construction (FeatureStore reads kt<=asof), so it can be scored at
+    -1h over settled history exactly like the production model — evidence for the
+    §7-bis shadow gate accrues from the past, not just from the daily shadow."""
+    try:
+        from prediction_market_macro.model import ts_foundation
+        if series not in ts_foundation._SOURCES:
+            return None
+    except Exception:                                      # noqa: BLE001
+        return None
+    from prediction_market_macro.config.registry import REGISTRY
+    from prediction_market_macro.model.common import grid_pmf as _gp, leg_fair
+    from prediction_market_macro.util.periods import kalshi_period_to_key
+    spec = REGISTRY[series]
+    events = conn.execute(
+        "SELECT s.period, MAX(c.close_time) ct FROM settlements s"
+        " JOIN contracts c ON c.ticker=s.ticker WHERE s.series=?"
+        " AND s.result IN ('yes','no') GROUP BY s.period ORDER BY ct DESC LIMIT ?",
+        (series, max_events)).fetchall()
+    now_iso = datetime.now(timezone.utc).isoformat()
+    per_b, mkt_b, scored = [], [], 0
+    for ev in events:
+        key = kalshi_period_to_key(ev["period"])
+        if not key or not ev["ct"]:
+            continue
+        close_ts = datetime.fromisoformat(ev["ct"].replace("Z", "+00:00"))
+        asof = close_ts - timedelta(hours=1)
+        try:
+            pred = ts_foundation.predict(conn, asof, key, series)
+            pmf = _gp(pred.dist, spec.round_rule)
+        except Exception:                                  # noqa: BLE001
+            continue
+        legs = conn.execute(
+            "SELECT c.ticker, c.floor_strike, c.cap_strike, c.strike_type, s.result"
+            " FROM contracts c JOIN settlements s ON s.ticker=c.ticker"
+            " WHERE c.series=? AND s.period=? AND s.result IN ('yes','no')",
+            (series, ev["period"])).fetchall()
+        bs, bk, n = 0.0, 0.0, 0
+        for l in legs:
+            r = conn.execute(
+                "SELECT yes_bid_close b, yes_ask_close a FROM candles WHERE ticker=?"
+                " AND end_ts<=? ORDER BY end_ts DESC LIMIT 1",
+                (l["ticker"], int(asof.timestamp()))).fetchone()
+            if not r or r["b"] is None or r["a"] is None or l["floor_strike"] is None:
+                continue
+            try:
+                fair = leg_fair(pmf, l["strike_type"] or "greater",
+                                l["floor_strike"], l["cap_strike"])
+            except Exception:                              # noqa: BLE001
+                continue
+            out01 = 1.0 if l["result"] == "yes" else 0.0
+            bs += (fair - out01) ** 2
+            bk += ((r["b"] + r["a"]) / 2 - out01) ** 2
+            n += 1
+        if n:
+            scored += 1
+            per_b.append(bs / n)
+            mkt_b.append(bk / n)
+            conn.execute(
+                "INSERT OR REPLACE INTO source_scores(series, period, source,"
+                " offset, brier, n_legs, created_ts) VALUES(?,?,?,?,?,?,?)",
+                (series, key, "chronos", "-1h", round(bs / n, 6), n, now_iso))
+    conn.commit()
+    if not scored:
+        return None
+    m = {"n": scored, "brier_model-1h": round(float(np.mean(per_b)), 5),
+         "brier_market-1h": round(float(np.mean(mkt_b)), 5),
+         "n_scored-1h": scored,
+         "note": "chronos2 zero-shot replayed at -1h (PIT); evidence for §7-bis"}
+    _store(conn, "chronos_replay", series, f"n{scored}", m)
+    return m
+
+
 def run_series(conn, series: str) -> dict:
     """Replay → decision replay → DM/CI → calibration → drift → gate. Stores
     experiments rows: decision_replay / calibration / series_gate."""
@@ -480,6 +554,10 @@ def run_all(conn) -> dict:
                 shadow_gate(conn, series, prefix)
             except Exception:                              # noqa: BLE001
                 continue
+        try:
+            chronos_replay_scores(conn, series)
+        except Exception:                                  # noqa: BLE001
+            pass
     return out
 
 
