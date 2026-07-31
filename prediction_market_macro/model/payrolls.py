@@ -20,11 +20,9 @@ VERSION = "payrolls/0.1.0"
 
 
 def printed_changes(conn, asof: datetime) -> pd.Series:
-    """Headline NFP change per month, per its own first vintage (PIT-visible only)."""
-    rows = conn.execute(
-        "SELECT event_time, value, vintage_date, knowledge_time FROM fred_obs"
-        " WHERE sid='PAYEMS' AND knowledge_time<=? ORDER BY event_time, vintage_date",
-        (asof.isoformat(),)).fetchall()
+    """Headline NFP change per month, per its own first vintage (PIT-visible only,
+    via the single data door §5-bis.4-1)."""
+    rows = FeatureStore(conn).fred_vintages("PAYEMS", asof)
     by_vintage: dict[str, dict[str, float]] = {}
     firsts: dict[str, tuple[str, float]] = {}
     for r in rows:
@@ -56,8 +54,7 @@ def predict(conn, asof: datetime, period: str, series: str = "KXPAYROLLS") -> Pr
         claims_signal = base
     mu = 0.6 * base + 0.4 * claims_signal
     dist = GaussianMix(((0.8, mu, 55_000.0), (0.2, mu, 140_000.0)))
-    h = conn.execute("SELECT MAX(knowledge_time) m FROM fred_obs WHERE sid='PAYEMS'"
-                     " AND knowledge_time<=?", (asof.isoformat(),)).fetchone()["m"]
+    _, h = FeatureStore(conn).fred_first_prints("PAYEMS", asof)
     horizon = max(h or asof.isoformat(), h_c or "")
     return Pred(series="KXPAYROLLS", period=period, dist=dist, asof=asof,
                 model_version=VERSION,

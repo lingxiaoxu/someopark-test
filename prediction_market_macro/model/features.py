@@ -28,6 +28,59 @@ class FeatureStore:
         horizon = max((r["knowledge_time"] for r in rows), default=None)
         return s, horizon
 
+    def fred_first_prints(self, sid: str, asof: datetime) -> tuple[pd.Series, str | None]:
+        """FIRST-vintage value per event_time (PIT ≤ asof) — the label-side read used
+        by print-anchored models (claims/u3/payrolls). Single-door twin of
+        fred_series (which returns the LATEST visible vintage)."""
+        rows = self._conn.execute(
+            "SELECT event_time, value, MIN(vintage_date), MAX(knowledge_time) kt"
+            " FROM fred_obs WHERE sid=? AND knowledge_time<=?"
+            " GROUP BY event_time ORDER BY event_time",
+            (sid, asof.isoformat())).fetchall()
+        s = pd.Series({pd.Timestamp(r["event_time"]): r["value"] for r in rows},
+                      dtype=float)
+        s.name = sid
+        h = self._conn.execute(
+            "SELECT MAX(knowledge_time) m FROM fred_obs WHERE sid=? AND"
+            " knowledge_time<=?", (sid, asof.isoformat())).fetchone()
+        return s, (h["m"] if h else None)
+
+    def fred_scalar_latest(self, sid: str, asof: datetime) -> float | None:
+        """Latest visible value of a scalar series (e.g. DFEDTARU target bound).
+        Query text mirrors the historical in-model read exactly — replay canaries
+        (health §9.6-3) demand byte-identical recomputation of stored preds."""
+        r = self._conn.execute(
+            "SELECT value FROM fred_obs WHERE sid=? AND knowledge_time<=?"
+            " ORDER BY event_time DESC LIMIT 1", (sid, asof.isoformat())).fetchone()
+        if r is None or r["value"] is None:
+            return None
+        return float(r["value"])
+
+    def fred_vintages(self, sid: str, asof: datetime) -> list[dict]:
+        """All PIT-visible vintage rows ordered (event_time, vintage_date) — for
+        models that need per-vintage reconstruction (payrolls printed_changes)."""
+        rows = self._conn.execute(
+            "SELECT event_time, value, vintage_date, knowledge_time FROM fred_obs"
+            " WHERE sid=? AND knowledge_time<=? ORDER BY event_time, vintage_date",
+            (sid, asof.isoformat())).fetchall()
+        return [dict(r) for r in rows]
+
+    def kalshi_ladder_at(self, series: str, tok: str, asof: datetime) -> list[dict]:
+        """Contract legs + the latest quote at-or-before asof for a Kalshi period
+        token (the fed market-prior read, behind the single door)."""
+        rows = self._conn.execute(
+            "SELECT c.ticker, c.floor_strike strike, q.yes_bid, q.yes_ask, q.ts"
+            " FROM contracts c JOIN quotes q ON q.ticker=c.ticker AND q.ts="
+            "  (SELECT MAX(ts) FROM quotes WHERE ticker=c.ticker AND ts<=?)"
+            " WHERE c.series=? AND c.period=?",
+            (asof.isoformat(), series, tok)).fetchall()
+        return [dict(r) for r in rows]
+
+    def kalshi_periods(self, series: str) -> list[str]:
+        rows = self._conn.execute(
+            "SELECT DISTINCT period FROM contracts WHERE series=?", (series,)).fetchall()
+        return [r["period"] for r in rows]
+
     def fut_closes(self, root: str, asof: datetime, n: int = 260) -> tuple[pd.Series, str | None]:
         rows = self._conn.execute(
             "SELECT event_time, close, knowledge_time FROM fut_daily WHERE root=? AND"

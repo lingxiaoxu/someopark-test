@@ -39,12 +39,10 @@ DEFAULT_PARAMS = {
 
 
 def _first_prints(conn, asof: datetime) -> pd.Series:
-    """First-release ICSA per week, restricted to vintages visible at asof (PIT)."""
-    rows = conn.execute(
-        "SELECT event_time, value, MIN(vintage_date) FROM fred_obs "
-        "WHERE sid='ICSA' AND knowledge_time<=? GROUP BY event_time ORDER BY event_time",
-        (asof.isoformat(),)).fetchall()
-    return pd.Series({pd.Timestamp(r["event_time"]): r["value"] for r in rows}, dtype=float)
+    """First-release ICSA per week, PIT via the single data door (§5-bis.4-1)."""
+    from prediction_market_macro.model.features import FeatureStore
+    s, _ = FeatureStore(conn).fred_first_prints("ICSA", asof)
+    return s
 
 
 def predict(conn, asof: datetime, period: str, series: str = "KXJOBLESSCLAIMS",

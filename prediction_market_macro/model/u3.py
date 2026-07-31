@@ -20,11 +20,9 @@ STEPS = np.array([-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3])
 
 
 def _first_prints(conn, asof: datetime) -> pd.Series:
-    rows = conn.execute(
-        "SELECT event_time, value, MIN(vintage_date) FROM fred_obs WHERE sid='UNRATE'"
-        " AND knowledge_time<=? GROUP BY event_time ORDER BY event_time",
-        (asof.isoformat(),)).fetchall()
-    return pd.Series({pd.Timestamp(r["event_time"]): r["value"] for r in rows}, dtype=float)
+    from prediction_market_macro.model.features import FeatureStore
+    s, _ = FeatureStore(conn).fred_first_prints("UNRATE", asof)
+    return s
 
 
 def predict(conn, asof: datetime, period: str, series: str = "KXU3") -> Pred:
@@ -57,8 +55,7 @@ def predict(conn, asof: datetime, period: str, series: str = "KXU3") -> Pred:
     rng = np.random.default_rng(0)                  # deterministic encoding sample
     steps_sum = rng.choice(STEPS, size=(20000, ahead), p=probs).sum(axis=1)
     samples = np.round(np.clip(last + steps_sum, 2.0, 15.0), 1)
-    h = conn.execute("SELECT MAX(knowledge_time) m FROM fred_obs WHERE sid='UNRATE'"
-                     " AND knowledge_time<=?", (asof.isoformat(),)).fetchone()["m"]
+    _, h = FeatureStore(conn).fred_first_prints("UNRATE", asof)
     horizon = max(h or asof.isoformat(), h_c or "")
     return Pred(series="KXU3", period=period, dist=Empirical(tuple(samples.tolist())),
                 asof=asof, model_version=VERSION,

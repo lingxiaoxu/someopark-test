@@ -8,64 +8,60 @@
       "param_set": "default",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -74,64 +70,60 @@
       "param_set": "raw_momentum",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -140,64 +132,60 @@
       "param_set": "short_term_tilt",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -206,64 +194,60 @@
       "param_set": "long_term_tilt",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -272,64 +256,60 @@
       "param_set": "kalman_aggressive",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -338,64 +318,60 @@
       "param_set": "uniform_weights",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -404,64 +380,60 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -470,64 +442,60 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -536,64 +504,60 @@
       "param_set": "vol_sized_conservative",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -602,64 +566,60 @@
       "param_set": "fast_rebalance",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -668,64 +628,60 @@
       "param_set": "slow_rebalance",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -734,64 +690,60 @@
       "param_set": "beta_neutral",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -800,64 +752,60 @@
       "param_set": "kalman_hedge",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -866,64 +814,60 @@
       "param_set": "no_reversal_protection",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -932,64 +876,60 @@
       "param_set": "sensitive_reversal",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -998,64 +938,60 @@
       "param_set": "balanced",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1064,64 +1000,60 @@
       "param_set": "fast_strict",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1130,64 +1062,60 @@
       "param_set": "trend_leverage",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1196,64 +1124,60 @@
       "param_set": "no_skip_month",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1262,64 +1186,60 @@
       "param_set": "entry_filter_kalman",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1328,64 +1248,60 @@
       "param_set": "entry_threshold_strong",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1394,64 +1310,60 @@
       "param_set": "vol_weighted_sizing",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1460,64 +1372,60 @@
       "param_set": "raw_momentum_kalman",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1526,64 +1434,60 @@
       "param_set": "monthly_aligned_windows",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1592,64 +1496,60 @@
       "param_set": "weekly_aligned_windows",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1658,64 +1558,60 @@
       "param_set": "crash_defensive",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1724,64 +1620,60 @@
       "param_set": "crash_tolerant",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1790,64 +1682,60 @@
       "param_set": "long_term_kalman",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1856,64 +1744,60 @@
       "param_set": "short_term_beta_neutral",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1922,64 +1806,60 @@
       "param_set": "beta_neutral_long_term",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -1988,64 +1868,60 @@
       "param_set": "let_profits_run",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -2054,64 +1930,60 @@
       "param_set": "monthly_aligned_windows_fc",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -2120,64 +1992,60 @@
       "param_set": "short_term_beta_neutral_fc",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -2186,64 +2054,60 @@
       "param_set": "fast_strict_fc",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     },
@@ -2252,64 +2116,60 @@
       "param_set": "monthly_aligned_windows_fc_skip",
       "pairs": [
         [
-          "INCY",
+          "IQV",
           "BLDR"
         ],
         [
-          "INCY",
-          "PNR"
+          "IQV",
+          "CHRW"
         ],
         [
-          "IQV",
+          "INCY",
+          "LKQ"
+        ],
+        [
+          "INCY",
           "LII"
         ],
         [
-          "IQV",
-          "AKAM"
+          "BBY",
+          "MLM"
         ],
         [
           "BBY",
           "ON"
         ],
         [
-          "BBY",
-          "MPWR"
-        ],
-        [
-          "DGX",
-          "AMZN"
-        ],
-        [
-          "DGX",
-          "CHRW"
+          "PSX",
+          "NKE"
         ],
         [
           "PSX",
-          "CARR"
+          "AKAM"
         ],
         [
-          "PSX",
-          "DOV"
+          "DGX",
+          "OTIS"
         ],
         [
-          "PRU",
-          "UPS"
-        ],
-        [
-          "PRU",
-          "GOOGL"
-        ],
-        [
-          "PAYX",
-          "NVDA"
-        ],
-        [
-          "PAYX",
-          "SPGI"
+          "DGX",
+          "VMC"
         ],
         [
           "ROST",
+          "UPS"
+        ],
+        [
+          "ROST",
+          "CARR"
+        ],
+        [
+          "PRU",
           "TXT"
+        ],
+        [
+          "PRU",
+          "DOV"
         ]
       ]
     }

@@ -93,3 +93,5 @@
 2026-07-29T05:19:13 [MTFS] asof=2026-07-28 hit=False beta_used=2.926 smh_beta=2.926 triggers=[] active_next=False reduce_next=False close=[]
 2026-07-30T07:46:07 [MRPT] asof=2026-07-29 hit=False beta_used=2.941 smh_beta=2.941 triggers=[] active_next=False reduce_next=False close=[]
 2026-07-30T07:46:08 [MTFS] asof=2026-07-29 hit=False beta_used=2.941 smh_beta=2.941 triggers=[] active_next=False reduce_next=False close=[]
+2026-07-31T07:35:04 [MRPT] asof=2026-07-30 hit=False beta_used=3.071 smh_beta=3.071 triggers=[] active_next=False reduce_next=False close=[]
+2026-07-31T07:35:04 [MTFS] asof=2026-07-30 hit=False beta_used=3.071 smh_beta=3.071 triggers=[] active_next=False reduce_next=False close=[]

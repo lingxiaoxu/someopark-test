@@ -76,31 +76,22 @@ def _rule_probs(fs: FeatureStore, conn, asof: datetime) -> tuple[dict, dict]:
 def _market_prior(conn, asof: datetime, period: str) -> tuple[dict | None, str | None]:
     """Devig KXFED ladder from stored quotes with ts<=asof → decision categorical vs the
     current upper bound."""
-    tok_rows = conn.execute(
-        "SELECT DISTINCT period FROM contracts WHERE series='KXFED'").fetchall()
+    fs = FeatureStore(conn)
     from prediction_market_macro.util.periods import kalshi_period_to_key
-    tok = next((r["period"] for r in tok_rows if kalshi_period_to_key(r["period"]) == period),
-               None)
+    tok = next((p for p in fs.kalshi_periods("KXFED")
+                if kalshi_period_to_key(p) == period), None)
     if tok is None:
         return None, None
-    rows = conn.execute(
-        "SELECT c.ticker, c.floor_strike strike, q.yes_bid, q.yes_ask, q.ts FROM contracts c"
-        " JOIN quotes q ON q.ticker=c.ticker AND q.ts="
-        "  (SELECT MAX(ts) FROM quotes WHERE ticker=c.ticker AND ts<=?)"
-        " WHERE c.series='KXFED' AND c.period=?",
-        (asof.isoformat(), tok)).fetchall()
-    legs = [dict(r) for r in rows if r["strike"] is not None]
+    rows = fs.kalshi_ladder_at("KXFED", tok, asof)
+    legs = [r for r in rows if r["strike"] is not None]
     if len(legs) < 3:
         return None, None
     impl = ladder_implied(legs)
     if not impl["strikes"]:
         return None, None
-    cur = conn.execute(
-        "SELECT value FROM fred_obs WHERE sid='DFEDTARU' AND knowledge_time<=?"
-        " ORDER BY event_time DESC LIMIT 1", (asof.isoformat(),)).fetchone()
-    if cur is None:
+    ub = fs.fred_scalar_latest("DFEDTARU", asof)
+    if ub is None:
         return None, None
-    ub = float(cur["value"])
     # pmf keys: strike → mass at/below … map upper-bound outcomes to decisions
     probs = dict.fromkeys(CATS, 0.0)
     xs, surv = impl["strikes"], impl["survival"]
@@ -171,11 +162,8 @@ def predict_kxfed(conn, asof: datetime, period: str, series: str = "KXFED") -> P
     so grid_pmf(0.25) discretises exactly onto the 25bp grid."""
     from prediction_market_macro.model.common import Empirical
     dec = predict(conn, asof, period, series="KXFEDDECISION")
-    cur = conn.execute(
-        "SELECT value FROM fred_obs WHERE sid='DFEDTARU' AND knowledge_time<=?"
-        " ORDER BY event_time DESC LIMIT 1", (asof.isoformat(),)).fetchone()
-    assert cur is not None, "no visible DFEDTARU"
-    ub = float(cur["value"])
+    ub = FeatureStore(conn).fred_scalar_latest("DFEDTARU", asof)
+    assert ub is not None, "no visible DFEDTARU"
     move = {"C26": -0.50, "C25": -0.25, "H0": 0.0, "H25": 0.25, "H26": 0.50}
     probs = dec.dist.probs
     vals, ps = zip(*[(round(ub + move[k], 2), p) for k, p in probs.items()])

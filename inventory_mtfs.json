@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-07-29",
+  "as_of": "2026-07-30",
   "capital": 500000,
   "pairs": {
     "GS/ALLY": {
@@ -353,7 +353,7 @@
       "open_s2_price": 378.85,
       "open_hedge_ratio": 0.2239536363261553,
       "open_price_level_stop": null,
-      "days_held": 10,
+      "days_held": 11,
       "peak_unrealized_pnl": 3552.68,
       "open_signal": {
         "momentum_spread": 0.781,
@@ -525,6 +525,17 @@
           "unrealized_pnl": -1908.53,
           "unrealized_pnl_pct": -1.042,
           "note": "Holding long, signal=0.737, exit at 0.425"
+        },
+        {
+          "date": "2026-07-30",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.733,
+          "exit_threshold": 0.441,
+          "unrealized_pnl": -1448.79,
+          "unrealized_pnl_pct": -0.791,
+          "note": "Holding long, signal=0.733, exit at 0.441"
         }
       ],
       "last_updated": "2026-07-20"
@@ -631,7 +642,7 @@
       "open_s2_price": 326.56,
       "open_hedge_ratio": 0.2708537481626654,
       "open_price_level_stop": null,
-      "days_held": 2,
+      "days_held": 3,
       "peak_unrealized_pnl": 0.0,
       "open_signal": {
         "momentum_spread": 0.382,
@@ -739,6 +750,17 @@
           "unrealized_pnl": -1293.78,
           "unrealized_pnl_pct": -0.578,
           "note": "Holding long, signal=0.426, exit at 0.4"
+        },
+        {
+          "date": "2026-07-30",
+          "action": "HOLD",
+          "direction": "long",
+          "z_score": null,
+          "momentum_spread": 0.42,
+          "exit_threshold": 0.4,
+          "unrealized_pnl": -3225.78,
+          "unrealized_pnl_pct": -1.442,
+          "note": "Holding long, signal=0.42, exit at 0.4"
         }
       ]
     },
@@ -755,6 +777,180 @@
       "last_close_pnl": -15878.38,
       "last_close_action": "CLOSE",
       "last_close_param_set": "kalman_aggressive"
+    },
+    "PSX/AKAM": {
+      "strategy": "mtfs",
+      "param_set": "beta_neutral_long_term",
+      "direction": "long",
+      "s1_shares": 1092,
+      "s2_shares": -64,
+      "open_date": "2026-07-30",
+      "open_s1_price": 210.6,
+      "open_s2_price": 113.75,
+      "open_hedge_ratio": 0.05847622664033313,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "peak_unrealized_pnl": 0.0,
+      "open_signal": {
+        "momentum_spread": 0.211,
+        "entry_threshold": 0.058,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260731_071209.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "long_term_tilt",
+            "train_end": "2025-02-07",
+            "test_start": "2025-02-10",
+            "test_end": "2025-04-22",
+            "oos_sharpe": -4.2847,
+            "oos_pnl": -27380.64
+          },
+          "W2": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2025-04-07",
+            "test_start": "2025-04-08",
+            "test_end": "2025-06-18",
+            "oos_sharpe": -1.6556,
+            "oos_pnl": -6566.71
+          },
+          "W3": {
+            "param_set": "sensitive_reversal",
+            "train_end": "2025-06-04",
+            "test_start": "2025-06-05",
+            "test_end": "2025-08-15",
+            "oos_sharpe": 2.163,
+            "oos_pnl": 17385.89
+          },
+          "W4": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2025-08-01",
+            "test_start": "2025-08-04",
+            "test_end": "2025-10-13",
+            "oos_sharpe": 0.2526,
+            "oos_pnl": 1199.48
+          },
+          "W8": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2026-03-23",
+            "test_start": "2026-03-24",
+            "test_end": "2026-06-03",
+            "oos_sharpe": 0.5209,
+            "oos_pnl": 4296.91
+          },
+          "W9": {
+            "param_set": "beta_neutral_long_term",
+            "train_end": "2026-05-19",
+            "test_start": "2026-05-20",
+            "test_end": "2026-07-31",
+            "oos_sharpe": -1.5375,
+            "oos_pnl": -14033.52
+          }
+        },
+        "default_window": "W9"
+      },
+      "monitor_log": []
+    },
+    "INCY/LKQ": {
+      "strategy": "mtfs",
+      "param_set": "slow_rebalance",
+      "direction": "long",
+      "s1_shares": 965,
+      "s2_shares": -5253,
+      "open_date": "2026-07-30",
+      "open_s1_price": 122.99,
+      "open_s2_price": 22.6,
+      "open_hedge_ratio": 5.442035398230088,
+      "open_price_level_stop": null,
+      "days_held": 0,
+      "peak_unrealized_pnl": 0.0,
+      "open_signal": {
+        "momentum_spread": 0.555,
+        "entry_threshold": 0.3,
+        "exit_threshold": null
+      },
+      "wf_source": {
+        "wf_summary_file": "historical_runs/walk_forward_mtfs/walk_forward_summary_20260731_071209.json",
+        "wf_dir": "historical_runs/walk_forward_mtfs",
+        "windows": {
+          "W1": {
+            "param_set": "entry_threshold_strong",
+            "train_end": "2025-02-07",
+            "test_start": "2025-02-10",
+            "test_end": "2025-04-22",
+            "oos_sharpe": -4.2847,
+            "oos_pnl": -27380.64
+          },
+          "W2": {
+            "param_set": "entry_threshold_strong",
+            "train_end": "2025-04-07",
+            "test_start": "2025-04-08",
+            "test_end": "2025-06-18",
+            "oos_sharpe": -1.6556,
+            "oos_pnl": -6566.71
+          },
+          "W3": {
+            "param_set": "entry_threshold_strong",
+            "train_end": "2025-06-04",
+            "test_start": "2025-06-05",
+            "test_end": "2025-08-15",
+            "oos_sharpe": 2.163,
+            "oos_pnl": 17385.89
+          },
+          "W4": {
+            "param_set": "entry_filter_kalman",
+            "train_end": "2025-08-01",
+            "test_start": "2025-08-04",
+            "test_end": "2025-10-13",
+            "oos_sharpe": 0.2526,
+            "oos_pnl": 1199.48
+          },
+          "W5": {
+            "param_set": "no_skip_month",
+            "train_end": "2025-09-29",
+            "test_start": "2025-09-30",
+            "test_end": "2025-12-09",
+            "oos_sharpe": -0.2918,
+            "oos_pnl": -2494.88
+          },
+          "W6": {
+            "param_set": "monthly_aligned_windows_fc_skip",
+            "train_end": "2025-11-24",
+            "test_start": "2025-11-25",
+            "test_end": "2026-02-06",
+            "oos_sharpe": -1.1739,
+            "oos_pnl": -9160.95
+          },
+          "W7": {
+            "param_set": "monthly_aligned_windows_fc_skip",
+            "train_end": "2026-01-23",
+            "test_start": "2026-01-26",
+            "test_end": "2026-04-07",
+            "oos_sharpe": -0.4428,
+            "oos_pnl": -4519.23
+          },
+          "W8": {
+            "param_set": "slow_rebalance",
+            "train_end": "2026-03-23",
+            "test_start": "2026-03-24",
+            "test_end": "2026-06-03",
+            "oos_sharpe": 0.5209,
+            "oos_pnl": 4296.91
+          },
+          "W9": {
+            "param_set": "slow_rebalance",
+            "train_end": "2026-05-19",
+            "test_start": "2026-05-20",
+            "test_end": "2026-07-31",
+            "oos_sharpe": -1.5375,
+            "oos_pnl": -14033.52
+          }
+        },
+        "default_window": "W9"
+      },
+      "monitor_log": []
     }
   }
 }
