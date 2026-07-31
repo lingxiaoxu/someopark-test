@@ -93,8 +93,9 @@ def check_rolling20(conn) -> str | None:
     """PLAN §12: rolling-20-settlement drawdown breaker. If the last 20 settle_note
     rows sum to a realized loss beyond 2x per_event limit, trip globally."""
     rows = conn.execute(
-        "SELECT size_usd FROM decisions WHERE kind='settle_note'"
-        " ORDER BY id DESC LIMIT 20").fetchall()
+        "SELECT size_usd FROM (SELECT series, period, size_usd, MIN(id) mid"
+        " FROM decisions WHERE kind='settle_note' GROUP BY series, period)"
+        " ORDER BY mid DESC LIMIT 20").fetchall()
     if len(rows) < 20:
         return None
     total = sum(r["size_usd"] or 0.0 for r in rows)

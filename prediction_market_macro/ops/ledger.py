@@ -53,11 +53,13 @@ def has_open(conn, series: str, period: str) -> bool:
 
 
 def open_positions(conn) -> list[dict]:
-    """Open decisions (no matching exit) with their paper fills."""
+    """Open decisions (no matching exit/cancel/settle) with their paper fills.
+    settle_note counts as closed — otherwise settle_pass re-settles (and marks keep
+    marking) finished positions forever."""
     rows = conn.execute(
         "SELECT d.* FROM decisions d WHERE d.kind='open' AND NOT EXISTS"
         " (SELECT 1 FROM decisions e WHERE e.series=d.series AND e.period=d.period"
-        "  AND e.kind IN ('exit','cancel') AND e.id>d.id)").fetchall()
+        "  AND e.kind IN ('exit','cancel','settle_note') AND e.id>d.id)").fetchall()
     out = []
     for d in rows:
         fills = conn.execute("SELECT * FROM fills WHERE decision_id=?", (d["id"],)).fetchall()

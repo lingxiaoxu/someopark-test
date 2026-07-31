@@ -167,6 +167,43 @@ def run_extended(conn, settings) -> str:
     (out_dir / "macro_risk.json").write_text(json.dumps(riskdoc, ensure_ascii=False, indent=1))
     written.append("macro_risk.json")
 
+    # ── macro_pricetrack.json: intraday mark history (mother price-track port) ──
+    track = [dict(r) for r in conn.execute(
+        "SELECT ts, ROUND(SUM(pnl_usd),4) pnl_usd, COUNT(*) n_legs FROM marks"
+        " GROUP BY ts ORDER BY ts DESC LIMIT 500").fetchall()]
+    track.reverse()
+    per_series = [dict(r) for r in conn.execute(
+        "SELECT d.series, ROUND(SUM(m.pnl_usd),4) pnl_usd FROM marks m"
+        " JOIN decisions d ON d.id=m.decision_id"
+        " WHERE m.ts=(SELECT MAX(ts) FROM marks) GROUP BY d.series").fetchall()]
+    (out_dir / "macro_pricetrack.json").write_text(json.dumps(
+        {"generated_at": now.isoformat(), "track": track, "latest_by_series": per_series},
+        ensure_ascii=False, indent=1))
+    written.append("macro_pricetrack.json")
+
+    # ── PDF reports → public/data/macro_reports/ + index (0-bis whitelist (a):
+    # "macro_*.json 与 macro PDF") — makes the Reports tile servable via /data ──
+    import shutil
+    rep_src = settings.output_dir / "reports"
+    rep_dst = out_dir / "macro_reports"
+    reports = []
+    if rep_src.exists():
+        rep_dst.mkdir(exist_ok=True)
+        pdfs = sorted(rep_src.glob("*.pdf"), key=lambda p: p.stat().st_mtime,
+                      reverse=True)[:14]
+        for p in pdfs:
+            dst = rep_dst / p.name
+            if not dst.exists() or dst.stat().st_mtime < p.stat().st_mtime:
+                shutil.copy2(p, dst)
+            reports.append({"name": p.name, "url": f"/data/macro_reports/{p.name}",
+                            "mtime": datetime.fromtimestamp(
+                                p.stat().st_mtime, tz=timezone.utc).isoformat(),
+                            "kind": "weekly" if "weekly" in p.name else "daily"})
+    (out_dir / "macro_reports.json").write_text(json.dumps(
+        {"generated_at": now.isoformat(), "reports": reports},
+        ensure_ascii=False, indent=1))
+    written.append("macro_reports.json")
+
     # ── macro_fed.json: meeting-level detail with evidence chain ──
     meetings = []
     for r in conn.execute(

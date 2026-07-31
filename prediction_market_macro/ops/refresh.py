@@ -130,6 +130,10 @@ def run(weekly: bool = False) -> dict:
              lambda: json.dumps({k: {"real": v.get("real"), "roi": v.get("roi"),
                                      "dm_p": v.get("dm_p")}
                                  for k, v in eval_mod.run_all(conn).items()})[:400])
+        from prediction_market_macro.research import attribution
+        step("weekly_attribution",
+             lambda: {k: v for k, v in attribution.weekly_attribution(conn).items()
+                      if k in ("n_settled_scored", "n_misses", "by_series")})
         step("report_weekly", lambda: report.weekly_pdf(conn, s))
     step("watchdog_inline", lambda: len(scheduler.watchdog(conn)))
 

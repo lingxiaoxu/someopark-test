@@ -127,6 +127,12 @@ def main():
     now = datetime.now(timezone.utc)
     print(f"[tick] {now.isoformat()}")
     _drain_due(conn, s, md)
+    # intraday price track (§15 mother port): mark open positions every fire
+    try:
+        from prediction_market_macro.ops import pnl
+        pnl.mark_all(conn)
+    except Exception as e:                                       # noqa: BLE001
+        print(f"  ! mark_all: {e}")
     if _active_windows(conn, now):
         n = linger(conn, s, md)
         print(f"[tick] event-window linger done, densified snapshots={n}")
