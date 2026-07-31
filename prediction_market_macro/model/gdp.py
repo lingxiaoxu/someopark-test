@@ -23,10 +23,12 @@ SIGMA_FLOOR = 0.5
 
 
 def _quarter_period(period: str) -> str:
-    """Accept '2026-Q2' or '2026-07' (month token → its quarter)."""
+    """Reference quarter for a period key. '2026-Q2' → itself. A DATE/month key is
+    the RELEASE date — the advance estimate reports the PREVIOUS quarter
+    (Oct 30 release = Q3 GDP), so shift back one quarter."""
     if "Q" in period.upper():
         return period.upper()
-    ts = pd.Period(period, freq="M")
+    ts = pd.Period(period, freq="M") - 3
     return f"{ts.year}-Q{(ts.month - 1) // 3 + 1}"
 
 
@@ -69,9 +71,12 @@ def predict(conn, asof: datetime, period: str, series: str = "KXGDP") -> Pred:
         mu, horizon = float(nc["value"]), nc["knowledge_time"]
         sigma = _nowcast_error_sigma(conn, asof)
         mode = "gdpnow_anchor"
-    return Pred(series="KXGDP", period=q,
+    # Pred.period = the CALLER'S key (contract-date key from predict_all) so the
+    # stored row is findable by decide_all/watchdog; the quarter only routes the
+    # nowcast lookup internally
+    return Pred(series="KXGDP", period=period,
                 dist=GaussianMix(((1.0, float(mu), float(sigma)),)),
                 asof=asof, model_version=VERSION,
                 inputs={"gdpnow": round(float(mu), 2), "sigma": round(sigma, 3),
-                        "mode": mode},
+                        "ref_quarter": q, "mode": mode},
                 data_horizon=datetime.fromisoformat(horizon))

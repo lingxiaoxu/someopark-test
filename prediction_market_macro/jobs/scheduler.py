@@ -124,8 +124,13 @@ def watchdog(conn, now: datetime | None = None, grace_min: int = 30) -> list[dic
             (sp["series"], key)).fetchone()
         if r["m"] is None or r["m"] < stale_cut:
             msg = f"pred-freshness SLA breach {sp['series']}/{key} last={r['m']}"
-            conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-                         (now.isoformat(), "error", "watchdog", msg))
+            dup = conn.execute(
+                "SELECT 1 FROM alerts WHERE source='watchdog' AND message=? AND ts>=?",
+                (msg, now.date().isoformat())).fetchone()
+            if not dup:                       # once per day per breach, not per run
+                conn.execute(
+                    "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                    (now.isoformat(), "error", "watchdog", msg))
             missed.append({"series": sp["series"], "period": key, "task": "pred_sla"})
     conn.commit()
     return missed

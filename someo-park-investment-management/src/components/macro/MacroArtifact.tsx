@@ -617,8 +617,11 @@ function AlertList({ items }: { items: any[] }) {
   return (
     <ul style={{ paddingLeft: 16, fontSize: 11, ...mono }}>
       {items.map((a, i) => (
-        <li key={i} style={{ marginBottom: 3, color: a.level === 'error' ? 'var(--error)' : 'var(--text-secondary)' }}>
-          <Chip color={a.level === 'error' ? 'var(--error)' : 'var(--text-muted)'}>{a.source ?? '—'}</Chip>
+        <li key={i} style={{ marginBottom: 3,
+          color: a.level === 'error' ? 'var(--error)'
+            : a.level === 'warn' ? 'var(--warning)' : 'var(--text-secondary)' }}>
+          <Chip color={a.level === 'error' ? 'var(--error)'
+            : a.level === 'warn' ? 'var(--warning)' : 'var(--text-muted)'}>{a.source ?? '—'}</Chip>
           {' '}[{a.level}] {a.message} <span style={{ color: 'var(--text-muted)' }}>· {dt(a.ts)}</span>
         </li>
       ))}

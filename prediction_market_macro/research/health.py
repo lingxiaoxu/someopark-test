@@ -325,9 +325,6 @@ def daily_health(conn, settings) -> str:
                 s_rep["notes"].append(det)
         report["series"][spec.ticker] = s_rep
         if s_rep["status"] == "red":
-            conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-                         (now.isoformat(), "error", "health",
-                          f"RED {spec.ticker}: {s_rep['notes']}"))
             # 铁律 10 nuance: QUALITY reds (model losing to the market) demote to
             # paper — which is already where we are; paper must keep trading or the
             # OOS sample that could ever pass the gate stops accruing. Only
@@ -338,6 +335,17 @@ def daily_health(conn, settings) -> str:
                                if n.split(":")[0] not in quality
                                and not n.startswith("crps_spike")
                                and not n.startswith("entropy_rise")]
+            # quality-only red = expected steady state pre-gate → warn (dashboard
+            # amber), not a screaming error; integrity red = error + breaker.
+            level = "error" if integrity_notes else "warn"
+            msg = f"RED {spec.ticker}: {s_rep['notes']}"
+            dup = conn.execute(
+                "SELECT 1 FROM alerts WHERE source='health' AND message=? AND ts>=?",
+                (msg, now.date().isoformat())).fetchone()
+            if not dup:
+                conn.execute(
+                    "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                    (now.isoformat(), level, "health", msg))
             if integrity_notes:
                 from prediction_market_macro.ops import risk
                 risk.circuit_breaker(conn, spec.ticker,
