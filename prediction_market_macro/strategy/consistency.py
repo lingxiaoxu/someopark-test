@@ -29,8 +29,16 @@ CPI_TV_ALERT = 0.20           # total-variation gap MoM-implied-YoY vs YoY marke
 
 
 def _alert(conn, msg: str, level: str = "info") -> None:
+    """Same-day dedup: the daily rescan re-detects standing conditions (a Fed
+    mutual gap persists for weeks) — one row per message per day, not per run."""
+    now = datetime.now(timezone.utc)
+    dup = conn.execute(
+        "SELECT 1 FROM alerts WHERE source='consistency' AND message=? AND ts>=?",
+        (msg, now.date().isoformat())).fetchone()
+    if dup:
+        return
     conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-                 (datetime.now(timezone.utc).isoformat(), level, "consistency", msg))
+                 (now.isoformat(), level, "consistency", msg))
 
 
 def _latest_legs(conn, series: str, tok: str) -> list[dict]:

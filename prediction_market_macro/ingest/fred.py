@@ -73,7 +73,33 @@ class FredPIT:
         return n
 
     def pull_core(self) -> dict[str, int]:
-        return {sid: self.pull(sid) for sid in CORE_SIDS}
+        """Resilient batch: one sid failing (FRED 5xx/rate storm) must never kill
+        the whole morning ingest for every other series. Per-sid retry ×2 with
+        backoff; failures alert individually and land as -1 in the result."""
+        import time as _t
+        out: dict[str, int] = {}
+        failed = []
+        for sid in CORE_SIDS:
+            last_err = None
+            for attempt in range(3):
+                try:
+                    out[sid] = self.pull(sid)
+                    last_err = None
+                    break
+                except Exception as e:                     # noqa: BLE001
+                    last_err = e
+                    _t.sleep(2.0 * (attempt + 1))
+            if last_err is not None:
+                out[sid] = -1
+                failed.append(sid)
+                self._conn.execute(
+                    "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                    (datetime.now(timezone.utc).isoformat(), "warn", "refresh",
+                     f"fred pull failed after retries: {sid}: {str(last_err)[:160]}"))
+        self._conn.commit()
+        if failed:
+            print(f"  ! fred_core: {len(failed)} sid(s) failed: {failed}")
+        return out
 
     # ── PIT reads (the ONLY read paths models may use, via features.py) ───
     def series_asof(self, sid: str, asof: datetime) -> pd.Series:

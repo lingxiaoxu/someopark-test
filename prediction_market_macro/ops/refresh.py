@@ -44,7 +44,9 @@ def run(weekly: bool = False) -> dict:
         except Exception as e:                                   # noqa: BLE001
             results[name] = f"FAIL {e}"
             print(f"  ✗ {name}: {e}")
-            _alert(conn, "error", "refresh", f"{name}: {e}\n{traceback.format_exc()[-800:]}")
+            # short reason in the alert (dashboards); full traceback to stdout/log
+            print(traceback.format_exc())
+            _alert(conn, "error", "refresh", f"{name}: {str(e)[:200]}")
 
     print(f"[refresh] {datetime.now(timezone.utc).isoformat()} weekly={weekly}")
     # ── §8.0 step 1: ingest (incl. new-event auto-discovery) ─────────────

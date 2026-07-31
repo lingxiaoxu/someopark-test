@@ -127,9 +127,15 @@ def run(conn, settings) -> int:
                            f" gross {v['gross']}" if "kind" in v else
                            f"MONOTONE-ARB {spec.ticker}/{tok}: buy {v['buy']['ticker']}"
                            f" sell {v['sell']['ticker']} gross {v['gross']}")
-                    conn.execute(
-                        "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-                        (now.isoformat(), "info", "consistency", msg))
+                    dup = conn.execute(
+                        "SELECT 1 FROM alerts WHERE source='consistency' AND"
+                        " message=? AND ts>=?",
+                        (msg, now.date().isoformat())).fetchone()
+                    if not dup:               # standing arbs re-detected per run
+                        conn.execute(
+                            "INSERT INTO alerts(ts, level, source, message)"
+                            " VALUES(?,?,?,?)",
+                            (now.isoformat(), "info", "consistency", msg))
                 # §24-A: detected free money gets TRADED (paper), not just alerted
                 if impl["violations"]:
                     from prediction_market_macro.strategy import arb
