@@ -54,7 +54,7 @@ const TYPE_TO_FILES: Record<string, string[]> = {
   macro_coverage:    ['macro_coverage.json'],
   macro_risk:        ['macro_risk.json'],
   macro_overview:    ['macro_board.json', 'macro_performance.json', 'macro_oos.json'],
-  macro_reports:     ['macro_performance.json'],
+  macro_reports:     ['macro_reports.json'],
   macro_walkforward: ['macro_walkforward.json'],
 }
 
@@ -63,7 +63,7 @@ const ABOUT: Record<string, string> = {
   macro_fed:         'FOMC meeting probabilities per bucket (C26/C25/H0/H25/H26 = cut 26+bp / cut 25bp / hold / hike 25bp / hike 26+bp) + model inputs (core_yoy, du12, rule vs market blend)',
   macro_inflation:   'inflation series (KXCPI, KXCPICORE, KXCPIYOY, KXCPICOREYOY, KXPCECORE) predictions + decisions from the board',
   macro_labor:       'labor series (KXJOBLESSCLAIMS initial claims, KXPAYROLLS nonfarm payrolls, KXU3 unemployment rate) predictions + decisions from the board',
-  macro_energy:      'energy series — not yet modeled (P1); board entries appear once added',
+  macro_energy:      'energy series (KXWTIW WTI weekly, KXNATGASW Henry Hub weekly, KXAAAGASW AAA gasoline) — GBM-on-futures model with EIA storage-surprise tilt + AAA daily anchor; predictions + decisions from the board',
   macro_divergence:  'model-vs-market divergence ranking (gap_norm per series+period; > 0.15 is notable)',
   macro_decisions:   'the decision log (enter/exit/pass with fair/ask/net_edge/size/note) + latest mark-to-market per open position',
   macro_performance: 'paper bankroll, unrealized PnL, open/settled stake by series',
@@ -71,7 +71,7 @@ const ABOUT: Record<string, string> = {
   macro_coverage:    'series × period coverage states (predicted/scheduled), missed list, watchdog alerts',
   macro_risk:        'risk limits (per event/family/cluster/gross), scenario max loss, open exposure per series+period',
   macro_overview:    'system digest: board + performance + OOS gate',
-  macro_reports:     'report generation ships with M8; performance summary meanwhile',
+  macro_reports:     'daily + weekly PDF reports (board snapshot, open positions & marks, alerts, weekly adds calibration deciles + gates); the panel lists the newest renderer-fixed PDFs',
   macro_walkforward: 'the live 30d track record (production started 30d ago, strict PIT — each day used only that day\'s information) rebuilt daily at 16:00 UTC. daily.streams = hybrid (live rule) / edge (value) / argmax (defer-to-market favourite: max-fair pick, bet only when fair<=cost). ml = three-line walk-forward comparison on the same dataset: top-level windows (last30/last60/all) = ML selector (expanding-window logistic, per-event weights, 0.10-0.90 price window); .baseline = defer-to-market favourite replica; .blend = smart switch that per event follows whichever line has the better trailing settled record (strictly pre-entry). Adoption rule: a challenger must beat the baseline on BOTH windows; blend currently does but the sample is thin and PnL concentrates in few equal-risk bets, so it is displayed as candidate, NOT live. sweep = one full PIT walk-forward per entry lead (1/3/5/7d) + per-series coverage',
 }
 

@@ -528,30 +528,40 @@ function CalibrationView() {
   return (
     <div>
       <Generated ts={data?.generated_at} />
-      {wf && (
+      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', ...mono, margin: '2px 0 8px', lineHeight: 1.6 }}>
+        {t('macro.calibPipeline')}
+      </div>
+      {gates.length > 0 && (
         <>
-          <SectionTitle>{t('macro.walkforward', { days: wf.days })}</SectionTitle>
-          <KV rows={[
-            [t('macro.colTrades'), <span style={mono}>{wf.n_trades}</span>],
-            [t('macro.winRate'), <span style={mono}>{pct(wf.win_rate)}</span>],
-            [t('macro.colPnl'), <span style={{ ...mono,
-              color: (wf.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>
-              {money(wf.realized)} ({pct(wf.roi)})</span>],
-          ]} />
-          {wf.by_series && (
-            <DataTable
-              cols={[t('macro.colSeries'), t('macro.colTrades'), 'W', t('macro.colPnl')]}
-              rows={Object.entries(wf.by_series as Record<string, any>)
-                .sort((a, b) => b[1].realized - a[1].realized)
-                .map(([k, v]) => [
-                  <span style={mono}>{shortSeries(k)}</span>, v.n, v.won,
-                  <span style={{ ...mono, color: v.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
-                ])} />
-          )}
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>
-            {t('macro.walkforwardNote')}
-          </div>
+          <SectionTitle>{t('macro.componentGates')}</SectionTitle>
+          {gates.map((g, i) => {
+            let m: any = {};
+            try { m = JSON.parse(g.metrics_json || '{}'); } catch { /* keep empty */ }
+            const real = m.real === true || m.pass === true;
+            return (
+              <div key={i} className="card" style={{ marginBottom: 8, padding: '8px 10px' }}>
+                <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, ...mono, color: 'var(--text-primary)' }}>
+                    {g.name} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {shortSeries(g.series || '')} · {g.window}</span>
+                  </span>
+                  <Chip color={real ? 'var(--success)' : 'var(--error)'}>
+                    {real ? t('macro.gateReal') : t('macro.gatePaper')}
+                  </Chip>
+                </div>
+                {g.name === 'series_gate' && Array.isArray(m.reasons) && m.reasons.length > 0 && (
+                  <ul style={{ paddingLeft: 14, fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 0 }}>
+                    {m.reasons.map((r: string, j: number) => <li key={j}>{r}</li>)}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </>
+      )}
+      {data?.gate_note && (
+        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', ...mono, margin: '0 0 8px' }}>
+          {t('macro.gateNote')}: {data.gate_note}
+        </div>
       )}
       {decReplays.length > 0 && (
         <>
@@ -611,37 +621,30 @@ function CalibrationView() {
           </div>
         );
       })}
-      {gates.length > 0 && (
+      {wf && (
         <>
-          <SectionTitle>{t('macro.componentGates')}</SectionTitle>
-          {gates.map((g, i) => {
-            let m: any = {};
-            try { m = JSON.parse(g.metrics_json || '{}'); } catch { /* keep empty */ }
-            const real = m.real === true || m.pass === true;
-            return (
-              <div key={i} className="card" style={{ marginBottom: 8, padding: '8px 10px' }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 4 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, ...mono, color: 'var(--text-primary)' }}>
-                    {g.name} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {shortSeries(g.series || '')} · {g.window}</span>
-                  </span>
-                  <Chip color={real ? 'var(--success)' : 'var(--error)'}>
-                    {real ? t('macro.gateReal') : t('macro.gatePaper')}
-                  </Chip>
-                </div>
-                {g.name === 'series_gate' && Array.isArray(m.reasons) && m.reasons.length > 0 && (
-                  <ul style={{ paddingLeft: 14, fontSize: 10, color: 'var(--text-muted)', ...mono, marginBottom: 0 }}>
-                    {m.reasons.map((r: string, j: number) => <li key={j}>{r}</li>)}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
+          <SectionTitle>{t('macro.walkforward', { days: wf.days })}</SectionTitle>
+          <KV rows={[
+            [t('macro.colTrades'), <span style={mono}>{wf.n_trades}</span>],
+            [t('macro.winRate'), <span style={mono}>{pct(wf.win_rate)}</span>],
+            [t('macro.colPnl'), <span style={{ ...mono,
+              color: (wf.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>
+              {money(wf.realized)} ({pct(wf.roi)})</span>],
+          ]} />
+          {wf.by_series && (
+            <DataTable
+              cols={[t('macro.colSeries'), t('macro.colTrades'), 'W', t('macro.colPnl')]}
+              rows={Object.entries(wf.by_series as Record<string, any>)
+                .sort((a, b) => b[1].realized - a[1].realized)
+                .map(([k, v]) => [
+                  <span style={mono}>{shortSeries(k)}</span>, v.n, v.won,
+                  <span style={{ ...mono, color: v.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
+                ])} />
+          )}
+          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>
+            {t('macro.walkforwardNote')}
+          </div>
         </>
-      )}
-      {data?.gate_note && (
-        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>
-          {t('macro.gateNote')}: {data.gate_note}
-        </div>
       )}
       <Ai view="macro_calibration" />
     </div>
@@ -685,11 +688,16 @@ function AlertList({ items }: { items: any[] }) {
 function CoverageView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_coverage');
+  const [showInfo, setShowInfo] = useState(false);
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const cov: any[] = data?.coverage ?? [];
   const missed: any[] = data?.missed ?? [];
   const alerts: any[] = data?.alerts ?? [];
-  const modelAlerts = alerts.filter((a) => MODEL_ALERT_SOURCES.has(a.source));
+  const modelAll = alerts.filter((a) => MODEL_ALERT_SOURCES.has(a.source));
+  // error/warn always visible; info-level consistency sweeps collapse behind a
+  // toggle — they are routine instrumentation, not findings
+  const modelAlerts = modelAll.filter((a) => a.level !== 'info');
+  const modelInfo = modelAll.filter((a) => a.level === 'info');
   const opsAlerts = alerts.filter((a) => !MODEL_ALERT_SOURCES.has(a.source));
   const seriesList = [...new Set(cov.map((r) => r.series))];
   const periods = [...new Set(cov.map((r) => r.period))].sort();
@@ -732,6 +740,17 @@ function CoverageView() {
       )}
       <SectionTitle>{t('macro.consistencyAlerts')}</SectionTitle>
       <AlertList items={modelAlerts} />
+      {modelInfo.length > 0 && (
+        <>
+          <button onClick={() => setShowInfo(!showInfo)}
+            style={{ fontSize: 10.5, ...mono, color: 'var(--text-muted)', background: 'transparent',
+              border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '2px 8px',
+              cursor: 'pointer', margin: '2px 0 6px' }}>
+            {showInfo ? '▾' : '▸'} {t('macro.infoSweeps', { n: modelInfo.length })}
+          </button>
+          {showInfo && <AlertList items={modelInfo} />}
+        </>
+      )}
       <SectionTitle>{t('macro.opsAlerts')}</SectionTitle>
       <AlertList items={opsAlerts} />
       <Ai view="macro_coverage" />
@@ -750,15 +769,18 @@ function RiskView() {
   return (
     <div>
       <Generated ts={data?.generated_at} />
-      <SectionTitle>{t('macro.limits')}</SectionTitle>
-      <KV rows={Object.entries(limits).map(([k, v]) => [k, <span style={mono}>{money(v as number)}</span>] as [string, ReactNode])} />
-      <SectionTitle>{t('macro.scenario')}</SectionTitle>
-      <KV rows={Object.entries(scenario).map(([k, v]) =>
-        [k, <span style={mono}>{typeof v === 'number' ? money(v) : String(v)}</span>] as [string, ReactNode])} />
       <SectionTitle>{t('macro.openExposure')}</SectionTitle>
       <DataTable
         cols={[t('macro.colSeries'), t('macro.colPeriod'), t('macro.colSize')]}
         rows={exposure.map((r) => [<span style={mono}>{shortSeries(r.series)}</span>, r.period, money(r.size_usd)])} />
+      <SectionTitle>{t('macro.scenario')}</SectionTitle>
+      <KV rows={Object.entries(scenario).map(([k, v]) =>
+        [k, <span style={mono}>{typeof v === 'number' ? money(v) : String(v)}</span>] as [string, ReactNode])} />
+      <SectionTitle>{t('macro.limits')}</SectionTitle>
+      <KV rows={Object.entries(limits).map(([k, v]) => [k, <span style={mono}>{money(v as number)}</span>] as [string, ReactNode])} />
+      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>
+        {t('macro.riskEnforceNote')}
+      </div>
       <Ai view="macro_risk" />
     </div>
   );
@@ -871,54 +893,18 @@ function WalkforwardView() {
     ? leads.reduce((a, b) => ((b[1].roi ?? -9) > (a[1].roi ?? -9) ? b : a))[0] : null;
   return (
     <div>
-      <Generated ts={sweep?.generated_at ?? data?.generated_at} />
+      <Generated ts={data?.generated_at ?? sweep?.generated_at} />
+      {daily && (
+        <div style={{ fontSize: 11, ...mono, margin: '2px 0 8px', color: 'var(--accent-primary)', fontWeight: 700 }}>
+          {t('macro.wfAsIfLive', { days: daily.days })}
+        </div>
+      )}
       <KV rows={[
         [t('macro.wfWindow'), <span style={mono}>{sweep?.days ?? daily?.days ?? '—'}d</span>],
         [t('macro.wfCoverage'), <span style={mono}>{testable}/{cov.length} {t('macro.wfSeriesTestable')}</span>],
         [t('macro.wfBestLead'), bestLead
           ? <Chip color={LEAD_COLORS[bestLead] ?? 'var(--success)'}>{bestLead}</Chip> : '—'],
       ]} />
-      <SectionTitle>{t('macro.wfLeadCompare')}</SectionTitle>
-      <DataTable
-        cols={[t('macro.wfLead'), t('macro.colTrades'), t('macro.winRate'),
-          t('macro.colPnl'), 'ROI']}
-        rows={leads.map(([lk, lv]) => [
-          <Chip color={LEAD_COLORS[lk] ?? 'var(--text-muted)'}>{lk}</Chip>,
-          lv.n_trades ?? '—', pct(lv.win_rate),
-          <span style={{ ...mono, color: (lv.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(lv.realized)}</span>,
-          <span style={{ ...mono, color: (lv.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(lv.roi)}</span>,
-        ])} />
-      {chart.length > 1 && (
-        <>
-          <SectionTitle>{t('macro.wfCurves')}</SectionTitle>
-          <div style={{ width: '100%', height: 180 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chart} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                <XAxis dataKey="day" hide />
-                <YAxis width={46} tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }} stroke="var(--text-muted)" />
-                <Tooltip contentStyle={{ background: 'var(--bg-secondary)',
-                  border: '1px solid var(--border-subtle)', fontSize: 10,
-                  fontFamily: 'var(--font-mono)' }} />
-                {leads.map(([lk]) => (
-                  <Line key={lk} type="monotone" dataKey={lk} connectNulls
-                    stroke={LEAD_COLORS[lk] ?? 'var(--accent-primary)'}
-                    strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </>
-      )}
-      <SectionTitle>{t('macro.wfCoverageTitle')}</SectionTitle>
-      <DataTable
-        cols={[t('macro.colSeries'), t('macro.wfEvents'), '']}
-        rows={cov.sort((a, b) => b[1].events_in_window - a[1].events_in_window)
-          .map(([k, v]) => [
-            <span style={mono}>{shortSeries(k)}</span>, v.events_in_window,
-            v.testable
-              ? <Chip color="var(--success)">{t('macro.wfTestable')}</Chip>
-              : <Chip color="var(--text-muted)">{t('macro.wfNoData')}</Chip>,
-          ])} />
       {data?.ml && (data.ml.last30?.n_trades != null) && (() => {
         const lines: [string, any][] = [
           ['stream_argmax', data.ml.baseline], ['stream_ml', data.ml],
@@ -954,11 +940,7 @@ function WalkforwardView() {
         if (data?.ml?.blend?.last30?.trades?.length) streams.blend = data.ml.blend.last30;
         const names = ['hybrid', 'edge', 'argmax', 'ml', 'blend'].filter((k) => streams[k]);
         return (
-          <>
-          <div style={{ fontSize: 11, ...mono, margin: '10px 0 4px', color: 'var(--accent-primary)', fontWeight: 700 }}>
-            {t('macro.wfAsIfLive', { days: daily.days })}
-          </div>
-          <div className="flex items-center" style={{ margin: '0 0 2px' }}>
+          <div className="flex items-center" style={{ margin: '10px 0 2px' }}>
             {names.map((k) => (
               <button key={k} onClick={() => setStream(k)}
                 style={{ padding: '3px 10px', fontSize: 11, fontFamily: 'var(--font-mono)',
@@ -971,7 +953,6 @@ function WalkforwardView() {
               </button>
             ))}
           </div>
-          </>
         );
       })()}
       {(() => {
@@ -1020,6 +1001,48 @@ function WalkforwardView() {
         );
         })();
       })()}
+      <SectionTitle>{t('macro.methodSection')}</SectionTitle>
+      <SectionTitle>{t('macro.wfLeadCompare')}</SectionTitle>
+      <DataTable
+        cols={[t('macro.wfLead'), t('macro.colTrades'), t('macro.winRate'),
+          t('macro.colPnl'), 'ROI']}
+        rows={leads.map(([lk, lv]) => [
+          <Chip color={LEAD_COLORS[lk] ?? 'var(--text-muted)'}>{lk}</Chip>,
+          lv.n_trades ?? '—', pct(lv.win_rate),
+          <span style={{ ...mono, color: (lv.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(lv.realized)}</span>,
+          <span style={{ ...mono, color: (lv.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(lv.roi)}</span>,
+        ])} />
+      {chart.length > 1 && (
+        <>
+          <SectionTitle>{t('macro.wfCurves')}</SectionTitle>
+          <div style={{ width: '100%', height: 180 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chart} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <XAxis dataKey="day" hide />
+                <YAxis width={46} tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }} stroke="var(--text-muted)" />
+                <Tooltip contentStyle={{ background: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-subtle)', fontSize: 10,
+                  fontFamily: 'var(--font-mono)' }} />
+                {leads.map(([lk]) => (
+                  <Line key={lk} type="monotone" dataKey={lk} connectNulls
+                    stroke={LEAD_COLORS[lk] ?? 'var(--accent-primary)'}
+                    strokeWidth={1.5} dot={false} isAnimationActive={false} />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+      <SectionTitle>{t('macro.wfCoverageTitle')}</SectionTitle>
+      <DataTable
+        cols={[t('macro.colSeries'), t('macro.wfEvents'), '']}
+        rows={cov.sort((a, b) => b[1].events_in_window - a[1].events_in_window)
+          .map(([k, v]) => [
+            <span style={mono}>{shortSeries(k)}</span>, v.events_in_window,
+            v.testable
+              ? <Chip color="var(--success)">{t('macro.wfTestable')}</Chip>
+              : <Chip color="var(--text-muted)">{t('macro.wfNoData')}</Chip>,
+          ])} />
       <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>
         {t('macro.wfLabNote')}
       </div>
