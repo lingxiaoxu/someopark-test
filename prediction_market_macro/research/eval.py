@@ -316,6 +316,76 @@ def run_series(conn, series: str) -> dict:
             "dm_p": dm.get("p")}
 
 
+def shadow_gate(conn, series: str, prefix: str, min_weekly: int = 8,
+                min_monthly: int = 3) -> dict:
+    """§7-bis promotion counter for shadow members (chronos2/*, bridge/*,
+    ensemble/*): count settled periods where the shadow had a pred, score its
+    ladder vs the market where possible, write an experiments row. Promotion stays
+    MANUAL — this makes the count/verdict visible instead of living in comments."""
+    from prediction_market_macro.config.registry import REGISTRY
+    from prediction_market_macro.model.common import leg_fair
+    spec = REGISTRY[series]
+    cadence = spec.cadence
+    need = min_weekly if cadence == "weekly" else min_monthly
+    events = conn.execute(
+        "SELECT s.period, MAX(c.close_time) ct FROM settlements s"
+        " JOIN contracts c ON c.ticker=s.ticker WHERE s.series=?"
+        " AND s.result IN ('yes','no') GROUP BY s.period", (series,)).fetchall()
+    from prediction_market_macro.util.periods import kalshi_period_to_key
+    scored, b_shadow, b_market = 0, [], []
+    for ev in events:
+        key = kalshi_period_to_key(ev["period"])
+        if not key or not ev["ct"]:
+            continue
+        close_ts = datetime.fromisoformat(ev["ct"].replace("Z", "+00:00"))
+        asof = close_ts - timedelta(hours=1)
+        pr = conn.execute(
+            "SELECT ladder_json FROM preds WHERE series=? AND period=? AND"
+            " model_version LIKE ? AND asof<=? ORDER BY asof DESC LIMIT 1",
+            (series, key, prefix + "%", asof.isoformat())).fetchone()
+        if pr is None or not pr["ladder_json"]:
+            continue
+        pmf = {float(k): v for k, v in json.loads(pr["ladder_json"]).items()}
+        legs = conn.execute(
+            "SELECT c.ticker, c.floor_strike, c.cap_strike, c.strike_type, s.result"
+            " FROM contracts c JOIN settlements s ON s.ticker=c.ticker"
+            " WHERE c.series=? AND s.period=? AND s.result IN ('yes','no')",
+            (series, ev["period"])).fetchall()
+        bs, bk, n = 0.0, 0.0, 0
+        for l in legs:
+            mp = None
+            r = conn.execute(
+                "SELECT yes_bid_close, yes_ask_close FROM candles WHERE ticker=?"
+                " AND end_ts<=? ORDER BY end_ts DESC LIMIT 1",
+                (l["ticker"], int(asof.timestamp()))).fetchone()
+            if r and r["yes_bid_close"] is not None and r["yes_ask_close"] is not None:
+                mp = (r["yes_bid_close"] + r["yes_ask_close"]) / 2
+            if mp is None or l["floor_strike"] is None:
+                continue
+            try:
+                fair = leg_fair(pmf, l["strike_type"] or "greater",
+                                l["floor_strike"], l["cap_strike"])
+            except Exception:                             # noqa: BLE001
+                continue
+            out = 1.0 if l["result"] == "yes" else 0.0
+            bs += (fair - out) ** 2
+            bk += (mp - out) ** 2
+            n += 1
+        if n:
+            scored += 1
+            b_shadow.append(bs / n)
+            b_market.append(bk / n)
+    bm = round(float(np.mean(b_shadow)), 5) if b_shadow else None
+    bk_ = round(float(np.mean(b_market)), 5) if b_market else None
+    verdict = {"prefix": prefix, "cadence": cadence, "n_scored": scored,
+               "n_required": need, "brier_shadow": bm, "brier_market": bk_,
+               "eligible": bool(scored >= need and bm is not None and bk_ is not None
+                                and bm < bk_),
+               "note": "promotion is manual; eligible only surfaces the §7-bis count"}
+    _store(conn, f"shadow_gate_{prefix.rstrip('/')}", series, f"n{scored}", verdict)
+    return verdict
+
+
 def run_all(conn) -> dict:
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
@@ -327,6 +397,11 @@ def run_all(conn) -> dict:
             out[series] = run_series(conn, series)
         except Exception as e:                             # noqa: BLE001
             out[series] = {"series": series, "error": str(e)[:200]}
+        for prefix in ("chronos2/", "bridge/", "ensemble/"):
+            try:
+                shadow_gate(conn, series, prefix)
+            except Exception:                              # noqa: BLE001
+                continue
     return out
 
 

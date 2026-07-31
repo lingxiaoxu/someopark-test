@@ -166,6 +166,27 @@ def weekly_pdf(conn, settings) -> str:
                                label_w=PAGE_W * 0.45, val_w=PAGE_W * 0.55))
     story.append(Spacer(1, 6))
 
+    # decile calibration tables (§12: research/eval writes them weekly)
+    section(story, "Calibration deciles (fair vs realized freq)")
+    cals = conn.execute(
+        "SELECT series, metrics_json FROM experiments WHERE name='calibration'"
+        " ORDER BY created_ts DESC LIMIT 6").fetchall()
+    crows = []
+    for c in cals:
+        try:
+            bins = json.loads(c["metrics_json"] or "{}").get("bins") or []
+        except Exception:                          # noqa: BLE001
+            bins = []
+        filled = [b for b in bins if b.get("n")]
+        if not filled:
+            continue
+        crows.append((c["series"],
+                      " ".join(f"{b['bin']}→{b['freq']:.2f}(n{b['n']})"
+                               for b in filled[:6])))
+    story.append(make_kv_table(crows or [("no calibration rows yet", "—")],
+                               label_w=PAGE_W * 0.25, val_w=PAGE_W * 0.75))
+    story.append(Spacer(1, 6))
+
     _story_common(conn, settings, story, since)
     doc.build(story)
     return str(path)

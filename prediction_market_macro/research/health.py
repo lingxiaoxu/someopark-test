@@ -153,6 +153,38 @@ def _detect_chronos(conn, series: str) -> str | None:
     return None
 
 
+def _settle_label_check(conn, now: datetime) -> list[str]:
+    """铁律 2 cross-check: every settled ladder leg's YES/NO must agree with the
+    first-print label vs its strike. A mismatch means our settlement understanding
+    (or the label pipe) is wrong — series halts via circuit breaker."""
+    from prediction_market_macro.ops.pnl import _realized_print
+    bad = []
+    rows = conn.execute(
+        "SELECT s.series, s.period, s.ticker, s.result, c.floor_strike, c.strike_type"
+        " FROM settlements s JOIN contracts c ON c.ticker=s.ticker"
+        " WHERE s.result IN ('yes','no') AND c.floor_strike IS NOT NULL"
+        " ORDER BY s.settled_ts DESC LIMIT 120").fetchall()
+    from prediction_market_macro.util.periods import kalshi_period_to_key
+    cache: dict[tuple[str, str], float | None] = {}
+    for r in rows:
+        key = kalshi_period_to_key(r["period"]) if r["period"] else None
+        if not key:
+            continue
+        ck = (r["series"], key)
+        if ck not in cache:
+            cache[ck] = _realized_print(conn, r["series"], key)
+        y = cache[ck]
+        if y is None:
+            continue
+        strict = (r["strike_type"] == "greater")
+        expected = "yes" if (y > r["floor_strike"] if strict
+                             else y >= r["floor_strike"]) else "no"
+        if expected != r["result"]:
+            bad.append(f"settle_label_mismatch:{r['ticker']}:label={y}"
+                       f" strike={r['floor_strike']} expect={expected} got={r['result']}")
+    return bad[:10]
+
+
 def _ledger_selfcheck(conn, now: datetime, k: int = 3) -> list[str]:
     """(4) k date-seeded random open decisions: recompute fair from the row's own
     inputs_json dist + structure legs — mismatch means code silently changed."""
@@ -294,6 +326,15 @@ def daily_health(conn, settings) -> str:
     bad = _ledger_selfcheck(conn, now)
     report["ledger_selfcheck"] = {"n": 3, "mismatches": bad}
     for b in bad:
+        report["flags"].append(b)
+        conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                     (now.isoformat(), "error", "health", b))
+        from prediction_market_macro.ops import risk
+        risk.circuit_breaker(conn, "*", b[:180])
+
+    # 铁律 2: settlement ↔ first-print label reconciliation
+    slb = _settle_label_check(conn, now)
+    for b in slb:
         report["flags"].append(b)
         conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                      (now.isoformat(), "error", "health", b))

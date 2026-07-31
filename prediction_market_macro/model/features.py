@@ -32,9 +32,11 @@ class FeatureStore:
         """FIRST-vintage value per event_time (PIT ≤ asof) — the label-side read used
         by print-anchored models (claims/u3/payrolls). Single-door twin of
         fred_series (which returns the LATEST visible vintage)."""
+        # exactly ONE min/max aggregate — SQLite's bare-column-from-that-row rule
+        # only holds then; a second aggregate silently breaks first-print selection
         rows = self._conn.execute(
-            "SELECT event_time, value, MIN(vintage_date), MAX(knowledge_time) kt"
-            " FROM fred_obs WHERE sid=? AND knowledge_time<=?"
+            "SELECT event_time, value, MIN(vintage_date) FROM fred_obs"
+            " WHERE sid=? AND knowledge_time<=?"
             " GROUP BY event_time ORDER BY event_time",
             (sid, asof.isoformat())).fetchall()
         s = pd.Series({pd.Timestamp(r["event_time"]): r["value"] for r in rows},

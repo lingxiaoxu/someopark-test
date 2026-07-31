@@ -79,23 +79,24 @@ def enumerate_structs(legs_meta: list[dict], pmf_fair, strict: bool) -> list[Str
             out.append(Struct("single", (Leg(l["ticker"], "no", no_price, l["bid_depth"]),),
                               fair=1 - sv, cost=no_price, max_loss=no_price,
                               desc=f"NO {l['ticker']} @{no_price:.2f}"))
-    for i in range(len(rows) - 1):
-        lo, hi = rows[i], rows[i + 1]
-        if lo.get("yes_ask") is None or hi.get("yes_bid") is None:
-            continue
-        no_hi = round(1 - hi["yes_bid"], 4)
-        cost = lo["yes_ask"] + no_hi
-        eff = cost - 1.0                                # effective bucket price
-        if not (0.005 < eff < 0.995):
-            continue
-        p_bucket = (survival(pmf_fair, float(lo["strike"]), strict=strict)
-                    - survival(pmf_fair, float(hi["strike"]), strict=strict))
-        out.append(Struct(
-            "bucket",
-            (Leg(lo["ticker"], "yes", lo["yes_ask"], lo["ask_depth"]),
-             Leg(hi["ticker"], "no", no_hi, hi["bid_depth"])),
-            fair=p_bucket, cost=eff, max_loss=eff,
-            desc=f"BUCKET ({lo['strike']:g},{hi['strike']:g}] @{eff:.2f}"))
+    for width in (1, 2):                                # adjacent + 2-wide (§11)
+        for i in range(len(rows) - width):
+            lo, hi = rows[i], rows[i + width]
+            if lo.get("yes_ask") is None or hi.get("yes_bid") is None:
+                continue
+            no_hi = round(1 - hi["yes_bid"], 4)
+            cost = lo["yes_ask"] + no_hi
+            eff = cost - 1.0                            # effective bucket price
+            if not (0.005 < eff < 0.995):
+                continue
+            p_bucket = (survival(pmf_fair, float(lo["strike"]), strict=strict)
+                        - survival(pmf_fair, float(hi["strike"]), strict=strict))
+            out.append(Struct(
+                "bucket",
+                (Leg(lo["ticker"], "yes", lo["yes_ask"], lo["ask_depth"]),
+                 Leg(hi["ticker"], "no", no_hi, hi["bid_depth"])),
+                fair=p_bucket, cost=eff, max_loss=eff,
+                desc=f"BUCKET ({lo['strike']:g},{hi['strike']:g}] @{eff:.2f}"))
     return out
 
 

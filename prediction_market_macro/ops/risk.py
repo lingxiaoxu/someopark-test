@@ -20,6 +20,9 @@ LIMITS = {
     "per_event_usd": 5.0,       # one (series, period)
     "per_family_usd": 20.0,
     "per_cluster_usd": 8.0,     # same (family, period) across series — correlated prints
+                                # (plan said $40; kept at $8 deliberately — more
+                                # conservative until any series passes the gate)
+    "per_release_day_usd": 30.0,  # total NEW exposure opened per calendar day (§12)
     "gross_usd": 100.0,
 }
 
@@ -60,6 +63,13 @@ def check(conn, series: str, period: str, size_usd: float) -> Veto | None:
         return Veto(f"risk_cluster {cl + size_usd:.2f}>{LIMITS['per_cluster_usd']}")
     if gross + size_usd > LIMITS["gross_usd"]:
         return Veto(f"risk_gross {gross + size_usd:.2f}>{LIMITS['gross_usd']}")
+    today = datetime.now(timezone.utc).date().isoformat()
+    opened_today = conn.execute(
+        "SELECT COALESCE(SUM(size_usd),0) s FROM decisions WHERE kind='open'"
+        " AND ts_utc>=?", (today,)).fetchone()["s"]
+    if opened_today + size_usd > LIMITS["per_release_day_usd"]:
+        return Veto(f"risk_release_day {opened_today + size_usd:.2f}"
+                    f">{LIMITS['per_release_day_usd']}")
     return None
 
 
