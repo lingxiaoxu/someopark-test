@@ -206,6 +206,7 @@ def process_pair(pair, context, data):
         'pair_stop_loss_pct', 'rebalance_frequency',
         'mean_back', 'std_back', 'v_back',
         'fast_confirm_window', 'slow_confirm_window', 'fast_confirm_skip',
+        'short_leg_crash_scale', 'crash_recovery_days', 'crash_fast_weights',
     ]
     if pair_key in context.pair_params:
         pp = context.pair_params[pair_key]
@@ -286,6 +287,28 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
     # ── Volatility scaling (portfolio-level, always available) ────────────
     vol_scale = context.portfolio_construct.compute_vol_scale_factor(
         context.portfolio.daily_pnl_history, context.execution)
+
+    # ── Crash-recovery 状态机(portfolio级,每日仅更新一次) ──────────────────
+    # 本函数 per-pair 调用(每日一次/对),必须用日期戳防重,否则倒计时一天烧N格。
+    # 当日第一个被处理的 pair 的 crash 参数决定状态。语义: 崩盘持续期间每天重置
+    # 满额倒计时;崩盘结束后逐日递减 → 恢复期 = 最后一个崩盘日之后的
+    # crash_recovery_days 个交易日。P4(空腿保护)/P5(快窗倾斜)共用此状态。
+    # TODO: 若未来参数集的 crash_vol_percentile/crash_scale_factor 分化,应改用
+    # MTFSExecution 默认值单独算一次状态判定,避免首对参数决定全组合。
+    if getattr(context.portfolio, 'crash_state_date', None) != context.portfolio.current_date:
+        context.portfolio.crash_state_date = context.portfolio.current_date
+        if vol_scale <= context.execution.crash_scale_factor:
+            context.portfolio.crash_recovery_countdown = context.execution.crash_recovery_days
+        elif getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0:
+            context.portfolio.crash_recovery_countdown -= 1
+
+    # ── P5: 恢复期快窗倾斜(必须在状态机之后重设,同日全部pair读到同一状态;
+    # 权重只影响 composite_* 打分,per_window/consistency/trend 不用权重) ──
+    # fail-open: 参数关/长度不匹配 → 保持 :250 已设的 momentum_weights。
+    _cfw = getattr(context.execution, 'crash_fast_weights', None)
+    if _cfw and getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0 \
+            and len(_cfw) == len(context.execution.momentum_windows):
+        ms.weights = _cfw
 
     # ── Check if we have enough data for composite scoring ────────────────
     max_window = max(context.execution.momentum_windows)
@@ -551,10 +574,18 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
 
         if open_long_pair:
             # Long stock_1, short stock_2 (dollar-neutral via hedge ratio)
+            # P4: 崩盘恢复期空腿缩减(打破dollar-neutral是有意的——净敞口偏多,
+            # D&M 2016: 恢复期loser空腿是最大亏损源)。参数关=旧行为逐bit一致。
+            _slcs = getattr(context.execution, 'short_leg_crash_scale', None)
+            _in_recovery = bool(_slcs) and getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0
             stock_1_shares = 1
-            stock_2_shares = -hedge
+            stock_2_shares = -hedge * (_slcs if _in_recovery else 1.0)
             in_long = True
             in_short = False
+            if _in_recovery:
+                record_vars(context, ShortLegScaled=float(_slcs))
+                log.info(f"[SHORT_GUARD] {pair_key}: short leg × {_slcs} "
+                         f"(crash recovery {context.portfolio.crash_recovery_countdown}d left)")
 
             (stock_1_perc, stock_2_perc) = context.portfolio_order.computeHoldingsPct(
                 stock_1_shares, stock_2_shares,
@@ -580,10 +611,17 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
 
         elif open_short_pair:
             # Short stock_1, long stock_2
-            stock_1_shares = -1
+            # P4: 崩盘恢复期空腿(此分支为 stock_1)缩减,与 OPEN_LONG 分支对称。
+            _slcs = getattr(context.execution, 'short_leg_crash_scale', None)
+            _in_recovery = bool(_slcs) and getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0
+            stock_1_shares = -1 * (_slcs if _in_recovery else 1.0)
             stock_2_shares = hedge
             in_short = True
             in_long = False
+            if _in_recovery:
+                record_vars(context, ShortLegScaled=float(_slcs))
+                log.info(f"[SHORT_GUARD] {pair_key}: short leg × {_slcs} "
+                         f"(crash recovery {context.portfolio.crash_recovery_countdown}d left)")
 
             (stock_1_perc, stock_2_perc) = context.portfolio_order.computeHoldingsPct(
                 stock_1_shares, stock_2_shares,

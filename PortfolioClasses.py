@@ -296,10 +296,19 @@ class Portfolio:
         return self.daily_pnl_history[-1][1]  # Return the latest daily P&L
 
     def update_max_drawdown(self):
-        # Calculate the current portfolio value (equity)
-        total_asset = self.asset_cash + sum(self.asset_securities.values())
-        total_liability = self.liability_loan + sum(self.liability_securities.values())
-        current_value = total_asset - total_liability
+        # Current equity: use the just-appended equity_history value (both callers
+        # run update_values immediately before this, which appends today's equity).
+        # 旧的字典求和口径在"平仓日"会坏: 平仓成交把 asset_securities/
+        # liability_securities 按 旧值−股数×平仓价 递减,残留 股数×(开仓价−平仓价)
+        # 不清零,而 update_values 只遍历有持仓的 symbol 无法自愈 → current_value
+        # 偏离真实权益 → leverage 虚增 → 微超历史纪录触发假"新纪录",把当日回撤额
+        # 写进 $ 列覆盖真实峰值。(2026-07-31 调查+修复;仅影响本表数值)
+        if self.equity_history:
+            current_value = self.equity_history[-1][1]
+        else:
+            total_asset = self.asset_cash + sum(self.asset_securities.values())
+            total_liability = self.liability_loan + sum(self.liability_securities.values())
+            current_value = total_asset - total_liability
 
         # Calculate leverage, handling cases where current_value is zero or negative
         if current_value != 0:
@@ -1702,6 +1711,18 @@ class Execution:
         self.max_entry_z = 2.5
         self.max_exit_z = 0.5
 
+        # ── Vol-direction-aware entry threshold (2026-07 momentum crash lesson) ──
+        # None/0 = off (行为与旧版逐bit一致)。开启后:当前价差vol已从窗口峰值回落
+        # 超过 vol_release_frac 时,判定"尖峰释放",normalized_volatility 乘以
+        # vol_release_damp,使entry_z回落——高波动错位期是均值回归最佳入场环境
+        # (Gatev et al. 2006),不应被"过去的尖峰"继续封锁。
+        self.vol_release_frac = None   # e.g. 0.25 = 从峰值回落25%即触发
+        self.vol_release_damp = 0.5    # 触发时 normalized_volatility 的折减系数
+        # "当前vol"的测量窗口: None = 用 v_back 长窗滚动std(崩盘日滚出窗口前
+        # 不会回落,释放信号迟到~4-6周);设为短窗天数(如8)则用最近N天价差std
+        # 作探针,风暴刚停就能探测到释放(峰值基准仍是长窗历史,口径同为价差std)。
+        self.vol_release_probe = None
+
 
 class PortfolioVisualizer:
     def __init__(self, portfolio, context, excel_filename, chart_dir=None):
@@ -2069,7 +2090,12 @@ class PortfolioStopLossFunction:
         if isinstance(last_stop_loss, str):
             last_stop_loss = pd.Timestamp(last_stop_loss)
 
-        if (context.portfolio.current_date - last_stop_loss).days < context.execution.cooling_off_period:
+        # 冷却按"交易日"计数(P3.1,2026-07-31)。旧口径 (date差).days 是日历日:
+        # 周五止损+冷却2 → 周一即可再入(实际0个交易日冷却),同一参数的冷却力度
+        # 按星期几浮动2天。34万事件实证:靠周末凑够日历数溜进来的再入场
+        # 平均-36.9/胜率44.9%,正常冷却+55.1/49.3%——漏洞在真金白银地亏钱。
+        if np.busday_count(last_stop_loss.date(), context.portfolio.current_date.date()) \
+                < context.execution.cooling_off_period:
             return False  # Don't re-enter yet
 
         # Instead of clearing the history, add a new event
@@ -2261,7 +2287,8 @@ class PortfolioConstruct:
         # Return the last slope estimate as the hedge ratio
         return state_means[-1, 0]
 
-    def calculate_dynamic_z_scores_entry_exit(self, context, pair_key, current_volatility_of_spreads):
+    def calculate_dynamic_z_scores_entry_exit(self, context, pair_key, current_volatility_of_spreads,
+                                              spread_recent=None):
         # print(f"Start of function. volatilities_in_window for {pair_key}: {context.portfolio.volatilities_in_window[pair_key]}")
 
         volatilities_in_window = context.portfolio.volatilities_in_window[pair_key]
@@ -2276,6 +2303,24 @@ class PortfolioConstruct:
                         max_volatility_in_window - min_volatility_in_window)
         else:
             context.portfolio.normalized_volatility = 0.5  # Default to middle value if min and max are the same
+
+        # ── Vol-direction damp: 尖峰已回落则折减 normalized_volatility ──
+        # fail-open:参数关/窗口不足/探针数据不足 → 不改变原行为。
+        # volatilities_in_window 在调用前已 append 今天(PortfolioMRPTRun:301),
+        # [:-1] 即"不含今天的历史峰值"。
+        # "当前vol"默认用长窗滚动std;但长窗std要等崩盘日滚出窗口才回落(迟到
+        # ~4-6周),vol_release_probe 开启时改用最近N天价差std作探针,风暴刚停
+        # 即可探测释放(两者同为价差std口径,可与长窗峰值直接比较)。
+        _vrf = getattr(context.execution, 'vol_release_frac', None)
+        if _vrf and len(volatilities_in_window) >= 3:
+            _peak = max(volatilities_in_window[:-1])   # 不含今天的历史峰值
+            _probe_vol = current_volatility_of_spreads
+            _pn = getattr(context.execution, 'vol_release_probe', None)
+            if _pn and spread_recent is not None and len(spread_recent) >= _pn:
+                _probe_vol = float(np.std(spread_recent[-int(_pn):]))
+            if _peak > 0 and _probe_vol < _peak * (1.0 - _vrf):
+                context.portfolio.normalized_volatility *= \
+                    getattr(context.execution, 'vol_release_damp', 0.5)
 
         # Calculate dynamic entry and exit z-scores
 
@@ -2759,6 +2804,18 @@ class MTFSExecution:
         # ── Rebalancing ───────────────────────────────────────────────────
         self.rebalance_frequency = 10        # trading days between full rebalances
 
+        # ── Crash-recovery short-leg guard (D&M 2016: 崩盘后loser暴力反弹) ──
+        # None=off(行为与旧版逐bit一致)。crash_scale_factor 触发(=进入崩盘态)后的
+        # crash_recovery_days 个交易日内,新开仓空腿名义 × short_leg_crash_scale
+        # (净敞口故意偏多——崩盘恢复期做多偏置正是 Daniel & Moskowitz 的处方)。
+        self.short_leg_crash_scale = None    # e.g. 0.5
+        self.crash_recovery_days   = 30      # ≈6周,D&M反弹持续期的保守值
+
+        # ── Crash-recovery fast-window tilt (Garg et al. 2021) ──
+        # None=off。恢复期把 composite 权重向快窗倾斜(与 momentum_windows 等长),
+        # 让新主线被 6-12d 快窗先捕捉,期满自动还原。
+        self.crash_fast_weights = None   # e.g. [0.30,0.25,0.20,0.15,0.07,0.03]
+
         # ── Lookback for spread/vol (reused from MRPT for stop-loss calcs) ─
         self.mean_back = 20
         self.std_back = 20
@@ -3194,7 +3251,9 @@ class MTFSStopLossFunction:
         if isinstance(last_stop_loss, str):
             last_stop_loss = pd.Timestamp(last_stop_loss)
 
-        if (context.portfolio.current_date - last_stop_loss).days < context.execution.cooling_off_period:
+        # 冷却按"交易日"计数(P3.1) — 与 MRPT 版同步修改,理由见 MRPT 版注释。
+        if np.busday_count(last_stop_loss.date(), context.portfolio.current_date.date()) \
+                < context.execution.cooling_off_period:
             return False
 
         context.execution.stop_loss_history[pair_key].append({

@@ -120,6 +120,9 @@ def initialize(context, pairs=None, params=None, pair_params=None):
     context.execution.volatility_stop_loss_multiplier = p.get('volatility_stop_loss_multiplier', 2)
     context.execution.max_holding_period = p.get('max_holding_period', 12)
     context.execution.cooling_off_period = p.get('cooling_off_period', 2)
+    context.execution.vol_release_frac = p.get('vol_release_frac', None)
+    context.execution.vol_release_damp = p.get('vol_release_damp', 0.5)
+    context.execution.vol_release_probe = p.get('vol_release_probe', None)
 
     context.portfolio_construct = PortfolioConstruct(constant=1)
     context.portfolio_order = PortfolioMakeOrder(constant=1)
@@ -207,6 +210,7 @@ def process_pair(pair, context, data):
         'z_back', 'v_back', 'hedge_lag', 'base_entry_z', 'base_exit_z',
         'entry_volatility_factor', 'exit_volatility_factor', 'amplifier',
         'volatility_stop_loss_multiplier', 'max_holding_period', 'cooling_off_period',
+        'vol_release_frac', 'vol_release_damp', 'vol_release_probe',
     ]
     if pair_key in context.pair_params:
         pp = context.pair_params[pair_key]
@@ -306,7 +310,8 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
     context.portfolio.volatilities_in_window[pair_key] = context.portfolio.volatilities_in_window[pair_key][-max_volatility_in_window_back:]
 
     # Calculate dynamic entry and exit z-scores
-    normalized_volatility, entry_z, exit_z = context.portfolio_construct.calculate_dynamic_z_scores_entry_exit(context, pair_key, current_volatility_of_spreads)
+    normalized_volatility, entry_z, exit_z = context.portfolio_construct.calculate_dynamic_z_scores_entry_exit(
+        context, pair_key, current_volatility_of_spreads, spread_recent=spread)
 
     record_vars(context, Z=z_score, Hedge=hedge,
                 Normalized_Spread_Sigma=normalized_volatility, Entry_Z=entry_z, Exit_Z=exit_z,

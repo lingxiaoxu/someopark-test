@@ -1147,6 +1147,22 @@ PARAM_SETS['monthly_aligned_windows_fc_skip'] = {
     'fast_confirm_window': 10, 'slow_confirm_window': 40, 'fast_confirm_skip': 2}
 del _fc_base
 
+# ── Crash-recovery 竞争变体(Post-Crash Adaptivity plan P4/P5,2026-07-31)────
+# 衍生自 default 母 set(6窗 [6,12,30,60,120,150],crash_fast_weights 长度必须
+# 与之相等);母 set 一字不动。新键在 MTFSExecution 有 None 默认,未带键的 set
+# 行为逐 bit 不变(已回归验证)。机制(D&M 2016/Garg et al. 2021):崩盘态
+# (vol_scale 触底)起 crash_recovery_days 个交易日内,空腿名义×short_leg_crash_scale
+# (净敞口偏多)/composite 权重向快窗倾斜。三个变体隔离归因:全量/仅空腿/仅快窗。
+# 参赛还需 grid30.json 加 run 条目(与 fc 先例同模式)。
+PARAM_SETS['crash_adaptive'] = {**PARAM_SETS['default'],
+    'short_leg_crash_scale': 0.5, 'crash_recovery_days': 30,
+    'crash_fast_weights': [0.30, 0.25, 0.20, 0.15, 0.07, 0.03]}
+PARAM_SETS['crash_shortguard'] = {**PARAM_SETS['default'],
+    'short_leg_crash_scale': 0.5, 'crash_recovery_days': 30}
+PARAM_SETS['crash_fastwin'] = {**PARAM_SETS['default'],
+    'crash_recovery_days': 30,
+    'crash_fast_weights': [0.30, 0.25, 0.20, 0.15, 0.07, 0.03]}
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~ CONFIG LOADING ~~~~~~~~~~~~~~~~~~~~~~

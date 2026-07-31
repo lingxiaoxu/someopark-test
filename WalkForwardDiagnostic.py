@@ -685,7 +685,8 @@ def build_is_oos_decay(dsr_log, oos_pair_summary, wf_data, strategy):
 
 def build_dsr_robustness(dsr_log, wf_data, strategy):
     """
-    DSR Robustness sheet: per pair × per window stats across all param sets (MTFS 35 / MRPT 32).
+    DSR Robustness sheet: per pair × per window stats across all param sets
+    (dynamic — 随 len(PARAM_SETS) 变化; MTFS 38 / MRPT 35 as of 2026-07-31).
 
     Columns: Strategy, Pair, Window, N_Param_Sets, N_Passed_DSR, Pass_Rate,
              Best_Sharpe, Median_Sharpe, Std_Sharpe, Best_DSR, Selected_Param, Selected_DSR

@@ -394,6 +394,19 @@ PARAM_SETS = {
     },
 }
 
+# ── Vol-release 竞争变体(Post-Crash Adaptivity plan P1,2026-07-31)──────────
+# 衍生自 default/aggressive 母 set;母 set 一字不动。vol_release_* 键在 Execution
+# 有 None 默认,未带键的 set 行为逐 bit 不变(已回归验证)。机制:价差 vol 从窗口
+# 峰值回落≥frac 时(短窗探针 probe 天测"当前"),normalized_vol × damp → entry_z
+# 回落——高波动错位期是均值回归最佳入场环境(Gatev et al. 2006),不应被"过去的
+# 尖峰"继续封锁。参赛还需 grid32.json 加 run 条目(与 fc 先例同模式)。
+PARAM_SETS['vol_release'] = {**PARAM_SETS['default'],
+    'vol_release_frac': 0.25, 'vol_release_damp': 0.5, 'vol_release_probe': 8}
+PARAM_SETS['vol_release_deep'] = {**PARAM_SETS['default'],
+    'vol_release_frac': 0.25, 'vol_release_damp': 0.3, 'vol_release_probe': 8}
+PARAM_SETS['aggressive_vol_release'] = {**PARAM_SETS['aggressive'],
+    'vol_release_frac': 0.25, 'vol_release_damp': 0.5, 'vol_release_probe': 8}
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~ CONFIG LOADING ~~~~~~~~~~~~~~~~~~~~~~
 

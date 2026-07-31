@@ -200,6 +200,16 @@ def save_inventory(inv: dict, strategy: str):
 _WF_EXCLUDE_SHARPE = -0.10   # OOS Sharpe below this → exclude
 _WF_EXCLUDE_PNL    = -1000   # OOS cumulative PnL below this ($1M base) → exclude
 
+# ── 黄金窗口加权淘汰(2026-07 崩盘月教训) ─────────────────────────────────
+# 'cumulative' = 旧行为(9窗平权累计);'gold_weighted' = 宏观最相似窗口加权,
+# 防止单个极端月(如2026-07动量崩盘)一票否决在正常宏观环境下表现好的配对
+# (AMD/NVDA、INTC/NVDA 在7/31被累计口径淘汰,恰是反弹期最该干活的配对)。
+# 硬地板: 无论加权多好,累计Sharpe低于 _HARD_FLOOR_SHARPE 仍淘汰(灾难配对兜底)。
+_WF_FILTER_MODE    = 'gold_weighted'
+_GOLD_WIN_WEIGHT   = 2.0    # 黄金窗口(宏观最相似段所在窗∪末窗)权重
+_OTHER_WIN_WEIGHT  = 1.0    # 其余窗口权重
+_HARD_FLOOR_SHARPE = -0.75  # 累计Sharpe硬地板
+
 
 def _load_wf_configs(strategy: str) -> tuple[list, dict]:
     """
@@ -261,6 +271,32 @@ def _load_wf_configs(strategy: str) -> tuple[list, dict]:
         return [], {}
     df = pd.read_csv(pair_csvs[-1])
 
+    # ── 黄金窗口加权统计(用于淘汰判定;任何失败→回退累计口径) ──────────────
+    weighted_stats: dict = {}
+    if _WF_FILTER_MODE == 'gold_weighted':
+        try:
+            _gold_early = _gold_windows_for(wf)          # 已有函数,幂等(store有缓存)
+            _gset = set(_gold_early['gold_windows']) if _gold_early else set()
+            pw_csvs_e = sorted(glob.glob(os.path.join(wf_dir, 'oos_pair_windows_*.csv')),
+                               key=os.path.getmtime)
+            if _gset and pw_csvs_e:
+                pw_e = pd.read_csv(pw_csvs_e[-1])
+                pw_e['w'] = pw_e['window_idx'].map(
+                    lambda i: _GOLD_WIN_WEIGHT if i in _gset else _OTHER_WIN_WEIGHT
+                ) * pw_e['n_days'].clip(lower=1)
+                for pk, grp in pw_e.groupby('Pair'):
+                    wsum = grp['w'].sum()
+                    weighted_stats[pk] = {
+                        'w_sharpe': float((grp['sharpe'] * grp['w']).sum() / wsum),
+                        # PnL 语义: 加权平均"每窗PnL"×窗数 → 与累计PnL同量纲可比
+                        'w_pnl': float((grp['pnl'] * grp['w']).sum() / wsum * len(grp)),
+                    }
+                log.info(f"[wf_config] {strategy.upper()}: gold-weighted filter on "
+                         f"(gold={sorted(_gset)}, {len(weighted_stats)} pairs)")
+        except Exception as _we:
+            weighted_stats = {}
+            log.warning(f"[wf_config] gold-weighted stats failed → cumulative filter ({_we})")
+
     oos_perf = {}
     pair_configs = []
 
@@ -272,17 +308,25 @@ def _load_wf_configs(strategy: str) -> tuple[list, dict]:
         maxdd_pct = float(row.get('MaxDD_pct', 0) or 0)
         n_trades  = int(row.get('N_Trades',    0) or 0)
 
-        # Exclusion logic — OR: either condition alone triggers exclusion
+        # Exclusion logic — OR: either condition alone triggers exclusion.
+        # 加权口径优先;该pair无加权统计时回退累计。硬地板防灾难配对借加权还魂。
+        ws = weighted_stats.get(pair_key)
+        f_sharpe = ws['w_sharpe'] if ws else sharpe
+        f_pnl    = ws['w_pnl']    if ws else pnl
         excluded, reason = False, ''
         if n_trades == 0:
             excluded, reason = True, 'No trades in OOS'
-        elif sharpe < _WF_EXCLUDE_SHARPE or pnl < _WF_EXCLUDE_PNL:
+        elif sharpe < _HARD_FLOOR_SHARPE:
+            excluded, reason = True, f'HardFloor Sharpe={sharpe:.2f}<{_HARD_FLOOR_SHARPE}'
+        elif f_sharpe < _WF_EXCLUDE_SHARPE or f_pnl < _WF_EXCLUDE_PNL:
             excluded = True
             parts = []
-            if sharpe < _WF_EXCLUDE_SHARPE:
-                parts.append(f'Sharpe={sharpe:.2f}<{_WF_EXCLUDE_SHARPE}')
-            if pnl < _WF_EXCLUDE_PNL:
-                parts.append(f'PnL=${pnl:,.0f}<${_WF_EXCLUDE_PNL:,.0f}')
+            if f_sharpe < _WF_EXCLUDE_SHARPE:
+                parts.append(f'wSharpe={f_sharpe:.2f}<{_WF_EXCLUDE_SHARPE}'
+                             if ws else f'Sharpe={sharpe:.2f}<{_WF_EXCLUDE_SHARPE}')
+            if f_pnl < _WF_EXCLUDE_PNL:
+                parts.append(f'wPnL=${f_pnl:,.0f}<${_WF_EXCLUDE_PNL:,.0f}'
+                             if ws else f'PnL=${pnl:,.0f}<${_WF_EXCLUDE_PNL:,.0f}')
             reason = ', '.join(parts)
 
         # Tier
@@ -305,6 +349,9 @@ def _load_wf_configs(strategy: str) -> tuple[list, dict]:
             'tier':        tier,
             'excluded':    excluded,
             'reason':      reason,
+            # 纯展示: 加权口径值,便于排查加权前后淘汰差异(None=该pair无加权统计)
+            'w_sharpe':    round(f_sharpe, 4) if ws else None,
+            'w_pnl':       round(f_pnl, 0) if ws else None,
         }
 
         # Only include pairs that pass filters AND appear in last window's selection
