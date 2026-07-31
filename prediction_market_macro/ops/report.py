@@ -102,6 +102,10 @@ def _story_common(conn, settings, story: list, since: str) -> None:
         story.append(bullet(f"{c['series']} / {c['period']} — {c['state']}"))
 
     section(story, "Watchdog MISSED / SLA")
+    story.append(bullet(
+        "SLA = every active (series, period) must carry a prediction younger than"
+        " 24h; 'last=None' means no prediction has ever been made for that period."
+        " Decision tasks past their window are flagged MISSED and never back-run."))
     missed = _missed(conn, since)
     if missed:
         # bullet(color=...) treats the FIRST char as the marker glyph — feed it an

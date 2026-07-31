@@ -246,8 +246,13 @@ def run_extended(conn, settings) -> str:
     reports = []
     if rep_src.exists():
         rep_dst.mkdir(exist_ok=True)
-        pdfs = sorted(rep_src.glob("*.pdf"), key=lambda p: p.stat().st_mtime,
-                      reverse=True)[:14]
+        # renderer-fix cutoff (2026-07-31: bullet-marker bug + raw alert dumps):
+        # pre-fix PDFs stay on disk as archives but leave the panel — every report
+        # is a snapshot of the same DB, nothing is lost by not listing them
+        _min_mtime = datetime(2026, 7, 31, 12, 0, tzinfo=timezone.utc).timestamp()
+        pdfs = sorted((p for p in rep_src.glob("*.pdf")
+                       if p.stat().st_mtime >= _min_mtime),
+                      key=lambda p: p.stat().st_mtime, reverse=True)[:14]
         for p in pdfs:
             dst = rep_dst / p.name
             if not dst.exists() or dst.stat().st_mtime < p.stat().st_mtime:
