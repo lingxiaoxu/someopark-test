@@ -39,9 +39,12 @@ def _coverage_matrix(conn) -> list[dict]:
 
 
 def _missed(conn, since: str) -> list[dict]:
+    """Unacked watchdog alerts, deduped by message with a count — the report is a
+    summary, not a raw log dump (acked rows are operator-resolved noise)."""
     return [dict(r) for r in conn.execute(
-        "SELECT ts, message FROM alerts WHERE source='watchdog' AND ts>=?"
-        " ORDER BY ts DESC LIMIT 30", (since,))]
+        "SELECT MAX(ts) ts, message, COUNT(*) n FROM alerts"
+        " WHERE source='watchdog' AND ts>=? AND acked=0"
+        " GROUP BY message ORDER BY ts DESC LIMIT 30", (since,))]
 
 
 def _calendar_7d(conn) -> list[dict]:
@@ -101,8 +104,14 @@ def _story_common(conn, settings, story: list, since: str) -> None:
     section(story, "Watchdog MISSED / SLA")
     missed = _missed(conn, since)
     if missed:
-        for mrow in missed[:15]:
-            story.append(bullet(f"{mrow['ts'][:16]}  {mrow['message'][:110]}", "#c0392b"))
+        # bullet(color=...) treats the FIRST char as the marker glyph — feed it an
+        # actual glyph, or the '2' of '2026' becomes the bullet (weekly-report bug)
+        for mrow in missed[:12]:
+            times = f" ×{mrow['n']}" if mrow.get("n", 1) > 1 else ""
+            story.append(bullet(
+                f"⛔ {mrow['ts'][:16]}  {mrow['message'][:100]}{times}", "#c0392b"))
+        if len(missed) > 12:
+            story.append(bullet(f"… +{len(missed) - 12} more (deduped)"))
     else:
         story.append(bullet("None — clean window."))
 
