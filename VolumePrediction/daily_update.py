@@ -1,0 +1,148 @@
+"""
+daily_update — P3 独立日更脚本(不进 conductor;手动/独立 cron 由用户后批)
+==========================================================================
+流程(Plan §9-P3 / §7.6 SLA):
+  1. polygon_loader 增量拉当日 grouped bar(已缓存则幂等跳过)
+  2. service.ops.refresh → 预测工件 outputs/volume_forecast_latest.parquet
+     + outputs/history/volume_forecast_{date}.parquet(原子写,重跑覆盖=幂等)
+  3. strategy_adapters 三建议文件(pairs×2 / aiss / ssrs → outputs/adapters/)
+
+幂等: 原始 bar 不可变(存在即跳过);工件与建议文件按日期原子覆盖写。
+--dry-run: 只读体检+计划报告,零写入。
+失败语义: refresh 失败 → 退出码 1(工件保留昨日,health 标 stale,§7.6);
+单个 adapter 失败不阻断其余,汇总入 exit code 2。
+
+运行(仓库根,先 source .env 使 POLYGON_API_KEY 可见):
+  set -a && source .env && set +a && \
+  conda run -n someopark_run python -m VolumePrediction.daily_update
+
+# ── cron 行(供用户后批,本脚本绝不自行安装;§7.6 SLA 16:15-17:00 ET)──
+# 20 16 * * 1-5 cd /Users/xuling/code/someopark-test && set -a && . ./.env && set +a && conda run -n someopark_run python -m VolumePrediction.daily_update >> VolumePrediction/logs/daily_update_cron.log 2>&1
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Optional
+
+import pandas as pd
+
+from VolumePrediction.common import OUT, get_logger
+from VolumePrediction.service import VolumeService
+
+log = get_logger("daily_update")
+
+
+def _target_date(date: Optional[str]) -> str:
+    """目标交易日: 显式指定,否则 ET 今日(含)之前最近的 NYSE 交易日。"""
+    if date:
+        return date
+    from VolumePrediction.data import polygon_loader as pl
+    today = pd.Timestamp.now(tz="America/New_York").strftime("%Y-%m-%d")
+    days = pl.trading_days("2026-01-01", today)
+    if not days:
+        raise RuntimeError("no trading days resolved — calendar unavailable")
+    return days[-1]
+
+
+def dry_run_report(svc: VolumeService, date: Optional[str]) -> dict:
+    """零写入体检: 目标日/缓存/工件新鲜度/密钥可见性/计划写入清单。"""
+    target = _target_date(date)
+    raw_exists = (svc.raw / f"grouped_{target}.parquet").exists()
+    health = svc.ops.health()
+    planned = [str(OUT / "volume_forecast_latest.parquet"),
+               str(OUT / "history" / f"volume_forecast_{target}.parquet")] + [
+        str(OUT / "adapters" / f)
+        for f in (f"pairs_mrpt_advice_{target}.json",
+                  f"pairs_mtfs_advice_{target}.json",
+                  f"aiss_advice_{target}.json",
+                  f"ssrs_advice_{target}.json")]
+    return {"mode": "dry_run", "target_date": target,
+            "raw_cached": raw_exists,
+            "would_fetch": not raw_exists,
+            "polygon_key_visible": bool(os.environ.get("POLYGON_API_KEY")),
+            "health": health, "planned_writes": planned}
+
+
+def run(date: Optional[str] = None, fetch: bool = True,
+        skip_adapters: bool = False) -> dict:
+    svc = VolumeService()
+    target = _target_date(date)
+    log.info(f"daily_update start: target={target} fetch={fetch}")
+
+    # 1+2) 增量拉取 + 预测工件(service.ops.refresh 内含 ensure_day 幂等拉取)
+    res = svc.ops.refresh(date=target, fetch=fetch)
+    if res.get("status") != "ok":
+        log.error(f"refresh failed: {res}")
+        return {"status": "error", "stage": "refresh", "detail": res}
+    asof = res["asof"]
+
+    # 3) 三类 adapter 建议文件(pairs 两策略共 4 份;单个失败不阻断)
+    adapters: dict[str, dict] = {}
+    if not skip_adapters:
+        from VolumePrediction.strategy_adapters import (aiss_adapter,
+                                                        pairs_adapter,
+                                                        ssrs_adapter)
+        jobs = [("pairs_mrpt", lambda: pairs_adapter.run("mrpt", date=asof, service=svc)),
+                ("pairs_mtfs", lambda: pairs_adapter.run("mtfs", date=asof, service=svc)),
+                ("aiss", lambda: aiss_adapter.run(date=asof, service=svc)),
+                ("ssrs", lambda: ssrs_adapter.run(date=asof, service=svc))]
+        for name, job in jobs:
+            try:
+                adv = job()
+                adapters[name] = {"status": "ok",
+                                  "warnings": adv.get("warnings", [])}
+            except Exception as e:  # noqa: BLE001 — 单 adapter 失败不阻断,汇总上报
+                log.error(f"adapter {name} failed: {e}")
+                adapters[name] = {"status": "error", "error": str(e)}
+
+    # ── ③接线影子双算(W3/W4;2026-08-01,零接触策略代码;fail-open 附加步) ──
+    wiring = None
+    if not skip_adapters:
+        try:
+            from VolumePrediction import wiring_shadow
+            ws = wiring_shadow.run(asof, service=svc)
+            wiring = {"status": ws.get("status"),
+                      "w3_flips": (ws.get("w3") or {}).get("flips"),
+                      "w4_ratio_median": (ws.get("w4") or {}).get("ratio_median")}
+        except Exception as e:  # noqa: BLE001 — 影子失败绝不影响主流程
+            log.error(f"wiring_shadow failed (non-fatal): {e}")
+            wiring = {"status": "error", "error": str(e)}
+
+    health = svc.ops.health()
+    out = {"status": "ok", "asof": asof, "refresh": res,
+           "adapters": adapters, "health": health,
+           "wiring_shadow": wiring}
+    if any(v.get("status") == "error" for v in adapters.values()):
+        out["status"] = "partial"
+    log.info(f"daily_update done: {out['status']} asof={asof} "
+             f"n={res.get('n')} adapters={ {k: v['status'] for k, v in adapters.items()} }")
+    return out
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        description="VolumePrediction 日更(P3;独立脚本,幂等可重跑)")
+    ap.add_argument("--date", default=None, help="目标交易日 YYYY-MM-DD(默认最近)")
+    ap.add_argument("--dry-run", action="store_true", help="只读体检,零写入")
+    ap.add_argument("--no-fetch", action="store_true",
+                    help="跳过 Polygon 拉取,只用已缓存 bar 重算工件")
+    ap.add_argument("--skip-adapters", action="store_true",
+                    help="只刷预测工件,不产 adapter 建议文件")
+    a = ap.parse_args()
+
+    if a.dry_run:
+        rep = dry_run_report(VolumeService(), a.date)
+        print(json.dumps(rep, indent=2, ensure_ascii=False, default=str))
+        return 0
+
+    res = run(date=a.date, fetch=not a.no_fetch, skip_adapters=a.skip_adapters)
+    print(json.dumps(res, indent=2, ensure_ascii=False, default=str))
+    return {"ok": 0, "partial": 2}.get(res.get("status"), 1)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

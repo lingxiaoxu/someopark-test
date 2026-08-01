@@ -130,3 +130,9 @@ dfm/
 crypto-dev/
 .brv/
 .paper_review/
+
+# VolumePrediction: 代码入库;重产物/日志不入库(outputs顶层md报告保留)
+VolumePrediction/outputs/*
+!VolumePrediction/outputs/*.md
+VolumePrediction/logs/
+VolumePrediction/**/__pycache__/

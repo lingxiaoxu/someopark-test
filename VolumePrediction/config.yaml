@@ -1,0 +1,173 @@
+# VolumePrediction 中央模块配置(Plan B §7.4 骨架的实施版)
+# 环境: someopark_run | 数据写入仅 price_data/volume_prediction/ | 输出仅 VolumePrediction/outputs/
+
+universe:
+  top_n: 3000
+  rebalance_month: 6              # 每年 6 月最后一个交易日按前 12 个月日均美元量重构
+  min_price: 1.0
+  ipo_seasoning_days: 60
+  types_allowed: [CS, ADRC]       # 普通股/ADR;ETF 经 service_universe 并集单独入池
+  service_extra:                  # 服务宇宙扩集(§6.1): 四策略实际标的,ETF 打 etf 旗标
+    etfs: [XLB, XLC, XLE, XLF, XLI, XLK, XLP, XLRE, XLU, XLV, XLY, SOXX, SMH, SPY]
+
+target:
+  kind: eta                       # η = v − ma5(v)
+  ma_window: 5
+  volume_def: dollar              # V := v_shares × vw(§7.1;拆股不变量)
+
+features:
+  groups: [tech, fund1, fund2, calendar, earnings]
+  fund2_map_file: outputs/fund2_feature_map.md   # P0 产出(G3 验收物)
+
+models:
+  paper:                          # G4: 论文精确规格,不调参
+    ols: {}
+    nn:  {layers: [32, 16, 8], activation: relu}
+    rnn: {lstm_hidden: 32, seq_len: 10}
+  train:
+    optimizer: adam               # 默认参(论文 A.1)
+    batch: 1024
+    epochs: 50
+    seeds: 5
+    fill_policy: paper            # paper=零填充 | legacy=中位数(58 步轨,§7.2)
+    mps_tolerance_r2_pp: 0.3      # §7.11-5 复现容差带
+
+econ:
+  lambda_form: "0.2/V"
+  lambda_alt: "0.2*sqrt(1/V)"     # 注16 鲁棒性
+  impact_coef: 0.1                # PriceImpact = 0.1 × 参与率(Kyle)
+  mu_grid: [1.0e-9, 1.0e-8, 1.0e-7, 1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3]
+  aum_scenarios: [1.0e7, 1.0e8, 1.0e9, 1.0e10]   # 论文四档
+
+split:
+  paper: {train: ["2019-01-01", "2021-12-31"], test: ["2022-01-01", "2023-12-31"]}
+  extended_oos: ["2024-01-01", null]              # 论文外延展验证(§7.11-2)
+
+service:
+  staleness_max_days: 3
+  refresh_deadline_et: "17:00"
+  production_model: lgbm_prodv6_20260731   # 2026-08-01 用户批准晋升(P3达标);真值以 registry.production 为准,refresh 按其分发,失败大声回退 ma5
+
+strategy_profiles:                # §5.7 六剖面(μ 待 P2 校准,先记 schema+冷启动)
+  pairs_entry:    {mode: event,    mu_source: calibrated, mu_key: pairs_decay,  constraints: {adv_cap: 0.20, dtl_max: 5, leg_joint: true}}
+  pairs_exit:     {mode: event,    mu_source: calibrated, mu_key: pairs_decay,  constraints: {adv_cap: 0.20, dtl_max: 5, leg_joint: true}}
+  pairs_stop:     {mode: urgent,   mu_source: inf,        constraints: {adv_cap: 0.20}}
+  aiss_rebalance: {mode: tracking, mu_source: calibrated, mu_key: aiss_mom_decay, constraints: {adv_cap: 0.20, basket: true}}
+  aiss_emergency: {mode: urgent,   mu_source: inf,        constraints: {adv_cap: 0.20}}
+  ssrs_rebalance: {mode: tracking, mu_source: calibrated, mu_key: ssrs_mom_decay, constraints: {adv_cap: 0.20}}
+
+consume_paths:                    # §5.8/附录 D: 全部只读
+  pair_universe: [pair_universe_mrpt.json, pair_universe_mtfs.json]
+  pair_universe_history: pair_universe_history/
+  inventories:
+    mrpt: inventory_mrpt.json
+    mtfs: inventory_mtfs.json
+    aiss: qlib-main/semiconductor_strategy/inventory_aiss.json
+    ssrs: qlib-main/sector_rotation/inventory_sector_rotation.json
+  accounts:
+    aiss: qlib-main/semiconductor_strategy/account_aiss.json
+    ssrs: qlib-main/sector_rotation/account_ssrs.json
+  signals_glob: trading_signals/combined_signals_*.json
+  ledgers:
+    aiss: qlib-main/semiconductor_strategy/trade_ledger_aiss.jsonl
+    ssrs: qlib-main/sector_rotation/trade_ledger_ssrs.jsonl
+  aiss_subsector_map_snapshot: config 静态快照见 aiss_subsectors 节
+
+aiss_subsectors_snapshot:            # P0 审计 12 快照(2026-07-23,自 AISS universe.py 对拍)
+  ai_gpu: [NVDA, ALAB, ARM]
+  custom_asic: [AVGO, MRVL, CRDO]
+  equipment: [KLAC, LRCX, AMAT]
+  memory_hbm: [MU, WDC, SIMO]
+  foundry: [TSM, UMC, GFS]
+  analog_defense: [TXN, ADI, MCHP]
+  logic_cpu: [AMD, INTC, ARM]
+  rf_edge: [QCOM, SWKS, QRVO]
+
+paths:
+  data_root: ../price_data/volume_prediction    # 相对 VolumePrediction/
+  raw: ../price_data/volume_prediction/raw
+  splits_cache: ../price_data/volume_prediction/splits/splits_cache.json
+  earnings_cache: ../price_data/volume_prediction/earnings/earnings_cache_vp.json
+  outputs: outputs
+  logs: logs
+
+polygon:
+  base: https://api.polygon.io
+  throttle_seconds: 0.15          # 温和节流;P0.2 实测后调
+  max_retries: 5
+  backoff_base: 2.0
+
+fred:                             # F 组 73 列(72 系列+date)——自旧作 fred/ 目录逐一恢复,精确复现
+  series:
+    - BAA10Y
+    - BAMLC0A0CM
+    - BAMLC0A1CAAA
+    - BAMLC0A4CBBB
+    - BAMLC0A4CBBBEY
+    - BAMLCC0A0CMTRIV
+    - BAMLH0A0HYM2
+    - BAMLH0A0HYM2EY
+    - BAMLH0A1HYBB
+    - BAMLH0A3HYC
+    - BAMLH0A3HYCEY
+    - CBBTCUSD
+    - CBETHUSD
+    - DAAA
+    - DCOILBRENTEU
+    - DCOILWTICO
+    - DEXCHUS
+    - DEXJPUS
+    - DEXSZUS
+    - DEXUSEU
+    - DFEDTARU
+    - DFF
+    - DFII10
+    - DFII5
+    - DGS1
+    - DGS10
+    - DGS1MO
+    - DGS2
+    - DGS20
+    - DGS3
+    - DGS30
+    - DGS3MO
+    - DGS5
+    - DJIA
+    - DLTIIT
+    - DPRIME
+    - DTB3
+    - DTWEXAFEGS
+    - DTWEXBGS
+    - ECBDFR
+    - ECBMLFR
+    - EFFR
+    - EFFRVOL
+    - GVZCLS
+    - IUDSOIA
+    - IUDZOS2
+    - NASDAQ100
+    - NASDAQCOM
+    - NIKKEI225
+    - OVXCLS
+    - RIFSPPFAAD90NB
+    - RRPONTSYAWARD
+    - RRPONTSYD
+    - RVXCLS
+    - SOFR
+    - SOFR30DAYAVG
+    - SOFR90DAYAVG
+    - SP500
+    - T10Y2Y
+    - T10Y3M
+    - T10YIE
+    - T5YFF
+    - T5YIE
+    - T5YIFR
+    - THREEFF2
+    - THREEFYTP10
+    - USEPUINDXD
+    - USRECD
+    - USRECDM
+    - VIXCLS
+    - VXNCLS
+    - VXVCLS
