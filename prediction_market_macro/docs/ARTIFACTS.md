@@ -208,3 +208,9 @@ frontend_export.run → public/data/macro_*.json（NaN 防御、生产模型过�
 4. **sweep 表主次误导**（全红置顶像"系统亏钱"）→ 移入"方法学明细"分区并在本文档写明它只统计边际线。
 5. **info 巡检刷屏**淹没真告警 → 覆盖矩阵折叠 info 级，error/warn 常显。
 6. **已知重复**：校准页的 30d WF 摘要与 WF 实验室同源不同刻，数字可能短暂不一致——按导出时间戳判断新旧，属设计内。
+7. **已结算市场不下架**（KXFED 26JUL 全腿结算后仍上板）：根因是 `sync_settlements` 对 contracts
+   用 INSERT OR IGNORE——已存在的 'active' 行不会被改写，而 Kalshi 列表 API 结算后不再返回该合约，
+   状态永远停在结算前。修复：结算落库时显式 UPDATE status='settled'（kalshi_md.py）+ 一次性回填
+   30 行存量；看板/分歧等按 status='active' 取期数的视图自动痊愈。
+8. **对比表口径二次修订**：三线表"大热线"改为实盘口径（与 Bet 历史同数字，last30/last60 取
+   30/60 天跑的 streams.argmax；weekly 新增 60d 跑）；选注器数据集复刻退居 `ml.baseline`。

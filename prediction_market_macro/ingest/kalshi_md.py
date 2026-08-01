@@ -179,6 +179,13 @@ class KalshiMD:
                 (m["ticker"], series, evt, period, m.get("yes_sub_title"),
                  m.get("strike_type"), m.get("floor_strike"), m.get("cap_strike"),
                  m.get("close_time"), "settled", now))
+            # OR IGNORE leaves a pre-existing 'active' row untouched — Kalshi's
+            # listing stops returning settled markets, so without this the board
+            # keeps showing decided markets forever (KXFED 26JUL bug)
+            if m.get("result") in ("yes", "no"):
+                self._conn.execute(
+                    "UPDATE contracts SET status='settled' WHERE ticker=?"
+                    " AND status='active'", (m["ticker"],))
             n += 1
         self._conn.commit()
         return n
