@@ -1252,6 +1252,9 @@
     "priceTrack": "時価評価カーブ",
     "colName": "名称",
     "download": "ダウンロード",
-    "skipped": "スキップ"
+    "skipped": "スキップ",
+    "trackRecord": "戦績（ハイブリッド）",
+    "colSpan": "期間",
+    "trackOpen": "保有中"
   }
 }

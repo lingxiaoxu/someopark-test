@@ -68,7 +68,7 @@ const ABOUT: Record<string, string> = {
   macro_energy:      'energy series (KXWTIW WTI weekly, KXNATGASW Henry Hub weekly, KXAAAGASW AAA gasoline) — GBM-on-futures model with EIA storage-surprise tilt + AAA daily anchor; predictions + decisions from the board',
   macro_divergence:  'model-vs-market divergence ranking (gap_norm per series+period; > 0.15 is notable)',
   macro_decisions:   'the decision log (enter/exit/pass with fair/ask/net_edge/size/note) + latest mark-to-market per open position',
-  macro_performance: 'paper bankroll, unrealized PnL, open/settled stake by series',
+  macro_performance: 'the betting track record (hybrid rule): track.history = record through 2026-07-31, track.live = production bets from the 2026-07-31 rules go-live (settled + open with unrealized marks), track.combined = the headline W-L/PnL/ROI; plus paper bankroll and mode',
   macro_calibration: 'out-of-sample experiments: Brier model vs market per horizon + the real-money gate note (model must beat market before real money)',
   macro_coverage:    'series × period coverage states (predicted/scheduled), missed list, watchdog alerts',
   macro_risk:        'risk limits (per event/family/cluster/gross), scenario max loss, open exposure per series+period',

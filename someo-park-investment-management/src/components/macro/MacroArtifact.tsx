@@ -441,11 +441,16 @@ function PerformanceView() {
   const { data, loading, error } = useMacro<any>('macro_performance');
   const { data: pt } = useMacroPoll<MacroPricetrack>(getMacroPricetrack, 60000);
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
-  const open: any[] = data?.open_by_series ?? [];
-  const settled: any[] = data?.settled_by_series ?? [];
-  const byOrigin: any[] = data?.settled_by_origin ?? [];
-  const openKind: any[] = data?.open_by_kind ?? [];
+  const tr = data?.track;
+  const hist = tr?.history;
+  const liveS = tr?.live?.settled;
+  const liveO = tr?.live?.open;
+  const comb = tr?.combined;
   const track = pt?.track ?? [];
+  const settledLog: any[] = [...(hist?.trades ?? []), ...(liveS?.trades ?? [])]
+    .sort((a, b) => String(a.day).localeCompare(String(b.day)));
+  let cum = 0;
+  const withCum = settledLog.map((x) => { cum += (x.realized ?? 0); return { ...x, cum }; });
   return (
     <div>
       <Generated ts={data?.generated_at} />
@@ -454,41 +459,64 @@ function PerformanceView() {
         [t('macro.unrealized'), <span style={{ ...mono, color: (data?.unrealized_usd ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(data?.unrealized_usd)}</span>],
         [t('macro.mode'), <Chip color="var(--accent-primary)">{data?.mode ?? '—'}</Chip>],
       ]} />
-      <SectionTitle>{t('macro.openBySeries')}</SectionTitle>
-      <DataTable
-        cols={[t('macro.colSeries'), t('macro.colOpenN'), t('macro.colStaked')]}
-        rows={open.map((r) => [<span style={mono}>{shortSeries(r.series)}</span>, r.n, money(r.staked)])} />
-      <SectionTitle>{t('macro.settledBySeries')}</SectionTitle>
-      {settled.length ? (
-        <DataTable
-          cols={[t('macro.colSeries'), t('macro.colSettledN'), t('macro.colPnl')]}
-          rows={settled.map((r) => {
-            const pnl = r.realized ?? r.pnl_usd ?? r.pnl;
-            return [<span style={mono}>{shortSeries(r.series)}</span>, r.n,
-              <span style={{ ...mono, color: (pnl ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(pnl)}</span>];
-          })} />
-      ) : (
-        <div className="text-xs py-2" style={{ color: 'var(--text-muted)', ...mono }}>{t('macro.noneSettled')}</div>
-      )}
-      {(byOrigin.length > 0 || openKind.length > 0) && (
+      {comb && (
         <>
-          <SectionTitle>{t('macro.byStrategy')}</SectionTitle>
+          <SectionTitle>{t('macro.trackRecord')}</SectionTitle>
+          <div style={{ fontSize: 12, ...mono, marginBottom: 6 }}>
+            <b>{comb.won}W-{comb.n_trades - comb.won}L</b>
+            {' · '}
+            <span style={{ color: (comb.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>
+              {money(comb.realized)} ({pct(comb.roi)})
+            </span>
+            {' · '}
+            <span style={{ color: 'var(--text-muted)' }}>{comb.n_trades} {t('macro.wfBets')}</span>
+          </div>
           <DataTable
-            cols={[t('macro.colOrigin'), t('macro.colOpenN'), t('macro.colStaked'),
-              t('macro.colSettledN'), t('macro.colPnl')]}
-            rows={['open', 'arb', 'snipe'].map((k) => {
-              const o = openKind.find((r) => r.kind === k);
-              const s = byOrigin.find((r) => (r.origin ?? 'open') === k);
-              if (!o && !s) return null;
-              const pnl = s?.realized;
-              return [
-                <Chip color={kindColor(k)}>{t(`macro.origin_${k}`)}</Chip>,
-                o?.n ?? 0, o?.staked != null ? money(o.staked) : '—',
-                s?.n ?? 0,
-                pnl != null
-                  ? <span style={{ ...mono, color: pnl >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(pnl)}</span>
-                  : '—'];
-            }).filter(Boolean) as any[]} />
+            cols={[t('macro.colSpan'), t('macro.colTrades'), 'W-L', t('macro.winRate'),
+              t('macro.colPnl'), 'ROI']}
+            rows={[
+              hist && [
+                <span style={mono}>{hist.span?.[0]?.slice(5)}–{hist.span?.[1]?.slice(5)}</span>,
+                hist.n_trades, `${hist.won}W-${hist.n_trades - hist.won}L`, pct(hist.win_rate),
+                <span style={{ ...mono, color: (hist.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(hist.realized)}</span>,
+                <span style={{ ...mono, color: (hist.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(hist.roi)}</span>,
+              ],
+              liveS && [
+                <span style={mono}>{tr.cutover?.slice(5)}–</span>,
+                liveS.n_trades,
+                `${liveS.won}W-${liveS.n_trades - liveS.won}L`,
+                liveS.n_trades ? pct(liveS.won / liveS.n_trades) : '—',
+                <span style={{ ...mono, color: (liveS.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(liveS.realized)}</span>,
+                liveS.roi != null ? pct(liveS.roi) : '—',
+              ],
+              liveO && [
+                <span style={{ ...mono, color: 'var(--text-muted)' }}>{t('macro.trackOpen')}</span>,
+                liveO.n, '—', '—',
+                <span style={{ ...mono, color: (liveO.unrealized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(liveO.unrealized)}</span>,
+                '—',
+              ],
+            ].filter(Boolean) as any[]} />
+          {withCum.length > 0 && (
+            <>
+              <SectionTitle>{t('macro.wfBetLog')}</SectionTitle>
+              <div style={{ overflowX: 'auto' }}>
+                <DataTable
+                  cols={[t('macro.wfEntryDay'), t('macro.colSeries'), t('macro.wfBetCol'),
+                    t('macro.colStaked'), t('macro.colVerdict'), t('macro.colPnl'), 'Cum$']}
+                  rows={withCum.slice().reverse().map((x: any) => [
+                    <span style={{ ...mono, fontSize: 10 }}>{String(x.day ?? '').slice(5)}</span>,
+                    <span style={mono}>{shortSeries(x.series)}</span>,
+                    <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{trunc(x.desc, 28)}</span>,
+                    money(x.staked),
+                    <span style={{ color: x.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>
+                      {x.won ? t('macro.betWon') : t('macro.betLost')}
+                    </span>,
+                    <span style={{ ...mono, color: (x.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(x.realized)}</span>,
+                    <span style={{ ...mono, color: x.cum >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(x.cum)}</span>,
+                  ])} />
+              </div>
+            </>
+          )}
         </>
       )}
       {track.length > 0 && (

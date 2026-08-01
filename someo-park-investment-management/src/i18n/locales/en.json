@@ -1281,6 +1281,9 @@
     "priceTrack": "Mark-to-Market Curve",
     "colName": "Name",
     "download": "Download",
-    "skipped": "skipped"
+    "skipped": "skipped",
+    "trackRecord": "Track record (hybrid)",
+    "colSpan": "Span",
+    "trackOpen": "Open"
   }
 }

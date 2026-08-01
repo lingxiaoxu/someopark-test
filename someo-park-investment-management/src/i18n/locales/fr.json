@@ -1252,6 +1252,9 @@
     "priceTrack": "Courbe mark-to-market",
     "colName": "Nom",
     "download": "Télécharger",
-    "skipped": "ignorés"
+    "skipped": "ignorés",
+    "trackRecord": "Historique (hybride)",
+    "colSpan": "Période",
+    "trackOpen": "Ouvert"
   }
 }

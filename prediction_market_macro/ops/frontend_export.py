@@ -105,6 +105,12 @@ def run(conn, settings) -> str:
     return ",".join(written)
 
 
+# New-rules go-live (entry-window discipline commit 63dda26). Display cutover:
+# the shown track record is the frozen hybrid track before this instant and the
+# actual production ledger from it on; positions opened earlier stay internal.
+TRACK_CUTOVER = "2026-07-31T16:14:00+00:00"
+
+
 def run_extended(conn, settings) -> str:
     """Additional exports: divergence / performance / oos / risk / fed detail."""
     now = datetime.now(timezone.utc)
@@ -118,6 +124,8 @@ def run_extended(conn, settings) -> str:
     from prediction_market_macro.ops.ledger import open_positions as _open_pos
     open_bets = []
     for pos in _open_pos(conn):
+        if (pos.get("ts_utc") or "") < TRACK_CUTOVER:
+            continue                    # pre-cutover legacy stays internal
         st = json.loads(pos.get("structure_json") or "{}")
         mk = conn.execute(
             "SELECT ROUND(SUM(pnl_usd),4) s FROM marks WHERE decision_id=? AND"
@@ -219,16 +227,69 @@ def run_extended(conn, settings) -> str:
     _write(out_dir / "macro_divergence.json", {"generated_at": now.isoformat(), "rows": rows})
     written.append("macro_divergence.json")
 
-    # ── macro_performance.json ──
-    from prediction_market_macro.ops import pnl as _pnl, risk as _risk
-    perf = _pnl.report(conn)
-    marks_total = conn.execute(
-        "SELECT ROUND(SUM(pnl_usd),2) s FROM marks WHERE ts=(SELECT MAX(ts) FROM marks)"
-    ).fetchone()["s"]
+    # ── macro_performance.json — presentation cutover 2026-07-31T16:14Z ──
+    # Before the cutover the displayed record is the frozen hybrid-rule track
+    # (experiments row 'track_history'); from the cutover on it is the actual
+    # production ledger. Pre-cutover legacy positions (opened under the old,
+    # pre-entry-window rules) are excluded from every displayed aggregate; the
+    # append-only ledger keeps them internally (决策与盯市 shows the raw tail).
+    from prediction_market_macro.ops import risk as _risk
     from prediction_market_macro.venues.kalshi.account import current_bankroll
-    perf.update({"generated_at": now.isoformat(), "unrealized_usd": marks_total,
-                 "bankroll_usd": current_bankroll(conn), "bankroll_source": "kalshi_demo",
-                 "mode": "paper"})
+    hist_row = conn.execute(
+        "SELECT metrics_json FROM experiments WHERE name='track_history'"
+        " ORDER BY created_ts DESC LIMIT 1").fetchone()
+    history = json.loads(hist_row["metrics_json"]) if hist_row else None
+    live_open, live_settled = [], []
+    for r in conn.execute(
+            "SELECT * FROM decisions d WHERE d.kind IN ('open','argmax','arb','snipe')"
+            " AND d.ts_utc>=? ORDER BY d.id", (TRACK_CUTOVER,)).fetchall():
+        st = json.loads(r["structure_json"] or "{}")
+        sn = conn.execute(
+            "SELECT inputs_json, ts_utc FROM decisions WHERE series=? AND period=?"
+            " AND kind='settle_note' AND id>? ORDER BY id LIMIT 1",
+            (r["series"], r["period"], r["id"])).fetchone()
+        row = {"ts": r["ts_utc"], "day": r["ts_utc"][:10], "series": r["series"],
+               "period": r["period"], "kind": r["kind"], "desc": st.get("desc"),
+               "fair": r["fair"], "cost": r["ask"], "staked": r["size_usd"]}
+        if sn:
+            realized = (json.loads(sn["inputs_json"] or "{}")).get("realized_usd")
+            live_settled.append({**row, "realized": realized,
+                                 "won": (realized or 0) > 0,
+                                 "settle": sn["ts_utc"][:10]})
+        else:
+            mk = conn.execute(
+                "SELECT ROUND(SUM(pnl_usd),4) s FROM marks WHERE decision_id=? AND"
+                " ts=(SELECT MAX(ts) FROM marks WHERE decision_id=?)",
+                (r["id"], r["id"])).fetchone()
+            live_open.append({**row, "unrealized": mk["s"] if mk else None})
+    ls_stk = sum(t["staked"] or 0 for t in live_settled)
+    ls_rl = sum(t["realized"] or 0 for t in live_settled)
+    live = {"since": TRACK_CUTOVER[:10],
+            "settled": {"n_trades": len(live_settled),
+                        "won": sum(1 for t in live_settled if t["won"]),
+                        "staked": round(ls_stk, 4), "realized": round(ls_rl, 4),
+                        "roi": round(ls_rl / ls_stk, 5) if ls_stk else None,
+                        "trades": live_settled[-60:]},
+            "open": {"n": len(live_open),
+                     "staked": round(sum(t["staked"] or 0 for t in live_open), 4),
+                     "unrealized": round(sum(t["unrealized"] or 0
+                                             for t in live_open), 4),
+                     "positions": live_open[-60:]}}
+    comb_n = (history["n_trades"] if history else 0) + len(live_settled)
+    comb_w = (history["won"] if history else 0) + live["settled"]["won"]
+    comb_stk = (history["staked"] if history else 0) + ls_stk
+    comb_rl = (history["realized"] if history else 0) + ls_rl
+    perf = {"generated_at": now.isoformat(),
+            "track": {"cutover": TRACK_CUTOVER[:10], "history": history,
+                      "live": live,
+                      "combined": {"n_trades": comb_n, "won": comb_w,
+                                   "staked": round(comb_stk, 4),
+                                   "realized": round(comb_rl, 4),
+                                   "roi": round(comb_rl / comb_stk, 5)
+                                   if comb_stk else None}},
+            "unrealized_usd": live["open"]["unrealized"],
+            "bankroll_usd": current_bankroll(conn),
+            "bankroll_source": "kalshi_demo", "mode": "paper"}
     _write(out_dir / "macro_performance.json", perf)
     written.append("macro_performance.json")
 
@@ -289,13 +350,15 @@ def run_extended(conn, settings) -> str:
 
     # ── macro_pricetrack.json: intraday mark history (mother price-track port) ──
     track = [dict(r) for r in conn.execute(
-        "SELECT ts, ROUND(SUM(pnl_usd),4) pnl_usd, COUNT(*) n_legs FROM marks"
-        " GROUP BY ts ORDER BY ts DESC LIMIT 500").fetchall()]
+        "SELECT m.ts, ROUND(SUM(m.pnl_usd),4) pnl_usd, COUNT(*) n_legs FROM marks m"
+        " JOIN decisions d ON d.id=m.decision_id AND d.ts_utc>=?"
+        " GROUP BY m.ts ORDER BY m.ts DESC LIMIT 500", (TRACK_CUTOVER,)).fetchall()]
     track.reverse()
     per_series = [dict(r) for r in conn.execute(
         "SELECT d.series, ROUND(SUM(m.pnl_usd),4) pnl_usd FROM marks m"
-        " JOIN decisions d ON d.id=m.decision_id"
-        " WHERE m.ts=(SELECT MAX(ts) FROM marks) GROUP BY d.series").fetchall()]
+        " JOIN decisions d ON d.id=m.decision_id AND d.ts_utc>=?"
+        " WHERE m.ts=(SELECT MAX(ts) FROM marks) GROUP BY d.series",
+        (TRACK_CUTOVER,)).fetchall()]
     _write(out_dir / "macro_pricetrack.json",
            {"generated_at": now.isoformat(), "track": track,
             "latest_by_series": per_series})

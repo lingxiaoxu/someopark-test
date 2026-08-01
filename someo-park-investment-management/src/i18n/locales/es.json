@@ -1252,6 +1252,9 @@
     "priceTrack": "Curva mark-to-market",
     "colName": "Nombre",
     "download": "Descargar",
-    "skipped": "omitidos"
+    "skipped": "omitidos",
+    "trackRecord": "Historial (híbrido)",
+    "colSpan": "Período",
+    "trackOpen": "Abierto"
   }
 }

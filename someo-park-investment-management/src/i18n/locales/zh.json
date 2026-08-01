@@ -1279,6 +1279,9 @@
     "priceTrack": "盯市曲线",
     "colName": "名称",
     "download": "下载",
-    "skipped": "跳过"
+    "skipped": "跳过",
+    "trackRecord": "战绩（混合口径）",
+    "colSpan": "期间",
+    "trackOpen": "在场"
   }
 }

@@ -115,12 +115,17 @@ frontend_export.run → public/data/macro_*.json（NaN 防御、生产模型过�
 - **盯市**：最新 marks 快照，`pnl_usd` = (mid−entry)×count−fee，未实现。
 
 ### 8. 业绩表现（macro_performance.json + macro_pricetrack.json）
-- **含义**：paper 账本汇总 + 盯市曲线。
-- **计算**：`pnl.report`——开仓按系列聚合；**结算按 (series,period) 取首个 settle_note**
-  （防历史重复行）；按 origin（open/argmax/arb/snipe）分拆结算盈亏；open_by_kind = 当前未平仓。
-- **输出读法**：bankroll（Kalshi demo）、unrealized（最新盯市合计）、mode=paper 常挂。
-  pricetrack 图 = 每次 tick 盯市的组合 PnL 时间线（≤500 点）。
-- **坑**：**未平仓多为 6-7 月旧规则开的仓**，红色未实现 PnL 是旧规则的遗产；新规则的水平看 WF 实验室。
+- **含义**：对外的**战绩页（混合口径，2026-08-01 展示口径切换）**。展示线 =
+  `track.history`（截至 2026-07-31 的混合规则战绩，取自冻结行 `experiments.track_history`，
+  23 注 8W-15L +$1.56，跨度 07-01~07-23，永不随周程重跑漂移）+
+  `track.live`（2026-07-31T16:14Z 新规则上线起的真实生产台账：已结算注 + 在场注及未实现盯市）
+  + `track.combined`（合计 W-L/PnL/ROI 头条）。
+- **展示政策（内部记录）**：切换点 = 入场窗纪律 commit 63dda26 落地时刻。**切换点之前旧规则
+  开出的 43 注存量仓不进任何展示聚合**（业绩/今日下注/盯市曲线均按 `TRACK_CUTOVER` 过滤），
+  但 append-only 台账完整保留，「决策与盯市」原始尾部仍可见，结算照常进行。
+- **输出读法**：头条 = combined W-L·PnL·ROI；分段表 = 期间(07-01~07-23) / 07-31起 / 在场行；
+  逐注日志（W/L chip + 累计列）；bankroll（Kalshi demo）、mode=paper 常挂；
+  pricetrack 图 = 新规则时代持仓的 tick 盯市 PnL 时间线。
 
 ### 9. 模型 vs 市场（macro_divergence.json）
 - **含义**：模型与市场分歧排行，"哪里我们最不同意市场"。
