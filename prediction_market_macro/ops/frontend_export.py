@@ -111,6 +111,69 @@ def run_extended(conn, settings) -> str:
     out_dir = settings.frontend_data
     written = []
 
+    # ── macro_bets.json: the direct "what are we betting" view ──
+    # ① open bets (placed, unsettled, with latest mark) ② today's stance per
+    # event inside the 7d entry window (bet placed or PASS + gate reason)
+    # ③ releases in the next 14 days — the "what's next" runway
+    from prediction_market_macro.ops.ledger import open_positions as _open_pos
+    open_bets = []
+    for pos in _open_pos(conn):
+        st = json.loads(pos.get("structure_json") or "{}")
+        mk = conn.execute(
+            "SELECT ROUND(SUM(pnl_usd),4) s FROM marks WHERE decision_id=? AND"
+            " ts=(SELECT MAX(ts) FROM marks WHERE decision_id=?)",
+            (pos["id"], pos["id"])).fetchone()
+        open_bets.append({
+            "ts": pos["ts_utc"], "series": pos["series"], "period": pos["period"],
+            "kind": pos["kind"], "desc": st.get("desc"), "fair": pos["fair"],
+            "entry": pos["ask"], "size_usd": pos["size_usd"],
+            "unrealized": mk["s"] if mk else None})
+    open_bets.sort(key=lambda x: x["ts"] or "", reverse=True)
+    stances = []
+    for spec in REGISTRY.values():
+        for r in conn.execute(
+                "SELECT period, MAX(close_time) ct FROM contracts WHERE series=?"
+                " AND status='active' GROUP BY period", (spec.ticker,)).fetchall():
+            key = kalshi_period_to_key(r["period"])
+            if not key or not r["ct"]:
+                continue
+            try:
+                ct = datetime.fromisoformat(r["ct"].replace("Z", "+00:00"))
+            except ValueError:
+                continue
+            dtc = (ct - now).total_seconds() / 86400.0
+            if not (-0.5 <= dtc <= 7.5):
+                continue
+            de = conn.execute(
+                "SELECT ts_utc, kind, fair, ask, net_edge, size_usd, note,"
+                " structure_json FROM decisions WHERE series=? AND period=?"
+                " AND kind IN ('open','argmax','arb','snipe','pass')"
+                " ORDER BY id DESC LIMIT 1", (spec.ticker, key)).fetchone()
+            stj = json.loads(de["structure_json"] or "{}") if de else {}
+            stances.append({
+                "series": spec.ticker, "period": key, "close_ts": ct.isoformat(),
+                "days_to_close": round(dtc, 1),
+                "decision": ({"ts": de["ts_utc"], "kind": de["kind"],
+                              "fair": de["fair"], "cost": de["ask"],
+                              "net_edge": de["net_edge"], "size_usd": de["size_usd"],
+                              "note": de["note"], "desc": stj.get("desc")}
+                             if de else None)})
+    stances.sort(key=lambda x: x["days_to_close"])
+    upcoming = []
+    for spec in REGISTRY.values():
+        nr = cal.next_release(spec.calendar, now)
+        if nr:
+            days = (nr.scheduled_ts - now).total_seconds() / 86400.0
+            if 0 <= days <= 14:
+                upcoming.append({"series": spec.ticker, "period": nr.period,
+                                 "scheduled_ts": nr.scheduled_ts.isoformat(),
+                                 "days": round(days, 1)})
+    upcoming.sort(key=lambda x: x["scheduled_ts"])
+    _write(out_dir / "macro_bets.json",
+           {"generated_at": now.isoformat(), "open_bets": open_bets,
+            "stances": stances, "upcoming": upcoming})
+    written.append("macro_bets.json")
+
     # ── macro_divergence.json: model vs market gap ranking per (series, period) ──
     from prediction_market_macro.strategy.devig import ladder_implied
     rows = []

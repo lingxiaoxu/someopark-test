@@ -651,6 +651,80 @@ function CalibrationView() {
   );
 }
 
+// ── Bets: the direct "what are we betting" view ──────────────────────────────
+function BetsView() {
+  const { t } = useTranslation();
+  const { data, loading, error } = useMacro<any>('macro_bets');
+  if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
+  const open: any[] = data?.open_bets ?? [];
+  const stances: any[] = data?.stances ?? [];
+  const upcoming: any[] = data?.upcoming ?? [];
+  const unreal = open.reduce((s, b) => s + (b.unrealized ?? 0), 0);
+  return (
+    <div>
+      <Generated ts={data?.generated_at} />
+      <SectionTitle>{t('macro.betsToday')}</SectionTitle>
+      {stances.length ? (
+        <div style={{ overflowX: 'auto' }}>
+          <DataTable
+            cols={[t('macro.colSeries'), t('macro.colPeriod'), t('macro.colDtc'),
+              t('macro.colAction'), t('macro.wfBetCol'), 'fair', 'cost',
+              t('macro.colReason')]}
+            rows={stances.map((s) => {
+              const d = s.decision;
+              const isBet = d && d.kind !== 'pass';
+              return [
+                <span style={mono}>{shortSeries(s.series)}</span>,
+                <span style={{ ...mono, fontSize: 10 }}>{s.period}</span>,
+                <span style={mono}>{s.days_to_close}d</span>,
+                d ? <Chip color={kindColor(d.kind)}>{d.kind === 'pass' ? t('macro.statusPass') : d.kind}</Chip>
+                  : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+                <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{trunc(d?.desc, 26)}</span>,
+                d?.fair != null ? fmt(d.fair, 2) : '—',
+                d?.cost != null ? fmt(d.cost, 2) : '—',
+                <span style={{ color: isBet ? 'var(--success)' : 'var(--text-muted)', fontSize: 10 }}>
+                  {isBet ? money(d.size_usd) : trunc(d?.note, 30)}
+                </span>,
+              ];
+            })} />
+        </div>
+      ) : <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>—</div>}
+      <SectionTitle>
+        {t('macro.betsOpen')} · {open.length} ·{' '}
+        <span style={{ color: unreal >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(unreal)}</span>
+      </SectionTitle>
+      <div style={{ overflowX: 'auto' }}>
+        <DataTable
+          cols={[t('macro.wfEntryDay'), t('macro.colSeries'), t('macro.colPeriod'),
+            t('macro.colAction'), t('macro.wfBetCol'), t('macro.colStaked'),
+            t('macro.colUnrealized')]}
+          rows={open.map((b) => [
+            <span style={{ ...mono, fontSize: 10 }}>{String(b.ts ?? '').slice(5, 10)}</span>,
+            <span style={mono}>{shortSeries(b.series)}</span>,
+            <span style={{ ...mono, fontSize: 10 }}>{b.period}</span>,
+            <Chip color={kindColor(b.kind)}>{b.kind}</Chip>,
+            <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{trunc(b.desc, 28)}</span>,
+            money(b.size_usd),
+            b.unrealized != null
+              ? <span style={{ ...mono, color: b.unrealized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(b.unrealized)}</span>
+              : '—',
+          ])} />
+      </div>
+      <SectionTitle>{t('macro.betsUpcoming')}</SectionTitle>
+      <DataTable
+        cols={[t('macro.colSeries'), t('macro.colPeriod'), t('macro.colTime'), t('macro.colCountdown')]}
+        rows={upcoming.map((u) => [
+          <span style={mono}>{shortSeries(u.series)}</span>, u.period, dt(u.scheduled_ts),
+          <span style={{ color: 'var(--success)', ...mono }}>{u.days}d</span>,
+        ])} />
+      <div style={{ fontSize: 10.5, color: 'var(--text-muted)', ...mono, marginTop: 6 }}>
+        {t('macro.betsNote')}
+      </div>
+      <Ai view="macro_bets" />
+    </div>
+  );
+}
+
 // ── Coverage ──────────────────────────────────────────────────────────────────
 const STATE_COLOR: Record<string, string> = {
   predicted: 'var(--success)',
@@ -1069,6 +1143,7 @@ function WalkforwardView() {
 }
 
 export const REGISTRY: Record<string, ComponentType<any>> = {
+  macro_bets: BetsView,
   macro_board: BoardView,
   macro_fed: FedView,
   macro_inflation: InflationView,

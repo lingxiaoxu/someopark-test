@@ -1,4 +1,4 @@
-# ARTIFACTS.md — 前端 14 个 Macro 视图全解（每个视图：含义 / 输入 / 计算 / 性质 / 输出读法 / 参数）
+# ARTIFACTS.md — 前端 15 个 Macro 视图全解（每个视图：含义 / 输入 / 计算 / 性质 / 输出读法 / 参数）
 
 > 2026-07-31 定稿。配套代码：`ops/frontend_export.py`（导出）、
 > `someo-park-investment-management/src/components/macro/MacroArtifact.tsx`（渲染）、
@@ -88,6 +88,23 @@ frontend_export.run → public/data/macro_*.json（NaN 防御、生产模型过�
 ---
 
 ## 分组三：交易与持仓（生产实时）
+
+### 6-bis. 今日下注（macro_bets.json）— 2026-08-01 新增，交易组首位
+- **含义**：**最直接的"我们在下什么注"页**，三段式回答三个问题：
+  1. **近事件决策**：结算前 7 天入场窗口内的每个市场，今天的最新决策——下了就显示
+     方式 chip（open/argmax/arb/snipe）+ 结构 + fair/cost + 投入；没下显示 PASS + **闸门原因**
+     （note 即闸门名：net_edge 不足 / 熵过高 / already_open / 便士下限 / 技能封锁 …）。
+  2. **在场的注**：已下未结算的全部纸面持仓（入场日/方式/结构/投入/最新未实现盯市），
+     标题带合计未实现。
+  3. **接下来 14 天的发布**：即将进入视野的事件跑道（系列/期数/定时/倒计时）。
+- **生成**：`frontend_export.run_extended` bets 段——open_bets 来自 `ledger.open_positions`
+  （+ 逐决策最新 marks）；stances 遍历活跃合约中 `-0.5 ≤ 距结算 ≤ 7.5 天` 的期数，各取台账
+  最新一行（open/argmax/arb/snipe/pass）；upcoming 来自 registry 日历 ≤14 天。
+- **更新**：每次 refresh（每日 05:00 + tick 15 分钟重估后的导出）；性质 = 生产实时。
+- **读法要点**：这一页是"行动指示"，看板是"全景"。PASS 不是失败——它是闸门在工作
+  （13/13 系列模型落后市场时，多数正确动作就是不下）。
+- **chat**：`macro_bets` 已注册（关键词：今日下注/下什么/接下来的 bet/current bets …），
+  Ai 按钮与 SomeoAgent 工具同步可用。
 
 ### 7. 决策与盯市（macro_decisions.json）
 - **含义**：台账最后 200 行 + 最新一次盯市。**台账 append-only**——历史错误行不删除、读取端去重。

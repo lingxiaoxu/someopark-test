@@ -17,7 +17,7 @@ export const MACRO_ARTIFACT_TYPES = [
   'macro_board', 'macro_fed', 'macro_inflation', 'macro_labor', 'macro_energy',
   'macro_divergence', 'macro_decisions', 'macro_performance', 'macro_calibration',
   'macro_coverage', 'macro_risk', 'macro_overview', 'macro_reports',
-  'macro_walkforward',
+  'macro_walkforward', 'macro_bets',
 ] as const
 
 // EN + ZH keyword dictionary for mode-scoped artifact detection (macro mode only).
@@ -36,6 +36,7 @@ export const MACRO_KEYWORD_PATTERNS: Array<{ type: string; title: string; keywor
   { type: 'macro_overview',    title: 'System Overview',    keywords: ['overview', 'how it works', 'system overview', 'methodology', 'what is this', '总览', '概览', '系统说明', '方法论', '原理'] },
   { type: 'macro_reports',     title: 'Reports',            keywords: ['report', 'reports', 'download', 'pdf', '报告', '下载'] },
   { type: 'macro_walkforward', title: 'Walk-Forward Lab',   keywords: ['walk-forward', 'walkforward', 'wf lab', 'bet log', 'bet history', 'ml selector', 'smart switch', 'favourite line', 'edge line', 'entry lead', '走前', '实验室', 'ML 线', 'ML选注', '智能切换', '大热线', '边际线', '三线', 'bet 历史', '逐注', '30天前上线', '入场提前'] },
+  { type: 'macro_bets',        title: "Today's Bets",       keywords: ['today\'s bets', 'todays bets', 'what are we betting', 'current bets', 'open bets', 'next bets', 'bet plan', '今日下注', '下什么', '下注计划', '当前下注', '在场的注', '要下的注', '接下来的bet', '下一个bet'] },
 ]
 
 // artifact type → the macro_*.json file(s) that back it. Family views (inflation /
@@ -56,6 +57,7 @@ const TYPE_TO_FILES: Record<string, string[]> = {
   macro_overview:    ['macro_board.json', 'macro_performance.json', 'macro_oos.json'],
   macro_reports:     ['macro_reports.json'],
   macro_walkforward: ['macro_walkforward.json'],
+  macro_bets:        ['macro_bets.json'],
 }
 
 const ABOUT: Record<string, string> = {
@@ -72,6 +74,7 @@ const ABOUT: Record<string, string> = {
   macro_risk:        'risk limits (per event/family/cluster/gross), scenario max loss, open exposure per series+period',
   macro_overview:    'system digest: board + performance + OOS gate',
   macro_reports:     'daily + weekly PDF reports (board snapshot, open positions & marks, alerts, weekly adds calibration deciles + gates); the panel lists the newest renderer-fixed PDFs',
+  macro_bets:        'the direct "what are we betting" view: open_bets = placed unsettled paper bets with latest unrealized mark; stances = every market inside the 7-day entry window with today\'s decision (bet placed with structure/fair/cost, or PASS with the gate reason); upcoming = releases in the next 14 days. Cadence: full re-decision daily 05:00, book re-check every 15 min',
   macro_walkforward: 'the live 30d track record (production started 30d ago, strict PIT — each day used only that day\'s information) rebuilt daily at 16:00 UTC. daily.streams = hybrid (live rule) / edge (value) / argmax (defer-to-market favourite: max-fair pick, bet only when fair<=cost). ml = three-line walk-forward comparison on the same dataset: top-level windows (last30/last60/all) = ML selector (expanding-window logistic, per-event weights, 0.10-0.90 price window); .baseline = defer-to-market favourite replica; .blend = smart switch that per event follows whichever line has the better trailing settled record (strictly pre-entry). Adoption rule: a challenger must beat the baseline on BOTH windows; blend currently does but the sample is thin and PnL concentrates in few equal-risk bets, so it is displayed as candidate, NOT live. sweep = one full PIT walk-forward per entry lead (1/3/5/7d) + per-series coverage',
 }
 

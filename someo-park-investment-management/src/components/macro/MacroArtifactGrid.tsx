@@ -10,7 +10,7 @@
 import {
   LayoutDashboard, Landmark, TrendingUp, Users, Flame, GitCompare,
   ClipboardList, LineChart, Gauge, LayoutGrid, Shield, BookOpen, Download,
-  BarChart3, ShieldCheck, FlaskConical,
+  BarChart3, ShieldCheck, FlaskConical, Target,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +20,7 @@ type Item = { type: string; i18nKey: string; Icon: ComponentType<{ className?: s
 
 // i18nKey resolves to macro.<key>; shared with the MacroArtifact viewer titles.
 export const MACRO_ITEMS: Item[] = [
+  { type: 'macro_bets',        i18nKey: 'bets',        Icon: Target },
   { type: 'macro_board',       i18nKey: 'board',       Icon: LayoutDashboard },
   { type: 'macro_fed',         i18nKey: 'fed',         Icon: Landmark },
   { type: 'macro_inflation',   i18nKey: 'inflation',   Icon: TrendingUp },
@@ -49,7 +50,7 @@ export const MACRO_GROUPS: MacroGroup[] = [
   { key: 'series',   i18nKey: 'groupSeries',   Icon: BarChart3,
     types: ['macro_fed', 'macro_inflation', 'macro_labor', 'macro_energy'] },
   { key: 'trading',  i18nKey: 'groupTrading',  Icon: ClipboardList,
-    types: ['macro_decisions', 'macro_performance', 'macro_divergence'] },
+    types: ['macro_bets', 'macro_decisions', 'macro_performance', 'macro_divergence'] },
   { key: 'quality',  i18nKey: 'groupQuality',  Icon: ShieldCheck,
     types: ['macro_calibration', 'macro_walkforward', 'macro_coverage', 'macro_risk'] },
   { key: 'reports',  i18nKey: 'groupReports',  Icon: Download,
