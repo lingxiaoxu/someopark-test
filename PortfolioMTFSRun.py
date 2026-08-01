@@ -207,6 +207,7 @@ def process_pair(pair, context, data):
         'mean_back', 'std_back', 'v_back',
         'fast_confirm_window', 'slow_confirm_window', 'fast_confirm_skip',
         'short_leg_crash_scale', 'crash_recovery_days', 'crash_fast_weights',
+        'force_crash_recovery',
     ]
     if pair_key in context.pair_params:
         pp = context.pair_params[pair_key]
@@ -306,7 +307,9 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
     # 权重只影响 composite_* 打分,per_window/consistency/trend 不用权重) ──
     # fail-open: 参数关/长度不匹配 → 保持 :250 已设的 momentum_weights。
     _cfw = getattr(context.execution, 'crash_fast_weights', None)
-    if _cfw and getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0 \
+    _in_rec_global = (getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0
+                      or bool(getattr(context.execution, 'force_crash_recovery', False)))
+    if _cfw and _in_rec_global \
             and len(_cfw) == len(context.execution.momentum_windows):
         ms.weights = _cfw
 
@@ -577,15 +580,18 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
             # P4: 崩盘恢复期空腿缩减(打破dollar-neutral是有意的——净敞口偏多,
             # D&M 2016: 恢复期loser空腿是最大亏损源)。参数关=旧行为逐bit一致。
             _slcs = getattr(context.execution, 'short_leg_crash_scale', None)
-            _in_recovery = bool(_slcs) and getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0
+            _in_recovery = bool(_slcs) and (
+                getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0
+                or bool(getattr(context.execution, 'force_crash_recovery', False)))
             stock_1_shares = 1
             stock_2_shares = -hedge * (_slcs if _in_recovery else 1.0)
             in_long = True
             in_short = False
             if _in_recovery:
                 record_vars(context, ShortLegScaled=float(_slcs))
+                _cd = getattr(context.portfolio, 'crash_recovery_countdown', 0)
                 log.info(f"[SHORT_GUARD] {pair_key}: short leg × {_slcs} "
-                         f"(crash recovery {context.portfolio.crash_recovery_countdown}d left)")
+                         f"({'forced(P6 mode)' if not _cd else f'crash recovery {_cd}d left'})")
 
             (stock_1_perc, stock_2_perc) = context.portfolio_order.computeHoldingsPct(
                 stock_1_shares, stock_2_shares,
@@ -613,15 +619,18 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
             # Short stock_1, long stock_2
             # P4: 崩盘恢复期空腿(此分支为 stock_1)缩减,与 OPEN_LONG 分支对称。
             _slcs = getattr(context.execution, 'short_leg_crash_scale', None)
-            _in_recovery = bool(_slcs) and getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0
+            _in_recovery = bool(_slcs) and (
+                getattr(context.portfolio, 'crash_recovery_countdown', 0) > 0
+                or bool(getattr(context.execution, 'force_crash_recovery', False)))
             stock_1_shares = -1 * (_slcs if _in_recovery else 1.0)
             stock_2_shares = hedge
             in_short = True
             in_long = False
             if _in_recovery:
                 record_vars(context, ShortLegScaled=float(_slcs))
+                _cd = getattr(context.portfolio, 'crash_recovery_countdown', 0)
                 log.info(f"[SHORT_GUARD] {pair_key}: short leg × {_slcs} "
-                         f"(crash recovery {context.portfolio.crash_recovery_countdown}d left)")
+                         f"({'forced(P6 mode)' if not _cd else f'crash recovery {_cd}d left'})")
 
             (stock_1_perc, stock_2_perc) = context.portfolio_order.computeHoldingsPct(
                 stock_1_shares, stock_2_shares,

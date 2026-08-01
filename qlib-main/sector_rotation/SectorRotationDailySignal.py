@@ -565,6 +565,37 @@ def _write_report_json(report: dict, signal_date: date) -> Path:
     return path
 
 
+def _market_liquidity_outlook_w2():
+    """W2 展示行: VolumePrediction 市场流动性展望(只读消费;失败降级为 None,绝不阻断日报)。"""
+    try:
+        _repo = str(Path(__file__).resolve().parents[2])
+        if _repo not in sys.path:
+            sys.path.insert(0, _repo)
+        from VolumePrediction.service import VolumeService
+        out = VolumeService().signals.market_liquidity_outlook(horizon=5)
+        recent = out.get("recent")
+        if out.get("source") != "raw" or recent is None or recent.empty:
+            return None
+        last = recent.iloc[-1]
+        ev = out.get("upcoming_events")
+        special_cols = ["early_close", "triple_witching", "double_witching", "russell_rebalance"]
+        n_special = int(ev[special_cols].sum().sum()) if ev is not None and len(ev) else 0
+        n_earn = int(ev["n_earnings"].sum()) if ev is not None and len(ev) else 0
+        ml = {
+            "asof":                 str(last["date"]),
+            "market_dollar_volume": float(last["market_dollar_volume"]),
+            "trend_vs_ma5":         out.get("trend_vs_ma5"),
+            "special_days_5d":      n_special,
+            "earnings_5d":          n_earn,
+        }
+        log.info(f"[W2] liquidity outlook OK: asof {ml['asof']}, "
+                 f"$vol {ml['market_dollar_volume']/1e9:,.0f}B, trend {ml['trend_vs_ma5']}")
+        return ml
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"[W2] market_liquidity_outlook unavailable: {e}")
+        return None
+
+
 def _write_report_txt(report: dict, signal_date: date) -> Path:
     SIGNALS_DIR.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -591,6 +622,15 @@ def _write_report_txt(report: dict, signal_date: date) -> Path:
                      f"HY={hy:.0f}bps  Curve={yc:+.2f}%  "
                      f"FSI={fs:.3f}  NFCI={nf:.3f}" if all(x is not None for x in [hy, yc, fs, nf])
                      else f"  VIX    : {vix:.1f}")
+
+    # ── Market liquidity outlook (W2, VolumePrediction) ───────────
+    ml = report.get("market_liquidity")
+    if ml:
+        _tr = ml.get("trend_vs_ma5")
+        _tr_str = f"{_tr:+.1%} vs 5d MA" if _tr is not None else "trend n/a"
+        lines.append(f"  Liquidity : mkt $vol ${ml['market_dollar_volume']/1e9:,.0f}B "
+                     f"({ml['asof']}), {_tr_str}; next 5d: "
+                     f"{ml['earnings_5d']} earnings, {ml['special_days_5d']} special session(s)")
 
     # ── Rebalance decision ─────────────────────────────────────────
     lines.append("")
@@ -1253,6 +1293,7 @@ def run_daily_signal(
             "invested_pct": round(sum(s["target_weight"] for s in signal_list) * 100, 2),
             "cash_pct":     round(cash_weight * 100, 2),
         },
+        "market_liquidity":    _market_liquidity_outlook_w2(),   # W2 展示行(失败=None)
     }
 
     # Add smart-select metadata to report (P2/P3/P5)

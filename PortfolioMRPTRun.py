@@ -324,18 +324,20 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
         time_stop, time_reason, _ = context.portfolio_stoploss_function.check_time_based_stop_loss(context, pair)
         price_stop, price_reason, price_level = context.portfolio_stoploss_function.check_price_level_stop_loss(context, pair, spread, z_score)
 
-        if volatility_stop:
+        if volatility_stop or time_stop or price_stop:
+            _sl_reason = volatility_reason if volatility_stop else (time_reason if time_stop else price_reason)
             record_vars(context, Z=z_score, Hedge=hedge, Y_pct=0, X_pct=0,
-                        in_long=in_long, in_short=in_short, stop_loss_triggered=True, stop_loss_reason=volatility_reason)
-            return context.portfolio_stoploss_function.handle_stop_loss(context, pair, volatility_reason, z_score)
-        elif time_stop:
-            record_vars(context, Z=z_score, Hedge=hedge, Y_pct=0, X_pct=0,
-                        in_long=in_long, in_short=in_short, stop_loss_triggered=True, stop_loss_reason=time_reason)
-            return context.portfolio_stoploss_function.handle_stop_loss(context, pair, time_reason, z_score)
-        elif price_stop:
-            record_vars(context, Z=z_score, Hedge=hedge, Y_pct=0, X_pct=0,
-                        in_long=in_long, in_short=in_short, stop_loss_triggered=True, stop_loss_reason=price_reason)
-            return context.portfolio_stoploss_function.handle_stop_loss(context, pair, price_reason, z_score)
+                        in_long=in_long, in_short=in_short, stop_loss_triggered=True, stop_loss_reason=_sl_reason)
+            _sl_ret = context.portfolio_stoploss_function.handle_stop_loss(context, pair, _sl_reason, z_score)
+            # 止损日价差点不入列 quirk 修复(2026-08-01): handle_stop_loss 返回
+            # p[2] 的旧数组(np.append 产生新数组,旧引用缺当日点),导致该 pair 的
+            # spread/hedge_history 永久缺失止损日 → 此处覆写为已含当日点的本地数组。
+            # (MTFS 镜像无此 quirk: momentum_history 是 dict 就地变更,引用共享。)
+            _sl_ret[2]['spread'] = spread
+            _sl_ret[2]['hedge_history'] = hedge_history
+            log.info(f"[SPREAD_FIX] {pair_key}: stop-day spread point retained "
+                     f"(len {spread.size}, last {spread[-1]:.4f})")
+            return _sl_ret
 
     adf = ADF()
     half_life = Half_Life()

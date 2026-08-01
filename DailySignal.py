@@ -1111,6 +1111,58 @@ _MAX_OPEN_PAIRS_MTFS = 8   # max simultaneous open pairs for MTFS
 
 # Fix 1: Correlation Gate — min 60-day daily return correlation to allow OPEN
 _MIN_PAIR_CORRELATION = 0.16   # dev toggle: switch between 0.20 (strict) and 0.16 (relaxed)
+
+# ── ±30% 模式 overlay(Post-Crash P6,2026-08-01;设计: POST_CRASH_ADAPTIVITY_PLAN §6) ──
+# REBOUND_HUNT(暴跌后): 放宽入场/增容量/空腿保护/快窗;PROFIT_LOCK(暴涨后): 收紧
+# 入场/减容量/更快出。_mult/_add 后缀=对已解析参数值乘/加(带 clamp);其余=直接覆写。
+# 只作用于新信号生成(_run_simulation);监控回放(既有持仓的 CLOSE 判定)不受影响。
+_MODE_OVERLAYS = {
+    'REBOUND_HUNT': {
+        'max_open_pairs_delta': +2,
+        'mrpt_pair_params': {'vol_release_frac': 0.25, 'vol_release_damp': 0.4,
+                             'vol_release_probe': 8},
+        'mtfs_pair_params': {'short_leg_crash_scale': 0.5, 'crash_recovery_days': 30,
+                             'crash_fast_weights': [0.30, 0.25, 0.20, 0.15, 0.07, 0.03],
+                             'force_crash_recovery': True},
+    },
+    'PROFIT_LOCK': {
+        'max_open_pairs_delta': -2,
+        'mrpt_pair_params': {'entry_volatility_factor_mult': 1.5, 'base_exit_z_add': 0.10},
+        'mtfs_pair_params': {'entry_momentum_threshold_mult': 1.5,
+                             'exit_momentum_decay_threshold_add': 0.10},
+    },
+}
+_active_mode: dict = {}    # strategy -> detect() 结果(每次 _run_single 刷新)
+
+
+def _apply_mode_overlay(strategy: str, params_dict: dict) -> dict:
+    """把当前模式的 overlay 应用到已解析参数(_mult/_add 语义+clamp;直接键覆写)。"""
+    mode = (_active_mode.get(strategy) or {}).get('mode', 'NORMAL')
+    ov = _MODE_OVERLAYS.get(mode)
+    if not ov:
+        return params_dict
+    out = dict(params_dict)
+    for k, v in (ov.get(f'{strategy}_pair_params') or {}).items():
+        if k.endswith('_mult'):
+            base_k = k[:-5]
+            if base_k in out and out[base_k] is not None:
+                out[base_k] = out[base_k] * v
+        elif k.endswith('_add'):
+            base_k = k[:-4]
+            if base_k in out and out[base_k] is not None:
+                out[base_k] = out[base_k] + v
+                if base_k == 'base_exit_z':
+                    out[base_k] = min(out[base_k], 0.45)
+                if base_k == 'exit_momentum_decay_threshold':
+                    out[base_k] = min(out[base_k], 0.95)
+        else:
+            out[k] = v
+    return out
+
+
+def _mode_max_pairs_delta(strategy: str) -> int:
+    mode = (_active_mode.get(strategy) or {}).get('mode', 'NORMAL')
+    return int((_MODE_OVERLAYS.get(mode) or {}).get('max_open_pairs_delta', 0))
 _CORR_LOOKBACK_DAYS = 60
 
 # Fix 6A: Min Signal Guard — min MTFS momentum signal strength to allow OPEN
@@ -1448,6 +1500,7 @@ def extract_signals(context, pair_configs, signal_ts, inventory,
             ticker_count[t2] += 1
 
     max_open_pairs = _MAX_OPEN_PAIRS_MTFS if strategy == 'mtfs' else _MAX_OPEN_PAIRS_MRPT
+    max_open_pairs = max(1, max_open_pairs + _mode_max_pairs_delta(strategy))
 
     signals = []
     for s1, s2, _ in pair_configs:
@@ -1859,7 +1912,7 @@ def _run_simulation(strategy, pair_configs, signal_date, inventory):
     pair_params = {}
     for s1, s2, ps_name in pair_configs:
         params_dict, _ = Runs._resolve_param_set(ps_name, f'{s1}/{s2}')
-        pair_params[f'{s1}/{s2}'] = params_dict
+        pair_params[f'{s1}/{s2}'] = _apply_mode_overlay(strategy, params_dict)
 
     default_params, _ = Runs._resolve_param_set('default', 'fallback')
     all_symbols = sorted(set(sym for s1, s2, _ in pair_configs for sym in (s1, s2)))
@@ -3050,6 +3103,22 @@ def _run_single(strategy: str, signal_date: date, dry_run: bool,
     inventory    = load_inventory(strategy)
     # 2026-07-28: 信号构建前先重算 days_held(消灭报告与库存间的一日滞后)
     _recompute_days_held(inventory, signal_date)
+
+    # ── ±30% 模式检测(P6;PIT 只读,状态仅非 dry_run 落盘) ──
+    try:
+        import StrategyMode as _SM
+        _mout = _SM.detect(strategy, signal_date.strftime('%Y-%m-%d'))
+        _active_mode[strategy] = _mout
+        if _mout['mode'] != 'NORMAL':
+            log.info(f"[MODE] {strategy.upper()}: {_mout['mode']} "
+                     f"day {_mout['days_in']}/{_SM.MODE_MAX_TD} ({_mout['trigger_detail']})")
+        else:
+            log.info(f"[MODE] {strategy.upper()}: NORMAL ({_mout['trigger_detail']})")
+        if not dry_run:
+            _SM.save_state(_mout['state'])
+    except Exception as _me:  # noqa: BLE001 — 模式失败绝不阻断信号
+        log.warning(f"[MODE] {strategy.upper()}: 检测失败,按 NORMAL 运行 ({_me})")
+        _active_mode[strategy] = {'mode': 'NORMAL', 'trigger_detail': f'error: {_me}'}
     sim_capital  = float(inventory.get('capital', BACKTEST_BASE_CAPITAL))
     scale_factor = compute_scale_factor(capital, sim_capital)
 
@@ -3101,6 +3170,8 @@ def _run_single(strategy: str, signal_date: date, dry_run: bool,
         'scale_factor': round(scale_factor, 6),
         'regime':       _clean_for_json(regime) if regime else None,
         'signals':      signals,
+        # 前端 OOS 表消费: 每配对 w_sharpe/tier 等(WF CSV 无此列,只在此处成表)
+        'oos_perf':     _clean_for_json(_get_oos_perf(strategy)),
     }
 
     sig_path = os.path.join(SIGNALS_DIR,
@@ -3368,6 +3439,11 @@ def _build_regime_report_section(regime: dict) -> dict:
         'regime_label':        regime.get('regime_label'),
         'mrpt_weight':         regime.get('mrpt_weight'),
         'mtfs_weight':         regime.get('mtfs_weight'),
+        # ±30% 模式(P6): 每策略当前模式+触发明细(纯新增字段,下游兼容)
+        'strategy_mode': {s: {'mode': (m or {}).get('mode'),
+                              'days_in': (m or {}).get('days_in'),
+                              'detail': (m or {}).get('trigger_detail')}
+                          for s, m in _active_mode.items()},
         'interpretation': (
             'MRPT主导: 低波动/均值回归环境，做空波动率有利' if (regime.get('regime_score') or 50) < 35
             else ('MTFS主导: 高波动/动量趋势环境，做多波动率有利' if (regime.get('regime_score') or 50) > 65

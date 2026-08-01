@@ -70,6 +70,22 @@ router.get('/pair-summary/:strategy', async (req, res) => {
     const dir = getWfDir(strategy);
     const latestFile = await findLatestFile(dir, 'oos_pair_summary_*.csv');
     const data = await parseCsvFile(latestFile);
+    // Merge gold-weighted OOS stats (w_sharpe/tier) from latest combined signals JSON —
+    // computed in DailySignal (gold-window weighting), not present in the WF CSV.
+    try {
+      const sigDir = getBackendPath('trading_signals');
+      const sigFile = await findLatestFile(sigDir, 'combined_signals_*.json');
+      const sig = await readJsonFile(sigFile);
+      const oosPerf = (sig as any)?.[strategy]?.oos_perf || {};
+      for (const row of data as any[]) {
+        const p = oosPerf[row.Pair];
+        if (p) {
+          row.w_sharpe = p.w_sharpe ?? null;
+          row.tier = p.tier ?? null;
+          row.gold_sharpe = p.gold_sharpe ?? null;
+        }
+      }
+    } catch { /* signals JSON absent or pre-oos_perf format — serve CSV as-is */ }
     res.json(data);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

@@ -132,6 +132,7 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
               <th className="px-3 py-2 font-medium">{t('common.pair')}</th>
               <th className="px-3 py-2 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => handleSort('OOS_PnL')}>{t('oosPairSummary.oosPnl')} {sortKey === 'OOS_PnL' ? (sortAsc ? '↑' : '↓') : ''}</th>
               <th className="px-3 py-2 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => handleSort('Sharpe')}>{t('oosPairSummary.sharpe')} {sortKey === 'Sharpe' ? (sortAsc ? '↑' : '↓') : ''}</th>
+              <th className="px-3 py-2 font-medium cursor-pointer hover:text-[var(--text-primary)]" onClick={() => handleSort('w_sharpe')} title="Gold-window weighted Sharpe (DailySignal filter metric)">W-Sharpe {sortKey === 'w_sharpe' ? (sortAsc ? '↑' : '↓') : ''}</th>
               <th className="px-3 py-2 font-medium">{t('oosPairSummary.maxDdPct')}</th>
               <th className="px-3 py-2 font-medium">{t('oosPairSummary.winRate')}</th>
               <th className="px-3 py-2 font-medium">{t('common.trades')}</th>
@@ -149,6 +150,7 @@ export default function OOSPairSummaryViewer({ params }: { params?: any }) {
                   <td className="px-3 py-2"><PairBadge pair={p.Pair} strategy={strategy} compact /></td>
                   <td className={`px-3 py-2 font-mono ${pnl >= 0 ? 'text-[var(--success)]' : 'text-[var(--error)]'}`}>{fmtPnl(pnl)}</td>
                   <td className={`px-3 py-2 font-mono ${sharpe >= 1 ? 'text-[var(--success)]' : sharpe < 0 ? 'text-[var(--error)]' : 'text-[var(--text-primary)]'}`}>{sharpe.toFixed(2)}</td>
+                  <td className={`px-3 py-2 font-mono ${p.w_sharpe == null ? 'text-[var(--text-muted)]' : Number(p.w_sharpe) >= 1 ? 'text-[var(--success)]' : Number(p.w_sharpe) < 0 ? 'text-[var(--error)]' : 'text-[var(--text-primary)]'}`}>{p.w_sharpe == null ? '—' : Number(p.w_sharpe).toFixed(2)}</td>
                   <td className="px-3 py-2 font-mono text-[var(--error)]">{(maxDdPct * 100).toFixed(2)}%</td>
                   <td className="px-3 py-2 font-mono text-[var(--text-secondary)]">{(winRate * 100).toFixed(0)}%</td>
                   <td className="px-3 py-2 font-mono text-[var(--text-secondary)]">{p.N_Trades}</td>

@@ -2810,6 +2810,10 @@ class MTFSExecution:
         # (净敞口故意偏多——崩盘恢复期做多偏置正是 Daniel & Moskowitz 的处方)。
         self.short_leg_crash_scale = None    # e.g. 0.5
         self.crash_recovery_days   = 30      # ≈6周,D&M反弹持续期的保守值
+        # P6 模式直启(2026-08-01): True=不经内部崩盘检测器直接视为恢复期,
+        # 激活空腿保护/快窗倾斜但**不**触发 crash_scale 0.2 缩仓(解耦)。
+        # 供 ±30% 模式 overlay 使用——模式已从 equity+VIX 外部判定崩后状态。
+        self.force_crash_recovery  = False
 
         # ── Crash-recovery fast-window tilt (Garg et al. 2021) ──
         # None=off。恢复期把 composite 权重向快窗倾斜(与 momentum_windows 等长),
