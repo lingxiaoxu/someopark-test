@@ -49,7 +49,18 @@ def export_weights(model, path: str | Path) -> Path:
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
-    return 1.0 / (1.0 + np.exp(-x))
+    """数值稳定版(2026-08-03 实盘工件触发 exp 溢出 warning)。
+
+    朴素式在 x 很负时 exp(-x) 溢出;虽然极限值仍对(1/inf→0),但生产日志里
+    不该有 RuntimeWarning。正负分支各用不溢出的等价式,数值与朴素式在
+    非溢出区逐位相同。
+    """
+    out = np.empty_like(x, dtype=np.float32)
+    pos = x >= 0
+    out[pos] = 1.0 / (1.0 + np.exp(-x[pos]))
+    e = np.exp(x[~pos])
+    out[~pos] = e / (1.0 + e)
+    return out
 
 
 class RNNWeights:

@@ -138,6 +138,7 @@ VolumePrediction/outputs/*
 !VolumePrediction/outputs/tex_v2/
 !VolumePrediction/outputs/econ_v2/
 !VolumePrediction/outputs/ablation_e5/
+!VolumePrediction/outputs/walkforward_narrow_summary/
 VolumePrediction/outputs/tex_v2/*.pdf
 VolumePrediction/logs/
 VolumePrediction/**/__pycache__/

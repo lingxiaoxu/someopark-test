@@ -41,6 +41,21 @@ def test_numpy_forward_matches_torch(tmp_path):
     assert np.abs(p_torch.values - p_sorted[inv]).max() < 1e-4
 
 
+def test_sigmoid_is_overflow_safe():
+    """极端输入不得触发 RuntimeWarning(2026-08-03 实盘工件曾触发 exp 溢出)。"""
+    import warnings
+
+    from VolumePrediction.rnn_export import _sigmoid
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", RuntimeWarning)
+        s = _sigmoid(np.array([-800.0, -50.0, 0.0, 50.0, 800.0], dtype=np.float32))
+    assert np.isfinite(s).all() and ((s >= 0) & (s <= 1)).all()
+    # 非溢出区与朴素式逐位相同(修复未改变数值语义)
+    mid = np.array([-20.0, -1.0, 0.0, 1.0, 20.0], dtype=np.float32)
+    assert np.array_equal(_sigmoid(mid), (1.0 / (1.0 + np.exp(-mid))).astype(np.float32))
+
+
 def test_export_meta_and_zero_pad_semantics(tmp_path):
     X, y = _panel(n_feat=8, n_days=15)
     m = PaperRNN(8, seed=1, device="cpu").fit(X, y, epochs=1)

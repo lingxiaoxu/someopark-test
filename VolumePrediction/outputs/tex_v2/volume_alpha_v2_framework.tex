@@ -85,6 +85,15 @@ allocates its representational budget to the temporal structure of a small,
 homogeneous, well-scaled feature block, and is diluted when that budget must
 also absorb 100 heterogeneous cross-sectional columns.
 
+Size-decile stratification sharpens the picture. The LSTM leads in all ten
+deciles, but its edge over the tree model is strongly size-dependent: $+0.200$
+in the smallest decile and $+0.186$ in the second, decaying to $+0.006$ at the
+median decile, then recovering to a stable $+0.09$ to $+0.11$ among large caps.
+The bulk of the sequence model's advantage therefore comes from the temporal
+structure of small-cap volume, which is precisely where a cross-sectional tree
+has the least to work with. (Industry stratification is unavailable on the
+narrow panel, which by construction excludes the industry dummy block.)
+
 \begin{table}[h]\centering
 \caption{Narrow (tech+fund1, 14 features) vs full (114 features).}
 \label{tab:narrow}
@@ -92,8 +101,9 @@ also absorb 100 heterogeneous cross-sectional columns.
 \toprule
 Model & narrow & full \\
 \midrule
-RNN  & \textbf{0.2947} & 0.1388 \\
-LightGBM & 0.1428 & 0.1773 \\
+RNN      & \textbf{0.2993} & 0.1428 \\
+NN       & 0.1487 & 0.1572 \\
+LightGBM & 0.1445 & 0.1813 \\
 \bottomrule
 \end{tabular}
 \end{table}

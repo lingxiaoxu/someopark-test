@@ -816,7 +816,20 @@ class _Ops:
                     asof, str((pd.Timestamp(asof) + pd.Timedelta(days=10)).date()))
                 _target = next(d for d in _fut if d > asof)
                 _art = self.s.art / "registry" / "artifacts" / _prod_ver
-                _lg = _pm.serve(_art, _target).set_index("ticker")
+                # 工件 kind 决定服务模块(2026-08-03 E4): learned.rnn 走窄集序列
+                # 路径(有状态 seq_tail 滚动),其余走 lgbm 路径。kind 读不到 →
+                # 按 lgbm(既有行为不变)。
+                _kind = ""
+                try:
+                    with open(_art / "meta.json") as _mf:
+                        _kind = json.load(_mf).get("kind", "")
+                except Exception:  # noqa: BLE001
+                    pass
+                if _kind == "learned.rnn":
+                    from VolumePrediction import prod_model_rnn as _pmr
+                    _lg = _pmr.serve(_art, _target, update_state=True).set_index("ticker")
+                else:
+                    _lg = _pm.serve(_art, _target).set_index("ticker")
                 _mask = out["ticker"].isin(_lg.index)
                 for _c in ("pred_v", "pred_V", "pred_eta",
                            "model_version", "trained_through"):
