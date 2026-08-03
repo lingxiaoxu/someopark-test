@@ -1,0 +1,16 @@
+symbols: 2651
+  500/2651 symbols, 204s
+  1000/2651 symbols, 437s
+  1500/2651 symbols, 626s
+  2000/2651 symbols, 783s
+  2500/2651 symbols, 936s
+DONE: 1,265,552 (symbol,day) rows → /private/tmp/claude-501/-Users-xuling-code-someopark-test/1b3bee8a-9e91-461d-8193-ebba8837c5e1/scratchpad/ablation/est_revisions.parquet
+count    1.265552e+06
+mean     2.304583e-01
+std      6.290530e-01
+min      0.000000e+00
+25%      0.000000e+00
+50%      0.000000e+00
+75%      0.000000e+00
+max      2.000000e+00
+Name: n_rev, dtype: float64

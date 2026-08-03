@@ -1,0 +1,191 @@
+% ══════════════════════════════════════════════════════════════════
+% Volume Alpha v2 — 增补稿(P5 交付物)
+% 原文 Lingxiao_Xu_Volume_Alpha 不动;本文件为后续版本正文,
+% 结果挂接 VolumePrediction/outputs/ 的 CSV/图。
+% 编译: xelatex(中文用 Hiragino Sans GB,同 plan PDF 管线)
+% 更新: 2026-08-03 — P5 全模型 walk-forward + 窄集 RNN 复赛 + 经济回测 +
+%        生产化(numpy 前向服务)成文
+% ══════════════════════════════════════════════════════════════════
+\documentclass[11pt]{article}
+\usepackage{booktabs,graphicx,amsmath,hyperref}
+% \usepackage{xeCJK}\setCJKmainfont{Hiragino Sans GB}
+
+\title{Volume Alpha v2: GKMSZ Replication on a PIT R3K Proxy Universe,
+       Rolling-Window Model Selection, and a Zero-Dependency
+       Production Path for Sequence Models}
+\author{Lingxiao Xu}
+\date{2026}
+
+\begin{document}\maketitle
+
+\begin{abstract}
+We extend the v1 replication in three directions. First, we move from a single
+paper split to a twelve-window rolling walk-forward (24m train / 6m test / 6m
+step) over a 10.7M-row point-in-time R3K-proxy panel, evaluating ten predictors
+under one protocol. Second, we show that the sequence model's advantage reported
+in the original Table~1 is \emph{feature-domain conditional}: an LSTM trained on
+the narrow technical+size feature set attains a mean out-of-sample
+$R^2_\eta$ of 0.295 and beats the best tree model in 11 of 12 windows, while the
+same architecture fed all 114 features collapses to 0.139. Third, we translate
+the statistical gap into economics under a quadratic-impact accounting protocol
+on 2024--2026 out-of-sample predictions, and describe a production path that
+serves the sequence model with \emph{no deep-learning dependency at read time}.
+\end{abstract}
+
+\section{Data and Universe}          % ← G1/G3;引 P0_data_audit.md 结论
+% - PIT R3K 代理构建(§7.3);raw-immutable 缓存+splits 现算
+% - 幸存者控制: grouped bar 含退市;FMP 幸存者掩码双轨
+% - SIZE 三段拼接+ADV 代理 fallback(ADR 边界)
+% - 数据修复链四例(G10 附录):z 截断/横截面 z/字符串股本/重复标签
+The production panel (\texttt{prod\_v6}) spans 10,689,240 rows $\times$ 122
+columns, 5,620 tickers, with 114 feature columns in five prefix groups
+(\texttt{tech\_}, \texttt{fund1\_}, \texttt{fund2\_}, \texttt{cal\_},
+\texttt{earn\_}).
+
+\section{Baseline Predictability}    % ← 表: baselines_table.csv;图 fig1
+% ma5 93.95 vs paper 93.68 等四项 ±0.6pp
+
+\section{Statistical Models}         % ← 表: table1_{A,B,C};图 fig3
+
+\subsection{Rolling walk-forward over ten predictors}
+Table~\ref{tab:wf} reports pooled out-of-sample $R^2_\eta$ across the twelve
+windows on the full feature set. Tree and linear models are deterministic
+(single fit); the three torch models average five seeds per window.
+
+\begin{table}[h]\centering
+\caption{Full-feature-set walk-forward, pooled OOS $R^2_\eta$ (12 windows).}
+\label{tab:wf}
+\begin{tabular}{lr}
+\toprule
+Model & $R^2_\eta$ \\
+\midrule
+LightGBM      & 0.1813 \\
+NN2 (legacy)  & 0.1684 \\
+NN (paper)    & 0.1572 \\
+Forward stepwise & 0.1438 \\
+RNN (paper)   & 0.1428 \\
+LassoCV       & 0.1394 \\
+OLS           & 0.1393 \\
+PLS(5)        & 0.1256 \\
+PCR(5)        & $-0.0010$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{The sequence model's advantage is feature-domain conditional}
+The v1 Table~1 reported the LSTM leading on the narrow technical+size column
+block. Table~\ref{tab:narrow} re-runs the full twelve-window protocol restricted
+to that block (14 features) and confirms the effect is not an artifact of the
+single paper split: the LSTM gains $+0.117$ mean $R^2_\eta$ over the best
+full-set model and wins 11 of 12 windows, whereas the same architecture on all
+114 features ranks fifth. Tree models move the opposite way --- LightGBM
+\emph{loses} 0.035 when restricted to the narrow block. We read this as a
+capacity/regularization interaction: the single-layer LSTM with 32 hidden units
+allocates its representational budget to the temporal structure of a small,
+homogeneous, well-scaled feature block, and is diluted when that budget must
+also absorb 100 heterogeneous cross-sectional columns.
+
+\begin{table}[h]\centering
+\caption{Narrow (tech+fund1, 14 features) vs full (114 features).}
+\label{tab:narrow}
+\begin{tabular}{lrr}
+\toprule
+Model & narrow & full \\
+\midrule
+RNN  & \textbf{0.2947} & 0.1388 \\
+LightGBM & 0.1428 & 0.1773 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{A harness pitfall specific to sequence models}
+Evaluating a many-to-one sequence model window-by-window introduces a subtle
+penalty absent for cross-sectional models: the first $L-1$ rows of each ticker
+inside a test window have their lookback truncated at the train/test boundary
+and are zero-padded, even though that history is strictly past data already
+available to the model. At $L=10$ and 126-day test windows this affects 7.1\% of
+evaluation rows. Supplying the pre-boundary context (strictly earlier than the
+first test date, hence no look-ahead) is required for a like-for-like comparison
+with cross-sectional models; all sequence results reported here include it.
+
+\section{Economic Framework}         % ← 表: table2_mel/table3_transfer;图 fig4
+% 迁移签名(d_mse>0 与 MEL 增益并存);
+% 从零直训失效 → G7_divergence_report 摘编为 v2 的一节(新贡献)
+
+\section{Trading Experiments}        % ← 图 fig5/fig7;表 table3_trading
+
+\subsection{Does the statistical gap pay?}
+We evaluate 2024-01 through 2026-07 (644 trading days) under the accounting
+protocol of the v1 economic section: exogenous oracle trade demand, quadratic
+impact $\lambda\,(\text{traded})^2/V$, and the closed-form participation rule
+$s(\hat v;\mu)$, so that tiers differ \emph{only} through forecast quality. All
+model forecasts are genuine out-of-sample walk-forward predictions.
+Table~\ref{tab:econ} reports each tier at its Sharpe-optimal $\mu$.
+
+\begin{table}[h]\centering
+\caption{Net performance, 2024--2026, at Sharpe-optimal $\mu=10^{-9}$.}
+\label{tab:econ}
+\begin{tabular}{lrrr}
+\toprule
+AUM & Tier & Net ann.\ ret.\ (\%) & Net Sharpe \\
+\midrule
+\$1e8  & RNN (narrow) & \textbf{62.19} & \textbf{7.00} \\
+       & LightGBM (full) & 60.23 & 6.19 \\
+       & MA5 & 58.58 & 6.25 \\
+\$1e9  & RNN (narrow) & \textbf{57.58} & \textbf{6.48} \\
+       & LightGBM (full) & 55.73 & 5.73 \\
+       & MA5 & 53.98 & 5.76 \\
+\$1e10 & RNN (narrow) & \textbf{11.44} & \textbf{1.28} \\
+       & LightGBM (full) & 10.76 & 1.10 \\
+       & MA5 & 7.99 & 0.85 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+At \$1B the sequence model adds 1.85pp of net annual return and 0.76 of Sharpe
+over the incumbent tree model; at \$10B, where cost drag exceeds 50\%, it adds
+3.4pp over the naive MA5 forecast. We note that at \$1e8--\$1e9 all forecast
+tiers post higher net Sharpe than the oracle tier: knowing $v$ exactly leads the
+participation rule to schedule more aggressively, raising both turnover and the
+variance of realized cost. This is a property of the accounting protocol rather
+than of the forecasts, and does not affect comparisons among the three
+predictors, which face identical demand and cost parameters.
+
+\section{Legacy Model Zoo on the New Panel}  % ← legacy_scores.csv
+% 12 模型并排+旧成绩对照;定性排序验收
+
+\section{Productionization}          % ← service.py/profiles/registry
+
+\subsection{Serving a sequence model without a deep-learning runtime}
+The read path of the production service is forbidden from importing torch: the
+daily job must start in seconds, and a training-framework dependency in the
+serving environment is an availability liability. Since the deployed network is
+small --- a single LSTM layer with 32 hidden units over 14 inputs plus three
+dense layers, $\approx 6.7$k parameters --- we export the trained weights and
+reimplement the forward pass in NumPy (roughly forty lines: the standard
+$i,f,g,o$ gate decomposition plus three dense layers). Agreement with the torch
+forward pass is $1.5\times10^{-8}$ in maximum absolute deviation, and a test
+blocks \texttt{import torch} in a subprocess to verify the serving path runs
+without it.
+
+\subsection{Stateful serving}
+Unlike the cross-sectional models, a many-to-one sequence model requires the
+last $L-1$ feature rows per ticker at serve time. The frozen artifact therefore
+carries a \texttt{seq\_tail} tensor (\#tickers $\times$ 9 $\times$ 14) with a
+date stamp; the daily job appends the current row, drops the oldest, and
+rewrites atomically. Three disciplines are enforced by tests: repeated
+same-day serving is idempotent (stamp comparison), a date gap raises rather than
+silently predicting from a misaligned window, and predictions are averaged over
+the frozen seeds rather than trusting a single training run.
+
+\subsection{Other production notes}
+% 六 utility profile;mu_calibration(aiss 2.82e-3 实测);
+% walkforward 分层(行业 spread 13pp);日更影子验收(P3/P4 追加)
+Stratified walk-forward reporting (industry and size decile) accompanies every
+run; industry $R^2$ spread reaches 12pp for the incumbent model, which is the
+basis for the per-strategy utility profiles.
+
+\appendix
+\section{Divergence Reports}         % G7 全文
+\section{58-Step Checklist}          % appendixA_checklist.md 摘要
+\end{document}

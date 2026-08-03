@@ -1,0 +1,64 @@
+group=intraday covered rows: 338,147 / 10,689,240 (3.16%)
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+/Users/xuling/miniforge3/envs/someopark_run/lib/python3.11/site-packages/sklearn/utils/validation.py:2691: UserWarning: X does not have valid feature names, but LGBMRegressor was fitted with feature names
+  warnings.warn(
+ window  n_covered  base_r2   grp_r2    delta
+      0          0      NaN      NaN      NaN
+      1          0      NaN      NaN      NaN
+      2          0      NaN      NaN      NaN
+      3          0      NaN      NaN      NaN
+      4          0      NaN      NaN      NaN
+      5          0      NaN      NaN      NaN
+      6          0      NaN      NaN      NaN
+      7        125      NaN      NaN      NaN
+      8     295205 0.225707 0.227321 0.001614
+      9      33360 0.252560 0.257922 0.005361
+     10       9241 0.195464 0.199313 0.003849
+     11          0      NaN      NaN      NaN
+
+覆盖行加权平均 delta: +0.002045  (n=337,806 行)

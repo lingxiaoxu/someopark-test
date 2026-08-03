@@ -1,0 +1,19 @@
+  1,000,000 rows, 11s
+  2,000,000 rows, 22s
+  3,000,000 rows, 33s
+  4,000,000 rows, 44s
+  5,000,000 rows, 54s
+  6,000,000 rows, 66s
+  7,000,000 rows, 78s
+DONE: 992,241 (symbol,day) rows → /private/tmp/claude-501/-Users-xuling-code-someopark-test/1b3bee8a-9e91-461d-8193-ebba8837c5e1/scratchpad/ablation/intraday_shape.parquet
+       first_hour_share  last_hour_share  ...       ah_share    n_mkt_hours
+count     992241.000000    992241.000000  ...  992241.000000  992241.000000
+mean           0.150242         0.120374  ...       0.009906       5.567180
+std            0.098015         0.174590  ...       0.031401       1.181368
+min            0.000000         0.000000  ...       0.000000       1.000000
+25%            0.078983         0.000000  ...       0.000000       5.000000
+50%            0.131138         0.000000  ...       0.001418       5.000000
+75%            0.198718         0.282594  ...       0.008249       7.000000
+max            1.000000         1.000000  ...       0.985597       7.000000
+
+[8 rows x 5 columns]

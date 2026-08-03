@@ -116,6 +116,54 @@ def build_windows(X: pd.DataFrame, seq_len: int = 10) -> Tuple[np.ndarray, np.nd
     return W, order
 
 
+def _block_starts(tickers: np.ndarray) -> np.ndarray:
+    """每行所属单票连续块的起始行号(与 build_windows 的块扫描同语义)。"""
+    N = len(tickers)
+    starts = np.zeros(N, dtype=np.int64)
+    start = 0
+    for i in range(1, N):
+        if tickers[i] != tickers[i - 1]:
+            start = i
+        starts[i] = start
+    return starts
+
+
+class _LazyWindowDataset(torch.utils.data.Dataset):
+    """按需构窗 Dataset — 与 build_windows 产出的窗口逐位相同,但不物化
+    (N, seq_len, F) 大数组(2026-08-02: 190万行×10×114 ≈ 9GB 物化被 jetsam
+    连杀,惰性化后常驻只有 (N,F))。零填充语义与 build_windows 完全一致。"""
+
+    def __init__(self, vals: np.ndarray, tickers: np.ndarray, seq_len: int,
+                 y: Optional[np.ndarray] = None):
+        self.vals = np.ascontiguousarray(vals, dtype=np.float32)
+        self.starts = _block_starts(tickers)
+        self.seq_len = seq_len
+        self.y = None if y is None else np.asarray(y, dtype=np.float32)
+
+    def __len__(self) -> int:
+        return len(self.vals)
+
+    def __getitem__(self, i: int):
+        s = self.seq_len
+        lo = max(self.starts[i], i - s + 1)
+        w = np.zeros((s, self.vals.shape[1]), dtype=np.float32)
+        w[s - (i - lo + 1):, :] = self.vals[lo:i + 1]
+        t = torch.from_numpy(w)
+        if self.y is None:
+            return (t,)
+        return t, torch.tensor(self.y[i], dtype=torch.float32)
+
+    def get_batch(self, idxs: np.ndarray) -> torch.Tensor:
+        """批量构窗(批内 numpy 向量化;避免 1 亿次逐样本 __getitem__ 开销)。"""
+        s = self.seq_len
+        B = len(idxs)
+        w = np.zeros((B, s, self.vals.shape[1]), dtype=np.float32)
+        for k, i in enumerate(idxs):
+            lo = max(self.starts[i], i - s + 1)
+            w[k, s - (i - lo + 1):, :] = self.vals[lo:i + 1]
+        return torch.from_numpy(w)
+
+
 class _TorchRegressorMixin:
     """fit/predict 的共享训练循环(论文协议: Adam 默认/1024/50ep/无早停/无 dropout)。"""
 
@@ -259,20 +307,56 @@ class PaperRNN(_TorchRegressorMixin):
         return formula
 
     def fit(self, X: pd.DataFrame, y: pd.Series, epochs: Optional[int] = None) -> "PaperRNN":
-        W, order = build_windows(X, self.seq_len)
-        ys = y.iloc[order]
-        ds = TensorDataset(torch.tensor(W), torch.tensor(ys.values, dtype=torch.float32))
-        self.train_history = self._train_loop(ds, self.seed, self.device, epochs)
+        # 惰性构窗(2026-08-02): 不物化 (N,10,F) 大数组(190万行 ≈ 9GB 曾被
+        # jetsam 连杀)。训练轨迹与旧 build_windows+TensorDataset+DataLoader
+        # 路径逐位一致: 手动批循环逐位复刻 DataLoader 语义(同 seed 的
+        # generator randperm 跨 epoch 状态 + 同批切分),窗口内容同 build_windows
+        # (parity 测试见 tests)。
+        Xs, ys, _ = _sort_panel(X, y)
+        ds = _LazyWindowDataset(Xs.values, Xs.index.get_level_values(1).values,
+                                self.seq_len, ys.values)
+        seed_everything(self.seed)
+        self.net.to(self.device)
+        opt = torch.optim.Adam(self.net.parameters())
+        lossf = nn.MSELoss()
+        gen = torch.Generator().manual_seed(self.seed)   # 同 DataLoader generator
+        yt = torch.from_numpy(ds.y)
+        N = len(ds)
+        history = []
+        self.net.train()
+        for _ in range(epochs or self.epochs):
+            # 逐位复刻 DataLoader 每 epoch 的 RNG 消耗序(4-epoch 实测 ALL MATCH):
+            # ① 迭代器 base_seed(random_) ② RandomSampler 主 randperm
+            # ③ sampler 尾部第二次 randperm(切片[:0]丢弃但消耗 RNG)
+            torch.empty((), dtype=torch.int64).random_(generator=gen)
+            perm = torch.randperm(N, generator=gen)
+            torch.randperm(N, generator=gen)
+            tot, nb = 0.0, 0
+            for bi in perm.split(self.batch_size):       # = drop_last=False 批切分
+                xb = ds.get_batch(bi.numpy()).to(self.device)
+                yb = yt[bi].to(self.device)
+                opt.zero_grad()
+                pred = self.net(xb).squeeze(-1)
+                loss = lossf(pred, yb)
+                loss.backward()
+                opt.step()
+                tot += float(loss.detach().cpu())
+                nb += 1
+            history.append(tot / max(nb, 1))
+        self.train_history = history
         return self
 
     @torch.no_grad()
     def predict(self, X: pd.DataFrame) -> pd.Series:
         self.net.eval()
-        W, order = build_windows(X, self.seq_len)
+        Xs, _, order = _sort_panel(X)
+        ds = _LazyWindowDataset(Xs.values, Xs.index.get_level_values(1).values,
+                                self.seq_len)
         out = np.empty(len(X), dtype=np.float32)
         dev = self.device
-        for i in range(0, len(W), 4096):
-            xb = torch.tensor(W[i:i + 4096]).to(dev)
+        N = len(ds)
+        for i in range(0, N, 4096):
+            xb = ds.get_batch(np.arange(i, min(i + 4096, N))).to(dev)
             out[i:i + 4096] = self.net(xb).squeeze(-1).cpu().numpy()
         inv = np.empty_like(order)
         inv[order] = np.arange(len(order))

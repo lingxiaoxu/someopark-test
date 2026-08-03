@@ -134,5 +134,10 @@ crypto-dev/
 # VolumePrediction: 代码入库;重产物/日志不入库(outputs顶层md报告保留)
 VolumePrediction/outputs/*
 !VolumePrediction/outputs/*.md
+# P5 成文与结论性小表入库(轻量 CSV/tex/脚本;不含面板/权重/preds 等重产物)
+!VolumePrediction/outputs/tex_v2/
+!VolumePrediction/outputs/econ_v2/
+!VolumePrediction/outputs/ablation_e5/
+VolumePrediction/outputs/tex_v2/*.pdf
 VolumePrediction/logs/
 VolumePrediction/**/__pycache__/

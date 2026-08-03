@@ -1,111 +1,105 @@
-# RNN/NN 生产化设计（E4 设计节 — 只设计，不实施）
+# RNN 生产化：设计 → 实测 → 已实施（E4）
 
-日期: 2026-08-01 · 依据: Extension Plan E4 + 服务红线（service 读取端不 import torch）
-· 状态: **设计稿，待用户批准后实施**。实施前需同面板 OOS 复赛证明 RNN 确实赢 lgbm。
+日期: 2026-08-03（2026-08-01 初稿为纯设计；本版为实测改判 + 实施完成态）
+状态: **代码已实施并测试通过；晋升(promote)待影子 AB 后人工决定**
 
 ---
 
-## 0. 问题定义
+## 0. 一次判断错误的完整记录（保留，勿删）
 
-Table 1 证据: RNN(fund1 窄集) OOS R² 19.96% > lgbm 16.34%，但两者设置不同，需同面板复赛
-（E3 的全模型 WF 总表正在跑，bhodn40h1，出结果后才有推进依据）。若复赛确认 RNN 优势，
-生产化面临两道硬约束：
+2026-08-02 上午我曾据全特征集 walk-forward 得出「RNN 垫底(0.139) < lgbm(0.182)，
+E4 不该做」的结论。**该结论错误，已撤回。** 三处错误叠加：
 
-1. **torch 红线**: `service.py` 明文规定 torch 延迟到重方法内 import；refresh/serve 读取路径
-   （17:37 cron → conductor）绝不能引入 torch 启动开销与依赖脆弱性。
-2. **序列服务化**: PaperRNN 是 many-to-one、seq_len=10 —— serve 时每票需要"截至 T-1 的
-   连续 10 个交易日特征窗"，而现有 lgbm serve 是单行特征。这是比红线更大的工程差异。
+1. **实验域错**：论文 Table 1 的 RNN 优势只在 **tech+fund1 窄集**上成立
+   （仓库自身复现产物 `outputs/replication/table1_A_r2_eta.csv`：rnn 窄集 27.53 /
+   全集 9.63）。喂满 114 列时 LSTM 被淹没——我却用全集去否定论文主张。
+2. **序列上下文截断**（我写的 WF 框架的真 bug，只伤序列模型）：测试窗每票前
+   `seq_len-1=9` 行的历史落在训练期内（严格过去、非前视），却未喂给 LSTM 而被
+   零填充，**7.1% 的测试行被系统性惩罚**。已修（`walkforward._seq_context`）。
+3. 据 1+2 的坏数据改判 E4。
 
-## 1. 网络体量核查（决定方案选型）
+教训：**当实测与既有文献冲突时，先怀疑自己的实验条件，再怀疑文献。**
+用户坚持「尊重论文、可能是你做错了」，直接救回本项。
 
-`models/deep.py` PaperRNN 实测结构：
+## 1. 复赛实测（12 窗 walk-forward，同面板同协议）
 
-```
-_SingleBiasLSTM(n_pred → 32, b_hh 冻结为 0)   # 单层, many-to-one 取末步隐状态
-→ Linear(32,16) ReLU → Linear(16,8) ReLU → Linear(8,1)
-```
+| 配置 | 平均 OOS R²(η) | 胜负 |
+|---|---|---|
+| **窄集 RNN（tech+fund1, 14 特征）** | **0.2947** | — |
+| 全集 lgbm（现役 production） | 0.1773 | RNN 胜 11/12 窗，平均 +0.117 |
+| 窄集 lgbm | 0.1428 | |
+| 全集 RNN（错误设置） | 0.1388 | |
 
-参数量 = `(n_pred+33)*128 + 33*16 + 17*8 + 9`。fund1 窄集 n_pred≈15 → **~6.8k 参数**。
-这是一张微型网——毫秒级 numpy 前向完全可行。选型据此展开。
+逐窗（w0→w11）：0.299 / 0.290 / 0.131 / 0.264 / 0.295 / 0.310 / 0.312 / 0.350 /
+0.333 / 0.354 / 0.330 / 0.268。唯一劣于现役的是 w2（0.131 vs 0.149）。
 
-## 2. 推理方案三选一
+## 2. 经济回测（2024-01→2026-07，644 交易日，真 OOS 预测）
 
-### 方案 C（推荐）: numpy 权重导出 + 前向复刻
+G9 记账协议（`replication_trading.simulate`，二次冲击成本），交易需求由 oracle
+信号外生给定 → 各档差异纯粹来自 v̂ 质量。μ 取各档最优（1e-9）：
 
-- **freeze 时**（重进程，可 import torch）: 训练完成后把权重导出为
-  `registry/<model_id>/weights.npz`（W_ih/W_hh/b_ih + 三层 dense 的 W/b，共 8 个数组）。
-- **serve 时**（轻进程，零 torch）: ~40 行 numpy 实现 LSTM 单层前向
-  （标准公式 i,f,g,o = split(x@W_ihᵀ + h@W_hhᵀ + b_ih)；b_hh 恒 0 与训练侧语义一致）
-  + 3 层 dense。依赖 = numpy（已有），**零新增依赖**。
-- **验收**: 逐票逐日与 torch 前向对拍，容差 ≤1e-5（float32 累加差异），全宇宙 100% 通过
-  才算导出正确。对拍脚本进 tests/，freeze 流程内置自检（导出后当场抽 100 票对拍）。
+| AUM | 档位 | 净年化 | 净夏普 | 成本拖累 |
+|---|---|---|---|---|
+| $1e8 | **rnn_narrow** | **62.19%** | **7.00** | 0.51% |
+| | lgbm_full | 60.23% | 6.19 | 0.50% |
+| | ma5 | 58.58% | 6.25 | 0.51% |
+| $1e9 | **rnn_narrow** | **57.58%** | **6.48** | 5.13% |
+| | lgbm_full | 55.73% | 5.73 | 5.00% |
+| | ma5 | 53.98% | 5.76 | 5.11% |
+| $1e10 | **rnn_narrow** | **11.44%** | **1.28** | 51.3% |
+| | lgbm_full | 10.76% | 1.10 | 50.0% |
+| | ma5 | 7.99% | 0.85 | 51.1% |
 
-### 方案 B（备选）: ONNX 导出 + onnxruntime
+结论：R² 优势转化为 **$1B 上 +1.85pp 净年化 / +0.76 夏普**（vs 现役 lgbm）。
+注意 $1e8/$1e9 上各模型档净夏普高于 oracle 档——oracle 知道真 v 后铺量更激进、
+换手与成本方差更大；该现象属框架特性，不影响三个预测器之间的同口径比较。
 
-- freeze 时 `torch.onnx.export`；serve 端 `onnxruntime` 推理。
-- 缺点: **新增 onnxruntime 依赖**（违背"零重依赖"精神，需用户单独批准）；
-  LSTM 的 onnx 导出对 batch_first/冻结 bias 的处理有版本坑。
-- 仅当未来模型升级到 numpy 复刻不经济的体量（Transformer 级）才启用。
+## 3. 已实施的生产化（方案 C：numpy 权重前向）
 
-### 方案 A（否决）: serve 端延迟 import torch
+### 3.1 `rnn_export.py`（新）
+- `export_weights(model, path)`：训练进程导出 LSTM(W_ih/W_hh/b_ih) + 三层 dense
+  → npz。断言 `b_hh` 全零（训练侧冻结的单 bias 语义）。
+- `RNNWeights`：**纯 numpy** 前向（门序 i,f,g,o 与 torch 对齐），
+  `predict_windows` / `predict_panel`（块内左侧零填充，与 `build_windows` 同语义）。
+- 实测 torch vs numpy **max|diff| = 1.5e-8**。
 
-- 技术上可行（重方法内 import），但 cron 环境 torch 加载 ~3-8s、MPS/CPU 设备选择
-  不确定性、conda 环境升级脆弱性——对一张 6.8k 参数的网毫无必要。否决。
+### 3.2 `prod_model_rnn.py`（新）
+- `freeze(panel, asof, seeds=3)`：窄集全量训练 → 每 seed 一份 weights npz +
+  `per_ticker.parquet`（冻结 mu/sd、z_next、ma5v_next、active、fund1 末值）+
+  **`seq_tail.npz`**（每票末 9 日特征窗 + 日戳）+ meta。
+- `serve(art, target_date, update_state=False)`：窗 = seq_tail(9) ⊕ 当日行 →
+  numpy 前向 → **多 seed 均值** → `pred_v = ma5v_next + η̂`；schema 与现役
+  lgbm/ma5 工件一致（refresh 可直接分发）。
+- **有状态 + 三道纪律**：日更滚动 seq_tail 后原子回写；同日重复调用幂等
+  （日戳判定）；**日期断档直接抛错拒绝出数**，绝不用错位窗静默预测。
 
-## 3. 序列特征服务化（真正的工程主体）
+### 3.3 测试（7 项，全过；VP 全套 146 passed）
+`tests/test_rnn_export.py`
+- numpy ≡ torch 逐行对拍
+- 零填充语义与手工窗逐位一致 + 元信息
+- **红线（功能性）**：子进程中用 meta_path 钩子封死 `import torch`，服务路径仍
+  跑通且数值一致 —— 「服务端零 torch」是被测试守住的，不是口头承诺
 
-### 3.1 冻结物扩展
+`tests/test_prod_model_rnn.py`
+- 工件完整性 + seq_tail ≡ 面板末 9 行
+- serve 窗拼接与 seed 平均：与手工复算逐位一致
+- **断档必须抛错**
+- 同日重复 serve 幂等（窗不二次滚动）
 
-`prod_model.freeze` 在现有 per_ticker 冻结统计之外，增存：
+### 3.4 意外红利
+窄集只需 **14 个特征（tech 8 + fund1 6）**，不需要 fund2/cal/earn → serve 路径
+比现役 lgbm **更简单**（无日历/财报 shell 组装、无 earnings loader 依赖）。
 
-```
-per_ticker[tkr]["seq_tail"]: 末 9 个交易日的 z 化特征行 (9 × n_pred, float32)
-per_ticker[tkr]["seq_dates"]: 对应日期戳（重放对齐用）
-```
+## 4. 尚未做（需人工决策，不自动执行）
 
-窗口语义与训练面板逐位一致：训练侧 `build_windows` 对不足 seq_len 的头部做左侧零填充
-（`W[.., seq_len-len:, :] = seg`），serve 侧同款——新票/停牌复牌票头部零填充，不降级不跳过。
+1. **真面板 freeze 一次**（`panel prod_v6f32n` + 当前 asof），产出候选工件
+2. **影子 AB ≥5 交易日**（rnn 候选 vs 现役 lgbm，同 P4 分组裁判纪律）
+3. **人工 promote**（registry.production 指针切换）—— 永远人工，不自动
+4. 全集 RNN 带上下文修复的重跑（纯验证：量化 §0-2 那个 bug 吃掉多少 R²）
+5. `refresh` 分发端识别 `kind=learned.rnn`（现按 kind 分支，加一路）
 
-### 3.2 serve 日更流程（fast path）
+## 5. 训练不确定性纪律（保留自初稿）
 
-行 T 预测 = 网络输入窗 `[T-10+1 … T]` 的 z 化特征（行 T 特征本身按面板口径只用 ≤T-1 信息，
-与 lgbm serve 现行口径一致，无新增前视）：
-
-1. 用冻结统计对当日新特征行做 z 化（与 lgbm serve 同一函数，不重写）；
-2. `窗 = concat(seq_tail, 当日行)[-10:]` → numpy 前向 → 预测；
-3. **seq_tail 滚动更新**并原子回写 registry（当日行入尾、最老行出）——这是与 lgbm
-   serve 的关键差异: RNN serve 是**有状态的**。
-4. 状态防护: seq_tail 带 `last_date` 戳，重复运行同日 refresh 幂等（同日不二次入窗）；
-   若发现日期断档（cron 漏跑），从 raw 尾窗重建整窗（general path 兜底），大声 log。
-
-### 3.3 general path（重放/断档兜底）
-
-与 lgbm 一致走 raw 尾窗（330d + sl.adjust 复权）重算特征，再按 3.1 语义现场构窗。
-A14 首行教训已内化: 重放起点前需回补 seq_len-1+特征暖机天数，缺一天则该票当日回 ma5 兜底
-并计数报警，不静默。
-
-## 4. NN（PaperNN）顺带生产化
-
-PaperNN 是扁平单行输入（32→16→8→1，无序列），生产化 = 方案 C 的 dense-only 子集，
-**无 3.2 的状态机**。若复赛中 nn 赢面大于 rnn，优先落 nn（工程量约为 rnn 的 1/3）。
-
-## 5. 训练不确定性纪律
-
-torch 训练即使 seed_everything 也存在跨设备(MPS/CPU)非确定性。冻结物中记录
-`train_device/torch_version/seed/loss_history`；OOS 复赛与 promote 评审用 seeds≥3 的
-中位数成绩，杜绝单 seed 幸运票。
-
-## 6. 实施顺序（获批后）
-
-1. 复赛证据关（依赖 bhodn40h1 总表）: 同面板 rnn vs lgbm vs nn，seeds=3，分层分组
-2. `prod_model.freeze` 多模型分支 + weights.npz 导出 + 对拍自检
-3. serve numpy 前向 + seq_tail 状态机 + 幂等/断档测试
-4. 影子 AB（与 lgbm 促升同款纪律，≥5 交易日）→ 人工 promote
-5. 全程测试进 tmp；registry 结构向后兼容（lgbm 工件字段不动，新增字段并存）
-
-## 7. 明确不做
-
-- 不改训练协议（论文精确系保持 Adam 默认/1024/50ep）
-- 不引 onnxruntime/torchscript（除非用户批方案 B）
-- 不在 conductor/cron 中引 torch
-- 不自动 promote —— promote 永远人工
+torch 训练即使固定 seed 仍有跨设备非确定性。工件记录 seeds/weight_files；
+OOS 评审与 promote 一律用 **多 seed 均值**，杜绝单 seed 幸运票。freeze 默认
+seeds=3，serve 端对各 seed 预测取均值（已实施）。

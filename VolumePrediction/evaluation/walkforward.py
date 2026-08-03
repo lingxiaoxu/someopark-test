@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -184,6 +185,30 @@ def stratified_r2(eta_true: pd.Series, eta_hat: pd.Series,
 
 # ── 增量落盘小工具 ────────────────────────────────────────────────────────────
 
+def _seq_context(panel: pd.DataFrame, test_start, te: pd.DataFrame,
+                 seq_len: int, d_lv) -> pd.DataFrame:
+    """测试窗每票的前 seq_len-1 行历史(严格 < test_start,即训练期内的过去)。
+
+    序列模型的 many-to-one 窗需要跨训练/测试边界的滞后;这些行是已知过去,
+    取用不构成前视。仅取所需票、所需天数(近 4×seq_len 交易日内)以省内存。
+    """
+    L = seq_len - 1
+    if L <= 0:
+        return panel.iloc[:0]
+    prior_dates = np.unique(d_lv[d_lv < test_start])
+    if len(prior_dates) == 0:
+        return panel.iloc[:0]
+    lo = prior_dates[-min(len(prior_dates), 4 * seq_len)]
+    m = (d_lv >= lo) & (d_lv < test_start)
+    ctx = panel[m]
+    want = te.index.get_level_values("ticker").unique()
+    ctx = ctx[ctx.index.get_level_values("ticker").isin(want)]
+    if ctx.empty:
+        return ctx
+    # 每票末 L 行(按日序;panel 索引已按 date 排序)
+    return ctx.groupby(level="ticker", sort=False).tail(L)
+
+
 def _append_rows(path: Path, rows: List[dict]) -> None:
     """CSV append(首写带 header)——单窗完成即持久化,中断不失已算窗。"""
     pd.DataFrame(rows).to_csv(path, mode="a", header=not path.exists(),
@@ -204,7 +229,9 @@ def run(panel: Union[pd.DataFrame, str],
         train_months: int = 24, test_months: int = 6, step_months: int = 6,
         seeds: int = 5, quick: bool = False, allow_deep: bool = False,
         out_dir: Optional[Path] = None,
-        run_tag: Optional[str] = None) -> dict:
+        run_tag: Optional[str] = None,
+        only_window: Optional[int] = None,
+        save_preds: bool = False) -> dict:
     """滚动训练/验证 + 分层报告。返回 summary dict(同 summary.json)。
 
     panel: DataFrame(DEV_CONTRACTS schema)或 tag 字符串(经 replication_g.load_panel);
@@ -212,6 +239,10 @@ def run(panel: Union[pd.DataFrame, str],
       (与注册表同契约;注入名可任意,视为确定性单 seed——随机性模型请经
       STOCHASTIC_MODELS 内置名走注册表,或自行在工厂内做种子平均);
     out_dir: 产物目录(默认 outputs/walkforward/;测试传 /tmp 路径)。
+    only_window: 只跑该 window_id(每窗独立进程的 jetsam 免疫编排用,
+      2026-08-01 实证同进程多窗 MPS 缓存累积必被杀);此模式跳过跨窗汇总、
+      不写 summary.json(由 aggregate_preds 最终聚合)。
+    save_preds: 每窗 OOS 预测落盘 out_dir/preds/(aggregate_preds 的输入)。
     """
     if isinstance(panel, str):
         from VolumePrediction.replication_g import load_panel
@@ -267,6 +298,8 @@ def run(panel: Union[pd.DataFrame, str],
         fac = factories[mk]
         pooled: List[pd.Series] = []      # 该模型全部窗的 OOS 预测(分层用)
         for w in windows:
+            if only_window is not None and w["window_id"] != only_window:
+                continue
             t0 = time.time()
             tr_m = (d_lv >= w["train_start"]) & (d_lv < w["train_end"])
             te_m = (d_lv >= w["test_start"]) & (d_lv < w["test_end"])
@@ -281,11 +314,31 @@ def run(panel: Union[pd.DataFrame, str],
             preds, pc = [], None
             for sd in range(n_seeds):
                 m, fkw = fac(len(cols), sd)
-                m.fit(tr, tr["eta"], **fkw)
-                preds.append(m.predict(te))
+                # 只喂特征列(与 replication_g 同约定): 自选列模型逐位等价
+                # (feature_cols(tr[cols])==cols);论文精确系 nn/rnn 吃 X.values
+                # 原样,喂全帧会 n_pred 失配(2026-08-01 deep 段崩溃根因)
+                m.fit(tr[cols], tr["eta"], **fkw)
+                # 序列模型: 测试窗每票前 seq_len-1 行的历史落在训练期(严格过去,
+                # 非前视)。不带上下文 = 那 7.1% 的行被零填充喂进 LSTM,系统性
+                # 惩罚序列模型(2026-08-02 审计发现;lgbm/nn 无序列不受影响)。
+                seq_len = getattr(m, "seq_len", None)
+                if seq_len and seq_len > 1:
+                    ctx = _seq_context(panel, w["test_start"], te, seq_len, d_lv)
+                    if len(ctx):
+                        p_all = m.predict(pd.concat([ctx[cols], te[cols]]))
+                        preds.append(p_all.loc[te.index])
+                    else:
+                        preds.append(m.predict(te[cols]))
+                else:
+                    preds.append(m.predict(te[cols]))
                 pc = m.param_count()
             eta_hat = pd.concat(preds, axis=1).mean(axis=1)
             pooled.append(eta_hat)
+            if save_preds:
+                pdir = out_dir / "preds"
+                pdir.mkdir(exist_ok=True)
+                (eta_hat.rename("eta_hat").to_frame()
+                 .to_parquet(pdir / f"{run_tag}_{mk}_w{w['window_id']}.parquet"))
             row = {
                 "window_id": w["window_id"], "model": mk,
                 "train_start": w["train_start"].date(),
@@ -308,44 +361,95 @@ def run(panel: Union[pd.DataFrame, str],
         if not pooled:
             log.warning(f"{mk}: no windows produced predictions — skipped in report")
             continue
+        if only_window is not None:
+            # 单窗模式: 预测已落 CSV/preds,跨窗汇总留给 aggregate_preds
+            continue
 
-        # 跨窗合并 → 全局 + 分层(靶点⑩)
-        eta_hat_all = pd.concat(pooled)
-        eta_true_all = panel.loc[eta_hat_all.index, "eta"]
-        g_r2 = oos_r2_eta(eta_true_all, eta_hat_all)
-        strat_rows = [{"model": mk, "stratum_type": "global", "stratum": "ALL",
-                       "n_obs": int(eta_true_all.notna().sum()),
-                       "r2_eta": round(g_r2, 6)}]
-        strat_result: Dict[str, dict] = {}
-        for stype, skey in (("industry", strata_ind),
-                            ("size_decile", strata_size)):
-            tbl = stratified_r2(eta_true_all, eta_hat_all, skey)
-            # np.float64 → Python float(json default=str 会把 numpy 标量串化,
-            # 破坏 summary 数值语义)
-            strat_result[stype] = {
-                r["stratum"]: (None if pd.isna(r["r2_eta"])
-                               else round(float(r["r2_eta"]), 6))
-                for r in tbl.to_dict("records")}
-            strat_rows += [{"model": mk, "stratum_type": stype, **r}
-                           for r in tbl.round({"r2_eta": 6}).to_dict("records")]
-        _append_rows(strat_csv, strat_rows)
+        _pooled_report(mk, pd.concat(pooled), panel, strata_ind, strata_size,
+                       strat_csv, summary, sum_json)
 
-        # 全局 vs 分层对比(spread=分层异质性;加权均值应≈全局)
-        summary["global_r2"][mk] = round(g_r2, 6)
-        summary["stratified"][mk] = strat_result
-        comp = {}
-        for stype, d in strat_result.items():
-            vals = [v for v in d.values() if v is not None]
-            comp[stype] = {"min": min(vals), "max": max(vals),
-                           "spread": round(max(vals) - min(vals), 6),
-                           "n_strata": len(vals)} if vals else None
-        summary["comparison"][mk] = {"global": round(g_r2, 6), **comp}
-        _atomic_json(sum_json, summary)             # 每模型完成即刷新
-        log.info(f"{mk} pooled OOS r2_eta={g_r2:.4f} | "
-                 f"strata: { {k: (v['spread'] if v else None) for k, v in comp.items()} }")
-
-    _atomic_json(sum_json, summary)
+    if only_window is None:
+        _atomic_json(sum_json, summary)
     log.info(f"walkforward artifacts → {out_dir}")
+    return summary
+
+
+def _pooled_report(mk: str, eta_hat_all: pd.Series, panel: pd.DataFrame,
+                   strata_ind: pd.Series, strata_size: pd.Series,
+                   strat_csv: Path, summary: dict, sum_json: Path) -> None:
+    """跨窗合并 → 全局 + 分层(靶点⑩) + comparison,就地写 summary/CSV。"""
+    eta_true_all = panel.loc[eta_hat_all.index, "eta"]
+    g_r2 = oos_r2_eta(eta_true_all, eta_hat_all)
+    strat_rows = [{"model": mk, "stratum_type": "global", "stratum": "ALL",
+                   "n_obs": int(eta_true_all.notna().sum()),
+                   "r2_eta": round(g_r2, 6)}]
+    strat_result: Dict[str, dict] = {}
+    for stype, skey in (("industry", strata_ind),
+                        ("size_decile", strata_size)):
+        tbl = stratified_r2(eta_true_all, eta_hat_all, skey)
+        # np.float64 → Python float(json default=str 会把 numpy 标量串化,
+        # 破坏 summary 数值语义)
+        strat_result[stype] = {
+            r["stratum"]: (None if pd.isna(r["r2_eta"])
+                           else round(float(r["r2_eta"]), 6))
+            for r in tbl.to_dict("records")}
+        strat_rows += [{"model": mk, "stratum_type": stype, **r}
+                       for r in tbl.round({"r2_eta": 6}).to_dict("records")]
+    _append_rows(strat_csv, strat_rows)
+
+    # 全局 vs 分层对比(spread=分层异质性;加权均值应≈全局)
+    summary["global_r2"][mk] = round(g_r2, 6)
+    summary["stratified"][mk] = strat_result
+    comp = {}
+    for stype, d in strat_result.items():
+        vals = [v for v in d.values() if v is not None]
+        comp[stype] = {"min": min(vals), "max": max(vals),
+                       "spread": round(max(vals) - min(vals), 6),
+                       "n_strata": len(vals)} if vals else None
+    summary["comparison"][mk] = {"global": round(g_r2, 6), **comp}
+    _atomic_json(sum_json, summary)             # 每模型完成即刷新
+    log.info(f"{mk} pooled OOS r2_eta={g_r2:.4f} | "
+             f"strata: { {k: (v['spread'] if v else None) for k, v in comp.items()} }")
+
+
+def aggregate_preds(panel: Union[pd.DataFrame, str], models: List[str],
+                    out_dir: Optional[Path] = None,
+                    run_tag: str = "p5_deep") -> dict:
+    """从 preds/{run_tag}_{model}_w*.parquet 聚合全局+分层报告。
+
+    与 run() 的进程内汇总逐位同一代码路径(_pooled_report);用于每窗独立
+    进程编排后的最终聚合。写 wf_stratified_{run_tag}_agg.csv + summary.json。
+    """
+    if isinstance(panel, str):
+        from VolumePrediction.replication_g import load_panel
+        panel_tag, panel = panel, load_panel(panel)
+    else:
+        panel_tag = "<in-memory>"
+    out_dir = Path(out_dir) if out_dir is not None else WF_DIR
+    strat_csv = out_dir / f"wf_stratified_{run_tag}_agg.csv"
+    sum_json = out_dir / "summary.json"
+    try:
+        summary = json.loads(sum_json.read_text())
+    except Exception:  # noqa: BLE001 — 无既有 summary 则新建
+        summary = {"run_tag": run_tag, "panel_tag": panel_tag,
+                   "global_r2": {}, "stratified": {}, "comparison": {}}
+    for k in ("global_r2", "stratified", "comparison"):
+        summary.setdefault(k, {})
+    strata_ind = industry_strata(panel)
+    strata_size = size_decile_strata(panel)
+    for mk in models:
+        files = sorted((out_dir / "preds").glob(f"{run_tag}_{mk}_w*.parquet"))
+        if not files:
+            log.warning(f"aggregate: no preds for {mk} — skipped")
+            continue
+        eta_hat_all = pd.concat(
+            [pd.read_parquet(f)["eta_hat"] for f in files])
+        # 同 (index) 重复(重试窗残留)取末次
+        eta_hat_all = eta_hat_all[~eta_hat_all.index.duplicated(keep="last")]
+        log.info(f"aggregate {mk}: {len(files)} windows, {len(eta_hat_all):,} preds")
+        _pooled_report(mk, eta_hat_all, panel, strata_ind, strata_size,
+                       strat_csv, summary, sum_json)
+    _atomic_json(sum_json, summary)
     return summary
 
 
@@ -364,12 +468,35 @@ if __name__ == "__main__":
     ap.add_argument("--quick", action="store_true", help="单 seed+减 epochs 冒烟")
     ap.add_argument("--out-dir", default=None)
     ap.add_argument("--tag", default=None, help="run_tag(默认时间戳)")
+    ap.add_argument("--only-window", type=int, default=None,
+                    help="只跑该窗(每窗独立进程编排;跳过跨窗汇总)")
+    ap.add_argument("--save-preds", action="store_true",
+                    help="每窗 OOS 预测落盘 preds/(aggregate 输入)")
+    ap.add_argument("--float32", action="store_true",
+                    help="特征列转 float32(torch 本就 cast → 数值零差,常驻减半)")
+    ap.add_argument("--aggregate", action="store_true",
+                    help="不训练;从 preds/ 聚合全局+分层报告")
     a = ap.parse_args()
-    res = run(a.panel, models=a.models.split(","),
+    if a.aggregate:
+        res = aggregate_preds(a.panel, a.models.split(","),
+                              out_dir=Path(a.out_dir) if a.out_dir else None,
+                              run_tag=a.tag or "p5_deep")
+        print(json.dumps({"global_r2": res["global_r2"],
+                          "comparison": res["comparison"]}, ensure_ascii=False))
+        sys.exit(0)
+    panel_arg: Union[str, pd.DataFrame] = a.panel
+    if a.float32:
+        from VolumePrediction.replication_g import load_panel
+        panel_arg = load_panel(a.panel)
+        from VolumePrediction.models import feature_cols as _fc
+        _cols = _fc(panel_arg)
+        panel_arg[_cols] = panel_arg[_cols].astype("float32")
+    res = run(panel_arg, models=a.models.split(","),
               train_months=a.train_months, test_months=a.test_months,
               step_months=a.step_months, seeds=a.seeds, quick=a.quick,
               allow_deep=a.deep,
-              out_dir=Path(a.out_dir) if a.out_dir else None, run_tag=a.tag)
+              out_dir=Path(a.out_dir) if a.out_dir else None, run_tag=a.tag,
+              only_window=a.only_window, save_preds=a.save_preds)
     print(json.dumps({"n_windows": res["n_windows"],
                       "global_r2": res["global_r2"],
                       "comparison": res["comparison"]}, ensure_ascii=False))
