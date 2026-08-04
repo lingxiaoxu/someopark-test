@@ -307,6 +307,8 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
         return None
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.model.common import grid_pmf as _gp, leg_fair
+    from prediction_market_macro.research.backtest import (_market_leg_prob,
+                                                           _settle_release_ts)
     from prediction_market_macro.util.periods import kalshi_period_to_key
     spec = REGISTRY[series]
     events = conn.execute(
@@ -322,6 +324,11 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
             continue
         close_ts = datetime.fromisoformat(ev["ct"].replace("Z", "+00:00"))
         asof = close_ts - timedelta(hours=1)
+        # same close-vs-print hazard replay_series has: where the book closed after the
+        # release, close−1h hands the model the number it is scored on. Step behind it.
+        release_ts = _settle_release_ts(conn, spec, key)
+        if release_ts is not None and asof >= release_ts:
+            asof = release_ts - timedelta(seconds=1)
         try:
             pred = ts_foundation.predict(conn, asof, key, series)
             pmf = _gp(pred.dist, spec.round_rule)
@@ -334,11 +341,10 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
             (series, ev["period"])).fetchall()
         bs, bk, n = 0.0, 0.0, 0
         for l in legs:
-            r = conn.execute(
-                "SELECT yes_bid_close b, yes_ask_close a FROM candles WHERE ticker=?"
-                " AND end_ts<=? ORDER BY end_ts DESC LIMIT 1",
-                (l["ticker"], int(asof.timestamp()))).fetchone()
-            if not r or r["b"] is None or r["a"] is None or l["floor_strike"] is None:
+            # one shared market reader with replay_series, so the shadow track and the
+            # production track score the SAME leg universe and stay comparable
+            mp = _market_leg_prob(conn, l["ticker"], asof)
+            if mp is None or l["floor_strike"] is None:
                 continue
             try:
                 fair = leg_fair(pmf, l["strike_type"] or "greater",
@@ -347,7 +353,7 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
                 continue
             out01 = 1.0 if l["result"] == "yes" else 0.0
             bs += (fair - out01) ** 2
-            bk += ((r["b"] + r["a"]) / 2 - out01) ** 2
+            bk += (mp - out01) ** 2
             n += 1
         if n:
             scored += 1

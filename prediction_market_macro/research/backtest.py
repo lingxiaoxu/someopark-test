@@ -58,15 +58,27 @@ def backfill_candles(conn, md, series: str, max_markets: int = 4000) -> int:
 
 
 def _market_leg_prob(conn, ticker: str, asof: datetime) -> float | None:
+    """Mid of the newest bar at or before asof, or None when the book is empty.
+
+    The empty-book test must be SYMMETRIC. It used to be `a < 1.0`, which threw away
+    every leg the market had priced as near-certain YES while keeping the mirror image
+    on the NO side (no `b > 0.0` test). Measured over the stored candles: 1407 of the
+    1408 bars with ask=1.00 carry a LIVE bid (0.99 in 951 of them) — those are real
+    quotes, not a missing-ask sentinel, and dropping them conditioned the scored leg
+    universe on price level, which correlates with the outcome. Only bid=0.00 AND
+    ask=1.00 together (1 bar) means nobody is quoting.
+    """
     r = conn.execute(
         "SELECT yes_bid_close, yes_ask_close FROM candles WHERE ticker=? AND end_ts<=?"
         " ORDER BY end_ts DESC LIMIT 1", (ticker, int(asof.timestamp()))).fetchone()
     if r is None:
         return None
     b, a = r["yes_bid_close"], r["yes_ask_close"]
-    if b is not None and a is not None and a < 1.0:
-        return (b + a) / 2
-    return None
+    if b is None or a is None:
+        return None
+    if b <= 0.0 and a >= 1.0:
+        return None                          # genuinely no two-sided market
+    return (b + a) / 2
 
 
 def replay_claims(conn, n_releases: int = 26, asof_offsets=("-24h", "-1h")) -> dict:
@@ -130,6 +142,41 @@ def replay_claims(conn, n_releases: int = 26, asof_offsets=("-24h", "-1h")) -> d
     return {"series": "KXJOBLESSCLAIMS", "agg": agg, "per_release": per}
 
 
+def _settle_release_ts(conn, spec, key: str) -> datetime | None:
+    """Wall-clock moment the SETTLING print became public, read from the same vintage
+    store the models themselves read (fred_obs.knowledge_time).
+
+    Deliberately NOT the calendars module / releases table: those only cover 2026-01
+    onward while the settled history reaches back to 2021, and they carry known-wrong
+    dates (BLS_CPI "2026-01" says Feb 11; the print was Feb 13).
+
+    The period -> settling-observation mapping is EXACT, never a nearest-match window.
+    DCOILWTICO and GASREGW publish daily, so a fuzzy window cheerfully returns the
+    PREVIOUS day's print and manufactures leaks that do not exist (measured: 2 bogus
+    KXWTIW hits). No exact row => None => the caller leaves asof alone and counts it,
+    so an unmapped series degrades to today's behaviour instead of being corrupted.
+    """
+    sid = spec.fred_first_release
+    if not sid or not key:
+        return None
+    if spec.cadence == "monthly" and len(key) == 7:
+        et = f"{key}-01"
+    elif spec.cadence == "quarterly" and "-Q" in key:
+        y, q = key.split("-Q")
+        et = f"{y}-{(int(q) - 1) * 3 + 1:02d}-01"
+    elif spec.cadence == "weekly" and len(key) == 10:
+        # claims: the Thursday release reports the week ending the PRIOR Saturday
+        # (verified: key−5d hits an ICSA event_time, key−6d/−7d never do). The energy
+        # weeklies are indexed by the settle date itself.
+        d = datetime.fromisoformat(key).date()
+        et = (d - timedelta(days=5)).isoformat() if spec.calendar == "DOL_CLAIMS" else key
+    else:
+        return None                              # per_event (FOMC): no stable mapping
+    r = conn.execute("SELECT MIN(knowledge_time) k FROM fred_obs WHERE sid=?"
+                     " AND event_time=?", (sid, et)).fetchone()
+    return datetime.fromisoformat(r["k"]) if r and r["k"] else None
+
+
 def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                   max_events: int = 200, collect_legs: bool = False) -> dict:
     """Generic settled-history replay for ANY ladder/categorical series.
@@ -152,7 +199,13 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
         " AND s.result IN ('yes','no') GROUP BY s.period ORDER BY ct DESC LIMIT ?",
         (series, max_events)).fetchall()
     per, skipped = [], 0
-    for ev in events:
+    n_clamped = n_leaked = n_unknown = 0
+    # SQL orders newest-first so LIMIT keeps the MOST RECENT max_events; the returned
+    # per_release must nonetheless be CHRONOLOGICAL. eval.run_series feeds it to a
+    # pooled walk-forward accumulator ("weights learned only from past events") and to
+    # drift_check — newest-first silently made both read the future / invert the sign.
+    # decision_replay already does the same `reversed(...)` for the same reason.
+    for ev in reversed(events):
         key = kalshi_period_to_key(ev["period"])
         if not key or not ev["ct"]:
             continue
@@ -162,14 +215,30 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
             " FROM contracts c JOIN settlements s ON s.ticker=c.ticker"
             " WHERE c.series=? AND s.period=? AND s.result IN ('yes','no')",
             (series, ev["period"])).fetchall()
+        release_ts = _settle_release_ts(conn, spec, key)
+        n_unknown += release_ts is None
         rec = {"period": key, "n_legs_settled": len(legs)}
         for off in asof_offsets:
             hours = 24 if off == "-24h" else 1
             asof = close_ts - timedelta(hours=hours)
+            if release_ts is not None and asof >= release_ts:
+                # the book closed AFTER the print — KXPAYROLLS/KXU3 2026-01 closed 90min
+                # past the 13:30Z release — so a close-anchored asof hands the model the
+                # very number it is about to be scored on. Step back behind the print.
+                asof = release_ts - timedelta(seconds=1)
+                n_clamped += 1
             try:
                 pred = fn(conn, asof, key, series=series)
             except Exception:                                    # noqa: BLE001
                 skipped += 1
+                rec = None
+                break
+            if (release_ts is not None and pred.data_horizon is not None
+                    and pred.data_horizon >= release_ts):
+                # model reached past the print regardless of asof (an input sid whose
+                # vintage read is not asof-bounded). Never score it. Dropped rather than
+                # raised so one bad event cannot kill the weekly replay_all sweep.
+                n_leaked += 1
                 rec = None
                 break
             if isinstance(pred.dist, Categorical):
@@ -206,7 +275,8 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                     rec[f"legs{off}"] = leg_pairs
         if rec:
             per.append(rec)
-    agg = {"n": len(per), "skipped": skipped}
+    agg = {"n": len(per), "skipped": skipped, "n_asof_clamped": n_clamped,
+           "n_leak_dropped": n_leaked, "n_release_unknown": n_unknown}
     for off in asof_offsets:
         bm = [p[f"brier_model{off}"] for p in per if f"brier_model{off}" in p]
         bk = [p[f"brier_market{off}"] for p in per if f"brier_market{off}" in p]

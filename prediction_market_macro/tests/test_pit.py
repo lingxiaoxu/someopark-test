@@ -301,3 +301,62 @@ def test_ladder_monotone(conn, setup):
     sv = [survival(pmf, k, strict=False) for k in ks]
     assert all(b <= a + 1e-9 for a, b in zip(sv[:-1], sv[1:])), \
         f"{series}: survival not monotone"
+
+
+# ── 5. replay scoring: symmetric market filter + asof never crosses the print ─
+
+def test_market_leg_prob_filter_is_symmetric(conn):
+    """The empty-book test used to be `a < 1.0`, dropping every leg the market had
+    priced as near-certain YES while keeping its NO mirror image — a filter keyed on
+    price level, which correlates with the outcome, so it conditioned the scored
+    universe on the answer. Only bid=0 AND ask=1 together means nobody is quoting."""
+    from prediction_market_macro.research.backtest import _market_leg_prob
+    asof = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    ts = int(asof.timestamp()) - 60
+    for tk, b, a in (("HI", 0.99, 1.00),      # live two-sided book pinned near certainty
+                     ("LO", 0.00, 0.01),      # its mirror image on the NO side
+                     ("EMPTY", 0.00, 1.00)):  # genuinely no market
+        conn.execute("INSERT INTO candles(ticker, end_ts, yes_bid_close, yes_ask_close)"
+                     " VALUES(?,?,?,?)", (tk, ts, b, a))
+    conn.commit()
+    hi, lo = _market_leg_prob(conn, "HI", asof), _market_leg_prob(conn, "LO", asof)
+    assert hi is not None and lo is not None, (hi, lo)
+    # symmetry: the two mirror books must survive or die together, and mirror in price
+    assert abs(hi - (1.0 - lo)) < 1e-9, (hi, lo)
+    assert _market_leg_prob(conn, "EMPTY", asof) is None
+    assert _market_leg_prob(conn, "NOSUCH", asof) is None
+
+
+def test_settle_release_ts_exact_mapping_never_matches_neighbour_day(conn):
+    """DCOILWTICO/GASREGW publish DAILY, so a nearest-match window returns the previous
+    day's print and manufactures a leak. The mapping must be exact-or-None."""
+    from prediction_market_macro.config.registry import REGISTRY
+    from prediction_market_macro.research.backtest import _settle_release_ts
+    # monthly: '2026-01' -> event_time '2026-01-01'
+    kt = datetime(2026, 2, 13, 13, 30, tzinfo=timezone.utc)
+    _ins(conn, "CPIAUCSL", "2026-01-01", 300.0, kt)
+    assert _settle_release_ts(conn, REGISTRY["KXCPI"], "2026-01") == kt
+    # weekly energy: exact day only — the day BEFORE must never be borrowed
+    wk = datetime(2026, 4, 2, 22, 0, tzinfo=timezone.utc)
+    _ins(conn, "DCOILWTICO", "2026-04-02", 70.0, wk)
+    assert _settle_release_ts(conn, REGISTRY["KXWTIW"], "2026-04-03") is None
+    _ins(conn, "DCOILWTICO", "2026-04-03", 71.0, wk + timedelta(days=1))
+    assert _settle_release_ts(conn, REGISTRY["KXWTIW"], "2026-04-03") == wk + timedelta(days=1)
+    # claims: the Thursday release reports the week ending the prior Saturday (key-5d)
+    ck = datetime(2026, 7, 30, 12, 30, tzinfo=timezone.utc)
+    _ins(conn, "ICSA", "2026-07-25", 220000.0, ck)
+    assert _settle_release_ts(conn, REGISTRY["KXJOBLESSCLAIMS"], "2026-07-30") == ck
+    # unmappable cadence (FOMC per_event) and unknown period fail OPEN, never guess
+    assert _settle_release_ts(conn, REGISTRY["KXFED"], "2026-09") is None
+    assert _settle_release_ts(conn, REGISTRY["KXCPI"], "1999-01") is None
+    assert _settle_release_ts(conn, REGISTRY["KXCPI"], None) is None
+
+
+def test_settle_release_ts_uses_first_vintage_not_revision(conn):
+    """MIN(knowledge_time): a later revision must not move the release anchor."""
+    from prediction_market_macro.config.registry import REGISTRY
+    from prediction_market_macro.research.backtest import _settle_release_ts
+    first = datetime(2026, 3, 11, 12, 30, tzinfo=timezone.utc)
+    _ins(conn, "CPIAUCSL", "2026-02-01", 300.0, first)
+    _ins(conn, "CPIAUCSL", "2026-02-01", 300.4, first + timedelta(days=31))
+    assert _settle_release_ts(conn, REGISTRY["KXCPI"], "2026-02") == first
