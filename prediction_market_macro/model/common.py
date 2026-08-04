@@ -36,20 +36,34 @@ class GaussianMix:
         return {"kind": "gmix", "comps": list(self.comps)}
 
 
+_EMP_QUANTILES = 1001          # 0.1% resolution — a tenth of a Kalshi 1c tick.
+                               # Was 201 (0.5%), which quantised a leg's fair value at
+                               # half a tick and is too coarse to price a 1-2% wing.
+
+
 @dataclass(frozen=True)
 class Empirical:
     samples: tuple[float, ...]
 
+    def __post_init__(self):
+        # sorted once; cdf/quantile are searchsorted rather than a full scan. Energy
+        # switched to bootstrap samples in energy/0.5.0, and grid_pmf calls cdf once
+        # per settlement-grid point (thousands for a $0.01-grid WTI ladder) — the old
+        # O(n) mean(a <= x) made that quadratic.
+        object.__setattr__(self, "_sorted", np.sort(np.asarray(self.samples, dtype=float)))
+
     def cdf(self, x: float) -> float:
-        a = np.asarray(self.samples)
-        return float(np.mean(a <= x))
+        a = self._sorted
+        return float(np.searchsorted(a, x, side="right") / len(a))
+
+    def quantile(self, q: float) -> float:
+        return float(np.quantile(self._sorted, q))
 
     def mean(self) -> float:
-        return float(np.mean(self.samples))
+        return float(np.mean(self._sorted))
 
     def to_json(self) -> dict:
-        a = np.asarray(self.samples)
-        qs = np.quantile(a, np.linspace(0, 1, 201)).tolist()
+        qs = np.quantile(self._sorted, np.linspace(0, 1, _EMP_QUANTILES)).tolist()
         return {"kind": "empirical", "quantiles": qs, "n": len(self.samples)}
 
 
@@ -103,8 +117,12 @@ def grid_pmf(dist: Dist, grid_step: float, span_sigmas: float = 8.0,
             spread = max(s for _, _, s in dist.comps) * span_sigmas + \
                      (max(m for _, m, _ in dist.comps) - min(m for _, m, _ in dist.comps))
         else:
-            a = np.asarray(dist.samples)
-            spread = float(np.max(a) - np.min(a)) + 4 * grid_step
+            # quantile span, NOT max-min: bootstrap samples from a fat-tailed pool put
+            # single draws far out, and min/max would blow the grid up to tens of
+            # thousands of points at a $0.001 round_rule. 0.005%..99.995% keeps >0.9999
+            # of the mass, comfortably above the assert below.
+            lo_q, hi_q = dist.quantile(0.00005), dist.quantile(0.99995)
+            spread = (hi_q - lo_q) + 4 * grid_step
         half_span = max(spread, 4 * grid_step)
     lo = math.floor((center - half_span) / grid_step) * grid_step
     hi = math.ceil((center + half_span) / grid_step) * grid_step
