@@ -335,7 +335,17 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
 
 def coverage(conn, days: int = 30) -> dict:
     """Which registered bets the window can even test: settled events with candled
-    legs per series, plus the registered-but-untestable ones (no settle in window)."""
+    legs per series, plus the registered-but-untestable ones (no settle in window).
+
+    `cd.end_ts > 0` is load-bearing. ingest/kalshi_md.py records a NULL-price row at
+    end_ts=0 when Kalshi 404s the candlestick endpoint, so that backfill stops retrying
+    a leg that will never have bars. 6700 of the 14683 candle rows are that sentinel, and
+    they belong exclusively to tickers with no real bars at all — joining on them counted
+    a leg as testable precisely when it is not. Over the full settled book that read 61
+    testable periods for KXCPI where 2 have prices, and 129 vs 10 for KXAAAGASW. The price
+    readers were never fooled (they all reject NULL bid/ask), so this was a reporting
+    error only, but it is the one that made replay n=1..11 look inexplicable.
+    """
     now = datetime.now(timezone.utc)
     since = now - timedelta(days=days)
     out = {}
@@ -343,7 +353,7 @@ def coverage(conn, days: int = 30) -> dict:
         r = conn.execute(
             "SELECT COUNT(DISTINCT s.period) n FROM settlements s"
             " JOIN contracts c ON c.ticker=s.ticker"
-            " JOIN candles cd ON cd.ticker=s.ticker"
+            " JOIN candles cd ON cd.ticker=s.ticker AND cd.end_ts>0"
             " WHERE s.series=? AND s.result IN ('yes','no') AND s.settled_ts>=?",
             (spec.ticker, since.isoformat())).fetchone()
         out[spec.ticker] = {"family": spec.family, "cadence": spec.cadence,

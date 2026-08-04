@@ -30,7 +30,7 @@
 | 源 | 行数 | 跨度 | 判定 |
 |---|---|---|---|
 | fx_daily(EURUSD/USDJPY) | 695 | 2025-06-22 起,**14 个月** | 零消费。月频事件只有 ~14 个样本,**不够 §9.5 的 n≥12 有效自由度**;先进 shadow |
-| Kalshi `candles` | 14683,其中 **6700 行 end_ts=0** | 干净部分仅 2026-05-15→07-30 | 见 §26.5;**46% 是脏行**,且真实深度只有 2.5 个月 —— 这是 replay 的 n 只有 1~11 的根因 |
+| Kalshi `candles` | 14683,其中 6700 行是 404 哨兵(非脏行,见 §26.5) | 有价格的部分仅 2026-05-15→07-30 | 真实深度只有 2.5 个月 —— 这才是 replay 的 n 只有 1~11 的根因 |
 
 ### §25.3 不通过 —— 现有存量无法做 walk-forward,必须先回填
 
@@ -99,11 +99,37 @@ penny 腿上 1¢ = 100% 滑点:ask=$0.01 → count=100 → 实付 $2.00,是 $1 �
 
 与 §26.1 同源,一并处理。
 
-### §26.5 `candles` 46% 脏行
+### §26.5 `candles` 的 6700 行 `end_ts=0` —— **原判定错误,已更正**(2026-08-04 已修)
 
-6700/14683 行 `end_ts=0`。`research/backtest.py::_market_leg_prob` 用 `end_ts<=asof ORDER BY end_ts DESC`,
-脏行永远满足条件 —— 当某腿只有脏行时会返回**时间戳为 1970 年的价格**当作历史市价。
-定位写入方(`ingest/kalshi_md.py`)、修复、清理。**这直接影响 §29 重跑出的所有 Brier。**
+原文写的是「脏行会返回 1970 年的价格当作历史市价,直接影响所有 Brier」。查证后**这个结论是错的**,
+记录在此以免日后又照着它去删数据:
+
+* 写入方 `ingest/kalshi_md.py:205-211`:Kalshi 对某些从未成交的腿 404 candlestick 端点,
+  这是**永久性**的,所以故意写一行 `end_ts=0` 且 bid/ask/price/volume **全 NULL** 的哨兵行,
+  让回填不再无限重试。不是脏数据,是有意的去重标记。
+* 实测:6700 行**全部** price 为 NULL,且**没有任何一个 ticker 同时拥有哨兵行和真实 bar** ——
+  两者不会混。
+* 五处价格读取方(`backtest._market_leg_prob` / `walkforward._candle_quote` /
+  `selector._candle_quote` / `eval._candle_quote` / `eval.py:516`)**全部**先判 `bid is None or
+  ask is None` 再用,哨兵一律落到 `None` 分支。价格路径从头到尾没被污染,Brier 不受影响。
+
+**但顺着查出了一个真 bug**:`research/walkforward.py::coverage()` 的
+`JOIN candles cd ON cd.ticker=s.ticker` 没有条件,于是**只有哨兵行的腿也算「可测试」**。
+全量结算簿上的失真:
+
+| series | coverage 原口径 | 实际有价格 |
+|---|---|---|
+| KXCPI | 61 | 2 |
+| KXAAAGASW | 129 | 10 |
+| KXWTIW | 153 | 11 |
+| KXU3 | 60 | 2 |
+
+这是纯报表错误(不改变任何回测数字),但它正是让 replay `n` 只有 1~11 显得「不可理解」的原因 ——
+覆盖率报表一直在虚报 6~30 倍。已加 `AND cd.end_ts>0`,并加测试
+`test_candle_404_sentinels_never_become_prices_or_coverage` 双向钉住(哨兵不计入、真 bar 恢复计入)。
+**哨兵行保留不删**:删了回填会重新去撞 404。
+
+真正制约 §29 的仍然是那条已确认的事实:可用的 Kalshi K 线只覆盖 **2026-05-15 → 07-30**。
 
 ---
 

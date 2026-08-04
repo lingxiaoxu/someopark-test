@@ -360,3 +360,39 @@ def test_settle_release_ts_uses_first_vintage_not_revision(conn):
     _ins(conn, "CPIAUCSL", "2026-02-01", 300.0, first)
     _ins(conn, "CPIAUCSL", "2026-02-01", 300.4, first + timedelta(days=31))
     assert _settle_release_ts(conn, REGISTRY["KXCPI"], "2026-02") == first
+
+
+def test_candle_404_sentinels_never_become_prices_or_coverage(conn):
+    """ingest/kalshi_md.py writes an end_ts=0, all-NULL row when Kalshi 404s a ticker's
+    candlesticks, so backfill stops retrying a leg that will never have bars. 6700 of
+    14683 stored rows are that sentinel. Two things must hold, and only one of them did.
+
+    The price readers were already safe (they reject NULL bid/ask), but coverage() joined
+    `candles` unconditionally and so counted a sentinel-only leg as testable: 61 claimed
+    periods for KXCPI against 2 with actual prices.
+    """
+    from prediction_market_macro.research.backtest import _market_leg_prob
+    from prediction_market_macro.research.walkforward import coverage
+    asof = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    conn.execute("INSERT INTO candles(ticker, end_ts, yes_bid_close, yes_ask_close,"
+                 " price_close, volume) VALUES('DEAD',0,NULL,NULL,NULL,NULL)")
+    conn.commit()
+    assert _market_leg_prob(conn, "DEAD", asof) is None
+
+    settled = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    conn.execute("INSERT INTO contracts(ticker, event_ticker, series, period,"
+                 " floor_strike, strike_type, close_time, first_seen_ts)"
+                 " VALUES('DEAD','KXCPI-26JUL','KXCPI','2026-07',0.0,'greater',?,?)",
+                 (settled, settled))
+    conn.execute("INSERT INTO settlements(ticker, series, period, result, settled_ts,"
+                 " first_seen_ts) VALUES('DEAD','KXCPI','2026-07','yes',?,?)",
+                 (settled, settled))
+    conn.commit()
+    assert coverage(conn, days=30)["KXCPI"]["events_in_window"] == 0
+
+    # ...and a real bar on the same ticker restores it, so the guard is not just "off"
+    conn.execute("INSERT INTO candles(ticker, end_ts, yes_bid_close, yes_ask_close)"
+                 " VALUES('DEAD',?,0.40,0.44)", (int(asof.timestamp()) - 60,))
+    conn.commit()
+    assert _market_leg_prob(conn, "DEAD", asof) == pytest.approx(0.42)
+    assert coverage(conn, days=30)["KXCPI"]["events_in_window"] == 1
