@@ -125,6 +125,7 @@ def parse_sim(sim_dir: str, n_seg: int):
     ball_side = None            # 0/1/None — sticky possession side (last holder's side)
     sent_off = set()            # player ids already counted as red-carded
     yellow_minutes = []         # minutes of 'Yellow card:' events (new-format sims)
+    offside_minutes = []        # minutes of 'X is offside' events (side comes from stats.json)
     with open(os.path.join(sim_dir, 'trajectory.jsonl')) as f:
         for line in f:
             fr = json.loads(line)
@@ -224,7 +225,16 @@ def parse_sim(sim_dir: str, n_seg: int):
                 elif RE_PASS_DONE.match(s):
                     X[seg, ball_side, CHANNELS.index('pass_comp_rate')] += 1   # numerator, ratio below
                 elif RE_OFFSIDE.match(s):
-                    X[seg, ball_side, CHANNELS.index('offsides')] += 1
+                    # count + minute only: the penalised side is NOT recoverable from the
+                    # trajectory (frames carry player ids but no names, and no roster file
+                    # exists, so 'X is offside' can't be mapped to a team). Possession at
+                    # the whistle agrees with stats.json only ~85% of the time, and no
+                    # frame-timing variant does better — measured over all 275 sims,
+                    # total |per-side error|: holder-at-event 604, holder-1 1454,
+                    # holder-2 604, inverted 1470 (event COUNT is exact: 1973 = 1973).
+                    # stats.json carries the engine's authoritative per-side count →
+                    # allocate below, same pattern as yellow_cards.
+                    offside_minutes.append(round(minute, 1))
                     events.append({'type': 'offside', 'min': round(minute, 1), 'side': ball_side})
                 elif RE_POSS_WON.match(s):
                     # the winner is the *new* holder — ball.team may lag one frame, so
@@ -270,6 +280,21 @@ def parse_sim(sim_dir: str, n_seg: int):
         n_yellow = float(stats[side].get('yellow_cards') or 0.0)
         X[:, si, iyc] = n_yellow * yc_share
 
+    # offsides: identical treatment — the trajectory times the whistles correctly but
+    # cannot attribute them to a side (see the RE_OFFSIDE branch), so take each side's
+    # total from stats.json and spread it over the segments where offsides were observed.
+    iof = CHANNELS.index('offsides')
+    if offside_minutes:
+        of_seg = np.zeros(n_seg)
+        for mnt in offside_minutes:
+            of_seg[min(int(mnt // (90.0 / n_seg)), n_seg - 1)] += 1
+        of_share = of_seg / of_seg.sum()
+    else:
+        of_share = np.full(n_seg, 1.0 / n_seg)
+    for si, side in enumerate(('home', 'away')):
+        n_off = float(stats[side].get('offsides') or 0.0)
+        X[:, si, iof] = n_off * of_share
+
     # match-level rate/aggregate channels: replicate the stats.json value across segments.
     # save_pct null = keeper faced 0 shots on target (0/0) → corpus-typical 0.70.
     isv, irec = CHANNELS.index('save_pct'), CHANNELS.index('recovery_sec')
@@ -287,7 +312,9 @@ def parse_sim(sim_dir: str, n_seg: int):
         check[f'{side}_poss'] = (round(seg_poss, 1), st['possession_pct'])
         check[f'{side}_shots'] = (int(X[:, si, CHANNELS.index('shots')].sum()), st['shots'])
         check[f'{side}_passes'] = (int(X[:, si, ipass].sum()), st['passes'])
-        check[f'{side}_offsides'] = (int(X[:, si, CHANNELS.index('offsides')].sum()), st['offsides'])
+        # allocated (not tallied) → round, else float residue truncates 6.0 to 5
+        check[f'{side}_offsides'] = (round(X[:, si, CHANNELS.index('offsides')].sum()),
+                                     st['offsides'])
         check[f'{side}_goals'] = (int(X[:, si, CHANNELS.index('goals')].sum()), st['goals'])
         check[f'{side}_sequences'] = (int(X[:, si, CHANNELS.index('sequences')].sum()),
                                       st.get('sequences'))
