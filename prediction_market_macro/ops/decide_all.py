@@ -103,6 +103,47 @@ def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> b
     return True
 
 
+_AAA_ANCHOR_MAX_AGE_D = 2
+
+
+def _aaa_information_gate(conn, pr, now: datetime) -> str | None:
+    """None if this pred may trade; otherwise the reason it may not (§27.4, §5-bis 口5).
+
+    KXAAAGASW settles on AAA's daily national average, which the other side of the market
+    can read the same day. Our own AAA_DAILY feed only begins 2026-07-31 and is a
+    page scrape that can never be backfilled, so whenever `model/energy.py` falls back to
+    the WEEKLY GASREGW proxy we are knowingly quoting a number our counterparty already
+    knows. That is how #743 lost: market 1%, us 26%, settled NO — and the post-mortem
+    found the model honestly calibrated the whole time (LOO 0.0862 IS the real error of a
+    weekly proxy). No distribution fix reaches an information gap; the only correct
+    response is to not trade the series in that state.
+
+    Two conditions, both required: the pred must have come from the daily-anchor branch,
+    and our feed must actually be alive. AAA publishes 7 days a week, so the age check
+    fires on OUR collector being down, not on a weekend.
+
+    Deliberately live-lane only. The backtest path needs no equivalent: every AAA_DAILY
+    row carries knowledge_time >= 2026-07-31T19:46Z, so any replay before then sees an
+    empty series and takes the proxy branch by construction.
+    """
+    if pr["series"] != "KXAAAGASW":
+        return None
+    try:
+        mode = (json.loads(pr["inputs_json"] or "{}") or {}).get("mode")
+    except ValueError:
+        return "aaa_inputs_unreadable"
+    if mode != "aaa_daily_anchor":
+        return f"aaa_proxy_only mode={mode} — settle source not visible to us (§27.4)"
+    r = conn.execute("SELECT MAX(event_time) m FROM fred_obs WHERE sid='AAA_DAILY'"
+                     " AND knowledge_time<=?", (now.isoformat(),)).fetchone()
+    if not r or not r["m"]:
+        return "aaa_daily_missing"
+    age = (now.date() - datetime.fromisoformat(r["m"]).date()).days
+    if age > _AAA_ANCHOR_MAX_AGE_D:
+        return f"aaa_daily_stale {age}d > {_AAA_ANCHOR_MAX_AGE_D}d"
+    return None
+
+
 def _bankroll(conn, settings) -> float:
     """Live demo-account balance (cached in db by the refresh bankroll step);
     static seed only if never fetched."""
@@ -160,6 +201,17 @@ def run(conn, settings) -> int:
                           f" quotes={quote_age_h if quote_age_h is None else round(quote_age_h, 1)}h")
                 ledger.record(conn, series=spec.ticker, period=key,
                               decision=Decision("pass", None, 0.0, 0, (reason,),
+                                                dict(GATES)),
+                              pred_inputs={}, model_version=pr["model_version"])
+                set_coverage(conn, spec.ticker, key, "passed")
+                n += 1
+                continue
+            # information-disadvantage gate (§27.4) — see _aaa_information_gate
+            blind = _aaa_information_gate(conn, pr, now)
+            if blind:
+                from prediction_market_macro.strategy.decision import Decision, GATES
+                ledger.record(conn, series=spec.ticker, period=key,
+                              decision=Decision("pass", None, 0.0, 0, (blind,),
                                                 dict(GATES)),
                               pred_inputs={}, model_version=pr["model_version"])
                 set_coverage(conn, spec.ticker, key, "passed")
