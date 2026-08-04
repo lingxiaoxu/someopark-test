@@ -13,6 +13,21 @@ import numpy as np
 import pandas as pd
 
 
+def move_cat(mv: float) -> str:
+    """Target move (pp) -> the KXFEDDECISION category. Cut boundaries mirror the hike
+    side; the thresholds sit between the 25bp grid points so a 50bp move cannot land in
+    the 25bp bucket on a rounding wobble."""
+    if mv <= -0.375:
+        return "C26"
+    if mv <= -0.125:
+        return "C25"
+    if mv < 0.125:
+        return "H0"
+    if mv < 0.375:
+        return "H25"
+    return "H26"
+
+
 class FeatureStore:
     def __init__(self, conn):
         self._conn = conn
@@ -46,6 +61,72 @@ class FeatureStore:
             "SELECT MAX(knowledge_time) m FROM fred_obs WHERE sid=? AND"
             " knowledge_time<=?", (sid, asof.isoformat())).fetchone()
         return s, (h["m"] if h else None)
+
+    def fed_target_upper(self, asof: datetime) -> tuple[pd.Series, str | None]:
+        """The Fed's policy target back to 1982, PIT — DFEDTAR spliced to DFEDTARU.
+
+        Before 2008-12-16 the FOMC set a single target rate (DFEDTAR); from 2008-12-16 it
+        sets a range and DFEDTARU is its upper bound. The two series abut exactly
+        (DFEDTAR ends 12-15), so the concatenation has no overlap to resolve and no gap.
+
+        This exists because `model/fed.py::_rule_probs` builds its "historical panel" of
+        past decisions from the target series, and its docstring says 1990-> while
+        DFEDTARU alone starts 2008-12. The panel was therefore ZIRP plus the 2022 hiking
+        cycle — a sample in which "hikes ~never happened with flat labor and core<3" is
+        true of the sample and not of the world. Splicing restores 1982-2008, which is
+        where most of the hikes in US history actually are.
+        """
+        a, ha = self.fred_series("DFEDTAR", asof)
+        b, hb = self.fred_series("DFEDTARU", asof)
+        # an empty fred_series carries an empty object Index, and comparing that to a
+        # Timestamp raises rather than returning an empty mask — so slice only when the
+        # pre-2008 leg actually has rows (an unbackfilled db, and every test fixture).
+        if len(a):
+            a = a[pd.DatetimeIndex(a.index) < pd.Timestamp("2008-12-16")]
+        s = pd.concat([x for x in (a, b) if len(x)]) if (len(a) or len(b)) else b
+        s = s.sort_index() if len(s) else s
+        if len(s):
+            s = s[~s.index.duplicated(keep="last")]
+        s.name = "FEDTARGET"
+        h = max((x for x in (ha, hb) if x), default=None)
+        return s, h
+
+    def statements_asof(self, asof: datetime, limit: int = 2) -> list[dict]:
+        """FOMC statement text known at `asof`, newest first (ingest.fed_text door)."""
+        from prediction_market_macro.ingest.fed_text import statements_asof as _sa
+        return _sa(self._conn, asof, limit=limit)
+
+    def fomc_meeting_moves(self, asof: datetime) -> tuple[list[dict], str | None]:
+        """Every FOMC meeting known at `asof` with the target move it decided, oldest
+        first: [{date, move, cat}]. PIT on both legs.
+
+        The meeting CALENDAR comes from the statement table, and that is the whole point
+        of it. A target-rate series records only changes, so from rates alone a meeting
+        that held is indistinguishable from no meeting at all — which is why
+        `_base_rates` had to reconstruct the denominator as "years x 8 meetings" and why
+        `_rule_probs` could only ever count moves. One statement is published per
+        meeting whatever is decided, so 242 statements are 242 meetings, holds included.
+
+        `move` is the first target level visible strictly after the meeting day minus the
+        last one visible before it. Both reads are knowledge_time-filtered, so a meeting
+        whose outcome has not printed yet simply drops out rather than resolving to zero.
+        """
+        stmts = self.statements_asof(asof, limit=10_000)
+        tgt, h = self.fed_target_upper(asof)
+        tgt = tgt.dropna()
+        if not len(tgt) or not stmts:
+            return [], h
+        tgt.index = pd.DatetimeIndex(tgt.index)
+        out = []
+        for s in reversed(stmts):                       # statements_asof is newest-first
+            d = pd.Timestamp(s["release_date"])
+            before = tgt[tgt.index < d]
+            after = tgt[tgt.index >= d + pd.Timedelta(days=1)]
+            if len(before) < 1 or len(after) < 1:
+                continue
+            mv = round(float(after.iloc[0] - before.iloc[-1]), 4)
+            out.append({"date": d, "move": mv, "cat": move_cat(mv)})
+        return out, h
 
     def fred_scalar_latest(self, sid: str, asof: datetime) -> float | None:
         """Latest visible value of a scalar series (e.g. DFEDTARU target bound).

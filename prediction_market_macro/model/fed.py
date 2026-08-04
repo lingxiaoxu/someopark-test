@@ -25,7 +25,10 @@ rate of 0.780. Three independent defects stacked to produce that:
      sources at the same confidence as one 6 weeks out.
 
 v0.3 sources, log-pooled over whichever are available (WEIGHTS, renormalised):
-  * rule  — the verified 51-hike-history discriminant, PIT from the meeting panel
+  * rule  — the verified 51-hike-history discriminant, PIT from the meeting panel.
+    A policy-MOMENTUM term was built here in 2026-08 off the §28 statement backfill and
+    then NOT shipped; the measurement and the reason are in PLAN §29.2, and
+    FeatureStore.fomc_meeting_moves is the door it would use if revisited.
   * market — devig of KXFED at P *and* at the preceding meeting; the DIFFERENCE of the
     two expected levels is the move. Unavailable prior ladder ⇒ no market source.
   * ff    — ZQ 30-day FF futures chained month by month to the TARGET meeting. Our store
@@ -100,6 +103,16 @@ def _base_rates(fs: FeatureStore, asof: datetime) -> tuple[dict, str | None]:
     history (2008-12 onward) that is 31 changes across ~141 meetings, i.e. H0 = 0.780 —
     the number the shrink pulls toward, and the reason an H0 of 0.0137 twenty months out
     was never defensible.
+
+    v0.4 note — the statement backfill makes the real meeting calendar available, so this
+    denominator no longer HAS to be assumed (fs.fomc_meeting_moves counts 242 meetings
+    1994->2026 directly, H0 0.639). Counting it was tried and NOT adopted: scored PIT as a
+    constant predictor over 202 meetings the assumed 0.780 wins on Brier, 0.4850 against
+    0.5141, and the counted panel only edges ahead on the 2015+ (0.5185 vs 0.5223) and
+    2020+ (0.5557 vs 0.5629) subsamples — margins well inside noise at n=96 and n=55.
+    The reason is regime, not arithmetic: 1994-2007 moved at far more meetings than the
+    ZIRP decade, so a full-history count is not the base rate of the world we trade in
+    while 0.780 happens to sit near the middle of both regimes. See PLAN §29.2.
     """
     tgt, h = fs.fred_series("DFEDTARU", asof)
     tgt = tgt.dropna()
@@ -256,7 +269,19 @@ def _dgs2_path(fs: FeatureStore, asof: datetime,
 
 
 def _rule_probs(fs: FeatureStore, conn, asof: datetime) -> tuple[dict, dict]:
-    """Conditional decision frequencies from the historical panel (1990→asof, PIT)."""
+    """Prior over the decision, bucketed by labor direction x core band.
+
+    Read the returned `base` before trusting the name: the four dicts below are HARDCODED
+    priors, and the historical panel assembled above them feeds only `hike_evidence` /
+    `n_panel_moves`, which go into meta and never into the probabilities. The panel is
+    diagnostic, not evidence — worth knowing when a change to the panel's inputs appears
+    to do nothing (it does nothing by construction). Whether the panel should actually
+    take over `base` is a separate question with its own A/B; see PLAN §29.2.
+
+    The panel is also DFEDTARU-only, i.e. 2008-12 onward, despite an earlier docstring
+    here claiming 1990->. FeatureStore.fed_target_upper splices 1982-2008 back on for
+    callers that want it; §29.2 measures why _base_rates does not take it.
+    """
     tgt, h1 = fs.fred_series("DFEDTARU", asof)
     core, h2 = fs.fred_series("CPILFESL", asof)
     un, h3 = fs.fred_series("UNRATE", asof)

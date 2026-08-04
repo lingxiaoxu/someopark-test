@@ -23,9 +23,15 @@ ET = ZoneInfo("America/New_York")
 # P0 series pulled every refresh (PLAN §5) — market-data series carry no revisions but are
 # stored through the same path with knowledge_time = event date 18:00 ET (post-close).
 CORE_SIDS = ["CPIAUCSL", "CPILFESL", "PCEPILFE", "UNRATE", "PAYEMS", "ICSA",
-             "DFEDTARU", "DGS2", "DGS5", "DGS10", "DGS30", "T5YIE", "GASREGW",
-             "DCOILWTICO", "GDPC1", "A191RL1Q225SBEA"]
-_MARKET_SIDS = {"DGS2", "DGS5", "DGS10", "DGS30", "T5YIE", "DCOILWTICO", "DFEDTARU", "GASREGW"}
+             "DFEDTARU", "DFEDTAR", "DGS2", "DGS5", "DGS10", "DGS30", "T5YIE",
+             "GASREGW", "DCOILWTICO", "GDPC1", "A191RL1Q225SBEA"]
+# DFEDTAR is the pre-2008 SINGLE target rate; DFEDTARU is the upper bound of the range
+# that replaced it. They abut exactly (DFEDTAR ends 2008-12-15, DFEDTARU starts 12-16)
+# and FeatureStore.fed_target_upper splices them. Without DFEDTAR the Fed model's
+# "historical panel" is 2008->, i.e. ZIRP plus one hiking cycle, which is not a
+# base rate for anything.
+_MARKET_SIDS = {"DGS2", "DGS5", "DGS10", "DGS30", "T5YIE", "DCOILWTICO", "DFEDTARU",
+                "DFEDTAR", "GASREGW"}
 
 
 def _knowledge_time(sid: str, vintage_date) -> str:

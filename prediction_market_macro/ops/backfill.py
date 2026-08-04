@@ -23,7 +23,8 @@ from prediction_market_macro.ingest.store import init_db
 
 
 def run(fed: bool = False, news: bool = False, weather: bool = False,
-        fed_refetch: bool = False, news_since: str = "2021-01-01",
+        futures: bool = False, fed_refetch: bool = False,
+        news_since: str = "2021-01-01",
         weather_since: str = "2005-01-01") -> dict:
     s = load_settings()
     conn = init_db(s.db_path)
@@ -54,15 +55,23 @@ def run(fed: bool = False, news: bool = False, weather: bool = False,
     if weather:
         from prediction_market_macro.ingest import weather as wx
         step("weather", lambda: wx.pull(conn, start=weather_since))
+    if futures:
+        # roots=list(FUT_ROOTS) on purpose: the ZQ strip that pull_futures adds by
+        # default is a rolling set of short-lived contracts, and 'max' on a dead
+        # contract is a handful of bars — nothing to backfill there.
+        from prediction_market_macro.ingest.market_data import FUT_ROOTS, pull_futures
+        step("futures", lambda: pull_futures(conn, roots=list(FUT_ROOTS), period="max"))
     return out
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--all", action="store_true", help="fed + weather (news is opt-in, see §28.2)")
+    ap.add_argument("--all", action="store_true",
+                    help="fed + weather + futures (news is opt-in, see §28.2)")
     ap.add_argument("--fed", action="store_true")
     ap.add_argument("--news", action="store_true")
     ap.add_argument("--weather", action="store_true")
+    ap.add_argument("--futures", action="store_true")
     ap.add_argument("--fed-refetch", action="store_true",
                     help="re-fetch statements we already have (upgrades an 'eod' stamp"
                          " to the page-parsed release time)")
@@ -70,8 +79,8 @@ def main():
     ap.add_argument("--weather-since", default="2005-01-01")
     a = ap.parse_args()
     run(fed=a.fed or a.all, news=a.news, weather=a.weather or a.all,
-        fed_refetch=a.fed_refetch, news_since=a.news_since,
-        weather_since=a.weather_since)
+        futures=a.futures or a.all, fed_refetch=a.fed_refetch,
+        news_since=a.news_since, weather_since=a.weather_since)
 
 
 if __name__ == "__main__":

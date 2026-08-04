@@ -31,7 +31,8 @@ import pandas as pd
 from prediction_market_macro.model.common import Empirical, GaussianMix, Pred
 from prediction_market_macro.model.features import FeatureStore
 
-VERSION = "energy/0.5.0"          # 0.5.0: empirical (bootstrap) innovations everywhere,
+VERSION = "energy/0.6.0"          # 0.6.0: storage/inventory drift removed (measured noise)
+                                  # 0.5.0: empirical (bootstrap) innovations everywhere,
                                   #        AR(1) gasoline drift, 1.5x inflation removed
                                   # 0.4.0: AAA daily anchor + NG storage tilt
 
@@ -93,43 +94,6 @@ def _remaining_bdays(horizon: datetime, settle: pd.Timestamp) -> float:
                0.05)
 
 
-_STORAGE_SID = {"NG": "NG_STORAGE_WEEKLY", "CL": "CRUDE_STOCKS_WEEKLY"}
-
-
-def _storage_tilt(conn, fs: FeatureStore, asof: datetime, root: str) -> tuple[float, int]:
-    """v0.4 drift term from the weekly EIA inventory surprise (NG storage / crude
-    stocks ex-SPR). Surprise = latest weekly change vs the 5y same-week seasonal
-    average; bigger-than-normal build ⇒ bearish. Coefficient fit walk-forward on
-    past (surprise, next-3-bday move) pairs — all reads kt<=asof."""
-    sid = _STORAGE_SID.get(root)
-    if sid is None:
-        return 0.0, 0
-    st, _h = fs.fred_series(sid, asof)
-    if len(st) < 60:
-        return 0.0, len(st)
-    chg = st.diff().dropna()
-    try:
-        weeks = chg.index.to_series().dt.isocalendar().week
-    except Exception:                                     # noqa: BLE001
-        return 0.0, len(st)
-    seasonal = chg.groupby(weeks.values).transform("mean")
-    surprise = (chg - seasonal).dropna()
-    closes, _h2 = fs.fut_closes(root, asof, n=600)
-    if len(closes) < 60 or len(surprise) < 30:
-        return 0.0, len(st)
-    xs, ys = [], []
-    for ts, sp in surprise.tail(150).items():
-        after = closes[closes.index > ts]
-        before = closes[closes.index <= ts]
-        if len(after) >= 4 and len(before) >= 1:
-            ys.append(float(after.iloc[3] / before.iloc[-1] - 1))
-            xs.append(float(sp))
-    if len(xs) < 20:
-        return 0.0, len(st)
-    b = float(np.polyfit(xs, ys, 1)[0])
-    return b * float(surprise.iloc[-1]), len(st)
-
-
 def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
     root = _FUT_ROOT[series]
     fs = FeatureStore(conn)
@@ -142,13 +106,15 @@ def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
     sigma_d = max(_mad_sigma(rets), _MIN_SIGMA_DAILY[root])
     h = _remaining_bdays(datetime.fromisoformat(horizon), pd.Timestamp(period))
     sig = sigma_d * math.sqrt(h)
+    # v0.6: NO storage/inventory drift. The v0.4 tilt regressed the next 3-bday move on
+    # the EIA inventory surprise and applied b * latest_surprise. Replayed the way the
+    # model actually used it over 782 prints (rolling 150-pair fit, PIT): sign hit rate
+    # 0.487, RMSE 0.07666 against 0.07700 for no drift at all, and the fitted b changed
+    # sign 23 times with 51% of fits positive -- i.e. the coefficient is a coin flip, and
+    # its stated economics (bigger build => bearish) is not even the sign it usually took.
+    # The earlier justification came from a 154-print window where corr was +0.253; on the
+    # full 863-print history that same corr is +0.073. See PLAN §29.3.
     drift = 0.0
-    n_stor = 0
-    try:
-        drift, n_stor = _storage_tilt(conn, fs, asof, root)
-        drift = float(np.clip(drift, -0.05, 0.05))        # ≤5% weekly tilt cap
-    except Exception:                                     # noqa: BLE001
-        drift = 0.0
     # v0.5: shape from the long history, scale from the last 20 bars. Measured
     # 2026-08-04 on the stored bars: CL kurtosis 9.3, NG 37.1 -- the normal that used
     # to sit here is not a defensible description of either.
@@ -162,14 +128,13 @@ def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
     else:
         z = rng.standard_normal(_N_SAMPLES)
         shape = "normal_fallback"
-    samples = s0 * np.exp(drift - 0.5 * sig * sig + sig * z)   # GBM (+storage tilt)
+    samples = s0 * np.exp(-0.5 * sig * sig + sig * z)          # driftless GBM
     dist = Empirical(tuple(np.round(samples, 4).tolist()))
     return Pred(series=series, period=period, dist=dist, asof=asof,
                 model_version=VERSION,
                 inputs={"root": root, "s0": round(s0, 2),
                         "sigma_daily": round(sigma_d, 5), "h_bdays": round(h, 2),
                         "sigma_h": round(sig, 5), "shape": shape,
-                        "storage_tilt": round(drift, 5), "n_storage_obs": n_stor,
                         "last_bar": str(closes.index[-1].date())},
                 data_horizon=datetime.fromisoformat(horizon))
 

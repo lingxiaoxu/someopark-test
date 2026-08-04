@@ -43,7 +43,16 @@ def _zq_contracts(today) -> dict[str, str]:
     return out
 
 
-def pull_futures(conn, roots: list[str] | None = None, lookback_days: int = 900) -> int:
+def pull_futures(conn, roots: list[str] | None = None, lookback_days: int = 900,
+                 period: str | None = None) -> int:
+    """Daily lane by default (900d). `period='max'` is the backfill lane.
+
+    The 900d window was not enough for its own consumers: `model/energy.py` asks
+    fut_closes for 1500 bars to build the bootstrap innovation pool and could only ever
+    be handed ~750, so the pool was silently a third of the intended length. yfinance
+    carries these roots back to 2000-08 (~6500 bars), so `ops.backfill --futures` pulls
+    the lot once and the daily lane keeps topping up the tail.
+    """
     import yfinance as yf
     now = datetime.now(timezone.utc).isoformat()
     today = datetime.now(ET).date()
@@ -53,8 +62,8 @@ def pull_futures(conn, roots: list[str] | None = None, lookback_days: int = 900)
     for root in all_roots:
         tkr = all_roots[root]
         try:
-            df = yf.Ticker(tkr).history(period=f"{lookback_days}d", interval="1d",
-                                        auto_adjust=False)
+            df = yf.Ticker(tkr).history(period=period or f"{lookback_days}d",
+                                        interval="1d", auto_adjust=False)
         except Exception:                            # noqa: BLE001 — dead contract
             continue
         if df is None or df.empty:
