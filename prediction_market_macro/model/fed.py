@@ -1,16 +1,41 @@
-"""model/fed.py — FOMC decision (PLAN §7). fed/0.1.0
+"""model/fed.py — FOMC decision (PLAN §7). fed/0.3.0
 
 Two products from one engine:
-  * KXFEDDECISION categorical {H26,H25,H0,C25,C26}
-  * KXFED 'Above X%' ladder over the post-meeting target UPPER bound
+  * KXFEDDECISION categorical {H26,H25,H0,C25,C26} — the move AT one meeting
+  * KXFED 'Above X%' ladder over the post-meeting target UPPER bound — the LEVEL
 
-Engine = log-pool of
-  (a) reaction rule (weight 0.4): the verified 51-hike-history discriminant turned into
-      conditional probabilities, computed PIT from the meeting panel this repo verified
-      on real FRED data (2026-07): labor direction ΔU3(12m) × core CPI band × prev move.
-  * (b) market prior (weight 0.6): devig of the KXFED ladder read from the LATEST stored
-      quotes (never fetched inside predict — PIT via the quotes table timestamps).
-The blend weights are fixed in v0.1 (model card) and re-fit at M4 via replay.
+The distinction between those two lines is the whole of the v0.3 rewrite. v0.1-0.2 blurred
+them and the blur only shows up at long horizons, which is exactly where the money was
+lost (see §27.1). Both surviving archived losers, KXFEDDECISION 2026-12 (-$0.75) and
+2027-03 (-$0.92), were opened off a model that priced 2027-03's H0 at 0.0137 — a 1.4%
+chance the Fed holds at a meeting 20 months out, against a measured unconditional hold
+rate of 0.780. Three independent defects stacked to produce that:
+
+  1. `_market_prior` devigged the KXFED ladder for period P into a distribution over the
+     rate LEVEL in P, then classified it by `level - ub_today`. For the NEXT meeting those
+     coincide. For any later meeting they do not: P(level in Mar-2027 == level today) is
+     small simply because 20 months of drift intervene, and that small number was being
+     reported as P(hold at the March meeting). The move at a meeting is level(P) minus
+     level(P-1), never level(P) minus today.
+  2. `_ff_probs` recorded the expected move only for `meetings[0]` and returned it for
+     whatever period the caller asked about. Every horizon got the NEXT meeting's number
+     at the largest weight (0.50) — which is why 2027-06 through 2027-12 printed
+     byte-identical distributions.
+  3. Nothing widened with horizon. A meeting 17 months out was pooled from the same
+     sources at the same confidence as one 6 weeks out.
+
+v0.3 sources, log-pooled over whichever are available (WEIGHTS, renormalised):
+  * rule  — the verified 51-hike-history discriminant, PIT from the meeting panel
+  * market — devig of KXFED at P *and* at the preceding meeting; the DIFFERENCE of the
+    two expected levels is the move. Unavailable prior ladder ⇒ no market source.
+  * ff    — ZQ 30-day FF futures chained month by month to the TARGET meeting. Our store
+    carries ZQ through H27, so this reaches 2027-03 and no further.
+  * dgs2  — beyond the ZQ chain, the 2y slope. The map from slope to realised drift is
+    re-fit PIT on every call rather than hardcoded (measured beta 1.33, corr 0.62).
+
+Then the pooled result is shrunk toward the measured unconditional base rate by
+lambda(h) = h/(h + 9 months), which is what puts a horizon-dependent floor under H0. The
+blend weights and the 9-month half-life are v0.3 priors, re-fit at M4 via replay.
 """
 from __future__ import annotations
 
@@ -24,10 +49,21 @@ from prediction_market_macro.model.common import Categorical, Pred
 from prediction_market_macro.model.features import FeatureStore
 from prediction_market_macro.strategy.devig import ladder_implied
 
-VERSION = "fed/0.2.0"             # 0.2.0: + FF-futures (ZQ) FedWatch chain source
+VERSION = "fed/0.3.0"    # 0.3.0: per-meeting move (not level-vs-today) + horizon shrink
 CATS = ["C26", "C25", "H0", "H25", "H26"]
-W_RULE, W_MKT = 0.4, 0.6          # two-source weights (fallback when no ZQ data)
-W3_RULE, W3_MKT, W3_FF = 0.15, 0.35, 0.50   # three-source: FF futures deepest
+QUANTA = [-0.50, -0.25, 0.0, 0.25, 0.50]
+
+# One weight per source, renormalised over whichever are present on the call. ZQ is the
+# deepest read on a near meeting; the Kalshi ladder is next; the rule is a prior, not
+# evidence; DGS2 is a coarse path anchor that only appears when ZQ cannot reach.
+WEIGHTS = {"ff": 0.50, "market": 0.35, "dgs2": 0.30, "rule": 0.15}
+
+# Shrink half-life: lambda = months / (months + SHRINK_HALFLIFE_M). 9 months is where the
+# ZQ strip stops being liquid enough to carry information (CME publishes FedWatch out to
+# roughly a year, and volume collapses past the fourth contract), so it is the horizon at
+# which the pooled sources deserve equal billing with the base rate.
+SHRINK_HALFLIFE_M = 9.0
+MEETINGS_PER_YEAR = 8.0
 
 _ZQ_MONTH = "FGHJKMNQUVXZ"
 
@@ -36,62 +72,187 @@ def _zq_root(y: int, m: int) -> str:
     return f"ZQ{_ZQ_MONTH[m - 1]}{y % 100:02d}"
 
 
-def _ff_probs(fs: FeatureStore, conn, asof: datetime,
-              meeting: datetime) -> tuple[dict | None, str | None]:
-    """CME-FedWatch-style probabilities from 30-day Fed Funds futures (ZQ monthly
-    contracts, PIT via fut_daily). Chain-solve month by month: a month's implied
-    average rate is the day-weighted mix of the pre- and post-meeting rates; each
-    meeting's post-rate is the unknown. Expected move at the TARGET meeting maps
-    to the 5 buckets by splitting between the two adjacent 25bp quanta."""
+def _move_to_probs(exp_move: float) -> dict:
+    """Split an expected move between the two adjacent 25bp quanta.
+
+    Deliberately a two-point distribution: it carries a first moment and nothing else, and
+    the honest widening happens once, centrally, in the horizon shrink. Spreading it here
+    too would double-count the uncertainty.
+    """
+    x = max(min(exp_move, QUANTA[-1]), QUANTA[0])
+    probs = dict.fromkeys(CATS, 1e-4)
+    for i in range(len(QUANTA) - 1):
+        lo, hi = QUANTA[i], QUANTA[i + 1]
+        if lo <= x <= hi:
+            f = (x - lo) / (hi - lo)
+            probs[CATS[i]] = max(1.0 - f, 1e-4)
+            probs[CATS[i + 1]] = max(f, 1e-4)
+            break
+    z = sum(probs.values())
+    return {k: v / z for k, v in probs.items()}
+
+
+def _base_rates(fs: FeatureStore, asof: datetime) -> tuple[dict, str | None]:
+    """Unconditional per-meeting outcome frequencies, counted PIT from DFEDTARU.
+
+    The target-rate series only records CHANGES, so holds are the unobserved bulk: the
+    meeting count is reconstructed from the span at 8 meetings a year. Over the visible
+    history (2008-12 onward) that is 31 changes across ~141 meetings, i.e. H0 = 0.780 —
+    the number the shrink pulls toward, and the reason an H0 of 0.0137 twenty months out
+    was never defensible.
+    """
+    tgt, h = fs.fred_series("DFEDTARU", asof)
+    tgt = tgt.dropna()
+    if len(tgt) < 260:
+        return {"C26": 0.02, "C25": 0.06, "H0": 0.78, "H25": 0.10, "H26": 0.04}, h
+    d = tgt.diff().fillna(0.0)
+    chg = d[d != 0.0]
+    years = max((tgt.index[-1] - tgt.index[0]).days / 365.25, 1.0)
+    n_meet = max(round(years * MEETINGS_PER_YEAR), len(chg) + 1)
+    cnt = dict.fromkeys(CATS, 0.0)
+    for v in chg.values:
+        k = ("C26" if v <= -0.45 else "C25" if v < -0.05
+             else "H25" if v < 0.45 else "H26")
+        cnt[k] += 1.0
+    cnt["H0"] = float(n_meet - len(chg))
+    tot = sum(cnt.values())
+    return {k: v / tot for k, v in cnt.items()}, h
+
+
+def _shrink_lambda(asof: datetime, meeting: datetime) -> float:
+    months = max((meeting - asof).days, 0) / 30.44
+    return months / (months + SHRINK_HALFLIFE_M)
+
+
+MIN_POST_FRAC = 0.25      # below this the day-weighted solve levers errors past 4x
+
+
+def _ff_path(fs: FeatureStore, asof: datetime,
+             meeting: datetime) -> tuple[float | None, float | None, str | None]:
+    """(pre-meeting rate, move at THAT meeting, horizon) from the ZQ strip.
+
+    CME-FedWatch chain: a month's implied average rate is the day-weighted mix of the pre-
+    and post-meeting rates, so each meeting's post-rate solves out and feeds the next
+    month. Two corrections to v0.2, both of which the live strip exposes:
+
+    * v0.2 recorded the move only for `meetings[0]` and handed that back for whatever
+      period was asked, so every horizon shared the next meeting's number. This walks to
+      the requested meeting, and returns None when the strip cannot reach it — the store
+      carries ZQ through H27, so nothing past 2027-03 is priceable here.
+    * The day-weighted solve divides by the post-meeting fraction of the month, so a
+      meeting in the last week levers every upstream error 8-10x. Oct-2026 (28th, frac
+      0.097) and Jan-2027 (27th, frac 0.129) both hit that, and the compounding is what
+      drove the chain to price a +50bp hike at Mar-2027. Two unlevered reads replace it:
+      a month with no meeting quotes the prevailing rate DIRECTLY, and a meeting's
+      post-rate is read off the following month's contract whenever that month is
+      meeting-free. Only when neither is available does the levered solve run, and then
+      only above MIN_POST_FRAC. On the 2026-08-04 strip this yields per-meeting moves of
+      +16.9/+7.0/+11.9/+5.5/+7.8bp for Sep..Mar, summing to the +49bp the strip actually
+      prices, instead of dumping it all on one meeting.
+    """
     import calendar as _cal
+
     from prediction_market_macro.ingest.calendars import CALENDARS
     r0 = fs.fred_scalar_latest("DFEDTARU", asof)
     if r0 is None:
-        return None, None
+        return None, None, None
     rate = float(r0) - 0.125                   # upper bound → corridor midpoint
-    meetings = [e.scheduled_ts for e in CALENDARS["FOMC"]
-                if e.scheduled_ts > asof]      # future meetings, chronological
+    meetings = [e.scheduled_ts for e in CALENDARS["FOMC"] if e.scheduled_ts > asof]
+    if meeting not in meetings:
+        return None, None, None
+
+    def _implied(y: int, m: int) -> tuple[float | None, str | None]:
+        closes, h = fs.fut_closes(_zq_root(y, m), asof, n=10)
+        if len(closes) < 1:
+            return None, None
+        return 100.0 - float(closes.iloc[-1]), h
+
     horizon = None
-    exp_move = None
     cur = (asof.year, asof.month)
-    for _ in range(8):                          # walk months forward
+    for _ in range(30):                         # walk months forward to the target
         y, m = cur
-        days_in_m = _cal.monthrange(y, m)[1]
+        nxt = (y + (m == 12), m % 12 + 1)
         mts = [mt for mt in meetings if (mt.year, mt.month) == (y, m)]
-        root = _zq_root(y, m)
-        closes, h = fs.fut_closes(root, asof, n=10)
-        if mts and len(closes) >= 1:
-            implied = 100.0 - float(closes.iloc[-1])
-            d_meet = mts[0].day
-            w_pre = d_meet / days_in_m          # meeting-day split (FedWatch)
-            if 1.0 - w_pre > 0.05:              # solvable only with post-days left
-                r_post = (implied - w_pre * rate) / (1.0 - w_pre)
-                move = r_post - rate
-                if mts[0] == meetings[0]:       # the TARGET (next) meeting
-                    exp_move = move
-                    horizon = h
-                rate = r_post                   # chain forward
-        elif mts:
-            return None, None                   # meeting month without ZQ data
-        cur = (y + (m == 12), m % 12 + 1)
-        if exp_move is not None and (meeting.year, meeting.month) <= (y, m):
+        implied, h = _implied(y, m)
+        if h:
+            horizon = max(horizon or h, h)
+        if not mts:                             # no meeting: the contract IS the rate
+            if implied is not None:
+                rate = implied
+            cur = nxt
+            continue
+        if implied is None:
+            return None, None, None             # meeting month without ZQ data
+        pre = rate
+        # preferred, unlevered: the next month reads the post-meeting rate outright
+        nxt_implied, nxt_h = (_implied(*nxt)
+                              if not any((mt.year, mt.month) == nxt for mt in meetings)
+                              else (None, None))
+        if nxt_implied is not None:
+            r_post = nxt_implied
+            if nxt_h:
+                horizon = max(horizon or nxt_h, nxt_h)
+        else:
+            w_pre = mts[0].day / _cal.monthrange(y, m)[1]
+            if 1.0 - w_pre < MIN_POST_FRAC:
+                # would lever the chain past 4x. The rate going INTO this meeting is
+                # still known, and predict_kxfed needs exactly that to anchor the level
+                # ladder, so hand it back with no move rather than nothing at all.
+                return (pre, None, horizon) if mts[0] == meeting else (None, None, None)
+            r_post = (implied - w_pre * pre) / (1.0 - w_pre)
+        if mts[0] == meeting:                   # the meeting actually asked about
+            return pre, r_post - pre, horizon
+        rate = r_post                           # chain forward
+        cur = nxt
+        if (y, m) > (meeting.year, meeting.month):
             break
-    if exp_move is None:
-        return None, None
-    # map E[Δ] to the 5 buckets: probability split between adjacent 25bp quanta
-    quanta = [-0.50, -0.25, 0.0, 0.25, 0.50]
-    keys = ["C26", "C25", "H0", "H25", "H26"]
-    x = max(min(exp_move, 0.50), -0.50)
-    probs = dict.fromkeys(keys, 1e-4)
-    for i in range(len(quanta) - 1):
-        lo, hi = quanta[i], quanta[i + 1]
-        if lo <= x <= hi:
-            f = (x - lo) / (hi - lo)
-            probs[keys[i]] = max(1.0 - f, 1e-4)
-            probs[keys[i + 1]] = max(f, 1e-4)
-            break
-    z = sum(probs.values())
-    return {k: v / z for k, v in probs.items()}, horizon
+    return None, None, None
+
+
+def _dgs2_path(fs: FeatureStore, asof: datetime,
+               meeting: datetime) -> tuple[float | None, float | None, str | None]:
+    """(pre-meeting rate, per-meeting move, horizon) from the 2y Treasury slope.
+
+    The fallback for meetings past the end of the ZQ strip, which is every FOMC date after
+    2027-03 in this store — and those are precisely the contracts that used to be priced
+    off a stale copy of the next meeting's number.
+
+    DGS2 minus the funds midpoint is the market's 2y average-path signal, but it also
+    carries a term premium, so it is not used raw: the map from today's slope to the
+    realised 1y drift in the funds midpoint is re-fit on every call over the history
+    visible at asof (measured beta 1.33, intercept -0.118, corr 0.62 over ~4100 overlapping
+    days). Re-fitting rather than hardcoding keeps the replay canary honest. Drift is
+    extrapolated at most 2 years — the horizon the 2y point actually spans — and held flat
+    beyond.
+    """
+    r_ub = fs.fred_scalar_latest("DFEDTARU", asof)
+    if r_ub is None:
+        return None, None, None
+    r_now = float(r_ub) - 0.125
+    dgs2, h1 = fs.fred_series("DGS2", asof)
+    tgt, h2 = fs.fred_series("DFEDTARU", asof)
+    dgs2, tgt = dgs2.dropna(), tgt.dropna()
+    idx = dgs2.index.intersection(tgt.index)
+    if len(idx) < 756:                                   # ~3y of overlap to fit anything
+        return None, None, None
+    mid = tgt[idx] - 0.125
+    slope = (dgs2[idx] - mid).astype(float)
+    drift = (mid.shift(-252) - mid).astype(float)        # realised 1y move in the funds mid
+    ok = (~slope.isna()) & (~drift.isna())
+    if int(ok.sum()) < 500:
+        return None, None, None
+    xs = slope[ok].values
+    if float(np.std(xs)) < 0.05:
+        return None, None, None      # no slope variation to regress on — a fit here is
+                                     # a singular system, not an anchor
+    b, a = np.polyfit(xs, drift[ok].values, 1)
+    slope_now = float(dgs2.iloc[-1]) - r_now
+    ann = float(a + b * slope_now)
+    yrs = max((meeting - asof).days, 0) / 365.25
+    per_meeting = ann / MEETINGS_PER_YEAR
+    pre = r_now + ann * min(yrs, 2.0) - per_meeting      # rate going INTO that meeting
+    horizon = max(x for x in (h1, h2) if x)
+    return pre, per_meeting, horizon
 
 
 def _rule_probs(fs: FeatureStore, conn, asof: datetime) -> tuple[dict, dict]:
@@ -138,10 +299,20 @@ def _rule_probs(fs: FeatureStore, conn, asof: datetime) -> tuple[dict, dict]:
     return base, {"feats": feats, "horizon": horizon}
 
 
-def _market_prior(conn, asof: datetime, period: str) -> tuple[dict | None, str | None]:
-    """Devig KXFED ladder from stored quotes with ts<=asof → decision categorical vs the
-    current upper bound."""
-    fs = FeatureStore(conn)
+MIN_WINDOW_MASS = 0.70    # a conditional mean off less than this isn't comparable
+MAX_MASS_GAP = 0.05       # ...nor is one off a window that means different things
+
+
+def _level_pmf(fs: FeatureStore, asof: datetime,
+               period: str) -> tuple[dict | None, str | None]:
+    """Devigged pmf over the post-meeting upper bound for one FOMC period.
+
+    Keys are the settlement levels the ladder resolves onto; the open top bucket is
+    assigned one 25bp step above the highest strike. Note that BOTH end buckets are open —
+    the lowest key is P(level <= lowest strike) and the highest is P(level > highest
+    strike) — so neither carries a trustworthy level, only a mass. `_market_move` excludes
+    them.
+    """
     from prediction_market_macro.util.periods import kalshi_period_to_key
     tok = next((p for p in fs.kalshi_periods("KXFED")
                 if kalshi_period_to_key(p) == period), None)
@@ -152,109 +323,189 @@ def _market_prior(conn, asof: datetime, period: str) -> tuple[dict | None, str |
     if len(legs) < 3:
         return None, None
     impl = ladder_implied(legs)
-    if not impl["strikes"]:
-        return None, None
-    ub = fs.fred_scalar_latest("DFEDTARU", asof)
-    if ub is None:
-        return None, None
-    # pmf keys: strike → mass at/below … map upper-bound outcomes to decisions
-    probs = dict.fromkeys(CATS, 0.0)
     xs, surv = impl["strikes"], impl["survival"]
-    grid = sorted(set(round(x + 0.25, 2) for x in xs) | set(round(x, 2) for x in xs))
-    prev_s = 1.0
-    masses = {}
+    if not xs:
+        return None, None
+    pmf, prev_s = {}, 1.0
     for x, sv in zip(xs, surv):
-        masses[round(x, 2)] = prev_s - sv          # P(ub <= x since previous strike)
+        m = prev_s - sv                     # P(level in (previous strike, x])
+        if m > 0:
+            pmf[round(x, 2)] = pmf.get(round(x, 2), 0.0) + m
         prev_s = sv
-    masses["top"] = prev_s
-    for lvl, m in masses.items():
-        if m <= 0:
-            continue
-        if lvl == "top":
-            probs["H26"] += m                       # far above: multi-hike bucket
-            continue
-        diff = round(lvl - ub, 2)
-        if diff <= -0.5:
-            probs["C26"] += m
-        elif diff == -0.25:
-            probs["C25"] += m
-        elif diff == 0.0:
-            probs["H0"] += m
-        elif diff == 0.25:
-            probs["H25"] += m
-        else:
-            probs["H26"] += m
-    tot = sum(probs.values())
+    if prev_s > 0:
+        top = round(xs[-1] + 0.25, 2)
+        pmf[top] = pmf.get(top, 0.0) + prev_s
+    tot = sum(pmf.values())
     if tot < 0.5:
         return None, None
-    probs = {k: v / tot for k, v in probs.items()}
-    ts = max(r["ts"] for r in rows)
-    return probs, ts
+    return {k: v / tot for k, v in pmf.items()}, max(r["ts"] for r in rows)
+
+
+def _conditional_mean(pmf: dict, lo: float, hi: float) -> tuple[float | None, float]:
+    """(E[level | lo < level <= hi], retained mass). Half-open low side on purpose: `lo`
+    is a ladder's lowest strike, whose bucket is unbounded below."""
+    kept = {k: v for k, v in pmf.items() if lo < k <= hi}
+    mass = sum(kept.values())
+    if mass <= 0:
+        return None, 0.0
+    return sum(k * v for k, v in kept.items()) / mass, mass
+
+
+def _market_move(fs: FeatureStore, asof: datetime, period: str,
+                 meeting: datetime) -> tuple[float | None, str | None]:
+    """Expected move AT `meeting`: E[level after P] − E[level going into P].
+
+    The level going into P is the level after the previous FOMC meeting; when P is the
+    next meeting there is no previous one still open, and the level going in is simply
+    today's target — which is the only case v0.2's `level - ub_today` ever got right.
+
+    The two ladders must be compared over a COMMON strike window. Kalshi does not use the
+    same strike set across periods: on 2026-08-04 the 2026 KXFED ladders run 2.75..5.25
+    while the 2027 ones run 0.00..4.25, and differencing their raw means manufactured a
+    -41bp "cut" at the Jan-2027 meeting out of nothing but the change in strike coverage.
+    Conditioning both on the overlap removes that; it also biases the surviving estimate
+    toward zero when the ladders disagree in the tails, which is the safe direction here.
+
+    Returns None rather than a guess when the preceding ladder is missing or the overlap
+    is too thin to mean anything. Fabricating a move for a meeting whose predecessor is
+    unpriced is how 2027-03 came to be quoted at P(hold) = 0.045 alongside a simultaneous
+    24% double-cut and 36.5% double-hike.
+    """
+    from prediction_market_macro.ingest.calendars import CALENDARS
+    pmf_p, ts_p = _level_pmf(fs, asof, period)
+    if pmf_p is None:
+        return None, None
+    prior = [e for e in CALENDARS["FOMC"]
+             if e.scheduled_ts > asof and e.scheduled_ts < meeting]
+    if not prior:
+        ub = fs.fred_scalar_latest("DFEDTARU", asof)
+        if ub is None:
+            return None, None
+        ev, mass = _conditional_mean(pmf_p, -math.inf, math.inf)
+        return (ev - float(ub), ts_p) if ev is not None else (None, None)
+    pmf_prev, ts_prev = _level_pmf(fs, asof, prior[-1].period)
+    if pmf_prev is None:
+        return None, None
+    # Window over the CLOSED buckets of both ladders. The lowest key of each is
+    # P(level <= that strike) and the highest is P(level > the top strike): both are
+    # unbounded, so their nominal levels are fictions whose size depends only on where
+    # Kalshi chose to stop quoting. Including them is what let the 2027 ladders' 4.25 cap
+    # pile all the upside into one point and read as a cut.
+    lo = max(min(pmf_p), min(pmf_prev))
+    hi = min(max(pmf_p), max(pmf_prev)) - 0.25          # drop the open top bucket
+    if hi <= lo:
+        return None, None
+    ev_p, mass_p = _conditional_mean(pmf_p, lo, hi)
+    ev_prev, mass_prev = _conditional_mean(pmf_prev, lo, hi)
+    if ev_p is None or ev_prev is None or min(mass_p, mass_prev) < MIN_WINDOW_MASS:
+        return None, None
+    if abs(mass_p - mass_prev) > MAX_MASS_GAP:
+        # Two conditional means are only differenceable when they condition on events of
+        # comparable size. Live case: the 2027-04 ladder puts 20% above its top strike
+        # against 2027-03's 10.5%, and excluding those unequal tails moved the difference
+        # from -11bp to -25.5bp — i.e. the answer was mostly an artefact of how much of
+        # each ladder had been discarded. -25.5bp maps to P(cut) = 0.98 at a meeting 21
+        # months out, which no read of an illiquid ladder earns.
+        return None, None
+    return ev_p - ev_prev, max(ts_p, ts_prev)
 
 
 def predict(conn, asof: datetime, period: str, series: str = "KXFEDDECISION") -> Pred:
+    from prediction_market_macro.ingest.calendars import CALENDARS
     fs = FeatureStore(conn)
     rule, meta = _rule_probs(fs, conn, asof)
-    mkt, mkt_ts = _market_prior(conn, asof, period)
-    # third source (v0.2): FF-futures FedWatch chain — the deepest read on the
-    # meeting outcome, and the INDEPENDENT information Kalshi quotes lag
-    from prediction_market_macro.ingest.calendars import CALENDARS
-    meeting = next((e.scheduled_ts for e in CALENDARS["FOMC"]
-                    if e.period == period), None)
-    ff, ff_ts = (None, None)
+    meeting = next((e.scheduled_ts for e in CALENDARS["FOMC"] if e.period == period), None)
+
+    mkt = ff = dgs2 = None
+    mkt_ts = ff_ts = dgs2_ts = None
+    pre_rate = None
     if meeting is not None:
         try:
-            ff, ff_ts = _ff_probs(fs, conn, asof, meeting)
+            mv, mkt_ts = _market_move(fs, asof, period, meeting)
+            mkt = _move_to_probs(mv) if mv is not None else None
         except Exception:                              # noqa: BLE001
-            ff = None
-    sources = {"rule": (rule, W3_RULE if ff else W_RULE)}
-    if mkt is not None:
-        sources["market"] = (mkt, W3_MKT if ff else W_MKT)
-    if ff is not None:
-        sources["ff"] = (ff, W3_FF)
+            mkt = None
+        try:
+            pre_rate, mv, ff_ts = _ff_path(fs, asof, meeting)
+            ff = _move_to_probs(mv) if mv is not None else None
+        except Exception:                              # noqa: BLE001
+            ff, pre_rate = None, None
+        if ff is None:                                 # past the end of the ZQ strip
+            try:
+                pre_d, mv, dgs2_ts = _dgs2_path(fs, asof, meeting)
+                dgs2 = _move_to_probs(mv) if mv is not None else None
+                if pre_rate is None:                   # ZQ's pre-rate wins when it exists
+                    pre_rate = pre_d
+            except Exception:                          # noqa: BLE001
+                dgs2 = None
+
+    sources = {"rule": rule}
+    for name, p in (("market", mkt), ("ff", ff), ("dgs2", dgs2)):
+        if p is not None:
+            sources[name] = p
     if len(sources) > 1:
-        tot_w = sum(w for _, w in sources.values())
-        logp = {k: sum(w / tot_w * math.log(max(p[k], 1e-4))
-                       for p, w in sources.values()) for k in CATS}
+        tot_w = sum(WEIGHTS[k] for k in sources)
+        logp = {k: sum(WEIGHTS[s] / tot_w * math.log(max(p[k], 1e-4))
+                       for s, p in sources.items()) for k in CATS}
         mx = max(logp.values())
         expd = {k: math.exp(v - mx) for k, v in logp.items()}
         tot = sum(expd.values())
-        probs = {k: round(v / tot, 6) for k, v in expd.items()}
+        probs = {k: v / tot for k, v in expd.items()}
         mode = "+".join(sources)
     else:
-        probs = {k: round(v, 6) for k, v in rule.items()}
+        probs = dict(rule)
         mode = "rule_only"
+
+    # horizon shrink toward the measured unconditional base. Every source above is a
+    # first moment dressed as a distribution; none of them knows more about a meeting 17
+    # months out than the base rate does, and this is what stops H0 from collapsing.
+    base, base_h = _base_rates(fs, asof)
+    lam = _shrink_lambda(asof, meeting) if meeting is not None else 0.0
+    probs = {k: round((1 - lam) * probs[k] + lam * base[k], 6) for k in CATS}
     rem = 1.0 - sum(probs.values())
     kmax = max(probs, key=probs.get)
     probs[kmax] = round(probs[kmax] + rem, 6)
-    horizons = [meta["horizon"]]
-    for ts_ in (mkt_ts, ff_ts):
-        if ts_:
-            horizons.append(ts_)
+
+    horizons = [meta["horizon"]] + [t for t in (mkt_ts, ff_ts, dgs2_ts, base_h) if t]
     return Pred(series="KXFEDDECISION", period=period, dist=Categorical(probs), asof=asof,
                 model_version=VERSION,
                 inputs={**meta["feats"], "mode": mode,
+                        "shrink_lambda": round(lam, 4),
+                        "base_rate": {k: round(v, 4) for k, v in base.items()},
+                        "pre_meeting_rate": (round(pre_rate, 4)
+                                             if pre_rate is not None else None),
                         "rule": {k: round(v, 4) for k, v in rule.items()},
                         "market": {k: round(v, 4) for k, v in (mkt or {}).items()},
-                        "ff": {k: round(v, 4) for k, v in (ff or {}).items()}},
+                        "ff": {k: round(v, 4) for k, v in (ff or {}).items()},
+                        "dgs2": {k: round(v, 4) for k, v in (dgs2 or {}).items()}},
                 data_horizon=datetime.fromisoformat(max(horizons)))
 
 
 def predict_kxfed(conn, asof: datetime, period: str, series: str = "KXFED") -> Pred:
     """KXFED ladder: post-meeting upper-bound distribution derived from the decision
     categorical (H26 ≈ +0.50, C26 ≈ −0.50) — encoded as a deterministic Empirical sample
-    so grid_pmf(0.25) discretises exactly onto the 25bp grid."""
+    so grid_pmf(0.25) discretises exactly onto the 25bp grid.
+
+    Anchored on the rate going INTO the meeting, not on today's target. For the next
+    meeting they are the same number; for a meeting a year out they are not, and pinning
+    the ladder to today's level is the level-vs-move confusion of §27.1 running in the
+    opposite direction — it would have priced every 2027 KXFED strike as if no move had
+    happened in between. Falls back to today's target only when no path source reached
+    that meeting, in which case the shrink has already flattened the categorical.
+    """
     from prediction_market_macro.model.common import Empirical
     dec = predict(conn, asof, period, series="KXFEDDECISION")
     ub = FeatureStore(conn).fred_scalar_latest("DFEDTARU", asof)
     assert ub is not None, "no visible DFEDTARU"
+    pre = dec.inputs.get("pre_meeting_rate")
+    anchor = round(pre + 0.125, 4) if pre is not None else ub   # midpoint → upper bound
     move = {"C26": -0.50, "C25": -0.25, "H0": 0.0, "H25": 0.25, "H26": 0.50}
     probs = dec.dist.probs
-    vals, ps = zip(*[(round(ub + move[k], 2), p) for k, p in probs.items()])
+    vals, ps = zip(*[(round(anchor + move[k], 2), p) for k, p in probs.items()])
     import numpy as _np
     rng = _np.random.default_rng(0)
     samples = rng.choice(vals, size=20000, p=_np.array(ps) / sum(ps))
     return Pred(series="KXFED", period=period, dist=Empirical(tuple(samples.tolist())),
                 asof=asof, model_version=VERSION,
-                inputs={**dec.inputs, "current_ub": ub},
+                inputs={**dec.inputs, "current_ub": ub, "anchor_ub": anchor},
                 data_horizon=dec.data_horizon)
