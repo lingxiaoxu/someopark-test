@@ -22,6 +22,13 @@ KXCPICOREYOY .05309->.05021.
 The momentum term itself was NOT the issue and must not be "fixed" next: the RMSE grid
 over w_last is flat across 0.3..0.5 (core-1995 .1055/.1051/.1057), i.e. 0.5 was already
 about right. test_the_momentum_weight_is_deliberate pins that.
+
+What led me here was KXCPICORE putting 31-35% of its mass on exactly 0.0, and the first
+comparison I reached for was WRONG: that is a CONDITIONAL forecast (the previous print
+was ~0) and I held it against a 36-month UNCONDITIONAL frequency of 2.8%. Full-history
+unconditional is 10.2% (85 of 832 months at MoM <= 0), and with lag-1 autocorr +0.66 the
+conditional rate belongs above it. The mass is a symptom worth chasing, never a pass/fail
+bar — the two tests that decided this were walk-forward RMSE and settled-contract Brier.
 """
 from __future__ import annotations
 
