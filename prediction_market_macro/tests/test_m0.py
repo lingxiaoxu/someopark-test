@@ -155,3 +155,65 @@ def test_pred_online_pit_assertion():
 def test_brier():
     assert abs(brier({"h": 1.0, "d": 0.0, "a": 0.0}, "h")) < 1e-12
     assert abs(brier({"h": 1 / 3, "d": 1 / 3, "a": 1 / 3}, "h") - 2 / 3) < 1e-9
+
+
+# ── calendars: scheduled-vs-actual reconciliation ────────────────────────────
+
+def test_reconcile_actuals_ignores_daily_sid_neighbour_prints(conn):
+    """DFEDTARU publishes EVERY day. A +-3d window makes MIN(knowledge_time) return the
+    print 3 days BEFORE the meeting, so every FOMC actual_ts landed on the wrong day
+    (2026-01 'settled' Sunday Jan 25) and actual_ts was never NULL, which silently
+    disabled the postponed alert. Reconciliation must be forward-anchored."""
+    now = datetime(2026, 2, 1, tzinfo=timezone.utc)
+    sch = datetime(2026, 1, 28, 19, 0, tzinfo=timezone.utc)          # real decision time
+    conn.execute("INSERT INTO releases(cal, period, scheduled_ts) VALUES(?,?,?)",
+                 ("FOMC", "2026-01", sch.isoformat()))
+    for off in range(-4, 3):                                          # a daily print run
+        kt = sch + timedelta(days=off)
+        conn.execute("INSERT OR IGNORE INTO fred_obs VALUES(?,?,?,?,?,?)",
+                     ("DFEDTARU", kt.date().isoformat(), 3.75, kt.date().isoformat(),
+                      kt.isoformat(), kt.isoformat()))
+    conn.commit()
+    cal.reconcile_actuals(conn, now=now)
+    got = conn.execute("SELECT actual_ts FROM releases WHERE cal='FOMC'").fetchone()
+    assert got["actual_ts"] == sch.isoformat(), got["actual_ts"]      # NOT sch-3d
+
+
+def test_reconcile_actuals_still_follows_a_late_slip(conn):
+    """The forward window must keep catching a genuine LATE release: CPI 2026-01 was
+    scheduled Feb 11 and actually printed Feb 13."""
+    now = datetime(2026, 2, 20, tzinfo=timezone.utc)
+    sch = datetime(2026, 2, 11, 13, 30, tzinfo=timezone.utc)
+    late = datetime(2026, 2, 13, 13, 30, tzinfo=timezone.utc)
+    conn.execute("INSERT INTO releases(cal, period, scheduled_ts) VALUES(?,?,?)",
+                 ("BLS_CPI", "2026-01", sch.isoformat()))
+    conn.execute("INSERT OR IGNORE INTO fred_obs VALUES(?,?,?,?,?,?)",
+                 ("CPIAUCSL", "2026-01-01", 300.0, late.date().isoformat(),
+                  late.isoformat(), late.isoformat()))
+    conn.commit()
+    cal.reconcile_actuals(conn, now=now)
+    row = conn.execute("SELECT actual_ts FROM releases WHERE cal='BLS_CPI'").fetchone()
+    assert row["actual_ts"] == late.isoformat()
+
+
+def test_reconcile_actuals_flags_a_no_show_as_postponed(conn):
+    """With no print inside the forward window the release must flip coverage to
+    'postponed' and alert — the branch the daily-sid bug made unreachable for FOMC."""
+    now = datetime(2026, 2, 1, tzinfo=timezone.utc)
+    sch = datetime(2026, 1, 28, 19, 0, tzinfo=timezone.utc)
+    conn.execute("INSERT INTO releases(cal, period, scheduled_ts) VALUES(?,?,?)",
+                 ("FOMC", "2026-01", sch.isoformat()))
+    conn.execute("INSERT INTO coverage(series, period, state, updated_ts)"
+                 " VALUES('KXFED','2026-01','scheduled',?)", (now.isoformat(),))
+    conn.commit()
+    out = cal.reconcile_actuals(conn, now=now)
+    assert out["postponed_flagged"] == 1, out
+    assert conn.execute("SELECT state FROM coverage WHERE series='KXFED'"
+                        ).fetchone()["state"] == "postponed"
+
+
+def test_cpi_calendar_matches_the_print_that_actually_happened():
+    """The hardcoded schedule is the source of truth for the ladder; a wrong past date
+    means the whole arm/snapshot/decide/freeze ladder fired on a non-event day."""
+    evs = {e.period: e.scheduled_ts for e in cal.CALENDARS["BLS_CPI"]}
+    assert evs["2026-01"].date().isoformat() == "2026-02-13"

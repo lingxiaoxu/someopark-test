@@ -36,7 +36,9 @@ def _et(d: date, hh: int, mm: int = 0) -> datetime:
 
 # ── BLS CPI (ref month -> release date), 08:30 ET ────────────────────────────
 _CPI = {
-    "2025-12": date(2026, 1, 13), "2026-01": date(2026, 2, 11), "2026-02": date(2026, 3, 11),
+    # 2026-01 slipped: BLS printed Feb 13, not the Feb 11 originally scheduled
+    # (fred_obs CPIAUCSL 2026-01-01 first knowledge_time = 2026-02-13T13:30Z).
+    "2025-12": date(2026, 1, 13), "2026-01": date(2026, 2, 13), "2026-02": date(2026, 3, 11),
     "2026-03": date(2026, 4, 10), "2026-04": date(2026, 5, 12), "2026-05": date(2026, 6, 10),
     "2026-06": date(2026, 7, 14), "2026-07": date(2026, 8, 12), "2026-08": date(2026, 9, 11),
     "2026-09": date(2026, 10, 14), "2026-10": date(2026, 11, 10), "2026-11": date(2026, 12, 10),
@@ -186,10 +188,18 @@ def reconcile_actuals(conn, now: datetime | None = None) -> dict:
         if sid is None:
             continue
         sch = datetime.fromisoformat(r["scheduled_ts"])
+        # FORWARD-anchored: a release slips late, never early. The window used to open
+        # at sch-3d, which is fatal for DAILY-published sids — DFEDTARU prints every
+        # single day, so MIN() always returned sch-3d and every FOMC actual_ts landed 3
+        # days early (2026-01 "settled" on Sunday Jan 25). That also meant actual_ts was
+        # ALWAYS non-null, so a genuinely postponed meeting could never trip the
+        # postponed branch below, and sync_to_db's `WHERE actual_ts IS NULL` froze the
+        # bad scheduled_ts forever. -2h absorbs DST/rounding jitter while staying far
+        # inside the 24h that would let a daily sid's previous print sneak in.
         kt = conn.execute(
             "SELECT MIN(knowledge_time) m FROM fred_obs WHERE sid=? AND"
             " knowledge_time BETWEEN ? AND ?",
-            (sid, (sch - timedelta(days=3)).isoformat(),
+            (sid, (sch - timedelta(hours=2)).isoformat(),
              (sch + timedelta(days=3)).isoformat())).fetchone()
         if kt and kt["m"]:
             conn.execute("UPDATE releases SET actual_ts=? WHERE cal=? AND period=?",
