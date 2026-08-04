@@ -119,8 +119,15 @@ def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
     # 2026-08-04 on the stored bars: CL kurtosis 9.3, NG 37.1 -- the normal that used
     # to sit here is not a defensible description of either.
     pool_closes, _hp = fs.fut_closes(root, asof, n=1500)
-    pool = _innovation_pool(np.diff(np.log(pool_closes.values))
-                            if len(pool_closes) > 2 else np.array([]))
+    # CL 2020-04-20 settled at -37.63. That is a real print, and the only bar in 6,512
+    # where a log-return does not exist: np.log makes BOTH diffs touching it NaN and
+    # _innovation_pool drops them. Keep it that way. Filtering the bar out before the log
+    # instead would splice 04-17 straight to 04-21, across the May expiry, and hand the
+    # pool a single -45% daily innovation that no tradeable day ever delivered. errstate
+    # silences the warning only — it changes no value.
+    with np.errstate(invalid="ignore"):
+        pool = _innovation_pool(np.diff(np.log(pool_closes.values))
+                                if len(pool_closes) > 2 else np.array([]))
     rng = np.random.default_rng(0)                        # replay-stable
     if pool is not None:
         z = _bootstrap_z(rng, pool, int(math.ceil(h)), _N_SAMPLES)

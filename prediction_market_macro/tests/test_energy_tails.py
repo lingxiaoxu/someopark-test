@@ -209,3 +209,26 @@ def test_predict_is_replay_stable(conn):
     a = energy.predict(conn, ASOF, per, "KXAAAGASW")
     b = energy.predict(conn, ASOF, per, "KXAAAGASW")
     assert a.dist.to_json() == b.dist.to_json()
+
+
+def test_negative_wti_print_drops_out_instead_of_splicing_a_45pct_day():
+    """CL 2020-04-20 settled at -37.63 — the one bar where a log-return does not exist.
+
+    Both diffs touching it must vanish. The tempting alternative (drop the bar, then
+    diff) would join 04-17 to 04-21 across the May expiry and add a single -45%
+    innovation to a pool whose whole purpose is to describe realistic tails.
+    """
+    import numpy as np
+    from prediction_market_macro.model.energy import _innovation_pool
+    # 18.27 -> (-37.63) -> 10.01 are the real 2020-04-17/20/21 CL settles; the rest is a
+    # smooth +0.5%/day tail, long enough to clear _MIN_POOL
+    px = np.array([18.27, -37.63] + [10.01 * 1.005 ** i for i in range(150)])
+    with np.errstate(invalid="ignore"):
+        pool = _innovation_pool(np.diff(np.log(px)))
+    assert pool is not None
+    assert len(pool) == len(px) - 1 - 2                 # the two NaN diffs are gone
+    assert np.all(np.isfinite(pool))
+    # every surviving innovation is a 0.5% step, so the spliced 04-17 -> 04-21 return
+    # (~-0.60) would stick far out of the range if it had been kept
+    assert abs(np.log(10.01) - np.log(18.27)) > 0.55
+    assert float(np.max(np.abs(pool))) < 0.01

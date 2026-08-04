@@ -1,9 +1,10 @@
 """strategy/consistency.py — the model-free cross-market checks (PLAN §11 四件套).
 
-1. KXFED ↔ KXFEDDECISION mutual implication: the rate ladder devigs to a decision
-   categorical (via fed._market_prior, the same converter the model uses); compare with
-   the KXFEDDECISION legs' own devigged categorical. A gap > threshold on any category
-   is a market-internal mispricing — tradable without ANY model opinion.
+1. KXFED ↔ KXFEDDECISION mutual implication: both books say what the Fed does at one
+   meeting, so they must agree. Compared as EXPECTED MOVE in pp — the rate ladder's
+   (fed._market_move: E[level after P] − E[level going in], on a common strike window)
+   against the decision book's own devigged categorical mean. A gap > threshold is a
+   market-internal mispricing — tradable without ANY model opinion.
 2. CPI MoM ↔ YoY hard conversion: for the same ref month, printed index history makes
    the MoM→YoY map deterministic (up to sub-0.05 rounding slack). Push the market's
    MoM-implied pmf through the map and compare with the market's YoY pmf.
@@ -24,7 +25,15 @@ from prediction_market_macro.config.registry import REGISTRY
 from prediction_market_macro.strategy.devig import _leg_prob, ladder_implied
 from prediction_market_macro.util.periods import kalshi_period_to_key
 
-FED_GAP_ALERT = 0.07          # per-category prob gap that flags a mutual mispricing
+# Half a policy step. Below this the two books round to the same decision and any gap is
+# devig noise; above it they disagree about what the Fed does, which is the whole point.
+# (Was a 0.07 per-CATEGORY probability gap against fed/0.2's `_market_prior`, which
+# devigged the ladder into a full categorical. fed/0.3 replaced it with `_market_move`,
+# whose categorical form `_move_to_probs` is deliberately a TWO-POINT distribution
+# carrying a first moment and nothing else — comparing that per category against a real
+# book would fire on every period by construction, so the comparison moved to the moment
+# both sides actually carry.)
+FED_MOVE_GAP_ALERT = 0.125    # pp gap between ladder-implied and direct expected move
 CPI_TV_ALERT = 0.20           # total-variation gap MoM-implied-YoY vs YoY market pmf
 
 
@@ -54,7 +63,17 @@ def _latest_legs(conn, series: str, tok: str) -> list[dict]:
 
 # ── 1. KXFED ↔ KXFEDDECISION ────────────────────────────────────────────────
 def fed_mutual(conn, asof: datetime) -> list[dict]:
-    from prediction_market_macro.model.fed import CATS, _market_prior
+    """Both books price the SAME meeting; compare the expected move each one implies.
+
+    Model-free on both sides: the ladder side is a devigged level pmf differenced against
+    the preceding meeting's, the decision side is the devigged categorical's own mean over
+    QUANTA. No model opinion enters, which is what makes a gap tradable.
+    """
+    from prediction_market_macro.ingest.calendars import CALENDARS
+    from prediction_market_macro.model.fed import CATS, QUANTA, _market_move
+    from prediction_market_macro.model.features import FeatureStore
+    fs = FeatureStore(conn)
+    quantum = dict(zip(CATS, QUANTA))
     findings = []
     toks = [r["period"] for r in conn.execute(
         "SELECT DISTINCT period FROM contracts WHERE series='KXFEDDECISION'"
@@ -63,8 +82,17 @@ def fed_mutual(conn, asof: datetime) -> list[dict]:
         key = kalshi_period_to_key(tok)
         if not key:
             continue
-        from_ladder, _ts = _market_prior(conn, asof, key)
-        if from_ladder is None:
+        meeting = next((e.scheduled_ts for e in CALENDARS["FOMC"] if e.period == key),
+                       None)
+        if meeting is None:
+            continue
+        try:
+            mv_ladder, _ts = _market_move(fs, asof, key, meeting)
+        except Exception:                               # noqa: BLE001
+            mv_ladder = None
+        # None is the honest answer for an unpriced predecessor or too thin an overlap —
+        # never a fabricated move (fed.py::_market_move, the 2027-03 lesson)
+        if mv_ladder is None:
             continue
         legs = _latest_legs(conn, "KXFEDDECISION", tok)
         raw = {}
@@ -77,13 +105,15 @@ def fed_mutual(conn, asof: datetime) -> list[dict]:
             continue
         tot = sum(raw.values())
         direct = {k: v / tot for k, v in raw.items()}
-        gaps = {k: round(from_ladder.get(k, 0.0) - direct.get(k, 0.0), 4)
-                for k in set(from_ladder) | set(direct)}
-        worst = max(gaps, key=lambda k: abs(gaps[k]))
-        if abs(gaps[worst]) > FED_GAP_ALERT:
-            _alert(conn, f"FED-MUTUAL {tok}: ladder-implied vs direct categorical gap"
-                         f" {worst}={gaps[worst]:+.3f} (all: {gaps})")
-            findings.append({"period": tok, "gaps": gaps})
+        mv_direct = sum(quantum[k] * v for k, v in direct.items())
+        gap = mv_ladder - mv_direct
+        if abs(gap) > FED_MOVE_GAP_ALERT:
+            _alert(conn, f"FED-MUTUAL {tok}: expected move ladder {mv_ladder:+.4f}pp vs"
+                         f" decision book {mv_direct:+.4f}pp, gap {gap:+.4f}pp"
+                         f" (book: { {k: round(v, 3) for k, v in direct.items()} })")
+            findings.append({"period": tok, "gap": round(gap, 5),
+                             "move_ladder": round(mv_ladder, 5),
+                             "move_direct": round(mv_direct, 5)})
     return findings
 
 
