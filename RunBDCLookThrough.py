@@ -98,15 +98,26 @@ def diff_holdings(cur: pd.DataFrame, prev: pd.DataFrame) -> dict:
         if delta:
             changed.append({"deal_uid": uid, "company": c.get("company"),
                             "bdc": c.get("bdc"), "delta": delta})
-        # early warnings
+        # early warnings — tagged with severity so routine quarterly re-marks (info) can be
+        # told apart from genuine credit stress (alert). On a quarter-roll every persisting
+        # loan re-marks at once, so the bulk is expected drift; only the tail is alarming.
         cm = _mark(c); pm = _mark(p)
         if pd.notna(cm) and pd.notna(pm) and (pm - cm) > 0.05:
-            warnings.append({"type": "mark_deterioration", "company": c.get("issuer"),
+            # alert = current mark sits in the genuine-distress band [0.30, 0.90).
+            # Deliberately excludes: near-par marks >=0.90 (normal), fv/cost marks >1.1
+            # (unreliable — a small/missing cost inflates the ratio, e.g. 3.0 artifacts), and
+            # <0.30 (data error, not a real loan mark). A drop-based rule was rejected:
+            # on real quarter-roll data it fired on the garbage highs (3.0 -> 0.99).
+            sev = "alert" if (0.30 <= cm < 0.90) else "info"
+            warnings.append({"type": "mark_deterioration", "severity": sev,
+                             "company": c.get("issuer"),
                              "bdc": c.get("bdc"), "from": round(pm, 3), "to": round(cm, 3)})
         cpik = pd.to_numeric(c.get("pik_rate"), errors="coerce")
         ppik = pd.to_numeric(p.get("pik_rate"), errors="coerce")
         if pd.notna(cpik) and (pd.isna(ppik) or cpik > (ppik or 0)) and cpik > 0:
-            warnings.append({"type": "pik_increase", "company": c.get("issuer"),
+            # PIK turning on/up is a soft signal → info (not a standalone alert)
+            warnings.append({"type": "pik_increase", "severity": "info",
+                             "company": c.get("issuer"),
                              "bdc": c.get("bdc"), "from": (float(ppik) if pd.notna(ppik) else 0.0),
                              "to": float(cpik)})
 
@@ -122,7 +133,10 @@ def diff_holdings(cur: pd.DataFrame, prev: pd.DataFrame) -> dict:
     return {"new": _rows(new_ids, cur), "exited": _rows(exit_ids, prev),
             "changed": changed, "warnings": warnings,
             "counts": {"new": len(new_ids), "exited": len(exit_ids),
-                       "changed": len(changed), "warnings": len(warnings)}}
+                       "changed": len(changed), "warnings": len(warnings),
+                       # additive severity split (existing 'warnings' kept for back-compat):
+                       "warnings_alert": sum(1 for w in warnings if w.get("severity") == "alert"),
+                       "warnings_info": sum(1 for w in warnings if w.get("severity") == "info")}}
 
 
 def _mark(row):
@@ -176,7 +190,8 @@ def run(store=BDC_STORE, results_dir=RESULTS_DIR, public_dir=PUBLIC_DATA,
 
     # 3) holdings diff (filing-driven) vs previous snapshots
     prev_paths = _prev_snapshot_paths(store, manifest)
-    diff = {"counts": {"new": 0, "exited": 0, "changed": 0, "warnings": 0},
+    diff = {"counts": {"new": 0, "exited": 0, "changed": 0, "warnings": 0,
+                       "warnings_alert": 0, "warnings_info": 0},
             "note": "no prior snapshot for any BDC (first run)"}
     if prev_paths:
         cur_all = deals[["deal_uid", "company", "bdc"] + DIFF_KEYS].copy()

@@ -127,6 +127,13 @@ def sec_get(url: str, timeout: int = 60, retries: int = 3):
             return resp
         except Exception as e:  # noqa: BLE001
             last_err = e
+            # Deterministic client errors (404/403/410) never change on retry — fail fast
+            # (e.g. a not-yet-published monthly BDC zip just falls through to channel B),
+            # instead of burning ~7s of backoff × every such URL each run.
+            status = getattr(getattr(e, "response", None), "status_code", None)
+            if status in (403, 404, 410):
+                print(f"  [sec_get] {status} (no retry) {url[:80]}", file=sys.stderr)
+                raise RuntimeError(f"SEC GET {status}: {url}")
             wait = 2 ** attempt
             print(f"  [sec_get] {attempt+1}/{retries} failed {url[:80]}: {e} (retry {wait}s)",
                   file=sys.stderr)
@@ -541,6 +548,90 @@ def companyfacts_total_fv(cik: int, report_date: str) -> float | None:
     return best[0] if best else None
 
 
+def frames_total_fv(cik: int, report_date: str) -> float | None:
+    """SEC xbrl/frames anchor — period-indexed across all filers. Empirically this
+    frame populates BEFORE the per-company companyconcept endpoint after a fresh
+    filing, so it's a *current-quarter* fallback (NOT prior-quarter/stale)."""
+    y, m, _ = report_date.split("-")
+    q = {"03": "1", "06": "2", "09": "3", "12": "4"}.get(m)
+    if not q:                                                 # non-quarter-end period
+        return None
+    url = (f"https://data.sec.gov/api/xbrl/frames/us-gaap/"
+           f"InvestmentOwnedAtFairValue/USD/CY{y}Q{q}I.json")
+    try:
+        d = sec_get(url).json()
+    except Exception:  # noqa: BLE001
+        return None
+    for row in d.get("data", []):
+        if int(row.get("cik", -1)) == int(cik) and row.get("end") == report_date \
+                and row.get("val") is not None:
+            return float(row["val"])
+    return None
+
+
+def extract_total_fv(root, report_date: str) -> float | None:
+    """Non-dimensional (entity-total) InvestmentOwnedAtFairValue straight from the
+    inline-XBRL instance we already downloaded — the freshest possible anchor
+    (contemporaneous with the filing, zero SEC-aggregation lag). Only accepts a
+    context with instant==report_date AND no dimension member (segment total)."""
+    if root is None:
+        return None
+    XBRLDI = "{http://xbrl.org/2006/xbrldi}"
+    XBRLI = "{http://www.xbrl.org/2003/instance}"
+    IX = "{http://www.xbrl.org/2013/inlineXBRL}"
+    rd = report_date.replace("-", "")
+    # context ids that are entity-total (no explicit/typed member) at report_date
+    total_ctx = set()
+    for c in root.iter(f"{XBRLI}context"):
+        if c.find(f".//{XBRLDI}explicitMember") is not None:
+            continue
+        if c.find(f".//{XBRLDI}typedMember") is not None:
+            continue
+        inst = c.find(f".//{XBRLI}instant")
+        if inst is not None and inst.text and inst.text.strip().replace("-", "") == rd:
+            total_ctx.add(c.get("id"))
+    if not total_ctx:
+        return None
+    best = None
+    for el in root.iter(f"{IX}nonFraction"):
+        if (el.get("name") or "").split(":")[-1] != "InvestmentOwnedAtFairValue":
+            continue
+        if el.get("contextRef") not in total_ctx:
+            continue
+        val = "".join(el.itertext()).replace(",", "").strip()
+        try:
+            num = (-1 if el.get("sign") == "-" else 1) * float(val) * (10 ** int(el.get("scale") or 0))
+        except ValueError:
+            continue
+        if best is None or num > best:            # entity total = the largest such fact
+            best = num
+    return best
+
+
+def resolve_net_anchor(cik: int, report_date: str, root=None,
+                       soi_total_row_fv=None) -> tuple:
+    """Resolve the reconciliation net-FV anchor from the freshest available source,
+    re-evaluated every run (so it auto-upgrades to the canonical companyconcept the
+    moment SEC ingests it — never sticks on a lower/older source). Order:
+        1. companyconcept   (SEC-canonical; laggiest after a fresh filing)
+        2. xbrl/frames      (period-indexed; fresher for a just-filed quarter)
+        3. filing instance  (entity-total from the 10-Q we already parsed; freshest)
+        4. SOI total row     (channel-A total row, if present)
+    Every source is CURRENT-QUARTER — no prior-quarter fallback. Returns (value, source)."""
+    cf = companyfacts_total_fv(cik, report_date)
+    if cf:
+        return cf, "companyconcept"
+    fv = frames_total_fv(cik, report_date)
+    if fv:
+        return fv, "frames"
+    tv = extract_total_fv(root, report_date)
+    if tv:
+        return tv, "filing_instance"
+    if soi_total_row_fv is not None and pd.notna(soi_total_row_fv) and float(soi_total_row_fv) > 0:
+        return float(soi_total_row_fv), "soi_total_row"
+    return None, None
+
+
 # ── entity normalisation -> stable deal_uid (§3.3) ──────────────────────────
 _TRANCHE_SUFFIX = re.compile(r"\s+\d+$")
 _FKA = re.compile(r"\(f/?k/?a[:\s]+(.+?)\)", re.IGNORECASE)
@@ -716,6 +807,7 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
     # soi.tsv for any filer (§D1); recover it from the inline-XBRL document-order
     # grouping (best for comma-delimited filers, ARCC 89%) and the identifier string
     # (best for TSLX-style). inv_type parsed from the identifier (per-investment).
+    root = None                              # kept in scope for the net-anchor resolver below
     try:
         root = _load_instance_root(cik, filing["adsh_nodash"], filing["primaryDocument"], cache_dir)
         cls = extract_classification(root, rd)
@@ -766,14 +858,15 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
     df["bdc_fv_share"] = pd.to_numeric(df["fair_value"], errors="coerce") / sum_tranche
     df["sleeve_w"] = BDC_UNIVERSE[ticker]["sleeve_w"]
 
-    cf = companyfacts_total_fv(cik, rd)                       # independent net anchor
+    cf, cf_source = resolve_net_anchor(cik, rd, root=root, soi_total_row_fv=total_row_fv)
     gross_net = (sum_tranche / cf) if cf else None
     mat_src = df["maturity_source"].value_counts(dropna=False).to_dict()
     manifest = {
         "ticker": ticker, "cik": cik, "adsh": adsh, "reportDate": rd,
         "filingDate": filing["filingDate"], "form": filing["form"], "channel": channel,
         "rows": len(df), "rows_dropped_no_fv": n_dropped, "fv_col": fv_col,
-        "companyfacts_net_fv": cf, "sum_tranche_fv": sum_tranche,
+        "companyfacts_net_fv": cf, "net_anchor_source": cf_source,
+        "sum_tranche_fv": sum_tranche,
         "soi_total_row_fv": total_row_fv,
         "gross_net_ratio": (round(gross_net, 4) if gross_net else None),
         "maturity_source": {str(k): int(v) for k, v in mat_src.items()},
