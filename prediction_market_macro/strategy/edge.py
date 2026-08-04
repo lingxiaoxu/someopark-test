@@ -22,6 +22,22 @@ def taker_fee(price: float, count: int) -> float:
 
 
 PAPER_TICK = 0.01                     # Kalshi quotes on a 1-cent grid
+WIDE_SPREAD = 0.15                    # beyond this a midpoint stops meaning anything
+
+
+def two_sided(bid: float | None, ask: float | None, wide: float = WIDE_SPREAD) -> bool:
+    """Whether a book is competitive enough for its midpoint to be a price.
+
+    14 of the 49 open legs quote >= 15c wide; the worst, KXCPIYOY-26SEP-T3.4, is
+    0.18/0.98. A midpoint there is the average of two numbers nobody will trade at. It
+    marked KXCPICORE-26AUG-T0.0 -- bought at 0.99, a near-certainty ("core CPI >= 0.0") --
+    down to 0.825, and across the book that artifact is -$3.415 of the -$10.115
+    unrealized. The same midpoint feeds the edge-reversal rule in ops/exits.py, where it
+    can force a REAL liquidation into the 0.18 bid, so both consumers share this test.
+    """
+    if bid is None or ask is None:
+        return False
+    return (ask - bid) < wide
 
 
 def fill_price(quoted: float, depth_usd: float | None, notional_usd: float) -> float:

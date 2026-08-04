@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.config.registry import REGISTRY
 from prediction_market_macro.ops.ledger import open_positions
-from prediction_market_macro.strategy.edge import taker_fee
+from prediction_market_macro.strategy.edge import taker_fee, two_sided
 
 EXIT_EDGE = -0.06
 SLIP = 0.01
@@ -130,7 +130,13 @@ def run(conn, settings) -> int:
                     hold_edges = []
                     break
             fair = fair_yes if base_side == "yes" else 1 - fair_yes
-            if q["yes_bid"] is None or q["yes_ask"] is None:
+            if not two_sided(q["yes_bid"], q["yes_ask"]):
+                # Without a competitive book there is no measurable holding edge, and
+                # the midpoint that used to be computed here was actively dangerous:
+                # KXCPIYOY-26SEP-T3.4 quotes 0.18/0.98, so a mid of 0.58 could show a
+                # reversal and liquidate a held position into the 0.18 bid. Default is
+                # hold-to-settlement; a leg nobody is making a market in stays held.
+                # (The red-light forced exit above is deliberately NOT gated on this.)
                 hold_edges = []
                 break
             mid = (q["yes_bid"] + q["yes_ask"]) / 2

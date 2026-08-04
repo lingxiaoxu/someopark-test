@@ -13,6 +13,7 @@ import math
 from datetime import datetime, timezone
 
 from prediction_market_macro.ops.ledger import open_positions
+from prediction_market_macro.strategy.edge import WIDE_SPREAD, two_sided
 
 
 def _dist_mu_sigma(dist: dict) -> tuple[float, float] | None:
@@ -110,32 +111,53 @@ def _realized_print(conn, series: str, period: str) -> float | None:
 
 
 def _mid(conn, ticker: str) -> float | None:
+    """Midpoint of the newest quote, or None when the book cannot support one.
+
+    Used to return `(bid+ask)/2` for ANY two numbers, and to fall back to whichever side
+    existed when one was missing. Both fabricate a price out of a book nobody is making:
+    see strategy/edge.py::two_sided for the measurement. Callers must treat None as
+    "unmarked", never as zero.
+    """
     r = conn.execute(
         "SELECT yes_bid, yes_ask FROM quotes WHERE ticker=? ORDER BY ts DESC LIMIT 1",
         (ticker,)).fetchone()
     if r is None:
         return None
     b, a = r["yes_bid"], r["yes_ask"]
-    if b is not None and a is not None:
-        return (b + a) / 2
-    return a if a is not None else b
+    return (b + a) / 2 if two_sided(b, a) else None
 
 
 def mark_all(conn) -> int:
+    """Mark open paper legs. Legs with no usable book are CARRIED AT COST (mid=NULL).
+
+    Carrying at cost rather than at a fabricated midpoint keeps the headline unrealized
+    number free of a number nobody would trade at, in either direction. It is not a claim
+    that the position is flat: the fee is still charged, mid=NULL flags the leg as
+    unmarked, and the count is written to `alerts` so an illiquid book can never quietly
+    disappear from the reported exposure.
+    """
     now = datetime.now(timezone.utc).isoformat()
-    n = 0
+    n = unmarked = 0
     for pos in open_positions(conn):
         for f in pos["fills"]:
             mid = _mid(conn, f["ticker"])
             if mid is None:
-                continue
-            val = mid if f["side"] == "yes" else 1 - mid
-            pnl = (val - f["price"]) * f["count"] - f["fee_usd"]
+                # no reliable two-sided market — carry at entry, charge only the fee
+                pnl, unmarked = -(f["fee_usd"] or 0.0), unmarked + 1
+            else:
+                val = mid if f["side"] == "yes" else 1 - mid
+                pnl = (val - f["price"]) * f["count"] - f["fee_usd"]
             conn.execute(
                 "INSERT OR REPLACE INTO marks(ts, decision_id, ticker, mid, pnl_usd)"
                 " VALUES(?,?,?,?,?)",
                 (now, pos["id"], f["ticker"], mid, round(pnl, 4)))
             n += 1
+    if unmarked:
+        conn.execute(
+            "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+            (now, "warn", "pnl.mark_all",
+             f"{unmarked}/{n} open legs carried at cost — book wider than"
+             f" {WIDE_SPREAD:.2f} or one-sided; unrealized PnL excludes them"))
     conn.commit()
     return n
 
