@@ -591,7 +591,7 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
                 record_vars(context, ShortLegScaled=float(_slcs))
                 _cd = getattr(context.portfolio, 'crash_recovery_countdown', 0)
                 log.info(f"[SHORT_GUARD] {pair_key}: short leg × {_slcs} "
-                         f"({'forced(P6 mode)' if not _cd else f'crash recovery {_cd}d left'})")
+                         f"({'forced(drawdown regime)' if not _cd else f'crash recovery {_cd}d left'})")
 
             (stock_1_perc, stock_2_perc) = context.portfolio_order.computeHoldingsPct(
                 stock_1_shares, stock_2_shares,
@@ -630,7 +630,7 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
                 record_vars(context, ShortLegScaled=float(_slcs))
                 _cd = getattr(context.portfolio, 'crash_recovery_countdown', 0)
                 log.info(f"[SHORT_GUARD] {pair_key}: short leg × {_slcs} "
-                         f"({'forced(P6 mode)' if not _cd else f'crash recovery {_cd}d left'})")
+                         f"({'forced(drawdown regime)' if not _cd else f'crash recovery {_cd}d left'})")
 
             (stock_1_perc, stock_2_perc) = context.portfolio_order.computeHoldingsPct(
                 stock_1_shares, stock_2_shares,

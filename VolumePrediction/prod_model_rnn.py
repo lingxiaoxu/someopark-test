@@ -255,10 +255,15 @@ def serve(art_dir: str | Path, target_date: str,
 
 def _roll_seq_tail(art: Path, meta: dict, seq: dict, X: pd.DataFrame,
                    keep: list, target_date: str, L: int) -> None:
-    """当日特征行入窗、最老行出窗,原子回写(幂等: 同日重复调用不二次滚动)。"""
-    prev_td = _prev_trading_day(target_date)
-    if meta.get("seq_tail_date") == prev_td:
-        log.info(f"seq_tail 已含 {prev_td} — 幂等跳过滚动")
+    """当日特征行入窗、最老行出窗,原子回写(幂等: 同日重复调用不二次滚动)。
+
+    seq_tail_date 语义 = **窗口内最后一行的日期**。serve(T) 用的窗是
+    seq_tail(末行 = T 的前一交易日) ⊕ T 的特征行;滚动后末行变成 T,
+    故戳记 target_date。(2026-08-03 首次影子运行抓到: 原先误记 prev_td,
+    窗口永不前进,次日必撞"断档"。)
+    """
+    if meta.get("seq_tail_date") == target_date:
+        log.info(f"seq_tail 已含 {target_date} — 幂等跳过滚动")
         return
     pos = {t: i for i, t in enumerate(seq["tickers"])}
     feats = seq["feats"].copy()
@@ -267,16 +272,19 @@ def _roll_seq_tail(art: Path, meta: dict, seq: dict, X: pd.DataFrame,
         i = pos[t]
         feats[i, :-1, :] = feats[i, 1:, :]
         feats[i, -1, :] = X.loc[t].values.astype(np.float32)
-        last[i] = prev_td
-    tmp = art / "seq_tail.npz.tmp"
+        last[i] = target_date
+    # 临时名必须以 .npz 结尾: np.savez 会给非 .npz 名自动追加后缀,
+    # 写成 seq_tail.npz.tmp.npz 后原子替换必然 FileNotFoundError
+    # (2026-08-03 被 seq_tail_date 语义 bug 掩盖,修完前者才暴露)
+    tmp = art / "seq_tail.tmp.npz"
     np.savez(tmp, tickers=seq["tickers"], feats=feats, last_date=last)
     tmp.replace(art / "seq_tail.npz")
-    meta["seq_tail_date"] = prev_td
+    meta["seq_tail_date"] = target_date
     mtmp = art / "meta.json.tmp"
     with open(mtmp, "w") as f:
         json.dump(meta, f, indent=1)
     mtmp.replace(art / "meta.json")
-    log.info(f"seq_tail 滚动至 {prev_td}({len(keep)} 票)")
+    log.info(f"seq_tail 滚动至 {target_date}({len(keep)} 票)")
 
 
 def _prev_trading_day(target_date: str) -> str:

@@ -1,6 +1,10 @@
-"""StrategyMode.py — ±30% 获利了结/等待反弹 模式状态机(Post-Crash P6,2026-08-01)。
+"""StrategyMode.py — Drawdown Regime Overlay (DRO): 回撤状态机(2026-08-01)。
+
+术语: 按策略自身净值的回撤/反弹状态,条件化地叠加参数(而非改变策略本体)。
+同类做法在文献中称 risk-managed momentum / drawdown control。
 
 设计依据: .claude/plans/POST_CRASH_ADAPTIVITY_PLAN.md §6(文献综述+触发线论证)。
+内部计划编号 P6 仅用于计划文档,代码与日志一律用 DRO/回撤状态表述。
 文献锚: Cooper/Gutierrez/Hameed 2004(市场态依赖)、Daniel&Moskowitz 2016(崩盘后
 loser反弹)、Garg et al. 2021(转折期快动量)、Han/Zhou/Zhu 2016(组合级止损)、
 Grossman&Zhou 1993(drawdown 控制)。equity触发是市场态的滞后代理 → 双条件:

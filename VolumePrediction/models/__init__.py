@@ -14,7 +14,9 @@ from typing import List
 
 import pandas as pd
 
-FEATURE_PREFIXES = ("tech_", "fund1_", "fund2_", "cal_", "earn_")
+# 新增特征组必须在此注册,否则 feature_cols() 静默丢弃 → 模型根本看不到
+# (2026-08-02 教训: fund3_ 前缀未注册,两组 ablation 结果逐位相同才暴露)
+FEATURE_PREFIXES = ("tech_", "fund1_", "fund2_", "cal_", "earn_", "intraday_")
 
 
 def feature_cols(X: pd.DataFrame) -> List[str]:

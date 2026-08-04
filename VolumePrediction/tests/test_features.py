@@ -314,9 +314,14 @@ class TestDeferredPlaceholders:
             with pytest.raises(NotImplementedError):
                 fn()
 
-    def test_intraday_deferred(self):
+    def test_intraday_now_implemented(self):
+        """intraday_shape 已于 2026-08-04 上线(E5);仍未实现的是 open_auction_share
+        (需分钟线,当前小时线数据源拆不出集合竞价)。"""
+        assert callable(intraday_features.intraday_shape)
+        assert intraday_features.FEATURES and all(
+            f.startswith("intraday_") for f in intraday_features.FEATURES)
         with pytest.raises(NotImplementedError):
-            intraday_features.intraday_shape()
+            intraday_features.open_auction_share()
 
     def test_no_yfinance_in_features_layer(self):
         import VolumePrediction.features.pipeline as m

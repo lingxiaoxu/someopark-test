@@ -118,4 +118,9 @@ def test_roll_is_idempotent(frozen, monkeypatch, tmp_path):
     m1 = json.loads((art2 / "meta.json").read_text())["seq_tail_date"]
     pmr.serve(art2, nxt, update_state=True)          # 同日重复
     z2 = np.load(art2 / "seq_tail.npz", allow_pickle=False)["feats"]
-    assert m1 == asof and np.array_equal(z1, z2), "同日重复 serve 二次滚动了窗"
+    # 戳 = 窗口末行日期 = 刚服务的 target(不是 prev);且同日不二次滚动
+    assert m1 == nxt, f"seq_tail_date 应为 {nxt},实为 {m1}"
+    assert np.array_equal(z1, z2), "同日重复 serve 二次滚动了窗"
+    # 窗口确实前进了一格: 末行 = 当日特征行
+    z0 = np.load(art / "seq_tail.npz", allow_pickle=False)["feats"]
+    assert not np.array_equal(z0, z1), "窗口未前进"

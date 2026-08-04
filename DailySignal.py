@@ -1112,7 +1112,9 @@ _MAX_OPEN_PAIRS_MTFS = 8   # max simultaneous open pairs for MTFS
 # Fix 1: Correlation Gate — min 60-day daily return correlation to allow OPEN
 _MIN_PAIR_CORRELATION = 0.16   # dev toggle: switch between 0.20 (strict) and 0.16 (relaxed)
 
-# ── ±30% 模式 overlay(Post-Crash P6,2026-08-01;设计: POST_CRASH_ADAPTIVITY_PLAN §6) ──
+# ── Drawdown Regime Overlay (DRO): 回撤状态条件化的参数叠加(2026-08-01) ──
+# 文献锚: Daniel & Moskowitz 2016(动量崩盘后 loser 反弹)、Barroso & Santa-Clara
+# 2015(risk-managed momentum)、Grossman & Zhou 1993(drawdown control)。
 # REBOUND_HUNT(暴跌后): 放宽入场/增容量/空腿保护/快窗;PROFIT_LOCK(暴涨后): 收紧
 # 入场/减容量/更快出。_mult/_add 后缀=对已解析参数值乘/加(带 clamp);其余=直接覆写。
 # 只作用于新信号生成(_run_simulation);监控回放(既有持仓的 CLOSE 判定)不受影响。
@@ -3104,7 +3106,7 @@ def _run_single(strategy: str, signal_date: date, dry_run: bool,
     # 2026-07-28: 信号构建前先重算 days_held(消灭报告与库存间的一日滞后)
     _recompute_days_held(inventory, signal_date)
 
-    # ── ±30% 模式检测(P6;PIT 只读,状态仅非 dry_run 落盘) ──
+    # ── 回撤状态检测(Drawdown Regime Overlay;PIT 只读,状态仅非 dry_run 落盘) ──
     try:
         import StrategyMode as _SM
         _mout = _SM.detect(strategy, signal_date.strftime('%Y-%m-%d'))
@@ -3439,7 +3441,7 @@ def _build_regime_report_section(regime: dict) -> dict:
         'regime_label':        regime.get('regime_label'),
         'mrpt_weight':         regime.get('mrpt_weight'),
         'mtfs_weight':         regime.get('mtfs_weight'),
-        # ±30% 模式(P6): 每策略当前模式+触发明细(纯新增字段,下游兼容)
+        # 回撤状态(Drawdown Regime Overlay): 每策略当前模式+触发明细(纯新增,下游兼容)
         'strategy_mode': {s: {'mode': (m or {}).get('mode'),
                               'days_in': (m or {}).get('days_in'),
                               'detail': (m or {}).get('trigger_detail')}

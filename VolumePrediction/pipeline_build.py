@@ -83,6 +83,7 @@ def _base_panel(dollar: pd.DataFrame, close: pd.DataFrame) -> pd.DataFrame:
 def build_panel(start: str, end: str,
                 include_fred: bool = True,
                 include_fund: bool = True,
+                include_intraday: bool = True,
                 tickers: Optional[set] = None,
                 fill_policy: Optional[str] = None,
                 zscore_train_end: Optional[str] = None,
@@ -115,6 +116,16 @@ def build_panel(start: str, end: str,
     panel = fpipe.add_volume_features(panel)
     panel = fpipe.add_return_rollups(panel)
     panel = fpipe.add_calendar_flags(panel)
+
+    # 日内量形态(E5,2026-08-04): 只用 4:00-13:00 ET 窗 —— 采集任务 14:05 盘中跑,
+    # 尾盘两根条永远缺,训练必须与服务同窗(详见 intraday_features 模块头)。
+    # 无小时线/Mongo 不可达时跳过,不阻断面板构建。
+    if include_intraday:
+        try:
+            from VolumePrediction.features import intraday_features as ifeat
+            panel = ifeat.add_intraday_features(panel)
+        except Exception as e:  # noqa: BLE001 — 增强特征缺失不应阻断主线
+            log.warning(f"intraday features 跳过(非致命): {e}")
 
     # A6 财报 10 桶(历史=复用 MFE 含退市;未来=FMP 前瞻)
     syms = sorted(universe_union)
@@ -160,8 +171,9 @@ def build_panel(start: str, end: str,
     #   横截面 z 逐日居中,天然无此病
     tech_cols = [c for c in panel.columns if c.startswith("tech_")]
     panel = fpipe.zscore_normalize(panel, tech_cols, train_end=zscore_train_end)
+    # intraday_ 与 fund 同走逐日横截面 z(占比/比值类,截面可比性强于时序 z)
     fund_cols = [c for c in panel.columns
-                 if (c.startswith(("fund1_", "fund2_"))
+                 if (c.startswith(("fund1_", "fund2_", "intraday_"))
                      and not c.startswith("fund2_ind"))]
     if fund_cols:
         from VolumePrediction.data import factor_proxy as _fp
@@ -173,7 +185,8 @@ def build_panel(start: str, end: str,
 
     # A11-A12/双协议填充(特征列;目标 eta 的 NaN 保留由训练侧滤除)
     fcols = [c for c in panel.columns
-             if c.startswith(("tech_", "fund1_", "fund2_", "cal_", "earn_"))]
+             if c.startswith(("tech_", "fund1_", "fund2_", "cal_", "earn_",
+                              "intraday_"))]
     panel = fpipe.fill(panel, fcols, policy=fill_policy)
 
     # A15 落盘
