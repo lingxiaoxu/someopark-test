@@ -1,8 +1,9 @@
 """ops/ledger.py — the append-only PIT decision ledger (PLAN §12; frozen-ledger discipline).
 
 decisions rows are NEVER updated; every state change is a NEW row (kind: open/exit/pass/
-cancel/settle_note). Paper fills are written alongside opens at ask + $0.01 slippage per
-leg with the exact taker fee.
+cancel/settle_note). Paper fills are written alongside opens at the depth-aware fill price
+(strategy/edge.py::fill_price) with the exact taker fee — the same prices strategy/
+decision.py sized the order against.
 """
 from __future__ import annotations
 
@@ -12,7 +13,6 @@ from datetime import datetime, timezone
 from prediction_market_macro.strategy.decision import Decision
 from prediction_market_macro.strategy.edge import taker_fee
 
-PAPER_SLIP = 0.01
 
 
 def record(conn, *, series: str, period: str, decision: Decision, pred_inputs: dict,
@@ -33,8 +33,10 @@ def record(conn, *, series: str, period: str, decision: Decision, pred_inputs: d
          json.dumps(decision.gate_snapshot), note or ";".join(decision.reasons)))
     did = cur.lastrowid
     if decision.action == "open" and st is not None:
-        for leg in st.legs:
-            px = round(min(leg.price + PAPER_SLIP, 0.99), 4)
+        # one shared fill model with strategy/decision.py, which sized `count` against
+        # these same prices — a flat pad here (the old PAPER_SLIP) was invisible to sizing
+        # and blew the $1 cap on cheap legs. See strategy/edge.py::fill_price.
+        for leg, px in zip(st.legs, st.fill_prices(decision.count)):
             conn.execute(
                 "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
                 " mode) VALUES(?,?,?,?,?,?,?, 'paper')",

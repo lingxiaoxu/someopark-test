@@ -144,10 +144,61 @@ def test_ledger_append_only_and_has_open(conn):
                   pred_inputs={}, model_version="claims/0.1.0")
     assert ledger.has_open(conn, "KXJOBLESSCLAIMS", "2026-07-30")
     fills = conn.execute("SELECT * FROM fills").fetchall()
-    assert len(fills) == 1 and fills[0]["price"] == pytest.approx(0.51)   # slippage 1c
+    # depth is $500 and the order is ~$1, so the taker is filled AT the touch. The old
+    # flat +1c pad was applied after sizing, which is what broke the cap on cheap legs.
+    assert len(fills) == 1 and fills[0]["price"] == pytest.approx(0.50)
     # no averaging down on second pass
     d2 = decide([_mk_struct(0.60, 0.50)], now=now, close_time=now + timedelta(hours=5),
                 release_ts=None, market_implied=None,
                 already_open=ledger.has_open(conn, "KXJOBLESSCLAIMS", "2026-07-30"),
                 bankroll=1000)
     assert d2.action == "pass"
+
+
+def test_fill_price_charges_a_tick_only_past_the_displayed_size():
+    from prediction_market_macro.strategy.edge import fill_price
+    assert fill_price(0.01, depth_usd=500.0, notional_usd=1.0) == 0.01   # fits: touch
+    assert fill_price(0.01, depth_usd=0.5, notional_usd=1.0) == 0.02     # eats through
+    assert fill_price(0.01, depth_usd=None, notional_usd=1.0) == 0.01    # unknown depth
+    assert fill_price(0.99, depth_usd=0.1, notional_usd=9.9) == 0.99     # clamped at 0.99
+
+
+def test_sizing_never_breaches_the_cap_on_cheap_legs():
+    """Regression for the single most expensive bug found: KXAAAGASW #743.
+
+    Sized 100 contracts off a 1c ask, then filled at 2c by a pad sizing never saw — $2.14
+    of real downside against max_size_usd=$1.00, a 2.14x breach. 19 of 99 live positions
+    breached by exactly (ask + 0.01) / ask, so the cheapest legs broke worst. Swept across
+    the price grid because the multiplier grows without bound as the quote goes to zero.
+    """
+    now = datetime(2026, 7, 29, 12, 0, tzinfo=timezone.utc)
+    # min_leg_price (added 2026-07-31, after these positions were opened) now bars legs
+    # under 10c outright, so the 1c case can only be exercised at the fill_price level
+    # above. Sweep the range that can still reach the ledger.
+    d0 = decide([_mk_struct(0.21, 0.01)], now=now, close_time=now + timedelta(hours=5),
+                release_ts=None, market_implied=None, already_open=False, bankroll=1000)
+    assert d0.action == "pass" and any("penny_leg" in r for r in d0.reasons)
+    opened = 0
+    for cost in (0.10, 0.15, 0.20, 0.25, 0.35, 0.50, 0.65, 0.75):
+        st = _mk_struct(min(cost + 0.20, 0.98), cost)   # +0.20 stays inside the gap gate
+        d = decide([st], now=now, close_time=now + timedelta(hours=5), release_ts=None,
+                   market_implied=None, already_open=False, bankroll=1000)
+        if d.action != "open":
+            continue
+        opened += 1
+        # a single risks its full premium, at the price actually paid
+        worst = sum(st.fill_prices(d.count)) * d.count
+        assert worst <= 1.0 + 1e-9, f"cost={cost}: worst={worst:.4f} breaches $1 cap"
+        # and the ledger's recorded size must be that same number, not the budget
+        assert d.size_usd == pytest.approx(worst, abs=0.01)
+    assert opened >= 6, "sweep degenerated — gates rejected nearly everything"
+
+
+def test_bucket_fill_cost_prices_the_dollar_that_always_comes_back():
+    """A bucket's downside is sum(fills) - 1, not the cash outlay: one of the two legs
+    pays in every branch. Sizing on the gross would under-size by ~4x on a 34c bucket."""
+    from prediction_market_macro.strategy.edge import Leg
+    st = Struct("bucket", (Leg("A", "yes", 0.98, 500.0), Leg("B", "no", 0.36, 500.0)),
+                fair=0.55, cost=0.34, max_loss=0.34, desc="b")
+    assert st.fill_cost(2) == pytest.approx(0.34)      # 0.98 + 0.36 - 1
+    assert sum(st.fill_prices(2)) == pytest.approx(1.34)

@@ -139,7 +139,19 @@ def decide(structs: list[Struct], *, now: datetime, close_time: datetime | None,
             return Decision("pass", None, 0.0, 0,
                             (f"kelly_below_one_contract {usd:.2f}<{st.cost:.2f}",),
                             dict(gates))
+    # Size on the price we expect to PAY, not on the quote. fill_cost depends on count
+    # (depth is compared per-leg against price x count), so size provisionally off the
+    # quote and then re-size once against the resulting fills. Without this second pass
+    # the cap is breached by exactly fill/cost — measured 19 of 99 live positions, worst
+    # 2.14x on a 1c leg (KXAAAGASW #743: 100 contracts sized off 1c, filled at 2c).
     count = int(usd / max(st.cost, 0.01))
+    if count > 0:
+        count = int(usd / max(st.fill_cost(count), 0.01))
+    if count <= 0:
+        return Decision("pass", None, 0.0, 0, ("fill_cost_above_budget",), dict(gates))
+    # record the worst case actually taken, not the budget it was carved from, so the
+    # ledger's size_usd and risk's exposure sum stop disagreeing with the fills
+    usd = round(count * st.fill_cost(count), 2)
     open_reasons = [f"net_edge={ne:.4f}", f"fair={st.fair:.4f}", f"cost={st.cost:.4f}"]
     if fav_path:
         open_reasons.insert(0, "favorite_path")

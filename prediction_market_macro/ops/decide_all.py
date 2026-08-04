@@ -73,8 +73,11 @@ def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> b
     st = max(cands, key=lambda x: x.fair)
     if st.fair > st.cost:                  # select-THEN-filter (see note above)
         return False
+    # size against the fill, not the quote (strategy/edge.py::fill_price) — the flat +1c
+    # this path applied after sizing broke the $1 cap on every cheap leg
     count = max(1, int(1.0 / st.cost))
-    size = round(st.cost * count, 2)
+    count = max(1, int(1.0 / max(st.fill_cost(count), 0.01)))
+    size = round(st.fill_cost(count) * count, 2)
     if risk.check(conn, spec.ticker, key, size) is not None:
         return False
     now_iso = now.isoformat()
@@ -90,8 +93,7 @@ def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> b
          "argmax", st.fair, st.cost, st.net_edge(), size,
          json.dumps({"stream": "argmax"}), "argmax/1.0", "{}",
          f"ARGMAX fav fair={st.fair:.3f} {note_extra}".strip()))
-    for leg in st.legs:
-        px = round(min(leg.price + 0.01, 0.99), 4)
+    for leg, px in zip(st.legs, st.fill_prices(count)):
         conn.execute(
             "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count,"
             " fee_usd, mode) VALUES(?,?,?,?,?,?,?, 'paper')",
