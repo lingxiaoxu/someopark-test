@@ -156,10 +156,10 @@ def _load_ledger_equity_curve(min_points: int = 2):
         return None
 
 
-def save_inventory(inv: dict, dry_run: bool = False) -> None:
+def save_inventory(inv: dict, dry_run: bool = False):
     if dry_run:
         log.info("[DRY RUN] Inventory not saved.")
-        return
+        return None
     INVENTORY_HISTORY_DIR.mkdir(parents=True, exist_ok=True)
     INVENTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -169,6 +169,63 @@ def save_inventory(inv: dict, dry_run: bool = False) -> None:
     with open(INVENTORY_PATH, "w") as f:
         json.dump(inv, f, indent=2)
     log.info(f"Inventory saved → {INVENTORY_PATH.name}  (backup: {bak.name})")
+    return bak            # 供 _sync_cost_basis_from_ledger 原地改写同一份快照
+
+
+def _sync_cost_basis_from_ledger(inv: dict, snap_path=None) -> int:
+    """把 inventory 的 cost_basis 对齐到 portfolio_ledger 账本(唯一真源)。
+
+    背景(2026-08-03 用户发现): inventory 只在 ENTER 写 cost_basis,加仓
+    (INCREASE)时原样继承旧成本 —— 加权平均从未计算。KLAC 465→1678 股加仓后
+    仍显示 192.17(应为 185.36),前端未实现亏损虚增 3.15 倍(-119k vs -38k)。
+    账本 ledger.trade() 逐笔做加权平均(BUY:(s0·c0+Δ·p)/s1;SELL 不改成本),
+    此处让 inventory 成为它的镜像 —— 不另写第二套算法,避免再次分叉。
+
+    时序: 必须在 ledger 记账**之后**调用(save_inventory 在前,那时账本还没有
+    当日成交)。改写 live 文件与**同一份**历史快照,不新增快照。
+
+    口径: 拆股前的历史快照按当时口径存(KLAC 127 股 @1921.71),账本是重放出的
+    当前口径(1270 股 @192.171)。不变量 = 总成本相等 → 按股数比换算,
+    直接抄账本会造出"拆股前股数 × 拆股后成本"的自相矛盾记录。
+    失败一律 fail-open(保留原值 + 大声 log),绝不阻断日更。
+    """
+    try:
+        acct_path = Path(__file__).resolve().parent / "account_aiss.json"
+        with open(acct_path) as f:
+            pos = json.load(f).get("positions", {}) or {}
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"[COST_BASIS] 账本不可读,保留原成本: {e}")
+        return 0
+    n = 0
+    for tk, h in (inv.get("stock_holdings") or {}).items():
+        p = pos.get(tk)
+        if not p:
+            continue
+        inv_sh, acc_sh = int(h.get("shares", 0) or 0), int(p.get("shares", 0) or 0)
+        if inv_sh <= 0 or acc_sh <= 0:
+            continue
+        ratio = acc_sh / inv_sh
+        if not (0.05 <= ratio <= 20):
+            log.warning(f"[COST_BASIS] {tk}: 股数比 {ratio:.3f} 异常(inv {inv_sh} "
+                        f"vs 账本 {acc_sh}) — 保留原成本")
+            continue
+        new = round(float(p["avg_cost"]) * ratio, 4)
+        old = h.get("cost_basis")
+        if old is None or abs(float(old) - new) > 1e-4:
+            log.info(f"[COST_BASIS] {tk}: {old} → {new} (账本加权平均)")
+            h["cost_basis"] = new
+            n += 1
+    if n and snap_path is not None:
+        try:
+            for _p in (INVENTORY_PATH, snap_path):
+                _tmp = str(_p) + ".tmp"
+                with open(_tmp, "w") as f:
+                    json.dump(inv, f, indent=2)
+                os.replace(_tmp, _p)
+            log.info(f"[COST_BASIS] {n} 只票成本已对齐账本,已改写 inventory 与快照")
+        except Exception as e:  # noqa: BLE001
+            log.warning(f"[COST_BASIS] 回写失败(内存值已更新): {e}")
+    return n
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1544,14 +1601,17 @@ def run_daily_signal(
             _h["days_held"]  = int(_subh.get("days_held", 1))
         _h["action_today"] = _act
 
-    save_inventory(inv, dry_run=dry_run)
+    _snap_path = save_inventory(inv, dry_run=dry_run)
 
     # ── 10b. Ledger 记账 + 当日 PnL/Risk 报告（非致命；报告需 reportlab →
     #        由 someopark_run 子进程生成，本进程只做纯 pandas 记账）──────────
     if not dry_run:
         try:
             from portfolio_ledger.ledger import daily_update as _ledger_update
-            if _ledger_update("aiss") > 0:
+            _n_led = _ledger_update("aiss")
+            # 账本已含当日成交 → 回填 cost_basis(加权平均真源)并改写同一快照
+            _sync_cost_basis_from_ledger(inv, _snap_path)
+            if _n_led > 0:
                 # 同步执行（勿改回 Popen fire-and-forget：cron 包装器在主进程
                 # 退出时回收进程组，子进程在 conda 启动阶段就被杀 —— 2026-07-02
                 # AISS 首战报告因此丢失）。
