@@ -66,6 +66,54 @@ def test_materialize_and_watchdog_canary(conn):
     assert conn.execute("SELECT COUNT(*) c FROM alerts").fetchone()["c"] >= 1
 
 
+def _add_contract(conn, ticker, series, period, close, status="active"):
+    conn.execute("INSERT INTO contracts(ticker, series, event_ticker, period, close_time,"
+                 " status, first_seen_ts) VALUES(?,?,?,?,?,?,?)",
+                 (ticker, series, f"{series}-{period}", period, close.isoformat(),
+                  status, close.isoformat()))
+    conn.commit()
+
+
+def test_close_anchored_runs_only_when_close_is_far_from_release(conn):
+    """KXAAAGASW closes ~9h BEFORE its print, so the release ladder fires against a
+    shut book and quotes go >6h stale ⇒ decide_all forced PASS. It must get a
+    close-anchored snapshot/decide; series that close at the print must NOT."""
+    now = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    aaa_close = datetime(2026, 8, 10, 3, 59, tzinfo=timezone.utc)
+    _add_contract(conn, "AAA1", "KXAAAGASW", "26AUG10", aaa_close)
+    # CPI closes at the print (12:25Z on release day) — release ladder covers it
+    cpi_rel = cal.releases_between("BLS_CPI", now, now + timedelta(days=30))[0]
+    _add_contract(conn, "CPI1", "KXCPI", "26JUL",
+                  cpi_rel.scheduled_ts - timedelta(minutes=5))
+    scheduler.materialize(conn, now=now, horizon_days=30)
+
+    rows = conn.execute("SELECT * FROM runs WHERE lane='close_anchor'").fetchall()
+    by_series = {r["series"] for r in rows}
+    assert by_series == {"KXAAAGASW"}, by_series
+    assert {r["task"] for r in rows} == {"snapshot", "decide"}
+    assert all(r["period"] == "2026-08-10" for r in rows)     # ISO, not the Kalshi token
+    dec = next(r for r in rows if r["task"] == "decide")
+    mins_to_close = (aaa_close - datetime.fromisoformat(dec["due_ts"])).total_seconds() / 60
+    # must clear both min_minutes_to_close (30) and the argmax window (0.03d = 43min),
+    # with room for a late 15-min tick
+    assert mins_to_close - 15 > 43.2, mins_to_close
+    # idempotent: a second materialize adds nothing
+    scheduler.materialize(conn, now=now, horizon_days=30)
+    assert conn.execute("SELECT COUNT(*) c FROM runs WHERE lane='close_anchor'"
+                        ).fetchone()["c"] == len(rows)
+
+
+def test_close_anchored_skips_closed_and_past_contracts(conn):
+    now = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    _add_contract(conn, "OLD1", "KXAAAGASW", "26JUL27",
+                  now - timedelta(days=2))                      # already closed
+    _add_contract(conn, "SET1", "KXAAAGASW", "26AUG10",
+                  now + timedelta(days=9), status="settled")    # not active
+    scheduler.materialize(conn, now=now, horizon_days=30)
+    assert conn.execute("SELECT COUNT(*) c FROM runs WHERE lane='close_anchor'"
+                        ).fetchone()["c"] == 0
+
+
 def test_pred_freshness_sla(conn):
     now = datetime(2026, 8, 1, tzinfo=timezone.utc)
     conn.execute("INSERT INTO contracts(ticker, series, event_ticker, period, status,"

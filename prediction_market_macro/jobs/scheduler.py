@@ -14,6 +14,10 @@ Tasks per (series, period):
   reassess   T+3m    post-release re-estimation             [decision-class]
   reconcile  T+1d    settlement reconciliation
 Plus daily lane-independent tasks: daily_refresh, health, pred_freshness.
+
+Those offsets all anchor on the RELEASE, which silently assumes the book is still
+open at the print. Where the contract closes hours away from its release the whole
+ladder fires against a shut market — see _CLOSE_OFFSETS below.
 """
 from __future__ import annotations
 
@@ -27,11 +31,55 @@ _OFFSETS = [("arm", timedelta(hours=-24)), ("snapshot", timedelta(hours=-2)),
             ("decide", timedelta(hours=-1)), ("freeze", timedelta(minutes=-10)),
             ("reassess", timedelta(minutes=3)), ("reconcile", timedelta(days=1))]
 
+# Close-anchored ladder for series whose book shuts far from the print. KXAAAGASW
+# closes 03:59Z and prints ~13:00Z — 9h AFTER the close — so its release-anchored
+# snapshot/decide both execute against an already-shut market, the last quote before
+# close is ~19h old, and decide_all's staleness gate (quotes >6h ⇒ forced PASS) kills
+# every entry. Anchoring a second snapshot/decide pair on close_time restores a live
+# book at decision time. -90m leaves margin over BOTH min_minutes_to_close (30) and
+# the argmax entry window (dtc >= 0.03d = 43min) even if the 15-min tick fires late.
+_CLOSE_OFFSETS = [("snapshot", timedelta(hours=-3)), ("decide", timedelta(minutes=-90))]
+# release within this of the close ⇒ the release ladder already covers it, skip
+_CLOSE_ANCHOR_MIN_GAP = timedelta(hours=3)
+
 
 def _upsert_run(conn, lane, series, period, task, due_ts) -> None:
     conn.execute(
         "INSERT OR IGNORE INTO runs(lane, series, period, task, due_ts) VALUES(?,?,?,?,?)",
         (lane, series, period, task, due_ts.isoformat()))
+
+
+def _materialize_close_anchored(conn, now: datetime, end: datetime) -> int:
+    """Close-anchored snapshot/decide for every active (series, period) whose book
+    shuts more than _CLOSE_ANCHOR_MIN_GAP from its nearest release. Series that close
+    at the print (CPI, payrolls, claims, WTI, NG) are already covered by the release
+    ladder and are skipped, so this adds work only where the ladder misses."""
+    n = 0
+    for spec in REGISTRY.values():
+        rows = conn.execute(
+            "SELECT period, MIN(close_time) ct FROM contracts"
+            " WHERE series=? AND status='active' AND close_time IS NOT NULL"
+            " GROUP BY period", (spec.ticker,)).fetchall()
+        for r in rows:
+            close = datetime.fromisoformat(r["ct"].replace("Z", "+00:00"))
+            if not (now < close <= end):
+                continue
+            # read the CALENDARS module, not the releases table — that table is filled
+            # by a separate refresh step, so keying off it would close-anchor every
+            # series whenever it is empty or stale
+            if cal.releases_between(spec.calendar, close - _CLOSE_ANCHOR_MIN_GAP,
+                                    close + _CLOSE_ANCHOR_MIN_GAP):
+                continue                      # release ladder already covers this close
+            # contracts store the Kalshi token ('26AUG10'); the runs ledger elsewhere
+            # carries ISO keys — normalise so the two ladders read the same
+            from prediction_market_macro.util.periods import kalshi_period_to_key
+            period = kalshi_period_to_key(r["period"]) or r["period"]
+            for task, off in _CLOSE_OFFSETS:
+                due = close + off
+                if now <= due <= end:
+                    _upsert_run(conn, "close_anchor", spec.ticker, period, task, due)
+                    n += 1
+    return n
 
 
 def materialize(conn, now: datetime | None = None, horizon_days: int = 30) -> int:
@@ -56,6 +104,7 @@ def materialize(conn, now: datetime | None = None, horizon_days: int = 30) -> in
                 "INSERT OR IGNORE INTO coverage(series, period, state, updated_ts)"
                 " VALUES(?,?,?,?)",
                 (spec.ticker, ev.period, "scheduled", now.isoformat()))
+    n += _materialize_close_anchored(conn, now, end)
     # daily lane-independent heartbeats for the next horizon
     d = now.replace(hour=9, minute=0, second=0, microsecond=0)   # 05:00 ET == 09:00/10:00 UTC; run marker at 09:00Z
     while d <= end:
