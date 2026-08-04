@@ -1,12 +1,13 @@
-"""model/cpi.py — CPI MoM/YoY, headline & core (PLAN §7, §19.1). cpi/0.1.0
+"""model/cpi.py — CPI MoM/YoY, headline & core (PLAN §7, §19.1). cpi/0.2.0
 
 Serves KXCPI, KXCPICORE (MoM ladders) and KXCPIYOY, KXCPICOREYOY (YoY ladders).
 
 Mechanics (all inputs via PIT vintage reads):
   * UNROUNDED index modelling (§19.1): MoM % computed from the CPI index level series
     (3-decimal precision), predicted in continuous space, rounded ONLY at discretisation.
-  * core MoM:    mu = 0.5·m[-1] + 0.3·m[-2] + 0.2·(trailing-12 mean); sigma = MAD of the
-                 last 18 MoM values (floor 0.06pp)
+  * core MoM:    mu = 0.5·m[-1] + 0.5·(trailing-12 mean); sigma = MAD of the last 18 MoM
+                 values (floor 0.06pp). 0.2.0 dropped a 0.3 weight on the SECOND lag,
+                 which was redundant given the first and cost only variance — §29.6.
   * headline MoM: core pred + gasoline effect: CPI gasoline weight (~3.1%) × month-avg
                  pump-price %Δ (GASREGW weekly PIT; RB=F month change × 0.55 passthrough
                  fills the unobserved remainder of the month) + food drift constant;
@@ -26,7 +27,7 @@ import pandas as pd
 from prediction_market_macro.model.common import GaussianMix, Pred, grid_pmf
 from prediction_market_macro.model.features import FeatureStore
 
-VERSION = "cpi/0.1.0"
+VERSION = "cpi/0.2.0"
 GAS_WEIGHT = 0.031
 FOOD_DRIFT = 0.03            # pp/month, long-run food contribution
 RB_PASSTHROUGH = 0.55
@@ -39,7 +40,17 @@ def _mom_series(idx: pd.Series) -> pd.Series:
 def _core_mu_sigma(mom: pd.Series) -> tuple[float, float]:
     m = mom.dropna()
     assert len(m) >= 24, "CPI history too short"
-    mu = 0.5 * m.iloc[-1] + 0.3 * m.iloc[-2] + 0.2 * float(m.tail(12).mean())
+    # The second lag used to carry 0.3 of its own. It should not: MoM's lag-2
+    # autocorrelation (+0.657 core) is almost entirely THROUGH lag-1, so once L1 is in
+    # the blend L2 adds no incremental signal — only the variance of a single noisy
+    # print, where the 12-month mean estimates the same persistent level from 12
+    # observations. Rerouting L2's weight into M12 at an UNCHANGED L1 weight of 0.5
+    # (so the gain is attributable to that one move) cuts walk-forward RMSE on every
+    # cut, Diebold-Mariano significant on all four: core 1995 .1121->.1057 p=.033,
+    # core 2010 .1296->.1183 p=.027, headline 1995 .2915->.2661 p=.003, headline 2010
+    # .2570->.2348 p=.003. The weight on L1 itself is NOT the issue — the RMSE grid is
+    # flat across w=0.3..0.5, i.e. the momentum term was already about right. See §29.6.
+    mu = 0.5 * m.iloc[-1] + 0.5 * float(m.tail(12).mean())
     resid = m.tail(18) - m.tail(18).mean()
     sigma = max(1.4826 * float(np.median(np.abs(resid))), 0.06)
     return float(mu), float(sigma)
