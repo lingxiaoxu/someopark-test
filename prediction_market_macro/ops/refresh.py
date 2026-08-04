@@ -11,7 +11,7 @@ import argparse
 import json
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.config.registry import REGISTRY, p0
 from prediction_market_macro.config.settings import load_settings
@@ -62,6 +62,12 @@ def run(weekly: bool = False) -> dict:
     from prediction_market_macro.ingest import aaa_daily, eia
     step("aaa_daily", lambda: aaa_daily.fetch_daily(conn))
     step("eia_storage", lambda: eia.pull_storage(conn))
+    from prediction_market_macro.ingest import weather as wx
+    # trailing 45d only: the whole history is a `ops.backfill --weather` job, and this
+    # window also re-writes the tail where ERA5T later settles into ERA5.
+    step("weather", lambda: wx.pull(
+        conn, start=(datetime.now(timezone.utc).date()
+                     - timedelta(days=45)).isoformat())["days"])
     step("futures", lambda: market_data.pull_futures(conn))
     step("fx", lambda: market_data.pull_fx(conn, s.polygon_api_key))
     step("news", lambda: market_data.pull_news(conn, s.polygon_api_key))

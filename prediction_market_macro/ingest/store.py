@@ -138,8 +138,14 @@ CREATE TABLE IF NOT EXISTS source_scores(          -- per-event per-source OOS B
   PRIMARY KEY(series, period, source, offset));    -- ensemble weight learning (§19-2)
 
 CREATE TABLE IF NOT EXISTS fed_statements(         -- FOMC statement text (§7 fed, §10)
-  period TEXT PRIMARY KEY,                         -- meeting period '2026-07'
-  url TEXT NOT NULL, text TEXT NOT NULL, fetched_ts TEXT NOT NULL);
+  period TEXT NOT NULL,                            -- meeting period '2026-07'
+  release_date TEXT NOT NULL,                      -- statement date; a month can hold two
+                                                   -- (2008-01: 22nd intermeeting + 30th)
+  url TEXT NOT NULL, text TEXT NOT NULL,
+  knowledge_time TEXT NOT NULL,                    -- release instant UTC — the PIT key
+  time_source TEXT NOT NULL,                       -- 'page' | 'eod' (see fed_text)
+  fetched_ts TEXT NOT NULL,
+  PRIMARY KEY(period, release_date));
 
 CREATE TABLE IF NOT EXISTS event_flags(            -- LLM structural-break layer (§19-8)
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,5 +172,38 @@ def init_db(db_path: Path | str) -> sqlite3.Connection:
     cols = {r[1] for r in conn.execute("PRAGMA table_info(preds)")}
     if "inputs_json" not in cols:
         conn.execute("ALTER TABLE preds ADD COLUMN inputs_json TEXT")
+    _migrate_fed_statements(conn)
     conn.commit()
     return conn
+
+
+def _migrate_fed_statements(conn) -> None:
+    """v1 (period PK, fetched_ts only) → v2 (release_date in the key, knowledge_time).
+
+    Two reasons the old shape had to go: it carried NO time column at all, so the table
+    could not be PIT-filtered (PLAN §5-bis), and `period` as the sole key silently drops
+    the second statement of a month — 2008-01 (22nd intermeeting + 30th scheduled) and
+    2020-03 (3rd + 15th) are exactly the meetings a Fed model most wants to read.
+
+    Old rows are carried over, not dropped: release_date comes from the URL's YYYYMMDD
+    and the time is stamped conservatively (see fed_text._release_ts). The backfill
+    re-fetches them with the parsed page time and REPLACEs on the same key.
+    """
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(fed_statements)")}
+    if not cols or "release_date" in cols:
+        return
+    import re as _re
+
+    from prediction_market_macro.ingest.fed_text import eod_knowledge_time
+    rows = conn.execute("SELECT period, url, text, fetched_ts FROM fed_statements").fetchall()
+    conn.execute("ALTER TABLE fed_statements RENAME TO fed_statements_v1")
+    conn.executescript(SCHEMA)
+    for r in rows:
+        m = _re.search(r"(\d{8})", r["url"] or "")
+        if not m:
+            continue                      # unparseable URL: left in fed_statements_v1
+        d = f"{m.group(1)[:4]}-{m.group(1)[4:6]}-{m.group(1)[6:]}"
+        conn.execute(
+            "INSERT OR REPLACE INTO fed_statements(period, release_date, url, text,"
+            " knowledge_time, time_source, fetched_ts) VALUES(?,?,?,?,?,'eod',?)",
+            (r["period"], d, r["url"], r["text"], eod_knowledge_time(d), r["fetched_ts"]))

@@ -336,16 +336,111 @@ energy v0.4+ 在生产消费一个只有 4 行、历史不可回溯的源。
 
 ## §28 P1 —— alt 数据回填(§25.3 的解药)
 
-| 源 | 回填方案 | 可得深度 | 阻塞 |
-|---|---|---|---|
-| FOMC 声明 | federalreserve.gov 历史声明页 | 1994 起 ~250 份 | 无。够 `fomc_statement_diff`(PLAN §22-23 挂了很久) |
-| 新闻 | Polygon `/v2/reference/news` 带 `published_utc.gte` 翻页 | 取决于订阅层级,先探 | 需实测可回溯深度 |
-| 天气 HDD/CDD | NOAA / Open-Meteo 历史再分析 | 数十年 | 全新接入。NG 模型的已知缺口 |
-| fx_daily | Polygon aggs 往前拉 | 可到 2000s | 低优先(零消费) |
-| AAA_DAILY | **不可回填** | — | 见 §27.4 |
+下表是**动手前的计划**;实测结论见 §28.1–§28.4(判定列为事后回填)。
+
+| 源 | 回填方案 | 可得深度 | 阻塞 | 实测判定 |
+|---|---|---|---|---|
+| FOMC 声明 | federalreserve.gov 历史声明页 | 1994 起 ~250 份 | 无。够 `fomc_statement_diff`(PLAN §22-23 挂了很久) | **收** 242 行(§28.1) |
+| 新闻 | Polygon `/v2/reference/news` 带 `published_utc.gte` 翻页 | 取决于订阅层级,先探 | 需实测可回溯深度 | **弃** 语料是零售个股线(§28.2) |
+| 天气 HDD/CDD | NOAA / Open-Meteo 历史再分析 | 数十年 | 全新接入。NG 模型的已知缺口 | **收** 118,275 行(§28.3) |
+| fx_daily | Polygon aggs 往前拉 | 可到 2000s | 低优先(零消费) | 不做(§28.4) |
+| AAA_DAILY | **不可回填** | — | 见 §27.4 | 不可回填 |
 
 **回填铁律**:每行必须带 `knowledge_time`。声明用**发布时刻**、新闻用 `published_utc`、天气用**观测发布时刻**
 (不是观测时刻 —— 再分析数据有滞后)。回填完成前,这些特征一律 `shadow`,不进决策。
+
+### §28 执行结果(2026-08-04,三源已判定;代码见 `ops/backfill.py`)
+
+上表是动手前的猜测。实测后三个源的结论**两收一弃**,并且被否的那个不是因为「太短」。
+
+#### §28.1 FOMC 声明 —— **收**,5 行 → 242 行
+
+`ingest/fed_text.py` 整个重写。原实现按 URL 模板猜地址,只在 2021+ 的一种命名下成立;
+改成**走日历页**(`fomccalendars.htm` + `fomchistorical{year}.htm`)抓 Statement 链接,
+两页 markup 结构不同(历史页是 `>Statement<` 锚点,当前页是 `<strong>Statement:</strong>` + PDF|HTML),
+两套提取器都要,合并去重。
+
+| 项 | 值 |
+|---|---|
+| 行数 | 5 → **242** |
+| 跨度 | 1994-02-04 … 2026-07-29 |
+| `time_source='page'` | 90(页面自带 "For release at H:MM p.m.") |
+| `time_source='eod'` | 152(1994–2015 只写 "For immediate release",保守取 23:59 ET) |
+| 非 UTC `knowledge_time` | **0** |
+| 一个月多份声明的月份 | 7(2007-08 与 2020-03 各 3 份) |
+
+两个必须记下来的坑:
+
+1. **`knowledge_time` 一度存成 ET 偏移量,是真实的 PIT 泄漏**。全库 PIT 过滤都是**字符串比较**,
+   `'2026-07-29T14:00:00-04:00' < '2026-07-29T17:00:00+00:00'` 成立,但真实时刻 18:00Z > 17:00Z ——
+   replay 会提前一小时拿到声明。`test_statements_asof_respects_the_hour_not_just_the_day` 抓到,
+   已加 `_et_to_utc()` 并把原因写进函数 docstring,防复发。
+2. **旧表 `PRIMARY KEY(period)` 会静默吞掉一个月的第二份声明** —— 2008-01(22 日紧急 + 30 日例会)、
+   2020-03(3 日 + 15 日)恰恰是 Fed 模型最想读的那几次,旧结构下 8 份根本存不进去。
+   已迁移到 `PRIMARY KEY(period, release_date)`,`_migrate_fed_statements()` 保留 v1 表不丢行。
+
+1990 年代只有 17 份不是抓漏:1999 年前 FOMC 只在**改变政策时**才发声明,这就是真实记录。
+
+#### §28.2 Polygon 新闻 —— **弃**,理由不是深度而是语料本身
+
+先说被顺手修掉的 bug:旧代码发 5 条 `search=` 查询(`"federal reserve"`、`"CPI inflation"`…),
+以为在拉宏观子集。实测 **Polygon 在我们这档订阅上静默忽略 `search=`** —— 传一个无意义词返回的 id 列表
+与不传完全相同,HTTP 200,无警告;而 `ticker=` 是真过滤的。所以那是**对同一条通用新闻线的 5 次重复调用**,
+按 id 去重;LLM tagger 历来看到的每一条标题都来自未过滤的 feed(`"Beyond Meat Rolls Out Breakfast Sausages"`
+是库里的真实行)。
+
+否掉它的三条实测:
+
+| 观察 | 数字 |
+|---|---|
+| 语料构成 | 100% 带 ticker 标签的单公司稿(GlobeNewswire / Motley Fool / Zacks / Benzinga / Investing.com) |
+| 宏观标题占比 | **0.3%–3.2%**(2021–2025 抽 5 周) |
+| 周量波动 | **6 → 4372 篇/周**,随 Polygon 自己的覆盖范围变化 |
+
+第三条单独就足以杀死任何「新闻强度」类特征:量的变化主要反映**供应商覆盖变更**,不是世界发生了什么。
+`backfill_news()` 保留可运行但**默认关闭**;`search=` 修复与客户端宏观过滤(`analysis/news_tags.py`)保留,
+让线上表和 LLM tagger 至少不再吞噪声 —— 且**线上与回填共用同一个 `is_macro` 定义**。
+
+`news_tags.py` 用确定性正则而非 LLM:LLM tagger 串行、慢、不可复现,§5-bis 口5 不允许它进上线前回测。
+
+#### §28.3 天气 HDD/CDD —— **收**,而且是本轮最强的一个结果
+
+`ingest/weather.py` 全新:14 个都会区 + 人口加权 'US' 聚合,Open-Meteo ERA5。
+
+| 项 | 值 |
+|---|---|
+| 行数 | **118,275**(14 城 + US) |
+| 天数 | 7,885,2005-01-01 … 2026-08-03 |
+| 耗时 | 82s |
+
+**它不是把季节性换个名字**。拿 864 周 EIA 天然气库存(2010→2026)做 LOO 检验:
+
+| 模型 | 周度库存变化 LOO RMSE (Bcf) |
+|---|---|
+| 仅均值 | 98.9 |
+| week-of-year 哑变量 | 42.5 |
+| **HDD + CDD** | **23.9**(R² 0.942) |
+| week-of-year + HDD/CDD | 22.8 |
+
+系数 −1.816 HDD / −1.578 CDD,方向都对。纯日历模型剩下的误差,天气又砍掉近一半。
+
+PIT 领先性已核:储气周最后一天的 `knowledge_time` = 2026-07-25T12:00Z,EIA 印数 2026-07-30T14:30Z,
+**领先 5 天**。测试 `test_weather_leads_the_storage_print_it_has_to_explain` 把这个顺序钉死 ——
+一旦反转,NG 特征就从预测变成泄漏。
+
+两个 tests 钉住的静默错法(都在汇总统计里看不出来):
+
+* **先平均温度再取 65°F 折点**:25°F 的 Minneapolis 配 105°F 的 Phoenix,平均出来是「温和的 65°F、
+  零需求」,而真相是**又要供暖又要制冷**。必须加权**度日**,不是温度。
+* **缺城的天照算**:那会变成变权重指数 —— 最冷的城市缺席时就凭空出现一个暖日。只聚合全员到齐的天。
+
+唯一的判断项写在模块 docstring 里不藏:`knowledge_time = event_time + 1 天 12:00 UTC`。
+ERA5 本身滞后 ~5 天,但我们要的事实是「芝加哥昨天多少度」—— 次日早晨从 NWS 观测就是公开的,
+再分析只是取数方式。残余暴露是 ERA5T 会修订成 ERA5,单一 vintage 下无法量化,所以该源按 §7-bis 保持 `shadow`。
+
+#### §28.4 未做
+
+`fx_daily` 往前拉 —— 低优先,**当前零消费者**,不做。`AAA_DAILY` 见 §27.4,不可回填。
 
 ---
 
