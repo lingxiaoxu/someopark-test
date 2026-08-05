@@ -77,16 +77,29 @@ def fetch_symbols(symbols: List[str], refresh_days: int = 3) -> dict:
         if meta.get("fetched_at", "1970") < str(date.today() - timedelta(days=refresh_days)):
             need.append(s)
     if need:
-        log.info(f"earnings fetch for {len(need)} symbols (reuse MRPTFetchEarnings)")
-        updated = MFE.run_fetch(need, cache=cache, quiet=True)
-        cache = updated if isinstance(updated, dict) else cache
-        cache.setdefault("_meta", {})
-        for s in need:
-            # 空结果也落缓存([]),否则无财报票(退市/未覆盖)每次构建全量重拉
-            cache["symbols"].setdefault(s, [])
-            cache["_meta"][s] = {"fetched_at": today}
-        cache["fetched_at"] = today
-        _save_cache(cache)
+        # 分块 + 每块落盘(2026-08-04): 逐票节流 0.3-0.8s,3869 票要 35-60 分钟。
+        # 原先只在整批结束后 _save_cache 一次 —— 任何中断(进程被杀/重启/
+        # jetsam)都让这段工作全部作废,下次从零开始,实测导致永远跑不完。
+        # 现在每 CHUNK 票存一次盘并打进度,中断只损失当前块。
+        log.warning(f"earnings fetch for {len(need)} symbols — 三天一次的全量刷新, "
+                    f"分块落盘,预计 {len(need) * 2.5 / 3600:.1f} 小时。"
+                    f"看到本行说明日更会跑很久,**不要杀进程**,看下方进度行。")
+        CHUNK = 250
+        done = 0
+        for i in range(0, len(need), CHUNK):
+            batch = need[i:i + CHUNK]
+            updated = MFE.run_fetch(batch, cache=cache, quiet=True)
+            cache = updated if isinstance(updated, dict) else cache
+            cache.setdefault("_meta", {})
+            cache.setdefault("symbols", {})
+            for s in batch:
+                # 空结果也落缓存([]),否则无财报票(退市/未覆盖)每次构建全量重拉
+                cache["symbols"].setdefault(s, [])
+                cache["_meta"][s] = {"fetched_at": today}
+            done += len(batch)
+            cache["fetched_at"] = today
+            _save_cache(cache)                       # 检查点
+            log.warning(f"  earnings 进度 {done}/{len(need)} 已落盘")
     return cache
 
 
