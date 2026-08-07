@@ -1480,29 +1480,6 @@ def build_report_data(start: str, end: str) -> dict:
     totals['ss_open']   = sum(totals[s]['ss_open']   for s in ('mrpt', 'mtfs'))
     totals['ss_total']  = totals['ss_closed'] + totals['ss_open']
 
-    # ── 账本口径锚定（2026-08-06）──────────────────────────────────────────
-    # pair 表是策略归因；底线以账本为准。差额 = 归因粒度差（按票净敞口 vs 按 pair），
-    # 显式列出，不隐没在合计里。
-    _lt = load_ledger_totals(start, end)
-    if _lt:
-        totals['ledger'] = _lt
-        totals['ledger_grand'] = _lt.get('grand')
-        # 差额拆成**两个性质不同**的部分，不可混为一谈：
-        #   · 分红   —— pair 表根本没有分红这个概念，是**缺失的行项目**
-        #   · 归因差 —— 按票净敞口 vs 按 pair 归因，是**定义差**（两者都对）
-        totals['recon_div'] = {s: round(_lt[s]['dividends'], 2)
-                               for s in ('mrpt', 'mtfs') if s in _lt}
-        totals['recon_div']['grand'] = round(
-            sum(v for k, v in totals['recon_div'].items() if k != 'grand'), 2)
-        totals['attrib_diff'] = {
-            s: round((totals[s]['subtotal'] or 0)
-                     - ((_lt[s]['total'] or 0) - (_lt[s]['dividends'] or 0)), 2)
-            for s in ('mrpt', 'mtfs') if s in _lt
-        }
-        totals['attrib_diff']['grand'] = round(
-            (totals['grand'] or 0)
-            - ((_lt.get('grand') or 0) - (totals['recon_div']['grand'] or 0)), 2)
-
     # Leverage metrics (denominator = equity capital)
     # Computed from inventory snapshots across all dates in range
     lev_rows = _compute_leverage(start_ts, end_ts)
@@ -1707,76 +1684,6 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
     ]))
     story.append(t_sum)
     story.append(Spacer(1, 6))
-
-    # ── 账本对账块（2026-08-06）: 底线锚定 pairs_ledger ────────────────────
-    # 上表按 pair 归因（每个 pair 用自己的开仓价）；账本按**票的净敞口**记账
-    # （券商真实持仓）。同一票常同时是多个 pair 的腿，两者必然不同。
-    # 显式列出差额，避免读者以为哪一个是"错的"。
-    _lg = totals.get('ledger')
-    if _lg:
-        _ad = totals.get('attrib_diff', {})
-        _dv = totals.get('recon_div', {})
-        rec_data = [[H('口径'), H('pair 级归因', 'RIGHT'), H('归因差', 'RIGHT'),
-                     H('分红', 'RIGHT'), H('账本（权威）', 'RIGHT')]]
-        for strat in ('mrpt', 'mtfs'):
-            if strat not in _lg:
-                continue
-            rec_data.append([
-                C(strat.upper()),
-                Paragraph(money(totals[strat]['subtotal']),
-                          S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
-                Paragraph(money(-(_ad.get(strat) or 0)),
-                          S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
-                Paragraph(money(_dv.get(strat)),
-                          S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
-                Paragraph(money(_lg[strat]['total']),
-                          S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
-            ])
-        rec_data.append([
-            H('合计'),
-            Paragraph(money(totals['grand']),
-                      S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
-            Paragraph(money(-(_ad.get('grand') or 0)),
-                      S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
-            Paragraph(money(_dv.get('grand')),
-                      S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
-            Paragraph(money(_lg.get('grand')),
-                      S('_g', fontSize=8.5, leading=11.5, alignment=TA_RIGHT)),
-        ])
-        t_rec = Table(rec_data, colWidths=[2.6*cm, 3.6*cm, 3.4*cm, 2.8*cm, 3.6*cm])
-        t_rec.setStyle(TableStyle([
-            ('FONTNAME', (0,0), (-1,-1), FONT),
-            ('FONTSIZE', (0,0), (-1,-1), 8),
-            ('LEADING',  (0,0), (-1,-1), 11),
-            ('BACKGROUND', (0,0), (-1,0), C_SUBHDR),
-            ('TEXTCOLOR',  (0,0), (-1,0), colors.white),
-            ('BACKGROUND', (0,-1),(-1,-1), colors.HexColor('#1a1a2e')),
-            ('TEXTCOLOR',  (0,-1),(-1,-1), C_GOLD),
-            ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
-            ('ALIGN', (0,0), (0,-1), 'LEFT'),
-            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-            ('TOPPADDING', (0,0), (-1,-1), 5),
-            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
-            ('LEFTPADDING', (0,0), (-1,-1), 7),
-            ('RIGHTPADDING', (0,0), (-1,-1), 7),
-            ('GRID', (0,0), (-1,-1), 0.35, C_BORDER),
-            ('LINEABOVE', (0,-1),(-1,-1), 1.2, C_GOLD),
-            ('LINEBELOW', (0,0), (-1,0), 0.9, C_GOLD),
-        ]))
-        story.append(t_rec)
-        _m, _t = _lg.get('mrpt', {}), _lg.get('mtfs', {})
-        story.append(Paragraph(
-            f"账本口径明细（截至 {_lg.get('mrpt', _lg.get('mtfs', {})).get('as_of', '')}）："
-            f"已实现 {money(_m.get('realized', 0) + _t.get('realized', 0), color=False)}，"
-            f"分红 {money(_m.get('dividends', 0) + _t.get('dividends', 0), color=False)}，"
-            f"未实现变动 {money(_m.get('unrealized_chg', 0) + _t.get('unrealized_chg', 0), color=False)}。"
-            f"　<b>三列相加 = 账本</b>：pair 级归因 + 归因差 + 分红。"
-            f"分红是 pair 表<b>缺失的行项目</b>（pair 视角无此概念）；归因差是<b>定义差</b>"
-            f"—— 账本按票的净敞口记账（券商真实持仓），同一票若在一个 pair 做多、"
-            f"另一个 pair 做空，账本记净额而 pair 视角两边都计。两者都对，"
-            f"底线以账本为准。",
-            S('_lrec', fontSize=6.8, leading=9.5, textColor=C_GRAY)))
-        story.append(Spacer(1, 6))
 
     # PnL metrics row
     ss_total  = totals.get('ss_total') or 0
