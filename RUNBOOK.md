@@ -189,8 +189,17 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ## 6.4 pairs_ledger — MRPT/MTFS 成交账本（**日常无需手动运行**）
 
-**账本由 DailySignal 的钩子每日自动推进（`_pairs_ledger_hook`，在 PERF_UPDATE 之前），
-日常跑批流程不变、无需新增手动步骤。** 下列命令用于排障、重建与验证。
+**账本由 DailySignal 的两个钩子每日自动完成，日常跑批流程不变、无需新增手动步骤：**
+
+| 钩子 | 位置 | 作用 |
+|---|---|---|
+| `_pairs_ledger_hook` | **PERF_UPDATE 之前** | 账本推进（唯一的写动作），因为 `UpdateStrategyPerformance` 要读账本 |
+| `_pairs_ledger_reconcile` | **risk report 之后** | R1–R11 对账（只读），因为要比对当日的 perf JSON 与 risk_report |
+
+> 两者方向相反、**不可合并**：合在一起会让对账拿 T−1 的 perf JSON 去比 T 日的账本，
+> `R6b`/`R3` 每个有新交易日的早晨都误报 FAIL。详见 README「顺序红线」。
+
+下列命令用于排障、重建与验证。
 
 ```bash
 # 全量重建（3/19 → 今日）。清空既有产物后重放,幂等

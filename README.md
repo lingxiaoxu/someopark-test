@@ -396,34 +396,38 @@ pipeline_runner.sh
   STEP 3-6  MRPT/MTFS WalkForward + Report        （不碰账本）
   STEP 7    DailySignal.py --strategy both
   │
-  ├─ L2820  CorporateActions.apply_to_inventory() ── 拆股/合股改写 inventory（留痕幂等）
-  ├─ L2906  monitor_existing_positions()          ── Step1 监控
+  ├─ L2882  CorporateActions.apply_to_inventory() ── 拆股/合股改写 inventory（留痕幂等）
+  ├─ L2924  monitor_existing_positions()          ── Step1 监控
   │           └─ L2531 save_inventory()  →  ①备份旧态进 inventory_history
   │                                          ②写 inventory_{s}.json
   │                                          ③同步 public/data/inventory_{s}.json
-  ├─ L2926  _run_single('mrpt')  ┐ Step2 开仓
-  ├─ L2934  _run_single('mtfs')  ┘   └─ L3239 save_inventory()（同上三步，最终态）
-  ├─ L2966  combined_signals_<ts>.json            ── monitoring 主记录
-  ├─ L2983  daily_report_<ts>.json/.txt           ── 前端 smart artifact
+  ├─ L2944  _run_single('mrpt')  ┐ Step2 开仓
+  ├─ L2952  _run_single('mtfs')  ┘   └─ save_inventory()（同上三步，最终态）
+  ├─ L2983  combined_signals_<ts>.json            ── monitoring 主记录
+  ├─ L2999  daily_report_<ts>.json/.txt           ── 前端 smart artifact
   │
-  ├─ L2993  ★ _pairs_ledger_hook(strategy, dry_run)   ← 必须在 PERF_UPDATE 之前
+  ├─ L3011  ★ _pairs_ledger_hook(strategy, dry_run)   ── 账本推进（唯一的写）
+  │           │                                    ← 必须在 PERF_UPDATE **之前**
   │           ├─ pairs_ledger.rebuild.daily_update('mrpt')
-  │           ├─ pairs_ledger.rebuild.daily_update('mtfs')
-  │           │     读 inventory_history + inventory 主文件(覆盖同日)
-  │           │        + combined_signals(解平仓价) + Mongo + splits_cache + dividends_cache
-  │           │     写 account_{s}.json / trade_ledger_{s}.jsonl / account_history/
-  │           └─ pairs_ledger.reports.run()  → ledger_reports/{statements,reconciliation}
-  │                 R1–R11 全项校验，FAIL 时 WARNING 告警但不中断
+  │           └─ pairs_ledger.rebuild.daily_update('mtfs')
+  │                 读 inventory_history + inventory 主文件(覆盖同日)
+  │                    + combined_signals(解平仓价) + Mongo + splits_cache + dividends_cache
+  │                 写 account_{s}.json / trade_ledger_{s}.jsonl / account_history/
   │
-  ├─ L3001  UpdateStrategyPerformance --start 2026-03-19 --end <signal_date>
+  ├─ L3019  UpdateStrategyPerformance --start 2026-03-19 --end <signal_date>
   │           **读 account_history/**（账本）→ 拼接值 + 账本累计美元盈亏
   │           写 public/data/strategy_performance.json（只替换 3/19 之后）
-  ├─ L3006  UpdateBDCPerformance
-  ├─ L3008  UpdateMasterPerformance  ── 读 strategy_performance + 各策略账本
-  ├─ L3012  _deploy_dashboard()      ── npm build + firebase deploy
-  └─ L3115  RiskManager.generate_risk_report()
-              读 strategy_performance(NAV/income) + inventory(持仓) + 价格
-              写 risk_report_<ts>.{json,txt,pdf,xlsx}
+  ├─ L3024  UpdateBDCPerformance
+  ├─ L3026  UpdateMasterPerformance  ── 读 strategy_performance + 各策略账本
+  ├─ L3030  _deploy_dashboard()      ── npm build + firebase deploy
+  ├─ L3038  RiskManager.generate_risk_report()
+  │           读 strategy_performance(NAV/income) + inventory(持仓) + 价格
+  │           写 risk_report_<ts>.{json,txt,pdf,xlsx}
+  │
+  └─ L3053  ★ _pairs_ledger_reconcile(dry_run)        ── 对账（只读）
+              │                                    ← 必须在 risk report **之后**
+              └─ pairs_ledger.reports.run()  → ledger_reports/{statements,reconciliation}
+                    R1–R11 全项校验，FAIL 时 WARNING 告警但不中断
 
   STEP 8    WalkForwardDiagnostic
   STEP 9    PnLReport.py --start 2026-03-19
@@ -431,7 +435,29 @@ pipeline_runner.sh
               写 trading_signals/pnl_reports/pnl_report_<date>.pdf
 ```
 
-**⚠ 顺序红线：账本钩子必须早于 `PERF_UPDATE`。** `UpdateStrategyPerformance` 按账本口径重算净值，若账本尚未推进到 signal_date，最新一行会退化成**拼接值本身**（实测 2026-08-06 08:38 的 risk_report 因此把 MRPT 期末 NAV 记成 584,000，真值 608,836.71，差 −24,837）。已通过「钩子前移 + `_carry()` 顺延最近可用日」双重修复。
+**⚠ 顺序红线（两条，方向相反 —— 这正是钩子被拆成两个函数的原因）：**
+
+1. **账本推进 `_pairs_ledger_hook` 必须早于 `PERF_UPDATE`。** `UpdateStrategyPerformance` 按账本口径重算净值，若账本尚未推进到 signal_date，最新一行会退化成**拼接值本身**（实测 2026-08-06 08:38 的 risk_report 因此把 MRPT 期末 NAV 记成 584,000，真值 608,836.71，差 −24,837）。已通过「钩子前移 + `_carry()` 顺延最近可用日」双重修复。
+
+2. **对账 `_pairs_ledger_reconcile` 必须晚于 risk report。** 对账要比对 `strategy_performance.json` 与 `risk_report_*.json`，而这两者由排在它之前的 PERF_UPDATE / RiskManager 生成。若与账本推进合并在 PERF_UPDATE 之前，账本已到 T 日而 perf JSON 还停在 T−1，`R6b`（断言 `perf末日 >= 账本as_of`）与 `R3` 会在**每个有新交易日的早晨**误报 FAIL —— 天天狼来了会让整套对账失去意义。
+
+> 此坑此前一直未暴露：手工重跑时账本 `as_of` 未推进，两边恰好停在同一天而侥幸 PASS。2026-08-06 拆分为两个函数后修复；`both` 与单策略是两条独立返回路径，**各挂一次**（图中为 `both` 路径行号；单策略路径对应 L3120 / L3165）。
+
+**账本文件路径速查**（均在仓库根 `/Users/xuling/code/someopark-test/`）：
+
+| 类别 | 路径 | 说明 |
+|---|---|---|
+| 代码 | `pairs_ledger/` | `ledger.py` 记账内核 / `rebuild.py` 重建+日增量 / `reports.py` 报表+对账 / `verify.py` V1–V10 / `tests/` 17 项单测 |
+| 账户状态 | `account_mrpt.json`<br>`account_mtfs.json` | 当前快照：cash / positions / **lots** / equity / 各累计项 |
+| 成交流水 | `trade_ledger_mrpt.jsonl`<br>`trade_ledger_mtfs.jsonl` | 逐笔成交，**append-only**，靠 `dedup_key` 去重 |
+| 每日冻结切片 | `account_history/account_{mrpt,mtfs}_YYYYMMDD.json` | 写下不再变，是净值曲线与重建的依据 |
+| 派生报表 | `trading_signals/ledger_reports/` | `ledger_statements_*.json`、`reconciliation_*.{json,txt}` |
+
+**备份与版本管理：**
+
+- **git**：账本代码与数据自 2026-08-06 起入库（commit `5b345a9`）。`account_*.json` / `*.jsonl` / `account_history/` 都是文本，diff 友好，git 即天然版本管理。
+- **`account_history/` 是最强的自愈保障**：192 个逐日冻结切片，任一天损坏都可从切片重放（实测回退一天重放后 equity/positions/lots/流水**逐 bit 等于**原值）。
+- ⚠ **外部硬盘备份尚未覆盖账本**：`conductor/backup_to_external.sh` 的清单是 `ITEMS=("historical_runs" "price_data")`，且该脚本无 launchd 调度、需手动执行。账本目前只有 git 一层保护，与主文件同盘。
 
 **账本的下游接通（谁读账本）：**
 
