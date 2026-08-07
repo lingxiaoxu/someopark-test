@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-05-07",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1046943.61,
+  "positions": {
+    "AON": {
+      "shares": -293,
+      "avg_cost": 308.27,
+      "entry_date": "2026-05-07"
+    },
+    "MCK": {
+      "shares": 120,
+      "avg_cost": 743.67,
+      "entry_date": "2026-05-07"
+    },
+    "FSLR": {
+      "shares": -418,
+      "avg_cost": 218.0,
+      "entry_date": "2026-05-07"
+    },
+    "RSG": {
+      "shares": 443,
+      "avg_cost": 199.69,
+      "entry_date": "2026-05-07"
+    },
+    "CHD": {
+      "shares": 944,
+      "avg_cost": 94.96,
+      "entry_date": "2026-05-07"
+    },
+    "HON": {
+      "shares": -415,
+      "avg_cost": 216.86,
+      "entry_date": "2026-05-07"
+    }
+  },
+  "cumulative_realized": 42822.67,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1044183.0,
+  "liabilities": {},
+  "lots": {
+    "AON/MCK|s1": {
+      "ticker": "AON",
+      "shares": -293,
+      "cost": 308.27,
+      "open_date": "2026-05-07"
+    },
+    "AON/MCK|s2": {
+      "ticker": "MCK",
+      "shares": 120,
+      "cost": 743.67,
+      "open_date": "2026-05-07"
+    },
+    "FSLR/RSG|s1": {
+      "ticker": "FSLR",
+      "shares": -418,
+      "cost": 218.0,
+      "open_date": "2026-05-07"
+    },
+    "FSLR/RSG|s2": {
+      "ticker": "RSG",
+      "shares": 443,
+      "cost": 199.69,
+      "open_date": "2026-05-07"
+    },
+    "CHD/HON|s1": {
+      "ticker": "CHD",
+      "shares": 944,
+      "cost": 94.96,
+      "open_date": "2026-05-07"
+    },
+    "CHD/HON|s2": {
+      "ticker": "HON",
+      "shares": -415,
+      "cost": 216.86,
+      "open_date": "2026-05-07"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 1338.09,
+  "position_value": -2760.61
+}

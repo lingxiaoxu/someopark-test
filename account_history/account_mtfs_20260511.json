@@ -1,0 +1,79 @@
+{
+  "as_of": "2026-05-11",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 725456.47,
+  "positions": {
+    "AFL": {
+      "shares": 1481,
+      "avg_cost": 115.97,
+      "entry_date": "2026-04-22"
+    },
+    "ICE": {
+      "shares": -1052,
+      "avg_cost": 158.63,
+      "entry_date": "2026-04-22"
+    },
+    "L": {
+      "shares": 782,
+      "avg_cost": 110.58,
+      "entry_date": "2026-04-27"
+    },
+    "AWK": {
+      "shares": -948,
+      "avg_cost": 130.126593,
+      "entry_date": "2026-04-27"
+    },
+    "INCY": {
+      "shares": 3083,
+      "avg_cost": 98.56,
+      "entry_date": "2026-05-11"
+    }
+  },
+  "cumulative_realized": 5390.89,
+  "cumulative_dividends": -8087.58,
+  "cumulative_fees": 0.0,
+  "equity": 1001393.83,
+  "liabilities": {},
+  "lots": {
+    "AFL/ICE|s1": {
+      "ticker": "AFL",
+      "shares": 1481,
+      "cost": 115.97,
+      "open_date": "2026-04-22"
+    },
+    "AFL/ICE|s2": {
+      "ticker": "ICE",
+      "shares": -1052,
+      "cost": 158.63,
+      "open_date": "2026-04-22"
+    },
+    "L/AWK|s1": {
+      "ticker": "L",
+      "shares": 782,
+      "cost": 110.58,
+      "open_date": "2026-04-27"
+    },
+    "L/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -653,
+      "cost": 132.42,
+      "open_date": "2026-04-27"
+    },
+    "INCY/AWK|s1": {
+      "ticker": "INCY",
+      "shares": 3083,
+      "cost": 98.56,
+      "open_date": "2026-05-11"
+    },
+    "INCY/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -295,
+      "cost": 125.05,
+      "open_date": "2026-05-11"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 4090.52,
+  "position_value": 275937.36
+}

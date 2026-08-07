@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-05-01",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1051350.88,
+  "positions": {
+    "AON": {
+      "shares": 254,
+      "avg_cost": 310.83,
+      "entry_date": "2026-05-01"
+    },
+    "MCK": {
+      "shares": -97,
+      "avg_cost": 815.2,
+      "entry_date": "2026-05-01"
+    },
+    "AKAM": {
+      "shares": -390,
+      "avg_cost": 102.98,
+      "entry_date": "2026-05-01"
+    },
+    "YUM": {
+      "shares": 243,
+      "avg_cost": 159.65,
+      "entry_date": "2026-05-01"
+    },
+    "CI": {
+      "shares": 271,
+      "avg_cost": 290.58,
+      "entry_date": "2026-05-01"
+    },
+    "MTD": {
+      "shares": -61,
+      "avg_cost": 1276.61,
+      "entry_date": "2026-05-01"
+    }
+  },
+  "cumulative_realized": 50711.78,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1048861.29,
+  "liabilities": {},
+  "lots": {
+    "AON/MCK|s1": {
+      "ticker": "AON",
+      "shares": 254,
+      "cost": 310.83,
+      "open_date": "2026-05-01"
+    },
+    "AON/MCK|s2": {
+      "ticker": "MCK",
+      "shares": -97,
+      "cost": 815.2,
+      "open_date": "2026-05-01"
+    },
+    "AKAM/YUM|s1": {
+      "ticker": "AKAM",
+      "shares": -390,
+      "cost": 102.98,
+      "open_date": "2026-05-01"
+    },
+    "AKAM/YUM|s2": {
+      "ticker": "YUM",
+      "shares": 243,
+      "cost": 159.65,
+      "open_date": "2026-05-01"
+    },
+    "CI/MTD|s1": {
+      "ticker": "CI",
+      "shares": 271,
+      "cost": 290.58,
+      "open_date": "2026-05-01"
+    },
+    "CI/MTD|s2": {
+      "ticker": "MTD",
+      "shares": -61,
+      "cost": 1276.61,
+      "open_date": "2026-05-01"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -1872.73,
+  "position_value": -2489.59
+}

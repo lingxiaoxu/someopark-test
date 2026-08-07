@@ -1,0 +1,106 @@
+{
+  "as_of": "2026-05-21",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1049100.58,
+  "positions": {
+    "CI": {
+      "shares": -312,
+      "avg_cost": 289.07,
+      "entry_date": "2026-05-12"
+    },
+    "MTD": {
+      "shares": 82,
+      "avg_cost": 1078.53,
+      "entry_date": "2026-05-12"
+    },
+    "DLR": {
+      "shares": 387,
+      "avg_cost": 188.5,
+      "entry_date": "2026-05-19"
+    },
+    "PRU": {
+      "shares": -721,
+      "avg_cost": 102.98,
+      "entry_date": "2026-05-19"
+    },
+    "HAS": {
+      "shares": 818,
+      "avg_cost": 89.93,
+      "entry_date": "2026-05-21"
+    },
+    "PFE": {
+      "shares": -2877,
+      "avg_cost": 25.77,
+      "entry_date": "2026-05-21"
+    },
+    "DXCM": {
+      "shares": -1112,
+      "avg_cost": 70.7,
+      "entry_date": "2026-05-21"
+    },
+    "UDR": {
+      "shares": 1829,
+      "avg_cost": 37.81,
+      "entry_date": "2026-05-21"
+    }
+  },
+  "cumulative_realized": 35987.42,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1038232.97,
+  "liabilities": {},
+  "lots": {
+    "CI/MTD|s1": {
+      "ticker": "CI",
+      "shares": -312,
+      "cost": 289.07,
+      "open_date": "2026-05-12"
+    },
+    "CI/MTD|s2": {
+      "ticker": "MTD",
+      "shares": 82,
+      "cost": 1078.53,
+      "open_date": "2026-05-12"
+    },
+    "DLR/PRU|s1": {
+      "ticker": "DLR",
+      "shares": 387,
+      "cost": 188.5,
+      "open_date": "2026-05-19"
+    },
+    "DLR/PRU|s2": {
+      "ticker": "PRU",
+      "shares": -721,
+      "cost": 102.98,
+      "open_date": "2026-05-19"
+    },
+    "HAS/PFE|s1": {
+      "ticker": "HAS",
+      "shares": 818,
+      "cost": 89.93,
+      "open_date": "2026-05-21"
+    },
+    "HAS/PFE|s2": {
+      "ticker": "PFE",
+      "shares": -2877,
+      "cost": 25.77,
+      "open_date": "2026-05-21"
+    },
+    "DXCM/UDR|s1": {
+      "ticker": "DXCM",
+      "shares": -1112,
+      "cost": 70.7,
+      "open_date": "2026-05-21"
+    },
+    "DXCM/UDR|s2": {
+      "ticker": "UDR",
+      "shares": 1829,
+      "cost": 37.81,
+      "open_date": "2026-05-21"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 2223.31,
+  "position_value": -10867.61
+}

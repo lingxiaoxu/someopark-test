@@ -1,0 +1,101 @@
+{
+  "as_of": "2026-07-30",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 704709.82,
+  "positions": {
+    "BBY": {
+      "shares": 2341,
+      "avg_cost": 87.035647,
+      "entry_date": "2026-07-15"
+    },
+    "HCA": {
+      "shares": -241,
+      "avg_cost": 378.85,
+      "entry_date": "2026-07-15"
+    },
+    "GOOGL": {
+      "shares": -342,
+      "avg_cost": 326.56,
+      "entry_date": "2026-07-27"
+    },
+    "PSX": {
+      "shares": 1092,
+      "avg_cost": 210.6,
+      "entry_date": "2026-07-30"
+    },
+    "AKAM": {
+      "shares": -64,
+      "avg_cost": 113.75,
+      "entry_date": "2026-07-30"
+    },
+    "INCY": {
+      "shares": 965,
+      "avg_cost": 122.99,
+      "entry_date": "2026-07-30"
+    },
+    "LKQ": {
+      "shares": -5253,
+      "avg_cost": 22.6,
+      "entry_date": "2026-07-30"
+    }
+  },
+  "cumulative_realized": -63272.24,
+  "cumulative_dividends": -8591.11,
+  "cumulative_fees": 0.0,
+  "equity": 923462.08,
+  "liabilities": {},
+  "lots": {
+    "BBY/HCA|s1": {
+      "ticker": "BBY",
+      "shares": 1075,
+      "cost": 85.37,
+      "open_date": "2026-07-15"
+    },
+    "BBY/HCA|s2": {
+      "ticker": "HCA",
+      "shares": -241,
+      "cost": 378.85,
+      "open_date": "2026-07-15"
+    },
+    "BBY/GOOGL|s1": {
+      "ticker": "BBY",
+      "shares": 1266,
+      "cost": 88.45,
+      "open_date": "2026-07-27"
+    },
+    "BBY/GOOGL|s2": {
+      "ticker": "GOOGL",
+      "shares": -342,
+      "cost": 326.56,
+      "open_date": "2026-07-27"
+    },
+    "PSX/AKAM|s1": {
+      "ticker": "PSX",
+      "shares": 1092,
+      "cost": 210.6,
+      "open_date": "2026-07-30"
+    },
+    "PSX/AKAM|s2": {
+      "ticker": "AKAM",
+      "shares": -64,
+      "cost": 113.75,
+      "open_date": "2026-07-30"
+    },
+    "INCY/LKQ|s1": {
+      "ticker": "INCY",
+      "shares": 965,
+      "cost": 122.99,
+      "open_date": "2026-07-30"
+    },
+    "INCY/LKQ|s2": {
+      "ticker": "LKQ",
+      "shares": -5253,
+      "cost": 22.6,
+      "open_date": "2026-07-30"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": -4674.57,
+  "position_value": 218752.26
+}

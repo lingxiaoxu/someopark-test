@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-06-22",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 907142.86,
+  "positions": {
+    "TRMB": {
+      "shares": -1466,
+      "avg_cost": 50.0,
+      "entry_date": "2026-06-10"
+    },
+    "AMAT": {
+      "shares": 309,
+      "avg_cost": 552.64,
+      "entry_date": "2026-06-11"
+    },
+    "LRCX": {
+      "shares": 269,
+      "avg_cost": 362.52,
+      "entry_date": "2026-06-11"
+    },
+    "NRG": {
+      "shares": -395,
+      "avg_cost": 123.7,
+      "entry_date": "2026-06-11"
+    },
+    "ODFL": {
+      "shares": 394,
+      "avg_cost": 247.76,
+      "entry_date": "2026-06-11"
+    },
+    "PLTR": {
+      "shares": -372,
+      "avg_cost": 131.08,
+      "entry_date": "2026-06-11"
+    }
+  },
+  "cumulative_realized": 111097.47,
+  "cumulative_dividends": -8976.79,
+  "cumulative_fees": 0.0,
+  "equity": 1130120.99,
+  "liabilities": {},
+  "lots": {
+    "AMAT/TRMB|s1": {
+      "ticker": "AMAT",
+      "shares": 309,
+      "cost": 552.64,
+      "open_date": "2026-06-12"
+    },
+    "AMAT/TRMB|s2": {
+      "ticker": "TRMB",
+      "shares": -1466,
+      "cost": 50.0,
+      "open_date": "2026-06-12"
+    },
+    "LRCX/NRG|s1": {
+      "ticker": "LRCX",
+      "shares": 269,
+      "cost": 362.52,
+      "open_date": "2026-06-12"
+    },
+    "LRCX/NRG|s2": {
+      "ticker": "NRG",
+      "shares": -395,
+      "cost": 123.7,
+      "open_date": "2026-06-12"
+    },
+    "ODFL/PLTR|s1": {
+      "ticker": "ODFL",
+      "shares": 394,
+      "cost": 247.76,
+      "open_date": "2026-06-12"
+    },
+    "ODFL/PLTR|s2": {
+      "ticker": "PLTR",
+      "shares": -372,
+      "cost": 131.08,
+      "open_date": "2026-06-12"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": 28000.31,
+  "position_value": 222978.13
+}

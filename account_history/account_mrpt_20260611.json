@@ -1,0 +1,16 @@
+{
+  "as_of": "2026-06-11",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1039524.06,
+  "positions": {},
+  "cumulative_realized": 39988.54,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1039524.06,
+  "liabilities": {},
+  "lots": {},
+  "price_basis_state": "prior_close",
+  "unrealized": 0.0,
+  "position_value": 0.0
+}

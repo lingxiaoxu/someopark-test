@@ -187,6 +187,56 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 6.4 pairs_ledger — MRPT/MTFS 成交账本（**日常无需手动运行**）
+
+**账本由 DailySignal 的钩子每日自动推进（`_pairs_ledger_hook`，在 PERF_UPDATE 之前），
+日常跑批流程不变、无需新增手动步骤。** 下列命令用于排障、重建与验证。
+
+```bash
+# 全量重建（3/19 → 今日）。清空既有产物后重放,幂等
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output \
+  python -m pairs_ledger.rebuild all --root .
+
+# 增量更新（等价于 DailySignal 钩子内做的事;as_of 未推进时返回 0,可安全重跑）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output \
+  python -m pairs_ledger.rebuild all --root . --daily
+
+# 沙盒重建（**测试一律用 /tmp,绝不写生产目录**）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output \
+  python -m pairs_ledger.rebuild all --root /tmp/ledger_test
+
+# V1–V10 验证（持仓/恒等式/口径/归因）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output \
+  python -m pairs_ledger.verify all --root .
+
+# 账本报表 + R1–R11 六方对账（写 trading_signals/ledger_reports/）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output \
+  python -m pairs_ledger.reports [--date YYYY-MM-DD]
+
+# 单元测试（17 项：拆股/合股/留痕守卫/多空记账/恒等式/委托 CorporateActions）
+conda run -n someopark_run --no-capture-output python -m pytest pairs_ledger/tests -q
+```
+
+**产物：**
+
+| 文件 | 说明 |
+|------|------|
+| `account_{mrpt,mtfs}.json` | 当前账户：cash / positions / **lots** / 累计已实现·分红·费用 / 未实现 |
+| `trade_ledger_{mrpt,mtfs}.jsonl` | 逐笔成交（含 `lot`、`lot_cost`、`lot_realized`、`price_basis`） |
+| `account_history/account_{s}_YYYYMMDD.json` | **逐日冻结**快照，写下不再变（`UpdateStrategyPerformance` 读它） |
+| `trading_signals/ledger_reports/` | `ledger_statements_*.json` + `reconciliation_*.{json,txt}` |
+| `snapshots_normalized_{s}.json` | 拆股归一后的快照（审计用） |
+
+**排障要点：**
+
+- **重建前先备份**：`tar czf ~/pairs_ledger_backup/x.tar.gz account_*.json trade_ledger_*.jsonl account_history`
+- **对账 FAIL 不中断跑批**，只发 WARNING；详情见 `ledger_reports/reconciliation_<date>.txt`
+- **R11 是准入红线**：`INFRA_CUTOVER=2026-07-07` 起开仓的 pair 必须 diff=0。若变红说明当前口径出现新的不对齐，优先查该日 `combined_signals` 是否缺失
+- **环境**：MRPT/MTFS 一律 `someopark_run`；账本**不进** `qlib_run`
+- **账本只读 inventory / monitoring**，任何情况下都不回写审计记录
+
+---
+
 ## 6.5 MacroStateStore — 宏观快照更新（WalkForward 和 DailySignal 之前必须运行）
 
 MacroStateStore 存储每日宏观快照（280 列指标），是 MCPS（Macro-Conditioned Parameter Selection）的数据基础。

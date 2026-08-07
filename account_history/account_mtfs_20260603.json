@@ -1,0 +1,337 @@
+{
+  "as_of": "2026-06-03",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 96440.77,
+  "positions": {
+    "ODFL": {
+      "shares": 390,
+      "avg_cost": 208.993282,
+      "entry_date": "2026-05-21"
+    },
+    "MKTX": {
+      "shares": -818,
+      "avg_cost": 134.445379,
+      "entry_date": "2026-05-21"
+    },
+    "JKHY": {
+      "shares": -191,
+      "avg_cost": 139.56,
+      "entry_date": "2026-05-22"
+    },
+    "KLAC": {
+      "shares": 1090,
+      "avg_cost": 197.91155,
+      "entry_date": "2026-05-27"
+    },
+    "REGN": {
+      "shares": -112,
+      "avg_cost": 618.854286,
+      "entry_date": "2026-05-27"
+    },
+    "PANW": {
+      "shares": 233,
+      "avg_cost": 248.47,
+      "entry_date": "2026-05-28"
+    },
+    "IQV": {
+      "shares": -350,
+      "avg_cost": 165.62,
+      "entry_date": "2026-05-28"
+    },
+    "LOW": {
+      "shares": -638,
+      "avg_cost": 216.491536,
+      "entry_date": "2026-05-29"
+    },
+    "FFIV": {
+      "shares": 426,
+      "avg_cost": 383.43,
+      "entry_date": "2026-05-29"
+    },
+    "VLTO": {
+      "shares": -1626,
+      "avg_cost": 82.741224,
+      "entry_date": "2026-05-29"
+    },
+    "LRCX": {
+      "shares": 862,
+      "avg_cost": 318.18,
+      "entry_date": "2026-06-01"
+    },
+    "BSX": {
+      "shares": -1706,
+      "avg_cost": 48.31,
+      "entry_date": "2026-06-01"
+    },
+    "RMD": {
+      "shares": -288,
+      "avg_cost": 190.57,
+      "entry_date": "2026-06-01"
+    },
+    "ORCL": {
+      "shares": 243,
+      "avg_cost": 225.78,
+      "entry_date": "2026-06-01"
+    },
+    "CSCO": {
+      "shares": 1824,
+      "avg_cost": 120.42,
+      "entry_date": "2026-06-01"
+    },
+    "CAG": {
+      "shares": -4137,
+      "avg_cost": 13.28,
+      "entry_date": "2026-06-01"
+    },
+    "NUE": {
+      "shares": 658,
+      "avg_cost": 250.0,
+      "entry_date": "2026-06-01"
+    },
+    "INTU": {
+      "shares": -82,
+      "avg_cost": 331.53,
+      "entry_date": "2026-06-01"
+    },
+    "STLD": {
+      "shares": 1004,
+      "avg_cost": 260.15,
+      "entry_date": "2026-06-01"
+    },
+    "ISRG": {
+      "shares": -79,
+      "avg_cost": 424.64,
+      "entry_date": "2026-06-01"
+    },
+    "BWA": {
+      "shares": 4718,
+      "avg_cost": 71.65,
+      "entry_date": "2026-06-01"
+    },
+    "HII": {
+      "shares": -178,
+      "avg_cost": 308.17,
+      "entry_date": "2026-06-01"
+    },
+    "CME": {
+      "shares": -298,
+      "avg_cost": 273.54,
+      "entry_date": "2026-06-01"
+    }
+  },
+  "cumulative_realized": 10558.87,
+  "cumulative_dividends": -9046.73,
+  "cumulative_fees": 0.0,
+  "equity": 1147751.08,
+  "liabilities": {},
+  "lots": {
+    "ODFL/MKTX|s1": {
+      "ticker": "ODFL",
+      "shares": 262,
+      "cost": 209.63,
+      "open_date": "2026-05-21"
+    },
+    "ODFL/MKTX|s2": {
+      "ticker": "MKTX",
+      "shares": -396,
+      "cost": 139.14,
+      "open_date": "2026-05-21"
+    },
+    "ODFL/JKHY|s1": {
+      "ticker": "ODFL",
+      "shares": 128,
+      "cost": 207.69,
+      "open_date": "2026-05-22"
+    },
+    "ODFL/JKHY|s2": {
+      "ticker": "JKHY",
+      "shares": -191,
+      "cost": 139.56,
+      "open_date": "2026-05-22"
+    },
+    "KLAC/REGN|s1": {
+      "ticker": "KLAC",
+      "shares": 670,
+      "cost": 201.139,
+      "open_date": "2026-05-27"
+    },
+    "KLAC/REGN|s2": {
+      "ticker": "REGN",
+      "shares": -23,
+      "cost": 634.62,
+      "open_date": "2026-05-27"
+    },
+    "PANW/IQV|s1": {
+      "ticker": "PANW",
+      "shares": 233,
+      "cost": 248.47,
+      "open_date": "2026-05-28"
+    },
+    "PANW/IQV|s2": {
+      "ticker": "IQV",
+      "shares": -350,
+      "cost": 165.62,
+      "open_date": "2026-05-28"
+    },
+    "KLAC/LOW|s1": {
+      "ticker": "KLAC",
+      "shares": 420,
+      "cost": 192.763,
+      "open_date": "2026-05-29"
+    },
+    "KLAC/LOW|s2": {
+      "ticker": "LOW",
+      "shares": -382,
+      "cost": 217.92,
+      "open_date": "2026-05-29"
+    },
+    "FFIV/VLTO|s1": {
+      "ticker": "FFIV",
+      "shares": 426,
+      "cost": 383.43,
+      "open_date": "2026-05-29"
+    },
+    "FFIV/VLTO|s2": {
+      "ticker": "VLTO",
+      "shares": -665,
+      "cost": 83.48,
+      "open_date": "2026-05-29"
+    },
+    "LRCX/BSX|s1": {
+      "ticker": "LRCX",
+      "shares": 431,
+      "cost": 318.18,
+      "open_date": "2026-06-01"
+    },
+    "LRCX/BSX|s2": {
+      "ticker": "BSX",
+      "shares": -1706,
+      "cost": 48.31,
+      "open_date": "2026-06-01"
+    },
+    "LRCX/RMD|s1": {
+      "ticker": "LRCX",
+      "shares": 431,
+      "cost": 318.18,
+      "open_date": "2026-06-01"
+    },
+    "LRCX/RMD|s2": {
+      "ticker": "RMD",
+      "shares": -288,
+      "cost": 190.57,
+      "open_date": "2026-06-01"
+    },
+    "ORCL/LOW|s1": {
+      "ticker": "ORCL",
+      "shares": 243,
+      "cost": 225.78,
+      "open_date": "2026-06-01"
+    },
+    "ORCL/LOW|s2": {
+      "ticker": "LOW",
+      "shares": -256,
+      "cost": 214.36,
+      "open_date": "2026-06-01"
+    },
+    "CSCO/CAG|s1": {
+      "ticker": "CSCO",
+      "shares": 912,
+      "cost": 120.42,
+      "open_date": "2026-06-01"
+    },
+    "CSCO/CAG|s2": {
+      "ticker": "CAG",
+      "shares": -4137,
+      "cost": 13.28,
+      "open_date": "2026-06-01"
+    },
+    "NUE/INTU|s1": {
+      "ticker": "NUE",
+      "shares": 329,
+      "cost": 250.0,
+      "open_date": "2026-06-01"
+    },
+    "NUE/INTU|s2": {
+      "ticker": "INTU",
+      "shares": -82,
+      "cost": 331.53,
+      "open_date": "2026-06-01"
+    },
+    "CSCO/REGN|s1": {
+      "ticker": "CSCO",
+      "shares": 912,
+      "cost": 120.42,
+      "open_date": "2026-06-01"
+    },
+    "CSCO/REGN|s2": {
+      "ticker": "REGN",
+      "shares": -89,
+      "cost": 614.78,
+      "open_date": "2026-06-01"
+    },
+    "NUE/MKTX|s1": {
+      "ticker": "NUE",
+      "shares": 329,
+      "cost": 250.0,
+      "open_date": "2026-06-01"
+    },
+    "NUE/MKTX|s2": {
+      "ticker": "MKTX",
+      "shares": -422,
+      "cost": 130.04,
+      "open_date": "2026-06-01"
+    },
+    "STLD/ISRG|s1": {
+      "ticker": "STLD",
+      "shares": 502,
+      "cost": 260.15,
+      "open_date": "2026-06-01"
+    },
+    "STLD/ISRG|s2": {
+      "ticker": "ISRG",
+      "shares": -79,
+      "cost": 424.64,
+      "open_date": "2026-06-01"
+    },
+    "BWA/VLTO|s1": {
+      "ticker": "BWA",
+      "shares": 2359,
+      "cost": 71.65,
+      "open_date": "2026-06-01"
+    },
+    "BWA/VLTO|s2": {
+      "ticker": "VLTO",
+      "shares": -961,
+      "cost": 82.23,
+      "open_date": "2026-06-01"
+    },
+    "STLD/HII|s1": {
+      "ticker": "STLD",
+      "shares": 502,
+      "cost": 260.15,
+      "open_date": "2026-06-01"
+    },
+    "STLD/HII|s2": {
+      "ticker": "HII",
+      "shares": -178,
+      "cost": 308.17,
+      "open_date": "2026-06-01"
+    },
+    "BWA/CME|s1": {
+      "ticker": "BWA",
+      "shares": 2359,
+      "cost": 71.65,
+      "open_date": "2026-06-01"
+    },
+    "BWA/CME|s2": {
+      "ticker": "CME",
+      "shares": -298,
+      "cost": 273.54,
+      "open_date": "2026-06-01"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 146238.94,
+  "position_value": 1051310.31
+}

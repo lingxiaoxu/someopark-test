@@ -1,0 +1,382 @@
+{
+ "mrpt": {
+  "as_of": "2026-06-10",
+  "balance_sheet": {
+   "cash": 1028213.44,
+   "net_securities": -3358.42,
+   "nav": 1024855.02,
+   "initial_cash": 1000000.0,
+   "balance_check": -0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 37.35,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -8974.13,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -11294.59,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 16589.38,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1024817.67,
+    "net_income": 37.35,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1024855.02,
+    "return_pct": 0.0036,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1033829.15,
+    "net_income": -8974.13,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1024855.02,
+    "return_pct": -0.868,
+    "max_drawdown_pct": -0.87
+   },
+   "1M": {
+    "beginning_nav": 1036149.61,
+    "net_income": -11294.59,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1024855.02,
+    "return_pct": -1.0901,
+    "max_drawdown_pct": -1.78
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 16589.38,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1024855.02,
+    "return_pct": 1.6453,
+    "max_drawdown_pct": -4.18
+   }
+  },
+  "positions": {
+   "PFE": {
+    "shares": -3397,
+    "avg_cost": 25.62,
+    "entry_date": "2026-06-09"
+   },
+   "HAS": {
+    "shares": 1034,
+    "avg_cost": 83.54,
+    "entry_date": "2026-06-09"
+   },
+   "BSX": {
+    "shares": -1817,
+    "avg_cost": 48.96,
+    "entry_date": "2026-06-10"
+   },
+   "WMB": {
+    "shares": 1195,
+    "avg_cost": 71.59,
+    "entry_date": "2026-06-10"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 24616.87,
+   "cumulative_dividends": -464.48,
+   "cumulative_fees": 0.0,
+   "unrealized": 702.63,
+   "total": 24855.02
+  },
+  "activity_today": {
+   "n_trades": 4,
+   "realized_today": -139.52,
+   "trades": [
+    {
+     "date": "2026-06-10",
+     "ticker": "BSX",
+     "side": "SELL",
+     "shares": 1817,
+     "price": 48.96,
+     "gross": 88960.32,
+     "dedup_key": "2026-06-10-BSX-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "HAS",
+     "side": "SELL",
+     "shares": 118,
+     "price": 82.29,
+     "avg_cost_at_trade": 83.54,
+     "realized_pnl": -147.5,
+     "gross": 9710.22,
+     "dedup_key": "2026-06-10-HAS-SELL",
+     "price_basis": "prior_close",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "PFE",
+     "side": "BUY",
+     "shares": 399,
+     "price": 25.6,
+     "avg_cost_at_trade": 25.62,
+     "realized_pnl": 7.98,
+     "gross": -10214.4,
+     "dedup_key": "2026-06-10-PFE-BUY",
+     "price_basis": "prior_close",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "WMB",
+     "side": "BUY",
+     "shares": 1195,
+     "price": 71.59,
+     "gross": -85550.05,
+     "dedup_key": "2026-06-10-WMB-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    }
+   ]
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-06-10",
+  "balance_sheet": {
+   "cash": 629945.14,
+   "net_securities": 430307.25,
+   "nav": 1060252.39,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 13348.75,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -40977.78,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": 66381.44,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 57295.16,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1046903.64,
+    "net_income": 13348.75,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1060252.39,
+    "return_pct": 1.2751,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1101230.17,
+    "net_income": -40977.78,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1060252.39,
+    "return_pct": -3.7211,
+    "max_drawdown_pct": -10.0
+   },
+   "1M": {
+    "beginning_nav": 993870.95,
+    "net_income": 66381.44,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1060252.39,
+    "return_pct": 6.6791,
+    "max_drawdown_pct": -10.0
+   },
+   "ITD": {
+    "beginning_nav": 1002957.23,
+    "net_income": 57295.16,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1060252.39,
+    "return_pct": 5.7126,
+    "max_drawdown_pct": -10.0
+   }
+  },
+  "positions": {
+   "MKTX": {
+    "shares": -422,
+    "avg_cost": 139.14,
+    "entry_date": "2026-05-21"
+   },
+   "REGN": {
+    "shares": -23,
+    "avg_cost": 636.887143,
+    "entry_date": "2026-05-21"
+   },
+   "KLAC": {
+    "shares": 1140,
+    "avg_cost": 201.139,
+    "entry_date": "2026-05-27"
+   },
+   "INTU": {
+    "shares": -82,
+    "avg_cost": 331.53,
+    "entry_date": "2026-06-01"
+   },
+   "NUE": {
+    "shares": 658,
+    "avg_cost": 250.0,
+    "entry_date": "2026-06-01"
+   },
+   "STLD": {
+    "shares": 1014,
+    "avg_cost": 261.187574,
+    "entry_date": "2026-06-01"
+   },
+   "UHS": {
+    "shares": -358,
+    "avg_cost": 144.97,
+    "entry_date": "2026-06-08"
+   },
+   "FMC": {
+    "shares": -6843,
+    "avg_cost": 11.1,
+    "entry_date": "2026-06-09"
+   },
+   "MOS": {
+    "shares": -2168,
+    "avg_cost": 21.38,
+    "entry_date": "2026-06-09"
+   },
+   "ULTA": {
+    "shares": -107,
+    "avg_cost": 462.8,
+    "entry_date": "2026-06-09"
+   },
+   "HST": {
+    "shares": 2247,
+    "avg_cost": 24.44,
+    "entry_date": "2026-06-09"
+   },
+   "TRMB": {
+    "shares": -972,
+    "avg_cost": 52.95,
+    "entry_date": "2026-06-10"
+   },
+   "UNH": {
+    "shares": 124,
+    "avg_cost": 413.0,
+    "entry_date": "2026-06-10"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 28016.87,
+   "cumulative_dividends": -9046.73,
+   "cumulative_fees": 0.0,
+   "unrealized": 41282.25,
+   "total": 60252.39
+  },
+  "activity_today": {
+   "n_trades": 7,
+   "realized_today": -1133.99,
+   "trades": [
+    {
+     "date": "2026-06-10",
+     "ticker": "BWA",
+     "side": "SELL",
+     "shares": 2359,
+     "price": 71.29,
+     "avg_cost_at_trade": 71.65,
+     "realized_pnl": -849.24,
+     "gross": 168173.11,
+     "dedup_key": "2026-06-10-BWA-SELL",
+     "price_basis": "prior_close",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "MPC",
+     "side": "SELL",
+     "shares": 379,
+     "price": 263.28,
+     "avg_cost_at_trade": 266.17,
+     "realized_pnl": -1095.31,
+     "gross": 99783.12,
+     "dedup_key": "2026-06-10-MPC-SELL",
+     "price_basis": "prior_close",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "TRMB",
+     "side": "SELL",
+     "shares": 972,
+     "price": 52.95,
+     "gross": 51467.4,
+     "dedup_key": "2026-06-10-TRMB-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "KLAC",
+     "side": "BUY",
+     "shares": 470,
+     "price": 201.139,
+     "gross": -94535.33,
+     "dedup_key": "2026-06-10-KLAC-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "ULTA",
+     "side": "BUY",
+     "shares": 2,
+     "price": 470.75,
+     "avg_cost_at_trade": 462.8,
+     "realized_pnl": -15.9,
+     "gross": -941.5,
+     "dedup_key": "2026-06-10-ULTA-BUY",
+     "price_basis": "prior_close",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "UNH",
+     "side": "BUY",
+     "shares": 124,
+     "price": 413.0,
+     "gross": -51212.0,
+     "dedup_key": "2026-06-10-UNH-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-06-10",
+     "ticker": "VLTO",
+     "side": "BUY",
+     "shares": 961,
+     "price": 82.62,
+     "avg_cost_at_trade": 83.48,
+     "realized_pnl": 826.46,
+     "gross": -79397.82,
+     "dedup_key": "2026-06-10-VLTO-BUY",
+     "price_basis": "prior_close",
+     "price_src": "market_close"
+    }
+   ]
+  }
+ }
+}

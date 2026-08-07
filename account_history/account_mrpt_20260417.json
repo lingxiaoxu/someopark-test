@@ -1,0 +1,62 @@
+{
+  "as_of": "2026-04-17",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1033021.94,
+  "positions": {
+    "PFG": {
+      "shares": 1048,
+      "avg_cost": 92.32,
+      "entry_date": "2026-04-10"
+    },
+    "WMT": {
+      "shares": -754,
+      "avg_cost": 129.13,
+      "entry_date": "2026-04-10"
+    },
+    "ALB": {
+      "shares": -590,
+      "avg_cost": 215.62,
+      "entry_date": "2026-04-17"
+    },
+    "YUM": {
+      "shares": 719,
+      "avg_cost": 159.52,
+      "entry_date": "2026-04-17"
+    }
+  },
+  "cumulative_realized": 19866.12,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1038046.61,
+  "liabilities": {},
+  "lots": {
+    "PFG/WMT|s1": {
+      "ticker": "PFG",
+      "shares": 1048,
+      "cost": 92.32,
+      "open_date": "2026-04-10"
+    },
+    "PFG/WMT|s2": {
+      "ticker": "WMT",
+      "shares": -754,
+      "cost": 129.13,
+      "open_date": "2026-04-10"
+    },
+    "ALB/YUM|s1": {
+      "ticker": "ALB",
+      "shares": -590,
+      "cost": 215.62,
+      "open_date": "2026-04-17"
+    },
+    "ALB/YUM|s2": {
+      "ticker": "YUM",
+      "shares": 719,
+      "cost": 159.52,
+      "open_date": "2026-04-17"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 18158.25,
+  "position_value": 5024.67
+}

@@ -1,0 +1,184 @@
+{
+  "as_of": "2026-06-25",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 756763.75,
+  "positions": {
+    "IRM": {
+      "shares": 1748,
+      "avg_cost": 131.86,
+      "entry_date": "2026-06-23"
+    },
+    "EFX": {
+      "shares": -362,
+      "avg_cost": 153.49,
+      "entry_date": "2026-06-23"
+    },
+    "TER": {
+      "shares": 187,
+      "avg_cost": 457.0,
+      "entry_date": "2026-06-23"
+    },
+    "ISRG": {
+      "shares": -140,
+      "avg_cost": 402.95,
+      "entry_date": "2026-06-23"
+    },
+    "PWR": {
+      "shares": 115,
+      "avg_cost": 740.14,
+      "entry_date": "2026-06-23"
+    },
+    "NKE": {
+      "shares": -1980,
+      "avg_cost": 43.19,
+      "entry_date": "2026-06-23"
+    },
+    "MSFT": {
+      "shares": -155,
+      "avg_cost": 367.34,
+      "entry_date": "2026-06-23"
+    },
+    "GLW": {
+      "shares": 1272,
+      "avg_cost": 205.83,
+      "entry_date": "2026-06-25"
+    },
+    "FOX": {
+      "shares": -1445,
+      "avg_cost": 45.37,
+      "entry_date": "2026-06-25"
+    },
+    "AMAT": {
+      "shares": 222,
+      "avg_cost": 588.97,
+      "entry_date": "2026-06-25"
+    },
+    "LULU": {
+      "shares": -579,
+      "avg_cost": 113.09,
+      "entry_date": "2026-06-25"
+    },
+    "FOXA": {
+      "shares": -1317,
+      "avg_cost": 49.8,
+      "entry_date": "2026-06-25"
+    },
+    "KMX": {
+      "shares": 1291,
+      "avg_cost": 50.79,
+      "entry_date": "2026-06-25"
+    },
+    "TYL": {
+      "shares": -229,
+      "avg_cost": 286.03,
+      "entry_date": "2026-06-25"
+    }
+  },
+  "cumulative_realized": 108387.4,
+  "cumulative_dividends": -8976.79,
+  "cumulative_fees": 0.0,
+  "equity": 1158999.19,
+  "liabilities": {},
+  "lots": {
+    "IRM/EFX|s1": {
+      "ticker": "IRM",
+      "shares": 874,
+      "cost": 131.86,
+      "open_date": "2026-06-23"
+    },
+    "IRM/EFX|s2": {
+      "ticker": "EFX",
+      "shares": -362,
+      "cost": 153.49,
+      "open_date": "2026-06-23"
+    },
+    "TER/ISRG|s1": {
+      "ticker": "TER",
+      "shares": 187,
+      "cost": 457.0,
+      "open_date": "2026-06-23"
+    },
+    "TER/ISRG|s2": {
+      "ticker": "ISRG",
+      "shares": -140,
+      "cost": 402.95,
+      "open_date": "2026-06-23"
+    },
+    "PWR/NKE|s1": {
+      "ticker": "PWR",
+      "shares": 115,
+      "cost": 740.14,
+      "open_date": "2026-06-23"
+    },
+    "PWR/NKE|s2": {
+      "ticker": "NKE",
+      "shares": -1980,
+      "cost": 43.19,
+      "open_date": "2026-06-23"
+    },
+    "IRM/MSFT|s1": {
+      "ticker": "IRM",
+      "shares": 874,
+      "cost": 131.86,
+      "open_date": "2026-06-23"
+    },
+    "IRM/MSFT|s2": {
+      "ticker": "MSFT",
+      "shares": -155,
+      "cost": 367.34,
+      "open_date": "2026-06-23"
+    },
+    "GLW/FOX|s1": {
+      "ticker": "GLW",
+      "shares": 636,
+      "cost": 205.83,
+      "open_date": "2026-06-25"
+    },
+    "GLW/FOX|s2": {
+      "ticker": "FOX",
+      "shares": -1445,
+      "cost": 45.37,
+      "open_date": "2026-06-25"
+    },
+    "AMAT/LULU|s1": {
+      "ticker": "AMAT",
+      "shares": 222,
+      "cost": 588.97,
+      "open_date": "2026-06-25"
+    },
+    "AMAT/LULU|s2": {
+      "ticker": "LULU",
+      "shares": -579,
+      "cost": 113.09,
+      "open_date": "2026-06-25"
+    },
+    "GLW/FOXA|s1": {
+      "ticker": "GLW",
+      "shares": 636,
+      "cost": 205.83,
+      "open_date": "2026-06-25"
+    },
+    "GLW/FOXA|s2": {
+      "ticker": "FOXA",
+      "shares": -1317,
+      "cost": 49.8,
+      "open_date": "2026-06-25"
+    },
+    "KMX/TYL|s1": {
+      "ticker": "KMX",
+      "shares": 1291,
+      "cost": 50.79,
+      "open_date": "2026-06-25"
+    },
+    "KMX/TYL|s2": {
+      "ticker": "TYL",
+      "shares": -229,
+      "cost": 286.03,
+      "open_date": "2026-06-25"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 59588.58,
+  "position_value": 402235.44
+}

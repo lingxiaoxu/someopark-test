@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-05-06",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1049249.47,
+  "positions": {
+    "FSLR": {
+      "shares": -557,
+      "avg_cost": 219.38,
+      "entry_date": "2026-05-06"
+    },
+    "RSG": {
+      "shares": 576,
+      "avg_cost": 203.88,
+      "entry_date": "2026-05-06"
+    }
+  },
+  "cumulative_realized": 44467.45,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1042844.91,
+  "liabilities": {},
+  "lots": {
+    "FSLR/RSG|s1": {
+      "ticker": "FSLR",
+      "shares": -557,
+      "cost": 219.38,
+      "open_date": "2026-05-06"
+    },
+    "FSLR/RSG|s2": {
+      "ticker": "RSG",
+      "shares": 576,
+      "cost": 203.88,
+      "open_date": "2026-05-06"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -1644.78,
+  "position_value": -6404.56
+}

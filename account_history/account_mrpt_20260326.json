@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-03-26",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1013382.12,
+  "positions": {
+    "DG": {
+      "shares": 1005,
+      "avg_cost": 135.635,
+      "entry_date": "2026-03-18"
+    },
+    "MOS": {
+      "shares": -5208,
+      "avg_cost": 31.205,
+      "entry_date": "2026-03-18"
+    },
+    "AMT": {
+      "shares": 535,
+      "avg_cost": 167.27,
+      "entry_date": "2026-03-26"
+    },
+    "TJX": {
+      "shares": -578,
+      "avg_cost": 159.74,
+      "entry_date": "2026-03-26"
+    },
+    "MSCI": {
+      "shares": 170,
+      "avg_cost": 530.99,
+      "entry_date": "2026-03-26"
+    },
+    "MTB": {
+      "shares": -448,
+      "avg_cost": 204.75,
+      "entry_date": "2026-03-26"
+    }
+  },
+  "cumulative_realized": -16549.61,
+  "cumulative_dividends": -570.71,
+  "cumulative_fees": 0.0,
+  "equity": 1001033.57,
+  "liabilities": {},
+  "lots": {
+    "DG/MOS|s1": {
+      "ticker": "DG",
+      "shares": 1005,
+      "cost": 135.635,
+      "open_date": "2026-03-13"
+    },
+    "DG/MOS|s2": {
+      "ticker": "MOS",
+      "shares": -5208,
+      "cost": 31.205,
+      "open_date": "2026-03-13"
+    },
+    "AMT/TJX|s1": {
+      "ticker": "AMT",
+      "shares": 535,
+      "cost": 167.27,
+      "open_date": "2026-03-26"
+    },
+    "AMT/TJX|s2": {
+      "ticker": "TJX",
+      "shares": -578,
+      "cost": 159.74,
+      "open_date": "2026-03-26"
+    },
+    "MSCI/MTB|s1": {
+      "ticker": "MSCI",
+      "shares": 170,
+      "cost": 530.99,
+      "open_date": "2026-03-26"
+    },
+    "MSCI/MTB|s2": {
+      "ticker": "MTB",
+      "shares": -448,
+      "cost": 204.75,
+      "open_date": "2026-03-26"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 18153.88,
+  "position_value": -12348.55
+}

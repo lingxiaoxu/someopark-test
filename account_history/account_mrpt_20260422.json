@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-04-22",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1040626.88,
+  "positions": {
+    "F": {
+      "shares": -8156,
+      "avg_cost": 12.78,
+      "entry_date": "2026-04-22"
+    },
+    "PG": {
+      "shares": 717,
+      "avg_cost": 142.32,
+      "entry_date": "2026-04-22"
+    }
+  },
+  "cumulative_realized": 38414.4,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1040040.05,
+  "liabilities": {},
+  "lots": {
+    "F/PG|s1": {
+      "ticker": "F",
+      "shares": -8156,
+      "cost": 12.78,
+      "open_date": "2026-04-22"
+    },
+    "F/PG|s2": {
+      "ticker": "PG",
+      "shares": 717,
+      "cost": 142.32,
+      "open_date": "2026-04-22"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 1603.41,
+  "position_value": -586.83
+}

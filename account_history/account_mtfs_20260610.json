@@ -1,0 +1,179 @@
+{
+  "as_of": "2026-06-10",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 631651.45,
+  "positions": {
+    "MKTX": {
+      "shares": -422,
+      "avg_cost": 130.04,
+      "entry_date": "2026-05-21"
+    },
+    "KLAC": {
+      "shares": 1140,
+      "avg_cost": 206.415368,
+      "entry_date": "2026-05-27"
+    },
+    "REGN": {
+      "shares": -23,
+      "avg_cost": 634.62,
+      "entry_date": "2026-05-27"
+    },
+    "NUE": {
+      "shares": 658,
+      "avg_cost": 250.0,
+      "entry_date": "2026-06-01"
+    },
+    "INTU": {
+      "shares": -82,
+      "avg_cost": 331.53,
+      "entry_date": "2026-06-01"
+    },
+    "STLD": {
+      "shares": 1014,
+      "avg_cost": 267.694872,
+      "entry_date": "2026-06-01"
+    },
+    "UHS": {
+      "shares": -358,
+      "avg_cost": 144.97,
+      "entry_date": "2026-06-08"
+    },
+    "FMC": {
+      "shares": -6843,
+      "avg_cost": 11.1,
+      "entry_date": "2026-06-09"
+    },
+    "HST": {
+      "shares": 2247,
+      "avg_cost": 24.44,
+      "entry_date": "2026-06-09"
+    },
+    "MOS": {
+      "shares": -2168,
+      "avg_cost": 21.38,
+      "entry_date": "2026-06-09"
+    },
+    "TRMB": {
+      "shares": -972,
+      "avg_cost": 52.95,
+      "entry_date": "2026-06-10"
+    },
+    "UNH": {
+      "shares": 124,
+      "avg_cost": 413.0,
+      "entry_date": "2026-06-10"
+    },
+    "ULTA": {
+      "shares": -107,
+      "avg_cost": 477.9,
+      "entry_date": "2026-06-10"
+    }
+  },
+  "cumulative_realized": 44613.28,
+  "cumulative_dividends": -9046.73,
+  "cumulative_fees": 0.0,
+  "equity": 1061958.7,
+  "liabilities": {},
+  "lots": {
+    "KLAC/REGN|s1": {
+      "ticker": "KLAC",
+      "shares": 670,
+      "cost": 201.139,
+      "open_date": "2026-05-27"
+    },
+    "KLAC/REGN|s2": {
+      "ticker": "REGN",
+      "shares": -23,
+      "cost": 634.62,
+      "open_date": "2026-05-27"
+    },
+    "NUE/INTU|s1": {
+      "ticker": "NUE",
+      "shares": 329,
+      "cost": 250.0,
+      "open_date": "2026-06-01"
+    },
+    "NUE/INTU|s2": {
+      "ticker": "INTU",
+      "shares": -82,
+      "cost": 331.53,
+      "open_date": "2026-06-01"
+    },
+    "NUE/MKTX|s1": {
+      "ticker": "NUE",
+      "shares": 329,
+      "cost": 250.0,
+      "open_date": "2026-06-01"
+    },
+    "NUE/MKTX|s2": {
+      "ticker": "MKTX",
+      "shares": -422,
+      "cost": 130.04,
+      "open_date": "2026-06-01"
+    },
+    "STLD/UHS|s1": {
+      "ticker": "STLD",
+      "shares": 386,
+      "cost": 268.5,
+      "open_date": "2026-06-08"
+    },
+    "STLD/UHS|s2": {
+      "ticker": "UHS",
+      "shares": -358,
+      "cost": 144.97,
+      "open_date": "2026-06-08"
+    },
+    "STLD/FMC|s1": {
+      "ticker": "STLD",
+      "shares": 628,
+      "cost": 267.2,
+      "open_date": "2026-06-09"
+    },
+    "STLD/FMC|s2": {
+      "ticker": "FMC",
+      "shares": -6843,
+      "cost": 11.1,
+      "open_date": "2026-06-09"
+    },
+    "HST/MOS|s1": {
+      "ticker": "HST",
+      "shares": 2247,
+      "cost": 24.44,
+      "open_date": "2026-06-09"
+    },
+    "HST/MOS|s2": {
+      "ticker": "MOS",
+      "shares": -2168,
+      "cost": 21.38,
+      "open_date": "2026-06-09"
+    },
+    "KLAC/TRMB|s1": {
+      "ticker": "KLAC",
+      "shares": 470,
+      "cost": 213.937,
+      "open_date": "2026-06-10"
+    },
+    "KLAC/TRMB|s2": {
+      "ticker": "TRMB",
+      "shares": -972,
+      "cost": 52.95,
+      "open_date": "2026-06-10"
+    },
+    "UNH/ULTA|s1": {
+      "ticker": "UNH",
+      "shares": 124,
+      "cost": 413.0,
+      "open_date": "2026-06-10"
+    },
+    "UNH/ULTA|s2": {
+      "ticker": "ULTA",
+      "shares": -107,
+      "cost": 477.9,
+      "open_date": "2026-06-10"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 26392.15,
+  "position_value": 430307.25
+}

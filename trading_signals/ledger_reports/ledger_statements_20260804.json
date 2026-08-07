@@ -1,0 +1,275 @@
+{
+ "mrpt": {
+  "as_of": "2026-08-04",
+  "balance_sheet": {
+   "cash": 1022729.08,
+   "net_securities": -1999.91,
+   "nav": 1020729.17,
+   "initial_cash": 1000000.0,
+   "balance_check": -0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -237.87,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": 4470.27,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": 2313.07,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 12463.53,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1020967.04,
+    "net_income": -237.87,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1020729.17,
+    "return_pct": -0.0233,
+    "max_drawdown_pct": -0.02
+   },
+   "1W": {
+    "beginning_nav": 1016258.9,
+    "net_income": 4470.27,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1020729.17,
+    "return_pct": 0.4399,
+    "max_drawdown_pct": -0.02
+   },
+   "1M": {
+    "beginning_nav": 1018416.1,
+    "net_income": 2313.07,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1020729.17,
+    "return_pct": 0.2271,
+    "max_drawdown_pct": -1.46
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 12463.53,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1020729.17,
+    "return_pct": 1.2361,
+    "max_drawdown_pct": -4.78
+   }
+  },
+  "positions": {
+   "AKAM": {
+    "shares": -571,
+    "avg_cost": 117.88,
+    "entry_date": "2026-08-03"
+   },
+   "GE": {
+    "shares": -90,
+    "avg_cost": 368.93,
+    "entry_date": "2026-08-03"
+   },
+   "ADI": {
+    "shares": 182,
+    "avg_cost": 361.88,
+    "entry_date": "2026-08-03"
+   },
+   "GD": {
+    "shares": 86,
+    "avg_cost": 382.43,
+    "entry_date": "2026-08-03"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 21431.52,
+   "cumulative_dividends": -464.48,
+   "cumulative_fees": 0.0,
+   "unrealized": -237.87,
+   "total": 20729.17
+  },
+  "activity_today": {
+   "n_trades": 0,
+   "realized_today": 0,
+   "trades": []
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-08-04",
+  "balance_sheet": {
+   "cash": 665287.17,
+   "net_securities": 206943.59,
+   "nav": 872230.76,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -5695.01,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -83536.19,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -164761.79,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": -130726.47,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 877925.77,
+    "net_income": -5695.01,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 872230.76,
+    "return_pct": -0.6487,
+    "max_drawdown_pct": -0.65
+   },
+   "1W": {
+    "beginning_nav": 955766.95,
+    "net_income": -83536.19,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 872230.76,
+    "return_pct": -8.7402,
+    "max_drawdown_pct": -8.74
+   },
+   "1M": {
+    "beginning_nav": 1036992.55,
+    "net_income": -164761.79,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 872230.76,
+    "return_pct": -15.8884,
+    "max_drawdown_pct": -15.89
+   },
+   "ITD": {
+    "beginning_nav": 1002957.23,
+    "net_income": -130726.47,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 872230.76,
+    "return_pct": -13.0341,
+    "max_drawdown_pct": -26.89
+   }
+  },
+  "positions": {
+   "HCA": {
+    "shares": -241,
+    "avg_cost": 378.85,
+    "entry_date": "2026-07-15"
+   },
+   "BBY": {
+    "shares": 1075,
+    "avg_cost": 85.37,
+    "entry_date": "2026-07-15"
+   },
+   "AKAM": {
+    "shares": -64,
+    "avg_cost": 113.75,
+    "entry_date": "2026-07-30"
+   },
+   "PSX": {
+    "shares": 1092,
+    "avg_cost": 210.6,
+    "entry_date": "2026-07-30"
+   },
+   "MLM": {
+    "shares": -284,
+    "avg_cost": 525.14,
+    "entry_date": "2026-07-31"
+   },
+   "NKE": {
+    "shares": -3574,
+    "avg_cost": 41.71,
+    "entry_date": "2026-07-31"
+   },
+   "DGX": {
+    "shares": 640,
+    "avg_cost": 233.01,
+    "entry_date": "2026-07-31"
+   },
+   "WTW": {
+    "shares": 443,
+    "avg_cost": 335.92,
+    "entry_date": "2026-07-31"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": -103228.96,
+   "cumulative_dividends": -8591.11,
+   "cumulative_fees": 0.0,
+   "unrealized": -15949.17,
+   "total": -127769.24
+  },
+  "activity_today": {
+   "n_trades": 4,
+   "realized_today": -17199.14,
+   "trades": [
+    {
+     "date": "2026-08-04",
+     "ticker": "INCY",
+     "side": "SELL",
+     "shares": 965,
+     "price": 120.6,
+     "avg_cost_at_trade": 122.99,
+     "realized_pnl": -2306.35,
+     "gross": 116379.0,
+     "dedup_key": "2026-08-04-INCY-SELL",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-08-04",
+     "ticker": "PRU",
+     "side": "SELL",
+     "shares": 1221,
+     "price": 123.54,
+     "avg_cost_at_trade": 122.08,
+     "realized_pnl": 1782.66,
+     "gross": 150842.34,
+     "dedup_key": "2026-08-04-PRU-SELL",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-08-04",
+     "ticker": "LKQ",
+     "side": "BUY",
+     "shares": 5253,
+     "price": 24.49,
+     "avg_cost_at_trade": 22.6,
+     "realized_pnl": -9928.17,
+     "gross": -128645.97,
+     "dedup_key": "2026-08-04-LKQ-BUY",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-08-04",
+     "ticker": "TXT",
+     "side": "BUY",
+     "shares": 1748,
+     "price": 89.12,
+     "avg_cost_at_trade": 85.26,
+     "realized_pnl": -6747.28,
+     "gross": -155781.76,
+     "dedup_key": "2026-08-04-TXT-BUY",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    }
+   ]
+  }
+ }
+}

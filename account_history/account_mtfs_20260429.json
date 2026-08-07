@@ -1,0 +1,106 @@
+{
+  "as_of": "2026-04-29",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1018855.59,
+  "positions": {
+    "AFL": {
+      "shares": 1481,
+      "avg_cost": 115.97,
+      "entry_date": "2026-04-22"
+    },
+    "ICE": {
+      "shares": -1052,
+      "avg_cost": 158.63,
+      "entry_date": "2026-04-22"
+    },
+    "CSCO": {
+      "shares": 1258,
+      "avg_cost": 89.7,
+      "entry_date": "2026-04-22"
+    },
+    "ALL": {
+      "shares": -522,
+      "avg_cost": 216.34,
+      "entry_date": "2026-04-22"
+    },
+    "L": {
+      "shares": 782,
+      "avg_cost": 110.58,
+      "entry_date": "2026-04-27"
+    },
+    "AWK": {
+      "shares": -653,
+      "avg_cost": 132.42,
+      "entry_date": "2026-04-27"
+    },
+    "STT": {
+      "shares": 574,
+      "avg_cost": 150.74,
+      "entry_date": "2026-04-27"
+    },
+    "C": {
+      "shares": -675,
+      "avg_cost": 127.98,
+      "entry_date": "2026-04-27"
+    }
+  },
+  "cumulative_realized": 31785.92,
+  "cumulative_dividends": -8002.84,
+  "cumulative_fees": 0.0,
+  "equity": 1029648.38,
+  "liabilities": {},
+  "lots": {
+    "AFL/ICE|s1": {
+      "ticker": "AFL",
+      "shares": 1481,
+      "cost": 115.97,
+      "open_date": "2026-04-22"
+    },
+    "AFL/ICE|s2": {
+      "ticker": "ICE",
+      "shares": -1052,
+      "cost": 158.63,
+      "open_date": "2026-04-22"
+    },
+    "CSCO/ALL|s1": {
+      "ticker": "CSCO",
+      "shares": 1258,
+      "cost": 89.7,
+      "open_date": "2026-04-22"
+    },
+    "CSCO/ALL|s2": {
+      "ticker": "ALL",
+      "shares": -522,
+      "cost": 216.34,
+      "open_date": "2026-04-22"
+    },
+    "L/AWK|s1": {
+      "ticker": "L",
+      "shares": 782,
+      "cost": 110.58,
+      "open_date": "2026-04-27"
+    },
+    "L/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -653,
+      "cost": 132.42,
+      "open_date": "2026-04-27"
+    },
+    "STT/C|s1": {
+      "ticker": "STT",
+      "shares": 574,
+      "cost": 150.74,
+      "open_date": "2026-04-27"
+    },
+    "STT/C|s2": {
+      "ticker": "C",
+      "shares": -675,
+      "cost": 127.98,
+      "open_date": "2026-04-27"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 5865.3,
+  "position_value": 10792.79
+}

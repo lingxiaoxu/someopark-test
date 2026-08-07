@@ -1,0 +1,123 @@
+{
+  "as_of": "2026-04-24",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1124465.45,
+  "positions": {
+    "AFL": {
+      "shares": 1481,
+      "avg_cost": 115.97,
+      "entry_date": "2026-04-22"
+    },
+    "ICE": {
+      "shares": -1052,
+      "avg_cost": 158.63,
+      "entry_date": "2026-04-22"
+    },
+    "CSCO": {
+      "shares": 1258,
+      "avg_cost": 89.7,
+      "entry_date": "2026-04-22"
+    },
+    "ALL": {
+      "shares": -1466,
+      "avg_cost": 214.936235,
+      "entry_date": "2026-04-22"
+    },
+    "BK": {
+      "shares": 702,
+      "avg_cost": 135.88,
+      "entry_date": "2026-04-23"
+    },
+    "AEE": {
+      "shares": 1536,
+      "avg_cost": 112.05,
+      "entry_date": "2026-04-24"
+    },
+    "CNP": {
+      "shares": -3987,
+      "avg_cost": 43.18,
+      "entry_date": "2026-04-24"
+    },
+    "CSX": {
+      "shares": 3728,
+      "avg_cost": 46.18,
+      "entry_date": "2026-04-24"
+    },
+    "AIG": {
+      "shares": -2255,
+      "avg_cost": 76.33,
+      "entry_date": "2026-04-24"
+    }
+  },
+  "cumulative_realized": 30832.03,
+  "cumulative_dividends": -8374.9,
+  "cumulative_fees": 0.0,
+  "equity": 1022724.08,
+  "liabilities": {},
+  "lots": {
+    "AFL/ICE|s1": {
+      "ticker": "AFL",
+      "shares": 1481,
+      "cost": 115.97,
+      "open_date": "2026-04-22"
+    },
+    "AFL/ICE|s2": {
+      "ticker": "ICE",
+      "shares": -1052,
+      "cost": 158.63,
+      "open_date": "2026-04-22"
+    },
+    "CSCO/ALL|s1": {
+      "ticker": "CSCO",
+      "shares": 1258,
+      "cost": 89.7,
+      "open_date": "2026-04-22"
+    },
+    "CSCO/ALL|s2": {
+      "ticker": "ALL",
+      "shares": -522,
+      "cost": 216.34,
+      "open_date": "2026-04-22"
+    },
+    "BK/ALL|s1": {
+      "ticker": "BK",
+      "shares": 702,
+      "cost": 135.88,
+      "open_date": "2026-04-23"
+    },
+    "BK/ALL|s2": {
+      "ticker": "ALL",
+      "shares": -944,
+      "cost": 214.16,
+      "open_date": "2026-04-23"
+    },
+    "AEE/CNP|s1": {
+      "ticker": "AEE",
+      "shares": 1536,
+      "cost": 112.05,
+      "open_date": "2026-04-24"
+    },
+    "AEE/CNP|s2": {
+      "ticker": "CNP",
+      "shares": -3987,
+      "cost": 43.18,
+      "open_date": "2026-04-24"
+    },
+    "CSX/AIG|s1": {
+      "ticker": "CSX",
+      "shares": 3728,
+      "cost": 46.18,
+      "open_date": "2026-04-24"
+    },
+    "CSX/AIG|s2": {
+      "ticker": "AIG",
+      "shares": -2255,
+      "cost": 76.33,
+      "open_date": "2026-04-24"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 266.95,
+  "position_value": -101741.37
+}

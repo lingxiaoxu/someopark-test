@@ -1,0 +1,62 @@
+{
+  "as_of": "2026-06-10",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1042882.48,
+  "positions": {
+    "HAS": {
+      "shares": 1034,
+      "avg_cost": 84.26,
+      "entry_date": "2026-06-10"
+    },
+    "PFE": {
+      "shares": -3397,
+      "avg_cost": 25.7,
+      "entry_date": "2026-06-10"
+    },
+    "BSX": {
+      "shares": -1817,
+      "avg_cost": 48.96,
+      "entry_date": "2026-06-10"
+    },
+    "WMB": {
+      "shares": 1195,
+      "avg_cost": 71.59,
+      "entry_date": "2026-06-10"
+    }
+  },
+  "cumulative_realized": 39758.63,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1039524.06,
+  "liabilities": {},
+  "lots": {
+    "HAS/PFE|s1": {
+      "ticker": "HAS",
+      "shares": 1034,
+      "cost": 84.26,
+      "open_date": "2026-06-10"
+    },
+    "HAS/PFE|s2": {
+      "ticker": "PFE",
+      "shares": -3397,
+      "cost": 25.7,
+      "open_date": "2026-06-10"
+    },
+    "BSX/WMB|s1": {
+      "ticker": "BSX",
+      "shares": -1817,
+      "cost": 48.96,
+      "open_date": "2026-06-10"
+    },
+    "BSX/WMB|s2": {
+      "ticker": "WMB",
+      "shares": 1195,
+      "cost": 71.59,
+      "open_date": "2026-06-10"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 229.91,
+  "position_value": -3358.42
+}

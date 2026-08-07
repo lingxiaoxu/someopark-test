@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-07-20",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1038645.9,
+  "positions": {
+    "AIG": {
+      "shares": -1636,
+      "avg_cost": 79.62,
+      "entry_date": "2026-07-08"
+    },
+    "CFG": {
+      "shares": 1789,
+      "avg_cost": 68.56,
+      "entry_date": "2026-07-08"
+    },
+    "ACGL": {
+      "shares": 867,
+      "avg_cost": 101.35,
+      "entry_date": "2026-07-17"
+    },
+    "HIG": {
+      "shares": -628,
+      "avg_cost": 140.26,
+      "entry_date": "2026-07-17"
+    },
+    "BAC": {
+      "shares": 1467,
+      "avg_cost": 60.42,
+      "entry_date": "2026-07-20"
+    },
+    "JPM": {
+      "shares": -261,
+      "avg_cost": 338.87,
+      "entry_date": "2026-07-20"
+    }
+  },
+  "cumulative_realized": 31484.14,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1036250.28,
+  "liabilities": {},
+  "lots": {
+    "AIG/CFG|s1": {
+      "ticker": "AIG",
+      "shares": -1636,
+      "cost": 79.62,
+      "open_date": "2026-07-08"
+    },
+    "AIG/CFG|s2": {
+      "ticker": "CFG",
+      "shares": 1789,
+      "cost": 68.56,
+      "open_date": "2026-07-08"
+    },
+    "ACGL/HIG|s1": {
+      "ticker": "ACGL",
+      "shares": 867,
+      "cost": 101.35,
+      "open_date": "2026-07-17"
+    },
+    "ACGL/HIG|s2": {
+      "ticker": "HIG",
+      "shares": -628,
+      "cost": 140.26,
+      "open_date": "2026-07-17"
+    },
+    "BAC/JPM|s1": {
+      "ticker": "BAC",
+      "shares": 1467,
+      "cost": 60.42,
+      "open_date": "2026-07-20"
+    },
+    "BAC/JPM|s2": {
+      "ticker": "JPM",
+      "shares": -261,
+      "cost": 338.87,
+      "open_date": "2026-07-20"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": 5230.62,
+  "position_value": -2395.62
+}

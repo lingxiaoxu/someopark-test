@@ -1,0 +1,179 @@
+{
+  "as_of": "2026-07-08",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": -19766.43,
+  "positions": {
+    "STT": {
+      "shares": 3272,
+      "avg_cost": 179.137482,
+      "entry_date": "2026-07-07"
+    },
+    "WYNN": {
+      "shares": -282,
+      "avg_cost": 96.35,
+      "entry_date": "2026-07-07"
+    },
+    "BEN": {
+      "shares": 10020,
+      "avg_cost": 34.36,
+      "entry_date": "2026-07-07"
+    },
+    "PFE": {
+      "shares": -3494,
+      "avg_cost": 24.07,
+      "entry_date": "2026-07-07"
+    },
+    "MOH": {
+      "shares": 919,
+      "avg_cost": 232.9,
+      "entry_date": "2026-07-07"
+    },
+    "WMT": {
+      "shares": -1920,
+      "avg_cost": 111.54,
+      "entry_date": "2026-07-07"
+    },
+    "DVA": {
+      "shares": 1234,
+      "avg_cost": 230.72,
+      "entry_date": "2026-07-08"
+    },
+    "HAS": {
+      "shares": -939,
+      "avg_cost": 75.86,
+      "entry_date": "2026-07-08"
+    },
+    "APO": {
+      "shares": -603,
+      "avg_cost": 118.14,
+      "entry_date": "2026-07-08"
+    },
+    "VLO": {
+      "shares": 1298,
+      "avg_cost": 282.88,
+      "entry_date": "2026-07-08"
+    },
+    "TAP": {
+      "shares": -2603,
+      "avg_cost": 38.79,
+      "entry_date": "2026-07-08"
+    },
+    "VICI": {
+      "shares": -2731,
+      "avg_cost": 26.09,
+      "entry_date": "2026-07-08"
+    },
+    "CCI": {
+      "shares": -926,
+      "avg_cost": 76.9,
+      "entry_date": "2026-07-08"
+    }
+  },
+  "cumulative_realized": 74213.97,
+  "cumulative_dividends": -8964.14,
+  "cumulative_fees": 0.0,
+  "equity": 1045840.91,
+  "liabilities": {},
+  "lots": {
+    "STT/WYNN|s1": {
+      "ticker": "STT",
+      "shares": 2230,
+      "cost": 179.94,
+      "open_date": "2026-07-07"
+    },
+    "STT/WYNN|s2": {
+      "ticker": "WYNN",
+      "shares": -282,
+      "cost": 96.35,
+      "open_date": "2026-07-07"
+    },
+    "BEN/PFE|s1": {
+      "ticker": "BEN",
+      "shares": 10020,
+      "cost": 34.36,
+      "open_date": "2026-07-07"
+    },
+    "BEN/PFE|s2": {
+      "ticker": "PFE",
+      "shares": -3494,
+      "cost": 24.07,
+      "open_date": "2026-07-07"
+    },
+    "MOH/WMT|s1": {
+      "ticker": "MOH",
+      "shares": 919,
+      "cost": 232.9,
+      "open_date": "2026-07-07"
+    },
+    "MOH/WMT|s2": {
+      "ticker": "WMT",
+      "shares": -1920,
+      "cost": 111.54,
+      "open_date": "2026-07-07"
+    },
+    "DVA/HAS|s1": {
+      "ticker": "DVA",
+      "shares": 617,
+      "cost": 230.72,
+      "open_date": "2026-07-08"
+    },
+    "DVA/HAS|s2": {
+      "ticker": "HAS",
+      "shares": -939,
+      "cost": 75.86,
+      "open_date": "2026-07-08"
+    },
+    "DVA/APO|s1": {
+      "ticker": "DVA",
+      "shares": 617,
+      "cost": 230.72,
+      "open_date": "2026-07-08"
+    },
+    "DVA/APO|s2": {
+      "ticker": "APO",
+      "shares": -603,
+      "cost": 118.14,
+      "open_date": "2026-07-08"
+    },
+    "VLO/TAP|s1": {
+      "ticker": "VLO",
+      "shares": 649,
+      "cost": 282.88,
+      "open_date": "2026-07-08"
+    },
+    "VLO/TAP|s2": {
+      "ticker": "TAP",
+      "shares": -2603,
+      "cost": 38.79,
+      "open_date": "2026-07-08"
+    },
+    "STT/VICI|s1": {
+      "ticker": "STT",
+      "shares": 1042,
+      "cost": 177.42,
+      "open_date": "2026-07-08"
+    },
+    "STT/VICI|s2": {
+      "ticker": "VICI",
+      "shares": -2731,
+      "cost": 26.09,
+      "open_date": "2026-07-08"
+    },
+    "VLO/CCI|s1": {
+      "ticker": "VLO",
+      "shares": 649,
+      "cost": 282.88,
+      "open_date": "2026-07-08"
+    },
+    "VLO/CCI|s2": {
+      "ticker": "CCI",
+      "shares": -926,
+      "cost": 76.9,
+      "open_date": "2026-07-08"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": -19408.92,
+  "position_value": 1065607.34
+}

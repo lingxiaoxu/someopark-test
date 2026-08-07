@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-06-02",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1032004.23,
+  "positions": {
+    "CI": {
+      "shares": -312,
+      "avg_cost": 289.07,
+      "entry_date": "2026-05-12"
+    },
+    "MTD": {
+      "shares": 82,
+      "avg_cost": 1078.53,
+      "entry_date": "2026-05-12"
+    }
+  },
+  "cumulative_realized": 30231.61,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1042855.59,
+  "liabilities": {},
+  "lots": {
+    "CI/MTD|s1": {
+      "ticker": "CI",
+      "shares": -312,
+      "cost": 289.07,
+      "open_date": "2026-05-12"
+    },
+    "CI/MTD|s2": {
+      "ticker": "MTD",
+      "shares": 82,
+      "cost": 1078.53,
+      "open_date": "2026-05-12"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 12601.74,
+  "position_value": 10851.36
+}

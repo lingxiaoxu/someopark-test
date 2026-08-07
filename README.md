@@ -90,7 +90,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `PriceDataStore.py` | 价格数据读取与缓存（Polygon / Yahoo），Parquet 格式 |
 | `AuditPairs.py` | 验证 Excel 输出文件规则合规性（MRPT / MTFS 通用，`--strategy mrpt\|mtfs`） |
 | `DailySignal.py` | 每日信号生成器（`--strategy mrpt\|mtfs\|both`），含 Regime 检测、Position Monitor、完整报告输出 |
-| `PnLReport.py` | 生成 PDF 绩效报告：交易明细、PnL 汇总、杠杆分析（总/单边/净/ROE）、系统成交价 vs 参考执行价对照（执行日开盘价）。`--end YYYY-MM-DD [--start YYYY-MM-DD] [--no-yf]` |
+| `PnLReport.py` | 生成 PDF 绩效报告：交易明细、PnL 汇总、杠杆分析（总/单边/净/ROE）、系统成交价 vs 参考执行价对照（执行日开盘价）。**2026-08-06 起底线锚定账本**：新增「口径对账」块，三列相加 = 账本（pair 级归因 + 归因差 + 分红），差额显式列出而非隐没在合计里。无账本时自动降级为纯 pair 级。`--end YYYY-MM-DD [--start YYYY-MM-DD] [--no-yf]` |
 | `PnLReconcile.py` | 通用对账工具：逐笔核查成交记录与 inventory 快照的一致性 |
 | `MacroDataStore.py` | 宏观指数数据存储（VIX/MOVE 日线 + VIX/VXTLT hourly），按年分 Parquet 存储，供 RegimeDetector 读取短期百分位 |
 | `RegimeDetector.py` | Regime 检测器：CISS 动态加权、倒 U 型波动率曲线、90 天 hourly 百分位分层合成，输出 0–100 分 + 各类 sub-scores |
@@ -101,8 +101,11 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `AnalyzeEarningsFilter.py` | 分析财报过滤策略的历史效果，评估屏蔽日对回测的影响 |
 | `MomentumPairSelector.py` | 从 S&P500 全市场扫描动量配对候选，下载价格数据并输出候选列表 |
 | `RiskManager.py` | 每日风险报告（PDF/Excel/TXT）：双视图资产负债表（资产负债表法 + 双账户法）、Portfolio Margin（~20% gross）要求与 margin call 距离、杠杆/集中度/流动性分析。DailySignal 每日自动调用 |
-| `UpdateStrategyPerformance.py` | 更新 `strategy_performance.json`（MRPT/MTFS/Combined 权益曲线），DailySignal 在风险报告前自动调用 |
+| `UpdateStrategyPerformance.py` | 更新 `strategy_performance.json`。**2026-08-06 起改为账本口径**：`3/18 回测段末值（拼接值）+ 账本累计美元盈亏`，不再用 `regime_capital × sim_equity/SIM_CAPITAL`。这样 ① 3/19 拼接点跳变恒为 **0.0000%**；② 历史稳定（换任何 `--end` 重跑，3/19 之前 0 天被改写、之后也不变）；③ 无资金流污染（regime 调仓不再被记成盈亏）。无 `account_history/` 时**响亮告警**并回退旧公式。账本缺当日数据时**顺延最近可用日**（不可回退基线，否则算出的净值恰等于拼接值本身） |
 | `UpdateMasterPerformance.py` | 更新 Master Portfolio（Pairs + SSRS + AISS + BDC）权益曲线，自动选取各策略最优回测参数（不硬编码）；live 段 MTM Polygon 优先，yfinance fallback 带显式告警 |
+| `StrategyMode.py` | **回撤状态叠加 DRO（Drawdown Regime Overlay，2026-08-01 上线）**：60td 滚动峰/谷，`峰→现 ≤ −30%` → `REBOUND_HUNT`（暴跌后抢反弹：放宽入场/增容量/空腿保护/快窗），`谷→现 ≥ +30%` → `PROFIT_LOCK`（暴涨后锁盈：收紧入场/减容量/更快出）。**双条件确认**：equity 触发 ∧ 市场态确认（VIX ≤ 0.8×60d 峰 **或** VIX < 22 绝对平静线），避免纯 equity 触发的噪音。驻留上限 40td、退出冷却 10td、反向触发可中断。文献锚：Daniel & Moskowitz 2016 / Barroso & Santa-Clara 2015 / Grossman & Zhou 1993。DailySignal 每日检测（PIT 只读），状态持久化于 `trading_signals/strategy_mode_state.json`；**检测失败绝不阻断信号，按 NORMAL 运行** |
+| `MCPS.py` | Macro-Conditioned Parameter Selection：用高斯核相似度在宏观状态空间中匹配历史,从 walk-forward Top-K 候选里选当日参数集（`select_param` / `macro_cond_sharpe`）。依赖 `MacroStateStore` 快照,失败时降级为纯 DSR Top-1 |
+| `pairs_ledger/` | **MRPT/MTFS 成交账本（2026-08-06 上线，实盘 PnL 的唯一真源）**。按 `(pair, leg)` 的 **lot** 记账：每条腿独立成本与数量，票级净敞口 = 该票所有 lot 之和。产出 `account_{mrpt,mtfs}.json`（当前账户）、`trade_ledger_*.jsonl`（逐笔成交）、`account_history/`（**逐日冻结**快照，写下不再变）、`trading_signals/ledger_reports/`（对账）。子模块：`ledger.py` 记账内核（多空通用、恒等式断言）、`rebuild.py` 重建与日增量、`verify.py` V1–V10、`reports.py` 账本报表 + R1–R11 六方对账。**只读** inventory / monitoring，从不回写。拆股/合股全部委托 `CorporateActions.adjust_position_view`，本包不含任何 factor 计算 |
 | `CorporateActions.py` | 拆股/合股自动处理，**四策略统一**入口 `run_for(mrpt\|mtfs\|aiss\|ssrs)`：Polygon splits 市场级日检（cache），各策略 daily signal 在 MTM 前自动调整 inventory（shares×factor、价格÷factor，市值/PnL 不变，polygon_id 留痕幂等）；Mongo as-traded 价格序列读取时回溯调整消除断崖（`adjust_price_df`）；历史快照读取时换算口径（`adjust_position_view`）；RiskManager 价格序列经验式断崖修复（`heal_split_cliff`，防污染 VaR/vol/beta）。分级状态日志 `trading_signals/corporate_actions.log`（NO-ACTION-NEEDED / ALREADY-APPLIED / APPLIED / ERROR）。CLI `--strategy all --dry-run` |
 
 ### MRPT 策略
@@ -375,9 +378,75 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 - **Regime 检测**（`RegimeDetector.py`）：综合波动率、信用利差、利率、AI 动量等 7 类市场指标，输出 0–100 分，自动决定 MRPT / MTFS 资金权重。分数低（< 40）偏均值回归，分数高（> 60）偏趋势跟随，中间为中性。类别权重：波动率 30%、动量/AI 18%、信用 11%、利率 10%、宏观压力 14%、地缘 9%、策略 vol 8%。波动率使用 CISS 动态加权 + 倒 U 型曲线 + 90 天 hourly 百分位（VIX / VXTLT）分层合成
 - **Position Monitor**：对所有已开仓配对，以开仓时注入的 param_set 从 `open_date` 跑模拟至今，每日检测止损条件（MRPT：波动率止损 / 价格止损 / z-score 自然回归 / 时间止损；MTFS：动量衰减 / 配对 PnL 止损 / 波动率止损 / 时间止损），输出 HOLD / CLOSE（自然平仓）/ CLOSE_STOP（止损触发）。仓位在 `open_date` 的 `my_handle_data` 之后注入，止损从次日起检测，与实盘逻辑一致。每对监测结果输出 Excel 至 `trading_signals/monitor_history/`
+- **回撤状态叠加（DRO）**：每日检测 `NORMAL / REBOUND_HUNT / PROFIT_LOCK`（见 `StrategyMode.py`），按状态叠加参数（`_mult`/`_add` 后缀=对已解析值乘/加并 clamp，其余=直接覆写）。日志形如 `[MODE] MTFS: REBOUND_HUNT day 2/40 (eq -44.7% off 2026-06-30 peak, VIX 16.9 ok)`
 - **完整报告**：所有输出统一写入 `trading_signals/`，包含信号 JSON 和人类可读中文 TXT 报告（含 Regime 分析、持仓监测、OOS 历史参考）
 
-持仓快照保存在 `inventory_mrpt.json` 和 `inventory_mtfs.json`，每条记录含开仓日期、价格、param_set、开仓对冲比率、开仓信号、Walk-Forward 来源等信息，供 Position Monitor 精确复现开仓状态。每次运行前自动将快照备份到 `inventory_history/`。
+持仓快照保存在 `inventory_mrpt.json` 和 `inventory_mtfs.json`，每条记录含开仓日期、价格、param_set、开仓对冲比率、开仓信号、Walk-Forward 来源等信息，供 Position Monitor 精确复现开仓状态。
+
+> **`inventory_history/` 的语义是「备份」不是「当日快照」**：`save_inventory()` 先把**旧文件**复制到 `inventory_history/inventory_{s}_<今天时间戳>.json`，再写新状态。所以历史文件的**文件名是今天的时间戳、内容却是上一次的 `as_of`** —— 最新快照总比主文件旧一天。账本因此在读取时**用 inventory 主文件覆盖同日快照**，否则会漏掉当日新开仓（实测曾漏 13 只票、多头少算 115 万）。同一天可能有 2 份备份（Step1 平仓后一份、Step2 开仓后一份）。
+
+---
+
+### 每日跑批调用流（STEP 7，`--strategy both`）
+
+账本（`pairs_ledger/`）自 2026-08-06 起是**实盘 PnL 的中心数据源**，接通点见下图：
+
+```
+pipeline_runner.sh
+  STEP 3-6  MRPT/MTFS WalkForward + Report        （不碰账本）
+  STEP 7    DailySignal.py --strategy both
+  │
+  ├─ L2820  CorporateActions.apply_to_inventory() ── 拆股/合股改写 inventory（留痕幂等）
+  ├─ L2906  monitor_existing_positions()          ── Step1 监控
+  │           └─ L2531 save_inventory()  →  ①备份旧态进 inventory_history
+  │                                          ②写 inventory_{s}.json
+  │                                          ③同步 public/data/inventory_{s}.json
+  ├─ L2926  _run_single('mrpt')  ┐ Step2 开仓
+  ├─ L2934  _run_single('mtfs')  ┘   └─ L3239 save_inventory()（同上三步，最终态）
+  ├─ L2966  combined_signals_<ts>.json            ── monitoring 主记录
+  ├─ L2983  daily_report_<ts>.json/.txt           ── 前端 smart artifact
+  │
+  ├─ L2993  ★ _pairs_ledger_hook(strategy, dry_run)   ← 必须在 PERF_UPDATE 之前
+  │           ├─ pairs_ledger.rebuild.daily_update('mrpt')
+  │           ├─ pairs_ledger.rebuild.daily_update('mtfs')
+  │           │     读 inventory_history + inventory 主文件(覆盖同日)
+  │           │        + combined_signals(解平仓价) + Mongo + splits_cache + dividends_cache
+  │           │     写 account_{s}.json / trade_ledger_{s}.jsonl / account_history/
+  │           └─ pairs_ledger.reports.run()  → ledger_reports/{statements,reconciliation}
+  │                 R1–R11 全项校验，FAIL 时 WARNING 告警但不中断
+  │
+  ├─ L3001  UpdateStrategyPerformance --start 2026-03-19 --end <signal_date>
+  │           **读 account_history/**（账本）→ 拼接值 + 账本累计美元盈亏
+  │           写 public/data/strategy_performance.json（只替换 3/19 之后）
+  ├─ L3006  UpdateBDCPerformance
+  ├─ L3008  UpdateMasterPerformance  ── 读 strategy_performance + 各策略账本
+  ├─ L3012  _deploy_dashboard()      ── npm build + firebase deploy
+  └─ L3115  RiskManager.generate_risk_report()
+              读 strategy_performance(NAV/income) + inventory(持仓) + 价格
+              写 risk_report_<ts>.{json,txt,pdf,xlsx}
+
+  STEP 8    WalkForwardDiagnostic
+  STEP 9    PnLReport.py --start 2026-03-19
+              读 combined_signals + inventory + **account_history/**（账本锚定）
+              写 trading_signals/pnl_reports/pnl_report_<date>.pdf
+```
+
+**⚠ 顺序红线：账本钩子必须早于 `PERF_UPDATE`。** `UpdateStrategyPerformance` 按账本口径重算净值，若账本尚未推进到 signal_date，最新一行会退化成**拼接值本身**（实测 2026-08-06 08:38 的 risk_report 因此把 MRPT 期末 NAV 记成 584,000，真值 608,836.71，差 −24,837）。已通过「钩子前移 + `_carry()` 顺延最近可用日」双重修复。
+
+**账本的下游接通（谁读账本）：**
+
+| 消费方 | 接通方式 |
+|---|---|
+| `strategy_performance.json` | **直接**：`load_ledger_cum_pnl()` 读 `account_history/`，`拼接值 + 账本盈亏` |
+| `master_portfolio_performance.json` | **间接**：读 strategy JSON（AISS/SSRS 各自走 `_chain_account_live`） |
+| PnL 报告 | **直接**：`load_ledger_totals()` 锚定底线，pair 表作归因、差额显式列出 |
+| risk 报告 | **间接**：读 strategy_performance 的 NAV/income（已是账本口径） |
+| 前端 `public/data/inventory_*.json` | `save_inventory()` 每次自动 `copy2` 同步 |
+| inventory / monitoring | 账本**只读**，从不回写（审计记录不可变） |
+
+**对账口径（R1–R11，每日自动跑）**：R1 持仓==inventory｜R2 pair 级未实现==monitoring｜R3/R3b 净证券市值与多/空分别==risk_report｜R4 恒等式｜R5 日盈亏 vs 生产（信息项）｜R6 master==strategy｜R9 差额桥（残差须 0）｜R10 逐 pair 归因（跨策略同名 pair 合并比较）｜**R11 新 infra 窗口 diff=0**（`INFRA_CUTOVER=2026-07-07` 起开仓的 pair 必须零差，这是「可替换数据源」的准入条件）。
+
+> **已知历史差异（不阻塞替换）**：2026-07-07 之前的段落仍有少量 pair 对不上，成因全部在监控侧 —— ① 那几天跑批缺失（6/19、6/22 无 `combined_signals`）导致平仓无记录；② 假平仓信号（monitor 发了 CLOSE 但仓位实际继续持有）。账本跟随 inventory，比报告更完整。7/07 起口径统一后**账本与报告逐 pair 精确一致**。
 
 ---
 
@@ -396,7 +465,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 默认配置：**rolling 训练 19 个月 × 9 窗口 × 50 NYSE 交易日 OOS**（相邻窗重叠 10td，去重后共 370 个 OOS 交易日）。
 
-#### MRPT Walk-Forward 窗口（6×27，expanding，基于 32 个 param_set）
+#### MRPT Walk-Forward 窗口示例（下表为早期 6×27 expanding 配置，**已非当前默认**；当前默认见上方 rolling 19mo × 9 × 50td）
 
 | 窗口 | 训练期 | 测试期（样本外） |
 |------|--------|----------------|
@@ -407,7 +476,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | Window 5 | 2024-03-11 → 2026-02-03 | 2026-02-04 → 2026-03-11 |
 | Window 6 | 2024-03-11 → 2026-03-11 | 2026-03-12 → 2026-04-16 |
 
-#### MTFS Walk-Forward 窗口（6×27，expanding，基于 35 个 param_set：31 母 + 4 fc 变体）
+#### MTFS Walk-Forward 窗口示例（同上，**已非当前默认**；基于 35 个 param_set：31 母 + 4 fc 变体）
 
 | 窗口 | 训练期 | 测试期（样本外） |
 |------|--------|----------------|

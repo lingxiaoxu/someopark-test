@@ -1,0 +1,128 @@
+{
+  "as_of": "2026-04-08",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1034166.44,
+  "positions": {
+    "DG": {
+      "shares": 1005,
+      "avg_cost": 135.635,
+      "entry_date": "2026-03-18"
+    },
+    "MOS": {
+      "shares": -5208,
+      "avg_cost": 31.205,
+      "entry_date": "2026-03-18"
+    },
+    "MTCH": {
+      "shares": -2704,
+      "avg_cost": 31.92,
+      "entry_date": "2026-04-08"
+    },
+    "NVR": {
+      "shares": 12,
+      "avg_cost": 6492.24,
+      "entry_date": "2026-04-08"
+    },
+    "CL": {
+      "shares": 1032,
+      "avg_cost": 83.13,
+      "entry_date": "2026-04-08"
+    },
+    "WST": {
+      "shares": -334,
+      "avg_cost": 259.35,
+      "entry_date": "2026-04-08"
+    },
+    "AMT": {
+      "shares": -502,
+      "avg_cost": 174.08,
+      "entry_date": "2026-04-08"
+    },
+    "TJX": {
+      "shares": 541,
+      "avg_cost": 157.58,
+      "entry_date": "2026-04-08"
+    },
+    "PFG": {
+      "shares": -962,
+      "avg_cost": 91.06,
+      "entry_date": "2026-04-08"
+    },
+    "WMT": {
+      "shares": 693,
+      "avg_cost": 122.49,
+      "entry_date": "2026-04-08"
+    }
+  },
+  "cumulative_realized": -6147.34,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1007882.57,
+  "liabilities": {},
+  "lots": {
+    "DG/MOS|s1": {
+      "ticker": "DG",
+      "shares": 1005,
+      "cost": 135.635,
+      "open_date": "2026-03-13"
+    },
+    "DG/MOS|s2": {
+      "ticker": "MOS",
+      "shares": -5208,
+      "cost": 31.205,
+      "open_date": "2026-03-13"
+    },
+    "MTCH/NVR|s1": {
+      "ticker": "MTCH",
+      "shares": -2704,
+      "cost": 31.92,
+      "open_date": "2026-04-08"
+    },
+    "MTCH/NVR|s2": {
+      "ticker": "NVR",
+      "shares": 12,
+      "cost": 6492.24,
+      "open_date": "2026-04-08"
+    },
+    "CL/WST|s1": {
+      "ticker": "CL",
+      "shares": 1032,
+      "cost": 83.13,
+      "open_date": "2026-04-08"
+    },
+    "CL/WST|s2": {
+      "ticker": "WST",
+      "shares": -334,
+      "cost": 259.35,
+      "open_date": "2026-04-08"
+    },
+    "AMT/TJX|s1": {
+      "ticker": "AMT",
+      "shares": -502,
+      "cost": 174.08,
+      "open_date": "2026-04-08"
+    },
+    "AMT/TJX|s2": {
+      "ticker": "TJX",
+      "shares": 541,
+      "cost": 157.58,
+      "open_date": "2026-04-08"
+    },
+    "PFG/WMT|s1": {
+      "ticker": "PFG",
+      "shares": -962,
+      "cost": 91.06,
+      "open_date": "2026-04-08"
+    },
+    "PFG/WMT|s2": {
+      "ticker": "WMT",
+      "shares": 693,
+      "cost": 122.49,
+      "open_date": "2026-04-08"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 14007.66,
+  "position_value": -26283.87
+}

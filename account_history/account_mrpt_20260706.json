@@ -1,0 +1,62 @@
+{
+  "as_of": "2026-07-06",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1038721.51,
+  "positions": {
+    "EXR": {
+      "shares": -676,
+      "avg_cost": 147.29,
+      "entry_date": "2026-07-02"
+    },
+    "WY": {
+      "shares": 3881,
+      "avg_cost": 23.56,
+      "entry_date": "2026-07-02"
+    },
+    "CL": {
+      "shares": -520,
+      "avg_cost": 92.76,
+      "entry_date": "2026-07-02"
+    },
+    "PM": {
+      "shares": 265,
+      "avg_cost": 177.69,
+      "entry_date": "2026-07-02"
+    }
+  },
+  "cumulative_realized": 29906.96,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1031144.87,
+  "liabilities": {},
+  "lots": {
+    "EXR/WY|s1": {
+      "ticker": "EXR",
+      "shares": -676,
+      "cost": 147.29,
+      "open_date": "2026-07-02"
+    },
+    "EXR/WY|s2": {
+      "ticker": "WY",
+      "shares": 3881,
+      "cost": 23.56,
+      "open_date": "2026-07-02"
+    },
+    "CL/PM|s1": {
+      "ticker": "CL",
+      "shares": -520,
+      "cost": 92.76,
+      "open_date": "2026-07-02"
+    },
+    "CL/PM|s2": {
+      "ticker": "PM",
+      "shares": 265,
+      "cost": 177.69,
+      "open_date": "2026-07-02"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 1702.39,
+  "position_value": -7576.64
+}

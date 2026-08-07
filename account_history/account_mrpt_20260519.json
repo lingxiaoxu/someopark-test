@@ -1,0 +1,106 @@
+{
+  "as_of": "2026-05-19",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1050102.51,
+  "positions": {
+    "CI": {
+      "shares": -312,
+      "avg_cost": 289.07,
+      "entry_date": "2026-05-12"
+    },
+    "MTD": {
+      "shares": 82,
+      "avg_cost": 1078.53,
+      "entry_date": "2026-05-12"
+    },
+    "FSLR": {
+      "shares": 313,
+      "avg_cost": 233.64,
+      "entry_date": "2026-05-19"
+    },
+    "RSG": {
+      "shares": -345,
+      "avg_cost": 214.52,
+      "entry_date": "2026-05-19"
+    },
+    "DXCM": {
+      "shares": -1176,
+      "avg_cost": 65.09,
+      "entry_date": "2026-05-19"
+    },
+    "UDR": {
+      "shares": 1892,
+      "avg_cost": 37.46,
+      "entry_date": "2026-05-19"
+    },
+    "DLR": {
+      "shares": 387,
+      "avg_cost": 188.5,
+      "entry_date": "2026-05-19"
+    },
+    "PRU": {
+      "shares": -721,
+      "avg_cost": 102.98,
+      "entry_date": "2026-05-19"
+    }
+  },
+  "cumulative_realized": 40479.21,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1031798.47,
+  "liabilities": {},
+  "lots": {
+    "CI/MTD|s1": {
+      "ticker": "CI",
+      "shares": -312,
+      "cost": 289.07,
+      "open_date": "2026-05-12"
+    },
+    "CI/MTD|s2": {
+      "ticker": "MTD",
+      "shares": 82,
+      "cost": 1078.53,
+      "open_date": "2026-05-12"
+    },
+    "FSLR/RSG|s1": {
+      "ticker": "FSLR",
+      "shares": 313,
+      "cost": 233.64,
+      "open_date": "2026-05-19"
+    },
+    "FSLR/RSG|s2": {
+      "ticker": "RSG",
+      "shares": -345,
+      "cost": 214.52,
+      "open_date": "2026-05-19"
+    },
+    "DXCM/UDR|s1": {
+      "ticker": "DXCM",
+      "shares": -1176,
+      "cost": 65.09,
+      "open_date": "2026-05-19"
+    },
+    "DXCM/UDR|s2": {
+      "ticker": "UDR",
+      "shares": 1892,
+      "cost": 37.46,
+      "open_date": "2026-05-19"
+    },
+    "DLR/PRU|s1": {
+      "ticker": "DLR",
+      "shares": 387,
+      "cost": 188.5,
+      "open_date": "2026-05-19"
+    },
+    "DLR/PRU|s2": {
+      "ticker": "PRU",
+      "shares": -721,
+      "cost": 102.98,
+      "open_date": "2026-05-19"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -8702.98,
+  "position_value": -18304.04
+}

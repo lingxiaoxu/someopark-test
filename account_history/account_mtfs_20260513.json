@@ -1,0 +1,57 @@
+{
+  "as_of": "2026-05-13",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 729607.25,
+  "positions": {
+    "L": {
+      "shares": 782,
+      "avg_cost": 110.58,
+      "entry_date": "2026-04-27"
+    },
+    "AWK": {
+      "shares": -948,
+      "avg_cost": 130.126593,
+      "entry_date": "2026-04-27"
+    },
+    "INCY": {
+      "shares": 3083,
+      "avg_cost": 98.56,
+      "entry_date": "2026-05-11"
+    }
+  },
+  "cumulative_realized": 5517.32,
+  "cumulative_dividends": -8936.04,
+  "cumulative_fees": 0.0,
+  "equity": 994913.11,
+  "liabilities": {},
+  "lots": {
+    "L/AWK|s1": {
+      "ticker": "L",
+      "shares": 782,
+      "cost": 110.58,
+      "open_date": "2026-04-27"
+    },
+    "L/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -653,
+      "cost": 132.42,
+      "open_date": "2026-04-27"
+    },
+    "INCY/AWK|s1": {
+      "ticker": "INCY",
+      "shares": 3083,
+      "cost": 98.56,
+      "open_date": "2026-05-11"
+    },
+    "INCY/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -295,
+      "cost": 125.05,
+      "open_date": "2026-05-11"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -1668.17,
+  "position_value": 265305.86
+}

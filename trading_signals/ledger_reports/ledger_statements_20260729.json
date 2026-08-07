@@ -1,0 +1,321 @@
+{
+ "mrpt": {
+  "as_of": "2026-07-29",
+  "balance_sheet": {
+   "cash": 1019034.75,
+   "net_securities": 0.0,
+   "nav": 1019034.75,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 2775.85,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -6178.66,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -18401.06,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 10769.11,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1016258.9,
+    "net_income": 2775.85,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1019034.75,
+    "return_pct": 0.2731,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1025213.41,
+    "net_income": -6178.66,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1019034.75,
+    "return_pct": -0.6027,
+    "max_drawdown_pct": -0.87
+   },
+   "1M": {
+    "beginning_nav": 1037435.81,
+    "net_income": -18401.06,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1019034.75,
+    "return_pct": -1.7737,
+    "max_drawdown_pct": -2.04
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 10769.11,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1019034.75,
+    "return_pct": 1.0681,
+    "max_drawdown_pct": -4.78
+   }
+  },
+  "positions": {},
+  "pnl": {
+   "cumulative_realized": 19499.23,
+   "cumulative_dividends": -464.48,
+   "cumulative_fees": 0.0,
+   "unrealized": 0.0,
+   "total": 19034.75
+  },
+  "activity_today": {
+   "n_trades": 2,
+   "realized_today": 2597.09,
+   "trades": [
+    {
+     "date": "2026-07-29",
+     "ticker": "HIG",
+     "side": "SELL",
+     "shares": 563,
+     "price": 145.68,
+     "avg_cost_at_trade": 140.14,
+     "realized_pnl": 3119.02,
+     "gross": 82017.84,
+     "dedup_key": "2026-07-29-HIG-SELL",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "ACGL",
+     "side": "BUY",
+     "shares": 779,
+     "price": 104.55,
+     "avg_cost_at_trade": 103.88,
+     "realized_pnl": -521.93,
+     "gross": -81444.45,
+     "dedup_key": "2026-07-29-ACGL-BUY",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    }
+   ]
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-07-29",
+  "balance_sheet": {
+   "cash": 917500.47,
+   "net_securities": -2438.23,
+   "nav": 915062.24,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -40704.71,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -115251.99,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -272972.8,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": -87894.99,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 955766.95,
+    "net_income": -40704.71,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 915062.24,
+    "return_pct": -4.2589,
+    "max_drawdown_pct": -4.26
+   },
+   "1W": {
+    "beginning_nav": 1030314.23,
+    "net_income": -115251.99,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 915062.24,
+    "return_pct": -11.1861,
+    "max_drawdown_pct": -11.19
+   },
+   "1M": {
+    "beginning_nav": 1188035.04,
+    "net_income": -272972.8,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 915062.24,
+    "return_pct": -22.9768,
+    "max_drawdown_pct": -23.3
+   },
+   "ITD": {
+    "beginning_nav": 1002957.23,
+    "net_income": -87894.99,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 915062.24,
+    "return_pct": -8.7636,
+    "max_drawdown_pct": -23.3
+   }
+  },
+  "positions": {
+   "HCA": {
+    "shares": -241,
+    "avg_cost": 378.85,
+    "entry_date": "2026-07-15"
+   },
+   "BBY": {
+    "shares": 2341,
+    "avg_cost": 85.37,
+    "entry_date": "2026-07-15"
+   },
+   "GOOGL": {
+    "shares": -342,
+    "avg_cost": 326.56,
+    "entry_date": "2026-07-27"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": -77043.62,
+   "cumulative_dividends": -8591.11,
+   "cumulative_fees": 0.0,
+   "unrealized": 696.97,
+   "total": -84937.76
+  },
+  "activity_today": {
+   "n_trades": 9,
+   "realized_today": -73801.54,
+   "trades": [
+    {
+     "date": "2026-07-29",
+     "ticker": "ANET",
+     "side": "SELL",
+     "shares": 532,
+     "price": 157.97,
+     "avg_cost_at_trade": 171.92,
+     "realized_pnl": -7421.4,
+     "gross": 84040.04,
+     "dedup_key": "2026-07-29-ANET-SELL",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "HWM",
+     "side": "SELL",
+     "shares": 640,
+     "price": 272.79,
+     "avg_cost_at_trade": 287.09,
+     "realized_pnl": -9152.0,
+     "gross": 174585.6,
+     "dedup_key": "2026-07-29-HWM-SELL",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "INCY",
+     "side": "SELL",
+     "shares": 6418,
+     "price": 127.1,
+     "avg_cost_at_trade": 129.93,
+     "realized_pnl": -18162.94,
+     "gross": 815727.8,
+     "dedup_key": "2026-07-29-INCY-SELL",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "WAB",
+     "side": "SELL",
+     "shares": 379,
+     "price": 291.76,
+     "avg_cost_at_trade": 297.99,
+     "realized_pnl": -2361.17,
+     "gross": 110577.04,
+     "dedup_key": "2026-07-29-WAB-SELL",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "CMCSA",
+     "side": "BUY",
+     "shares": 2459,
+     "price": 24.61,
+     "avg_cost_at_trade": 22.3,
+     "realized_pnl": -5680.29,
+     "gross": -60515.99,
+     "dedup_key": "2026-07-29-CMCSA-BUY",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "FIS",
+     "side": "BUY",
+     "shares": 2825,
+     "price": 46.81,
+     "avg_cost_at_trade": 40.04,
+     "realized_pnl": -19125.25,
+     "gross": -132238.25,
+     "dedup_key": "2026-07-29-FIS-BUY",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "LKQ",
+     "side": "BUY",
+     "shares": 3675,
+     "price": 26.39,
+     "avg_cost_at_trade": 24.92,
+     "realized_pnl": -5402.25,
+     "gross": -96983.25,
+     "dedup_key": "2026-07-29-LKQ-BUY",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "PNR",
+     "side": "BUY",
+     "shares": 12692,
+     "price": 66.59,
+     "avg_cost_at_trade": 66.77,
+     "realized_pnl": 2284.56,
+     "gross": -845160.28,
+     "dedup_key": "2026-07-29-PNR-BUY",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    },
+    {
+     "date": "2026-07-29",
+     "ticker": "RMD",
+     "side": "BUY",
+     "shares": 392,
+     "price": 214.29,
+     "avg_cost_at_trade": 191.89,
+     "realized_pnl": -8780.8,
+     "gross": -84001.68,
+     "dedup_key": "2026-07-29-RMD-BUY",
+     "price_basis": "carry",
+     "price_src": "market_close"
+    }
+   ]
+  }
+ }
+}

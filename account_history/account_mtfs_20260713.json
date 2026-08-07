@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-07-13",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 933301.45,
+  "positions": {
+    "STT": {
+      "shares": 1042,
+      "avg_cost": 177.42,
+      "entry_date": "2026-07-07"
+    },
+    "VICI": {
+      "shares": -2731,
+      "avg_cost": 26.09,
+      "entry_date": "2026-07-08"
+    }
+  },
+  "cumulative_realized": 55885.44,
+  "cumulative_dividends": -8964.14,
+  "cumulative_fees": 0.0,
+  "equity": 1046856.19,
+  "liabilities": {},
+  "lots": {
+    "STT/VICI|s1": {
+      "ticker": "STT",
+      "shares": 1042,
+      "cost": 177.42,
+      "open_date": "2026-07-08"
+    },
+    "STT/VICI|s2": {
+      "ticker": "VICI",
+      "shares": -2731,
+      "cost": 26.09,
+      "open_date": "2026-07-08"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": -65.11,
+  "position_value": 113554.74
+}

@@ -2772,6 +2772,63 @@ def _print_combined_summary(mrpt_out: dict, mtfs_out: dict, total_capital: float
     print(f"{'='*72}")
 
 
+def _pairs_ledger_hook(strategy: str, dry_run: bool) -> None:
+    """账本推进（唯一的写动作）—— **必须早于 PERF_UPDATE**。
+
+    UpdateStrategyPerformance 现在从账本取累计盈亏（3/19 拼接值 + 账本 P&L）。
+    账本落后一天会让最新一行退化成拼接值本身：实测 MRPT 期末 NAV 被写成 584,000
+    而非 608,836.71，且因每天都早于账本而**天天复发**。故此顺序是红线，勿调。
+
+    **绝不修改** inventory / monitoring / 既有报告；只新增仓库根的
+    account_{mrpt,mtfs}.json、trade_ledger_*.jsonl、account_history/。
+
+    幂等：`daily_update` 在 as_of 未推进时直接返回 0，同日重跑不重复记账。
+
+    注意：`both` 与单策略是**两条独立的返回路径**（both 在 `return combined_out`
+    处就返回，走不到单策略尾部）。抽成本函数即为避免只挂一条而静默失效 ——
+    生产跑批用的正是 `--strategy both`。
+    """
+    if dry_run:
+        return
+    try:
+        from pairs_ledger.rebuild import daily_update as _pl_update
+        targets = ['mrpt', 'mtfs'] if strategy == 'both' else [strategy]
+        n = {s: _pl_update(s) for s in targets}
+        log.info(f"[LEDGER] daily_update 新增天数 {n}")
+    except Exception as e:
+        log.warning(f"[LEDGER] pairs_ledger daily_update failed (non-fatal): {e}")
+
+
+def _pairs_ledger_reconcile(dry_run: bool) -> None:
+    """账本派生报表 + R1–R11 对账（只读；非致命）—— **必须晚于 risk report**。
+
+    与 `_pairs_ledger_hook` 拆开的原因：对账要比对 strategy_performance.json 和
+    risk_report_*.json，而这两者由排在本函数之前的 PERF_UPDATE / RiskManager 生成。
+    若与账本推进合并在 PERF_UPDATE 之前，账本已到 T 日而 perf JSON 还停在 T-1，
+    R6b(净值JSON已跟上账本) 与 R3(净证券市值==risk_report) 会在**每个有新交易日
+    的早晨**误报 FAIL —— 天天狼来了会让这套对账彻底失去意义。
+
+    此前未暴露：手工重跑时账本 as_of 未推进，两边恰好都停在同一天而侥幸 PASS。
+    """
+    if dry_run:
+        return
+    try:
+        from pairs_ledger.reports import run as _pl_reports
+        rec = _pl_reports()
+        bad = [c['name'] for c in rec['checks'] if c['status'] == 'FAIL']
+        if rec['ok']:
+            log.info(f"[LEDGER] 对账全部通过 (as_of={rec['as_of']}) → "
+                     f"trading_signals/ledger_reports/")
+        else:
+            log.warning(f"[LEDGER] ⚠️ 对账未通过 (as_of={rec['as_of']}): {bad} — 详见 "
+                        f"trading_signals/ledger_reports/reconciliation_"
+                        f"{rec['as_of'].replace('-', '')}.txt")
+        print(f"  账本对账: trading_signals/ledger_reports/ "
+              f"({'OK' if rec['ok'] else 'FAIL: ' + ','.join(bad)})")
+    except Exception as e:
+        log.warning(f"[LEDGER] pairs_ledger reconcile failed (non-fatal): {e}")
+
+
 # ── Main runner ────────────────────────────────────────────────────────────────
 
 def run_daily_signal(
@@ -2949,6 +3006,10 @@ def run_daily_signal(
         print(f"\n  详细报告: {rpt_json_path}")
         print(f"  文字报告: {rpt_txt_path}")
 
+        # 账本必须先于 performance 更新：后者按账本口径重算净值，
+        # 账本落后一天会让最新一行退化成拼接值（见 UpdateStrategyPerformance._carry）。
+        _pairs_ledger_hook(strategy, dry_run)
+
         # ── Update strategy & master performance (non-fatal, required before risk report) ──
         if not dry_run:
             try:
@@ -2987,6 +3048,9 @@ def run_daily_signal(
                 print(f"  风险报告: {rr.get('pdf_path')}")
             except Exception as e:
                 log.warning(f"[RISK] risk report failed (non-fatal): {e}")
+
+        # 对账放在最尾：此时 perf JSON 与 risk_report 均已是当日真品（见函数注释）。
+        _pairs_ledger_reconcile(dry_run)
 
         return combined_out
 
@@ -3052,6 +3116,9 @@ def run_daily_signal(
     print(f"\n  详细报告: {rpt_json_path}")
     print(f"  文字报告: {rpt_txt_path}")
 
+    # 账本必须先于 performance 更新（同上）。
+    _pairs_ledger_hook(strategy, dry_run)
+
     # ── Update strategy & master performance (non-fatal, required before risk report) ──
     if not dry_run:
         try:
@@ -3093,6 +3160,9 @@ def run_daily_signal(
             print(f"  风险报告: {rr.get('pdf_path')}")
         except Exception as e:
             log.warning(f"[RISK] risk report failed (non-fatal): {e}")
+
+    # 对账放在最尾：此时 perf JSON 与 risk_report 均已是当日真品（见函数注释）。
+    _pairs_ledger_reconcile(dry_run)
 
     return single_out
 

@@ -1,0 +1,414 @@
+{
+ "mrpt": {
+  "as_of": "2026-07-15",
+  "balance_sheet": {
+   "cash": 1024416.1,
+   "net_securities": 2518.48,
+   "nav": 1026934.58,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 5063.12,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": 9226.08,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": 1124.44,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 18668.94,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1021871.46,
+    "net_income": 5063.12,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1026934.58,
+    "return_pct": 0.4955,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1017708.5,
+    "net_income": 9226.08,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1026934.58,
+    "return_pct": 0.9066,
+    "max_drawdown_pct": -0.11
+   },
+   "1M": {
+    "beginning_nav": 1025810.14,
+    "net_income": 1124.44,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1026934.58,
+    "return_pct": 0.1096,
+    "max_drawdown_pct": -1.98
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 18668.94,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1026934.58,
+    "return_pct": 1.8516,
+    "max_drawdown_pct": -4.72
+   }
+  },
+  "positions": {
+   "AIG": {
+    "shares": -1636,
+    "avg_cost": 79.62,
+    "entry_date": "2026-07-08"
+   },
+   "CFG": {
+    "shares": 1789,
+    "avg_cost": 68.56,
+    "entry_date": "2026-07-08"
+   },
+   "IDXX": {
+    "shares": -152,
+    "avg_cost": 557.02,
+    "entry_date": "2026-07-15"
+   },
+   "PPL": {
+    "shares": -2334,
+    "avg_cost": 35.71,
+    "entry_date": "2026-07-15"
+   },
+   "DUK": {
+    "shares": 685,
+    "avg_cost": 124.34,
+    "entry_date": "2026-07-15"
+   },
+   "STE": {
+    "shares": 396,
+    "avg_cost": 211.46,
+    "entry_date": "2026-07-15"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 18172.98,
+   "cumulative_dividends": -464.48,
+   "cumulative_fees": 0.0,
+   "unrealized": 9226.08,
+   "total": 26934.58
+  },
+  "activity_today": {
+   "n_trades": 4,
+   "realized_today": 0,
+   "trades": [
+    {
+     "date": "2026-07-15",
+     "ticker": "IDXX",
+     "side": "SELL",
+     "shares": 152,
+     "price": 557.02,
+     "gross": 84667.04,
+     "dedup_key": "2026-07-15-IDXX-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "PPL",
+     "side": "SELL",
+     "shares": 2334,
+     "price": 35.71,
+     "gross": 83347.14,
+     "dedup_key": "2026-07-15-PPL-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "DUK",
+     "side": "BUY",
+     "shares": 685,
+     "price": 124.34,
+     "gross": -85172.9,
+     "dedup_key": "2026-07-15-DUK-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "STE",
+     "side": "BUY",
+     "shares": 396,
+     "price": 211.46,
+     "gross": -83738.16,
+     "dedup_key": "2026-07-15-STE-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    }
+   ]
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-07-15",
+  "balance_sheet": {
+   "cash": 723466.47,
+   "net_securities": 298544.48,
+   "nav": 1022010.95,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": 0.0,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": 7053.16,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -105292.1,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 19053.72,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1022010.95,
+    "net_income": 0.0,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1022010.95,
+    "return_pct": 0.0,
+    "max_drawdown_pct": 0.0
+   },
+   "1W": {
+    "beginning_nav": 1014957.79,
+    "net_income": 7053.16,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1022010.95,
+    "return_pct": 0.6949,
+    "max_drawdown_pct": -0.61
+   },
+   "1M": {
+    "beginning_nav": 1127303.05,
+    "net_income": -105292.1,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1022010.95,
+    "return_pct": -9.3402,
+    "max_drawdown_pct": -14.93
+   },
+   "ITD": {
+    "beginning_nav": 1002957.23,
+    "net_income": 19053.72,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1022010.95,
+    "return_pct": 1.8998,
+    "max_drawdown_pct": -14.93
+   }
+  },
+  "positions": {
+   "COST": {
+    "shares": -149,
+    "avg_cost": 916.54,
+    "entry_date": "2026-07-15"
+   },
+   "HCA": {
+    "shares": -241,
+    "avg_cost": 378.85,
+    "entry_date": "2026-07-15"
+   },
+   "HSY": {
+    "shares": -538,
+    "avg_cost": 170.27,
+    "entry_date": "2026-07-15"
+   },
+   "LKQ": {
+    "shares": -3675,
+    "avg_cost": 24.92,
+    "entry_date": "2026-07-15"
+   },
+   "ORLY": {
+    "shares": -1598,
+    "avg_cost": 82.73,
+    "entry_date": "2026-07-15"
+   },
+   "UBER": {
+    "shares": -1838,
+    "avg_cost": 72.67,
+    "entry_date": "2026-07-15"
+   },
+   "ANET": {
+    "shares": 532,
+    "avg_cost": 171.92,
+    "entry_date": "2026-07-15"
+   },
+   "BBY": {
+    "shares": 1075,
+    "avg_cost": 85.37,
+    "entry_date": "2026-07-15"
+   },
+   "NTRS": {
+    "shares": 738,
+    "avg_cost": 191.13,
+    "entry_date": "2026-07-15"
+   },
+   "STT": {
+    "shares": 3000,
+    "avg_cost": 186.59,
+    "entry_date": "2026-07-15"
+   },
+   "VLO": {
+    "shares": 312,
+    "avg_cost": 292.66,
+    "entry_date": "2026-07-15"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 30975.09,
+   "cumulative_dividends": -8964.14,
+   "cumulative_fees": 0.0,
+   "unrealized": 0.0,
+   "total": 22010.95
+  },
+  "activity_today": {
+   "n_trades": 11,
+   "realized_today": 0,
+   "trades": [
+    {
+     "date": "2026-07-15",
+     "ticker": "COST",
+     "side": "SELL",
+     "shares": 149,
+     "price": 916.54,
+     "gross": 136564.46,
+     "dedup_key": "2026-07-15-COST-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "HCA",
+     "side": "SELL",
+     "shares": 241,
+     "price": 378.85,
+     "gross": 91302.85,
+     "dedup_key": "2026-07-15-HCA-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "HSY",
+     "side": "SELL",
+     "shares": 538,
+     "price": 170.27,
+     "gross": 91605.26,
+     "dedup_key": "2026-07-15-HSY-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "LKQ",
+     "side": "SELL",
+     "shares": 3675,
+     "price": 24.92,
+     "gross": 91581.0,
+     "dedup_key": "2026-07-15-LKQ-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "ORLY",
+     "side": "SELL",
+     "shares": 1598,
+     "price": 82.73,
+     "gross": 132202.54,
+     "dedup_key": "2026-07-15-ORLY-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "UBER",
+     "side": "SELL",
+     "shares": 1838,
+     "price": 72.67,
+     "gross": 133567.46,
+     "dedup_key": "2026-07-15-UBER-SELL",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "ANET",
+     "side": "BUY",
+     "shares": 532,
+     "price": 171.92,
+     "gross": -91461.44,
+     "dedup_key": "2026-07-15-ANET-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "BBY",
+     "side": "BUY",
+     "shares": 1075,
+     "price": 85.37,
+     "gross": -91772.75,
+     "dedup_key": "2026-07-15-BBY-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "NTRS",
+     "side": "BUY",
+     "shares": 738,
+     "price": 191.13,
+     "gross": -141053.94,
+     "dedup_key": "2026-07-15-NTRS-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "STT",
+     "side": "BUY",
+     "shares": 3000,
+     "price": 186.59,
+     "gross": -559770.0,
+     "dedup_key": "2026-07-15-STT-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    },
+    {
+     "date": "2026-07-15",
+     "ticker": "VLO",
+     "side": "BUY",
+     "shares": 312,
+     "price": 292.66,
+     "gross": -91309.92,
+     "dedup_key": "2026-07-15-VLO-BUY",
+     "price_basis": "open_price",
+     "price_src": "open_price"
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-05-20",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 991802.95,
+  "positions": {
+    "AWK": {
+      "shares": -2676,
+      "avg_cost": 127.37,
+      "entry_date": "2026-04-27"
+    },
+    "MS": {
+      "shares": 1758,
+      "avg_cost": 193.83,
+      "entry_date": "2026-05-14"
+    }
+  },
+  "cumulative_realized": 650.01,
+  "cumulative_dividends": -8936.04,
+  "cumulative_fees": 0.0,
+  "equity": 1010526.01,
+  "liabilities": {},
+  "lots": {
+    "MS/AWK|s1": {
+      "ticker": "MS",
+      "shares": 1758,
+      "cost": 193.83,
+      "open_date": "2026-05-14"
+    },
+    "MS/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -2676,
+      "cost": 127.37,
+      "open_date": "2026-05-14"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 18812.04,
+  "position_value": 18723.06
+}

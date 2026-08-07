@@ -1,0 +1,62 @@
+{
+  "as_of": "2026-04-20",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1025719.5,
+  "positions": {
+    "PFG": {
+      "shares": 1048,
+      "avg_cost": 92.32,
+      "entry_date": "2026-04-10"
+    },
+    "WMT": {
+      "shares": -754,
+      "avg_cost": 129.13,
+      "entry_date": "2026-04-10"
+    },
+    "MTCH": {
+      "shares": 5145,
+      "avg_cost": 35.51,
+      "entry_date": "2026-04-20"
+    },
+    "NVR": {
+      "shares": -25,
+      "avg_cost": 7000.92,
+      "entry_date": "2026-04-20"
+    }
+  },
+  "cumulative_realized": 32760.55,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1038436.64,
+  "liabilities": {},
+  "lots": {
+    "PFG/WMT|s1": {
+      "ticker": "PFG",
+      "shares": 1048,
+      "cost": 92.32,
+      "open_date": "2026-04-10"
+    },
+    "PFG/WMT|s2": {
+      "ticker": "WMT",
+      "shares": -754,
+      "cost": 129.13,
+      "open_date": "2026-04-10"
+    },
+    "MTCH/NVR|s1": {
+      "ticker": "MTCH",
+      "shares": 5145,
+      "cost": 35.51,
+      "open_date": "2026-04-20"
+    },
+    "MTCH/NVR|s2": {
+      "ticker": "NVR",
+      "shares": -25,
+      "cost": 7000.92,
+      "open_date": "2026-04-20"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 5653.85,
+  "position_value": 12717.14
+}

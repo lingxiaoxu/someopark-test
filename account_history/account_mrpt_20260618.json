@@ -1,0 +1,62 @@
+{
+  "as_of": "2026-06-18",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1037840.45,
+  "positions": {
+    "EXR": {
+      "shares": 525,
+      "avg_cost": 143.92,
+      "entry_date": "2026-06-18"
+    },
+    "WY": {
+      "shares": -3004,
+      "avg_cost": 24.33,
+      "entry_date": "2026-06-18"
+    },
+    "AON": {
+      "shares": 226,
+      "avg_cost": 326.69,
+      "entry_date": "2026-06-18"
+    },
+    "KKR": {
+      "shares": -767,
+      "avg_cost": 97.17,
+      "entry_date": "2026-06-18"
+    }
+  },
+  "cumulative_realized": 40078.16,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1038483.99,
+  "liabilities": {},
+  "lots": {
+    "EXR/WY|s1": {
+      "ticker": "EXR",
+      "shares": 525,
+      "cost": 143.92,
+      "open_date": "2026-06-18"
+    },
+    "EXR/WY|s2": {
+      "ticker": "WY",
+      "shares": -3004,
+      "cost": 24.33,
+      "open_date": "2026-06-18"
+    },
+    "AON/KKR|s1": {
+      "ticker": "AON",
+      "shares": 226,
+      "cost": 326.69,
+      "open_date": "2026-06-18"
+    },
+    "AON/KKR|s2": {
+      "ticker": "KKR",
+      "shares": -767,
+      "cost": 97.17,
+      "open_date": "2026-06-18"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -1129.69,
+  "position_value": 643.54
+}

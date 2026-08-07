@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-06-25",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1041894.67,
+  "positions": {
+    "EXR": {
+      "shares": 536,
+      "avg_cost": 145.86,
+      "entry_date": "2026-06-25"
+    },
+    "WY": {
+      "shares": -3069,
+      "avg_cost": 25.3,
+      "entry_date": "2026-06-25"
+    }
+  },
+  "cumulative_realized": 42894.41,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1041731.07,
+  "liabilities": {},
+  "lots": {
+    "EXR/WY|s1": {
+      "ticker": "EXR",
+      "shares": 536,
+      "cost": 145.86,
+      "open_date": "2026-06-25"
+    },
+    "EXR/WY|s2": {
+      "ticker": "WY",
+      "shares": -3069,
+      "cost": 25.3,
+      "open_date": "2026-06-25"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -698.86,
+  "position_value": -163.6
+}

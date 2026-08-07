@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-04-08",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1003196.98,
+  "positions": {
+    "AVB": {
+      "shares": -2004,
+      "avg_cost": 163.41,
+      "entry_date": "2026-03-18"
+    },
+    "ETR": {
+      "shares": 3184,
+      "avg_cost": 102.86,
+      "entry_date": "2026-03-27"
+    },
+    "MSCI": {
+      "shares": -246,
+      "avg_cost": 536.9,
+      "entry_date": "2026-04-02"
+    },
+    "NDSN": {
+      "shares": 494,
+      "avg_cost": 267.24,
+      "entry_date": "2026-04-02"
+    },
+    "D": {
+      "shares": 2450,
+      "avg_cost": 62.69,
+      "entry_date": "2026-04-08"
+    },
+    "NSC": {
+      "shares": -532,
+      "avg_cost": 288.5,
+      "entry_date": "2026-04-08"
+    }
+  },
+  "cumulative_realized": 11652.14,
+  "cumulative_dividends": -8374.9,
+  "cumulative_fees": 0.0,
+  "equity": 1027452.82,
+  "liabilities": {},
+  "lots": {
+    "ETR/AVB|s1": {
+      "ticker": "ETR",
+      "shares": 3184,
+      "cost": 102.86,
+      "open_date": "2026-03-27"
+    },
+    "ETR/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -2004,
+      "cost": 163.41,
+      "open_date": "2026-03-27"
+    },
+    "MSCI/NDSN|s1": {
+      "ticker": "MSCI",
+      "shares": -246,
+      "cost": 536.9,
+      "open_date": "2026-04-02"
+    },
+    "MSCI/NDSN|s2": {
+      "ticker": "NDSN",
+      "shares": 494,
+      "cost": 267.24,
+      "open_date": "2026-04-02"
+    },
+    "D/NSC|s1": {
+      "ticker": "D",
+      "shares": 2450,
+      "cost": 62.69,
+      "open_date": "2026-04-08"
+    },
+    "D/NSC|s2": {
+      "ticker": "NSC",
+      "shares": -532,
+      "cost": 288.5,
+      "open_date": "2026-04-08"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 24175.58,
+  "position_value": 24255.84
+}

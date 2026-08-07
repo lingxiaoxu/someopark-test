@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-05-27",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1039901.77,
+  "positions": {
+    "CI": {
+      "shares": -312,
+      "avg_cost": 289.07,
+      "entry_date": "2026-05-12"
+    },
+    "MTD": {
+      "shares": 82,
+      "avg_cost": 1078.53,
+      "entry_date": "2026-05-12"
+    },
+    "GPN": {
+      "shares": -926,
+      "avg_cost": 73.28,
+      "entry_date": "2026-05-27"
+    },
+    "PTC": {
+      "shares": 456,
+      "avg_cost": 144.88,
+      "entry_date": "2026-05-27"
+    },
+    "AME": {
+      "shares": -301,
+      "avg_cost": 229.44,
+      "entry_date": "2026-05-27"
+    },
+    "WMT": {
+      "shares": 546,
+      "avg_cost": 118.57,
+      "entry_date": "2026-05-27"
+    }
+  },
+  "cumulative_realized": 32014.93,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1033871.71,
+  "liabilities": {},
+  "lots": {
+    "CI/MTD|s1": {
+      "ticker": "CI",
+      "shares": -312,
+      "cost": 289.07,
+      "open_date": "2026-05-12"
+    },
+    "CI/MTD|s2": {
+      "ticker": "MTD",
+      "shares": 82,
+      "cost": 1078.53,
+      "open_date": "2026-05-12"
+    },
+    "GPN/PTC|s1": {
+      "ticker": "GPN",
+      "shares": -926,
+      "cost": 73.28,
+      "open_date": "2026-05-27"
+    },
+    "GPN/PTC|s2": {
+      "ticker": "PTC",
+      "shares": 456,
+      "cost": 144.88,
+      "open_date": "2026-05-27"
+    },
+    "AME/WMT|s1": {
+      "ticker": "AME",
+      "shares": -301,
+      "cost": 229.44,
+      "open_date": "2026-05-27"
+    },
+    "AME/WMT|s2": {
+      "ticker": "WMT",
+      "shares": 546,
+      "cost": 118.57,
+      "open_date": "2026-05-27"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 1834.54,
+  "position_value": -6030.06
+}

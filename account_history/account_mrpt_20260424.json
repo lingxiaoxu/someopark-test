@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-04-24",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1050567.87,
+  "positions": {
+    "CI": {
+      "shares": -297,
+      "avg_cost": 279.72,
+      "entry_date": "2026-04-24"
+    },
+    "LVS": {
+      "shares": 1441,
+      "avg_cost": 51.95,
+      "entry_date": "2026-04-24"
+    },
+    "GIS": {
+      "shares": -3348,
+      "avg_cost": 35.47,
+      "entry_date": "2026-04-24"
+    },
+    "MTD": {
+      "shares": 93,
+      "avg_cost": 1264.36,
+      "entry_date": "2026-04-24"
+    },
+    "OKE": {
+      "shares": 445,
+      "avg_cost": 87.21,
+      "entry_date": "2026-04-24"
+    },
+    "WST": {
+      "shares": -129,
+      "avg_cost": 309.7,
+      "entry_date": "2026-04-24"
+    }
+  },
+  "cumulative_realized": 40017.81,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1046433.15,
+  "liabilities": {},
+  "lots": {
+    "CI/LVS|s1": {
+      "ticker": "CI",
+      "shares": -297,
+      "cost": 279.72,
+      "open_date": "2026-04-24"
+    },
+    "CI/LVS|s2": {
+      "ticker": "LVS",
+      "shares": 1441,
+      "cost": 51.95,
+      "open_date": "2026-04-24"
+    },
+    "GIS/MTD|s1": {
+      "ticker": "GIS",
+      "shares": -3348,
+      "cost": 35.47,
+      "open_date": "2026-04-24"
+    },
+    "GIS/MTD|s2": {
+      "ticker": "MTD",
+      "shares": 93,
+      "cost": 1264.36,
+      "open_date": "2026-04-24"
+    },
+    "OKE/WST|s1": {
+      "ticker": "OKE",
+      "shares": 445,
+      "cost": 87.21,
+      "open_date": "2026-04-24"
+    },
+    "OKE/WST|s2": {
+      "ticker": "WST",
+      "shares": -129,
+      "cost": 309.7,
+      "open_date": "2026-04-24"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 6393.1,
+  "position_value": -4134.72
+}

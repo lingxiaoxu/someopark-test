@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-07-15",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1037144.87,
+  "positions": {
+    "AIG": {
+      "shares": -1636,
+      "avg_cost": 79.62,
+      "entry_date": "2026-07-08"
+    },
+    "CFG": {
+      "shares": 1789,
+      "avg_cost": 68.56,
+      "entry_date": "2026-07-08"
+    },
+    "DUK": {
+      "shares": 685,
+      "avg_cost": 124.34,
+      "entry_date": "2026-07-15"
+    },
+    "PPL": {
+      "shares": -2334,
+      "avg_cost": 35.71,
+      "entry_date": "2026-07-15"
+    },
+    "IDXX": {
+      "shares": -152,
+      "avg_cost": 557.02,
+      "entry_date": "2026-07-15"
+    },
+    "STE": {
+      "shares": 396,
+      "avg_cost": 211.46,
+      "entry_date": "2026-07-15"
+    }
+  },
+  "cumulative_realized": 30901.75,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1039663.35,
+  "liabilities": {},
+  "lots": {
+    "AIG/CFG|s1": {
+      "ticker": "AIG",
+      "shares": -1636,
+      "cost": 79.62,
+      "open_date": "2026-07-08"
+    },
+    "AIG/CFG|s2": {
+      "ticker": "CFG",
+      "shares": 1789,
+      "cost": 68.56,
+      "open_date": "2026-07-08"
+    },
+    "DUK/PPL|s1": {
+      "ticker": "DUK",
+      "shares": 685,
+      "cost": 124.34,
+      "open_date": "2026-07-15"
+    },
+    "DUK/PPL|s2": {
+      "ticker": "PPL",
+      "shares": -2334,
+      "cost": 35.71,
+      "open_date": "2026-07-15"
+    },
+    "IDXX/STE|s1": {
+      "ticker": "IDXX",
+      "shares": -152,
+      "cost": 557.02,
+      "open_date": "2026-07-15"
+    },
+    "IDXX/STE|s2": {
+      "ticker": "STE",
+      "shares": 396,
+      "cost": 211.46,
+      "open_date": "2026-07-15"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": 9226.08,
+  "position_value": 2518.48
+}

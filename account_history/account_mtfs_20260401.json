@@ -1,0 +1,113 @@
+{
+  "as_of": "2026-04-01",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1083231.2,
+  "positions": {
+    "XOM": {
+      "shares": 1064,
+      "avg_cost": 156.12,
+      "entry_date": "2026-03-18"
+    },
+    "V": {
+      "shares": -541,
+      "avg_cost": 307.14,
+      "entry_date": "2026-03-18"
+    },
+    "AVB": {
+      "shares": -6585,
+      "avg_cost": 162.594073,
+      "entry_date": "2026-03-18"
+    },
+    "TJX": {
+      "shares": 1487,
+      "avg_cost": 154.68,
+      "entry_date": "2026-03-20"
+    },
+    "L": {
+      "shares": 1091,
+      "avg_cost": 106.4,
+      "entry_date": "2026-03-26"
+    },
+    "ETR": {
+      "shares": 3184,
+      "avg_cost": 102.86,
+      "entry_date": "2026-03-27"
+    },
+    "AIG": {
+      "shares": 4099,
+      "avg_cost": 72.95,
+      "entry_date": "2026-03-31"
+    }
+  },
+  "cumulative_realized": -6507.08,
+  "cumulative_dividends": -8374.9,
+  "cumulative_fees": 0.0,
+  "equity": 1035582.72,
+  "liabilities": {},
+  "lots": {
+    "XOM/V|s1": {
+      "ticker": "XOM",
+      "shares": 1064,
+      "cost": 156.12,
+      "open_date": "2026-03-17"
+    },
+    "XOM/V|s2": {
+      "ticker": "V",
+      "shares": -541,
+      "cost": 307.14,
+      "open_date": "2026-03-17"
+    },
+    "TJX/AVB|s1": {
+      "ticker": "TJX",
+      "shares": 1487,
+      "cost": 154.68,
+      "open_date": "2026-03-20"
+    },
+    "TJX/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -1392,
+      "cost": 165.24,
+      "open_date": "2026-03-20"
+    },
+    "L/AVB|s1": {
+      "ticker": "L",
+      "shares": 1091,
+      "cost": 106.4,
+      "open_date": "2026-03-26"
+    },
+    "L/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -1309,
+      "cost": 163.65,
+      "open_date": "2026-03-26"
+    },
+    "ETR/AVB|s1": {
+      "ticker": "ETR",
+      "shares": 3184,
+      "cost": 102.86,
+      "open_date": "2026-03-27"
+    },
+    "ETR/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -2004,
+      "cost": 163.41,
+      "open_date": "2026-03-27"
+    },
+    "AIG/AVB|s1": {
+      "ticker": "AIG",
+      "shares": 4099,
+      "cost": 72.95,
+      "open_date": "2026-03-31"
+    },
+    "AIG/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -1880,
+      "cost": 159.03,
+      "open_date": "2026-03-31"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 50464.7,
+  "position_value": -47648.48
+}

@@ -233,6 +233,61 @@ def reconstruct_equity(strategy, eod_snapshots, prices, trading_dates, verbose=T
 
 # ─── Regime weights ──────────────────────────────────────────────────────────
 
+# ── 账本口径（pairs_ledger）──────────────────────────────────────────────────
+# 实盘段起点。此日之前是回测/合成段，**永不重算**（无 3/19 前的真实记录）。
+LEDGER_LIVE_START = "2026-03-19"
+
+
+def _carry(pnl_by_date: dict, date_str: str, base: float) -> float:
+    """取该日的账本累计盈亏；缺失则**顺延最近的前一日**（而非回退 base）。"""
+    if date_str in pnl_by_date:
+        return pnl_by_date[date_str]
+    prior = [d for d in pnl_by_date if d <= date_str]
+    return pnl_by_date[max(prior)] if prior else base
+
+
+def load_ledger_cum_pnl(strategy: str) -> dict:
+    """{as_of: 账本累计盈亏} —— 已实现 + 分红 − 费用 + 未实现。
+
+    来源 `account_history/account_{strategy}_*.json`（pairs_ledger 逐日冻结快照）。
+    与 AISS/SSRS 的 `portfolio_ledger` 同构；写下即不再变，故历史稳定。
+    """
+    out = {}
+    for fp in sorted(glob.glob(f"account_history/account_{strategy}_*.json")):
+        try:
+            with open(fp) as fh:
+                d = json.load(fh)
+        except Exception:
+            continue
+        if d.get("as_of") is not None and d.get("unrealized") is not None:
+            out[d["as_of"]] = (d.get("cumulative_realized", 0.0)
+                               + d.get("cumulative_dividends", 0.0)
+                               - d.get("cumulative_fees", 0.0)
+                               + d.get("unrealized", 0.0))
+    return out
+
+
+def load_splice_values(perf_json_path: str) -> dict:
+    """回测段末值（LEDGER_LIVE_START 前最后一个交易日的 {mrpt,mtfs}_equity）。
+
+    从既有 JSON 读取而非硬编码：拼接点一旦确定就不再变，读它可自适应
+    且避免两处常量漂移。
+    """
+    try:
+        with open(perf_json_path) as f:
+            data = json.load(f)
+    except Exception:
+        return {}
+    rows = [r for r in (data if isinstance(data, list) else data.get("data", []))
+            if r.get("date", "") < LEDGER_LIVE_START]
+    if not rows:
+        return {}
+    last = max(rows, key=lambda r: r["date"])
+    return {"date": last["date"],
+            "mrpt": float(last.get("mrpt_equity") or 0),
+            "mtfs": float(last.get("mtfs_equity") or 0)}
+
+
 def load_regime_weights():
     """Load regime weights from all combined_signals files.
     Returns dict: { 'YYYY-MM-DD': { mrpt_capital, mtfs_capital, ... } }
@@ -367,6 +422,41 @@ Weight mode examples:
         print(f"\nFixed weight: MRPT={fixed_rw['mrpt_weight']:.3f} ({fixed_rw['mrpt_capital']:,.0f}), "
               f"MTFS={fixed_rw['mtfs_weight']:.3f} ({fixed_rw['mtfs_capital']:,.0f})")
 
+    # ── 净值口径选择：优先账本（pairs_ledger），无账本则回退旧公式 ──────────
+    #
+    # **为何改**（2026-08-06）：旧公式 `regime_capital × sim_equity/SIM_CAPITAL`
+    # 有两个互斥的坏结果，二选一都不对：
+    #   · 默认 `weight_mode="fixed"` 用 **--end 当天**的 regime 权重重算整条历史
+    #     → 权重每天变，**历史曲线每天被静默重述**。实测 7/31→8/05 之间
+    #     96/188 天被改写、中位 $15.5k，3/19 拼接点跳变从 +0.46% 恶化到 −2.16%。
+    #   · 改用 `--daily-weights` 则调仓变成"盈亏"：实测 7/29→7/30 sim 分文未动，
+    #     real 却跌 3.5% —— 那是资金在 MRPT/MTFS 间搬家，**不是收益**。
+    #
+    # **账本口径**（`拼接值 + 账本累计美元盈亏`）同时消除三者：
+    #   · 拼接点连续：3/19 起点 = 3/18 回测段末值，跳变精确 0.000%
+    #   · 历史稳定：account_history 逐日冻结，写下不再变
+    #   · 无资金流污染：账本不含 regime 缩放，调仓不产生假盈亏
+    #   · 不稀释：直接加美元。（**不可改用账本 equity 的收益率链接** ——
+    #     pairs 美元中性、账本分母是 $1M 现金而非名义在险资金，
+    #     实测会把 MTFS 真实的 −28% 稀释成 −13%，系统性美化表现。）
+    # LEDGER_LIVE_START 之前的回测段**完全不动**。
+    _splice = load_splice_values(PERF_JSON)
+    _pnl_m = load_ledger_cum_pnl("mrpt")
+    _pnl_t = load_ledger_cum_pnl("mtfs")
+    _use_ledger = bool(_splice) and bool(_pnl_m) and bool(_pnl_t)
+    if _use_ledger:
+        _first = min(set(_pnl_m) | set(_pnl_t))
+        _pnl_m_base = _pnl_m.get(_first, 0.0)
+        _pnl_t_base = _pnl_t.get(_first, 0.0)
+        print(f"\nEquity basis: **LEDGER** (splice {_splice['date']} "
+              f"mrpt={_splice['mrpt']:,.0f} mtfs={_splice['mtfs']:,.0f}; "
+              f"ledger from {_first}, {len(_pnl_m)}/{len(_pnl_t)} days)")
+    else:
+        _pnl_m_base = _pnl_t_base = 0.0
+        print("\n  ⚠️  [ALERT] NO PAIRS LEDGER (account_history/) — falling back to "
+              "regime-scaled sim equity. **历史曲线会随 regime 权重每日重述**，"
+              "且 3/19 拼接点不连续。请先运行 `python -m pairs_ledger.rebuild all`。")
+
     # Build real equity records
     real_records = []
     for date_str in target_dates:
@@ -378,8 +468,19 @@ Weight mode examples:
         else:
             rw = get_regime_for_date(regime_weights, date_str)
 
-        mrpt_real = rw["mrpt_capital"] * (mrpt_sim / SIM_CAPITAL)
-        mtfs_real = rw["mtfs_capital"] * (mtfs_sim / SIM_CAPITAL)
+        if _use_ledger:
+            # **账本口径**：拼接值 + 账本累计美元盈亏（相对 LEDGER_LIVE_START 归零）
+            # 账本缺该日时**顺延最后可用值**，不可回退到 base ——
+            # 回退到 base 会算出 `拼接值 + 0` = 拼接值本身（584,000/416,000），
+            # 是个灾难性的错值。而 DailySignal 的顺序是 PERF_UPDATE → risk →
+            # 账本钩子，**perf 更新跑在账本推进之前**，最新一天必然走这个分支
+            # （实测 2026-08-06 08:38 的 risk_report capital_statement 因此把
+            #  MRPT 期末 NAV 记成 584,000，实际应为 608,836.71）。
+            mrpt_real = _splice["mrpt"] + (_carry(_pnl_m, date_str, _pnl_m_base) - _pnl_m_base)
+            mtfs_real = _splice["mtfs"] + (_carry(_pnl_t, date_str, _pnl_t_base) - _pnl_t_base)
+        else:
+            mrpt_real = rw["mrpt_capital"] * (mrpt_sim / SIM_CAPITAL)
+            mtfs_real = rw["mtfs_capital"] * (mtfs_sim / SIM_CAPITAL)
 
         real_records.append({
             "date": date_str,

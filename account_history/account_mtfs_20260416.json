@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-04-16",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1002863.88,
+  "positions": {
+    "AVB": {
+      "shares": -2004,
+      "avg_cost": 163.41,
+      "entry_date": "2026-03-18"
+    },
+    "ETR": {
+      "shares": 3184,
+      "avg_cost": 102.86,
+      "entry_date": "2026-03-27"
+    }
+  },
+  "cumulative_realized": 11271.38,
+  "cumulative_dividends": -8374.9,
+  "cumulative_fees": 0.0,
+  "equity": 1030709.2,
+  "liabilities": {},
+  "lots": {
+    "ETR/AVB|s1": {
+      "ticker": "ETR",
+      "shares": 3184,
+      "cost": 102.86,
+      "open_date": "2026-03-27"
+    },
+    "ETR/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -2004,
+      "cost": 163.41,
+      "open_date": "2026-03-27"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 27812.72,
+  "position_value": 27845.32
+}

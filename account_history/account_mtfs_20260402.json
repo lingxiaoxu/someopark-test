@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-04-02",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 993581.33,
+  "positions": {
+    "XOM": {
+      "shares": 1064,
+      "avg_cost": 156.12,
+      "entry_date": "2026-03-18"
+    },
+    "V": {
+      "shares": -541,
+      "avg_cost": 307.14,
+      "entry_date": "2026-03-18"
+    },
+    "AVB": {
+      "shares": -2004,
+      "avg_cost": 163.41,
+      "entry_date": "2026-03-18"
+    },
+    "ETR": {
+      "shares": 3184,
+      "avg_cost": 102.86,
+      "entry_date": "2026-03-27"
+    },
+    "MSCI": {
+      "shares": -246,
+      "avg_cost": 536.9,
+      "entry_date": "2026-04-02"
+    },
+    "NDSN": {
+      "shares": 494,
+      "avg_cost": 267.24,
+      "entry_date": "2026-04-02"
+    }
+  },
+  "cumulative_realized": 1876.93,
+  "cumulative_dividends": -8374.9,
+  "cumulative_fees": 0.0,
+  "equity": 1030915.73,
+  "liabilities": {},
+  "lots": {
+    "XOM/V|s1": {
+      "ticker": "XOM",
+      "shares": 1064,
+      "cost": 156.12,
+      "open_date": "2026-03-17"
+    },
+    "XOM/V|s2": {
+      "ticker": "V",
+      "shares": -541,
+      "cost": 307.14,
+      "open_date": "2026-03-17"
+    },
+    "ETR/AVB|s1": {
+      "ticker": "ETR",
+      "shares": 3184,
+      "cost": 102.86,
+      "open_date": "2026-03-27"
+    },
+    "ETR/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -2004,
+      "cost": 163.41,
+      "open_date": "2026-03-27"
+    },
+    "MSCI/NDSN|s1": {
+      "ticker": "MSCI",
+      "shares": -246,
+      "cost": 536.9,
+      "open_date": "2026-04-02"
+    },
+    "MSCI/NDSN|s2": {
+      "ticker": "NDSN",
+      "shares": 494,
+      "cost": 267.24,
+      "open_date": "2026-04-02"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 37413.7,
+  "position_value": 37334.4
+}

@@ -1,0 +1,150 @@
+{
+  "as_of": "2026-08-03",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 692365.66,
+  "positions": {
+    "BBY": {
+      "shares": 1075,
+      "avg_cost": 85.37,
+      "entry_date": "2026-07-15"
+    },
+    "HCA": {
+      "shares": -241,
+      "avg_cost": 378.85,
+      "entry_date": "2026-07-15"
+    },
+    "PSX": {
+      "shares": 1092,
+      "avg_cost": 210.6,
+      "entry_date": "2026-07-30"
+    },
+    "AKAM": {
+      "shares": -64,
+      "avg_cost": 113.75,
+      "entry_date": "2026-07-30"
+    },
+    "INCY": {
+      "shares": 965,
+      "avg_cost": 122.99,
+      "entry_date": "2026-07-30"
+    },
+    "LKQ": {
+      "shares": -5253,
+      "avg_cost": 22.6,
+      "entry_date": "2026-07-30"
+    },
+    "DGX": {
+      "shares": 640,
+      "avg_cost": 233.01,
+      "entry_date": "2026-07-31"
+    },
+    "NKE": {
+      "shares": -3574,
+      "avg_cost": 41.71,
+      "entry_date": "2026-07-31"
+    },
+    "WTW": {
+      "shares": 443,
+      "avg_cost": 335.92,
+      "entry_date": "2026-07-31"
+    },
+    "MLM": {
+      "shares": -284,
+      "avg_cost": 525.14,
+      "entry_date": "2026-07-31"
+    },
+    "PRU": {
+      "shares": 1221,
+      "avg_cost": 122.08,
+      "entry_date": "2026-07-31"
+    },
+    "TXT": {
+      "shares": -1748,
+      "avg_cost": 85.26,
+      "entry_date": "2026-07-31"
+    }
+  },
+  "cumulative_realized": -76157.72,
+  "cumulative_dividends": -8591.11,
+  "cumulative_fees": 0.0,
+  "equity": 887797.87,
+  "liabilities": {},
+  "lots": {
+    "BBY/HCA|s1": {
+      "ticker": "BBY",
+      "shares": 1075,
+      "cost": 85.37,
+      "open_date": "2026-07-15"
+    },
+    "BBY/HCA|s2": {
+      "ticker": "HCA",
+      "shares": -241,
+      "cost": 378.85,
+      "open_date": "2026-07-15"
+    },
+    "PSX/AKAM|s1": {
+      "ticker": "PSX",
+      "shares": 1092,
+      "cost": 210.6,
+      "open_date": "2026-07-30"
+    },
+    "PSX/AKAM|s2": {
+      "ticker": "AKAM",
+      "shares": -64,
+      "cost": 113.75,
+      "open_date": "2026-07-30"
+    },
+    "INCY/LKQ|s1": {
+      "ticker": "INCY",
+      "shares": 965,
+      "cost": 122.99,
+      "open_date": "2026-07-30"
+    },
+    "INCY/LKQ|s2": {
+      "ticker": "LKQ",
+      "shares": -5253,
+      "cost": 22.6,
+      "open_date": "2026-07-30"
+    },
+    "DGX/NKE|s1": {
+      "ticker": "DGX",
+      "shares": 640,
+      "cost": 233.01,
+      "open_date": "2026-07-31"
+    },
+    "DGX/NKE|s2": {
+      "ticker": "NKE",
+      "shares": -3574,
+      "cost": 41.71,
+      "open_date": "2026-07-31"
+    },
+    "WTW/MLM|s1": {
+      "ticker": "WTW",
+      "shares": 443,
+      "cost": 335.92,
+      "open_date": "2026-07-31"
+    },
+    "WTW/MLM|s2": {
+      "ticker": "MLM",
+      "shares": -284,
+      "cost": 525.14,
+      "open_date": "2026-07-31"
+    },
+    "PRU/TXT|s1": {
+      "ticker": "PRU",
+      "shares": 1221,
+      "cost": 122.08,
+      "open_date": "2026-07-31"
+    },
+    "PRU/TXT|s2": {
+      "ticker": "TXT",
+      "shares": -1748,
+      "cost": 85.26,
+      "open_date": "2026-07-31"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": -27453.3,
+  "position_value": 195432.21
+}

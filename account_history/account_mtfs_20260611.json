@@ -1,0 +1,179 @@
+{
+  "as_of": "2026-06-11",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 508083.23,
+  "positions": {
+    "MKTX": {
+      "shares": -422,
+      "avg_cost": 130.04,
+      "entry_date": "2026-05-21"
+    },
+    "KLAC": {
+      "shares": 1140,
+      "avg_cost": 206.415368,
+      "entry_date": "2026-05-27"
+    },
+    "REGN": {
+      "shares": -23,
+      "avg_cost": 634.62,
+      "entry_date": "2026-05-27"
+    },
+    "NUE": {
+      "shares": 329,
+      "avg_cost": 250.0,
+      "entry_date": "2026-06-01"
+    },
+    "STLD": {
+      "shares": 1014,
+      "avg_cost": 267.694872,
+      "entry_date": "2026-06-01"
+    },
+    "UHS": {
+      "shares": -358,
+      "avg_cost": 144.97,
+      "entry_date": "2026-06-08"
+    },
+    "FMC": {
+      "shares": -6843,
+      "avg_cost": 11.1,
+      "entry_date": "2026-06-09"
+    },
+    "TRMB": {
+      "shares": -2438,
+      "avg_cost": 51.176128,
+      "entry_date": "2026-06-10"
+    },
+    "AMAT": {
+      "shares": 309,
+      "avg_cost": 552.64,
+      "entry_date": "2026-06-11"
+    },
+    "LRCX": {
+      "shares": 269,
+      "avg_cost": 362.52,
+      "entry_date": "2026-06-11"
+    },
+    "NRG": {
+      "shares": -395,
+      "avg_cost": 123.7,
+      "entry_date": "2026-06-11"
+    },
+    "ODFL": {
+      "shares": 394,
+      "avg_cost": 247.76,
+      "entry_date": "2026-06-11"
+    },
+    "PLTR": {
+      "shares": -372,
+      "avg_cost": 131.08,
+      "entry_date": "2026-06-11"
+    }
+  },
+  "cumulative_realized": 52316.8,
+  "cumulative_dividends": -9046.73,
+  "cumulative_fees": 0.0,
+  "equity": 1106126.0,
+  "liabilities": {},
+  "lots": {
+    "KLAC/REGN|s1": {
+      "ticker": "KLAC",
+      "shares": 670,
+      "cost": 201.139,
+      "open_date": "2026-05-27"
+    },
+    "KLAC/REGN|s2": {
+      "ticker": "REGN",
+      "shares": -23,
+      "cost": 634.62,
+      "open_date": "2026-05-27"
+    },
+    "NUE/MKTX|s1": {
+      "ticker": "NUE",
+      "shares": 329,
+      "cost": 250.0,
+      "open_date": "2026-06-01"
+    },
+    "NUE/MKTX|s2": {
+      "ticker": "MKTX",
+      "shares": -422,
+      "cost": 130.04,
+      "open_date": "2026-06-01"
+    },
+    "STLD/UHS|s1": {
+      "ticker": "STLD",
+      "shares": 386,
+      "cost": 268.5,
+      "open_date": "2026-06-08"
+    },
+    "STLD/UHS|s2": {
+      "ticker": "UHS",
+      "shares": -358,
+      "cost": 144.97,
+      "open_date": "2026-06-08"
+    },
+    "STLD/FMC|s1": {
+      "ticker": "STLD",
+      "shares": 628,
+      "cost": 267.2,
+      "open_date": "2026-06-09"
+    },
+    "STLD/FMC|s2": {
+      "ticker": "FMC",
+      "shares": -6843,
+      "cost": 11.1,
+      "open_date": "2026-06-09"
+    },
+    "KLAC/TRMB|s1": {
+      "ticker": "KLAC",
+      "shares": 470,
+      "cost": 213.937,
+      "open_date": "2026-06-10"
+    },
+    "KLAC/TRMB|s2": {
+      "ticker": "TRMB",
+      "shares": -972,
+      "cost": 52.95,
+      "open_date": "2026-06-10"
+    },
+    "AMAT/TRMB|s1": {
+      "ticker": "AMAT",
+      "shares": 309,
+      "cost": 552.64,
+      "open_date": "2026-06-12"
+    },
+    "AMAT/TRMB|s2": {
+      "ticker": "TRMB",
+      "shares": -1466,
+      "cost": 50.0,
+      "open_date": "2026-06-12"
+    },
+    "LRCX/NRG|s1": {
+      "ticker": "LRCX",
+      "shares": 269,
+      "cost": 362.52,
+      "open_date": "2026-06-12"
+    },
+    "LRCX/NRG|s2": {
+      "ticker": "NRG",
+      "shares": -395,
+      "cost": 123.7,
+      "open_date": "2026-06-12"
+    },
+    "ODFL/PLTR|s1": {
+      "ticker": "ODFL",
+      "shares": 394,
+      "cost": 247.76,
+      "open_date": "2026-06-12"
+    },
+    "ODFL/PLTR|s2": {
+      "ticker": "PLTR",
+      "shares": -372,
+      "cost": 131.08,
+      "open_date": "2026-06-12"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": 62855.93,
+  "position_value": 598042.77
+}

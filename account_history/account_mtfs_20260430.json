@@ -1,0 +1,140 @@
+{
+  "as_of": "2026-04-30",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1382424.15,
+  "positions": {
+    "AFL": {
+      "shares": 1481,
+      "avg_cost": 115.97,
+      "entry_date": "2026-04-22"
+    },
+    "ICE": {
+      "shares": -1052,
+      "avg_cost": 158.63,
+      "entry_date": "2026-04-22"
+    },
+    "L": {
+      "shares": 782,
+      "avg_cost": 110.58,
+      "entry_date": "2026-04-27"
+    },
+    "AWK": {
+      "shares": -653,
+      "avg_cost": 132.42,
+      "entry_date": "2026-04-27"
+    },
+    "STT": {
+      "shares": 574,
+      "avg_cost": 150.74,
+      "entry_date": "2026-04-27"
+    },
+    "C": {
+      "shares": -675,
+      "avg_cost": 127.98,
+      "entry_date": "2026-04-27"
+    },
+    "CSX": {
+      "shares": 2216,
+      "avg_cost": 44.68,
+      "entry_date": "2026-04-30"
+    },
+    "AIG": {
+      "shares": -10719,
+      "avg_cost": 73.79,
+      "entry_date": "2026-04-30"
+    },
+    "WELL": {
+      "shares": 857,
+      "avg_cost": 212.09,
+      "entry_date": "2026-04-30"
+    },
+    "PEP": {
+      "shares": 956,
+      "avg_cost": 155.29,
+      "entry_date": "2026-04-30"
+    }
+  },
+  "cumulative_realized": 33715.6,
+  "cumulative_dividends": -8002.84,
+  "cumulative_fees": 0.0,
+  "equity": 1026673.66,
+  "liabilities": {},
+  "lots": {
+    "AFL/ICE|s1": {
+      "ticker": "AFL",
+      "shares": 1481,
+      "cost": 115.97,
+      "open_date": "2026-04-22"
+    },
+    "AFL/ICE|s2": {
+      "ticker": "ICE",
+      "shares": -1052,
+      "cost": 158.63,
+      "open_date": "2026-04-22"
+    },
+    "L/AWK|s1": {
+      "ticker": "L",
+      "shares": 782,
+      "cost": 110.58,
+      "open_date": "2026-04-27"
+    },
+    "L/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -653,
+      "cost": 132.42,
+      "open_date": "2026-04-27"
+    },
+    "STT/C|s1": {
+      "ticker": "STT",
+      "shares": 574,
+      "cost": 150.74,
+      "open_date": "2026-04-27"
+    },
+    "STT/C|s2": {
+      "ticker": "C",
+      "shares": -675,
+      "cost": 127.98,
+      "open_date": "2026-04-27"
+    },
+    "CSX/AIG|s1": {
+      "ticker": "CSX",
+      "shares": 2216,
+      "cost": 44.68,
+      "open_date": "2026-04-30"
+    },
+    "CSX/AIG|s2": {
+      "ticker": "AIG",
+      "shares": -3573,
+      "cost": 73.79,
+      "open_date": "2026-04-30"
+    },
+    "WELL/AIG|s1": {
+      "ticker": "WELL",
+      "shares": 857,
+      "cost": 212.09,
+      "open_date": "2026-04-30"
+    },
+    "WELL/AIG|s2": {
+      "ticker": "AIG",
+      "shares": -3573,
+      "cost": 73.79,
+      "open_date": "2026-04-30"
+    },
+    "PEP/AIG|s1": {
+      "ticker": "PEP",
+      "shares": 956,
+      "cost": 155.29,
+      "open_date": "2026-04-30"
+    },
+    "PEP/AIG|s2": {
+      "ticker": "AIG",
+      "shares": -3573,
+      "cost": 73.79,
+      "open_date": "2026-04-30"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 960.9,
+  "position_value": -355750.49
+}

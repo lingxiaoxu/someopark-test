@@ -1,0 +1,62 @@
+{
+  "as_of": "2026-05-08",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1067125.31,
+  "positions": {
+    "CHD": {
+      "shares": 1514,
+      "avg_cost": 93.88,
+      "entry_date": "2026-05-08"
+    },
+    "HON": {
+      "shares": -661,
+      "avg_cost": 216.07,
+      "entry_date": "2026-05-08"
+    },
+    "CINF": {
+      "shares": -948,
+      "avg_cost": 162.05,
+      "entry_date": "2026-05-08"
+    },
+    "FMC": {
+      "shares": 9603,
+      "avg_cost": 13.68,
+      "entry_date": "2026-05-08"
+    }
+  },
+  "cumulative_realized": 44160.76,
+  "cumulative_dividends": 22.24,
+  "cumulative_fees": 0.0,
+  "equity": 1043299.35,
+  "liabilities": {},
+  "lots": {
+    "CHD/HON|s1": {
+      "ticker": "CHD",
+      "shares": 1514,
+      "cost": 93.88,
+      "open_date": "2026-05-08"
+    },
+    "CHD/HON|s2": {
+      "ticker": "HON",
+      "shares": -661,
+      "cost": 216.07,
+      "open_date": "2026-05-08"
+    },
+    "CINF/FMC|s1": {
+      "ticker": "CINF",
+      "shares": -948,
+      "cost": 162.05,
+      "open_date": "2026-05-08"
+    },
+    "CINF/FMC|s2": {
+      "ticker": "FMC",
+      "shares": 9603,
+      "cost": 13.68,
+      "open_date": "2026-05-08"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -883.65,
+  "position_value": -23825.96
+}

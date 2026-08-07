@@ -1,0 +1,118 @@
+{
+  "as_of": "2026-03-24",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 995333.31,
+  "positions": {
+    "XOM": {
+      "shares": 1064,
+      "avg_cost": 156.12,
+      "entry_date": "2026-03-18"
+    },
+    "V": {
+      "shares": -541,
+      "avg_cost": 307.14,
+      "entry_date": "2026-03-18"
+    },
+    "ETR": {
+      "shares": 1151,
+      "avg_cost": 106.17,
+      "entry_date": "2026-03-18"
+    },
+    "AVB": {
+      "shares": -2758,
+      "avg_cost": 166.464104,
+      "entry_date": "2026-03-18"
+    },
+    "EVRG": {
+      "shares": 1313,
+      "avg_cost": 81.54,
+      "entry_date": "2026-03-19"
+    },
+    "TJX": {
+      "shares": 1487,
+      "avg_cost": 154.68,
+      "entry_date": "2026-03-20"
+    },
+    "ALL": {
+      "shares": 514,
+      "avg_cost": 207.76,
+      "entry_date": "2026-03-24"
+    },
+    "BK": {
+      "shares": -918,
+      "avg_cost": 116.36,
+      "entry_date": "2026-03-24"
+    }
+  },
+  "cumulative_realized": -4582.74,
+  "cumulative_dividends": 0.0,
+  "cumulative_fees": 0.0,
+  "equity": 1012649.8,
+  "liabilities": {},
+  "lots": {
+    "XOM/V|s1": {
+      "ticker": "XOM",
+      "shares": 1064,
+      "cost": 156.12,
+      "open_date": "2026-03-17"
+    },
+    "XOM/V|s2": {
+      "ticker": "V",
+      "shares": -541,
+      "cost": 307.14,
+      "open_date": "2026-03-17"
+    },
+    "ETR/AVB|s1": {
+      "ticker": "ETR",
+      "shares": 1151,
+      "cost": 106.17,
+      "open_date": "2026-03-18"
+    },
+    "ETR/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -722,
+      "cost": 169.14,
+      "open_date": "2026-03-18"
+    },
+    "EVRG/AVB|s1": {
+      "ticker": "EVRG",
+      "shares": 1313,
+      "cost": 81.54,
+      "open_date": "2026-03-19"
+    },
+    "EVRG/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -644,
+      "cost": 166.11,
+      "open_date": "2026-03-19"
+    },
+    "TJX/AVB|s1": {
+      "ticker": "TJX",
+      "shares": 1487,
+      "cost": 154.68,
+      "open_date": "2026-03-20"
+    },
+    "TJX/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -1392,
+      "cost": 165.24,
+      "open_date": "2026-03-20"
+    },
+    "ALL/BK|s1": {
+      "ticker": "ALL",
+      "shares": 514,
+      "cost": 207.76,
+      "open_date": "2026-03-24"
+    },
+    "ALL/BK|s2": {
+      "ticker": "BK",
+      "shares": -918,
+      "cost": 116.36,
+      "open_date": "2026-03-24"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 17232.54,
+  "position_value": 17316.49
+}

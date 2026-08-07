@@ -35,6 +35,10 @@ from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+
+# monitor 的 unrealized_pnl 自此日起为原始美元（不含 regime scale）——
+# DailySignal.py:2392 "MONITOR Step 1: 不再 ×scale"。此前的值含 scale，需除回。
+MONITOR_RAW_USD_SINCE = '2026-07-03'
 INV_DIR      = os.path.join(BASE_DIR, 'inventory_history')
 SIG_DIR      = os.path.join(BASE_DIR, 'trading_signals')
 CASH_CAP     = 1_000_000.0  # 最大现金（自有上限）
@@ -428,10 +432,22 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
         # 口径统一：monitor 事件的 pnl 带当日 regime scale（MONITOR 缺陷 3），
         # 而 strategy_performance 的 equity 走无 scale 的 inventory MTM。
         # 读取时除以当日 scale 还原 raw 美元，使汇总与 NAV 真值同口径。
+        # **2026-08-06 修复**：DailySignal 自 2026-07-03 起 monitor 的 uPnL
+        # 已是原始美元（见 DailySignal.py "MONITOR Step 1: 不再 ×scale"），
+        # 此后再除以 scale 即**多除一次**。实测 7/03 以来 22 个交易日 scale
+        # 无一为 1（MRPT 1.04~1.19、MTFS 0.80~0.96），令 MTFS 已实现亏损
+        # 虚增 $34,322（+16.9%）、MRPT 少计 $213（−3.7%）。
+        # 佐证：抽 6 笔 7/03 后平仓，用 inventory 原始 shares×(收盘−open_price)
+        # 独立复算**全部精确复现（差 ±0.00）**，证明监控值确为原始美元。
+        # 本报告每次运行都从全部 signal 文件重算，故此修复自动更正整段历史，
+        # 不产生新旧口径接缝。
         _sf = {}
         for strat in ('mrpt', 'mtfs'):
-            v = data.get(strat, {}).get('scale_factor')
-            _sf[strat] = v if v and v > 0 else 1.0
+            if signal_date_str >= MONITOR_RAW_USD_SINCE:
+                _sf[strat] = 1.0
+            else:
+                v = data.get(strat, {}).get('scale_factor')
+                _sf[strat] = v if v and v > 0 else 1.0
         # MONITOR §8.2: collect OPEN dates — a later CLOSE is a NEW lifecycle
         # only if an OPEN happened on/after the previous close; otherwise it is
         # a repeated record of the same close (fake-close re-emissions inflated
@@ -498,6 +514,28 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
                 }
                 all_ev.setdefault(pair, []).append(ev)
 
+    # **补齐 OPEN 来源：inventory 的 open_date**（2026-08-06）
+    # §8.2 去重要求两次 CLOSE 之间必须有 OPEN，但 `open_dates` 原本只从
+    # `active_signals` 收集。实测有大量重开只体现在 inventory 的 `open_date`
+    # 变化上、未进 active_signals（CL/WST 在 3/20–4/29 之间重开 7 次,
+    # active_signals 里几乎没有），导致去重把**合法的平仓**当成重复记录丢掉,
+    # 使 all_lifecycle_total 少算 —— 实测 CL/WST 少算 +1,697、AWK/FOX 少算 +563。
+    # inventory 的 open_date 是重开的权威记录,并入后 §8.2 的原意（区分"真重开"
+    # 与"同一生命周期的重复记录"）才成立。
+    try:
+        for _invf in sorted(glob.glob(os.path.join(
+                BASE_DIR, 'inventory_history', 'inventory_*.json'))):
+            try:
+                with open(_invf) as _fh:
+                    _ivd = json.load(_fh)
+            except Exception:
+                continue
+            for _pk, _pv in (_ivd.get('pairs') or {}).items():
+                if isinstance(_pv, dict) and _pv.get('direction') and _pv.get('open_date'):
+                    open_dates.setdefault(_pk, set()).add(str(_pv['open_date'])[:10])
+    except Exception as _e:  # noqa: BLE001 — 补充来源失败不阻断
+        print(f'  WARN inventory open_date 并入失败(非致命): {_e}')
+
     # MONITOR §8.2: lifecycle dedup — between two CLOSEs of a pair there must be
     # an OPEN (same-day reopen counts); otherwise the later close is a repeated
     # record of the SAME lifecycle (e.g. HAS/PFE 6/16 zombie retro-close,
@@ -521,7 +559,14 @@ def load_close_events(start_ts, end_ts) -> dict[str, dict]:
         for ev in evs:
             by_sig.setdefault(ev.get('signal_date', ''), []).append(ev)
         for sd, sd_evs in by_sig.items():
-            best = max(sd_evs, key=lambda e: e['_ts'])
+            # **同日多条 CLOSE：优先取非零那条**（2026-08-06 修）
+            # 原实现只按 `_ts` 取最晚，若最晚的是一条 pnl=0 的重发,
+            # 当天真实的平仓盈亏就被丢掉。实测 CL/WST 2026-04-08 同时存在
+            # −1,903.81 与 0.0（取到 0.0 → all_lifecycle_total 少算 +1,697）,
+            # AWK/FOX 2026-03-20 同时存在 +610.58 与 0.0（少算 +563）。
+            # 0.0 的重发不携带信息;非零者之间仍按最晚时间戳取。
+            _nz = [e for e in sd_evs if abs(e.get('pnl') or 0) > 1e-9]
+            best = max(_nz or sd_evs, key=lambda e: e['_ts'])
             _best_close[(pair, sd)] = best.get('pnl') or 0
 
     # Now apply hold-filtering for the summary table (latest close per pair)
@@ -1055,6 +1100,56 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices,
     }
 
 
+def load_ledger_totals(start: str, end: str) -> dict:
+    """区间内账本口径的盈亏汇总 {strat: {realized, dividends, fees, unrealized, total}}。
+
+    源：`account_history/account_{strat}_*.json`（pairs_ledger 逐日冻结快照）。
+    取 end（含）与 start 前一日的差 —— 与 pair 级汇总同区间可比。
+
+    **为何要它**：本报告的 pair 表是**策略归因**（按每个 pair 自己的开仓价），
+    而账本按**票的净敞口**记账（券商真实持仓）。同一票常同时是多个 pair 的腿
+    （实测 AVB 曾同时空在 6 个 pair、2026-08-05 起 MLM/NKE/PANW 各跨两个 pair），
+    两者必然不同。底线数字应锚定账本；pair 表保留作归因，差额显式列出而非隐没。
+    """
+    out = {}
+    for strat in ('mrpt', 'mtfs'):
+        rows = {}
+        for fp in sorted(glob.glob(f'account_history/account_{strat}_*.json')):
+            try:
+                with open(fp) as fh:
+                    d = json.load(fh)
+            except Exception:
+                continue
+            if d.get('as_of'):
+                rows[d['as_of']] = d
+        if not rows:
+            continue
+        days = sorted(rows)
+        ends = [d for d in days if d <= end]
+        pres = [d for d in days if d < start]
+        if not ends:
+            continue
+        a1 = rows[ends[-1]]
+        a0 = rows[pres[-1]] if pres else None
+
+        def _f(a, k):
+            return float(a.get(k, 0) or 0) if a else 0.0
+        r = _f(a1, 'cumulative_realized') - _f(a0, 'cumulative_realized')
+        dv = _f(a1, 'cumulative_dividends') - _f(a0, 'cumulative_dividends')
+        fe = _f(a1, 'cumulative_fees') - _f(a0, 'cumulative_fees')
+        u1 = _f(a1, 'unrealized')
+        u0 = _f(a0, 'unrealized')
+        out[strat] = {
+            'realized': round(r, 2), 'dividends': round(dv, 2), 'fees': round(fe, 2),
+            'unrealized_end': round(u1, 2), 'unrealized_chg': round(u1 - u0, 2),
+            'total': round(r + dv - fe + (u1 - u0), 2),
+            'as_of': a1['as_of'], 'baseline': (a0 or {}).get('as_of'),
+        }
+    if out:
+        out['grand'] = round(sum(v['total'] for k, v in out.items() if k != 'grand'), 2)
+    return out
+
+
 def build_report_data(start: str, end: str) -> dict:
     """Collect all data needed for the PDF."""
     start_ts = pd.Timestamp(start)
@@ -1385,6 +1480,29 @@ def build_report_data(start: str, end: str) -> dict:
     totals['ss_open']   = sum(totals[s]['ss_open']   for s in ('mrpt', 'mtfs'))
     totals['ss_total']  = totals['ss_closed'] + totals['ss_open']
 
+    # ── 账本口径锚定（2026-08-06）──────────────────────────────────────────
+    # pair 表是策略归因；底线以账本为准。差额 = 归因粒度差（按票净敞口 vs 按 pair），
+    # 显式列出，不隐没在合计里。
+    _lt = load_ledger_totals(start, end)
+    if _lt:
+        totals['ledger'] = _lt
+        totals['ledger_grand'] = _lt.get('grand')
+        # 差额拆成**两个性质不同**的部分，不可混为一谈：
+        #   · 分红   —— pair 表根本没有分红这个概念，是**缺失的行项目**
+        #   · 归因差 —— 按票净敞口 vs 按 pair 归因，是**定义差**（两者都对）
+        totals['recon_div'] = {s: round(_lt[s]['dividends'], 2)
+                               for s in ('mrpt', 'mtfs') if s in _lt}
+        totals['recon_div']['grand'] = round(
+            sum(v for k, v in totals['recon_div'].items() if k != 'grand'), 2)
+        totals['attrib_diff'] = {
+            s: round((totals[s]['subtotal'] or 0)
+                     - ((_lt[s]['total'] or 0) - (_lt[s]['dividends'] or 0)), 2)
+            for s in ('mrpt', 'mtfs') if s in _lt
+        }
+        totals['attrib_diff']['grand'] = round(
+            (totals['grand'] or 0)
+            - ((_lt.get('grand') or 0) - (totals['recon_div']['grand'] or 0)), 2)
+
     # Leverage metrics (denominator = equity capital)
     # Computed from inventory snapshots across all dates in range
     lev_rows = _compute_leverage(start_ts, end_ts)
@@ -1589,6 +1707,76 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
     ]))
     story.append(t_sum)
     story.append(Spacer(1, 6))
+
+    # ── 账本对账块（2026-08-06）: 底线锚定 pairs_ledger ────────────────────
+    # 上表按 pair 归因（每个 pair 用自己的开仓价）；账本按**票的净敞口**记账
+    # （券商真实持仓）。同一票常同时是多个 pair 的腿，两者必然不同。
+    # 显式列出差额，避免读者以为哪一个是"错的"。
+    _lg = totals.get('ledger')
+    if _lg:
+        _ad = totals.get('attrib_diff', {})
+        _dv = totals.get('recon_div', {})
+        rec_data = [[H('口径'), H('pair 级归因', 'RIGHT'), H('归因差', 'RIGHT'),
+                     H('分红', 'RIGHT'), H('账本（权威）', 'RIGHT')]]
+        for strat in ('mrpt', 'mtfs'):
+            if strat not in _lg:
+                continue
+            rec_data.append([
+                C(strat.upper()),
+                Paragraph(money(totals[strat]['subtotal']),
+                          S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+                Paragraph(money(-(_ad.get(strat) or 0)),
+                          S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+                Paragraph(money(_dv.get(strat)),
+                          S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+                Paragraph(money(_lg[strat]['total']),
+                          S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            ])
+        rec_data.append([
+            H('合计'),
+            Paragraph(money(totals['grand']),
+                      S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(money(-(_ad.get('grand') or 0)),
+                      S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(money(_dv.get('grand')),
+                      S('_', fontSize=7.5, leading=10.5, alignment=TA_RIGHT)),
+            Paragraph(money(_lg.get('grand')),
+                      S('_g', fontSize=8.5, leading=11.5, alignment=TA_RIGHT)),
+        ])
+        t_rec = Table(rec_data, colWidths=[2.6*cm, 3.6*cm, 3.4*cm, 2.8*cm, 3.6*cm])
+        t_rec.setStyle(TableStyle([
+            ('FONTNAME', (0,0), (-1,-1), FONT),
+            ('FONTSIZE', (0,0), (-1,-1), 8),
+            ('LEADING',  (0,0), (-1,-1), 11),
+            ('BACKGROUND', (0,0), (-1,0), C_SUBHDR),
+            ('TEXTCOLOR',  (0,0), (-1,0), colors.white),
+            ('BACKGROUND', (0,-1),(-1,-1), colors.HexColor('#1a1a2e')),
+            ('TEXTCOLOR',  (0,-1),(-1,-1), C_GOLD),
+            ('ALIGN', (1,0), (-1,-1), 'RIGHT'),
+            ('ALIGN', (0,0), (0,-1), 'LEFT'),
+            ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+            ('TOPPADDING', (0,0), (-1,-1), 5),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 5),
+            ('LEFTPADDING', (0,0), (-1,-1), 7),
+            ('RIGHTPADDING', (0,0), (-1,-1), 7),
+            ('GRID', (0,0), (-1,-1), 0.35, C_BORDER),
+            ('LINEABOVE', (0,-1),(-1,-1), 1.2, C_GOLD),
+            ('LINEBELOW', (0,0), (-1,0), 0.9, C_GOLD),
+        ]))
+        story.append(t_rec)
+        _m, _t = _lg.get('mrpt', {}), _lg.get('mtfs', {})
+        story.append(Paragraph(
+            f"账本口径明细（截至 {_lg.get('mrpt', _lg.get('mtfs', {})).get('as_of', '')}）："
+            f"已实现 {money(_m.get('realized', 0) + _t.get('realized', 0), color=False)}，"
+            f"分红 {money(_m.get('dividends', 0) + _t.get('dividends', 0), color=False)}，"
+            f"未实现变动 {money(_m.get('unrealized_chg', 0) + _t.get('unrealized_chg', 0), color=False)}。"
+            f"　<b>三列相加 = 账本</b>：pair 级归因 + 归因差 + 分红。"
+            f"分红是 pair 表<b>缺失的行项目</b>（pair 视角无此概念）；归因差是<b>定义差</b>"
+            f"—— 账本按票的净敞口记账（券商真实持仓），同一票若在一个 pair 做多、"
+            f"另一个 pair 做空，账本记净额而 pair 视角两边都计。两者都对，"
+            f"底线以账本为准。",
+            S('_lrec', fontSize=6.8, leading=9.5, textColor=C_GRAY)))
+        story.append(Spacer(1, 6))
 
     # PnL metrics row
     ss_total  = totals.get('ss_total') or 0

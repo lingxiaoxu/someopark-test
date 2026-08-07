@@ -1,0 +1,162 @@
+{
+  "as_of": "2026-03-23",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1001466.6,
+  "positions": {
+    "ESS": {
+      "shares": -130,
+      "avg_cost": 255.13,
+      "entry_date": "2026-03-18"
+    },
+    "EXPD": {
+      "shares": 227,
+      "avg_cost": 146.86,
+      "entry_date": "2026-03-18"
+    },
+    "MCHP": {
+      "shares": -1798,
+      "avg_cost": 62.82,
+      "entry_date": "2026-03-18"
+    },
+    "D": {
+      "shares": 1789,
+      "avg_cost": 63.14,
+      "entry_date": "2026-03-18"
+    },
+    "XOM": {
+      "shares": 1064,
+      "avg_cost": 156.12,
+      "entry_date": "2026-03-18"
+    },
+    "V": {
+      "shares": -541,
+      "avg_cost": 307.14,
+      "entry_date": "2026-03-18"
+    },
+    "ETR": {
+      "shares": 1151,
+      "avg_cost": 106.17,
+      "entry_date": "2026-03-18"
+    },
+    "AVB": {
+      "shares": -2758,
+      "avg_cost": 166.464104,
+      "entry_date": "2026-03-18"
+    },
+    "RSG": {
+      "shares": -799,
+      "avg_cost": 224.77,
+      "entry_date": "2026-03-18"
+    },
+    "AFL": {
+      "shares": 1628,
+      "avg_cost": 109.52,
+      "entry_date": "2026-03-18"
+    },
+    "EVRG": {
+      "shares": 1313,
+      "avg_cost": 81.54,
+      "entry_date": "2026-03-19"
+    },
+    "TJX": {
+      "shares": 1487,
+      "avg_cost": 154.68,
+      "entry_date": "2026-03-20"
+    }
+  },
+  "cumulative_realized": 465.14,
+  "cumulative_dividends": 0.0,
+  "cumulative_fees": 0.0,
+  "equity": 1003692.16,
+  "liabilities": {},
+  "lots": {
+    "ESS/EXPD|s1": {
+      "ticker": "ESS",
+      "shares": -130,
+      "cost": 255.13,
+      "open_date": "2026-03-06"
+    },
+    "ESS/EXPD|s2": {
+      "ticker": "EXPD",
+      "shares": 227,
+      "cost": 146.86,
+      "open_date": "2026-03-06"
+    },
+    "MCHP/D|s1": {
+      "ticker": "MCHP",
+      "shares": -1798,
+      "cost": 62.82,
+      "open_date": "2026-03-13"
+    },
+    "MCHP/D|s2": {
+      "ticker": "D",
+      "shares": 1789,
+      "cost": 63.14,
+      "open_date": "2026-03-13"
+    },
+    "XOM/V|s1": {
+      "ticker": "XOM",
+      "shares": 1064,
+      "cost": 156.12,
+      "open_date": "2026-03-17"
+    },
+    "XOM/V|s2": {
+      "ticker": "V",
+      "shares": -541,
+      "cost": 307.14,
+      "open_date": "2026-03-17"
+    },
+    "ETR/AVB|s1": {
+      "ticker": "ETR",
+      "shares": 1151,
+      "cost": 106.17,
+      "open_date": "2026-03-18"
+    },
+    "ETR/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -722,
+      "cost": 169.14,
+      "open_date": "2026-03-18"
+    },
+    "RSG/AFL|s1": {
+      "ticker": "RSG",
+      "shares": -799,
+      "cost": 224.77,
+      "open_date": "2026-03-18"
+    },
+    "RSG/AFL|s2": {
+      "ticker": "AFL",
+      "shares": 1628,
+      "cost": 109.52,
+      "open_date": "2026-03-18"
+    },
+    "EVRG/AVB|s1": {
+      "ticker": "EVRG",
+      "shares": 1313,
+      "cost": 81.54,
+      "open_date": "2026-03-19"
+    },
+    "EVRG/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -644,
+      "cost": 166.11,
+      "open_date": "2026-03-19"
+    },
+    "TJX/AVB|s1": {
+      "ticker": "TJX",
+      "shares": 1487,
+      "cost": 154.68,
+      "open_date": "2026-03-20"
+    },
+    "TJX/AVB|s2": {
+      "ticker": "AVB",
+      "shares": -1392,
+      "cost": 165.24,
+      "open_date": "2026-03-20"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 3227.02,
+  "position_value": 2225.56
+}

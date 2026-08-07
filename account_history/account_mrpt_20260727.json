@@ -1,0 +1,84 @@
+{
+  "as_of": "2026-07-27",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1040328.58,
+  "positions": {
+    "DUK": {
+      "shares": -568,
+      "avg_cost": 130.52,
+      "entry_date": "2026-07-24"
+    },
+    "PPL": {
+      "shares": 1951,
+      "avg_cost": 36.22,
+      "entry_date": "2026-07-24"
+    },
+    "AMD": {
+      "shares": 138,
+      "avg_cost": 521.95,
+      "entry_date": "2026-07-24"
+    },
+    "NVDA": {
+      "shares": -352,
+      "avg_cost": 206.84,
+      "entry_date": "2026-07-24"
+    },
+    "ACGL": {
+      "shares": -779,
+      "avg_cost": 103.88,
+      "entry_date": "2026-07-27"
+    },
+    "HIG": {
+      "shares": 563,
+      "avg_cost": 140.14,
+      "entry_date": "2026-07-27"
+    }
+  },
+  "cumulative_realized": 34520.64,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1034516.53,
+  "liabilities": {},
+  "lots": {
+    "DUK/PPL|s1": {
+      "ticker": "DUK",
+      "shares": -568,
+      "cost": 130.52,
+      "open_date": "2026-07-24"
+    },
+    "DUK/PPL|s2": {
+      "ticker": "PPL",
+      "shares": 1951,
+      "cost": 36.22,
+      "open_date": "2026-07-24"
+    },
+    "AMD/NVDA|s1": {
+      "ticker": "AMD",
+      "shares": 138,
+      "cost": 521.95,
+      "open_date": "2026-07-24"
+    },
+    "AMD/NVDA|s2": {
+      "ticker": "NVDA",
+      "shares": -352,
+      "cost": 206.84,
+      "open_date": "2026-07-24"
+    },
+    "ACGL/HIG|s1": {
+      "ticker": "ACGL",
+      "shares": -779,
+      "cost": 103.88,
+      "open_date": "2026-07-27"
+    },
+    "ACGL/HIG|s2": {
+      "ticker": "HIG",
+      "shares": 563,
+      "cost": 140.14,
+      "open_date": "2026-07-27"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": 460.37,
+  "position_value": -5812.05
+}

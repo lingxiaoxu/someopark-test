@@ -1,0 +1,335 @@
+{
+  "as_of": "2026-05-22",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 477833.27,
+  "positions": {
+    "AWK": {
+      "shares": -2676,
+      "avg_cost": 127.37,
+      "entry_date": "2026-04-27"
+    },
+    "MS": {
+      "shares": 1758,
+      "avg_cost": 193.83,
+      "entry_date": "2026-05-14"
+    },
+    "CBOE": {
+      "shares": 380,
+      "avg_cost": 356.248,
+      "entry_date": "2026-05-21"
+    },
+    "TYL": {
+      "shares": -174,
+      "avg_cost": 315.98,
+      "entry_date": "2026-05-21"
+    },
+    "CSCO": {
+      "shares": 1918,
+      "avg_cost": 114.77,
+      "entry_date": "2026-05-21"
+    },
+    "LULU": {
+      "shares": -444,
+      "avg_cost": 123.95,
+      "entry_date": "2026-05-21"
+    },
+    "DVA": {
+      "shares": 1428,
+      "avg_cost": 197.69,
+      "entry_date": "2026-05-21"
+    },
+    "TRMB": {
+      "shares": -1430,
+      "avg_cost": 55.33,
+      "entry_date": "2026-05-21"
+    },
+    "SLB": {
+      "shares": 3880,
+      "avg_cost": 57.13,
+      "entry_date": "2026-05-21"
+    },
+    "XYL": {
+      "shares": -504,
+      "avg_cost": 107.69,
+      "entry_date": "2026-05-21"
+    },
+    "TRGP": {
+      "shares": 1016,
+      "avg_cost": 270.37,
+      "entry_date": "2026-05-21"
+    },
+    "ROP": {
+      "shares": -171,
+      "avg_cost": 322.25,
+      "entry_date": "2026-05-21"
+    },
+    "ALLE": {
+      "shares": -429,
+      "avg_cost": 128.45,
+      "entry_date": "2026-05-21"
+    },
+    "BLDR": {
+      "shares": -780,
+      "avg_cost": 70.55,
+      "entry_date": "2026-05-21"
+    },
+    "NVDA": {
+      "shares": 245,
+      "avg_cost": 224.15,
+      "entry_date": "2026-05-21"
+    },
+    "REGN": {
+      "shares": -85,
+      "avg_cost": 645.66,
+      "entry_date": "2026-05-21"
+    },
+    "PNR": {
+      "shares": -743,
+      "avg_cost": 74.08,
+      "entry_date": "2026-05-21"
+    },
+    "NCLH": {
+      "shares": -5130,
+      "avg_cost": 16.1,
+      "entry_date": "2026-05-21"
+    },
+    "ODFL": {
+      "shares": 390,
+      "avg_cost": 208.993282,
+      "entry_date": "2026-05-21"
+    },
+    "MKTX": {
+      "shares": -985,
+      "avg_cost": 137.411868,
+      "entry_date": "2026-05-21"
+    },
+    "JKHY": {
+      "shares": -191,
+      "avg_cost": 139.56,
+      "entry_date": "2026-05-22"
+    },
+    "BWA": {
+      "shares": 894,
+      "avg_cost": 63.55,
+      "entry_date": "2026-05-22"
+    },
+    "MOS": {
+      "shares": -2289,
+      "avg_cost": 21.94,
+      "entry_date": "2026-05-22"
+    },
+    "AKAM": {
+      "shares": 365,
+      "avg_cost": 146.24,
+      "entry_date": "2026-05-22"
+    },
+    "POOL": {
+      "shares": -294,
+      "avg_cost": 181.69,
+      "entry_date": "2026-05-22"
+    }
+  },
+  "cumulative_realized": 650.01,
+  "cumulative_dividends": -8936.04,
+  "cumulative_fees": 0.0,
+  "equity": 1019287.43,
+  "liabilities": {},
+  "lots": {
+    "MS/AWK|s1": {
+      "ticker": "MS",
+      "shares": 1758,
+      "cost": 193.83,
+      "open_date": "2026-05-14"
+    },
+    "MS/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -2676,
+      "cost": 127.37,
+      "open_date": "2026-05-14"
+    },
+    "CBOE/TYL|s1": {
+      "ticker": "CBOE",
+      "shares": 152,
+      "cost": 362.71,
+      "open_date": "2026-05-21"
+    },
+    "CBOE/TYL|s2": {
+      "ticker": "TYL",
+      "shares": -174,
+      "cost": 315.98,
+      "open_date": "2026-05-21"
+    },
+    "CSCO/LULU|s1": {
+      "ticker": "CSCO",
+      "shares": 959,
+      "cost": 114.77,
+      "open_date": "2026-05-21"
+    },
+    "CSCO/LULU|s2": {
+      "ticker": "LULU",
+      "shares": -444,
+      "cost": 123.95,
+      "open_date": "2026-05-21"
+    },
+    "DVA/TRMB|s1": {
+      "ticker": "DVA",
+      "shares": 714,
+      "cost": 197.69,
+      "open_date": "2026-05-21"
+    },
+    "DVA/TRMB|s2": {
+      "ticker": "TRMB",
+      "shares": -1430,
+      "cost": 55.33,
+      "open_date": "2026-05-21"
+    },
+    "SLB/XYL|s1": {
+      "ticker": "SLB",
+      "shares": 1940,
+      "cost": 57.13,
+      "open_date": "2026-05-21"
+    },
+    "SLB/XYL|s2": {
+      "ticker": "XYL",
+      "shares": -504,
+      "cost": 107.69,
+      "open_date": "2026-05-21"
+    },
+    "TRGP/ROP|s1": {
+      "ticker": "TRGP",
+      "shares": 508,
+      "cost": 270.37,
+      "open_date": "2026-05-21"
+    },
+    "TRGP/ROP|s2": {
+      "ticker": "ROP",
+      "shares": -171,
+      "cost": 322.25,
+      "open_date": "2026-05-21"
+    },
+    "SLB/ALLE|s1": {
+      "ticker": "SLB",
+      "shares": 1940,
+      "cost": 57.13,
+      "open_date": "2026-05-21"
+    },
+    "SLB/ALLE|s2": {
+      "ticker": "ALLE",
+      "shares": -429,
+      "cost": 128.45,
+      "open_date": "2026-05-21"
+    },
+    "CSCO/BLDR|s1": {
+      "ticker": "CSCO",
+      "shares": 959,
+      "cost": 114.77,
+      "open_date": "2026-05-21"
+    },
+    "CSCO/BLDR|s2": {
+      "ticker": "BLDR",
+      "shares": -780,
+      "cost": 70.55,
+      "open_date": "2026-05-21"
+    },
+    "NVDA/REGN|s1": {
+      "ticker": "NVDA",
+      "shares": 245,
+      "cost": 224.15,
+      "open_date": "2026-05-21"
+    },
+    "NVDA/REGN|s2": {
+      "ticker": "REGN",
+      "shares": -85,
+      "cost": 645.66,
+      "open_date": "2026-05-21"
+    },
+    "DVA/PNR|s1": {
+      "ticker": "DVA",
+      "shares": 714,
+      "cost": 197.69,
+      "open_date": "2026-05-21"
+    },
+    "DVA/PNR|s2": {
+      "ticker": "PNR",
+      "shares": -743,
+      "cost": 74.08,
+      "open_date": "2026-05-21"
+    },
+    "TRGP/NCLH|s1": {
+      "ticker": "TRGP",
+      "shares": 508,
+      "cost": 270.37,
+      "open_date": "2026-05-21"
+    },
+    "TRGP/NCLH|s2": {
+      "ticker": "NCLH",
+      "shares": -5130,
+      "cost": 16.1,
+      "open_date": "2026-05-21"
+    },
+    "ODFL/MKTX|s1": {
+      "ticker": "ODFL",
+      "shares": 262,
+      "cost": 209.63,
+      "open_date": "2026-05-21"
+    },
+    "ODFL/MKTX|s2": {
+      "ticker": "MKTX",
+      "shares": -396,
+      "cost": 139.14,
+      "open_date": "2026-05-21"
+    },
+    "CBOE/MKTX|s1": {
+      "ticker": "CBOE",
+      "shares": 228,
+      "cost": 351.94,
+      "open_date": "2026-05-22"
+    },
+    "CBOE/MKTX|s2": {
+      "ticker": "MKTX",
+      "shares": -589,
+      "cost": 136.25,
+      "open_date": "2026-05-22"
+    },
+    "ODFL/JKHY|s1": {
+      "ticker": "ODFL",
+      "shares": 128,
+      "cost": 207.69,
+      "open_date": "2026-05-22"
+    },
+    "ODFL/JKHY|s2": {
+      "ticker": "JKHY",
+      "shares": -191,
+      "cost": 139.56,
+      "open_date": "2026-05-22"
+    },
+    "BWA/MOS|s1": {
+      "ticker": "BWA",
+      "shares": 894,
+      "cost": 63.55,
+      "open_date": "2026-05-22"
+    },
+    "BWA/MOS|s2": {
+      "ticker": "MOS",
+      "shares": -2289,
+      "cost": 21.94,
+      "open_date": "2026-05-22"
+    },
+    "AKAM/POOL|s1": {
+      "ticker": "AKAM",
+      "shares": 365,
+      "cost": 146.24,
+      "open_date": "2026-05-22"
+    },
+    "AKAM/POOL|s2": {
+      "ticker": "POOL",
+      "shares": -294,
+      "cost": 181.69,
+      "open_date": "2026-05-22"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 27573.46,
+  "position_value": 541454.16
+}

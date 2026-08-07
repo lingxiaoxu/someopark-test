@@ -1,0 +1,109 @@
+{
+ "as_of": "2026-04-15",
+ "checks": [
+  {
+   "name": "R1 持仓==inventory [mrpt]",
+   "status": "PASS",
+   "detail": "一致"
+  },
+  {
+   "name": "R1 持仓==inventory [mtfs]",
+   "status": "PASS",
+   "detail": "一致"
+  },
+  {
+   "name": "R2 未实现==监控 [mrpt]",
+   "status": "PASS",
+   "detail": "账本 -237.87 vs 监控 -237.87 差 +0.00"
+  },
+  {
+   "name": "R2 未实现==监控 [mtfs]",
+   "status": "PASS",
+   "detail": "账本 -15,949.17 vs 监控 -15,949.17 差 +0.00"
+  },
+  {
+   "name": "R3 净证券市值==risk_report",
+   "status": "PASS",
+   "detail": "账本 204,943.68 vs risk_report 204,943.68 差 +0.00（risk_report_20260805_085606.json, signal_date 2026-08-04）"
+  },
+  {
+   "name": "R3b 多/空市值分别对上",
+   "status": "FAIL",
+   "detail": "多头 账本 677,673.62 vs 报告 720,083.16 (-42,409.54) | 空头 账本 653,459.46 vs 515,139.48 (+138,319.98)"
+  },
+  {
+   "name": "R4 恒等式 [mrpt]",
+   "status": "PASS",
+   "detail": "equity−初始 20,729.17 == realized+div−fees+unrealized 20,729.17"
+  },
+  {
+   "name": "R4 恒等式 [mtfs]",
+   "status": "PASS",
+   "detail": "equity−初始 -127,769.24 == realized+div−fees+unrealized -127,769.24"
+  },
+  {
+   "name": "R5 日盈亏 vs 生产 [mrpt]",
+   "status": "FAIL",
+   "detail": "94 天 corr=0.4830 斜率=0.639 | 窗口净盈亏 账本 +12,357 vs 生产 +39,375"
+  },
+  {
+   "name": "R5 日盈亏 vs 生产 [mtfs]",
+   "status": "FAIL",
+   "detail": "94 天 corr=-0.0909 斜率=-0.102 | 窗口净盈亏 账本 -122,135 vs 生产 -13,313"
+  },
+  {
+   "name": "R6 master 日期对齐",
+   "status": "PASS",
+   "detail": "master 末行 2026-04-15 vs 账本 2026-04-15；**数值未比对**（master 走 regime 缩放后名义资金，账本走 $1M 无缩放，需先统一分母）"
+  },
+  {
+   "name": "R6b 累计分红 [mrpt]",
+   "status": "PASS",
+   "detail": "-464.48（多头收/空头付；**既有 PnL/risk 报表与 strategy_performance 均未计入**，故 R5 比对时已剔除）"
+  },
+  {
+   "name": "R6b 累计分红 [mtfs]",
+   "status": "PASS",
+   "detail": "-8,591.11（多头收/空头付；**既有 PnL/risk 报表与 strategy_performance 均未计入**，故 R5 比对时已剔除）"
+  },
+  {
+   "name": "R8 价格口径新鲜度 [mrpt]",
+   "status": "PASS",
+   "detail": "2026-04-15 判定 = ambiguous（4 只新开仓票投票）"
+  },
+  {
+   "name": "R8 价格口径新鲜度 [mtfs]",
+   "status": "PASS",
+   "detail": "2026-04-15 无新开仓 → 无从判定,跳过"
+  },
+  {
+   "name": "R7 已实现口径 [mrpt]",
+   "status": "PASS",
+   "detail": "账本累计已实现 21,431.52（按票净敞口口径；与 pair 级归因对重叠票必然不同，见 PLAN §7）"
+  },
+  {
+   "name": "R7 已实现口径 [mtfs]",
+   "status": "PASS",
+   "detail": "账本累计已实现 -103,228.96（按票净敞口口径；与 pair 级归因对重叠票必然不同，见 PLAN §7）"
+  }
+ ],
+ "ok": false,
+ "accounts": {
+  "mrpt": {
+   "as_of": "2026-08-04",
+   "equity": 1020729.17,
+   "cash": 1022729.08,
+   "cumulative_realized": 21431.52,
+   "unrealized": -237.87,
+   "position_value": -1999.91
+  },
+  "mtfs": {
+   "as_of": "2026-08-04",
+   "equity": 872230.76,
+   "cash": 665287.17,
+   "cumulative_realized": -103228.96,
+   "unrealized": -15949.17,
+   "position_value": 206943.59
+  }
+ }
+}

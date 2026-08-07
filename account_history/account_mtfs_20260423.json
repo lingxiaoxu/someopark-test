@@ -1,0 +1,79 @@
+{
+  "as_of": "2026-04-23",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1124450.48,
+  "positions": {
+    "AFL": {
+      "shares": 1481,
+      "avg_cost": 115.97,
+      "entry_date": "2026-04-22"
+    },
+    "ICE": {
+      "shares": -1052,
+      "avg_cost": 158.63,
+      "entry_date": "2026-04-22"
+    },
+    "CSCO": {
+      "shares": 1258,
+      "avg_cost": 89.7,
+      "entry_date": "2026-04-22"
+    },
+    "ALL": {
+      "shares": -1466,
+      "avg_cost": 214.936235,
+      "entry_date": "2026-04-22"
+    },
+    "BK": {
+      "shares": 702,
+      "avg_cost": 135.88,
+      "entry_date": "2026-04-23"
+    }
+  },
+  "cumulative_realized": 30832.03,
+  "cumulative_dividends": -8374.9,
+  "cumulative_fees": 0.0,
+  "equity": 1018308.34,
+  "liabilities": {},
+  "lots": {
+    "AFL/ICE|s1": {
+      "ticker": "AFL",
+      "shares": 1481,
+      "cost": 115.97,
+      "open_date": "2026-04-22"
+    },
+    "AFL/ICE|s2": {
+      "ticker": "ICE",
+      "shares": -1052,
+      "cost": 158.63,
+      "open_date": "2026-04-22"
+    },
+    "CSCO/ALL|s1": {
+      "ticker": "CSCO",
+      "shares": 1258,
+      "cost": 89.7,
+      "open_date": "2026-04-22"
+    },
+    "CSCO/ALL|s2": {
+      "ticker": "ALL",
+      "shares": -522,
+      "cost": 216.34,
+      "open_date": "2026-04-22"
+    },
+    "BK/ALL|s1": {
+      "ticker": "BK",
+      "shares": 702,
+      "cost": 135.88,
+      "open_date": "2026-04-23"
+    },
+    "BK/ALL|s2": {
+      "ticker": "ALL",
+      "shares": -944,
+      "cost": 214.16,
+      "open_date": "2026-04-23"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -4148.79,
+  "position_value": -106142.14
+}

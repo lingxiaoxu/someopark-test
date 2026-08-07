@@ -1,0 +1,174 @@
+{
+  "as_of": "2026-07-22",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 490994.58,
+  "positions": {
+    "ANET": {
+      "shares": 532,
+      "avg_cost": 171.92,
+      "entry_date": "2026-07-15"
+    },
+    "LKQ": {
+      "shares": -3778,
+      "avg_cost": 24.932541,
+      "entry_date": "2026-07-15"
+    },
+    "BBY": {
+      "shares": 2726,
+      "avg_cost": 85.394226,
+      "entry_date": "2026-07-15"
+    },
+    "HCA": {
+      "shares": -241,
+      "avg_cost": 378.85,
+      "entry_date": "2026-07-15"
+    },
+    "VLO": {
+      "shares": 875,
+      "avg_cost": 304.409006,
+      "entry_date": "2026-07-15"
+    },
+    "HSY": {
+      "shares": -538,
+      "avg_cost": 170.27,
+      "entry_date": "2026-07-15"
+    },
+    "JBHT": {
+      "shares": 1234,
+      "avg_cost": 291.41,
+      "entry_date": "2026-07-17"
+    },
+    "HII": {
+      "shares": -224,
+      "avg_cost": 269.13,
+      "entry_date": "2026-07-17"
+    },
+    "PEP": {
+      "shares": -444,
+      "avg_cost": 137.12,
+      "entry_date": "2026-07-17"
+    },
+    "CVS": {
+      "shares": 969,
+      "avg_cost": 110.6,
+      "entry_date": "2026-07-21"
+    },
+    "LEN": {
+      "shares": -654,
+      "avg_cost": 81.84,
+      "entry_date": "2026-07-21"
+    },
+    "PNR": {
+      "shares": -1005,
+      "avg_cost": 63.02,
+      "entry_date": "2026-07-22"
+    }
+  },
+  "cumulative_realized": 42205.93,
+  "cumulative_dividends": -8964.14,
+  "cumulative_fees": 0.0,
+  "equity": 1041993.41,
+  "liabilities": {},
+  "lots": {
+    "ANET/LKQ|s1": {
+      "ticker": "ANET",
+      "shares": 532,
+      "cost": 171.92,
+      "open_date": "2026-07-15"
+    },
+    "ANET/LKQ|s2": {
+      "ticker": "LKQ",
+      "shares": -3675,
+      "cost": 24.92,
+      "open_date": "2026-07-15"
+    },
+    "BBY/HCA|s1": {
+      "ticker": "BBY",
+      "shares": 1075,
+      "cost": 85.37,
+      "open_date": "2026-07-15"
+    },
+    "BBY/HCA|s2": {
+      "ticker": "HCA",
+      "shares": -241,
+      "cost": 378.85,
+      "open_date": "2026-07-15"
+    },
+    "VLO/HSY|s1": {
+      "ticker": "VLO",
+      "shares": 312,
+      "cost": 292.66,
+      "open_date": "2026-07-15"
+    },
+    "VLO/HSY|s2": {
+      "ticker": "HSY",
+      "shares": -538,
+      "cost": 170.27,
+      "open_date": "2026-07-15"
+    },
+    "JBHT/LKQ|s1": {
+      "ticker": "JBHT",
+      "shares": 617,
+      "cost": 291.41,
+      "open_date": "2026-07-17"
+    },
+    "JBHT/LKQ|s2": {
+      "ticker": "LKQ",
+      "shares": -103,
+      "cost": 25.38,
+      "open_date": "2026-07-17"
+    },
+    "BBY/HII|s1": {
+      "ticker": "BBY",
+      "shares": 1651,
+      "cost": 85.41,
+      "open_date": "2026-07-17"
+    },
+    "BBY/HII|s2": {
+      "ticker": "HII",
+      "shares": -224,
+      "cost": 269.13,
+      "open_date": "2026-07-17"
+    },
+    "JBHT/PEP|s1": {
+      "ticker": "JBHT",
+      "shares": 617,
+      "cost": 291.41,
+      "open_date": "2026-07-17"
+    },
+    "JBHT/PEP|s2": {
+      "ticker": "PEP",
+      "shares": -444,
+      "cost": 137.12,
+      "open_date": "2026-07-17"
+    },
+    "CVS/LEN|s1": {
+      "ticker": "CVS",
+      "shares": 969,
+      "cost": 110.6,
+      "open_date": "2026-07-21"
+    },
+    "CVS/LEN|s2": {
+      "ticker": "LEN",
+      "shares": -654,
+      "cost": 81.84,
+      "open_date": "2026-07-21"
+    },
+    "VLO/PNR|s1": {
+      "ticker": "VLO",
+      "shares": 563,
+      "cost": 310.92,
+      "open_date": "2026-07-22"
+    },
+    "VLO/PNR|s2": {
+      "ticker": "PNR",
+      "shares": -1005,
+      "cost": 63.02,
+      "open_date": "2026-07-22"
+    }
+  },
+  "price_basis_state": "same_day_close",
+  "unrealized": 8751.62,
+  "position_value": 550998.83
+}

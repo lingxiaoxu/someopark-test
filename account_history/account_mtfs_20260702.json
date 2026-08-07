@@ -1,0 +1,79 @@
+{
+  "as_of": "2026-07-02",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 992969.69,
+  "positions": {
+    "TER": {
+      "shares": 187,
+      "avg_cost": 457.0,
+      "entry_date": "2026-06-23"
+    },
+    "ISRG": {
+      "shares": -140,
+      "avg_cost": 402.95,
+      "entry_date": "2026-06-23"
+    },
+    "PWR": {
+      "shares": 115,
+      "avg_cost": 740.14,
+      "entry_date": "2026-06-23"
+    },
+    "NKE": {
+      "shares": -3889,
+      "avg_cost": 42.350609,
+      "entry_date": "2026-06-23"
+    },
+    "CVS": {
+      "shares": 1529,
+      "avg_cost": 103.58,
+      "entry_date": "2026-06-30"
+    }
+  },
+  "cumulative_realized": 109768.23,
+  "cumulative_dividends": -8964.14,
+  "cumulative_fees": 0.0,
+  "equity": 1067854.64,
+  "liabilities": {},
+  "lots": {
+    "TER/ISRG|s1": {
+      "ticker": "TER",
+      "shares": 187,
+      "cost": 457.0,
+      "open_date": "2026-06-23"
+    },
+    "TER/ISRG|s2": {
+      "ticker": "ISRG",
+      "shares": -140,
+      "cost": 402.95,
+      "open_date": "2026-06-23"
+    },
+    "PWR/NKE|s1": {
+      "ticker": "PWR",
+      "shares": 115,
+      "cost": 740.14,
+      "open_date": "2026-06-23"
+    },
+    "PWR/NKE|s2": {
+      "ticker": "NKE",
+      "shares": -1980,
+      "cost": 43.19,
+      "open_date": "2026-06-23"
+    },
+    "CVS/NKE|s1": {
+      "ticker": "CVS",
+      "shares": 1529,
+      "cost": 103.58,
+      "open_date": "2026-06-30"
+    },
+    "CVS/NKE|s2": {
+      "ticker": "NKE",
+      "shares": -1909,
+      "cost": 41.48,
+      "open_date": "2026-06-30"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -32949.45,
+  "position_value": 74884.95
+}

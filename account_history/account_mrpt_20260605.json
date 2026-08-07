@@ -1,0 +1,40 @@
+{
+  "as_of": "2026-06-05",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 1041799.37,
+  "positions": {
+    "HAS": {
+      "shares": 1017,
+      "avg_cost": 84.47,
+      "entry_date": "2026-06-05"
+    },
+    "PFE": {
+      "shares": -3385,
+      "avg_cost": 25.69,
+      "entry_date": "2026-06-05"
+    }
+  },
+  "cumulative_realized": 41209.19,
+  "cumulative_dividends": -464.48,
+  "cumulative_fees": 0.0,
+  "equity": 1039265.03,
+  "liabilities": {},
+  "lots": {
+    "HAS/PFE|s1": {
+      "ticker": "HAS",
+      "shares": 1017,
+      "cost": 84.47,
+      "open_date": "2026-06-05"
+    },
+    "HAS/PFE|s2": {
+      "ticker": "PFE",
+      "shares": -3385,
+      "cost": 25.69,
+      "open_date": "2026-06-05"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": -1479.68,
+  "position_value": -2534.34
+}

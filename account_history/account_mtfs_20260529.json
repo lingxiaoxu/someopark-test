@@ -1,0 +1,245 @@
+{
+  "as_of": "2026-05-29",
+  "base_currency": "USD",
+  "initial_cash": 1000000.0,
+  "cash": 383241.23,
+  "positions": {
+    "AWK": {
+      "shares": -2676,
+      "avg_cost": 127.37,
+      "entry_date": "2026-04-27"
+    },
+    "MS": {
+      "shares": 1758,
+      "avg_cost": 193.83,
+      "entry_date": "2026-05-14"
+    },
+    "CBOE": {
+      "shares": 152,
+      "avg_cost": 362.71,
+      "entry_date": "2026-05-21"
+    },
+    "TYL": {
+      "shares": -174,
+      "avg_cost": 315.98,
+      "entry_date": "2026-05-21"
+    },
+    "DVA": {
+      "shares": 714,
+      "avg_cost": 197.69,
+      "entry_date": "2026-05-21"
+    },
+    "PNR": {
+      "shares": -743,
+      "avg_cost": 74.08,
+      "entry_date": "2026-05-21"
+    },
+    "ODFL": {
+      "shares": 390,
+      "avg_cost": 208.993282,
+      "entry_date": "2026-05-21"
+    },
+    "MKTX": {
+      "shares": -396,
+      "avg_cost": 139.14,
+      "entry_date": "2026-05-21"
+    },
+    "JKHY": {
+      "shares": -191,
+      "avg_cost": 139.56,
+      "entry_date": "2026-05-22"
+    },
+    "KLAC": {
+      "shares": 1090,
+      "avg_cost": 197.91155,
+      "entry_date": "2026-05-27"
+    },
+    "REGN": {
+      "shares": -23,
+      "avg_cost": 634.62,
+      "entry_date": "2026-05-27"
+    },
+    "ON": {
+      "shares": 2990,
+      "avg_cost": 125.798217,
+      "entry_date": "2026-05-27"
+    },
+    "UHS": {
+      "shares": -256,
+      "avg_cost": 156.63,
+      "entry_date": "2026-05-27"
+    },
+    "TRMB": {
+      "shares": -1058,
+      "avg_cost": 54.88,
+      "entry_date": "2026-05-28"
+    },
+    "PANW": {
+      "shares": 233,
+      "avg_cost": 248.47,
+      "entry_date": "2026-05-28"
+    },
+    "IQV": {
+      "shares": -350,
+      "avg_cost": 165.62,
+      "entry_date": "2026-05-28"
+    },
+    "LOW": {
+      "shares": -382,
+      "avg_cost": 217.92,
+      "entry_date": "2026-05-29"
+    },
+    "FFIV": {
+      "shares": 426,
+      "avg_cost": 383.43,
+      "entry_date": "2026-05-29"
+    },
+    "VLTO": {
+      "shares": -665,
+      "avg_cost": 83.48,
+      "entry_date": "2026-05-29"
+    }
+  },
+  "cumulative_realized": -18180.1,
+  "cumulative_dividends": -9043.32,
+  "cumulative_fees": 0.0,
+  "equity": 999198.0,
+  "liabilities": {},
+  "lots": {
+    "MS/AWK|s1": {
+      "ticker": "MS",
+      "shares": 1758,
+      "cost": 193.83,
+      "open_date": "2026-05-14"
+    },
+    "MS/AWK|s2": {
+      "ticker": "AWK",
+      "shares": -2676,
+      "cost": 127.37,
+      "open_date": "2026-05-14"
+    },
+    "CBOE/TYL|s1": {
+      "ticker": "CBOE",
+      "shares": 152,
+      "cost": 362.71,
+      "open_date": "2026-05-21"
+    },
+    "CBOE/TYL|s2": {
+      "ticker": "TYL",
+      "shares": -174,
+      "cost": 315.98,
+      "open_date": "2026-05-21"
+    },
+    "DVA/PNR|s1": {
+      "ticker": "DVA",
+      "shares": 714,
+      "cost": 197.69,
+      "open_date": "2026-05-21"
+    },
+    "DVA/PNR|s2": {
+      "ticker": "PNR",
+      "shares": -743,
+      "cost": 74.08,
+      "open_date": "2026-05-21"
+    },
+    "ODFL/MKTX|s1": {
+      "ticker": "ODFL",
+      "shares": 262,
+      "cost": 209.63,
+      "open_date": "2026-05-21"
+    },
+    "ODFL/MKTX|s2": {
+      "ticker": "MKTX",
+      "shares": -396,
+      "cost": 139.14,
+      "open_date": "2026-05-21"
+    },
+    "ODFL/JKHY|s1": {
+      "ticker": "ODFL",
+      "shares": 128,
+      "cost": 207.69,
+      "open_date": "2026-05-22"
+    },
+    "ODFL/JKHY|s2": {
+      "ticker": "JKHY",
+      "shares": -191,
+      "cost": 139.56,
+      "open_date": "2026-05-22"
+    },
+    "KLAC/REGN|s1": {
+      "ticker": "KLAC",
+      "shares": 670,
+      "cost": 201.139,
+      "open_date": "2026-05-27"
+    },
+    "KLAC/REGN|s2": {
+      "ticker": "REGN",
+      "shares": -23,
+      "cost": 634.62,
+      "open_date": "2026-05-27"
+    },
+    "ON/UHS|s1": {
+      "ticker": "ON",
+      "shares": 1287,
+      "cost": 127.0,
+      "open_date": "2026-05-27"
+    },
+    "ON/UHS|s2": {
+      "ticker": "UHS",
+      "shares": -256,
+      "cost": 156.63,
+      "open_date": "2026-05-27"
+    },
+    "ON/TRMB|s1": {
+      "ticker": "ON",
+      "shares": 1703,
+      "cost": 124.89,
+      "open_date": "2026-05-28"
+    },
+    "ON/TRMB|s2": {
+      "ticker": "TRMB",
+      "shares": -1058,
+      "cost": 54.88,
+      "open_date": "2026-05-28"
+    },
+    "PANW/IQV|s1": {
+      "ticker": "PANW",
+      "shares": 233,
+      "cost": 248.47,
+      "open_date": "2026-05-28"
+    },
+    "PANW/IQV|s2": {
+      "ticker": "IQV",
+      "shares": -350,
+      "cost": 165.62,
+      "open_date": "2026-05-28"
+    },
+    "KLAC/LOW|s1": {
+      "ticker": "KLAC",
+      "shares": 420,
+      "cost": 192.763,
+      "open_date": "2026-05-29"
+    },
+    "KLAC/LOW|s2": {
+      "ticker": "LOW",
+      "shares": -382,
+      "cost": 217.92,
+      "open_date": "2026-05-29"
+    },
+    "FFIV/VLTO|s1": {
+      "ticker": "FFIV",
+      "shares": 426,
+      "cost": 383.43,
+      "open_date": "2026-05-29"
+    },
+    "FFIV/VLTO|s2": {
+      "ticker": "VLTO",
+      "shares": -665,
+      "cost": 83.48,
+      "open_date": "2026-05-29"
+    }
+  },
+  "price_basis_state": "prior_close",
+  "unrealized": 26421.42,
+  "position_value": 615956.77
+}
