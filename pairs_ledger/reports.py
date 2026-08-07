@@ -194,7 +194,14 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
         from PnLReport import download_prices_mongo
         for s in STRATEGIES:
             mon = (dd.get("position_monitor") or {}).get(s) or []
-            mon_v = sum(p.get("unrealized_pnl", 0) or 0 for p in mon
+            # 同一 pair 当日可能被发多条（先 HOLD 后 CLOSE）——实测 2026-08-06
+            # GD/GE 同时有 HOLD -119.66 与 CLOSE -119.66。只按 action 过滤会把
+            # 那条陈旧 HOLD 计入,等于给已平仓位重复记一次未实现（差 +119.66）。
+            # 故先按 pair 取**最后一条**（监控当日的终态判定）,再滤平仓。
+            _last = {}
+            for p in mon:
+                _last[p.get("pair")] = p
+            mon_v = sum(p.get("unrealized_pnl", 0) or 0 for p in _last.values()
                         if p.get("action") not in ("CLOSE", "CLOSE_STOP"))
             inv = json.load(open(os.path.join(BASE_DIR, STRATEGIES[s]["inventory"])))
             prs = {k: v for k, v in (inv.get("pairs") or {}).items()
@@ -430,8 +437,17 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
             tgt, opx = flatten(sn[day])
             prev_days = [d for d in sorted(sn) if d < day]
             prev_tgt = flatten(sn[prev_days[-1]])[0] if prev_days else {}
-            new_opens = {t: v for t, v in opx.items()
-                         if tgt.get(t, 0) != prev_tgt.get(t, 0)}
+            # 只认**当日真正新开的 pair 腿**。此前用「净股数变化」判定,会把部分
+            # 平仓也算成新开：实测 2026-08-06 MTFS 全是平仓(6 笔 CLOSE),但平掉
+            # PANW/NKE 让 PANW/NKE 的净敞口变化而被误判为新开,再拿**残余 lot 的
+            # 原始开仓价**(PANW 8/05 开、NKE 7/31 开)去比当日收盘 → 必然"陈旧",
+            # 误报 prior_close 倒退。改为只取 open_date == day 的腿。
+            _prev_pairs = set(sn[prev_days[-1]]) if prev_days else set()
+            _new_legs = {k for k, p in sn[day].items()
+                         if p.get("direction") and (
+                             p.get("open_date") == day or k not in _prev_pairs)}
+            _new_tks = {t for k in _new_legs for t in k.split("/", 1)}
+            new_opens = {t: v for t, v in opx.items() if t in _new_tks}
             if not new_opens:
                 add(f"R8 价格口径新鲜度 [{s}]", True,
                     f"{day} 无新开仓 → 无从判定,跳过", hard=False)
