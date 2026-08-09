@@ -8,8 +8,10 @@
 
 每日两件事:
 1. serve 候选工件(update_state=True 滚动 seq_tail)→ 落盘当日预测
-2. 滞后口径评估: 昨日预测 vs 今日实际 —— RNN / 现役 production / ma5 三档
-   在**同一交集票**上算 log 空间 R² 与 MAPE,追加 rnn_ab_tracking.csv
+2. 滞后口径评估: 昨日预测 vs 今日实际 —— RNN / 现役 production 在**同一交集票**上
+   算四指标(R²/MAPE/log-MSE/econ)+ 消费子集(持仓票)MAPE/log-MSE,追加
+   rnn_ab_tracking.csv。裁决机制 v2(2026-08-09): 主裁=消费子集 MAPE+log-MSE
+   双赢;fallback=全宇宙 MAPE;econ/R² 降参考(理由见 evaluate 内注释与 P4 §3c)。
 
 纪律:
 - 只读现役工件与 raw 缓存,只写 outputs/shadow_rnn/,不碰 production 指针
@@ -53,7 +55,32 @@ def _ab_mu() -> tuple[float, str]:
     return 1.0e-6, "paper_prior_fallback"
 
 
-def _metrics(pred_V: pd.Series, actual: pd.Series, mu: float | None = None) -> dict:
+def _held_tickers(pred_date: str) -> set:
+    """裁决机制 v2(用户批准 2026-08-09): 消费子集 = 四策略当日真实持仓/在场票。
+    取 pred_date 当日的 adapters advice 文件(PIT 正确: advice 与预测同日产出);
+    当日缺某策略的文件时回退该策略最近一份 ≤ pred_date 的。"""
+    held: set = set()
+    adir = OUT / "adapters"
+    for stem in ("pairs_mrpt_advice", "pairs_mtfs_advice",
+                 "aiss_advice", "ssrs_advice"):
+        cands = sorted(adir.glob(f"{stem}_*.json"))
+        cands = [c for c in cands if c.stem.split("_")[-1] <= pred_date]
+        if not cands:
+            continue
+        try:
+            d = json.loads(cands[-1].read_text())
+        except Exception:  # noqa: BLE001 — 单文件破损不阻断
+            continue
+        for h in (d.get("holdings") or []):
+            held.add(h.get("ticker"))
+        for p in (d.get("positions") or []):
+            held.add(p.get("s1")); held.add(p.get("s2"))
+    held.discard(None)
+    return held
+
+
+def _metrics(pred_V: pd.Series, actual: pd.Series, mu: float | None = None,
+             min_n: int = 30) -> dict:
     """多指标评估(评估纪律 2026-08-08):R² 分母被大票方差主导,只看 R² 会误判;
     MAPE / log-MSE 等权公平,econ_regret 直接度量预测误差的经济代价。
 
@@ -63,7 +90,7 @@ def _metrics(pred_V: pd.Series, actual: pd.Series, mu: float | None = None) -> d
     losscon/s_opt 即 econ/policy.py 的 G6/G9 验收闭式解。越小越好。"""
     m = pd.concat([pred_V.rename("p"), actual.rename("a")], axis=1).dropna()
     m = m[(m.p > 0) & (m.a > 0)]
-    if len(m) < 30:
+    if len(m) < min_n:
         return {"n": len(m), "r2": None, "mape": None,
                 "log_mse": None, "econ": None}
     lp, la = np.log(m.p), np.log(m.a)
@@ -143,24 +170,44 @@ def evaluate(actual_date: str) -> dict | None:
         row[f"{tag}_econ"] = m["econ"]
     row["ab_mu"] = mu
     row["ab_mu_source"] = mu_src
+
+    # 消费子集(裁决机制 v2): 四策略当日真实持仓票——预测误差的真实美元代价所在。
+    held = _held_tickers(pred_date)
+    hc = [t for t in common if t in held]
+    row["n_held"] = len(hc)
+    for tag, src in (("rnn", rnn), ("prod", prod)):
+        hm = _metrics(src.loc[hc, "pred_V"], a.loc[hc], mu=mu, min_n=20) if hc else \
+            {"mape": None, "log_mse": None}
+        row[f"{tag}_held_mape"] = hm["mape"]
+        row[f"{tag}_held_log_mse"] = hm["log_mse"]
+
     # 生产档在交集上的模型构成(交集应几乎全是 lgbm 覆盖票)
     if "model_version" in prod.columns:
         vc = prod.loc[common, "model_version"].value_counts()
         row["prod_mix"] = ";".join(f"{k}:{v}" for k, v in vc.items())
 
-    # 主裁(评估纪律 2026-08-08): 经济损失优先,MAPE 次之;R² 仅留作参考列
-    # (R² 分母被少数超大成交额票的方差主导 → 等于只考大盘股,对小票不公平)。
+    # ── 裁决机制 v2(用户批准 2026-08-09)───────────────────────────────────
+    # 主裁: 消费子集 MAPE + log-MSE 双赢(真实持仓票上的精度=当前规模下真实美元
+    #       代价的最好代理;实证: 等权 econ 被不交易的小票尾部主导,而持仓票上
+    #       econ 无分辨力 0v0——见 P4 §3c)。
+    # 次裁(子集不可用时 fallback): 全宇宙 MAPE。
+    # 参考列: econ regret(待 E2 λ 实测/AUM 进 material 区后才有真实牙齿)、R²
+    #       (分母被超大票方差主导)、全宇宙 log-MSE(尾部否决项,供 promote 复核)。
     def _lower_wins(k: str):
         r, p = row.get(f"rnn_{k}"), row.get(f"prod_{k}")
         if r is None or p is None:
             return None
         return bool(r < p)
+    row["rnn_wins_held_mape"] = _lower_wins("held_mape")
+    row["rnn_wins_held_log_mse"] = _lower_wins("held_log_mse")
     row["rnn_wins_econ"] = _lower_wins("econ")
     row["rnn_wins_mape"] = _lower_wins("mape")
     row["rnn_wins_r2"] = (row["rnn_r2"] is not None and row["prod_r2"] is not None
                           and row["rnn_r2"] > row["prod_r2"])
-    row["rnn_wins"] = (row["rnn_wins_econ"] if row["rnn_wins_econ"] is not None
-                       else row["rnn_wins_mape"])
+    if row["rnn_wins_held_mape"] is not None and row["rnn_wins_held_log_mse"] is not None:
+        row["rnn_wins"] = bool(row["rnn_wins_held_mape"] and row["rnn_wins_held_log_mse"])
+    else:
+        row["rnn_wins"] = row["rnn_wins_mape"]
     return row
 
 
