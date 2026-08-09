@@ -161,8 +161,65 @@ def fig4_transfer_mel(out_dir: Optional[Path] = None,
             "mean_mel_gain_pp": round(float(gain), 2)}
 
 
+# ═══════════════════════════ fig1(G1)/ fig2(G6)═══════════════════════════════
+
+def fig1_persist(panel_tag: str = "latest") -> dict:
+    """图 1(v/η 分布)对真实生产面板落盘 —— eda.fig1_distributions 早已实现并有
+    单测,此前只进 /tmp 测试轨;这里补 outputs/replication/ 持久化(G1 复刻产物)。"""
+    from VolumePrediction.replication_g import load_panel
+    from VolumePrediction.evaluation.eda import fig1_distributions
+    panel = load_panel(panel_tag)
+    p = fig1_distributions(panel, REP_DIR)
+    log.info(f"fig1 → {p}")
+    return {"path": str(p), "status": "ok", "n_rows": int(len(panel))}
+
+
+def fig2_s_curve(out_dir: Optional[Path] = None) -> dict:
+    """图 2 复刻(G6): 最优交易率 s(v̄;μ)=μ/(μ+λ(v̄)) 的 S 形曲线族。
+
+    直接调 econ/policy.s_opt(G6 验收过的闭式解,非重新推导),μ 取论文网格
+    (config econ.mu_grid)+ 生产 calibrated μ(mu_calibration.json,若在)叠加
+    标注。x 轴 v̄=log 美元量,覆盖面板实际范围(1e5→1e12 美元)。"""
+    from VolumePrediction.common import load_config
+    from VolumePrediction.econ.policy import s_opt
+
+    od = Path(out_dir) if out_dir else REP_DIR
+    od.mkdir(parents=True, exist_ok=True)
+    cfg = load_config()
+    mu_grid = list(cfg.get("econ", {}).get("mu_grid", [1e-8, 1e-7, 1e-6, 1e-5, 1e-4]))
+    vbar = np.linspace(np.log(1e5), np.log(1e12), 400)
+
+    fig, ax = plt.subplots(figsize=(7.5, 4.6))
+    for mu in mu_grid:
+        ax.plot(vbar, [s_opt(v, float(mu)) for v in vbar], lw=1.4,
+                label=f"μ={mu:.0e}")
+    # 生产 calibrated μ(有则叠加虚线,直观看生产工作点)
+    cal_f = OUT / "registry" / "mu_calibration.json"
+    if cal_f.exists():
+        try:
+            cal = json.loads(cal_f.read_text())
+            for key, entry in cal.items():
+                mu = entry.get("mu")
+                if mu and np.isfinite(mu) and entry.get("calibration_source") != "paper_prior":
+                    ax.plot(vbar, [s_opt(v, float(mu)) for v in vbar], "--", lw=1.8,
+                            label=f"{key} (calibrated {mu:.2e})")
+        except Exception:  # noqa: BLE001 — 破损工件只影响叠加线,主图照出
+            log.warning("mu_calibration.json 读取失败,仅画论文网格")
+    ax.set_xlabel("v̄ = log dollar volume")
+    ax.set_ylabel("s(v̄; μ)  optimal trade rate")
+    ax.set_title("Fig.2 replication — s(v̄;μ)=μ/(μ+λ(v̄)),  λ=0.2e^{-v}")
+    ax.legend(fontsize=7, loc="center right")
+    ax.grid(alpha=0.3)
+    p = od / "fig2_s_curve.png"
+    fig.tight_layout()
+    fig.savefig(p, dpi=150)
+    plt.close(fig)
+    log.info(f"fig2 → {p}")
+    return {"path": str(p), "status": "ok", "n_mu": len(mu_grid)}
+
+
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="fig3(G4)/fig4(G8) 生成")
+    ap = argparse.ArgumentParser(description="fig1(G1)/fig2(G6)/fig3(G4)/fig4(G8) 生成")
     ap.add_argument("--panel", default="latest")
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--group", default="tech",
@@ -170,8 +227,15 @@ if __name__ == "__main__":
     ap.add_argument("--n-tickers", type=int, default=250)
     ap.add_argument("--skip-fig3", action="store_true")
     ap.add_argument("--skip-fig4", action="store_true")
+    ap.add_argument("--fig12", action="store_true",
+                    help="只补 fig1(真面板分布)+ fig2(S 形曲线)持久化")
     a = ap.parse_args()
     out = {}
+    if a.fig12:
+        out["fig1"] = fig1_persist(a.panel)
+        out["fig2"] = fig2_s_curve()
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+        raise SystemExit(0)
     if not a.skip_fig3:
         out["fig3"] = fig3_training_curves(a.panel, quick=a.quick,
                                            group=a.group,
