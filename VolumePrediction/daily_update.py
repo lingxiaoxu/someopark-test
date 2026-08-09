@@ -112,10 +112,24 @@ def run(date: Optional[str] = None, fetch: bool = True,
             log.error(f"wiring_shadow failed (non-fatal): {e}")
             wiring = {"status": "error", "error": str(e)}
 
+    # ── RNN 候选影子 AB（E4；2026-08-08 接线，防断更；fail-open 附加步）──
+    # 每日 serve 候选 RNN（有状态滚动，只到 raw_last）+ 滞后评估补齐 AB 追踪表。
+    # 此前未接线，serve 停在手动跑的 2026-08-05，AB 长期停 2 行。用 run_daily()
+    # 纯函数入口（不走 argparse），避免 SystemExit 继承 BaseException 崩主流程。
+    rnn_ab = None
+    if not skip_adapters:
+        try:
+            from VolumePrediction import shadow_rnn
+            rc = shadow_rnn.run_daily()
+            rnn_ab = {"status": "ok" if rc == 0 else "error", "rc": rc}
+        except Exception as e:  # noqa: BLE001 — RNN 影子失败绝不影响主流程
+            log.error(f"shadow_rnn failed (non-fatal): {e}")
+            rnn_ab = {"status": "error", "error": str(e)}
+
     health = svc.ops.health()
     out = {"status": "ok", "asof": asof, "refresh": res,
            "adapters": adapters, "health": health,
-           "wiring_shadow": wiring}
+           "wiring_shadow": wiring, "rnn_ab_shadow": rnn_ab}
     if any(v.get("status") == "error" for v in adapters.values()):
         out["status"] = "partial"
     log.info(f"daily_update done: {out['status']} asof={asof} "

@@ -121,44 +121,82 @@ def append_track(row: dict) -> None:
     log.info(f"[SHADOW_RNN] 追加 {TRACK_CSV.name}: {row}")
 
 
-def main() -> int:
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s [%(levelname)s] %(message)s")
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--target", default=None,
-                    help="服务目标日(默认 = 工件的 first_serve_date 或次交易日)")
-    ap.add_argument("--no-roll", action="store_true",
-                    help="不滚动 seq_tail(只出预测,用于补跑/调试)")
-    ap.add_argument("--eval-only", action="store_true", help="只做滞后评估")
-    a = ap.parse_args()
+def _already_tracked(actual_date: str | None) -> bool:
+    """该 actual_date 是否已在 AB 追踪表中（幂等去重）。"""
+    if not actual_date or not TRACK_CSV.exists():
+        return False
+    try:
+        return actual_date in set(pd.read_csv(TRACK_CSV)["actual_date"].astype(str))
+    except Exception:  # noqa: BLE001
+        return False
 
+
+def run_daily(target: str | None = None, roll: bool = True,
+              eval_only: bool = False) -> int:
+    """不依赖 argv 的日更入口（供 daily_update 直接调用，避免 argparse/SystemExit）。
+
+    与旧 main() 的两处关键差异（均为修 bug）：
+      1. serve 目标只从 **_raw_dates()**（真实有数据的交易日）取，绝不用
+         trading_days 生成越过 raw_last 的未来日 —— 那会用陈旧特征污染 seq_tail。
+      2. 评估**补齐所有缺失的 (pred→次交易日 actual) 对**（幂等去重），而非只评
+         最新一天；断更多日后一次补回。
+    """
     if not CANDIDATE.exists():
         log.error(f"[SHADOW_RNN] 候选工件不存在: {CANDIDATE}")
         return 1
     meta = json.loads((CANDIDATE / "meta.json").read_text())
 
-    if not a.eval_only:
-        target = a.target
-        if target is None:
-            from VolumePrediction.data import polygon_loader as pl
-            seq_d = meta.get("seq_tail_date", meta["trained_through"])
-            fut = pl.trading_days(seq_d, str((pd.Timestamp(seq_d)
-                                              + pd.Timedelta(days=10)).date()))
-            target = next(d for d in fut if d > seq_d)
-        try:
-            serve_candidate(target, roll=not a.no_roll)
-        except Exception as e:  # noqa: BLE001
-            log.error(f"[SHADOW_RNN] serve 失败({target}): {e}")
-            return 2
-
-    # 评估: 用最新有实际数据的交易日
     from VolumePrediction.service import VolumeService
-    ds = VolumeService()._raw_dates()
-    row = evaluate(ds[-1]) if ds else None
-    if row:
-        append_track(row)
-        print(json.dumps(row, ensure_ascii=False))
+    raw = VolumeService()._raw_dates()
+    if not raw:
+        log.error("[SHADOW_RNN] 无 raw 交易日")
+        return 1
+    raw_last = raw[-1]
+
+    if not eval_only:
+        seq_d = meta.get("seq_tail_date", meta["trained_through"])
+        # 只 serve seq_tail 之后、且有真实 raw 数据的交易日（按序，有状态滚动）。
+        pending = [target] if target else [d for d in raw if d > seq_d]
+        for tgt in pending:
+            if tgt > raw_last:                 # 双保险：绝不 serve 越过 raw_last
+                log.warning(f"[SHADOW_RNN] 跳过越界目标 {tgt} > raw_last {raw_last}")
+                continue
+            try:
+                serve_candidate(tgt, roll=roll)
+            except Exception as e:  # noqa: BLE001
+                log.error(f"[SHADOW_RNN] serve 失败({tgt}): {e}")
+                return 2
+
+    # 补齐所有缺失的 (pred_date → 次交易日 actual) 评估，幂等。
+    import glob as _glob
+    pred_days = sorted(p.split("rnn_pred_")[1][:10]
+                       for p in _glob.glob(str(SHADOW_DIR / "rnn_pred_*.parquet")))
+    n_new, last_row = 0, None
+    for pdd in pred_days:
+        nxt = [d for d in raw if d > pdd]
+        if not nxt or _already_tracked(nxt[0]):
+            continue
+        row = evaluate(nxt[0])
+        if row:
+            append_track(row)
+            last_row, n_new = row, n_new + 1
+    log.info(f"[SHADOW_RNN] 评估补齐 {n_new} 行 (raw_last={raw_last})")
+    if last_row:
+        print(json.dumps(last_row, ensure_ascii=False))
     return 0
+
+
+def main() -> int:
+    logging.basicConfig(level=logging.INFO,
+                        format="%(asctime)s [%(levelname)s] %(message)s")
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--target", default=None,
+                    help="服务目标日(默认 = seq_tail 之后所有有 raw 数据的交易日)")
+    ap.add_argument("--no-roll", action="store_true",
+                    help="不滚动 seq_tail(只出预测,用于补跑/调试)")
+    ap.add_argument("--eval-only", action="store_true", help="只做滞后评估")
+    a = ap.parse_args()
+    return run_daily(target=a.target, roll=not a.no_roll, eval_only=a.eval_only)
 
 
 if __name__ == "__main__":
