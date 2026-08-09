@@ -39,17 +39,50 @@ TRACK_CSV = SHADOW_DIR / "rnn_ab_tracking.csv"
 CANDIDATE = OUT / "registry" / "artifacts" / "rnn_v6f32n_20260731"
 
 
-def _metrics(pred_V: pd.Series, actual: pd.Series) -> dict:
-    """log 空间 R² + 水平 MAPE(与 shadow_tracking 同口径)。"""
+def _ab_mu() -> tuple[float, str]:
+    """AB 判决用的 μ(经济损失参数)。优先 calibrated tracking 剖面(aiss_rebalance
+    → mu_key=aiss_mom_decay, alpha_decay_curve 校准);失败降级 paper_prior 并标注。
+    固定一个 μ 保证 AB 时间序列可比(不随策略上下文漂移)。"""
+    try:
+        from VolumePrediction.econ.objective import resolve, resolve_mu
+        prof = resolve(objective="aiss_rebalance")
+        if not prof.is_urgent:                       # urgent(μ=inf) 下 z*恒1,无判别力
+            return resolve_mu(prof)
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"[SHADOW_RNN] μ resolve 失败,降级 paper_prior: {e}")
+    return 1.0e-6, "paper_prior_fallback"
+
+
+def _metrics(pred_V: pd.Series, actual: pd.Series, mu: float | None = None) -> dict:
+    """多指标评估(评估纪律 2026-08-08):R² 分母被大票方差主导,只看 R² 会误判;
+    MAPE / log-MSE 等权公平,econ_regret 直接度量预测误差的经济代价。
+
+    econ_regret_pct: 论文闭式框架下,按预测 v̂ 定交易率 z*(v̂) 但按实际 v 结算,
+    相对"完美预测 z*(v)"的归一化损失超额百分比(等权均值):
+        regret_i = losscon(v_i, z*(v̂_i), μ) / losscon(v_i, z*(v_i), μ) − 1
+    losscon/s_opt 即 econ/policy.py 的 G6/G9 验收闭式解。越小越好。"""
     m = pd.concat([pred_V.rename("p"), actual.rename("a")], axis=1).dropna()
     m = m[(m.p > 0) & (m.a > 0)]
     if len(m) < 30:
-        return {"n": len(m), "r2": None, "mape": None}
+        return {"n": len(m), "r2": None, "mape": None,
+                "log_mse": None, "econ": None}
     lp, la = np.log(m.p), np.log(m.a)
     err = lp - la
     r2 = 1 - float((err ** 2).sum()) / float(((la - la.mean()) ** 2).sum())
     mape = float((np.abs(m.p - m.a) / m.a).mean() * 100)
-    return {"n": int(len(m)), "r2": round(r2, 4), "mape": round(mape, 4)}
+    log_mse = float((err ** 2).mean())
+    econ = None
+    if mu is not None and np.isfinite(mu) and mu > 0:
+        lam_a = 0.2 * np.exp(-la)                    # λ(v)=0.2e^{-v}(policy FORM_MAIN)
+        lam_p = 0.2 * np.exp(-lp)
+        z_hat = mu / (mu + lam_p)                    # s_opt(v̂):按预测定的交易率
+        z_true = mu / (mu + lam_a)                   # s_opt(v):完美预测的交易率
+        loss_hat = lam_a * z_hat ** 2 + mu * (1 - z_hat) ** 2    # 按实际 v 结算
+        loss_opt = lam_a * z_true ** 2 + mu * (1 - z_true) ** 2  # = μλ/(μ+λ) > 0
+        econ = float(((loss_hat / loss_opt) - 1.0).mean() * 100)
+    return {"n": int(len(m)), "r2": round(r2, 4), "mape": round(mape, 4),
+            "log_mse": round(log_mse, 5),
+            "econ": (round(econ, 4) if econ is not None else None)}
 
 
 def serve_candidate(target: str, roll: bool = True) -> pd.DataFrame:
@@ -98,25 +131,52 @@ def evaluate(actual_date: str) -> dict | None:
         log.error(f"[SHADOW_RNN] 交集票仅 {len(common)} — 跳过")
         return None
     a = actual.loc[common]
+    mu, mu_src = _ab_mu()
     row = {"pred_date": pred_date, "actual_date": actual_date,
            "n_common": int(len(common))}
     for tag, s in (("rnn", rnn.loc[common, "pred_V"]),
                    ("prod", prod.loc[common, "pred_V"])):
-        m = _metrics(s, a)
+        m = _metrics(s, a, mu=mu)
         row[f"{tag}_r2"] = m["r2"]
         row[f"{tag}_mape"] = m["mape"]
+        row[f"{tag}_log_mse"] = m["log_mse"]
+        row[f"{tag}_econ"] = m["econ"]
+    row["ab_mu"] = mu
+    row["ab_mu_source"] = mu_src
     # 生产档在交集上的模型构成(交集应几乎全是 lgbm 覆盖票)
     if "model_version" in prod.columns:
         vc = prod.loc[common, "model_version"].value_counts()
         row["prod_mix"] = ";".join(f"{k}:{v}" for k, v in vc.items())
+
+    # 主裁(评估纪律 2026-08-08): 经济损失优先,MAPE 次之;R² 仅留作参考列
+    # (R² 分母被少数超大成交额票的方差主导 → 等于只考大盘股,对小票不公平)。
+    def _lower_wins(k: str):
+        r, p = row.get(f"rnn_{k}"), row.get(f"prod_{k}")
+        if r is None or p is None:
+            return None
+        return bool(r < p)
+    row["rnn_wins_econ"] = _lower_wins("econ")
+    row["rnn_wins_mape"] = _lower_wins("mape")
     row["rnn_wins_r2"] = (row["rnn_r2"] is not None and row["prod_r2"] is not None
                           and row["rnn_r2"] > row["prod_r2"])
+    row["rnn_wins"] = (row["rnn_wins_econ"] if row["rnn_wins_econ"] is not None
+                       else row["rnn_wins_mape"])
     return row
 
 
 def append_track(row: dict) -> None:
     SHADOW_DIR.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame([row])
+    if TRACK_CSV.exists():
+        old = pd.read_csv(TRACK_CSV)
+        if set(old.columns) != set(df.columns):
+            # schema 迁移(多指标列上线): 旧行补 NaN 对齐新列集后整表重写,
+            # 绝不裸 append —— mode="a" 不看已有 header,列错位会破坏整张 AB 表。
+            merged = pd.concat([old, df], ignore_index=True)
+            merged.to_csv(TRACK_CSV, index=False)
+            log.info(f"[SHADOW_RNN] schema 迁移重写 {TRACK_CSV.name} "
+                     f"({len(old.columns)}→{len(merged.columns)} 列): {row}")
+            return
     df.to_csv(TRACK_CSV, mode="a", header=not TRACK_CSV.exists(), index=False)
     log.info(f"[SHADOW_RNN] 追加 {TRACK_CSV.name}: {row}")
 
@@ -132,7 +192,7 @@ def _already_tracked(actual_date: str | None) -> bool:
 
 
 def run_daily(target: str | None = None, roll: bool = True,
-              eval_only: bool = False) -> int:
+              eval_only: bool = False, rebuild: bool = False) -> int:
     """不依赖 argv 的日更入口（供 daily_update 直接调用，避免 argparse/SystemExit）。
 
     与旧 main() 的两处关键差异（均为修 bug）：
@@ -167,6 +227,12 @@ def run_daily(target: str | None = None, roll: bool = True,
                 log.error(f"[SHADOW_RNN] serve 失败({tgt}): {e}")
                 return 2
 
+    if rebuild and TRACK_CSV.exists():
+        # 指标口径升级后重算全部历史行(evaluate 是纯函数: parquet+actual 都在盘上)
+        bak = TRACK_CSV.with_suffix(".csv.bak")
+        TRACK_CSV.replace(bak)
+        log.info(f"[SHADOW_RNN] --rebuild: 旧表已备份 {bak.name},全量重评")
+
     # 补齐所有缺失的 (pred_date → 次交易日 actual) 评估，幂等。
     import glob as _glob
     pred_days = sorted(p.split("rnn_pred_")[1][:10]
@@ -195,8 +261,11 @@ def main() -> int:
     ap.add_argument("--no-roll", action="store_true",
                     help="不滚动 seq_tail(只出预测,用于补跑/调试)")
     ap.add_argument("--eval-only", action="store_true", help="只做滞后评估")
+    ap.add_argument("--rebuild", action="store_true",
+                    help="指标口径升级后: 备份并重算整张 AB 表(全部历史 pred 对)")
     a = ap.parse_args()
-    return run_daily(target=a.target, roll=not a.no_roll, eval_only=a.eval_only)
+    return run_daily(target=a.target, roll=not a.no_roll, eval_only=a.eval_only,
+                     rebuild=a.rebuild)
 
 
 if __name__ == "__main__":
