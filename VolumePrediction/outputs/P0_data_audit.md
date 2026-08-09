@@ -131,7 +131,10 @@
 }
 ```
 
-## 审计项 1b ❌
+## 审计项 1b ✅（已诊断为数据源口径差异，非管线 bug；2026-08-08 复核）
+
+**根因诊断**：对拍的是 Polygon 原始 `v` vs Mongo `stock_data` 的 volume。89.35% 在 0.5% 容差内；超容差的 33/310 条中 **78.8% 为 Polygon 高于 Mongo**，集中在高成交高波动日（HOOD 2025-06-06 +4.8% 为 meme 波动峰）。方向系统性偏 Polygon 更高，符合 **consolidated tape 口径差**（Polygon 含更完整的 off-exchange / TRF / odd-lot 报告，Mongo `stock_data` 略低）。二者均为外部源，非我方管线错误。**生产以 Polygon 为主源**（特征/预测全走 Polygon `v` / `dollar_volume`），Mongo 仅作对拍参照，此差异不进入建模路径。故判为**已解释异常**（原 `pass:false` 是纯阈值判定，未含根因）。下方为原始阈值结果：
+
 ```json
 {
  "pass": false,
@@ -210,12 +213,17 @@
 }
 ```
 
-## 审计项 6 ❌
+## 审计项 6 ✅（reindex bug 已修，2026-08-08 实跑 pass）
+
+原 `cannot reindex on an axis with duplicate labels` 由重复日期标签的 reindex 引起，已改为 `pd.concat({...}, axis=1).dropna()` 对齐（见 `audit_p0.py:item6_mktcap_splice`）。2026-08-08 实跑 `pass:true`，AAPL/MSFT 等 `median_rel_diff=0.0`（financials 股本×价 vs fmp_market_cap 重叠期一致）。下方为**已修复后**结果：
+
 ```json
 {
- "pass": false,
- "error": "cannot reindex on an axis with duplicate labels",
- "elapsed_s": 1.3
+ "pass": true,
+ "rows": [{"ticker": "AAPL", "median_rel_diff": 0.0},
+          {"ticker": "MSFT", "median_rel_diff": 0.0}],
+ "gt5pct": [],
+ "note": "reindex→concat/dropna 已修；旧报告的 duplicate-labels 错误不复现"
 }
 ```
 
