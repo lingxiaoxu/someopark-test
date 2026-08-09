@@ -187,6 +187,45 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 6.3b PnL 报告的起始日期 — 滚动季度起点（2026-08-08 起）
+
+此前 `conductor/pipeline_runner.sh` 硬编码 `PnLReport.py --start 2026-03-19`。
+现已改为**不传 `--start`**，由 `PnLReport.default_report_start()` 计算：
+
+> **取运行日前一个月所属季度的首日。** 等价说法：季度首月沿用上一季度起点，
+> 进入次月即切到本季度起点。
+
+| 运行日 | 前一月（季） | 起点 |
+|---|---|---|
+| 2026-07-01 ~ 07-31 | 6 月（Q2） | **2026-04-01** ← 7 月仍看上一季度 |
+| 2026-08-01 ~ 09-30 | 7/8 月（Q3） | **2026-07-01** ← 8 月起切到本季度 |
+| 2026-10-01 ~ 10-31 | 9 月（Q3） | **2026-07-01** ← 10 月仍看上一季度 |
+| 2026-11-01 ~ 12-31 | 10/11 月（Q4） | **2026-10-01** ← 11 月起切换 |
+| 2027-01-01 ~ 01-31 | 12 月（Q4/26） | **2026-10-01** |
+
+以**运行日**而非 `--end` 为准：8/01 出的报告 `end=7/31`，若按 end 推算会得到
+2026-04-01，与「8/1 起以 7/1 为起点」相反。
+
+**规则只有一处真源** —— `PnLReport.default_report_start()`。勿在 conductor
+脚本或别处重复写死日期。要临时出别的窗口，显式传 `--start` 覆盖即可：
+
+```bash
+# 临时出全历史报告（不影响生产默认）
+set -a && source .env && set +a && conda run -n someopark_run --no-capture-output \
+  python PnLReport.py --start 2026-03-19 --end 2026-08-07 --out /tmp/full.pdf
+```
+
+> ⚠️ **不要混淆两个 2026-03-19**：本节说的是**报告窗口**。
+> `DailySignal._perf_start = '2026-03-19'`（喂 `UpdateStrategyPerformance`）是
+> **净值曲线的拼接基点**，与本规则无关，**改了会截断 strategy_performance 的
+> 历史**（见 §「注意：capital base 拼接问题」）。
+>
+> **风险报告不受影响**：`generate_risk_report()` 无 start 参数，只接 `signal_date`，
+> 内部自建 T / T-1D / T-1W / T-1M / ITD 窗口，ITD 锚在 perf JSON 起点。
+> 换报告起始日期**无需重出 risk report**。
+
+---
+
 ## 6.4 pairs_ledger — MRPT/MTFS 成交账本（**日常无需手动运行**）
 
 **账本由 DailySignal 的两个钩子每日自动完成，日常跑批流程不变、无需新增手动步骤：**

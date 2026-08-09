@@ -105,7 +105,11 @@ conda run -n someopark_run --no-capture-output python "$REPO/MacroSimilarity.py"
 
 run_step 7 "DailySignal.py --strategy both --vix-forecast --vix-forecast-finetune" "DailySignal"
 run_step 8 "WalkForwardDiagnostic.py" "WalkForwardDiagnostic"
-run_step 9 "PnLReport.py --start 2026-03-19" "PnLReport"
+# 起始日期**不再硬编码**（此前固定 2026-03-19）。不传 --start 时 PnLReport 走
+# default_report_start()：取运行日前一月所属季度的首日 —— 季度首月沿用上一季度
+# 起点,次月起切到本季度（7月→4/1；8月起→7/1；10月→7/1；11月起→10/1）。
+# 规则只有一处真源(PnLReport.default_report_start)，勿在此重复写死日期。
+run_step 9 "PnLReport.py" "PnLReport"
 
 log "=== PIPELINE COMPLETE ==="
 echo "ALL_DONE" >> "$PIPEDIR/status"

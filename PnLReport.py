@@ -2002,9 +2002,35 @@ def build_pdf(report: dict, output_path: str, yf_compare: bool = True):
 # CLI
 # ═══════════════════════════════════════════════════════════════════════════════
 
+def default_report_start(run_date=None) -> str:
+    """滚动季度起点（2026-08-08 起的口径，替代此前固定的 2026-03-19）。
+
+    规则：取**运行日前一个月**所属季度的首日。等价说法 —— 季度首月沿用上一季度
+    起点，进入次月即切到本季度起点：
+
+        运行日        前一月(季)    起点
+        2026-07-xx    6月 (Q2)     2026-04-01   ← 7月仍看上一季度
+        2026-08-xx    7月 (Q3)     2026-07-01   ← 8月起切到本季度
+        2026-09-xx    8月 (Q3)     2026-07-01
+        2026-10-xx    9月 (Q3)     2026-07-01   ← 10月仍看上一季度
+        2026-11-xx   10月 (Q4)     2026-10-01   ← 11月起切换
+        2027-01-xx   12月 (Q4/26)  2026-10-01
+
+    以**运行日**而非 `--end` 为准：8/01 出的报告 end=7/31，若按 end 推算会得到
+    2026-04-01，与「8/1 起以 7/1 为起点」的要求相反。
+
+    净值曲线的拼接基点（`DailySignal._perf_start` = 2026-03-19）是另一回事,
+    与本函数无关,不可一并改动 —— 改了会截断 strategy_performance 的历史。
+    """
+    m = pd.Timestamp(run_date or pd.Timestamp.now().date()).to_period('M') - 1
+    return str(pd.Period(m, freq='Q').start_time.date())
+
+
 def main():
     parser = argparse.ArgumentParser(description='生成 PnL PDF 报告')
-    parser.add_argument('--start',  default=None, help='起始日期 YYYY-MM-DD')
+    parser.add_argument('--start',  default=None,
+                        help='起始日期 YYYY-MM-DD（缺省=滚动季度起点，见 '
+                             'default_report_start()）')
     parser.add_argument('--end',    default=None, help='截止日期 YYYY-MM-DD（默认今天）')
     parser.add_argument('--out',    default=None, help='输出路径（默认自动命名）')
     parser.add_argument('--no-yf',  action='store_true',
@@ -2036,13 +2062,7 @@ def main():
     if args.start:
         start = args.start
     else:
-        # Auto-detect: earliest inventory snapshot date (first position ever opened)
-        inv_files = sorted(glob.glob(os.path.join(INV_DIR, 'inventory_*.json')))
-        if inv_files:
-            first_day, _ = _parse_ts(inv_files[0])
-            start = str(first_day.date()) if first_day else str((pd.Timestamp(end) - pd.Timedelta(days=30)).date())
-        else:
-            start = str((pd.Timestamp(end) - pd.Timedelta(days=30)).date())
+        start = default_report_start()
 
     reports_dir = os.path.join(BASE_DIR, 'trading_signals', 'pnl_reports')
     os.makedirs(reports_dir, exist_ok=True)

@@ -90,7 +90,7 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 | `PriceDataStore.py` | 价格数据读取与缓存（Polygon / Yahoo），Parquet 格式 |
 | `AuditPairs.py` | 验证 Excel 输出文件规则合规性（MRPT / MTFS 通用，`--strategy mrpt\|mtfs`） |
 | `DailySignal.py` | 每日信号生成器（`--strategy mrpt\|mtfs\|both`），含 Regime 检测、Position Monitor、完整报告输出 |
-| `PnLReport.py` | 生成 PDF 绩效报告：交易明细、PnL 汇总、杠杆分析（总/单边/净/ROE）、系统成交价 vs 参考执行价对照（执行日开盘价）。**2026-08-06 起底线锚定账本**：新增「口径对账」块，三列相加 = 账本（pair 级归因 + 归因差 + 分红），差额显式列出而非隐没在合计里。无账本时自动降级为纯 pair 级。`--end YYYY-MM-DD [--start YYYY-MM-DD] [--no-yf]` |
+| `PnLReport.py` | 生成 PDF 绩效报告：交易明细、PnL 汇总、杠杆分析（总/单边/净/ROE）、系统成交价 vs 参考执行价对照（执行日开盘价）。**起始日期为滚动季度起点**（`default_report_start()`：取运行日前一月所属季度首日 —— 7月→4/1；8月起→7/1；10月→7/1；11月起→10/1），缺省即按此计算，`--start` 可覆盖。曾于 2026-08-06 加过「口径对账（归因差）」块，2026-08-08 已移除 —— 其差额实为监控侧历史数据缺陷（6/19、6/22 缺 `combined_signals`），非良性口径差，不宜以对账表呈现。`--end YYYY-MM-DD [--start YYYY-MM-DD] [--no-yf]` |
 | `PnLReconcile.py` | 通用对账工具：逐笔核查成交记录与 inventory 快照的一致性 |
 | `MacroDataStore.py` | 宏观指数数据存储（VIX/MOVE 日线 + VIX/VXTLT hourly），按年分 Parquet 存储，供 RegimeDetector 读取短期百分位 |
 | `RegimeDetector.py` | Regime 检测器：CISS 动态加权、倒 U 型波动率曲线、90 天 hourly 百分位分层合成，输出 0–100 分 + 各类 sub-scores |
@@ -430,7 +430,7 @@ pipeline_runner.sh
                     R1–R11 全项校验，FAIL 时 WARNING 告警但不中断
 
   STEP 8    WalkForwardDiagnostic
-  STEP 9    PnLReport.py --start 2026-03-19
+  STEP 9    PnLReport.py            ── 起点=滚动季度（缺省 default_report_start()）
               读 combined_signals + inventory + **account_history/**（账本锚定）
               写 trading_signals/pnl_reports/pnl_report_<date>.pdf
 ```
