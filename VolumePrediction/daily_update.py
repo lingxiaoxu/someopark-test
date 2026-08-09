@@ -127,6 +127,17 @@ def run(date: Optional[str] = None, fetch: bool = True,
             rnn_ab = {"status": "error", "error": str(e)}
 
     health = svc.ops.health()
+    # §5.3 计划命名的健康工件落盘(plan L424): 供外部监控免起服务进程直接读。
+    # 原子写(tmp+replace),失败绝不阻断日更主流程。
+    try:
+        hp = OUT / "service_health.json"
+        tmp = hp.with_suffix(".tmp")
+        tmp.write_text(json.dumps(
+            {**health, "written_at": pd.Timestamp.now().isoformat()},
+            indent=2, ensure_ascii=False, default=str))
+        tmp.replace(hp)
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"service_health.json write failed (non-fatal): {e}")
     out = {"status": "ok", "asof": asof, "refresh": res,
            "adapters": adapters, "health": health,
            "wiring_shadow": wiring, "rnn_ab_shadow": rnn_ab}

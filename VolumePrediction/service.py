@@ -859,7 +859,14 @@ class _Ops:
                 "resid_std": resid_std}
 
     def retrain(self, config: Optional[dict] = None) -> dict:
-        """登记再训练请求(实际训练由主协调管道执行;不自动晋升)。"""
+        """登记再训练请求(设计即如此,非缺口——审计留档 2026-08-09)。
+
+        训练**有意不在服务进程内执行**: 重训吃数小时算力,放进只读低延迟的服务
+        API 会阻塞四策略消费端、破坏 §5.3 服务保证。本方法只登记带时间戳的
+        request(留痕可审计);实际执行走外部脚本——月度统计重冻结 refreeze.py
+        (conductor/vp_refreeze_monthly.sh)、深模型重训 prod_model.py /
+        rnn_export.py;晋升永远人工 ops.promote(version, by='user')。
+        """
         ver = f"retrain_request_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}"
         return self.s.registry.record_model(ver, kind="request",
                                             meta=config or {}, status="requested")
