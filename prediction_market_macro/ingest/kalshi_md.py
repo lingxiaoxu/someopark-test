@@ -4,11 +4,16 @@ Lessons baked in (measured, this repo):
   * /markets list endpoints return NO prices → per-ticker /orderbook is mandatory
   * orderbook payload is {"orderbook_fp": {"yes_dollars": [[price, $depth]...],
     "no_dollars": [[...]]}} — yes_ask is derived from the best NO bid (1 - no_bid)
-  * rate limit: ~10 req/s public → 0.12s spacing + retry
+  * rate limit: ~10 req/s public → 0.18s spacing + retry. _pace() is PER-INSTANCE and
+    therefore per-process: macrotick (every 900s) overlapping the refresh is what has
+    produced every 429 in the alert log (2026-08-03 shows two series failing in the SAME
+    second — impossible inside one serial loop). Retry rides that out; it does not
+    prevent it. A cross-process pacer is the real cure if 429s ever stop being rare.
 """
 from __future__ import annotations
 
 import json
+import random as _rand
 import time as _time
 import urllib.request
 from dataclasses import dataclass
@@ -25,7 +30,7 @@ class OB:
     ask_depth: float          # $ resting at best no bid (what a YES taker lifts)
 
 
-def _get(path: str, params: dict | None = None, tries: int = 6) -> dict:
+def _get(path: str, params: dict | None = None, tries: int = 9) -> dict:
     q = "&".join(f"{k}={v}" for k, v in (params or {}).items())
     url = f"{BASE}{path}" + (f"?{q}" if q else "")
     last = None
@@ -38,7 +43,20 @@ def _get(path: str, params: dict | None = None, tries: int = 6) -> dict:
             last = e
             if e.code == 429:                     # rate limited: honor Retry-After, long backoff
                 ra = e.headers.get("Retry-After")
-                _time.sleep(float(ra) if ra else 3.0 + 2.0 * i)
+                if ra:
+                    try:
+                        _time.sleep(float(ra))
+                        continue
+                    except ValueError:            # HTTP-date form — fall through to our own
+                        pass
+                # 6 tries of 3+2i rode out only ~35s, which was short of the window that
+                # actually bites here: the limit is breached when a second PROCESS
+                # (macrotick, every 900s) overlaps the refresh, and _pace() is per-instance
+                # so it cannot see that. Every 429 in the log burned all 6 tries. Capped
+                # exponential + jitter rides out ~2.5min instead; jitter matters precisely
+                # BECAUSE two processes collide — identical backoff makes them retry in
+                # lockstep and collide again.
+                _time.sleep(min(30.0, 3.0 * 1.7 ** i) * (0.75 + 0.5 * _rand.random()))
                 continue
             if e.code == 404:                      # definitive: retrying never helps
                 raise
@@ -63,9 +81,9 @@ class KalshiMD:
 
     # ── discovery ─────────────────────────────────────────────────────────
     def events(self, series: str, status: str = "open") -> list[dict]:
-        self._pace()
         out, cursor = [], ""
         while True:
+            self._pace()          # INSIDE the loop: pages 2..N used to go out back-to-back
             params = {"series_ticker": series, "status": status, "limit": 200}
             if cursor:
                 params["cursor"] = cursor
@@ -80,9 +98,9 @@ class KalshiMD:
         return _get("/markets", {"event_ticker": event_ticker, "limit": 100}).get("markets", [])
 
     def settled_markets(self, series: str, limit: int = 1000) -> list[dict]:
-        self._pace()
         out, cursor = [], ""
         while len(out) < limit:
+            self._pace()          # INSIDE the loop, matching historical_markets()
             params = {"series_ticker": series, "status": "settled", "limit": 200}
             if cursor:
                 params["cursor"] = cursor

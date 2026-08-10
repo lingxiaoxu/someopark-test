@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.ops.ledger import open_positions
 from prediction_market_macro.strategy.edge import WIDE_SPREAD, two_sided
@@ -153,11 +153,23 @@ def mark_all(conn) -> int:
                 (now, pos["id"], f["ticker"], mid, round(pnl, 4)))
             n += 1
     if unmarked:
-        conn.execute(
-            "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-            (now, "warn", "pnl.mark_all",
-             f"{unmarked}/{n} open legs carried at cost — book wider than"
-             f" {WIDE_SPREAD:.2f} or one-sided; unrealized PnL excludes them"))
+        msg = (f"{unmarked}/{n} open legs carried at cost — book wider than"
+               f" {WIDE_SPREAD:.2f} or one-sided; unrealized PnL excludes them")
+        # mark_all runs from jobs.tick every 900s, so an illiquid book that persists for
+        # a day used to write ~96 byte-identical rows and bury the alert feed (which is
+        # what made a normal disclosure look like an outage). Dedupe on the message text
+        # within 24h: any CHANGE in the counts changes the text and fires immediately,
+        # and an unchanged condition still re-asserts itself once a day rather than going
+        # silent — the docstring's promise is that this can never quietly disappear, not
+        # that it must be repeated every 15 minutes.
+        dup = conn.execute(
+            "SELECT 1 FROM alerts WHERE source='pnl.mark_all' AND message=? AND ts > ?",
+            (msg, (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat())
+        ).fetchone()
+        if not dup:
+            conn.execute(
+                "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                (now, "warn", "pnl.mark_all", msg))
     conn.commit()
     return n
 

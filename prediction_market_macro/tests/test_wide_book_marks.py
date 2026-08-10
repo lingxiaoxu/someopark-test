@@ -123,3 +123,42 @@ def test_exits_will_not_dump_a_position_into_a_wide_book(conn):
     assert conn.execute("SELECT COUNT(*) c FROM decisions WHERE kind='exit'"
                         ).fetchone()["c"] == 0
     assert did  # position is still held
+
+
+def test_unmarked_alert_is_deduped_but_never_suppressed_on_change(conn):
+    """The carried-at-cost disclosure must survive, without burying the alert feed.
+
+    mark_all runs from jobs.tick every 900s. A book that stays illiquid for a day wrote
+    ~96 byte-identical warn rows (25 were visible in a single frontend screenshot on
+    2026-08-09), which is how a routine disclosure came to read as an outage. Dedupe is
+    on the message text, so it is only ever silence about a state that has not changed.
+    """
+    _position(conn, "WIDE", price=0.90, count=1)
+    _quote(conn, "WIDE", 0.18, 0.98)          # unmarkable: 80c wide
+    conn.commit()
+
+    for _ in range(5):                         # five tick cycles, same state
+        pnl.mark_all(conn)
+    rows = conn.execute(
+        "SELECT message FROM alerts WHERE source='pnl.mark_all'").fetchall()
+    assert len(rows) == 1, f"expected 1 deduped alert, got {len(rows)}"
+    assert "1/1 open legs carried at cost" in rows[0]["message"]
+
+    # a CHANGE in the counts must fire immediately, not wait out the 24h window
+    _position(conn, "WIDE2", price=0.90, count=1)
+    _quote(conn, "WIDE2", 0.10, 0.99)
+    conn.commit()
+    pnl.mark_all(conn)
+    msgs = [r["message"] for r in conn.execute(
+        "SELECT message FROM alerts WHERE source='pnl.mark_all' ORDER BY ts").fetchall()]
+    assert len(msgs) == 2, f"state change must not be deduped, got {msgs}"
+    assert "2/2 open legs carried at cost" in msgs[-1]
+
+
+def test_no_alert_when_every_leg_is_markable(conn):
+    _position(conn, "TIGHT", price=0.50, count=1)
+    _quote(conn, "TIGHT", 0.49, 0.51)
+    conn.commit()
+    pnl.mark_all(conn)
+    assert conn.execute("SELECT COUNT(*) c FROM alerts WHERE source='pnl.mark_all'"
+                        ).fetchone()["c"] == 0

@@ -238,6 +238,12 @@ def refresh_from_web(conn) -> dict:
     checked, drifts = 0, []
     pages = {"BLS_CPI": "https://www.bls.gov/schedule/news_release/cpi.htm",
              "BLS_JOBS": "https://www.bls.gov/schedule/news_release/empsit.htm"}
+    # BLS blocks by User-Agent, and the rule is the opposite of the usual one: a
+    # browser-spoofing UA gets 403, an identified bot UA carrying a contact address
+    # gets 200 (bls.gov data-access policy). The bare "someopark-macro/0.1" this used
+    # to send was 403'd on every run since deployment — deterministically, both pages,
+    # verified 2026-08-09.
+    ua = "someopark-macro/0.1 (+lxu912@gmail.com)"
     months = {}
     for i, m in enumerate(["January", "February", "March", "April", "May", "June",
                            "July", "August", "September", "October", "November",
@@ -246,13 +252,23 @@ def refresh_from_web(conn) -> dict:
         months[m[:3]] = i                    # BLS pages abbreviate ("Jan. 13, 2026")
     for cal, url in pages.items():
         try:
-            html = _rq.get(url, timeout=30,
-                           headers={"User-Agent": "someopark-macro/0.1"}).text
+            resp = _rq.get(url, timeout=30, headers={"User-Agent": ua})
         except Exception as e:                                # noqa: BLE001
             conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                          (now.isoformat(), "warn", "calendar",
                           f"refresh_from_web {cal}: {e}"))
             continue
+        # Check status BEFORE parsing. Without this a 403 block page (1.3KB of "Access
+        # Denied", still text/html, still a 200-shaped .text attribute) fell straight
+        # through to the parser and surfaced as "zero dates parsed — check regex",
+        # which sent every reader hunting for a page-format change that never happened.
+        if resp.status_code != 200:
+            conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                         (now.isoformat(), "warn", "calendar",
+                          f"refresh_from_web {cal}: HTTP {resp.status_code} from {url}"
+                          f" — not a parse problem; check User-Agent / blocking"))
+            continue
+        html = resp.text
         web_dates = set()
         for m in _re.finditer(
                 r"(January|February|March|April|May|June|July|August|September|"
