@@ -151,11 +151,17 @@ def parse_zip(blob: bytes) -> tuple[dict, list[dict]]:
     return meta, rows
 
 
-def _fetch(product: str, day: str, timeout: int = 60, tries: int = 6) -> bytes | None:
+def _fetch(product: str, day: str, timeout: int = 60, tries: int = 4) -> bytes | None:
     """One zip; None on 404 (early years skip some weekend/holiday issuances).
 
-    403 is NOAA's WAF rate-limiting, not a missing file — back off long (90s+) and
-    retry, because raising here kills a multi-hour resumable run over a transient."""
+    403 is AMBIGUOUS on this server and both meanings were observed 2026-08-10:
+      - a rate-triggered WAF ban (~2 req/s sustained drew one; it lifted within ~1h);
+      - a PERMANENTLY forbidden single object (610temp_20221031.zip returns 403 while
+        its neighbours return 200 — server-side permission rot, confirmed by hand).
+    So _fetch retries a 403 briefly (60/120s) and then RAISES; the caller decides,
+    because only the caller can see whether 403s are consecutive (ban) or isolated
+    (one rotten file, skip and move on). An early version slept up to 30 min per
+    attempt in here and turned one rotten file into a wedged multi-hour run."""
     url = f"{_BASE}/{product}_{day.replace('-', '')}.zip"
     for attempt in range(tries):
         try:
@@ -167,8 +173,7 @@ def _fetch(product: str, day: str, timeout: int = 60, tries: int = 6) -> bytes |
                 return None
             if attempt == tries - 1:
                 raise
-            sleep(min(1800, 300 * (attempt + 1)) if e.code == 403
-                  else 5 * (attempt + 1))
+            sleep(60 * (attempt + 1) if e.code == 403 else 5 * (attempt + 1))
         except urllib.error.URLError:
             if attempt == tries - 1:
                 raise
@@ -216,10 +221,26 @@ def backfill(conn, start: str = ARCHIVE_FLOOR, end: str | None = None,
 
         def fetch_paced(day: str):
             sleep(_FETCH_DELAY_S)                  # per-thread pacing
-            return day, _fetch(product, day)
+            try:
+                return day, _fetch(product, day)
+            except urllib.error.HTTPError as e:
+                if e.code == 403:
+                    return day, e                  # caller disambiguates (see _fetch)
+                raise
 
+        consec_403 = 0
         with ThreadPoolExecutor(max_workers=workers) as ex:
             for day, blob in ex.map(fetch_paced, pending):
+                if isinstance(blob, urllib.error.HTTPError):
+                    consec_403 += 1
+                    if consec_403 > 30:            # isolated rot never runs this long
+                        raise RuntimeError(
+                            f"{product}: {consec_403} consecutive 403s — WAF ban, "
+                            "stop and resume later (backfill is idempotent)")
+                    print(f"{product} {day}: 403 (isolated) — skipped", flush=True)
+                    out[product]["missing"] += 1
+                    continue
+                consec_403 = 0
                 if blob is None:
                     out[product]["missing"] += 1
                     continue
