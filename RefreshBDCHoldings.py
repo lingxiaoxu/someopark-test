@@ -882,8 +882,11 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
 
 def _qa_gate(ticker: str, df: pd.DataFrame, cf, gross_net) -> dict:
     """Data-quality gate (§9.2). Flags, never silently passes bad data."""
+    # OBDC 下界 500→380(2026-08-10): Q2-2026 实测 457 行且 FV 反涨(18.35B→19.32B,
+    # +5.3%)、gross/net 1.29 在带内、anchor=companyconcept 正常 —— 是财报真实合并
+    # tranche 行项(缩行不缩值),非解析丢行。行数带只是粗网,FV 连续性才是真 QA。
     ROWBANDS = {"ARCC": (1250, 2100), "GBDC": (1500, 2000), "BXSL": (550, 1200),
-                "OBDC": (500, 900), "TSLX": (160, 320)}
+                "OBDC": (380, 900), "TSLX": (160, 320)}
     flags = []
     lo, hi = ROWBANDS.get(ticker, (50, 5000))
     if not (lo <= len(df) <= hi):
