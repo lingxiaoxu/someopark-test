@@ -109,15 +109,18 @@ def diff_holdings(cur: pd.DataFrame, prev: pd.DataFrame) -> dict:
             # <0.30 (data error, not a real loan mark). A drop-based rule was rejected:
             # on real quarter-roll data it fired on the garbage highs (3.0 -> 0.99).
             sev = "alert" if (0.30 <= cm < 0.90) else "info"
+            # company 键名: diff 输入帧的列叫 "company"(见 run() 里 cur_all 的列选择,
+            # 历史帧也已 rename issuer→company)。此前误取 c.get("issuer") 恒为 None,
+            # 91 条 alert 全部点不出借款人 —— 2026-08-10 修复,并带上 deal_uid 供回溯。
             warnings.append({"type": "mark_deterioration", "severity": sev,
-                             "company": c.get("issuer"),
+                             "deal_uid": uid, "company": c.get("company"),
                              "bdc": c.get("bdc"), "from": round(pm, 3), "to": round(cm, 3)})
         cpik = pd.to_numeric(c.get("pik_rate"), errors="coerce")
         ppik = pd.to_numeric(p.get("pik_rate"), errors="coerce")
         if pd.notna(cpik) and (pd.isna(ppik) or cpik > (ppik or 0)) and cpik > 0:
             # PIK turning on/up is a soft signal → info (not a standalone alert)
             warnings.append({"type": "pik_increase", "severity": "info",
-                             "company": c.get("issuer"),
+                             "deal_uid": uid, "company": c.get("company"),
                              "bdc": c.get("bdc"), "from": (float(ppik) if pd.notna(ppik) else 0.0),
                              "to": float(cpik)})
 
