@@ -72,6 +72,7 @@ def execute(conn, series: str, period_key: str, legs_meta: list[dict],
     by_ticker = {l["ticker"]: l for l in legs_meta}
 
     best = None                                   # (net, legs, gross, note)
+    best_reject = None                            # (net, gross, cost, fees) of best loser
     for v in violations:
         if "buy" in v:                            # monotone: YES(lo) + NO(hi)
             lo, hi = v["buy"], v["sell"]
@@ -102,11 +103,33 @@ def execute(conn, series: str, period_key: str, legs_meta: list[dict],
         cost = sum(l["price"] for l in legs)
         fees = sum(taker_fee(l["price"], 1) for l in legs)
         net = payoff_min - cost - fees            # locked minimum profit / contract
+        if best_reject is None or net > best_reject[0]:
+            best_reject = (net, v["gross"], cost, fees)
         if net < MIN_NET:
             continue
         if best is None or net > best[0]:
             best = (net, legs, v["gross"], f"ARB {'+'.join(l['ticker'].rsplit('-', 1)[-1] + ':' + l['side'] for l in legs)} net={net:.3f}")
     if best is None:
+        # Every detected violation died at the fee gate. Say so, once per
+        # (series, period, day) — the 2026-08-10 audit found 9 MONOTONE-ARB alerts
+        # against 0 arb decisions and could not tell "fees always bind" from "the
+        # detect→execute path is broken"; replaying the books showed gross 1-2c vs a
+        # 2-leg fee wedge of 2-4c (ceil to the cent per leg). This alert keeps the
+        # two cases distinguishable forever without a replay.
+        if best_reject is not None:
+            net_r, gross_r, cost_r, fees_r = best_reject
+            msg = (f"ARB-REJECTED {series}/{period_key}: best net {net_r:+.3f}/contract"
+                   f" < {MIN_NET} (gross {gross_r:.3f}, cost {cost_r:.3f},"
+                   f" fees {fees_r:.3f}) — fee gate, path alive")
+            day = datetime.now(timezone.utc).date().isoformat()
+            dup = conn.execute(
+                "SELECT 1 FROM alerts WHERE source='arb' AND message=? AND ts>=?",
+                (msg, day)).fetchone()
+            if not dup:
+                conn.execute(
+                    "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                    (datetime.now(timezone.utc).isoformat(), "info", "arb", msg))
+                conn.commit()
         return 0
     net, legs, gross, note = best
     depth_cap = DEPTH_FRAC * min(l["depth"] for l in legs)

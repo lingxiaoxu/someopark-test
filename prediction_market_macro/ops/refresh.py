@@ -159,6 +159,10 @@ def run(weekly: bool = False) -> dict:
              lambda: json.dumps({k: {"real": v.get("real"), "roi": v.get("roi"),
                                      "dm_p": v.get("dm_p"), "on": v.get("enabled")}
                                  for k, v in eval_mod.run_all(conn).items()})[:600])
+        from prediction_market_macro.research import prereg
+        # the graders judge themselves at their registered thresholds; this caller only
+        # surfaces maturation (edge-triggered alert) — see research/prereg.py docstring
+        step("weekly_prereg_shadows", lambda: json.dumps(prereg.run_all(conn)))
         from prediction_market_macro.research import attribution
         step("weekly_attribution",
              lambda: {k: v for k, v in attribution.weekly_attribution(conn).items()
