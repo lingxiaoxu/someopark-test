@@ -50,7 +50,14 @@ from prediction_market_macro.ingest.weather import CITIES
 _BASE = "https://ftp.cpc.ncep.noaa.gov/GIS/us_tempprcpfcst"
 PRODUCTS = ("610temp", "814temp")
 ARCHIVE_FLOOR = "2012-09-11"          # earliest zip on the FTP listing, both products
-_FETCH_DELAY_S = 0.4                  # politeness spacing between zip downloads
+_FETCH_DELAY_S = 1.5                  # politeness spacing between zip downloads.
+# Measured 2026-08-10: 4 workers at 0.4s per-thread spacing (~2 req/s) drew a WAF 403
+# after ~3,500 files, and the ban outlived a 5-minute cooloff plus 22 minutes of
+# backoff. curl with either UA got 200 an hour later — the ban is rate-triggered and
+# time-limited, not UA- or IP-permanent. One worker at 1.5s (~0.5 req/s) plus the
+# named UA below is the configuration that finishes; the 403 branch in _fetch waits
+# 5-30 minutes per attempt so a mid-run ban self-heals instead of killing the run.
+_UA = "someopark-macro/0.1 (+lxu912@gmail.com)"   # calendars.py convention
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS weather_fcst(
@@ -144,19 +151,24 @@ def parse_zip(blob: bytes) -> tuple[dict, list[dict]]:
     return meta, rows
 
 
-def _fetch(product: str, day: str, timeout: int = 60, tries: int = 4) -> bytes | None:
-    """One zip; None on 404 (early years skip some weekend/holiday issuances)."""
+def _fetch(product: str, day: str, timeout: int = 60, tries: int = 6) -> bytes | None:
+    """One zip; None on 404 (early years skip some weekend/holiday issuances).
+
+    403 is NOAA's WAF rate-limiting, not a missing file — back off long (90s+) and
+    retry, because raising here kills a multi-hour resumable run over a transient."""
     url = f"{_BASE}/{product}_{day.replace('-', '')}.zip"
     for attempt in range(tries):
         try:
-            with urllib.request.urlopen(url, timeout=timeout) as r:
+            req = urllib.request.Request(url, headers={"User-Agent": _UA})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read()
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return None
             if attempt == tries - 1:
                 raise
-            sleep(5 * (attempt + 1))
+            sleep(min(1800, 300 * (attempt + 1)) if e.code == 403
+                  else 5 * (attempt + 1))
         except urllib.error.URLError:
             if attempt == tries - 1:
                 raise
@@ -177,7 +189,7 @@ def _store(conn, product: str, meta: dict, rows: list[dict], now: str) -> None:
 
 
 def backfill(conn, start: str = ARCHIVE_FLOOR, end: str | None = None,
-             products=PRODUCTS, log_every: int = 200, workers: int = 4) -> dict:
+             products=PRODUCTS, log_every: int = 200, workers: int = 1) -> dict:
     """Idempotent + resumable: dates already in the table are skipped, so a killed run
     restarts where it left off and a completed one is a no-op.
 
