@@ -1,19 +1,9 @@
 {
-  "as_of": "2026-08-06",
+  "as_of": "2026-08-07",
   "base_currency": "USD",
   "initial_cash": 1000000.0,
-  "cash": 1037104.73,
+  "cash": 1044953.65,
   "positions": {
-    "ADI": {
-      "shares": 182,
-      "avg_cost": 361.88,
-      "entry_date": "2026-08-03"
-    },
-    "AKAM": {
-      "shares": -571,
-      "avg_cost": 117.88,
-      "entry_date": "2026-08-03"
-    },
     "AMD": {
       "shares": 88,
       "avg_cost": 482.05,
@@ -25,24 +15,12 @@
       "entry_date": "2026-08-05"
     }
   },
-  "cumulative_realized": 34040.63,
+  "cumulative_realized": 43336.87,
   "cumulative_dividends": -464.48,
   "cumulative_fees": 0.0,
-  "equity": 1036684.77,
+  "equity": 1042025.45,
   "liabilities": {},
   "lots": {
-    "ADI/AKAM|s1": {
-      "ticker": "ADI",
-      "shares": 182,
-      "cost": 361.88,
-      "open_date": "2026-08-03"
-    },
-    "ADI/AKAM|s2": {
-      "ticker": "AKAM",
-      "shares": -571,
-      "cost": 117.88,
-      "open_date": "2026-08-03"
-    },
     "AMD/NVDA|s1": {
       "ticker": "AMD",
       "shares": 88,
@@ -57,6 +35,6 @@
     }
   },
   "price_basis_state": "same_day_close",
-  "unrealized": 3108.62,
-  "position_value": -419.96
+  "unrealized": -846.94,
+  "position_value": -2928.2
 }

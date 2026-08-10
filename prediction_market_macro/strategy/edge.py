@@ -21,6 +21,31 @@ def taker_fee(price: float, count: int) -> float:
     return math.ceil(round(0.07 * count * price * (1 - price), 6) * 100) / 100.0
 
 
+def settle_struct(legs, count: int, results: dict) -> float | None:
+    """What a structure held to settlement realized, in dollars. None if unresolvable.
+
+    `legs` need only expose `.ticker`, `.side` and `.price` (the FILL price, not the
+    quote); `results` maps ticker -> 'yes'/'no'. Settlement is free on Kalshi, so the only
+    fee charged is the entry taker fee on each leg.
+
+    Extracted from `research/walkforward.py`'s `_settle_struct` closure so the shadow
+    scorers grade a trade exactly the way the harness grades one. #141 is what a second
+    implementation of a shared quantity costs: `hold_edge` had two, they disagreed by an
+    aggregation operator, and 36 round trips were liquidated while still holding positive
+    edge. The accumulation order below is deliberately identical to the closure's, so the
+    two agree bit-for-bit rather than merely to rounding.
+    """
+    realized = 0.0
+    for leg in legs:
+        res = results.get(leg.ticker)
+        if res is None:
+            return None
+        won = (res == leg.side)
+        realized += ((1.0 if won else 0.0) - leg.price) * count \
+            - taker_fee(leg.price, count)
+    return realized
+
+
 PAPER_TICK = 0.01                     # Kalshi quotes on a 1-cent grid
 WIDE_SPREAD = 0.15                    # beyond this a midpoint stops meaning anything
 

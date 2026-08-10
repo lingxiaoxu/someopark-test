@@ -210,45 +210,81 @@ def settle_pass(conn) -> int:
             note += f" z={z:+.2f} ({attribution})"
         conn.execute(
             "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair, ask,"
-            " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " net_edge, size_usd, inputs_json, model_version, gate_snapshot, note,"
+            " closes_decision_id)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (now, pos["series"], pos["period"], pos["structure_json"], "settle_note",
              pos["fair"], pos["ask"], pos["net_edge"], round(realized, 4),
              json.dumps({"realized_usd": round(realized, 4), "results": results,
                          "origin": pos["kind"],
                          "z": round(z, 3) if z is not None else None,
                          "attribution": attribution}), pos["model_version"], "{}",
-             note))
+             note, pos["id"]))                       # #149: which position settled
         n += 1
     conn.commit()
     return n
 
 
 def report(conn) -> dict:
-    rows = conn.execute(
-        "SELECT series, COUNT(*) n, SUM(size_usd) staked FROM decisions WHERE kind='open'"
-        " GROUP BY series").fetchall()
-    # first settle_note per (series, period) only — historical duplicate rows from
-    # the pre-fix open_positions bug stay in the append-only ledger but never count
-    settled = conn.execute(
-        "SELECT series, COUNT(*) n, SUM(size_usd) realized FROM ("
-        "  SELECT series, period, size_usd, MIN(id) FROM decisions"
-        "  WHERE kind='settle_note' GROUP BY series, period)"
-        " GROUP BY series").fetchall()
-    # §24 strategy split: model opens vs arb vs snipe (origin recorded at settle)
-    by_origin = conn.execute(
-        "SELECT COALESCE(json_extract(inputs_json,'$.origin'),'open') origin,"
-        " COUNT(*) n, ROUND(SUM(size_usd),4) realized FROM ("
-        "  SELECT inputs_json, size_usd, MIN(id) FROM decisions"
-        "  WHERE kind='settle_note' GROUP BY series, period)"
-        " GROUP BY origin").fetchall()
-    open_kind = conn.execute(
-        "SELECT kind, COUNT(*) n, ROUND(SUM(size_usd),4) staked FROM decisions d"
-        " WHERE d.kind IN ('open','argmax','arb','snipe') AND NOT EXISTS"
-        " (SELECT 1 FROM decisions e WHERE e.series=d.series AND e.period=d.period"
-        "  AND e.kind IN ('exit','cancel','settle_note') AND e.id>d.id)"
-        " GROUP BY kind").fetchall()
-    return {"open_by_series": [dict(r) for r in rows],
-            "settled_by_series": [dict(r) for r in settled],
-            "settled_by_origin": [dict(r) for r in by_origin],
-            "open_by_kind": [dict(r) for r in open_kind]}
+    # #150. One entry per SETTLED POSITION, from `ledger.closures`.
+    #
+    # This was `GROUP BY series, period`, keeping the first settle_note per period. That
+    # deduped the historical duplicates correctly — and all four multi-settle periods on
+    # the live book really are re-settles of a single open, so it does not misfire today.
+    # But the unit that closes is a POSITION, not a period: KXWTIW 2026-08-07 currently
+    # holds three, and one settle_note per period would have discarded two thirds of that
+    # settlement's realized PnL from the report. #149 gave closes an id to be deduped by;
+    # the dedup here was still the period.
+    from prediction_market_macro.ops import ledger as _ledger
+    settled_pos = _ledger.closures(conn, ("settle_note",))
+    by_series: dict = {}
+    by_origin_d: dict = {}
+    for p in settled_pos:
+        rz = _ledger.realized_usd(p["close"])
+        s = by_series.setdefault(p["series"], {"series": p["series"], "n": 0,
+                                               "realized": 0.0})
+        s["n"] += 1
+        # a settle_note that never recorded its figure must not read as a $0.00 result
+        if rz is not None:
+            s["realized"] += rz
+        origin = (json.loads(p["close"]["inputs_json"] or "{}").get("origin") or "open")
+        o = by_origin_d.setdefault(origin, {"origin": origin, "n": 0, "realized": 0.0})
+        o["n"] += 1
+        if rz is not None:
+            o["realized"] += rz
+    settled = [{**v, "realized": round(v["realized"], 4)}
+               for v in sorted(by_series.values(), key=lambda d: d["series"])]
+    by_origin = [{**v, "realized": round(v["realized"], 4)}
+                 for v in sorted(by_origin_d.values(), key=lambda d: d["origin"])]
+    # #151/F9. `open_by_series` was `SELECT ... WHERE kind='open' GROUP BY series`, and
+    # `open_by_kind` 5 lines below — in the SAME returned dict — already read the ledger.
+    # Two defects stacked in that one SELECT:
+    #   1. no close accounting at all. Nothing joined `closes_decision_id`, so every
+    #      position the book has ever opened still counted as open. Live: 107 positions /
+    #      $105.36 against a ledger truth of 8 / $6.39. This is the dominant term.
+    #   2. `kind='open'` alone, so argmax/arb/snipe holdings were invisible — the same
+    #      one-question-two-kind-sets split as #149, #150 and F7.
+    # #149 and #150 both edited this function (the closures and open_positions blocks) and
+    # walked past this line twice, which is the argument for deriving both breakdowns from
+    # ONE pass over ONE source: they can no longer disagree, because there is nothing left
+    # to disagree with. Mitigating, and why this sat here: `report` is an operator/CLI and
+    # test surface — neither `refresh.py` nor `jobs/tick.py` calls it, so no published
+    # figure was ever computed from it.
+    open_kind_d: dict = {}
+    open_series_d: dict = {}
+    for d in _ledger.open_positions(conn):     # #150: was the last NOT EXISTS copy
+        k = open_kind_d.setdefault(d["kind"], {"kind": d["kind"], "n": 0, "staked": 0.0})
+        k["n"] += 1
+        k["staked"] += d["size_usd"] or 0.0
+        s = open_series_d.setdefault(d["series"], {"series": d["series"], "n": 0,
+                                                   "staked": 0.0})
+        s["n"] += 1
+        s["staked"] += d["size_usd"] or 0.0
+    open_kind = [{**v, "staked": round(v["staked"], 4)}
+                 for v in sorted(open_kind_d.values(), key=lambda d: d["kind"])]
+    open_series = [{**v, "staked": round(v["staked"], 4)}
+                   for v in sorted(open_series_d.values(), key=lambda d: d["series"])]
+    return {"open_by_series": open_series,
+            "settled_by_series": settled,
+            "settled_by_origin": by_origin,
+            "open_by_kind": open_kind}

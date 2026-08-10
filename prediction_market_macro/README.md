@@ -1,35 +1,435 @@
-# prediction_market_macro — Kalshi 宏观经济市场系统
+<p align="center">
+  <img src="../public/SOMEO PARK矢量源文件 Big Square.svg" alt="Someopark" width="160"/>
+</p>
 
-宏观经济预测市场（Fed/通胀/就业/GDP/油气/利率/汇率等）的系统化交易模块。
-与世界杯系统 `prediction_market/` 平行、**完全隔离**：不 import 它的代码，但沿用同一套
-架构约定与纪律（venue 封装、devig、$1-cap Kelly、PIT 决策台账、只读审计导出）。
+<h1 align="center">prediction_market_macro</h1>
+<p align="center"><b>宏观经济预测市场系统 · Kalshi 事件合约</b></p>
 
-## 目录约定（与 prediction_market/ 对齐）
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/conda-someopark__run-green?logo=anaconda&logoColor=white"/>
+  <img src="https://img.shields.io/badge/venue-Kalshi-orange"/>
+  <img src="https://img.shields.io/badge/series-13%20P0%20%2B%201%20P1-purple"/>
+  <img src="https://img.shields.io/badge/data-FRED%20%7C%20ALFRED%20PIT-teal"/>
+  <img src="https://img.shields.io/badge/tests-600%20passing-brightgreen"/>
+  <img src="https://img.shields.io/badge/mode-paper%20only-red"/>
+</p>
 
-| 目录 | 职责 |
-|---|---|
-| `config/` | 全局配置、**系列注册表**（每个 Kalshi series 的 ticker/频率/结算源/发布日历） |
-| `ingest/` | 数据源接入：FRED、BLS/BEA/EIA 发布日历、AAA 油价、Kalshi 行情落库 |
-| `venues/kalshi/` | Kalshi 发现/行情/订单簿（参考 `prediction_market/venues/kalshi/` 的模式重写，不复用代码） |
-| `model/` | 逐系列预测模型：CPI nowcast、初请、NFP、FOMC 反应函数、EIA 库存 → 每个系列一个模块 |
-| `strategy/` | devig、edge、仓位（Kelly/$1-cap）、跨场所对比 |
-| `exec/` | 下单执行（后期，参考 WC 的 executor 纪律） |
-| `jobs/` | 定时任务：数据发布日轮询、逐小时刷新 |
-| `ops/` | 导出/报表/PDF（复用 `prediction_market.ops.pdf_style` 的排版风格约定） |
-| `research/` | 探索脚本与一次性分析；`discover_series.py` 是市场目录的生成器 |
-| `data/output/` | 导出产物（git 可忽略） |
-| `docs/` | `SERIES_CATALOG.md`：可交易系列总目录（生成+人工筛注） |
-| `tests/` | pytest |
+---
 
-## 运行环境
+把这套系统当作一张**宏观数据发布的交易台**：在 **Kalshi** 上就美国官方宏观数字（CPI / 核心 PCE / 非农 / 失业率 / 初请 / FOMC 决议 / WTI / 天然气 / 汽油）报出自己的**概率阶梯**，与市场报价比对，只在自己认为被错误定价的腿上下注。
 
-- conda env：`someopark_run`（与 WC 系统一致）
-- 密钥：仓库根 `.env`（FRED_API_KEY 等）+ `prediction_market/.env`（KALSHI keys，后续迁移副本至本模块 `.env`）
-- Kalshi 公开行情无需鉴权：`https://api.elections.kalshi.com/trade-api/v2`
+与世界杯系统 [`prediction_market/`](../prediction_market/) 平行、**完全隔离**：不 import 对方任何代码，各写各的 SQLite、各读各的 `.env`，只共享同一套架构约定与纪律（venue 封装、devig、分数 Kelly、append-only 决策台账、PIT 时点纪律）。
 
-## 起步
+> **⚠ 当前状态：纸面（paper）模式，从未下过一笔真钱单。**
+> `mode='paper'` 硬编码在 `ops/ledger.py` / `ops/decide_all.py` / `ops/exits.py` 三处写盘点；
+> `exec/kalshi_exec.py` 的下单客户端已写完但**没有任何生产代码 import 它**。
+> 资金曲线读的是 Kalshi **demo** 账户余额。见 [§ 交易状态与实盘纪律](#交易状态与实盘纪律)。
+
+设计文档：`docs/PLAN.md`（主计划）+ `docs/PLAN_EXTENSION.md`（§25 系列，逐条问题的调查与结论）。
+
+---
+
+## 系统一句话
+
+```
+FRED/ALFRED 原始 vintage  ─┐
+Kalshi 订单簿快照         ─┤
+发布日历 / 期货 / 天气/EIA ─┼─→  逐系列模型 → 概率阶梯 pmf
+新闻 + FOMC 声明(LLM)     ─┘                     │
+                                                 ▼
+                            阶梯 pmf  ×  市场 devig 后概率  →  每条腿的 edge
+                                                 │
+                       八道闸门（skill/校准/capture/conformal/一致性/…）
+                                                 │
+                                     ┌───────────┴───────────┐
+                                     ▼                       ▼
+                              edge 单（模型认为错价）   argmax 单（跟随市场最可能腿）
+                                     └───────────┬───────────┘
+                                                 ▼
+                              append-only decisions 台账 → 盯市 → 平仓/结算
+```
+
+**规模**：146 个 Python 文件 / 26,788 行；600 项 pytest 全绿；SQLite 31 张表，其中 FRED 观测 12.4 万行、Kalshi 合约 8,664 个、结算 7,959 条、K 线 14,855 根。
+
+---
+
+## 十四个系列（`config/registry.py` 是唯一真值）
+
+每个可交易系列是一个 `SeriesSpec`，`settle_source` 是**人工逐条核对 Kalshi 规则书**抄下来的结算口径（2026-07-27 实测）——精确到取整规则、首次发布（first print）约定、以及 `>` 与 `>=` 的差别。`tests/test_m0.py` 断言其完整性，`settle_source` 为空即构建失败。
+
+| Ticker | 家族 | 频率 | 结算口径要点 | 结构 | 模型 |
+|---|---|---|---|---|---|
+| `KXFEDDECISION` | fed | 每次 FOMC | 目标区间相对上次会议的变动（加息 25 / >25 / 降息 25 / >25 / 维持） | 分类 | `fed` |
+| `KXFED` | fed | 每次 FOMC | 会后联邦基金**目标区间上沿**，25bp 网格，"Above X%" 严格 `>` | 阶梯 | `fed` |
+| `KXCPI` | inflation | 月 | BLS CPI-U 整体 **MoM %**，首次发布，按发布值取整 0.1 | 阶梯 | `cpi` |
+| `KXCPICORE` | inflation | 月 | CPI-U 核心（除食品能源）MoM % | 阶梯 | `cpi` |
+| `KXCPIYOY` | inflation | 月 | CPI-U 整体 **YoY %** | 阶梯 | `cpi` |
+| `KXCPICOREYOY` | inflation | 月 | CPI-U 核心 YoY % | 阶梯 | `cpi` |
+| `KXPCECORE` | inflation | 月 | BEA 核心 PCE 价格指数 MoM %，首次发布 | 阶梯 | `pce` |
+| `KXJOBLESSCLAIMS` | labor | 周 | DoL 初请失业金 SA **预估值（advance）**，千人；注意是 `>=` 不是严格 `>` | 阶梯 | `claims` |
+| `KXPAYROLLS` | labor | 月 | BLS 非农就业 MoM 变动，首次发布，千人 | 阶梯 | `payrolls` |
+| `KXU3` | labor | 月 | BLS U-3 失业率 SA，首次发布，取整 0.1 | 阶梯 | `u3` |
+| `KXWTIW` | energy | 周 | NYMEX WTI 近月合约周五收盘，$1 分桶 | 阶梯 | `energy` |
+| `KXNATGASW` | energy | 周 | Henry Hub 近月周五收盘 | 阶梯 | `energy` |
+| `KXAAAGASW` | energy | 周 | AAA 全国汽油均价周一值，取整 0.001 | 阶梯 | `energy` |
+| `KXGDP` | gdp | 季 | BEA 实际 GDP 年化增速，首次发布 | 阶梯 | `gdp` **(P1，仅纸面观察)** |
+
+> **铁律 2**：新系列在积累**至少两次纸面 print** 之前不进入任何实盘讨论。`KXGDP` 的合约结构尚未完整实测，因此优先级挂 P1、只跑预测不进决策。
+
+---
+
+## 环境配置
+
+### 1. Python 环境
 
 ```bash
-conda run -n someopark_run python -m prediction_market_macro.research.discover_series
-# → data/output/kalshi_macro_catalog.json + docs/SERIES_CATALOG.md 的数据基础
+conda activate someopark_run     # 与 prediction_market/ 共用同一个 env
 ```
+
+### 2. 密钥
+
+| 变量 | 位置 | 用途 |
+|---|---|---|
+| `FRED_API_KEY` | 仓库根 `.env` | FRED / ALFRED vintage 拉取 |
+| `POLYGON_API_KEY` | 仓库根 `.env` | 期货 / 外汇 / 新闻 |
+| `EIA_API_KEY` | 仓库根 `.env` | 天然气库存 |
+| `KALSHI_*` | `prediction_market/.env` | 账户余额（只读）；**公开行情无需鉴权** |
+
+> `.env` 全部 gitignored。Kalshi 公开行情端点 `https://api.elections.kalshi.com/trade-api/v2` 不需要 key，
+> 行情落库这一路即使没有任何凭证也能跑通。
+
+### 3. 运行所有脚本的正确方式
+
+```bash
+cd /Users/xuling/code/someopark-test && \
+  set -a && source .env && set +a && \
+  PYTHONPATH=$PWD conda run -n someopark_run --no-capture-output \
+  python -m prediction_market_macro.ops.refresh
+```
+
+> **`cd` 到仓库根是必需的**，不是习惯问题：`.env` 与 `PYTHONPATH` 都锚在根目录，
+> 在子目录里跑会静默丢掉 FRED key，模型退化成"用缓存数据算今天"。
+
+---
+
+## 目录与核心文件
+
+### `config/` — 配置与注册表（3 文件 / 221 行）
+
+| 文件 | 说明 |
+|---|---|
+| `registry.py` | **系列注册表**，上表的来源。每条含 ticker / 家族 / 频率 / 日历键 / 结算口径 / 结构 / 单位 / 取整步长 / `strict_gt` / 绑定模型 / 优先级 / 调度 lane / 对应 ALFRED 首发序列 |
+| `settings.py` | 路径、API key、`db_path`、前端导出目录、`trading_enabled`（硬默认 `False`） |
+
+### `ingest/` — 数据接入（11 文件 / 1,806 行）
+
+**所有落库都带 `knowledge_time`**：这条数据在真实世界的哪一刻可被知晓。整套系统的 PIT 纪律建立在这个字段上——模型 `predict(asof=...)` 只能看到 `knowledge_time <= asof` 的行。
+
+| 文件 | 外部源 | 说明 |
+|---|---|---|
+| `store.py` | — | SQLite 单文件（WAL + `busy_timeout=30s`）。31 张表的 DDL 全在这里，且全是 `CREATE TABLE IF NOT EXISTS`——每个 live 入口都调 `init_db()`，所以新表 DDL 会自动到达生产。**从不 DELETE，只按自然键 `INSERT OR REPLACE`** |
+| `fred.py` | FRED / ALFRED | 带 vintage 的时点拉取。`knowledge_time = vintage_date + 官方 ET 发布时刻`（转 UTC）。核心序列含 CPIAUCSL / CPILFESL / PCEPILFE / UNRATE / PAYEMS / ICSA / DFEDTARU / DGS2·5·10·30 / T5YIE / GASREGW / DCOILWTICO / GDPC1 |
+| `kalshi_md.py` | Kalshi 公开行情 | 订单簿快照（yes_bid/yes_ask + 深度）、合约元数据、结算结果、K 线。404 时写"哨兵行"（`end_ts=0` + NULL 价格）表示"问过了，没有" |
+| `calendars.py` | BLS/BEA/DoL/EIA/FOMC | 14 个发布日历，`scheduled_ts` 与 `actual_ts`；`refresh_from_web()` 每周核对一次官网 |
+| `market_data.py` | Polygon | CL/NG 近月期货日线（`knowledge_time = 收盘 UTC`）、外汇、新闻 |
+| `fed_text.py` | Federal Reserve | FOMC 声明全文，`knowledge_time = 发布瞬间`。v2 结构按 `(period, release_date)` 主键，支持一个月两份声明 |
+| `weather.py` | ERA5 / ERA5T | 滚动 45 天气温（供天然气模型的度日）。**只拉 45 天尾巴**，因为这个窗口也正好覆盖 ERA5T 后来沉淀为 ERA5 的重写区 |
+| `eia.py` / `aaa_daily.py` / `nowcast.py` | EIA / AAA / GDPNow | 天然气库存、汽油日均价、GDPNow vintage |
+
+### `model/` — 逐系列模型（16 文件 / 2,927 行）
+
+每个系列一个模块，输出是**结算网格上的概率阶梯（pmf）** + `inputs_json` 依据链 + `data_horizon`（用到的最晚 `knowledge_time`）。所有 P0 模型 `frozen=True`——不做在线重训，唯一的旋钮是每日 DSR 选参器。
+
+| 模块 | 方法 | 备注 |
+|---|---|---|
+| `claims.py` | 对数水平加权均值 + ISO 周季节性偏离 + 26 周 MAD 波动率（带 2% 下限）→ 高斯阶梯 | 唯一的周频劳动力系列 |
+| `cpi.py` | **未取整指数**的 MoM 连续性 + 汽油泵价（GASREGW）传导（RB 系数 0.55）+ YoY 精确递推 | 一个模块喂四个系列；YoY 由 MoM 确定性递推，天然与 MoM 自洽 |
+| `pce.py` | CPI 核心 → PCE 核心的桥接回归（OLS + 残差 σ） | 已知风险：CPI/PCE 权重分歧、年度基准修订 |
+| `payrolls.py` | 首发变动重建 + 初请信号 + 胖尾混合（高斯 + Student-t） | 经验阶梯，非解析式 |
+| `u3.py` | 经验 Δ 核 + 多月卷积；显式建模 0.1 取整边界 | |
+| `fed.py` | **两源对数池化**：从 51 次历史加息核出来的规则判别式 + ZQ 联邦基金期货链 devig，按 `λ = 月数/(月数+9)` 向先验收缩 | 超出 ZQ 流动性范围后接 DGS2 斜率 |
+| `energy.py` | 无漂移 GBM，20,000 次 MC，20 日 MAD 波动率（下限 0.8–1.5%）→ 分位映射成阶梯 | WTI / NG 两条；AAA 走 4 周阻尼趋势 + GASREGW 代理 |
+| `gdp.py` | GDPNow 锚 + 历史 "nowcast vs 首发" 误差 σ | P1，纸面 |
+| `features.py` | `FeatureStore`：统一的 as-of 读取口 | 见[休眠章节](#休眠代码试过但暂未启用的模型与统计手段)——部分模型仍绕开它直查 `fred_obs` |
+| `registry.py` | 模型卡（model card）：版本、训练截止、`feature_set`、**已知失效场景**（中英双语） | `ensure_registered()` 幂等写入 `models` 表 |
+
+### `strategy/` — 定价与闸门（12 文件 / 1,558 行）
+
+| 文件 | 作用 | 关键常数 |
+|---|---|---|
+| `edge.py` | 腿定价、结算算术、成交价滑点。**`settle_struct()` 是回测与实盘共用的同一个函数**——这是 #141 之后立的规矩 | `PAPER_TICK=0.01`、`WIDE_SPREAD=0.15`；Kalshi taker 费 `ceil(0.07·n·p·(1−p))` 分 |
+| `devig.py` | 从含 vig 的报价还原市场隐含概率 | |
+| `decision.py` | 主闸门流水线 + 四分之一 Kelly 定量 | `min_net_edge=0.04`、`min_leg_depth_usd=50`、`max_depth_frac=0.20`、`max_entropy_norm=0.95`、`max_days_to_close=7`、`min_leg_price=0.10` |
+| `skill.py` | 模型 OOS Brier 落后市场就自我降级 | 落后 >5% → 防守（门槛翻倍、仓位减半）；落后 >50% → **完全封禁模型路径下单**；`TRAIL=20`、`MIN_PAIRED=6` |
+| `calibration.py` | 等距回归（isotonic）事后校准 | `MIN_PAIRS=200`，样本不足时保持恒等映射 |
+| `conformal.py` | 共形预测覆盖率检查，超限则收缩仓位 | `TARGET=0.10`、`TRAIL=40`、`GAMMA=0.05` |
+| `capture.py` | "这个 edge 历史上真的兑现过吗" | `MIN_N=8`、`MIN_CAPTURE=0.4` |
+| `consistency.py` | **无模型**的跨市场一致性检查：FOMC 阶梯隐含变动 vs 直接决议市场；MoM 递推出的 YoY vs YoY 市场 pmf | `FED_MOVE_GAP_ALERT=0.125pp`、`CPI_TV_ALERT=0.20` 总变差 |
+| `arb.py` | 同一事件内互斥腿的三角套利 | `MAX_ARB_USD=2.0`、`MIN_NET=0.005/张`（费后） |
+| `snipe.py` | 发布后市场尚未反应完的"最后一眼"机会 | `MAX_SNIPE_USD=2.0`、`MAX_PRICE=0.95`、跳过距 print `0.5` 个网格步以内的腿 |
+| `series_enable.py` | **§25.4 单系列 ROI 开关**（滚动 12 笔）：跌破盈亏平衡则关，回到 +2.6% 以上才开（迟滞） | `SHADOW=True` — 见[休眠章节](#休眠代码试过但暂未启用的模型与统计手段) |
+
+### `ops/` — 每日运行（15 文件 / 3,362 行）
+
+| 文件 | 说明 |
+|---|---|
+| `refresh.py` | **日更主入口**。"步骤表"模式：每步独立 try/except，一步失败不杀全流程，逐步打印 ✓/✗ 并把失败写进 `alerts` |
+| `predict_all.py` | 遍历所有到期 (series, period)，跑注册模型，写 `preds` |
+| `decide_all.py` | 过闸门，选 edge 单还是 argmax 单，写 append-only `decisions` 台账；同时记录影子行 |
+| `exits.py` | 持仓边际反转平仓：`hold_edge = Σ腿[fair(side) − mid(side)]`，`< −0.06` 且每条腿深度 ≥ 20 张才平。缺报价 / 非双边盘 / 无法定价的腿一律返回"继续持有" |
+| `pnl.py` | 盯市（`marks`）与结算入账（`fills` 的 `realized_usd`） |
+| `risk.py` | 敞口上限：单事件 $5 / 单家族 $20 / 同族同期簇 $8 / **单日新开 $30** / 总敞口 $100 |
+| `archive_candles.py` | **K 线归档**：Kalshi 约 75 天后永久丢弃 K 线。保留窗口是实测出来的（73 天仍有数据、76 天首次 404，四个系列一致），常数取保守端 `RETENTION_DAYS=74`；`WARN_AGE_DAYS=55` 留 19 天余量 |
+| `frontend_export.py` | **唯一**写 `public/data/macro_*.json` 的地方（13 个 JSON，其中 `macro_reports.json` 是 PDF 索引） |
+| `report.py` | 日报 / 周报 PDF |
+| `ledger.py` | 台账读写内核；`OPEN_KINDS = (open, argmax, arb, snipe)`、`CLOSE_KINDS = (exit, cancel, settle_note)` 的**唯一定义处** |
+| `freeze_track.py` | 把某次回测冻结成前端展示段 |
+| `install_launchd.sh` / `launchd/` | 四个 plist 的安装脚本 |
+
+### `research/` — 回测与评估（20 文件 / 6,969 行）
+
+| 文件 | 说明 |
+|---|---|
+| `walkforward.py` | **策略回测的唯一真值**。逐个模拟日重建当天的闸门状态（严格只用更早的收盘），跑开仓/平仓/结算全流程。`fair_mode`（model/pooled）、`model_exits`、`shadow_blocked` 可组合 |
+| `pit_gates.py` | 回测侧的闸门状态机，与 `decide_all` 读**同一个** `series_enable.SHADOW` 开关 |
+| `backtest.py` | 预测准确度重放（Brier / CRPS），与交易 PnL 分开 |
+| `param_select.py` + `dsr.py` | 每日 **DSR（Deflated Sharpe Ratio）门控的选参**。`MIN_OBS=12`：观测不足就退回注册默认参数，绝不"挑一个看起来最好的" |
+| `pnl_score.py` | 选参器的目标函数——**复现 `walkforward` 的同一套闸门与平仓规则**（#133/#144 之后强制对齐） |
+| `param_wf.py` / `param_space.py` / `param_grid.py` | 参数网格与逐系列窗口（按各自数据量定，不是一刀切 200） |
+| `eval.py` | 逐来源（model / market / bridge / ensemble）OOS 记分板 + §25.4 的每周 `enabled` 判定 |
+| `confidence.py` | §25.3 逐笔置信度模型："这一笔会赚钱吗" |
+| `health.py` | 每日健康检查（新鲜度 / 阶梯质量 / 回滚确定性 / 滚动 OOS Brier） |
+| `attribution.py` | 每周归因：模型错、市场错、还是运气 |
+| `martingale.py` | 鞅性质检验（漂移检测） |
+| `shadow_claims.py` / `shadow_pr2.py` / `shadow_s2.py` | 三个**预注册前瞻检验**的记分器，见下 |
+| `DECISION_RULE_113.md` / `DECISION_RULE_119.md` / `TRADEABILITY_129.md` | 三份决策记录：判据在**看到结果之前**就写死 |
+
+### `jobs/` `venues/` `exec/` `analysis/` `tests/`
+
+| 目录 | 说明 |
+|---|---|
+| `jobs/` | `scheduler.py` 把日历事件展开成 `runs` 表（lane / series / period / task / due_ts）；`tick.py` 定时刷行情+盯市+平仓检查；`watchdog_job.py` 扫过期未完成的 run |
+| `venues/kalshi/` | 账户余额（RSA-PSS 鉴权，**只读**）。80 行，刻意做薄 |
+| `exec/` | 下单客户端 —— 已写完，**没有任何生产代码调用它** |
+| `analysis/llm.py` | 新闻结构性断点标注（大规模裁员 / 能源冲击 / 罢工…）→ `event_flags` 表；FOMC 声明鹰鸽打分 |
+| `tests/` | 54 个文件 / 9,112 行 / **600 项**。覆盖 PIT 单调性、回测与实盘的逐 bit 一致性、每条闸门、每个影子记分器 |
+
+---
+
+## 每日运行流程
+
+```bash
+# 日更（launchd 每天 05:00 自动跑）
+python -m prediction_market_macro.ops.refresh
+
+# 周更（周日 06:30；日更全部步骤 + 评估/归因/走查扫描/周报）
+python -m prediction_market_macro.ops.refresh --weekly
+```
+
+`refresh.py` 的步骤顺序不是随意的，有三处**顺序红线**：
+
+```
+① 摄入
+   calendars → calendar_actuals → bankroll → fred_core → gdpnow
+   → aaa_daily → eia_storage → weather(45d) → futures → fx → news → fed_statements
+   → 逐系列 kalshi 快照 + 结算同步
+   → archive_candles          ★ 必须在 settle 之后（settle 才把刚收盘的合约写进 settlements，
+                                 反过来排就永远晚归档一天，而这一步有外部截止日）
+② 调度
+   materialize（日历事件 → runs 表）  →  models_registry（模型卡幂等写入）
+③ 预测与决策
+   param_select               ★ 必须在 predict_all 之前（predict_all 读它写的那一行）
+   → predict_all → decide_all
+   → s2_shadow                ★ 必须在 exits 之前（被实盘规则本轮平掉的仓位，
+                                 到 exits 返回时已不在 open_positions 里，
+                                 而阈值更松的 S2 必须在最后那天也被看见）
+   → exits
+④ 盯市与结算
+   marks → settle_pass
+⑤ 影子成员（只写预测，永不进决策）
+   chronos_shadow → bridge_shadow → ensemble_shadow
+⑥ 无模型一致性检查 → LLM 标注 → 健康检查 → 前端导出 → 日报 PDF
+```
+
+### 定时任务（`ops/launchd/`）
+
+| plist | 频率 | 干什么 |
+|---|---|---|
+| `com.someopark.macrorefresh` | 每天 05:00 | 全量日更 |
+| `com.someopark.macrotick` | 每 900 秒 | 刷行情、盯市、跑平仓检查 |
+| `com.someopark.macrowatchdog` | 每 3600 秒 | 扫 `runs` 表里过期未完成的任务 |
+| `com.someopark.macroweekly` | 周日 06:30 | `--weekly`：评估闸门 + 归因 + 30d/60d 走查 + ML 选择器 + 周报 |
+
+---
+
+## 时点纪律（PIT）—— 这套系统真正的地基
+
+宏观数据的坑不在建模，在**时间**。同一个 5 月 CPI，官方会发布很多次（首发、后续修订、年度重算），而合约只按**首发**结算。任何一处不小心读到"今天的最新值"，回测就会凭空多出未来信息。
+
+系统的做法：
+
+1. **一切入库带 `knowledge_time`**——不是数据描述的时间（`event_time`），而是它可被知晓的时间。
+2. **模型只有 `predict(conn, asof, period)` 一个入口**，内部读取一律 `knowledge_time <= asof`。
+3. **标签用首发**：`registry` 里每个系列都绑了 `fred_first_release` 的 ALFRED 序列，评分与结算取首发值，不取修订后。
+4. **回测按天重建闸门状态**（`research/pit_gates.py`），用严格更早的收盘计算 skill / 校准 / capture 状态，绝不用"整段样本算一次"。
+5. **金丝雀测试**：`tests/` 里有单调性检验——把 `asof` 往前推，可见数据只能变少不能变多。
+
+> 曾经咬过两次的坑，写在这里免得第三次：**FRED 观测的"就近匹配窗口"对日频序列必错**。
+> `DFEDTARU` / `DCOILWTICO` / `GASREGW` 这类日频/周频 sid，用宽松窗口就近取值等价于偷看未来。
+> 必须严格 `<=`。
+
+---
+
+## 回测与前瞻检验
+
+### 走查回测（walk-forward）
+
+```bash
+python -m prediction_market_macro.research.walkforward --days 75 --end 2026-08-04
+```
+
+不是"跑一遍历史看收益"，而是**逐日重放**：每个模拟日只用当天之前的信息重建选参、重建闸门、重建报价，然后按实盘完全相同的规则开仓与平仓。三个可组合维度：
+
+- `fair_mode`：`model`（用自己的模型定价）/ `pooled`（模型与市场池化）
+- `model_exits`：是否启用平仓规则（关掉即"持有到结算"）
+- `shadow_blocked`：把被闸门挡下的区域也算出来，用于读"如果不挡会怎样"
+
+> **纪律**：走查是**评估工具，不是调参工具**。
+> 在这个窗口上反复调阈值直到好看 = 保证过拟合。所有阈值必须有先验依据（费用几何、
+> 已测偏差、借用自其他模块的常数），不能是"试出来的"。
+
+### 预注册前瞻检验（pre-registration）
+
+想改策略时，不改代码去证明它更好，而是**先把判据写死、再等前瞻样本**。判据一旦注册**不许改**，多重比较次数 K 必须计数上报。
+
+| 编号 | 假设 | 判据 | 状态 |
+|---|---|---|---|
+| **PR-1** | 初请模型改用激进近因权重 `(0, 0, 0.3, 0.7)` 更准 | K=1；≥8 次结算；配对 Brier(候选) < Brier(市场) | 前瞻中 |
+| **PR-2** | argmax 单加"贵于公允就不下"的过滤更赚 | K=1；≥20 条 argmax 腿；ROI 差 ≥ 5pp | 前瞻中（双臂已接线，等样本） |
+| **PR-7/S2** | 更紧的平仓阈值（`hold_edge <= 0` 而非 `< −0.06`） | K=3；≥30 笔；ROI 差 ≥ 5pp 且事件聚类 95% CI 不跨零 | 前瞻中（19 条影子记录） |
+
+三个检验共用一条实现纪律：**候选臂与对照臂必须走同一个 `settle_struct()`**，否则比较的是两套算术而不是两个策略。
+
+---
+
+## 交易状态与实盘纪律
+
+**从未下过真钱单。** 三道闸门串联，全绿才可能下单——今天没有一道是绿的：
+
+| 闸门 | 位置 | 谁写它要读的行 | 现状 |
+|---|---|---|---|
+| ① `settings.trading_enabled` **且** 环境变量 `KALSHI_TRADING_ENABLED=1` | `config/settings.py:47` | — | 硬默认 `False`，环境变量从未设过 |
+| ② 逐系列 `series_gate` 行（`experiments` 表，`real=true`） | `exec/kalshi_exec.py:48` | 周更的 `research/eval.py:499` | **14 个系列全部 `real=false`**（最近一次评估 2026-08-04）→ 拒单 |
+| ③ 近 7 天无 `source='circuit_breaker'` 告警 | `exec/kalshi_exec.py:54` | `research/health.py` → `ops/risk.circuit_breaker()` | 历史上跳闸过 24 次（replay 不一致、结算标签不符），当前均已 ack |
+
+更根本的是：**`exec/kalshi_exec.py` 没有被 `ops/` 或 `jobs/` 里任何模块 import**——全仓库只有两处注释提到它。所有成交都由 `decide_all` / `exits` / `arb` / `snipe` 以 `mode='paper'` 直接写进 `fills`。真钱路径存在，但没有接线。
+
+### 当前战绩（诚实口径）
+
+前端展示分两段，**刻意不合并**：
+
+| 段 | 口径 | 数字 |
+|---|---|---|
+| **历史段** | PIT 走查回测（`d75:model:end2026-08-04`，hybrid 流），冻结于新规则切换日 2026-08-05 | 41 笔 / 17 胜（41.5%）/ 投入 $32.58 / 已实现 **−$9.13** / **ROI −28.0%** |
+| **实盘段** | 2026-08-05 切换之后的纸面单（截至 2026-08-09） | 9 笔已结算（2 胜，投入 $6.98，**−$2.37**，ROI **−33.95%**）；5 笔在持，投入 $3.87，浮亏 −$0.64 |
+
+历史段覆盖 13 个系列（第 14 个 `KXAAAGASW` 全程被 skill 闸门拦下，0 笔），逐笔明细 41 条全部导出到 `macro_performance.json` 的 `track.history.trades`，每笔带 18 个字段（`fair` / `cost` / `count` / `lead_days` / `exit_rule` / `exit_hold_edge` / `mtm_peak`…），不做截断。
+
+> **实盘段的亏损同样是集中的**：9 笔已结算里 6 笔是 `KXWTIW`，独占 −$1.88（占总亏损 79%）。
+> 而 `KXWTIW` 正是 §25.4 影子开关在历史段上算出该关掉的三个系列之一——两段数据各自独立地指向同一个系列。
+> 这是**前瞻方向上的一次佐证**，不是判据：影子规则仍在 `SHADOW`，仍等前瞻样本跑满，
+> 且 #146 已经证明"哪个系列样本内亏钱"预测不了"哪个系列样本外亏钱"（LOEO 18 折全部被夹到零）。
+> 记下来，不据此改任何阈值。
+
+> **为什么不把两段拼起来、也不把回测标成"实盘业绩"**：回测是假设性表现（hypothetical performance）。
+> 在面向客户的资产管理页面上把它呈现为实际业绩是实质性误述——这是 SEC Marketing Rule 的地界。
+> 而且回测本身是负的，含糊其辞一分钱好处也换不来。
+>
+> 切换日之前（2026-07-28 起）的纸面单**不进展示**：那段跑的是已知有 bug 的旧规则（#141 平仓聚合用
+> `min()` 而非 `sum()`、#148 入场无 churn guard、#149/#150 平仓不记对应仓位），
+> 它的成交无法代表现在这套代码的行为。
+
+### 结论 #129：这本账上还没有被证明可盈利的模型
+
+初请模型 OOS Brier 0.165–0.172，市场 0.090–0.097——**模型明显输给市场**。这不是一句丧气话，而是整个 `skill.py` 闸门存在的理由：模型落后市场超过 50% 时，走模型路径下单就是在给交易所捐手续费，所以直接封禁。系统当前的价值在于**这套纪律本身**（PIT、预注册、影子验证、逐 bit 对账），而不在于任何一个模型的 alpha。
+
+---
+
+## 休眠代码、试过但暂未启用的模型与统计手段
+
+这一节是刻意写的：仓库里有相当一部分代码**能跑、有测试、但不参与实盘决策**。分不清"没启用"和"坏了"是最贵的误解，所以逐条列明。
+
+### A. 影子模型（写预测，永不进决策）
+
+三个模型每天都在 `refresh` 里跑、往 `preds` 表写行（日更日志：4 / 15 / 47 行），但 `decide_all:284` 有一道守卫——只有**注册表绑定的那个模型**（`model_version LIKE spec.model + '/%'`）的预测能驱动下单，影子成员按构造读不到。
+
+| 模型 | 方法 | 覆盖（`preds` 实测） | 为什么休眠 |
+|---|---|---|---|
+| **`model/bridge.py`** (`bridge/0.1.0`) | **MIDAS / Almon 多项式滞后加权 OLS** ——用高频指标（汽油泵价、周度初请）桥接低频月度目标 | KXCPI / KXPAYROLLS / KXU3（210 行） | 采纳闸门（`research/eval.py` 的逐来源晋级判据）**还没写成可执行代码**，只有散文描述。没有判据就没有晋级路径 |
+| **`model/ensemble.py`** (`ensemble/0.1.0`) | **逆 MSPE 对数池化**：按滚动 Brier 学习权重，权重截断后重归一；宽价差时把市场那一路的权重砍半（§23.2-3a） | 13 个阶梯系列（702 行）；分类结构的 `KXFEDDECISION` 跳过——`fed` 模型内部已经在做对数池化 | 同上。另外池化成员本身尚未证明优于市场，池化一堆输家不会赢 |
+| **`model/ts_foundation.py`** (`chronos2/zero-shot-0.1.0`) | **Amazon Chronos-2 时序基础模型**，零样本、不微调，260 天上下文 → 分位网格 | KXWTIW / KXNATGASW / KXAAAGASW / KXJOBLESSCLAIMS（87 行） | 采纳判据要求**前瞻**样本（周频 ≥8 期 / 月频 ≥3 期）。**回测证据被主动判为无效**——基础模型的预训练语料几乎必然包含这些宏观序列，历史回测等于开卷考试 |
+
+> 三者共同的堵点是同一个：**"晋级"目前是一段文字，不是一个函数**。
+> 这在 `docs/PLAN_EXTENSION.md` 里被标为承重级缺口，因为它同时冻结了三个模型。
+
+### B. 影子策略层（记录判决，永不执行）
+
+| 机制 | 表（当前行数） | 做什么 | 为什么休眠 |
+|---|---|---|---|
+| **§25.4 单系列开关** (`strategy/series_enable.py`) | `shadow_series_enable`（0） | 按滚动 12 笔 ROI 决定某系列是否还值得下注；`OFF_ROI=0.0` 关、`ON_ROI=0.026` 开（迟滞恰好等于一个来回的净 taker 成本） | `SHADOW=True`。**在重冻后的 41 笔上折出来，它现在会关掉三个系列：KXJOBLESSCLAIMS（ROI −87.7%, n=6）、KXNATGASW（−30.8%, n=11）、KXWTIW（−27.7%, n=6）——而 KXWTIW 与 KXJOBLESSCLAIMS 正好在 PR-2 与 PR-7/S2 的采样总体里**。在预注册检验中途改变总体等于毁掉检验。所以先记录、不执行，等前瞻样本跑满再由人拍板。刚上线（#155），周更算出 artefact 之前还没有行；缺 artefact 时 `blocked()` **fail-open**（不挡），并由 `decide_all` 发一条 `series_enable` 告警 |
+| **PR-7/S2 平仓规则** | `shadow_exits`（19） | 记录"如果阈值是 `hold_edge <= 0` 会在哪天平掉" | 等 30 笔前瞻样本。S2 只可能比实盘规则**更早**平仓，所以是安全的嵌套比较；两条臂共用 `hold_state()` / `exit_realized()`，不允许重写一份 |
+| **PR-2 argmax 过滤** | `shadow_argmax`（0） | 同时记录"下了"与"因为贵于公允而没下"两条臂 | 等 20 条腿。两臂是嵌套关系（ON ⊂ OFF），构造上可配对 |
+
+> §25.4 的所有常数都是**借来的，不是拟合的**：`WINDOW=12` 借自 `research.dsr.MIN_OBS`，
+> `MIN_N=6` 借自 `strategy.skill.MIN_PAIRED`，`ON_ROI=0.026` 是费用几何算出来的一个来回净成本。
+> 这样做的原因很直接：在一个已知负 ROI 的样本上拟合"何时关掉亏钱的系列"，
+> 拟合出来的一定是"关掉所有东西"。
+
+### C. 写完了但没接线的子系统
+
+| 子系统 | 位置 | 状态 |
+|---|---|---|
+| **实盘下单客户端** | `exec/kalshi_exec.py` | 三道闸门 + RSA-PSS 鉴权全写完，但 `ops/` 与 `jobs/` **无人 import**（全仓库只有两处注释提到它）。闸门读的行有人写（见[上一节](#交易状态与实盘纪律)），只是从来没绿过 |
+| **DFM 联合情景 VaR** | `model/dfm_bridge.py` → `ops/risk.scenario_var()` | 接线是通的，**采纳闸门自己判了不通过**：2026-08-04 的 `dfm_gate` holdout 里扩散模型协方差误差 **377.75**，样本协方差 379.29，Ledoit–Wolf **161.08**——要求"同时打赢两者"，实际输给 LW 一倍多。于是 `macro_risk.json` 停在 `independent_stake_sum`（独立敞口求和）基线。**这是设计中的可逆降级，不是故障** |
+| **`FeatureStore.frame()` 统一特征帧** | `model/features.py` + `features` 表 | 所有模型确实都经 `FeatureStore` 读数（PIT 保证在这里），但**成帧并落库**这一层零调用方：`frame()` / `_persist()` 从未被调用，`features` 表 0 行。特征可复现性写在设计里，实际靠每次重算 |
+| **§25.3 逐笔置信度模型** | `research/confidence.py` | 训练集由 `walkforward` 每次回测顺带产出，模型能训能评，但 `decide_all` **不读它**——它不是闸门，只是诊断 |
+| **鞅性质检验** | `research/martingale.py` | 能跑，但没有任何调用方（refresh / weekly 都不跑它）。写来回答"价格路径是否漂移"，问完就搁置了 |
+
+### D. 数据源退化 / 用代理顶替
+
+| 项 | 现状 | 影响 |
+|---|---|---|
+| **AAA 汽油日均价** (`ingest/aaa_daily.py`) | 抓取已上线但**没有历史**——AAA 不免费提供，只能一天攒一行。至今 7 行（2026-07-31 起） | `KXAAAGASW` 结算的就是这个日读数，所以 `energy.py` 在读数够新时直接锚它，过期则退回 EIA `GASREGW` 周度代理（采样口径不同，模型以 σ 放大补偿）。**skill 闸门目前仍以 ratio 8.35 封禁该系列**——那是代理时代攒下的记录，日读数的优势只能向前累积 |
+| **事件窗口快速重定价** (`jobs/tick.py`) | 固定 900 秒；设计要求发布前后切到更细粒度 | 发布瞬间的重定价窗口观测不到，`snipe` 能看到的只是 15 分钟后的残余 |
+| **`event_flags` 结构性断点** (`analysis/llm.py`) | 已接线（`decide_all` 读 `active_flags()`，回测按 PIT 过滤读），但整库**只有 1 行** | 停摆 / 大规模裁员 / 能源冲击这类"模型卡上写明会失效"的场景，实际上还没有被标注出足够样本去验证这条路径有没有用 |
+
+### E. 试过、结论是"不做"的方向（保留记录以免重做）
+
+| 编号 | 试了什么 | 结论 |
+|---|---|---|
+| **#140** | 价格止损（跌到某个价位就砍） | **否决**。回撤格的收益分布跨零——没有任何证据支持存在一个有效止损位。反方向（涨了回吐就跑）也被 PR-7 step 0 否掉，只剩 S2 进了预注册 |
+| **#146** | §25.4 的原始论证"亏损 86% 集中在 5 个系列" | **前提不成立**。18 折 LOEO 里 `ser_roi` 全部被截断到零，集中度是统计假象。§25.4 因此被重写成纯迟滞规则并压进影子模式 |
+| **#128 / #131** | 展示 +9.98% 的那次回测 | **是关闭闸门跑出来的**。同窗口开闸门是 −6.84%，逐轮修 bug 后一路走到 −23.26% → −25.64% → **−28.02%**。每修好一个 bug 数字就更难看一次，这本身就是"原来的数字在哪里虚高"的答案。展示段已按最新真值重冻 |
+| **#124** | "skill 闸门错误封禁了 KXAAAGASW" | **复核后判定闸门是对的**（ratio 8.35）。不是 bug，不改 |
+| **`research/selector.py`** | 早期的 ML 超参选择器 | 被 `param_select` + `dsr` 的 DSR 门控路径取代，只在周更里作参考跑一次 |
+| **§29.7** | 替代数据二轮复核：负荷加权天气→NG、天气→初请、汽油库存→AAA 零售 | **三条全否**。天气那条堵死了"当年是人口加权用错了"这个退路——改成负荷加权后每个数字都**更负**；天气→初请的滞后污染机制被系数符号证伪。汽油库存兑现了 §269 的 `复评条件 n≥56`（改用 n=1022 的 walk-forward），维持不接。**其中第一版跑出的 +0.0109 是自造的 look-ahead**：按 `event_time` 取 EIA 周报＝拿到 2 天后才发布的数字，按 `knowledge_time` 设门后主特征直接翻号。详见 `docs/PLAN_ALTDATA_EXEC.md` §29.7 |
+
+---
+
+## 已知边界（写在前面，免得当成新发现）
+
+- **模型卡里逐条列了失效场景**（`model/registry.py`，中英双语）：初请对突发大规模裁员与政府停摆无感；非农对罢工月、天气月、基准修订月无感；FOMC 规则基于 1990–2026 基准率，对会间紧急行动与主席更替无感；能源模型对 OPEC 冲击、地缘事件、换月无感。
+- **入场侧熔断是一个已披露的结构性缺口**：`alerts` 表没有 ack 时间戳，因此"告警被确认的时刻"无法在回测里复现。实测影响为零（`offset_hour=16` 下无一笔受影响），选择**披露而非修补**。
+- **周频系列在 API 窗口内永远凑不满选参门槛**：Kalshi 只保留约 75 天 K 线，一个周频系列最多 10.7 期，而 `dsr.MIN_OBS = 12`。这正是 `archive_candles` 存在的意义——本地库是永久的，计数单调增长，两周左右就能越过门槛。
+
+---
+
+## 相关论文
+
+同一套数据与纪律衍生出的研究（`../prediction_market/research/martingale_pricing/`）：
+**《A Local-Volatility Theory of Prediction Markets: Absorbed Martingales on the Simplex and an Identification Law for Transient Mispricing》** —— 把预测市场价格建模为单纯形上的吸收鞅，给出暂时性错价的识别律。中英双版本，英文版为准。
+
+---
+
+<p align="center"><sub>Someo Park Investment Management · 研究用途 · 本页任何数字都不是投资建议</sub></p>

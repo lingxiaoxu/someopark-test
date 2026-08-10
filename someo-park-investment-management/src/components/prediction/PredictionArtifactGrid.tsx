@@ -39,8 +39,63 @@ export const PREDICTION_ITEMS: Item[] = [
   { type: 'wc_pdfs',          i18nKey: 'downloadReports',  Icon: Download },
 ];
 
-export default function PredictionArtifactGrid({ onOpen }: { onOpen: (a: Artifact) => void }) {
+// ── Categorized layout (opt-in via the Settings "card categorization" toggle) —
+// mirrors MacroArtifactGrid's MACRO_GROUPS structure; every item belongs to exactly
+// one group, all 20 items covered.
+type Group = {
+  key: string; i18nKey: string;
+  Icon: ComponentType<{ className?: string }>;
+  types: string[];
+};
+
+export const PREDICTION_GROUPS: Group[] = [
+  { key: 'overview', i18nKey: 'groupOverview', Icon: LayoutGrid,
+    types: ['wc_overview', 'wc_venues'] },
+  { key: 'teamIntel', i18nKey: 'groupTeamIntel', Icon: Users,
+    types: ['wc_champion', 'wc_reach_round', 'wc_golden_boot', 'wc_squad', 'wc_styles', 'wc_form'] },
+  { key: 'live', i18nKey: 'groupLive', Icon: Zap,
+    types: ['wc_match_pricing', 'wc_divergence', 'wc_inplay', 'wc_pricetrack', 'wc_predictions', 'wc_schedule'] },
+  { key: 'quality', i18nKey: 'groupQuality', Icon: Gauge,
+    types: ['wc_performance', 'wc_calibration', 'wc_backtest', 'wc_params'] },
+  { key: 'reports', i18nKey: 'groupReports', Icon: Download,
+    types: ['wc_pdfs', 'wc_microfootball'] },
+];
+
+export default function PredictionArtifactGrid({ onOpen, categorized = false }: { onOpen: (a: Artifact) => void, categorized?: boolean }) {
   const { t } = useTranslation();
+  const itemByType: Record<string, Item> = Object.fromEntries(PREDICTION_ITEMS.map((i) => [i.type, i]));
+
+  if (categorized) {
+    return (
+      <div className="flex flex-col gap-3">
+        {PREDICTION_GROUPS.map(({ key, i18nKey, Icon: GIcon, types }) => (
+          <div key={key}>
+            <div className="flex items-center gap-1.5 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              <GIcon className="w-3 h-3" /> {t(`prediction.${i18nKey}`)}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {types.map((type) => {
+                const it = itemByType[type];
+                if (!it) return null;
+                const { Icon } = it;
+                const title = t(`prediction.${it.i18nKey}`);
+                return (
+                  <button
+                    key={type}
+                    onClick={() => onOpen({ type, title })}
+                    className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]"
+                  >
+                    <Icon className="w-4 h-4 text-[var(--accent-primary)]" /> {title}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 gap-2">
       {PREDICTION_ITEMS.map(({ type, i18nKey, Icon }) => {

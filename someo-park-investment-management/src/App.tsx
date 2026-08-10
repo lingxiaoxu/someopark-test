@@ -123,6 +123,11 @@ export default function App() {
   const appMode: 'stock' | 'prediction' | 'macro' =
     appModeRaw === 'prediction' || appModeRaw === 'macro' ? appModeRaw : 'stock';
   const [activeArtifact, setActiveArtifact] = useState<any>(null);
+  // Global "card categorization" toggle (Settings page) — applies to the home-screen
+  // artifact grids in all three modes (stock / prediction / macro). Default false
+  // (flat list) matches the pre-existing stock & prediction behavior; macro used to
+  // always show grouped, so this is macro's only default-behavior change.
+  const [cardCategorized, setCardCategorized] = useLocalStorage<boolean>('sp-cardCategorized', false);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-mode', appMode);
@@ -387,6 +392,8 @@ export default function App() {
             onSetAppMode={enterAppMode}
             isLocalConnected={isLocalConnected}
             onSettingsClick={() => { setShowSettings(true); setActiveArtifact(null); setCodePreview(null); }}
+            cardCategorized={cardCategorized}
+            onCardCategorizedChange={setCardCategorized}
             session={session}
             onSignInClick={() => setIsAuthDialogOpen(true)}
             onSignOut={() => supabase?.auth.signOut()}
@@ -431,6 +438,7 @@ export default function App() {
               agentMode={agentMode}
               appMode={appMode}
               isLocalConnected={isLocalConnected}
+              cardCategorized={cardCategorized}
               setActiveArtifact={(a: any) => { setActiveArtifact(a); setShowSettings(false); setCodePreview(null); }}
               onCodePreview={handleCodePreview}
               languageModel={languageModel}

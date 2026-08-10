@@ -1,4 +1,4 @@
-import { MessageSquare, Plus, Terminal, Settings, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2, Landmark } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, SlidersHorizontal, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2, Landmark } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -21,6 +21,8 @@ export default function Sidebar({
   onSetAppMode,
   isLocalConnected,
   onSettingsClick,
+  cardCategorized,
+  onCardCategorizedChange,
   session,
   onSignInClick,
   onSignOut,
@@ -37,6 +39,8 @@ export default function Sidebar({
   onSetAppMode: (mode: 'stock' | 'prediction' | 'macro') => void,
   isLocalConnected: boolean,
   onSettingsClick?: () => void,
+  cardCategorized?: boolean,
+  onCardCategorizedChange?: (v: boolean) => void,
   session: Session | null,
   onSignInClick?: () => void,
   onSignOut?: () => void,
@@ -53,6 +57,7 @@ export default function Sidebar({
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showAboutDev, setShowAboutDev] = useState(false);
+  const [showCardSettings, setShowCardSettings] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const autoOpenedForRef = useRef<string | null>(null);
   const autoCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -70,6 +75,7 @@ export default function Sidebar({
         setMenuOpen(false);
         setShowAbout(false);
         setShowAboutDev(false);
+        setShowCardSettings(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -327,7 +333,7 @@ export default function Sidebar({
         {session ? (
           <div className="relative" ref={menuRef}>
             <button
-              onClick={() => { setMenuOpen(prev => !prev); setShowAbout(false); setShowAboutDev(false); }}
+              onClick={() => { setMenuOpen(prev => !prev); setShowAbout(false); setShowAboutDev(false); setShowCardSettings(false); }}
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[var(--bg-secondary)] transition-colors"
             >
               <div className="w-7 h-7 rounded-full bg-[var(--accent-primary)]/20 flex items-center justify-center text-xs font-semibold text-[var(--accent-primary)] shrink-0">
@@ -340,7 +346,42 @@ export default function Sidebar({
 
             {menuOpen && (
               <div className="auth-light absolute bottom-full left-0 right-0 mb-1 overflow-hidden z-50 animate-slide-in" style={{ background: '#fff', border: '2px solid #111', boxShadow: 'var(--shadow-pixel)' }}>
-                {showAboutDev ? (
+                {showCardSettings ? (
+                  <>
+                    {/* Card Categorization settings header — same shell as About/About Developer */}
+                    <div style={{ padding: '8px 12px', borderBottom: '2px solid #111', background: '#111', color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => setShowCardSettings(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '12px', padding: 0 }}>←</button>
+                      <SlidersHorizontal style={{ width: 12, height: 12 }} />
+                      <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>{t('sidebar.settingsTitle')}</span>
+                    </div>
+                    <div style={{ padding: '12px' }}>
+                      <div style={{ fontSize: '10px', color: '#555', fontFamily: 'var(--font-mono)', lineHeight: 1.6, marginBottom: 8 }}>
+                        {t('settingsPage.cardLayoutDesc')}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {([
+                          { value: true, label: t('settingsPage.cardLayoutCategorized') },
+                          { value: false, label: t('settingsPage.cardLayoutFlat') },
+                        ] as const).map(opt => (
+                          <button
+                            key={String(opt.value)}
+                            onClick={() => onCardCategorizedChange?.(opt.value)}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                              padding: '6px 10px', fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: 700,
+                              border: '1px solid #e5e5e5', cursor: 'pointer', textAlign: 'left',
+                              background: !!cardCategorized === opt.value ? '#111' : '#f9f9f9',
+                              color: !!cardCategorized === opt.value ? '#fff' : '#333',
+                            }}
+                          >
+                            <span>{opt.label}</span>
+                            {!!cardCategorized === opt.value && <span style={{ fontSize: '10px' }}>✓</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : showAboutDev ? (
                   <>
                     {/* About Developer header */}
                     <div style={{ padding: '8px 12px', borderBottom: '2px solid #111', background: '#111', color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -451,6 +492,13 @@ export default function Sidebar({
                     >
                       <User className="w-3.5 h-3.5" />
                       {t('sidebar.aboutDevTitle')}
+                    </button>
+                    <button
+                      onClick={() => setShowCardSettings(true)}
+                      className="w-full flex items-center gap-2 px-3 py-2 text-xs text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] transition-colors"
+                    >
+                      <SlidersHorizontal className="w-3.5 h-3.5" />
+                      {t('sidebar.settingsTitle')}
                     </button>
                     <div className="border-t border-[var(--border-subtle)]" />
                     <button

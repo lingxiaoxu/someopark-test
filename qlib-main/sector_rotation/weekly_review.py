@@ -13,7 +13,8 @@ Steps:
   5. Stop-loss proximity: check current holdings for trailing/sector/circuit breaker risk
   6. Version preference trend
 
-Output: backtest_results/weekly_review.json
+Output: backtest_results/weekly_review_{YYYYMMDD_HHMMSS}.json
+        (+ weekly_review_latest.json copy pointing at the newest run)
 
 Usage:
   conda run -n qlib_run --no-capture-output python \\
@@ -65,7 +66,8 @@ def run_weekly_review(
     """
     Generate weekly review report.
 
-    Returns review dict, also written to weekly_review.json.
+    Returns review dict, also written to weekly_review_{ts}.json
+    (+ weekly_review_latest.json copy).
     """
     out_dir = output_dir or (_THIS_DIR / "backtest_results")
     out_dir.mkdir(parents=True, exist_ok=True)

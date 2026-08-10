@@ -8,8 +8,8 @@
       "param_set": "default",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -20,36 +20,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -60,12 +36,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -74,8 +74,8 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -86,36 +86,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -126,12 +102,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -140,8 +140,8 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -152,36 +152,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -192,12 +168,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -206,8 +206,8 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -218,36 +218,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -258,12 +234,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -272,8 +272,8 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -284,36 +284,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -324,12 +300,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -338,8 +338,8 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -350,36 +350,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -390,12 +366,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -404,8 +404,8 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -416,36 +416,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -456,12 +432,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -470,8 +470,8 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -482,36 +482,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -522,12 +498,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -536,8 +536,8 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -548,36 +548,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -588,12 +564,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -602,8 +602,8 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -614,36 +614,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -654,12 +630,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -668,8 +668,8 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -680,36 +680,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -720,12 +696,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -734,8 +734,8 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -746,36 +746,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -786,12 +762,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -800,8 +800,8 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -812,36 +812,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -852,12 +828,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -866,8 +866,8 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -878,36 +878,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -918,12 +894,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -932,8 +932,8 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -944,36 +944,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -984,12 +960,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -998,8 +998,8 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1010,36 +1010,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1050,12 +1026,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1064,8 +1064,8 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1076,36 +1076,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1116,12 +1092,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1130,8 +1130,8 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1142,36 +1142,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1182,12 +1158,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1196,8 +1196,8 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1208,36 +1208,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1248,12 +1224,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1262,8 +1262,8 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1274,36 +1274,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1314,12 +1290,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1328,8 +1328,8 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1340,36 +1340,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1380,12 +1356,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1394,8 +1394,8 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1406,36 +1406,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1446,12 +1422,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1460,8 +1460,8 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1472,36 +1472,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1512,12 +1488,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1526,8 +1526,8 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1538,36 +1538,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1578,12 +1554,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1592,8 +1592,8 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1604,36 +1604,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1644,12 +1620,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1658,8 +1658,8 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1670,36 +1670,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1710,12 +1686,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1724,8 +1724,8 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1736,36 +1736,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1776,12 +1752,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1790,8 +1790,8 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1802,36 +1802,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1842,12 +1818,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1856,8 +1856,8 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1868,36 +1868,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1908,12 +1884,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1922,8 +1922,8 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -1934,36 +1934,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -1974,12 +1950,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -1988,8 +1988,8 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -2000,36 +2000,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -2040,12 +2016,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -2054,8 +2054,8 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -2066,36 +2066,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -2106,12 +2082,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -2120,8 +2120,8 @@
       "param_set": "vol_release",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -2132,36 +2132,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -2172,12 +2148,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -2186,8 +2186,8 @@
       "param_set": "vol_release_deep",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -2198,36 +2198,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -2238,12 +2214,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     },
@@ -2252,8 +2252,8 @@
       "param_set": "aggressive_vol_release",
       "pairs": [
         [
-          "HAS",
-          "YUM"
+          "ACGL",
+          "HIG"
         ],
         [
           "GILD",
@@ -2264,36 +2264,12 @@
           "NVDA"
         ],
         [
-          "JNJ",
-          "PFE"
-        ],
-        [
-          "TPR",
-          "YUM"
-        ],
-        [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "INTC",
-          "NVDA"
-        ],
-        [
-          "DUK",
-          "PPL"
-        ],
-        [
-          "CAH",
-          "CI"
-        ],
-        [
-          "DGX",
-          "PFE"
-        ],
-        [
           "RMD",
           "SYK"
+        ],
+        [
+          "JNJ",
+          "PFE"
         ],
         [
           "IDXX",
@@ -2304,12 +2280,36 @@
           "VRSK"
         ],
         [
-          "FDX",
-          "HWM"
+          "SBUX",
+          "WYNN"
         ],
         [
-          "DE",
-          "IT"
+          "INTC",
+          "NVDA"
+        ],
+        [
+          "GD",
+          "GE"
+        ],
+        [
+          "HAS",
+          "YUM"
+        ],
+        [
+          "BAC",
+          "JPM"
+        ],
+        [
+          "TPR",
+          "YUM"
+        ],
+        [
+          "DUK",
+          "PPL"
+        ],
+        [
+          "ADI",
+          "AKAM"
         ]
       ]
     }

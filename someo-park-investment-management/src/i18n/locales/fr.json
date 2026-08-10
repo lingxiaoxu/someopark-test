@@ -61,6 +61,11 @@
     "selectSheet": "Sélectionnez une feuille pour afficher les données"
   },
   "prediction": {
+    "groupOverview": "Vue d'ensemble",
+    "groupTeamIntel": "Infos équipes",
+    "groupLive": "Live et prix",
+    "groupQuality": "Qualité",
+    "groupReports": "Rapports",
     "championOdds": "Cotes de Champion",
     "reachRound": "Qualif. par tour",
     "subReachRound": "P(équipe atteint le tour) du modèle vs prix Kalshi + Poly en direct — produit qualification sans nul",
@@ -602,6 +607,7 @@
     "aboutClawCloudDesc": "Heberge par Someo Park",
     "aboutClawLocal": "Local",
     "aboutClawLocalDesc": "OpenClaw auto-heberge",
+    "settingsTitle": "Paramètres",
     "aboutDevTitle": "À propos du développeur",
     "aboutDevBio": "Lingxiao était Stratégiste Quantitatif Senior, Vice-Président (VP) chez Goldman Sachs, titulaire d'un MBA de la Yale School of Management et diplômé du département IEOR de la Columbia School of Engineering. Auparavant, Lingxiao a géré des opérations au sein du groupe Equity Structured Derivatives chez UBS Investment Bank et a également travaillé chez Bank of America Merrill Lynch. Lingxiao est le Champion du Goldman Sachs Global Engineering Hackathon en 2024 et a été récompensé au GDPS 2026 (Conférence mondiale des pionniers du développement 2026, Shanghai) lors du hackathon mondial pour une application AI Agentic.",
     "aiQuant": "Stratégie quant IA",
@@ -610,6 +616,10 @@
     "macroMarketSub": "Fed · CPI · Emploi · Kalshi"
   },
   "chat": {
+    "groupOverview": "Vue d'ensemble",
+    "groupPositions": "Positions",
+    "groupResearch": "Recherche",
+    "groupPerformance": "Performance",
     "currentRuntime": "Environnement actuel :",
     "cloudVpsLabel": "SomeoClaw (Cloud VPS)",
     "localConnectedLabel": "OpenClaw local (Connecté)",
@@ -955,6 +965,10 @@
     "title": "Paramètres",
     "languageLabel": "Langue d'affichage",
     "languageDesc": "Choisissez la langue de l'interface. Les tickers boursiers, abréviations techniques et noms propres resteront inchangés.",
+    "cardLayoutLabel": "Catégorisation des cartes",
+    "cardLayoutDesc": "Choisissez si les cartes de données de l'écran d'accueil sont regroupées par catégorie ou affichées en liste plate. S'applique aux trois modes : Stratégie Actions, Marché de Prédiction Coupe du Monde et Marchés Macro.",
+    "cardLayoutCategorized": "Catégorisé",
+    "cardLayoutFlat": "Liste plate",
     "themeLabel": "Thème",
     "themeDesc": "Schéma de couleurs de l'interface",
     "dark": "Sombre",
@@ -1255,6 +1269,9 @@
     "skipped": "ignorés",
     "trackRecord": "Historique (hybride)",
     "colSpan": "Période",
-    "trackOpen": "Ouvert"
+    "trackOpen": "Ouvert",
+    "trackBacktest": "Backtest",
+    "trackLive": "En direct",
+    "trackNote": "Jusqu'au {{cutover}}, il s'agit d'un backtest walk-forward point-in-time de la même règle hybride, sans ordre réel. À partir du {{cutover}}, c'est le registre en direct (papier)."
   }
 }

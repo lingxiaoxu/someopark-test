@@ -57,6 +57,62 @@ const STRAT_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'combined'];
 const MASTER_KEYS = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'master'];
 const BENCHMARK_KEYS = ['spy', 'smh', 'soxx', 'mags'];  // dashed reference lines in Master mode
 
+// ── Tooltip: individual strategies first, the aggregate (COMBINED / MASTER) last ──
+const TOOLTIP_ORDER = ['mrpt', 'mtfs', 'sr', 'aiss', 'bdc', 'spy', 'smh', 'soxx', 'mags', 'combined', 'master'];
+const tooltipRank = (k: string) => {
+  const i = TOOLTIP_ORDER.indexOf(k);
+  return i === -1 ? TOOLTIP_ORDER.length : i;
+};
+// Short labels — the full COMBINED/MASTER names are what made the old tooltip wide.
+const TOOLTIP_LABELS: Record<string, string> = {
+  ...LABELS,
+  combined: 'COMBINED',
+  master: 'MASTER',
+};
+// Pinned just inside the plot area: all three charts use margin.left=5 and a default
+// 60px-wide left YAxis, so x=70 clears the axis tick labels instead of covering them.
+const TOOLTIP_POS = { x: 70, y: 8 };
+// Drawdown hangs down from 0%, so its empty corner is bottom-left. Same x margin;
+// y sits at the plot-area floor (SizedChart height 180 − ~30px XAxis) and the card is
+// anchored by its BOTTOM edge (anchor="bottom"), so it grows upward and never
+// overflows even in Master mode with 10 rows.
+const TOOLTIP_POS_BOTTOM = { x: 70, y: 148 };
+
+/**
+ * Compact tooltip pinned to the chart's top-left (via Tooltip `position`) so it can
+ * never cover the plotted lines. Rows are ordered strategies-first / aggregate-last;
+ * `renderValue` keeps each chart's existing "% ($)" formatting, just smaller.
+ * Hidden helper series (e.g. `*_equity`, `*_dd_dollar`) are dropped because their
+ * stripped key isn't in TOOLTIP_LABELS.
+ */
+function CompactTooltip({ active, payload, label, suffix, renderValue, anchor }: any) {
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+  const seen = new Set<string>();
+  const rows = payload
+    .map((p: any) => ({ key: String(p.name ?? '').replace(suffix, ''), p }))
+    .filter(({ key }: any) => TOOLTIP_LABELS[key] !== undefined)
+    .filter(({ key }: any) => { if (seen.has(key)) return false; seen.add(key); return true; })
+    .sort((a: any, b: any) => tooltipRank(a.key) - tooltipRank(b.key));
+  if (rows.length === 0) return null;
+  return (
+    <div style={{
+      fontFamily: 'var(--font-mono)', fontSize: '8px', lineHeight: 1.5,
+      background: 'rgba(255,255,255,0.94)', border: '1px solid #111',
+      padding: '3px 5px', pointerEvents: 'none',
+      // anchor="bottom" → grow upward from the given y instead of downward
+      ...(anchor === 'bottom' ? { transform: 'translateY(-100%)' } : null),
+    }}>
+      <div style={{ fontWeight: 700, color: '#111', marginBottom: 1 }}>{label}</div>
+      {rows.map(({ key, p }: any) => (
+        <div key={key} style={{ display: 'flex', gap: 6, whiteSpace: 'nowrap' }}>
+          <span style={{ color: COLORS[key], fontWeight: 700 }}>{TOOLTIP_LABELS[key]}</span>
+          <span style={{ marginLeft: 'auto', color: '#333' }}>{renderValue(p)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Default start of the visible window when a view first opens. The picker's `min` still
 // exposes the full history, so earlier dates remain selectable — this only sets the default.
 const DEFAULT_START_DATE = '2025-11-11';
@@ -417,14 +473,17 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
                 width={40}
               />
               <Tooltip
-                contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
-                formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
-                  const strat = name.replace('_ret', '');
-                  const eq = props.payload?.[`${strat}_equity`];
-                  const eqStr = eq != null ? ` (${fmtMoney(eq)})` : '';
-                  return [`${val >= 0 ? '+' : ''}${val.toFixed(2)}%${eqStr}`, LABELS[strat] || strat.toUpperCase()];
-                }}
-                labelFormatter={(label: string) => `Date: ${label}`}
+                position={TOOLTIP_POS}
+                content={
+                  <CompactTooltip
+                    suffix="_ret"
+                    renderValue={(p: any) => {
+                      const strat = String(p.name ?? '').replace('_ret', '');
+                      const eq = p.payload?.[`${strat}_equity`];
+                      return `${p.value >= 0 ? '+' : ''}${Number(p.value).toFixed(2)}%${eq != null ? ` (${fmtMoney(eq)})` : ''}`;
+                    }}
+                  />
+                }
               />
               <ReferenceLine yAxisId="ret" y={0} stroke="#ccc" strokeDasharray="4 4" />
               {activeKeys.filter(k => activeStrategies.has(k)).map(k => (
@@ -455,15 +514,18 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
               <YAxis yAxisId="right" orientation="right" fontSize={9} stroke="#999" tickLine={false} axisLine={false}
                 tickFormatter={v => `${fmtMoney(v)}`} />
               <Tooltip
-                contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
-                formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
-                  if (name.endsWith('_dd_dollar')) return null;
-                  const strat = name.replace('_dd_w', '');
-                  const dollar = props.payload?.[`${strat}_dd_dollar`];
-                  const dollarStr = dollar != null ? ` (${fmtMoney(dollar)})` : '';
-                  return [`${val.toFixed(2)}%${dollarStr}`, LABELS[strat] || strat.toUpperCase()];
-                }}
-                labelFormatter={(label: string) => `Date: ${label}`}
+                position={TOOLTIP_POS_BOTTOM}
+                content={
+                  <CompactTooltip
+                    suffix="_dd_w"
+                    anchor="bottom"
+                    renderValue={(p: any) => {
+                      const strat = String(p.name ?? '').replace('_dd_w', '');
+                      const dollar = p.payload?.[`${strat}_dd_dollar`];
+                      return `${Number(p.value).toFixed(2)}%${dollar != null ? ` (${fmtMoney(dollar)})` : ''}`;
+                    }}
+                  />
+                }
               />
               <ReferenceLine yAxisId="left" y={0} stroke="#111" strokeWidth={1} />
               {activeKeys.filter(k => activeStrategies.has(k)).map(k => (
@@ -496,15 +558,17 @@ export default function StrategyPerformanceViewer({ params }: { params?: any }) 
               <YAxis yAxisId="right" orientation="right" fontSize={9} stroke="#999" tickLine={false} axisLine={false}
                 tickFormatter={v => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`} />
               <Tooltip
-                contentStyle={{ fontFamily: 'var(--font-mono)', fontSize: '11px', border: '2px solid #111', borderRadius: 0 }}
-                formatter={(val: number, name: string, props: { payload?: Record<string, number> }) => {
-                  if (name.endsWith('_pnl_pct')) return null;
-                  const strat = name.replace('_pnl_w', '');
-                  const pct = props.payload?.[`${strat}_pnl_pct`];
-                  const pctStr = pct != null ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)` : '';
-                  return [`${fmtMoney(val)}${pctStr}`, LABELS[strat] || strat.toUpperCase()];
-                }}
-                labelFormatter={(label: string) => `Date: ${label}`}
+                position={TOOLTIP_POS}
+                content={
+                  <CompactTooltip
+                    suffix="_pnl_w"
+                    renderValue={(p: any) => {
+                      const strat = String(p.name ?? '').replace('_pnl_w', '');
+                      const pct = p.payload?.[`${strat}_pnl_pct`];
+                      return `${fmtMoney(Number(p.value))}${pct != null ? ` (${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%)` : ''}`;
+                    }}
+                  />
+                }
               />
               <ReferenceLine yAxisId="left" y={0} stroke="#111" strokeWidth={1} />
               {activeKeys.filter(k => activeStrategies.has(k)).map(k => (

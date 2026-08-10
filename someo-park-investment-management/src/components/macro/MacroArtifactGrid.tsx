@@ -61,9 +61,27 @@ export const MACRO_GROUPS: MacroGroup[] = [
 export const groupOfType = (type: string): MacroGroup | undefined =>
   MACRO_GROUPS.find((g) => g.types.includes(type));
 
-export default function MacroArtifactGrid({ onOpen }: { onOpen: (a: Artifact) => void }) {
+export default function MacroArtifactGrid({ onOpen, categorized = true }: { onOpen: (a: Artifact) => void, categorized?: boolean }) {
   const { t } = useTranslation();
   const itemByType: Record<string, Item> = Object.fromEntries(MACRO_ITEMS.map((i) => [i.type, i]));
+
+  // categorized=false → flat list (mirrors PredictionArtifactGrid's default rendering).
+  if (!categorized) {
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {MACRO_ITEMS.map(({ type, i18nKey, Icon }) => (
+          <button
+            key={type}
+            onClick={() => onOpen({ type, title: t(`macro.${i18nKey}`) })}
+            className="flex items-center gap-2 p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-subtle)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm text-[var(--text-primary)]"
+          >
+            <Icon className="w-4 h-4 text-[var(--accent-primary)]" /> {t(`macro.${i18nKey}`)}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   // §21.3 organized, §21.1 undeleted: group HEADERS with every one of the 13
   // member tiles visible underneath — nothing is hidden behind a click.
   return (

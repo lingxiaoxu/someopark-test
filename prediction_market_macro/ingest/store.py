@@ -74,6 +74,17 @@ CREATE TABLE IF NOT EXISTS models(
   trained_through TEXT NOT NULL, created_ts TEXT NOT NULL, card_md TEXT,
   PRIMARY KEY(series, version));
 
+CREATE TABLE IF NOT EXISTS param_selection(       -- #119 daily DSR-gated param choice
+  -- One row per (series, day). `params_json` is '{}' when the gate held and the
+  -- registered defaults were used, which is the common case and must stay
+  -- distinguishable from "the selector did not run" (no row at all). `report_json`
+  -- carries dsr.select's verdict verbatim so a later reader can see WHY, not just what.
+  series TEXT NOT NULL, day TEXT NOT NULL,
+  params_json TEXT NOT NULL, adopted INTEGER NOT NULL,
+  n_obs INTEGER, n_trials INTEGER, dsr_p REAL,
+  report_json TEXT NOT NULL, created_ts TEXT NOT NULL,
+  PRIMARY KEY(series, day));
+
 CREATE TABLE IF NOT EXISTS experiments(
   name TEXT NOT NULL, config_hash TEXT NOT NULL, series TEXT, window TEXT,
   metrics_json TEXT, created_ts TEXT NOT NULL,
@@ -99,7 +110,13 @@ CREATE TABLE IF NOT EXISTS decisions(              -- §12 append-only PIT ledge
   kind TEXT NOT NULL,                    -- open|exit|cancel|pass
   fair REAL, ask REAL, net_edge REAL, size_usd REAL,
   inputs_json TEXT NOT NULL, model_version TEXT NOT NULL, gate_snapshot TEXT NOT NULL,
-  note TEXT);
+  note TEXT,
+  -- #149. On a close row (exit|cancel|settle_note), the id of the open row it retires.
+  -- NULL on open rows, and NULL on every close written before this column existed.
+  -- Without it a close is only attributable to a (series, period), not to a POSITION,
+  -- and the four "do I already hold this?" checks each counted one stream's opens
+  -- against every stream's closes.
+  closes_decision_id INTEGER);
 
 CREATE TABLE IF NOT EXISTS fills(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,6 +127,36 @@ CREATE TABLE IF NOT EXISTS fills(
 CREATE TABLE IF NOT EXISTS marks(
   ts TEXT NOT NULL, decision_id INTEGER NOT NULL, ticker TEXT NOT NULL,
   mid REAL, pnl_usd REAL, PRIMARY KEY(ts, decision_id, ticker));
+
+CREATE TABLE IF NOT EXISTS shadow_exits(           -- PR-7 step 1 (#143): recorded, NEVER executed
+  ts_utc TEXT NOT NULL, rule TEXT NOT NULL,        -- 'S2' = hold_edge <= 0
+  decision_id INTEGER NOT NULL,                    -- the OPEN row this shadows
+  series TEXT NOT NULL, period TEXT NOT NULL,
+  hold_edge REAL, triggered INTEGER NOT NULL,      -- 1 = the rule would have closed here
+  realized_usd REAL,                               -- what closing NOW would have realized
+  legs_json TEXT NOT NULL,                         -- per-leg transactable exit price + depth
+  note TEXT,
+  PRIMARY KEY(ts_utc, rule, decision_id));
+
+CREATE TABLE IF NOT EXISTS shadow_argmax(          -- PR-2 (#126): the defer-to-market arm
+  ts_utc TEXT NOT NULL,
+  series TEXT NOT NULL, period TEXT NOT NULL,
+  arm TEXT NOT NULL,                               -- 'placed' = filter let it through
+                                                   -- 'deferred' = filter killed it
+  fair REAL NOT NULL, cost REAL NOT NULL,          -- deferred iff fair > cost
+  count INTEGER NOT NULL, size_usd REAL NOT NULL,
+  desc TEXT, legs_json TEXT NOT NULL,              -- fill prices, so PnL needs no replay
+  note TEXT,
+  PRIMARY KEY(series, period));                    -- one argmax leg per event, both arms
+
+CREATE TABLE IF NOT EXISTS shadow_series_enable(  -- §25.4 (#155): recorded, NEVER acted on
+  day TEXT NOT NULL, series TEXT NOT NULL,
+  evaluated INTEGER NOT NULL,                      -- 0 = no stored verdict (gate is blind)
+  would_block INTEGER NOT NULL,                    -- 1 = it would switch the series off
+  roi REAL, n INTEGER, flips INTEGER,              -- the trailing window it decided on
+  reason TEXT,                                     -- the exact ledger-shaped veto string
+  ts_utc TEXT NOT NULL,
+  PRIMARY KEY(day, series));                       -- one verdict per series per day
 
 CREATE TABLE IF NOT EXISTS llm_annotations(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,6 +219,12 @@ def init_db(db_path: Path | str) -> sqlite3.Connection:
     cols = {r[1] for r in conn.execute("PRAGMA table_info(preds)")}
     if "inputs_json" not in cols:
         conn.execute("ALTER TABLE preds ADD COLUMN inputs_json TEXT")
+    # #149. `decisions` is CREATE TABLE IF NOT EXISTS, so the DDL above only reaches a
+    # FRESH db — the live ledger needs the ALTER or `closes_decision_id` exists in tests
+    # and nowhere else, which is the worst of both.
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(decisions)")}
+    if "closes_decision_id" not in cols:
+        conn.execute("ALTER TABLE decisions ADD COLUMN closes_decision_id INTEGER")
     _migrate_fed_statements(conn)
     conn.commit()
     return conn

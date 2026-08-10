@@ -52,33 +52,111 @@ def _legs_meta(conn, series: str, kalshi_tok: str) -> list[dict]:
 
 
 def _has_any_open(conn, series: str, period: str) -> bool:
-    r = conn.execute(
-        "SELECT SUM(CASE WHEN kind IN ('open','argmax','arb','snipe') THEN 1 ELSE 0"
-        " END) o, SUM(CASE WHEN kind IN ('exit','cancel','settle_note') THEN 1 ELSE 0"
-        " END) x FROM decisions WHERE series=? AND period=?",
-        (series, period)).fetchone()
-    return (r["o"] or 0) > (r["x"] or 0)
+    # #149. This one was already BALANCED (all open kinds vs all close kinds) and so
+    # agreed with the truth on all 66 live periods — it is the reference the other three
+    # were measured against. Routed through `open_decisions` anyway: leaving the one
+    # correct implementation as the only private copy is how the set drifts apart again.
+    from prediction_market_macro.ops.ledger import open_decisions
+    return bool(open_decisions(conn, series, period))
+
+
+def argmax_candidate(structs):
+    """The structure the argmax leg would buy, BEFORE the defer-to-market filter.
+
+    Split out for PR-2 (#126): the filter's two arms have to be looking at the same
+    candidate, and the only way to guarantee that is for both to call this. Note the
+    ordering it encodes — select THEN filter. Relaxing the filter therefore never changes
+    WHICH structure is bought, only whether it is bought at all, which is what makes the
+    two arms a clean paired comparison.
+    """
+    cands = [st for st in structs if 0.10 <= st.cost <= 0.90 and st.fair > 0.5]
+    return max(cands, key=lambda x: x.fair) if cands else None
+
+
+def defers_to_market(st) -> bool:
+    """PR-2's rule under test: skip the favourite when our fair exceeds the ask.
+
+    The original justification was "dual-window validated 27W-2L" — but that was measured
+    BEFORE #109 rebuilt the PIT gates and before the bucket devig fix (#127), so it is not
+    evidence about the strategy that runs today. #126 re-validates it forward; until then
+    the rule stays ON and unchanged.
+    """
+    return st.fair > st.cost
+
+
+def argmax_sizing(st) -> tuple[int, float]:
+    """(count, size_usd) for the flat-$1 favourite leg.
+
+    Sizes against the FILL, not the quote (`strategy/edge.py::fill_price`) — the flat +1c
+    this path used to apply after sizing broke the $1 cap on every cheap leg.
+    """
+    count = max(1, int(1.0 / st.cost))
+    count = max(1, int(1.0 / max(st.fill_cost(count), 0.01)))
+    return count, round(st.fill_cost(count) * count, 2)
+
+
+def _shadow_argmax(conn, spec, key: str, st, count: int, size: float,
+                   deferred: bool, now) -> None:
+    """PR-2 (#126): record the argmax leg the filter saw. **Never writes `decisions`.**
+
+    One row per (series, period) — the argmax stream places at most one leg per event, so
+    the primary key is the natural one and a re-run inside the same cycle is idempotent
+    rather than double-counted.
+
+    BOTH arms are written, not just the deferred one. The comparison is filter-on vs
+    filter-off, and filter-on's trades are the `arm='placed'` rows; recording only the
+    skipped trades would leave the scorer to reconstruct the other arm from `decisions`
+    later, and reconstruction after settlement is the researcher degree of freedom this
+    whole shadow apparatus exists to remove.
+
+    `legs_json` stores FILL prices (`fill_prices(count)`), which is what the trade would
+    actually have paid, so `research/shadow_pr2` can settle the row without re-deriving a
+    price from a book that no longer exists.
+    """
+    conn.execute(
+        "INSERT OR REPLACE INTO shadow_argmax(ts_utc, series, period, arm, fair, cost,"
+        " count, size_usd, desc, legs_json, note) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (now.isoformat(), spec.ticker, key, "deferred" if deferred else "placed",
+         float(st.fair), float(st.cost), int(count), float(size), st.desc,
+         json.dumps([{"ticker": l.ticker, "side": l.side, "price": px}
+                     for l, px in zip(st.legs, st.fill_prices(count))]),
+         f"fair={st.fair:.4f} cost={st.cost:.4f} "
+         f"{'deferred (fair>cost)' if deferred else 'placed (fair<=cost)'}"))
 
 
 def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> bool:
     """WC-hybrid favourite leg: no edge cleared ⇒ buy the MODEL's most likely
     structure flat $1 (kind='argmax'). Price window [0.10, 0.90] keeps payoff
-    room net of fees; one per (series, period); risk limits still apply."""
+    room net of fees; one per (series, period); risk limits still apply.
+
+    Also writes PR-2's shadow row (#126) for BOTH arms. `risk.check` is applied before the
+    defer-to-market filter is consulted so that the deferred arm is held to the same
+    admission standard as the placed one — it is a pure read (no writes, no commit), so
+    consulting it earlier changes nothing about what this function does. Without that, a
+    deferred trade that risk would have rejected anyway would still be credited to the
+    no-filter arm, which is the asymmetric-sample failure `shadow_claims` guards against
+    on the other registration.
+    """
     from prediction_market_macro.ops import risk
-    # defer-to-market: favourite only when market confidence >= model's
-    # (fair <= cost) — dual-window validated 27W-2L; fair>cost is adverse selection
-    cands = [st for st in structs if 0.10 <= st.cost <= 0.90 and st.fair > 0.5]
-    if not cands or _has_any_open(conn, spec.ticker, key):
+    st = argmax_candidate(structs)
+    if st is None or _has_any_open(conn, spec.ticker, key):
         return False
-    st = max(cands, key=lambda x: x.fair)
-    if st.fair > st.cost:                  # select-THEN-filter (see note above)
-        return False
-    # size against the fill, not the quote (strategy/edge.py::fill_price) — the flat +1c
-    # this path applied after sizing broke the $1 cap on every cheap leg
-    count = max(1, int(1.0 / st.cost))
-    count = max(1, int(1.0 / max(st.fill_cost(count), 0.01)))
-    size = round(st.fill_cost(count) * count, 2)
+    count, size = argmax_sizing(st)
     if risk.check(conn, spec.ticker, key, size) is not None:
+        return False
+    # #148 — do not open what `ops/exits` rule 1 closes on the same cycle. Sits here, with
+    # `risk.check` and ahead of the shadow write, for the reason the docstring above gives
+    # about `risk.check`: it is an ADMISSION standard, so holding only the placed arm to it
+    # would leave PR-2 crediting the deferred arm with trades that could never have been
+    # held. It is a pure read, like `risk.check`. See `exits.opens_into_exit` for the
+    # measurement (3 of the 4 live argmax legs round-tripped in 219ms) and for why the
+    # repair is on this side rather than on the exit.
+    from prediction_market_macro.ops import exits as _exits
+    if _exits.opens_into_exit(st, _exits.struct_mid_cost(conn, st)):
+        return False
+    deferred = defers_to_market(st)
+    _shadow_argmax(conn, spec, key, st, count, size, deferred, now)
+    if deferred:
         return False
     now_iso = now.isoformat()
     from prediction_market_macro.strategy.edge import taker_fee
@@ -122,9 +200,16 @@ def _aaa_information_gate(conn, pr, now: datetime) -> str | None:
     and our feed must actually be alive. AAA publishes 7 days a week, so the age check
     fires on OUR collector being down, not on a weekend.
 
-    Deliberately live-lane only. The backtest path needs no equivalent: every AAA_DAILY
-    row carries knowledge_time >= 2026-07-31T19:46Z, so any replay before then sees an
-    empty series and takes the proxy branch by construction.
+    This was documented as "deliberately live-lane only — the backtest needs no equivalent,
+    since every AAA_DAILY row carries knowledge_time >= 2026-07-31T19:46Z, so any replay
+    before then sees an empty series and takes the proxy branch by construction."
+
+    That premise is true and the conclusion drawn from it was backwards. **The proxy branch
+    is the blocked branch**, so a replay before 2026-07-31 takes the exact state this gate
+    exists to refuse — and the backtest, having no equivalent, booked it. All 6 KXAAAGASW
+    trades in the displayed d75 window are dated 05-24..06-23, i.e. every one of them.
+    `research/walkforward.py` now applies the same test right after the pred is built
+    (it needs `mode`, which is why it cannot sit as early as this one does).
     """
     if pr["series"] != "KXAAAGASW":
         return None
@@ -151,9 +236,41 @@ def _bankroll(conn, settings) -> float:
     return current_bankroll(conn)
 
 
+def _warn_unevaluated_series_gate(conn) -> None:
+    """Say out loud which series have no stored §25.4 verdict, once per day.
+
+    `series_enable.blocked` fails open on a missing artefact, which is the right default
+    — but on 2026-08-06 EVERY series was missing one (the module shipped 2026-08-05, the
+    day after the last `eval.run_all` pass wrote the artefacts), so the gate had never
+    once fired live while the published d75 backtest, which recomputes the same fold
+    PIT-wise, recorded `series_disabled: 13`. Nothing anywhere reported the difference.
+
+    Same shape and same reasoning as `risk._breaker_blind`: warn, do not trip. This can
+    only mean "the weekly eval has not run yet", never "stop trading".
+    """
+    from prediction_market_macro.strategy import series_enable
+    missing = series_enable.unevaluated(conn, [s.ticker for s in REGISTRY.values()])
+    if not missing:
+        return
+    # #155: while SHADOW is on the gate cannot fire for a SECOND reason, and saying only
+    # the first would misreport a deliberate choice as a missing job.
+    why = ("§25.4 is in SHADOW mode and would not fire in any case"
+           if series_enable.SHADOW else "§25.4 cannot fire until weekly_eval_gates runs")
+    msg = (f"series_enable gate unevaluated for {len(missing)}/{len(REGISTRY)} series"
+           f" ({','.join(missing)}) — {why}")
+    today = datetime.now(timezone.utc).date().isoformat()
+    if conn.execute("SELECT 1 FROM alerts WHERE source='series_enable' AND message=?"
+                    " AND ts>=? LIMIT 1", (msg, today)).fetchone():
+        return
+    conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                 (datetime.now(timezone.utc).isoformat(), "warn", "series_enable", msg))
+    conn.commit()
+
+
 def run(conn, settings) -> int:
     now = datetime.now(timezone.utc)
     n = 0
+    _warn_unevaluated_series_gate(conn)
     for spec in REGISTRY.values():
         for r in conn.execute(
                 "SELECT DISTINCT period FROM contracts WHERE series=? AND status='active'",
@@ -319,18 +436,56 @@ def run(conn, settings) -> int:
                 set_coverage(conn, spec.ticker, key, "passed")
                 n += 1
                 continue
+            # §25.4 per-series switch. Deliberately AFTER the skill block and shaped the
+            # same way (record a pass, `continue`, argmax leg suppressed too): it is one
+            # more veto, never a release. Placing it before the skill block would change
+            # nothing about which trades happen but would make the recorded reason the
+            # weaker of the two on a series both gates reject, and the ledger's reason
+            # string is the only record of why a bet did not happen.
+            from prediction_market_macro.strategy import series_enable
+            # #155: one load feeding both the record and the action, so the two can never
+            # describe different rows if the weekly eval lands mid-cycle. `veto` is None
+            # while `series_enable.SHADOW` is on — the recorded verdict is then the whole
+            # output of this gate, which is the intent.
+            se_state = series_enable.state(conn, spec.ticker)
+            series_enable.record_shadow(conn, spec.ticker, se_state, now)
+            off = series_enable.veto(se_state)
+            if off:
+                from prediction_market_macro.strategy.decision import Decision
+                ledger.record(conn, series=spec.ticker, period=key,
+                              decision=Decision("pass", None, 0.0, 0, (off,), gates_eff),
+                              pred_inputs={}, model_version=pr["model_version"])
+                set_coverage(conn, spec.ticker, key, "passed")
+                n += 1
+                continue
             sk = skill.defensive(conn, spec.ticker)
             if sk is not None:
                 gates_eff["min_net_edge"] *= 2.0
                 gates_eff["max_size_usd"] *= 0.5
                 gates_eff["fav_min_edge_per_day"] = \
                     gates_eff.get("fav_min_edge_per_day", 0.008) * 2.0
-            # §23.2-3a: wide book ⇒ devigged market prob is noise ⇒ sanity gate
-            # falls back to raw cost
+            # §23.2-3a: a wide book makes the devigged market prob noisy. The original
+            # response was `market_fairs = None`, which is not neutral — it sends
+            # `decide()`'s sanity gate to its `st.cost` fallback, i.e. it compares our
+            # fair against the very ask we are about to pay. On a wide book that ask sits
+            # far above the devigged prob, so the fallback LOOSENED the one check
+            # `decide()` documents as unconditional, exactly where the quote is least
+            # trustworthy. #130 measured it on the 75-day run: the branch fired on 10 of
+            # 52 trades, and 9 of them showed a devigged gap of 0.27-0.49 against an
+            # ask-based gap of 0.06-0.24, all comfortably under the 0.25 ceiling.
+            #
+            # Keep the gate unconditional without pretending the noisy number is precise:
+            # per structure, reference whichever of the two is FURTHER from our fair. A
+            # wide quote can then only tighten the gate, never loosen it, it introduces
+            # no new constant, and when devig is unavailable altogether the expression
+            # collapses to `st.cost` — today's behaviour.
             from prediction_market_macro.model.ensemble import WIDE_SPREAD, median_spread
             sp = median_spread(legs)
             if sp is not None and sp > WIDE_SPREAD:
-                market_fairs = None
+                _mf = market_fairs or {}
+                market_fairs = {st.desc: max(_mf.get(st.desc, st.cost), st.cost,
+                                             key=lambda p, f=st.fair: abs(f - p))
+                                for st in structs}
             d = decide(structs, now=now, close_time=close_ts, release_ts=release_ts,
                        market_implied=market_fairs,
                        already_open=ledger.has_open(conn, spec.ticker, key),

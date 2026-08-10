@@ -31,6 +31,59 @@ def _write(path, obj) -> None:
                                allow_nan=False))
 
 
+# #153. Two panels on this page ask "what is the latest decision on this (series, period)?"
+# and used two hand-written kind lists: the board took ('open','pass','exit') and the
+# stances table took ('open','argmax','arb','snipe','pass'). They legitimately differ — the
+# board reports what last HAPPENED, the stances table reports the standing ACTIONABLE
+# stance, and an exit belongs in the first but not the second (the frontend renders any
+# non-`pass` kind as a live bet with a green stake, so listing exits there would show closed
+# positions as open ones). What was not legitimate is that the board's list omitted three of
+# the four OPEN_KINDS: an argmax/arb/snipe open could not be the board's latest decision, so
+# the board would have shown an older `pass` in its place.
+#
+# Latent today — argmax is 4 rows and none of them is the newest on its period, so widening
+# the set changes 0 of 66 board rows. It is fixed now precisely because it costs nothing now.
+# Both sets are derived from `ledger.OPEN_KINDS` rather than retyped, so a fifth open kind
+# joins both automatically; the difference between them is one explicit token, `exit`.
+def _stance_kinds(include_close: bool) -> tuple[str, ...]:
+    from prediction_market_macro.ops.ledger import OPEN_KINDS
+    return OPEN_KINDS + ("pass",) + (("exit",) if include_close else ())
+
+
+def _latest_decision(conn, series: str, period: str, cols: str, *, include_close: bool):
+    kinds = _stance_kinds(include_close)
+    row = conn.execute(
+        f"SELECT {cols} FROM decisions WHERE series=? AND period=? AND kind IN"
+        f" ({','.join('?' * len(kinds))}) ORDER BY id DESC LIMIT 1",
+        (series, period, *kinds)).fetchone()
+    if row is None or include_close:
+        return row
+    # #153b. A close SUPERSEDES the actionable row underneath it. Dropping `exit` from the
+    # stances kind set stops an exit being painted as a live bet, but on its own it leaves
+    # the panel showing whatever stance preceded the close — and that stance is routinely
+    # false once the position is gone. Live right now: KXNATGASW 2026-08-07 was exited at
+    # 18:31Z (id 3704) and the stances table reports the `pass` 5ms before it, whose stated
+    # reason is `already_open_no_averaging_down` — a customer-facing claim that we are
+    # holding a position we have closed.
+    #
+    # So: if the newest row of ANY kind is a close, there is no standing stance and the
+    # panel says so (`decision: null` -> the frontend's own `—`). Nothing is hidden by
+    # this — the board panel still carries the close, with its realized PnL. The state is
+    # self-healing: the next `decide_all` tick writes a fresh pass or open on that period
+    # and the row refills with something true.
+    #
+    # Four periods on the whole live ledger are in this state (KXWTIW 07-31, KXNATGASW
+    # 07-31, KXAAAGASW 08-03, KXNATGASW 08-07); only the last is inside the stances panel's
+    # -0.5..7.5 day window, so this changes exactly 1 of 9 displayed rows today.
+    from prediction_market_macro.ops.ledger import CLOSE_KINDS
+    allk = _stance_kinds(True) + CLOSE_KINDS
+    newest = conn.execute(
+        f"SELECT kind FROM decisions WHERE series=? AND period=? AND kind IN"
+        f" ({','.join('?' * len(allk))}) ORDER BY id DESC LIMIT 1",
+        (series, period, *allk)).fetchone()
+    return None if newest and newest["kind"] in CLOSE_KINDS else row
+
+
 def run(conn, settings) -> str:
     now = datetime.now(timezone.utc)
     out_dir = settings.frontend_data
@@ -59,10 +112,10 @@ def run(conn, settings) -> str:
                 " WHERE series=? AND period=? AND model_version LIKE ?"
                 " ORDER BY asof DESC LIMIT 1",
                 (spec.ticker, key, spec.model + "/%")).fetchone()
-            de = conn.execute(
-                "SELECT ts_utc, kind, fair, ask, net_edge, size_usd, note, structure_json"
-                " FROM decisions WHERE series=? AND period=? AND kind IN ('open','pass','exit')"
-                " ORDER BY id DESC LIMIT 1", (spec.ticker, key)).fetchone()
+            de = _latest_decision(
+                conn, spec.ticker, key,
+                "ts_utc, kind, fair, ask, net_edge, size_usd, note, structure_json",
+                include_close=True)          # #153: the board reports what last happened
             entries.append({
                 "period": key,
                 "pred": {"asof": pr["asof"], "model": pr["model_version"],
@@ -105,10 +158,23 @@ def run(conn, settings) -> str:
     return ",".join(written)
 
 
-# New-rules go-live (entry-window discipline commit 63dda26). Display cutover:
-# the shown track record is the frozen hybrid track before this instant and the
-# actual production ledger from it on; positions opened earlier stay internal.
-TRACK_CUTOVER = "2026-07-31T16:14:00+00:00"
+# Display cutover: the shown track is the frozen walk-forward BACKTEST before this instant
+# and the actual production ledger from it on; positions opened earlier stay internal.
+#
+# Moved 2026-07-31T16:14 -> 2026-08-05T00:00 (#121). The old cutover never produced a live
+# segment: 43 positions opened 7/28-7/31 under a rule set with no `max_days_to_close` held
+# 50 (series, period) slots, so 842 of the 1090 decisions after it were
+# `already_open_no_averaging_down` and nothing settled. Those are retired
+# (ops/retire_stale_book), and the live record restarts here, clean, under current rules.
+#
+# The instant is midnight so it cannot overlap the backtest, which is bounded at
+# `--end 2026-08-04`: an event enters the backtest only if it SETTLES by then. Overlap
+# would count the same event once in each segment. See freeze_track's settle-span guard.
+#
+# The two segments are NOT the same kind of evidence and the UI must keep saying so —
+# `macro.trackBacktest` / `macro.trackLive` chips plus `macro.trackNote`, which states in
+# all five locales that the first segment was never traded. Do not merge or relabel them.
+TRACK_CUTOVER = "2026-08-05T00:00:00+00:00"
 
 
 def run_extended(conn, settings) -> str:
@@ -152,11 +218,10 @@ def run_extended(conn, settings) -> str:
             dtc = (ct - now).total_seconds() / 86400.0
             if not (-0.5 <= dtc <= 7.5):
                 continue
-            de = conn.execute(
-                "SELECT ts_utc, kind, fair, ask, net_edge, size_usd, note,"
-                " structure_json FROM decisions WHERE series=? AND period=?"
-                " AND kind IN ('open','argmax','arb','snipe','pass')"
-                " ORDER BY id DESC LIMIT 1", (spec.ticker, key)).fetchone()
+            de = _latest_decision(
+                conn, spec.ticker, key,
+                "ts_utc, kind, fair, ask, net_edge, size_usd, note, structure_json",
+                include_close=False)         # #153: the standing actionable stance
             stj = json.loads(de["structure_json"] or "{}") if de else {}
             stances.append({
                 "series": spec.ticker, "period": key, "close_ts": ct.isoformat(),
@@ -239,33 +304,54 @@ def run_extended(conn, settings) -> str:
         "SELECT metrics_json FROM experiments WHERE name='track_history'"
         " ORDER BY created_ts DESC LIMIT 1").fetchone()
     history = json.loads(hist_row["metrics_json"]) if hist_row else None
+    # #150. Open/closed and the realized figure both come from `ledger`, which pairs a
+    # close to the POSITION it closed (#149's `closes_decision_id`, FIFO for legacy rows).
+    # This used to ask "is there a `settle_note` on this (series, period) with a bigger
+    # id?", which was wrong twice over: an EXIT is not a settle_note, so an exited
+    # position stayed on the displayed open book forever with its realized PnL nowhere
+    # (12 open / $9.55 staked / $0.00 realized shown against a true 8 / $6.39 / $+0.71);
+    # and `LIMIT 1` pinned every position on a period to that period's FIRST settle_note,
+    # so the 3 positions live on KXWTIW 2026-08-07 would have been credited one payout
+    # three times over. A displayed track record is the last place to re-derive this.
+    from prediction_market_macro.ops import ledger as _ledger
+    closed_by = {d["id"]: d["close"] for d in _ledger.closures(conn)}
     live_open, live_settled = [], []
     for r in conn.execute(
             "SELECT * FROM decisions d WHERE d.kind IN ('open','argmax','arb','snipe')"
             " AND d.ts_utc>=? ORDER BY d.id", (TRACK_CUTOVER,)).fetchall():
         st = json.loads(r["structure_json"] or "{}")
-        sn = conn.execute(
-            "SELECT inputs_json, ts_utc FROM decisions WHERE series=? AND period=?"
-            " AND kind='settle_note' AND id>? ORDER BY id LIMIT 1",
-            (r["series"], r["period"], r["id"])).fetchone()
+        close = closed_by.get(r["id"])
         row = {"ts": r["ts_utc"], "day": r["ts_utc"][:10], "series": r["series"],
                "period": r["period"], "kind": r["kind"], "desc": st.get("desc"),
                "fair": r["fair"], "cost": r["ask"], "staked": r["size_usd"]}
-        if sn:
-            realized = (json.loads(sn["inputs_json"] or "{}")).get("realized_usd")
+        if close is not None:
+            realized = _ledger.realized_usd(close)
             live_settled.append({**row, "realized": realized,
-                                 "won": (realized or 0) > 0,
-                                 "settle": sn["ts_utc"][:10]})
+                                 # `realized is None` means the close row never recorded
+                                 # the figure (42 of 53 live exits predate the field), not
+                                 # that the trade broke even — so it is not a win, and the
+                                 # aggregates below must exclude it rather than add 0.
+                                 "won": realized is not None and realized > 0,
+                                 "closed_by": close["kind"],
+                                 "settle": close["ts_utc"][:10]})
         else:
             mk = conn.execute(
                 "SELECT ROUND(SUM(pnl_usd),4) s FROM marks WHERE decision_id=? AND"
                 " ts=(SELECT MAX(ts) FROM marks WHERE decision_id=?)",
                 (r["id"], r["id"])).fetchone()
             live_open.append({**row, "unrealized": mk["s"] if mk else None})
-    ls_stk = sum(t["staked"] or 0 for t in live_settled)
-    ls_rl = sum(t["realized"] or 0 for t in live_settled)
+    # #150. ROI is computed on the closures that actually recorded a realized figure, and
+    # BOTH sides of the ratio use that same subset. Summing `realized or 0` over every
+    # closure while `staked` counted all of them put unmeasured trades in the denominator
+    # only, which drags ROI toward zero and reads as "we broke even on those" — the same
+    # default-hides-a-hole shape as §25.20(b). `n_unrecorded` makes the gap visible
+    # instead of silently absorbing it; it is 0 on the post-cutover book today.
+    scored = [t for t in live_settled if t["realized"] is not None]
+    ls_stk = sum(t["staked"] or 0 for t in scored)
+    ls_rl = sum(t["realized"] for t in scored)
     live = {"since": TRACK_CUTOVER[:10],
             "settled": {"n_trades": len(live_settled),
+                        "n_unrecorded": len(live_settled) - len(scored),
                         "won": sum(1 for t in live_settled if t["won"]),
                         "staked": round(ls_stk, 4), "realized": round(ls_rl, 4),
                         "roi": round(ls_rl / ls_stk, 5) if ls_stk else None,

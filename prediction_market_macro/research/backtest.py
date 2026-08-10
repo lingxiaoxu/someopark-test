@@ -178,13 +178,24 @@ def _settle_release_ts(conn, spec, key: str) -> datetime | None:
 
 
 def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
-                  max_events: int = 200, collect_legs: bool = False) -> dict:
+                  max_events: int = 200, collect_legs: bool = False,
+                  params: dict | None = None) -> dict:
     """Generic settled-history replay for ANY ladder/categorical series.
 
     Brier needs no y: settled leg results ARE the outcomes. For each settled event,
     asof = (event close − offset); the PRODUCTION model predicts at that asof (PIT via
     its own vintage reads); per-leg fair via leg_fair with the leg's OWN strike
-    metadata; the market is scored from stored candles at the same asof."""
+    metadata; the market is scored from stored candles at the same asof.
+
+    `params` (#118) overrides the model's parameters for this replay and is forwarded
+    only when it is not None, so the production call is byte-identical to what it was.
+    It exists so a candidate parameter set can be scored through THIS function rather
+    than through `param_wf.score_matrix`: the two do not pick the same `asof`. This one
+    steps back behind the release when the book closed after the print (see the clamp
+    below) and drops an event whose `data_horizon` reached past it; `param_wf` uses a
+    flat close−1h. Scoring a candidate one way and the market the other way would make
+    the "paired" comparison a comparison of two different asofs.
+    """
     import importlib
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.model.common import Categorical, leg_fair
@@ -228,7 +239,8 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 asof = release_ts - timedelta(seconds=1)
                 n_clamped += 1
             try:
-                pred = fn(conn, asof, key, series=series)
+                pred = (fn(conn, asof, key, series=series) if params is None
+                        else fn(conn, asof, key, series=series, params=params))
             except Exception:                                    # noqa: BLE001
                 skipped += 1
                 rec = None

@@ -41,6 +41,42 @@ _N_SAMPLES = 20_000
 _MIN_SIGMA_DAILY = {"CL": 0.008, "NG": 0.015}     # vol floors (fraction/day)
 _MIN_POOL = 120                   # innovations needed before a bootstrap beats a normal
 
+# defaults == the registered energy/0.6.0 behaviour. This module is TWO models behind one
+# entry point, and a grid should treat them that way: the fut_* keys only reach KXWTIW /
+# KXNATGASW, the aaa_* keys only reach KXAAAGASW. Varying the wrong half for a series is
+# free width that cannot change a single prediction — the exact way claims.py wasted 21
+# of its 24 sets (see tests/test_claims_params.py).
+#
+# _N_SAMPLES is deliberately NOT a param: it is the Monte-Carlo encoding resolution, so a
+# grid over it would feed argmin pure sampling noise.
+#
+# aaa_proxy_inflation is exposed but the default is MEASURED, not guessed — see the long
+# comment at its use site. A grid that moves it off 1.5 needs to beat 0.0862 LOO.
+DEFAULT_PARAMS = {
+    # --- futures branch (KXWTIW / KXNATGASW) ---
+    "fut_vol_window": 20,          # bars of log returns setting today's vol scale
+    "fut_pool_bars": 1500,         # bars the bootstrap SHAPE is drawn from
+    "fut_min_sigma_daily": dict(_MIN_SIGMA_DAILY),   # per-root vol floor (fraction/day)
+    "fut_min_pool": _MIN_POOL,
+    # --- AAA gasoline branch (KXAAAGASW) ---
+    "aaa_fresh_days": 3,           # daily AAA reading counts as fresh within this many days
+    "aaa_drift_days": 5,           # daily diffs averaged into the short drift
+    "aaa_sig_d_window": 30,        # daily diffs in the daily-anchor sigma
+    "aaa_sig_d_floor": 0.004,
+    "aaa_sigma_floor": 0.008,      # floor on the daily-anchor sigma
+    "aaa_sig_w_window": 52,        # weekly diffs in the proxy sigma
+    "aaa_sig_w_floor": 0.01,
+    "aaa_min_fit": 10,             # settled events needed before the drift regression runs
+    "aaa_resid_floor": 0.02,
+    "aaa_trend_window": 4,         # weeks in the cold-start trend
+    "aaa_trend_damp": 0.5,
+    "aaa_proxy_inflation": 1.5,
+}
+
+
+def _p(params: dict | None) -> dict:
+    return {**DEFAULT_PARAMS, **(params or {})}
+
 
 def _mad_sigma(x: np.ndarray) -> float:
     """Robust sigma: 1.4826 x median absolute deviation about the median. Equals the
@@ -49,7 +85,7 @@ def _mad_sigma(x: np.ndarray) -> float:
     return float(1.4826 * np.median(np.abs(x - np.median(x))))
 
 
-def _innovation_pool(x: np.ndarray) -> np.ndarray | None:
+def _innovation_pool(x: np.ndarray, min_pool: int = _MIN_POOL) -> np.ndarray | None:
     """Centered innovations to bootstrap from, or None when the sample is too thin.
 
     Deliberately NOT rescaled here. Scale is set by the caller from a RECENT window
@@ -58,7 +94,7 @@ def _innovation_pool(x: np.ndarray) -> np.ndarray | None:
     """
     x = np.asarray(x, dtype=float)
     x = x[np.isfinite(x)]
-    if len(x) < _MIN_POOL:
+    if len(x) < min_pool:
         return None
     return x - np.median(x)
 
@@ -94,16 +130,19 @@ def _remaining_bdays(horizon: datetime, settle: pd.Timestamp) -> float:
                0.05)
 
 
-def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
+def _gbm_futures(conn, asof: datetime, period: str, series: str,
+                 params: dict | None = None) -> Pred:
+    p = _p(params)
     root = _FUT_ROOT[series]
     fs = FeatureStore(conn)
-    closes, horizon = fs.fut_closes(root, asof, n=60)
+    vw = int(p["fut_vol_window"])
+    closes, horizon = fs.fut_closes(root, asof, n=max(60, vw + 40))
     if len(closes) < 25 or horizon is None:
         raise RuntimeError(f"{series}: fut_daily {root} history too short at {asof} "
                            f"(n={len(closes)})")
     s0 = float(closes.iloc[-1])
-    rets = np.diff(np.log(closes.values))[-20:]
-    sigma_d = max(_mad_sigma(rets), _MIN_SIGMA_DAILY[root])
+    rets = np.diff(np.log(closes.values))[-vw:]
+    sigma_d = max(_mad_sigma(rets), float(p["fut_min_sigma_daily"][root]))
     h = _remaining_bdays(datetime.fromisoformat(horizon), pd.Timestamp(period))
     sig = sigma_d * math.sqrt(h)
     # v0.6: NO storage/inventory drift. The v0.4 tilt regressed the next 3-bday move on
@@ -118,7 +157,7 @@ def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
     # v0.5: shape from the long history, scale from the last 20 bars. Measured
     # 2026-08-04 on the stored bars: CL kurtosis 9.3, NG 37.1 -- the normal that used
     # to sit here is not a defensible description of either.
-    pool_closes, _hp = fs.fut_closes(root, asof, n=1500)
+    pool_closes, _hp = fs.fut_closes(root, asof, n=int(p["fut_pool_bars"]))
     # CL 2020-04-20 settled at -37.63. That is a real print, and the only bar in 6,512
     # where a log-return does not exist: np.log makes BOTH diffs touching it NaN and
     # _innovation_pool drops them. Keep it that way. Filtering the bar out before the log
@@ -127,7 +166,8 @@ def _gbm_futures(conn, asof: datetime, period: str, series: str) -> Pred:
     # silences the warning only — it changes no value.
     with np.errstate(invalid="ignore"):
         pool = _innovation_pool(np.diff(np.log(pool_closes.values))
-                                if len(pool_closes) > 2 else np.array([]))
+                                if len(pool_closes) > 2 else np.array([]),
+                                int(p["fut_min_pool"]))
     rng = np.random.default_rng(0)                        # replay-stable
     if pool is not None:
         z = _bootstrap_z(rng, pool, int(math.ceil(h)), _N_SAMPLES)
@@ -171,7 +211,8 @@ def _aaa_settled_mids(conn, asof: datetime) -> list[tuple[datetime, float]]:
     return out
 
 
-def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
+def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime, min_fit: int = 10,
+                   resid_floor: float = 0.02):
     """Walk-forward drift regression for the AAA weekly settle (2026-07-31, after
     the decision replay exposed the failure): the settle-vs-proxy gap is NOT a
     level offset — it is the CURRENT week's price move, sign-flipping with the
@@ -180,7 +221,7 @@ def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
     10-bday move] over past settled events (PIT: everything <= asof).
     Returns (coef intercept/b1/b2, resid_sigma, n) or None when n < 10."""
     mids = _aaa_settled_mids(conn, asof)
-    if len(mids) < 10:
+    if len(mids) < min_fit:
         return None
 
     X, y = [], []
@@ -198,7 +239,7 @@ def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
         # +9.32 → +2.44). Revisit when the settled sample doubles.
         X.append([1.0, g_diff, rb_mv])
         y.append(mid - g_last)
-    if len(y) < 10:
+    if len(y) < min_fit:
         return None
     Xa, ya = np.asarray(X), np.asarray(y)
     coef = np.linalg.lstsq(Xa, ya, rcond=None)[0]
@@ -214,11 +255,11 @@ def _aaa_drift_fit(conn, fs: FeatureStore, asof: datetime):
         m[i] = False
         cf = np.linalg.lstsq(Xa[m], ya[m], rcond=None)[0]
         loo.append(ya[i] - Xa[i] @ cf)
-    sigma = max(float(np.sqrt(np.mean(np.square(loo)))), 0.02)
+    sigma = max(float(np.sqrt(np.mean(np.square(loo)))), float(resid_floor))
     return coef, sigma, len(y)
 
 
-def _gas_ar1(dw: pd.Series):
+def _gas_ar1(dw: pd.Series, min_pool: int = _MIN_POOL):
     """AR(1) on the GASREGW weekly change: d[t+1] = a + b*d[t] + e.
 
     Used ONLY for its residual pool — the shape the bootstrap draws from. Fit on the
@@ -238,11 +279,11 @@ def _gas_ar1(dw: pd.Series):
     """
     x = dw.values[:-1]
     y = dw.values[1:]
-    if len(x) < _MIN_POOL:
+    if len(x) < min_pool:
         return None
     b, a = np.polyfit(x, y, 1)
     b = float(np.clip(b, 0.0, 0.9))
-    pool = _innovation_pool(y - (a + b * x))
+    pool = _innovation_pool(y - (a + b * x), min_pool)
     return (float(a), b, pool) if pool is not None else None
 
 
@@ -260,30 +301,34 @@ def _emp_dist(mu: float, sigma: float, pool: np.ndarray | None, weeks: float,
             f"bootstrap(n={len(pool)})")
 
 
-def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
+def _aaa_gas(conn, asof: datetime, period: str, params: dict | None = None) -> Pred:
+    p = _p(params)
     fs = FeatureStore(conn)
     s, horizon = fs.fred_series("GASREGW", asof)
     if len(s) < 30 or horizon is None:
         raise RuntimeError(f"KXAAAGASW: GASREGW history too short at {asof} (n={len(s)})")
     last = float(s.iloc[-1])
     dw = s.diff().dropna()
-    sig_w = max(_mad_sigma(dw.tail(52).values), 0.01)
+    sig_w = max(_mad_sigma(dw.tail(int(p["aaa_sig_w_window"])).values),
+                float(p["aaa_sig_w_floor"]))
     weeks = max((pd.Timestamp(period) - pd.Timestamp(s.index[-1])).days / 7.0, 0.15)
-    ar = _gas_ar1(dw)
+    ar = _gas_ar1(dw, int(p["fut_min_pool"]))
     pool = ar[2] if ar else None
     rng = np.random.default_rng(0)                        # replay-stable
     # v0.4: the DAILY AAA reading (the settle number itself) beats any proxy when
     # fresh — anchor on it directly; residual risk is only the days to settle
     aaa, h_aaa = fs.fred_series("AAA_DAILY", asof)
-    if len(aaa) >= 1 and (asof.date() - aaa.index[-1].date()).days <= 3:
+    if len(aaa) >= 1 and (asof.date() - aaa.index[-1].date()).days <= int(p["aaa_fresh_days"]):
         last_aaa = float(aaa.iloc[-1])
         d_daily = aaa.diff().dropna()
-        drift_d = float(d_daily.tail(5).mean()) if len(d_daily) >= 3 else 0.0
+        drift_d = (float(d_daily.tail(int(p["aaa_drift_days"])).mean())
+                   if len(d_daily) >= 3 else 0.0)
         days_left = max((pd.Timestamp(period) - pd.Timestamp(aaa.index[-1])).days, 0.2)
-        sig_d = (max(_mad_sigma(d_daily.tail(30).values), 0.004)
+        sig_d = (max(_mad_sigma(d_daily.tail(int(p["aaa_sig_d_window"])).values),
+                     float(p["aaa_sig_d_floor"]))
                  if len(d_daily) >= 5 else sig_w / math.sqrt(7))
         mu = last_aaa + drift_d * days_left
-        sigma = max(sig_d * math.sqrt(days_left), 0.008)
+        sigma = max(sig_d * math.sqrt(days_left), float(p["aaa_sigma_floor"]))
         dist, shape = _emp_dist(mu, sigma, pool, days_left / 7.0, rng)
         horizon2 = max(horizon or "", h_aaa or "")
         return Pred(series="KXAAAGASW", period=period, dist=dist, asof=asof,
@@ -295,7 +340,7 @@ def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
                             "mu": round(mu, 3), "sigma": round(sigma, 4),
                             "shape": shape, "mode": "aaa_daily_anchor"},
                     data_horizon=datetime.fromisoformat(horizon2))
-    fit = _aaa_drift_fit(conn, fs, asof)
+    fit = _aaa_drift_fit(conn, fs, asof, int(p["aaa_min_fit"]), float(p["aaa_resid_floor"]))
     if fit is not None:
         coef, resid_sig, n_fit = fit
         g_diff = float(s.iloc[-1] - s.iloc[-2])
@@ -307,7 +352,8 @@ def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
         sigma = resid_sig * math.sqrt(max(weeks, 1.0))
         mode = f"drift_regression(n={n_fit})"
     else:
-        trend_w = float(dw.tail(4).mean()) * 0.5           # cold-start fallback
+        trend_w = (float(dw.tail(int(p["aaa_trend_window"])).mean())
+                   * float(p["aaa_trend_damp"]))          # cold-start fallback
         mu = last + trend_w * weeks
         # The 1.5x is NOT a guess to be removed -- I tried, and measurement put it
         # back. sig_w is the UNCONDITIONAL weekly GASREGW move (0.0571 at 2026-08);
@@ -317,7 +363,7 @@ def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
         # 1.5 * 0.0571 = 0.0857. The factor is right to three decimals by luck, but
         # it is right. (For contrast, the gas move's own AR(1) residual is 0.0243 --
         # dropping the inflation would have made this branch 3.5x overconfident.)
-        sigma = sig_w * 1.5 * math.sqrt(weeks)
+        sigma = sig_w * float(p["aaa_proxy_inflation"]) * math.sqrt(weeks)
         drift, mode = trend_w * weeks, "damped_trend_fallback"
     dist, shape = _emp_dist(mu, sigma, pool, weeks, rng)
     return Pred(series="KXAAAGASW", period=period, dist=dist, asof=asof,
@@ -328,10 +374,11 @@ def _aaa_gas(conn, asof: datetime, period: str) -> Pred:
                 data_horizon=datetime.fromisoformat(horizon))
 
 
-def predict(conn, asof: datetime, period: str, series: str) -> Pred:
+def predict(conn, asof: datetime, period: str, series: str,
+            params: dict | None = None) -> Pred:
     """period: ISO settle date ('2026-07-31'). Dispatches per energy series."""
     if series in _FUT_ROOT:
-        return _gbm_futures(conn, asof, period, series)
+        return _gbm_futures(conn, asof, period, series, params)
     if series == "KXAAAGASW":
-        return _aaa_gas(conn, asof, period)
+        return _aaa_gas(conn, asof, period, params)
     raise ValueError(f"energy.predict: unknown series {series}")

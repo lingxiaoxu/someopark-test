@@ -47,6 +47,7 @@ def _open_periods(conn, series: str) -> list[tuple[str, str]]:
 def run(conn, settings) -> int:
     import importlib
     from prediction_market_macro.model.common import Categorical
+    from prediction_market_macro.research import param_select
     now = datetime.now(timezone.utc)
     n = 0
     for spec in REGISTRY.values():
@@ -55,9 +56,14 @@ def run(conn, settings) -> int:
             continue
         mod = importlib.import_module(disp[0])
         fn = getattr(mod, disp[1])
+        # #119: today's DSR-gated parameter choice. A single SELECT — the scoring runs in
+        # `param_select.refresh` earlier in the pipeline. `{}` means the gate held and the
+        # registered defaults are used, which is the common case; `params=None` is passed
+        # in that case so the model takes exactly the path it took before this landed.
+        params = param_select.current(conn, spec.ticker) or None
         for kalshi_tok, key in _open_periods(conn, spec.ticker):
             try:
-                pred = fn(conn, now, key, series=spec.ticker)
+                pred = fn(conn, now, key, series=spec.ticker, params=params)
                 if isinstance(pred.dist, Categorical):
                     ladder = None
                 else:

@@ -58,7 +58,40 @@ _PCE = {
 }
 
 # ── FOMC decision days (statement 14:00 ET on day 2); SEP meetings flagged ───
+# MUST stay sorted ascending: next_release() returns the first event past `now` by list
+# order, so an out-of-order entry silently answers the wrong meeting.
+#
+# 2022-2025 backfilled 2026-08-04. Before that this list started at 2026-01, and the cost
+# was invisible: fed.predict looks the meeting up by period and, finding none, skipped the
+# ZQ strip / Kalshi ladder / DGS2 entirely and fell through to mode='rule_only' — the
+# unconditional base rate. 7 of the 12 most recent settled KXFED events replayed that way,
+# so every historical fed backtest was scoring a crippled model rather than the one that
+# trades. Each date below was cross-checked against the settlement timestamps Kalshi
+# recorded for KXFED (close_time lands 5 minutes before the 14:00 ET statement), so this
+# is not a list typed from memory.
+#
+# 2021 is deliberately NOT here. Kalshi's three 2021 KXFED events settle BEFORE their
+# meeting's statement (21JUL settles 07-26, statement 07-28; 21SEP settles 09-20,
+# statement 09-22; 21DEC settles 12-14, statement 12-15), so whatever those contracts
+# resolved on, it was not the decision this model forecasts. Adding meetings for them
+# would let them score as if it were, which is worse than leaving them unmatched.
 _FOMC: list[tuple[str, date, bool]] = [
+    ("2022-01", date(2022, 1, 26), False), ("2022-03", date(2022, 3, 16), True),
+    ("2022-05", date(2022, 5, 4), False), ("2022-06", date(2022, 6, 15), True),
+    ("2022-07", date(2022, 7, 27), False), ("2022-09", date(2022, 9, 21), True),
+    ("2022-11", date(2022, 11, 2), False), ("2022-12", date(2022, 12, 14), True),
+    ("2023-02", date(2023, 2, 1), False), ("2023-03", date(2023, 3, 22), True),
+    ("2023-05", date(2023, 5, 3), False), ("2023-06", date(2023, 6, 14), True),
+    ("2023-07", date(2023, 7, 26), False), ("2023-09", date(2023, 9, 20), True),
+    ("2023-11", date(2023, 11, 1), False), ("2023-12", date(2023, 12, 13), True),
+    ("2024-01", date(2024, 1, 31), False), ("2024-03", date(2024, 3, 20), True),
+    ("2024-05", date(2024, 5, 1), False), ("2024-06", date(2024, 6, 12), True),
+    ("2024-07", date(2024, 7, 31), False), ("2024-09", date(2024, 9, 18), True),
+    ("2024-11", date(2024, 11, 7), False), ("2024-12", date(2024, 12, 18), True),
+    ("2025-01", date(2025, 1, 29), False), ("2025-03", date(2025, 3, 19), True),
+    ("2025-05", date(2025, 5, 7), False), ("2025-06", date(2025, 6, 18), True),
+    ("2025-07", date(2025, 7, 30), False), ("2025-09", date(2025, 9, 17), True),
+    ("2025-10", date(2025, 10, 29), False), ("2025-12", date(2025, 12, 10), True),
     ("2026-01", date(2026, 1, 28), False), ("2026-03", date(2026, 3, 18), True),
     ("2026-04", date(2026, 4, 29), False), ("2026-06", date(2026, 6, 17), True),
     ("2026-07", date(2026, 7, 29), False), ("2026-09", date(2026, 9, 16), True),

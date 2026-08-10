@@ -32,11 +32,9 @@ SNIPE_SERIES = ("KXJOBLESSCLAIMS", "KXU3", "KXCPI", "KXCPICORE", "KXPCECORE",
 
 
 def _has_open_snipe(conn, series: str, period: str) -> bool:
-    r = conn.execute(
-        "SELECT SUM(CASE WHEN kind='snipe' THEN 1 ELSE 0 END) s,"
-        " SUM(CASE WHEN kind IN ('exit','cancel','settle_note') THEN 1 ELSE 0 END) x"
-        " FROM decisions WHERE series=? AND period=?", (series, period)).fetchone()
-    return (r["s"] or 0) > (r["x"] or 0)
+    # #149 — same one-stream-numerator / all-stream-denominator bug as `_has_open_arb`.
+    from prediction_market_macro.ops.ledger import open_decisions
+    return any(d["kind"] == "snipe" for d in open_decisions(conn, series, period))
 
 
 def run_for(conn, series: str, period_key: str) -> int:
@@ -91,6 +89,22 @@ def run_for(conn, series: str, period_key: str) -> int:
         count = int(usd / max(price, 0.01))
         if count < 1:
             continue
+        stake = round(price * count, 4)
+        # #151/F8. The edge and argmax paths both clear `risk.check` before they open;
+        # this one wrote straight to the ledger, so a snipe was subject to no cap but its
+        # own MAX_SNIPE_USD. That is reachable, not hypothetical: this path is bounded at
+        # $2 per (series, period) by `_has_open_snipe`, and the edge stream can already be
+        # holding up to the $5 per-event limit on the same period — the sum clears it.
+        # A snipe is directional (it buys the leg the realised print implies), so its max
+        # loss IS its stake and the caps apply to it unmodified. Deliberately NOT extended
+        # to `arb.execute`: an arb's payoff floor is >= its cost, so its max loss is not
+        # its stake, and capping a locked-profit structure by a directional loss limit is
+        # a different question — recorded in PLAN_EXTENSION §25.22, not decided here.
+        # Uncommitted inserts are visible on this connection, so a second leg in the same
+        # loop is checked against the first.
+        from prediction_market_macro.ops import risk as _risk
+        if _risk.check(conn, series, period_key, stake) is not None:
+            continue
         note = f"SNIPE {l['ticker'].rsplit('-', 1)[-1]}:{side} print={y} net={net:.3f}"
         cur = conn.execute(
             "INSERT INTO decisions(ts_utc, series, period, structure_json, kind, fair,"
@@ -100,7 +114,7 @@ def run_for(conn, series: str, period_key: str) -> int:
              json.dumps({"kind": "snipe", "desc": note,
                          "legs": [{"ticker": l["ticker"], "side": side,
                                    "price": price}]}),
-             "snipe", 1.0, price, round(net, 4), round(price * count, 4),
+             "snipe", 1.0, price, round(net, 4), stake,
              json.dumps({"print": y, "net": net, "count": count}),
              "snipe/1.0", "{}", note))
         conn.execute(

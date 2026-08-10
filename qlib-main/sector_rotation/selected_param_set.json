@@ -1,82 +1,82 @@
 {
-  "param_set": "gmv_lw",
+  "param_set": "binary_derisk_28",
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "selected_at": "2026-07-30",
-  "last_updated": "2026-07-30",
-  "mcps_oos_filtered": 1.0389,
-  "recent_sharpe_12m": 1.3605,
-  "full_period_sharpe": 0.7061,
-  "full_period_calmar": 0.3931,
+  "selected_at": "2026-08-10",
+  "last_updated": "2026-08-10",
+  "mcps_oos_filtered": 1.425,
+  "recent_sharpe_12m": 1.7842,
+  "full_period_sharpe": 0.8845,
+  "full_period_calmar": 0.5378,
   "top_candidates": [
     {
       "name": "skip_heavy",
       "version": "v1",
-      "composite": 0.6128,
-      "mcps_score": 0.5691
-    },
-    {
-      "name": "value_proxy",
-      "version": "v1",
-      "composite": 0.5221,
-      "mcps_score": 0.5691
-    },
-    {
-      "name": "dovish_macro",
-      "version": "v1",
-      "composite": 0.3497,
-      "mcps_score": 0.5351
-    },
-    {
-      "name": "rate_hike_cycle",
-      "version": "v1",
-      "composite": 0.2784,
-      "mcps_score": 0.4761
-    },
-    {
-      "name": "equal_weight_optimizer",
-      "version": "v1",
-      "composite": 0.244,
-      "mcps_score": 0.5222
+      "composite": 0.8586,
+      "mcps_score": 1.4891
     },
     {
       "name": "stagflation",
       "version": "v1",
-      "composite": 0.053,
-      "mcps_score": 0.451
+      "composite": 0.6295,
+      "mcps_score": 1.4318
     },
     {
-      "name": "crisis_defense",
+      "name": "value_proxy",
       "version": "v1",
-      "composite": -0.3759,
-      "mcps_score": 0.5259
+      "composite": 0.5823,
+      "mcps_score": 1.4891
     },
     {
-      "name": "diversified_5_rp",
+      "name": "equal_weight_optimizer",
       "version": "v1",
-      "composite": -0.3858,
-      "mcps_score": 0.4442
+      "composite": 0.3682,
+      "mcps_score": 1.4549
     },
     {
-      "name": "tech_bull_2023",
+      "name": "broad_6_softmax",
       "version": "v1",
-      "composite": -0.4411,
-      "mcps_score": 0.5101
+      "composite": 0.2704,
+      "mcps_score": 1.1466
     },
     {
       "name": "early_recovery",
       "version": "v1",
-      "composite": -0.8574,
-      "mcps_score": 0.382
+      "composite": 0.1084,
+      "mcps_score": 1.4832
+    },
+    {
+      "name": "dovish_macro",
+      "version": "v1",
+      "composite": -0.1898,
+      "mcps_score": 1.376
+    },
+    {
+      "name": "tech_bull_2023",
+      "version": "v1",
+      "composite": -0.445,
+      "mcps_score": 1.3382
+    },
+    {
+      "name": "low_turnover",
+      "version": "v1",
+      "composite": -0.4759,
+      "mcps_score": 0.848
+    },
+    {
+      "name": "slow_momentum",
+      "version": "v1",
+      "composite": -0.7067,
+      "mcps_score": 0.8339
     }
   ],
   "n_candidates": 37,
   "n_oos_survivors": 37,
   "oos_filter_applied": true,
-  "oos_mean_sharpe": null,
-  "oos_n_selected": null,
+  "oos_mean_sharpe": 1.3543,
+  "oos_n_selected": 16,
   "wf_mean_wfe": 1.3127,
-  "macro_data_days": 2027,
+  "macro_data_days": 2034,
   "switch_history": [],
   "health": {
     "days_since_switch": 1,
@@ -89,6 +89,6 @@
   "composite_score": null,
   "version_selector": {
     "recommended": "v1",
-    "v1_confidence": 0.65
+    "v1_confidence": 0.775
   }
 }

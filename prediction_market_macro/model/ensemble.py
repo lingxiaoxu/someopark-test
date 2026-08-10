@@ -31,14 +31,33 @@ TRIM_RATIO = 3.0
 PRIOR = {"model": 0.35, "market": 0.50, "bridge": 0.15}
 
 
+MEMBERS = tuple(PRIOR)          # the pool's members — the only sources that may be weighted
+
+
 def learn_weights(conn, series: str, offset: str = "-1h") -> dict[str, float]:
-    """Inverse-MSPE weights from trailing source_scores; PRIOR fallback."""
+    """Inverse-MSPE weights from trailing source_scores; PRIOR fallback.
+
+    Restricted to `MEMBERS`. `source_scores` is a general scoreboard, not this pool's
+    membership list: it also holds `pooled` — written by `eval.run_series`, and a
+    DETERMINISTIC FUNCTION OF model+market ON THE SAME EVENTS — and `chronos`, a §7-bis
+    shadow member. Without this filter both entered the weights, the floor/ceiling clip,
+    and (worse) set `best` for the trimmed-mean guard, so a shadow member decided how
+    harshly real members were judged. On KXAAAGASW that produced
+    `{'pooled': 0.49, 'market': 0.51}` — half the weight on a derivative of the pool
+    itself, recorded into every `inputs_json["weights"]`.
+
+    It did not misfire on the pmf: `log_pool` keeps only sources it actually has a pmf
+    for and renormalizes, which preserves the ratios among the survivors, and no weight
+    currently reaches the 0.10/0.70 clips. Checked all four series with learned weights —
+    members-only trimming keeps exactly the same real members. So this is a latent fix,
+    and the guard was load-bearing only for the day a clip binds.
+    """
     rows = conn.execute(
         "SELECT source, brier FROM source_scores WHERE series=? AND offset=?"
         " ORDER BY period DESC LIMIT ?", (series, offset, TRAIL_N * 3)).fetchall()
     per: dict[str, list[float]] = {}
     for r in rows:
-        if r["brier"] is not None:
+        if r["brier"] is not None and r["source"] in MEMBERS:
             per.setdefault(r["source"], []).append(float(r["brier"]))
     per = {k: v[:TRAIL_N] for k, v in per.items() if len(v) >= 6}
     if len(per) < 2:

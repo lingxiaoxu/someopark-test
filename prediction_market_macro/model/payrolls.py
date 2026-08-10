@@ -18,6 +18,18 @@ from prediction_market_macro.model.features import FeatureStore
 
 VERSION = "payrolls/0.1.0"
 
+# defaults == the registered payrolls/0.1.0 behaviour. Every key must be able to MOVE
+# the output — see tests/test_claims_params.py.
+DEFAULT_PARAMS = {
+    "base_months": 3,           # trailing printed changes averaged into the base
+    "w_base": 0.6,              # weight on base; (1-w_base) goes to the claims signal
+    "jobs_per_claim": 2.0,      # jobs lost per extra initial claim
+    "claims_clip": 150_000,     # cap on how far the claims signal may pull off base
+    "sigma_core": 55_000.0,     # narrow component
+    "sigma_tail": 140_000.0,    # fat component
+    "w_tail": 0.2,              # weight on the fat component
+}
+
 
 def printed_changes(conn, asof: datetime) -> pd.Series:
     """Headline NFP change per month, per its own first vintage (PIT-visible only,
@@ -39,21 +51,27 @@ def printed_changes(conn, asof: datetime) -> pd.Series:
     return pd.Series(out).sort_index()
 
 
-def predict(conn, asof: datetime, period: str, series: str = "KXPAYROLLS") -> Pred:
+def predict(conn, asof: datetime, period: str, series: str = "KXPAYROLLS",
+            params: dict | None = None) -> Pred:
+    p = {**DEFAULT_PARAMS, **(params or {})}
     fs = FeatureStore(conn)
     ch = printed_changes(conn, asof)
     assert len(ch) >= 12, "payrolls print history too short"
     icsa, h_c = fs.fred_series("ICSA", asof)
-    base = float(ch.tail(3).mean())
+    base = float(ch.tail(int(p["base_months"])).mean())
     c4 = icsa.rolling(4).mean().dropna()
     if len(c4) >= 9:
         claims_delta = float(c4.iloc[-1] - c4.iloc[-5])         # ~1 month apart
-        claims_signal = base - 2.0 * claims_delta / 1.0 * 1.0    # −2 jobs per claim
-        claims_signal = float(np.clip(claims_signal, base - 150_000, base + 150_000))
+        claims_signal = base - float(p["jobs_per_claim"]) * claims_delta
+        clip = float(p["claims_clip"])
+        claims_signal = float(np.clip(claims_signal, base - clip, base + clip))
     else:
         claims_signal = base
-    mu = 0.6 * base + 0.4 * claims_signal
-    dist = GaussianMix(((0.8, mu, 55_000.0), (0.2, mu, 140_000.0)))
+    w = float(p["w_base"])
+    mu = w * base + (1.0 - w) * claims_signal
+    wt = float(p["w_tail"])
+    dist = GaussianMix(((1.0 - wt, mu, float(p["sigma_core"])),
+                        (wt, mu, float(p["sigma_tail"]))))
     _, h = FeatureStore(conn).fred_first_prints("PAYEMS", asof)
     horizon = max(h or asof.isoformat(), h_c or "")
     return Pred(series="KXPAYROLLS", period=period, dist=dist, asof=asof,

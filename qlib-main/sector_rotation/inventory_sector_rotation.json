@@ -1,67 +1,67 @@
 {
-  "as_of": "2026-08-03",
+  "as_of": "2026-08-10",
   "last_updated": "2026-08-03",
-  "last_daily_update": "2026-08-03",
-  "capital": 1001594.13,
+  "last_daily_update": "2026-08-10",
+  "capital": 1024758.41,
   "holdings": {
     "XLB": {
       "weight": 0.146978,
       "shares": 2885,
-      "last_price": 51.01,
+      "last_price": 53.18,
       "cost_basis": 51.92,
       "entry_date": "2026-04-27",
       "last_rebalance_date": "2026-08-03",
-      "days_held": 60,
+      "days_held": 65,
       "action_today": "DECREASE"
     },
     "XLI": {
       "weight": 0.154771,
       "shares": 846,
-      "last_price": 183.16,
+      "last_price": 184.6,
       "cost_basis": 172.47,
       "entry_date": "2026-04-27",
       "last_rebalance_date": "2026-08-03",
-      "days_held": 60,
+      "days_held": 65,
       "action_today": "DECREASE"
     },
     "XLRE": {
       "weight": 0.17065,
       "shares": 3783,
-      "last_price": 45.18,
+      "last_price": 44.4,
       "cost_basis": 42.894,
       "entry_date": "2026-06-01",
       "last_rebalance_date": "2026-08-03",
-      "days_held": 41,
+      "days_held": 46,
       "action_today": "DECREASE"
     },
     "XLV": {
       "weight": 0.198887,
       "shares": 1227,
-      "last_price": 162.24,
+      "last_price": 168.44,
       "cost_basis": 159.54,
       "entry_date": "2026-07-01",
       "last_rebalance_date": "2026-08-03",
-      "days_held": 23,
+      "days_held": 28,
       "action_today": "DECREASE"
     },
     "XLK": {
       "weight": 0.150786,
       "shares": 848,
-      "last_price": 178.04,
+      "last_price": 186.32,
       "cost_basis": 185.62,
       "entry_date": "2026-07-01",
       "last_rebalance_date": "2026-08-03",
-      "days_held": 23,
+      "days_held": 28,
       "action_today": "DECREASE"
     },
     "XLE": {
       "weight": 0.177927,
       "shares": 3031,
-      "last_price": 58.79,
+      "last_price": 60.18,
       "cost_basis": 58.79,
       "entry_date": "2026-08-03",
       "last_rebalance_date": "2026-08-03",
-      "days_held": 1,
+      "days_held": 6,
       "action_today": "ENTER"
     }
   },
@@ -240,5 +240,5 @@
   ],
   "emergency_mode_active": false,
   "vol_derisk_streak": 0,
-  "vol_derisk_streak_date": "2026-08-03"
+  "vol_derisk_streak_date": "2026-08-10"
 }

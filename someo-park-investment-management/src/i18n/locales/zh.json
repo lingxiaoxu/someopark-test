@@ -61,6 +61,11 @@
     "selectSheet": "选择一个工作表以查看数据"
   },
   "prediction": {
+    "groupOverview": "总览",
+    "groupTeamIntel": "球队情报",
+    "groupLive": "实时与定价",
+    "groupQuality": "质量校验",
+    "groupReports": "报告",
     "championOdds": "夺冠概率",
     "reachRound": "晋级形势",
     "subReachRound": "球队「晋级到某轮」概率(模型) vs Kalshi + Poly 真实合约价 —— 无平局的晋级产品",
@@ -628,6 +633,7 @@
     "aboutClawCloudDesc": "Someo Park 托管",
     "aboutClawLocal": "本地",
     "aboutClawLocalDesc": "自部署 OpenClaw",
+    "settingsTitle": "设置",
     "aboutDevTitle": "关于开发者",
     "aboutDevBio": "Lingxiao 曾任高盛（Goldman Sachs）高级量化策略师、副总裁（VP），持有耶鲁大学管理学院 MBA 学位，本科毕业于哥伦比亚大学工程学院工业工程与运筹学系（IEOR）。此前，Lingxiao 在瑞银投资银行（UBS）股票结构化衍生品部门管理交易，也曾供职于美银美林集团（Bank of America Merrill Lynch）。Lingxiao 是 2024 年高盛全球工程黑客马拉松冠军得主，并在 GDPS 2026（2026 全球开发者先锋大会，上海）全球黑客马拉松中凭借 AI Agentic App 获奖。",
     "aiQuant": "AI量化策略",
@@ -636,6 +642,10 @@
     "macroMarketSub": "美联储 · 通胀 · 就业"
   },
   "chat": {
+    "groupOverview": "总览",
+    "groupPositions": "持仓",
+    "groupResearch": "研究",
+    "groupPerformance": "业绩",
     "currentRuntime": "当前运行环境：",
     "cloudVpsLabel": "SomeoClaw（云端 VPS）",
     "localConnectedLabel": "本地 OpenClaw（已连接）",
@@ -982,6 +992,10 @@
     "title": "设置",
     "languageLabel": "显示语言",
     "languageDesc": "选择界面语言。股票代码、技术缩写和专有名称将保持不变。",
+    "cardLayoutLabel": "卡片分类",
+    "cardLayoutDesc": "选择首页数据卡片是按类别分组显示，还是平铺列出。此设置对股票策略、World Cup 预测市场、宏观市场三个模式同时生效。",
+    "cardLayoutCategorized": "分类显示",
+    "cardLayoutFlat": "平铺显示",
     "themeLabel": "主题",
     "themeDesc": "界面配色方案",
     "dark": "暗色",
@@ -1282,6 +1296,9 @@
     "skipped": "跳过",
     "trackRecord": "战绩（混合口径）",
     "colSpan": "期间",
-    "trackOpen": "在场"
+    "trackOpen": "在场",
+    "trackBacktest": "回测",
+    "trackLive": "实盘",
+    "trackNote": "{{cutover}} 之前为同一混合规则的逐日 PIT walk-forward 回测，未实际下单；{{cutover}} 起为实盘（paper）账本。"
   }
 }

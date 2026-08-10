@@ -1,9 +1,9 @@
 [
   {
-    "s1": "HAS",
-    "s2": "YUM",
-    "sector": "food",
-    "z_col": "Z_food"
+    "s1": "ACGL",
+    "s2": "HIG",
+    "sector": "finance",
+    "z_col": "Z_finance"
   },
   {
     "s1": "GILD",
@@ -18,50 +18,14 @@
     "z_col": "Z_tech"
   },
   {
-    "s1": "JNJ",
-    "s2": "PFE",
-    "sector": "health",
-    "z_col": "Z_health"
-  },
-  {
-    "s1": "TPR",
-    "s2": "YUM",
-    "sector": "food",
-    "z_col": "Z_food"
-  },
-  {
-    "s1": "ACGL",
-    "s2": "HIG",
-    "sector": "finance",
-    "z_col": "Z_finance"
-  },
-  {
-    "s1": "INTC",
-    "s2": "NVDA",
-    "sector": "tech",
-    "z_col": "Z_tech"
-  },
-  {
-    "s1": "DUK",
-    "s2": "PPL",
-    "sector": "utilities",
-    "z_col": "Z_utilities"
-  },
-  {
-    "s1": "CAH",
-    "s2": "CI",
-    "sector": "health",
-    "z_col": "Z_health"
-  },
-  {
-    "s1": "DGX",
-    "s2": "PFE",
-    "sector": "health",
-    "z_col": "Z_health"
-  },
-  {
     "s1": "RMD",
     "s2": "SYK",
+    "sector": "health",
+    "z_col": "Z_health"
+  },
+  {
+    "s1": "JNJ",
+    "s2": "PFE",
     "sector": "health",
     "z_col": "Z_health"
   },
@@ -78,15 +42,51 @@
     "z_col": "Z_industrial"
   },
   {
-    "s1": "FDX",
-    "s2": "HWM",
+    "s1": "SBUX",
+    "s2": "WYNN",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "INTC",
+    "s2": "NVDA",
+    "sector": "tech",
+    "z_col": "Z_tech"
+  },
+  {
+    "s1": "GD",
+    "s2": "GE",
     "sector": "industrial",
     "z_col": "Z_industrial"
   },
   {
-    "s1": "DE",
-    "s2": "IT",
-    "sector": "industrial",
-    "z_col": "Z_industrial"
+    "s1": "HAS",
+    "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "BAC",
+    "s2": "JPM",
+    "sector": "finance",
+    "z_col": "Z_finance"
+  },
+  {
+    "s1": "TPR",
+    "s2": "YUM",
+    "sector": "food",
+    "z_col": "Z_food"
+  },
+  {
+    "s1": "DUK",
+    "s2": "PPL",
+    "sector": "utilities",
+    "z_col": "Z_utilities"
+  },
+  {
+    "s1": "ADI",
+    "s2": "AKAM",
+    "sector": "tech",
+    "z_col": "Z_tech"
   }
 ]

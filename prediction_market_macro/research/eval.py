@@ -106,7 +106,8 @@ def _candle_quote(conn, ticker: str, asof: datetime):
 
 
 def decision_replay(conn, series: str, offset_hours: float = 1.0,
-                    max_events: int = 200, bankroll: float = 100.0) -> dict:
+                    max_events: int = 200, bankroll: float = 100.0,
+                    collect_trades: bool = False) -> dict:
     """For every settled event: rebuild the book from candles, run the SAME
     enumerate_structs + decide() the production path uses, settle the opened
     structure against real results, and account PnL net of fees.
@@ -121,7 +122,13 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
     calibration map and the per-strike capture filter are deliberately EXCLUDED:
     both are fit ON this very replay — using them inside it would be self-referential
     leakage. Consequence: replay ROI measures the raw strategy; the live path is
-    strictly more conservative (fewer/smaller trades)."""
+    strictly more conservative (fewer/smaller trades).
+
+    collect_trades: also return the per-trade list. The aggregate `strike_capture` is a
+    sum over the whole history, which cannot be sliced to an as-of date; `research/
+    pit_gates` needs the individual (period, cap_key, expected, realized) rows to rebuild
+    the capture memory as it stood on a given simulated day. Off by default because the
+    result is persisted into an `experiments` row and the trade list would bloat it."""
     import importlib
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.model.common import Categorical, grid_pmf
@@ -220,7 +227,15 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
             skipped += 1
             continue
         expected = st.net_edge(count) * count              # $ edge net of fee
-        staked = sum(l.price for l in st.legs) * count
+        # capital at risk on production's definition — the third and last site of the
+        # gross-notional bug fixed in `walkforward._trade_row` and `pnl_score._staked`
+        # (§25.2a). `decide` books size_usd = count * fill_cost(count), and fill_cost
+        # returns the NET debit (sum(px) - 1) on a bucket because one leg pays in every
+        # branch; summing raw leg prices charges a bucket ~$1/contract too much. Realised
+        # dollars are untouched, but the ROI DENOMINATOR inflates, so `roi` here — which
+        # `gate_verdict` tests and `series_enable` now folds over — read better than the
+        # strategy is. Only bucket structures differ, which is why it hid three times.
+        staked = st.fill_cost(count) * count
         # per-strike capture key: distance from the model mean in grid steps
         if model_mean is not None and st.legs[0].ticker and st.kind == "single":
             strike = next((m["strike"] for m in meta
@@ -246,13 +261,16 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
     for t in trades:
         run += t["realized"]
         curve.append(round(run, 4))
-    return {"series": series, "n_events": len(events), "n_trades": len(trades),
-            "skipped": skipped, "staked": round(tot_staked, 4),
-            "realized": round(tot_real, 4),
-            "roi": round(tot_real / tot_staked, 5) if tot_staked > 0 else None,
-            "edge_capture": round(tot_real / tot_exp, 5) if tot_exp > 0 else None,
-            "pnl_curve": curve[-60:], "strike_capture": caps,
-            "depth_gate": "waived (candles carry no depth)"}
+    out = {"series": series, "n_events": len(events), "n_trades": len(trades),
+           "skipped": skipped, "staked": round(tot_staked, 4),
+           "realized": round(tot_real, 4),
+           "roi": round(tot_real / tot_staked, 5) if tot_staked > 0 else None,
+           "edge_capture": round(tot_real / tot_exp, 5) if tot_exp > 0 else None,
+           "pnl_curve": curve[-60:], "strike_capture": caps,
+           "depth_gate": "waived (candles carry no depth)"}
+    if collect_trades:
+        out["trades"] = trades
+    return out
 
 
 # ── the gate ─────────────────────────────────────────────────────────────────
@@ -389,7 +407,10 @@ def run_series(conn, series: str) -> dict:
     ci = bootstrap_ci(diffs)
     pairs = [(f, o) for p in per for f, _mp, o in p.get("legs-1h", [])]
     calib = calibration_table(pairs)
-    dec = decision_replay(conn, series)
+    # collect_trades because §25.4's per-series switch is a fold over the individual
+    # trades, not over the aggregate: the hysteresis makes the verdict path-dependent.
+    # The trade list is stripped back out before the row is stored (see below).
+    dec = decision_replay(conn, series, collect_trades=True)
     dr = drift_check([p.get("brier_model-1h") for p in per])
     if dr.get("drift"):
         conn.execute(
@@ -464,6 +485,14 @@ def run_series(conn, series: str) -> dict:
     # ACI conformal throttle state (§23.2-4) — uses the rows written above
     from prediction_market_macro.strategy import conformal
     conformal.evaluate(conn, series)
+    # §25.4 per-series switch, folded over the trades above. Stored as its own row so
+    # `decide_all` can read a verdict in one cheap query instead of re-running the
+    # replay; the trade list itself is dropped from the decision_replay row, which is
+    # why `collect_trades` defaults off (the docstring's "would bloat it").
+    from prediction_market_macro.strategy import series_enable as _se
+    se = _se.evaluate(dec.get("trades") or [])
+    _store(conn, "series_enable", series, f"n{se['n']}", se)
+    dec = {k: v for k, v in dec.items() if k != "trades"}
     _store(conn, "decision_replay", series, f"n{dec['n_trades']}", dec)
     _store(conn, "calibration", series, f"n{len(pairs)}",
            {"bins": calib, "n_pairs": len(pairs)})
@@ -471,7 +500,7 @@ def run_series(conn, series: str) -> dict:
            {**verdict, "dm": dm, "ci": ci, "drift": dr})
     return {"series": series, "real": verdict["real"], "reasons": verdict["reasons"],
             "roi": dec.get("roi"), "edge_capture": dec.get("edge_capture"),
-            "dm_p": dm.get("p")}
+            "dm_p": dm.get("p"), "enabled": se["enabled"]}
 
 
 def shadow_gate(conn, series: str, prefix: str, min_weekly: int = 8,

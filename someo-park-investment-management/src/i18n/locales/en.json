@@ -357,6 +357,10 @@
     "title": "Settings",
     "languageLabel": "Display Language",
     "languageDesc": "Choose the language for the interface. Stock tickers, technical abbreviations, and proper names will remain unchanged.",
+    "cardLayoutLabel": "Card Categorization",
+    "cardLayoutDesc": "Choose whether the home-screen data cards are grouped by category or shown as a flat list. Applies to all three modes: Stock Strategy, World Cup Prediction Market, and Macro Markets.",
+    "cardLayoutCategorized": "Categorized",
+    "cardLayoutFlat": "Flat List",
     "themeLabel": "Theme",
     "themeDesc": "Interface color scheme",
     "dark": "Dark",
@@ -382,6 +386,11 @@
     "passwordUpdated": "Password updated successfully."
   },
   "prediction": {
+    "groupOverview": "Overview",
+    "groupTeamIntel": "Team Intel",
+    "groupLive": "Live & Pricing",
+    "groupQuality": "Quality",
+    "groupReports": "Reports",
     "championOdds": "Champion Odds",
     "reachRound": "Reach Round",
     "subReachRound": "Model P(team reaches round) vs live Kalshi + Poly prices — the no-draw advance product",
@@ -949,6 +958,7 @@
     "aboutClawCloudDesc": "Hosted by Someo Park",
     "aboutClawLocal": "Local",
     "aboutClawLocalDesc": "Self-hosted OpenClaw",
+    "settingsTitle": "Settings",
     "aboutDevTitle": "About Developer",
     "aboutDevBio": "Lingxiao was a Senior Quantitative Strategist, Vice President (VP) at Goldman Sachs, holds an MBA degree from Yale University's School of Management and graduated from the Columbia School of Engineering's Department of IEOR. Prior to this role, Lingxiao managed trades in the Equity Structured Derivatives Group at UBS Investment Bank and has also worked with Bank of America Merrill Lynch Group. Lingxiao is the Champion Winner of the Goldman Sachs Global Engineering Hackathon in 2024 and has been awarded at the GDPS 2026 (2026 Global Developer Pioneer Conference, Shanghai) Global Hackathon for an AI Agentic App.",
     "aiQuant": "AI Quant Strategy",
@@ -957,6 +967,10 @@
     "macroMarketSub": "Fed · CPI · Jobs · Kalshi"
   },
   "chat": {
+    "groupOverview": "Overview",
+    "groupPositions": "Positions",
+    "groupResearch": "Research",
+    "groupPerformance": "Performance",
     "currentRuntime": "Current Runtime:",
     "cloudVpsLabel": "SomeoClaw (Cloud VPS)",
     "localConnectedLabel": "Local OpenClaw (Connected)",
@@ -1284,6 +1298,9 @@
     "skipped": "skipped",
     "trackRecord": "Track record (hybrid)",
     "colSpan": "Span",
-    "trackOpen": "Open"
+    "trackOpen": "Open",
+    "trackBacktest": "Backtest",
+    "trackLive": "Live",
+    "trackNote": "Up to {{cutover}} this is a point-in-time walk-forward backtest of the same hybrid rule, not traded. From {{cutover}} on it is the live paper ledger."
   }
 }

@@ -62,18 +62,21 @@ def predict(conn, asof: datetime, period: str, series: str = "KXJOBLESSCLAIMS",
 
     # PIT seasonal: for the TARGET week (the reference week ends the Saturday before the
     # release date), mean log-deviation of that ISO week's first print vs its trailing
-    # 4-week mean over the last 10 years of first prints.
+    # 4-week mean over the last `seasonal_years` years of first prints.
     target_week = (pd.Timestamp(period) - pd.Timedelta(days=5)).isocalendar().week
     fp = np.log(first)
     trail = fp.rolling(4).mean().shift(1)
     dev = (fp - trail).dropna()
     weeks = pd.Series(dev.index.isocalendar().week.values, index=dev.index)
-    hist = dev[(weeks == target_week)].tail(10)
+    hist = dev[(weeks == target_week)].tail(int(p["seasonal_years"]))
     seasonal = float(hist.mean()) if len(hist) >= 3 else 0.0
-    seasonal = float(np.clip(seasonal, -0.25, 0.25))
+    clip = float(p["seasonal_clip"])
+    seasonal = float(np.clip(seasonal, -clip, clip))
 
-    d_log = np.diff(np.log(first.tail(27).values))
-    sigma_log = max(1.4826 * float(np.median(np.abs(d_log - np.median(d_log)))), 0.02)
+    # vol_window counts DIFFERENCES, so it needs one more level than that to difference.
+    d_log = np.diff(np.log(first.tail(int(p["vol_window"]) + 1).values))
+    sigma_log = max(1.4826 * float(np.median(np.abs(d_log - np.median(d_log)))),
+                    float(p["sigma_floor"]))
 
     mu = math.exp(base_log + seasonal)
     sigma = mu * sigma_log

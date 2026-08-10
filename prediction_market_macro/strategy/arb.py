@@ -27,11 +27,12 @@ DEPTH_FRAC = 0.20
 
 
 def _has_open_arb(conn, series: str, period: str) -> bool:
-    r = conn.execute(
-        "SELECT SUM(CASE WHEN kind='arb' THEN 1 ELSE 0 END) a,"
-        " SUM(CASE WHEN kind IN ('exit','cancel','settle_note') THEN 1 ELSE 0 END) x"
-        " FROM decisions WHERE series=? AND period=?", (series, period)).fetchone()
-    return (r["a"] or 0) > (r["x"] or 0)
+    # #149. Was `count(kind='arb') > count(close of ANY kind)` — one stream's opens
+    # against every stream's closes. It disagrees with the truth on 0 of the 66 live
+    # periods today, but only because no arb has yet been held through an edge or argmax
+    # close. The SQL was as wrong as `has_open`'s, which did produce a duplicate position.
+    from prediction_market_macro.ops.ledger import open_decisions
+    return any(d["kind"] == "arb" for d in open_decisions(conn, series, period))
 
 
 def _record(conn, series: str, period: str, legs: list[dict], gross: float,

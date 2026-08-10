@@ -18,6 +18,18 @@ from prediction_market_macro.model.features import FeatureStore
 VERSION = "u3/0.1.0"
 STEPS = np.array([-0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3])
 
+# defaults == the registered u3/0.1.0 behaviour. Every key must be able to MOVE the
+# output — see tests/test_claims_params.py. _N_SAMPLES is deliberately NOT a param:
+# it is the encoding resolution, so varying it would feed the grid pure Monte-Carlo
+# noise and the argmin would happily chase it.
+DEFAULT_PARAMS = {
+    "hist_months": 180,      # months of first-print steps the empirical dist is built from
+    "laplace": 0.5,          # add-k smoothing on each step bucket
+    "tilt_frac": 0.2,        # share of mass moved one step toward the claims signal
+    "tilt_threshold": 8000,  # 4wk-claims change (jobs) needed before any tilt is applied
+}
+_N_SAMPLES = 20_000
+
 
 def _first_prints(conn, asof: datetime) -> pd.Series:
     from prediction_market_macro.model.features import FeatureStore
@@ -25,26 +37,30 @@ def _first_prints(conn, asof: datetime) -> pd.Series:
     return s
 
 
-def predict(conn, asof: datetime, period: str, series: str = "KXU3") -> Pred:
+def predict(conn, asof: datetime, period: str, series: str = "KXU3",
+            params: dict | None = None) -> Pred:
+    p = {**DEFAULT_PARAMS, **(params or {})}
     fs = FeatureStore(conn)
     fp = _first_prints(conn, asof)
     assert len(fp) >= 60, "UNRATE history too short"
     last = float(fp.iloc[-1])
-    d = np.round(fp.diff().dropna().tail(180), 1)
-    probs = np.array([(np.sum(d == s) + 0.5) for s in STEPS], dtype=float)
+    d = np.round(fp.diff().dropna().tail(int(p["hist_months"])), 1)
+    probs = np.array([(np.sum(d == s) + float(p["laplace"])) for s in STEPS], dtype=float)
     probs /= probs.sum()
     icsa, h_c = fs.fred_series("ICSA", asof)
     c4 = icsa.rolling(4).mean().dropna()
     tilt = 0
     if len(c4) >= 9:
         delta = float(c4.iloc[-1] - c4.iloc[-5])
-        tilt = 1 if delta > 8000 else (-1 if delta < -8000 else 0)
-    if tilt != 0:                                   # shift 20% of mass one step toward signal
+        thr = float(p["tilt_threshold"])
+        tilt = 1 if delta > thr else (-1 if delta < -thr else 0)
+    if tilt != 0:                          # shift tilt_frac of mass one step toward signal
         shifted = probs.copy()
+        frac = float(p["tilt_frac"])
         for i, s in enumerate(STEPS):
             j = i + tilt
             if 0 <= j < len(STEPS):
-                mv = probs[i] * 0.2
+                mv = probs[i] * frac
                 shifted[i] -= mv
                 shifted[j] += mv
         probs = shifted / shifted.sum()
@@ -53,7 +69,7 @@ def predict(conn, asof: datetime, period: str, series: str = "KXU3") -> Pred:
     last_month = fp.index.max().to_period("M")
     ahead = max((pd.Period(period) - last_month).n, 1)
     rng = np.random.default_rng(0)                  # deterministic encoding sample
-    steps_sum = rng.choice(STEPS, size=(20000, ahead), p=probs).sum(axis=1)
+    steps_sum = rng.choice(STEPS, size=(_N_SAMPLES, ahead), p=probs).sum(axis=1)
     samples = np.round(np.clip(last + steps_sum, 2.0, 15.0), 1)
     _, h = FeatureStore(conn).fred_first_prints("UNRATE", asof)
     horizon = max(h or asof.isoformat(), h_c or "")

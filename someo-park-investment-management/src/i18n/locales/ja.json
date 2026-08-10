@@ -61,6 +61,11 @@
     "selectSheet": "シートを選択してデータを表示"
   },
   "prediction": {
+    "groupOverview": "概要",
+    "groupTeamIntel": "チーム情報",
+    "groupLive": "ライブ・価格",
+    "groupQuality": "品質",
+    "groupReports": "レポート",
     "championOdds": "優勝オッズ",
     "reachRound": "勝ち上がり盤",
     "subReachRound": "チームが各ラウンドへ進む確率(モデル)vs Kalshi + Poly 実価格 —— 引分なしの勝ち上がり商品",
@@ -602,6 +607,7 @@
     "aboutClawCloudDesc": "Someo Park ホスティング",
     "aboutClawLocal": "ローカル",
     "aboutClawLocalDesc": "セルフホスト OpenClaw",
+    "settingsTitle": "設定",
     "aboutDevTitle": "開発者について",
     "aboutDevBio": "Lingxiao はゴールドマン・サックスのシニア・クオンツ・ストラテジスト、ヴァイスプレジデント（VP）を務め、イェール大学経営大学院で MBA を取得し、コロンビア大学工学部 IEOR 学科を卒業。以前は UBS 投資銀行の株式ストラクチャード・デリバティブ・グループでトレードを管理し、バンク・オブ・アメリカ・メリルリンチでも勤務。2024 年ゴールドマン・サックス・グローバル・エンジニアリング・ハッカソンのチャンピオンであり、GDPS 2026（2026 グローバル・デベロッパー・パイオニア・カンファレンス、上海）グローバル・ハッカソンで AI Agentic App により受賞。",
     "aiQuant": "AIクオンツ戦略",
@@ -610,6 +616,10 @@
     "macroMarketSub": "FRB · CPI · 雇用 · Kalshi"
   },
   "chat": {
+    "groupOverview": "概要",
+    "groupPositions": "ポジション",
+    "groupResearch": "リサーチ",
+    "groupPerformance": "パフォーマンス",
     "currentRuntime": "現在の実行環境：",
     "cloudVpsLabel": "SomeoClaw（クラウド VPS）",
     "localConnectedLabel": "ローカル OpenClaw（接続済み）",
@@ -955,6 +965,10 @@
     "title": "設定",
     "languageLabel": "表示言語",
     "languageDesc": "インターフェースの言語を選択します。株式ティッカー、技術略語、固有名詞は変更されません。",
+    "cardLayoutLabel": "カードの分類",
+    "cardLayoutDesc": "ホーム画面のデータカードをカテゴリ別にグループ表示するか、フラットなリストで表示するかを選択します。株式戦略・ワールドカップ予測市場・マクロ市場の3モードすべてに適用されます。",
+    "cardLayoutCategorized": "分類表示",
+    "cardLayoutFlat": "フラット表示",
     "themeLabel": "テーマ",
     "themeDesc": "インターフェースの配色",
     "dark": "ダーク",
@@ -1255,6 +1269,9 @@
     "skipped": "スキップ",
     "trackRecord": "戦績（ハイブリッド）",
     "colSpan": "期間",
-    "trackOpen": "保有中"
+    "trackOpen": "保有中",
+    "trackBacktest": "バックテスト",
+    "trackLive": "ライブ",
+    "trackNote": "{{cutover}} までは同一ハイブリッドルールの PIT ウォークフォワード・バックテストであり、実際の発注はありません。{{cutover}} 以降はライブ（ペーパー）台帳です。"
   }
 }

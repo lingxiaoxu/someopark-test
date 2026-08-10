@@ -68,6 +68,26 @@ WEIGHTS = {"ff": 0.50, "market": 0.35, "dgs2": 0.30, "rule": 0.15}
 SHRINK_HALFLIFE_M = 9.0
 MEETINGS_PER_YEAR = 8.0
 
+# defaults == the registered fed/0.3.0 behaviour. Only the pooling weights and the shrink
+# half-life are exposed, and that is deliberate: MIN_POST_FRAC / MIN_WINDOW_MASS /
+# MAX_MASS_GAP are DATA-COMPARABILITY guards, not model knobs — loosening them does not
+# make the model better, it makes it answer off inputs that do not mean the same thing.
+# A grid must not be allowed to buy Brier by disabling a guard.
+#
+# Sizing note (2026-08-04): KXFED has 28 usable settled events and KXFEDDECISION has 1.
+# That supports a handful of sets, not hundreds.
+DEFAULT_PARAMS = {
+    "w_ff": 0.50,
+    "w_market": 0.35,
+    "w_dgs2": 0.30,
+    "w_rule": 0.15,
+    "shrink_halflife_m": SHRINK_HALFLIFE_M,
+}
+
+
+def _p(params: dict | None) -> dict:
+    return {**DEFAULT_PARAMS, **(params or {})}
+
 _ZQ_MONTH = "FGHJKMNQUVXZ"
 
 
@@ -132,9 +152,10 @@ def _base_rates(fs: FeatureStore, asof: datetime) -> tuple[dict, str | None]:
     return {k: v / tot for k, v in cnt.items()}, h
 
 
-def _shrink_lambda(asof: datetime, meeting: datetime) -> float:
+def _shrink_lambda(asof: datetime, meeting: datetime,
+                   halflife_m: float = SHRINK_HALFLIFE_M) -> float:
     months = max((meeting - asof).days, 0) / 30.44
-    return months / (months + SHRINK_HALFLIFE_M)
+    return months / (months + halflife_m)
 
 
 MIN_POST_FRAC = 0.25      # below this the day-weighted solve levers errors past 4x
@@ -435,18 +456,46 @@ def _market_move(fs: FeatureStore, asof: datetime, period: str,
     return ev_p - ev_prev, max(ts_p, ts_prev)
 
 
-def predict(conn, asof: datetime, period: str, series: str = "KXFEDDECISION") -> Pred:
+def _meeting_event(period: str):
+    """Resolve a period token to its FOMC calendar entry, or None.
+
+    Two spellings reach here and only one of them is a month. KXFED writes `24MAR`, which
+    `kalshi_period_to_key` turns into `2024-03` and which matches the calendar's own key.
+    KXFEDDECISION sometimes writes the STATEMENT DATE instead — `24MAR20` -> `2024-03-20`,
+    `24JAN31` -> `2024-01-31` — and a plain `e.period == period` misses those. The miss was
+    silent and expensive: `meeting` came back None, so the market/ZQ/DGS2 legs were all
+    skipped and the meeting was scored on the unconditional base rate alone.
+
+    Match the date form against the meeting's own date rather than truncating it to a
+    month, because truncating would also match a same-month meeting on a different day.
+    The canonical (month) key comes back on the entry, so callers that then need to find
+    the KXFED ladder — `_market_move` -> `_level_pmf` — must use `ev.period`, not `period`.
+    """
     from prediction_market_macro.ingest.calendars import CALENDARS
+    cal = CALENDARS["FOMC"]
+    ev = next((e for e in cal if e.period == period), None)
+    if ev is not None:
+        return ev
+    return next((e for e in cal
+                 if e.scheduled_ts.date().isoformat() == period), None)
+
+
+def predict(conn, asof: datetime, period: str, series: str = "KXFEDDECISION",
+            params: dict | None = None) -> Pred:
+    p_ = _p(params)
+    weights = {"ff": float(p_["w_ff"]), "market": float(p_["w_market"]),
+               "dgs2": float(p_["w_dgs2"]), "rule": float(p_["w_rule"])}
     fs = FeatureStore(conn)
     rule, meta = _rule_probs(fs, conn, asof)
-    meeting = next((e.scheduled_ts for e in CALENDARS["FOMC"] if e.period == period), None)
+    _ev = _meeting_event(period)
+    meeting = _ev.scheduled_ts if _ev is not None else None
 
     mkt = ff = dgs2 = None
     mkt_ts = ff_ts = dgs2_ts = None
     pre_rate = None
     if meeting is not None:
         try:
-            mv, mkt_ts = _market_move(fs, asof, period, meeting)
+            mv, mkt_ts = _market_move(fs, asof, _ev.period, meeting)
             mkt = _move_to_probs(mv) if mv is not None else None
         except Exception:                              # noqa: BLE001
             mkt = None
@@ -469,8 +518,8 @@ def predict(conn, asof: datetime, period: str, series: str = "KXFEDDECISION") ->
         if p is not None:
             sources[name] = p
     if len(sources) > 1:
-        tot_w = sum(WEIGHTS[k] for k in sources)
-        logp = {k: sum(WEIGHTS[s] / tot_w * math.log(max(p[k], 1e-4))
+        tot_w = sum(weights[k] for k in sources)
+        logp = {k: sum(weights[s] / tot_w * math.log(max(p[k], 1e-4))
                        for s, p in sources.items()) for k in CATS}
         mx = max(logp.values())
         expd = {k: math.exp(v - mx) for k, v in logp.items()}
@@ -485,7 +534,8 @@ def predict(conn, asof: datetime, period: str, series: str = "KXFEDDECISION") ->
     # first moment dressed as a distribution; none of them knows more about a meeting 17
     # months out than the base rate does, and this is what stops H0 from collapsing.
     base, base_h = _base_rates(fs, asof)
-    lam = _shrink_lambda(asof, meeting) if meeting is not None else 0.0
+    lam = (_shrink_lambda(asof, meeting, float(p_["shrink_halflife_m"]))
+           if meeting is not None else 0.0)
     probs = {k: round((1 - lam) * probs[k] + lam * base[k], 6) for k in CATS}
     rem = 1.0 - sum(probs.values())
     kmax = max(probs, key=probs.get)
@@ -506,7 +556,8 @@ def predict(conn, asof: datetime, period: str, series: str = "KXFEDDECISION") ->
                 data_horizon=datetime.fromisoformat(max(horizons)))
 
 
-def predict_kxfed(conn, asof: datetime, period: str, series: str = "KXFED") -> Pred:
+def predict_kxfed(conn, asof: datetime, period: str, series: str = "KXFED",
+                  params: dict | None = None) -> Pred:
     """KXFED ladder: post-meeting upper-bound distribution derived from the decision
     categorical (H26 ≈ +0.50, C26 ≈ −0.50) — encoded as a deterministic Empirical sample
     so grid_pmf(0.25) discretises exactly onto the 25bp grid.
@@ -519,7 +570,7 @@ def predict_kxfed(conn, asof: datetime, period: str, series: str = "KXFED") -> P
     that meeting, in which case the shrink has already flattened the categorical.
     """
     from prediction_market_macro.model.common import Empirical
-    dec = predict(conn, asof, period, series="KXFEDDECISION")
+    dec = predict(conn, asof, period, series="KXFEDDECISION", params=params)
     ub = FeatureStore(conn).fred_scalar_latest("DFEDTARU", asof)
     assert ub is not None, "no visible DFEDTARU"
     pre = dec.inputs.get("pre_meeting_rate")

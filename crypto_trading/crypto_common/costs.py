@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 from decimal import Decimal
 
@@ -37,7 +38,32 @@ DEFAULT_TAKER_RATE = 0.0010
 
 # ── fees ────────────────────────────────────────────────────────────────────
 
+#: Official CFTC-filed perp fee tiers (2026-06-24 filing, effective 2026-07-08):
+#: tier → (maker_bps, taker_bps). Volume thresholds: T3 ≥$1M, T4 ≥$3M, T5 ≥$10M
+#: 30-day trailing (perps + prediction combined, maker + taker both count).
+FEE_TIERS_BPS = {0: (5.0, 12.0), 1: (4.0, 10.0), 2: (3.2, 8.0), 3: (2.4, 6.0),
+                 4: (2.0, 5.0), 5: (1.6, 4.0), 6: (1.4, 3.5), 7: (1.2, 3.2)}
+
+
 def load_fee_rates(ticker: str) -> tuple[float, float]:
+    """(maker, taker) fraction-of-notional for a ticker.
+
+    Env override for tier studies: ``CRYPTO_FEE_TIER=<n>`` applies the official
+    tier table above; ``CRYPTO_MAKER_BPS``/``CRYPTO_TAKER_BPS`` set exact rates.
+    No env → recorded snapshot / probe defaults (tier-0 reality), unchanged.
+    """
+    t = os.environ.get("CRYPTO_FEE_TIER")
+    if t is not None:
+        m, k = FEE_TIERS_BPS[int(t)]
+        return m / 1e4, k / 1e4
+    mb, tb = os.environ.get("CRYPTO_MAKER_BPS"), os.environ.get("CRYPTO_TAKER_BPS")
+    if mb is not None or tb is not None:
+        return (float(mb or DEFAULT_MAKER_RATE * 1e4) / 1e4,
+                float(tb or DEFAULT_TAKER_RATE * 1e4) / 1e4)
+    return _load_fee_rates_snapshot(ticker)
+
+
+def _load_fee_rates_snapshot(ticker: str) -> tuple[float, float]:
     """(maker, taker) fraction-of-notional for a ticker.
 
     Reads the authed fee_tiers snapshot when present (written by

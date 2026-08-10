@@ -25,3 +25,13 @@
 {"date": "2026-07-01", "ticker": "INTC", "side": "BUY", "shares": 159, "price": 127.02, "gross": -20196.18, "dedup_key": "2026-07-01-INTC-BUY"}
 {"date": "2026-07-01", "ticker": "", "side": "FEE", "gross": -336.24, "dedup_key": "2026-07-01-FEE"}
 {"date": "2026-07-06", "ticker": "MU", "side": "DIV", "shares": 94, "price": 0.15, "gross": 14.1, "dedup_key": "2026-07-06-MU-DIV"}
+{"date": "2026-08-03", "ticker": "AMAT", "side": "BUY", "shares": 26, "price": 517.68, "gross": -13459.68, "dedup_key": "2026-08-03-AMAT-BUY"}
+{"date": "2026-08-03", "ticker": "AMD", "side": "BUY", "shares": 361, "price": 484.64, "gross": -174955.04, "dedup_key": "2026-08-03-AMD-BUY"}
+{"date": "2026-08-03", "ticker": "ARM", "side": "BUY", "shares": 51, "price": 239.06, "gross": -12192.06, "dedup_key": "2026-08-03-ARM-BUY"}
+{"date": "2026-08-03", "ticker": "INTC", "side": "BUY", "shares": 400, "price": 91.0, "gross": -36400.0, "dedup_key": "2026-08-03-INTC-BUY"}
+{"date": "2026-08-03", "ticker": "KLAC", "side": "BUY", "shares": 1213, "price": 182.75, "gross": -221675.75, "dedup_key": "2026-08-03-KLAC-BUY"}
+{"date": "2026-08-03", "ticker": "LRCX", "side": "BUY", "shares": 136, "price": 294.61, "gross": -40066.96, "dedup_key": "2026-08-03-LRCX-BUY"}
+{"date": "2026-08-03", "ticker": "MU", "side": "BUY", "shares": 194, "price": 829.5, "gross": -160923.0, "dedup_key": "2026-08-03-MU-BUY"}
+{"date": "2026-08-03", "ticker": "SIMO", "side": "BUY", "shares": 40, "price": 251.02, "gross": -10040.8, "dedup_key": "2026-08-03-SIMO-BUY"}
+{"date": "2026-08-03", "ticker": "WDC", "side": "BUY", "shares": 55, "price": 527.22, "gross": -28997.1, "dedup_key": "2026-08-03-WDC-BUY"}
+{"date": "2026-08-06", "ticker": "SIMO", "side": "DIV", "shares": 59, "price": 0.5, "gross": 29.5, "dedup_key": "2026-08-06-SIMO-DIV"}

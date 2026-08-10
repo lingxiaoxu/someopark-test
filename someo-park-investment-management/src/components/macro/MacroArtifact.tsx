@@ -476,13 +476,18 @@ function PerformanceView() {
               t('macro.colPnl'), 'ROI']}
             rows={[
               hist && [
-                <span style={mono}>{hist.span?.[0]?.slice(5)}–{hist.span?.[1]?.slice(5)}</span>,
+                // the two halves of this table are not the same kind of evidence — the
+                // first is a simulation of the rule, the second is the ledger it filled.
+                // Without the chip a reader takes the combined row as one track record.
+                <span><Chip color="var(--text-muted)">{t('macro.trackBacktest')}</Chip>{' '}
+                  <span style={mono}>{hist.span?.[0]?.slice(5)}–{hist.span?.[1]?.slice(5)}</span></span>,
                 hist.n_trades, `${hist.won}W-${hist.n_trades - hist.won}L`, pct(hist.win_rate),
                 <span style={{ ...mono, color: (hist.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(hist.realized)}</span>,
                 <span style={{ ...mono, color: (hist.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(hist.roi)}</span>,
               ],
               liveS && [
-                <span style={mono}>{tr.cutover?.slice(5)}–</span>,
+                <span><Chip color="var(--accent-primary)">{t('macro.trackLive')}</Chip>{' '}
+                  <span style={mono}>{tr.cutover?.slice(5)}–</span></span>,
                 liveS.n_trades,
                 `${liveS.won}W-${liveS.n_trades - liveS.won}L`,
                 liveS.n_trades ? pct(liveS.won / liveS.n_trades) : '—',
@@ -496,6 +501,9 @@ function PerformanceView() {
                 '—',
               ],
             ].filter(Boolean) as any[]} />
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+            {t('macro.trackNote', { cutover: tr.cutover })}
+          </div>
           {withCum.length > 0 && (
             <>
               <SectionTitle>{t('macro.wfBetLog')}</SectionTitle>

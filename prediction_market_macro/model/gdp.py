@@ -21,6 +21,16 @@ VERSION = "gdp/0.1.0"
 _LABEL_SID = "A191RL1Q225SBEA"          # real GDP % change SAAR, first prints
 SIGMA_FLOOR = 0.5
 
+# defaults == the registered gdp/0.1.0 behaviour. NOTE (2026-08-04): KXGDP has exactly
+# ONE settled event in the db, so this interface exists for uniformity — the series
+# cannot support walk-forward selection and must keep running on the defaults until it
+# has a history. Do not point a grid at it.
+DEFAULT_PARAMS = {
+    "sigma_floor": SIGMA_FLOOR,   # floor on the GDPNow-vs-advance error sigma (pp)
+    "offquarter_widen": 0.5,      # extra sigma added in quadrature off-quarter
+    "min_errs": 6,                # error pairs needed before the empirical sigma is used
+}
+
 
 def _quarter_period(period: str) -> str:
     """Reference quarter for a period key. '2026-Q2' → itself. A DATE/month key is
@@ -32,7 +42,8 @@ def _quarter_period(period: str) -> str:
     return f"{ts.year}-Q{(ts.month - 1) // 3 + 1}"
 
 
-def _nowcast_error_sigma(conn, asof: datetime) -> float:
+def _nowcast_error_sigma(conn, asof: datetime, sigma_floor: float = SIGMA_FLOOR,
+                         min_errs: int = 6) -> float:
     """Std of (final pre-release GDPNow vintage − advance first print) per quarter."""
     labels = conn.execute(
         "SELECT event_time, value, MIN(knowledge_time) kt FROM fred_obs WHERE sid=?"
@@ -48,12 +59,15 @@ def _nowcast_error_sigma(conn, asof: datetime) -> float:
             (q, lab["kt"])).fetchone()
         if nc is not None and nc["value"] is not None:
             errs.append(float(nc["value"]) - float(lab["value"]))
-    if len(errs) < 6:
-        return SIGMA_FLOOR
-    return max(float(np.std(errs)), SIGMA_FLOOR)
+    if len(errs) < min_errs:
+        return sigma_floor
+    return max(float(np.std(errs)), sigma_floor)
 
 
-def predict(conn, asof: datetime, period: str, series: str = "KXGDP") -> Pred:
+def predict(conn, asof: datetime, period: str, series: str = "KXGDP",
+            params: dict | None = None) -> Pred:
+    p = {**DEFAULT_PARAMS, **(params or {})}
+    sig_kw = {"sigma_floor": float(p["sigma_floor"]), "min_errs": int(p["min_errs"])}
     from prediction_market_macro.ingest.nowcast import latest_nowcast
     q = _quarter_period(period)
     nc = conn.execute(
@@ -65,11 +79,12 @@ def predict(conn, asof: datetime, period: str, series: str = "KXGDP") -> Pred:
         if got is None:
             raise RuntimeError(f"KXGDP: no GDPNow vintage visible at {asof}")
         _, mu, horizon = got
-        sigma = math.hypot(_nowcast_error_sigma(conn, asof), 0.5)   # off-quarter widen
+        sigma = math.hypot(_nowcast_error_sigma(conn, asof, **sig_kw),
+                           float(p["offquarter_widen"]))
         mode = "gdpnow_offquarter"
     else:
         mu, horizon = float(nc["value"]), nc["knowledge_time"]
-        sigma = _nowcast_error_sigma(conn, asof)
+        sigma = _nowcast_error_sigma(conn, asof, **sig_kw)
         mode = "gdpnow_anchor"
     # Pred.period = the CALLER'S key (contract-date key from predict_all) so the
     # stored row is findable by decide_all/watchdog; the quarter only routes the

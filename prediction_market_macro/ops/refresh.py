@@ -76,6 +76,12 @@ def run(weekly: bool = False) -> dict:
     for spec in REGISTRY.values():
         step(f"kalshi:{spec.ticker}", lambda t=spec.ticker: md.snapshot_series(t))
         step(f"settle:{spec.ticker}", lambda t=spec.ticker: md.sync_settlements(t))
+    # #120 — AFTER the settle pass, which is what puts a newly-closed market into
+    # `settlements` in the first place; ordering the other way would always archive a day
+    # late. Kalshi drops candlesticks at ~75 days and the loss is permanent, so this is
+    # the one step in the daily lane with an external deadline.
+    from prediction_market_macro.ops import archive_candles
+    step("archive_candles", lambda: archive_candles.run(conn, md))
     # ── scheduler upkeep ─────────────────────────────────────────────────
     step("materialize", lambda: scheduler.materialize(conn))
     # ── model registry (§9.2) — idempotent card seeding ──────────────────
@@ -83,11 +89,20 @@ def run(weekly: bool = False) -> dict:
     step("models_registry", lambda: model_registry.ensure_registered(conn))
     # ── §8.0 step 2/3: predict + decide (registered per-model as they land, M1+) ──
     try:
+        # #119 — must run BEFORE predict_all, which reads the row it writes. It is
+        # fingerprint-cached, so on a day with no newly-scoreable event this is a handful
+        # of SELECTs; on the day a weekly series settles it rescores that one series.
+        from prediction_market_macro.research import param_select
+        step("param_select", lambda: len(param_select.refresh(conn, log=None)))
         from prediction_market_macro.ops import predict_all
         step("predict_all", lambda: predict_all.run(conn, s))
         from prediction_market_macro.ops import decide_all
         step("decide_all", lambda: decide_all.run(conn, s))
         from prediction_market_macro.ops import exits
+        # PR-7 step 1 (#143) BEFORE the live exits: a position the live rules close this
+        # same cycle is gone from open_positions by the time exits.run returns, and S2 —
+        # which triggers at a looser threshold — must be seen on that last day too.
+        step("s2_shadow", lambda: exits.shadow_run(conn, s))
         step("exits", lambda: exits.run(conn, s))
     except ImportError:
         print("  - predict/decide layers not installed yet (pre-M1)")
@@ -138,9 +153,12 @@ def run(weekly: bool = False) -> dict:
                       if k.startswith(("pass", "cov_"))})
         from prediction_market_macro.research import eval as eval_mod
         step("weekly_eval_gates",
+             # `enabled` is §25.4's per-series switch, refreshed by this very step —
+             # it is the thing that decides whether decide_all bets the series at all,
+             # so it belongs in the weekly line rather than only in the experiments row.
              lambda: json.dumps({k: {"real": v.get("real"), "roi": v.get("roi"),
-                                     "dm_p": v.get("dm_p")}
-                                 for k, v in eval_mod.run_all(conn).items()})[:400])
+                                     "dm_p": v.get("dm_p"), "on": v.get("enabled")}
+                                 for k, v in eval_mod.run_all(conn).items()})[:600])
         from prediction_market_macro.research import attribution
         step("weekly_attribution",
              lambda: {k: v for k, v in attribution.weekly_attribution(conn).items()

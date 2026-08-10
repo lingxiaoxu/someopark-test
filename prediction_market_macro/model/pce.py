@@ -20,17 +20,28 @@ from prediction_market_macro.model.features import FeatureStore
 
 VERSION = "pce/0.1.0"
 
+# defaults == the registered pce/0.1.0 behaviour. Every key here must be able to MOVE
+# the output — see tests/test_claims_params.py for why that is a hard rule.
+DEFAULT_PARAMS = {
+    "bridge_window": 60,     # months of (cpi, pce) pairs the regression is fit on
+    "resid_floor": 0.04,     # floor on the bridge residual sigma (pp)
+}
+MIN_BRIDGE = 36              # guard, not a knob: below this the fit is refused outright
 
-def predict(conn, asof: datetime, period: str, series: str = "KXPCECORE") -> Pred:
+
+def predict(conn, asof: datetime, period: str, series: str = "KXPCECORE",
+            params: dict | None = None) -> Pred:
+    p = {**DEFAULT_PARAMS, **(params or {})}
     fs = FeatureStore(conn)
     pce_idx, h_pce = fs.fred_series("PCEPILFE", asof)
     cpi_idx, h_cpi = fs.fred_series("CPILFESL", asof)
     pce_mom = (pce_idx / pce_idx.shift(1) - 1) * 100
     cpi_mom = (cpi_idx / cpi_idx.shift(1) - 1) * 100
-    df = pd.DataFrame({"pce": pce_mom, "cpi": cpi_mom}).dropna().tail(60)
-    assert len(df) >= 36, "bridge history too short"
+    df = pd.DataFrame({"pce": pce_mom, "cpi": cpi_mom}).dropna().tail(int(p["bridge_window"]))
+    assert len(df) >= MIN_BRIDGE, "bridge history too short"
     b, a = np.polyfit(df["cpi"].values, df["pce"].values, 1)
-    resid_sig = max(float(np.std(df["pce"].values - (a + b * df["cpi"].values))), 0.04)
+    resid_sig = max(float(np.std(df["pce"].values - (a + b * df["cpi"].values))),
+                    float(p["resid_floor"]))
 
     ref = pd.Period(period)
     cpi_m = cpi_mom.copy()

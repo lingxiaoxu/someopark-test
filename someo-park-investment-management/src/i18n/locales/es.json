@@ -61,6 +61,11 @@
     "selectSheet": "Seleccione una hoja para ver los datos"
   },
   "prediction": {
+    "groupOverview": "Resumen",
+    "groupTeamIntel": "Info. equipos",
+    "groupLive": "En vivo y precios",
+    "groupQuality": "Calidad",
+    "groupReports": "Informes",
     "championOdds": "Cuotas de Campeón",
     "reachRound": "Clasificar a ronda",
     "subReachRound": "P(equipo alcanza la ronda) del modelo vs precios Kalshi + Poly en vivo — producto de clasificación sin empate",
@@ -602,6 +607,7 @@
     "aboutClawCloudDesc": "Alojado por Someo Park",
     "aboutClawLocal": "Local",
     "aboutClawLocalDesc": "OpenClaw autoalojado",
+    "settingsTitle": "Configuración",
     "aboutDevTitle": "Sobre el desarrollador",
     "aboutDevBio": "Lingxiao fue Estratega Cuantitativo Senior, Vicepresidente (VP) en Goldman Sachs, posee un MBA de la Yale School of Management y se graduó del departamento de IEOR de la Columbia School of Engineering. Anteriormente, Lingxiao gestionó operaciones en el grupo de Derivados Estructurados de Renta Variable en UBS Investment Bank y también trabajó en Bank of America Merrill Lynch. Lingxiao es el Campeón del Goldman Sachs Global Engineering Hackathon en 2024 y fue premiado en el GDPS 2026 (Conferencia Global de Pioneros del Desarrollo 2026, Shanghái) en el hackathon global por una aplicación AI Agentic.",
     "aiQuant": "Estrategia cuant IA",
@@ -610,6 +616,10 @@
     "macroMarketSub": "Fed · IPC · Empleo · Kalshi"
   },
   "chat": {
+    "groupOverview": "Resumen",
+    "groupPositions": "Posiciones",
+    "groupResearch": "Investigación",
+    "groupPerformance": "Rendimiento",
     "currentRuntime": "Entorno actual:",
     "cloudVpsLabel": "SomeoClaw (Cloud VPS)",
     "localConnectedLabel": "OpenClaw local (Conectado)",
@@ -955,6 +965,10 @@
     "title": "Configuración",
     "languageLabel": "Idioma de la interfaz",
     "languageDesc": "Elija el idioma de la interfaz. Los tickers bursátiles, abreviaturas técnicas y nombres propios no cambiarán.",
+    "cardLayoutLabel": "Categorización de tarjetas",
+    "cardLayoutDesc": "Elija si las tarjetas de datos de la pantalla de inicio se agrupan por categoría o se muestran como una lista plana. Se aplica a los tres modos: Estrategia de Acciones, Mercado de Predicción del Mundial y Mercados Macro.",
+    "cardLayoutCategorized": "Categorizado",
+    "cardLayoutFlat": "Lista plana",
     "themeLabel": "Tema",
     "themeDesc": "Esquema de colores de la interfaz",
     "dark": "Oscuro",
@@ -1255,6 +1269,9 @@
     "skipped": "omitidos",
     "trackRecord": "Historial (híbrido)",
     "colSpan": "Período",
-    "trackOpen": "Abierto"
+    "trackOpen": "Abierto",
+    "trackBacktest": "Backtest",
+    "trackLive": "En vivo",
+    "trackNote": "Hasta el {{cutover}} es un backtest walk-forward point-in-time de la misma regla híbrida, sin órdenes reales. Desde el {{cutover}} es el registro en vivo (papel)."
   }
 }
