@@ -26,6 +26,24 @@ On a model already graded Brier-behind-market, isotonic "calibration" converges 
 the base rate — statistically faithful, and still poison for Kelly, which reads a
 flat probability vs a sloped price curve as edge everywhere below base rate.
 Re-enabling requires a preregistered forward criterion; do not un-pin ad hoc.
+
+2026-08-11 design study (exploratory, K=8: 4 candidates x 2 protocols): the pin was
+then MEASURED against professionally-designed alternatives — Platt (2 params), beta
+(3 params), the incident isotonic as control, and a guarded isotonic (equal event
+weights + n_ev/(n_ev+20) shrink to identity + Laplace tail clamp) — forward-chained
+by event close over all 14 series pooled (60 scoreable events, 1,170 legs; partial
+pooling because per-series leg-bearing events number 2-12, the quote archive being
+~75 days deep). Per-leg Brier, strictly proper, no PnL selection:
+
+    raw 0.0767 < iso_g 0.0788 < beta 0.0792 < platt 0.0793 < iso 0.0806   (market 0.0375)
+
+Every calibrator loses to identity, the incident fitter loses worst, and the market
+halves all of them. There is no stable monotone miscalibration to learn at this
+sample size — the model's problem is being behind the market, and the only transform
+that helps with THAT is pooling toward market prices (fair_mode='pooled', a separate
+preregisterable question), not reshaping model probabilities. The pin is therefore
+the measured optimum, not a stopgap. Study script spec preserved here; probe was
+/tmp/calib_study2.py, not committed.
 """
 from __future__ import annotations
 
