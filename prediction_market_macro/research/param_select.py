@@ -123,6 +123,48 @@ def _matrix_for(conn, series: str, before: datetime, log=None):
     return grid, kept, mat, report
 
 
+def manual_params(conn, series: str, before: datetime) -> tuple[dict, str] | None:
+    """User-adopted parameter override, PIT-gated on its own adoption timestamp.
+
+    2026-08-11: the user directed adoption of the 75-day sweep argmin winners into
+    production per series, over the DSR gate's objection (every market sat below
+    MIN_OBS; the objection is recorded in README §E and the adoption in the row's
+    note field). The override is a row, not a code change, so it is reversible by
+    `clear_manual` and auditable in `experiments`. The PIT clause matters for the
+    walkforward: a simulated day BEFORE the adoption instant uses the normal
+    selector path, so historical replays are not contaminated by today's decision.
+    """
+    r = conn.execute(
+        "SELECT metrics_json, created_ts FROM experiments WHERE name='manual_params'"
+        " AND series=? ORDER BY created_ts DESC LIMIT 1", (series,)).fetchone()
+    if r is None:
+        return None
+    m = json.loads(r["metrics_json"] or "{}")
+    if not m.get("active") or before.isoformat() < r["created_ts"]:
+        return None
+    return dict(m.get("params") or {}), r["created_ts"]
+
+
+def set_manual(conn, series: str, params: dict, note: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
+        " metrics_json, created_ts) VALUES('manual_params',?,?,?,?,?)",
+        (f"manual:{series}", series, "live",
+         json.dumps({"active": True, "params": params, "note": note}), now))
+    conn.commit()
+
+
+def clear_manual(conn, series: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
+        " metrics_json, created_ts) VALUES('manual_params',?,?,?,?,?)",
+        (f"manual:{series}", series, "live",
+         json.dumps({"active": False, "params": {}, "note": "cleared"}), now))
+    conn.commit()
+
+
 def select_for(conn, series: str, before: datetime, adopt_p: float = _dsr.ADOPT_P,
                log=None) -> tuple[dict, dict]:
     """(params, report) for one series as of `before`. `params` is {} for the defaults.
@@ -131,6 +173,13 @@ def select_for(conn, series: str, before: datetime, adopt_p: float = _dsr.ADOPT_
     never saw day D's own settle. That is the same PIT contract `param_wf` replays under,
     which is what makes the historical comparison predictive of this.
     """
+    mp = manual_params(conn, series, before)
+    if mp is not None:
+        params, since = mp
+        return params, {"series": series, "adopted": True, "chosen": "manual",
+                        "mode": "manual", "n_obs": None,
+                        "asof": before.isoformat(),
+                        "reason": f"manual_params row active since {since}"}
     grid, kept, mat, grid_report = _matrix_for(conn, series, before, log=log)
     rep = {"series": series, "objective": OBJECTIVE, "asof": before.isoformat(),
            "pool": POOLED_SERIES.get(series), "n_sets": len(grid),
