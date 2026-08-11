@@ -235,7 +235,9 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
         # dollars are untouched, but the ROI DENOMINATOR inflates, so `roi` here — which
         # `gate_verdict` tests and `series_enable` now folds over — read better than the
         # strategy is. Only bucket structures differ, which is why it hid three times.
-        staked = st.fill_cost(count) * count
+        # 2026-08-11 convention: stake includes entry taker fees (ROI floor -100%)
+        staked = st.fill_cost(count) * count + sum(
+            taker_fee(l.price, count) for l in st.legs)
         # per-strike capture key: distance from the model mean in grid steps
         if model_mean is not None and st.legs[0].ticker and st.kind == "single":
             strike = next((m["strike"] for m in meta

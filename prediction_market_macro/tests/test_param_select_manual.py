@@ -39,6 +39,21 @@ def test_pit_a_replay_before_adoption_does_not_see_it():
     assert ps.manual_params(c, "KXNATGASW", earlier) is None
 
 
+def test_current_sees_manual_too():
+    """The 2026-08-11 incident: predict_all reads current(), not select_for, and the
+    fingerprint carry-forward in refresh copied a pre-adoption {} row — adopted params
+    silently missed a morning of production predictions. current() must consult the
+    manual override itself; one override, every door."""
+    c = _conn()
+    c.execute("""CREATE TABLE param_selection(series TEXT, day TEXT, params_json TEXT,
+                 adopted TEXT, n_obs INT, n_trials INT, dsr_p REAL, report_json TEXT,
+                 created_ts TEXT)""")
+    c.execute("INSERT INTO param_selection(series, day, params_json) VALUES"
+              " ('KXNATGASW', '2026-08-11', '{}')")          # the stale copied row
+    ps.set_manual(c, "KXNATGASW", {"fut_vol_window": 40}, note="x")
+    assert ps.current(c, "KXNATGASW") == {"fut_vol_window": 40}
+
+
 def test_clear_deactivates_and_history_keeps_both_rows():
     c = _conn()
     ps.set_manual(c, "KXWTIW", {"fut_vol_window": 20}, note="x")

@@ -139,7 +139,10 @@ def test_the_stake_on_a_blocked_row_is_the_would_be_stake_not_zero():
     body = _run_body()
     row = body[body.index("feature_rows.append("):]
     row = row[:row.index("peak = ")]
-    assert '"staked": round(st.fill_cost(count) * count, 4)' in row
+    # 2026-08-11: stake now also carries entry taker fees (user display
+    # convention, ROI floor -100%). Still fill_cost-based — the §25.2a
+    # leg-sum inflation this test guards against remains impossible.
+    assert '"staked": round(st.fill_cost(count) * count + entry_fees, 4)' in row
 
 
 def test_a_shadow_run_cannot_overwrite_the_production_experiment_row():

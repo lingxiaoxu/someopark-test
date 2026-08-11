@@ -288,6 +288,14 @@ def current(conn, series: str, day: str | None = None) -> dict:
     that horizon it does return defaults: a month-old selection is a stale artefact, and
     quietly running on it would be worse than running on what is registered.
     """
+    # manual_params outranks the table here exactly as it does in select_for — this is
+    # the read `predict_all`/ticks actually make, and on 2026-08-11 the adopted params
+    # silently missed a whole morning of production predictions because the fingerprint
+    # carry-forward in `refresh` copied a pre-adoption row and only THIS function was
+    # consulted. One override, every door, or the override is a lie.
+    mp = manual_params(conn, series, datetime.now(timezone.utc))
+    if mp is not None:
+        return dict(mp[0])
     d = day or datetime.now(timezone.utc).date().isoformat()
     floor = (datetime.fromisoformat(d).date() - timedelta(days=MAX_STALE_DAYS)).isoformat()
     row = conn.execute(

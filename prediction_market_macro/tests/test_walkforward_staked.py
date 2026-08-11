@@ -79,5 +79,8 @@ def test_the_call_site_uses_fill_cost_not_a_leg_sum():
     src = inspect.getsource(walkforward)
     body = src[src.index("def _trade_row"):]
     row = body[:body.index("return {") + body[body.index("return {"):].index("}")]
-    assert '"staked": round(st.fill_cost(count) * count, 4)' in row
+    # 2026-08-11: stake now also carries entry taker fees (user display
+    # convention, ROI floor -100%). Still fill_cost-based — the §25.2a
+    # leg-sum inflation this test guards against remains impossible.
+    assert '"staked": round(st.fill_cost(count) * count + entry_fees, 4)' in row
     assert "sum(l.price for l in st.legs) * count" not in row

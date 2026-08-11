@@ -924,6 +924,12 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 return settle_struct(st.legs, count, results)
 
             def _trade_row(st, count, realized, stream):
+                # 2026-08-11 display convention (user instruction): `staked` = net
+                # premium PLUS entry taker fees — the full cash a losing position
+                # forfeits — so ROI bottoms out at exactly -100% instead of running
+                # past it by the fee. `realized` already nets the same fees, so
+                # numerator and denominator now describe the same cash.
+                entry_fees = round(sum(taker_fee(l.price, count) for l in st.legs), 4)
                 lead_days = (ev["close_ts"] - day).total_seconds() / 86400.0
                 # captured BEFORE #142's exit can overwrite `realized` — see `_settle_y`
                 settle_y = _settle_y(st)
@@ -1002,7 +1008,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                     # free, and PIT by construction (same `earlier` prefix)
                     "ser_roi": _es.get("roi"), "ser_n": _es.get("n", 0),
                     # — the label —
-                    "staked": round(st.fill_cost(count) * count, 4),
+                    "staked": round(st.fill_cost(count) * count + entry_fees, 4),
                     "realized": round(realized, 4), "won": realized > 0,
                     "exit_day": None if ex is None else ex["day"],
                     "exit_rule": None if ex is None else ex["rule"]})
@@ -1035,7 +1041,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                         # better than it is. Measured on the displayed 75-day window: 6
                         # bucket trades booked $22.53 against $4.53 of real risk, and the
                         # headline hybrid ROI read -9.17% instead of -13.21%.
-                        "staked": round(st.fill_cost(count) * count, 4),
+                        "staked": round(st.fill_cost(count) * count + entry_fees, 4),
                         "realized": round(realized, 4), "won": realized > 0,
                         "lead_days": round(lead_days, 1),
                         "settle": ev["close_ts"].date().isoformat(),

@@ -309,10 +309,18 @@ def refresh_from_web(conn) -> dict:
                 r"Oct|Nov|Dec)\.?\s+(\d{1,2}),?\s+(20\d\d)", html):
             web_dates.add(date(int(m.group(3)), months[m.group(1)], int(m.group(2))))
         if not web_dates:
+            # 2026-08-10 taught the 200-shaped version of the 403 lesson above: BLS
+            # intermittently serves a challenge/outage page WITH status 200, and the
+            # old message sent the reader hunting for a page-format change that never
+            # happened (regex re-verified 16/16 hits on the real page next day). The
+            # release-list table marker separates "page changed" from "not the page".
+            shape = ("page-format change (release-list table present but no dates"
+                     " matched — check regex)" if "release-list" in html else
+                     "NOT the schedule page — likely a 200-status block/challenge or"
+                     " outage page; transient, re-checked next weekly run")
             conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                          (now.isoformat(), "warn", "calendar",
-                          f"refresh_from_web {cal}: page fetched but zero dates"
-                          f" parsed — check regex vs page format"))
+                          f"refresh_from_web {cal}: zero dates parsed — {shape}"))
             continue
         src = _CPI if cal == "BLS_CPI" else _JOBS
         for period, d in src.items():

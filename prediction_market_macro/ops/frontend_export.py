@@ -327,9 +327,14 @@ def run_extended(conn, settings) -> str:
             " AND d.ts_utc>=? ORDER BY d.id", (TRACK_CUTOVER,)).fetchall():
         st = json.loads(r["structure_json"] or "{}")
         close = closed_by.get(r["id"])
+        # 2026-08-11 convention: stake includes the entry taker fees recorded on the
+        # fills, so live-segment ROI bottoms out at -100% like the backtest's.
+        fee = conn.execute("SELECT COALESCE(SUM(fee_usd),0) f FROM fills"
+                           " WHERE decision_id=?", (r["id"],)).fetchone()["f"]
         row = {"ts": r["ts_utc"], "day": r["ts_utc"][:10], "series": r["series"],
                "period": r["period"], "kind": r["kind"], "desc": st.get("desc"),
-               "fair": r["fair"], "cost": r["ask"], "staked": r["size_usd"]}
+               "fair": r["fair"], "cost": r["ask"],
+               "staked": round((r["size_usd"] or 0) + fee, 4)}
         if close is not None:
             realized = _ledger.realized_usd(close)
             live_settled.append({**row, "realized": realized,

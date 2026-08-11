@@ -239,8 +239,13 @@ def _staked(st, count: int) -> float:
     displayed 75-day hybrid ROI from -9.17% to -13.21%; the two were written from the same
     wrong mental model and have to be fixed together. Singles are unaffected, which is why it
     hid: only the bucket structures (KXWTIW / natgas / claims `between` legs) differ.
+
+    2026-08-11 (user display convention): entry taker fees are part of the stake — the
+    full cash a losing position forfeits — so ROI bottoms out at -100% exactly.
+    `event_pnl`'s realized nets the same fees; numerator and denominator match.
     """
-    return round(st.fill_cost(count) * count, 4)
+    return st.fill_cost(count) * count + sum(taker_fee(l.price, count)
+                                             for l in st.legs)
 
 
 def event_pnl(conn, series: str, tok: str, key: str, close_ts: datetime,
