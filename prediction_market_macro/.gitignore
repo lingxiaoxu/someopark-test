@@ -6,3 +6,4 @@ data/ckpt/
 data/dfm_ckpt/
 data/logs/
 data/output/
+data/macro_backup_*.db
