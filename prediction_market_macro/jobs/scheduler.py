@@ -171,6 +171,19 @@ def watchdog(conn, now: datetime | None = None, grace_min: int = 30) -> list[dic
         r = conn.execute(
             "SELECT MAX(asof) m FROM preds WHERE series=? AND period=?",
             (sp["series"], key)).fetchone()
+        if r["m"] is None:
+            # Listing grace (2026-08-11): a NEVER-predicted period used to breach the
+            # instant the watchdog saw it, which made every KXAAAGASW week a false
+            # alarm — the new Monday period lists Sunday midday, its runs are only
+            # materialized and predicted by the NEXT morning refresh, and the alert
+            # fired twice in between (observed 08-10 13:59 + 08-11 00:59; the pred
+            # then landed 09:25 on its own). The 24h clock starts at LISTING
+            # (first_seen_ts), same window the "stale" arm already uses.
+            fs = conn.execute(
+                "SELECT MIN(first_seen_ts) f FROM contracts WHERE series=? AND"
+                " period=?", (sp["series"], sp["period"])).fetchone()
+            if fs["f"] is not None and fs["f"] >= stale_cut:
+                continue
         if r["m"] is None or r["m"] < stale_cut:
             msg = f"pred-freshness SLA breach {sp['series']}/{key} last={r['m']}"
             dup = conn.execute(

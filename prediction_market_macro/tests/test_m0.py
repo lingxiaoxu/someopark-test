@@ -115,12 +115,28 @@ def test_close_anchored_skips_closed_and_past_contracts(conn):
 
 
 def test_pred_freshness_sla(conn):
+    """Listing grace (2026-08-11): a period listed <24h ago with no pred yet is NOT a
+    breach — every KXAAAGASW Monday period used to false-alarm twice in the gap
+    between Sunday listing and Monday's first predict. The clock starts at
+    first_seen_ts; past 24h with still no pred, it IS a breach."""
     now = datetime(2026, 8, 1, tzinfo=timezone.utc)
     conn.execute("INSERT INTO contracts(ticker, series, event_ticker, period, status,"
                  " first_seen_ts) VALUES('T1','KXCPI','KXCPI-26JUL','26JUL','active',?)",
-                 (now.isoformat(),))
+                 ((now - timedelta(hours=2)).isoformat(),))
     conn.commit()
     missed = scheduler.watchdog(conn, now=now)
+    assert not any(m.get("task") == "pred_sla" for m in missed), \
+        "freshly listed period must get the 24h grace"
+    # same period, next day, still no pred → now it is a real breach
+    missed = scheduler.watchdog(conn, now=now + timedelta(hours=25))
+    assert any(m.get("task") == "pred_sla" for m in missed)
+    # and a STALE pred (older than 24h) breaches regardless of listing age
+    conn.execute("INSERT INTO preds(series, period, asof, model_version, dist_json,"
+                 " data_horizon, created_ts) VALUES('KXCPI','2026-07',?,?,?,?,?)",
+                 ((now - timedelta(hours=30)).isoformat(), 'cpi/0.2.0', '{}',
+                  now.isoformat(), now.isoformat()))
+    conn.commit()
+    missed = scheduler.watchdog(conn, now=now + timedelta(hours=25))
     assert any(m.get("task") == "pred_sla" for m in missed)
 
 
