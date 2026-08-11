@@ -21,10 +21,11 @@ the live path had available on that day, so there is no leakage and no mismatch.
                a hybrid that keeps betting favourites on a blocked series is not the live
                rule.
 
-  calibration  Isotonic map on OOS (fair, outcome) leg pairs, identity below 200 pairs.
-               Only KXAAAGASW and KXNATGASW ever accumulate enough; the other twelve
-               series are identity in production too, so for them this is a no-op both
-               sides rather than a difference being papered over.
+  calibration  PINNED TO IDENTITY on both sides since 2026-08-10 (see GateHistory.asof
+               and strategy/calibration.py): the isotonic maps fit on event-clustered
+               per-leg pairs produced 0/1-certainty plateaus and base-rate shelves, and
+               live decision #4346 bought a raw-fair-0.334 leg as fair 0.60 off one.
+               The map machinery stays for research (shadow row); no fair is modified.
 
   conformal    ACI on the model's own per-event Brier sequence; a breach halves
                `max_size_usd`. Sizing only — it cannot open or close a position.
@@ -54,7 +55,7 @@ from prediction_market_macro.strategy import capture as _capture
 from prediction_market_macro.strategy import conformal as _conformal
 from prediction_market_macro.strategy import series_enable as _series_enable
 from prediction_market_macro.strategy import skill as _skill
-from prediction_market_macro.strategy.calibration import MIN_PAIRS, fit_map, interp
+from prediction_market_macro.strategy.calibration import interp
 
 
 def period_closes(conn, series: str) -> dict[str, datetime]:
@@ -200,9 +201,14 @@ class GateHistory:
             return st
         recs = [r for c, r in self.per if c < day]
 
-        pairs = [(f, o) for r in recs for f, _mp, o in (r.get("legs-1h") or [])]
-        cal = fit_map(pairs) if len(pairs) >= MIN_PAIRS else None
-        cal_xy = (cal["x"], cal["y"]) if cal and cal.get("x") and cal.get("y") else None
+        # Calibration PINNED TO IDENTITY (2026-08-10), mirroring the live path — see
+        # strategy/calibration.py's module docstring for the incident. The per-leg
+        # pairs here are clustered by event exactly like the live refit's were, so the
+        # PIT-fit maps this used to build had the same cliff/certainty pathology; the
+        # backtest and the ledger have to be the same strategy, and that strategy no
+        # longer applies a map. Un-pinning here without un-pinning live (or vice
+        # versa) recreates the #128-class divergence this module exists to prevent.
+        cal_xy = None
 
         paired = [(r["brier_model-1h"], r["brier_market-1h"]) for r in recs
                   if r.get("brier_model-1h") is not None

@@ -59,3 +59,21 @@ def test_eval_source_keeps_the_live_map_pinned():
     assert "store_named_map(conn, series, \"calibration_map_shadow\"" in src
     assert "store_map(conn, series, None)" in src
     assert "store_map(conn, series, fit_map(pairs))" not in src
+
+
+def test_walkforward_harness_is_pinned_too():
+    """The PIT harness rebuilt its own maps per simulated day (pit_gates.GateHistory);
+    pinning live but not the harness would re-create the #128-class divergence where
+    the displayed backtest runs a different strategy than the ledger. Same text-level
+    guard, plus a behavioural check that GateState applies no map."""
+    from prediction_market_macro.research import pit_gates
+    src = inspect.getsource(pit_gates)
+    assert "cal_xy = None" in src
+    assert "fit_map(pairs)" not in src
+
+    class _S:
+        fair = 0.334
+
+    gs = pit_gates.GateState.__new__(pit_gates.GateState)
+    gs.cal_xy = None
+    assert gs.calibrate_structs([_S()])[0].fair == 0.334

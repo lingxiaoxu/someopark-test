@@ -142,15 +142,18 @@ def test_the_ratio_ignores_events_with_no_market_score(monkeypatch):
     assert _history(monkeypatch, closes, per).asof(D).skill_ratio == pytest.approx(3.0)
 
 
-def test_calibration_stays_identity_until_the_live_min_pairs(monkeypatch):
+def test_calibration_is_pinned_to_identity_at_any_sample_size(monkeypatch):
+    """2026-08-10 pin: the maps this harness used to fit were built on
+    event-clustered per-leg pairs and produced 0/1-certainty plateaus (live decision
+    #4346 bought a raw-fair-0.334 leg as fair 0.60 off the live twin of one), so BOTH
+    the live path and this harness now apply no map. This test used to assert the
+    opposite (fit once >= MIN_PAIRS); flipping it is the point, not an accident."""
     from prediction_market_macro.strategy.calibration import MIN_PAIRS
     closes = {"a": D - timedelta(days=1)}
-    thin = [_rec("a", 0.1, 0.1, [(0.5, 0.5, 1.0)] * (MIN_PAIRS - 1))]
-    assert _history(monkeypatch, closes, thin).asof(D).cal_xy is None
     fat = [_rec("a", 0.1, 0.1,
-                [(i / MIN_PAIRS, 0.5, float(i > MIN_PAIRS / 2))
-                 for i in range(MIN_PAIRS)])]
-    assert _history(monkeypatch, closes, fat).asof(D).cal_xy is not None
+                [(i / (2 * MIN_PAIRS), 0.5, float(i > MIN_PAIRS))
+                 for i in range(2 * MIN_PAIRS)])]
+    assert _history(monkeypatch, closes, fat).asof(D).cal_xy is None
 
 
 def test_capture_memory_only_counts_trades_that_had_already_settled(monkeypatch):

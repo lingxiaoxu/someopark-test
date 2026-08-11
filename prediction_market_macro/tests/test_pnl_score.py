@@ -188,16 +188,21 @@ def test_db_state_gates_ARE_consulted_and_come_from_pit_gates(conn):
 
 # ── #142's exit rules, on this side of the fence too (#144) ─────────────────────
 
-# The six events in the pinned window where `ops/exits.py`'s rules fire before settlement,
+# The events in the pinned window where `ops/exits.py`'s rules fire before settlement,
 # with the exit day and the realised dollars the harness books. Named rather than
 # discovered at runtime so a regression that silently stops exiting cannot pass by finding
 # an empty set. (series, period, exit_day, realised_with_exits, realised_if_held)
+#
+# KXNATGASW 2026-06-26 used to be the sixth row (-0.08 exit on 06-21 vs +0.39 held):
+# that entry existed only under the pre-2026-08-10 PIT calibration map — the inflated
+# fair changed both which structure decide() ranked first AND when hold_edge crossed
+# the exit threshold. Under the identity pin the event enters a different structure and
+# holds to settlement; it is pinned separately below, not silently dropped.
 EXITED = [
     ("KXAAAGASW", "2026-06-01", "2026-05-27", 0.70, 1.00),
     ("KXAAAGASW", "2026-06-08", "2026-06-03", 0.63, 1.08),
     ("KXAAAGASW", "2026-06-29", "2026-06-25", 0.11, -0.60),
     ("KXNATGASW", "2026-06-05", "2026-06-02", 0.23, 0.40),
-    ("KXNATGASW", "2026-06-26", "2026-06-21", -0.08, 0.39),
     ("KXPCECORE", "2026-04", "2026-05-27", 0.05, -0.79),
 ]
 
@@ -235,6 +240,25 @@ def test_a_held_position_is_closed_by_the_live_rules_not_carried_to_settlement(
     assert got["edge"] == pytest.approx(with_exit, abs=1e-6)
     assert held["edge"] == pytest.approx(if_held, abs=1e-6), \
         "the hold-to-settlement arm moved — model_exits=False is no longer the old path"
+
+
+def test_natgasw_0626_no_longer_exits_under_the_calibration_pin(conn):
+    """The identity pin's one behavioural change in this fixture window, asserted so
+    it cannot drift unnoticed: with no PIT map inflating fair, this event picks
+    'NO ...T2.999 @0.13' and holds it to a -0.97 settlement on BOTH arms. If this
+    test ever sees an exit_rule again, either the pin was lifted or the exit rules
+    changed — both must be deliberate."""
+    ev = _event(conn, "KXNATGASW", "2026-06-26")
+    if ev is None:
+        pytest.skip("KXNATGASW 2026-06-26 not quotable in this db")
+    got = ps.event_pnl(conn, "KXNATGASW", ev["tok"], "2026-06-26", ev["close_ts"])
+    held = ps.event_pnl(conn, "KXNATGASW", ev["tok"], "2026-06-26", ev["close_ts"],
+                        model_exits=False)
+    tr = got["trade"] or {}
+    assert tr.get("exit_rule") is None and tr.get("exit_day") is None
+    assert "T2.999" in tr.get("desc", "")
+    assert got["edge"] == pytest.approx(-0.97, abs=1e-6)
+    assert held["edge"] == pytest.approx(-0.97, abs=1e-6)
 
 
 def test_the_exit_rules_are_walkforwards_own_and_not_a_third_copy(conn):
