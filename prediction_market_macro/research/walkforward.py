@@ -287,7 +287,8 @@ class _GateBook:
     """
 
     def __init__(self, conn, db_gates: bool, select_params: bool, log=None,
-                 param_override: dict[str, dict] | None = None):
+                 param_override: dict[str, dict] | None = None,
+                 select_mode: str = "dsr", argmin_start=None, argmin_end=None):
         self.conn, self.db_gates, self.select_params, self.log = (conn, db_gates,
                                                                   select_params, log)
         # research knob (brute-force param sweep): {series: params} that takes
@@ -296,6 +297,15 @@ class _GateBook:
         # a distinguishing hash_tag or the experiments row would collide with the
         # canonical one (run() enforces the pairing).
         self.param_override = param_override or {}
+        # select_mode='argmin' replays the 2026-08-11 production selector (daily raw
+        # argmin over the trailing window, research/param_argmin) instead of the
+        # DSR-gated one. PIT by the param_wf architecture: the PnL matrix is scored
+        # once per series (each event at its own close-1h) and day-D selection is a
+        # MASK over events that closed strictly before D — day D can never see its
+        # own settle. The grid is probed on events before the sim window.
+        self.select_mode = select_mode
+        self.argmin_start, self.argmin_end = argmin_start, argmin_end
+        self._amx: dict[str, tuple] = {}
         self._hist: dict[str, object] = {}
         self._params: dict[tuple[str, str], dict] = {}
         self.stats = {"skill_blocked": 0, "skill_defensive": 0, "capture_dropped": 0,
@@ -340,6 +350,8 @@ class _GateBook:
             return self.param_override[series]
         if not self.select_params:
             return None
+        if self.select_mode == "argmin":
+            return self._argmin_params(series, day)
         from prediction_market_macro.research import param_select as _ps
         try:
             key = _ps._sample_key(self.conn, series, day)
@@ -360,6 +372,43 @@ class _GateBook:
                     self.log(f"  {series} {day.date()}: ADOPTED {params}")
             hit = self._params[(series, key)] = params
         return hit or None
+
+    def _argmin_matrix(self, series: str):
+        """(grid, kept_events, matrix) scored ONCE per series; day selection masks it."""
+        hit = self._amx.get(series)
+        if hit is not None:
+            return hit
+        from prediction_market_macro.research import param_argmin as _pa
+        from prediction_market_macro.research import pnl_score as _psc
+        from prediction_market_macro.util.periods import kalshi_period_to_key
+        grid, _rep = _pa.build(self.conn, series, self.argmin_start)
+        kept, mat = [], []
+        if len(grid) > 1:
+            uni = [{**e, "key": kalshi_period_to_key(e["tok"]), "close": e["close_ts"]}
+                   for e in _psc.quotable_events(self.conn, series,
+                                                 before=self.argmin_end)]
+            uni = [e for e in uni if e["key"]]
+            if uni:
+                if self.log:
+                    self.log(f"  argmin matrix: {series} {len(grid)} sets x "
+                             f"{len(uni)} events")
+                kept, mat, _det = _psc.score_matrix(self.conn, series, grid, uni)
+        hit = self._amx[series] = (grid, kept, mat)
+        return hit
+
+    def _argmin_params(self, series: str, day: datetime) -> dict | None:
+        from datetime import timedelta as _td
+        from prediction_market_macro.research.param_argmin import WINDOW_DAYS
+        grid, kept, mat = self._argmin_matrix(series)
+        if len(grid) < 2 or not kept:
+            return None
+        lo = day - _td(days=WINDOW_DAYS)
+        rows = [i for i, e in enumerate(kept) if lo <= e["close"] < day]
+        if not rows:
+            return None
+        totals = [sum(mat[i][j] for i in rows) for j in range(len(grid))]
+        best = max(range(len(grid)), key=lambda j: totals[j])
+        return dict(grid[best]) if best else None
 
 
 def _sim_risk_veto(open_rows: list[dict], series: str, period: str, size_usd: float,
@@ -405,7 +454,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
         select_params: bool = True, argmax_filter: bool = True,
         model_exits: bool = True, shadow_blocked: bool = False, log=None,
         param_override: dict[str, dict] | None = None,
-        hash_tag: str = "") -> dict:
+        hash_tag: str = "", select_mode: str = "dsr") -> dict:
     """max_lead_days: entry allowed only when days-to-close <= this (the sweep
     knob — each lead sees DIFFERENT data and different predictions at its asof).
 
@@ -531,8 +580,15 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
     if param_override and not hash_tag:
         raise ValueError("param_override requires a hash_tag — an untagged override "
                          "run would overwrite the canonical experiments row")
+    if select_mode not in ("dsr", "argmin"):
+        raise ValueError(f"unknown select_mode {select_mode!r}")
+    if select_mode == "argmin" and not select_params:
+        raise ValueError("select_mode='argmin' is a selector mode — it requires "
+                         "select_params=True")
     book = _GateBook(conn, db_gates=db_gates, select_params=select_params, log=log,
-                     param_override=param_override)
+                     param_override=param_override, select_mode=select_mode,
+                     argmin_start=sim_end - timedelta(days=days),
+                     argmin_end=sim_end)
 
     def _open_rows(on_day: datetime) -> list[dict]:
         """The simulated book on `on_day`: entered on or before it, not yet closed out.
@@ -1240,11 +1296,15 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
            "by_series": by_series, "lead_buckets": lead_buckets,
            "curve": curve[-60:], "trades": trades[-60:],
            "db_gates": db_gates, "select_params": select_params,
+           "select_mode": select_mode,
            "argmax_filter": argmax_filter, "model_exits": model_exits,
            "gate_stats": dict(book.stats),
            "note": ("db-state gates ON, rebuilt per simulated day from strictly-earlier"
-                    " closes (research/pit_gates); params from the daily selector;"
-                    " ops/exits.py rules 1+3 modelled daily (#142)"
+                    " closes (research/pit_gates); params from the daily "
+                    + ("raw-argmin selector (research/param_argmin, the production"
+                       " selector since 2026-08-11), PIT via matrix masking"
+                       if select_mode == "argmin" else "selector")
+                    + "; ops/exits.py rules 1+3 modelled daily (#142)"
                     if db_gates and select_params and argmax_filter and model_exits else
                     f"db_gates={db_gates} select_params={select_params}"
                     f" argmax_filter={argmax_filter} model_exits={model_exits}"
@@ -1263,6 +1323,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 # collision here would be invisible. The headline would still read
                 # correctly while the stored training set had silently changed shape.
                 f"{':shadowblocked' if shadow_blocked else ''}"
+                f"{':argminsel' if select_mode == 'argmin' else ''}"
                 f"{':' + hash_tag if hash_tag else ''}")
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
@@ -1382,6 +1443,11 @@ def main():
                          " (#147/§25.17). PnL-neutral: blocked rows never enter trades."
                          " Research only — it makes the column readable, it does not"
                          " validate §25.4, and a verdict still needs a forward window.")
+    ap.add_argument("--select-argmin", action="store_true",
+                    help="replay the 2026-08-11 production selector (daily raw argmin,"
+                         " research/param_argmin) instead of the DSR-gated one. PIT via"
+                         " matrix masking; this IS the live rule since the policy"
+                         " change, so runs backing a displayed segment should use it.")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
     end = None
@@ -1405,6 +1471,7 @@ def main():
               argmax_filter=not args.no_argmax_filter,
               model_exits=not args.no_model_exits,
               shadow_blocked=args.shadow_blocked,
+              select_mode="argmin" if args.select_argmin else "dsr",
               log=print if args.verbose else None)
     print(json.dumps({k: v for k, v in out.items() if k not in ("trades", "curve")},
                      indent=1, ensure_ascii=False))
