@@ -174,7 +174,13 @@ def run(conn, settings) -> str:
 # The two segments are NOT the same kind of evidence and the UI must keep saying so —
 # `macro.trackBacktest` / `macro.trackLive` chips plus `macro.trackNote`, which states in
 # all five locales that the first segment was never traded. Do not merge or relabel them.
-TRACK_CUTOVER = "2026-08-05T00:00:00+00:00"
+# 2026-08-11: cutover moved from 08-05 per user's trial-phase reset ("试运营阶段只保留
+# 最后一个状态"). The production selector changed that day to daily raw argmin
+# (research/param_argmin); the history segment is the PIT replay of THAT selector
+# (:argminsel run), and the live segment restarts at the regime it measures. The nine
+# 08-05..08-10 paper trades under the old selector remain in the ledger (append-only)
+# but are no longer displayed — same treatment as the pre-08-05 trial trades before them.
+TRACK_CUTOVER = "2026-08-11T00:00:00+00:00"
 
 
 def run_extended(conn, settings) -> str:
