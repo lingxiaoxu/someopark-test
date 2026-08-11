@@ -286,9 +286,16 @@ class _GateBook:
     the second affordable — without it this is a full grid replay on all 60 days).
     """
 
-    def __init__(self, conn, db_gates: bool, select_params: bool, log=None):
+    def __init__(self, conn, db_gates: bool, select_params: bool, log=None,
+                 param_override: dict[str, dict] | None = None):
         self.conn, self.db_gates, self.select_params, self.log = (conn, db_gates,
                                                                   select_params, log)
+        # research knob (brute-force param sweep): {series: params} that takes
+        # precedence over BOTH the daily selector and the registered defaults for
+        # that series. Never set on a production-shaped run; the caller must carry
+        # a distinguishing hash_tag or the experiments row would collide with the
+        # canonical one (run() enforces the pairing).
+        self.param_override = param_override or {}
         self._hist: dict[str, object] = {}
         self._params: dict[tuple[str, str], dict] = {}
         self.stats = {"skill_blocked": 0, "skill_defensive": 0, "capture_dropped": 0,
@@ -329,6 +336,8 @@ class _GateBook:
         cannot change until a new scoreable event settles, so a 60-day sim costs one
         rescore per settle rather than 60 per series.
         """
+        if series in self.param_override:      # research sweep: fixed for the whole run
+            return self.param_override[series]
         if not self.select_params:
             return None
         from prediction_market_macro.research import param_select as _ps
@@ -394,7 +403,9 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
         max_lead_days: float | None = None, fair_mode: str = "model",
         end: datetime | None = None, db_gates: bool = True,
         select_params: bool = True, argmax_filter: bool = True,
-        model_exits: bool = True, shadow_blocked: bool = False, log=None) -> dict:
+        model_exits: bool = True, shadow_blocked: bool = False, log=None,
+        param_override: dict[str, dict] | None = None,
+        hash_tag: str = "") -> dict:
     """max_lead_days: entry allowed only when days-to-close <= this (the sweep
     knob — each lead sees DIFFERENT data and different predictions at its asof).
 
@@ -517,7 +528,11 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
     # customer-facing record. Every field here is knowable AT THE MOMENT OF THE BET —
     # that is the whole contract of this list, and `research/confidence.py` relies on it.
     feature_rows: list[dict] = []
-    book = _GateBook(conn, db_gates=db_gates, select_params=select_params, log=log)
+    if param_override and not hash_tag:
+        raise ValueError("param_override requires a hash_tag — an untagged override "
+                         "run would overwrite the canonical experiments row")
+    book = _GateBook(conn, db_gates=db_gates, select_params=select_params, log=log,
+                     param_override=param_override)
 
     def _open_rows(on_day: datetime) -> list[dict]:
         """The simulated book on `on_day`: entered on or before it, not yet closed out.
@@ -1247,7 +1262,8 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 # while its PnL is identical BY CONSTRUCTION — which is exactly why a
                 # collision here would be invisible. The headline would still read
                 # correctly while the stored training set had silently changed shape.
-                f"{':shadowblocked' if shadow_blocked else ''}")
+                f"{':shadowblocked' if shadow_blocked else ''}"
+                f"{':' + hash_tag if hash_tag else ''}")
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
         " metrics_json, created_ts) VALUES('daily_walkforward',?,'*',?,?,?)",
