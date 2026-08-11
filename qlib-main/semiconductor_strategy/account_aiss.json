@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-08-07",
+  "as_of": "2026-08-11",
   "base_currency": "USD",
   "initial_cash": 1000000.0,
   "cash": 3419.77,
@@ -53,8 +53,8 @@
   "cumulative_realized": 62655.93,
   "cumulative_dividends": 476.06,
   "cumulative_fees": 336.24,
-  "equity": 1068424.64,
+  "equity": 1059469.58,
   "liabilities": {},
-  "unrealized": 5628.91,
-  "position_value": 1065004.87
+  "unrealized": -3326.15,
+  "position_value": 1056049.81
 }

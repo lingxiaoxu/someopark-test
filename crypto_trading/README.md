@@ -20,9 +20,44 @@ Kalshi crypto 永续合约(KXBTCPERP 等 13 个市场)的完整研究栈:自建�
 PIT 严格的回测/walk-forward 框架、成交感知撮合、以及 **12 个策略 × 3 个费率档位**的系统性验证。
 独立于 someopark-test 主项目(配对交易)与 qlib-main(SSRS/AISS),零依赖交叉。
 
-**当前结论(2026-08-10,Tier 4±1 资本规划下):证实可交易策略 = 0;三个点估计为正但未证显著(S1/S8/S9);
+**当前结论(2026-08-10,Tier 4±1 资本规划下):证实可交易策略 = 0;五个观察候选(S1/S8/S9 统计待证 + S3改 结构收入待确认 + **W5 knockdown 回测全过、待 live 捕获率**);
 详见[主验证表](#主验证表策略--时间结构--费率档位)。** 本框架的方法论产出已外溢至生产策略
 (SSRS/AISS 的同 bar 泄露报告与 DSR 公式修正均源于此)。
+
+---
+
+## 当前状态与实盘就绪度(2026-08-10)
+
+**研究阶段已完结,项目进入观察-等待期。** 12 个策略在 T3/4/5 三档费率下全部完成验证:
+证实可交易 = 0;**四个观察候选**(注册日 2026-08-10,配置冻结,只测不选):
+
+| | 冻结内容 | 转正判据 | 到判预估 |
+|---|---|---|---|
+| W1 / S1 basis | k3.5/abs10/off10/abort20/flowY @T4 | 注册后 n≥30 且 t≥2 | ~10 月中 |
+| W2 / S8 Chronos | bolt-base/指数/4h/ctx512/40bps 带 | 注册后 t≥2 **且**注册后均值>0 | ~9 月中起 |
+| W3 / S9 24h 动量 | 统一延续/\|z\|≥1/13 市场 | n≥1260 且 t≥2 | ~明年 3 月 |
+| **W4 / S3改 同资产 carry** | **常持空 perp+现货多,30d 资金费和止损** | 注册后 ≥60 天 且 t≥2 且 @spot50 净>0 | **~10 月中(或经批准提前小额实盘)** |
+| **W5 / knockdown(Poly 逆向复刻)** | **买刚被砸的近ATM二元侧,zone .15-.45/dip5c/tte5-45/深度≥50 张,KXBTC** | **探针捕获率 ≥25% 持续 ≥7 天 且纸面 P&L 达回测 50%**(回测已过全部对抗关:+24.5c/张 t=18.4) | **~8 月下旬(探针跑一周即判)** |
+
+**四个实盘执行模块已建成(`crypto_strategies/live_watch/`),全部默认 DISARMED:**
+每次运行都是完整排练——计算真实信号、构造真实订单(含 subaccount/tick/post_only)、写日志,
+但**不发送**,除非同时打开两级闸门:①`live_watch/config.yaml` 里该策略 `enabled: true`;
+②全局执行闸(prod key + `ALLOW_LIVE_ORDERS=1` + margin)。dry-run 状态自动积累**纸面交易记录**,
+与 watchlist 复验互为印证。
+
+```bash
+./pipeline.sh watch                    # 四策略跑一轮(dry-run)
+./pipeline.sh watch --loop 300         # daemon:W1 每分钟/W2 每5分/W3 每小时/W4 每日(节奏门控)
+./pipeline.sh watch --strategy w4 --confirm-spot   # W4 确认外部现货腿成交
+./pipeline.sh watchlist                # 月度:四候选冻结配置重测(judgment 输出)
+```
+
+安全设计:逐策略 kill-switch(实亏超限自动熄火且不自动复活)、W4 资金费数据陈旧自动拒动、
+现货腿永远显式人工确认;安全性质有专门测试锁定(`tests/test_live_watch.py`)。
+**W4 依赖每日 `./pipeline.sh backfill`(资金费新鲜度)。**
+
+等待期动作:录制照常 → 每月 `watchlist` + `tier_study` → 任一候选过线再谈武装。
+外生监控不变:kalshi.com/incentives、费率结构、30 天账户量(WC prediction 量计入档位)。
 
 ---
 
@@ -120,7 +155,7 @@ IC 0.41-0.59 证明管线健康)· 跨市场广度 · 尾部/集中度(剔最佳
 |---|---|---|---|---|---|---|---|---|---|
 | S1 | basis 选择性(45 配置) | 1 分钟 | 信号驱动,**实测 <15 分钟**(超时 15/30/60/120 全等价——从不触发) | ✅ 超时扫描本轮补;更长视界的 basis 信号由图谱 5m-4h 覆盖(全死) | +$0.28 t2.2 n12 | **+$0.48 t3.4 n18** | +$0.58 t4.1 | ⚠️ 转正未证(best-of-45,45-trial DSR 不过) | `tier_study_20260810_204428.json` |
 | S2 | 事件 gap → perp 腿 | ~90 秒 | ≤30/60/120 分钟(**已扫**;>2h 不可能,合约到期) | ✅ 全部可行持仓已扫 | — | — | — | ☠️ 恒等式:fill-aware 毛利 −2~−12bps,费≥0 ⇒ 净<0 | `fee_defeat_20260726_102821.json` |
-| S3 | funding carry(买入持有+β对冲) | 每日监控 | 数周-月(调仓 0/7/30 天**已扫**) | ✅ 持仓越长费占比越低(28 天费仅 0.08%@T4)——死因是无现货腿的价格风险 −4.04% | — | — | — | ☠️ 费非死因;Coinbase 现货腿为场外选项 | `carry_hold_20260731_115921.json` |
+| S3 | funding carry → **同资产现货对冲版**(空 KXBTCPERP+现货多 BTC,常持) | 每日监控(30d 资金费和止损) | **数月常持**(entries=1) | ✅ 调仓 0/7/30 天已扫;v1/v2 规则死于换手(13×/4×,已披露),v3 常持 | +3.49% | **+3.49%/yr**(现货 RT 20bps;50bps 时 +3.19) | +3.50% | ⚠️ **W4 观察中**:毛日 NW-t **+3.00**,残余 3.2% 波动(跨资产版 22.6%),所有档×费景净正;57 天单 regime,需外部现货账户 | `spot_hedged_*.json`·`carry_hold_20260731_115921.json`(旧版对照) |
 | S4 | 清算级联 fade | 10 秒 | ≤15 分钟(TP 50% 回补/时间止损) | ✅ 其机制在 2-4h 由 stress-family/episode 测过:合并 −6.05bps,死 | −$0.017 | −$0.019 | −$0.013 | ☠️ 三档全负;live 锚下 ≥15bps 事件≈0 | `tier_study_*.json`·`episode_test_20260728_084337.json`·`stress_family_20260728_084137.json` |
 | S5 | perp 轮动 | 每日 00:05 UTC | 数天-周(daily/**weekly 双频在 WF 参数集已测**) | ✅ | −0.5% | −0.4% | −0.3% | ☠️ 费曾是主出血(T0 −3.8%)但选股**费前**毁值(等权篮 +7.1%) | 复跑:`CRYPTO_FEE_TIER=4 python -m …perp_rotation.run_backtest` |
 | S6 | ML 方向(手工特征) | 5 分钟 | 恰 15 分钟(60m 变体同死) | ✅ 特征全家在图谱 5m→4h 扫过:1816 格,IS前10% OOS 仅 +0.61bps | −5.0 t−8.0 | −4.1 t−6.5 | −3.2 t−5.0 | ☠️ 毛利≈−1bps | `tier_study_*.json`·`ml_gate3_20260727_*.json`·`horizon_atlas_20260728_083950.json`·`pbo_20260731_113940.json` |
@@ -130,6 +165,8 @@ IC 0.41-0.59 证明管线健康)· 跨市场广度 · 尾部/集中度(剔最佳
 | S10 | 二元 above X | TTE 240/120/60/30/15/5 分钟检查点 | 持至结算(5 分钟-4 小时) | ✅ 全 TTE 检查点即视界扫描 | — | — | — | ☠️ 独立费制;**零费下界仍 −2.0c/张**(伪重复+陈旧报价双杀) | 模块 `event_binary/research_calibration.py` ❖·`crypto-dev/12` §18(41 万结算样本) |
 | N2 | 跳变 lead-lag | 事件驱动(5s 流,30s 跳≥15/25bps) | 1 分钟(3/5/10m + **本轮 30/60m:更差**) | ✅ | 最好 −6.4 | −4.4 | **−2.4 t−1.1** | ☠️ 中价漂移 +6~8 真实(t 8.1)但 taker 点差吃掉一半 | `tier_study_20260810_204428.json`(new_candidates) |
 | N4 | 21-23 UTC 时段窗口 | 固定日程(每天 1 次) | 恰 2 小时 | ✅ 邻近 5 个安慰剂窗全负(=窗口变体已测);不再 re-mine | −19.8 | −17.8 | −15.8 | ☠️ 效应在 7/7 后样本消失(毛 −7.8;58 天 +17.3 由 6 月扛) | `tier_study_20260810_204428.json`(new_candidates) |
+
+| **W5** | **knockdown 复刻**(逆向 Polymarket 盈利账户) | 90 秒快照 | **5-45 分钟持有至结算** | ✅ tte 5-20/20-60 已扫,9 配置 OOS 全正 | — | **+24.5c/张**(独立费制,硬化后 canonical) | — | 🟢 **回测过全部对抗关**(持续性 94%/独立结算 99.5%/L2 深度门 n=1875/35 天 35 正);待 live 捕获率探针 | `knockdown_*.json`·`crypto-dev/15`(如写) |
 
 **横向工具研究(不是策略,是把上表钉死的证据)**:
 L2 盘口失衡(545MB 从未用过的数据,出清:执行过滤 +0.2bps 不显著、20/20 信号家族深负,maker 恒等式由此得出)
@@ -166,6 +203,7 @@ L2 盘口失衡(545MB 从未用过的数据,出清:执行过滤 +0.2bps 不显�
 
 | 周期 | 命令 | 看什么 |
 |---|---|---|
+| 每月 | `python -m crypto_trading.crypto_strategies.research_watchlist` | **四候选前注册观察(注册日 2026-08-10,配置冻结)**:W1/S1 post n≥30 且 t≥2;W2/S8 post t≥2 且 post 均值>0;W3/S9 n≥1260 且 t≥2;**W4/S3改 post≥60 天且 t≥2 且 @spot50 净>0 且 30d 资金费仍正;**W5 探针捕获率≥25%×7 天+纸面达回测 50%** |
 | 每月 | `python -m crypto_trading.crypto_strategies.research_tier_study` | 三档全策略;S8 新时段符号 |
 | 每月 | `python -m crypto_trading.crypto_strategies.research_selection_scaling` | Spearman ≥0.15 且 top10 t≥2 → 才进 fill-aware |
 | 每月 | `python -m …funding_carry.research_cross_venue` | 跨所差分是否扩大 |

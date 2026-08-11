@@ -1,40 +1,16 @@
 {
-  "as_of": "2026-08-07",
+  "as_of": "2026-08-10",
   "base_currency": "USD",
   "initial_cash": 1000000.0,
-  "cash": 1044953.65,
-  "positions": {
-    "AMD": {
-      "shares": 88,
-      "avg_cost": 482.05,
-      "entry_date": "2026-08-05"
-    },
-    "NVDA": {
-      "shares": -203,
-      "avg_cost": 219.22,
-      "entry_date": "2026-08-05"
-    }
-  },
-  "cumulative_realized": 43336.87,
+  "cash": 1042112.28,
+  "positions": {},
+  "cumulative_realized": 42576.76,
   "cumulative_dividends": -464.48,
   "cumulative_fees": 0.0,
-  "equity": 1042025.45,
+  "equity": 1042112.28,
   "liabilities": {},
-  "lots": {
-    "AMD/NVDA|s1": {
-      "ticker": "AMD",
-      "shares": 88,
-      "cost": 482.05,
-      "open_date": "2026-08-05"
-    },
-    "AMD/NVDA|s2": {
-      "ticker": "NVDA",
-      "shares": -203,
-      "cost": 219.22,
-      "open_date": "2026-08-05"
-    }
-  },
+  "lots": {},
   "price_basis_state": "same_day_close",
-  "unrealized": -846.94,
-  "position_value": -2928.2
+  "unrealized": 0.0,
+  "position_value": 0.0
 }

@@ -1,8 +1,8 @@
 {
-  "as_of": "2026-08-07",
+  "as_of": "2026-08-10",
   "base_currency": "USD",
   "initial_cash": 1000000.0,
-  "cash": 196656.99,
+  "cash": 648151.7,
   "positions": {
     "DGX": {
       "shares": 640,
@@ -14,34 +14,24 @@
       "avg_cost": 41.71,
       "entry_date": "2026-07-31"
     },
-    "WTW": {
-      "shares": 443,
-      "avg_cost": 335.92,
-      "entry_date": "2026-07-31"
-    },
     "MLM": {
-      "shares": -389,
-      "avg_cost": 532.759923,
+      "shares": -105,
+      "avg_cost": 553.37,
       "entry_date": "2026-07-31"
     },
     "HPE": {
-      "shares": 4109,
+      "shares": 1915,
       "avg_cost": 53.22,
       "entry_date": "2026-08-05"
     },
-    "TMUS": {
-      "shares": -336,
-      "avg_cost": 173.46,
-      "entry_date": "2026-08-05"
-    },
     "PANW": {
-      "shares": 1073,
-      "avg_cost": 362.960839,
+      "shares": 269,
+      "avg_cost": 363.86,
       "entry_date": "2026-08-05"
     },
     "LKQ": {
-      "shares": -4249,
-      "avg_cost": 24.432488,
+      "shares": -1827,
+      "avg_cost": 24.86,
       "entry_date": "2026-08-05"
     },
     "NTAP": {
@@ -59,36 +49,16 @@
       "avg_cost": 260.72,
       "entry_date": "2026-08-05"
     },
-    "MU": {
-      "shares": 168,
-      "avg_cost": 877.57,
-      "entry_date": "2026-08-07"
-    },
-    "MAR": {
-      "shares": -207,
-      "avg_cost": 353.91,
-      "entry_date": "2026-08-07"
-    },
-    "DELL": {
-      "shares": 325,
-      "avg_cost": 453.77,
-      "entry_date": "2026-08-07"
-    },
-    "ZTS": {
-      "shares": -1014,
-      "avg_cost": 72.66,
-      "entry_date": "2026-08-07"
-    },
     "DECK": {
       "shares": -504,
       "avg_cost": 97.46,
       "entry_date": "2026-08-07"
     }
   },
-  "cumulative_realized": -133191.81,
+  "cumulative_realized": -121006.64,
   "cumulative_dividends": -8591.11,
   "cumulative_fees": 0.0,
-  "equity": 861575.78,
+  "equity": 895744.87,
   "liabilities": {},
   "lots": {
     "DGX/NKE|s1": {
@@ -102,42 +72,6 @@
       "shares": -3574,
       "cost": 41.71,
       "open_date": "2026-07-31"
-    },
-    "WTW/MLM|s1": {
-      "ticker": "WTW",
-      "shares": 443,
-      "cost": 335.92,
-      "open_date": "2026-07-31"
-    },
-    "WTW/MLM|s2": {
-      "ticker": "MLM",
-      "shares": -284,
-      "cost": 525.14,
-      "open_date": "2026-07-31"
-    },
-    "HPE/TMUS|s1": {
-      "ticker": "HPE",
-      "shares": 2194,
-      "cost": 53.22,
-      "open_date": "2026-08-05"
-    },
-    "HPE/TMUS|s2": {
-      "ticker": "TMUS",
-      "shares": -336,
-      "cost": 173.46,
-      "open_date": "2026-08-05"
-    },
-    "PANW/LKQ|s1": {
-      "ticker": "PANW",
-      "shares": 804,
-      "cost": 362.66,
-      "open_date": "2026-08-05"
-    },
-    "PANW/LKQ|s2": {
-      "ticker": "LKQ",
-      "shares": -2422,
-      "cost": 24.11,
-      "open_date": "2026-08-05"
     },
     "NTAP/TXT|s1": {
       "ticker": "NTAP",
@@ -175,30 +109,6 @@
       "cost": 24.86,
       "open_date": "2026-08-07"
     },
-    "MU/MAR|s1": {
-      "ticker": "MU",
-      "shares": 168,
-      "cost": 877.57,
-      "open_date": "2026-08-07"
-    },
-    "MU/MAR|s2": {
-      "ticker": "MAR",
-      "shares": -207,
-      "cost": 353.91,
-      "open_date": "2026-08-07"
-    },
-    "DELL/ZTS|s1": {
-      "ticker": "DELL",
-      "shares": 325,
-      "cost": 453.77,
-      "open_date": "2026-08-07"
-    },
-    "DELL/ZTS|s2": {
-      "ticker": "ZTS",
-      "shares": -1014,
-      "cost": 72.66,
-      "open_date": "2026-08-07"
-    },
     "PANW/DECK|s1": {
       "ticker": "PANW",
       "shares": 269,
@@ -213,6 +123,6 @@
     }
   },
   "price_basis_state": "same_day_close",
-  "unrealized": 3358.7,
-  "position_value": 664918.79
+  "unrealized": 25342.62,
+  "position_value": 247593.17
 }

@@ -13,45 +13,39 @@
   },
   {
     "s1": "PANW",
-    "s2": "LVS",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "PANW",
     "s2": "DECK",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "HPE",
-    "s2": "LKQ",
+    "s1": "PANW",
+    "s2": "LVS",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "HPE",
+    "s2": "NCLH",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "HPE",
+    "s2": "NI",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "PAYC",
     "s2": "TMUS",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
     "s1": "PAYC",
-    "s2": "SRE",
+    "s2": "VICI",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "PAYC",
-    "s2": "NI",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "CRL",
-    "s2": "MLM",
-    "sector": "health",
-    "spread_col": "Momentum_Spread_health"
   },
   {
     "s1": "CRL",
@@ -60,33 +54,39 @@
     "spread_col": "Momentum_Spread_health"
   },
   {
-    "s1": "NTAP",
-    "s2": "WEC",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
+    "s1": "CRL",
+    "s2": "MLM",
+    "sector": "health",
+    "spread_col": "Momentum_Spread_health"
   },
   {
     "s1": "NTAP",
-    "s2": "DVN",
-    "sector": "tech",
-    "spread_col": "Momentum_Spread_tech"
-  },
-  {
-    "s1": "MU",
     "s2": "MAR",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "MU",
-    "s2": "CMS",
+    "s1": "NTAP",
+    "s2": "SRE",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
   },
   {
-    "s1": "INTC",
-    "s2": "PG",
+    "s1": "FTNT",
+    "s2": "CARR",
     "sector": "tech",
     "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "FTNT",
+    "s2": "TXT",
+    "sector": "tech",
+    "spread_col": "Momentum_Spread_tech"
+  },
+  {
+    "s1": "ABNB",
+    "s2": "WEC",
+    "sector": "food",
+    "spread_col": "Momentum_Spread_food"
   }
 ]

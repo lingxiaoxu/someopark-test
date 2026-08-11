@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-08-07",
+  "as_of": "2026-08-10",
   "capital": 500000,
   "pairs": {
     "DG/MOS": {
@@ -164,127 +164,11 @@
       "last_close_param_set": "tight_stop"
     },
     "AMD/NVDA": {
-      "strategy": "mrpt",
-      "param_set": "flash_hold",
-      "direction": "long",
-      "s1_shares": 88,
-      "s2_shares": -203,
-      "open_date": "2026-08-05",
-      "open_s1_price": 482.05,
-      "open_s2_price": 219.22,
-      "open_hedge_ratio": 2.297840390032403,
-      "open_price_level_stop": -17.34605624232272,
-      "days_held": 2,
-      "peak_unrealized_pnl": 0.0,
-      "open_signal": {
-        "z_score": -1.634,
-        "entry_threshold": 1.136,
-        "exit_threshold": null
-      },
-      "wf_source": {
-        "wf_summary_file": "historical_runs/walk_forward/walk_forward_summary_20260806_023228.json",
-        "wf_dir": "historical_runs/walk_forward",
-        "windows": {
-          "W1": {
-            "param_set": "conservative",
-            "train_end": "2025-02-12",
-            "test_start": "2025-02-13",
-            "test_end": "2025-04-25",
-            "oos_sharpe": -0.0503,
-            "oos_pnl": -403.43
-          },
-          "W2": {
-            "param_set": "conservative",
-            "train_end": "2025-04-10",
-            "test_start": "2025-04-11",
-            "test_end": "2025-06-24",
-            "oos_sharpe": -4.7478,
-            "oos_pnl": -21006.16
-          },
-          "W3": {
-            "param_set": "conservative",
-            "train_end": "2025-06-09",
-            "test_start": "2025-06-10",
-            "test_end": "2025-08-20",
-            "oos_sharpe": 3.4265,
-            "oos_pnl": 24246.8
-          },
-          "W4": {
-            "param_set": "high_entry",
-            "train_end": "2025-08-06",
-            "test_start": "2025-08-07",
-            "test_end": "2025-10-16",
-            "oos_sharpe": 2.9717,
-            "oos_pnl": 11863.96
-          },
-          "W5": {
-            "param_set": "tight_stop",
-            "train_end": "2025-10-02",
-            "test_start": "2025-10-03",
-            "test_end": "2025-12-12",
-            "oos_sharpe": 1.8331,
-            "oos_pnl": 9747.95
-          },
-          "W6": {
-            "param_set": "long_z_short_v",
-            "train_end": "2025-11-28",
-            "test_start": "2025-12-01",
-            "test_end": "2026-02-11",
-            "oos_sharpe": 2.0679,
-            "oos_pnl": 12671.51
-          },
-          "W7": {
-            "param_set": "long_z_short_v",
-            "train_end": "2026-01-28",
-            "test_start": "2026-01-29",
-            "test_end": "2026-04-10",
-            "oos_sharpe": 0.9647,
-            "oos_pnl": 4971.91
-          },
-          "W8": {
-            "param_set": "long_z_short_v",
-            "train_end": "2026-03-26",
-            "test_start": "2026-03-27",
-            "test_end": "2026-06-08",
-            "oos_sharpe": 2.1328,
-            "oos_pnl": 20769.54
-          },
-          "W9": {
-            "param_set": "flash_hold",
-            "train_end": "2026-05-22",
-            "test_start": "2026-05-26",
-            "test_end": "2026-08-05",
-            "oos_sharpe": -3.3471,
-            "oos_pnl": -27623.13
-          }
-        },
-        "default_window": "W9"
-      },
-      "monitor_log": [
-        {
-          "date": "2026-08-06",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": -0.271,
-          "momentum_spread": null,
-          "exit_threshold": 0.138,
-          "unrealized_pnl": 682.93,
-          "unrealized_pnl_pct": 0.786,
-          "note": "Holding long, signal=-0.271, exit at 0.138"
-        },
-        {
-          "date": "2026-08-07",
-          "action": "HOLD",
-          "direction": "long",
-          "z_score": -0.693,
-          "momentum_spread": null,
-          "exit_threshold": 0.198,
-          "unrealized_pnl": -846.94,
-          "unrealized_pnl_pct": -0.974,
-          "note": "Holding long, signal=-0.693, exit at 0.198"
-        }
-      ],
-      "last_updated": "2026-08-07"
+      "direction": null,
+      "last_close_date": "2026-08-10",
+      "last_close_pnl": -760.11,
+      "last_close_action": "CLOSE",
+      "last_close_param_set": "flash_hold"
     },
     "RMD/SYK": {
       "direction": null,
