@@ -14,6 +14,18 @@ The fix (mother-template probability_calibration, same shape):
 decide_all applies this to every enumerated structure's fair before decide(), so the
 gates and Kelly consume calibrated probabilities. The map is refit weekly by
 research/eval.run_series (OOS pairs only — never in-sample).
+
+⚠ LIVE MAPS ARE PINNED TO IDENTITY since 2026-08-10 (the fit still runs, into the
+'calibration_map_shadow' experiments row). What happened: the per-leg (fair, outcome)
+pairs are clustered by event — legs of one event share an outcome — so ~480 "pairs"
+carried ~43 independent events, and isotonic regression on that produced step maps
+with terminal plateaus at exactly 0.0 and 1.0 (KXWTIW: every model prob >= 0.664
+became a CERTAINTY) and a base-rate shelf (KXNATGASW: [0.27, 0.55] -> 0.60) that
+turned decision #4346's raw-fair-0.334 leg into a fake 0.60-fair entry at cost 0.36.
+On a model already graded Brier-behind-market, isotonic "calibration" converges on
+the base rate — statistically faithful, and still poison for Kelly, which reads a
+flat probability vs a sloped price curve as edge everywhere below base rate.
+Re-enabling requires a preregistered forward criterion; do not un-pin ad hoc.
 """
 from __future__ import annotations
 

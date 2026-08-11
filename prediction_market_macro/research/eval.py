@@ -475,10 +475,21 @@ def run_series(conn, series: str) -> dict:
             "n_scored-1h": len(pooled_b),
             "note": "pooled = walk-forward log-pool(model, market), no leakage"})
     conn.commit()
-    # isotonic calibration map refit (OOS pairs only, §19-3)
+    # isotonic calibration map refit (OOS pairs only, §19-3) — SHADOW ONLY since
+    # 2026-08-10. The live map is pinned to identity: the 08-09 refit produced cliff
+    # maps on the three energy series (KXNATGASW mapped every model prob in
+    # [0.27, 0.55] to 0.60 and >=0.74 to 1.00) because `pairs` are per-LEG samples
+    # clustered by event (~480 legs ~ 43 events — the #129 clustering lesson again),
+    # and decision #4346 then bought a raw-fair-0.334 leg at cost 0.36 as if fair
+    # were 0.60. A skill-less model isotonically calibrated onto its base rate feeds
+    # Kelly a flat probability, which manufactures edge from the price structure.
+    # Re-enabling a live map requires its own preregistered forward criterion
+    # (docs/PREREGISTER.md); until then the fit lands in 'calibration_map_shadow'
+    # for research visibility only.
     from prediction_market_macro.strategy.calibration import (fit_map, store_map,
                                                               store_named_map)
-    store_map(conn, series, fit_map(pairs))
+    store_named_map(conn, series, "calibration_map_shadow", fit_map(pairs))
+    store_map(conn, series, None)
     # favorite-longshot map for the MARKET input (§23.2-3b): (market prob, outcome)
     mkt_pairs = [(mp, o) for p in per for _f, mp, o in p.get("legs-1h", [])]
     store_named_map(conn, series, "market_calibration_map", fit_map(mkt_pairs))
