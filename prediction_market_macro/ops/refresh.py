@@ -94,6 +94,12 @@ def run(weekly: bool = False) -> dict:
         # of SELECTs; on the day a weekly series settles it rescores that one series.
         from prediction_market_macro.research import param_select
         step("param_select", lambda: len(param_select.refresh(conn, log=None)))
+        # user policy 2026-08-11: daily raw-argmin re-selection writes manual_params
+        # rows that OVERRIDE the DSR-gated selector above (select_for checks manual
+        # first). Fingerprint-cached — most days most markets cost one SELECT. The
+        # DSR selector keeps running for its report; the objection stands in README §E.
+        from prediction_market_macro.research import param_argmin
+        step("param_argmin", lambda: json.dumps(param_argmin.daily(conn, log=None))[:400])
         from prediction_market_macro.ops import predict_all
         step("predict_all", lambda: predict_all.run(conn, s))
         from prediction_market_macro.ops import decide_all

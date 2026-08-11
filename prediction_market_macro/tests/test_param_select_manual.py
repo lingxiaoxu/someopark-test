@@ -39,11 +39,14 @@ def test_pit_a_replay_before_adoption_does_not_see_it():
     assert ps.manual_params(c, "KXNATGASW", earlier) is None
 
 
-def test_clear_deactivates_but_keeps_the_row():
+def test_clear_deactivates_and_history_keeps_both_rows():
     c = _conn()
     ps.set_manual(c, "KXWTIW", {"fut_vol_window": 20}, note="x")
     ps.clear_manual(c, "KXWTIW")
     later = datetime.now(timezone.utc) + timedelta(hours=1)
     assert ps.manual_params(c, "KXWTIW", later) is None
-    assert c.execute("SELECT COUNT(*) FROM experiments"
-                     " WHERE name='manual_params'").fetchone()[0] == 1
+    # history-preserving semantics (2026-08-11): every write is its own row,
+    # so the change log holds the adoption AND the clear
+    h = ps.history(c, "KXWTIW")
+    assert len(h) == 2
+    assert h[0]["active"] is True and h[1]["active"] is False

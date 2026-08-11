@@ -146,11 +146,14 @@ def manual_params(conn, series: str, before: datetime) -> tuple[dict, str] | Non
 
 
 def set_manual(conn, series: str, params: dict, note: str) -> None:
+    """Each write is a NEW row (timestamp in the key): the sequence of rows IS the
+    parameter change history the user asked to keep — `manual_params` reads the
+    latest, `history()` reads them all, nothing is ever overwritten."""
     now = datetime.now(timezone.utc).isoformat()
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
         " metrics_json, created_ts) VALUES('manual_params',?,?,?,?,?)",
-        (f"manual:{series}", series, "live",
+        (f"manual:{series}:{now}", series, "live",
          json.dumps({"active": True, "params": params, "note": note}), now))
     conn.commit()
 
@@ -160,9 +163,26 @@ def clear_manual(conn, series: str) -> None:
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
         " metrics_json, created_ts) VALUES('manual_params',?,?,?,?,?)",
-        (f"manual:{series}", series, "live",
+        (f"manual:{series}:{now}", series, "live",
          json.dumps({"active": False, "params": {}, "note": "cleared"}), now))
     conn.commit()
+
+
+def history(conn, series: str | None = None) -> list[dict]:
+    """The parameter change log, oldest first."""
+    q = ("SELECT series, metrics_json, created_ts FROM experiments"
+         " WHERE name='manual_params'")
+    args: tuple = ()
+    if series:
+        q += " AND series=?"
+        args = (series,)
+    out = []
+    for r in conn.execute(q + " ORDER BY created_ts", args):
+        m = json.loads(r["metrics_json"] or "{}")
+        out.append({"series": r["series"], "ts": r["created_ts"],
+                    "active": m.get("active"), "params": m.get("params"),
+                    "note": (m.get("note") or "")[:200]})
+    return out
 
 
 def select_for(conn, series: str, before: datetime, adopt_p: float = _dsr.ADOPT_P,

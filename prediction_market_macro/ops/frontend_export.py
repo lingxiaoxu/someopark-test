@@ -434,6 +434,18 @@ def run_extended(conn, settings) -> str:
     _write(out_dir / "macro_risk.json", riskdoc)
     written.append("macro_risk.json")
 
+    # ── macro_params.json: the parameter change log (user policy 2026-08-11 —
+    # daily raw-argmin adoption; every adoption/clear is a history row) ──
+    from prediction_market_macro.research.param_select import history, manual_params
+    current = {}
+    for s in sorted({h["series"] for h in history(conn)}):
+        mp = manual_params(conn, s, now)
+        current[s] = (mp[0] if mp else None)
+    _write(out_dir / "macro_params.json",
+           {"generated_at": now.isoformat(), "current": current,
+            "history": history(conn)[-200:]})
+    written.append("macro_params.json")
+
     # ── macro_pricetrack.json: intraday mark history (mother price-track port) ──
     track = [dict(r) for r in conn.execute(
         "SELECT m.ts, ROUND(SUM(m.pnl_usd),4) pnl_usd, COUNT(*) n_legs FROM marks m"
