@@ -551,16 +551,14 @@ function PerformanceView() {
   );
 }
 
-// ── Calibration (OOS) ─────────────────────────────────────────────────────────
+// ── Calibration (OOS) — §21.4 split: adoption gates ONLY. Decision replay and
+// Brier scoring live in their own artifacts (macro_replay / macro_scoring);
+// the 30d walkforward block was a duplicate of the Walk-Forward Lab and is gone.
 function CalibrationView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_oos');
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
-  const experiments: any[] = (data?.experiments ?? [])
-    .filter((ex: any) => ex.name !== 'decision_replay');
-  const decReplays: any[] = data?.decision_replays ?? [];
   const gates: any[] = data?.component_gates ?? [];
-  const wf: any = data?.walkforward;
   return (
     <div>
       <Generated ts={data?.generated_at} />
@@ -599,29 +597,58 @@ function CalibrationView() {
           {t('macro.gateNote')}: {data.gate_note}
         </div>
       )}
-      {decReplays.length > 0 && (
-        <>
-          <SectionTitle>{t('macro.decisionReplay')}</SectionTitle>
-          <DataTable
-            cols={[t('macro.colSeries'), t('macro.colTrades'), t('macro.colStaked'),
-              t('macro.colPnl'), 'ROI', 'edge_capture']}
-            rows={decReplays.map((r) => [
-              <span style={mono}>{shortSeries(r.series || '')}</span>,
-              r.n_trades ?? '—',
-              r.staked != null ? money(r.staked) : '—',
-              r.realized != null
-                ? <span style={{ ...mono, color: r.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(r.realized)}</span>
-                : '—',
-              r.roi != null
-                ? <span style={{ ...mono, color: r.roi >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(r.roi)}</span>
-                : '—',
-              r.edge_capture != null ? fmt(r.edge_capture, 2) : '—',
-            ])} />
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>
-            {t('macro.decisionReplayNote')}
-          </div>
-        </>
-      )}
+      <Ai view="macro_calibration" />
+    </div>
+  );
+}
+
+// ── Decision replay (§21.4 split from calibration) ───────────────────────────
+function ReplayView() {
+  const { t } = useTranslation();
+  const { data, loading, error } = useMacro<any>('macro_oos');
+  if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
+  const decReplays: any[] = data?.decision_replays ?? [];
+  return (
+    <div>
+      <Generated ts={data?.generated_at} />
+      <SectionTitle>{t('macro.decisionReplay')}</SectionTitle>
+      {decReplays.length ? (
+        <DataTable
+          cols={[t('macro.colSeries'), t('macro.colTrades'), t('macro.colStaked'),
+            t('macro.colPnl'), 'ROI', 'edge_capture']}
+          rows={decReplays.map((r) => [
+            <span style={mono}>{shortSeries(r.series || '')}</span>,
+            r.n_trades ?? '—',
+            r.staked != null ? money(r.staked) : '—',
+            r.realized != null
+              ? <span style={{ ...mono, color: r.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(r.realized)}</span>
+              : '—',
+            r.roi != null
+              ? <span style={{ ...mono, color: r.roi >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(r.roi)}</span>
+              : '—',
+            r.edge_capture != null ? fmt(r.edge_capture, 2) : '—',
+          ])} />
+      ) : <div className="text-xs py-1" style={{ color: 'var(--text-muted)', ...mono }}>—</div>}
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>
+        {t('macro.decisionReplayNote')}
+      </div>
+      {/* AI context comes from the same macro_oos payload; the server whitelists
+          only the parent view names, so the split keeps the parent's. */}
+      <Ai view="macro_calibration" />
+    </div>
+  );
+}
+
+// ── Brier scoring replays (§21.4 split from calibration) ─────────────────────
+function ScoringView() {
+  const { t } = useTranslation();
+  const { data, loading, error } = useMacro<any>('macro_oos');
+  if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
+  const experiments: any[] = (data?.experiments ?? [])
+    .filter((ex: any) => ex.name !== 'decision_replay');
+  return (
+    <div>
+      <Generated ts={data?.generated_at} />
       {experiments.length > 0 && <SectionTitle>{t('macro.scoringReplays')}</SectionTitle>}
       {experiments.map((ex, i) => {
         let metrics: Record<string, number> = {};
@@ -657,31 +684,6 @@ function CalibrationView() {
           </div>
         );
       })}
-      {wf && (
-        <>
-          <SectionTitle>{t('macro.walkforward', { days: wf.days })}</SectionTitle>
-          <KV rows={[
-            [t('macro.colTrades'), <span style={mono}>{wf.n_trades}</span>],
-            [t('macro.winRate'), <span style={mono}>{pct(wf.win_rate)}</span>],
-            [t('macro.colPnl'), <span style={{ ...mono,
-              color: (wf.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>
-              {money(wf.realized)} ({pct(wf.roi)})</span>],
-          ]} />
-          {wf.by_series && (
-            <DataTable
-              cols={[t('macro.colSeries'), t('macro.colTrades'), 'W', t('macro.colPnl')]}
-              rows={Object.entries(wf.by_series as Record<string, any>)
-                .sort((a, b) => b[1].realized - a[1].realized)
-                .map(([k, v]) => [
-                  <span style={mono}>{shortSeries(k)}</span>, v.n, v.won,
-                  <span style={{ ...mono, color: v.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
-                ])} />
-          )}
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '4px 0 10px' }}>
-            {t('macro.walkforwardNote')}
-          </div>
-        </>
-      )}
       <Ai view="macro_calibration" />
     </div>
   );
@@ -795,20 +797,14 @@ function AlertList({ items }: { items: any[] }) {
   );
 }
 
+// §21.4 split: the coverage matrix and the alert feeds used to share one artifact;
+// scheduling coverage stays here, every alert list moved to macro_alerts.
 function CoverageView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_coverage');
-  const [showInfo, setShowInfo] = useState(false);
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
   const cov: any[] = data?.coverage ?? [];
   const missed: any[] = data?.missed ?? [];
-  const alerts: any[] = data?.alerts ?? [];
-  const modelAll = alerts.filter((a) => MODEL_ALERT_SOURCES.has(a.source));
-  // error/warn always visible; info-level consistency sweeps collapse behind a
-  // toggle — they are routine instrumentation, not findings
-  const modelAlerts = modelAll.filter((a) => a.level !== 'info');
-  const modelInfo = modelAll.filter((a) => a.level === 'info');
-  const opsAlerts = alerts.filter((a) => !MODEL_ALERT_SOURCES.has(a.source));
   const seriesList = [...new Set(cov.map((r) => r.series))];
   const periods = [...new Set(cov.map((r) => r.period))].sort();
   const stateOf = (s: string, p: string) => cov.find((r) => r.series === s && r.period === p)?.state;
@@ -848,6 +844,27 @@ function CoverageView() {
       ) : (
         <div className="text-xs py-1" style={{ color: 'var(--text-muted)', ...mono }}>—</div>
       )}
+      <Ai view="macro_coverage" />
+    </div>
+  );
+}
+
+// ── Alert center (§21.4 split from coverage) ─────────────────────────────────
+function AlertsView() {
+  const { t } = useTranslation();
+  const { data, loading, error } = useMacro<any>('macro_coverage');
+  const [showInfo, setShowInfo] = useState(false);
+  if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
+  const alerts: any[] = data?.alerts ?? [];
+  const modelAll = alerts.filter((a) => MODEL_ALERT_SOURCES.has(a.source));
+  // error/warn always visible; info-level consistency sweeps collapse behind a
+  // toggle — they are routine instrumentation, not findings
+  const modelAlerts = modelAll.filter((a) => a.level !== 'info');
+  const modelInfo = modelAll.filter((a) => a.level === 'info');
+  const opsAlerts = alerts.filter((a) => !MODEL_ALERT_SOURCES.has(a.source));
+  return (
+    <div>
+      <Generated ts={data?.generated_at} />
       <SectionTitle>{t('macro.consistencyAlerts')}</SectionTitle>
       <AlertList items={modelAlerts} />
       {modelInfo.length > 0 && (
@@ -981,39 +998,24 @@ const LEAD_COLORS: Record<string, string> = {
   '5d': 'var(--text-secondary)', '7d': 'var(--success)',
 };
 
+// §21.4 split: rolling as-if-live runs + stream bet log stay here; the entry-lead
+// sweep experiment (lead compare / curves / coverage) moved to macro_sweep.
 function WalkforwardView() {
   const { t } = useTranslation();
   const { data, loading, error } = useMacro<any>('macro_walkforward');
   const [stream, setStream] = useState('hybrid');
   if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
-  const sweep = data?.sweep;
   const daily = data?.daily;
-  const leads: [string, any][] = Object.entries(sweep?.leads ?? {});
-  const cov: [string, any][] = Object.entries(sweep?.coverage ?? {});
-  const testable = cov.filter(([, v]) => v.testable).length;
-  // merge lead curves into one chart series: [{day, '1d': pnl, '3d': pnl, ...}]
-  const chart: Record<string, any>[] = [];
-  const byDay: Record<string, any> = {};
-  leads.forEach(([lk, lv]) => (lv.curve ?? []).forEach((p: any) => {
-    byDay[p.day] = byDay[p.day] ?? { day: p.day };
-    byDay[p.day][lk] = p.pnl;
-  }));
-  Object.keys(byDay).sort().forEach((d) => chart.push(byDay[d]));
-  const bestLead = leads.length
-    ? leads.reduce((a, b) => ((b[1].roi ?? -9) > (a[1].roi ?? -9) ? b : a))[0] : null;
   return (
     <div>
-      <Generated ts={data?.generated_at ?? sweep?.generated_at} />
+      <Generated ts={data?.generated_at ?? data?.sweep?.generated_at} />
       {daily && (
         <div style={{ fontSize: 11, ...mono, margin: '2px 0 8px', color: 'var(--accent-primary)', fontWeight: 700 }}>
           {t('macro.wfAsIfLive', { days: daily.days })}
         </div>
       )}
       <KV rows={[
-        [t('macro.wfWindow'), <span style={mono}>{sweep?.days ?? daily?.days ?? '—'}d</span>],
-        [t('macro.wfCoverage'), <span style={mono}>{testable}/{cov.length} {t('macro.wfSeriesTestable')}</span>],
-        [t('macro.wfBestLead'), bestLead
-          ? <Chip color={LEAD_COLORS[bestLead] ?? 'var(--success)'}>{bestLead}</Chip> : '—'],
+        [t('macro.wfWindow'), <span style={mono}>{daily?.days ?? '—'}d</span>],
       ]} />
       {data?.ml && (data.ml.last30?.n_trades != null) && (() => {
         // baseline rows = the LIVE-scope favourite stream (identical numbers to
@@ -1128,7 +1130,39 @@ function WalkforwardView() {
         );
         })();
       })()}
-      <SectionTitle>{t('macro.methodSection')}</SectionTitle>
+      <Ai view="macro_walkforward" />
+    </div>
+  );
+}
+
+// ── Entry-lead sweep lab (§21.4 split from the Walk-Forward Lab) ─────────────
+function SweepView() {
+  const { t } = useTranslation();
+  const { data, loading, error } = useMacro<any>('macro_walkforward');
+  if (loading && !data) return <Loading />; if (error && !data) return <ErrorBox e={error} />;
+  const sweep = data?.sweep;
+  const leads: [string, any][] = Object.entries(sweep?.leads ?? {});
+  const cov: [string, any][] = Object.entries(sweep?.coverage ?? {});
+  const testable = cov.filter(([, v]) => v.testable).length;
+  // merge lead curves into one chart series: [{day, '1d': pnl, '3d': pnl, ...}]
+  const chart: Record<string, any>[] = [];
+  const byDay: Record<string, any> = {};
+  leads.forEach(([lk, lv]) => (lv.curve ?? []).forEach((p: any) => {
+    byDay[p.day] = byDay[p.day] ?? { day: p.day };
+    byDay[p.day][lk] = p.pnl;
+  }));
+  Object.keys(byDay).sort().forEach((d) => chart.push(byDay[d]));
+  const bestLead = leads.length
+    ? leads.reduce((a, b) => ((b[1].roi ?? -9) > (a[1].roi ?? -9) ? b : a))[0] : null;
+  return (
+    <div>
+      <Generated ts={sweep?.generated_at ?? data?.generated_at} />
+      <KV rows={[
+        [t('macro.wfWindow'), <span style={mono}>{sweep?.days ?? '—'}d</span>],
+        [t('macro.wfCoverage'), <span style={mono}>{testable}/{cov.length} {t('macro.wfSeriesTestable')}</span>],
+        [t('macro.wfBestLead'), bestLead
+          ? <Chip color={LEAD_COLORS[bestLead] ?? 'var(--success)'}>{bestLead}</Chip> : '—'],
+      ]} />
       <SectionTitle>{t('macro.wfLeadCompare')}</SectionTitle>
       <DataTable
         cols={[t('macro.wfLead'), t('macro.colTrades'), t('macro.winRate'),
@@ -1189,11 +1223,15 @@ export const REGISTRY: Record<string, ComponentType<any>> = {
   macro_decisions: DecisionsView,
   macro_performance: PerformanceView,
   macro_calibration: CalibrationView,
+  macro_replay: ReplayView,
+  macro_scoring: ScoringView,
   macro_coverage: CoverageView,
+  macro_alerts: AlertsView,
   macro_risk: RiskView,
   macro_overview: OverviewView,
   macro_reports: ReportsView,
   macro_walkforward: WalkforwardView,
+  macro_sweep: SweepView,
 };
 
 const KEY_BY_TYPE: Record<string, string> = Object.fromEntries(MACRO_ITEMS.map((i) => [i.type, i.i18nKey]));

@@ -3,14 +3,18 @@
  * Mirrors PredictionArtifactGrid's layout/classes (so the CSS inversion applies
  * identically). Since the §21.3 IA reorg the grid shows 5 GROUP tiles (overview /
  * series / trading / quality / reports); clicking a group opens its first member
- * artifact. All 13 legacy `macro_*` artifact types keep working (MACRO_ITEMS is
- * still exported for titles + the second-level tab bar inside MacroArtifact).
+ * artifact. §21.4 (2026-08-11) split the three overloaded quality artifacts into
+ * single-purpose ones (calibration→gates only + replay + scoring; coverage→matrix
+ * + alerts; wfLab→rolling runs + sweep), so the registry now carries 19 types
+ * (MACRO_ITEMS is still exported for titles + the second-level tab bar inside
+ * MacroArtifact).
  * Labels are i18n (macro.*); the translated label is passed as the artifact title.
  */
 import {
   LayoutDashboard, Landmark, TrendingUp, Users, Flame, GitCompare,
   ClipboardList, LineChart, Gauge, LayoutGrid, Shield, BookOpen, Download,
-  BarChart3, ShieldCheck, FlaskConical, Target,
+  BarChart3, ShieldCheck, FlaskConical, Target, RotateCcw, ListChecks, Bell,
+  Timer,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,11 +34,18 @@ export const MACRO_ITEMS: Item[] = [
   { type: 'macro_decisions',   i18nKey: 'decisions',   Icon: ClipboardList },
   { type: 'macro_performance', i18nKey: 'performance', Icon: LineChart },
   { type: 'macro_calibration', i18nKey: 'calibration', Icon: Gauge },
+  // §21.4 split (2026-08-11): calibration/coverage/wfLab each used to render 3-4
+  // unrelated blocks in one artifact; the blocks are now artifacts of their own,
+  // all still under the QUALITY group so the subtitle categorization holds.
+  { type: 'macro_replay',      i18nKey: 'replay',      Icon: RotateCcw },
+  { type: 'macro_scoring',     i18nKey: 'scoring',     Icon: ListChecks },
   { type: 'macro_coverage',    i18nKey: 'coverage',    Icon: LayoutGrid },
+  { type: 'macro_alerts',      i18nKey: 'alerts',      Icon: Bell },
   { type: 'macro_risk',        i18nKey: 'risk',        Icon: Shield },
   { type: 'macro_overview',    i18nKey: 'overview',    Icon: BookOpen },
   { type: 'macro_reports',     i18nKey: 'reports',     Icon: Download },
   { type: 'macro_walkforward', i18nKey: 'wfLab',       Icon: FlaskConical },
+  { type: 'macro_sweep',       i18nKey: 'sweepLab',    Icon: Timer },
 ];
 
 // ── §21.3 five-group IA — every legacy type belongs to exactly one group ─────
@@ -52,7 +63,9 @@ export const MACRO_GROUPS: MacroGroup[] = [
   { key: 'trading',  i18nKey: 'groupTrading',  Icon: ClipboardList,
     types: ['macro_bets', 'macro_decisions', 'macro_performance', 'macro_divergence'] },
   { key: 'quality',  i18nKey: 'groupQuality',  Icon: ShieldCheck,
-    types: ['macro_calibration', 'macro_walkforward', 'macro_coverage', 'macro_risk'] },
+    types: ['macro_calibration', 'macro_replay', 'macro_scoring',
+            'macro_walkforward', 'macro_sweep', 'macro_coverage', 'macro_alerts',
+            'macro_risk'] },
   { key: 'reports',  i18nKey: 'groupReports',  Icon: Download,
     types: ['macro_reports'] },
 ];

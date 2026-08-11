@@ -1235,7 +1235,7 @@
     "scenario": "Escenario",
     "openExposure": "Exposición abierta",
     "missed": "Perdidas",
-    "alerts": "Alertas",
+    "alerts": "Centro de alertas",
     "energyPending": "Las series de energía aún no están modeladas (P1). Las entradas aparecerán aquí cuando se añadan al panel.",
     "noReports": "La generación de informes llegará con M8.",
     "aiAnalyze": "Análisis IA",
@@ -1272,6 +1272,9 @@
     "trackOpen": "Abierto",
     "trackBacktest": "Backtest",
     "trackLive": "En vivo",
-    "trackNote": "Hasta el {{cutover}} es un backtest walk-forward point-in-time de la misma regla híbrida, sin órdenes reales. Desde el {{cutover}} es el registro en vivo (papel)."
+    "trackNote": "Hasta el {{cutover}} es un backtest walk-forward point-in-time de la misma regla híbrida, sin órdenes reales. Desde el {{cutover}} es el registro en vivo (papel).",
+    "replay": "Replay de decisiones",
+    "scoring": "Replays de puntuación (Brier)",
+    "sweepLab": "Barrido de entrada"
   }
 }

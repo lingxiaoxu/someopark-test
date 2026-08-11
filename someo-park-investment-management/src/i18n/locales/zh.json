@@ -1262,7 +1262,7 @@
     "scenario": "情景",
     "openExposure": "持仓敞口",
     "missed": "漏报",
-    "alerts": "告警",
+    "alerts": "告警中心",
     "energyPending": "能源系列尚未建模（P1）。看板出现能源类系列后将自动在此展示。",
     "noReports": "报告生成将于 M8 上线。",
     "aiAnalyze": "AI 分析",
@@ -1299,6 +1299,9 @@
     "trackOpen": "在场",
     "trackBacktest": "回测",
     "trackLive": "实盘",
-    "trackNote": "{{cutover}} 之前为同一混合规则的逐日 PIT walk-forward 回测，未实际下单；{{cutover}} 起为实盘（paper）账本。"
+    "trackNote": "{{cutover}} 之前为同一混合规则的逐日 PIT walk-forward 回测，未实际下单；{{cutover}} 起为实盘（paper）账本。",
+    "replay": "决策重放",
+    "scoring": "打分回放（Brier）",
+    "sweepLab": "入场时机实验"
   }
 }

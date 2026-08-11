@@ -1235,7 +1235,7 @@
     "scenario": "シナリオ",
     "openExposure": "建玉エクスポージャー",
     "missed": "見逃し",
-    "alerts": "アラート",
+    "alerts": "アラートセンター",
     "energyPending": "エネルギー系列は未モデル化です（P1）。ボードに追加され次第ここに表示されます。",
     "noReports": "レポート生成は M8 で提供予定です。",
     "aiAnalyze": "AI分析",
@@ -1272,6 +1272,9 @@
     "trackOpen": "保有中",
     "trackBacktest": "バックテスト",
     "trackLive": "ライブ",
-    "trackNote": "{{cutover}} までは同一ハイブリッドルールの PIT ウォークフォワード・バックテストであり、実際の発注はありません。{{cutover}} 以降はライブ（ペーパー）台帳です。"
+    "trackNote": "{{cutover}} までは同一ハイブリッドルールの PIT ウォークフォワード・バックテストであり、実際の発注はありません。{{cutover}} 以降はライブ（ペーパー）台帳です。",
+    "replay": "意思決定リプレイ",
+    "scoring": "スコアリング・リプレイ（Brier）",
+    "sweepLab": "エントリー時期スイープ"
   }
 }

@@ -1235,7 +1235,7 @@
     "scenario": "Scénario",
     "openExposure": "Exposition ouverte",
     "missed": "Manquées",
-    "alerts": "Alertes",
+    "alerts": "Centre d'alertes",
     "energyPending": "Les séries énergie ne sont pas encore modélisées (P1). Les entrées apparaîtront ici dès leur ajout au tableau.",
     "noReports": "La génération de rapports arrive avec M8.",
     "aiAnalyze": "Analyse IA",
@@ -1272,6 +1272,9 @@
     "trackOpen": "Ouvert",
     "trackBacktest": "Backtest",
     "trackLive": "En direct",
-    "trackNote": "Jusqu'au {{cutover}}, il s'agit d'un backtest walk-forward point-in-time de la même règle hybride, sans ordre réel. À partir du {{cutover}}, c'est le registre en direct (papier)."
+    "trackNote": "Jusqu'au {{cutover}}, il s'agit d'un backtest walk-forward point-in-time de la même règle hybride, sans ordre réel. À partir du {{cutover}}, c'est le registre en direct (papier).",
+    "replay": "Replay des décisions",
+    "scoring": "Replays de scoring (Brier)",
+    "sweepLab": "Balayage d'entrée"
   }
 }

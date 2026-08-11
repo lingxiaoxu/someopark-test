@@ -1264,7 +1264,7 @@
     "scenario": "Scenario",
     "openExposure": "Open Exposure",
     "missed": "Missed",
-    "alerts": "Alerts",
+    "alerts": "Alert Center",
     "energyPending": "Energy series are not modeled yet (P1). Any energy-family entries on the board will appear here automatically once added.",
     "noReports": "Report generation ships with M8.",
     "aiAnalyze": "AI Analysis",
@@ -1301,6 +1301,9 @@
     "trackOpen": "Open",
     "trackBacktest": "Backtest",
     "trackLive": "Live",
-    "trackNote": "Up to {{cutover}} this is a point-in-time walk-forward backtest of the same hybrid rule, not traded. From {{cutover}} on it is the live paper ledger."
+    "trackNote": "Up to {{cutover}} this is a point-in-time walk-forward backtest of the same hybrid rule, not traded. From {{cutover}} on it is the live paper ledger.",
+    "replay": "Decision Replay",
+    "scoring": "Scoring Replays (Brier)",
+    "sweepLab": "Entry-Lead Sweep"
   }
 }
