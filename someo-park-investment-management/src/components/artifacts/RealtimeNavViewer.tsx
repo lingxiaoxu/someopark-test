@@ -26,9 +26,11 @@ const ET_HM = new Intl.DateTimeFormat('en-GB', {
 const ET_HMS = new Intl.DateTimeFormat('en-GB', {
   timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
+interface Holding { id: string; name: string; shares: number; value: number }
 interface NavNode {
   node_id: string; display_name: string; kind: string; value: number;
   parent_id?: string | null; positions_as_of?: string | null; corp_action?: boolean;
+  holdings?: Holding[] | null;
 }
 interface NavLatest {
   ts: string; structure_hash: string; stale: boolean; market: string;
@@ -277,15 +279,15 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
           const open = expanded.has(s.node_id);
           return (
             <div key={s.node_id}
-              onClick={() => kids.length && setExpanded(prev => {
+              onClick={() => setExpanded(prev => {
                 const n = new Set(prev);
                 n.has(s.node_id) ? n.delete(s.node_id) : n.add(s.node_id);
                 return n;
               })}
               style={{ border: `2px solid ${COLORS[s.display_name] || '#111'}`,
-                       padding: '8px 10px', cursor: kids.length ? 'pointer' : 'default' }}>
+                       padding: '8px 10px', cursor: 'pointer' }}>
               <div style={{ fontSize: 10, fontWeight: 800, color: COLORS[s.display_name] }}>
-                {s.display_name}{kids.length ? (open ? ' ▾' : ' ▸') : ''}
+                {s.display_name}{open ? ' ▾' : ' ▸'}
                 {s.corp_action && (
                   <span title="当日 split 生效(见头部 SPLIT 徽标)"
                     style={{ color: '#ea580c', marginLeft: 4 }}>⚠︎split</span>
@@ -320,16 +322,53 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               {open && (() => {
                 const oa = officialAnchor(s.display_name, s.value);
                 const scale = oa && s.value ? oa.live / s.value : 1;   // 子层等比换算,与卡片主数字同口径
-                return kids.map(k => (
-                  <div key={k.node_id} style={{ fontSize: 10.5, display: 'flex',
-                    justifyContent: 'space-between', borderTop: '1px dashed #ddd',
-                    padding: '3px 0' }}>
-                    <span>└ {k.display_name}</span>
-                    <span style={{ fontWeight: 700 }}>
-                      ${(k.value * scale).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                const leafRow = (h: Holding, indent: boolean) => (
+                  <div key={h.id} style={{ fontSize: 10, display: 'flex',
+                    justifyContent: 'space-between', padding: '2px 0',
+                    paddingLeft: indent ? 14 : 0, color: '#555' }}>
+                    <span>{h.name}
+                      <span style={{ color: h.shares < 0 ? '#e11d48' : '#999', marginLeft: 5 }}>
+                        {h.shares > 0 ? '+' : ''}{h.shares.toLocaleString()}
+                      </span>
                     </span>
+                    <span>${(h.value * scale).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                   </div>
-                ));
+                );
+                if (kids.length) {
+                  return kids.map(k => (
+                    <div key={k.node_id}>
+                      <div onClick={e => {                      // 二级展开:pair→腿 / subsector→成分股
+                          e.stopPropagation();
+                          if (k.holdings?.length) setExpanded(prev => {
+                            const n = new Set(prev);
+                            n.has(k.node_id) ? n.delete(k.node_id) : n.add(k.node_id);
+                            return n;
+                          });
+                        }}
+                        style={{ fontSize: 10.5, display: 'flex',
+                          justifyContent: 'space-between', borderTop: '1px dashed #ddd',
+                          padding: '3px 0', cursor: k.holdings?.length ? 'pointer' : 'default' }}>
+                        <span>└ {k.display_name}{k.holdings?.length ? (expanded.has(k.node_id) ? ' ▾' : ' ▸') : ''}</span>
+                        <span style={{ fontWeight: 700 }}>
+                          ${(k.value * scale).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        </span>
+                      </div>
+                      {expanded.has(k.node_id) && k.holdings?.map(h => leafRow(h, true))}
+                    </div>
+                  ));
+                }
+                if (s.holdings?.length) {                        // 直接持股(SSRS/BDC):股票级明细
+                  return (
+                    <div style={{ borderTop: '1px dashed #ddd', marginTop: 2 }}>
+                      {s.holdings.map(h => leafRow(h, false))}
+                    </div>
+                  );
+                }
+                return (                                          // 空仓(MRPT 0 对):全现金
+                  <div style={{ fontSize: 10.5, color: '#999', borderTop: '1px dashed #ddd', padding: '3px 0' }}>
+                    空仓 · 全现金(账本 ${s.value.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                  </div>
+                );
               })()}
             </div>
           );

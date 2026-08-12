@@ -233,13 +233,22 @@ class Controller:
             if nid not in values:
                 continue
             n = self.S.nodes[nid]
-            corp = any(leaf in self._splits
-                       for leaf in self.fe.expanded.get(nid, {}))
+            exp = self.fe.expanded.get(nid, {})
+            corp = any(leaf in self._splits for leaf in exp)
+            holdings = None
+            if n["kind"] != "portfolio":     # 股票级明细(前端层级展开到叶子)
+                holdings = sorted(
+                    ({"id": leaf, "name": self.reg.render(leaf),
+                      "shares": round(eff, 4),
+                      "value": round(eff * self.last_price[leaf], 2)}
+                     for leaf, eff in exp.items() if leaf in self.last_price),
+                    key=lambda h: -abs(h["value"]))
             rows.append({"node_id": nid,
                          "display_name": self.reg.render(nid),
                          "kind": n["kind"], "value": round(values[nid], 2),
                          "parent_id": parent_of.get(nid),
                          "corp_action": corp,
+                         "holdings": holdings,
                          "positions_as_of": n["attrs"].get("positions_as_of")})
         payload = {"ts": ts, "structure_hash": self.S.hash, "stale": stale,
                    "last_rebuild_ts": self.last_rebuild_ts,
