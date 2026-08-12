@@ -66,7 +66,9 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
         const sj = await s.json();
         const rows = sj.rows || [];
         setStreamRows(rows);
-        if (rows.length >= 2) {
+        // 判据=不同时间戳数(闭市日可能只有强制 tick 的一两笔,画不成线)
+        const nTicks = new Set(rows.map((r: any) => r.ts)).size;
+        if (nTicks >= 2) {
           setChartStream({ date: sj.date, rows, isToday: true });
         } else {
           // 今天没有(足够的)tick(闭市)→ 回看最近一个有数据的交易时段
@@ -335,10 +337,13 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             <LineChart data={chart.data}>
               <CartesianGrid strokeDasharray="2 4" stroke="#eee" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={(v: number) => `${v.toFixed(2)}%`} />
+              <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']}
+                tickFormatter={(v: number) => `${v.toFixed(2)}%`} />
               <Tooltip formatter={(v: any) => `${Number(v).toFixed(3)}%`} />
               {chart.names.map(n => (
-                <Line key={n} dataKey={n} dot={false} strokeWidth={n === 'PORTFOLIO' ? 2.4 : 1.4}
+                <Line key={n} dataKey={n}
+                  dot={chart.data.length <= 10 ? { r: 2.5, strokeWidth: 0, fill: COLORS[n] || '#888' } : false}
+                  strokeWidth={n === 'PORTFOLIO' ? 2.4 : 1.4}
                   stroke={COLORS[n] || '#888'} isAnimationActive={false} connectNulls />
               ))}
             </LineChart>
