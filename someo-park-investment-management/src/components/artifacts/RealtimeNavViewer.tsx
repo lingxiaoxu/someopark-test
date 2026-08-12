@@ -20,6 +20,11 @@ const FREQS = [
   { key: '15m', minutes: 15 }, { key: '60m', minutes: 60 },
 ];
 const POLL_MS = 45_000;
+// 全部时间显示 ET(与 NYSE 交易时段一致);Intl 实例复用(逐行 format 才够快)
+const ET_HM = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false });
+const ET_HMS = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
 interface NavNode {
   node_id: string; display_name: string; kind: string; value: number;
@@ -142,7 +147,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       if (!wanted.has(name)) continue;
       const t = new Date(r.ts as string);
       if (step > 1 && t.getUTCMinutes() % step !== 0) continue;
-      const label = r.ts.slice(11, 16);
+      const label = ET_HM.format(t);
       if (base[name] === undefined) base[name] = r.value as number;
       (byTs[label] ||= { label })[name] = ((r.value as number) / base[name] - 1) * 100;
     }
@@ -186,7 +191,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       <div className="flex items-end gap-4 flex-wrap shrink-0">
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: '#666' }}>
-            PORTFOLIO(实时 · {latest.ts.slice(11, 19)} UTC)
+            PORTFOLIO(实时 · {ET_HMS.format(new Date(latest.ts))} ET)
           </div>
           {(() => {
             // 主数字 = 官方口径(与 StrategyPerformanceViewer 同刻度):
@@ -244,7 +249,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
           )}
           {structFlash && (
             <span style={{ padding: '3px 8px', background: '#dbeafe', border: '1px solid #2563eb' }}
-              title={latest.last_rebuild_ts ? `重建于 ${latest.last_rebuild_ts}` : undefined}>
+              title={latest.last_rebuild_ts ? `重建于 ${ET_HMS.format(new Date(latest.last_rebuild_ts))} ET` : undefined}>
               持仓已更新{latest.structure_diff?.length
                 ? ` · ${latest.structure_diff.join(';')}`
                 : ` · 结构 ${latest.structure_hash.slice(0, 8)}`}
