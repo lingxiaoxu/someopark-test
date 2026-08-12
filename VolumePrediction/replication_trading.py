@@ -233,17 +233,20 @@ def oracle_signal_targets(ret: np.ndarray, present: np.ndarray,
 
 def run_experiment1(sl: Dict, tiers: Dict[str, np.ndarray], mu_grid: Sequence[float],
                     aum: float, seed: int, out_dir: Path,
-                    signal_p: float = SIGNAL_P, horizon: int = SIGNAL_HORIZON) -> Dict:
+                    signal_p: float = SIGNAL_P, horizon: int = SIGNAL_HORIZON,
+                    impact_coef: float = IMPACT_COEF) -> Dict:
     """图 5 复刻: 逐 μ 逐档模拟 → 年化收益/夏普 vs 换手率曲线 + 数据 CSV。"""
     tgt, sig_info = oracle_signal_targets(sl["ret"], sl["present"],
                                           p=signal_p, horizon=horizon, seed=seed)
-    gross = perf_stats(simulate(sl["ret"], sl["V"], tgt, aum=aum, z_override=1.0))
+    gross = perf_stats(simulate(sl["ret"], sl["V"], tgt, aum=aum, z_override=1.0,
+                                impact_coef=impact_coef))
     log.info(f"exp1 signals: {sig_info} | z=1 idealized gross "
              f"annret={gross['annret_gross_pct']}% sharpe={gross['sharpe_gross']}")
     rows: List[dict] = []
     for tier, vhat in tiers.items():
         for mu in mu_grid:
-            st = perf_stats(simulate(sl["ret"], sl["V"], tgt, aum=aum, mu=mu, vhat=vhat))
+            st = perf_stats(simulate(sl["ret"], sl["V"], tgt, aum=aum, mu=mu,
+                                     vhat=vhat, impact_coef=impact_coef))
             rows.append({"tier": tier, "mu": mu, "aum": aum, **st})
             log.info(f"exp1 {tier} mu={mu:g}: net={st['annret_net_pct']}% "
                      f"sharpe={st['sharpe_net']} turn={st['turnover_ann']}")
@@ -288,7 +291,8 @@ def _plot_fig5(df: pd.DataFrame, gross: Dict, aum: float, path: Path) -> None:
 def run_table3(sl_tr: Dict, sl_te: Dict, tiers_tr: Dict, tiers_te: Dict,
                mu_grid: Sequence[float], aum_scenarios: Sequence[float],
                seed: int, out_dir: Path,
-               signal_p: float = SIGNAL_P, horizon: int = SIGNAL_HORIZON) -> Dict:
+               signal_p: float = SIGNAL_P, horizon: int = SIGNAL_HORIZON,
+               impact_coef: float = IMPACT_COEF) -> Dict:
     tgt_tr, _ = oracle_signal_targets(sl_tr["ret"], sl_tr["present"],
                                       p=signal_p, horizon=horizon, seed=seed + 1000)
     tgt_te, _ = oracle_signal_targets(sl_te["ret"], sl_te["present"],
@@ -299,17 +303,20 @@ def run_table3(sl_tr: Dict, sl_te: Dict, tiers_tr: Dict, tiers_te: Dict,
             best_mu, best_ret = None, -np.inf
             for mu in mu_grid:
                 st = perf_stats(simulate(sl_tr["ret"], sl_tr["V"], tgt_tr,
-                                         aum=aum, mu=mu, vhat=tiers_tr[tier]))
+                                         aum=aum, mu=mu, vhat=tiers_tr[tier],
+                                         impact_coef=impact_coef))
                 if st["annret_net_pct"] > best_ret:
                     best_mu, best_ret = mu, st["annret_net_pct"]
             st = perf_stats(simulate(sl_te["ret"], sl_te["V"], tgt_te,
-                                     aum=aum, mu=best_mu, vhat=tiers_te[tier]))
+                                     aum=aum, mu=best_mu, vhat=tiers_te[tier],
+                                     impact_coef=impact_coef))
             recs.append({"method": tier, "aum": aum, "mu_star": best_mu,
                          "train_annret_net_pct": best_ret, **st})
             log.info(f"table3 {tier} aum={aum:.0e}: mu*={best_mu:g} "
                      f"OOS net={st['annret_net_pct']}% sharpe={st['sharpe_net']}")
     gz = perf_stats(simulate(sl_te["ret"], sl_te["V"], tgt_te,
-                             aum=aum_scenarios[0], z_override=1.0))
+                             aum=aum_scenarios[0], z_override=1.0,
+                             impact_coef=impact_coef))
     wide_rows = []
     for tier in tiers_te:
         row = {"method": tier}
