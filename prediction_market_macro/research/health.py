@@ -305,14 +305,22 @@ def daily_health(conn, settings) -> str:
                 if abs(mass - 1.0) > 0.01:
                     s_rep["status"] = "red"
                     s_rep["notes"].append(f"ladder_mass:{mass:.3f}")
-            # replay determinism (dependency drift canary)
+            # replay determinism (dependency drift canary). MUST re-predict with the
+            # params that were in force at the pred's asof — 2026-08-12 this replayed
+            # at registered defaults, mismatched every adopted-params pred, went red
+            # on four series and the breaker force-exited all three live positions 49
+            # minutes before the CPI print. A determinism check that ignores half the
+            # inputs is a false-positive generator, not a canary.
             disp = SERIES_DISPATCH.get(spec.ticker)
             if disp:
                 try:
+                    from prediction_market_macro.research.param_select import params_asof
                     mod = importlib.import_module(disp[0])
                     fn = getattr(mod, disp[1])
-                    re_pred = fn(conn, datetime.fromisoformat(pr["asof"]), pr["period"],
-                                 series=spec.ticker)
+                    _asof = datetime.fromisoformat(pr["asof"])
+                    re_pred = fn(conn, _asof, pr["period"],
+                                 series=spec.ticker,
+                                 params=(params_asof(conn, spec.ticker, _asof) or None))
                     if json.dumps(re_pred.dist.to_json()) != pr["dist_json"]:
                         s_rep["status"] = "red"
                         s_rep["notes"].append("replay_mismatch")

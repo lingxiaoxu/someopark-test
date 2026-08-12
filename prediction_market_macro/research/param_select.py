@@ -185,6 +185,32 @@ def history(conn, series: str | None = None) -> list[dict]:
     return out
 
 
+def params_asof(conn, series: str, asof: datetime) -> dict:
+    """The params that were IN FORCE when something was computed at `asof` — the
+    read a determinism replay must use. Mirrors what `current()` returned at that
+    wall-clock moment: the manual override if it had been adopted by then (PIT on
+    the adoption timestamp), else that day's param_selection row, else defaults.
+    Added 2026-08-12 after health's replay canary re-predicted at DEFAULTS,
+    mismatched every adopted-params pred, went red on four series and force-exited
+    all three live positions 49 minutes before the CPI print."""
+    mp = manual_params(conn, series, asof)
+    if mp is not None:
+        return dict(mp[0])
+    # NOT current(): its manual check uses wall-clock now, which would leak
+    # today's adoption into a pre-adoption asof. Read the day's row directly.
+    d = asof.date().isoformat()
+    floor = (asof.date() - timedelta(days=MAX_STALE_DAYS)).isoformat()
+    row = conn.execute(
+        "SELECT params_json FROM param_selection WHERE series=? AND day<=? AND day>=?"
+        " ORDER BY day DESC LIMIT 1", (series, d, floor)).fetchone()
+    if row is None:
+        return {}
+    try:
+        return json.loads(row["params_json"]) or {}
+    except Exception:                                            # noqa: BLE001
+        return {}
+
+
 def select_for(conn, series: str, before: datetime, adopt_p: float = _dsr.ADOPT_P,
                log=None) -> tuple[dict, dict]:
     """(params, report) for one series as of `before`. `params` is {} for the defaults.
