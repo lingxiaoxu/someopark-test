@@ -445,9 +445,15 @@ children 层的 shares 记录(每层已有);同方向对不同批次/不同股�
    当日盘中输出同时给绝对值与 `V/V_base-1` 日内收益,保证与官方曲线无缝衔接。
 2. **收盘后(对账,不是覆写)**:等三个 json 被各自 pipeline 更新后,
    `controller/reconcile_eod.py` 把 controller 的 16:00 快照与 json 新 EOD 行
-   **对账**:`|controller_close − json_eod| / json_eod` 超阈值(初设 20bp,
-   实测校准)→ 报告差异并归因(已知合法差异源:json 侧含股息入账/费用/
-   回测-live 拼接段、AISS 篮子 80/15/5 有效权重 vs account 实仓、BDC DRIP 日)。
+   **对账**。**方法修订(2026-08-12 用户令:不依赖"ratio 恒定"假设——ratio
+   会因合法原因移动:pairs regime capital 日变、分红、费用;ratio 只做信息
+   记录,不做判定)**:判定用**同日期对齐的日收益差**——
+   `r_off = off(D)/off(D_prev)−1`(官方最后两行)vs
+   `r_ctl = ctl_close(D)/ctl_close(D_prev)−1`(nav_stream 各日 16:00 ET 截断
+   末笔),`diff_bp = (r_ctl − r_off)×1e4` 超阈值(初设 20bp,影子周实测校准)
+   → 报告差异并归因(已知合法差异源:json 侧含股息入账/费用/回测-live 拼接段、
+   pairs regime 资本重标定、AISS 篮子理论权重 vs account 实仓、BDC DRIP 日、
+   corp_action split 日)。controller 侧尚无对应两日收盘数据 → baseline 只记录。
    **对账报告落 `controller/output/reconcile_{date}.json`,绝不回写三个 json。**
 3. 拼接日期(SR_LIVE_START/AISS_LIVE_START 等)对 controller 透明——controller
    只消费三 json 的**最终输出行**,永不复算它们的拼接;这保证"拼接逻辑不能变

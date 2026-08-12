@@ -52,8 +52,18 @@ router.get('/stream', (req, res) => {
   res.json({ date, rows });
 });
 
-// 前一交易日 controller 收盘值(最近一个 date<今天 的 nav_stream 末笔;
-// 日内 % 的开盘锚基准——含隔夜跳空,官方口径换算在前端做)
+// 前一交易日 controller 收盘值(最近一个 date<今天 的 nav_stream,
+// 取 16:00 ET 截断前的末笔——与官方 EOD 同时点对齐;闭市 carry 行不算收盘)
+function et16utcMs(d8: string): number {
+  const y = +d8.slice(0, 4), m = +d8.slice(4, 6), d = +d8.slice(6, 8);
+  for (const h of [20, 21]) {                 // EDT=UTC-4 → 20:00Z;EST=UTC-5 → 21:00Z
+    const t = Date.UTC(y, m - 1, d, h, 0, 0);
+    const etH = new Intl.DateTimeFormat('en-US',
+      { timeZone: 'America/New_York', hour: '2-digit', hour12: false }).format(new Date(t));
+    if (+etH === 16) return t;
+  }
+  return Date.UTC(y, m - 1, d, 21, 0, 0);
+}
 router.get('/prev-close', (_req, res) => {
   if (!fs.existsSync(OUT)) return res.status(404).json({ error: 'no output dir' });
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
@@ -63,13 +73,15 @@ router.get('/prev-close', (_req, res) => {
     .sort();
   if (!days.length) return res.json({ date: null, values: {} });
   const date = days[days.length - 1];
+  const cutoff = et16utcMs(date);
   const lines = fs.readFileSync(path.join(OUT, `nav_stream_${date}.csv`), 'utf-8')
     .trim().split('\n');
   const header = lines[0].split(',');
-  const iNode = header.indexOf('node_id'), iVal = header.indexOf('value');
+  const iTs = header.indexOf('ts'), iNode = header.indexOf('node_id'), iVal = header.indexOf('value');
   const values: Record<string, number> = {};
-  for (const l of lines.slice(1)) {           // 顺序扫描,末笔覆盖 = 当日收盘
+  for (const l of lines.slice(1)) {           // 顺序扫描,≤16:00 ET 的末笔覆盖 = 收盘
     const v = l.split(',');
+    if (Date.parse(v[iTs]) > cutoff) continue;
     values[v[iNode]] = Number(v[iVal]);
   }
   res.json({ date, values });
