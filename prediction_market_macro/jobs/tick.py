@@ -23,6 +23,15 @@ from prediction_market_macro.ingest.store import init_db
 from prediction_market_macro.jobs import scheduler
 
 
+def _export_frontend(conn, s) -> None:
+    """Best-effort: a display refresh must never fail a trading task."""
+    try:
+        from prediction_market_macro.ops import frontend_export
+        frontend_export.run(conn, s)
+    except Exception as e:                                       # noqa: BLE001
+        print(f"  frontend_export skipped: {e}")
+
+
 def _exec_task(conn, s, md, r) -> str:
     task, series = r["task"], r["series"]
     from prediction_market_macro.ops import decide_all, exits, pnl, predict_all
@@ -33,6 +42,9 @@ def _exec_task(conn, s, md, r) -> str:
         predict_all.run(conn, s)
         decide_all.run(conn, s)
         exits.run(conn, s)
+        _export_frontend(conn, s)   # 2026-08-13: intraday trades were invisible
+        # until the NEXT MORNING's refresh — the site reads local public/data over
+        # the tunnel, so freshness is decided here, not by a deploy.
     if task == "reassess" and series in REGISTRY:
         # §24-B: the print is public by T+3m — snipe legs whose settlement is
         # already determined but still mispriced
@@ -47,6 +59,7 @@ def _exec_task(conn, s, md, r) -> str:
             md.sync_settlements(series)
         pnl.settle_pass(conn)
         scheduler.set_coverage(conn, series, r["period"], "reconciled")
+        _export_frontend(conn, s)   # settles change the live track — same reason
     if task in ("daily_refresh", "health", "pred_freshness"):
         last = s.output_dir / "refresh_last.json"
         if last.exists():
