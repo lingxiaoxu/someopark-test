@@ -221,7 +221,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             return (
               <>
                 <div style={{ fontSize: 30, fontWeight: 800 }}
-                  title={`账本口径合计 $${(portfolio?.value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}(内部对拍账,仅校验用)`}>
+                  title="官方口径:Σ 各策略官方 EOD × (1+日内收益)">
                   ${main.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   {pct !== null && (
                     <span style={{ fontSize: 15, marginLeft: 10,
@@ -316,8 +316,8 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                   <>
                     <div style={{ fontSize: 17, fontWeight: 700 }}
                       title={oa
-                        ? `官方口径(官方 EOD ${oa.date} × 日内收益,与 Strategy Performance 同刻度);账本 $${s.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}(内部校验用)`
-                        : '⚠ 官方 EOD 不可用,显示账本口径'}>
+                        ? `官方口径(官方 EOD ${oa.date} × 日内收益,与 Strategy Performance 同刻度)`
+                        : '⚠ 官方 EOD 不可用,显示内部口径'}>
                       ${(oa ? oa.live : s.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </div>
                     <div style={{ fontSize: 10.5 }}>
@@ -380,7 +380,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                 }
                 return (                                          // 空仓(MRPT 0 对):全现金
                   <div style={{ fontSize: 10.5, color: '#999', borderTop: '1px dashed #ddd', padding: '3px 0' }}>
-                    空仓 · 全现金(账本 ${s.value.toLocaleString(undefined, { maximumFractionDigits: 0 })})
+                    空仓 · 全现金
                   </div>
                 );
               })()}
