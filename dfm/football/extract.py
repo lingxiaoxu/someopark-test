@@ -83,6 +83,11 @@ TEAM_STRENGTH = {
     'Senegal': 0.4, 'Norway': 0.4, 'Austria': 0.3, 'Ecuador': 0.3,
     'Paraguay': 0.0, "Cote d'Ivoire": 0.0, 'Cape Verde': -0.8,
     'Morocco': 0.6,
+    # 2026-08-12 (Germany_vs_Paraguay / South Africa_vs_Canada series): the first
+    # onlining ran these at the 0.0 fallback — Germany a top side, South Africa
+    # well below mid — and the double-miss case only warns for the HOME side, so
+    # Canada was silently 0.0 too. Same FIFA-flavored scale as the rows above.
+    'Germany': 1.2, 'Canada': 0.3, 'South Africa': -0.3,
 }
 
 RE_GOAL = re.compile(r'^Goal Scored by - (.+) - \((.+)\)$')
@@ -340,8 +345,10 @@ def parse_sim(sim_dir: str, n_seg: int):
     r_home = TEAM_STRENGTH.get(home_name)
     r_away = TEAM_STRENGTH.get(away_name)
     if r_home is None or r_away is None:
+        missing = [n for n, r in ((home_name, r_home), (away_name, r_away))
+                   if r is None]                    # BOTH sides, not home-shadows-away
         print(f'  WARNING: team missing from TEAM_STRENGTH: '
-              f'{home_name if r_home is None else away_name} — using 0.0')
+              f'{", ".join(missing)} — using 0.0')
         r_home = 0.0 if r_home is None else r_home
         r_away = 0.0 if r_away is None else r_away
     cond = {
