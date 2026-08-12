@@ -318,6 +318,10 @@ children 层的 shares 记录(每层已有);同方向对不同批次/不同股�
   `GET /v2/aggs/ticker/{t}/range/1/minute/...` 用于补一分钟缺口/回填当日序列。
 - **交易日历与时段**:复用 repo 现有 NYSE 日历习惯(pandas_market_calendars /
   现有 `trading_days` 工具);非交易时段 tick 跳过(记录 skip 原因,不静默)。
+  **实现定案(2026-08-12 用户令,取代"跳过")**:闭市 tick 不跳过而是
+  **平移续写**(Robinhood 式)——不拉快照(零 API 开销),沿用 last_price
+  每 interval 照常落一行,价格不变即平线匀速右移;开市/extended-hours 恢复
+  正常拉快照。闭市平移不算 stale(payload 的 market=closed 已说明状态)。
 - **失败语义**:Polygon 请求失败 → 指数退避重试;连续失败 N 次 → 该 tick 标
   `stale`,**沿用 last_price 不注入假价**,并在输出行打 `stale=true` 标记;
   绝不切换数据源(纪律 2)。

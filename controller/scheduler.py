@@ -169,8 +169,7 @@ class Controller:
 
         # 2) 市场状态
         status = self.feed.market_status()
-        if status["market"] == "closed" and not force:
-            return {"skipped": "market closed", "rebuilt": rebuilt}
+        closed = status["market"] == "closed"
 
         # 2b) 当日 split 日历(每 ET 日一次;plan §九-7:只标注,不改 shares)
         today_et = et_today()
@@ -187,14 +186,22 @@ class Controller:
             self._splits_date = today_et
 
         # 3) 快照 → 双引擎 → 对拍
+        # 闭市且已有价:不拉快照,平移续写(Robinhood 式匀速推进,零 API 开销,
+        # 用户令 2026-08-12)——nav 流每 interval 照常落一行,价格不变即平线;
+        # 开市/extended-hours/强制/冷启动 → 正常拉快照。
         stale = False
-        try:
-            snap = self.feed.snapshot(sorted(self.S.leaves()))
-            prices = snap["prices"]
-        except Exception as e:  # noqa: BLE001 — 不换源:标 stale 沿用 last_price
-            print(f"!!!! [controller WARN] snapshot failed: {e} — tick stale")
+        fetch = force or (not closed) or not self.last_price
+        if fetch:
+            try:
+                snap = self.feed.snapshot(sorted(self.S.leaves()))
+                prices = snap["prices"]
+            except Exception as e:  # noqa: BLE001 — 不换源:标 stale 沿用 last_price
+                print(f"!!!! [controller WARN] snapshot failed: {e} — tick stale")
+                snap = {"feed_delay_min": None, "missing": []}
+                prices, stale = {}, True
+        else:
             snap = {"feed_delay_min": None, "missing": []}
-            prices, stale = {}, True
+            prices = {}
         if prices:
             em_f = self.fe.apply_tick(prices)
             em_t = self.te.apply_tick(prices)
@@ -203,8 +210,9 @@ class Controller:
                     for a, b in zip(em_f, em_t)):
                 raise EngineDisagreement(f"tick emissions differ:\n{em_f}\n{em_t}")
             self.last_price.update(prices)
-        else:
-            # 快照"成功"但空手(如 3:30am ET snapshot 重置窗)= 同 stale 语义
+        elif fetch:
+            # 拉了却空手(如 3:30am ET snapshot 重置窗)= 同 stale 语义;
+            # 闭市不拉的平移续写不算 stale(market=closed 已说明一切)
             stale = True
             if not self.last_price:      # 冷启动且全无价:不发近空 nav,不覆盖旧文件
                 return {"skipped": "no prices available (snapshot empty, "
