@@ -65,7 +65,8 @@ def controller_strategies() -> dict:
         st = spid_to_st.get(row["node_id"])
         if st:
             out[st] = {"ts": nav["ts"], "value": float(row["value"]),
-                       "positions_as_of": row.get("positions_as_of")}
+                       "positions_as_of": row.get("positions_as_of"),
+                       "corp_action": bool(row.get("corp_action"))}
     missing = set(_ANCHORS) - set(out)
     if missing:
         raise RuntimeError(f"nav_latest lacks strategies {missing}")
@@ -97,6 +98,9 @@ def reconcile(date: str | None = None) -> dict:
             row["ratio_drift_bp"] = round(drift_bp, 2)
             row["within_tolerance"] = abs(drift_bp) <= TOL_BP
             row["attribution_hints"] = [h for h, cond in [
+                ("corp_action: split effective today — price is post-split, "
+                 "position file adjusts at its own pipeline (plan §九-7)",
+                 ctl[st].get("corp_action", False)),
                 ("dividend/DRIP day (bdc/ssrs/aiss cumulative_dividends)", abs(drift_bp) > 2),
                 ("fees", abs(drift_bp) > 2),
                 ("regime-weight rescale (pairs official only)", st in ("mrpt", "mtfs")),

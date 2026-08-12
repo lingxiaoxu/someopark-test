@@ -36,6 +36,29 @@ router.get('/stream', (req, res) => {
   res.json({ date, rows });
 });
 
+// 前一交易日 controller 收盘值(最近一个 date<今天 的 nav_stream 末笔;
+// 日内 % 的开盘锚基准——含隔夜跳空,官方口径换算在前端做)
+router.get('/prev-close', (_req, res) => {
+  if (!fs.existsSync(OUT)) return res.status(404).json({ error: 'no output dir' });
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const days = fs.readdirSync(OUT)
+    .map(f => /^nav_stream_(\d{8})\.csv$/.exec(f)?.[1])
+    .filter((d): d is string => !!d && d < today)
+    .sort();
+  if (!days.length) return res.json({ date: null, values: {} });
+  const date = days[days.length - 1];
+  const lines = fs.readFileSync(path.join(OUT, `nav_stream_${date}.csv`), 'utf-8')
+    .trim().split('\n');
+  const header = lines[0].split(',');
+  const iNode = header.indexOf('node_id'), iVal = header.indexOf('value');
+  const values: Record<string, number> = {};
+  for (const l of lines.slice(1)) {           // 顺序扫描,末笔覆盖 = 当日收盘
+    const v = l.split(',');
+    values[v[iNode]] = Number(v[iVal]);
+  }
+  res.json({ date, values });
+});
+
 // 官方 EOD 锚(V_base;锚定映射与 controller/reconcile_eod.py 一致,原始源)
 router.get('/official', (_req, res) => {
   const readLast = (file: string, cols: string[]) => {

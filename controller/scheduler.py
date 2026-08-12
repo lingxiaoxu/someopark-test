@@ -26,7 +26,7 @@ from controller.registry import Registry
 from controller.model import assemble, WATCH_FILES, REPO
 from controller.engine_flatten import FlattenEngine
 from controller.engine_tree import TreeEngine
-from controller.prices import PriceFeed
+from controller.prices import PriceFeed, et_today
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(_HERE, "output")
@@ -62,18 +62,53 @@ class EngineDisagreement(RuntimeError):
     pass
 
 
+def _diff_structures(old_nodes: dict, new_nodes: dict, reg) -> list[str]:
+    """相邻两份结构的人话摘要('MTFS 5→4' 式;plan §4.3 持仓变化提示)。"""
+    out = []
+    strategies = {nid for nid, n in {**old_nodes, **new_nodes}.items()
+                  if n["kind"] == "strategy"}
+    for sid in sorted(strategies):
+        o, n = old_nodes.get(sid), new_nodes.get(sid)
+        name = reg.render(sid)
+        if o is None or n is None:
+            out.append(f"{name} {'新增' if o is None else '移除'}")
+            continue
+        oc = {c: q for c, q in o["children"]}
+        nc = {c: q for c, q in n["children"]}
+        if len(oc) != len(nc):
+            out.append(f"{name} {len(oc)}→{len(nc)}")
+        added = [reg.render(c) for c in nc.keys() - oc.keys()]
+        removed = [reg.render(c) for c in oc.keys() - nc.keys()]
+        resized = sum(1 for c in oc.keys() & nc.keys() if oc[c] != nc[c])
+        if added:
+            out.append(f"{name} 新开 {', '.join(sorted(added))}")
+        if removed:
+            out.append(f"{name} 平掉 {', '.join(sorted(removed))}")
+        if resized:
+            out.append(f"{name} {resized} 个持仓 shares 变化")
+    return out
+
+
 class Controller:
-    def __init__(self):
+    def __init__(self, feed: PriceFeed | None = None):
         self.reg = Registry()
-        self.feed = PriceFeed(self.reg)
+        self.feed = feed if feed is not None else PriceFeed(self.reg)
         self.last_price: dict[str, float] = {}
         self.watch_digest: str | None = None
         self.last_rebaseline = 0.0
+        self.last_rebuild_ts: str | None = None
+        self.structure_diff: list[str] = []
+        self._splits: dict[str, str] = {}      # {leaf_isin: "from:to"} 当日 split
+        self._splits_date: str | None = None
         self._rebuild(replay=False)
 
     # ── 结构(重)建 + 合成重放(修 C 统一语义)────────────────────────────────
     def _rebuild(self, replay: bool = True) -> None:
+        prev_nodes = getattr(self, "S", None) and self.S.nodes
         self.S = assemble(self.reg)
+        self.structure_diff = (_diff_structures(prev_nodes, self.S.nodes, self.reg)
+                               if prev_nodes else [])
+        self.last_rebuild_ts = _now_iso()
         self.fe = FlattenEngine(self.S)
         self.te = TreeEngine(self.S)
         init_f, init_t = self.fe.initial_emissions(), self.te.initial_emissions()
@@ -137,6 +172,20 @@ class Controller:
         if status["market"] == "closed" and not force:
             return {"skipped": "market closed", "rebuilt": rebuilt}
 
+        # 2b) 当日 split 日历(每 ET 日一次;plan §九-7:只标注,不改 shares)
+        today_et = et_today()
+        if self._splits_date != today_et:
+            try:
+                self._splits = self.feed.splits_today(sorted(self.S.leaves()))
+                if self._splits:
+                    print(f"!!!! [controller WARN] splits today: "
+                          f"{ {self.reg.render(k): v for k, v in self._splits.items()} } "
+                          f"— corp_action 标注,shares 以持仓文件为准")
+            except Exception as e:  # noqa: BLE001 — 日历失败不阻塞估值
+                print(f"!!!! [controller WARN] splits calendar failed: {e}")
+                self._splits = {}
+            self._splits_date = today_et
+
         # 3) 快照 → 双引擎 → 对拍
         stale = False
         try:
@@ -154,6 +203,12 @@ class Controller:
                     for a, b in zip(em_f, em_t)):
                 raise EngineDisagreement(f"tick emissions differ:\n{em_f}\n{em_t}")
             self.last_price.update(prices)
+        else:
+            # 快照"成功"但空手(如 3:30am ET snapshot 重置窗)= 同 stale 语义
+            stale = True
+            if not self.last_price:      # 冷启动且全无价:不发近空 nav,不覆盖旧文件
+                return {"skipped": "no prices available (snapshot empty, "
+                                   "no last_price to carry)", "rebuilt": rebuilt}
         self._verify("tick")
         if time.time() - self.last_rebaseline > REBASELINE_EVERY_S:
             self._rebaseline()
@@ -170,26 +225,41 @@ class Controller:
             if nid not in values:
                 continue
             n = self.S.nodes[nid]
+            corp = any(leaf in self._splits
+                       for leaf in self.fe.expanded.get(nid, {}))
             rows.append({"node_id": nid,
                          "display_name": self.reg.render(nid),
                          "kind": n["kind"], "value": round(values[nid], 2),
                          "parent_id": parent_of.get(nid),
+                         "corp_action": corp,
                          "positions_as_of": n["attrs"].get("positions_as_of")})
         payload = {"ts": ts, "structure_hash": self.S.hash, "stale": stale,
+                   "last_rebuild_ts": self.last_rebuild_ts,
+                   "structure_diff": self.structure_diff,
+                   "corp_actions": {self.reg.render(k): v
+                                    for k, v in self._splits.items()},
                    "feed_delay_min": snap.get("feed_delay_min"),
                    "missing": [self.reg.render(m) for m in snap.get("missing", [])],
+                   "backfilled": [self.reg.render(b)
+                                  for b in snap.get("backfilled", [])],
                    "market": status["market"], "nodes": rows}
         _atomic_json(payload, os.path.join(OUT_DIR, "nav_latest.json"))
         stream = os.path.join(OUT_DIR,
                               f"nav_stream_{datetime.now().strftime('%Y%m%d')}.csv")
         os.makedirs(OUT_DIR, exist_ok=True)
+        header = "ts,node_id,display_name,kind,value,stale,corp_action\n"
+        if os.path.exists(stream):                      # 旧 schema 文件轮转,不混写
+            with open(stream) as fh:
+                if fh.readline() != header:
+                    os.replace(stream, stream + ".v1")
         new = not os.path.exists(stream)
         with open(stream, "a") as fh:
             if new:
-                fh.write("ts,node_id,display_name,kind,value,stale\n")
+                fh.write(header)
             for r in rows:
                 fh.write(f"{ts},{r['node_id']},{r['display_name']},"
-                         f"{r['kind']},{r['value']},{int(stale)}\n")
+                         f"{r['kind']},{r['value']},{int(stale)},"
+                         f"{int(r['corp_action'])}\n")
         _atomic_json(self.fe.risk_matrix(),
                      os.path.join(OUT_DIR, "risk_matrix_latest.json"))
         root_v = values.get(self.S.root)

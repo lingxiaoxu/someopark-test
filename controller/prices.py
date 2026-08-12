@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import time
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -21,6 +22,12 @@ from controller.registry import Registry, RegistryError
 
 _API = "https://api.polygon.io"
 _BATCH = 100                       # snapshot tickers 每批上限(保守)
+_ET = ZoneInfo("America/New_York")
+_BACKFILL_CAP = 40                 # 备通道单 tick 上限(逐票调用,防限速;≥全书 31)
+
+
+def et_today() -> str:
+    return datetime.now(_ET).strftime("%Y-%m-%d")
 
 
 def _to_epoch_s(ts) -> float | None:
@@ -107,13 +114,62 @@ class PriceFeed:
                     if ts:
                         tss[isin] = ts
         missing = [i for i in isins if i not in prices]
+        backfilled = []
+        if missing:                                   # 备通道:分钟聚合补缺口
+            got = self.minute_backfill(missing[:_BACKFILL_CAP])
+            for isin, (price, ts) in got.items():
+                prices[isin] = price
+                if ts:
+                    tss[isin] = ts
+                backfilled.append(isin)
+            missing = [i for i in isins if i not in prices]
         delay = None
         if tss:
             newest = max(tss.values())
             delay = round((time.time() - newest) / 60.0, 1)
         return {"prices": prices, "ts": tss, "missing": missing,
-                "feed_delay_min": delay,
+                "backfilled": backfilled, "feed_delay_min": delay,
                 "asof": datetime.now(timezone.utc).isoformat(timespec="seconds")}
+
+    # ── 备通道:分钟聚合(同 Polygon,不算换源;plan §三)──────────────────────
+    def minute_backfill(self, isins: list[str]) -> dict:
+        """快照缺口的票逐票补价 → {isin: (close, epoch_s)}。
+        当日最新分钟 bar,当日无 bar(如 snapshot 3:30am ET 重置窗、盘前无成交)
+        退到 /prev 前收(仍是 Polygon,闭市估值的正确价)。
+        单票失败跳过(留给 missing → stale 语义),绝不注入假价。"""
+        out = {}
+        day = et_today()
+        for isin in isins:
+            rec = self.reg.master.get(isin)
+            if rec is None:
+                continue
+            t = rec["polygon_ticker"]
+            try:
+                d = self._get(f"/v2/aggs/ticker/{t}/range/1/minute/{day}/{day}",
+                              {"sort": "desc", "limit": 1}, retries=1)
+                bars = d.get("results") or []
+                if not bars:
+                    d = self._get(f"/v2/aggs/ticker/{t}/prev", retries=1)
+                    bars = d.get("results") or []
+            except Exception:  # noqa: BLE001 — 单票缺口保持 missing
+                continue
+            if bars and bars[0].get("c"):
+                out[isin] = (float(bars[0]["c"]), _to_epoch_s(bars[0].get("t")))
+        return out
+
+    # ── 当日 split 日历(plan §九-7:标注不改 shares,持仓文件是 golden)──────
+    def splits_today(self, isins: list[str]) -> dict:
+        """→ {isin: "from:to"} 当日 execution_date 落在全书内的 split。"""
+        t2i = {self.reg.master[i]["polygon_ticker"]: i
+               for i in isins if i in self.reg.master}
+        d = self._get("/v3/reference/splits",
+                      {"execution_date": et_today(), "limit": 1000})
+        out = {}
+        for row in d.get("results", []):
+            isin = t2i.get(row.get("ticker"))
+            if isin:
+                out[isin] = f'{row.get("split_from")}:{row.get("split_to")}'
+        return out
 
 
 if __name__ == "__main__":

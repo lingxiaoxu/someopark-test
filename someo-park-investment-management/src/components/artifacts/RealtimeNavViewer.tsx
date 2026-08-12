@@ -22,17 +22,25 @@ const POLL_MS = 45_000;
 
 interface NavNode {
   node_id: string; display_name: string; kind: string; value: number;
-  parent_id?: string | null; positions_as_of?: string | null;
+  parent_id?: string | null; positions_as_of?: string | null; corp_action?: boolean;
 }
 interface NavLatest {
   ts: string; structure_hash: string; stale: boolean; market: string;
   feed_delay_min: number | null; missing: string[]; nodes: NavNode[];
+  last_rebuild_ts?: string | null; structure_diff?: string[];
+  corp_actions?: Record<string, string>;
 }
+// 官方口径映射(与 reconcile_eod._ANCHORS 一致;display_name → official key)
+const OFFICIAL_KEY: Record<string, string> = {
+  MRPT: 'mrpt', MTFS: 'mtfs', SSRS: 'ssrs', AISS: 'aiss', BDC: 'bdc',
+};
 
 export default function RealtimeNavViewer({ params }: { params?: any }) {
   const [latest, setLatest] = useState<NavLatest | null>(null);
   const [streamRows, setStreamRows] = useState<any[]>([]);
   const [reconcile, setReconcile] = useState<any>(null);
+  const [prevClose, setPrevClose] = useState<{ date: string | null, values: Record<string, number> } | null>(null);
+  const [official, setOfficial] = useState<Record<string, { date: string, value: number }> | null>(null);
   const [freq, setFreq] = useState('1m');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [structHash, setStructHash] = useState<string>('');
@@ -42,16 +50,20 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
 
   const poll = useCallback(async () => {
     try {
-      const [l, s, r] = await Promise.all([
+      const [l, s, r, p, o] = await Promise.all([
         fetch(`${API_BASE}/api/controller-nav/latest`, { headers: apiHeaders() }),
         fetch(`${API_BASE}/api/controller-nav/stream`, { headers: apiHeaders() }),
         fetch(`${API_BASE}/api/controller-nav/reconcile`, { headers: apiHeaders() }),
+        fetch(`${API_BASE}/api/controller-nav/prev-close`, { headers: apiHeaders() }),
+        fetch(`${API_BASE}/api/controller-nav/official`, { headers: apiHeaders() }),
       ]);
       if (!l.ok) throw new Error(`controller not running (HTTP ${l.status})`);
       const lj: NavLatest = await l.json();
       setLatest(lj);
       if (s.ok) setStreamRows((await s.json()).rows || []);
       if (r.ok) setReconcile(await r.json());
+      if (p.ok) setPrevClose(await p.json());
+      if (o.ok) setOfficial(await o.json());
       setError(null);
       // 持仓变化即时提示(structure_hash 变 → 闪烁标记,plan §4.3)
       setStructHash(prev => {
@@ -82,28 +94,48 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
     (latest?.nodes || []).filter(n => n.parent_id === pid && n.kind !== 'strategy'),
     [latest]);
 
-  // 当日曲线:按频率子采样;基准=每节点当日首笔(日内 % 自洽口径)
+  // 开盘锚(plan §4.3 吻合契约):日内 % 基准 = 前一交易日 controller 收盘
+  // (含隔夜跳空,与官方日收益同口径,经 ratio 与官方曲线首尾相接);
+  // 无昨收(首日)才退回当日首笔,并如实标注。
+  const prevByName = useMemo(() => {
+    const m: Record<string, number> = {};
+    if (!prevClose?.values || !latest) return m;
+    for (const n of latest.nodes) {
+      const v = prevClose.values[n.node_id];
+      if (v !== undefined) m[n.display_name] = v;
+    }
+    return m;
+  }, [prevClose, latest]);
+  const anchored = Object.keys(prevByName).length > 0;
+
   const chart = useMemo(() => {
     if (!streamRows.length) return { data: [] as any[], names: [] as string[] };
     const step = FREQS.find(f => f.key === freq)!.minutes;
     const wanted = new Set(['PORTFOLIO', ...strategies.map(s => s.display_name)]);
     const byTs: Record<string, any> = {};
-    const first: Record<string, number> = {};
+    const base: Record<string, number> = { ...prevByName };
     for (const r of streamRows) {
       const name = r.display_name as string;
       if (!wanted.has(name)) continue;
       const t = new Date(r.ts as string);
       if (step > 1 && t.getUTCMinutes() % step !== 0) continue;
       const label = r.ts.slice(11, 16);
-      if (first[name] === undefined) first[name] = r.value as number;
-      (byTs[label] ||= { label })[name] = ((r.value as number) / first[name] - 1) * 100;
+      if (base[name] === undefined) base[name] = r.value as number;
+      (byTs[label] ||= { label })[name] = ((r.value as number) / base[name] - 1) * 100;
     }
     return { data: Object.values(byTs), names: [...wanted] };
-  }, [streamRows, freq, strategies]);
+  }, [streamRows, freq, strategies, prevByName]);
 
   const dayPct = (name: string, value: number) => {
-    const f = streamRows.find(r => r.display_name === name);
-    return f ? ((value / (f.value as number)) - 1) * 100 : null;
+    const base = prevByName[name]
+      ?? (streamRows.find(r => r.display_name === name)?.value as number | undefined);
+    return base ? (value / base - 1) * 100 : null;
+  };
+  // 官方口径换算展示(×官方基准;绝不显示两套打架的绝对值,plan §4.3.3)
+  const officialAnchor = (name: string, value: number) => {
+    const off = official?.[OFFICIAL_KEY[name]];
+    const pct = dayPct(name, value);
+    return off && pct !== null ? { ...off, live: off.value * (1 + pct / 100) } : null;
   };
 
   if (loading) return <LoadingState />;
@@ -127,10 +159,22 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               <span style={{ fontSize: 15, marginLeft: 10,
                 color: dayPct('PORTFOLIO', portfolio.value)! >= 0 ? '#16a34a' : '#e11d48' }}>
                 {dayPct('PORTFOLIO', portfolio.value)! >= 0 ? '+' : ''}
-                {dayPct('PORTFOLIO', portfolio.value)!.toFixed(2)}% 日内
+                {dayPct('PORTFOLIO', portfolio.value)!.toFixed(2)}%
+                {anchored ? ` vs 昨收${prevClose?.date ? ` ${prevClose.date.slice(4, 6)}/${prevClose.date.slice(6, 8)}` : ''}` : ' 日内(首日无昨收)'}
               </span>
             )}
           </div>
+          {official && (() => {
+            const parts = strategies.map(s => officialAnchor(s.display_name, s.value));
+            if (parts.some(p => !p)) return null;
+            const sum = parts.reduce((a, p) => a + p!.live, 0);
+            return (
+              <div style={{ fontSize: 11, color: '#666' }}>
+                官方口径 ≈ ${sum.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                (各策略官方 EOD × 日内收益换算)
+              </div>
+            );
+          })()}
         </div>
         <div className="flex gap-2 flex-wrap" style={{ fontSize: 10, fontWeight: 700 }}>
           <span style={{ padding: '3px 8px', border: '1px solid #ccc' }}>
@@ -149,9 +193,18 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
           <span style={{ padding: '3px 8px', border: `1px solid ${verdictColor}`, color: verdictColor }}>
             vs official EOD: {reconcile?.verdict ?? '—'}
           </span>
+          {Object.keys(latest.corp_actions || {}).length > 0 && (
+            <span style={{ padding: '3px 8px', background: '#ffedd5', border: '1px solid #ea580c' }}
+              title="当日 split 生效:价格已是 split 后,持仓文件待各自 pipeline 调整(shares 以持仓文件为准)">
+              SPLIT: {Object.entries(latest.corp_actions!).map(([t, r]) => `${t} ${r}`).join(' · ')}
+            </span>
+          )}
           {structFlash && (
-            <span style={{ padding: '3px 8px', background: '#dbeafe', border: '1px solid #2563eb' }}>
-              持仓已更新 · 结构 {latest.structure_hash.slice(0, 8)}
+            <span style={{ padding: '3px 8px', background: '#dbeafe', border: '1px solid #2563eb' }}
+              title={latest.last_rebuild_ts ? `重建于 ${latest.last_rebuild_ts}` : undefined}>
+              持仓已更新{latest.structure_diff?.length
+                ? ` · ${latest.structure_diff.join(';')}`
+                : ` · 结构 ${latest.structure_hash.slice(0, 8)}`}
             </span>
           )}
         </div>
@@ -185,6 +238,10 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                        padding: '8px 10px', cursor: kids.length ? 'pointer' : 'default' }}>
               <div style={{ fontSize: 10, fontWeight: 800, color: COLORS[s.display_name] }}>
                 {s.display_name}{kids.length ? (open ? ' ▾' : ' ▸') : ''}
+                {s.corp_action && (
+                  <span title="当日 split 生效(见头部 SPLIT 徽标)"
+                    style={{ color: '#ea580c', marginLeft: 4 }}>⚠︎split</span>
+                )}
               </div>
               <div style={{ fontSize: 17, fontWeight: 700 }}>
                 ${s.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -192,13 +249,22 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               <div style={{ fontSize: 10.5 }}>
                 {pct !== null && (
                   <span style={{ color: pct >= 0 ? '#16a34a' : '#e11d48', fontWeight: 700 }}>
-                    {pct >= 0 ? '+' : ''}{pct.toFixed(2)}% 日内
+                    {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%{anchored ? '' : '(首日口径)'}
                   </span>
                 )}
                 <span style={{ color: '#999', marginLeft: 6 }}>
                   as of {s.positions_as_of ?? '—'}
                 </span>
               </div>
+              {(() => {
+                const oa = officialAnchor(s.display_name, s.value);
+                return oa && (
+                  <div style={{ fontSize: 10, color: '#888' }}
+                    title={`账本口径日内收益 × 官方 EOD(${oa.date});两口径绝对值不互比`}>
+                    官方锚 ≈ ${oa.live.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </div>
+                );
+              })()}
               {open && kids.map(k => (
                 <div key={k.node_id} style={{ fontSize: 10.5, display: 'flex',
                   justifyContent: 'space-between', borderTop: '1px dashed #ddd',
@@ -217,7 +283,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       {/* 当日日内曲线(% vs 当日首笔;策略 + PORTFOLIO) */}
       <div className="flex-1 min-h-[260px]">
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: '#666', marginBottom: 4 }}>
-          当日日内收益 %({freq} 采样 · 基准=当日首笔 · 历史日频请看 Strategy Performance)
+          当日日内收益 %({freq} 采样 · 基准={anchored ? '昨收(开盘锚,与官方曲线首尾相接)' : '当日首笔(首日无昨收)'} · 历史日频请看 Strategy Performance)
         </div>
         {chart.data.length < 2 ? (
           <div style={{ color: '#999', fontSize: 12, padding: 20 }}>
