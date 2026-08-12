@@ -67,11 +67,12 @@ def _diff_structures(old_nodes: dict, new_nodes: dict, reg) -> list[str]:
     out = []
     strategies = {nid for nid, n in {**old_nodes, **new_nodes}.items()
                   if n["kind"] == "strategy"}
+    # 语言中立符号(直接进前端显示,不做 i18n):+ 新开 / − 平掉 / Δ shares 变
     for sid in sorted(strategies):
         o, n = old_nodes.get(sid), new_nodes.get(sid)
         name = reg.render(sid)
         if o is None or n is None:
-            out.append(f"{name} {'新增' if o is None else '移除'}")
+            out.append(f"{name} {'+' if o is None else '−'}")
             continue
         oc = {c: q for c, q in o["children"]}
         nc = {c: q for c, q in n["children"]}
@@ -81,11 +82,11 @@ def _diff_structures(old_nodes: dict, new_nodes: dict, reg) -> list[str]:
         removed = [reg.render(c) for c in oc.keys() - nc.keys()]
         resized = sum(1 for c in oc.keys() & nc.keys() if oc[c] != nc[c])
         if added:
-            out.append(f"{name} 新开 {', '.join(sorted(added))}")
+            out.append(f"{name} + {', '.join(sorted(added))}")
         if removed:
-            out.append(f"{name} 平掉 {', '.join(sorted(removed))}")
+            out.append(f"{name} − {', '.join(sorted(removed))}")
         if resized:
-            out.append(f"{name} {resized} 个持仓 shares 变化")
+            out.append(f"{name} Δ{resized}")
     return out
 
 

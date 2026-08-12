@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ReferenceLine,
@@ -44,6 +45,7 @@ const OFFICIAL_KEY: Record<string, string> = {
 };
 
 export default function RealtimeNavViewer({ params }: { params?: any }) {
+  const { t } = useTranslation();
   const [latest, setLatest] = useState<NavLatest | null>(null);
   const [streamRows, setStreamRows] = useState<any[]>([]);          // 今天的流(日内基准用)
   const [chartStream, setChartStream] = useState<{ date: string | null, rows: any[], isToday: boolean }>(
@@ -180,7 +182,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
   };
 
   if (loading) return <LoadingState />;
-  if (error) return <ErrorState message={`实时净值:${error}(controller 未运行?)`} />;
+  if (error) return <ErrorState message={t('realtimeNav.errNotRunning', { err: error })} />;
   if (!latest) return <ErrorState message="no data" />;
 
   const verdictColor = reconcile?.verdict === 'ok' ? '#16a34a'
@@ -193,7 +195,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       <div className="flex items-end gap-4 flex-wrap shrink-0">
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: '#666' }}>
-            PORTFOLIO(实时 · {ET_HMS.format(new Date(latest.ts))} ET)
+            {t('realtimeNav.portfolioLive', { time: ET_HMS.format(new Date(latest.ts)) })}
           </div>
           {(() => {
             // 主数字 = 官方口径(与 StrategyPerformanceViewer 同刻度):
@@ -208,34 +210,38 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             // 双引擎对拍:nav_latest 只在两引擎逐节点对拍通过后才发布,能读到即通过
             const rec = reconcile?.verdict;
             const qc: { label: string, state: 'pass' | 'fail' | 'pending' }[] = [
-              { label: '双引擎对拍', state: 'pass' },
-              { label: '价格新鲜', state: latest.stale ? 'fail' : 'pass' },
-              { label: `全书报价${latest.missing?.length ? `缺${latest.missing.length}` : ''}`,
+              { label: t('realtimeNav.qcDual'), state: 'pass' },
+              { label: t('realtimeNav.qcFresh'), state: latest.stale ? 'fail' : 'pass' },
+              { label: latest.missing?.length
+                  ? t('realtimeNav.qcQuotesMissing', { n: latest.missing.length })
+                  : t('realtimeNav.qcQuotes'),
                 state: latest.missing?.length ? 'fail' : 'pass' },
-              { label: '持仓级对账',
+              { label: t('realtimeNav.qcRecon'),
                 state: rec === 'ok' ? 'pass' : rec === 'breach' ? 'fail' : 'pending' },
-              { label: '官方口径锚', state: allOfficial ? 'pass' : 'fail' },
+              { label: t('realtimeNav.qcAnchor'), state: allOfficial ? 'pass' : 'fail' },
             ];
             const allPass = qc.every(c => c.state === 'pass');
             const anyFail = qc.some(c => c.state === 'fail');
             return (
               <>
                 <div style={{ fontSize: 30, fontWeight: 800 }}
-                  title="官方口径:Σ 各策略官方 EOD × (1+日内收益)">
+                  title={t('realtimeNav.mainTitle')}>
                   ${main.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   {pct !== null && (
                     <span style={{ fontSize: 15, marginLeft: 10,
                       color: pct >= 0 ? '#16a34a' : '#e11d48' }}>
-                      {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%
-                      {anchored ? ` vs 昨收${prevClose?.date ? ` ${prevClose.date.slice(4, 6)}/${prevClose.date.slice(6, 8)}` : ''}` : ' 日内'}
+                      {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%{' '}
+                      {anchored && prevClose?.date
+                        ? t('realtimeNav.vsPrevClose', { date: `${prevClose.date.slice(4, 6)}/${prevClose.date.slice(6, 8)}` })
+                        : t('realtimeNav.intraday')}
                     </span>
                   )}
                 </div>
                 <div style={{ fontSize: 10.5, fontWeight: 700,
                   color: allPass ? '#16a34a' : anyFail ? '#e11d48' : '#b45309' }}
-                  title="双引擎对拍=拍平/树两引擎逐节点一致才发布;持仓级对账=golden 持仓股数×独立官方收盘价重算(不依赖 ratio);pending=数据积累中">
-                  {allPass ? '✓ Quality checks 全部通过 · '
-                    : anyFail ? '✗ Quality check 未过 · ' : '◷ Quality checks · '}
+                  title={t('realtimeNav.qcTitle')}>
+                  {allPass ? `✓ ${t('realtimeNav.qcAllPass')} · `
+                    : anyFail ? `✗ ${t('realtimeNav.qcFail')} · ` : `◷ ${t('realtimeNav.qcPending')} · `}
                   {qc.map(c => `${c.state === 'pass' ? '✓' : c.state === 'fail' ? '✗' : '◷'}${c.label}`).join(' ')}
                 </div>
               </>
@@ -257,21 +263,21 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             </span>
           )}
           <span style={{ padding: '3px 8px', border: `1px solid ${verdictColor}`, color: verdictColor }}
-            title="持仓级对账:golden 持仓股数 × 独立官方收盘价逐仓重算 vs controller 收盘(不依赖 ratio;官方 json 仅信息展示)">
-            对账: {reconcile?.verdict ?? '—'}
+            title={t('realtimeNav.reconTitle')}>
+            {t('realtimeNav.reconLabel')}: {reconcile?.verdict ?? '—'}
           </span>
           {Object.keys(latest.corp_actions || {}).length > 0 && (
             <span style={{ padding: '3px 8px', background: '#ffedd5', border: '1px solid #ea580c' }}
-              title="当日 split 生效:价格已是 split 后,持仓文件待各自 pipeline 调整(shares 以持仓文件为准)">
-              SPLIT: {Object.entries(latest.corp_actions!).map(([t, r]) => `${t} ${r}`).join(' · ')}
+              title={t('realtimeNav.splitTitle')}>
+              SPLIT: {Object.entries(latest.corp_actions!).map(([tk, r]) => `${tk} ${r}`).join(' · ')}
             </span>
           )}
           {structFlash && (
             <span style={{ padding: '3px 8px', background: '#dbeafe', border: '1px solid #2563eb' }}
-              title={latest.last_rebuild_ts ? `重建于 ${ET_HMS.format(new Date(latest.last_rebuild_ts))} ET` : undefined}>
-              持仓已更新{latest.structure_diff?.length
-                ? ` · ${latest.structure_diff.join(';')}`
-                : ` · 结构 ${latest.structure_hash.slice(0, 8)}`}
+              title={latest.last_rebuild_ts ? t('realtimeNav.rebuiltAt', { time: ET_HMS.format(new Date(latest.last_rebuild_ts)) }) : undefined}>
+              {t('realtimeNav.structUpdated')}{latest.structure_diff?.length
+                ? ` · ${latest.structure_diff.join('; ')}`
+                : ` · ${t('realtimeNav.structLabel')} ${latest.structure_hash.slice(0, 8)}`}
             </span>
           )}
         </div>
@@ -306,8 +312,8 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               <div style={{ fontSize: 10, fontWeight: 800, color: COLORS[s.display_name] }}>
                 {s.display_name}{open ? ' ▾' : ' ▸'}
                 {s.corp_action && (
-                  <span title="当日 split 生效(见头部 SPLIT 徽标)"
-                    style={{ color: '#ea580c', marginLeft: 4 }}>⚠︎split</span>
+                  <span title={t('realtimeNav.splitTitle')}
+                    style={{ color: '#ea580c', marginLeft: 4 }}>⚠︎{t('realtimeNav.splitTag')}</span>
                 )}
               </div>
               {(() => {
@@ -316,14 +322,14 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                   <>
                     <div style={{ fontSize: 17, fontWeight: 700 }}
                       title={oa
-                        ? `官方口径(官方 EOD ${oa.date} × 日内收益,与 Strategy Performance 同刻度)`
-                        : '⚠ 官方 EOD 不可用,显示内部口径'}>
+                        ? t('realtimeNav.cardOfficialTitle', { date: oa.date })
+                        : t('realtimeNav.cardNoOfficial')}>
                       ${(oa ? oa.live : s.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </div>
                     <div style={{ fontSize: 10.5 }}>
                       {pct !== null && (
                         <span style={{ color: pct >= 0 ? '#16a34a' : '#e11d48', fontWeight: 700 }}>
-                          {pct >= 0 ? '+' : ''}{pct.toFixed(2)}% 日内
+                          {pct >= 0 ? '+' : ''}{pct.toFixed(2)}% {t('realtimeNav.intraday')}
                         </span>
                       )}
                       <span style={{ color: '#999', marginLeft: 6 }}>
@@ -380,7 +386,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                 }
                 return (                                          // 空仓(MRPT 0 对):全现金
                   <div style={{ fontSize: 10.5, color: '#999', borderTop: '1px dashed #ddd', padding: '3px 0' }}>
-                    空仓 · 全现金
+                    {t('realtimeNav.flatCash')}
                   </div>
                 );
               })()}
@@ -393,12 +399,14 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       <div className="flex-1 min-h-[260px]">
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: '#666', marginBottom: 4 }}>
           {chartStream.isToday
-            ? `当日日内收益 %(${freq} 采样 · 基准=${anchored ? '昨收(开盘锚)' : '当日首笔'} · 历史日频请看 Strategy Performance)`
-            : `最近交易时段日内收益 %(${chartStream.date ? `${chartStream.date.slice(4, 6)}/${chartStream.date.slice(6, 8)}` : '—'} 回看 · 当前闭市,开盘后自动切回当日)`}
+            ? t('realtimeNav.chartToday', { freq,
+                base: anchored ? t('realtimeNav.chartBasePrev') : t('realtimeNav.chartBaseFirst') })
+            : t('realtimeNav.chartLookback', {
+                date: chartStream.date ? `${chartStream.date.slice(4, 6)}/${chartStream.date.slice(6, 8)}` : '—' })}
         </div>
         {chart.data.length < 2 ? (
           <div style={{ color: '#999', fontSize: 12, padding: 20 }}>
-            暂无可绘制的时段数据(闭市 tick 跳过;开盘后 1 分钟一笔持续累积)
+            {t('realtimeNav.chartEmpty')}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="90%">
