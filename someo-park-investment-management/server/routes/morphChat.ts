@@ -62,10 +62,22 @@ router.post('/', async (req: Request, res: Response) => {
   const hasActiveCode = currentStanseAgent?.code && currentStanseAgent.code.length > 0
   if (!hasActiveCode && !isCodeEditRequest(lastContent)) {
     const detectedArtifacts = detectArtifacts(lastContent)
+    // Realtime NAV grounding(与 chat.ts 同模式,仅纯聊天分支;
+    // 下方 code-edit 分支的 prompt 保持纯洁不动)
+    let chatSystem = toChatPrompt()
+    if (detectedArtifacts.some(a => a.type === 'realtime_nav')) {
+      try {
+        const { realtimeNavGrounding } = await import('../tools/realtimeNavTool.js')
+        const ctx = await realtimeNavGrounding()
+        if (ctx) chatSystem += ctx
+      } catch (e) {
+        console.error('realtime nav grounding failed (continuing without it):', e)
+      }
+    }
     try {
       const result = await generateText({
         model: modelClient as LanguageModel,
-        system: toChatPrompt(),
+        system: chatSystem,
         messages,
         maxTokens: 8192,
         ...modelParams,

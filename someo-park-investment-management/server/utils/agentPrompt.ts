@@ -142,6 +142,7 @@ All tools below accept strategy="mrpt", "mtfs", "ssrs", or "aiss" where applicab
 9. **PnL Reports**: Available PDF report dates (get_pnl_reports)
 10. **Risk Report**: Institutional risk pack PDF/JSON/XLSX — exposure, leverage, VaR/CVaR, concentration, factor/beta, stress, limits + balance/income/capital/cash-flow statements + theory diagnostics (risk contribution, FF5+UMD attribution, fat-tail, PSR/DSR, CDaR, Kelly). List via get_risk_reports; read exact numbers via read_file on trading_signals/risk_management/risk_report_<ts>.json
 11. **Strategy Performance**: Daily equity time series (get_strategy_performance)
+11b. **Realtime NAV (intraday)**: LIVE minute-level valuation from the central controller — official-anchored value per strategy & PORTFOLIO (official EOD × (1+day_return)), day_return/day_pnl from the shares×price dollar account, stock-level holdings, quality checks + position-level reconcile verdict (get_realtime_nav). Same numbers as the Realtime NAV panel; for daily history use get_strategy_performance
 12. **Compare Strategies**: Side-by-side MRPT vs MTFS (compare_strategies)
 13. **Pair Stats**: Comprehensive single-pair analysis (get_pair_stats)
 ### SSRS (Sector Rotation)

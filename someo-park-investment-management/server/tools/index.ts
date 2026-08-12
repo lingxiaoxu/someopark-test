@@ -86,6 +86,7 @@ import { monitorHistoryTool } from './monitorHistoryTool.js'
 import { diagnosticTool } from './diagnosticTool.js'
 import { wfStructureTool } from './wfStructureTool.js'
 import { strategyPerformanceTool } from './strategyPerformanceTool.js'
+import { realtimeNavTool } from './realtimeNavTool.js'
 import { pnlReportsTool } from './pnlReportTool.js'
 import { riskReportsTool } from './riskReportTool.js'
 import { inventoryHistoryTool } from './inventoryHistoryTool.js'
@@ -147,7 +148,8 @@ export function registerAllTools() {
     inventoryTool, signalsTool, regimeTool, dailyReportTool,
     wfSummaryTool, equityCurveTool, oosPairSummaryTool, dsrLogTool,
     pairUniverseTool, dailyReportTextTool, monitorHistoryTool, diagnosticTool,
-    wfStructureTool, strategyPerformanceTool, pnlReportsTool, riskReportsTool,
+    wfStructureTool, strategyPerformanceTool, realtimeNavTool,
+    pnlReportsTool, riskReportsTool,
     inventoryHistoryTool,
     // Prediction market (World Cup 2026 — Kalshi + Polymarket)
     predictionMarketTool, predictionMarketTeamTool, predictionMarketMatchTool,

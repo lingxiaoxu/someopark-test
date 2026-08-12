@@ -222,6 +222,19 @@ router.post('/', async (req: Request, res: Response) => {
       }
     }
 
+    // Realtime NAV grounding (same additive pattern): if the realtime_nav view was
+    // detected, hand the model the SAME live numbers the panel shows (official-anchored
+    // values + day_return/day_pnl + quality checks). Coding path untouched.
+    if (detectedArtifacts.some(a => a.type === 'realtime_nav')) {
+      try {
+        const { realtimeNavGrounding } = await import('../tools/realtimeNavTool.js')
+        const ctx = await realtimeNavGrounding()
+        if (ctx) chatSystem += ctx
+      } catch (e) {
+        console.error('realtime nav grounding failed (continuing without it):', e)
+      }
+    }
+
     try {
       // Thinking toggle: only a LOCAL (ollama) model with think===false takes the native
       // /api/chat path (which truly disables reasoning → faster, no empty/timeout). Everything
