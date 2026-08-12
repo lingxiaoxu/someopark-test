@@ -126,17 +126,53 @@ class _EconNet(nn.Module):
 
 class EconNN:
     """经济学习(G7 方法2): z=net(X),min mean losscon(v_true, z;μ)。
-    v_true = eta_true + ma5_v(v=η+ma5)。旧作名 NN2_econ。"""
+    v_true = eta_true + ma5_v(v=η+ma5)。旧作名 NN2_econ。
+
+    loss_mode(E11-T3 复活实验;默认 'absolute' = 原行为逐位不变):
+      absolute   原式 mean(losscon) —— λ~1e-9/μ~1e-6 量级下损失微小且 z* 附近
+                 二次平坦 → float32 梯度信号淹没(G7 病根,2026-08-11 定位)
+      regret     losscon/losscon_opt − 1(losscon_opt=μλ/(μ+λ) 闭式)——
+                 每样本损失拉到 O(1)(裁决 v2 的 regret 归一化,对症解药)
+      anneal     α·MSE(z, z_oracle) + (1−α)·regret,α 沿训练 1→0 线性退火
+      analytic_s 网络输出 v̂(raw)→ z = s(v̂;μ) = sigmoid(v̂ − log(0.2/μ))
+                 (解析 s 可反传)→ loss = regret
+    """
 
     name = "nn2_econ"
 
+    LOSS_MODES = ("absolute", "regret", "anneal", "analytic_s")
+
     def __init__(self, n_pred: int, mu: float, seed: int = 0,
-                 device: Optional[str] = None, epochs: int = 50, batch: int = 1024):
+                 device: Optional[str] = None, epochs: int = 50, batch: int = 1024,
+                 loss_mode: str = "absolute"):
+        if loss_mode not in self.LOSS_MODES:
+            raise ValueError(f"loss_mode must be one of {self.LOSS_MODES}")
         self.n_pred, self.mu = n_pred, mu
         self.seed, self.epochs, self.batch = seed, epochs, batch
+        self.loss_mode = loss_mode
         self.device = pick_device(device)
         seed_everything(seed)
         self.net = _EconNet(n_pred)
+
+    def _z_of(self, xb: torch.Tensor) -> torch.Tensor:
+        if self.loss_mode == "analytic_s":
+            v_hat = self.net.core(xb).squeeze(-1)          # 输出头语义=v̂
+            return torch.sigmoid(v_hat - math.log(0.2 / self.mu))
+        return self.net(xb)
+
+    def _loss(self, vb: torch.Tensor, z: torch.Tensor,
+              epoch_frac: float) -> torch.Tensor:
+        if self.loss_mode == "absolute":
+            return _losscon_torch(vb, z, self.mu).mean()
+        lam = 0.2 * torch.exp(-vb)
+        loss_opt = self.mu * lam / (self.mu + lam)          # losscon(z*) 闭式
+        regret = (_losscon_torch(vb, z, self.mu) / loss_opt - 1.0).mean()
+        if self.loss_mode in ("regret", "analytic_s"):
+            return regret
+        # anneal: 统计口径热身(MSE 对 oracle z*)线性退火到纯 regret
+        z_orc = self.mu / (self.mu + lam)
+        alpha = max(0.0, 1.0 - epoch_frac)
+        return alpha * ((z - z_orc) ** 2).mean() + (1.0 - alpha) * regret
 
     def fit(self, X: pd.DataFrame, eta_true: pd.Series, ma5_v: pd.Series,
             epochs: Optional[int] = None) -> "EconNN":
@@ -149,14 +185,15 @@ class EconNN:
         opt = torch.optim.Adam(self.net.parameters())
         g = torch.Generator().manual_seed(self.seed)
         n = len(xt)
-        for _ in range(epochs or self.epochs):
+        n_ep = epochs or self.epochs
+        for ep in range(n_ep):
             perm = torch.randperm(n, generator=g)
             for i in range(0, n, self.batch):
                 ix = perm[i:i + self.batch]
                 xb, vb = xt[ix].to(dev), vt[ix].to(dev)
                 opt.zero_grad()
-                z = self.net(xb)
-                loss = _losscon_torch(vb, z, self.mu).mean()
+                z = self._z_of(xb)
+                loss = self._loss(vb, z, ep / max(n_ep - 1, 1))
                 loss.backward()
                 opt.step()
         return self
@@ -164,7 +201,7 @@ class EconNN:
     @torch.no_grad()
     def predict_z(self, X: pd.DataFrame) -> pd.Series:
         self.net.eval()
-        z = self.net(torch.tensor(X.values, dtype=torch.float32).to(self.device))
+        z = self._z_of(torch.tensor(X.values, dtype=torch.float32).to(self.device))
         return pd.Series(z.cpu().numpy(), index=X.index, name=self.name)
 
 
