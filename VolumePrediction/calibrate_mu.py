@@ -205,6 +205,21 @@ def momentum_decay_curve(report_dir: Path, pattern: str,
     diag = {"n_report_files": len(files), "n_report_days": len(panel)}
     if not panel:
         return None, diag
+    curve, core_diag = decay_curve_from_panel(panel, max_delay, hold,
+                                              break_threshold)
+    diag.update(core_diag)
+    return curve, diag
+
+
+def decay_curve_from_panel(panel: dict,
+                           max_delay: int = MAX_DELAY,
+                           hold: int = HOLD_DAYS,
+                           break_threshold: float = BREAK_THRESHOLD
+                           ) -> Tuple[Optional[pd.Series], dict]:
+    """momentum_decay_curve 的面板核心(E11-T2 抽取,行为与原函数逐位一致):
+    panel = {date: {ticker: (score, price)}} → (curve, diagnostics)。
+    供合成信号源(ssrs 价格合成动量)复用同一套事件/断裂/加权逻辑。"""
+    diag: dict = {}
     dates = sorted(panel)
     acc: dict[int, list] = {d: [] for d in range(max_delay + 1)}
     n_events = 0
