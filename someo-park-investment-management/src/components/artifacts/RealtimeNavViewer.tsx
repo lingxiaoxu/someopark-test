@@ -16,6 +16,8 @@ const COLORS: Record<string, string> = {
   MRPT: '#2563eb', MTFS: '#f59e0b', SSRS: '#16a34a', AISS: '#a855f7',
   BDC: '#e11d48', PORTFOLIO: '#111',
 };
+// 悬浮框固定显示顺序(用户令):策略在前,PORTFOLIO 殿后
+const TOOLTIP_ORDER = ['MRPT', 'MTFS', 'SSRS', 'AISS', 'BDC', 'PORTFOLIO'];
 const FREQS = [
   { key: '1m', minutes: 1 }, { key: '5m', minutes: 5 },
   { key: '15m', minutes: 15 }, { key: '60m', minutes: 60 },
@@ -422,7 +424,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       </div>
 
       {/* 当日日内曲线(% vs 当日首笔;策略 + PORTFOLIO) */}
-      <div className="flex-1 min-h-[260px]">
+      <div className="flex-1 min-h-[234px] max-h-[54vh]">
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: '#666', marginBottom: 4 }}>
           {chartStream.isToday
             ? t('realtimeNav.chartToday', { freq,
@@ -435,14 +437,18 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             {t('realtimeNav.chartEmpty')}
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="90%">
+          <ResponsiveContainer width="100%" height="81%">
             <LineChart data={chart.data}>
               <CartesianGrid strokeDasharray="2 4" stroke="#eee" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} />
               <YAxis tick={{ fontSize: 10 }} domain={[-chart.lim, chart.lim]}
                 tickFormatter={(v: number) => `${v.toFixed(2)}%`} />
               <ReferenceLine y={0} stroke="#bbb" strokeDasharray="4 4" />
-              <Tooltip formatter={(v: any) => `${Number(v).toFixed(3)}%`} />
+              <Tooltip formatter={(v: any) => `${Number(v).toFixed(3)}%`}
+                itemSorter={(item: any) => TOOLTIP_ORDER.indexOf(String(item.dataKey))}
+                contentStyle={{ fontSize: 10, padding: '4px 8px' }}
+                itemStyle={{ fontSize: 10, padding: '1px 0' }}
+                labelStyle={{ fontSize: 10, fontWeight: 700 }} />
               {chart.names.map(n => (
                 <Line key={n} dataKey={n}
                   dot={chart.data.length <= 10 ? { r: 2.5, strokeWidth: 0, fill: COLORS[n] || '#888' } : false}
