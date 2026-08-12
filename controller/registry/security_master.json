@@ -1,0 +1,3742 @@
+{
+ "US0010551028": {
+  "asset_class": "equity",
+  "cik": "0000004977",
+  "cusip": "001055102",
+  "figi": "BBG000BBBNC6",
+  "name": "Aflac Inc.",
+  "polygon_ticker": "AFL",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AFL",
+    "to": null
+   }
+  ]
+ },
+ "US00724F1012": {
+  "asset_class": "equity",
+  "cik": "0000796343",
+  "cusip": "00724F101",
+  "figi": "BBG000BB5006",
+  "name": "Adobe Inc.",
+  "polygon_ticker": "ADBE",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ADBE",
+    "to": null
+   }
+  ]
+ },
+ "US0079031078": {
+  "asset_class": "equity",
+  "cik": "0000002488",
+  "cusip": "007903107",
+  "figi": "BBG000BBQCY0",
+  "name": "Advanced Micro Devices",
+  "polygon_ticker": "AMD",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AMD",
+    "to": null
+   }
+  ]
+ },
+ "US00971T1016": {
+  "asset_class": "equity",
+  "cik": "0001086222",
+  "cusip": "00971T101",
+  "figi": "BBG000BJQWD2",
+  "name": "Akamai Technologies Inc",
+  "polygon_ticker": "AKAM",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AKAM",
+    "to": null
+   }
+  ]
+ },
+ "US0126531013": {
+  "asset_class": "equity",
+  "cik": "0000915913",
+  "cusip": "012653101",
+  "figi": "BBG000BJ26K7",
+  "name": "Albemarle Corporation",
+  "polygon_ticker": "ALB",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ALB",
+    "to": null
+   }
+  ]
+ },
+ "US0200021014": {
+  "asset_class": "equity",
+  "cik": "0000899051",
+  "cusip": "020002101",
+  "figi": "BBG000BVMGF2",
+  "name": "The Allstate Corporation",
+  "polygon_ticker": "ALL",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ALL",
+    "to": null
+   }
+  ]
+ },
+ "US02005N1000": {
+  "asset_class": "equity",
+  "cik": "0000040729",
+  "cusip": "02005N100",
+  "figi": "BBG000BC2R71",
+  "name": "Ally Financial Inc.",
+  "polygon_ticker": "ALLY",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ALLY",
+    "to": null
+   }
+  ]
+ },
+ "US02079K3059": {
+  "asset_class": "equity",
+  "cik": "0001652044",
+  "cusip": "02079K305",
+  "figi": "BBG009S39JX6",
+  "name": "Alphabet Inc. Class A Common Stock",
+  "polygon_ticker": "GOOGL",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GOOGL",
+    "to": null
+   }
+  ]
+ },
+ "US0236081024": {
+  "asset_class": "equity",
+  "cik": "0001002910",
+  "cusip": "023608102",
+  "figi": "BBG000B9X8C0",
+  "name": "Ameren Corporation",
+  "polygon_ticker": "AEE",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AEE",
+    "to": null
+   }
+  ]
+ },
+ "US0258161092": {
+  "asset_class": "equity",
+  "cik": "0000004962",
+  "cusip": "025816109",
+  "figi": "BBG000BCQZS4",
+  "name": "American Express Company",
+  "polygon_ticker": "AXP",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AXP",
+    "to": null
+   }
+  ]
+ },
+ "US0268747849": {
+  "asset_class": "equity",
+  "cik": "0000005272",
+  "cusip": "026874784",
+  "figi": "BBG000BBDZG3",
+  "name": "American International Group, Inc.",
+  "polygon_ticker": "AIG",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AIG",
+    "to": null
+   }
+  ]
+ },
+ "US03027X1000": {
+  "asset_class": "equity",
+  "cik": "0001053507",
+  "cusip": "03027X100",
+  "figi": "BBG000B9XYV2",
+  "name": "American Tower Corporation",
+  "polygon_ticker": "AMT",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AMT",
+    "to": null
+   }
+  ]
+ },
+ "US0304201033": {
+  "asset_class": "equity",
+  "cik": "0001410636",
+  "cusip": "030420103",
+  "figi": "BBG000TRJ294",
+  "name": "American Water Works Company, Inc",
+  "polygon_ticker": "AWK",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AWK",
+    "to": null
+   }
+  ]
+ },
+ "US0311001004": {
+  "asset_class": "equity",
+  "cik": "0001037868",
+  "cusip": "031100100",
+  "figi": "BBG000B9XG87",
+  "name": "Ametek, Inc.",
+  "polygon_ticker": "AME",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AME",
+    "to": null
+   }
+  ]
+ },
+ "US0326541051": {
+  "asset_class": "equity",
+  "cik": "0000006281",
+  "cusip": "032654105",
+  "figi": "BBG000BB6G37",
+  "name": "Analog Devices, Inc.",
+  "polygon_ticker": "ADI",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ADI",
+    "to": null
+   }
+  ]
+ },
+ "US03769M1062": {
+  "asset_class": "equity",
+  "cik": "0001858681",
+  "cusip": "03769M106",
+  "figi": "BBG00ZNLTFK3",
+  "name": "Apollo Global Management, Inc.",
+  "polygon_ticker": "APO",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "APO",
+    "to": null
+   }
+  ]
+ },
+ "US0382221051": {
+  "asset_class": "equity",
+  "cik": "0000006951",
+  "cusip": "038222105",
+  "figi": "BBG000BBPFB9",
+  "name": "Applied Materials Inc",
+  "polygon_ticker": "AMAT",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AMAT",
+    "to": null
+   }
+  ]
+ },
+ "US04010L1035": {
+  "asset_class": "bdc_equity",
+  "cik": "0001287750",
+  "cusip": "04010L103",
+  "figi": "BBG000PD6X77",
+  "name": "Ares Capital Corporation",
+  "polygon_ticker": "ARCC",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ARCC",
+    "to": null
+   }
+  ]
+ },
+ "US0404132054": {
+  "asset_class": "equity",
+  "cik": "0001596532",
+  "cusip": "040413205",
+  "figi": "BBG000N2HDY5",
+  "name": "Arista Networks",
+  "polygon_ticker": "ANET",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ANET",
+    "to": null
+   }
+  ]
+ },
+ "US0420682058": {
+  "asset_class": "equity",
+  "cik": "0001973239",
+  "cusip": "042068205",
+  "figi": "BBG01J1GXZF0",
+  "name": "Arm Holdings plc American Depositary Shares",
+  "polygon_ticker": "ARM",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ARM",
+    "to": null
+   }
+  ]
+ },
+ "US04626A1034": {
+  "asset_class": "equity",
+  "cik": "0001736297",
+  "cusip": "04626A103",
+  "figi": "BBG00TDKHW99",
+  "name": "Astera Labs, Inc. Common Stock",
+  "polygon_ticker": "ALAB",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ALAB",
+    "to": null
+   }
+  ]
+ },
+ "US0534841012": {
+  "asset_class": "equity",
+  "cik": "0000915912",
+  "cusip": "053484101",
+  "figi": "BBG000BLPBL5",
+  "name": "AvalonBay Communities, Inc.",
+  "polygon_ticker": "AVB",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AVB",
+    "to": null
+   }
+  ]
+ },
+ "US0605051046": {
+  "asset_class": "equity",
+  "cik": "0000070858",
+  "cusip": "060505104",
+  "figi": "BBG000BCTLF6",
+  "name": "Bank of America Corporation",
+  "polygon_ticker": "BAC",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BAC",
+    "to": null
+   }
+  ]
+ },
+ "US0640581007": {
+  "asset_class": "equity",
+  "cik": null,
+  "cusip": "064058100",
+  "figi": null,
+  "name": "BK",
+  "polygon_ticker": "BK",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BK",
+    "to": null
+   }
+  ]
+ },
+ "US0865161014": {
+  "asset_class": "equity",
+  "cik": "0000764478",
+  "cusip": "086516101",
+  "figi": "BBG000BCWCG1",
+  "name": "Best Buy Company, Inc.",
+  "polygon_ticker": "BBY",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BBY",
+    "to": null
+   }
+  ]
+ },
+ "US09261X1028": {
+  "asset_class": "bdc_equity",
+  "cik": "0001736035",
+  "cusip": "09261X102",
+  "figi": "BBG00MS80PM3",
+  "name": "Blackstone Secured Lending Fund",
+  "polygon_ticker": "BXSL",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BXSL",
+    "to": null
+   }
+  ]
+ },
+ "US0997241064": {
+  "asset_class": "equity",
+  "cik": "0000908255",
+  "cusip": "099724106",
+  "figi": "BBG000BJ49H3",
+  "name": "BorgWarner Inc.",
+  "polygon_ticker": "BWA",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BWA",
+    "to": null
+   }
+  ]
+ },
+ "US1011371077": {
+  "asset_class": "equity",
+  "cik": "0000885725",
+  "cusip": "101137107",
+  "figi": "BBG000C0LW92",
+  "name": "Boston Scientific Corp.",
+  "polygon_ticker": "BSX",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BSX",
+    "to": null
+   }
+  ]
+ },
+ "US11133T1034": {
+  "asset_class": "equity",
+  "cik": "0001383312",
+  "cusip": "11133T103",
+  "figi": "BBG000PPFKQ7",
+  "name": "Broadridge Financial Solutions Inc",
+  "polygon_ticker": "BR",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BR",
+    "to": null
+   }
+  ]
+ },
+ "US11135F1012": {
+  "asset_class": "equity",
+  "cik": "0001730168",
+  "cusip": "11135F101",
+  "figi": "BBG00KHY5S69",
+  "name": "Broadcom Inc. Common Stock",
+  "polygon_ticker": "AVGO",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AVGO",
+    "to": null
+   }
+  ]
+ },
+ "US12008R1077": {
+  "asset_class": "equity",
+  "cik": "0001316835",
+  "cusip": "12008R107",
+  "figi": "BBG000BKD3K9",
+  "name": "Builders FirstSource, Inc.",
+  "polygon_ticker": "BLDR",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BLDR",
+    "to": null
+   }
+  ]
+ },
+ "US12503M1080": {
+  "asset_class": "equity",
+  "cik": "0001374310",
+  "cusip": "12503M108",
+  "figi": "BBG000QH56C1",
+  "name": "Cboe Global Markets, Inc.",
+  "polygon_ticker": "CBOE",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CBOE",
+    "to": null
+   }
+  ]
+ },
+ "US1255231003": {
+  "asset_class": "equity",
+  "cik": "0001739940",
+  "cusip": "125523100",
+  "figi": "BBG00KXRCDP0",
+  "name": "The Cigna Group",
+  "polygon_ticker": "CI",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CI",
+    "to": null
+   }
+  ]
+ },
+ "US12572Q1058": {
+  "asset_class": "equity",
+  "cik": "0001156375",
+  "cusip": "12572Q105",
+  "figi": "BBG000BHLYP4",
+  "name": "CME Group Inc.",
+  "polygon_ticker": "CME",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CME",
+    "to": null
+   }
+  ]
+ },
+ "US1264081035": {
+  "asset_class": "equity",
+  "cik": "0000277948",
+  "cusip": "126408103",
+  "figi": "BBG000BGJRC8",
+  "name": "CSX Corporation",
+  "polygon_ticker": "CSX",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CSX",
+    "to": null
+   }
+  ]
+ },
+ "US1266501006": {
+  "asset_class": "equity",
+  "cik": "0000064803",
+  "cusip": "126650100",
+  "figi": "BBG000BGRY34",
+  "name": "CVS HEALTH CORPORATION",
+  "polygon_ticker": "CVS",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CVS",
+    "to": null
+   }
+  ]
+ },
+ "US1431301027": {
+  "asset_class": "equity",
+  "cik": "0001170010",
+  "cusip": "143130102",
+  "figi": "BBG000BLMZK6",
+  "name": "CarMax Inc.",
+  "polygon_ticker": "KMX",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "KMX",
+    "to": null
+   }
+  ]
+ },
+ "US1491231015": {
+  "asset_class": "equity",
+  "cik": "0000018230",
+  "cusip": "149123101",
+  "figi": "BBG000BF0K17",
+  "name": "Caterpillar Inc.",
+  "polygon_ticker": "CAT",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CAT",
+    "to": null
+   }
+  ]
+ },
+ "US15189T1079": {
+  "asset_class": "equity",
+  "cik": "0001130310",
+  "cusip": "15189T107",
+  "figi": "BBG000FDBX90",
+  "name": "CenterPoint Energy, Inc.",
+  "polygon_ticker": "CNP",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CNP",
+    "to": null
+   }
+  ]
+ },
+ "US1598641074": {
+  "asset_class": "equity",
+  "cik": "0001100682",
+  "cusip": "159864107",
+  "figi": "BBG000BG5BL8",
+  "name": "Charles River Laboratories International, Inc.",
+  "polygon_ticker": "CRL",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CRL",
+    "to": null
+   }
+  ]
+ },
+ "US1713401024": {
+  "asset_class": "equity",
+  "cik": "0000313927",
+  "cusip": "171340102",
+  "figi": "BBG000BFJT36",
+  "name": "Church & Dwight Co., Inc.",
+  "polygon_ticker": "CHD",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CHD",
+    "to": null
+   }
+  ]
+ },
+ "US1720621010": {
+  "asset_class": "equity",
+  "cik": "0000020286",
+  "cusip": "172062101",
+  "figi": "BBG000BFPK65",
+  "name": "Cincinnati Financial Corp",
+  "polygon_ticker": "CINF",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CINF",
+    "to": null
+   }
+  ]
+ },
+ "US17275R1023": {
+  "asset_class": "equity",
+  "cik": "0000858877",
+  "cusip": "17275R102",
+  "figi": "BBG000C3J3C9",
+  "name": "Cisco Systems, Inc. Common Stock (DE)",
+  "polygon_ticker": "CSCO",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CSCO",
+    "to": null
+   }
+  ]
+ },
+ "US1729674242": {
+  "asset_class": "equity",
+  "cik": "0000831001",
+  "cusip": "172967424",
+  "figi": "BBG000FY4S11",
+  "name": "Citigroup Inc.",
+  "polygon_ticker": "C",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "C",
+    "to": null
+   }
+  ]
+ },
+ "US1746101054": {
+  "asset_class": "equity",
+  "cik": "0000759944",
+  "cusip": "174610105",
+  "figi": "BBG006Q0HY77",
+  "name": "Citizens Financial Group, Inc.",
+  "polygon_ticker": "CFG",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CFG",
+    "to": null
+   }
+  ]
+ },
+ "US1941621039": {
+  "asset_class": "equity",
+  "cik": "0000021665",
+  "cusip": "194162103",
+  "figi": "BBG000BFQYY3",
+  "name": "Colgate-Palmolive Company",
+  "polygon_ticker": "CL",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CL",
+    "to": null
+   }
+  ]
+ },
+ "US20030N1019": {
+  "asset_class": "equity",
+  "cik": "0001166691",
+  "cusip": "20030N101",
+  "figi": "BBG000BFT2L4",
+  "name": "Comcast Corp",
+  "polygon_ticker": "CMCSA",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CMCSA",
+    "to": null
+   }
+  ]
+ },
+ "US2058871029": {
+  "asset_class": "equity",
+  "cik": "0000023217",
+  "cusip": "205887102",
+  "figi": "BBG000BDXGP9",
+  "name": "Conagra Brands, Inc.",
+  "polygon_ticker": "CAG",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CAG",
+    "to": null
+   }
+  ]
+ },
+ "US2193501051": {
+  "asset_class": "equity",
+  "cik": "0000024741",
+  "cusip": "219350105",
+  "figi": "BBG000BKFZM4",
+  "name": "Corning Incorporated",
+  "polygon_ticker": "GLW",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GLW",
+    "to": null
+   }
+  ]
+ },
+ "US22160K1051": {
+  "asset_class": "equity",
+  "cik": "0000909832",
+  "cusip": "22160K105",
+  "figi": "BBG000F6H8W8",
+  "name": "Costco Wholesale Corp",
+  "polygon_ticker": "COST",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "COST",
+    "to": null
+   }
+  ]
+ },
+ "US22160N1090": {
+  "asset_class": "equity",
+  "cik": "0001057352",
+  "cusip": "22160N109",
+  "figi": "BBG000D7JKW9",
+  "name": "CoStar Group Inc",
+  "polygon_ticker": "CSGP",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CSGP",
+    "to": null
+   }
+  ]
+ },
+ "US22822V1017": {
+  "asset_class": "equity",
+  "cik": "0001051470",
+  "cusip": "22822V101",
+  "figi": "BBG000FV1Z23",
+  "name": "Crown Castle Inc.",
+  "polygon_ticker": "CCI",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CCI",
+    "to": null
+   }
+  ]
+ },
+ "US23918K1088": {
+  "asset_class": "equity",
+  "cik": "0000927066",
+  "cusip": "23918K108",
+  "figi": "BBG000MQ1SN9",
+  "name": "DaVita Inc.",
+  "polygon_ticker": "DVA",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DVA",
+    "to": null
+   }
+  ]
+ },
+ "US2435371073": {
+  "asset_class": "equity",
+  "cik": "0000910521",
+  "cusip": "243537107",
+  "figi": "BBG000BKXYX5",
+  "name": "Deckers Outdoor Corp",
+  "polygon_ticker": "DECK",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DECK",
+    "to": null
+   }
+  ]
+ },
+ "US24703L2025": {
+  "asset_class": "equity",
+  "cik": "0001571996",
+  "cusip": "24703L202",
+  "figi": "BBG00DW3SZS1",
+  "name": "Dell Technologies Inc.",
+  "polygon_ticker": "DELL",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DELL",
+    "to": null
+   }
+  ]
+ },
+ "US2521311074": {
+  "asset_class": "equity",
+  "cik": "0001093557",
+  "cusip": "252131107",
+  "figi": "BBG000QTF8K1",
+  "name": "DexCom, Inc.",
+  "polygon_ticker": "DXCM",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DXCM",
+    "to": null
+   }
+  ]
+ },
+ "US2538681030": {
+  "asset_class": "equity",
+  "cik": "0001297996",
+  "cusip": "253868103",
+  "figi": "BBG000Q5ZRM7",
+  "name": "Digital Realty Trust, Inc.",
+  "polygon_ticker": "DLR",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DLR",
+    "to": null
+   }
+  ]
+ },
+ "US2566771059": {
+  "asset_class": "equity",
+  "cik": "0000029534",
+  "cusip": "256677105",
+  "figi": "BBG000NV1KK7",
+  "name": "Dollar General Corp.",
+  "polygon_ticker": "DG",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DG",
+    "to": null
+   }
+  ]
+ },
+ "US25746U1097": {
+  "asset_class": "equity",
+  "cik": "0000715957",
+  "cusip": "25746U109",
+  "figi": "BBG000BGVW60",
+  "name": "Dominion Energy, Inc Common Stock",
+  "polygon_ticker": "D",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "D",
+    "to": null
+   }
+  ]
+ },
+ "US25809K1051": {
+  "asset_class": "equity",
+  "cik": "0001792789",
+  "cusip": "25809K105",
+  "figi": "BBG005D7QCJ3",
+  "name": "DoorDash, Inc. Class A Common Stock",
+  "polygon_ticker": "DASH",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DASH",
+    "to": null
+   }
+  ]
+ },
+ "US26441C2044": {
+  "asset_class": "equity",
+  "cik": "0001326160",
+  "cusip": "26441C204",
+  "figi": "BBG000BHGDH5",
+  "name": "Duke Energy Corporation",
+  "polygon_ticker": "DUK",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DUK",
+    "to": null
+   }
+  ]
+ },
+ "US29364G1031": {
+  "asset_class": "equity",
+  "cik": "0000065984",
+  "cusip": "29364G103",
+  "figi": "BBG000C1FQS9",
+  "name": "Entergy Corporation",
+  "polygon_ticker": "ETR",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ETR",
+    "to": null
+   }
+  ]
+ },
+ "US2944291051": {
+  "asset_class": "equity",
+  "cik": "0000033185",
+  "cusip": "294429105",
+  "figi": "BBG000BHPL78",
+  "name": "Equifax, Incorporated",
+  "polygon_ticker": "EFX",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "EFX",
+    "to": null
+   }
+  ]
+ },
+ "US2971781057": {
+  "asset_class": "equity",
+  "cik": "0000920522",
+  "cusip": "297178105",
+  "figi": "BBG000CGJMB9",
+  "name": "Essex Property Trust, Inc",
+  "polygon_ticker": "ESS",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ESS",
+    "to": null
+   }
+  ]
+ },
+ "US30034W1062": {
+  "asset_class": "equity",
+  "cik": "0001711269",
+  "cusip": "30034W106",
+  "figi": "BBG00H433CR2",
+  "name": "Evergy, Inc.",
+  "polygon_ticker": "EVRG",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "EVRG",
+    "to": null
+   }
+  ]
+ },
+ "US3021301094": {
+  "asset_class": "equity",
+  "cik": "0000746515",
+  "cusip": "302130109",
+  "figi": "BBG000BJ5GK2",
+  "name": "Expeditors International of Washington, Inc.",
+  "polygon_ticker": "EXPD",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "EXPD",
+    "to": null
+   }
+  ]
+ },
+ "US30225T1025": {
+  "asset_class": "equity",
+  "cik": "0001289490",
+  "cusip": "30225T102",
+  "figi": "BBG000PV27K3",
+  "name": "Extra Space Storage, Inc.",
+  "polygon_ticker": "EXR",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "EXR",
+    "to": null
+   }
+  ]
+ },
+ "US30231G1022": {
+  "asset_class": "equity",
+  "cik": "0002115436",
+  "cusip": "30231G102",
+  "figi": "BBG023CY9MM1",
+  "name": "ExxonMobil Holdings Corporation",
+  "polygon_ticker": "XOM",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "XOM",
+    "to": null
+   }
+  ]
+ },
+ "US3024913036": {
+  "asset_class": "equity",
+  "cik": "0000037785",
+  "cusip": "302491303",
+  "figi": "BBG000BJP882",
+  "name": "FMC Corporation",
+  "polygon_ticker": "FMC",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "FMC",
+    "to": null
+   }
+  ]
+ },
+ "US3156161024": {
+  "asset_class": "equity",
+  "cik": "0001048695",
+  "cusip": "315616102",
+  "figi": "BBG000CXYSZ6",
+  "name": "F5, Inc. Common Stock",
+  "polygon_ticker": "FFIV",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "FFIV",
+    "to": null
+   }
+  ]
+ },
+ "US31620M1062": {
+  "asset_class": "equity",
+  "cik": "0001136893",
+  "cusip": "31620M106",
+  "figi": "BBG000BK2F42",
+  "name": "Fidelity National Information Services, Inc.",
+  "polygon_ticker": "FIS",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "FIS",
+    "to": null
+   }
+  ]
+ },
+ "US3364331070": {
+  "asset_class": "equity",
+  "cik": "0001274494",
+  "cusip": "336433107",
+  "figi": "BBG000BFL116",
+  "name": "First Solar, Inc.",
+  "polygon_ticker": "FSLR",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "FSLR",
+    "to": null
+   }
+  ]
+ },
+ "US3453708600": {
+  "asset_class": "equity",
+  "cik": "0000037996",
+  "cusip": "345370860",
+  "figi": "BBG000BQPC32",
+  "name": "Ford Motor Company",
+  "polygon_ticker": "F",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "F",
+    "to": null
+   }
+  ]
+ },
+ "US35137L1052": {
+  "asset_class": "equity",
+  "cik": "0001754301",
+  "cusip": "35137L105",
+  "figi": "BBG00JHNJW99",
+  "name": "Fox Corporation Class A Common Stock",
+  "polygon_ticker": "FOXA",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "FOXA",
+    "to": null
+   }
+  ]
+ },
+ "US35137L2043": {
+  "asset_class": "equity",
+  "cik": "0001754301",
+  "cusip": "35137L204",
+  "figi": "BBG00JHNKJY8",
+  "name": "Fox Corporation Class B Common Stock",
+  "polygon_ticker": "FOX",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "FOX",
+    "to": null
+   }
+  ]
+ },
+ "US3546131018": {
+  "asset_class": "equity",
+  "cik": "0000038777",
+  "cusip": "354613101",
+  "figi": "BBG000BD0TF8",
+  "name": "Franklin Resources, Inc.",
+  "polygon_ticker": "BEN",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BEN",
+    "to": null
+   }
+  ]
+ },
+ "US3695501086": {
+  "asset_class": "equity",
+  "cik": "0000040533",
+  "cusip": "369550108",
+  "figi": "BBG000BK67C7",
+  "name": "General Dynamics Corporation",
+  "polygon_ticker": "GD",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GD",
+    "to": null
+   }
+  ]
+ },
+ "US3696043013": {
+  "asset_class": "equity",
+  "cik": "0000040545",
+  "cusip": "369604301",
+  "figi": "BBG000BK6MB5",
+  "name": "GE Aerospace",
+  "polygon_ticker": "GE",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GE",
+    "to": null
+   }
+  ]
+ },
+ "US3703341046": {
+  "asset_class": "equity",
+  "cik": "0000040704",
+  "cusip": "370334104",
+  "figi": "BBG000BKCFC2",
+  "name": "General Mills, Inc.",
+  "polygon_ticker": "GIS",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GIS",
+    "to": null
+   }
+  ]
+ },
+ "US37940X1028": {
+  "asset_class": "equity",
+  "cik": "0001123360",
+  "cusip": "37940X102",
+  "figi": "BBG000CX0P89",
+  "name": "Global Payments, Inc.",
+  "polygon_ticker": "GPN",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GPN",
+    "to": null
+   }
+  ]
+ },
+ "US38141G1040": {
+  "asset_class": "equity",
+  "cik": "0000886982",
+  "cusip": "38141G104",
+  "figi": "BBG000C6CFJ5",
+  "name": "Goldman Sachs Group Inc.",
+  "polygon_ticker": "GS",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GS",
+    "to": null
+   }
+  ]
+ },
+ "US38173M1027": {
+  "asset_class": "bdc_equity",
+  "cik": "0001476765",
+  "cusip": "38173M102",
+  "figi": "BBG000PXNF64",
+  "name": "Golub Capital BDC, Inc.",
+  "polygon_ticker": "GBDC",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GBDC",
+    "to": null
+   }
+  ]
+ },
+ "US40412C1018": {
+  "asset_class": "equity",
+  "cik": "0000860730",
+  "cusip": "40412C101",
+  "figi": "BBG000QW7VC1",
+  "name": "HCA Healthcare, Inc.",
+  "polygon_ticker": "HCA",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HCA",
+    "to": null
+   }
+  ]
+ },
+ "US4165151048": {
+  "asset_class": "equity",
+  "cik": "0000874766",
+  "cusip": "416515104",
+  "figi": "BBG000G0Z878",
+  "name": "The Hartford Insurance Group, Inc.",
+  "polygon_ticker": "HIG",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HIG",
+    "to": null
+   }
+  ]
+ },
+ "US4180561072": {
+  "asset_class": "equity",
+  "cik": "0000046080",
+  "cusip": "418056107",
+  "figi": "BBG000BKVJK4",
+  "name": "Hasbro, Inc.",
+  "polygon_ticker": "HAS",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HAS",
+    "to": null
+   }
+  ]
+ },
+ "US4262811015": {
+  "asset_class": "equity",
+  "cik": "0000779152",
+  "cusip": "426281101",
+  "figi": "BBG000BMH2Q7",
+  "name": "Henry (Jack) & Associates",
+  "polygon_ticker": "JKHY",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "JKHY",
+    "to": null
+   }
+  ]
+ },
+ "US4278661081": {
+  "asset_class": "equity",
+  "cik": "0000047111",
+  "cusip": "427866108",
+  "figi": "BBG000BLHRS2",
+  "name": "The Hershey Company",
+  "polygon_ticker": "HSY",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HSY",
+    "to": null
+   }
+  ]
+ },
+ "US42824C1099": {
+  "asset_class": "equity",
+  "cik": "0001645590",
+  "cusip": "42824C109",
+  "figi": "BBG0078W3NQ3",
+  "name": "Hewlett Packard Enterprise Company",
+  "polygon_ticker": "HPE",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HPE",
+    "to": null
+   }
+  ]
+ },
+ "US4385162056": {
+  "asset_class": "equity",
+  "cik": "0000773840",
+  "cusip": "438516205",
+  "figi": "BBG000H556T9",
+  "name": "Honeywell International, Inc.",
+  "polygon_ticker": "HON",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HON",
+    "to": null
+   }
+  ]
+ },
+ "US44107P1049": {
+  "asset_class": "equity",
+  "cik": "0001070750",
+  "cusip": "44107P104",
+  "figi": "BBG000BL8804",
+  "name": "Host Hotels & Resorts, Inc.",
+  "polygon_ticker": "HST",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HST",
+    "to": null
+   }
+  ]
+ },
+ "US4432011082": {
+  "asset_class": "equity",
+  "cik": "0000004281",
+  "cusip": "443201108",
+  "figi": "BBG00DYNJGH9",
+  "name": "Howmet Aerospace Inc.",
+  "polygon_ticker": "HWM",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HWM",
+    "to": null
+   }
+  ]
+ },
+ "US4456581077": {
+  "asset_class": "equity",
+  "cik": "0000728535",
+  "cusip": "445658107",
+  "figi": "BBG000BMDBZ1",
+  "name": "JB Hunt Transport Services Inc",
+  "polygon_ticker": "JBHT",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "JBHT",
+    "to": null
+   }
+  ]
+ },
+ "US4464131063": {
+  "asset_class": "equity",
+  "cik": "0001501585",
+  "cusip": "446413106",
+  "figi": "BBG001KJ2HM9",
+  "name": "Huntington Ingalls Industries, Inc.",
+  "polygon_ticker": "HII",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "HII",
+    "to": null
+   }
+  ]
+ },
+ "US45168D1046": {
+  "asset_class": "equity",
+  "cik": "0000874716",
+  "cusip": "45168D104",
+  "figi": "BBG000BLRT07",
+  "name": "Idexx Laboratories Inc",
+  "polygon_ticker": "IDXX",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "IDXX",
+    "to": null
+   }
+  ]
+ },
+ "US45337C1027": {
+  "asset_class": "equity",
+  "cik": "0000879169",
+  "cusip": "45337C102",
+  "figi": "BBG000BNPSQ9",
+  "name": "Incyte Genomics Inc",
+  "polygon_ticker": "INCY",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "INCY",
+    "to": null
+   }
+  ]
+ },
+ "US4581401001": {
+  "asset_class": "equity",
+  "cik": "0000050863",
+  "cusip": "458140100",
+  "figi": "BBG000C0G1D1",
+  "name": "Intel Corp",
+  "polygon_ticker": "INTC",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "INTC",
+    "to": null
+   }
+  ]
+ },
+ "US45866F1049": {
+  "asset_class": "equity",
+  "cik": "0001571949",
+  "cusip": "45866F104",
+  "figi": "BBG000C1FB75",
+  "name": "Intercontinental Exchange  Inc.",
+  "polygon_ticker": "ICE",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ICE",
+    "to": null
+   }
+  ]
+ },
+ "US4612021034": {
+  "asset_class": "equity",
+  "cik": "0000896878",
+  "cusip": "461202103",
+  "figi": "BBG000BH5DV1",
+  "name": "Intuit Inc",
+  "polygon_ticker": "INTU",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "INTU",
+    "to": null
+   }
+  ]
+ },
+ "US46120E6023": {
+  "asset_class": "equity",
+  "cik": "0001035267",
+  "cusip": "46120E602",
+  "figi": "BBG000BJPDZ1",
+  "name": "Intuitive Surgical Inc.",
+  "polygon_ticker": "ISRG",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ISRG",
+    "to": null
+   }
+  ]
+ },
+ "US46266C1053": {
+  "asset_class": "equity",
+  "cik": "0001478242",
+  "cusip": "46266C105",
+  "figi": "BBG00333FYS2",
+  "name": "IQVIA Holdings Inc.",
+  "polygon_ticker": "IQV",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "IQV",
+    "to": null
+   }
+  ]
+ },
+ "US46284V1017": {
+  "asset_class": "equity",
+  "cik": "0001020569",
+  "cusip": "46284V101",
+  "figi": "BBG000KCZPC3",
+  "name": "Iron Mountain Inc.",
+  "polygon_ticker": "IRM",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "IRM",
+    "to": null
+   }
+  ]
+ },
+ "US46625H1005": {
+  "asset_class": "equity",
+  "cik": "0000019617",
+  "cusip": "46625H100",
+  "figi": "BBG000DMBXR2",
+  "name": "JPMorgan Chase & Co.",
+  "polygon_ticker": "JPM",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "JPM",
+    "to": null
+   }
+  ]
+ },
+ "US4824801009": {
+  "asset_class": "equity",
+  "cik": "0000319201",
+  "cusip": "482480100",
+  "figi": "BBG000BMTFR4",
+  "name": "KLA Corporation Common Stock",
+  "polygon_ticker": "KLAC",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "KLAC",
+    "to": null
+   }
+  ]
+ },
+ "US48251W1045": {
+  "asset_class": "equity",
+  "cik": "0001404912",
+  "cusip": "48251W104",
+  "figi": "BBG000BCQ6J8",
+  "name": "KKR & Co. Inc.",
+  "polygon_ticker": "KKR",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "KKR",
+    "to": null
+   }
+  ]
+ },
+ "US5018892084": {
+  "asset_class": "equity",
+  "cik": "0001065696",
+  "cusip": "501889208",
+  "figi": "BBG000PXDL44",
+  "name": "LKQ Corporation",
+  "polygon_ticker": "LKQ",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "LKQ",
+    "to": null
+   }
+  ]
+ },
+ "US5128073062": {
+  "asset_class": "equity",
+  "cik": "0000707549",
+  "cusip": "512807306",
+  "figi": "BBG000BNFLM9",
+  "name": "Lam Research Corp",
+  "polygon_ticker": "LRCX",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "LRCX",
+    "to": null
+   }
+  ]
+ },
+ "US5178341070": {
+  "asset_class": "equity",
+  "cik": "0001300514",
+  "cusip": "517834107",
+  "figi": "BBG000JWD753",
+  "name": "Las Vegas Sands Corp.",
+  "polygon_ticker": "LVS",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "LVS",
+    "to": null
+   }
+  ]
+ },
+ "US5260571048": {
+  "asset_class": "equity",
+  "cik": "0000920760",
+  "cusip": "526057104",
+  "figi": "BBG000BN5HF7",
+  "name": "Lennar Corporation Class A",
+  "polygon_ticker": "LEN",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "LEN",
+    "to": null
+   }
+  ]
+ },
+ "US5404241086": {
+  "asset_class": "equity",
+  "cik": "0000060086",
+  "cusip": "540424108",
+  "figi": "BBG000C45984",
+  "name": "Loews Corporation",
+  "polygon_ticker": "L",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "L",
+    "to": null
+   }
+  ]
+ },
+ "US5486611073": {
+  "asset_class": "equity",
+  "cik": "0000060667",
+  "cusip": "548661107",
+  "figi": "BBG000BNDN65",
+  "name": "Lowe's Companies Inc.",
+  "polygon_ticker": "LOW",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "LOW",
+    "to": null
+   }
+  ]
+ },
+ "US5500211090": {
+  "asset_class": "equity",
+  "cik": "0001397187",
+  "cusip": "550021109",
+  "figi": "BBG000R8ZVD1",
+  "name": "lululemon athletica inc.",
+  "polygon_ticker": "LULU",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "LULU",
+    "to": null
+   }
+  ]
+ },
+ "US55261F1049": {
+  "asset_class": "equity",
+  "cik": "0000036270",
+  "cusip": "55261F104",
+  "figi": "BBG000D9KWL9",
+  "name": "M&T Bank Corp.",
+  "polygon_ticker": "MTB",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MTB",
+    "to": null
+   }
+  ]
+ },
+ "US55354G1004": {
+  "asset_class": "equity",
+  "cik": "0001408198",
+  "cusip": "55354G100",
+  "figi": "BBG000RTDY25",
+  "name": "MSCI, Inc.",
+  "polygon_ticker": "MSCI",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MSCI",
+    "to": null
+   }
+  ]
+ },
+ "US5653941030": {
+  "asset_class": "equity",
+  "cik": "0001579091",
+  "cusip": "565394103",
+  "figi": "BBG00KG5VJF4",
+  "name": "Maplebear Inc. Common Stock",
+  "polygon_ticker": "CART",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CART",
+    "to": null
+   }
+  ]
+ },
+ "US56585A1025": {
+  "asset_class": "equity",
+  "cik": "0001510295",
+  "cusip": "56585A102",
+  "figi": "BBG001DCCGR8",
+  "name": "MARATHON PETROLEUM CORPORATION",
+  "polygon_ticker": "MPC",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MPC",
+    "to": null
+   }
+  ]
+ },
+ "US57060D1081": {
+  "asset_class": "equity",
+  "cik": "0001278021",
+  "cusip": "57060D108",
+  "figi": "BBG000BJBZ23",
+  "name": "MarketAxess Holdings Inc.",
+  "polygon_ticker": "MKTX",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MKTX",
+    "to": null
+   }
+  ]
+ },
+ "US5719032022": {
+  "asset_class": "equity",
+  "cik": "0001048286",
+  "cusip": "571903202",
+  "figi": "BBG000BGD7W6",
+  "name": "Marriott International Class A Common Stock",
+  "polygon_ticker": "MAR",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MAR",
+    "to": null
+   }
+  ]
+ },
+ "US5732841060": {
+  "asset_class": "equity",
+  "cik": "0000916076",
+  "cusip": "573284106",
+  "figi": "BBG000BGYMH7",
+  "name": "Martin Marietta Materials",
+  "polygon_ticker": "MLM",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MLM",
+    "to": null
+   }
+  ]
+ },
+ "US5738741041": {
+  "asset_class": "equity",
+  "cik": "0001835632",
+  "cusip": "573874104",
+  "figi": "BBG00ZXBJ153",
+  "name": "Marvell Technology, Inc. Common Stock",
+  "polygon_ticker": "MRVL",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MRVL",
+    "to": null
+   }
+  ]
+ },
+ "US57667L1070": {
+  "asset_class": "equity",
+  "cik": "0000891103",
+  "cusip": "57667L107",
+  "figi": "BBG00VT0KNC3",
+  "name": "Match Group, Inc",
+  "polygon_ticker": "MTCH",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MTCH",
+    "to": null
+   }
+  ]
+ },
+ "US5801351017": {
+  "asset_class": "equity",
+  "cik": "0000063908",
+  "cusip": "580135101",
+  "figi": "BBG000BNSZP1",
+  "name": "McDonald's Corporation",
+  "polygon_ticker": "MCD",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MCD",
+    "to": null
+   }
+  ]
+ },
+ "US58155Q1031": {
+  "asset_class": "equity",
+  "cik": "0000927653",
+  "cusip": "58155Q103",
+  "figi": "BBG000DYGNW7",
+  "name": "McKesson Corporation",
+  "polygon_ticker": "MCK",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MCK",
+    "to": null
+   }
+  ]
+ },
+ "US5926881054": {
+  "asset_class": "equity",
+  "cik": "0001037646",
+  "cusip": "592688105",
+  "figi": "BBG000BZCKH3",
+  "name": "Mettler-Toledo International",
+  "polygon_ticker": "MTD",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MTD",
+    "to": null
+   }
+  ]
+ },
+ "US5949181045": {
+  "asset_class": "equity",
+  "cik": "0000789019",
+  "cusip": "594918104",
+  "figi": "BBG000BPH459",
+  "name": "Microsoft Corp",
+  "polygon_ticker": "MSFT",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MSFT",
+    "to": null
+   }
+  ]
+ },
+ "US5950171042": {
+  "asset_class": "equity",
+  "cik": "0000827054",
+  "cusip": "595017104",
+  "figi": "BBG000BHCP19",
+  "name": "Microchip Technology Inc",
+  "polygon_ticker": "MCHP",
+  "registered_at": "2026-08-12T06:53:11+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MCHP",
+    "to": null
+   }
+  ]
+ },
+ "US5951121038": {
+  "asset_class": "equity",
+  "cik": "0000723125",
+  "cusip": "595112103",
+  "figi": "BBG000C5Z1S3",
+  "name": "Micron Technology, Inc.",
+  "polygon_ticker": "MU",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MU",
+    "to": null
+   }
+  ]
+ },
+ "US60855R1005": {
+  "asset_class": "equity",
+  "cik": "0001179929",
+  "cusip": "60855R100",
+  "figi": "BBG000MBHNC8",
+  "name": "Molina Healthcare, Inc.",
+  "polygon_ticker": "MOH",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MOH",
+    "to": null
+   }
+  ]
+ },
+ "US60871R2094": {
+  "asset_class": "equity",
+  "cik": "0000024545",
+  "cusip": "60871R209",
+  "figi": "BBG000BS7KS3",
+  "name": "Molson Coors Beverage Company Class B",
+  "polygon_ticker": "TAP",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TAP",
+    "to": null
+   }
+  ]
+ },
+ "US6174464486": {
+  "asset_class": "equity",
+  "cik": "0000895421",
+  "cusip": "617446448",
+  "figi": "BBG000BLZRJ2",
+  "name": "Morgan Stanley",
+  "polygon_ticker": "MS",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MS",
+    "to": null
+   }
+  ]
+ },
+ "US61945C1036": {
+  "asset_class": "equity",
+  "cik": "0001285785",
+  "cusip": "61945C103",
+  "figi": "BBG000BFXHL6",
+  "name": "The Mosaic Company",
+  "polygon_ticker": "MOS",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MOS",
+    "to": null
+   }
+  ]
+ },
+ "US62944T1051": {
+  "asset_class": "equity",
+  "cik": "0000906163",
+  "cusip": "62944T105",
+  "figi": "BBG000BQBYR3",
+  "name": "NVR, Inc.",
+  "polygon_ticker": "NVR",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NVR",
+    "to": null
+   }
+  ]
+ },
+ "US64110D1046": {
+  "asset_class": "equity",
+  "cik": "0001002047",
+  "cusip": "64110D104",
+  "figi": "BBG000FP1N32",
+  "name": "NetApp, Inc",
+  "polygon_ticker": "NTAP",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NTAP",
+    "to": null
+   }
+  ]
+ },
+ "US6541061031": {
+  "asset_class": "equity",
+  "cik": "0000320187",
+  "cusip": "654106103",
+  "figi": "BBG000C5HS04",
+  "name": "Nike, Inc.",
+  "polygon_ticker": "NKE",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NKE",
+    "to": null
+   }
+  ]
+ },
+ "US65473P1057": {
+  "asset_class": "equity",
+  "cik": "0001111711",
+  "cusip": "65473P105",
+  "figi": "BBG000BPZBB6",
+  "name": "NiSource Inc.",
+  "polygon_ticker": "NI",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NI",
+    "to": null
+   }
+  ]
+ },
+ "US6556631025": {
+  "asset_class": "equity",
+  "cik": "0000072331",
+  "cusip": "655663102",
+  "figi": "BBG000BPWGR1",
+  "name": "Nordson Corp",
+  "polygon_ticker": "NDSN",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NDSN",
+    "to": null
+   }
+  ]
+ },
+ "US6558441084": {
+  "asset_class": "equity",
+  "cik": "0000702165",
+  "cusip": "655844108",
+  "figi": "BBG000BQ5DS5",
+  "name": "Norfolk Southern Corp.",
+  "polygon_ticker": "NSC",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NSC",
+    "to": null
+   }
+  ]
+ },
+ "US6658591044": {
+  "asset_class": "equity",
+  "cik": "0000073124",
+  "cusip": "665859104",
+  "figi": "BBG000BQ74K1",
+  "name": "Northern Trust Corp",
+  "polygon_ticker": "NTRS",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NTRS",
+    "to": null
+   }
+  ]
+ },
+ "US6687711084": {
+  "asset_class": "equity",
+  "cik": "0000849399",
+  "cusip": "668771108",
+  "figi": "BBG000BH2JM1",
+  "name": "Gen Digital Inc. Common Stock",
+  "polygon_ticker": "GEN",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GEN",
+    "to": null
+   }
+  ]
+ },
+ "US6703461052": {
+  "asset_class": "equity",
+  "cik": "0000073309",
+  "cusip": "670346105",
+  "figi": "BBG000BQ8KV2",
+  "name": "Nucor Corporation",
+  "polygon_ticker": "NUE",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NUE",
+    "to": null
+   }
+  ]
+ },
+ "US67066G1040": {
+  "asset_class": "equity",
+  "cik": "0001045810",
+  "cusip": "67066G104",
+  "figi": "BBG000BBJQV0",
+  "name": "Nvidia Corp",
+  "polygon_ticker": "NVDA",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NVDA",
+    "to": null
+   }
+  ]
+ },
+ "US67103H1077": {
+  "asset_class": "equity",
+  "cik": "0000898173",
+  "cusip": "67103H107",
+  "figi": "BBG000BGYWY6",
+  "name": "O'Reilly Automotive, Inc.",
+  "polygon_ticker": "ORLY",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ORLY",
+    "to": null
+   }
+  ]
+ },
+ "US6795801009": {
+  "asset_class": "equity",
+  "cik": "0000878927",
+  "cusip": "679580100",
+  "figi": "BBG000CHSS88",
+  "name": "Old Dominion Freight Line",
+  "polygon_ticker": "ODFL",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ODFL",
+    "to": null
+   }
+  ]
+ },
+ "US6821891057": {
+  "asset_class": "equity",
+  "cik": "0001097864",
+  "cusip": "682189105",
+  "figi": "BBG000DV7MX4",
+  "name": "ON Semiconductor Corp",
+  "polygon_ticker": "ON",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ON",
+    "to": null
+   }
+  ]
+ },
+ "US6826801036": {
+  "asset_class": "equity",
+  "cik": "0001039684",
+  "cusip": "682680103",
+  "figi": "BBG000BQHGR6",
+  "name": "Oneok, Inc.",
+  "polygon_ticker": "OKE",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "OKE",
+    "to": null
+   }
+  ]
+ },
+ "US68389X1054": {
+  "asset_class": "equity",
+  "cik": "0001341439",
+  "cusip": "68389X105",
+  "figi": "BBG000BQLTW7",
+  "name": "Oracle Corp",
+  "polygon_ticker": "ORCL",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ORCL",
+    "to": null
+   }
+  ]
+ },
+ "US69121K1043": {
+  "asset_class": "bdc_equity",
+  "cik": "0001655888",
+  "cusip": "69121K104",
+  "figi": "BBG00DB0XYC4",
+  "name": "Blue Owl Capital Corporation",
+  "polygon_ticker": "OBDC",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "OBDC",
+    "to": null
+   }
+  ]
+ },
+ "US69351T1060": {
+  "asset_class": "equity",
+  "cik": "0000922224",
+  "cusip": "69351T106",
+  "figi": "BBG000BRJL00",
+  "name": "PPL Corporation",
+  "polygon_ticker": "PPL",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PPL",
+    "to": null
+   }
+  ]
+ },
+ "US69370C1009": {
+  "asset_class": "equity",
+  "cik": "0000857005",
+  "cusip": "69370C100",
+  "figi": "BBG000C2VBB0",
+  "name": "PTC, INC",
+  "polygon_ticker": "PTC",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PTC",
+    "to": null
+   }
+  ]
+ },
+ "US6974351057": {
+  "asset_class": "equity",
+  "cik": "0001327567",
+  "cusip": "697435105",
+  "figi": "BBG0014GJCT9",
+  "name": "Palo Alto Networks, Inc. Common Stock",
+  "polygon_ticker": "PANW",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PANW",
+    "to": null
+   }
+  ]
+ },
+ "US7134481081": {
+  "asset_class": "equity",
+  "cik": "0000077476",
+  "cusip": "713448108",
+  "figi": "BBG000DH7JK6",
+  "name": "PepsiCo, Inc.",
+  "polygon_ticker": "PEP",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PEP",
+    "to": null
+   }
+  ]
+ },
+ "US7170811035": {
+  "asset_class": "equity",
+  "cik": "0000078003",
+  "cusip": "717081103",
+  "figi": "BBG000BR2B91",
+  "name": "Pfizer Inc.",
+  "polygon_ticker": "PFE",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PFE",
+    "to": null
+   }
+  ]
+ },
+ "US7181721090": {
+  "asset_class": "equity",
+  "cik": "0001413329",
+  "cusip": "718172109",
+  "figi": "BBG000J2XL74",
+  "name": "Philip Morris International Inc.",
+  "polygon_ticker": "PM",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PM",
+    "to": null
+   }
+  ]
+ },
+ "US7185461040": {
+  "asset_class": "equity",
+  "cik": "0001534701",
+  "cusip": "718546104",
+  "figi": "BBG00286S4N9",
+  "name": "PHILLIPS 66",
+  "polygon_ticker": "PSX",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PSX",
+    "to": null
+   }
+  ]
+ },
+ "US73278L1052": {
+  "asset_class": "equity",
+  "cik": "0000945841",
+  "cusip": "73278L105",
+  "figi": "BBG000BCVG28",
+  "name": "Pool Corporation",
+  "polygon_ticker": "POOL",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "POOL",
+    "to": null
+   }
+  ]
+ },
+ "US74251V1026": {
+  "asset_class": "equity",
+  "cik": "0001126328",
+  "cusip": "74251V102",
+  "figi": "BBG000NSCNT7",
+  "name": "Principal Financial Group, Inc.",
+  "polygon_ticker": "PFG",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PFG",
+    "to": null
+   }
+  ]
+ },
+ "US7427181091": {
+  "asset_class": "equity",
+  "cik": "0000080424",
+  "cusip": "742718109",
+  "figi": "BBG000BR2TH3",
+  "name": "Procter & Gamble Company",
+  "polygon_ticker": "PG",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PG",
+    "to": null
+   }
+  ]
+ },
+ "US7443201022": {
+  "asset_class": "equity",
+  "cik": "0001137774",
+  "cusip": "744320102",
+  "figi": "BBG000HCJMF9",
+  "name": "Prudential Financial, Inc.",
+  "polygon_ticker": "PRU",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PRU",
+    "to": null
+   }
+  ]
+ },
+ "US74736K1016": {
+  "asset_class": "equity",
+  "cik": "0001604778",
+  "cusip": "74736K101",
+  "figi": "BBG007TJF1N7",
+  "name": "Qorvo, Inc.",
+  "polygon_ticker": "QRVO",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "QRVO",
+    "to": null
+   }
+  ]
+ },
+ "US7475251036": {
+  "asset_class": "equity",
+  "cik": "0000804328",
+  "cusip": "747525103",
+  "figi": "BBG000CGC1X8",
+  "name": "Qualcomm Inc",
+  "polygon_ticker": "QCOM",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "QCOM",
+    "to": null
+   }
+  ]
+ },
+ "US74762E1029": {
+  "asset_class": "equity",
+  "cik": "0001050915",
+  "cusip": "74762E102",
+  "figi": "BBG000BBL8V7",
+  "name": "Quanta Services, Inc.",
+  "polygon_ticker": "PWR",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PWR",
+    "to": null
+   }
+  ]
+ },
+ "US74834L1008": {
+  "asset_class": "equity",
+  "cik": "0001022079",
+  "cusip": "74834L100",
+  "figi": "BBG000BN84F3",
+  "name": "Quest Diagnostics Inc.",
+  "polygon_ticker": "DGX",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "DGX",
+    "to": null
+   }
+  ]
+ },
+ "US75886F1075": {
+  "asset_class": "equity",
+  "cik": "0000872589",
+  "cusip": "75886F107",
+  "figi": "BBG000C734W3",
+  "name": "Regeneron Pharmaceuticals Inc",
+  "polygon_ticker": "REGN",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "REGN",
+    "to": null
+   }
+  ]
+ },
+ "US7607591002": {
+  "asset_class": "equity",
+  "cik": "0001060391",
+  "cusip": "760759100",
+  "figi": "BBG000BPXVJ6",
+  "name": "Republic Services Inc.",
+  "polygon_ticker": "RSG",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "RSG",
+    "to": null
+   }
+  ]
+ },
+ "US7611521078": {
+  "asset_class": "equity",
+  "cik": "0000943819",
+  "cusip": "761152107",
+  "figi": "BBG000L4M7F1",
+  "name": "ResMed Inc.",
+  "polygon_ticker": "RMD",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "RMD",
+    "to": null
+   }
+  ]
+ },
+ "US7766961061": {
+  "asset_class": "equity",
+  "cik": "0000882835",
+  "cusip": "776696106",
+  "figi": "BBG000F1ZSN5",
+  "name": "Roper Technologies, Inc. Common Stock",
+  "polygon_ticker": "ROP",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ROP",
+    "to": null
+   }
+  ]
+ },
+ "US78468R6633": {
+  "asset_class": "etf",
+  "cik": "0001081019",
+  "cusip": "78468R663",
+  "figi": "BBG000RFQSH8",
+  "name": "State Street SPDR Bloomberg 1-3 Month T-Bill ETF",
+  "polygon_ticker": "BIL",
+  "registered_at": "2026-08-12T06:53:08+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "BIL",
+    "to": null
+   }
+  ]
+ },
+ "US8068571087": {
+  "asset_class": "equity",
+  "cik": "0000087347",
+  "cusip": "806857108",
+  "figi": "BBG000BT41Q8",
+  "name": "SLB Limited",
+  "polygon_ticker": "SLB",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "SLB",
+    "to": null
+   }
+  ]
+ },
+ "US81369Y1001": {
+  "asset_class": "etf",
+  "cik": "0000019481",
+  "cusip": "81369Y100",
+  "figi": "BBG000BHNNF7",
+  "name": "State Street Materials Select Sector SPDR ETF",
+  "polygon_ticker": "XLB",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "XLB",
+    "to": null
+   }
+  ]
+ },
+ "US81369Y2090": {
+  "asset_class": "etf",
+  "cik": "0001064641",
+  "cusip": "81369Y209",
+  "figi": "BBG000BHVSG6",
+  "name": "State Street Health Care Select Sector SPDR ETF",
+  "polygon_ticker": "XLV",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "XLV",
+    "to": null
+   }
+  ]
+ },
+ "US81369Y5069": {
+  "asset_class": "etf",
+  "cik": "0001064641",
+  "cusip": "81369Y506",
+  "figi": "BBG000BJ20S2",
+  "name": "State Street Energy Select Sector SPDR ETF",
+  "polygon_ticker": "XLE",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "XLE",
+    "to": null
+   }
+  ]
+ },
+ "US81369Y7040": {
+  "asset_class": "etf",
+  "cik": "0001064641",
+  "cusip": "81369Y704",
+  "figi": "BBG000BJ2RF7",
+  "name": "State Street Industrial Select Sector SPDR ETF",
+  "polygon_ticker": "XLI",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "XLI",
+    "to": null
+   }
+  ]
+ },
+ "US81369Y8030": {
+  "asset_class": "etf",
+  "cik": "0001064641",
+  "cusip": "81369Y803",
+  "figi": "BBG000BJ7007",
+  "name": "State Street Technology Select Sector SPDR ETF",
+  "polygon_ticker": "XLK",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "XLK",
+    "to": null
+   }
+  ]
+ },
+ "US81369Y8600": {
+  "asset_class": "etf",
+  "cik": "0001064641",
+  "cusip": "81369Y860",
+  "figi": "BBG00B597128",
+  "name": "State Street Real Estate Select Sector SPDR ETF",
+  "polygon_ticker": "XLRE",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "XLRE",
+    "to": null
+   }
+  ]
+ },
+ "US8168511090": {
+  "asset_class": "equity",
+  "cik": "0001032208",
+  "cusip": "816851109",
+  "figi": "BBG000C2ZCH8",
+  "name": "Sempra",
+  "polygon_ticker": "SRE",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "SRE",
+    "to": null
+   }
+  ]
+ },
+ "US82706C1080": {
+  "asset_class": "equity",
+  "cik": "0001329394",
+  "cusip": "82706C108",
+  "figi": "BBG000GT7XY1",
+  "name": "Silicon Motion Technology Corporation",
+  "polygon_ticker": "SIMO",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "SIMO",
+    "to": null
+   }
+  ]
+ },
+ "US83012A1097": {
+  "asset_class": "bdc_equity",
+  "cik": "0001508655",
+  "cusip": "83012A109",
+  "figi": "BBG001DFW799",
+  "name": "Sixth Street Specialty Lending, Inc.",
+  "polygon_ticker": "TSLX",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TSLX",
+    "to": null
+   }
+  ]
+ },
+ "US83088M1027": {
+  "asset_class": "equity",
+  "cik": "0000004127",
+  "cusip": "83088M102",
+  "figi": "BBG000KLB4Q1",
+  "name": "Skyworks Solutions Inc",
+  "polygon_ticker": "SWKS",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "SWKS",
+    "to": null
+   }
+  ]
+ },
+ "US8574771031": {
+  "asset_class": "equity",
+  "cik": "0000093751",
+  "cusip": "857477103",
+  "figi": "BBG000BKFBD7",
+  "name": "State Street Corporation",
+  "polygon_ticker": "STT",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "STT",
+    "to": null
+   }
+  ]
+ },
+ "US8581191009": {
+  "asset_class": "equity",
+  "cik": "0001022671",
+  "cusip": "858119100",
+  "figi": "BBG000HGYNZ9",
+  "name": "Steel Dynamics Inc",
+  "polygon_ticker": "STLD",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "STLD",
+    "to": null
+   }
+  ]
+ },
+ "US8636671013": {
+  "asset_class": "equity",
+  "cik": "0000310764",
+  "cusip": "863667101",
+  "figi": "BBG000DN7P92",
+  "name": "Stryker Corporation",
+  "polygon_ticker": "SYK",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "SYK",
+    "to": null
+   }
+  ]
+ },
+ "US8725401090": {
+  "asset_class": "equity",
+  "cik": "0000109198",
+  "cusip": "872540109",
+  "figi": "BBG000BV8DN6",
+  "name": "TJX Companies, Inc. (The)",
+  "polygon_ticker": "TJX",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TJX",
+    "to": null
+   }
+  ]
+ },
+ "US8725901040": {
+  "asset_class": "equity",
+  "cik": "0001283699",
+  "cusip": "872590104",
+  "figi": "BBG000NDV1D4",
+  "name": "T-Mobile US, Inc.",
+  "polygon_ticker": "TMUS",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TMUS",
+    "to": null
+   }
+  ]
+ },
+ "US8740391003": {
+  "asset_class": "equity",
+  "cik": "0001046179",
+  "cusip": "874039100",
+  "figi": "BBG000BD8ZK0",
+  "name": "Taiwan Semiconductor Manufacturing Company Ltd.",
+  "polygon_ticker": "TSM",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TSM",
+    "to": null
+   }
+  ]
+ },
+ "US87612G1013": {
+  "asset_class": "equity",
+  "cik": "0001389170",
+  "cusip": "87612G101",
+  "figi": "BBG0015XMW40",
+  "name": "Targa Resources Corp.",
+  "polygon_ticker": "TRGP",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TRGP",
+    "to": null
+   }
+  ]
+ },
+ "US8807701029": {
+  "asset_class": "equity",
+  "cik": "0000097210",
+  "cusip": "880770102",
+  "figi": "BBG000BV4DR6",
+  "name": "Teradyne, Inc. Common Stock",
+  "polygon_ticker": "TER",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TER",
+    "to": null
+   }
+  ]
+ },
+ "US8825081040": {
+  "asset_class": "equity",
+  "cik": "0000097476",
+  "cusip": "882508104",
+  "figi": "BBG000BVV7G1",
+  "name": "Texas Instruments Incorporated",
+  "polygon_ticker": "TXN",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TXN",
+    "to": null
+   }
+  ]
+ },
+ "US8832031012": {
+  "asset_class": "equity",
+  "cik": "0000217346",
+  "cusip": "883203101",
+  "figi": "BBG000BVVQQ8",
+  "name": "Textron, Inc.",
+  "polygon_ticker": "TXT",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TXT",
+    "to": null
+   }
+  ]
+ },
+ "US88579Y1010": {
+  "asset_class": "equity",
+  "cik": "0000066740",
+  "cusip": "88579Y101",
+  "figi": "BBG000BP52R2",
+  "name": "3M Company",
+  "polygon_ticker": "MMM",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "MMM",
+    "to": null
+   }
+  ]
+ },
+ "US8962391004": {
+  "asset_class": "equity",
+  "cik": "0000864749",
+  "cusip": "896239100",
+  "figi": "BBG000BNPS52",
+  "name": "Trimble Inc. Common Stock",
+  "polygon_ticker": "TRMB",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TRMB",
+    "to": null
+   }
+  ]
+ },
+ "US9022521051": {
+  "asset_class": "equity",
+  "cik": "0000860731",
+  "cusip": "902252105",
+  "figi": "BBG000BVWZF9",
+  "name": "Tyler Technologies, Inc.",
+  "polygon_ticker": "TYL",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "TYL",
+    "to": null
+   }
+  ]
+ },
+ "US9026531049": {
+  "asset_class": "equity",
+  "cik": "0000074208",
+  "cusip": "902653104",
+  "figi": "BBG000C41023",
+  "name": "UDR, Inc.",
+  "polygon_ticker": "UDR",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "UDR",
+    "to": null
+   }
+  ]
+ },
+ "US90353T1007": {
+  "asset_class": "equity",
+  "cik": "0001543151",
+  "cusip": "90353T100",
+  "figi": "BBG002B04MT8",
+  "name": "Uber Technologies, Inc.",
+  "polygon_ticker": "UBER",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "UBER",
+    "to": null
+   }
+  ]
+ },
+ "US90384S3031": {
+  "asset_class": "equity",
+  "cik": "0001403568",
+  "cusip": "90384S303",
+  "figi": "BBG00FWQ4VD6",
+  "name": "Ulta Beauty, Inc. Common Stock",
+  "polygon_ticker": "ULTA",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ULTA",
+    "to": null
+   }
+  ]
+ },
+ "US9108734057": {
+  "asset_class": "equity",
+  "cik": "0001033767",
+  "cusip": "910873405",
+  "figi": "BBG000BR4TH1",
+  "name": "United Microelectronic Corp.",
+  "polygon_ticker": "UMC",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "UMC",
+    "to": null
+   }
+  ]
+ },
+ "US91324P1021": {
+  "asset_class": "equity",
+  "cik": "0000731766",
+  "cusip": "91324P102",
+  "figi": "BBG000CH5208",
+  "name": "UNITEDHEALTH GROUP INCORPORATED (Delaware)",
+  "polygon_ticker": "UNH",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "UNH",
+    "to": null
+   }
+  ]
+ },
+ "US9139031002": {
+  "asset_class": "equity",
+  "cik": "0000352915",
+  "cusip": "913903100",
+  "figi": "BBG000CB8Q50",
+  "name": "Universal Health Services, Inc. Class B",
+  "polygon_ticker": "UHS",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "UHS",
+    "to": null
+   }
+  ]
+ },
+ "US91913Y1001": {
+  "asset_class": "equity",
+  "cik": "0001035002",
+  "cusip": "91913Y100",
+  "figi": "BBG000BBGGQ1",
+  "name": "Valero Energy Corporation",
+  "polygon_ticker": "VLO",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "VLO",
+    "to": null
+   }
+  ]
+ },
+ "US92338C1036": {
+  "asset_class": "equity",
+  "cik": "0001967680",
+  "cusip": "92338C103",
+  "figi": "BBG019Q32XJ9",
+  "name": "Veralto Corporation",
+  "polygon_ticker": "VLTO",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "VLTO",
+    "to": null
+   }
+  ]
+ },
+ "US9256521090": {
+  "asset_class": "equity",
+  "cik": "0001705696",
+  "cusip": "925652109",
+  "figi": "BBG00HVVB499",
+  "name": "VICI Properties Inc. Common Stock",
+  "polygon_ticker": "VICI",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "VICI",
+    "to": null
+   }
+  ]
+ },
+ "US92826C8394": {
+  "asset_class": "equity",
+  "cik": "0001403161",
+  "cusip": "92826C839",
+  "figi": "BBG000PSKYX7",
+  "name": "VISA Inc.",
+  "polygon_ticker": "V",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "V",
+    "to": null
+   }
+  ]
+ },
+ "US9297401088": {
+  "asset_class": "equity",
+  "cik": "0000943452",
+  "cusip": "929740108",
+  "figi": "BBG000BDD940",
+  "name": "Wabtec Inc.",
+  "polygon_ticker": "WAB",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WAB",
+    "to": null
+   }
+  ]
+ },
+ "US9311421039": {
+  "asset_class": "equity",
+  "cik": "0000104169",
+  "cusip": "931142103",
+  "figi": "BBG000BWXBC2",
+  "name": "Walmart Inc. Common Stock",
+  "polygon_ticker": "WMT",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WMT",
+    "to": null
+   }
+  ]
+ },
+ "US95040Q1040": {
+  "asset_class": "equity",
+  "cik": "0000766704",
+  "cusip": "95040Q104",
+  "figi": "BBG000BKY1G5",
+  "name": "Welltower Inc.",
+  "polygon_ticker": "WELL",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WELL",
+    "to": null
+   }
+  ]
+ },
+ "US9553061055": {
+  "asset_class": "equity",
+  "cik": "0000105770",
+  "cusip": "955306105",
+  "figi": "BBG000BX24N8",
+  "name": "West Pharmaceutical Services, Inc.",
+  "polygon_ticker": "WST",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WST",
+    "to": null
+   }
+  ]
+ },
+ "US9581021055": {
+  "asset_class": "equity",
+  "cik": "0000106040",
+  "cusip": "958102105",
+  "figi": "BBG000BWNFZ9",
+  "name": "Western Digital Corp.",
+  "polygon_ticker": "WDC",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WDC",
+    "to": null
+   }
+  ]
+ },
+ "US9621661043": {
+  "asset_class": "equity",
+  "cik": "0000106535",
+  "cusip": "962166104",
+  "figi": "BBG000BX3BL3",
+  "name": "Weyerhaeuser Company",
+  "polygon_ticker": "WY",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WY",
+    "to": null
+   }
+  ]
+ },
+ "US9694571004": {
+  "asset_class": "equity",
+  "cik": "0000107263",
+  "cusip": "969457100",
+  "figi": "BBG000BWVCP8",
+  "name": "Williams Companies Inc.",
+  "polygon_ticker": "WMB",
+  "registered_at": "2026-08-12T06:53:15+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WMB",
+    "to": null
+   }
+  ]
+ },
+ "US9831341071": {
+  "asset_class": "equity",
+  "cik": "0001174922",
+  "cusip": "983134107",
+  "figi": "BBG000LD9JQ8",
+  "name": "Wynn Resorts Ltd",
+  "polygon_ticker": "WYNN",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WYNN",
+    "to": null
+   }
+  ]
+ },
+ "US98419M1009": {
+  "asset_class": "equity",
+  "cik": "0001524472",
+  "cusip": "98419M100",
+  "figi": "BBG001D8R5D0",
+  "name": "Xylem Inc",
+  "polygon_ticker": "XYL",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "XYL",
+    "to": null
+   }
+  ]
+ },
+ "US9884981013": {
+  "asset_class": "equity",
+  "cik": "0001041061",
+  "cusip": "988498101",
+  "figi": "BBG000BH3GZ2",
+  "name": "Yum! Brands, Inc.",
+  "polygon_ticker": "YUM",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "YUM",
+    "to": null
+   }
+  ]
+ },
+ "US98978V1035": {
+  "asset_class": "equity",
+  "cik": "0001555280",
+  "cusip": "98978V103",
+  "figi": "BBG0039320N9",
+  "name": "ZOETIS INC.",
+  "polygon_ticker": "ZTS",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ZTS",
+    "to": null
+   }
+  ]
+ },
+ "USG0176J1090": {
+  "asset_class": "equity",
+  "cik": "0001579241",
+  "cusip": "G0176J109",
+  "figi": null,
+  "name": "Allegion Public Limited Company",
+  "polygon_ticker": "ALLE",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ALLE",
+    "to": null
+   }
+  ]
+ },
+ "USG0403H1089": {
+  "asset_class": "equity",
+  "cik": "0000315293",
+  "cusip": "G0403H108",
+  "figi": null,
+  "name": "Aon plc Class A",
+  "polygon_ticker": "AON",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "AON",
+    "to": null
+   }
+  ]
+ },
+ "USG0450A1054": {
+  "asset_class": "equity",
+  "cik": "0000947484",
+  "cusip": "G0450A105",
+  "figi": null,
+  "name": "Arch Capital Group Ltd",
+  "polygon_ticker": "ACGL",
+  "registered_at": "2026-08-12T06:53:07+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "ACGL",
+    "to": null
+   }
+  ]
+ },
+ "USG254571056": {
+  "asset_class": "equity",
+  "cik": "0001807794",
+  "cusip": "G25457105",
+  "figi": null,
+  "name": "Credo Technology Group Holding Ltd Ordinary Shares",
+  "polygon_ticker": "CRDO",
+  "registered_at": "2026-08-12T06:53:09+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "CRDO",
+    "to": null
+   }
+  ]
+ },
+ "USG393871086": {
+  "asset_class": "equity",
+  "cik": "0001709048",
+  "cusip": "G39387108",
+  "figi": null,
+  "name": "GlobalFoundries Inc. Ordinary Shares",
+  "polygon_ticker": "GFS",
+  "registered_at": "2026-08-12T06:53:10+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "GFS",
+    "to": null
+   }
+  ]
+ },
+ "USG667211043": {
+  "asset_class": "equity",
+  "cik": "0001513761",
+  "cusip": "G66721104",
+  "figi": null,
+  "name": "Norwegian Cruise Line Holdings Ltd. Ordinary Shares",
+  "polygon_ticker": "NCLH",
+  "registered_at": "2026-08-12T06:53:12+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "NCLH",
+    "to": null
+   }
+  ]
+ },
+ "USG7S00T1042": {
+  "asset_class": "equity",
+  "cik": "0000077360",
+  "cusip": "G7S00T104",
+  "figi": null,
+  "name": "Pentair plc",
+  "polygon_ticker": "PNR",
+  "registered_at": "2026-08-12T06:53:13+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "PNR",
+    "to": null
+   }
+  ]
+ },
+ "USG8473T1000": {
+  "asset_class": "equity",
+  "cik": "0001757898",
+  "cusip": "G8473T100",
+  "figi": null,
+  "name": "STERIS plc",
+  "polygon_ticker": "STE",
+  "registered_at": "2026-08-12T06:53:14+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "STE",
+    "to": null
+   }
+  ]
+ },
+ "USG966291035": {
+  "asset_class": "equity",
+  "cik": "0001140536",
+  "cusip": "G96629103",
+  "figi": null,
+  "name": "Willis Towers Watson Public Limited Company Ordinary Shares",
+  "polygon_ticker": "WTW",
+  "registered_at": "2026-08-12T06:53:16+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-12",
+    "ticker": "WTW",
+    "to": null
+   }
+  ]
+ }
+}

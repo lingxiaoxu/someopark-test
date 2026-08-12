@@ -1,0 +1,275 @@
+{
+ "SPPF96UGK55": {
+  "aliases": [
+   "PORTFOLIO"
+  ],
+  "attrs": {},
+  "canonical_key": "PORTFOLIO",
+  "display_name": "PORTFOLIO",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "portfolio",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR6LFROR3": {
+  "aliases": [
+   "CRL/MLM"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US1598641074|S:US5732841060",
+  "display_name": "CRL/MLM",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRC558NA7": {
+  "aliases": [
+   "NTAP/TXT"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US64110D1046|S:US8832031012",
+  "display_name": "NTAP/TXT",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRXD2AJ9B": {
+  "aliases": [
+   "HPE/LKQ"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US42824C1099|S:US5018892084",
+  "display_name": "HPE/LKQ",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRYEXSX9Y": {
+  "aliases": [
+   "DGX/NKE"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US74834L1008|S:US6541061031",
+  "display_name": "DGX/NKE",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRZSEYITL": {
+  "aliases": [
+   "PANW/DECK"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US6974351057|S:US2435371073",
+  "display_name": "PANW/DECK",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSASG0NAY": {
+  "aliases": [
+   "logic_cpu"
+  ],
+  "attrs": {
+   "strategy": "aiss"
+  },
+  "canonical_key": "aiss|SS:logic_cpu",
+  "display_name": "logic_cpu",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSE8QBMXT": {
+  "aliases": [
+   "memory_hbm"
+  ],
+  "attrs": {
+   "strategy": "aiss"
+  },
+  "canonical_key": "aiss|SS:memory_hbm",
+  "display_name": "memory_hbm",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSF7LJY3V": {
+  "aliases": [
+   "rf_edge"
+  ],
+  "attrs": {
+   "strategy": "aiss"
+  },
+  "canonical_key": "aiss|SS:rf_edge",
+  "display_name": "rf_edge",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSJ0BHDUM": {
+  "aliases": [
+   "analog_defense"
+  ],
+  "attrs": {
+   "strategy": "aiss"
+  },
+  "canonical_key": "aiss|SS:analog_defense",
+  "display_name": "analog_defense",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSK4JWX9X": {
+  "aliases": [
+   "ai_gpu"
+  ],
+  "attrs": {
+   "strategy": "aiss"
+  },
+  "canonical_key": "aiss|SS:ai_gpu",
+  "display_name": "ai_gpu",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSK5YRLN9": {
+  "aliases": [
+   "equipment"
+  ],
+  "attrs": {
+   "strategy": "aiss"
+  },
+  "canonical_key": "aiss|SS:equipment",
+  "display_name": "equipment",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSPSPZVCZ": {
+  "aliases": [
+   "custom_asic"
+  ],
+  "attrs": {
+   "strategy": "aiss"
+  },
+  "canonical_key": "aiss|SS:custom_asic",
+  "display_name": "custom_asic",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSSWVV4EHE": {
+  "aliases": [
+   "foundry"
+  ],
+  "attrs": {
+   "strategy": "aiss"
+  },
+  "canonical_key": "aiss|SS:foundry",
+  "display_name": "foundry",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "subsector",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPST0Z57G0G": {
+  "aliases": [
+   "AISS"
+  ],
+  "attrs": {},
+  "canonical_key": "strategy:aiss",
+  "display_name": "AISS",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "strategy",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPST4OZY6KQ": {
+  "aliases": [
+   "BDC"
+  ],
+  "attrs": {},
+  "canonical_key": "strategy:bdc",
+  "display_name": "BDC",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "strategy",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSTJZ54GCF": {
+  "aliases": [
+   "MTFS"
+  ],
+  "attrs": {},
+  "canonical_key": "strategy:mtfs",
+  "display_name": "MTFS",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "strategy",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSTWGX9THG": {
+  "aliases": [
+   "SSRS"
+  ],
+  "attrs": {},
+  "canonical_key": "strategy:ssrs",
+  "display_name": "SSRS",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "strategy",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPSTWPVC13D": {
+  "aliases": [
+   "MRPT"
+  ],
+  "attrs": {},
+  "canonical_key": "strategy:mrpt",
+  "display_name": "MRPT",
+  "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "strategy",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ }
+}
