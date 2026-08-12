@@ -85,8 +85,15 @@ TEAM_STRENGTH = {
     'Morocco': 0.6,
     # 2026-08-12 (Germany_vs_Paraguay / South Africa_vs_Canada series): the first
     # onlining ran these at the 0.0 fallback — Germany a top side, South Africa
-    # well below mid — and the double-miss case only warns for the HOME side, so
+    # well below mid — and the double-miss case only warned for the HOME side, so
     # Canada was silently 0.0 too. Same FIFA-flavored scale as the rows above.
+    # Measured impact (correcting commit 7d38d8d's wording): the generator DOES
+    # condition on ratings (2 of 13 cond dims + gap; simmed pairings draw conds
+    # from their own config pool, TEAM_STRENGTH backs never-simmed pairs via the
+    # ridge strength->tactics path), but re-running with real values moved no
+    # anchored W/D/L above 2dp — 10/305 corpus rows changed and the learned
+    # rating sensitivity is small (model.py:56: the brain compiles tactics from
+    # its OWN internal ratings, which disagree with any external table anyway).
     'Germany': 1.2, 'Canada': 0.3, 'South Africa': -0.3,
 }
 
