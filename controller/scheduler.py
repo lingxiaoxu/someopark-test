@@ -264,7 +264,7 @@ class Controller:
         stream = os.path.join(OUT_DIR,
                               f"nav_stream_{datetime.now().strftime('%Y%m%d')}.csv")
         os.makedirs(OUT_DIR, exist_ok=True)
-        header = "ts,node_id,display_name,kind,value,stale,corp_action\n"
+        header = "ts,node_id,display_name,kind,value,stale,corp_action,structure_hash\n"
         if os.path.exists(stream):                      # 旧 schema 文件轮转,不混写
             with open(stream) as fh:
                 if fh.readline() != header:
@@ -276,7 +276,7 @@ class Controller:
             for r in rows:
                 fh.write(f"{ts},{r['node_id']},{r['display_name']},"
                          f"{r['kind']},{r['value']},{int(stale)},"
-                         f"{int(r['corp_action'])}\n")
+                         f"{int(r['corp_action'])},{self.S.hash}\n")
         _atomic_json(self.fe.risk_matrix(),
                      os.path.join(OUT_DIR, "risk_matrix_latest.json"))
         root_v = values.get(self.S.root)

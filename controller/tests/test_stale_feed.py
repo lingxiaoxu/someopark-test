@@ -70,7 +70,11 @@ nav = json.load(open(os.path.join(tmp, "nav_latest.json")))
 ok("20d nav_latest 落盘 stale=true", nav["stale"] is True)
 stream = [f for f in os.listdir(tmp) if f.startswith("nav_stream_") and f.endswith(".csv")]
 lines = open(os.path.join(tmp, stream[0])).read().strip().split("\n")
-ok("20e nav_stream 行打 stale 标记", lines[-1].split(",")[-2] == "1")
+_hdr = lines[0].split(",")
+ok("20e nav_stream 行打 stale 标记",
+   lines[-1].split(",")[_hdr.index("stale")] == "1")
+ok("20e2 nav_stream 行带 structure_hash(对账取当时快照用)",
+   len(lines[-1].split(",")[_hdr.index("structure_hash")]) == 16)
 
 # 3) 恢复自愈:新价进来,stale 消除、值更新
 feed.fail = False

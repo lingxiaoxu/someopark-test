@@ -123,8 +123,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
     [latest]);
 
   // 开盘锚(plan §4.3 吻合契约):日内 % 基准 = 前一交易日 controller 收盘
-  // (含隔夜跳空,与官方日收益同口径,经 ratio 与官方曲线首尾相接);
-  // 无昨收(首日)才退回当日首笔,并如实标注。
+  // (16:00 ET 截断,与官方 EOD 同时点);无昨收(首日)才退回当日首笔,如实标注。
   const prevByName = useMemo(() => {
     const m: Record<string, number> = {};
     if (!prevClose?.values || !latest) return m;
@@ -185,7 +184,8 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
   if (!latest) return <ErrorState message="no data" />;
 
   const verdictColor = reconcile?.verdict === 'ok' ? '#16a34a'
-    : reconcile?.verdict === 'breach' ? '#e11d48' : '#999';
+    : reconcile?.verdict === 'breach' ? '#e11d48'
+    : reconcile?.verdict === 'partial' ? '#b45309' : '#999';
 
   return (
     <div className="h-full flex flex-col gap-3 p-1 overflow-auto">
@@ -204,9 +204,24 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               ? parts.reduce((a, p) => a + p!.live, 0)
               : portfolio?.value ?? 0;
             const pct = portfolio ? dayPct('PORTFOLIO', portfolio.value) : null;
+            // Quality check 汇总(用户令:不显示账本明细,只报各 check 是否通过)
+            // 双引擎对拍:nav_latest 只在两引擎逐节点对拍通过后才发布,能读到即通过
+            const rec = reconcile?.verdict;
+            const qc: { label: string, state: 'pass' | 'fail' | 'pending' }[] = [
+              { label: '双引擎对拍', state: 'pass' },
+              { label: '价格新鲜', state: latest.stale ? 'fail' : 'pass' },
+              { label: `全书报价${latest.missing?.length ? `缺${latest.missing.length}` : ''}`,
+                state: latest.missing?.length ? 'fail' : 'pass' },
+              { label: '持仓级对账',
+                state: rec === 'ok' ? 'pass' : rec === 'breach' ? 'fail' : 'pending' },
+              { label: '官方口径锚', state: allOfficial ? 'pass' : 'fail' },
+            ];
+            const allPass = qc.every(c => c.state === 'pass');
+            const anyFail = qc.some(c => c.state === 'fail');
             return (
               <>
-                <div style={{ fontSize: 30, fontWeight: 800 }}>
+                <div style={{ fontSize: 30, fontWeight: 800 }}
+                  title={`账本口径合计 $${(portfolio?.value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}(内部对拍账,仅校验用)`}>
                   ${main.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   {pct !== null && (
                     <span style={{ fontSize: 15, marginLeft: 10,
@@ -216,11 +231,12 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: 10.5, color: '#888' }}
-                  title="controller 内部估值账本($1M 起账)与官方口径持仓相同、日内收益同源;绝对值刻度不同,主展示用官方口径">
-                  {allOfficial
-                    ? `账本口径合计 $${(portfolio?.value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}(内部对拍用)`
-                    : '⚠ 官方 EOD 不可用,当前显示账本口径'}
+                <div style={{ fontSize: 10.5, fontWeight: 700,
+                  color: allPass ? '#16a34a' : anyFail ? '#e11d48' : '#b45309' }}
+                  title="双引擎对拍=拍平/树两引擎逐节点一致才发布;持仓级对账=golden 持仓股数×独立官方收盘价重算(不依赖 ratio);pending=数据积累中">
+                  {allPass ? '✓ Quality checks 全部通过 · '
+                    : anyFail ? '✗ Quality check 未过 · ' : '◷ Quality checks · '}
+                  {qc.map(c => `${c.state === 'pass' ? '✓' : c.state === 'fail' ? '✗' : '◷'}${c.label}`).join(' ')}
                 </div>
               </>
             );
@@ -240,8 +256,9 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               STALE
             </span>
           )}
-          <span style={{ padding: '3px 8px', border: `1px solid ${verdictColor}`, color: verdictColor }}>
-            vs official EOD: {reconcile?.verdict ?? '—'}
+          <span style={{ padding: '3px 8px', border: `1px solid ${verdictColor}`, color: verdictColor }}
+            title="持仓级对账:golden 持仓股数 × 独立官方收盘价逐仓重算 vs controller 收盘(不依赖 ratio;官方 json 仅信息展示)">
+            对账: {reconcile?.verdict ?? '—'}
           </span>
           {Object.keys(latest.corp_actions || {}).length > 0 && (
             <span style={{ padding: '3px 8px', background: '#ffedd5', border: '1px solid #ea580c' }}
@@ -298,7 +315,9 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                 return (
                   <>
                     <div style={{ fontSize: 17, fontWeight: 700 }}
-                      title={oa ? `官方口径(官方 EOD ${oa.date} × 日内收益换算,与 Strategy Performance 同刻度)` : undefined}>
+                      title={oa
+                        ? `官方口径(官方 EOD ${oa.date} × 日内收益,与 Strategy Performance 同刻度);账本 $${s.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}(内部校验用)`
+                        : '⚠ 官方 EOD 不可用,显示账本口径'}>
                       ${(oa ? oa.live : s.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                     </div>
                     <div style={{ fontSize: 10.5 }}>
@@ -310,11 +329,6 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                       <span style={{ color: '#999', marginLeft: 6 }}>
                         as of {s.positions_as_of ?? '—'}
                       </span>
-                    </div>
-                    <div style={{ fontSize: 10, color: '#999' }}
-                      title="controller 内部估值账本;与官方口径日内收益同源,绝对值刻度不同">
-                      {oa ? `账本 $${s.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-                          : '⚠ 官方 EOD 不可用(账本口径)'}
                     </div>
                   </>
                 );

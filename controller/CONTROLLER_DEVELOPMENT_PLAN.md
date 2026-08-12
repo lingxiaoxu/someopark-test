@@ -443,17 +443,21 @@ children 层的 shares 记录(每层已有);同方向对不同批次/不同股�
    | BDC | `private_credit_bdc_performance.json`(原始源) | `bdc_equity` |
    (master 里的 mrpt/mtfs/bdc 列是拼接副本,不作锚——锚定永远用原始源。)
    当日盘中输出同时给绝对值与 `V/V_base-1` 日内收益,保证与官方曲线无缝衔接。
-2. **收盘后(对账,不是覆写)**:等三个 json 被各自 pipeline 更新后,
-   `controller/reconcile_eod.py` 把 controller 的 16:00 快照与 json 新 EOD 行
-   **对账**。**方法修订(2026-08-12 用户令:不依赖"ratio 恒定"假设——ratio
-   会因合法原因移动:pairs regime capital 日变、分红、费用;ratio 只做信息
-   记录,不做判定)**:判定用**同日期对齐的日收益差**——
-   `r_off = off(D)/off(D_prev)−1`(官方最后两行)vs
-   `r_ctl = ctl_close(D)/ctl_close(D_prev)−1`(nav_stream 各日 16:00 ET 截断
-   末笔),`diff_bp = (r_ctl − r_off)×1e4` 超阈值(初设 20bp,影子周实测校准)
-   → 报告差异并归因(已知合法差异源:json 侧含股息入账/费用/回测-live 拼接段、
-   pairs regime 资本重标定、AISS 篮子理论权重 vs account 实仓、BDC DRIP 日、
-   corp_action split 日)。controller 侧尚无对应两日收盘数据 → baseline 只记录。
+2. **收盘后(对账,不是覆写)**:`controller/reconcile_eod.py`。
+   **方法 v3(2026-08-12 用户令:全面去除对 ratio 的依赖——ratio 变化很多,
+   只能计算出来展示,绝不能进任何判定;收益率比较含隐性等比例假设,一并废除。
+   判定必须用持仓数额 shares × 价格 × 持仓详情)**:
+   - **判定(唯一 verdict 来源)= 持仓级独立重算**:controller 16:00 ET 收盘
+     (nav_stream 截断末笔,行内带 structure_hash)vs
+     `Σ(结构快照 golden shares × Polygon daily_close 官方日收盘) + cash_flat`
+     ——shares 取当时生效的 `structure_snapshot_{hash}.json`(由 golden 持仓
+     文件装配定格),价格走与盘中 snapshot 独立的日 bar 路径;差异超 20bp
+     (收盘竞价 vs lastTrade + 分钟时差,影子周校准)→ breach 并逐票 dump;
+     缺价 → skipped 如实列出,verdict=partial;PORTFOLIO 合计同查。
+   - **官方三 json 对照 = 纯信息展示**(official 值/日期、ratio_display)——
+     不参与任何判定;两本账刻度不同属口径事实,标注 informational only。
+   - 运行时点:16:10 ET 后(当日日 bar 已生成);verdict 档位
+     ok / partial / breach / baseline。
    **对账报告落 `controller/output/reconcile_{date}.json`,绝不回写三个 json。**
 3. 拼接日期(SR_LIVE_START/AISS_LIVE_START 等)对 controller 透明——controller
    只消费三 json 的**最终输出行**,永不复算它们的拼接;这保证"拼接逻辑不能变

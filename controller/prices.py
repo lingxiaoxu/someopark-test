@@ -157,6 +157,26 @@ class PriceFeed:
                 out[isin] = (float(bars[0]["c"]), _to_epoch_s(bars[0].get("t")))
         return out
 
+    # ── 官方日收盘(对账独立价源路径;/v2/aggs 日 bar = Polygon 官方 close)────
+    def daily_close(self, isins: list[str], date_iso: str) -> dict:
+        """→ {isin: official_close} 指定交易日的日 bar 收盘价(与盘中 snapshot
+        的 lastTrade 路径独立,供持仓级对账重算)。缺 bar 的票跳过(调用方上报)。"""
+        out = {}
+        for isin in isins:
+            rec = self.reg.master.get(isin)
+            if rec is None:
+                continue
+            t = rec["polygon_ticker"]
+            try:
+                d = self._get(f"/v2/aggs/ticker/{t}/range/1/day/{date_iso}/{date_iso}",
+                              {"limit": 1}, retries=2)
+            except Exception:  # noqa: BLE001
+                continue
+            bars = d.get("results") or []
+            if bars and bars[0].get("c"):
+                out[isin] = float(bars[0]["c"])
+        return out
+
     # ── 当日 split 日历(plan §九-7:标注不改 shares,持仓文件是 golden)──────
     def splits_today(self, isins: list[str]) -> dict:
         """→ {isin: "from:to"} 当日 execution_date 落在全书内的 split。"""
