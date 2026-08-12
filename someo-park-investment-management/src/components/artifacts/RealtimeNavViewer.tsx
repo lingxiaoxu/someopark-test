@@ -37,7 +37,7 @@ interface NavLatest {
   ts: string; structure_hash: string; stale: boolean; market: string;
   feed_delay_min: number | null; missing: string[]; nodes: NavNode[];
   last_rebuild_ts?: string | null; structure_diff?: string[];
-  corp_actions?: Record<string, string>;
+  corp_actions?: Record<string, string>; rebuild_error?: string | null;
 }
 // 官方口径映射(与 reconcile_eod._ANCHORS 一致;display_name → official key)
 const OFFICIAL_KEY: Record<string, string> = {
@@ -219,6 +219,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               { label: t('realtimeNav.qcRecon'),
                 state: rec === 'ok' ? 'pass' : rec === 'breach' ? 'fail' : 'pending' },
               { label: t('realtimeNav.qcAnchor'), state: allOfficial ? 'pass' : 'fail' },
+              { label: t('realtimeNav.qcStruct'), state: latest.rebuild_error ? 'fail' : 'pass' },
             ];
             const allPass = qc.every(c => c.state === 'pass');
             const anyFail = qc.some(c => c.state === 'fail');
@@ -239,7 +240,9 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                 </div>
                 <div style={{ fontSize: 10.5, fontWeight: 700,
                   color: allPass ? '#16a34a' : anyFail ? '#e11d48' : '#b45309' }}
-                  title={t('realtimeNav.qcTitle')}>
+                  title={latest.rebuild_error
+                    ? `${t('realtimeNav.qcStructTitle')} — ${latest.rebuild_error}`
+                    : t('realtimeNav.qcTitle')}>
                   {allPass ? `✓ ${t('realtimeNav.qcAllPass')} · `
                     : anyFail ? `✗ ${t('realtimeNav.qcFail')} · ` : `◷ ${t('realtimeNav.qcPending')} · `}
                   {qc.map(c => `${c.state === 'pass' ? '✓' : c.state === 'fail' ? '✗' : '◷'}${c.label}`).join(' ')}

@@ -1309,6 +1309,8 @@
     "chartBaseFirst": "primer tick del día",
     "chartLookback": "Última sesión intradía % (retrospectiva {{date}} · mercado cerrado, vuelve al abrir)",
     "chartEmpty": "Sin datos de sesión aún (se acumulan cada minuto con el controller en marcha)",
-    "errNotRunning": "VL en tiempo real: {{err}} (¿controller no está en marcha?)"
+    "errNotRunning": "VL en tiempo real: {{err}} (¿controller no está en marcha?)",
+    "qcStruct": "sync estructura",
+    "qcStructTitle": "Fallo de sync de estructura: archivos de posiciones a medio actualizar - sirviendo la última estructura consistente; reintenta hasta que las fuentes coincidan"
   }
 }

@@ -96,7 +96,25 @@ ok("20i nav_latest 携带 corp_actions 字典", len(nav["corp_actions"]) == 1)
 ok("20j 结构未变时 structure_diff 为空", nav["structure_diff"] == [])
 ok("20k last_rebuild_ts 存在", bool(nav["last_rebuild_ts"]))
 
-# 5) 备通道解析(monkeypatch _get,零网络):snapshot 缺口 → aggs 补上
+# 5) rebuild 失败不致死(盘中半更新窗:inventory 已写 account 未写 → 装配拒绝)
+#    → 沿用旧结构继续发布 + rebuild_error 标记;文件一致后自动恢复
+orig_assemble = sched.assemble
+def _boom(reg=None):
+    raise RuntimeError("injected half-updated positions")
+sched.assemble = _boom
+c.watch_digest = "force-rebuild-attempt"
+out5 = c.tick()
+ok("20p 装配失败沿用旧结构继续发布", out5.get("portfolio") is not None)
+nav = json.load(open(os.path.join(tmp, "nav_latest.json")))
+ok("20q nav_latest 带 rebuild_error", "injected" in (nav.get("rebuild_error") or ""))
+sched.assemble = orig_assemble
+c._failed_digest = None                   # 模拟文件 digest 变化(account 跟上)
+c.watch_digest = "force-rebuild-attempt"
+out6 = c.tick()
+nav = json.load(open(os.path.join(tmp, "nav_latest.json")))
+ok("20r 文件一致后自动恢复", nav.get("rebuild_error") is None)
+
+# 6) 备通道解析(monkeypatch _get,零网络):snapshot 缺口 → aggs 补上
 reg = Registry()
 pf = PriceFeed.__new__(PriceFeed)         # 跳过 __init__ 的 key 检查
 pf.reg, pf.key, pf.consecutive_failures = reg, "TEST", 0

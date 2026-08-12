@@ -1336,6 +1336,8 @@
     "chartBaseFirst": "当日首笔",
     "chartLookback": "最近交易时段日内收益 %({{date}} 回看 · 当前闭市,开盘后自动切回当日)",
     "chartEmpty": "暂无可绘制的时段数据(controller 运行中每分钟累积)",
-    "errNotRunning": "实时净值:{{err}}(controller 未运行?)"
+    "errNotRunning": "实时净值:{{err}}(controller 未运行?)",
+    "qcStruct": "结构同步",
+    "qcStructTitle": "结构同步失败:持仓文件处于半更新窗(如 inventory 已写、account 未写)——沿用上一个一致结构服务,文件齐后自动恢复"
   }
 }

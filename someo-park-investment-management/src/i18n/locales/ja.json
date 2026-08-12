@@ -1309,6 +1309,8 @@
     "chartBaseFirst": "当日初回tick",
     "chartLookback": "直近セッション日中%({{date}}回顧 · 市場閉場中、寄付で当日に自動切替)",
     "chartEmpty": "描画可能なセッションデータなし(controller稼働中は毎分蓄積)",
-    "errNotRunning": "リアルタイムNAV:{{err}}(controller未稼働?)"
+    "errNotRunning": "リアルタイムNAV:{{err}}(controller未稼働?)",
+    "qcStruct": "構造同期",
+    "qcStructTitle": "構造同期失敗:ポジションファイルが更新途中 - 直近の一貫した構造で提供継続、整合後に自動復旧"
   }
 }

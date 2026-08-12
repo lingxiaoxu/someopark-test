@@ -1309,6 +1309,8 @@
     "chartBaseFirst": "premier tick du jour",
     "chartLookback": "Dernière séance intrajournalière % (rétrospective {{date}} · marché fermé, bascule à l ouverture)",
     "chartEmpty": "Pas encore de données de séance (accumulation chaque minute quand le controller tourne)",
-    "errNotRunning": "VL en temps réel : {{err}} (controller arrêté ?)"
+    "errNotRunning": "VL en temps réel : {{err}} (controller arrêté ?)",
+    "qcStruct": "sync structure",
+    "qcStructTitle": "Échec de sync structure : fichiers de positions en cours de mise à jour - dernière structure cohérente servie ; réessaie jusqu à accord des sources"
   }
 }

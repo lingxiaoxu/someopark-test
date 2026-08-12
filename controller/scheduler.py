@@ -101,27 +101,32 @@ class Controller:
         self.structure_diff: list[str] = []
         self._splits: dict[str, str] = {}      # {leaf_isin: "from:to"} 当日 split
         self._splits_date: str | None = None
-        self._rebuild(replay=False)
+        self.S = None                          # 无一致结构前不发布
+        self.rebuild_error: str | None = None
+        self._failed_digest: str | None = None
+        self._failed_at = 0.0
+        self._maybe_rebuild(force=True)
 
     # ── 结构(重)建 + 合成重放(修 C 统一语义)────────────────────────────────
+    # 全部先在局部变量构好、验证通过才提交到 self——失败绝不留下半新半旧状态。
     def _rebuild(self, replay: bool = True) -> None:
-        prev_nodes = getattr(self, "S", None) and self.S.nodes
-        self.S = assemble(self.reg)
-        self.structure_diff = (_diff_structures(prev_nodes, self.S.nodes, self.reg)
-                               if prev_nodes else [])
-        self.last_rebuild_ts = _now_iso()
-        self.fe = FlattenEngine(self.S)
-        self.te = TreeEngine(self.S)
-        init_f, init_t = self.fe.initial_emissions(), self.te.initial_emissions()
+        prev_nodes = self.S.nodes if self.S else None
+        new_s = assemble(self.reg)
+        fe, te = FlattenEngine(new_s), TreeEngine(new_s)
+        init_f, init_t = fe.initial_emissions(), te.initial_emissions()
         if init_f != init_t:
             raise EngineDisagreement(f"init emissions differ: {init_f} vs {init_t}")
         if replay and self.last_price:
             replayable = {k: v for k, v in self.last_price.items()
-                          if k in self.S.leaves()}
+                          if k in new_s.leaves()}
             if replayable:
-                self.fe.apply_tick(replayable)
-                self.te.apply_tick(replayable)
-                self._verify("rebuild-replay")
+                fe.apply_tick(replayable)
+                te.apply_tick(replayable)
+        self.S, self.fe, self.te = new_s, fe, te
+        self._verify("rebuild-replay")
+        self.structure_diff = (_diff_structures(prev_nodes, new_s.nodes, self.reg)
+                               if prev_nodes else [])
+        self.last_rebuild_ts = _now_iso()
         self.watch_digest = _watch_digest()
         snap_path = os.path.join(OUT_DIR, f"structure_snapshot_{self.S.hash}.json")
         if not os.path.exists(snap_path):
@@ -131,6 +136,28 @@ class Controller:
         print(f"[controller] structure {'re' if replay else ''}built "
               f"hash={self.S.hash} nodes={len(self.S.nodes)} "
               f"leaves={len(self.S.leaves())}")
+
+    # ── watcher 重建守门:失败不致死,沿用旧结构 + 标错 + 自动重试 ──────────────
+    # 典型场景:盘中 pipeline 半更新窗(inventory 已写、account 未写)→ 装配
+    # 正确拒绝;此处必须活着等文件齐(digest 再变或 120s 后重试),绝不裸奔崩溃。
+    def _maybe_rebuild(self, force: bool = False) -> bool:
+        dig = _watch_digest()
+        if not force and dig == self.watch_digest:
+            return False
+        if not force and dig == self._failed_digest and \
+                time.time() - self._failed_at < 120:
+            return False                       # 同一失败状态,稍后再试
+        try:
+            self._rebuild(replay=self.S is not None)
+            self.rebuild_error, self._failed_digest = None, None
+            return True
+        except Exception as e:  # noqa: BLE001 — 保守失败:服务旧结构
+            self.rebuild_error = str(e)
+            self._failed_digest, self._failed_at = dig, time.time()
+            print(f"!!!! [controller WARN] rebuild failed — "
+                  f"{'no structure yet' if self.S is None else 'serving last consistent structure'}"
+                  f": {e}")
+            return False
 
     # ── 对拍 + rebaseline ─────────────────────────────────────────────────────
     def _verify(self, ctx: str) -> None:
@@ -162,11 +189,11 @@ class Controller:
 
     # ── 单轮 tick ─────────────────────────────────────────────────────────────
     def tick(self, force: bool = False) -> dict:
-        # 1) watcher 兜底检查(独立轮询之外,tick 前必查)
-        rebuilt = False
-        if _watch_digest() != self.watch_digest:
-            self._rebuild(replay=True)
-            rebuilt = True
+        # 1) watcher 兜底检查(独立轮询之外,tick 前必查;失败沿用旧结构)
+        rebuilt = self._maybe_rebuild()
+        if self.S is None:                     # 启动至今无一致结构:不发布
+            return {"skipped": f"no consistent structure yet: {self.rebuild_error}",
+                    "rebuilt": rebuilt}
 
         # 2) 市场状态
         status = self.feed.market_status()
@@ -253,6 +280,7 @@ class Controller:
                          "positions_as_of": n["attrs"].get("positions_as_of")})
         payload = {"ts": ts, "structure_hash": self.S.hash, "stale": stale,
                    "last_rebuild_ts": self.last_rebuild_ts,
+                   "rebuild_error": self.rebuild_error,
                    "structure_diff": self.structure_diff,
                    "corp_actions": {self.reg.render(k): v
                                     for k, v in self._splits.items()},
@@ -291,14 +319,14 @@ class Controller:
         next_tick = 0.0
         while True:
             now = time.time()
-            if _watch_digest() != self.watch_digest:      # 7×24 watcher(盘后也跑)
-                self._rebuild(replay=True)
+            if self._maybe_rebuild():                     # 7×24 watcher(盘后也跑)
                 # 盘后结构变化也要立即反映到 nav_latest(修 C + 用户"马上变")
                 self.tick(force=True)
             if now >= next_tick:
                 out = self.tick()
                 if "skipped" not in out:
                     print(f"[tick] {out['ts']} portfolio="
-                          f"{out['portfolio']:,.2f} stale={out['stale']}")
+                          f"{out['portfolio']:,.2f} stale={out['stale']}"
+                          + (" REBUILD-ERR" if self.rebuild_error else ""))
                 next_tick = now + interval_s
             time.sleep(watch_s)

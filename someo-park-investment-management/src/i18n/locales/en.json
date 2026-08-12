@@ -1338,6 +1338,8 @@
     "chartBaseFirst": "first tick of day",
     "chartLookback": "Last session intraday % ({{date}} lookback · market closed, switches back at the open)",
     "chartEmpty": "No plottable session data yet (accumulates every minute while the controller runs)",
-    "errNotRunning": "Realtime NAV: {{err}} (controller not running?)"
+    "errNotRunning": "Realtime NAV: {{err}} (controller not running?)",
+    "qcStruct": "structure sync",
+    "qcStructTitle": "Structure sync failed: position files are mid-update (e.g. inventory written, account not yet) - serving the last consistent structure; auto-retries until sources agree"
   }
 }
