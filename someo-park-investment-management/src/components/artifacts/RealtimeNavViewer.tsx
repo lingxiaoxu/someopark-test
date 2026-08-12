@@ -37,7 +37,9 @@ const OFFICIAL_KEY: Record<string, string> = {
 
 export default function RealtimeNavViewer({ params }: { params?: any }) {
   const [latest, setLatest] = useState<NavLatest | null>(null);
-  const [streamRows, setStreamRows] = useState<any[]>([]);
+  const [streamRows, setStreamRows] = useState<any[]>([]);          // 今天的流(日内基准用)
+  const [chartStream, setChartStream] = useState<{ date: string | null, rows: any[], isToday: boolean }>(
+    { date: null, rows: [], isToday: true });                       // 图表用:闭市回看最近时段
   const [reconcile, setReconcile] = useState<any>(null);
   const [prevClose, setPrevClose] = useState<{ date: string | null, values: Record<string, number> } | null>(null);
   const [official, setOfficial] = useState<Record<string, { date: string, value: number }> | null>(null);
@@ -60,7 +62,23 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       if (!l.ok) throw new Error(`controller not running (HTTP ${l.status})`);
       const lj: NavLatest = await l.json();
       setLatest(lj);
-      if (s.ok) setStreamRows((await s.json()).rows || []);
+      if (s.ok) {
+        const sj = await s.json();
+        const rows = sj.rows || [];
+        setStreamRows(rows);
+        if (rows.length >= 2) {
+          setChartStream({ date: sj.date, rows, isToday: true });
+        } else {
+          // 今天没有(足够的)tick(闭市)→ 回看最近一个有数据的交易时段
+          const lt = await fetch(`${API_BASE}/api/controller-nav/stream?date=latest`,
+            { headers: apiHeaders() });
+          if (lt.ok) {
+            const lj2 = await lt.json();
+            setChartStream({ date: lj2.date, rows: lj2.rows || [],
+              isToday: lj2.date === sj.date });
+          }
+        }
+      }
       if (r.ok) setReconcile(await r.json());
       if (p.ok) setPrevClose(await p.json());
       if (o.ok) setOfficial(await o.json());
@@ -109,12 +127,14 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
   const anchored = Object.keys(prevByName).length > 0;
 
   const chart = useMemo(() => {
-    if (!streamRows.length) return { data: [] as any[], names: [] as string[] };
+    const rows = chartStream.rows;
+    if (!rows.length) return { data: [] as any[], names: [] as string[] };
     const step = FREQS.find(f => f.key === freq)!.minutes;
     const wanted = new Set(['PORTFOLIO', ...strategies.map(s => s.display_name)]);
     const byTs: Record<string, any> = {};
-    const base: Record<string, number> = { ...prevByName };
-    for (const r of streamRows) {
+    // 昨收锚只对"今天"成立;回看历史时段用该时段首笔
+    const base: Record<string, number> = chartStream.isToday ? { ...prevByName } : {};
+    for (const r of rows) {
       const name = r.display_name as string;
       if (!wanted.has(name)) continue;
       const t = new Date(r.ts as string);
@@ -124,18 +144,21 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       (byTs[label] ||= { label })[name] = ((r.value as number) / base[name] - 1) * 100;
     }
     return { data: Object.values(byTs), names: [...wanted] };
-  }, [streamRows, freq, strategies, prevByName]);
+  }, [chartStream, freq, strategies, prevByName]);
 
   const dayPct = (name: string, value: number) => {
     const base = prevByName[name]
       ?? (streamRows.find(r => r.display_name === name)?.value as number | undefined);
     return base ? (value / base - 1) * 100 : null;
   };
-  // 官方口径换算展示(×官方基准;绝不显示两套打架的绝对值,plan §4.3.3)
+  // 官方口径换算(主展示口径,plan §4.3.3:与 StrategyPerformanceViewer 同刻度)
+  // 账本口径与官方口径持仓相同 → 日内收益同源;绝对值 = 官方 EOD × (1+r)。
+  // 闭市/无日内基准时 r=0(= 官方 EOD 本身,与官方曲线严格一致)。
   const officialAnchor = (name: string, value: number) => {
     const off = official?.[OFFICIAL_KEY[name]];
+    if (!off) return null;
     const pct = dayPct(name, value);
-    return off && pct !== null ? { ...off, live: off.value * (1 + pct / 100) } : null;
+    return { ...off, live: off.value * (1 + (pct ?? 0) / 100) };
   };
 
   if (loading) return <LoadingState />;
@@ -153,26 +176,34 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: '#666' }}>
             PORTFOLIO(实时 · {latest.ts.slice(11, 19)} UTC)
           </div>
-          <div style={{ fontSize: 30, fontWeight: 800 }}>
-            ${portfolio?.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-            {portfolio && dayPct('PORTFOLIO', portfolio.value) !== null && (
-              <span style={{ fontSize: 15, marginLeft: 10,
-                color: dayPct('PORTFOLIO', portfolio.value)! >= 0 ? '#16a34a' : '#e11d48' }}>
-                {dayPct('PORTFOLIO', portfolio.value)! >= 0 ? '+' : ''}
-                {dayPct('PORTFOLIO', portfolio.value)!.toFixed(2)}%
-                {anchored ? ` vs 昨收${prevClose?.date ? ` ${prevClose.date.slice(4, 6)}/${prevClose.date.slice(6, 8)}` : ''}` : ' 日内(首日无昨收)'}
-              </span>
-            )}
-          </div>
-          {official && (() => {
+          {(() => {
+            // 主数字 = 官方口径(与 StrategyPerformanceViewer 同刻度):
+            // Σ 各策略官方 EOD × (1+日内收益);官方数据不可用才退回账本合计。
             const parts = strategies.map(s => officialAnchor(s.display_name, s.value));
-            if (parts.some(p => !p)) return null;
-            const sum = parts.reduce((a, p) => a + p!.live, 0);
+            const allOfficial = parts.length > 0 && parts.every(Boolean);
+            const main = allOfficial
+              ? parts.reduce((a, p) => a + p!.live, 0)
+              : portfolio?.value ?? 0;
+            const pct = portfolio ? dayPct('PORTFOLIO', portfolio.value) : null;
             return (
-              <div style={{ fontSize: 11, color: '#666' }}>
-                官方口径 ≈ ${sum.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                (各策略官方 EOD × 日内收益换算)
-              </div>
+              <>
+                <div style={{ fontSize: 30, fontWeight: 800 }}>
+                  ${main.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {pct !== null && (
+                    <span style={{ fontSize: 15, marginLeft: 10,
+                      color: pct >= 0 ? '#16a34a' : '#e11d48' }}>
+                      {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%
+                      {anchored ? ` vs 昨收${prevClose?.date ? ` ${prevClose.date.slice(4, 6)}/${prevClose.date.slice(6, 8)}` : ''}` : ' 日内'}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 10.5, color: '#888' }}
+                  title="controller 内部估值账本($1M 起账)与官方口径持仓相同、日内收益同源;绝对值刻度不同,主展示用官方口径">
+                  {allOfficial
+                    ? `账本口径合计 $${(portfolio?.value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}(内部对拍用)`
+                    : '⚠ 官方 EOD 不可用,当前显示账本口径'}
+                </div>
+              </>
             );
           })()}
         </div>
@@ -243,38 +274,46 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                     style={{ color: '#ea580c', marginLeft: 4 }}>⚠︎split</span>
                 )}
               </div>
-              <div style={{ fontSize: 17, fontWeight: 700 }}>
-                ${s.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </div>
-              <div style={{ fontSize: 10.5 }}>
-                {pct !== null && (
-                  <span style={{ color: pct >= 0 ? '#16a34a' : '#e11d48', fontWeight: 700 }}>
-                    {pct >= 0 ? '+' : ''}{pct.toFixed(2)}%{anchored ? '' : '(首日口径)'}
-                  </span>
-                )}
-                <span style={{ color: '#999', marginLeft: 6 }}>
-                  as of {s.positions_as_of ?? '—'}
-                </span>
-              </div>
               {(() => {
                 const oa = officialAnchor(s.display_name, s.value);
-                return oa && (
-                  <div style={{ fontSize: 10, color: '#888' }}
-                    title={`账本口径日内收益 × 官方 EOD(${oa.date});两口径绝对值不互比`}>
-                    官方锚 ≈ ${oa.live.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </div>
+                return (
+                  <>
+                    <div style={{ fontSize: 17, fontWeight: 700 }}
+                      title={oa ? `官方口径(官方 EOD ${oa.date} × 日内收益换算,与 Strategy Performance 同刻度)` : undefined}>
+                      ${(oa ? oa.live : s.value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </div>
+                    <div style={{ fontSize: 10.5 }}>
+                      {pct !== null && (
+                        <span style={{ color: pct >= 0 ? '#16a34a' : '#e11d48', fontWeight: 700 }}>
+                          {pct >= 0 ? '+' : ''}{pct.toFixed(2)}% 日内
+                        </span>
+                      )}
+                      <span style={{ color: '#999', marginLeft: 6 }}>
+                        as of {s.positions_as_of ?? '—'}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10, color: '#999' }}
+                      title="controller 内部估值账本;与官方口径日内收益同源,绝对值刻度不同">
+                      {oa ? `账本 $${s.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                          : '⚠ 官方 EOD 不可用(账本口径)'}
+                    </div>
+                  </>
                 );
               })()}
-              {open && kids.map(k => (
-                <div key={k.node_id} style={{ fontSize: 10.5, display: 'flex',
-                  justifyContent: 'space-between', borderTop: '1px dashed #ddd',
-                  padding: '3px 0' }}>
-                  <span>└ {k.display_name}</span>
-                  <span style={{ fontWeight: 700 }}>
-                    ${k.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </span>
-                </div>
-              ))}
+              {open && (() => {
+                const oa = officialAnchor(s.display_name, s.value);
+                const scale = oa && s.value ? oa.live / s.value : 1;   // 子层等比换算,与卡片主数字同口径
+                return kids.map(k => (
+                  <div key={k.node_id} style={{ fontSize: 10.5, display: 'flex',
+                    justifyContent: 'space-between', borderTop: '1px dashed #ddd',
+                    padding: '3px 0' }}>
+                    <span>└ {k.display_name}</span>
+                    <span style={{ fontWeight: 700 }}>
+                      ${(k.value * scale).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                ));
+              })()}
             </div>
           );
         })}
@@ -283,11 +322,13 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       {/* 当日日内曲线(% vs 当日首笔;策略 + PORTFOLIO) */}
       <div className="flex-1 min-h-[260px]">
         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: '#666', marginBottom: 4 }}>
-          当日日内收益 %({freq} 采样 · 基准={anchored ? '昨收(开盘锚,与官方曲线首尾相接)' : '当日首笔(首日无昨收)'} · 历史日频请看 Strategy Performance)
+          {chartStream.isToday
+            ? `当日日内收益 %(${freq} 采样 · 基准=${anchored ? '昨收(开盘锚)' : '当日首笔'} · 历史日频请看 Strategy Performance)`
+            : `最近交易时段日内收益 %(${chartStream.date ? `${chartStream.date.slice(4, 6)}/${chartStream.date.slice(6, 8)}` : '—'} 回看 · 当前闭市,开盘后自动切回当日)`}
         </div>
         {chart.data.length < 2 ? (
           <div style={{ color: '#999', fontSize: 12, padding: 20 }}>
-            当日数据不足两笔(controller interval 运行中会持续累积)
+            暂无可绘制的时段数据(闭市 tick 跳过;开盘后 1 分钟一笔持续累积)
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="90%">

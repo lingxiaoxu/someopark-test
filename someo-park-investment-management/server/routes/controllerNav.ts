@@ -20,9 +20,25 @@ router.get('/latest', (_req, res) => {
   res.json(JSON.parse(fs.readFileSync(p, 'utf-8')));
 });
 
-// 当日分钟流(频率子采样在前端做;date=YYYYMMDD 默认今天)
+// 当日分钟流(频率子采样在前端做;date=YYYYMMDD 默认今天;
+// date=latest → 最近一个有数据(≥2 行)的交易时段,闭市回看用)
 router.get('/stream', (req, res) => {
-  const date = String(req.query.date || new Date().toISOString().slice(0, 10).replace(/-/g, ''));
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  let date = String(req.query.date || today);
+  if (date === 'latest') {
+    const days = fs.existsSync(OUT)
+      ? fs.readdirSync(OUT)
+          .map(f => /^nav_stream_(\d{8})\.csv$/.exec(f)?.[1])
+          .filter((d): d is string => !!d).sort()
+      : [];
+    date = '';
+    for (let i = days.length - 1; i >= 0; i--) {
+      const lines = fs.readFileSync(path.join(OUT, `nav_stream_${days[i]}.csv`), 'utf-8')
+        .trim().split('\n');
+      if (lines.length >= 3) { date = days[i]; break; }
+    }
+    if (!date) return res.json({ date: null, rows: [] });
+  }
   const p = path.join(OUT, `nav_stream_${date}.csv`);
   if (!fs.existsSync(p)) return res.json({ date, rows: [] });
   const lines = fs.readFileSync(p, 'utf-8').trim().split('\n');
