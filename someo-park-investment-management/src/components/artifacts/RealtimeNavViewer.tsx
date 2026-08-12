@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  ReferenceLine,
 } from 'recharts';
 import LoadingState from '../LoadingState';
 import ErrorState from '../ErrorState';
@@ -145,7 +146,16 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       if (base[name] === undefined) base[name] = r.value as number;
       (byTs[label] ||= { label })[name] = ((r.value as number) / base[name] - 1) * 100;
     }
-    return { data: Object.values(byTs), names: [...wanted] };
+    const data = Object.values(byTs);
+    // 0% 垂直居中:对称 Y 域(上=正收益,下=负收益),平线时最小 ±0.5%
+    let lim = 0.5;
+    for (const row of data) {
+      for (const k of Object.keys(row)) {
+        if (k !== 'label') lim = Math.max(lim, Math.abs(row[k]));
+      }
+    }
+    lim = Math.ceil(lim * 1.15 * 100) / 100;
+    return { data, names: [...wanted], lim };
   }, [chartStream, freq, strategies, prevByName]);
 
   const dayPct = (name: string, value: number) => {
@@ -337,8 +347,9 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             <LineChart data={chart.data}>
               <CartesianGrid strokeDasharray="2 4" stroke="#eee" />
               <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} domain={['auto', 'auto']}
+              <YAxis tick={{ fontSize: 10 }} domain={[-chart.lim, chart.lim]}
                 tickFormatter={(v: number) => `${v.toFixed(2)}%`} />
+              <ReferenceLine y={0} stroke="#bbb" strokeDasharray="4 4" />
               <Tooltip formatter={(v: any) => `${Number(v).toFixed(3)}%`} />
               {chart.names.map(n => (
                 <Line key={n} dataKey={n}
