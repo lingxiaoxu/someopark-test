@@ -25,7 +25,8 @@
     "wfStructure": "Structure des fichiers de backtest",
     "pnlReport": "Rapport PnL",
     "strategyPerformance": "Performance de la stratégie",
-    "riskReport": "Rapport de risque"
+    "riskReport": "Rapport de risque",
+    "realtimeNav": "VL en temps réel"
   },
   "common": {
     "loading": "Chargement des données...",

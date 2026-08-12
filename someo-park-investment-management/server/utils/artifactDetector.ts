@@ -92,6 +92,11 @@ const ARTIFACT_PATTERNS: Array<{
     keywords: ['strategy performance', 'overall performance', 'performance curve', 'inception', '策略表现', '策略曲线', '整体表现', '净值曲线总览'],
   },
   {
+    type: 'realtime_nav',
+    title: 'Realtime NAV',
+    keywords: ['realtime nav', 'real-time nav', 'live nav', 'intraday nav', 'realtime portfolio', 'live portfolio value', '实时净值', '实时组合', '盘中净值', '日内净值'],
+  },
+  {
     type: 'risk_report',
     title: 'Risk Report',
     keywords: ['risk report', 'risk management report', 'risk pack', 'var report', 'leverage report', 'exposure report', '风险报告', '风控报告', '风险管理报告'],

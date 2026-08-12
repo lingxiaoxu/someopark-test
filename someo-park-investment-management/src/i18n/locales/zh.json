@@ -25,7 +25,8 @@
     "wfStructure": "回测文件结构图",
     "pnlReport": "盈亏报告",
     "strategyPerformance": "策略表现",
-    "riskReport": "风险报告"
+    "riskReport": "风险报告",
+    "realtimeNav": "实时净值"
   },
   "common": {
     "loading": "加载数据中...",

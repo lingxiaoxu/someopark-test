@@ -161,6 +161,10 @@ class Controller:
         # 4) 落盘(发布=树引擎值)
         ts = _now_iso()
         values = self.te.values()
+        parent_of: dict[str, str] = {}
+        for pid, n in self.S.nodes.items():
+            for c, _ in n["children"]:
+                parent_of[c] = pid
         rows = []
         for nid in self.fe.order:                        # 拓扑序稳定输出
             if nid not in values:
@@ -169,6 +173,7 @@ class Controller:
             rows.append({"node_id": nid,
                          "display_name": self.reg.render(nid),
                          "kind": n["kind"], "value": round(values[nid], 2),
+                         "parent_id": parent_of.get(nid),
                          "positions_as_of": n["attrs"].get("positions_as_of")})
         payload = {"ts": ts, "structure_hash": self.S.hash, "stale": stale,
                    "feed_delay_min": snap.get("feed_delay_min"),

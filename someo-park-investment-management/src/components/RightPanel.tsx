@@ -18,6 +18,7 @@ import WFStructureViewer from './artifacts/WFStructureViewer';
 import PnlReportViewer from './artifacts/PnlReportViewer';
 import RiskReportViewer from './artifacts/RiskReportViewer';
 import StrategyPerformanceViewer from './artifacts/StrategyPerformanceViewer';
+import RealtimeNavViewer from './artifacts/RealtimeNavViewer';
 
 // Artifact type → i18n title key mapping
 const ARTIFACT_TITLE_KEYS: Record<string, string> = {
@@ -36,6 +37,7 @@ const ARTIFACT_TITLE_KEYS: Record<string, string> = {
   wf_structure: 'artifactTitles.wfStructure',
   pnl_report: 'artifactTitles.pnlReport',
   strategy_performance: 'artifactTitles.strategyPerformance',
+  realtime_nav: 'artifactTitles.realtimeNav',
 };
 
 // Download URLs for artifact types that have downloadable files
@@ -164,6 +166,7 @@ export default function RightPanel({ artifact, appMode, onClose, onMaximize, isM
         {artifact.type === 'pnl_report'        && <PnlReportViewer params={params} />}
         {artifact.type === 'risk_report'       && <RiskReportViewer params={params} />}
         {artifact.type === 'strategy_performance' && <StrategyPerformanceViewer params={params} />}
+        {artifact.type === 'realtime_nav'      && <RealtimeNavViewer params={params} />}
       </div>
     </div>
   );

@@ -25,7 +25,8 @@
     "wfStructure": "バックテストファイル構造",
     "pnlReport": "PnLレポート",
     "strategyPerformance": "戦略パフォーマンス",
-    "riskReport": "リスクレポート"
+    "riskReport": "リスクレポート",
+    "realtimeNav": "リアルタイムNAV"
   },
   "common": {
     "loading": "データを読み込み中...",
