@@ -94,7 +94,8 @@ def _assemble_pairs(st: str, reg: Registry, S: Structure) -> str:
         pid = reg.spid_of("pair", key, display_name=name, attrs={"strategy": st})
         pair_attrs = {k: v[k] for k in
                       ("direction", "param_set", "open_date", "days_held",
-                       "open_hedge_ratio", "peak_unrealized_pnl") if k in v}
+                       "open_hedge_ratio", "peak_unrealized_pnl",
+                       "open_s1_price", "open_s2_price") if k in v}
         pair_attrs["display_name"] = name
         S.add(pid, "pair",
               children=[(s1_isin, float(v["s1_shares"])),

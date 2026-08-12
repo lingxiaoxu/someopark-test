@@ -105,49 +105,79 @@ class Controller:
         self.rebuild_error: str | None = None
         self._failed_digest: str | None = None
         self._failed_at = 0.0
-        # 日内收益基准(跨结构变化链式衔接:换结构的记账台阶不是市场收益)
-        self.day_base: dict[str, float] = {}
+        # 日内盈亏 = 纯美元账(shares × 价格,零比值;用户令 2026-08-12):
+        #   day_pnl[nid] = realized[nid] + Σ eff_shares × (p_now − basis)
+        #   basis = 日初价格(隔夜 carry)或当日开仓成交价(持仓文件 open_sX_price)
+        #   换结构:旧持仓按换出时价格实现入 realized,新持仓从成交价起算
+        #   day_return = day_pnl / 日初账面(仅归一化,不跨口径)
         self.day_date: str | None = None
+        self.day_base_value: dict[str, float] = {}     # 日初账面(分母)
+        self.day_realized: dict[str, float] = {}       # 已实现当日盈亏($)
+        self.day_basis: dict[str, dict[str, float]] = {}  # {nid: {leaf: 基准价}}
+        self._legacy_base: dict[str, float] | None = None
         self._load_day_state()
         self._maybe_rebuild(force=True)
 
-    # ── 日内基准状态(重启不丢链)─────────────────────────────────────────────
+    # ── 日内盈亏状态(重启不丢)───────────────────────────────────────────────
     def _day_state_path(self) -> str:
         return os.path.join(OUT_DIR, "day_state.json")
 
     def _load_day_state(self) -> None:
         try:
             st = json.load(open(self._day_state_path()))
-            if st.get("date") == et_today():
-                self.day_date, self.day_base = st["date"], st["base"]
+            if st.get("date") != et_today():
                 return
+            if "base_value" in st:                      # 新格式
+                self.day_date = st["date"]
+                self.day_base_value = st["base_value"]
+                self.day_realized = st["realized"]
+                self.day_basis = st["basis"]
+            elif "base" in st:                          # 旧比值格式:首 tick 换算
+                self._legacy_base = st["base"]
         except (FileNotFoundError, ValueError, KeyError):
             pass
-        # 无状态:从今日 stream 首笔重建(老行为兜底)
-        p = os.path.join(OUT_DIR,
-                         f"nav_stream_{et_today().replace('-', '')}.csv")
-        if os.path.exists(p):
-            with open(p) as fh:
-                header = fh.readline().strip().split(",")
-                try:
-                    i_node, i_val = header.index("node_id"), header.index("value")
-                except ValueError:
-                    return
-                for line in fh:
-                    parts = line.rstrip("\n").split(",")
-                    self.day_base.setdefault(parts[i_node], float(parts[i_val]))
-            if self.day_base:
-                self.day_date = et_today()
 
     def _save_day_state(self) -> None:
-        _atomic_json({"date": self.day_date, "base": self.day_base},
+        _atomic_json({"date": self.day_date, "base_value": self.day_base_value,
+                      "realized": self.day_realized, "basis": self.day_basis},
                      self._day_state_path())
+
+    # ── 新结构下某节点的叶子基准价:当日开仓 pair 用真实成交价,其余用当前价 ────
+    def _basis_for(self, nid: str, today: str) -> dict[str, float]:
+        node = self.S.nodes[nid]
+        entry_px: dict[str, float] = {}
+        kids = node["children"]
+        if node["kind"] == "pair" and node["attrs"].get("open_date") == today \
+                and len(kids) == 2:
+            a = node["attrs"]
+            if a.get("open_s1_price"):
+                entry_px[kids[0][0]] = float(a["open_s1_price"])
+            if a.get("open_s2_price"):
+                entry_px[kids[1][0]] = float(a["open_s2_price"])
+        return {leaf: entry_px.get(leaf, self.last_price.get(leaf))
+                for leaf in self.fe.expanded.get(nid, {})
+                if entry_px.get(leaf) or leaf in self.last_price}
+
+    def _day_pnl(self, nid: str) -> float | None:
+        basis = self.day_basis.get(nid)
+        if basis is None:
+            return None
+        pnl = self.day_realized.get(nid, 0.0)
+        for leaf, eff in self.fe.expanded.get(nid, {}).items():
+            p = self.last_price.get(leaf)
+            if p is None:
+                return None                     # 缺价不猜:该节点本 tick 无日内数
+            b = basis.get(leaf)
+            if b is None:                       # 建基时无价的叶子:首见价起算
+                basis[leaf] = b = p
+            pnl += eff * (p - b)
+        return pnl
 
     # ── 结构(重)建 + 合成重放(修 C 统一语义)────────────────────────────────
     # 全部先在局部变量构好、验证通过才提交到 self——失败绝不留下半新半旧状态。
     def _rebuild(self, replay: bool = True) -> None:
         prev_nodes = self.S.nodes if self.S else None
-        prev_values = self.te.values() if self.S else {}   # 换结构前账面(链式衔接用)
+        prev_expanded = dict(self.fe.expanded) if self.S else {}  # 旧持仓(实现日内盈亏用)
         new_s = assemble(self.reg)
         fe, te = FlattenEngine(new_s), TreeEngine(new_s)
         init_f, init_t = fe.initial_emissions(), te.initial_emissions()
@@ -161,15 +191,21 @@ class Controller:
                 te.apply_tick(replayable)
         self.S, self.fe, self.te = new_s, fe, te
         self._verify("rebuild-replay")
-        # 日内收益链式衔接:同一价格下新旧账面之比 = 记账台阶(平仓已实现入
-        # cash / 新对入账 / 日切),不是市场收益 → 等比重放到 day_base,
-        # day_return 只保留市场成分(官方锚展示因此不被台阶污染)
-        if prev_values and self.day_base:
-            new_values = te.values()
-            for nid, v_old in prev_values.items():
-                v_new = new_values.get(nid)
-                if nid in self.day_base and v_old and v_new and v_old != v_new:
-                    self.day_base[nid] *= v_new / v_old
+        # 换结构的日内盈亏衔接 = 纯美元账(零比值):
+        # ① 旧持仓按换出时市场价"实现"当日至此的盈亏 → realized($,shares×价差);
+        # ② 新持仓从基准价起算(当日开仓 pair 用持仓文件真实成交价,其余当前价)。
+        # 记账台阶(现金重置/日切)天然不进 day_pnl——它从头到尾只有 shares×价格。
+        if prev_expanded and self.day_date == et_today() and self.day_basis:
+            today = et_today()
+            for nid, basis in list(self.day_basis.items()):
+                for leaf, eff in prev_expanded.get(nid, {}).items():
+                    p, b = self.last_price.get(leaf), basis.get(leaf)
+                    if p is not None and b is not None:
+                        self.day_realized[nid] = \
+                            self.day_realized.get(nid, 0.0) + eff * (p - b)
+            for nid in self.fe.expanded:
+                self.day_basis[nid] = self._basis_for(nid, today)
+                self.day_realized.setdefault(nid, 0.0)
             self._save_day_state()
         self.structure_diff = (_diff_structures(prev_nodes, new_s.nodes, self.reg)
                                if prev_nodes else [])
@@ -299,16 +335,36 @@ class Controller:
         # 4) 落盘(发布=树引擎值)
         ts = _now_iso()
         values = self.te.values()
-        # 日内基准维护:ET 日切 → 全量重置;新出现的节点 → 以首值为基准
-        if self.day_date != today_et:
+        # 日内盈亏账维护:ET 日切 → 全量重置(basis=隔夜 carry 价);
+        # 旧比值格式 → 一次性换算(realized=至今修正盈亏,basis=当前价);
+        # 盘中新节点 → 以首值/当前价起算
+        if self._legacy_base is not None:      # 旧格式(loader 已核对同日)优先换算
             self.day_date = today_et
-            self.day_base = dict(values)
+            self.day_base_value = dict(self._legacy_base)
+            self.day_realized = {nid: values[nid] - b
+                                 for nid, b in self._legacy_base.items()
+                                 if nid in values}
+            self.day_basis = {nid: {leaf: self.last_price[leaf]
+                                    for leaf in self.fe.expanded.get(nid, {})
+                                    if leaf in self.last_price}
+                              for nid in values}
+            self._legacy_base = None
+            self._save_day_state()
+        elif self.day_date != today_et:        # ET 日切:全量重置
+            self.day_date = today_et
+            self.day_base_value = dict(values)
+            self.day_realized = {nid: 0.0 for nid in values}
+            self.day_basis = {nid: self._basis_for(nid, today_et)
+                              for nid in self.fe.expanded if nid in values}
             self._save_day_state()
         else:
-            fresh = [nid for nid in values if nid not in self.day_base]
+            fresh = [nid for nid in values if nid not in self.day_base_value]
             if fresh:
                 for nid in fresh:
-                    self.day_base[nid] = values[nid]
+                    self.day_base_value[nid] = values[nid]
+                    self.day_realized.setdefault(nid, 0.0)
+                    self.day_basis.setdefault(
+                        nid, self._basis_for(nid, today_et))
                 self._save_day_state()
         parent_of: dict[str, str] = {}
         for pid, n in self.S.nodes.items():
@@ -329,14 +385,17 @@ class Controller:
                       "value": round(eff * self.last_price[leaf], 2)}
                      for leaf, eff in exp.items() if leaf in self.last_price),
                     key=lambda h: -abs(h["value"]))
-            base = self.day_base.get(nid)
-            day_r = round(values[nid] / base - 1, 6) if base else None
+            pnl = self._day_pnl(nid)
+            base = self.day_base_value.get(nid)
+            day_r = (round(pnl / base, 6)
+                     if pnl is not None and base and abs(base) > 1e3 else None)
             rows.append({"node_id": nid,
                          "display_name": self.reg.render(nid),
                          "kind": n["kind"], "value": round(values[nid], 2),
                          "parent_id": parent_of.get(nid),
                          "corp_action": corp,
                          "day_return": day_r,
+                         "day_pnl": round(pnl, 2) if pnl is not None else None,
                          "holdings": holdings,
                          "positions_as_of": n["attrs"].get("positions_as_of")})
         payload = {"ts": ts, "structure_hash": self.S.hash, "stale": stale,
@@ -361,7 +420,10 @@ class Controller:
         if os.path.exists(stream):                      # 旧 schema 文件轮转,不混写
             with open(stream) as fh:
                 if fh.readline() != header:
-                    os.replace(stream, stream + ".v1")
+                    n = 1                               # 唯一后缀:绝不覆盖已有轮转段
+                    while os.path.exists(f"{stream}.v{n}"):
+                        n += 1
+                    os.replace(stream, f"{stream}.v{n}")
         new = not os.path.exists(stream)
         with open(stream, "a") as fh:
             if new:

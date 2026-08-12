@@ -33,24 +33,39 @@ router.get('/stream', (req, res) => {
       : [];
     date = '';
     for (let i = days.length - 1; i >= 0; i--) {
-      const lines = fs.readFileSync(path.join(OUT, `nav_stream_${days[i]}.csv`), 'utf-8')
-        .trim().split('\n');
-      if (lines.length >= 3) { date = days[i]; break; }
+      if (readStreamMerged(days[i]).length >= 2) { date = days[i]; break; }
     }
     if (!date) return res.json({ date: null, rows: [] });
   }
-  const p = path.join(OUT, `nav_stream_${date}.csv`);
-  if (!fs.existsSync(p)) return res.json({ date, rows: [] });
-  const lines = fs.readFileSync(p, 'utf-8').trim().split('\n');
-  const header = lines[0].split(',');
-  const rows = lines.slice(1).map(l => {
-    const v = l.split(',');
-    const o: Record<string, string | number> = {};
-    header.forEach((h, i) => { o[h] = h === 'value' ? Number(v[i]) : v[i]; });
-    return o;
-  });
-  res.json({ date, rows });
+  res.json({ date, rows: readStreamMerged(date) });
 });
+
+// 读取一个交易日的完整流:schema 轮转分段(.v1, .v2 …)按序 + 主文件,
+// 各段用自己的表头解析(老段缺新列 → 字段缺省),时间序自然衔接
+function readStreamMerged(date: string): Record<string, string | number>[] {
+  const main = path.join(OUT, `nav_stream_${date}.csv`);
+  const parts = fs.existsSync(OUT)
+    ? fs.readdirSync(OUT)
+        .map(f => new RegExp(`^nav_stream_${date}\\.csv\\.v(\\d+)$`).exec(f))
+        .filter((m): m is RegExpExecArray => !!m)
+        .sort((a, b) => Number(a[1]) - Number(b[1]))
+        .map(m => path.join(OUT, m[0]))
+    : [];
+  if (fs.existsSync(main)) parts.push(main);
+  const rows: Record<string, string | number>[] = [];
+  for (const p of parts) {
+    const lines = fs.readFileSync(p, 'utf-8').trim().split('\n');
+    if (lines.length < 2) continue;
+    const header = lines[0].split(',');
+    for (const l of lines.slice(1)) {
+      const v = l.split(',');
+      const o: Record<string, string | number> = {};
+      header.forEach((h, i) => { o[h] = h === 'value' ? Number(v[i]) : v[i]; });
+      rows.push(o);
+    }
+  }
+  return rows;
+}
 
 // 前一交易日 controller 收盘值(最近一个 date<今天 的 nav_stream,
 // 取 16:00 ET 截断前的末笔——与官方 EOD 同时点对齐;闭市 carry 行不算收盘)
@@ -74,15 +89,10 @@ router.get('/prev-close', (_req, res) => {
   if (!days.length) return res.json({ date: null, values: {} });
   const date = days[days.length - 1];
   const cutoff = et16utcMs(date);
-  const lines = fs.readFileSync(path.join(OUT, `nav_stream_${date}.csv`), 'utf-8')
-    .trim().split('\n');
-  const header = lines[0].split(',');
-  const iTs = header.indexOf('ts'), iNode = header.indexOf('node_id'), iVal = header.indexOf('value');
   const values: Record<string, number> = {};
-  for (const l of lines.slice(1)) {           // 顺序扫描,≤16:00 ET 的末笔覆盖 = 收盘
-    const v = l.split(',');
-    if (Date.parse(v[iTs]) > cutoff) continue;
-    values[v[iNode]] = Number(v[iVal]);
+  for (const r of readStreamMerged(date)) {   // 顺序扫描,≤16:00 ET 的末笔覆盖 = 收盘
+    if (Date.parse(String(r.ts)) > cutoff) continue;
+    values[String(r.node_id)] = Number(r.value);
   }
   res.json({ date, values });
 });

@@ -169,6 +169,15 @@ Node = { name, kind: portfolio|strategy|pair|subsector|stock,
   兜底。前端"结构同步"检查:窗口 <10min 琥珀"同步中"(常规),≥10min 红色
   (真异常,account 未跟上)。启动时不一致 → 不发布任何数字,等文件齐。
   重建失败路径全在局部变量构建、验证通过才提交,绝无半新半旧状态。
+- **日内收益跨结构变化 = 纯美元账(2026-08-12 用户令二次修订,取代比值链式)**:
+  比值衔接仍是 ratio 思路(不稳定,用户禁用);正确做法只用 shares × 价格——
+  `day_pnl[nid] = realized + Σ eff_shares×(p_now − basis)`,basis=日初隔夜
+  carry 价或**当日开仓真实成交价**(持仓文件 `open_s1/s2_price`);换结构时
+  旧持仓按换出时市场价把当日盈亏"实现"进 realized($),新持仓从成交价起算。
+  记账台阶(现金重置/日切)从头到尾进不了 day_pnl。`day_return =
+  day_pnl / 日初账面`(仅归一化);day_pnl($)与 day_return 一并发布,
+  PORTFOLIO day_pnl ≡ Σ 策略 day_pnl(可自检)。状态存
+  `output/day_state.json`(重启不丢)。实测:MTFS 假 +5.32% → 真 +0.04%。
 - **盘后变化的重建语义**:盘后无新行情,重放用**当日收盘 last_price**——
   `nav_latest` 立即变为"新持仓 × 最后已知价格"(这正是用户要的"马上变":
   19:00 AISS 调仓落文件 → ≤5s 内重建 → 前端下次轮询即见新结构与新值);次日

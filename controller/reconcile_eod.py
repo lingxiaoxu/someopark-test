@@ -51,30 +51,49 @@ _ANCHORS = {   # strategy -> (json relpath, equity column) —— 仅信息展�
 
 
 # ── controller 侧:16:00 ET 截断收盘 + 当时结构 hash ─────────────────────────
+def _stream_segments(date_iso: str) -> list[str]:
+    """该日 nav_stream 的全部分段:schema 轮转段 .v1,.v2…(旧→新)+ 主文件。"""
+    d8 = date_iso.replace("-", "")
+    main = os.path.join(OUT_DIR, f"nav_stream_{d8}.csv")
+    import re
+    parts = []
+    for f in os.listdir(OUT_DIR) if os.path.isdir(OUT_DIR) else []:
+        m = re.fullmatch(rf"nav_stream_{d8}\.csv\.v(\d+)", f)
+        if m:
+            parts.append((int(m.group(1)), os.path.join(OUT_DIR, f)))
+    out = [p for _, p in sorted(parts)]
+    if os.path.exists(main):
+        out.append(main)
+    return out
+
+
 def stream_close(date_iso: str) -> dict:
-    """{node_id: {"value": v, "hash": h}} 该日 nav_stream ≤16:00 ET 的末笔。"""
-    p = os.path.join(OUT_DIR, f"nav_stream_{date_iso.replace('-', '')}.csv")
-    if not os.path.exists(p):
-        return {}
+    """{node_id: {"value": v, "hash": h}} 该日 nav_stream ≤16:00 ET 的末笔
+    (合并 schema 轮转分段,各段用自己的表头)。"""
     y, m, d = (int(x) for x in date_iso.split("-"))
     cutoff = datetime(y, m, d, 16, 0, tzinfo=_ET)
     out: dict[str, dict] = {}
-    with open(p) as fh:
-        header = fh.readline().strip().split(",")
-        i_ts = header.index("ts")
-        i_node = header.index("node_id")
-        i_val = header.index("value")
-        i_hash = header.index("structure_hash") if "structure_hash" in header else None
-        for line in fh:
-            parts = line.rstrip("\n").split(",")
+    for p in _stream_segments(date_iso):
+        with open(p) as fh:
+            header = fh.readline().strip().split(",")
             try:
-                ts = datetime.fromisoformat(parts[i_ts])
+                i_ts, i_node, i_val = (header.index(k)
+                                       for k in ("ts", "node_id", "value"))
             except ValueError:
                 continue
-            if ts.astimezone(_ET) > cutoff:
-                continue                  # 16:00 后(盘后/夜间平移)不算收盘
-            out[parts[i_node]] = {"value": float(parts[i_val]),
-                                  "hash": parts[i_hash] if i_hash is not None else None}
+            i_hash = (header.index("structure_hash")
+                      if "structure_hash" in header else None)
+            for line in fh:
+                parts = line.rstrip("\n").split(",")
+                try:
+                    ts = datetime.fromisoformat(parts[i_ts])
+                except ValueError:
+                    continue
+                if ts.astimezone(_ET) > cutoff:
+                    continue              # 16:00 后(盘后/夜间平移)不算收盘
+                out[parts[i_node]] = {"value": float(parts[i_val]),
+                                      "hash": (parts[i_hash]
+                                               if i_hash is not None else None)}
     return out
 
 
