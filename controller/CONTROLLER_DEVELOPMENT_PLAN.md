@@ -160,6 +160,15 @@ Node = { name, kind: portfolio|strategy|pair|subsector|stock,
   确定性过程产生,增量补丁引入两侧状态分歧风险,先正确后快);
   - 两引擎重建后**互相校验**(同一结构 hash、同一 required 集、重放后全层级值
     相等),不一致即 abort。
+- **盘中半更新窗 = 每日常规事件(2026-08-12 实测定案,10:08 事故复盘)**:
+  DailySignal(含 Step 1 monitor 的 CLOSE_STOP)每次运行**先写 inventory、
+  尾部 `_pairs_ledger_hook` 再写 account,间隔约 1 分钟**。窗口内两 golden 源
+  必然不一致,装配**正确拒绝**——但拒绝绝不能杀进程:`_maybe_rebuild` 守门,
+  失败时沿用上一个一致结构继续发布 + `rebuild_error(_age_s)` 标记,digest
+  再变(account 落盘)即刻重建换新(watcher 5s 节拍);同 digest 120s 重试
+  兜底。前端"结构同步"检查:窗口 <10min 琥珀"同步中"(常规),≥10min 红色
+  (真异常,account 未跟上)。启动时不一致 → 不发布任何数字,等文件齐。
+  重建失败路径全在局部变量构建、验证通过才提交,绝无半新半旧状态。
 - **盘后变化的重建语义**:盘后无新行情,重放用**当日收盘 last_price**——
   `nav_latest` 立即变为"新持仓 × 最后已知价格"(这正是用户要的"马上变":
   19:00 AISS 调仓落文件 → ≤5s 内重建 → 前端下次轮询即见新结构与新值);次日

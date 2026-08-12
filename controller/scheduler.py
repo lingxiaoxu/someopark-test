@@ -105,12 +105,49 @@ class Controller:
         self.rebuild_error: str | None = None
         self._failed_digest: str | None = None
         self._failed_at = 0.0
+        # 日内收益基准(跨结构变化链式衔接:换结构的记账台阶不是市场收益)
+        self.day_base: dict[str, float] = {}
+        self.day_date: str | None = None
+        self._load_day_state()
         self._maybe_rebuild(force=True)
+
+    # ── 日内基准状态(重启不丢链)─────────────────────────────────────────────
+    def _day_state_path(self) -> str:
+        return os.path.join(OUT_DIR, "day_state.json")
+
+    def _load_day_state(self) -> None:
+        try:
+            st = json.load(open(self._day_state_path()))
+            if st.get("date") == et_today():
+                self.day_date, self.day_base = st["date"], st["base"]
+                return
+        except (FileNotFoundError, ValueError, KeyError):
+            pass
+        # 无状态:从今日 stream 首笔重建(老行为兜底)
+        p = os.path.join(OUT_DIR,
+                         f"nav_stream_{et_today().replace('-', '')}.csv")
+        if os.path.exists(p):
+            with open(p) as fh:
+                header = fh.readline().strip().split(",")
+                try:
+                    i_node, i_val = header.index("node_id"), header.index("value")
+                except ValueError:
+                    return
+                for line in fh:
+                    parts = line.rstrip("\n").split(",")
+                    self.day_base.setdefault(parts[i_node], float(parts[i_val]))
+            if self.day_base:
+                self.day_date = et_today()
+
+    def _save_day_state(self) -> None:
+        _atomic_json({"date": self.day_date, "base": self.day_base},
+                     self._day_state_path())
 
     # ── 结构(重)建 + 合成重放(修 C 统一语义)────────────────────────────────
     # 全部先在局部变量构好、验证通过才提交到 self——失败绝不留下半新半旧状态。
     def _rebuild(self, replay: bool = True) -> None:
         prev_nodes = self.S.nodes if self.S else None
+        prev_values = self.te.values() if self.S else {}   # 换结构前账面(链式衔接用)
         new_s = assemble(self.reg)
         fe, te = FlattenEngine(new_s), TreeEngine(new_s)
         init_f, init_t = fe.initial_emissions(), te.initial_emissions()
@@ -124,6 +161,16 @@ class Controller:
                 te.apply_tick(replayable)
         self.S, self.fe, self.te = new_s, fe, te
         self._verify("rebuild-replay")
+        # 日内收益链式衔接:同一价格下新旧账面之比 = 记账台阶(平仓已实现入
+        # cash / 新对入账 / 日切),不是市场收益 → 等比重放到 day_base,
+        # day_return 只保留市场成分(官方锚展示因此不被台阶污染)
+        if prev_values and self.day_base:
+            new_values = te.values()
+            for nid, v_old in prev_values.items():
+                v_new = new_values.get(nid)
+                if nid in self.day_base and v_old and v_new and v_old != v_new:
+                    self.day_base[nid] *= v_new / v_old
+            self._save_day_state()
         self.structure_diff = (_diff_structures(prev_nodes, new_s.nodes, self.reg)
                                if prev_nodes else [])
         self.last_rebuild_ts = _now_iso()
@@ -252,6 +299,17 @@ class Controller:
         # 4) 落盘(发布=树引擎值)
         ts = _now_iso()
         values = self.te.values()
+        # 日内基准维护:ET 日切 → 全量重置;新出现的节点 → 以首值为基准
+        if self.day_date != today_et:
+            self.day_date = today_et
+            self.day_base = dict(values)
+            self._save_day_state()
+        else:
+            fresh = [nid for nid in values if nid not in self.day_base]
+            if fresh:
+                for nid in fresh:
+                    self.day_base[nid] = values[nid]
+                self._save_day_state()
         parent_of: dict[str, str] = {}
         for pid, n in self.S.nodes.items():
             for c, _ in n["children"]:
@@ -271,16 +329,21 @@ class Controller:
                       "value": round(eff * self.last_price[leaf], 2)}
                      for leaf, eff in exp.items() if leaf in self.last_price),
                     key=lambda h: -abs(h["value"]))
+            base = self.day_base.get(nid)
+            day_r = round(values[nid] / base - 1, 6) if base else None
             rows.append({"node_id": nid,
                          "display_name": self.reg.render(nid),
                          "kind": n["kind"], "value": round(values[nid], 2),
                          "parent_id": parent_of.get(nid),
                          "corp_action": corp,
+                         "day_return": day_r,
                          "holdings": holdings,
                          "positions_as_of": n["attrs"].get("positions_as_of")})
         payload = {"ts": ts, "structure_hash": self.S.hash, "stale": stale,
                    "last_rebuild_ts": self.last_rebuild_ts,
                    "rebuild_error": self.rebuild_error,
+                   "rebuild_error_age_s": (round(time.time() - self._failed_at)
+                                           if self.rebuild_error else None),
                    "structure_diff": self.structure_diff,
                    "corp_actions": {self.reg.render(k): v
                                     for k, v in self._splits.items()},
@@ -293,7 +356,8 @@ class Controller:
         stream = os.path.join(OUT_DIR,
                               f"nav_stream_{datetime.now().strftime('%Y%m%d')}.csv")
         os.makedirs(OUT_DIR, exist_ok=True)
-        header = "ts,node_id,display_name,kind,value,stale,corp_action,structure_hash\n"
+        header = ("ts,node_id,display_name,kind,value,stale,corp_action,"
+                  "structure_hash,day_return\n")
         if os.path.exists(stream):                      # 旧 schema 文件轮转,不混写
             with open(stream) as fh:
                 if fh.readline() != header:
@@ -303,9 +367,10 @@ class Controller:
             if new:
                 fh.write(header)
             for r in rows:
+                dr = "" if r["day_return"] is None else r["day_return"]
                 fh.write(f"{ts},{r['node_id']},{r['display_name']},"
                          f"{r['kind']},{r['value']},{int(stale)},"
-                         f"{int(r['corp_action'])},{self.S.hash}\n")
+                         f"{int(r['corp_action'])},{self.S.hash},{dr}\n")
         _atomic_json(self.fe.risk_matrix(),
                      os.path.join(OUT_DIR, "risk_matrix_latest.json"))
         root_v = values.get(self.S.root)

@@ -31,13 +31,14 @@ interface Holding { id: string; name: string; shares: number; value: number }
 interface NavNode {
   node_id: string; display_name: string; kind: string; value: number;
   parent_id?: string | null; positions_as_of?: string | null; corp_action?: boolean;
-  holdings?: Holding[] | null;
+  holdings?: Holding[] | null; day_return?: number | null;
 }
 interface NavLatest {
   ts: string; structure_hash: string; stale: boolean; market: string;
   feed_delay_min: number | null; missing: string[]; nodes: NavNode[];
   last_rebuild_ts?: string | null; structure_diff?: string[];
   corp_actions?: Record<string, string>; rebuild_error?: string | null;
+  rebuild_error_age_s?: number | null;
 }
 // 官方口径映射(与 reconcile_eod._ANCHORS 一致;display_name → official key)
 const OFFICIAL_KEY: Record<string, string> = {
@@ -151,8 +152,15 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       const t = new Date(r.ts as string);
       if (step > 1 && t.getUTCMinutes() % step !== 0) continue;
       const label = ET_HM.format(t);
-      if (base[name] === undefined) base[name] = r.value as number;
-      (byTs[label] ||= { label })[name] = ((r.value as number) / base[name] - 1) * 100;
+      const dr = r.day_return;
+      let pctV: number;
+      if (dr !== undefined && dr !== null && dr !== '') {
+        pctV = Number(dr) * 100;               // 后端链式衔接后的日内收益
+      } else {
+        if (base[name] === undefined) base[name] = r.value as number;
+        pctV = ((r.value as number) / base[name] - 1) * 100;
+      }
+      (byTs[label] ||= { label })[name] = pctV;
     }
     const data = Object.values(byTs);
     // 0% 垂直居中:对称 Y 域(上=正收益,下=负收益),平线时最小 ±0.5%
@@ -166,7 +174,13 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
     return { data, names: [...wanted], lim };
   }, [chartStream, freq, strategies, prevByName]);
 
+  // 日内 %:优先用后端发布的 day_return(跨结构变化已链式衔接,记账台阶已剔除);
+  // 老数据无此字段时退回客户端基准计算
   const dayPct = (name: string, value: number) => {
+    const node = (latest?.nodes || []).find(n => n.display_name === name);
+    if (node && node.day_return !== undefined && node.day_return !== null) {
+      return node.day_return * 100;
+    }
     const base = prevByName[name]
       ?? (streamRows.find(r => r.display_name === name)?.value as number | undefined);
     return base ? (value / base - 1) * 100 : null;
@@ -205,7 +219,12 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             const main = allOfficial
               ? parts.reduce((a, p) => a + p!.live, 0)
               : portfolio?.value ?? 0;
-            const pct = portfolio ? dayPct('PORTFOLIO', portfolio.value) : null;
+            // % 与 $ 同权重:官方口径合计的日内变化(账本权重的 PF day_return
+            // 会因两口径策略权重不同而对不上主数字)
+            const offSum = allOfficial ? parts.reduce((a, p) => a + p!.value, 0) : 0;
+            const pct = allOfficial && offSum
+              ? (main / offSum - 1) * 100
+              : portfolio ? dayPct('PORTFOLIO', portfolio.value) : null;
             // Quality check 汇总(用户令:不显示账本明细,只报各 check 是否通过)
             // 双引擎对拍:nav_latest 只在两引擎逐节点对拍通过后才发布,能读到即通过
             const rec = reconcile?.verdict;
@@ -219,7 +238,11 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
               { label: t('realtimeNav.qcRecon'),
                 state: rec === 'ok' ? 'pass' : rec === 'breach' ? 'fail' : 'pending' },
               { label: t('realtimeNav.qcAnchor'), state: allOfficial ? 'pass' : 'fail' },
-              { label: t('realtimeNav.qcStruct'), state: latest.rebuild_error ? 'fail' : 'pass' },
+              // 持仓文件半更新窗(inventory→account 约 1 分钟)是每日常规:
+              // 短窗琥珀"同步中",超 10 分钟才是真异常升级红色
+              { label: t('realtimeNav.qcStruct'),
+                state: !latest.rebuild_error ? 'pass'
+                  : (latest.rebuild_error_age_s ?? 0) < 600 ? 'pending' : 'fail' },
             ];
             const allPass = qc.every(c => c.state === 'pass');
             const anyFail = qc.some(c => c.state === 'fail');
