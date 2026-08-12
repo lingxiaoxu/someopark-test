@@ -656,6 +656,7 @@
     "btnWfStructure": "Montre-moi l'organisation des fichiers de backtest.",
     "btnPnlReport": "Génère un rapport PnL basé sur mes trades récents.",
     "btnStrategyPerformance": "Afficher la performance globale de la stratégie.",
+    "btnRealtimeNav": "Afficher la VL du portefeuille en temps réel.",
     "placeholderAgent": "Demander a Someo Agent...",
     "placeholderClaw": "Demander a SomeoClaw...",
     "placeholderDefault": "Demander a Someo Park AI...",

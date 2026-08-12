@@ -682,6 +682,7 @@
     "btnWfStructure": "给我看看回测文件是怎么布局的。",
     "btnPnlReport": "根据最近的交易生成盈亏报告。",
     "btnStrategyPerformance": "查看策略整体表现。",
+    "btnRealtimeNav": "查看实时组合净值。",
     "placeholderAgent": "向 Someo Agent 提问...",
     "placeholderClaw": "向 SomeoClaw 提问...",
     "placeholderDefault": "向 Someo Park AI 提问...",

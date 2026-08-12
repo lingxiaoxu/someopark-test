@@ -1007,6 +1007,7 @@
     "btnWfStructure": "Show me how the files are laid out in backtests.",
     "btnPnlReport": "Generate a PnL report based on my recent trades.",
     "btnStrategyPerformance": "Show overall strategy performance.",
+    "btnRealtimeNav": "Show realtime portfolio NAV.",
     "placeholderAgent": "Ask Someo Agent...",
     "placeholderClaw": "Ask SomeoClaw...",
     "placeholderDefault": "Ask Someo Park AI...",

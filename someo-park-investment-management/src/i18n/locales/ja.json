@@ -656,6 +656,7 @@
     "btnWfStructure": "バックテストファイルのレイアウトを見せて。",
     "btnPnlReport": "最近の取引に基づいてPnLレポートを生成して。",
     "btnStrategyPerformance": "戦略全体のパフォーマンスを表示。",
+    "btnRealtimeNav": "リアルタイムのポートフォリオNAVを表示。",
     "placeholderAgent": "Someo Agent に質問...",
     "placeholderClaw": "SomeoClaw に質問...",
     "placeholderDefault": "Someo Park AI に質問...",

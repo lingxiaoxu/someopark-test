@@ -656,6 +656,7 @@
     "btnWfStructure": "Muéstrame cómo están organizados los archivos de backtest.",
     "btnPnlReport": "Genera un informe PnL basado en mis operaciones recientes.",
     "btnStrategyPerformance": "Ver el rendimiento general de la estrategia.",
+    "btnRealtimeNav": "Ver el valor liquidativo en tiempo real.",
     "placeholderAgent": "Preguntar a Someo Agent...",
     "placeholderClaw": "Preguntar a SomeoClaw...",
     "placeholderDefault": "Preguntar a Someo Park AI...",
