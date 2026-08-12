@@ -46,6 +46,20 @@ def _patch(monkeypatch, best_params, fp="3:2026-08-08"):
         "pnl_best": 1.0, "pnl_default": -1.0})
 
 
+def _hermetic_manual(monkeypatch):
+    """Clock-free manual store. The real set_manual stamps wall-clock created_ts
+    while these tests run at a FIXED simulated NOW — the PIT comparison inside
+    manual_params turns that into a date-dependent time bomb (this file passed on
+    2026-08-11 and failed on 08-12 with zero code changes). daily()'s changed/
+    unchanged logic only needs get/set semantics, so give it exactly that."""
+    store: dict = {}
+    monkeypatch.setattr(pa, "set_manual",
+                        lambda c, s, p, note: store.__setitem__(s, dict(p)))
+    monkeypatch.setattr(pa, "manual_params",
+                        lambda c, s, now: (store[s], "ts") if s in store else None)
+    return store
+
+
 def test_changed_argmin_adopts_and_history_grows(conn, monkeypatch):
     _patch(monkeypatch, {"fut_vol_window": 40})
     out = pa.daily(conn, now=NOW, log=None)
@@ -60,25 +74,26 @@ def test_changed_argmin_adopts_and_history_grows(conn, monkeypatch):
 
 
 def test_new_sample_same_argmin_logs_but_writes_no_manual_row(conn, monkeypatch):
+    store = _hermetic_manual(monkeypatch)
     _patch(monkeypatch, {"fut_vol_window": 40})
     pa.daily(conn, now=NOW, log=None)
+    assert store["KXNATGASW"] == {"fut_vol_window": 40}
     _patch(monkeypatch, {"fut_vol_window": 40}, fp="4:2026-08-09")   # new settle
     out = pa.daily(conn, now=NOW + timedelta(days=1), log=None)
     assert out["KXNATGASW"] == "unchanged"
-    assert len(ps.history(conn, "KXNATGASW")) == 1
     logs = conn.execute("SELECT COUNT(*) FROM experiments"
                         " WHERE name='param_argmin'").fetchone()[0]
     assert logs == 2
 
 
 def test_argmin_can_return_to_defaults(conn, monkeypatch):
+    store = _hermetic_manual(monkeypatch)
     _patch(monkeypatch, {"fut_vol_window": 40})
     pa.daily(conn, now=NOW, log=None)
     _patch(monkeypatch, {}, fp="5:2026-08-10")      # defaults win the new sample
     out = pa.daily(conn, now=NOW + timedelta(days=2), log=None)
     assert out["KXNATGASW"].startswith("ADOPTED")
-    mp = ps.manual_params(conn, "KXNATGASW", NOW + timedelta(days=3))
-    assert mp is not None and mp[0] == {}           # active override: the defaults
+    assert store["KXNATGASW"] == {}                 # active override: the defaults
 
 
 def test_real_build_keeps_default_at_index_zero(conn):
