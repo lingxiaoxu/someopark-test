@@ -1340,6 +1340,7 @@
     "chartEmpty": "No plottable session data yet (accumulates every minute while the controller runs)",
     "errNotRunning": "Realtime NAV: {{err}} (controller not running?)",
     "qcStruct": "structure sync",
-    "qcStructTitle": "Structure sync failed: position files are mid-update (e.g. inventory written, account not yet) - serving the last consistent structure; auto-retries until sources agree"
+    "qcStructTitle": "Structure sync failed: position files are mid-update (e.g. inventory written, account not yet) - serving the last consistent structure; auto-retries until sources agree",
+    "chartHeader": "Intraday Return (% and $)"
   }
 }

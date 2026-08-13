@@ -1311,6 +1311,7 @@
     "chartEmpty": "描画可能なセッションデータなし(controller稼働中は毎分蓄積)",
     "errNotRunning": "リアルタイムNAV:{{err}}(controller未稼働?)",
     "qcStruct": "構造同期",
-    "qcStructTitle": "構造同期失敗:ポジションファイルが更新途中 - 直近の一貫した構造で提供継続、整合後に自動復旧"
+    "qcStructTitle": "構造同期失敗:ポジションファイルが更新途中 - 直近の一貫した構造で提供継続、整合後に自動復旧",
+    "chartHeader": "日中リターン(% と $)"
   }
 }

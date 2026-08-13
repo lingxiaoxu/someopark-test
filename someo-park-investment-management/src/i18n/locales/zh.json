@@ -1338,6 +1338,7 @@
     "chartEmpty": "暂无可绘制的时段数据(controller 运行中每分钟累积)",
     "errNotRunning": "实时净值:{{err}}(controller 未运行?)",
     "qcStruct": "结构同步",
-    "qcStructTitle": "结构同步失败:持仓文件处于半更新窗(如 inventory 已写、account 未写)——沿用上一个一致结构服务,文件齐后自动恢复"
+    "qcStructTitle": "结构同步失败:持仓文件处于半更新窗(如 inventory 已写、account 未写)——沿用上一个一致结构服务,文件齐后自动恢复",
+    "chartHeader": "日内收益曲线(% 与 $)"
   }
 }

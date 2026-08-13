@@ -18,6 +18,39 @@ const COLORS: Record<string, string> = {
 };
 // 悬浮框固定显示顺序(用户令):策略在前,PORTFOLIO 殿后
 const TOOLTIP_ORDER = ['MRPT', 'MTFS', 'SSRS', 'AISS', 'BDC', 'PORTFOLIO'];
+const tooltipRank = (k: string) => {
+  const i = TOOLTIP_ORDER.indexOf(k);
+  return i === -1 ? TOOLTIP_ORDER.length : i;
+};
+// 与 StrategyPerformanceViewer 同款:钉在绘图区左上角的紧凑悬浮框
+// (margin.left=5 + 左轴 ~60px → x=70 恰好让开刻度标签)
+const TOOLTIP_POS = { x: 70, y: 8 };
+
+function CompactTooltip({ active, payload, label, renderValue }: any) {
+  if (!active || !Array.isArray(payload) || payload.length === 0) return null;
+  const seen = new Set<string>();
+  const rows = payload
+    .map((p: any) => ({ key: String(p.name ?? p.dataKey ?? ''), p }))
+    .filter(({ key }: any) => COLORS[key] !== undefined)
+    .filter(({ key }: any) => { if (seen.has(key)) return false; seen.add(key); return true; })
+    .sort((a: any, b: any) => tooltipRank(a.key) - tooltipRank(b.key));
+  if (rows.length === 0) return null;
+  return (
+    <div style={{
+      fontFamily: 'var(--font-mono)', fontSize: '8px', lineHeight: 1.5,
+      background: 'rgba(255,255,255,0.94)', border: '1px solid #111',
+      padding: '3px 5px', pointerEvents: 'none',
+    }}>
+      <div style={{ fontWeight: 700, color: '#111', marginBottom: 1 }}>{label}</div>
+      {rows.map(({ key, p }: any) => (
+        <div key={key} style={{ display: 'flex', gap: 6, whiteSpace: 'nowrap' }}>
+          <span style={{ color: COLORS[key], fontWeight: 700 }}>{key}</span>
+          <span style={{ marginLeft: 'auto', color: '#333' }}>{renderValue(p)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 const FREQS = [
   { key: '1m', minutes: 1 }, { key: '5m', minutes: 5 },
   { key: '15m', minutes: 15 }, { key: '60m', minutes: 60 },
@@ -173,8 +206,20 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
       }
     }
     lim = Math.ceil(lim * 1.15 * 100) / 100;
-    return { data, names: [...wanted], lim };
-  }, [chartStream, freq, strategies, prevByName]);
+    // 右 $ 轴(与 SPV 同款双轴):PORTFOLIO % 的官方口径 $ 等值(纯轴换算,数据不变)
+    const offSum = official && Object.keys(OFFICIAL_KEY)
+      .every(k => official[OFFICIAL_KEY[k]])
+      ? Object.values(OFFICIAL_KEY).reduce((a, k) => a + official![k].value, 0)
+      : null;
+    if (offSum) {
+      for (const row of data) {
+        if (row.PORTFOLIO !== undefined) {
+          row.pf_usd = offSum * (1 + row.PORTFOLIO / 100);
+        }
+      }
+    }
+    return { data, names: [...wanted], lim, offSum };
+  }, [chartStream, freq, strategies, prevByName, official]);
 
   // 日内 %:优先用后端发布的 day_return(跨结构变化已链式衔接,记账台阶已剔除);
   // 老数据无此字段时退回客户端基准计算
@@ -423,40 +468,90 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
         })}
       </div>
 
-      {/* 当日日内曲线(% vs 当日首笔;策略 + PORTFOLIO) */}
-      <div className="flex-1 min-h-[234px] max-h-[54vh]">
-        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', color: '#666', marginBottom: 4 }}>
-          {chartStream.isToday
+      {/* 当日日内曲线 — UI 与 StrategyPerformanceViewer 的 Equity Curve 同款
+          (容器/标题/legend chips/双 Y 轴/线型/CompactTooltip);功能与数据不变 */}
+      <div className="flex-1 min-h-[234px] max-h-[54vh]"
+        style={{ background: '#fff', border: '2px solid #111', padding: '16px',
+                 display: 'flex', flexDirection: 'column' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em',
+                      textTransform: 'uppercase', marginBottom: '4px' }}
+          title={chartStream.isToday
             ? t('realtimeNav.chartToday', { freq,
                 base: anchored ? t('realtimeNav.chartBasePrev') : t('realtimeNav.chartBaseFirst') })
             : t('realtimeNav.chartLookback', {
-                date: chartStream.date ? `${chartStream.date.slice(4, 6)}/${chartStream.date.slice(6, 8)}` : '—' })}
+                date: chartStream.date ? `${chartStream.date.slice(4, 6)}/${chartStream.date.slice(6, 8)}` : '—' })}>
+          {t('realtimeNav.chartHeader')}
+          {!chartStream.isToday && chartStream.date && (
+            <span style={{ color: '#999', marginLeft: 8 }}>
+              {chartStream.date.slice(4, 6)}/{chartStream.date.slice(6, 8)}
+            </span>
+          )}
+        </div>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+          {TOOLTIP_ORDER.map(k => (
+            <span key={k} style={{
+              padding: '4px 10px', fontSize: '10px', fontWeight: 700,
+              letterSpacing: '.06em', textTransform: 'uppercase',
+              border: `2px solid ${COLORS[k]}`, background: COLORS[k], color: '#fff',
+            }}>{k}</span>
+          ))}
         </div>
         {chart.data.length < 2 ? (
           <div style={{ color: '#999', fontSize: 12, padding: 20 }}>
             {t('realtimeNav.chartEmpty')}
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="81%">
-            <LineChart data={chart.data}>
-              <CartesianGrid strokeDasharray="2 4" stroke="#eee" />
-              <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-              <YAxis tick={{ fontSize: 10 }} domain={[-chart.lim, chart.lim]}
-                tickFormatter={(v: number) => `${v.toFixed(2)}%`} />
-              <ReferenceLine y={0} stroke="#bbb" strokeDasharray="4 4" />
-              <Tooltip formatter={(v: any) => `${Number(v).toFixed(3)}%`}
-                itemSorter={(item: any) => TOOLTIP_ORDER.indexOf(String(item.dataKey))}
-                contentStyle={{ fontSize: 10, padding: '4px 8px' }}
-                itemStyle={{ fontSize: 10, padding: '1px 0' }}
-                labelStyle={{ fontSize: 10, fontWeight: 700 }} />
-              {chart.names.map(n => (
-                <Line key={n} dataKey={n}
-                  dot={chart.data.length <= 10 ? { r: 2.5, strokeWidth: 0, fill: COLORS[n] || '#888' } : false}
-                  strokeWidth={n === 'PORTFOLIO' ? 2.4 : 1.4}
-                  stroke={COLORS[n] || '#888'} isAnimationActive={false} connectNulls />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%"
+              initialDimension={{ width: 300, height: 200 }}>
+              <LineChart data={chart.data} margin={{ top: 5, right: 5, left: 5, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e5e5" vertical={false} />
+                <XAxis dataKey="label" fontSize={9} stroke="#999"
+                  tickLine={false} axisLine={false} minTickGap={50} />
+                <YAxis yAxisId="ret" domain={[-chart.lim, chart.lim]}
+                  fontSize={9} stroke="#999" tickLine={false} axisLine={false}
+                  tickFormatter={(v: number) => `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`} />
+                {chart.offSum && (
+                  <YAxis yAxisId="eq" orientation="right"
+                    domain={[chart.offSum * (1 - chart.lim / 100),
+                             chart.offSum * (1 + chart.lim / 100)]}
+                    fontSize={9} stroke="#999" tickLine={false} axisLine={false}
+                    tickFormatter={(v: number) => `$${(v / 1000).toFixed(0)}k`}
+                    width={40} />
+                )}
+                <Tooltip
+                  position={TOOLTIP_POS}
+                  content={
+                    <CompactTooltip
+                      renderValue={(p: any) => {
+                        const pct = Number(p.value);
+                        const base = `${pct >= 0 ? '+' : ''}${pct.toFixed(2)}%`;
+                        if (p.dataKey === 'PORTFOLIO' && chart.offSum) {
+                          const usd = chart.offSum * (1 + pct / 100);
+                          return `${base} ($${Math.round(usd).toLocaleString()})`;
+                        }
+                        return base;
+                      }}
+                    />
+                  }
+                />
+                <ReferenceLine yAxisId="ret" y={0} stroke="#ccc" strokeDasharray="4 4" />
+                {chart.names.map(n => (
+                  <Line key={n} yAxisId="ret" type="monotone" dataKey={n}
+                    dot={chart.data.length <= 10
+                      ? { r: 2.5, strokeWidth: 0, fill: COLORS[n] || '#888' } : false}
+                    strokeWidth={n === 'PORTFOLIO' ? 2.5 : 2}
+                    stroke={COLORS[n] || '#888'} isAnimationActive={false}
+                    connectNulls name={n} />
+                ))}
+                {chart.offSum && (
+                  <Line yAxisId="eq" type="monotone" dataKey="pf_usd"
+                    stroke="transparent" strokeWidth={0} dot={false}
+                    isAnimationActive={false} />
+                )}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         )}
       </div>
     </div>
