@@ -51,12 +51,17 @@ def run(weekly: bool = False) -> dict:
     print(f"[refresh] {datetime.now(timezone.utc).isoformat()} weekly={weekly}")
     # ── §8.0 step 1: ingest (incl. new-event auto-discovery) ─────────────
     step("calendars", lambda: calendars.sync_to_db(conn))
-    step("calendar_actuals", lambda: calendars.reconcile_actuals(conn))
     if weekly:
         step("calendar_web_check", lambda: calendars.refresh_from_web(conn))
     from prediction_market_macro.venues.kalshi import account
     step("bankroll", lambda: account.refresh_bankroll(conn))
     step("fred_core", lambda: sum(fred.pull_core().values()))
+    # AFTER fred_core (2026-08-13): the reconciler used to run before the day's
+    # pull, so a print that lands in the same morning's fetch (GASREGW arrives on
+    # FRED ~2 days after each Monday, at exactly this refresh's fred_core minute)
+    # drew one final false "POSTPONED?" the instant before it appeared. Checking
+    # actuals against the freshest data is also just the right order.
+    step("calendar_actuals", lambda: calendars.reconcile_actuals(conn))
     from prediction_market_macro.ingest import nowcast
     step("gdpnow", lambda: nowcast.pull_gdpnow(fred, conn))
     from prediction_market_macro.ingest import aaa_daily, eia
