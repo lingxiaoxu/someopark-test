@@ -91,6 +91,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
   const [official, setOfficial] = useState<Record<string, { date: string, value: number }> | null>(null);
   const [freq, setFreq] = useState('1m');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [activeLines, setActiveLines] = useState<Set<string>>(new Set(TOOLTIP_ORDER));
   const [structHash, setStructHash] = useState<string>('');
   const [structFlash, setStructFlash] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -487,13 +488,23 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             </span>
           )}
         </div>
+        {/* legend chips = 显隐开关(与 SPV 同款交互:实心=显示,空心=隐藏) */}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
           {TOOLTIP_ORDER.map(k => (
-            <span key={k} style={{
-              padding: '4px 10px', fontSize: '10px', fontWeight: 700,
-              letterSpacing: '.06em', textTransform: 'uppercase',
-              border: `2px solid ${COLORS[k]}`, background: COLORS[k], color: '#fff',
-            }}>{k}</span>
+            <button key={k}
+              onClick={() => setActiveLines(prev => {
+                const n = new Set(prev);
+                n.has(k) ? n.delete(k) : n.add(k);
+                return n;
+              })}
+              style={{
+                padding: '4px 10px', fontSize: '10px', fontWeight: 700,
+                letterSpacing: '.06em', textTransform: 'uppercase',
+                border: `2px solid ${COLORS[k]}`,
+                background: activeLines.has(k) ? COLORS[k] : 'transparent',
+                color: activeLines.has(k) ? '#fff' : COLORS[k],
+                cursor: 'pointer', transition: 'all .15s',
+              }}>{k}</button>
           ))}
         </div>
         {chart.data.length < 2 ? (
@@ -536,7 +547,7 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                   }
                 />
                 <ReferenceLine yAxisId="ret" y={0} stroke="#ccc" strokeDasharray="4 4" />
-                {chart.names.map(n => (
+                {chart.names.filter(n => activeLines.has(n)).map(n => (
                   <Line key={n} yAxisId="ret" type="monotone" dataKey={n}
                     dot={chart.data.length <= 10
                       ? { r: 2.5, strokeWidth: 0, fill: COLORS[n] || '#888' } : false}
