@@ -1,0 +1,44 @@
+# live_watch — sizing / arming / kill rules for the four watchlist candidates.
+# EVERYTHING ships disabled. Arming = set enabled: true here AND open the
+# global execution gates (prod key + ALLOW_LIVE_ORDERS=1). Until then every
+# run is a logged dry-run.
+#
+# Registered 2026-08-10. Frozen strategy parameters live in the code of each
+# module (they mirror the watchlist registration exactly) — this file only
+# controls money and safety, never signal logic.
+
+subaccount: 64            # real account's perps subaccount (verified 2026-07-12)
+
+w1_basis:                 # S1 basis-selective, BTC
+  enabled: false
+  contracts: 10           # ≈ $64 notional at BTC perp ~6.4
+  max_cum_loss_usd: 30    # disarm if realized cum net worse after >=40 trades
+  min_trades_for_kill: 40
+
+w2_chronos:               # S8 Chronos 4h, BTC + ETH
+  enabled: false
+  contracts: 10
+  max_cum_loss_usd: 40
+  min_trades_for_kill: 30
+
+w3_mom24:                 # S9 24h momentum, majors only for live (depth)
+  enabled: false
+  contracts: 10
+  tickers: [KXBTCPERP, KXETHPERP, KXSOLPERP, KXXRPPERP]
+  max_cum_loss_usd: 40
+  min_trades_for_kill: 30
+
+w4_carry:                 # S3-improved same-asset hedged carry, BTC
+  enabled: false
+  contracts: 100          # ≈ $640/leg — the pilot size discussed
+  # kill/exit: trailing 30d settled funding sum < 0  (the frozen stop)
+  # spot leg is EXTERNAL (Coinbase/Kraken): module emits explicit instructions;
+  # it never assumes the spot fill happened — you confirm via --spot-filled.
+
+w5_knockdown:             # knockdown replication, KXBTC hourly binaries
+  enabled: false          # events-API wiring is the arming step (separate)
+  contracts: 25           # virtual/paper sizing during the capture probe
+  max_cum_loss_usd: 50
+  min_trades_for_kill: 40
+  # LIVE criteria (watchlist): probe capture_rate >= 0.25 over >= 7 days AND
+  # paper mean pnl per contract within 50% of the backtest's +24.5c

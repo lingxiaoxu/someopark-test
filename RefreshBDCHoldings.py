@@ -55,13 +55,14 @@ _ROOT = os.path.dirname(os.path.abspath(__file__))
 BDC_STORE = os.path.join(_ROOT, "price_data", "bdc_holdings")
 DEALS_DIR = os.path.join(_ROOT, "portfolio_of_private_credit_deals", "deals_data")
 
-# BDC universe — keep in lockstep with UpdateBDCPerformance.py:34-35 (sleeve weights).
+# BDC universe — indexed from inventory_bdc.json (single source of truth since
+# 2026-08-11; cik + sleeve weight live there). No more hard-coded lockstep with
+# UpdateBDCPerformance — both read the same file.
+from bdc_inventory import load_inventory as _load_bdc_inventory
+
 BDC_UNIVERSE = {
-    "GBDC": {"cik": 1476765, "sleeve_w": 0.80},
-    "TSLX": {"cik": 1508655, "sleeve_w": 0.05},
-    "OBDC": {"cik": 1655888, "sleeve_w": 0.05},
-    "BXSL": {"cik": 1736035, "sleeve_w": 0.05},
-    "ARCC": {"cik": 1287750, "sleeve_w": 0.05},
+    t: {"cik": h["cik"], "sleeve_w": h["weight"]}
+    for t, h in _load_bdc_inventory()["holdings"].items()
 }
 
 SEC_USER_AGENT = os.environ.get(

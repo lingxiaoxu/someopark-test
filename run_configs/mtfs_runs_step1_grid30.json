@@ -9,15 +9,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -25,47 +25,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -75,15 +75,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -91,47 +91,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -141,15 +141,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -157,47 +157,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -207,15 +207,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -223,47 +223,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -273,15 +273,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -289,47 +289,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -339,15 +339,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -355,47 +355,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -405,15 +405,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -421,47 +421,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -471,15 +471,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -487,47 +487,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -537,15 +537,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -553,47 +553,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -603,15 +603,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -619,47 +619,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -669,15 +669,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -685,47 +685,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -735,15 +735,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -751,47 +751,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -801,15 +801,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -817,47 +817,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -867,15 +867,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -883,47 +883,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -933,15 +933,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -949,47 +949,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -999,15 +999,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1015,47 +1015,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1065,15 +1065,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1081,47 +1081,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1131,15 +1131,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1147,47 +1147,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1197,15 +1197,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1213,47 +1213,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1263,15 +1263,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1279,47 +1279,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1329,15 +1329,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1345,47 +1345,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1395,15 +1395,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1411,47 +1411,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1461,15 +1461,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1477,47 +1477,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1527,15 +1527,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1543,47 +1543,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1593,15 +1593,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1609,47 +1609,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1659,15 +1659,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1675,47 +1675,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1725,15 +1725,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1741,47 +1741,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1791,15 +1791,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1807,47 +1807,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1857,15 +1857,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1873,47 +1873,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1923,15 +1923,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -1939,47 +1939,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -1989,15 +1989,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -2005,47 +2005,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -2055,15 +2055,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -2071,47 +2071,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -2121,15 +2121,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -2137,47 +2137,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -2187,15 +2187,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -2203,47 +2203,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -2253,15 +2253,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -2269,47 +2269,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -2319,15 +2319,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -2335,47 +2335,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -2385,15 +2385,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -2401,47 +2401,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     },
@@ -2451,15 +2451,15 @@
       "pairs": [
         [
           "DELL",
-          "ZTS"
-        ],
-        [
-          "DELL",
           "CHRW"
         ],
         [
-          "PANW",
+          "DELL",
           "DECK"
+        ],
+        [
+          "PANW",
+          "TPR"
         ],
         [
           "PANW",
@@ -2467,47 +2467,47 @@
         ],
         [
           "HPE",
-          "NCLH"
-        ],
-        [
-          "HPE",
           "NI"
         ],
         [
-          "PAYC",
-          "TMUS"
-        ],
-        [
-          "PAYC",
-          "VICI"
+          "HPE",
+          "NCLH"
         ],
         [
           "CRL",
-          "PEG"
+          "LUV"
         ],
         [
           "CRL",
-          "MLM"
-        ],
-        [
-          "NTAP",
-          "MAR"
-        ],
-        [
-          "NTAP",
-          "SRE"
-        ],
-        [
-          "FTNT",
-          "CARR"
-        ],
-        [
-          "FTNT",
           "TXT"
         ],
         [
-          "ABNB",
-          "WEC"
+          "VLO",
+          "PEG"
+        ],
+        [
+          "VLO",
+          "PG"
+        ],
+        [
+          "INTC",
+          "CARR"
+        ],
+        [
+          "INTC",
+          "PPG"
+        ],
+        [
+          "MU",
+          "SRE"
+        ],
+        [
+          "MU",
+          "MAR"
+        ],
+        [
+          "AXON",
+          "CMS"
         ]
       ]
     }

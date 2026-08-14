@@ -1,0 +1,62 @@
+# Plan 04 liq_reversion — RETRACTED CONFIG (PIT audit 2026-07-28)
+#
+# ══ ALL PRIOR PROVENANCE CLAIMS RETRACTED AS LOOKAHEAD ARTIFACTS ══
+# The 2026-07-26 frozen-cell stats (n=23, hit 78%, NW-t +2.20, PSR 0.987,
+# DSR 0.805) were produced with three point-in-time leaks:
+#   1. spot composite parquet was bar-START labeled → the anchor led the mark
+#      by ~60s (the dominant term — a fade "knew" the index had already moved);
+#   2. 10s detector grid was label-left → every feature bar carried 10s of
+#      future prints, and the same prints that triggered detection could fill
+#      our own maker order (signal/fill window overlap);
+#   3. OKX ±2min confirmation counted prints AFTER entry (the "confirmed →
+#      91% hit" dose-response is not live-replicable).
+# After fixing all three and re-running (2026-07-28, same tape):
+#   frozen cell → n=604 pooled 15bps maker: mean −$0.11, hit 25%, NW-t −13.8.
+#   BTC frozen-config fill-aware: 6 trades, hit 0%, NW-t −8.0.
+#   DECISIVE: with the PIT-legal live 5s anchor (what live trading would
+#   actually see) there are ~ZERO cascade events ≥15bps at all — the apparent
+#   overshoots were anchor time-misalignment, not dislocations.
+# STATUS: NOT ARMABLE. Kept for parameters/structure only. Any revival needs a
+#   new, PIT-clean edge demonstration first. The alt-universe negative
+#   (self-median anchor, NW-t −13.9) still stands — it contained no leak.
+strategy: liq_reversion
+env: demo
+universe: [KXBTCPERP, KXETHPERP]     # composite-anchored ONLY — do NOT add alts
+                                     # without a true per-alt spot composite
+anchor: composite                    # 1-min spot composite (load-bearing; NOT self-median)
+subaccount: 0                        # MUST match where perps live (real account = 64)
+
+detector:                            # signals/liquidation.py DetectorParams
+  grid_sec: 10
+  burst_window_bars: 3
+  baseline_bars: 180
+  intensity_threshold: 3.0
+  one_sided_min: 0.65
+  oi_drop_min: 0.002                 # MANDATORY liquidation signature
+  overshoot_entry_bps: 15.0          # the winning ladder cell (10 dilutes, 20 too rare)
+  fade_lookback_bars: 2              # fading-only entries (never accelerating)
+
+entry:
+  style: maker                       # post_only at the touch; taker was worse everywhere
+  entry_timeout_min: 5
+  event_cooldown_min: 15             # one position per cascade cluster
+
+exits:
+  tp_fraction: 0.5                   # take profit at 50% overshoot retrace
+  exit_timeout_min: 15               # time-stop
+  hard_abort_mult: 2.0               # abort if overshoot extends to 2x entry
+
+okx_confirm:                         # cross-venue quality filter (edge doubler)
+  enabled: true
+  window_min: 2.0
+
+sizing: { equity: 1000.0, contracts: 10, target_vol_annual: 0.40, min_contracts: 1 }
+risk:                                # Plan 04 §7 layer-1 limits
+  max_loss_per_event_pct: 0.02
+  max_events_per_hour: 4
+  max_daily_loss_pct: 0.05
+  staleness_max_min: 10              # live tape must be fresher than this to signal
+
+live:
+  lookback_min: 240                  # detection window pulled from the recorders
+  active_window_min: 5               # cascade counts as ACTIVE if within this of now

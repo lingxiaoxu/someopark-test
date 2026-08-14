@@ -1,0 +1,10 @@
+{
+ "mrpt": {
+  "mode": "NORMAL"
+ },
+ "mtfs": {
+  "mode": "PROFIT_LOCK",
+  "entered": "2026-08-13",
+  "trigger_detail": "RH中断: eq +33.8% off trough"
+ }
+}

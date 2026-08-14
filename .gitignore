@@ -155,3 +155,26 @@ VolumePrediction/outputs/*
 VolumePrediction/outputs/tex_v2/*.pdf
 VolumePrediction/logs/
 VolumePrediction/**/__pycache__/
+
+# pairs_ledger 拆股归一后的快照（本地审计产物，rebuild.py 每次跑批覆写重生）
+snapshots_normalized_*.json
+
+# Claude Code 源码参考副本（Anthropic 专有代码，本仓库为 PUBLIC，严禁提交）
+Claude Code Test/
+
+# ── 实盘状态与逐日历史：本地产物，不入库（2026-08-14）──────────────
+# 每日跑批重写，噪音大；本地磁盘为唯一权威。程序读写不受影响。
+/account_mrpt.json
+/account_mtfs.json
+/inventory_mrpt.json
+/inventory_mtfs.json
+/inventory_bdc.json
+/pair_universe_mrpt.json
+/pair_universe_mtfs.json
+/trade_ledger_mrpt.jsonl
+/trade_ledger_mtfs.jsonl
+/trade_ledger_bdc.jsonl
+/account_history/
+/historical_runs/
+/inventory_history/
+/pair_universe_history/

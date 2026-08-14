@@ -54,6 +54,9 @@ PIT 严格的回测/walk-forward 框架、成交感知撮合、以及 **12 个�
 
 安全设计:逐策略 kill-switch(实亏超限自动熄火且不自动复活)、W4 资金费数据陈旧自动拒动、
 现货腿永远显式人工确认;安全性质有专门测试锁定(`tests/test_live_watch.py`)。
+**五探针体系(每个候选的"回测→实盘"最后一环都有实测仪表)**:W1/W2/W3 = maker 成交率探针
+(挂单后用实时 tape + 同一 queue 模型验证,成交才开虚拟仓 → 纸面 P&L 只计 verified fills);
+W4 = 资金费/基差 regime 监控;W5 = taker 捕获率探针(信号时刻真实盘口深度)。
 **W4 依赖每日 `./pipeline.sh backfill`(资金费新鲜度)。**
 
 等待期动作:录制照常 → 每月 `watchlist` + `tier_study` → 任一候选过线再谈武装。

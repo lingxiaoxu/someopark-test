@@ -25,9 +25,16 @@ import pandas as pd
 
 import bdc_credit
 import bdc_cashflow
-from bdc_deal_loader import load_bdc_deals, BDC_DEAL_CSV
+from bdc_deal_loader import load_bdc_deals, BDC_DEAL_CSV, _REPO_ROOT
 
-BDC_ALLOC = 0.50          # sleeve = 50% BDC / 50% cash (UpdateBDCPerformance.py:41)
+# sleeve allocation — indexed from inventory_bdc.json (single source of truth
+# since 2026-08-11), no longer hard-coded to 0.50.
+import sys as _sys
+if _REPO_ROOT not in _sys.path:
+    _sys.path.insert(0, _REPO_ROOT)
+from bdc_inventory import load_inventory as _load_bdc_inventory
+
+BDC_ALLOC = _load_bdc_inventory()["allocation"]["bdc"]
 
 
 def _wavg(values, weights):

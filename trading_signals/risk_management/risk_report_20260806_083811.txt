@@ -1,0 +1,56 @@
+==============================================================================
+  SOMEO PARK — 组合风险管理报告 (RISK MANAGEMENT REPORT)
+  Signal date: 2026-08-05   Generated: 2026-08-06T08:40:19
+  Scope: MRPT + MTFS pairs book   |   model-based, broker-reconciled
+==============================================================================
+
+── RISK SUMMARY ──────────────────────────────────────────────────────────
+  NAV:                $1,000,000
+  Gross leverage:     2.648x      Net leverage: 0.905x
+  Net market beta:    1.848        (target ≈ 0, market-neutral)
+  VaR 95% 1d:         $49,370 (4.94% of NAV)
+  Annual vol:         47.64% of NAV
+  Sharpe (annual):    0.464    PSR(>0): 0.6586
+  CDaR 95%:           21.93%
+  Kelly: full=0.83x  half=0.42x  actual=2.648x
+  Max single-name:    PANW (58.32% of NAV)
+  Open pairs:         12      Limit breaches: 6  (worst: single_name_gross:PANW red)
+
+── BALANCE SHEET METHOD (资产负债表法, combined, T) ──────────────────────
+  Free cash:          $0
+  Restricted cash:    $888,929  (PB short collateral 102%)
+  Long securities:    $1,776,465
+  Total assets:       $2,665,393
+  Short securities:   $871,499  (repurchase obligation)
+  Short collat. 2%:   $17,430  (equity-posted, locked in restricted cash — not a liability)
+  Margin loan:        $793,895  (PB financing for longs)
+  Total liabilities:  $1,665,393
+  NAV (equity):       $1,000,000    (balance check: 0.0)
+  PM requirement:     $529,593  (20% of gross)
+  Excess liquidity:   $470,407  OK
+
+── LONG/SHORT BOOK (双账户法, combined, T) ──────────────────────────────
+  Long Book:  capital=$1,000,000  MV=$1,776,465  margin=$776,465  NAV=$1,000,000
+  Short Book: capital=$0  MV=$871,499  collateral=$0  NAV=$0
+  Unallocated cash:   $0
+  Dual-view NAV:      $1,000,000  (alignment check: 0.0)
+
+── LIMIT MONITOR ─────────────────────────────────────────────────────────
+     gross_leverage       mrpt       = 0.5 (amber 5.5, red 8.0) [green]
+     net_leverage_abs     mrpt       = 0.01 (amber 2.0, red 3.0) [green]
+  ⚠  gross_leverage       mtfs       = 5.66 (amber 5.5, red 8.0) [amber]
+  ⚠  net_leverage_abs     mtfs       = 2.19 (amber 2.0, red 3.0) [amber]
+  🔴 single_name_gross    PANW       = 58.32 (amber 30.0, red 45.0) [red]
+     single_name_gross    NKE        = 23.93 (amber 30.0, red 45.0) [green]
+     single_name_gross    PSX        = 22.12 (amber 30.0, red 45.0) [green]
+  ⚠  sector_net           tech       = 37.11 (amber 30.0, red 50.0) [amber]
+     max_pair             combined   = 14.32 (amber 20.0, red 35.0) [green]
+     net_market_beta      combined   = 1.85 (amber 2.0, red 3.0) [green]
+  ⚠  var_95_1d            combined   = 4.94 (amber 4.0, red 5.5) [amber]
+     open_pairs           mrpt       = 3 (amber 8, red None) [green]
+  ⚠  open_pairs           mtfs       = 9 (amber 8, red None) [amber]
+
+==============================================================================
+  Workbook: trading_signals/risk_management/risk_workbook_20260806_083811.xlsx
+  PDF:      trading_signals/risk_management/risk_report_20260806_083811.pdf
+==============================================================================

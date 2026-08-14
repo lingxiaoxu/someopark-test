@@ -1,0 +1,25 @@
+# Plan 02 event_perp — perp-leg convergence expression of the validated
+# fair-value-gap signal (16-fold OOS IC +0.215). The event-leg hedge stays
+# DEFERRED: strip bins are quoted too wide to hedge in without eating the edge,
+# so this expression carries unhedged BTC/ETH delta for the holding period —
+# size stays small and the bracket protects the tail.
+strategy: event_perp
+env: demo
+series: KXBTC                     # KXBTC → KXBTCPERP (KXETH → KXETHPERP)
+subaccount: 0                     # MUST match where perps live (real account = 64)
+signal:
+  entry_k: 1.5                    # gap-z entry threshold (sweep surface)
+  exit_k: 0.5                     # exit when same-horizon gap_z decays inside ±exit_k
+  max_hold_min: 60
+  zwin: 60                        # z window in snapshots, WITHIN horizon (PIT)
+  contracts: 10
+  strip_max_age_s: 300            # stale strips ⇒ no signal
+# TP/SL backstop (client-side; enforced by the bracket watcher daemon)
+bracket: { enabled: true, take_profit_pct: 0.010, stop_loss_pct: 0.020 }
+costs: { use_launch_zero_fee: false, also_test_projected: true }
+risk:
+  leverage_max: 2.0
+  max_daily_loss_pct: 0.05
+note: >
+  Fill-aware execution assumptions mirror basis fill_aware (maker entry at the
+  touch vs the recorded tape; passive-then-cross exit at the unfavorable touch).
