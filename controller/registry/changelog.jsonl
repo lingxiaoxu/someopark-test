@@ -238,3 +238,17 @@
 {"ts": "2026-08-12T06:53:16+00:00", "event": "register_node", "spid": "SPSSJ0BHDUM", "kind": "subsector", "key": "aiss|SS:analog_defense", "display": "analog_defense"}
 {"ts": "2026-08-12T06:53:16+00:00", "event": "register_node", "spid": "SPSSASG0NAY", "kind": "subsector", "key": "aiss|SS:logic_cpu", "display": "logic_cpu"}
 {"ts": "2026-08-12T06:53:16+00:00", "event": "register_node", "spid": "SPSSF7LJY3V", "kind": "subsector", "key": "aiss|SS:rf_edge", "display": "rf_edge"}
+{"ts": "2026-08-12T14:08:56+00:00", "event": "register_node", "spid": "SPPRCJFVECY", "kind": "pair", "key": "mtfs|L:US5951121038|S:US8168511090", "display": "MU/SRE"}
+{"ts": "2026-08-12T14:08:56+00:00", "event": "register_node", "spid": "SPPRT9K3UC2", "kind": "pair", "key": "mtfs|L:US5951121038|S:US8832031012", "display": "MU/TXT"}
+{"ts": "2026-08-12T14:08:56+00:00", "event": "register_node", "spid": "SPPRVDIV4EV", "kind": "pair", "key": "mtfs|L:US1598641074|S:US8725901040", "display": "CRL/TMUS"}
+{"ts": "2026-08-12T14:08:56+00:00", "event": "register_node", "spid": "SPPRWQPWJCJ", "kind": "pair", "key": "mtfs|L:US64110D1046|S:US5719032022", "display": "NTAP/MAR"}
+{"ts": "2026-08-12T15:22:30+00:00", "event": "register_node", "spid": "SPPRCJFVECY", "kind": "pair", "key": "mtfs|L:US5951121038|S:US8168511090", "display": "MU/SRE"}
+{"ts": "2026-08-12T15:22:30+00:00", "event": "register_node", "spid": "SPPRT9K3UC2", "kind": "pair", "key": "mtfs|L:US5951121038|S:US8832031012", "display": "MU/TXT"}
+{"ts": "2026-08-12T15:22:30+00:00", "event": "register_node", "spid": "SPPRVDIV4EV", "kind": "pair", "key": "mtfs|L:US1598641074|S:US8725901040", "display": "CRL/TMUS"}
+{"ts": "2026-08-12T15:22:30+00:00", "event": "register_node", "spid": "SPPRWQPWJCJ", "kind": "pair", "key": "mtfs|L:US64110D1046|S:US5719032022", "display": "NTAP/MAR"}
+{"ts": "2026-08-14T14:57:49+00:00", "event": "register_security", "isin": "US4781601046", "ticker": "JNJ", "cusip": "478160104"}
+{"ts": "2026-08-14T14:57:51+00:00", "event": "register_security", "isin": "US7445731067", "ticker": "PEG", "cusip": "744573106"}
+{"ts": "2026-08-14T14:57:54+00:00", "event": "build_master", "total": 222, "cusip_hit": 222, "placeholder": 0}
+{"ts": "2026-08-14T15:08:29+00:00", "event": "register_node", "spid": "SPPRZBRSNVA", "kind": "pair", "key": "mrpt|L:US4781601046|S:US7170811035", "display": "JNJ/PFE"}
+{"ts": "2026-08-14T15:08:29+00:00", "event": "register_node", "spid": "SPPRMR47BHP", "kind": "pair", "key": "mtfs|L:US24703L2025|S:US2435371073", "display": "DELL/DECK"}
+{"ts": "2026-08-14T15:08:29+00:00", "event": "register_node", "spid": "SPPRAFH2CA0", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US7445731067", "display": "VLO/PEG"}

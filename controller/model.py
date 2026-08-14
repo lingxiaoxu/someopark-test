@@ -241,6 +241,9 @@ WATCH_FILES = [                                   # 装配读什么、watcher �
     "qlib-main/semiconductor_strategy/account_aiss.json",
     "qlib-main/sector_rotation/inventory_sector_rotation.json",
     "qlib-main/sector_rotation/account_ssrs.json",
+    # 补录新票(`registry --build-master`)也要立刻触发重建,不必等失败重试节流。
+    # 只盯 security_master:node_registry 由 assemble 自己写,盯它会自触发。
+    "controller/registry/security_master.json",
 ]
 
 

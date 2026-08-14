@@ -34,6 +34,11 @@ from controller.prices import PriceFeed
 _HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(_HERE, "output")
 TOL_BP = 20.0                # 持仓级重算容差(收盘竞价 vs lastTrade + 分钟时差)
+# 容差分母 = **gross exposure**(Σ|shares×close|,不含现金),不是净账面。
+# 定价误差按"被定价的东西"缩放:MTFS 14 条腿 gross $2.21M、净 $0.90M,
+# 同一 $2,661 差额在净口径是 28bp、gross 口径 12bp。净口径对市场中性簿是
+# 退化统计量 —— 净额 →0 时任何固定定价误差的 bp →∞。两个 bp 都记录,
+# 判定用 gross(单边多头簿 gross≈净,判定不变松)。
 CLOSE_GAP_TOL_MIN = 10.0     # 末笔离 16:00 ET 超过此值 ⇒ 当日无收盘行,判定 incomplete
 _ET = ZoneInfo("America/New_York")
 
@@ -180,7 +185,8 @@ def reconcile(date: str | None = None) -> dict:
                         "polygon daily_close + cash_flat vs controller 16:00 close "
                         "(NO ratio / NO return-proportionality in verdict; "
                         "official jsons informational only)",
-              "tolerance_bp": TOL_BP, "strategies": {}, "verdict": "baseline"}
+              "tolerance_bp": TOL_BP, "tolerance_basis": "gross_exposure",
+              "strategies": {}, "verdict": "baseline"}
     coverage = closes.pop("__coverage__", None)
     report["coverage"] = coverage
     if not target:
@@ -239,18 +245,23 @@ def reconcile(date: str | None = None) -> dict:
             else:
                 indep = cash_flat(spid) + sum(eff * px[leaf]
                                               for leaf, eff in holdings.items())
+                gross = sum(abs(eff * px[leaf]) for leaf, eff in holdings.items())
                 diff = ctl["value"] - indep
                 diff_bp = diff / indep * 1e4 if indep else 0.0
+                base = gross or abs(indep)          # 全现金簿退回净额
+                diff_bp_gross = diff / base * 1e4 if base else 0.0
                 row["position_check"] = {
-                    "status": "ok" if abs(diff_bp) <= TOL_BP else "breach",
+                    "status": "ok" if abs(diff_bp_gross) <= TOL_BP else "breach",
                     "independent_value": round(indep, 2),
+                    "gross_exposure": round(gross, 2),
                     "diff_usd": round(diff, 2),
-                    "diff_bp": round(diff_bp, 2),
+                    "diff_bp_gross": round(diff_bp_gross, 2),   # ← 判定口径
+                    "diff_bp_net": round(diff_bp, 2),           # ← 参考(中性簿会放大)
                     "n_positions": len(holdings),
                     "cash": round(cash_flat(spid), 2),
                 }
                 comparable = True
-                if abs(diff_bp) > TOL_BP:
+                if abs(diff_bp_gross) > TOL_BP:
                     any_breach = True
                     row["position_check"]["per_leaf"] = {
                         reg.render(leaf): {"shares": round(eff, 4),
@@ -278,12 +289,17 @@ def reconcile(date: str | None = None) -> dict:
             if all(leaf in px for leaf in holdings):
                 indep = cash_flat(pf) + sum(eff * px[leaf]
                                             for leaf, eff in holdings.items())
-                diff_bp = (ctl_pf["value"] - indep) / indep * 1e4 if indep else 0.0
+                gross = sum(abs(eff * px[leaf]) for leaf, eff in holdings.items())
+                diff = ctl_pf["value"] - indep
+                base = gross or abs(indep)
+                diff_bp = diff / base * 1e4 if base else 0.0
                 report["portfolio_check"] = {
                     "status": "ok" if abs(diff_bp) <= TOL_BP else "breach",
                     "controller_close": ctl_pf["value"],
                     "independent_value": round(indep, 2),
-                    "diff_bp": round(diff_bp, 2)}
+                    "gross_exposure": round(gross, 2),
+                    "diff_bp_gross": round(diff_bp, 2),
+                    "diff_bp_net": round(diff / indep * 1e4 if indep else 0.0, 2)}
                 if abs(diff_bp) > TOL_BP:
                     any_breach = True
 
@@ -303,10 +319,11 @@ def _emit(report: dict) -> None:
           f"-> {os.path.basename(path)}")
     for st, row in report.get("strategies", {}).items():
         pc = row.get("position_check")
-        if pc and "diff_bp" in pc:
+        if pc and "diff_bp_gross" in pc:
             print(f"  {st:5s} ctl={row['controller_close']:>13,.2f} "
                   f"indep={pc['independent_value']:>13,.2f} "
-                  f"diff={pc['diff_bp']:+.1f}bp [{pc['status'].upper()}] "
+                  f"diff={pc['diff_bp_gross']:+.1f}bp/gross "
+                  f"({pc['diff_bp_net']:+.1f}bp/net) [{pc['status'].upper()}] "
                   f"({pc['n_positions']} pos, cash {pc['cash']:,.0f})")
         elif pc:
             print(f"  {st:5s} position check skipped: {pc.get('missing_close_px')}")
@@ -316,7 +333,8 @@ def _emit(report: dict) -> None:
         p = report["portfolio_check"]
         print(f"  PORTF ctl={p['controller_close']:>13,.2f} "
               f"indep={p['independent_value']:>13,.2f} "
-              f"diff={p['diff_bp']:+.1f}bp [{p['status'].upper()}]")
+              f"diff={p['diff_bp_gross']:+.1f}bp/gross "
+              f"({p['diff_bp_net']:+.1f}bp/net) [{p['status'].upper()}]")
 
 
 if __name__ == "__main__":

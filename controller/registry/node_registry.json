@@ -27,6 +27,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRAFH2CA0": {
+  "aliases": [
+   "VLO/PEG"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US91913Y1001|S:US7445731067",
+  "display_name": "VLO/PEG",
+  "first_seen": "2026-08-14T15:08:29+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRC558NA7": {
   "aliases": [
    "NTAP/TXT"
@@ -37,6 +52,81 @@
   "canonical_key": "mtfs|L:US64110D1046|S:US8832031012",
   "display_name": "NTAP/TXT",
   "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRCJFVECY": {
+  "aliases": [
+   "MU/SRE"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US5951121038|S:US8168511090",
+  "display_name": "MU/SRE",
+  "first_seen": "2026-08-12T15:22:30+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRMR47BHP": {
+  "aliases": [
+   "DELL/DECK"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US24703L2025|S:US2435371073",
+  "display_name": "DELL/DECK",
+  "first_seen": "2026-08-14T15:08:29+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRT9K3UC2": {
+  "aliases": [
+   "MU/TXT"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US5951121038|S:US8832031012",
+  "display_name": "MU/TXT",
+  "first_seen": "2026-08-12T15:22:30+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRVDIV4EV": {
+  "aliases": [
+   "CRL/TMUS"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US1598641074|S:US8725901040",
+  "display_name": "CRL/TMUS",
+  "first_seen": "2026-08-12T15:22:30+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRWQPWJCJ": {
+  "aliases": [
+   "NTAP/MAR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US64110D1046|S:US5719032022",
+  "display_name": "NTAP/MAR",
+  "first_seen": "2026-08-12T15:22:30+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -67,6 +157,21 @@
   "canonical_key": "mtfs|L:US74834L1008|S:US6541061031",
   "display_name": "DGX/NKE",
   "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRZBRSNVA": {
+  "aliases": [
+   "JNJ/PFE"
+  ],
+  "attrs": {
+   "strategy": "mrpt"
+  },
+  "canonical_key": "mrpt|L:US4781601046|S:US7170811035",
+  "display_name": "JNJ/PFE",
+  "first_seen": "2026-08-14T15:08:29+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,

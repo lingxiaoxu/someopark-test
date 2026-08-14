@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.someopark.controllershadow</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-lc</string>
+		<string>/Users/xuling/code/someopark-test/controller/ops/shadow_loop.sh</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/Users/xuling/code/someopark-test</string>
+	<!-- 常驻进程:开机自启 + 任何退出都拉起 -->
+	<key>RunAtLoad</key>
+	<true/>
+	<key>KeepAlive</key>
+	<true/>
+	<!-- 崩溃空转保护:失败也至少间隔 30s 才重启 -->
+	<key>ThrottleInterval</key>
+	<integer>30</integer>
+	<!-- wrapper 自己写日期分片日志;这两个只兜住 wrapper 起不来时的输出 -->
+	<key>StandardOutPath</key>
+	<string>/Users/xuling/code/someopark-test/controller/logs/shadow_launchd.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/xuling/code/someopark-test/controller/logs/shadow_launchd.log</string>
+</dict>
+</plist>

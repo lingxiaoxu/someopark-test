@@ -177,4 +177,13 @@ ok("20v 单轮异常不终止循环", laps["n"] >= 4 and boom["n"] >= 3)
 ok("20w 失败后自愈清空 tick_error", c.tick_error is None)
 ok("20x 连败计数在自愈后归零", c.tick_fail_streak == 0)
 
+#    7c) registry 磁盘补录要能被常驻进程看见(8/14 JNJ 卡住的根因:
+#        Registry 只在 __init__ 加载一次,`--build-master` 补完新票也不生效)
+from controller.model import WATCH_FILES
+before = c.reg
+c._rebuild(replay=False)
+ok("20y _rebuild 重读 registry(非同一实例)", c.reg is not before)
+ok("20z security_master 进 WATCH_FILES",
+   any("security_master" in f for f in WATCH_FILES))
+
 print(f"\nall {N} checks passed")

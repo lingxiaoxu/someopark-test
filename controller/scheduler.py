@@ -186,6 +186,11 @@ class Controller:
     def _rebuild(self, replay: bool = True) -> None:
         prev_nodes = self.S.nodes if self.S else None
         prev_expanded = dict(self.fe.expanded) if self.S else {}  # 旧持仓(实现日内盈亏用)
+        # registry 每轮重读(2026-08-14):Registry 在 __init__ 只加载一次时,
+        # `--build-master` 补完新票后**常驻进程看不见**,只能重启 —— rebuild_error
+        # 里那句"run --build-master"的指引形同虚设(8/14 JNJ/PFE 新开仓卡住)。
+        # 两次 json 读(~250 条)成本可忽略,让磁盘状态始终是唯一事实。
+        self.reg = Registry()
         new_s = assemble(self.reg)
         fe, te = FlattenEngine(new_s), TreeEngine(new_s)
         init_f, init_t = fe.initial_emissions(), te.initial_emissions()

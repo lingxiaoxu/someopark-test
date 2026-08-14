@@ -1733,6 +1733,23 @@
    }
   ]
  },
+ "US4781601046": {
+  "asset_class": "equity",
+  "cik": "0000200406",
+  "cusip": "478160104",
+  "figi": "BBG000BMHYD1",
+  "name": "Johnson & Johnson",
+  "polygon_ticker": "JNJ",
+  "registered_at": "2026-08-14T14:57:49+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-14",
+    "ticker": "JNJ",
+    "to": null
+   }
+  ]
+ },
  "US4824801009": {
   "asset_class": "equity",
   "cik": "0000319201",
@@ -2664,6 +2681,23 @@
    {
     "from": "2026-08-12",
     "ticker": "PRU",
+    "to": null
+   }
+  ]
+ },
+ "US7445731067": {
+  "asset_class": "equity",
+  "cik": "0000788784",
+  "cusip": "744573106",
+  "figi": "BBG000BQZMH4",
+  "name": "Public Service Enterprise Group Incorporated",
+  "polygon_ticker": "PEG",
+  "registered_at": "2026-08-14T14:57:51+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-14",
+    "ticker": "PEG",
     "to": null
    }
   ]
