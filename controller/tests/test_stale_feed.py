@@ -25,14 +25,20 @@ def ok(name, cond):
 
 
 class FakeFeed:
-    """market open 常开;fail=True 时 snapshot 抛异常(模拟 Polygon 全挂)。"""
+    """market 可控(默认 open);fail=True 时 snapshot 抛异常(模拟 Polygon 全挂);
+    daily/daily_fail 驱动 EOD 官方收盘补写测试(21 系)。"""
     def __init__(self, prices):
         self.prices = dict(prices)   # {isin: price}
         self.fail = False
         self.splits = {}
+        self.market = "open"
+        self.daily = {}              # daily_close 返回 {isin: official_close}
+        self.daily_fail = False
+        self.daily_calls = 0
+        self.consecutive_failures = 0
 
     def market_status(self):
-        return {"market": "open", "server_time": None}
+        return {"market": self.market, "server_time": None}
 
     def snapshot(self, isins):
         if self.fail:
@@ -40,6 +46,13 @@ class FakeFeed:
         return {"prices": {i: self.prices[i] for i in isins if i in self.prices},
                 "ts": {}, "missing": [i for i in isins if i not in self.prices],
                 "backfilled": [], "feed_delay_min": 0.5, "asof": "test"}
+
+    def daily_close(self, isins, date_iso):
+        self.daily_calls += 1
+        if self.daily_fail:          # 生产实现逐票吞异常:表现=空手+失败计数上升
+            self.consecutive_failures += 1
+            return {}
+        return {i: self.daily[i] for i in isins if i in self.daily}
 
     def splits_today(self, isins):
         return dict(self.splits)
@@ -185,5 +198,51 @@ c._rebuild(replay=False)
 ok("20y _rebuild 重读 registry(非同一实例)", c.reg is not before)
 ok("20z security_master 进 WATCH_FILES",
    any("security_master" in f for f in WATCH_FILES))
+
+#    8) EOD 官方收盘补写(B,2026-08-14):闭市 ≥16:20 首轮对准官方日 bar
+del c.tick, c._maybe_rebuild            # 还原 7b 打的实例补丁(恢复类方法)
+feed3 = FakeFeed({leaf: 100.0 + k for k, leaf in enumerate(leaves)})
+feed3.market = "closed"
+feed3.daily = {leaf: 200.0 for leaf in leaves}
+c.feed = feed3
+orig_hhmm = sched._et_hhmm
+sched._et_hhmm = lambda: "16:25"
+try:
+    c._eod_done_date = None
+    c.tick()
+    nav = json.load(open(os.path.join(tmp, "nav_latest.json")))
+    ok("21a 闭市首轮应用官方收盘并记完成",
+       feed3.daily_calls == 1 and c._eod_done_date == sched.et_today())
+    ok("21b 补写轮 feed_delay 归零(官方价无延迟)",
+       nav["feed_delay_min"] == 0.0)
+    ok("21c 官方价确已进引擎", all(
+        c.last_price[leaf] == 200.0 for leaf in leaves))
+    c.tick()
+    ok("21d 同日不重复补写", feed3.daily_calls == 1)
+    # 网络故障:空手且失败计数上升 → 不记完成,下轮重试
+    c._eod_done_date = None
+    feed3.daily_fail = True
+    c.tick()
+    ok("21e 失败不记完成(重试语义)",
+       c._eod_done_date is None and feed3.daily_calls == 2)
+    feed3.daily_fail = False
+    c.tick()
+    ok("21f 恢复后补写成功", c._eod_done_date == sched.et_today())
+    # 非交易日:空结果且无失败 → 记完成,不空转重试
+    c._eod_done_date = None
+    feed3.daily = {}
+    c.tick()
+    ok("21g 非交易日空结果直接记完成", c._eod_done_date == sched.et_today())
+    # 闭市窗 force 轮(结构重建拉快照)会盖掉官方收盘 → 打回标记,下轮自愈
+    c.tick(force=True)
+    ok("21h force 轮打回补写标记(自愈重补)", c._eod_done_date is None)
+    # 16:20 前不补写
+    c._eod_done_date = None
+    sched._et_hhmm = lambda: "16:05"
+    calls_before = feed3.daily_calls
+    c.tick()
+    ok("21i 16:20 前(日 bar 未生成)不尝试", feed3.daily_calls == calls_before)
+finally:
+    sched._et_hhmm = orig_hhmm
 
 print(f"\nall {N} checks passed")

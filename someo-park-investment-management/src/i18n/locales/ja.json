@@ -1281,6 +1281,7 @@
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO(リアルタイム · {{time}} ET)",
+    "portfolioDelayed": "PORTFOLIO({{delay}}分遅延 · 価格時点 {{time}} ET)",
     "portfolioFrozen": "PORTFOLIO(⚠ 停止 · {{time}} ET で停止、{{age}} 更新なし)",
     "feedFrozenTitle": "常駐評価ループが停止しています —— 表示は最後に成功した tick の値であり、現在の純資産ではありません",
     "vsPrevClose": "前日終値比 {{date}}",

@@ -40,6 +40,11 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
+def _et_hhmm() -> str:
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/New_York")).strftime("%H:%M")
+
+
 def _atomic_json(obj, path):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     tmp = path + ".tmp"
@@ -102,6 +107,7 @@ class Controller:
         self.structure_diff: list[str] = []
         self._splits: dict[str, str] = {}      # {leaf_isin: "from:to"} 当日 split
         self._splits_date: str | None = None
+        self._eod_done_date: str | None = None  # 官方收盘补写完成的 ET 日
         self.S = None                          # 无一致结构前不发布
         self.rebuild_error: str | None = None
         self._failed_digest: str | None = None
@@ -133,6 +139,8 @@ class Controller:
     def _load_day_state(self) -> None:
         try:
             st = json.load(open(self._day_state_path()))
+            # eod 戳独立于日切判断:过期值(≠今天)天然不命中,无需清
+            self._eod_done_date = st.get("eod_date")
             if st.get("date") != et_today():
                 return
             if "base_value" in st:                      # 新格式
@@ -147,7 +155,8 @@ class Controller:
 
     def _save_day_state(self) -> None:
         _atomic_json({"date": self.day_date, "base_value": self.day_base_value,
-                      "realized": self.day_realized, "basis": self.day_basis},
+                      "realized": self.day_realized, "basis": self.day_basis,
+                      "eod_date": self._eod_done_date},
                      self._day_state_path())
 
     # ── 新结构下某节点的叶子基准价:当日开仓 pair 用真实成交价,其余用当前价 ────
@@ -302,9 +311,13 @@ class Controller:
             print(f"!!!! [controller WARN] market_status failed: {e} — "
                   f"沿用 market={status['market']}")
         closed = status["market"] == "closed"
+        today_et = et_today()
+        if force and closed and self._eod_done_date == today_et:
+            # 强制轮(结构重建)在闭市窗拉的是快照 lastTrade,会盖掉已补写的
+            # 官方收盘 —— 打回补写标记,下一常规轮重新对准官方 EOD(自愈)。
+            self._eod_done_date = None
 
         # 2b) 当日 split 日历(每 ET 日一次;plan §九-7:只标注,不改 shares)
-        today_et = et_today()
         if self._splits_date != today_et:
             try:
                 self._splits = self.feed.splits_today(sorted(self.S.leaves()))
@@ -317,13 +330,41 @@ class Controller:
                 self._splits = {}
             self._splits_date = today_et
 
+        # 2c) 收盘后官方日 bar 补写(口径修正 B,2026-08-14):订阅是 15 分钟
+        # 延迟行情,16:00 截断的"收盘"实际是 ~15:45 的价。闭市后第一轮
+        # (≥16:20 ET,日 bar 已生成)用官方 daily_close 覆写价格并照常发布,
+        # 让盘后/隔夜平移续写落在官方收盘上,次日 day_pnl 的隔夜 carry 基准
+        # 也随之对准。非交易日 daily_close 为空且无请求失败 → 记完成不空转;
+        # 请求失败 → 不记完成,下轮重试(fail-not-die)。
+        eod_px: dict[str, float] | None = None
+        if (closed and not force and self.last_price
+                and self._eod_done_date != today_et and _et_hhmm() >= "16:20"):
+            fails_before = self.feed.consecutive_failures
+            try:
+                got = self.feed.daily_close(sorted(self.S.leaves()), today_et)
+            except Exception as e:  # noqa: BLE001 — 补写失败不影响正常发布
+                got = None
+                print(f"!!!! [controller WARN] EOD daily_close failed: {e} — retry")
+            if got is not None and (
+                    got or self.feed.consecutive_failures == fails_before):
+                self._eod_done_date = today_et
+                self._save_day_state()
+                if got:
+                    eod_px = got
+                    print(f"[controller] EOD official close applied "
+                          f"({len(got)}/{len(self.S.leaves())} leaves)")
+
         # 3) 快照 → 双引擎 → 对拍
         # 闭市且已有价:不拉快照,平移续写(Robinhood 式匀速推进,零 API 开销,
         # 用户令 2026-08-12)——nav 流每 interval 照常落一行,价格不变即平线;
         # 开市/extended-hours/强制/冷启动 → 正常拉快照。
         stale = False
         fetch = force or (not closed) or not self.last_price
-        if fetch:
+        if eod_px:
+            snap = {"feed_delay_min": 0.0,
+                    "missing": [l for l in self.S.leaves() if l not in eod_px]}
+            prices = eod_px
+        elif fetch:
             try:
                 snap = self.feed.snapshot(sorted(self.S.leaves()))
                 prices = snap["prices"]

@@ -1281,6 +1281,7 @@
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en vivo · {{time}} ET)",
+    "portfolioDelayed": "PORTFOLIO (cotizaciones con {{delay}} min de retraso · precios a las {{time}} ET)",
     "portfolioFrozen": "PORTFOLIO (⚠ CONGELADO · detenido a las {{time}} ET, sin actualizar {{age}})",
     "feedFrozenTitle": "El bucle de valoración residente dejó de avanzar — esto es el último tick correcto, no el VL actual",
     "vsPrevClose": "vs cierre previo {{date}}",

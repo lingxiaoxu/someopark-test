@@ -259,6 +259,11 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
   const feedLagging = feedAgeS > 180;
   const ageTxt = feedAgeS >= 3600 ? `${Math.floor(feedAgeS / 3600)}h${Math.floor((feedAgeS % 3600) / 60)}m`
     : `${Math.floor(feedAgeS / 60)}m`;
+  // 行情延迟如实标注(2026-08-14):订阅是 15 分钟延迟行情,feed_delay_min 一直
+  // 如实在报却从没进过 UI ——"实时 · {tick 时刻}"把新鲜度多报了 15 分钟。
+  // 主时间戳改为**价格时点**(ts − delay),延迟量写明;心跳仍看 tick 时刻。
+  const delayMin = latest.feed_delay_min ?? 0;
+  const priceTs = new Date(new Date(latest.ts).getTime() - delayMin * 60000);
 
   return (
     <div className="h-full flex flex-col gap-3 p-1 overflow-auto">
@@ -271,8 +276,11 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             {feedDead
               ? t('realtimeNav.portfolioFrozen', {
                   time: ET_HMS.format(new Date(latest.ts)), age: ageTxt })
-              : t('realtimeNav.portfolioLive', {
-                  time: ET_HMS.format(new Date(latest.ts)) })}
+              : delayMin >= 1
+                ? t('realtimeNav.portfolioDelayed', {
+                    time: ET_HMS.format(priceTs), delay: Math.round(delayMin) })
+                : t('realtimeNav.portfolioLive', {
+                    time: ET_HMS.format(new Date(latest.ts)) })}
           </div>
           {(() => {
             // 主数字 = 官方口径(与 StrategyPerformanceViewer 同刻度):

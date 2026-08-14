@@ -177,6 +177,26 @@ class PriceFeed:
                 out[isin] = float(bars[0]["c"])
         return out
 
+    # ── 指定日全部分钟 bar(对账 A:时点同步完整性检查用)────────────────────
+    def minute_closes(self, isins: list[str], date_iso: str) -> dict:
+        """→ {isin: [(epoch_s, close), …]} 该日分钟 bar(升序)。
+        单票失败/无 bar → 空列表(调用方按 skipped 上报,不注入假价)。"""
+        out: dict[str, list] = {}
+        for isin in isins:
+            rec = self.reg.master.get(isin)
+            if rec is None:
+                out[isin] = []
+                continue
+            t = rec["polygon_ticker"]
+            try:
+                d = self._get(f"/v2/aggs/ticker/{t}/range/1/minute/{date_iso}/{date_iso}",
+                              {"sort": "asc", "limit": 50000}, retries=2)
+                out[isin] = [(_to_epoch_s(b["t"]), float(b["c"]))
+                             for b in (d.get("results") or []) if b.get("c")]
+            except Exception:  # noqa: BLE001
+                out[isin] = []
+        return out
+
     # ── 当日 split 日历(plan §九-7:标注不改 shares,持仓文件是 golden)──────
     def splits_today(self, isins: list[str]) -> dict:
         """→ {isin: "from:to"} 当日 execution_date 落在全书内的 split。"""

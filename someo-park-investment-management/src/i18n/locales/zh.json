@@ -1308,6 +1308,7 @@
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO(实时 · {{time}} ET)",
+    "portfolioDelayed": "PORTFOLIO(行情延迟 {{delay}} 分 · 价格时点 {{time}} ET)",
     "portfolioFrozen": "PORTFOLIO(⚠ 已冻结 · 停在 {{time}} ET,{{age}} 无更新)",
     "feedFrozenTitle": "常驻估值循环已停止推进 —— 显示的是最后一次成功 tick 的数值,不是当前净值",
     "vsPrevClose": "vs 昨收 {{date}}",
