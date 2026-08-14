@@ -222,6 +222,18 @@ def reconcile(date: str | None = None) -> dict:
         _emit(report)
         return report
 
+    # 盘中退役节点的化石行(当日平仓的 pair,末笔停在退役时刻、挂着旧 hash)
+    # 不属于收盘簿 —— 只保留末笔贴着全局末 tick 的节点,否则一行化石就把
+    # 全天判成 mixed hashes 拒算(2026-08-14 DGX/NKE 上午平仓即触发)。
+    if coverage:
+        last_epoch = datetime.fromisoformat(coverage["last_et"]).timestamp()
+        retired = [nid for nid, v in closes.items()
+                   if last_epoch - v["epoch"] > CLOSE_GAP_TOL_MIN * 60]
+        if retired:
+            report["retired_intraday"] = sorted(reg.render(n) for n in retired)
+            for nid in retired:
+                closes.pop(nid)
+
     # 当时结构快照(shares/cash 的 golden 定格)
     hashes = {v["hash"] for v in closes.values() if v.get("hash")}
     snap = None
