@@ -178,3 +178,14 @@ Claude Code Test/
 /historical_runs/
 /inventory_history/
 /pair_universe_history/
+
+# ── 报表渲染产物：跑批可重生，不入库（2026-08-14）──────────────
+/trading_signals/monitor_history/
+/trading_signals/risk_management/
+/trading_signals/pnl_reports/
+/trading_signals/combined_signals_*.json
+
+# crypto 一次性研究脚本（PIT 审计后多数结论已作废，属探索性代码）
+# 例外：research_knockdown.py 被生产的 live_watch/w5_knockdown.py 依赖，必须保留
+crypto_trading/**/research_*.py
+!crypto_trading/crypto_strategies/event_binary/research_knockdown.py
