@@ -189,3 +189,9 @@ Claude Code Test/
 # 例外：research_knockdown.py 被生产的 live_watch/w5_knockdown.py 依赖，必须保留
 crypto_trading/**/research_*.py
 !crypto_trading/crypto_strategies/event_binary/research_knockdown.py
+# 上述 research 脚本的配套测试（被测模块已不入库，留着新克隆会 ImportError）
+crypto_trading/tests/test_research_conditioning.py
+crypto_trading/tests/test_cross_venue.py
+crypto_trading/tests/test_fee_defeat_research.py
+crypto_trading/tests/test_rotation_research.py
+crypto_trading/tests/test_ml_directional.py
