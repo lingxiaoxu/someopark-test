@@ -136,4 +136,45 @@ ok("20m backfilled 如实上报", snap["backfilled"] == [isin0])
 ok("20n 补上后不再 missing", snap["missing"] == [])
 ok("20o splits_today 解析 ticker→ISIN", pf.splits_today([isin0]) == {isin0: "3:1"})
 
+# 7) 常驻循环 fail-not-die(2026-08-14 回归:8/13 一次 DNS 失败杀死进程 22h)
+#    7a) market_status 抛异常 → 沿用上轮 market,tick 照常出值
+c.feed = feed
+c.tick()                                   # 先建立 last_status(open)
+class DNSDeadFeed(FakeFeed):
+    def market_status(self):
+        raise RuntimeError("Failed to resolve 'api.polygon.io' ([Errno 8])")
+dead = DNSDeadFeed({leaf: 101.0 + k for k, leaf in enumerate(leaves)})
+c.feed = dead
+out7 = c.tick()
+ok("20s market_status 失败不抛穿", "skipped" not in out7)
+nav = json.load(open(os.path.join(tmp, "nav_latest.json")))
+ok("20t 沿用上轮 market", nav["market"] == "open")
+ok("20u degraded 如实上报", "Failed to resolve" in (nav.get("market_degraded") or ""))
+
+#    7b) 整轮异常 → run() 记 tick_error 并继续下一轮,不终止进程
+c.feed = feed
+boom = {"n": 0}
+def exploding_tick(force=False):
+    boom["n"] += 1
+    if boom["n"] <= 2:
+        raise RuntimeError("injected total tick failure")
+    return {"ts": "t", "portfolio": 1.0, "stale": False}
+laps = {"n": 0}
+def fake_sleep(_s):
+    laps["n"] += 1
+    if laps["n"] >= 4:                     # 跑满 4 轮后收工(不是异常退出)
+        raise KeyboardInterrupt
+orig_sleep, c.tick = sched.time.sleep, exploding_tick
+c._maybe_rebuild = lambda: False
+sched.time.sleep = fake_sleep
+try:
+    c.run(interval_s=0, watch_s=0)
+except KeyboardInterrupt:
+    pass
+finally:
+    sched.time.sleep = orig_sleep
+ok("20v 单轮异常不终止循环", laps["n"] >= 4 and boom["n"] >= 3)
+ok("20w 失败后自愈清空 tick_error", c.tick_error is None)
+ok("20x 连败计数在自愈后归零", c.tick_fail_streak == 0)
+
 print(f"\nall {N} checks passed")

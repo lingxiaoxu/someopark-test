@@ -1310,6 +1310,8 @@
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (live · {{time}} ET)",
+    "portfolioFrozen": "PORTFOLIO (⚠ FROZEN · stopped at {{time}} ET, no update for {{age}})",
+    "feedFrozenTitle": "The resident valuation loop has stopped advancing — this is the last successful tick, not the current NAV",
     "vsPrevClose": "vs prev close {{date}}",
     "intraday": "intraday",
     "qcAllPass": "All quality checks passed",
@@ -1317,6 +1319,8 @@
     "qcPending": "Quality checks",
     "qcDual": "dual-engine match",
     "qcFresh": "price freshness",
+    "qcHeartbeat": "heartbeat",
+    "qcHeartbeatDead": "heartbeat lost {{age}}",
     "qcQuotes": "full-book quotes",
     "qcQuotesMissing": "quotes missing {{n}}",
     "qcRecon": "position reconcile",

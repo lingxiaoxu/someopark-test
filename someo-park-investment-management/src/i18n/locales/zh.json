@@ -1308,6 +1308,8 @@
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO(实时 · {{time}} ET)",
+    "portfolioFrozen": "PORTFOLIO(⚠ 已冻结 · 停在 {{time}} ET,{{age}} 无更新)",
+    "feedFrozenTitle": "常驻估值循环已停止推进 —— 显示的是最后一次成功 tick 的数值,不是当前净值",
     "vsPrevClose": "vs 昨收 {{date}}",
     "intraday": "日内",
     "qcAllPass": "Quality checks 全部通过",
@@ -1315,6 +1317,8 @@
     "qcPending": "Quality checks",
     "qcDual": "双引擎对拍",
     "qcFresh": "价格新鲜",
+    "qcHeartbeat": "心跳",
+    "qcHeartbeatDead": "心跳中断 {{age}}",
     "qcQuotes": "全书报价",
     "qcQuotesMissing": "报价缺{{n}}",
     "qcRecon": "持仓级对账",

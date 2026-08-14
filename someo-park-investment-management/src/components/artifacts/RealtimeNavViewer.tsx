@@ -251,13 +251,28 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
     : reconcile?.verdict === 'breach' ? '#e11d48'
     : reconcile?.verdict === 'partial' ? '#b45309' : '#999';
 
+  // 心跳闸门(2026-08-14):常驻循环 1 分钟一跳,闭市也跳(平移续写)——所以
+  // tick 年龄是与行情无关的存活信号。8/13 循环被一次 DNS 失败打挂后,面板仍把
+  // 11 小时前的死数据标成"实时",要用户自己发现 —— 陈旧必须自己喊出来。
+  const feedAgeS = Math.max(0, (Date.now() - new Date(latest.ts).getTime()) / 1000);
+  const feedDead = feedAgeS > 600;
+  const feedLagging = feedAgeS > 180;
+  const ageTxt = feedAgeS >= 3600 ? `${Math.floor(feedAgeS / 3600)}h${Math.floor((feedAgeS % 3600) / 60)}m`
+    : `${Math.floor(feedAgeS / 60)}m`;
+
   return (
     <div className="h-full flex flex-col gap-3 p-1 overflow-auto">
       {/* 头部:PORTFOLIO 大数字 + 状态徽标 */}
       <div className="flex items-end gap-4 flex-wrap shrink-0">
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', color: '#666' }}>
-            {t('realtimeNav.portfolioLive', { time: ET_HMS.format(new Date(latest.ts)) })}
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em',
+                        color: feedDead ? '#e11d48' : feedLagging ? '#b45309' : '#666' }}
+            title={feedDead ? t('realtimeNav.feedFrozenTitle') : undefined}>
+            {feedDead
+              ? t('realtimeNav.portfolioFrozen', {
+                  time: ET_HMS.format(new Date(latest.ts)), age: ageTxt })
+              : t('realtimeNav.portfolioLive', {
+                  time: ET_HMS.format(new Date(latest.ts)) })}
           </div>
           {(() => {
             // 主数字 = 官方口径(与 StrategyPerformanceViewer 同刻度):
@@ -278,6 +293,10 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
             const rec = reconcile?.verdict;
             const qc: { label: string, state: 'pass' | 'fail' | 'pending' }[] = [
               { label: t('realtimeNav.qcDual'), state: 'pass' },
+              // 心跳:循环 1m 一跳(闭市平移也跳),超时=进程已死或卡住
+              { label: feedDead ? t('realtimeNav.qcHeartbeatDead', { age: ageTxt })
+                  : t('realtimeNav.qcHeartbeat'),
+                state: feedDead ? 'fail' : feedLagging ? 'pending' : 'pass' },
               { label: t('realtimeNav.qcFresh'), state: latest.stale ? 'fail' : 'pass' },
               { label: latest.missing?.length
                   ? t('realtimeNav.qcQuotesMissing', { n: latest.missing.length })

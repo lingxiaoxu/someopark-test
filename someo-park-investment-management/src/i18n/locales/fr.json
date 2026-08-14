@@ -1281,6 +1281,8 @@
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en direct · {{time}} ET)",
+    "portfolioFrozen": "PORTFOLIO (⚠ FIGÉ · arrêté à {{time}} ET, aucune mise à jour depuis {{age}})",
+    "feedFrozenTitle": "La boucle de valorisation résidente ne progresse plus — voici le dernier tick réussi, pas la VL actuelle",
     "vsPrevClose": "vs clôture précédente {{date}}",
     "intraday": "intrajournalier",
     "qcAllPass": "Tous les quality checks réussis",
@@ -1288,6 +1290,8 @@
     "qcPending": "Quality checks",
     "qcDual": "double moteur",
     "qcFresh": "prix frais",
+    "qcHeartbeat": "battement",
+    "qcHeartbeatDead": "battement perdu {{age}}",
     "qcQuotes": "cotations complètes",
     "qcQuotesMissing": "{{n}} cotations manquantes",
     "qcRecon": "rapprochement par positions",

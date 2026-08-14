@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import time
+import traceback
 from datetime import datetime, timezone
 
 from controller.registry import Registry
@@ -105,6 +106,13 @@ class Controller:
         self.rebuild_error: str | None = None
         self._failed_digest: str | None = None
         self._failed_at = 0.0
+        # tick 级 fail-not-die(2026-08-14): 一次瞬时 DNS 失败曾把常驻循环整个打挂
+        # (8/13 14:04 market_status → NameResolutionError,净值冻结 ~22h)。
+        # 常驻进程的不变量: **任何单轮异常都不得终止循环**——标错、沿用上轮、continue。
+        self.tick_error: str | None = None
+        self._tick_failed_at = 0.0
+        self.tick_fail_streak = 0
+        self.last_status: dict | None = None   # market_status 失败时的沿用值
         # 日内盈亏 = 纯美元账(shares × 价格,零比值;用户令 2026-08-12):
         #   day_pnl[nid] = realized[nid] + Σ eff_shares × (p_now − basis)
         #   basis = 日初价格(隔夜 carry)或当日开仓成交价(持仓文件 open_sX_price)
@@ -278,8 +286,16 @@ class Controller:
             return {"skipped": f"no consistent structure yet: {self.rebuild_error}",
                     "rebuilt": rebuilt}
 
-        # 2) 市场状态
-        status = self.feed.market_status()
+        # 2) 市场状态(失败沿用上轮;冷启动无上轮 → 按 closed 保守处理:
+        #    closed 只会让本轮走平移续写,不会污染价格)
+        try:
+            status = self.feed.market_status()
+            self.last_status = status
+        except Exception as e:  # noqa: BLE001 — 行情日历失败不得杀循环
+            status = dict(self.last_status or {"market": "closed"})
+            status["degraded"] = str(e)
+            print(f"!!!! [controller WARN] market_status failed: {e} — "
+                  f"沿用 market={status['market']}")
         closed = status["market"] == "closed"
 
         # 2b) 当日 split 日历(每 ET 日一次;plan §九-7:只标注,不改 shares)
@@ -406,6 +422,10 @@ class Controller:
                    "structure_diff": self.structure_diff,
                    "corp_actions": {self.reg.render(k): v
                                     for k, v in self._splits.items()},
+                   "tick_error": self.tick_error,
+                   "tick_error_age_s": (round(time.time() - self._tick_failed_at)
+                                        if self.tick_error else None),
+                   "market_degraded": status.get("degraded"),
                    "feed_delay_min": snap.get("feed_delay_min"),
                    "missing": [self.reg.render(m) for m in snap.get("missing", [])],
                    "backfilled": [self.reg.render(b)
@@ -446,14 +466,32 @@ class Controller:
         next_tick = 0.0
         while True:
             now = time.time()
-            if self._maybe_rebuild():                     # 7×24 watcher(盘后也跑)
-                # 盘后结构变化也要立即反映到 nav_latest(修 C + 用户"马上变")
-                self.tick(force=True)
-            if now >= next_tick:
-                out = self.tick()
-                if "skipped" not in out:
-                    print(f"[tick] {out['ts']} portfolio="
-                          f"{out['portfolio']:,.2f} stale={out['stale']}"
-                          + (" REBUILD-ERR" if self.rebuild_error else ""))
-                next_tick = now + interval_s
+            # 常驻进程不变量: 单轮任何异常都只标错+沿用上轮,**绝不终止循环**。
+            # (8/13 一次 DNS 解析失败杀死进程 → 净值冻结 22 小时。瞬时故障必须
+            #  自愈;真错误靠 tick_error 暴露给前端,而不是靠进程消失。)
+            try:
+                if self._maybe_rebuild():                 # 7×24 watcher(盘后也跑)
+                    # 盘后结构变化也要立即反映到 nav_latest(修 C + 用户"马上变")
+                    self.tick(force=True)
+                if now >= next_tick:
+                    out = self.tick()
+                    if "skipped" not in out:
+                        print(f"[tick] {out['ts']} portfolio="
+                              f"{out['portfolio']:,.2f} stale={out['stale']}"
+                              + (" REBUILD-ERR" if self.rebuild_error else ""))
+                    next_tick = now + interval_s
+                if self.tick_error:                       # 本轮走通 → 自愈
+                    print(f"[controller] tick recovered after "
+                          f"{self.tick_fail_streak} failure(s)")
+                    self.tick_error, self.tick_fail_streak = None, 0
+            except KeyboardInterrupt:
+                raise
+            except BaseException as e:  # noqa: BLE001 — 含 SystemExit:常驻不可被单轮杀死
+                self.tick_fail_streak += 1
+                self.tick_error = f"{type(e).__name__}: {e}"
+                self._tick_failed_at = time.time()
+                next_tick = now + interval_s              # 不空转重试
+                print(f"!!!! [controller ERROR] tick failed "
+                      f"(streak={self.tick_fail_streak}): {self.tick_error}")
+                traceback.print_exc()
             time.sleep(watch_s)

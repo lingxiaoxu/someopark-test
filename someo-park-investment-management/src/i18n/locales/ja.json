@@ -1281,6 +1281,8 @@
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO(リアルタイム · {{time}} ET)",
+    "portfolioFrozen": "PORTFOLIO(⚠ 停止 · {{time}} ET で停止、{{age}} 更新なし)",
+    "feedFrozenTitle": "常駐評価ループが停止しています —— 表示は最後に成功した tick の値であり、現在の純資産ではありません",
     "vsPrevClose": "前日終値比 {{date}}",
     "intraday": "日中",
     "qcAllPass": "全クオリティチェック合格",
@@ -1288,6 +1290,8 @@
     "qcPending": "クオリティチェック",
     "qcDual": "二重エンジン照合",
     "qcFresh": "価格鮮度",
+    "qcHeartbeat": "ハートビート",
+    "qcHeartbeatDead": "ハートビート途絶 {{age}}",
     "qcQuotes": "全銘柄気配",
     "qcQuotesMissing": "気配欠落{{n}}",
     "qcRecon": "ポジション照合",

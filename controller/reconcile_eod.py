@@ -34,6 +34,7 @@ from controller.prices import PriceFeed
 _HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_DIR = os.path.join(_HERE, "output")
 TOL_BP = 20.0                # 持仓级重算容差(收盘竞价 vs lastTrade + 分钟时差)
+CLOSE_GAP_TOL_MIN = 10.0     # 末笔离 16:00 ET 超过此值 ⇒ 当日无收盘行,判定 incomplete
 _ET = ZoneInfo("America/New_York")
 
 _ANCHORS = {   # strategy -> (json relpath, equity column) —— 仅信息展示用
@@ -73,6 +74,7 @@ def stream_close(date_iso: str) -> dict:
     y, m, d = (int(x) for x in date_iso.split("-"))
     cutoff = datetime(y, m, d, 16, 0, tzinfo=_ET)
     out: dict[str, dict] = {}
+    last_et: datetime | None = None
     for p in _stream_segments(date_iso):
         with open(p) as fh:
             header = fh.readline().strip().split(",")
@@ -89,11 +91,20 @@ def stream_close(date_iso: str) -> dict:
                     ts = datetime.fromisoformat(parts[i_ts])
                 except ValueError:
                     continue
-                if ts.astimezone(_ET) > cutoff:
+                ts_et = ts.astimezone(_ET)
+                if ts_et > cutoff:
                     continue              # 16:00 后(盘后/夜间平移)不算收盘
+                if last_et is None or ts_et > last_et:
+                    last_et = ts_et
                 out[parts[i_node]] = {"value": float(parts[i_val]),
                                       "hash": (parts[i_hash]
                                                if i_hash is not None else None)}
+    if out and last_et is not None:
+        # 覆盖度: 末笔离 16:00 多远。循环若盘中死掉(2026-08-13 14:04 DNS 事故),
+        # 末笔就是死亡时刻的值 —— 拿它当"收盘"去比 daily_close 会产出**假判定**。
+        out["__coverage__"] = {"last_et": last_et.isoformat(timespec="seconds"),
+                               "gap_min": round((cutoff - last_et).total_seconds()
+                                                / 60.0, 1)}
     return out
 
 
@@ -170,8 +181,19 @@ def reconcile(date: str | None = None) -> dict:
                         "(NO ratio / NO return-proportionality in verdict; "
                         "official jsons informational only)",
               "tolerance_bp": TOL_BP, "strategies": {}, "verdict": "baseline"}
+    coverage = closes.pop("__coverage__", None)
+    report["coverage"] = coverage
     if not target:
         report["note"] = "no nav_stream close rows yet"
+        _emit(report)
+        return report
+    # 覆盖度闸门: 末笔离 16:00 太远 ⇒ 该日没有真正的收盘值,拒绝出判定。
+    # 宁可 incomplete 也不要拿盘中值冒充收盘产出一个假 pass/breach。
+    if coverage and coverage["gap_min"] > CLOSE_GAP_TOL_MIN:
+        report["verdict"] = "incomplete"
+        report["note"] = (f"nav_stream 末笔 {coverage['last_et']} 距 16:00 ET "
+                          f"{coverage['gap_min']:.0f} 分钟(>{CLOSE_GAP_TOL_MIN}) "
+                          f"—— 当日无收盘行(常驻循环盘中中断),不出判定")
         _emit(report)
         return report
 

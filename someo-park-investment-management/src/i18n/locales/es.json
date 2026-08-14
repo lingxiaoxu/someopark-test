@@ -1281,6 +1281,8 @@
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en vivo · {{time}} ET)",
+    "portfolioFrozen": "PORTFOLIO (⚠ CONGELADO · detenido a las {{time}} ET, sin actualizar {{age}})",
+    "feedFrozenTitle": "El bucle de valoración residente dejó de avanzar — esto es el último tick correcto, no el VL actual",
     "vsPrevClose": "vs cierre previo {{date}}",
     "intraday": "intradía",
     "qcAllPass": "Todos los quality checks superados",
@@ -1288,6 +1290,8 @@
     "qcPending": "Quality checks",
     "qcDual": "doble motor",
     "qcFresh": "precios frescos",
+    "qcHeartbeat": "latido",
+    "qcHeartbeatDead": "latido perdido {{age}}",
     "qcQuotes": "cotizaciones completas",
     "qcQuotesMissing": "faltan {{n}} cotizaciones",
     "qcRecon": "conciliación por posiciones",
