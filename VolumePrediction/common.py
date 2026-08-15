@@ -40,3 +40,24 @@ def atomic_write_df(df, path: Path) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     df.to_parquet(tmp)
     tmp.rename(path)
+
+
+def sanitize_for_json(obj):
+    """→ (clean, paths)。非有限 float(NaN/±inf)一律替换为 None,并收集出现
+    路径。裸 NaN 是**非法 JSON**——json.dumps 默认放行,但 jq/JS 等严格解析器
+    直接 parse 失败(2026-08-15 advice 文件 BK 改名票实证)。调用方应把 paths
+    写进 warnings,让"无数据"可见而不是让下游解析炸掉。"""
+    import math
+    paths: list[str] = []
+
+    def walk(o, path):
+        if isinstance(o, dict):
+            return {k: walk(v, f"{path}.{k}") for k, v in o.items()}
+        if isinstance(o, (list, tuple)):
+            return [walk(v, f"{path}[{i}]") for i, v in enumerate(o)]
+        if isinstance(o, float) and not math.isfinite(o):
+            paths.append(path)
+            return None
+        return o
+
+    return walk(obj, ""), paths

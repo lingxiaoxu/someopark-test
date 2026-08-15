@@ -14,7 +14,7 @@ from typing import Optional
 
 import pandas as pd
 
-from VolumePrediction.common import REPO, OUT, load_config, get_logger
+from VolumePrediction.common import REPO, OUT, load_config, get_logger, sanitize_for_json
 from VolumePrediction.service import VolumeService
 
 log = get_logger("aiss_adapter")
@@ -72,7 +72,14 @@ def run(date: Optional[str] = None,
     od.mkdir(parents=True, exist_ok=True)
     p = od / f"aiss_advice_{date}.json"
     tmp = p.with_suffix(".tmp")
-    tmp.write_text(json.dumps(advice, indent=2, ensure_ascii=False, default=str))
+    # 非有限值 → null + warning(裸 NaN 让 jq/JS 解析炸;与 pairs_adapter 同款)
+    advice, _nan = sanitize_for_json(advice)
+    if _nan:
+        advice["warnings"].append(
+            f"no VP data (null-ed, likely rename/delist/new-listing): {_nan}")
+        log.warning(f"aiss_adapter 无数据字段 → null: {_nan}")
+    tmp.write_text(json.dumps(advice, indent=2, ensure_ascii=False, default=str,
+                              allow_nan=False))
     tmp.replace(p)
     log.info(f"aiss_adapter → {p.name} ({len(holdings_advice)} holdings)")
     return advice

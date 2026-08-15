@@ -82,3 +82,31 @@ def test_sp_forward_adv_empty_on_service_error(monkeypatch):
         raise RuntimeError("down")
     monkeypatch.setattr(vs, "VolumeService", boom)
     assert SelectPairs._vp_forward_adv(["A"]) == {}
+
+
+# ── advice JSON 严格性(2026-08-15: BK 改名票裸 NaN 实证)─────────────────────
+
+def test_sanitize_for_json_nulls_nonfinite():
+    from VolumePrediction.common import sanitize_for_json
+    clean, paths = sanitize_for_json(
+        {"a": float("nan"), "b": [1.0, float("inf")], "c": {"d": 2.5}})
+    assert clean == {"a": None, "b": [1.0, None], "c": {"d": 2.5}}
+    assert set(paths) == {".a", ".b[1]"}
+    json.dumps(clean, allow_nan=False)          # 严格 JSON 必须能过
+
+
+def test_adapters_emit_strict_json(monkeypatch, tmp_path):
+    """pairs_adapter 真跑一遍(读真 inventory 只读,写 tmp): 输出必须是
+    严格 JSON(json.loads + allow_nan=False 双关),BK 型票进 warnings。"""
+    from VolumePrediction.strategy_adapters import pairs_adapter
+    adv = pairs_adapter.run("mtfs", date="2026-08-14", out_dir=tmp_path)
+    raw = (tmp_path / "pairs_mtfs_advice_2026-08-14.json").read_text()
+    parsed = json.loads(raw)                     # 严格解析(裸 NaN 会炸)
+    assert "NaN" not in raw
+    nan_warn = [w for w in parsed["warnings"] if "no VP data" in w]
+    # 当前 inventory 含 BK 槽位 → 应有 warning;若日后清掉则两者都为空,同样合法
+    flat = json.dumps(parsed)
+    assert ("BK" not in flat) or nan_warn, "BK 无数据却没进 warnings"
+
+
+import json  # noqa: E402  (供上方新测试使用;文件原有 import 区无 json)

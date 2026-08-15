@@ -13,7 +13,7 @@ from typing import Optional
 
 import pandas as pd
 
-from VolumePrediction.common import REPO, OUT, get_logger
+from VolumePrediction.common import REPO, OUT, get_logger, sanitize_for_json
 from VolumePrediction.service import VolumeService
 
 log = get_logger("pairs_adapter")
@@ -84,11 +84,18 @@ def run(strategy: str = "mrpt", date: Optional[str] = None,
               "generated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
               "positions": positions, "candidates": candidates,
               "warnings": warnings}
+    # 非有限值 → null + warning(裸 NaN 会让 jq/JS 解析炸;BK 改名票实证)
+    advice, _nan = sanitize_for_json(advice)
+    if _nan:
+        advice["warnings"].append(
+            f"no VP data (null-ed, likely rename/delist/new-listing): {_nan}")
+        log.warning(f"pairs_adapter[{strategy}] 无数据字段 → null: {_nan}")
     od = Path(out_dir) if out_dir else (OUT / "adapters")
     od.mkdir(parents=True, exist_ok=True)
     p = od / f"pairs_{strategy}_advice_{date}.json"
     tmp = p.with_suffix(".tmp")
-    tmp.write_text(json.dumps(advice, indent=2, ensure_ascii=False, default=str))
+    tmp.write_text(json.dumps(advice, indent=2, ensure_ascii=False, default=str,
+                              allow_nan=False))
     tmp.replace(p)
     log.info(f"pairs_adapter[{strategy}] → {p.name} "
              f"({len(positions)} pos, {len(candidates)} cand)")
