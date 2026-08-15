@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+
+import pytest
 
 from prediction_market_macro.ingest import cleveland_nowcast as cn
 
@@ -80,3 +82,63 @@ def test_store_idempotent_pit_accessor(monkeypatch):
     assert cn.latest(c, "cpi", "mom", "2026-08", asof) == ("2026-08-11", 0.30)
     asof2 = datetime(2026, 8, 12, 19, 0, tzinfo=timezone.utc)
     assert cn.latest(c, "cpi", "mom", "2026-08", asof2) == ("2026-08-12", 0.35)
+
+
+# ── refresh_if_stale: the intraday tail-guard predict_all runs before every tick ──
+
+def test_expected_day_respects_kt_and_weekends():
+    # Fri 08-14: before 18:00Z the newest ADMITTED nowcast is Thursday's
+    assert cn._expected_day(datetime(2026, 8, 14, 17, 0, tzinfo=timezone.utc)) == "2026-08-13"
+    assert cn._expected_day(datetime(2026, 8, 14, 19, 0, tzinfo=timezone.utc)) == "2026-08-14"
+    # Sunday: Friday is the latest business day either side of its kt
+    assert cn._expected_day(datetime(2026, 8, 16, 12, 0, tzinfo=timezone.utc)) == "2026-08-14"
+
+
+def _mem():
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    return c
+
+
+def test_refresh_if_stale_skips_when_fresh(monkeypatch):
+    c = _mem()
+    cn.ensure_schema(c)
+    c.execute("INSERT INTO cleveland_nowcast VALUES('cpi','yoy','2026-08','2026-08-14',"
+              "3.3,?,?)", (cn._kt("2026-08-14"), "t"))
+    def boom(kind, timeout=120):
+        raise AssertionError("must not fetch when fresh")
+    monkeypatch.setattr(cn, "_fetch", boom)
+    now = datetime(2026, 8, 14, 20, 0, tzinfo=timezone.utc)
+    assert cn.refresh_if_stale(c, now) is None
+
+
+def test_refresh_if_stale_fetches_yoy_only_and_throttles(monkeypatch):
+    c = _mem()
+    calls = []
+    blob = _blob("2026-08", ["08/14"], [("CPI Inflation", ["3.3"])])
+    monkeypatch.setattr(cn, "_fetch", lambda kind, timeout=120: calls.append(kind) or blob)
+    now = datetime(2026, 8, 14, 20, 0, tzinfo=timezone.utc)
+    assert cn.refresh_if_stale(c, now) == {"yoy": 1}
+    assert calls == ["year"]                       # never the 3-kind daily fetch
+    # newest row is now today's -> fresh, skip without fetching
+    assert cn.refresh_if_stale(c, now + timedelta(minutes=1)) is None
+    assert calls == ["year"]
+
+
+def test_refresh_if_stale_throttles_a_dead_feed(monkeypatch):
+    """Holiday / outage: no new row lands, so staleness persists — the attempt gap,
+    recorded BEFORE the fetch, is what stops a fetch per tick."""
+    c = _mem()
+    cn.ensure_schema(c)
+    calls = []
+    def dead(kind, timeout=120):
+        calls.append(kind)
+        raise OSError("down")
+    monkeypatch.setattr(cn, "_fetch", dead)
+    now = datetime(2026, 8, 14, 20, 0, tzinfo=timezone.utc)
+    with pytest.raises(OSError):
+        cn.refresh_if_stale(c, now)
+    assert cn.refresh_if_stale(c, now + timedelta(minutes=15)) is None   # inside gap
+    with pytest.raises(OSError):
+        cn.refresh_if_stale(c, now + timedelta(minutes=60))              # gap passed
+    assert calls == ["year", "year"]

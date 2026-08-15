@@ -49,6 +49,19 @@ def run(conn, settings) -> int:
     from prediction_market_macro.model.common import Categorical
     from prediction_market_macro.research import param_select
     now = datetime.now(timezone.utc)
+    # cpi/0.3.0 anchors YoY on the Cleveland nowcast; this is the single door every
+    # live prediction passes through, so the PIT tail-guard lives here — a tick that
+    # predicts at 19:00 UTC must be able to see the nowcast published that morning,
+    # not yesterday's. Best-effort: the guard's own throttle bounds it to ~one fetch
+    # attempt per hour, and a dead feed degrades the model to its internal chain.
+    try:
+        from prediction_market_macro.ingest import cleveland_nowcast
+        cleveland_nowcast.refresh_if_stale(conn, now)
+    except Exception as e:                                       # noqa: BLE001
+        conn.execute(
+            "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+            (now.isoformat(), "warn", "predict_all",
+             f"cleveland_nowcast.refresh_if_stale: {e}"))
     n = 0
     for spec in REGISTRY.values():
         disp = SERIES_DISPATCH.get(spec.ticker)

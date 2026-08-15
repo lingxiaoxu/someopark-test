@@ -15,14 +15,20 @@ Mechanics (all inputs via PIT vintage reads):
   * YoY (exact): index recursion I_t = I_{t-1}(1+mom/100); YoY = (I_t/I_{t-12}-1)·100 —
                  the MoM distribution maps DETERMINISTICALLY onto YoY (known base), so the
                  YoY ladder is a change of variables, not a second model.
-  * 0.3.0 — HEADLINE YoY mu is anchored on the Cleveland Fed daily nowcast (PIT
-                 `cleveland_nowcast.latest`), sigma and everything else unchanged.
-                 Evidence (45 settled KXCPIYOY events 2022→2026, leak-free T-26h
-                 replay, adopted params): per-leg Brier 0.0904→0.0610 (−33%), 29/45
-                 events improve, EVERY year slice 2023-2026 improves. Core YoY is
-                 deliberately NOT anchored — the same 44-event replay was a wash
-                 (0.0618→0.0613, 19/44): the internal core model already sits at the
-                 nowcast's accuracy, so the anchor would add a dependency for nothing.
+  * 0.3.0 — BOTH YoY mus are anchored on the Cleveland Fed daily nowcast (PIT
+                 `cleveland_nowcast.latest`; headline reads measure 'cpi', core reads
+                 'corecpi'), sigma and everything else unchanged. The evidence behind
+                 each, stated separately because it is NOT the same strength
+                 (leak-free T-26h replay on settled ladder legs, adopted params):
+                   headline  45 events 2022→2026: per-leg Brier 0.0904→0.0610 (−33%),
+                             29/45 improve, EVERY year slice 2023-2026 improves —
+                             decisive, anchored on the evidence.
+                   core      44 events: 0.0618→0.0613 (Δ−0.0005), 19/44 — a wash; the
+                             internal core model already sits at the nowcast's level.
+                             Anchored by EXPLICIT USER DECISION 2026-08-15 (uniformity
+                             across the YoY pair), not by the evidence. If the forward
+                             confirmation window turns against core, this is the line
+                             to revisit first.
                  Missing/stale nowcast (>NOWCAST_MAX_AGE_D) falls back to the internal
                  chain, so the feed dying degrades to 0.2.0 behaviour, never to an error.
 """
@@ -172,11 +178,13 @@ def predict_mom(conn, asof: datetime, ref_month: str, core: bool,
     return _predict_mom(conn, asof, ref_month, core, params)[0]
 
 
-def _nowcast_yoy(conn, asof: datetime, ref_month: str) -> tuple[str, float] | None:
-    """Cleveland headline-YoY nowcast visible at `asof`, or None when the table is
-    absent (bare test DBs), the target has no row yet, or the feed is stale."""
+def _nowcast_yoy(conn, asof: datetime, ref_month: str,
+                 measure: str) -> tuple[str, float] | None:
+    """Cleveland YoY nowcast (measure 'cpi' or 'corecpi') visible at `asof`, or None
+    when the table is absent (bare test DBs), the target has no row yet, or the feed
+    is stale."""
     try:
-        got = _nowcast_latest(conn, "cpi", "yoy", ref_month, asof)
+        got = _nowcast_latest(conn, measure, "yoy", ref_month, asof)
     except sqlite3.OperationalError:
         return None
     if got is None:
@@ -214,12 +222,13 @@ def predict_yoy(conn, asof: datetime, ref_month: str, core: bool,
     yoy_mu = (a * (1 + mu / 100) - 1) * 100
     yoy_sigma = a * math.hypot(sg, chain_sigma)
     inputs = {**mom_pred.inputs, "i_prev": round(i_prev, 3), "i_base": round(i_base, 3)}
-    if not core:
-        # 0.3.0 headline anchor (module docstring): nowcast REPLACES mu, sigma stays.
-        anch = _nowcast_yoy(conn, asof, ref_month)
-        if anch is not None:
-            inputs["yoy_mu_model"] = round(yoy_mu, 3)
-            inputs["nowcast_date"], yoy_mu = anch
+    # 0.3.0 anchor (module docstring): nowcast REPLACES mu, sigma stays. Headline and
+    # core each read their OWN measure — crosstalk here would silently feed core the
+    # headline nowcast, which no validation ever measured.
+    anch = _nowcast_yoy(conn, asof, ref_month, "corecpi" if core else "cpi")
+    if anch is not None:
+        inputs["yoy_mu_model"] = round(yoy_mu, 3)
+        inputs["nowcast_date"], yoy_mu = anch
     inputs["yoy_mu"] = round(yoy_mu, 3)
     series = "KXCPICOREYOY" if core else "KXCPIYOY"
     return Pred(series=series, period=ref_month, dist=GaussianMix(((1.0, yoy_mu, yoy_sigma),)),

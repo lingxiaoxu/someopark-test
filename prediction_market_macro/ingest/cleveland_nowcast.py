@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS cleveland_nowcast(
   knowledge_time TEXT NOT NULL,        -- nowcast_date 18:00 UTC (module docstring)
   first_seen_ts TEXT NOT NULL,
   PRIMARY KEY(measure, freq, target, nowcast_date));
+CREATE TABLE IF NOT EXISTS cleveland_nowcast_meta(
+  k TEXT PRIMARY KEY, v TEXT NOT NULL);   -- 'last_attempt' throttles refresh_if_stale
 """
 
 
@@ -151,6 +153,50 @@ def refresh(conn, kinds=("month", "year", "quarter")) -> dict:
         conn.commit()
         out[freq] = n
     return out
+
+
+def _expected_day(now: datetime) -> str:
+    """Latest business day whose knowledge_time (18:00 UTC) has passed at `now`."""
+    d = now.date()
+    if now < datetime.combine(d, time(18, 0), tzinfo=timezone.utc):
+        d -= timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    return d.isoformat()
+
+
+def refresh_if_stale(conn, now: datetime | None = None,
+                     min_gap_min: int = 55) -> dict | None:
+    """Intraday tail-guard, hooked into `predict_all.run` (the single door every live
+    prediction passes through). The daily 05:00 ET refresh ingests YESTERDAY's
+    nowcast; today's — published in the Cleveland morning, admitted by kt at 18:00
+    UTC — would otherwise reach live trading a day late.
+
+    Fetches ONLY the yoy file (the one freq the model consumes; the full 3-kind
+    refresh stays in the daily pipeline) and only when BOTH hold:
+      (a) the newest stored yoy nowcast is older than the latest business day whose
+          kt has passed — before 18:00 UTC today's row would be PIT-invisible anyway,
+          so fetching it early buys nothing;
+      (b) no attempt ran in the last `min_gap_min` — holidays publish no new file,
+          and without the throttle a holiday means a 7.5MB fetch per 900s tick for
+          the rest of the day. The attempt is recorded BEFORE the fetch, so a dead
+          feed also degrades to ~one attempt (and one alert upstream) per hour.
+    Returns the refresh() dict when a fetch ran, None when skipped."""
+    now = now or datetime.now(timezone.utc)
+    ensure_schema(conn)
+    have = conn.execute(
+        "SELECT MAX(nowcast_date) FROM cleveland_nowcast WHERE freq='yoy'").fetchone()[0]
+    if have is not None and have >= _expected_day(now):
+        return None
+    last = conn.execute(
+        "SELECT v FROM cleveland_nowcast_meta WHERE k='last_attempt'").fetchone()
+    if last is not None and (now - datetime.fromisoformat(last[0])
+                             ).total_seconds() < min_gap_min * 60:
+        return None
+    conn.execute("INSERT OR REPLACE INTO cleveland_nowcast_meta VALUES('last_attempt',?)",
+                 (now.isoformat(),))
+    conn.commit()
+    return refresh(conn, kinds=("year",))
 
 
 def latest(conn, measure: str, freq: str, target: str,

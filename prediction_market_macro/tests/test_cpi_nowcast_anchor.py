@@ -1,8 +1,9 @@
-"""cpi/0.3.0 — the Cleveland nowcast anchor on HEADLINE YoY, and its exact boundaries.
+"""cpi/0.3.0 — the Cleveland nowcast anchor on the YoY pair, and its exact boundaries.
 
-What 0.3.0 changed (module docstring carries the evidence): KXCPIYOY's yoy_mu is
-REPLACED by the PIT-visible Cleveland nowcast; sigma and every other moving part stay.
-The four boundaries these tests pin, each a real failure mode:
+What 0.3.0 changed (module docstring carries the evidence and its asymmetry): both
+YoY mus are REPLACED by the PIT-visible Cleveland nowcast — headline on the decisive
+45-event replay, core by explicit user decision over a wash — sigma and every other
+moving part stay. The four boundaries these tests pin, each a real failure mode:
 
   1. anchor applied: dist mu == nowcast value, sigma == the un-anchored sigma, and
      inputs keep the internal mu as `yoy_mu_model` (observability for the bias study).
@@ -10,8 +11,8 @@ The four boundaries these tests pin, each a real failure mode:
      validation was leak-free only because latest() filters on knowledge_time.
   3. fallback: no table (bare DBs), no row, or a stale feed (> NOWCAST_MAX_AGE_D)
      degrades to 0.2.0 behaviour, never to an exception.
-  4. core untouched: KXCPICOREYOY ignores the table entirely (44-event replay was a
-     wash — anchoring core was judged AGAINST, not merely omitted).
+  4. measure separation: headline reads 'cpi', core reads 'corecpi' — crosstalk would
+     silently feed core a number no validation ever measured.
 """
 from __future__ import annotations
 
@@ -85,11 +86,24 @@ def test_stale_and_missing_fall_back_to_internal(env):
         assert p.inputs["yoy_mu"] == pytest.approx(mu, abs=1e-3)
 
 
-def test_core_yoy_never_anchors(env):
+def test_measures_do_not_crosstalk(env):
+    """Core anchors on 'corecpi', headline on 'cpi' — each ignores the other's rows."""
+    conn, asof, ref = env
+    day = (asof - timedelta(days=1)).date().isoformat()
+    _put(conn, ref, day, 9.9, measure="cpi")
+    _put(conn, ref, day, 8.8, measure="corecpi")
+    (_, mu_h, _), = m_cpi.predict_yoy(conn, asof, ref, core=False).dist.comps
+    (_, mu_c, _), = m_cpi.predict_yoy(conn, asof, ref, core=True).dist.comps
+    assert mu_h == pytest.approx(9.9)
+    assert mu_c == pytest.approx(8.8)
+
+
+def test_core_with_only_headline_rows_falls_back(env):
+    """A partially-populated table (headline row present, corecpi absent) must leave
+    core on its internal chain, not borrow the headline number."""
     conn, asof, ref = env
     base = m_cpi.predict_yoy(conn, asof, ref, core=True)
     _put(conn, ref, (asof - timedelta(days=1)).date().isoformat(), 9.9, measure="cpi")
-    _put(conn, ref, (asof - timedelta(days=1)).date().isoformat(), 8.8, measure="corecpi")
     p = m_cpi.predict_yoy(conn, asof, ref, core=True)
     assert p.dist.to_json() == base.dist.to_json()
     assert "nowcast_date" not in p.inputs
