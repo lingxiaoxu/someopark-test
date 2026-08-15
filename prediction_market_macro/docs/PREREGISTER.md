@@ -383,3 +383,18 @@ S2 从没触发的仓**不剔除**,两臂同值计入 —— 只在它出手的�
 多少滑点,每一个都是研究者自由度,而在结算已知之后再去定这些选项,正是预注册制度要防的事。
 把这一臂在结算之前逐日写死,才使 PR-7 步骤 1 是一个前向检验。次要理由:共用 `hold_state`
 杜绝第三份 `hold_edge` 实现(#141 的教训),以及逐日可审计。
+
+### PR-8 Cleveland Fed 通胀 Nowcast 锚定 CPI-YoY 族(2026-08-15)
+
+| | |
+|---|---|
+| 登记日 | 2026-08-15,写在源刚接入、**任何模型接线之前** |
+| 改动(候选) | `model/cpi.py` YoY 分支:`yoy_mu` 以 Cleveland nowcast(PIT `latest()`,T-26h 可见值)**替换**模型自算的 yoy_mu;σ 与其余结构不动。仅 KXCPIYOY / KXCPICOREYOY |
+| 背景(发现期证据,不判决) | 28 期 PIT 回放:headline 平均\|err\| nowcast 0.099 vs 模型 0.143;core 0.096 vs 0.099。2026-07 反事实:入场日(T-6d)nowcast headline 3.42/core 2.52,实际 3.4/2.5——本周两笔方向性输单会被完全避免。数据源 `cleveland_nowcast` 表,60,182 行 vintage 回溯 2013-07,CC-BY-4.0 |
+| 事前假设 | nowcast 是 CPI 交易员的公共锚,其信息集(日频油价/周度汽油/已印 CPI-PCE)严格包含我们 cpi.py 的输入;替换应降低逐腿 Brier |
+| 判据 | 前向 **6 个已结算 CPI-YoY 族事件**(两系列合计,自登记日起),T-26h 成对逐腿 Brier:candidate < 当前生产模型(含每日 argmin 参数),且 6 事件中 ≥4 个方向一致。做不到即证伪,不换混合权重重试 |
+| 影子实现 | `research/shadow_nowcast.py`(评分器,登记后、下一个 CPI 发布(≈09-15)前落地);两臂同 asof 同书本,candidate 不进 decisions |
+| K | 1(单一替换,无扫参) |
+| 结论 | 待前向计数。现在 0 / 6 |
+
+> 纪律注记:发现期的 0.099 vs 0.143 与 7 月反事实**不判决任何东西**——那是选题的理由,不是采纳的理由。源表按 §7-bis 保持 shadow,`cpi.py` 在 PR-8 通过前一行不改。

@@ -67,6 +67,11 @@ def run(weekly: bool = False) -> dict:
     from prediction_market_macro.ingest import aaa_daily, eia
     step("aaa_daily", lambda: aaa_daily.fetch_daily(conn))
     step("eia_storage", lambda: eia.pull_storage(conn))
+    # Cleveland Fed daily inflation nowcasts (2026-08-15, shadow per §7-bis —
+    # no model reads it until a preregistered gate clears). The fetched files
+    # carry full history, so this one step is backfill + daily tail in one.
+    from prediction_market_macro.ingest import cleveland_nowcast
+    step("cleveland_nowcast", lambda: cleveland_nowcast.refresh(conn))
     from prediction_market_macro.ingest import weather as wx
     # trailing 45d only: the whole history is a `ops.backfill --weather` job, and this
     # window also re-writes the tail where ERA5T later settles into ERA5.
