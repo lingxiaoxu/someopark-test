@@ -337,15 +337,6 @@ mark 入场（−FV）,mark 锚定隐含利差贴现（base ΔEV≡0）;PD_s 用
 Floor 出处：BXSL 逐笔（SOI 脚注）,GBDC 0.76%/OBDC 0.80% 披露 wavg,ARCC/TSLX 份额披露
 +1.00% ASSUMED。
 
-**排障要点：**
-- **channel A 404 是发布节奏不是故障**：月度 zip 按申报月归档、次月初（~3-5 日）发布,
-  财报季后 4–8 周内每天 4 次 404 属预期,channel B 全程兜底,数据无缺口。勿加记忆化。
-- **单位守卫（摄取层,三种已知漂移）**：利率百分点混小数（ARCC）、期数月当季、
-  principal $000s（TSLX）——新 filer 数据先查单位,告警形如 `normalized /100 | ×1000`。
-- **重建/测试一律 `--sandbox`**,并核对生产目录 md5;沙盒跑批会在 `conductor/logs`
-  留日志,测完删除。
-- 到期日 96.6% 为真实提取（MM/YYYY + MM/DD/YYYY）,其余 imputed_tenor 有标注。
-
 ---
 
 ## 7. MRPTWalkForward.py — MRPT Walk-Forward 9窗口(rolling 19mo,50td,重叠10)
