@@ -52,14 +52,41 @@ def load_aliases() -> dict:
     return _CACHE["data"]
 
 
+def _today() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+
+
 def resolve(ticker: str, date: str | None = None) -> str:
-    """查询侧: 旧名 → 该日应使用的名。date=None 视为"现在"(≥ 一切 changed)。
-    date < changed 时旧名在当日数据里本来就有效,原样返回。"""
+    """**市场名语义**(历史工件查询用: 工件不可变,行内是"当日市场名"):
+    该日市场上这个名字应写成什么。
+      date < changed            → 原名(当日市场就叫这个)
+      changed ≤ date < recycled → 现名(空窗期,旧名只可能指本实体)
+      date ≥ recycled           → 原名(名字已被**另一实体**回收 —— FB 型:
+                                   2025-06-26 起 FB=ProShares ETF,再映射
+                                   META 就是张冠李戴,必须止步)
+    date=None 视为今天。"""
     al = load_aliases()
+    d = date or _today()
     cur = ticker
     for _ in range(_MAX_HOPS):
         e = al.get(cur)
-        if not e or (date is not None and date < e["changed"]):
+        if not e or d < e["changed"] or (e.get("recycled") and d >= e["recycled"]):
+            return cur
+        cur = e["current"]
+    return cur
+
+
+def canonical(ticker: str, date: str | None = None) -> str:
+    """**归一数据语义**(_load_day/load_day 已把历史行 old→current):
+    "date 当日这个名字指的实体"的**现行规范名** —— 归一后数据全在现名下,
+    改名前的历史日期也必须给现名(resolve 会给旧名 → 在归一数据里查空,
+    2026-08-15 复审抓到的错位 bug)。回收后名字属新实体 → 原名。"""
+    al = load_aliases()
+    d = date or _today()
+    cur = ticker
+    for _ in range(_MAX_HOPS):
+        e = al.get(cur)
+        if not e or (e.get("recycled") and d >= e["recycled"]):
             return cur
         cur = e["current"]
     return cur
@@ -73,10 +100,24 @@ def rename_map(date: str) -> dict:
 
 
 def normalize_day_frame(df, date: str, col: str = "ticker"):
-    """日级数据帧的 old→current 归一(零匹配时零成本返回原帧)。"""
+    """日级数据帧的 old→current 归一(零匹配时零成本返回原帧)。
+
+    碰撞守卫: 若该日帧里 current 名**已存在**(历史上被另一实体占用过),
+    改名会造出重复票行 —— pivot(aggfunc='first')会静默取一污染数据,
+    宁可不归一并大声告警。"""
     m = rename_map(date)
     if not m or df is None or len(df) == 0 or col not in df.columns:
         return df
+    present = set(df[col])
+    clash = {o: c for o, c in m.items() if o in present and c in present}
+    if clash:
+        import logging
+        logging.getLogger("ticker_aliases").warning(
+            f"normalize collision on {date}: {clash} — 这些票**不**归一"
+            f"(current 名当日已被占用,改名会造重复行)")
+        m = {o: c for o, c in m.items() if o not in clash}
+        if not m:
+            return df
     hit = df[col].isin(m.keys())
     if not hit.any():
         return df
@@ -138,6 +179,10 @@ def refresh_aliases(candidates: list[str], api_key: str | None = None) -> dict:
                     if entry:
                         break
             if entry:
+                # 回收日探测(FB 型): 旧名直查若命中**另一实体**(FIGI/CIK
+                # 不同),该实体拿走此名之日起,查询解析必须止步 —— 否则
+                # "今天的 FB" 会被错映射到 META。
+                entry["recycled"] = _recycled_date(res, entry, t)
                 al[t] = entry
                 added[t] = entry
             else:
@@ -154,6 +199,66 @@ def refresh_aliases(candidates: list[str], api_key: str | None = None) -> dict:
         tmp.replace(ALIAS_PATH)
         _CACHE["mtime"] = None                   # 强制下次重读
     return {"added": added, "unresolved": unresolved}
+
+
+RECHECK_DAYS = 7     # 已入册条目的回收复查周期(旧名随时可能被新实体启用)
+
+
+def recheck_recycled(api_key: str | None = None) -> dict:
+    """已入册且未标回收的条目,周期性直查旧名现属谁(BK 型: 今天 404 无主,
+    未来某实体启用 "BK" 时必须止住 resolve,否则继续错给 BNY)。
+    每条目至多 RECHECK_DAYS 一次(recycled_checked 戳),fail-open。"""
+    import requests
+    key = api_key or os.environ.get("POLYGON_API_KEY")
+    if not key:
+        return {"checked": [], "note": "no POLYGON_API_KEY"}
+    al = dict(load_aliases())
+    today = _today()
+    checked, found = [], {}
+    s = requests.Session()
+    dirty = False
+    for old, e in al.items():
+        if e.get("recycled"):
+            continue
+        last = e.get("recycled_checked", "1970-01-01")
+        if (datetime.strptime(today, "%Y-%m-%d")
+                - datetime.strptime(last, "%Y-%m-%d")).days < RECHECK_DAYS:
+            continue
+        try:
+            rec = _recycled_date(_events(s, old, key), e, old)
+            e["recycled_checked"] = today
+            if rec:
+                e["recycled"] = rec
+                found[old] = rec
+            checked.append(old)
+            dirty = True
+        except Exception:  # noqa: BLE001 — 单票失败下轮再试
+            continue
+    if dirty:
+        payload = {"schema": "v1",
+                   "updated": datetime.now(timezone.utc)
+                   .isoformat(timespec="seconds"),
+                   "aliases": al}
+        tmp = ALIAS_PATH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(payload, indent=1, ensure_ascii=False))
+        tmp.replace(ALIAS_PATH)
+        _CACHE["mtime"] = None
+    return {"checked": checked, "recycled_found": found}
+
+
+def _recycled_date(direct_res: dict | None, entry: dict, old: str) -> str | None:
+    """旧名直查结果若是**另一实体**(FIGI/CIK 与 entry 不同)→ 返回该实体
+    拿走此名的日期(其事件链中 ticker==old 的最新事件);否则 None。"""
+    if not direct_res:
+        return None                              # 404: 旧名当前无主(BK 型)
+    same = (direct_res.get("composite_figi") == entry.get("figi")
+            or (direct_res.get("cik") and direct_res.get("cik") == entry.get("cik")))
+    if same:
+        return None
+    dates = [e.get("date") for e in direct_res.get("events", [])
+             if e.get("type") == "ticker_change"
+             and e.get("ticker_change", {}).get("ticker") == old]
+    return max(dates) if dates else None
 
 
 def _entry_from_events(res: dict | None, old: str) -> dict | None:

@@ -99,9 +99,11 @@ class VolumeService:
     def _ticker_frame(self, ticker: str, end_date: Optional[str],
                       lookback: int) -> pd.DataFrame:
         """单票近 lookback 个原始日的 [date, shares, close, V, v]。
-        旧名查询自动解析到现名(_load_day 已把历史归一到现名下)。"""
-        from ticker_aliases import resolve
-        ticker = resolve(ticker, end_date)
+        键用 canonical(归一数据语义): _load_day 已把历史行归一到现名下,
+        改名前的 end_date 也必须查现名 —— resolve(市场名语义)在这里会给
+        旧名 → 查空(2026-08-15 复审修正);回收名(FB 型)canonical 原样。"""
+        from ticker_aliases import canonical
+        ticker = canonical(ticker, end_date)
         ds = self._raw_dates()
         if end_date:
             ds = [d for d in ds if d <= end_date]

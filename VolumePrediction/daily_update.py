@@ -107,6 +107,14 @@ def run(date: Optional[str] = None, fetch: bool = True,
                 if r["unresolved"]:
                     log.warning(f"tickers missing from raw, NOT a verified rename "
                                 f"(delist/halt?): {r['unresolved']}")
+            # 已入册条目的回收复查(≤每 7 天一次/条;旧名被新实体启用时
+            # resolve 必须止步,否则 BK 型解析在回收后继续错给现名)
+            rc = ta.recheck_recycled()
+            if rc.get("recycled_found"):
+                log.warning(f"aliased old names RECYCLED by new entities: "
+                            f"{rc['recycled_found']} — resolve 已止步")
+                aliases = {**(aliases or {}), "recycled_found":
+                           rc["recycled_found"]}
     except Exception as e:  # noqa: BLE001 — 发现步失败绝不影响主流程
         log.error(f"alias discovery failed (non-fatal): {e}")
         aliases = {"status": "error", "error": str(e)}
