@@ -80,6 +80,37 @@ def run(date: Optional[str] = None, fetch: bool = True,
         return {"status": "error", "stage": "refresh", "detail": res}
     asof = res["asof"]
 
+    # 2b) 改名发现(2026-08-15,BK→BNY 驱动;fail-open): 消费票(四策略持仓/
+    # 槽位)从当日 raw 消失 → 查 Polygon events(旧名 404 再走 security master
+    # CUSIP/CIK)确证改名并落 ticker_aliases.json —— 服务/历史归一自动生效。
+    aliases = None
+    try:
+        import ticker_aliases as ta
+        from VolumePrediction.common import REPO
+        from VolumePrediction.shadow_rnn import _held_tickers
+        day = svc._load_day(asof)
+        rawset = set(day["ticker"]) if not day.empty else set()
+        if rawset:
+            consumed = set(_held_tickers(asof))
+            for f in ("inventory_mrpt.json", "inventory_mtfs.json"):
+                inv = json.loads((REPO / f).read_text())
+                for name in (inv.get("pairs") or {}):
+                    consumed.update(name.split("/"))
+            gone = sorted(t for t in consumed
+                          if t and t not in rawset and t not in ta.load_aliases())
+            if gone:
+                r = ta.refresh_aliases(gone)
+                aliases = r
+                if r["added"]:
+                    log.warning(f"ticker renames detected: "
+                                f"{ {k: v['current'] for k, v in r['added'].items()} }")
+                if r["unresolved"]:
+                    log.warning(f"tickers missing from raw, NOT a verified rename "
+                                f"(delist/halt?): {r['unresolved']}")
+    except Exception as e:  # noqa: BLE001 — 发现步失败绝不影响主流程
+        log.error(f"alias discovery failed (non-fatal): {e}")
+        aliases = {"status": "error", "error": str(e)}
+
     # 3) 三类 adapter 建议文件(pairs 两策略共 4 份;单个失败不阻断)
     adapters: dict[str, dict] = {}
     if not skip_adapters:
@@ -150,7 +181,7 @@ def run(date: Optional[str] = None, fetch: bool = True,
     out = {"status": "ok", "asof": asof, "refresh": res,
            "adapters": adapters, "health": health,
            "wiring_shadow": wiring, "rnn_ab_shadow": rnn_ab,
-           "blend_ab_shadow": blend_ab}
+           "blend_ab_shadow": blend_ab, "ticker_aliases": aliases}
     if any(v.get("status") == "error" for v in adapters.values()):
         out["status"] = "partial"
     log.info(f"daily_update done: {out['status']} asof={asof} "

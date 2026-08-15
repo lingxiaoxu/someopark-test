@@ -103,10 +103,16 @@ def test_adapters_emit_strict_json(monkeypatch, tmp_path):
     raw = (tmp_path / "pairs_mtfs_advice_2026-08-14.json").read_text()
     parsed = json.loads(raw)                     # 严格解析(裸 NaN 会炸)
     assert "NaN" not in raw
+    # ticker_aliases 接线后 BK 槽位应解析到 BNY 的真实 ADV(非 null);
+    # 若未来再出现无数据票,必须同时带 no-VP-data warning(不许静默 null)
+    nulls = [p for pos in parsed["positions"]
+             for t, v in (pos.get("adv_forecast") or {}).items() if v is None]
     nan_warn = [w for w in parsed["warnings"] if "no VP data" in w]
-    # 当前 inventory 含 BK 槽位 → 应有 warning;若日后清掉则两者都为空,同样合法
-    flat = json.dumps(parsed)
-    assert ("BK" not in flat) or nan_warn, "BK 无数据却没进 warnings"
+    assert (not nulls) or nan_warn, f"null 无 warning: {nulls}"
+    bk = [pos["adv_forecast"].get("BK") for pos in parsed["positions"]
+          if "BK" in (pos.get("adv_forecast") or {})]
+    if bk:                                        # BK 槽位仍在 → 必须已被解析
+        assert all(v is not None and v > 0 for v in bk), "BK 未解析到 BNY 数据"
 
 
 import json  # noqa: E402  (供上方新测试使用;文件原有 import 区无 json)

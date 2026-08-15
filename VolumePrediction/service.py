@@ -75,6 +75,10 @@ class VolumeService:
             df = pd.DataFrame()
         else:
             df = pd.read_parquet(p)
+            # 改名统一处理(2026-08-15): 改名日前的行 old→current,历史在
+            # 现名下连续(BK→BNY 型;日期窗口化,回收名如今日 FB 不受影响)
+            from ticker_aliases import normalize_day_frame
+            df = normalize_day_frame(df, date)
             if not df.empty and "dollar_volume" not in df.columns \
                     and {"v", "vw"}.issubset(df.columns):
                 df["dollar_volume"] = df["v"].astype(float) * df["vw"].astype(float)
@@ -94,7 +98,10 @@ class VolumeService:
 
     def _ticker_frame(self, ticker: str, end_date: Optional[str],
                       lookback: int) -> pd.DataFrame:
-        """单票近 lookback 个原始日的 [date, shares, close, V, v]。"""
+        """单票近 lookback 个原始日的 [date, shares, close, V, v]。
+        旧名查询自动解析到现名(_load_day 已把历史归一到现名下)。"""
+        from ticker_aliases import resolve
+        ticker = resolve(ticker, end_date)
         ds = self._raw_dates()
         if end_date:
             ds = [d for d in ds if d <= end_date]
@@ -144,7 +151,11 @@ class _Forecast:
         if horizon != 1:
             raise NotImplementedError(
                 "v1 服务只支持 horizon=1(§7.11-4);多步预测属 P2 可选")
+        from ticker_aliases import resolve
+        # 旧名查询解析到现名(工件行一律现名);输出 symbol 保留调用方原名,
+        # 免得消费端(按自己的 key 找行)拿不回结果
         syms = _as_list(symbols)
+        _q = {s: resolve(s, date) for s in syms}
         art = (self.s._history_file(date) if date else None)
         if art is None:
             art = self.s._latest_artifact()
@@ -157,17 +168,24 @@ class _Forecast:
         z90 = 1.645
         got = set()
         if art is not None and not art.empty:
-            sub = art[art["ticker"].isin(syms)]
+            _rev = {}                            # 现名 → 调用方原名(改名解析)
+            for s_, c_ in _q.items():
+                _rev.setdefault(c_, s_)
+            sub = art[art["ticker"].isin(_rev.keys())]
             for _, r in sub.iterrows():
-                rows.append({
-                    "symbol": r["ticker"], "pred_v": float(r["pred_v"]),
+                orig = _rev[r["ticker"]]
+                row = {
+                    "symbol": orig, "pred_v": float(r["pred_v"]),
                     "pred_V": float(r["pred_V"]), "pred_eta": float(r["pred_eta"]),
                     "ci_low": float(r["pred_v"]) - z90 * std,
                     "ci_high": float(r["pred_v"]) + z90 * std,
                     "model_version": r.get("model_version", "?"),
                     "trained_through": r.get("trained_through"),
-                    "source": "model"})
-                got.add(r["ticker"])
+                    "source": "model"}
+                if orig != r["ticker"]:
+                    row["resolved_ticker"] = r["ticker"]   # 改名解析如实标注
+                rows.append(row)
+                got.add(orig)
         for sym in syms:
             if sym in got:
                 continue

@@ -150,18 +150,24 @@ def backfill(start: str, end: str, throttle: float = THROTTLE_S) -> dict:
 
 
 def load_day(date: str) -> pd.DataFrame:
-    """读单日原始 bar;附 dollar_volume=v×vw(§7.1 量纲)。"""
+    """读单日原始 bar;附 dollar_volume=v×vw(§7.1 量纲)。
+    改名统一(2026-08-15): 改名日前的行 old→current(BK→BNY 型),
+    panel/freeze 的历史在现名下连续 —— raw 磁盘文件不可变,归一只在读取时。"""
     p = raw_path(date)
     if not p.exists():
         raise FileNotFoundError(f"raw cache missing for {date}; run backfill")
     df = pd.read_parquet(p)
+    from ticker_aliases import normalize_day_frame
+    df = normalize_day_frame(df, date)
     if not df.empty and "v" in df.columns and "vw" in df.columns:
         df["dollar_volume"] = df["v"].astype(float) * df["vw"].astype(float)
     return df
 
 
 def load_range(start: str, end: str, tickers: Optional[set] = None) -> pd.DataFrame:
-    """按日拼接 [start,end] 的原始 bar 长表(可选 ticker 过滤)。"""
+    """按日拼接 [start,end] 的原始 bar 长表(可选 ticker 过滤)。
+    逐日改名归一同 load_day(过滤在归一**之后**,旧名/现名都命中现名历史)。"""
+    from ticker_aliases import normalize_day_frame
     frames = []
     for d in trading_days(start, end):
         p = raw_path(d)
@@ -170,6 +176,7 @@ def load_range(start: str, end: str, tickers: Optional[set] = None) -> pd.DataFr
         df = pd.read_parquet(p)
         if df.empty:
             continue
+        df = normalize_day_frame(df, d)
         if tickers is not None:
             df = df[df["ticker"].isin(tickers)]
         frames.append(df)

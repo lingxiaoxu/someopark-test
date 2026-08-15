@@ -1,0 +1,15 @@
+{
+ "schema": "v1",
+ "updated": "2026-08-15T20:14:22+00:00",
+ "aliases": {
+  "BK": {
+   "current": "BNY",
+   "changed": "2026-05-21",
+   "figi": "BBG000BD8PN9",
+   "cik": "0001390777",
+   "name": "Bank of New York Mellon Corporation",
+   "verified": "polygon_events",
+   "asof": "2026-08-15"
+  }
+ }
+}
