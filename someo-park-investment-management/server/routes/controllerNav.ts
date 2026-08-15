@@ -13,6 +13,11 @@ const DATA = path.join(__dirname, '..', '..', 'public', 'data');
 
 const router = Router();
 
+// "今天"必须按 ET 算(2026-08-14 bug):toISOString 是 UTC,20:00 ET 后 UTC 已翻日,
+// /stream 默认日指向不存在的明天文件、/prev-close 把**今天**的收盘当"昨收"返回。
+const etToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' })
+  .format(new Date()).replace(/-/g, '');
+
 // 最新全层级值(前端 45s 轮询)
 router.get('/latest', (_req, res) => {
   const p = path.join(OUT, 'nav_latest.json');
@@ -23,7 +28,7 @@ router.get('/latest', (_req, res) => {
 // 当日分钟流(频率子采样在前端做;date=YYYYMMDD 默认今天;
 // date=latest → 最近一个有数据(≥2 行)的交易时段,闭市回看用)
 router.get('/stream', (req, res) => {
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const today = etToday();
   let date = String(req.query.date || today);
   if (date === 'latest') {
     const days = fs.existsSync(OUT)
@@ -81,7 +86,7 @@ function et16utcMs(d8: string): number {
 }
 router.get('/prev-close', (_req, res) => {
   if (!fs.existsSync(OUT)) return res.status(404).json({ error: 'no output dir' });
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const today = etToday();
   const days = fs.readdirSync(OUT)
     .map(f => /^nav_stream_(\d{8})\.csv$/.exec(f)?.[1])
     .filter((d): d is string => !!d && d < today)
