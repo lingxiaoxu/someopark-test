@@ -171,15 +171,6 @@ def _dataset_url(year_month: str) -> str:
     return f"{BDC_DATASETS_BASE}/{year_month}_bdc.zip"
 
 
-# yms that 404'd within THIS run. The monthly zip is keyed by FILING month and
-# only lands ~early the following month (verified 2026-08-14: 2026_01..2026_07
-# all 200, 2026_08 404; Aug-filed adsh are absent from the 2026_07 soi.tsv, so
-# there is no earlier package to fall back to — the 404 is expected, not a bug).
-# Without this memo a 5-BDC run re-probes the same missing zip once per BDC
-# (4 identical 404 hits against SEC per day).
-_missing_datasets: set = set()
-
-
 def fetch_dataset_soi(filing_date: str, cache_dir: str) -> pd.DataFrame | None:
     """Download the monthly BDC Data Set covering `filing_date`, return its soi.tsv
     as a DataFrame. Caches the extracted soi.tsv (not the 53MB zip) under cache_dir.
@@ -189,15 +180,10 @@ def fetch_dataset_soi(filing_date: str, cache_dir: str) -> pd.DataFrame | None:
     soi_cache = os.path.join(cache_dir, f"soi_{ym}.parquet")
     if os.path.exists(soi_cache):
         return pd.read_parquet(soi_cache)
-    if ym in _missing_datasets:                        # already 404'd this run
-        return None
     try:
         resp = sec_get(_dataset_url(ym))
     except Exception as e:  # noqa: BLE001
-        _missing_datasets.add(ym)
-        print(f"  [dataset] {ym}_bdc.zip not yet published ({e}); monthly zip is "
-              f"keyed by filing month and lands ~early the following month — "
-              f"expected until then; will try channel B")
+        print(f"  [dataset] {ym}_bdc.zip unavailable ({e}); will try channel B")
         return None
     with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
         names = zf.namelist()
