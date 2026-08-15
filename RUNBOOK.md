@@ -303,6 +303,51 @@ set -a && source .env && set +a && conda run -n someopark_run --no-capture-outpu
 
 ---
 
+## 6.6 BDC Look-Through 日管道（私募信贷透视 + 压力测试，16:05 ET 每日）
+
+用真实 SEC SOI（5 家 BDC：GBDC/TSLX/OBDC/BXSL/ARCC 的底层贷款）做逐日重估值、
+持仓 diff 与情景压测。与股票层（`UpdateBDCPerformance`，yfinance 实盘价，DailySignal
+09:09 调）**完全独立** —— 压测只写分析层，不碰任何实盘记账。
+
+```bash
+# 每日自动（scheduled routine）；手动/补跑：
+bash conductor/bdc_daily_pipeline.sh daily
+# 开发/测试必须沙盒（零生产写入）：
+bash conductor/bdc_daily_pipeline.sh daily --sandbox /tmp/bdc_dev
+```
+
+**步骤**：A `SyncPrivateCreditRates`（FRED 8 序列 → fred_rates.csv）→ C
+`RefreshBDCHoldings`（EDGAR 双通道：A=月度 BDC Data Sets zip，B=inline-XBRL 解析）
+→ D `RunBDCLookThrough`（重估值 + diff + **§7.3 压测** + 报告 + 心跳）。
+全步 non-fatal，15 分钟 watchdog。总时长 ≈2 分钟（压测约 80–90s）。
+
+**产物：**
+
+| 文件 | 说明 |
+|------|------|
+| `portfolio_of_private_credit_deals/bdc_results/bdc_lookthrough_<asof>.json` | 完整摘要：weighted 指标 / maturity_ladder / **stress**（10 情景×8 指标 + by_bdc + bridge）/ top_issuers |
+| `bdc_results/daily_report_<date>.json` | 每日报告，`stress` 与 revaluation 同级 |
+| `bdc_results/diff_<asof>.json` | 季度间持仓 diff（new/exited/changed + mark 恶化预警,alert=落入 [0.30,0.90)） |
+| `price_data/bdc_holdings/` | 逐季 SOI 快照（parquet）+ 双心跳（`stress_worst=` 速览） |
+| `someo-park.../public/data/bdc_lookthrough_latest.json` | 数据落位（**前端暂无页面消费**） |
+
+**压测（bdc_stress.py，2026-08-15 上线）**：利率梯度 ±100/200/300bp + 三宏观情景
+（mild/severe recession、stagflation——浮动账本最痛场景）；survival-weighted 期望现金流,
+mark 入场（−FV）,mark 锚定隐含利差贴现（base ΔEV≡0）;PD_s 用逐笔 score 压力乘数分层。
+Floor 出处：BXSL 逐笔（SOI 脚注）,GBDC 0.76%/OBDC 0.80% 披露 wavg,ARCC/TSLX 份额披露
++1.00% ASSUMED。
+
+**排障要点：**
+- **channel A 404 是发布节奏不是故障**：月度 zip 按申报月归档、次月初（~3-5 日）发布,
+  财报季后 4–8 周内每天 4 次 404 属预期,channel B 全程兜底,数据无缺口。勿加记忆化。
+- **单位守卫（摄取层,三种已知漂移）**：利率百分点混小数（ARCC）、期数月当季、
+  principal $000s（TSLX）——新 filer 数据先查单位,告警形如 `normalized /100 | ×1000`。
+- **重建/测试一律 `--sandbox`**,并核对生产目录 md5;沙盒跑批会在 `conductor/logs`
+  留日志,测完删除。
+- 到期日 96.6% 为真实提取（MM/YYYY + MM/DD/YYYY）,其余 imputed_tenor 有标注。
+
+---
+
 ## 7. MRPTWalkForward.py — MRPT Walk-Forward 9窗口(rolling 19mo,50td,重叠10)
 
 **换配对后需先运行 `UpdateStep1Configs.py`（WalkForward 内部读 `runs_20260304_step1_grid32.json` 的 param_set + pairs 做 grid search）。**
