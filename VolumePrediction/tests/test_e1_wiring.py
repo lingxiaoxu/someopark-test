@@ -12,9 +12,11 @@ import RiskManager
 import SelectPairs
 
 
-def test_switches_default_off():
-    assert RiskManager.USE_FORECAST_ADV is False
-    assert SelectPairs.USE_FORECAST_ADV is False
+def test_switches_enabled_in_production():
+    """2026-08-15 用户批准启用(影子证据: W3 flips 0.05%/W4 dtl diff 0)。
+    回退语义不变: 单行改 False 即回后视口径 —— 开关必须仍是布尔单点。"""
+    assert RiskManager.USE_FORECAST_ADV is True
+    assert SelectPairs.USE_FORECAST_ADV is True
 
 
 def test_red_lines_untouched():

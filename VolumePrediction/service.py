@@ -875,24 +875,45 @@ class _Ops:
                 from VolumePrediction.shadow_rnn import _held_tickers
                 _rart = (self.s.art / "registry" / "artifacts"
                          / _blend_cfg["rnn_version"])
-                # RNN serve 约定与影子一致: serve(asof)=用截至 asof 的窗做次日
-                # 预测(lgbm 的 _target=asof+1 语义不适用——会撞断档守卫)。
-                # 同日重跑: seq_tail 已滚到 asof,serve 会拒绝 → 读当日缓存,
-                # 绝不让重跑把当日工件降级回两层。
+                # RNN serve 约定与影子一致: serve(D)=用截至 D 的窗做次日预测
+                # (lgbm 的 _target=asof+1 语义不适用——会撞断档守卫)。
+                # 逐日补滚: seq_tail 落后时(如某日 RNN serve 失败后停滚)把
+                # (seq_tail, asof] 的 raw 日按序滚齐,否则次日永久断档。
+                # 同日重跑: seq_tail 已到 asof,serve 会拒绝 → 缓存,缓存丢了
+                # 退影子当日工件 —— 绝不让重跑把当日工件降级回两层。
                 _cache = _rart / f"blend_serve_{asof}.parquet"
                 with open(_rart / "meta.json") as _mf2:
-                    _seq_d = json.load(_mf2).get("seq_tail_date")
-                if _seq_d == asof and _cache.exists():
-                    _rn = pd.read_parquet(_cache).set_index("ticker")
-                    log.info(f"refresh: blend3 同日重跑 — 复用缓存 {_cache.name}")
+                    _seq_d = json.load(_mf2).get("seq_tail_date") or ""
+                if _seq_d >= asof:
+                    if _cache.exists():
+                        _rn = pd.read_parquet(_cache).set_index("ticker")
+                        log.info(f"refresh: blend3 同日重跑 — 复用缓存 {_cache.name}")
+                    else:
+                        _shadow_p = (self.s.art / "shadow_rnn"
+                                     / f"rnn_pred_{asof}.parquet")
+                        _rn = pd.read_parquet(_shadow_p).set_index("ticker")
+                        log.info(f"refresh: blend3 缓存缺失 — 退影子当日工件"
+                                 f" {_shadow_p.name}")
                 else:
-                    _rn = _pmr2.serve(_rart, asof,
-                                      update_state=True).set_index("ticker")
+                    _rn = None
+                    for _d in [d for d in ds if _seq_d < d <= asof]:
+                        _rn = _pmr2.serve(_rart, _d,
+                                          update_state=True).set_index("ticker")
+                    if _rn is None:
+                        raise RuntimeError(
+                            f"blend3: seq_tail={_seq_d} 与 asof={asof} 间无 raw 日")
                     _ctmp = _cache.with_suffix(".tmp")
                     _rn.reset_index().to_parquet(_ctmp, index=False)
                     os.replace(_ctmp, _cache)
                     for _old in sorted(_rart.glob("blend_serve_*.parquet"))[:-5]:
                         _old.unlink()                  # 只留近 5 日缓存
+                    # 同步写影子目录: AB 追踪/shadow_blend 逐位对拍继续吃同一份
+                    # 预测(影子已转只读不再自产;evaluate 只认 rnn_pred_*)
+                    _sp = self.s.art / "shadow_rnn" / f"rnn_pred_{asof}.parquet"
+                    _sp.parent.mkdir(parents=True, exist_ok=True)
+                    _stmp = _sp.with_suffix(".tmp")
+                    _rn.reset_index().to_parquet(_stmp, index=False)
+                    os.replace(_stmp, _sp)
                 _pv = out.set_index("ticker")["pred_V"]
                 _cov = _rn.index.intersection(_pv.index)
                 _layer, _diag = rnn_layer(_cov, _pv.loc[_cov],

@@ -743,11 +743,12 @@ def _rsi(vals, period=14):
 
 # Minimum average daily volume (shares) — filters out illiquid micro-caps
 _MIN_AVG_DAILY_VOLUME = 300_000
-# E1/W3 consumption wiring (2026-08-15 code-ready, DEFAULT OFF; flip after 8/17
-# sign-off): True -> liquidity filter uses VolumePrediction forward-looking ADV
-# (shares); tickers not covered / service down fall back to the trailing mean
-# below. The 300_000 threshold is untouched (red line). Rollback = set False.
-USE_FORECAST_ADV = False
+# E1/W3 consumption wiring — ENABLED 2026-08-15 (user approved; wiring-shadow
+# evidence: flips 7/12,857 = 0.05%, all edge micro-caps, no systematic
+# large-cap exclusion). Liquidity filter uses VolumePrediction forward-looking
+# ADV (shares); tickers not covered / service down fall back to the trailing
+# mean below. The 300_000 threshold is untouched (red line). Rollback = False.
+USE_FORECAST_ADV = True
 
 
 def _vp_forward_adv(tickers):

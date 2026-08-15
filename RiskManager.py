@@ -82,13 +82,14 @@ PRICE_LOOKBACK_CAL_DAYS = 400       # calendar days to fetch (~252 trading days 
 ADV_WINDOW = 20                     # trading days for average daily volume
 ADV_PARTICIPATION = 0.20            # max participation rate (Almgren-Chriss liquidity horizon)
 RISK_FREE_ANNUAL = 0.05             # for Sharpe excess return
-# E1/W4 consumption wiring (2026-08-15 code-ready, DEFAULT OFF; flip after 8/17
-# sign-off): True -> adv() uses VolumePrediction forward-looking ADV (shares;
-# compat layer blends/falls back to trailing internally); any failure degrades
-# loudly to the trailing path below. This flag is the single rollback switch.
+# E1/W4 consumption wiring — ENABLED 2026-08-15 (user approved; wiring-shadow
+# evidence: 11 days, dtl-breach diff 0/0 every day, ratio median 1.15-1.50).
+# adv() uses VolumePrediction forward-looking ADV (shares; compat layer blends /
+# falls back to trailing internally); any failure degrades loudly to the
+# trailing path. This flag is the single rollback switch (set False to revert).
 # ADV_PARTICIPATION and the dtl formula stay untouched (red line, see
 # VolumePrediction/outputs/consumption_wiring_proposal.md W4).
-USE_FORECAST_ADV = False
+USE_FORECAST_ADV = True
 
 # Stress scenarios (beta-implied)
 STRESS_SCENARIOS = [
