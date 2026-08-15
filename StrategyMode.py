@@ -17,7 +17,9 @@ equity 变动 ∧ 市场态确认,避免纯 equity 触发的噪音。
    "无恐慌型"崩盘,而 2020 式瀑布(VIX 攀升&>22)两条款都不满足 ✓)
 - PROFIT_LOCK: 60td 内 equity 距谷 ≥ +30%(equity-only;锁盈是低风险动作)
 - 驻留 ≤40td 强制回 NORMAL;退出后 10td 冷却防振荡;两触发同时满足时
-  取"更近的极值"一侧。
+  draw 优先(深水区 ≤-30% 禁止 PROFIT_LOCK——水下"锁盈"是伪命题,那段
+  反弹正是 RH 要吃的;PL 侧与 PL→RH 中断侧在 draw 上互斥 → 无振荡,
+  2026-08-15 修,此前"取更近极值"在深崩反弹段会选错侧并与中断分支互踢)。
 
 PIT 纪律: 一切历史读取严格 < signal_date(与 DailySignal circuit-breaker 同款)。
 状态持久化: trading_signals/strategy_mode_state.json(原子写);测试用
@@ -136,6 +138,17 @@ def detect(strategy: str, signal_date: str,
     # 对侧中断(2026-08-01 历史回放校准): 6/12 锁盈后 7 月崩 -42%,若锁死在
     # PROFIT_LOCK 到期,反弹期还挂着"更难进场"的 overlay = 反效果。对侧条件
     # 满足时直接切换(带各自的市场确认),同侧重入才受冷却约束。
+    #
+    # 深水区禁止 PROFIT_LOCK(2026-08-15 修): 峰谷 -53% 后反弹 +31% 时
+    # draw≤-30% 与 rally≥+30% 同时成立,原实现会让 RH/PL 在重叠带内逐日互相
+    # 中断(RH day0 → 次日 rally 条款切 PL → 再次日 draw 条款切回 RH …)。
+    # 根因: "锁盈"在距峰 30% 以下的水下是伪命题——那段 rally 正是 RH 要吃的
+    # 崩后反弹(Daniel&Moskowitz),不是需要保护的新增盈利。故 RH→PL 中断加
+    # draw > DRAW_TRIG 门(NORMAL 分支的 PL 候选同门,见下)。由此 PL 侧要求
+    # draw > -30% 而 PL→RH 侧要求 draw ≤ -30%,两条件在同一标量上互斥 →
+    # 相邻两次翻转之间 draw 必须真实穿越触发线(=新信息),振荡结构上不可能。
+    # 反弹若收复到距峰 30% 以内且 rally 仍 ≥ +30%,RH→PL 单次干净切换
+    # ("抢反弹得手 → 锁住",设计本意保留)。
     cur_mode = st.get("mode", "NORMAL")
     if cur_mode in ("REBOUND_HUNT", "PROFIT_LOCK"):
         days_in = int(np.busday_count(st["entered"], sd))
@@ -143,7 +156,8 @@ def detect(strategy: str, signal_date: str,
         if cur_mode == "PROFIT_LOCK" and draw <= DRAW_TRIG and vix_ok:
             opposite = ("REBOUND_HUNT",
                         f"PL中断: eq {draw:+.1%} off peak, VIX {vix_now:.1f} ok")
-        elif cur_mode == "REBOUND_HUNT" and rally >= RALLY_TRIG:
+        elif (cur_mode == "REBOUND_HUNT" and rally >= RALLY_TRIG
+                and draw > DRAW_TRIG):
             opposite = ("PROFIT_LOCK", f"RH中断: eq {rally:+.1%} off trough")
         if opposite:
             new_mode, detail = opposite
@@ -171,11 +185,13 @@ def detect(strategy: str, signal_date: str,
         return {"mode": "NORMAL", "entered": None, "days_in": 0,
                 "trigger_detail": f"cooldown until {cd}", "state": st_all}
 
-    # ── 触发判定(双满足取更近极值一侧) ──
+    # ── 触发判定(draw 优先;PL 同样受深水门约束,见上方中断注释) ──
+    # 2026-08-15 前此处双满足"取更近极值一侧": 深崩后反弹段(谷更近)会选 PL,
+    # 在水下 38% 挂"更难进场"叠加,与 RH 的崩后反弹本意相反,且与中断分支形成
+    # 振荡对。改为 draw 优先: 深水必 RH(带 VIX 确认);rally 只在 draw 收复到
+    # 触发线以内时才有资格谈锁盈——与中断分支同一不变量。
     cand = None
-    if draw <= DRAW_TRIG and rally >= RALLY_TRIG:
-        cand = "REBOUND_HUNT" if i_peak > i_trough else "PROFIT_LOCK"
-    elif draw <= DRAW_TRIG:
+    if draw <= DRAW_TRIG:
         cand = "REBOUND_HUNT"
     elif rally >= RALLY_TRIG:
         cand = "PROFIT_LOCK"
