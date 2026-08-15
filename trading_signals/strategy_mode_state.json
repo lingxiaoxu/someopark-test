@@ -3,8 +3,8 @@
   "mode": "NORMAL"
  },
  "mtfs": {
-  "mode": "PROFIT_LOCK",
-  "entered": "2026-08-13",
-  "trigger_detail": "RH中断: eq +33.8% off trough"
+  "mode": "REBOUND_HUNT",
+  "entered": "2026-08-14",
+  "trigger_detail": "PL中断: eq -38.1% off peak, VIX 14.7 ok"
  }
 }

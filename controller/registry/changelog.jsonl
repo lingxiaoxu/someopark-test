@@ -252,3 +252,15 @@
 {"ts": "2026-08-14T15:08:29+00:00", "event": "register_node", "spid": "SPPRZBRSNVA", "kind": "pair", "key": "mrpt|L:US4781601046|S:US7170811035", "display": "JNJ/PFE"}
 {"ts": "2026-08-14T15:08:29+00:00", "event": "register_node", "spid": "SPPRMR47BHP", "kind": "pair", "key": "mtfs|L:US24703L2025|S:US2435371073", "display": "DELL/DECK"}
 {"ts": "2026-08-14T15:08:29+00:00", "event": "register_node", "spid": "SPPRAFH2CA0", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US7445731067", "display": "VLO/PEG"}
+{"ts": "2026-08-15T13:26:15+00:00", "event": "register_node", "spid": "SPPR5GA214X", "kind": "pair", "key": "mrpt|L:US4165151048|S:USG0450A1054", "display": "ACGL/HIG"}
+{"ts": "2026-08-15T13:26:46+00:00", "event": "register_node", "spid": "SPPR5GA214X", "kind": "pair", "key": "mrpt|L:US4165151048|S:USG0450A1054", "display": "ACGL/HIG"}
+{"ts": "2026-08-15T13:27:01+00:00", "event": "register_node", "spid": "SPPR5GA214X", "kind": "pair", "key": "mrpt|L:US4165151048|S:USG0450A1054", "display": "ACGL/HIG"}
+{"ts": "2026-08-15T13:27:01+00:00", "event": "register_node", "spid": "SPPRA6740TX", "kind": "pair", "key": "mtfs|L:US0079031078|S:US7445731067", "display": "AMD/PEG"}
+{"ts": "2026-08-15T13:27:01+00:00", "event": "register_node", "spid": "SPPR5Z03HXZ", "kind": "pair", "key": "mtfs|L:US6974351057|S:US65473P1057", "display": "PANW/NI"}
+{"ts": "2026-08-15T13:27:01+00:00", "event": "register_node", "spid": "SPPRSX94LNL", "kind": "pair", "key": "mtfs|L:US42824C1099|S:USG667211043", "display": "HPE/NCLH"}
+{"ts": "2026-08-15T13:27:01+00:00", "event": "register_node", "spid": "SPPRLGA5A6Y", "kind": "pair", "key": "mtfs|L:US1598641074|S:US8725401090", "display": "CRL/TJX"}
+{"ts": "2026-08-15T13:27:27+00:00", "event": "register_node", "spid": "SPPR5GA214X", "kind": "pair", "key": "mrpt|L:US4165151048|S:USG0450A1054", "display": "ACGL/HIG"}
+{"ts": "2026-08-15T13:27:27+00:00", "event": "register_node", "spid": "SPPRA6740TX", "kind": "pair", "key": "mtfs|L:US0079031078|S:US7445731067", "display": "AMD/PEG"}
+{"ts": "2026-08-15T13:27:27+00:00", "event": "register_node", "spid": "SPPR5Z03HXZ", "kind": "pair", "key": "mtfs|L:US6974351057|S:US65473P1057", "display": "PANW/NI"}
+{"ts": "2026-08-15T13:27:27+00:00", "event": "register_node", "spid": "SPPRSX94LNL", "kind": "pair", "key": "mtfs|L:US42824C1099|S:USG667211043", "display": "HPE/NCLH"}
+{"ts": "2026-08-15T13:27:27+00:00", "event": "register_node", "spid": "SPPRLGA5A6Y", "kind": "pair", "key": "mtfs|L:US1598641074|S:US8725401090", "display": "CRL/TJX"}

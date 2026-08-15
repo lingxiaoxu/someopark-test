@@ -180,3 +180,7 @@
 2026-08-13T23:01:16Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
 2026-08-14T13:04:23Z [CA][mrpt] status=NO-POSITIONS | no open pairs
 2026-08-14T13:04:23Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=8 applicable-splits=none pending=none applied=0
+2026-08-14T21:48:34Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=6 applicable-splits=none pending=none applied=0
+2026-08-14T23:01:18Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-08-15T13:23:37Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-08-15T13:23:37Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=9 applicable-splits=none pending=none applied=0

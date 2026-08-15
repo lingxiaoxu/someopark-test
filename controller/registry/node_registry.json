@@ -12,6 +12,36 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR5GA214X": {
+  "aliases": [
+   "ACGL/HIG"
+  ],
+  "attrs": {
+   "strategy": "mrpt"
+  },
+  "canonical_key": "mrpt|L:US4165151048|S:USG0450A1054",
+  "display_name": "ACGL/HIG",
+  "first_seen": "2026-08-15T13:27:27+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR5Z03HXZ": {
+  "aliases": [
+   "PANW/NI"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US6974351057|S:US65473P1057",
+  "display_name": "PANW/NI",
+  "first_seen": "2026-08-15T13:27:27+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPR6LFROR3": {
   "aliases": [
    "CRL/MLM"
@@ -22,6 +52,21 @@
   "canonical_key": "mtfs|L:US1598641074|S:US5732841060",
   "display_name": "CRL/MLM",
   "first_seen": "2026-08-12T06:53:16+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRA6740TX": {
+  "aliases": [
+   "AMD/PEG"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US0079031078|S:US7445731067",
+  "display_name": "AMD/PEG",
+  "first_seen": "2026-08-15T13:27:27+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -72,6 +117,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRLGA5A6Y": {
+  "aliases": [
+   "CRL/TJX"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US1598641074|S:US8725401090",
+  "display_name": "CRL/TJX",
+  "first_seen": "2026-08-15T13:27:27+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRMR47BHP": {
   "aliases": [
    "DELL/DECK"
@@ -82,6 +142,21 @@
   "canonical_key": "mtfs|L:US24703L2025|S:US2435371073",
   "display_name": "DELL/DECK",
   "first_seen": "2026-08-14T15:08:29+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRSX94LNL": {
+  "aliases": [
+   "HPE/NCLH"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US42824C1099|S:USG667211043",
+  "display_name": "HPE/NCLH",
+  "first_seen": "2026-08-15T13:27:27+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,

@@ -10,74 +10,64 @@
   "full_period_calmar": 0.4586,
   "top_candidates": [
     {
+      "name": "skip_heavy",
+      "version": "v1",
+      "composite": 0.7382,
+      "mcps_score": 2.2452
+    },
+    {
+      "name": "value_proxy",
+      "version": "v1",
+      "composite": 0.6737,
+      "mcps_score": 2.2452
+    },
+    {
+      "name": "equal_weight_optimizer",
+      "version": "v1",
+      "composite": 0.5709,
+      "mcps_score": 2.4142
+    },
+    {
+      "name": "stagflation",
+      "version": "v1",
+      "composite": 0.4881,
+      "mcps_score": 2.2666
+    },
+    {
+      "name": "early_recovery",
+      "version": "v1",
+      "composite": 0.3854,
+      "mcps_score": 2.3339
+    },
+    {
+      "name": "broad_6_softmax",
+      "version": "v1",
+      "composite": 0.1695,
+      "mcps_score": 1.9932
+    },
+    {
+      "name": "dovish_macro",
+      "version": "v1",
+      "composite": -0.0517,
+      "mcps_score": 2.1202
+    },
+    {
+      "name": "tech_bull_2023",
+      "version": "v1",
+      "composite": -0.155,
+      "mcps_score": 2.0896
+    },
+    {
       "name": "low_turnover",
       "version": "v1",
-      "mcps_score": 1.7746,
-      "full_period_sharpe": 0.8369,
-      "recent_sharpe_12m": 1.9823
+      "composite": -0.787,
+      "mcps_score": 1.7266
     },
     {
-      "name": "patient_dd",
+      "name": "momentum_biased_regime",
       "version": "v1",
-      "mcps_score": 1.6657,
-      "full_period_sharpe": 0.7989,
-      "recent_sharpe_12m": 1.3614
-    },
-    {
-      "name": "gmv_lw",
-      "version": "v1",
-      "mcps_score": 1.6467,
-      "full_period_sharpe": 0.7139,
-      "recent_sharpe_12m": 1.4828
-    },
-    {
-      "name": "default",
-      "version": "v1",
-      "mcps_score": 1.6247,
-      "full_period_sharpe": 0.8188,
-      "recent_sharpe_12m": 1.3844
-    },
-    {
-      "name": "inv_vol_lw",
-      "version": "v1",
-      "mcps_score": 1.6247,
-      "full_period_sharpe": 0.8188,
-      "recent_sharpe_12m": 1.3844
-    },
-    {
-      "name": "standard_4",
-      "version": "v1",
-      "mcps_score": 1.6247,
-      "full_period_sharpe": 0.8188,
-      "recent_sharpe_12m": 1.3844
-    },
-    {
-      "name": "standard_regime",
-      "version": "v1",
-      "mcps_score": 1.6247,
-      "full_period_sharpe": 0.8188,
-      "recent_sharpe_12m": 1.3844
-    },
-    {
-      "name": "standard_vol_target",
-      "version": "v1",
-      "mcps_score": 1.6247,
-      "full_period_sharpe": 0.8188,
-      "recent_sharpe_12m": 1.3844
-    },
-    {
-      "name": "standard_beta",
-      "version": "v1",
-      "mcps_score": 1.6247,
-      "full_period_sharpe": 0.8188,
-      "recent_sharpe_12m": 1.3844
-    },
-    {
-      "name": "standard_dd",
-      "version": "v1",
-      "mcps_score": 1.6247,
-      "full_period_sharpe": 0.8188,
-      "recent_sharpe_12m": 1.3844
+      "composite": -1.0323,
+      "mcps_score": 2.0136
     }
   ],
   "n_candidates": 37,
@@ -89,8 +79,16 @@
   "macro_data_days": 2038,
   "switch_history": [],
   "health": {
-    "days_since_switch": 0,
-    "current_rank": 1,
-    "anomaly_detected": false
+    "days_since_switch": 1,
+    "current_rank": 9,
+    "anomaly_detected": false,
+    "_consecutive_best_days": 1,
+    "_prev_best_param": "skip_heavy"
+  },
+  "mcps_score": 1.7266,
+  "composite_score": -0.787,
+  "version_selector": {
+    "recommended": "v1",
+    "v1_confidence": 0.775
   }
 }

@@ -1,0 +1,396 @@
+{
+ "mrpt": {
+  "as_of": "2026-08-14",
+  "balance_sheet": {
+   "cash": 1043388.11,
+   "net_securities": -2436.42,
+   "nav": 1040951.69,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -1160.59,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -1073.76,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -3116.97,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 32686.05,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1042112.28,
+    "net_income": -1160.59,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1040951.69,
+    "return_pct": -0.1114,
+    "max_drawdown_pct": -0.11
+   },
+   "1W": {
+    "beginning_nav": 1042025.45,
+    "net_income": -1073.76,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1040951.69,
+    "return_pct": -0.103,
+    "max_drawdown_pct": -0.11
+   },
+   "1M": {
+    "beginning_nav": 1044068.66,
+    "net_income": -3116.97,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1040951.69,
+    "return_pct": -0.2985,
+    "max_drawdown_pct": -1.44
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 32686.05,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1040951.69,
+    "return_pct": 3.2418,
+    "max_drawdown_pct": -3.21
+   }
+  },
+  "positions": {
+   "ACGL": {
+    "shares": -1518,
+    "avg_cost": 98.71,
+    "entry_date": "2026-08-14"
+   },
+   "HIG": {
+    "shares": 1068,
+    "avg_cost": 138.02,
+    "entry_date": "2026-08-14"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 41416.17,
+   "cumulative_dividends": -464.48,
+   "cumulative_fees": 0.0,
+   "unrealized": 0.0,
+   "total": 40951.69
+  },
+  "activity_today": {
+   "n_trades": 4,
+   "realized_today": -1160.59,
+   "trades": [
+    {
+     "date": "2026-08-14",
+     "ticker": "JNJ",
+     "side": "SELL",
+     "shares": 711,
+     "price": 260.35,
+     "avg_cost_at_trade": 262.08,
+     "realized_pnl": -1230.03,
+     "gross": 185108.85,
+     "dedup_key": "2026-08-14-JNJ-SELL-JNJ/PFE|s1",
+     "lot": "JNJ/PFE|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 262.08,
+     "lot_realized": -1230.03,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "PFE",
+     "side": "BUY",
+     "shares": 6944,
+     "price": 26.79,
+     "avg_cost_at_trade": 26.8,
+     "realized_pnl": 69.44,
+     "gross": -186029.76,
+     "dedup_key": "2026-08-14-PFE-BUY-JNJ/PFE|s2",
+     "lot": "JNJ/PFE|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 26.8,
+     "lot_realized": 69.44,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "ACGL",
+     "side": "SELL",
+     "shares": 1518,
+     "price": 98.71,
+     "gross": 149841.78,
+     "dedup_key": "2026-08-14-ACGL-SELL-ACGL/HIG|s1",
+     "lot": "ACGL/HIG|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "HIG",
+     "side": "BUY",
+     "shares": 1068,
+     "price": 138.02,
+     "gross": -147405.36,
+     "dedup_key": "2026-08-14-HIG-BUY-ACGL/HIG|s2",
+     "lot": "ACGL/HIG|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    }
+   ]
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-08-14",
+  "balance_sheet": {
+   "cash": 333434.02,
+   "net_securities": 612208.02,
+   "nav": 945642.04,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -4013.03,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": 84066.26,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -82504.7,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": -55363.87,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 949655.07,
+    "net_income": -4013.03,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 945642.04,
+    "return_pct": -0.4226,
+    "max_drawdown_pct": -0.42
+   },
+   "1W": {
+    "beginning_nav": 861575.78,
+    "net_income": 84066.26,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 945642.04,
+    "return_pct": 9.7573,
+    "max_drawdown_pct": -0.57
+   },
+   "1M": {
+    "beginning_nav": 1028146.74,
+    "net_income": -82504.7,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 945642.04,
+    "return_pct": -8.0246,
+    "max_drawdown_pct": -17.89
+   },
+   "ITD": {
+    "beginning_nav": 1001005.91,
+    "net_income": -55363.87,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 945642.04,
+    "return_pct": -5.5308,
+    "max_drawdown_pct": -26.85
+   }
+  },
+  "positions": {
+   "MLM": {
+    "shares": -105,
+    "avg_cost": 553.37,
+    "entry_date": "2026-07-31"
+   },
+   "PANW": {
+    "shares": 853,
+    "avg_cost": 377.833552,
+    "entry_date": "2026-08-05"
+   },
+   "NTAP": {
+    "shares": 625,
+    "avg_cost": 186.6,
+    "entry_date": "2026-08-05"
+   },
+   "TXT": {
+    "shares": -660,
+    "avg_cost": 88.46,
+    "entry_date": "2026-08-05"
+   },
+   "CRL": {
+    "shares": 969,
+    "avg_cost": 271.113117,
+    "entry_date": "2026-08-05"
+   },
+   "DECK": {
+    "shares": -1284,
+    "avg_cost": 94.932897,
+    "entry_date": "2026-08-07"
+   },
+   "DELL": {
+    "shares": 147,
+    "avg_cost": 494.51,
+    "entry_date": "2026-08-13"
+   },
+   "VLO": {
+    "shares": 220,
+    "avg_cost": 342.92,
+    "entry_date": "2026-08-13"
+   },
+   "PEG": {
+    "shares": -2362,
+    "avg_cost": 75.996969,
+    "entry_date": "2026-08-13"
+   },
+   "AMD": {
+    "shares": 425,
+    "avg_cost": 514.39,
+    "entry_date": "2026-08-14"
+   },
+   "NI": {
+    "shares": -2433,
+    "avg_cost": 42.5,
+    "entry_date": "2026-08-14"
+   },
+   "HPE": {
+    "shares": 3726,
+    "avg_cost": 58.71,
+    "entry_date": "2026-08-14"
+   },
+   "NCLH": {
+    "shares": -5754,
+    "avg_cost": 19.01,
+    "entry_date": "2026-08-14"
+   },
+   "TJX": {
+    "shares": -479,
+    "avg_cost": 152.11,
+    "entry_date": "2026-08-14"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": -74377.52,
+   "cumulative_dividends": -8591.11,
+   "cumulative_fees": 0.0,
+   "unrealized": 28610.67,
+   "total": -54357.96
+  },
+  "activity_today": {
+   "n_trades": 8,
+   "realized_today": 0,
+   "trades": [
+    {
+     "date": "2026-08-14",
+     "ticker": "AMD",
+     "side": "BUY",
+     "shares": 425,
+     "price": 514.39,
+     "gross": -218615.75,
+     "dedup_key": "2026-08-14-AMD-BUY-AMD/PEG|s1",
+     "lot": "AMD/PEG|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "PEG",
+     "side": "SELL",
+     "shares": 1438,
+     "price": 76.04,
+     "gross": 109345.52,
+     "dedup_key": "2026-08-14-PEG-SELL-AMD/PEG|s2",
+     "lot": "AMD/PEG|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "PANW",
+     "side": "BUY",
+     "shares": 584,
+     "price": 384.27,
+     "gross": -224413.68,
+     "dedup_key": "2026-08-14-PANW-BUY-PANW/NI|s1",
+     "lot": "PANW/NI|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "NI",
+     "side": "SELL",
+     "shares": 2433,
+     "price": 42.5,
+     "gross": 103402.5,
+     "dedup_key": "2026-08-14-NI-SELL-PANW/NI|s2",
+     "lot": "PANW/NI|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "HPE",
+     "side": "BUY",
+     "shares": 3726,
+     "price": 58.71,
+     "gross": -218753.46,
+     "dedup_key": "2026-08-14-HPE-BUY-HPE/NCLH|s1",
+     "lot": "HPE/NCLH|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "NCLH",
+     "side": "SELL",
+     "shares": 5754,
+     "price": 19.01,
+     "gross": 109383.54,
+     "dedup_key": "2026-08-14-NCLH-SELL-HPE/NCLH|s2",
+     "lot": "HPE/NCLH|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "CRL",
+     "side": "BUY",
+     "shares": 521,
+     "price": 280.05,
+     "gross": -145906.05,
+     "dedup_key": "2026-08-14-CRL-BUY-CRL/TJX|s1",
+     "lot": "CRL/TJX|s1",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    },
+    {
+     "date": "2026-08-14",
+     "ticker": "TJX",
+     "side": "SELL",
+     "shares": 479,
+     "price": 152.11,
+     "gross": 72860.69,
+     "dedup_key": "2026-08-14-TJX-SELL-CRL/TJX|s2",
+     "lot": "CRL/TJX|s2",
+     "lot_action": "OPEN",
+     "price_basis": "open_price"
+    }
+   ]
+  }
+ }
+}
