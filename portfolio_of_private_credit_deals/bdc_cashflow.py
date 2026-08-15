@@ -92,11 +92,17 @@ def build_loan_spec(row, as_of: str) -> LoanSpec:
     pik = _f(row.get("pik_rate"))
     all_in = _all_in_rate(row)
     cash_rate = max(0.0, all_in - pik)        # engine pays cash coupon; PIK compounds separately
+    # generate_loan_schedule builds `term_months + 1` periods AT the given frequency
+    # (legacy callers pass freq='M', so the name matched the count). We pay quarterly
+    # ('QE'), so the count must be QUARTERS — passing raw months stretched a 59-month
+    # loan into 59 quarters (≈15y), inflating life-of-loan interest ~3x (found in the
+    # 2026-08-15 line-audit). Floor of 2 keeps the 6-month _term_months floor intact.
+    term_qtrs = max(2, int(round(_term_months(as_of, row.get("maturity")) / 3)))
     return LoanSpec(
         principal=abs(principal) or 1.0,
         annual_interest_rate=cash_rate,
         origination_date=str(as_of),
-        term_months=_term_months(as_of, row.get("maturity")),
+        term_months=term_qtrs,                # = payment-period count under 'QE'
         payment_frequency="QE",
         amortization_style="annuity",
         pik_rate=pik,
@@ -185,7 +191,10 @@ def bdc_loan_cashflow(row, as_of: str, fwd_curve=None) -> tuple[pd.DataFrame, di
         "pik_interest_total": float(sched["PIKInterest"].sum()),
         "oid_total": float(oid),
         "exit_par": par, "exit_mark": par * mark,
-        "term_months": spec.term_months, "non_accrual": non_accrual,
+        # spec.term_months now carries the QUARTER count (see build_loan_spec);
+        # keep reporting true calendar months here
+        "term_months": _term_months(as_of, row.get("maturity")),
+        "non_accrual": non_accrual,
     }
     return sched, metrics
 

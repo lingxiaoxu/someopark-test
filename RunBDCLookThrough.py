@@ -187,6 +187,22 @@ def run(store=BDC_STORE, results_dir=RESULTS_DIR, public_dir=PUBLIC_DATA,
                                              bdc_non_accrual=bdc_na)
     summary, deals = lt["summary"], lt["deals"]
     summary["rates_date"] = rates_date
+
+    # 2b) §7.3 scenario stress matrix — rate ladder ±300bp + three macro scenarios
+    # (mild/severe recession, stagflation) over the SAME enriched book, survival-
+    # weighted expected cashflows. Loud-fail (project convention), never silent.
+    if run_cashflows:
+        import time as _time
+        import bdc_stress
+        try:
+            _st0 = _time.time()
+            summary["stress"] = bdc_stress.run_stress_matrix(deals, as_of)
+            summary["stress"]["runtime_s"] = round(_time.time() - _st0, 1)
+            print(f"[stress] {len(bdc_stress.SCENARIOS)} scenarios in "
+                  f"{summary['stress']['runtime_s']}s — worst {summary['stress']['worst']}")
+        except Exception as e:  # noqa: BLE001
+            _alert(f"stress matrix failed: {e!r}")
+            summary["stress"] = {"error": repr(e)}
     summary["manifest"] = {t: {"adsh": manifest[t]["adsh"], "reportDate": manifest[t]["reportDate"],
                                "gross_net_ratio": manifest[t].get("gross_net_ratio")}
                            for t in manifest}
@@ -235,6 +251,7 @@ def run(store=BDC_STORE, results_dir=RESULTS_DIR, public_dir=PUBLIC_DATA,
         "diff_summary": diff["counts"],
         "early_warning": summary["early_warning"],
         "bdc_non_accrual": summary.get("bdc_non_accrual"),
+        "stress": summary.get("stress"),                  # §7.3: same-level scenario block
         "freshness": {t: manifest[t]["reportDate"] for t in manifest},
     }
 
@@ -246,10 +263,12 @@ def run(store=BDC_STORE, results_dir=RESULTS_DIR, public_dir=PUBLIC_DATA,
         _jdump({"mhash": mhash, "rates_date": rates_date, "as_of": as_of,
                 "ran_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}, guard_path)
         hb = os.path.join(store, "lookthrough_heartbeat.log")
+        _stw = (summary.get("stress") or {}).get("worst") or {}
         with open(hb, "a") as fh:
             fh.write(f"{datetime.now(timezone.utc).isoformat(timespec='seconds')} "
                      f"asof={as_of} rates={rates_date} deals={summary['deal_count']} "
-                     f"diff={diff['counts']}\n")
+                     f"diff={diff['counts']} "
+                     f"stress_worst={_stw.get('name')}:{_stw.get('delta_ev_pct')}\n")
     return {"summary": summary, "daily": daily, "diff": diff}
 
 
