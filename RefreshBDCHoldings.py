@@ -461,7 +461,18 @@ def extract_html_row_attrs(root, report_date: str) -> dict:
         tm = c.find(f".//{XBRLDI}typedMember")
         if tm is not None and "InvestmentIdentifierAxis" in (tm.get("dimension") or ""):
             inv_ctx[c.get("id")] = "".join(tm.itertext()).strip()
-    na_fn = _non_accrual_footnote_num(re.sub(r"\s+", " ", " ".join(root.itertext())))
+    full_text = re.sub(r"\s+", " ", " ".join(root.itertext()))
+    na_fn = _non_accrual_footnote_num(full_text)
+    # per-loan rate floors via footnote definitions (BXSL style): the SOI footnotes
+    # define "(N) The interest rate floor on these investments as of ... was X %"
+    # for N∈{9..14,20} (0.50%..3.00%); each row's footnote markers then identify its
+    # floor. GBDC/OBDC/ARCC/TSLX only disclose portfolio-level floor aggregates in
+    # prose — those are applied as a labelled overlay in bdc_stress, not fabricated
+    # here. A row citing several floor footnotes keeps the highest (conservative
+    # for income-floor purposes it is the binding one).
+    floor_fn = {m.group(1): float(m.group(2)) / 100.0
+                for m in re.finditer(r"\((\d{1,2})\)\s*The interest rate floor on these "
+                                     r"investments[^.]*?was\s+([0-9.]+)\s*%", full_text)}
 
     out = {}
     _date = re.compile(r"\b(\d{1,2})/(\d{1,2})/(20\d{2})\b")
@@ -496,6 +507,13 @@ def extract_html_row_attrs(root, report_date: str) -> dict:
         if na_fn:
             foot = set(re.findall(r"\((\d{1,2})\)", txt.split("%")[0]))  # markers before the numbers
             rec["non_accrual"] = na_fn in foot
+        if floor_fn:
+            # floor markers sit next to the rate, i.e. often AFTER the first '%', so
+            # scan the whole row here (unlike the deliberately-narrow non-accrual window)
+            marks = set(re.findall(r"\((\d{1,2})\)", txt))
+            hit = [floor_fn[n] for n in marks if n in floor_fn]
+            if hit:
+                rec["rate_floor"] = max(hit)
         if rec:
             out[ident] = rec
     return out
@@ -863,6 +881,21 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
             _alert(f"{ticker}: {_rc} percent-point units on {int(_m.sum())} row(s) "
                    f"(max {_v[_m].max():.2f}) — normalized /100 to decimals")
 
+    # principal unit guard (sibling of the rate-unit guard above): filers whose SOI
+    # table is captioned "$ in thousands" (TSLX) yield identifier-derived principal
+    # 1000× smaller than the XBRL-dollar fair value — 2026-08-15 audit: TSLX median
+    # fv/principal = 980 (真实 mark ≈0.98). Un-fixed it starves EAD/EL 1000× and
+    # breaks the stress engine's mark calibration. A genuine mark lives in ~[0.2, 1.3],
+    # a thousands-scale error in [200, 5000] — no overlap, per-row test is safe.
+    _pr = pd.to_numeric(df["principal"], errors="coerce")
+    _fvv = pd.to_numeric(df["fair_value"], errors="coerce")
+    _ratio = _fvv / _pr.replace(0, np.nan)
+    _kfix = _ratio.between(200, 5000)
+    if _kfix.any():
+        df.loc[_kfix, "principal"] = _pr[_kfix] * 1000.0
+        _alert(f"{ticker}: principal in $thousands on {int(_kfix.sum())} row(s) "
+               f"(median fv/prin {float(_ratio[_kfix].median()):.0f}) — normalized ×1000")
+
     # drop disclosure/summary rows that carry an InvestmentIdentifierAxis but are NOT
     # holdings (e.g. ARCC's "Largest Portfolio Company Investment" metric) — a real
     # tranche always has a fair value; these have none and cannot be weighted/modelled.
@@ -874,6 +907,10 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
     # where the filer tabulates dates in <tr> rows, e.g. TSLX/GBDC) overrides the
     # identifier regex; per-loan non-accrual from the row footnote markers.
     df["non_accrual"] = [(html_attrs.get(i, {}) or {}).get("non_accrual") for i in df["identifier"]]
+    # per-loan floors from SOI footnote definitions (BXSL); XBRL-fact floors (none
+    # tagged by our filers today) keep precedence if they ever appear
+    df["rate_floor"] = [f if pd.notna(f) else (html_attrs.get(i, {}) or {}).get("rate_floor")
+                        for i, f in zip(df["identifier"], df["rate_floor"])]
     html_mat = [(html_attrs.get(i, {}) or {}).get("maturity") for i in df["identifier"]]
     df["maturity"] = [hm if hm else m for hm, m in zip(html_mat, df["maturity"])]
     df["maturity_source"] = ["primary_html" if hm else s
