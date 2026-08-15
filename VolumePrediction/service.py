@@ -925,10 +925,12 @@ class _Ops:
                     if _c in _rn.columns:
                         out.loc[_m2, _c] = out.loc[_m2, "ticker"].map(_rn[_c])
                 _n_rnn = int(_m2.sum())
+                _n_lgbm_left = int((out["model_version"]
+                                    .astype(str) == str(_prod_ver)).sum())
                 log.info(f"refresh: blend3 RNN 层 {_n_rnn}/{len(out)} 票 "
                          f"(gate={_diag['gate_source']}, thr={_diag['thr']:,.0f},"
                          f" 实测抬升 {_diag['n_measured_lifted']}),"
-                         f"lgbm 守 {_n_lgbm - _n_rnn} 票,其余 ma5")
+                         f"lgbm 守 {_n_lgbm_left} 票,其余 ma5")
                 for p in (self.s.art / _LATEST,
                           self.s.art / "history"
                           / f"volume_forecast_{asof}.parquet"):

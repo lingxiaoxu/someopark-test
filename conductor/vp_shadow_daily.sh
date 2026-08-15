@@ -56,6 +56,11 @@ fi
 if grep -q "学习模型服务失败" "$LOG"; then
     log "!!! 警告: 学习模型服务失败并回退全 ma5 — 检查 registry/工件"
 fi
+# blend3 分层失败同款(2026-08-15 上线): 工件保留 lgbm+ma5 两层继续服务,
+# 但 RNN 层缺失=精度回退,必须当天看见
+if grep -q "blend3 分层失败" "$LOG"; then
+    log "!!! 警告: blend3 分层失败已回退两层(lgbm+ma5) — 检查 seq_tail/RNN 工件"
+fi
 log "--- STEP 1 OK ---"
 
 # ── 2) RNN 候选影子 AB(非致命: 失败只影响候选评估) ──────────────────────
