@@ -27,8 +27,11 @@ Parsing judgment calls, stated plainly:
     13:00 ET is conservative in the safe direction (we admit knowing it later
     than the world did). If the exact schedule ever surfaces, tighten it here.
 
-§7-bis: this table is SHADOW — nothing in the model layer reads it until a
-preregistered forward criterion clears (docs/PREREGISTER.md).
+Consumption status (2026-08-15): `model/cpi.py` 0.3.0 anchors HEADLINE YoY mu on
+`latest()` — adopted on the user-ordered leak-free historical replay (45 settled
+KXCPIYOY events, per-leg Brier −33%, every year slice 2023-2026 improves), which
+superseded PR-8's forward count; PR-8's forward tally continues as confirmation.
+Core YoY was a wash in the same replay and is NOT anchored (PREREGISTER.md PR-8).
 """
 from __future__ import annotations
 

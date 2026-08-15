@@ -23,10 +23,12 @@ Mechanics:
 """
 from __future__ import annotations
 
+import importlib
 import itertools
 import json
 from datetime import datetime, timedelta, timezone
 
+from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
 from prediction_market_macro.research import pnl_score as _ps
 from prediction_market_macro.research.param_select import (manual_params, set_manual)
 from prediction_market_macro.research.param_space import live_keys, settled_events
@@ -130,7 +132,12 @@ def _fingerprint(conn, series: str, now: datetime) -> str:
     lo = now - timedelta(days=WINDOW_DAYS)
     evs = [e for e in _ps.quotable_events(conn, series, before=now)
            if e["close_ts"] >= lo]
-    return f"{len(evs)}:{max((e['close_ts'].isoformat() for e in evs), default='-')}"
+    # model version is part of the key: a model bump (e.g. cpi/0.2.0 -> 0.3.0 nowcast
+    # anchor) changes every replayed score, and an events-only fingerprint would keep
+    # serving the OLD model's argmin until the next settle happened to land.
+    ver = getattr(importlib.import_module(SERIES_DISPATCH[series][0]), "VERSION", "?")
+    return (f"{len(evs)}:{max((e['close_ts'].isoformat() for e in evs), default='-')}"
+            f":{ver}")
 
 
 def _last_log(conn, series: str):

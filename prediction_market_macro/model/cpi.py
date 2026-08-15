@@ -1,4 +1,4 @@
-"""model/cpi.py — CPI MoM/YoY, headline & core (PLAN §7, §19.1). cpi/0.2.0
+"""model/cpi.py — CPI MoM/YoY, headline & core (PLAN §7, §19.1). cpi/0.3.0
 
 Serves KXCPI, KXCPICORE (MoM ladders) and KXCPIYOY, KXCPICOREYOY (YoY ladders).
 
@@ -15,19 +15,33 @@ Mechanics (all inputs via PIT vintage reads):
   * YoY (exact): index recursion I_t = I_{t-1}(1+mom/100); YoY = (I_t/I_{t-12}-1)·100 —
                  the MoM distribution maps DETERMINISTICALLY onto YoY (known base), so the
                  YoY ladder is a change of variables, not a second model.
+  * 0.3.0 — HEADLINE YoY mu is anchored on the Cleveland Fed daily nowcast (PIT
+                 `cleveland_nowcast.latest`), sigma and everything else unchanged.
+                 Evidence (45 settled KXCPIYOY events 2022→2026, leak-free T-26h
+                 replay, adopted params): per-leg Brier 0.0904→0.0610 (−33%), 29/45
+                 events improve, EVERY year slice 2023-2026 improves. Core YoY is
+                 deliberately NOT anchored — the same 44-event replay was a wash
+                 (0.0618→0.0613, 19/44): the internal core model already sits at the
+                 nowcast's accuracy, so the anchor would add a dependency for nothing.
+                 Missing/stale nowcast (>NOWCAST_MAX_AGE_D) falls back to the internal
+                 chain, so the feed dying degrades to 0.2.0 behaviour, never to an error.
 """
 from __future__ import annotations
 
 import math
-from datetime import datetime
+import sqlite3
+from datetime import date, datetime
 
 import numpy as np
 import pandas as pd
 
+from prediction_market_macro.ingest.cleveland_nowcast import latest as _nowcast_latest
 from prediction_market_macro.model.common import GaussianMix, Pred, grid_pmf
 from prediction_market_macro.model.features import FeatureStore
 
-VERSION = "cpi/0.2.0"
+VERSION = "cpi/0.3.0"
+NOWCAST_MAX_AGE_D = 7        # nowcast is business-daily; older than this = feed died,
+                             # fall back to the internal chain rather than anchor stale
 GAS_WEIGHT = 0.031
 FOOD_DRIFT = 0.03            # pp/month, long-run food contribution
 RB_PASSTHROUGH = 0.55
@@ -158,6 +172,21 @@ def predict_mom(conn, asof: datetime, ref_month: str, core: bool,
     return _predict_mom(conn, asof, ref_month, core, params)[0]
 
 
+def _nowcast_yoy(conn, asof: datetime, ref_month: str) -> tuple[str, float] | None:
+    """Cleveland headline-YoY nowcast visible at `asof`, or None when the table is
+    absent (bare test DBs), the target has no row yet, or the feed is stale."""
+    try:
+        got = _nowcast_latest(conn, "cpi", "yoy", ref_month, asof)
+    except sqlite3.OperationalError:
+        return None
+    if got is None:
+        return None
+    nc_day, val = got
+    if (asof.date() - date.fromisoformat(nc_day)).days > NOWCAST_MAX_AGE_D:
+        return None
+    return nc_day, float(val)
+
+
 def predict_yoy(conn, asof: datetime, ref_month: str, core: bool,
                 params: dict | None = None) -> Pred:
     """Exact change of variables: YoY grid pmf from the MoM pmf + the known index base."""
@@ -184,11 +213,17 @@ def predict_yoy(conn, asof: datetime, ref_month: str, core: bool,
     a = i_prev / i_base
     yoy_mu = (a * (1 + mu / 100) - 1) * 100
     yoy_sigma = a * math.hypot(sg, chain_sigma)
+    inputs = {**mom_pred.inputs, "i_prev": round(i_prev, 3), "i_base": round(i_base, 3)}
+    if not core:
+        # 0.3.0 headline anchor (module docstring): nowcast REPLACES mu, sigma stays.
+        anch = _nowcast_yoy(conn, asof, ref_month)
+        if anch is not None:
+            inputs["yoy_mu_model"] = round(yoy_mu, 3)
+            inputs["nowcast_date"], yoy_mu = anch
+    inputs["yoy_mu"] = round(yoy_mu, 3)
     series = "KXCPICOREYOY" if core else "KXCPIYOY"
     return Pred(series=series, period=ref_month, dist=GaussianMix(((1.0, yoy_mu, yoy_sigma),)),
-                asof=asof, model_version=VERSION,
-                inputs={**mom_pred.inputs, "i_prev": round(i_prev, 3),
-                        "i_base": round(i_base, 3), "yoy_mu": round(yoy_mu, 3)},
+                asof=asof, model_version=VERSION, inputs=inputs,
                 data_horizon=mom_pred.data_horizon)
 
 

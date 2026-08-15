@@ -15,6 +15,12 @@ within 7 days of the window start, so the harness truncates their entry window a
 module does not; that difference is by design (an event is scored on its own window here,
 which is what makes selection day-independent) and the boundary set is asserted to be
 exactly those events rather than waved through.
+
+Re-pinned 2026-08-15 for cpi/0.3.0 (the Cleveland nowcast anchor): the stored WF_HASH
+row was regenerated IN PLACE under the new model — same window, same hash, recomputed
+trades (32 edge trades; KXCPIYOY 2026-05 flipped −1.04 → +1.04, which is the anchor
+working, not drift). When a model version bumps, this pin fails until that regen runs;
+that failure is the pin doing its job — regenerate, don't loosen.
 """
 from __future__ import annotations
 

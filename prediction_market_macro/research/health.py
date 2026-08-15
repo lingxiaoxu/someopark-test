@@ -321,7 +321,16 @@ def daily_health(conn, settings) -> str:
                     re_pred = fn(conn, _asof, pr["period"],
                                  series=spec.ticker,
                                  params=(params_asof(conn, spec.ticker, _asof) or None))
-                    if json.dumps(re_pred.dist.to_json()) != pr["dist_json"]:
+                    if re_pred.model_version != pr["model_version"]:
+                        # deploy rollover: the stored pred predates a version bump, so a
+                        # dist diff is EXPECTED, not drift. Note it, stay green — the next
+                        # tick writes a pred at the new version and the canary re-arms.
+                        # (Same incident class as 2026-08-12: a determinism check fed
+                        # mismatched inputs is a false-positive generator.)
+                        s_rep["notes"].append(
+                            f"replay_skip_version:{pr['model_version']}"
+                            f"->{re_pred.model_version}")
+                    elif json.dumps(re_pred.dist.to_json()) != pr["dist_json"]:
                         s_rep["status"] = "red"
                         s_rep["notes"].append("replay_mismatch")
                 except Exception as e:                            # noqa: BLE001
