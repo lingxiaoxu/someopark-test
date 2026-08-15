@@ -845,6 +845,24 @@ def ingest_bdc(ticker: str, cik: int, cache_dir: str) -> dict:
     df["rate_floor"] = [f if pd.notna(f) else (cls.get(i, {}) or {}).get("rate_floor")
                         for i, f in zip(df["identifier"], df["rate_floor"])]
 
+    # rate-unit normalization: the book is decimal (0.0948 = 9.48%) but individual
+    # iXBRL facts occasionally arrive in PERCENT POINTS (2026-06-30 ARCC: 3 tranches,
+    # all_in 9.48/9.91, pik 2.88/1.25 — i.e. 948% if read as decimals). Un-normalized
+    # they explode downstream: PIK compounding at "288%/yr" drove cash_vs_pik to 1e20+
+    # and per-loan MOIC to 1e13. No real loan in this book pays >100%, so >1 ⇒ percent
+    # points ⇒ /100 (loud-labelled, project alert convention). pct_nav excluded — it
+    # genuinely IS a percentage column.
+    for _rc in ("all_in_rate", "spread", "pik_rate", "rate_floor"):
+        # copy(): to_numeric on an already-numeric column returns a VIEW of the df
+        # block — without the copy the df.loc write-through below would mutate _v
+        # and the alert would report the post-normalization max.
+        _v = pd.to_numeric(df[_rc], errors="coerce").copy()
+        _m = _v > 1.0
+        if _m.any():
+            df.loc[_m, _rc] = _v[_m] / 100.0
+            _alert(f"{ticker}: {_rc} percent-point units on {int(_m.sum())} row(s) "
+                   f"(max {_v[_m].max():.2f}) — normalized /100 to decimals")
+
     # drop disclosure/summary rows that carry an InvestmentIdentifierAxis but are NOT
     # holdings (e.g. ARCC's "Largest Portfolio Company Investment" metric) — a real
     # tranche always has a fair value; these have none and cannot be weighted/modelled.

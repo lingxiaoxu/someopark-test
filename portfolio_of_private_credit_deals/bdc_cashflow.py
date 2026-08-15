@@ -150,6 +150,13 @@ def bdc_loan_cashflow(row, as_of: str, fwd_curve=None) -> tuple[pd.DataFrame, di
         cash_int = sched.get("interest_payment", pd.Series(0.0, index=sched.index))
 
     sched["CashInterest"] = 0.0 if non_accrual else cash_int
+    if non_accrual:
+        # IRR must see the same economics CashInterest reports: a non-accrual loan
+        # pays no cash coupon, so strip it from total_cashflow too (principal
+        # amortization + fees remain). Before 2026-08-15 only the reporting column
+        # was zeroed and cf_irr still priced full coupons on non-accrual loans
+        # (84 loans, median cf_irr 10.4% — HIGHER than the accruing book's 9.4%).
+        sched["total_cashflow"] = sched["total_cashflow"] - cash_int
     sched["PIKInterest"] = out0 * pik * yf
     sched["FloorApplied"] = floor_applied
     sched["NonAccrual"] = non_accrual
@@ -165,6 +172,13 @@ def bdc_loan_cashflow(row, as_of: str, fwd_curve=None) -> tuple[pd.DataFrame, di
     fv = pd.to_numeric(row.get("fair_value"), errors="coerce")
     mark = (float(fv) / float(cost)) if (pd.notna(fv) and pd.notna(cost) and cost) else 1.0
     irr, moic = calculate_loan_irr_and_moic(sched)
+    # MOIC = Σinflow/|Σoutflow|; rows whose initial draw is absent/vestigial (unfunded
+    # commitments, principal fallback) leave a ~0 denominator → 1e13-scale artifacts
+    # (observed max 4.7e13 on the real book). NaN them instead of publishing garbage;
+    # IRR is unaffected (xirr works off dated flows, not the ratio).
+    neg = float(pd.to_numeric(sched["total_cashflow"], errors="coerce").clip(upper=0).sum())
+    if abs(neg) < 0.01 * float(spec.principal):
+        moic = float("nan")
     metrics = {
         "irr": irr, "moic": moic,
         "cash_interest_total": float(sched["CashInterest"].sum()),
