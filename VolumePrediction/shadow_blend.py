@@ -66,9 +66,11 @@ def build_blend(pred_date: str) -> dict | None:
     blend2 = _splice(prod, rnn, covered)
 
     held = _held_tickers(pred_date)
-    liq = prod.loc[covered, "pred_V"]
-    thr = float(liq.median())
-    layer3 = set(liq[liq >= thr].index) | (held & set(covered))
+    # 路由门 = 单一事实源 blend_routing(③② 修复: max(ADV̂, 近5日实测中位),
+    # 正式 serve 路径共用同一函数 —— 影子与正式的层归属绝不允许分叉)
+    from VolumePrediction.blend_routing import recent_measured_adv, rnn_layer
+    layer3, diag = rnn_layer(covered, prod.loc[covered, "pred_V"], held,
+                             recent_measured_adv(pred_date))
     blend3 = _splice(prod, rnn, list(layer3))
 
     BLEND_DIR.mkdir(parents=True, exist_ok=True)
@@ -81,7 +83,9 @@ def build_blend(pred_date: str) -> dict | None:
         out[name] = df
     m3 = blend3["model_version"].value_counts().to_dict()
     log.info(f"[BLEND] {pred_date}: blend2 rnn层={len(covered)};"
-             f" blend3 rnn层={len(layer3)} (liq_thr={thr:,.0f}) mix3={m3}")
+             f" blend3 rnn层={diag['n_layer']} (liq_thr={diag['thr']:,.0f},"
+             f" gate={diag['gate_source']},"
+             f" 实测抬升 {diag['n_measured_lifted']} 票) mix3={m3}")
     return out
 
 

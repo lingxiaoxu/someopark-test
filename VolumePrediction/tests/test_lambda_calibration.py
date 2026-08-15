@@ -106,3 +106,53 @@ def test_s_curve_shapes_and_bounds():
     # 边界语义与 policy 一致
     assert s_opt_generalized(1e8, float("inf"), 0.05, 0.8) == 1.0
     assert s_opt_generalized(1e8, 0.0, 0.05, 0.8) == 0.0
+
+
+# ── E11-T1 接线(2026-08-15): policy.FORM_CALIBRATED 消费 registry 工件 ──────
+
+def test_policy_calibrated_form_matches_registry():
+    """lambda_of_v('calibrated') 必须与 registry 工件的 C·e^{−γv} 逐位一致。"""
+    import json
+    import math
+    from VolumePrediction.common import OUT
+    from VolumePrediction.econ import policy
+    f = OUT / "registry" / "lambda_calibration.json"
+    if not f.exists():
+        import pytest
+        pytest.skip("no lambda_calibration.json artifact")
+    d = json.loads(f.read_text())["lambda_amihud"]
+    for V in (1e5, 1e7, 1e9):
+        v = math.log(V)
+        expect = d["C"] * math.exp(-d["gamma"] * v)
+        assert abs(policy.lambda_of_v(v, policy.FORM_CALIBRATED) - expect) < 1e-18
+    p = policy.lambda_params(policy.FORM_CALIBRATED)
+    assert p["calibration_source"] == d.get("calibration_source",
+                                            "amihud_market_proxy")
+
+
+def test_policy_calibrated_degrades_to_paper_prior(monkeypatch, tmp_path):
+    """工件缺失 → 降级论文先验 (0.2, γ=1),标注 paper_prior,绝不抛异常。"""
+    from VolumePrediction.econ import policy
+    monkeypatch.setattr(policy, "_lambda_registry_path",
+                        lambda: tmp_path / "nope.json")
+    policy._LAMBDA_CACHE.update(mtime=object())      # 强制重读
+    p = policy.lambda_params(policy.FORM_CALIBRATED)
+    assert (p["C"], p["gamma"]) == (policy.LAMBDA_COEF, 1.0)
+    assert p["calibration_source"] == "paper_prior"
+    import math
+    assert policy.lambda_of_v(math.log(1e7), policy.FORM_CALIBRATED) == \
+        policy.LAMBDA_COEF * math.exp(-math.log(1e7))
+    policy._LAMBDA_CACHE.update(mtime=None, warned=False)  # 复原全局缓存
+
+
+def test_policy_calibrated_rejects_insane_params(monkeypatch, tmp_path):
+    """C<=0 或 γ 出界 → 视同破损工件,降级而非采用。"""
+    import json
+    from VolumePrediction.econ import policy
+    bad = tmp_path / "lambda_calibration.json"
+    bad.write_text(json.dumps({"lambda_amihud": {"C": -1.0, "gamma": 9.9}}))
+    monkeypatch.setattr(policy, "_lambda_registry_path", lambda: bad)
+    policy._LAMBDA_CACHE.update(mtime=object())
+    p = policy.lambda_params(policy.FORM_CALIBRATED)
+    assert p["calibration_source"] == "paper_prior"
+    policy._LAMBDA_CACHE.update(mtime=None, warned=False)

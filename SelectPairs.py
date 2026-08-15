@@ -743,6 +743,23 @@ def _rsi(vals, period=14):
 
 # Minimum average daily volume (shares) — filters out illiquid micro-caps
 _MIN_AVG_DAILY_VOLUME = 300_000
+# E1/W3 consumption wiring (2026-08-15 code-ready, DEFAULT OFF; flip after 8/17
+# sign-off): True -> liquidity filter uses VolumePrediction forward-looking ADV
+# (shares); tickers not covered / service down fall back to the trailing mean
+# below. The 300_000 threshold is untouched (red line). Rollback = set False.
+USE_FORECAST_ADV = False
+
+
+def _vp_forward_adv(tickers):
+    """{ticker: 前瞻 ADV 股数}(只含有效值;失败返回空 dict,调用方回退后视)。"""
+    try:
+        from VolumePrediction.service import VolumeService
+        raw = VolumeService().adv.batch(list(tickers), 20)
+        return {t: float(v) for t, v in raw.items()
+                if v is not None and v == v and v > 0}
+    except Exception as e:  # noqa: BLE001
+        print(f"  E1/W3: VP 前瞻 ADV 不可用({e})— 全部回退后视口径")
+        return {}
 
 
 def select_mtfs_v2(records, coint_freq, pca_freq, total_weight,
@@ -775,10 +792,15 @@ def select_mtfs_v2(records, coint_freq, pca_freq, total_weight,
     print(f"  价格获取: {len(price_data)}/{len(all_tickers)} tickers OK")
 
     # ── Step 3: volume filter + momentum scoring ──
+    fwd_adv = _vp_forward_adv(price_data) if USE_FORECAST_ADV else {}
+    if fwd_adv:
+        print(f"  E1/W3: 前瞻 ADV 覆盖 {len(fwd_adv)}/{len(price_data)},"
+              f"其余回退后视均量(阈值不变 {_MIN_AVG_DAILY_VOLUME:,})")
     scored = []
     vol_filtered = 0
     for ticker, data in price_data.items():
         avg_vol = float(data['volume'].mean()) if len(data['volume']) > 0 else 0
+        avg_vol = fwd_adv.get(ticker, avg_vol)
         if avg_vol < _MIN_AVG_DAILY_VOLUME:
             vol_filtered += 1
             continue

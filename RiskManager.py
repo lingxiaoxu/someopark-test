@@ -44,6 +44,25 @@ import pandas as pd
 
 log = logging.getLogger(__name__)
 
+# E1/W4: VolumePrediction 前瞻 ADV 的惰性单例(USE_FORECAST_ADV=True 才会触碰;
+# 服务不可用/缺票/NaN 一律返回 None → 调用方落回后视 trailing,绝不抛异常断流)
+_VP_SVC = None
+
+
+def _vp_adv_forecast(ticker, window):
+    global _VP_SVC
+    try:
+        if _VP_SVC is None:
+            from VolumePrediction.service import VolumeService
+            _VP_SVC = VolumeService()
+        v = _VP_SVC.adv.get_adv_forecast(ticker, window)
+        return float(v) if (v is not None and math.isfinite(v) and v > 0) else None
+    except Exception as e:  # noqa: BLE001
+        log.warning(f"[RISK] VP forecast ADV unavailable for {ticker}: {e} "
+                    f"— fallback trailing")
+        return None
+
+
 # ── Paths ───────────────────────────────────────────────────────────────────
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 RISK_DIR = os.path.join(BASE_DIR, 'trading_signals', 'risk_management')
@@ -63,6 +82,13 @@ PRICE_LOOKBACK_CAL_DAYS = 400       # calendar days to fetch (~252 trading days 
 ADV_WINDOW = 20                     # trading days for average daily volume
 ADV_PARTICIPATION = 0.20            # max participation rate (Almgren-Chriss liquidity horizon)
 RISK_FREE_ANNUAL = 0.05             # for Sharpe excess return
+# E1/W4 consumption wiring (2026-08-15 code-ready, DEFAULT OFF; flip after 8/17
+# sign-off): True -> adv() uses VolumePrediction forward-looking ADV (shares;
+# compat layer blends/falls back to trailing internally); any failure degrades
+# loudly to the trailing path below. This flag is the single rollback switch.
+# ADV_PARTICIPATION and the dtl formula stay untouched (red line, see
+# VolumePrediction/outputs/consumption_wiring_proposal.md W4).
+USE_FORECAST_ADV = False
 
 # Stress scenarios (beta-implied)
 STRESS_SCENARIOS = [
@@ -333,6 +359,11 @@ class _DataLayer:
         return s.tail(lookback) if lookback else s
 
     def adv(self, ticker, window=ADV_WINDOW):
+        if USE_FORECAST_ADV:
+            v = _vp_adv_forecast(ticker, window)
+            if v is not None:
+                return v
+            # 前瞻不可用 → 落回后视口径(下方原路径),不断流
         self.load_prices()
         if self._volume is None or ticker not in self._volume.columns:
             return None

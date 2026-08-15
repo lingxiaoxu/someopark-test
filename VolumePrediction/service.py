@@ -339,16 +339,24 @@ class _Econ:
         if not math.isfinite(V) or V <= 0 or gap <= 0:
             return {"symbol": symbol, "z": 0.0, "capped": False, "mu": mu,
                     "mu_source": mu_src, "source": "unavailable" if not gap else src}
-        cr = s_opt_constrained(math.log(V), mu, gap, V, cap,
-                               form=(prof.lambda_form if prof else "0.2/V"))
+        from VolumePrediction.econ.policy import lambda_params
+        lam_form = (prof.lambda_form if prof
+                    else self.s.cfg.get("econ", {}).get("lambda_form", "0.2/V"))
+        cr = s_opt_constrained(math.log(V), mu, gap, V, cap, form=lam_form)
+        lp = lambda_params(lam_form)
         return {"symbol": symbol, "z": cr.z, "z_unconstrained": cr.z_unconstrained,
                 "capped": cr.capped, "cap": cr.cap, "rationing_reason": cr.reason,
                 "mu": mu, "mu_source": mu_src, "V_hat": V, "gap_dollars": gap,
-                "trade_dollars_today": cr.z * gap, "source": src}
+                "trade_dollars_today": cr.z * gap, "source": src,
+                "lambda_form": lam_form,
+                "lambda_C": lp["C"], "lambda_gamma": lp["gamma"],
+                "lambda_source": lp["calibration_source"]}
 
     def economic_loss(self, v_real: float, z_taken: float, mu: float,
-                      form: str = "0.2/V") -> float:
+                      form: Optional[str] = None) -> float:
         from VolumePrediction.econ.policy import losscon
+        if form is None:      # 与 optimal_trade_rate 同源: 默认吃 config 的 λ 形式
+            form = self.s.cfg.get("econ", {}).get("lambda_form", "0.2/V")
         return losscon(v_real, z_taken, mu, form)
 
     def calibrate_mu(self, strategy: str,
@@ -846,10 +854,75 @@ class _Ops:
             except Exception as _le:  # noqa: BLE001
                 log.error(f"refresh: 学习模型服务失败 → 回退全 ma5(需排查!): {_le}")
 
+        # ── blend3 分层服务(E10 实施-1,2026-08-15 代码就位;默认关)────────────
+        # 启用 = registry.json 的 blend.enabled(8/17 拍板后由 ops.promote_blend
+        # 置 true)。三层: RNN 层(blend_routing.rnn_layer,与影子同一事实源的
+        # 路由门)→ lgbm 守其余覆盖票 → ma5 兜底。
+        # seq_tail 纪律: 启用后**本路径是唯一滚动者**(update_state=True),
+        # shadow_rnn 检测到 enabled 自动转只读 —— 双滚会把序列状态推快一天。
+        # 任何失败 → 大声保留两层工件(lgbm+ma5),绝不静默。
+        _blend_cfg = {}
+        try:
+            _blend_cfg = self.s.registry.load().get("blend") or {}
+        except Exception:  # noqa: BLE001
+            pass
+        _n_rnn = 0
+        if _blend_cfg.get("enabled"):
+            try:
+                from VolumePrediction import prod_model_rnn as _pmr2
+                from VolumePrediction.blend_routing import (recent_measured_adv,
+                                                            rnn_layer)
+                from VolumePrediction.shadow_rnn import _held_tickers
+                _rart = (self.s.art / "registry" / "artifacts"
+                         / _blend_cfg["rnn_version"])
+                # RNN serve 约定与影子一致: serve(asof)=用截至 asof 的窗做次日
+                # 预测(lgbm 的 _target=asof+1 语义不适用——会撞断档守卫)。
+                # 同日重跑: seq_tail 已滚到 asof,serve 会拒绝 → 读当日缓存,
+                # 绝不让重跑把当日工件降级回两层。
+                _cache = _rart / f"blend_serve_{asof}.parquet"
+                with open(_rart / "meta.json") as _mf2:
+                    _seq_d = json.load(_mf2).get("seq_tail_date")
+                if _seq_d == asof and _cache.exists():
+                    _rn = pd.read_parquet(_cache).set_index("ticker")
+                    log.info(f"refresh: blend3 同日重跑 — 复用缓存 {_cache.name}")
+                else:
+                    _rn = _pmr2.serve(_rart, asof,
+                                      update_state=True).set_index("ticker")
+                    _ctmp = _cache.with_suffix(".tmp")
+                    _rn.reset_index().to_parquet(_ctmp, index=False)
+                    os.replace(_ctmp, _cache)
+                    for _old in sorted(_rart.glob("blend_serve_*.parquet"))[:-5]:
+                        _old.unlink()                  # 只留近 5 日缓存
+                _pv = out.set_index("ticker")["pred_V"]
+                _cov = _rn.index.intersection(_pv.index)
+                _layer, _diag = rnn_layer(_cov, _pv.loc[_cov],
+                                          _held_tickers(asof),
+                                          recent_measured_adv(asof))
+                _m2 = out["ticker"].isin(_layer)
+                for _c in ("pred_v", "pred_V", "pred_eta",
+                           "model_version", "trained_through"):
+                    if _c in _rn.columns:
+                        out.loc[_m2, _c] = out.loc[_m2, "ticker"].map(_rn[_c])
+                _n_rnn = int(_m2.sum())
+                log.info(f"refresh: blend3 RNN 层 {_n_rnn}/{len(out)} 票 "
+                         f"(gate={_diag['gate_source']}, thr={_diag['thr']:,.0f},"
+                         f" 实测抬升 {_diag['n_measured_lifted']}),"
+                         f"lgbm 守 {_n_lgbm - _n_rnn} 票,其余 ma5")
+                for p in (self.s.art / _LATEST,
+                          self.s.art / "history"
+                          / f"volume_forecast_{asof}.parquet"):
+                    tmp = p.with_suffix(".tmp")
+                    out.to_parquet(tmp, index=False)
+                    os.replace(tmp, p)
+            except Exception as _be:  # noqa: BLE001
+                log.error(f"refresh: blend3 分层失败 → 保留 lgbm+ma5 两层"
+                          f"(需排查!): {_be}")
+
         resid_std = float(eta_now.std())
         self.s.registry.record_model(
             "baselines.ma5", kind="baseline", trained_through=asof,
-            metrics={"n": int(len(out)), "n_learned_rows": _n_lgbm},
+            metrics={"n": int(len(out)), "n_learned_rows": _n_lgbm,
+                     "n_rnn_rows": _n_rnn},
             resid_std=resid_std,
             status="production" if not _n_lgbm else "fallback_component")
         data = self.s.registry.load()
@@ -857,6 +930,29 @@ class _Ops:
             self.s.registry.promote("baselines.ma5", by="bootstrap")
         return {"status": "ok", "asof": asof, "n": int(len(out)),
                 "resid_std": resid_std}
+
+    def set_blend(self, enabled: bool, rnn_version: Optional[str] = None,
+                  by: str = "user") -> dict:
+        """blend3 分层服务总开关(E10 实施-1;晋升纪律与 promote 同:人工显式)。
+
+        enabled=True 前提: rnn_version 工件存在;写 registry.blend 并留痕。
+        回退 = set_blend(False) 单行,下一次 refresh 即回两层(lgbm+ma5)。"""
+        data = self.s.registry.load()
+        cur = data.get("blend") or {}
+        ver = rnn_version or cur.get("rnn_version")
+        if enabled:
+            if not ver:
+                raise ValueError("set_blend(True) 需要 rnn_version")
+            art = self.s.art / "registry" / "artifacts" / ver
+            if not art.exists():
+                raise FileNotFoundError(f"RNN 工件不存在: {art}")
+        data["blend"] = {"enabled": bool(enabled), "variant": "blend3",
+                         "rnn_version": ver, "by": by,
+                         "at": pd.Timestamp.now().isoformat(timespec="seconds")}
+        self.s.registry.save(data)
+        log.info(f"[OPS] blend3 {'ENABLED' if enabled else 'disabled'} "
+                 f"(rnn={ver}, by={by})")
+        return data["blend"]
 
     def retrain(self, config: Optional[dict] = None) -> dict:
         """登记再训练请求(设计即如此,非缺口——审计留档 2026-08-09)。

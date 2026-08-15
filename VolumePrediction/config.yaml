@@ -33,7 +33,7 @@ models:
     mps_tolerance_r2_pp: 0.3      # §7.11-5 复现容差带
 
 econ:
-  lambda_form: "0.2/V"
+  lambda_form: "calibrated"       # E11-T1 接线 2026-08-15;回退="0.2/V"(论文先验)
   lambda_alt: "0.2*sqrt(1/V)"     # 注16 鲁棒性
   impact_coef: 0.1                # PriceImpact = 0.1 × 参与率(Kyle)
   mu_grid: [1.0e-9, 1.0e-8, 1.0e-7, 1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3]

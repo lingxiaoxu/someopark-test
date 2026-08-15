@@ -87,29 +87,51 @@ def _metrics(pred_V: pd.Series, actual: pd.Series, mu: float | None = None,
     econ_regret_pct: 论文闭式框架下,按预测 v̂ 定交易率 z*(v̂) 但按实际 v 结算,
     相对"完美预测 z*(v)"的归一化损失超额百分比(等权均值):
         regret_i = losscon(v_i, z*(v̂_i), μ) / losscon(v_i, z*(v_i), μ) − 1
-    losscon/s_opt 即 econ/policy.py 的 G6/G9 验收闭式解。越小越好。"""
+    losscon/s_opt 即 econ/policy.py 的 G6/G9 验收闭式解。越小越好。
+
+    econ 修正列(E10 议题③① 配套小修,2026-08-15):裸 regret 是相对量,
+    loss_opt→0(小 λ 端)时"最离谱那一只票"放大 10⁵ 倍(XHG 8/13 实证,
+    一票占总量 84%)——补两列消放大,原列保留供 AB 表连续性:
+      econ_w   = regret 逐票 winsorize 到 p99 后的等权均值(截尾不删票);
+      econ_abs = mean(loss_hat − loss_opt),绝对损失差,量纲=归一化损失。
+    λ 不再硬编码论文 0.2/V,跟随 config econ.lambda_form(现=自家 Amihud
+    标定 C/V^γ,E11-T1),lambda_source 一并返回。"""
     m = pd.concat([pred_V.rename("p"), actual.rename("a")], axis=1).dropna()
     m = m[(m.p > 0) & (m.a > 0)]
     if len(m) < min_n:
-        return {"n": len(m), "r2": None, "mape": None,
-                "log_mse": None, "econ": None}
+        return {"n": len(m), "r2": None, "mape": None, "log_mse": None,
+                "econ": None, "econ_w": None, "econ_abs": None,
+                "lambda_source": None}
     lp, la = np.log(m.p), np.log(m.a)
     err = lp - la
     r2 = 1 - float((err ** 2).sum()) / float(((la - la.mean()) ** 2).sum())
     mape = float((np.abs(m.p - m.a) / m.a).mean() * 100)
     log_mse = float((err ** 2).mean())
-    econ = None
+    econ = econ_w = econ_abs = lam_src = None
     if mu is not None and np.isfinite(mu) and mu > 0:
-        lam_a = 0.2 * np.exp(-la)                    # λ(v)=0.2e^{-v}(policy FORM_MAIN)
-        lam_p = 0.2 * np.exp(-lp)
+        from VolumePrediction.common import load_config
+        from VolumePrediction.econ.policy import lambda_params
+        pars = lambda_params(load_config().get("econ", {})
+                             .get("lambda_form", "0.2/V"))
+        C, g, lam_src = pars["C"], pars["gamma"], pars["calibration_source"]
+        lam_a = C * np.exp(-g * la)
+        lam_p = C * np.exp(-g * lp)
         z_hat = mu / (mu + lam_p)                    # s_opt(v̂):按预测定的交易率
         z_true = mu / (mu + lam_a)                   # s_opt(v):完美预测的交易率
         loss_hat = lam_a * z_hat ** 2 + mu * (1 - z_hat) ** 2    # 按实际 v 结算
         loss_opt = lam_a * z_true ** 2 + mu * (1 - z_true) ** 2  # = μλ/(μ+λ) > 0
-        econ = float(((loss_hat / loss_opt) - 1.0).mean() * 100)
+        regret = (loss_hat / loss_opt) - 1.0
+        econ = float(regret.mean() * 100)
+        econ_w = float(regret.clip(upper=float(regret.quantile(0.99)))
+                       .mean() * 100)
+        econ_abs = float((loss_hat - loss_opt).mean())
     return {"n": int(len(m)), "r2": round(r2, 4), "mape": round(mape, 4),
             "log_mse": round(log_mse, 5),
-            "econ": (round(econ, 4) if econ is not None else None)}
+            "econ": (round(econ, 4) if econ is not None else None),
+            "econ_w": (round(econ_w, 4) if econ_w is not None else None),
+            "econ_abs": (float(f"{econ_abs:.6g}") if econ_abs is not None
+                         else None),
+            "lambda_source": lam_src}
 
 
 def serve_candidate(target: str, roll: bool = True) -> pd.DataFrame:
@@ -168,8 +190,11 @@ def evaluate(actual_date: str) -> dict | None:
         row[f"{tag}_mape"] = m["mape"]
         row[f"{tag}_log_mse"] = m["log_mse"]
         row[f"{tag}_econ"] = m["econ"]
+        row[f"{tag}_econ_w"] = m["econ_w"]        # winsorized regret(③① 修正)
+        row[f"{tag}_econ_abs"] = m["econ_abs"]    # 绝对损失差(③① 修正)
     row["ab_mu"] = mu
     row["ab_mu_source"] = mu_src
+    row["ab_lambda_source"] = m["lambda_source"]  # 自家标定/降级论文,如实标注
 
     # 消费子集(裁决机制 v2): 四策略当日真实持仓票——预测误差的真实美元代价所在。
     held = _held_tickers(pred_date)
@@ -261,6 +286,18 @@ def run_daily(target: str | None = None, roll: bool = True,
     raw_last = raw[-1]
 
     if not eval_only:
+        # seq_tail 单滚纪律(E10 实施-1,2026-08-15): blend3 正式路径启用后,
+        # ops.refresh 是唯一滚动者 —— 影子强制转只读,双滚会把序列状态推快一天。
+        if roll:
+            try:
+                from VolumePrediction.service import VolumeService
+                if (VolumeService().s.registry.load().get("blend")
+                        or {}).get("enabled"):
+                    roll = False
+                    log.info("[SHADOW_RNN] blend3 已启用 — 影子转只读"
+                             "(update_state=False),seq_tail 由 refresh 滚动")
+            except Exception:  # noqa: BLE001 — registry 读不到按未启用处理
+                pass
         seq_d = meta.get("seq_tail_date", meta["trained_through"])
         # 只 serve seq_tail 之后、且有真实 raw 数据的交易日（按序，有状态滚动）。
         pending = [target] if target else [d for d in raw if d > seq_d]

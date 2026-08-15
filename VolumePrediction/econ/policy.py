@@ -26,14 +26,60 @@ LAMBDA_COEF = 0.2          # λ = 0.2/V(TradingCost 二次型系数,含 impact �
 
 FORM_MAIN = "0.2/V"
 FORM_SQRT = "0.2*sqrt(1/V)"
+FORM_CALIBRATED = "calibrated"   # λ = C/V^γ,自家 Amihud 市场代理标定(E11-T1)
+
+# ── 自家标定 λ 的 lazy 加载(E11-T1 接线,2026-08-15)────────────────────────
+# 沿用 μ 的降级纪律: 工件缺失/破损绝不抛异常 → 论文先验 (0.2, 1.0),
+# calibration_source 如实标注,加载失败只大声一次。mtime 变化自动重读。
+_LAMBDA_CACHE: dict = {"mtime": None, "C": LAMBDA_COEF, "gamma": 1.0,
+                       "source": "paper_prior", "warned": False}
+
+
+def _lambda_registry_path():
+    from VolumePrediction.common import OUT
+    return OUT / "registry" / "lambda_calibration.json"
+
+
+def lambda_params(form: str = FORM_CALIBRATED) -> dict:
+    """→ {C, gamma, calibration_source}(报告/日志用;非 calibrated 形式给论文常数)。"""
+    if form == FORM_MAIN:
+        return {"C": LAMBDA_COEF, "gamma": 1.0, "calibration_source": "paper_prior"}
+    if form == FORM_SQRT:
+        return {"C": LAMBDA_COEF, "gamma": 0.5, "calibration_source": "paper_prior"}
+    if form != FORM_CALIBRATED:
+        raise ValueError(f"unknown lambda form: {form!r}")
+    import json
+    p = _lambda_registry_path()
+    try:
+        mt = p.stat().st_mtime
+        if _LAMBDA_CACHE["mtime"] != mt:
+            d = json.loads(p.read_text())["lambda_amihud"]
+            C, g = float(d["C"]), float(d["gamma"])
+            if not (math.isfinite(C) and C > 0 and math.isfinite(g) and 0 < g < 3):
+                raise ValueError(f"insane lambda params C={C} gamma={g}")
+            _LAMBDA_CACHE.update(mtime=mt, C=C, gamma=g,
+                                 source=d.get("calibration_source",
+                                              "amihud_market_proxy"), warned=False)
+    except Exception as e:  # noqa: BLE001 — 降级论文先验,只大声一次
+        if not _LAMBDA_CACHE["warned"]:
+            print(f"!!!! [econ WARN] lambda_calibration.json unavailable ({e}) "
+                  f"— degrade to paper prior 0.2/V")
+            _LAMBDA_CACHE.update(mtime=None, C=LAMBDA_COEF, gamma=1.0,
+                                 source="paper_prior", warned=True)
+    return {"C": _LAMBDA_CACHE["C"], "gamma": _LAMBDA_CACHE["gamma"],
+            "calibration_source": _LAMBDA_CACHE["source"]}
 
 
 def lambda_of_v(v: float, form: str = FORM_MAIN) -> float:
-    """λ(v);v=log 美元量。主形式 0.2·e^{−v};替代形式 0.2·e^{−v/2}(=0.2/√V)。"""
+    """λ(v);v=log 美元量。主形式 0.2·e^{−v};替代形式 0.2·e^{−v/2}(=0.2/√V);
+    calibrated = C·e^{−γv}(自家 Amihud 标定,C=0.73/γ=1.19,缺工件降级论文)。"""
     if form == FORM_MAIN:
         return LAMBDA_COEF * math.exp(-v)
     if form == FORM_SQRT:
         return LAMBDA_COEF * math.exp(-v / 2.0)
+    if form == FORM_CALIBRATED:
+        p = lambda_params(form)
+        return p["C"] * math.exp(-p["gamma"] * v)
     raise ValueError(f"unknown lambda form: {form!r}")
 
 
