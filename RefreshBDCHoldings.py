@@ -441,10 +441,18 @@ def extract_html_row_attrs(root, report_date: str) -> dict:
 
     Inline XBRL embeds each investment's tagged facts in its own <tr> row, alongside the
     UN-tagged maturity date and footnote markers. So for each investment fact we read its
-    <tr> ancestor and extract: maturity = the latest MM/DD/YYYY date in the row (acquisition
-    date is earlier, maturity later); non_accrual = the row's footnote markers include the
-    filer's non-accrual footnote number. Robust where the filer tabulates dates (BXSL/TSLX);
-    degrades to nothing where it does not (GBDC/ARCC) — caller keeps imputed_tenor."""
+    <tr> ancestor and extract: maturity = the latest date in the row (acquisition date is
+    earlier, maturity later); non_accrual = the row's footnote markers include the
+    filer's non-accrual footnote number.
+
+    Date formats drift per filer (empirically verified on the 2026-06-30 filings):
+      * BXSL/TSLX tabulate full MM/DD/YYYY;
+      * GBDC/OBDC/ARCC tabulate MM/YYYY (e.g. '05/2033'; ARCC rows carry acquisition
+        AND maturity as '04/2025 10/2029' — max() picks maturity). Before 2026-08-14
+        only MM/DD/YYYY was matched, so all three fell through to imputed_tenor
+        (GBDC 2319, ARCC 2842, OBDC 653 recoverable rows were being imputed).
+    MM/YYYY is scanned only after full dates are removed from the row text, so the
+    'DD/YYYY' tail of a full date can never be misread as month/year."""
     IX = "{http://www.xbrl.org/2013/inlineXBRL}"
     XBRLI = "{http://www.xbrl.org/2003/instance}"
     XBRLDI = "{http://xbrl.org/2006/xbrldi}"
@@ -457,6 +465,11 @@ def extract_html_row_attrs(root, report_date: str) -> dict:
 
     out = {}
     _date = re.compile(r"\b(\d{1,2})/(\d{1,2})/(20\d{2})\b")
+    # month/year only (GBDC/OBDC/ARCC style, '05/2033'). Guards: month constrained to
+    # 1-12; lookbehind rejects a preceding digit or '/', so the '05/2033' inside a full
+    # date '12/05/2033' cannot match (belt & braces — full dates are also sub'd out of
+    # the text before this pattern is applied).
+    _date_my = re.compile(r"(?<![\d/])(0?[1-9]|1[0-2])/(20\d{2})\b")
     # anchor on ANY identifier-context fact (FV element name drifts per filer); dedup by
     # IDENTIFIER (NOT id(tr) — lxml element proxies are ephemeral and their id() gets
     # reused after GC, which silently collapses most rows).
@@ -471,10 +484,13 @@ def extract_html_row_attrs(root, report_date: str) -> dict:
         if tr is None:
             continue
         txt = re.sub(r"\s+", " ", " ".join(tr.itertext()))
-        dates = _date.findall(txt)
+        cand = [(int(y), int(m), int(d)) for m, d, y in _date.findall(txt)]
+        # MM/YYYY scanned on the text with full dates removed (day pinned to 1 so a
+        # same-month full date sorts later — harmless: only YYYY-MM is emitted)
+        cand += [(int(y), int(m), 1) for m, y in _date_my.findall(_date.sub(" ", txt))]
         rec = {}
-        if dates:
-            ymd = max((int(y), int(m), int(d)) for m, d, y in dates)   # latest = maturity
+        if cand:
+            ymd = max(cand)                                            # latest = maturity
             rec["maturity"] = f"{ymd[0]:04d}-{ymd[1]:02d}"
             rec["maturity_source"] = "primary_html"
         if na_fn:
