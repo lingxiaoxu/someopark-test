@@ -238,6 +238,8 @@ class AutoencoderMethod(SimilarityMethod):
         self._scaler_mean = None
         self._scaler_std = None
         self._trained = False
+        self._is_pca = False             # 2026-08-16: 未训练时缺属性曾致
+        self._feature_names = None       # AttributeError(AISS weekly 降级)
 
     @staticmethod
     def regime_prepass(mat: np.ndarray, today: 'np.ndarray | None',
@@ -373,24 +375,8 @@ class AutoencoderMethod(SimilarityMethod):
                 normalize=True, sigma_scale=self.sigma_scale
             ).compute_weights(macro_matrix, today_vector, feature_names)
 
-        # ── 非平稳特征预变换(norm_version=2): 训练与编码同变换 ──
-        mat = macro_matrix.copy()
-        today = today_vector.copy()
-        mat, today = self.regime_prepass(mat, today, feature_names)
-
-        if not self._trained:
-            self._build_and_train(mat, feature_names)
-
-        # Apply same log-transform as training(rolling-z 特征已在 z 空间,跳过)
-        for i, f in enumerate(feature_names):
-            if f in _LOG_TRANSFORM_FEATURES and f not in _ROLLING_Z_FEATURES:
-                floor = max(float(mat[:, i].min()), 0.01)
-                mat[:, i] = np.log(np.maximum(mat[:, i], floor))
-                today[i] = np.log(max(today[i], floor))
-
-        # Normalize using training stats
-        mat_norm = (mat - self._scaler_mean) / self._scaler_std
-        today_norm = (today - self._scaler_mean) / self._scaler_std
+        mat_norm, today_norm = self._prep_transform(macro_matrix, today_vector,
+                                                    feature_names)
 
         # Encode to latent space
         latent_mat = self._encode(mat_norm)
@@ -402,6 +388,86 @@ class AutoencoderMethod(SimilarityMethod):
         sigma = max(float(np.median(dists)) * self.sigma_scale, 1e-3)
         weights = np.exp(-(dists ** 2) / (2.0 * sigma ** 2))
         return weights
+
+    def _prep_transform(self, macro_matrix: np.ndarray, today_vector: np.ndarray,
+                        feature_names: List[str]):
+        """完整预处理链(compute_weights 原逐行抽取,行为等价):
+        prepass(rolling-z)→ (惰性训练) → log 变换 → 训练期 scaler 标准化。
+        已训练(含 load 恢复)时特征序必须与训练时一致 —— 不一致直接 raise,
+        绝不静默错位编码。"""
+        mat = macro_matrix.copy()
+        today = today_vector.copy()
+        mat, today = self.regime_prepass(mat, today, feature_names)
+
+        if not self._trained:
+            self._build_and_train(mat, feature_names)
+        elif (self._feature_names is not None
+              and list(feature_names) != list(self._feature_names)):
+            raise ValueError(
+                f"AutoencoderMethod: feature mismatch — trained on "
+                f"{self._feature_names}, got {list(feature_names)}")
+
+        # Apply same log-transform as training(rolling-z 特征已在 z 空间,跳过)
+        for i, f in enumerate(feature_names):
+            if f in _LOG_TRANSFORM_FEATURES and f not in _ROLLING_Z_FEATURES:
+                floor = max(float(mat[:, i].min()), 0.01)
+                mat[:, i] = np.log(np.maximum(mat[:, i], floor))
+                today[i] = np.log(max(today[i], floor))
+
+        # Normalize using training stats
+        mat_norm = (mat - self._scaler_mean) / self._scaler_std
+        today_norm = (today - self._scaler_mean) / self._scaler_std
+        return mat_norm, today_norm
+
+    def latent_of(self, macro_matrix: np.ndarray, today_vector: np.ndarray,
+                  feature_names: List[str]):
+        """→ (latent_mat, latent_today) —— 与 compute_weights **完全同一条**
+        预处理链后编码(2026-08-16: smart_select/AISSBatchRun 曾把生向量直塞
+        _encode,跳过 prepass/log/标准化,latent 是尺度噪音;公共 API 堵死)。
+        维度 ≤ latent_dim(无压缩可言)→ (None, None),调用方按 unavailable 处理。"""
+        if macro_matrix.shape[1] <= self.latent_dim:
+            logger.warning(
+                f"AutoencoderMethod.latent_of: n_features={macro_matrix.shape[1]}"
+                f" <= latent_dim={self.latent_dim} — 不出数")
+            return None, None
+        mat_norm, today_norm = self._prep_transform(macro_matrix, today_vector,
+                                                    feature_names)
+        return (self._encode(mat_norm),
+                self._encode(today_norm.reshape(1, -1)).flatten())
+
+    def save(self, path) -> None:
+        """训练后的编码器持久化 —— 离线重建(centroids)与每日 serving 共用
+        **同一 latent 基底**;每日惰性重训会随数据增长漂移基底,与固定
+        centroids 比距离没有意义(2026-08-16 AISS Layer-1 真修)。"""
+        import torch
+        if not self._trained or self._is_pca or self._encoder is None:
+            raise RuntimeError("save: encoder 未训练或处于 PCA 回退态,拒绝落盘")
+        torch.save({"state_dict": self._encoder.state_dict(),
+                    "meta": {"feature_names": list(self._feature_names),
+                             "scaler_mean": np.asarray(self._scaler_mean).tolist(),
+                             "scaler_std": np.asarray(self._scaler_std).tolist(),
+                             "latent_dim": self.latent_dim,
+                             "seed": self.seed}}, str(path))
+
+    @classmethod
+    def load(cls, path) -> "AutoencoderMethod":
+        import torch
+        import torch.nn as nn
+        blob = torch.load(str(path), map_location="cpu", weights_only=False)
+        meta = blob["meta"]
+        m = cls(latent_dim=int(meta["latent_dim"]), seed=int(meta.get("seed", 42)))
+        n_features = len(meta["feature_names"])
+        hidden = min(32, n_features * 2)
+        enc = nn.Sequential(nn.Linear(n_features, hidden), nn.ReLU(),
+                            nn.Linear(hidden, m.latent_dim))
+        enc.load_state_dict(blob["state_dict"])
+        enc.eval()
+        m._encoder = enc
+        m._feature_names = list(meta["feature_names"])
+        m._scaler_mean = np.asarray(meta["scaler_mean"], dtype=float)
+        m._scaler_std = np.asarray(meta["scaler_std"], dtype=float)
+        m._trained, m._is_pca = True, False
+        return m
 
 
 # ═══════════════════════════════════════════════════════════════════════════

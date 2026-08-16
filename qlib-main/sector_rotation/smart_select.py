@@ -85,13 +85,16 @@ def macro_positioning(
     macro_df: pd.DataFrame,
 ) -> Dict[str, Any]:
     """
-    Encode today's macro state to autoencoder latent space.
+    Encode today's macro state to autoencoder latent space(真修 B,2026-08-16;
+    与 semiconductor_strategy 同病同方 —— 详见 sector_rotation/macro_clusters.py
+    模块 docstring: 持久化 encoder 同基底、23 维 store 直取、latent_of 全链)。
 
     Returns dict with:
       today_latent, nearest_cluster, cluster_distance, anomaly info
     """
     result = {
         "available": False,
+        "reason": None,
         "today_latent": None,
         "nearest_cluster": None,
         "cluster_distance": None,
@@ -101,35 +104,58 @@ def macro_positioning(
 
     centroids = _load_centroids()
     if centroids is None:
+        result["reason"] = "no centroids (run macro_clusters rebuild)"
         return result
 
     try:
         import sys
         if str(_PROJECT_DIR) not in sys.path:
             sys.path.insert(0, str(_PROJECT_DIR))
-        from SimilarityEngine import SimilarityEngine, AUTOENCODER_FEATURES
+        from SimilarityEngine import AutoencoderMethod
         from MacroStateStore import MacroStateStore
+        from sector_rotation.macro_clusters import (AE_ARTIFACT,
+                                                    load_full_macro_history)
+
+        if not AE_ARTIFACT.exists():
+            result["reason"] = "no persisted encoder (run macro_clusters rebuild)"
+            log.warning(f"[SMART SELECT] {result['reason']}")
+            return result
+        method = AutoencoderMethod.load(AE_ARTIFACT)
+        feats = method._feature_names
+
+        hist, why = load_full_macro_history()
+        if hist is None:
+            result["reason"] = f"macro history unavailable: {why}"
+            log.warning(f"[SMART SELECT] {result['reason']}")
+            return result
+        if list(hist.columns) != list(feats):
+            result["reason"] = "encoder/store feature drift — rerun rebuild"
+            log.warning(f"[SMART SELECT] {result['reason']}: "
+                        f"encoder={feats} store={list(hist.columns)}")
+            return result
 
         store = MacroStateStore()
-        today_vec = store.get(str(signal_date), features=AUTOENCODER_FEATURES)
-        if not today_vec or all(v is None for v in today_vec.values()):
+        today_vec = store.get(str(signal_date), features=feats)
+        missing = [f for f in feats if today_vec.get(f) is None]
+        if missing:
+            result["reason"] = f"today macro missing: {missing}"
+            log.warning(f"[SMART SELECT] {result['reason']}")
+            return result
+        today_arr = np.array([float(today_vec[f]) for f in feats],
+                             dtype=np.float32)
+
+        hist_pit = hist[hist.index <= pd.Timestamp(signal_date)]
+        _, today_latent = method.latent_of(
+            hist_pit.values.astype(np.float32), today_arr, feats)
+        if today_latent is None:
+            result["reason"] = "latent unavailable (dimension guard)"
             return result
 
-        ae_avail = [f for f in AUTOENCODER_FEATURES if f in macro_df.columns]
-        ae_sub = macro_df[ae_avail].dropna(how="any")
-        if len(ae_sub) < 60 or len(ae_avail) < 6:
+        if centroids.shape[1] != today_latent.shape[0]:
+            result["reason"] = (f"centroid dim {centroids.shape[1]} != latent "
+                                f"{today_latent.shape[0]} — stale centroids, rerun rebuild")
+            log.warning(f"[SMART SELECT] {result['reason']}")
             return result
-
-        engine = SimilarityEngine(method="autoencoder")
-        # Trigger training by computing weights (lazy training on first call)
-        _today_dummy = {f: float(ae_sub[f].iloc[-1]) for f in ae_avail}
-        engine.compute_weights(ae_sub, _today_dummy, ae_avail)
-
-        # Encode today's macro vector
-        vec_arr = np.array([today_vec.get(f, 0.0) or 0.0 for f in ae_avail],
-                           dtype=np.float32).reshape(1, -1)
-        method = engine._methods[0]
-        today_latent = method._encode(vec_arr).flatten()
 
         # Find nearest cluster
         dists = np.linalg.norm(centroids - today_latent, axis=1)
@@ -142,6 +168,7 @@ def macro_positioning(
 
         result.update({
             "available": True,
+            "reason": None,
             "today_latent": today_latent.tolist(),
             "nearest_cluster": nearest,
             "cluster_distance": round(min_dist, 4),
@@ -150,6 +177,7 @@ def macro_positioning(
             "anomaly_action": "auto_conservative" if is_anomaly else None,
         })
     except Exception as e:
+        result["reason"] = str(e)
         log.warning(f"[SMART SELECT] Macro positioning failed: {e}")
 
     return result
@@ -203,6 +231,18 @@ def mcps_realtime_scores(
         if _missing:
             log.warning(f"[SMART SELECT] today_vec 缺 {len(_missing)} 特征,"
                         f"引擎将按 {23-len(_missing)} 维可用子空间打分(请修上游 store): {_missing}")
+
+        # 真修 B(2026-08-16): 历史矩阵同样喂 23 维 —— caller 的 macro_df 只有
+        # 10 列(交集 6 维),引擎每候选打分都触发一次"委托 Euclidean"告警,
+        # 正是 weekly success-degraded 的残余噪音源。store 不可用时回退旧
+        # macro_df 子空间(fail-open,打分不中断)。
+        from sector_rotation.macro_clusters import load_full_macro_history
+        _hist23, _why23 = load_full_macro_history()
+        if _hist23 is not None:
+            macro_df = _hist23[_hist23.index <= pd.Timestamp(signal_date)]
+        else:
+            log.warning(f"[SMART SELECT] 23 维历史不可用({_why23})"
+                        f"— MCPS 退 macro_df 子空间")
 
         for cand in top_candidates:
             name = cand.get("name", cand.get("param_set", ""))
@@ -553,8 +593,15 @@ def macro_weight_tilt(
         if not today_vec or all(v is None for v in today_vec.values()):
             return target_weights
 
-        ae_avail = [f for f in AUTOENCODER_FEATURES if f in macro_df.columns]
-        ae_sub = macro_df[ae_avail].dropna(how="any")
+        # 真修 B(2026-08-16): 倾斜层历史矩阵同样喂 23 维(理由同 Layer 2)
+        from sector_rotation.macro_clusters import load_full_macro_history
+        _hist23, _why23 = load_full_macro_history()
+        if _hist23 is not None:
+            ae_sub = _hist23[_hist23.index <= pd.Timestamp(signal_date)]
+            ae_avail = list(ae_sub.columns)
+        else:
+            ae_avail = [f for f in AUTOENCODER_FEATURES if f in macro_df.columns]
+            ae_sub = macro_df[ae_avail].dropna(how="any")
         if len(ae_sub) < 60:
             return target_weights
 

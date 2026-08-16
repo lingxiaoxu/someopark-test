@@ -878,74 +878,21 @@ def main() -> None:
                     log.warning(f"[P0] WF detail persistence failed: {_p0e}")
 
             # (c) Macro latent centroids + param OOS by macro cluster
-            if _oos_filter_applied and not _macro_df.empty:
+            # 真修 B(2026-08-16): 委托 macro_clusters.build 单一事实源(与
+            # semiconductor_strategy 同病同方,详见该模块 docstring)。
+            if _oos_filter_applied:
                 try:
-                    sys_path_added = False
-                    if str(_PROJECT_DIR) not in sys.path:
-                        sys.path.insert(0, str(_PROJECT_DIR))
-                        sys_path_added = True
-                    from SimilarityEngine import SimilarityEngine as _SE
-                    from SimilarityEngine import AUTOENCODER_FEATURES as _AE_FEATS
-                    from sklearn.cluster import KMeans as _KMeans
-
-                    # Collect OOS macro vectors
-                    _oos_vecs_raw = []
-                    _oos_fold_idx = []
-                    for _i, _fr in enumerate(_wf_result.folds):
-                        if _fr.oos_macro_vec:
-                            _oos_vecs_raw.append(_fr.oos_macro_vec)
-                            _oos_fold_idx.append(_i)
-
-                    if len(_oos_vecs_raw) >= 4:
-                        # Build OOS macro matrix using AUTOENCODER_FEATURES from macro_df
-                        _ae_avail = [f for f in _AE_FEATS if f in _macro_df.columns]
-                        _ae_sub = _macro_df[_ae_avail].dropna(how="any")
-                        if len(_ae_sub) >= 60 and len(_ae_avail) >= 6:
-                            _ae_engine = _SE(method="autoencoder")
-                            # Compute weights to trigger training, then encode OOS vecs
-                            _today_dummy = {f: float(_ae_sub[f].iloc[-1]) for f in _ae_avail}
-                            _ae_engine.compute_weights(_ae_sub, _today_dummy, _ae_avail)
-
-                            # Encode each fold's OOS period macro to latent space
-                            _oos_latents = []
-                            for _ov in _oos_vecs_raw:
-                                _vec_arr = np.array([_ov.get(f, 0.0) or 0.0 for f in _ae_avail],
-                                                    dtype=np.float32).reshape(1, -1)
-                                _method = _ae_engine._methods[0]
-                                _enc = _method._encode(_vec_arr)
-                                _oos_latents.append(_enc.flatten())
-                            _oos_latents = np.array(_oos_latents)
-
-                            _n_clusters = min(6, len(_oos_latents))
-                            _km = _KMeans(n_clusters=_n_clusters, random_state=42, n_init=10)
-                            _km.fit(_oos_latents)
-
-                            np.save(str(out_dir / "macro_latent_centroids.npy"), _km.cluster_centers_)
-                            print(f"  [P0] Macro centroids ({_n_clusters} clusters) → "
-                                  f"{out_dir / 'macro_latent_centroids.npy'}")
-
-                            # Build param_oos_by_macro_cluster
-                            from collections import defaultdict as _ddict
-                            _cluster_buckets = _ddict(lambda: _ddict(list))
-                            for _idx_pos, _fold_i in enumerate(_oos_fold_idx):
-                                _cl = int(_km.labels_[_idx_pos])
-                                _fr = _wf_result.folds[_fold_i]
-                                for _ps_name, _oos_sr in _fr.all_oos_sharpes.items():
-                                    if not np.isnan(_oos_sr):
-                                        _cluster_buckets[_ps_name][f"cluster_{_cl}"].append(_oos_sr)
-
-                            _cluster_oos = {}
-                            for _ps_name, _clusters in _cluster_buckets.items():
-                                _cluster_oos[_ps_name] = {
-                                    cl: {
-                                        "mean_oos_sharpe": round(float(np.mean(srs)), 4),
-                                        "n_folds": len(srs),
-                                    }
-                                    for cl, srs in _clusters.items()
-                                }
-                            _cl_path = out_dir / "param_oos_by_macro_cluster.json"
-                            _cl_path.write_text(_json.dumps(_cluster_oos, indent=2))
-                            print(f"  [P0] OOS by macro cluster → {_cl_path}")
+                    from sector_rotation.macro_clusters import build as _mc_build
+                    _mc_folds = [{"oos_start": str(_fr.fold.oos_start.date()),
+                                  "oos_end": str(_fr.fold.oos_end.date()),
+                                  "all_oos_sharpes": {
+                                      k: (float(v) if v is not None
+                                          and not np.isnan(v) else None)
+                                      for k, v in _fr.all_oos_sharpes.items()}}
+                                 for _fr in _wf_result.folds]
+                    _mc_sum = _mc_build(_mc_folds, out_dir=out_dir)
+                    print(f"  [P0] Macro clusters rebuilt (persisted encoder): "
+                          f"{_mc_sum}")
                 except Exception as _p0e:
                     log.warning(f"[P0] Macro cluster persistence failed: {_p0e}")
 
