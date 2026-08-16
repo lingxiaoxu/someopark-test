@@ -240,6 +240,47 @@ trading_quantconnect/
 - 不自建交易日历/改名映射的第二套实现(QC 日历 + 本地 ticker_aliases 各司其职)。
 
 ---
+
+## 附录 A. QC Paper Trading 官方文档核对(2026-08-16,用户提供链接)
+
+来源: docs/v2/cloud-platform/live-trading/brokerages/quantconnect-paper-trading
+
+**已确认支持(计划成立):**
+- US Equities ✓(全书皆美股/ETF);Market / **Market-on-Open** / Limit / Stop
+  等全序 ✓ —— **R3 已答**: MOO 原生存在,开盘执行可在 Market@09:30 与 MOO
+  之间由 M3 实测数据选择;
+- 现金/保证金账户 + 买力与 margin call 建模 ✓(D 保证金设计成立);
+- **raw 归一化下拆股自动调整持仓与在途单的数量/限价/触发价** ✓(D7/D8 的
+  raw 选择被文档直接背书);
+- CashBook 存取款 API ✓ → 初始资金设定 + 附录 A-3 的现金校准都有正规通道;
+- 订单可更新、TIF(Day/GTC/GTD)✓;paper 用真实 live 数据源。
+
+**按文档修正的三处设计:**
+
+1. **费用(修正 §3.2/§6)**: Paper 默认**非零费率**(股票 $0.005/股、最低 $1)。
+   方案: 算法内显式 `SetFeeModel(ConstantFeeModel(0))` 覆盖为零费(LEAN
+   security 级 fee model 可覆盖,M0 实测确认在 paper 生效);若覆盖不生效,
+   则对账分解新增"费用项"(逐单精确可算,非估计)。二选一都不引入未归因残差。
+2. **成交语义(修正 §6 叙述)**: 文档明示 paper "市价单立即全额成交,按
+   bid/ask spread 定价,**无滑点模型、无部分成交**"。因此:
+   - 对账分解里的"滑点项"精确化为"**价差项**(过 spread 成本)+ 时点项",
+     不含冲击 —— 镜像量到的是 spread+timing 成本,冲击成本另由 VP econ 层
+     (λ 标定)覆盖,两者互补不重复;
+   - §7-F5(部分成交跨收盘)降级为防御性路径(默认全成交),保留不删。
+3. **BDC 小数股(修正 D5 主次)**: 文档未提小数股;LEAN 股票 LotSize=1 的
+   默认校验大概率拒绝小数单 → **残差账升为主方案**(整数股执行 +
+   `fractional_residual.json` 逐票记差,残差市值>1 股并入下次单),QC 原生
+   小数降为 R1 验证的 upside。BDC 六票残差上界 = 6 股市值 ≈ $150,对
+   $950k sleeve 为 1.6bp,在 §6 预算内单列。
+
+**新增研究项:**
+- **R7 股息入账**: 文档未提 paper 是否派息入现金。若不派 → BDC DRIP 闭环的
+  现金腿缺失 → 方案: 月度现金校准(CashBook deposit,金额=本地 ledger 该月
+  div_cash 合计,逐笔留痕)—— 显式记账,非兜底。M0 用一只临近除息 ETF 实测。
+- **R8 节点资源**: live 部署需一个可用 live trading node —— M0 确认账号
+  配额,不够则明确升级成本再动手。
+
+---
 *作者注: 本方案刻意把全部"聪明"留在本地(已被生产验证的 controller),QC 端
 只有一个哑执行器 + 状态机。镜像系统的价值在于它简单到不可能错,而所有会错的
 地方都有对账在等着。*
