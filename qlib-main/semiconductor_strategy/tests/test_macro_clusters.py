@@ -126,3 +126,87 @@ def test_macro_positioning_e2e_readonly():
     assert r["available"] is True, r["reason"]
     assert r["nearest_cluster"] is not None
     assert len(r["today_latent"]) == 12
+
+
+# ═══ 生产入口全覆盖(2026-08-16 用户令: 每个入口都测,零生产写入)══════════
+
+def _snapshot_dirs():
+    """写入审计: 相关生产目录的 (path → mtime,size) 快照。"""
+    import os
+    roots = [_ROOT / "qlib-main" / "semiconductor_strategy",
+             _ROOT / "macro_similarity",
+             _ROOT / "price_data" / "macro" / "state"]
+    snap = {}
+    for r in roots:
+        for dirpath, dirnames, filenames in os.walk(r):
+            if "__pycache__" in dirpath or "/mlruns" in dirpath:
+                continue
+            for fn in filenames:
+                p = os.path.join(dirpath, fn)
+                try:
+                    st = os.stat(p)
+                    snap[p] = (st.st_mtime, st.st_size)
+                except OSError:
+                    pass
+    return snap
+
+
+@pytest.fixture()
+def prod_write_audit():
+    before = _snapshot_dirs()
+    yield
+    after = _snapshot_dirs()
+    new = set(after) - set(before)
+    changed = {p for p in set(after) & set(before) if after[p] != before[p]}
+    assert not new and not changed, \
+        f"测试触碰了生产目录! 新增={sorted(new)[:5]} 修改={sorted(changed)[:5]}"
+
+
+def _store_macro_df():
+    """23 维 store 历史(读),当作 daily 传入的 macro_df(避免 load_macro
+    自愈路径 —— 它可能对生产 store 追加当日快照)。"""
+    from MacroStateStore import MacroStateStore
+    return MacroStateStore().load()
+
+
+def test_entry_smart_param_select_full(prod_write_audit):
+    """生产入口①: AISSdailySignal L958 的 smart_param_select 全三层。"""
+    from datetime import date
+    from semiconductor_strategy.smart_select import (smart_param_select,
+                                                     _load_selected_state)
+    r = smart_param_select(date(2026, 8, 14), _store_macro_df(),
+                           current_state=_load_selected_state())
+    assert isinstance(r, dict) and "param_set" in r, r
+    mp = r.get("macro_positioning") or {}
+    assert mp.get("available") is True, f"Layer1 不可用: {mp.get('reason')}"
+
+
+def test_entry_mcps_realtime_scores_no_delegation(prod_write_audit, caplog):
+    """生产入口②: Layer 2 实时打分 —— 必须出分且不再触发 6 维委托告警。"""
+    import logging
+    from datetime import date
+    from semiconductor_strategy.smart_select import (mcps_realtime_scores,
+                                                     _load_json, _CACHE_DIR)
+    cands = _load_json(_CACHE_DIR / "top_candidates.json")
+    cand_list = (cands if isinstance(cands, list)
+                 else cands.get("top") or cands.get("candidates") or [])
+    if not cand_list:
+        pytest.skip("no top_candidates cache")
+    with caplog.at_level(logging.WARNING):
+        scores = mcps_realtime_scores(date(2026, 8, 14), _store_macro_df(),
+                                      cand_list)
+    assert scores, "MCPS 打分为空"
+    assert not [r for r in caplog.records
+                if "no compression possible" in r.getMessage()], \
+        "仍在触发 6 维委托告警"
+
+
+def test_entry_macro_weight_tilt(prod_write_audit):
+    """生产入口③: AISSdailySignal L1181 的 macro_weight_tilt。"""
+    from datetime import date
+    import pandas as pd
+    from semiconductor_strategy.smart_select import macro_weight_tilt
+    w = pd.Series({"logic_cpu": 0.34, "memory_hbm": 0.33, "equipment": 0.33})
+    out = macro_weight_tilt(w, _store_macro_df(), date(2026, 8, 14))
+    assert abs(float(out.sum()) - 1.0) < 1e-6, f"权重未归一: {out.sum()}"
+    assert ((out - w).abs() / w).max() < 0.12, "倾斜幅度越界(>±5% 复归一容差)"
