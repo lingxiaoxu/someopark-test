@@ -119,10 +119,83 @@ def update_shares_from_run(meta: dict, as_of: str,
     if meta.get("trades"):
         write_ledger(meta["trades"])
         print(f"  [bdc_inventory] ledger auto-synced: {len(meta['trades'])} trades")
+    sync_account(path)
 
 
 # ── 历史回算(--backfill,一次性)──────────────────────────────────────────
 LEDGER_PATH = os.path.join(BASE_DIR, 'trade_ledger_bdc.jsonl')
+
+# ── account 文件(2026-08-16 补齐,与 account_mrpt/mtfs 并列)────────────────
+ACCOUNT_PATH = os.path.join(BASE_DIR, 'account_bdc.json')
+_PERF_JSON = os.path.join(BASE_DIR, 'someo-park-investment-management',
+                          'public', 'data',
+                          'private_credit_bdc_performance.json')
+
+
+def sync_account(inv_path: str = INVENTORY_PATH,
+                 path: str = ACCOUNT_PATH) -> dict:
+    """从 inventory + ledger + 官方 perf json 派生 account_bdc.json(纯派生,
+    三个真源都在盘上,零网络)。BDC 语义与 pairs 不同处如实建模:
+      - cash=0.0 —— 现金以 BIL 持仓形式存在(positions 里),不是 flat cash;
+      - avg_cost = ledger 逐笔重放(OPEN+DRIP 的 Σ|gross|/Σshares);
+      - equity = 官方 perf json 中 ≤ as_of 的末行 bdc_equity(官方口径锚);
+      - cumulative_dividends = Σ DRIP div_cash(全部已再投,故不进 cash)。
+    落盘前强校验 ledger 累计==inventory shares,不一致拒绝写(三层一致性)。
+    幂等:每日 UpdateBDCPerformance 尾部自动重写。"""
+    inv = load_inventory(inv_path)
+    if not os.path.exists(LEDGER_PATH):
+        raise RuntimeError(f"BDC ledger missing: {LEDGER_PATH} — run "
+                           f"`python bdc_inventory.py --backfill --ledger` first")
+    rows = [json.loads(l) for l in open(LEDGER_PATH) if l.strip()]
+    cost: dict = {}
+    cum_div = 0.0
+    initial_cash = 0.0
+    for r in rows:
+        c = cost.setdefault(r["ticker"], [0.0, 0.0])
+        c[0] += r["shares"]
+        c[1] += -r["gross"]                          # 买入 gross 为负
+        if r["action"] == "DRIP":
+            cum_div += float(r.get("div_cash") or 0.0)
+        elif r["action"] == "OPEN":
+            initial_cash += -r["gross"]
+    positions = {}
+    entries = list(inv["holdings"].items()) + [(inv["cash"]["ticker"],
+                                                inv["cash"])]
+    for t, h in entries:
+        sh, spent = cost.get(t, [0.0, 0.0])
+        if abs(sh - h["shares"]) > 0.01:
+            raise RuntimeError(f"BDC account sync: {t} ledger 累计 {sh:.4f} != "
+                               f"inventory {h['shares']:.4f} — 三层不一致,拒绝落盘")
+        positions[t] = {"shares": round(h["shares"], 4),
+                        "avg_cost": round(spent / sh, 4) if sh else None,
+                        "entry_date": h.get("entry_date")}
+    equity = None
+    try:
+        perf = json.load(open(_PERF_JSON))
+        nn = [(r["date"], r["bdc_equity"]) for r in perf
+              if r.get("bdc_equity") is not None and r["date"] <= inv["as_of"]]
+        if nn:
+            equity = round(float(nn[-1][1]), 2)
+    except Exception:  # noqa: BLE001 — perf json 缺失只影响 equity 字段,如实置 None
+        pass
+    acc = {"strategy": "bdc_sleeve", "as_of": inv["as_of"],
+           "base_currency": "USD",
+           "initial_cash": round(initial_cash, 2),
+           "cash": 0.0,
+           "cash_note": "现金以 BIL 持仓形式存在(见 positions.BIL),无 flat cash",
+           "positions": positions,
+           "cumulative_dividends": round(cum_div, 2),
+           "cumulative_fees": 0.0,
+           "equity": equity,
+           "price_basis_state": "official_eod(perf json)",
+           "derived_from": ["inventory_bdc.json", "trade_ledger_bdc.jsonl",
+                            os.path.basename(_PERF_JSON)]}
+    tmp = path + '.tmp'
+    json.dump(acc, open(tmp, 'w'), indent=1, ensure_ascii=False)
+    os.replace(tmp, path)
+    print(f"  [bdc_inventory] account synced → {os.path.basename(path)} "
+          f"(equity={equity}, dividends={acc['cumulative_dividends']})")
+    return acc
 
 
 def backfill(write: bool = True, write_ledger: bool = False) -> dict:
@@ -260,11 +333,15 @@ if __name__ == '__main__':
                     help="重放 DRIP 生成历史快照系列 + 当前 inventory_bdc.json")
     ap.add_argument("--ledger", action="store_true",
                     help="同一次重放顺带产出逐笔流水 trade_ledger_bdc.jsonl")
+    ap.add_argument("--sync-account", action="store_true",
+                    help="从 inventory+ledger+perf json 派生/重写 account_bdc.json")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
     if a.backfill or a.ledger:
         res = backfill(write=(a.backfill and not a.dry_run),
                        write_ledger=(a.ledger and not a.dry_run))
         print(json.dumps(res, indent=2))
+    elif a.sync_account:
+        print(json.dumps(sync_account(), indent=2, ensure_ascii=False))
     else:
         print(json.dumps(load_inventory(), indent=2)[:800])
