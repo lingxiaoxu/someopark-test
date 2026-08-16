@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/venue-Kalshi-orange"/>
   <img src="https://img.shields.io/badge/series-13%20P0%20%2B%201%20P1-purple"/>
   <img src="https://img.shields.io/badge/data-FRED%20%7C%20ALFRED%20PIT-teal"/>
-  <img src="https://img.shields.io/badge/tests-600%20passing-brightgreen"/>
+  <img src="https://img.shields.io/badge/tests-646%20passing-brightgreen"/>
   <img src="https://img.shields.io/badge/mode-paper%20only-red"/>
 </p>
 
@@ -50,7 +50,7 @@ Kalshi 订单簿快照         ─┤
                               append-only decisions 台账 → 盯市 → 平仓/结算
 ```
 
-**规模**：146 个 Python 文件 / 26,788 行；600 项 pytest 全绿；SQLite 31 张表，其中 FRED 观测 12.4 万行、Kalshi 合约 8,664 个、结算 7,959 条、K 线 14,855 根。
+**规模**：161 个 Python 文件 / 29,060 行；646 项 pytest 全绿；SQLite 34 张表，其中 FRED 观测 12.4 万行、Kalshi 合约 8,849 个、结算 8,225 条、K 线 16,874 根、Cleveland 通胀 nowcast vintage 60,182 行（2013-07 起）。
 
 ---
 
@@ -75,7 +75,7 @@ Kalshi 订单簿快照         ─┤
 | `KXAAAGASW` | energy | 周 | AAA 全国汽油均价周一值，取整 0.001 | 阶梯 | `energy` |
 | `KXGDP` | gdp | 季 | BEA 实际 GDP 年化增速，首次发布 | 阶梯 | `gdp` **(P1，仅纸面观察)** |
 
-> **铁律 2**：新系列在积累**至少两次纸面 print** 之前不进入任何实盘讨论。`KXGDP` 的合约结构尚未完整实测，因此优先级挂 P1、只跑预测不进决策。
+> **铁律 2**：新系列在积累**至少两次纸面 print** 之前不进入任何实盘讨论。`KXGDP` 优先级挂 P1：它**在**决策循环里（与其他系列同一套闸门），但季频 + `max_days_to_close=7` 意味着绝大多数日子直接 pass——台账 116 条全部是 pass，纸面从未开过仓；走查回测里它开过 1 笔（+$5.03）。
 
 ---
 
@@ -136,6 +136,7 @@ cd /Users/xuling/code/someopark-test && \
 | `fed_text.py` | Federal Reserve | FOMC 声明全文，`knowledge_time = 发布瞬间`。v2 结构按 `(period, release_date)` 主键，支持一个月两份声明 |
 | `weather.py` | ERA5 / ERA5T | 滚动 45 天气温（供天然气模型的度日）。**只拉 45 天尾巴**，因为这个窗口也正好覆盖 ERA5T 后来沉淀为 ERA5 的重写区 |
 | `eia.py` / `aaa_daily.py` / `nowcast.py` | EIA / AAA / GDPNow | 天然气库存、汽油日均价、GDPNow vintage |
+| `cleveland_nowcast.py` | Cleveland Fed | **日频通胀 nowcast 全 vintage**（CPI/核心CPI/PCE/核心PCE × MoM/YoY/Q，2013-07 起 6 万行，CC-BY-4.0）。`knowledge_time = nowcast 日 18:00 UTC`（保守方向）；`latest()` 是 PIT 读取口；`refresh_if_stale()` 是 tick 内的盘中尾守卫（只拉 yoy 文件、55 分钟节流）。**cpi/0.3.0 起 YoY 双系列的 mu 锚定在它上面** |
 
 ### `model/` — 逐系列模型（16 文件 / 2,927 行）
 
@@ -144,7 +145,7 @@ cd /Users/xuling/code/someopark-test && \
 | 模块 | 方法 | 备注 |
 |---|---|---|
 | `claims.py` | 对数水平加权均值 + ISO 周季节性偏离 + 26 周 MAD 波动率（带 2% 下限）→ 高斯阶梯 | 唯一的周频劳动力系列 |
-| `cpi.py` | **未取整指数**的 MoM 连续性 + 汽油泵价（GASREGW）传导（RB 系数 0.55）+ YoY 精确递推 | 一个模块喂四个系列；YoY 由 MoM 确定性递推，天然与 MoM 自洽 |
+| `cpi.py` | **未取整指数**的 MoM 连续性 + 汽油泵价（GASREGW）传导（RB 系数 0.55）+ YoY 精确递推；**0.3.0 起 YoY 双系列 mu 锚定 Cleveland nowcast**（headline 读 `cpi`、core 读 `corecpi`，σ 不动，缺失/陈旧 >7 天回退内部链） | 一个模块喂四个系列；锚定依据不对称：headline 是 45 事件泄漏免疫回放 Brier −33% 的证据判决，core 是 44 事件平局后的用户决定（PREREGISTER PR-8 有案） |
 | `pce.py` | CPI 核心 → PCE 核心的桥接回归（OLS + 残差 σ） | 已知风险：CPI/PCE 权重分歧、年度基准修订 |
 | `payrolls.py` | 首发变动重建 + 初请信号 + 胖尾混合（高斯 + Student-t） | 经验阶梯，非解析式 |
 | `u3.py` | 经验 Δ 核 + 多月卷积；显式建模 0.1 取整边界 | |
@@ -194,7 +195,8 @@ cd /Users/xuling/code/someopark-test && \
 | `walkforward.py` | **策略回测的唯一真值**。逐个模拟日重建当天的闸门状态（严格只用更早的收盘），跑开仓/平仓/结算全流程。`fair_mode`（model/pooled）、`model_exits`、`shadow_blocked` 可组合 |
 | `pit_gates.py` | 回测侧的闸门状态机，与 `decide_all` 读**同一个** `series_enable.SHADOW` 开关 |
 | `backtest.py` | 预测准确度重放（Brier / CRPS），与交易 PnL 分开 |
-| `param_select.py` + `dsr.py` | 每日 **DSR（Deflated Sharpe Ratio）门控的选参**。`MIN_OBS=12`：观测不足就退回注册默认参数，绝不"挑一个看起来最好的" |
+| `param_select.py` + `dsr.py` | 每日 **DSR（Deflated Sharpe Ratio）门控的选参**。`MIN_OBS=12`：观测不足就退回注册默认参数，绝不"挑一个看起来最好的"。另含 `manual_params` 覆盖机制（带 PIT 采纳时间戳的历史保留行,三个读取门 `current`/`select_for`/`params_asof` 全部咨询它） |
+| `param_argmin.py` | **每日 raw-argmin 重选**（用户 2026-08-11 常设指令,与上一行的 DSR 立场相反且明知如此）:trailing 75 天 prod 规则 PnL 上逐市场 argmin → `set_manual` 采纳,每行都写明 DSR 的反对意见。指纹缓存含模型版本,版本 bump 强制重打分 |
 | `pnl_score.py` | 选参器的目标函数——**复现 `walkforward` 的同一套闸门与平仓规则**（#133/#144 之后强制对齐） |
 | `param_wf.py` / `param_space.py` / `param_grid.py` | 参数网格与逐系列窗口（按各自数据量定，不是一刀切 200） |
 | `eval.py` | 逐来源（model / market / bridge / ensemble）OOS 记分板 + §25.4 的每周 `enabled` 判定 |
@@ -213,7 +215,7 @@ cd /Users/xuling/code/someopark-test && \
 | `venues/kalshi/` | 账户余额（RSA-PSS 鉴权，**只读**）。80 行，刻意做薄 |
 | `exec/` | 下单客户端 —— 已写完，**没有任何生产代码调用它** |
 | `analysis/llm.py` | 新闻结构性断点标注（大规模裁员 / 能源冲击 / 罢工…）→ `event_flags` 表；FOMC 声明鹰鸽打分 |
-| `tests/` | 54 个文件 / 9,112 行 / **600 项**。覆盖 PIT 单调性、回测与实盘的逐 bit 一致性、每条闸门、每个影子记分器 |
+| `tests/` | 65 个文件 / 10,127 行 / **646 项**。覆盖 PIT 单调性、回测与实盘的逐 bit 一致性、每条闸门、每个影子记分器 |
 
 ---
 
@@ -231,8 +233,11 @@ python -m prediction_market_macro.ops.refresh --weekly
 
 ```
 ① 摄入
-   calendars → calendar_actuals → bankroll → fred_core → gdpnow
-   → aaa_daily → eia_storage → weather(45d) → futures → fx → news → fed_statements
+   calendars → bankroll → fred_core
+   → calendar_actuals         ★ 必须在 fred_core 之后（对账要拿当天刚拉的首发行，
+                                 反过来排会把"已发布"误判成"未发布"）
+   → gdpnow → aaa_daily → eia_storage → cleveland_nowcast(通胀 nowcast 全量 upsert)
+   → weather(45d) → futures → fx → news → fed_statements
    → 逐系列 kalshi 快照 + 结算同步
    → archive_candles          ★ 必须在 settle 之后（settle 才把刚收盘的合约写进 settlements，
                                  反过来排就永远晚归档一天，而这一步有外部截止日）
@@ -240,7 +245,10 @@ python -m prediction_market_macro.ops.refresh --weekly
    materialize（日历事件 → runs 表）  →  models_registry（模型卡幂等写入）
 ③ 预测与决策
    param_select               ★ 必须在 predict_all 之前（predict_all 读它写的那一行）
-   → predict_all → decide_all
+   → param_argmin             （每日 raw-argmin 重选,用户 2026-08-11 常设指令;指纹缓存,
+                                 含模型版本——版本 bump 强制全体重打分）
+   → predict_all              （开头带 cleveland_nowcast.refresh_if_stale 盘中尾守卫）
+   → decide_all
    → s2_shadow                ★ 必须在 exits 之前（被实盘规则本轮平掉的仓位，
                                  到 exits 返回时已不在 open_positions 里，
                                  而阈值更松的 S2 必须在最后那天也被看见）
@@ -250,6 +258,7 @@ python -m prediction_market_macro.ops.refresh --weekly
 ⑤ 影子成员（只写预测，永不进决策）
    chronos_shadow → bridge_shadow → ensemble_shadow
 ⑥ 无模型一致性检查 → LLM 标注 → 健康检查 → 前端导出 → 日报 PDF
+   （周更另有：prereg 影子记分 → 归因 → 30d/60d 走查 → ML 选择器 → 周报 → 二次导出）
 ```
 
 ### 定时任务（`ops/launchd/`）
@@ -307,9 +316,10 @@ python -m prediction_market_macro.research.walkforward --days 75 --end 2026-08-0
 |---|---|---|---|
 | **PR-1** | 初请模型改用激进近因权重 `(0, 0, 0.3, 0.7)` 更准 | K=1；≥8 次结算；配对 Brier(候选) < Brier(市场) | 前瞻中 |
 | **PR-2** | argmax 单加"贵于公允就不下"的过滤更赚 | K=1；≥20 条 argmax 腿；ROI 差 ≥ 5pp | 前瞻中（双臂已接线，等样本） |
-| **PR-7/S2** | 更紧的平仓阈值（`hold_edge <= 0` 而非 `< −0.06`） | K=3；≥30 笔；ROI 差 ≥ 5pp 且事件聚类 95% CI 不跨零 | 前瞻中（19 条影子记录） |
+| **PR-7/S2** | 更紧的平仓阈值（`hold_edge <= 0` 而非 `< −0.06`） | K=3；≥30 笔；ROI 差 ≥ 5pp 且事件聚类 95% CI 不跨零 | 前瞻中（08-11 台账重置后计数重启） |
+| **PR-8** | CPI-YoY 族 mu 锚定 Cleveland nowcast | K=1；前向 6 个结算事件,T-26h 配对逐腿 Brier | **登记数小时后被用户指令改道**：改跑判据的历史等价物（45/44 事件泄漏免疫回放）。headline 判决性通过（Brier −33%）→ 已上线；core 平局 → 用户决定也上线（依据=决定非证据,原文有案）。前向计数降级为确认监控 |
 
-三个检验共用一条实现纪律：**候选臂与对照臂必须走同一个 `settle_struct()`**，否则比较的是两套算术而不是两个策略。
+检验共用一条实现纪律：**候选臂与对照臂必须走同一个 `settle_struct()`**，否则比较的是两套算术而不是两个策略。
 
 ---
 
@@ -320,39 +330,45 @@ python -m prediction_market_macro.research.walkforward --days 75 --end 2026-08-0
 | 闸门 | 位置 | 谁写它要读的行 | 现状 |
 |---|---|---|---|
 | ① `settings.trading_enabled` **且** 环境变量 `KALSHI_TRADING_ENABLED=1` | `config/settings.py:47` | — | 硬默认 `False`，环境变量从未设过 |
-| ② 逐系列 `series_gate` 行（`experiments` 表，`real=true`） | `exec/kalshi_exec.py:48` | 周更的 `research/eval.py:499` | **14 个系列全部 `real=false`**（最近一次评估 2026-08-04）→ 拒单 |
+| ② 逐系列 `series_gate` 行（`experiments` 表，`real=true`） | `exec/kalshi_exec.py:48` | 周更的 `research/eval.py:499` | **14 个系列全部 `real=false`**（最近一次评估 2026-08-16）→ 拒单 |
 | ③ 近 7 天无 `source='circuit_breaker'` 告警 | `exec/kalshi_exec.py:54` | `research/health.py` → `ops/risk.circuit_breaker()` | 历史上跳闸过 24 次（replay 不一致、结算标签不符），当前均已 ack |
 
 更根本的是：**`exec/kalshi_exec.py` 没有被 `ops/` 或 `jobs/` 里任何模块 import**——全仓库只有两处注释提到它。所有成交都由 `decide_all` / `exits` / `arb` / `snipe` 以 `mode='paper'` 直接写进 `fills`。真钱路径存在，但没有接线。
 
-### 当前战绩（诚实口径）
+### 当前战绩（诚实口径，2026-08-16）
 
 前端展示分两段，**刻意不合并**：
 
 | 段 | 口径 | 数字 |
 |---|---|---|
-| **历史段** | PIT 走查回测（`d75:model:end2026-08-04`，hybrid 流），冻结于新规则切换日 2026-08-05 | 41 笔 / 17 胜（41.5%）/ 投入 $32.58 / 已实现 **−$9.13** / **ROI −28.0%** |
-| **实盘段** | 2026-08-05 切换之后的纸面单（截至 2026-08-09） | 9 笔已结算（2 胜，投入 $6.98，**−$2.37**，ROI **−33.95%**）；5 笔在持，投入 $3.87，浮亏 −$0.64 |
+| **历史段** | PIT 走查回测（`frozen:d75:model:end2026-08-04:adopted0811`，hybrid 流，**cpi/0.3.0 nowcast 锚定模型**下重放的 08-11 采纳参数模拟），冻结于试运营重置日 2026-08-11 | 44 笔 / 29 胜（65.9%）/ 投入 $35.33 / 已实现 **+$9.34** / **ROI +26.4%** |
+| **实盘段** | 2026-08-11 台账清零重启之后的纸面单 | 5 笔已结算（3 胜，投入 $2.65，**+$0.52**，ROI **+19.6%**）；2 笔在持（均为 KXNATGASW 08-21 事件） |
 
-历史段覆盖 13 个系列（第 14 个 `KXAAAGASW` 全程被 skill 闸门拦下，0 笔），逐笔明细 41 条全部导出到 `macro_performance.json` 的 `track.history.trades`，每笔带 18 个字段（`fair` / `cost` / `count` / `lead_days` / `exit_rule` / `exit_hold_edge` / `mtm_peak`…），不做截断。
+实盘段的盈利来源：NATGASW 两笔 +$0.55（主要贡献）、WTIW +$0.02、CPI 族两笔小亏 −$0.05——
+**那两笔 CPI 亏损仓恰好开在 nowcast 锚定上线之前**，锚定模型在同一事件的回放里站在对边。
+真正的实弹检验在 9/11 的 8 月 CPI 结算。
 
-> **实盘段的亏损同样是集中的**：9 笔已结算里 6 笔是 `KXWTIW`，独占 −$1.88（占总亏损 79%）。
-> 而 `KXWTIW` 正是 §25.4 影子开关在历史段上算出该关掉的三个系列之一——两段数据各自独立地指向同一个系列。
-> 这是**前瞻方向上的一次佐证**，不是判据：影子规则仍在 `SHADOW`，仍等前瞻样本跑满，
-> 且 #146 已经证明"哪个系列样本内亏钱"预测不了"哪个系列样本外亏钱"（LOEO 18 折全部被夹到零）。
-> 记下来，不据此改任何阈值。
-
+> **同窗三个数字的关系必须一起读**（披露在冻结源 `source.disclosure`）：采纳参数定格模拟
+> **+26.4%**（锚定模型下重放；参数为同窗最优，从未实际交易过该窗）/ 每日 PIT 滚动选参的
+> 诚实回测（`:argminsel`）当时为 **−25.21%** / 旧默认参数 **−18.02%**。定格模拟与滚动选参
+> 的差距 = raw argmin 在 n=2-11 事件上的过拟合代价实测。**最终裁判是实盘段的前向累积**，
+> 用户已明确以新账本数周的真实表现为准。
+>
 > **为什么不把两段拼起来、也不把回测标成"实盘业绩"**：回测是假设性表现（hypothetical performance）。
 > 在面向客户的资产管理页面上把它呈现为实际业绩是实质性误述——这是 SEC Marketing Rule 的地界。
-> 而且回测本身是负的，含糊其辞一分钱好处也换不来。
 >
-> 切换日之前（2026-07-28 起）的纸面单**不进展示**：那段跑的是已知有 bug 的旧规则（#141 平仓聚合用
-> `min()` 而非 `sum()`、#148 入场无 churn guard、#149/#150 平仓不记对应仓位），
-> 它的成交无法代表现在这套代码的行为。
+> 2026-08-11 之前的纸面单**不进展示也不进台账**（完整备份 `data/macro_backup_20260811_prereset.db`）：
+> 试运营阶段只保留最后一个制度状态,这是用户的明确决定;更早那段还混着已知 bug 时代的成交
+> （#141/#148/#149/#150）,无法代表现在这套代码的行为。
 
 ### 结论 #129：这本账上还没有被证明可盈利的模型
 
 初请模型 OOS Brier 0.165–0.172，市场 0.090–0.097——**模型明显输给市场**。这不是一句丧气话，而是整个 `skill.py` 闸门存在的理由：模型落后市场超过 50% 时，走模型路径下单就是在给交易所捐手续费，所以直接封禁。系统当前的价值在于**这套纪律本身**（PIT、预注册、影子验证、逐 bit 对账），而不在于任何一个模型的 alpha。
+
+两处后续演化（#129 的大结论未被推翻）：**能源系列**是唯一在实盘段持续正贡献的家族；
+**cpi/0.3.0 的 Cleveland nowcast 锚定**是第一个用泄漏免疫历史回放证明的模型级改进
+（headline YoY 逐腿 Brier −33%），但它改善的是"落后市场的程度"，尚无证据表明已反超——
+13 系列的周度 replay 仍然整体输给市场（`brier_behind_market_2win` 每周照发）。
 
 ---
 
@@ -377,9 +393,9 @@ python -m prediction_market_macro.research.walkforward --days 75 --end 2026-08-0
 
 | 机制 | 表（当前行数） | 做什么 | 为什么休眠 |
 |---|---|---|---|
-| **§25.4 单系列开关** (`strategy/series_enable.py`) | `shadow_series_enable`（0） | 按滚动 12 笔 ROI 决定某系列是否还值得下注；`OFF_ROI=0.0` 关、`ON_ROI=0.026` 开（迟滞恰好等于一个来回的净 taker 成本） | `SHADOW=True`。**在重冻后的 41 笔上折出来，它现在会关掉三个系列：KXJOBLESSCLAIMS（ROI −87.7%, n=6）、KXNATGASW（−30.8%, n=11）、KXWTIW（−27.7%, n=6）——而 KXWTIW 与 KXJOBLESSCLAIMS 正好在 PR-2 与 PR-7/S2 的采样总体里**。在预注册检验中途改变总体等于毁掉检验。所以先记录、不执行，等前瞻样本跑满再由人拍板。刚上线（#155），周更算出 artefact 之前还没有行；缺 artefact 时 `blocked()` **fail-open**（不挡），并由 `decide_all` 发一条 `series_enable` 告警 |
-| **PR-7/S2 平仓规则** | `shadow_exits`（19） | 记录"如果阈值是 `hold_edge <= 0` 会在哪天平掉" | 等 30 笔前瞻样本。S2 只可能比实盘规则**更早**平仓，所以是安全的嵌套比较；两条臂共用 `hold_state()` / `exit_realized()`，不允许重写一份 |
-| **PR-2 argmax 过滤** | `shadow_argmax`（0） | 同时记录"下了"与"因为贵于公允而没下"两条臂 | 等 20 条腿。两臂是嵌套关系（ON ⊂ OFF），构造上可配对 |
+| **§25.4 单系列开关** (`strategy/series_enable.py`) | `shadow_series_enable`（120） | 按滚动 12 笔 ROI 决定某系列是否还值得下注；`OFF_ROI=0.0` 关、`ON_ROI=0.026` 开（迟滞恰好等于一个来回的净 taker 成本） | `SHADOW=True`。**当初的休眠论证（08-05 冻结窗 41 笔实测）：它会关掉 KXJOBLESSCLAIMS/KXNATGASW/KXWTIW——而后两者正好在 PR-2 与 PR-7/S2 的采样总体里**。在预注册检验中途改变总体等于毁掉检验。所以先记录、不执行，等前瞻样本跑满再由人拍板。（注意时效：那是旧规则时代的窗口；08-11 重置后的新台账里 NATGASW 反而是主要盈利源——正反两面都记着，判决仍归前瞻样本。）缺 artefact 时 `blocked()` **fail-open**（不挡），并由 `decide_all` 发一条 `series_enable` 告警 |
+| **PR-7/S2 平仓规则** | `shadow_exits`（18） | 记录"如果阈值是 `hold_edge <= 0` 会在哪天平掉" | 等 30 笔前瞻样本（08-11 重置后计数重启）。S2 只可能比实盘规则**更早**平仓，所以是安全的嵌套比较；两条臂共用 `hold_state()` / `exit_realized()`，不允许重写一份 |
+| **PR-2 argmax 过滤** | `shadow_argmax`（5） | 同时记录"下了"与"因为贵于公允而没下"两条臂 | 等 20 条腿（08-11 重置后计数重启）。两臂是嵌套关系（ON ⊂ OFF），构造上可配对 |
 
 > §25.4 的所有常数都是**借来的，不是拟合的**：`WINDOW=12` 借自 `research.dsr.MIN_OBS`，
 > `MIN_N=6` 借自 `strategy.skill.MIN_PAIRED`，`ON_ROI=0.026` 是费用几何算出来的一个来回净成本。
@@ -400,9 +416,9 @@ python -m prediction_market_macro.research.walkforward --days 75 --end 2026-08-0
 
 | 项 | 现状 | 影响 |
 |---|---|---|
-| **AAA 汽油日均价** (`ingest/aaa_daily.py`) | 抓取已上线但**没有历史**——AAA 不免费提供，只能一天攒一行。至今 7 行（2026-07-31 起） | `KXAAAGASW` 结算的就是这个日读数，所以 `energy.py` 在读数够新时直接锚它，过期则退回 EIA `GASREGW` 周度代理（采样口径不同，模型以 σ 放大补偿）。**skill 闸门目前仍以 ratio 8.35 封禁该系列**——那是代理时代攒下的记录，日读数的优势只能向前累积 |
+| **AAA 汽油日均价** (`ingest/aaa_daily.py`) | 抓取已上线但**没有历史**——AAA 不免费提供，只能一天攒一行。至今 17 行（2026-07-31 起） | `KXAAAGASW` 结算的就是这个日读数，所以 `energy.py` 在读数够新时直接锚它，过期则退回 EIA `GASREGW` 周度代理（采样口径不同，模型以 σ 放大补偿）。**skill 闸门目前仍封禁该系列**——那是代理时代攒下的记录，日读数的优势只能向前累积 |
 | **事件窗口快速重定价** (`jobs/tick.py`) | 固定 900 秒；设计要求发布前后切到更细粒度 | 发布瞬间的重定价窗口观测不到，`snipe` 能看到的只是 15 分钟后的残余 |
-| **`event_flags` 结构性断点** (`analysis/llm.py`) | 已接线（`decide_all` 读 `active_flags()`，回测按 PIT 过滤读），但整库**只有 1 行** | 停摆 / 大规模裁员 / 能源冲击这类"模型卡上写明会失效"的场景，实际上还没有被标注出足够样本去验证这条路径有没有用 |
+| **`event_flags` 结构性断点** (`analysis/llm.py`) | 已接线（`decide_all` 读 `active_flags()`，回测按 PIT 过滤读），整库仅 **5 行** | 停摆 / 大规模裁员 / 能源冲击这类"模型卡上写明会失效"的场景，实际上还没有被标注出足够样本去验证这条路径有没有用 |
 
 ### E. 试过、结论是"不做"的方向（保留记录以免重做）
 
@@ -413,7 +429,8 @@ python -m prediction_market_macro.research.walkforward --days 75 --end 2026-08-0
 | **#128 / #131** | 展示 +9.98% 的那次回测 | **是关闭闸门跑出来的**。同窗口开闸门是 −6.84%，逐轮修 bug 后一路走到 −23.26% → −25.64% → **−28.02%**。每修好一个 bug 数字就更难看一次，这本身就是"原来的数字在哪里虚高"的答案。展示段已按最新真值重冻 |
 | **#124** | "skill 闸门错误封禁了 KXAAAGASW" | **复核后判定闸门是对的**（ratio 8.35）。不是 bug，不改 |
 | **`research/selector.py`** | 早期的 ML 超参选择器 | 被 `param_select` + `dsr` 的 DSR 门控路径取代，只在周更里作参考跑一次 |
-| **试运营重置 + 展示切换（2026-08-11,用户指令）** | 账本清零重启（`decisions`/`fills`/`marks`/影子表;完整备份 `data/macro_backup_20260811_prereset.db`;市场数据/预测/结算全保留）;cutover → 08-11;展示历史段替换为**采纳参数定格模拟 +45.38%**（44 笔,hybrid,prod 形态） | **三个数字的关系必须一起读**（披露已写进冻结源 `source.disclosure`）:事后定格 **+45.38%**（参数为同窗最优,从未实际交易）/ 每日 PIT 滚动选参 **−25.21%**（生产真实制度的诚实回测,run `:argminsel`）/ 旧默认参数 **−18.02%**。70pp 差距 = raw argmin 在 n=2-11 事件上的过拟合代价实测。**真实前向记录 = 实盘段,2026-08-11 从零起算**——用户选择以新账本 4-8 周的真实表现作为最终裁判。PR-2/PR-7 前向计数随重置重启（判据未动,PREREGISTER 有案） |
+| **试运营重置 + 展示切换（2026-08-11,用户指令）** | 账本清零重启（`decisions`/`fills`/`marks`/影子表;完整备份 `data/macro_backup_20260811_prereset.db`;市场数据/预测/结算全保留）;cutover → 08-11;展示历史段替换为**采纳参数定格模拟**（44 笔,hybrid,prod 形态;当时 +45.38%,08-15 锚定模型重放后为 **+26.44%**——见下一行） | **三个数字的关系必须一起读**（披露已写进冻结源 `source.disclosure`）:事后定格模拟（参数为同窗最优,从未实际交易）/ 每日 PIT 滚动选参 **−25.21%**（生产真实制度的诚实回测,run `:argminsel`）/ 旧默认参数 **−18.02%**。定格与滚动的差距 = raw argmin 在 n=2-11 事件上的过拟合代价实测。**真实前向记录 = 实盘段,2026-08-11 从零起算**——用户选择以新账本 4-8 周的真实表现作为最终裁判。PR-2/PR-7 前向计数随重置重启（判据未动,PREREGISTER 有案） |
+| **Cleveland nowcast 锚定（2026-08-15,已上线,cpi/0.3.0）** | 用户指令"拿历史 nowcast 做 PIT 回测,好使就接入"。泄漏免疫回放（T-26h、结算 T-阶梯逐腿 Brier、strict survival）:headline 45 事件 0.0904→0.0610（−33%,29/45,每个年切片都改善）;core 44 事件 Δ−0.0005 平局。headline 按证据接线;**core 按用户决定接线**（依据不对称,PR-8 与模块 docstring 均有案）;claims 无等价源维持 skill-blocked | 配套(每项对应一个既往事故类):health 金丝雀跳过版本翻转 byte-compare;`param_argmin` 指纹含模型版本;d75 pin 行原位重生成;`predict_all` 开头挂 `refresh_if_stale` 盘中尾守卫。**锚定后 argmin 重选:CPIYOY/COREYOY 双双改采 `{}` 默认参数**——mu 被 nowcast 钉住后旧拟合集不再赢窗口,这是锚定生效的旁证。全部回测面（d30/d60/d75/冻结展示行）已在锚定模型下原位替换 |
 | **manual_params 采纳（2026-08-11,生效中）** | 用户明示指令：将 75 天叉积（参数 × 流 × 离场,PnL 打分）在 **prod 规则约束下**（hybrid+离场开）的每市场 argmin 参数采纳进实盘。机制 `param_select.manual_params`：覆盖行优先于日选器、带 PIT 采纳时间戳（早于采纳时刻的模拟日不受影响）、`clear_manual` 一键回退、审计留痕 | **10 市场已写入**（claims/CPI×4/payrolls/U3/Fed/WTIW/NATGASW）,4 市场最优=默认未动（PCECORE/FEDDECISION/AAAGASW/GDP）。**DSR 反对意见在案**：全部市场 n_obs 1-11 < 12,搜索宽度 30-654 格,这些是折减门拒绝采纳的样本内 argmin,按用户指令上线。核对点:暴力全量扫描（`docs/PLAN_BRUTE_SWEEP.md`）完成后回头验证这批采纳在组合真值下是否仍是 argmax |
 | **75 天全市场参数网格搜索** | 2026-08-11：14 市场逐一定制参数空间（读全部模型的 DEFAULT_PARAMS 面设计；claims 91 组 / CPI 族 82-109 / payrolls 109 / u3·fed 82·10 / WTIW·NG 21 / AAA 7 / PCE 5；live-key 探测用窗前事件,网格设计不见窗口）,banded Brier 逐事件打分,argmin 报最优 + DSR 折减判adoption | **argmin 每个市场都能"赢"（Δ+0.006~+0.18）,但 14/14 全部未过 DSR 门**——75 天窗内可打分事件仅 1-11 个/市场,全部低于 `dsr.MIN_OBS=12`,折减检验根本无法启动;在 2 个事件上搜 109 组参数是查表不是学习。有价值的副产品:claims 的 argmin 赢家恰是 **PR-1 已注册的候选权重 (0,0,0.3,0.7)**(外加 seasonal_years=15),与预注册线索独立收敛——判决仍归 PR-1 前向检验,不归本搜索。结果存 `/tmp/grid75_results.json`（脚本规格在 commit message） |
 | **标定设计研究** | 2026-08-11：毒图事故后测 4 种标定设计（Platt/beta/事故版等渗/守卫版等渗）× 2 协议，跨 14 系列池化前向链，逐腿 Brier 判分 | **identity 全胜**（raw 0.0767 < 全部候选 ≤0.0806；市场 0.0375 斩半所有人）。带盘口事件每系列仅 2-12 个，任何单系列标定都是在假 n 上拟合；模型的病是落后市场，不是存在可学习的单调失准——能治那个病的变换是向市场价池化（`fair_mode='pooled'`，另行预注册），不是重塑模型概率。**identity 钉是测量出的最优，不是权宜**。详见 `strategy/calibration.py` docstring |
