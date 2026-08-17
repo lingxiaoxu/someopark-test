@@ -11,12 +11,13 @@
 用 QuantConnect(QC)云端 paper trading 做五策略组合的**实盘追踪镜像**:
 
 - **镜像保真**: QC 模拟账户的持仓在稳态时与本地 golden 持仓文件**逐票逐股一致**
-  (含空头负股数、BDC 小数股);差异只允许来自"在途订单"这一个瞬态。
-- **时序规则(用户规格,§4 形式化)**: 持仓文件变化发生在盘中(9:30–16:00 ET)
+  (含空头负股数、BDC 小数股);差异只允许来自"在途订单"这一个瞬态
+  (中流上线的 legacy 过渡期除外,该期偏差显式建模,见 §9)。
+- **时序规则(用户规格,§3 形式化)**: 持仓文件变化发生在盘中(9:30–16:00 ET)
   → 立即市价下单同步;盘前 → 等 9:30 开盘下单;盘后 → 次日开盘下单;
   节假日 → 顺延到下一交易日。交易日历以 QC 交易所日历为唯一权威。
 - **NAV 一致性**: QC 账户 equity 与本地 controller 实时 NAV(账本口径)之间的
-  偏差,除已知的 15 分钟行情延迟外,预算内可分解、可对账、超限报警(§6)。
+  偏差,除已知的 15 分钟行情延迟外,预算内可分解、可对账、超限报警(§5)。
 - **零策略逻辑外移**: QC 端**不做任何决策**,只做"目标持仓执行器"。所有信号、
   选参、风控仍在本地管道;QC 是执行与滑点现实性的镜子。
 
@@ -50,7 +51,7 @@ pairs inventory (mrpt/mtfs):
 account (aiss/ssrs/mrpt/mtfs, schema 同族):
   as_of, cash, equity, positions.{T}:{shares, avg_cost, entry_date},
   cumulative_realized/dividends/fees, lots(pairs: “P|s1” 腿级 lot)
-  cumulative_fees 恒为 0 → QC 必须配零费率模型才可比(§5.6)。
+  cumulative_fees 恒为 0 → QC 必须配零费率模型才可比(§2.2/附录 A-1)。
 
 inventory_bdc: holdings.{T}:{weight, shares(小数), drip_events, entry_date},
   cash:{ticker:"BIL", shares}; 三层强校验(ledger 重放==inventory)已内建。
@@ -60,7 +61,7 @@ inventory_bdc: holdings.{T}:{weight, shares(小数), drip_events, entry_date},
 
 1. **半更新窗**: DailySignal 先写 inventory、约 1 分钟后写 account —— 直接
    watch 原始文件会读到中间态。**解**: 不自己重解这个问题 —— 目标源直接用
-   controller 的装配输出(§3.1),controller 的 `_maybe_rebuild` 守门 + 双引擎
+   controller 的装配输出(§2.1),controller 的 `_maybe_rebuild` 守门 + 双引擎
    对拍已经解决了中间态(装配失败保守沿用旧结构)。
 2. **文件 mtime ≠ 持仓变化**(HOLD 重写文件但 shares 不变)。**解**: 变化检测
    基于**规范化持仓内容哈希**(controller `structure_hash` 现成)。
@@ -92,18 +93,18 @@ inventory_bdc: holdings.{T}:{weight, shares(小数), drip_events, entry_date},
 │   OnData/Scheduled: 拉 target(RTH 每 1min;09:28 预拉一次)       │
 │   版本号幂等 + ObjectStore 持久化 last_applied_version           │
 │   diff(target, Portfolio) → 市价单(带策略归因 tag)              │
-│   时序状态机(§4): 盘中即时 / 非盘中挂起至下一开盘(QC 日历)       │
+│   时序状态机(§3): 盘中即时 / 非盘中挂起至下一开盘(QC 日历)       │
 ├─ Verification 平面(本地)──────────────────────────────────────┤
 │ 每交易日 16:20 ET: QC Read API 拉 持仓/现金/equity/成交流水        │
 │   ①持仓 vs target: 必须 0 差(在途单除外)                        │
-│   ②equity vs controller 16:00 账本收盘: 分解对账(§6 预算)        │
+│   ②equity vs controller 16:00 账本收盘: 分解对账(§5 预算)        │
 │   ③成交 vs 本地 ledger 入场价: 滑点归因                          │
 │   → trading_quantconnect/reconcile/qc_reconcile_{date}.json     │
 │   超限报警进 daily 报告;后续里程碑接前端 quality checks          │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### 3.1 为什么目标源是 controller 而不是直接读 5 组文件(核心决策)
+### 2.1 为什么目标源是 controller 而不是直接读 5 组文件(核心决策)
 
 controller 已经解决了本方案 80% 的难题,且**每天在生产被双引擎对拍验证**:
 
@@ -116,7 +117,7 @@ controller 已经解决了本方案 80% 的难题,且**每天在生产被双引�
   并打 QC 端日志报警(fail-static + 大声,绝不猜)。本地已有 launchd 守护 +
   前端心跳报警兜底 controller 本身。
 
-### 3.2 QC 账户与资金映射
+### 2.2 QC 账户与资金映射
 
 - **口径**: 镜像**账本口径**(ledger basis)—— 持仓文件里的 shares 字面就是
   这个口径($1M/策略起账)。官方口径是展示层变换,不进执行。
@@ -124,13 +125,13 @@ controller 已经解决了本方案 80% 的难题,且**每天在生产被双引�
   一次性设定,此后 QC 自演化。
 - **保证金**: 全书 gross(现约 $6.3M: pairs gross 2.2M + 多头 4.1M)/net 5.07M
   ≈ 1.25×,Reg-T 2:1 之内;显式配 `SecurityMarginModel(2.0)` + 拒单即报警
-  (§7-F4),不静默缩单。
+  (§6-F4),不静默缩单。
 - **费用/利息**: QC 配零费率 FeeModel(与本地 `cumulative_fees=0` 口径对齐);
   空头借券费/保证金利息 QC paper 不计,与本地一致 → 不引入口径差。
 
 ---
 
-## 4. 时序规则(用户规格的形式化)
+## 3. 时序规则(用户规格的形式化)
 
 QC 算法内单一状态机,交易日历/时钟以 **QC 交易所日历为唯一权威**(节假日、
 半日市、DST 全部内生解决,本地不再自建日历):
@@ -143,7 +144,7 @@ QC 算法内单一状态机,交易日历/时钟以 **QC 交易所日历为唯一
 | 开盘时刻 | — | 若有 pending: 09:30:00 触发拉取最新 target(不是执行旧缓存 —— 隔夜可能多次变更,**只执行最新版**),diff → 市价单 |
 | 多次变更同窗口 | 任意 | 版本号单调,永远只追最新;中间版本天然合并(目标态语义,非增量单) |
 | 半日市(13:00 收) | QC 日历判定 | "盘中"窗口自动缩短,13:00 后规则同盘后 |
-| 个股停牌 | QC 拒单/不成交 | 该票挂起重试 + 报警,**其余票照常**(不因单票阻塞全书)(§7-F6) |
+| 个股停牌 | QC 拒单/不成交 | 该票挂起重试 + 报警,**其余票照常**(不因单票阻塞全书)(§6-F6) |
 
 开盘执行细节: 09:30:00 用市价单(用户规格"开盘下单取最新成交价")。开盘首分钟
 价差较宽是**真实执行成本**,镜像的目的正是把它量出来 —— 不做"等 5 分钟"之类
@@ -154,14 +155,14 @@ QC 算法内单一状态机,交易日历/时钟以 **QC 交易所日历为唯一
 
 ---
 
-## 5. 关键工程决策清单
+## 4. 关键工程决策清单
 
 | # | 议题 | 决策 | 理由 |
 |---|---|---|---|
 | D1 | 一个算法 vs 五个算法 | **单算法净额镜像** + 订单 tag 归因 | 跨策略同票净额唯一正确;五账户会把 pairs 空头与 AISS 多头拆成两笔虚假对敲 |
 | D2 | 目标传输 | QC 算法主动拉(HTTPS `Download()`,bearer key) | 复用既有 tunnel 基建;推送(ObjectStore API)列 R2 备选,拉模式无本地→QC 依赖 |
 | D3 | 幂等 | target 带单调 version;算法 ObjectStore 记 last_applied | 算法重启/重部署/网络抖动全自愈 |
-| D4 | 订单类型 | MarketOrder(RTH)| 用户规格;paper 按 NBBO+QC 滑点模型成交,即所求"最新成交价" |
+| D4 | 订单类型 | MarketOrder(RTH)| 用户规格;paper 立即全额按 bid/ask 成交(附录 A-2: **无滑点模型无部分成交**),即所求"最新成交价" |
 | D5 | **BDC 小数股** | 首选 QC 原生小数股下单(R1 验证);若 paper брokerage 限整数 → **显式残差账**: 整数股执行 + `fractional_residual.json` 逐票记差,残差市值>1 股价值时并入下次单 | 这是精确的会计设计,不是舍入了事 |
 | D6 | 股息/DRIP | QC 收现金股息;BDC 的 DRIP 在本地 inventory 加股 → target 增股 → QC 用股息现金买入 —— **闭环自洽**,支付日差异进对账分解 | 不在 QC 复刻 DRIP 逻辑(单一真源纪律) |
 | D7 | 拆股 | QC 自动调整持仓;本地 controller 标注 + 策略文件为 golden → 拆股日 target 与 QC 同步跳变,对账日做拆股感知比对 | |
@@ -171,7 +172,7 @@ QC 算法内单一状态机,交易日历/时钟以 **QC 交易所日历为唯一
 
 ---
 
-## 6. NAV 一致性预算(与 controller 实时 NAV)
+## 5. NAV 一致性预算(与 controller 实时 NAV)
 
 对账恒等式(每日 16:20 分解,逐项落 json):
 
@@ -179,7 +180,7 @@ QC 算法内单一状态机,交易日历/时钟以 **QC 交易所日历为唯一
 QC_equity − controller_ledger_close =
     Σ 滑点项      (QC 真实成交价 vs 本地 ledger 记账价; 逐单归因)
   + Σ 时点项      (下单时刻 vs 本地换仓记账时刻的市场移动; 盘前变更→开盘执行的隔夜跳空是最大项, 这是镜像的“真实执行成本”信息, 不是误差)
-  + Σ 股息时点项  (QC 按支付日入现金 vs 本地各策略记账口径)
+  + Σ 股息时点项  (R7 确证两侧同用除息日口径; 残余=本地凌晨 DRIP→次日 QC 买入的 ~1 交易日再投滞后, 量级可忽略但照记)
   + Σ 小数残差项  (D5, 仅当 QC 不支持小数股)
   + ε             (行情源差: QC NBBO vs Polygon; 预期 <2bp/gross)
 ```
@@ -194,7 +195,7 @@ QC_equity − controller_ledger_close =
 
 ---
 
-## 7. 故障矩阵(每格都是明确行为,无静默)
+## 6. 故障矩阵(每格都是明确行为,无静默)
 
 | # | 故障 | 行为 |
 |---|---|---|
@@ -209,31 +210,31 @@ QC_equity − controller_ledger_close =
 
 ---
 
-## 8. 目录与产物规划
+## 7. 目录与产物规划
 
 ```
 trading_quantconnect/
   QUANTCONNECT_MIRROR_PLAN.md      ← 本文件
   exporter/                         M1: target 导出器(读 controller 输出)
   server_route/                     M1: /api/qc/target(挂进既有 express)
-  lean/                             M2: QC 算法工程(本地 LEAN CLI 同步开发/回测)
+  lean/                             M2: QC 算法工程(纯逻辑+本地单测;零回测,见 M2)
   ops/                              M3: 部署/监控脚本、QC API 封装
   reconcile/                        M4: 每日对账 job + 报告 json
   tests/                            全程: pytest(tmp 沙箱 + 只读生产)
 ```
 
-## 9. 里程碑与验收
+## 8. 里程碑与验收
 
 | 阶段 | 内容 | 验收标准 |
 |---|---|---|
-| **M0 研究 spike**(先行,QC 账号到手后 0.5–1 天) | R1 小数股 paper 支持;R2 Download vs ObjectStore 推送与频控;R3 开盘单语义(Market@09:30 vs MOO);R4 Read API 拿持仓/成交的字段与延迟;R5 live 算法热更 target 不重部署的正确姿势;R6 零费率+滑点模型配置 | 每项有实测结论写进本文件附录 |
+| **M0 研究 spike**(先行,QC 账号到手后 0.5–1 天) | R1 小数股 paper 支持;R2 Download vs ObjectStore 推送与频控;R3 开盘单语义(Market09:30 vs MOO);R4 Read API 拿持仓/成交的字段与延迟;R5 live 算法热更 target 不重部署的正确姿势;R6 零费率+滑点模型配置 | 每项有实测结论写进本文件附录 |
 | M1 Target 平面 | exporter + endpoint + 强 schema | 单测: 半更新窗/化石槽/净额/改名票逐案;target 与 controller flatten 逐票一致 |
 | M2 QC 算法(纯逻辑先行) | 状态机 + diff 执行 + 幂等;**不做任何回测**(策略回测全在本地,QC 只是执行器)—— diff/幂等/legacy 减法抽成纯函数,本地 pytest 钉死;QC 框架行为(开盘调度/日历)由 M3 paper 灰度直接验收(paper 即零成本沙箱,错了重置重来) | 纯函数单测全过: 历史 target 序列(8 月真实变更)喂 diff 引擎,期末状态与 golden 逐票一致;幂等/乱序/重启用例全绿 |
-| M3 Paper 上线(小书) | 先只镜像 BDC+SSRS(低频、多头、无小数争议面小)| 稳态持仓 0 差连续 3 日;时序规则三分支(盘中/盘前/盘后)各实测一次 |
-| M4 全书 + 对账平面 | pairs 空头 + AISS 上线;每日对账 job | 换仓日对账分解可解释;连续 5 日无未归因残差报警 |
+| M3 Paper 上线(小书) | 先只镜像 BDC+SSRS(低频、多头、争议面小)| 稳态持仓 0 差连续 3 日;**盘前/盘后**两分支各实测一次(复审修正: 盘中变更在月频小书阶段自然不可达,不设做不到的验收)|
+| M4 全书 + 对账平面 | pairs 空头 + AISS 上线;每日对账 job | 换仓日对账分解可解释;连续 5 日无未归因残差报警;**盘中分支**随首次真实 CLOSE_STOP/盘中去风险实测(pairs 上线后自然发生)|
 | M5 前端集成 + 运维交接 | 面板 QC 对账项;运维台账进 memory | 与既有 quality checks 同视觉/同语义 |
 
-## 10. 冷启动 / 中流上线(Bootstrap,2026-08-16 用户规格)
+## 9. 冷启动 / 中流上线(Bootstrap,2026-08-16 用户规格)
 
 **问题**: 信号已运行数月,inventory 里已有大量既有仓位(含空头)。QC 从零起步,
 不能对"从未在 QC 建立过的仓位"执行平仓。
@@ -246,7 +247,7 @@ trading_quantconnect/
   QC 从空书开始,只镜像 go-live 之后新开的对;既有对的 CLOSE 在 QC 端为
   无操作;既有对逐个自然死亡后,pairs 书收敛到完全镜像。
 
-### 11.1 实现: Legacy 过滤在 exporter(QC 端零感知)
+### 9.1 实现: Legacy 过滤在 exporter(QC 端零感知)
 
 保持"QC=哑目标态执行器"不变 —— bootstrap 全部在 Target 平面表达:
 
@@ -260,9 +261,18 @@ go-live 时刻(一次性):
   target = controller 全书 flatten
          − Σ(仍存活的 legacy 对的腿贡献)     ← risk_matrix 的 leaf→(pair_node,eff)
                                               反向索引精确给出每对的腿级贡献
-  legacy 存活判定: 对名仍在 inventory 实仓 且 open_date 与冻结值相同
-    (对名相同但 open_date 变了 = 同名新实例 → 按新仓镜像,legacy 项作废)
+  legacy 存活判定: **必须与 flatten 同源** —— 以 controller 当前
+    structure snapshot 里"pair 节点存在且 open_date attr 与冻结值相同"为准
+    (对名相同但 open_date 变了 = 同名新实例 → 按新仓镜像,legacy 项作废)。
 ```
+
+⚠️ **原子性红线(复审 2026-08-16 抓出的漏洞)**: 存活判定**禁止**直接读
+inventory —— 若从 inventory 读(半更新窗/写入瞬间),可能出现"减项已判死、
+flatten 里 pair 还在"的错位,target 会突然包含 legacy 腿 → **QC 误开既有仓**,
+恰好违反用户第一原则。flatten 与存活判定取自**同一个** controller snapshot
+(同一 structure_hash),"双边同时消失"由快照原子性保证,错位在构造上不可能。
+前置条件: pair 节点 attrs 需带 open_date(M1 对 controller 的唯一小改,
+装配时从 inventory 带入,与既有 open_sX_price 进 attrs 同款)。
 
 **这个减法自动给出全部正确行为,无需特殊分支**:
 - legacy 对被策略平仓 → 它同时从 flatten 与减项中消失 → target 无变化
@@ -273,7 +283,7 @@ go-live 时刻(一次性):
 - pairs 纪律"HOLD 不改股数、只有整对 CLOSE"保证 legacy 对不存在部分变形;
   若未来出现"同对调仓",其形态必是 CLOSE+重开 → open_date 变 → 自动按新仓。
 
-### 11.2 资金与 NAV 对账的过渡期语义
+### 9.2 资金与 NAV 对账的过渡期语义
 
 - **QC 初始资金 C0 = go-live 日 Σ 五策略 account equity**(全书资本,不因
   pairs 空书而少配 —— pairs 本近自融资: 实测 account_mrpt cash 1,043,388 vs
@@ -282,24 +292,24 @@ go-live 时刻(一次性):
   `QC_equity ≈ controller_ledger_NAV − Σ legacy 对的 (value_t − value_golive)`
   即减去"既有对自 go-live 起的未镜像 P&L"(controller pair 节点逐对值现成,
   逐日精确可算,不是估计)。该项随 legacy 对逐个死亡而封闭,全部死亡后恒为
-  常数(计入历史)→ 进入完全镜像态,对账回到 §6 原式。
+  常数(计入历史)→ 进入完全镜像态,对账回到 §5 原式。
 - 对账报告增加 `bootstrap: {transition: true, legacy_remaining: n, ages: [...]}`;
   transition 结束(n=0)当日显式记录里程碑。
 - AISS/SSRS/BDC 立即建仓的成本基差(QC 按 go-live 市价、本地是历史成本)
   **不影响 NAV 追踪**: 股数相同 → 此后 ΔNAV 逐日 1:1;建仓本身只付一次
   spread(进对账价差项,一次性,预计全书 <2bp)。
 
-### 11.3 过渡期运营
+### 9.3 过渡期运营
 
 - 观测: 每日对账列出存活 legacy 对与账龄;pairs 典型持有期数日~数周,预计
   过渡 2–6 周自然完成。
 - **人工收养(可选,显式操作非自动)**: 若个别 legacy 对长期不死且用户想提前
   进入完全镜像,提供 operator 命令把指定对按市价在 QC 建立(等同把它移出
   legacy 集)。默认不启用 —— 遵循用户"等自然关闭"原则。
-- go-live 建仓执行遵循 §4 同一状态机(盘中立即、否则下一开盘),不写特殊
+- go-live 建仓执行遵循 §3 同一状态机(盘中立即、否则下一开盘),不写特殊
   初始化路径(D10 不变,只是首个 target 已含 legacy 减法)。
 
-## 11. 明确不做
+## 10. 明确不做
 
 - 不接真钱经纪商;不在 QC 写任何策略/信号逻辑;不改任何策略生产文件;
 - 不为"简化"合并口径: 官方口径展示归展示,执行镜像只认账本口径;
@@ -313,31 +323,31 @@ go-live 时刻(一次性):
 
 **已确认支持(计划成立):**
 - US Equities ✓(全书皆美股/ETF);Market / **Market-on-Open** / Limit / Stop
-  等全序 ✓ —— **R3 已答**: MOO 原生存在,开盘执行可在 Market@09:30 与 MOO
+  等全序 ✓ —— **R3 已答**: MOO 原生存在,开盘执行可在 Market09:30 与 MOO
   之间由 M3 实测数据选择;
 - 现金/保证金账户 + 买力与 margin call 建模 ✓(D 保证金设计成立);
 - **raw 归一化下拆股自动调整持仓与在途单的数量/限价/触发价** ✓(D7/D8 的
   raw 选择被文档直接背书);
-- CashBook 存取款 API ✓ → 初始资金设定 + 附录 A-3 的现金校准都有正规通道;
+- CashBook 存取款 API ✓ → 初始资金设定(§2.2/§9.2 C0)有正规通道;
 - 订单可更新、TIF(Day/GTC/GTD)✓;paper 用真实 live 数据源。
 
 **按文档修正的三处设计:**
 
-1. **费用(修正 §3.2/§6)**: Paper 默认**非零费率**(股票 $0.005/股、最低 $1)。
+1. **费用(修正 §2.2/§5)**: Paper 默认**非零费率**(股票 $0.005/股、最低 $1)。
    方案: 算法内显式 `SetFeeModel(ConstantFeeModel(0))` 覆盖为零费(LEAN
    security 级 fee model 可覆盖,M0 实测确认在 paper 生效);若覆盖不生效,
    则对账分解新增"费用项"(逐单精确可算,非估计)。二选一都不引入未归因残差。
-2. **成交语义(修正 §6 叙述)**: 文档明示 paper "市价单立即全额成交,按
+2. **成交语义(修正 §5 叙述)**: 文档明示 paper "市价单立即全额成交,按
    bid/ask spread 定价,**无滑点模型、无部分成交**"。因此:
    - 对账分解里的"滑点项"精确化为"**价差项**(过 spread 成本)+ 时点项",
      不含冲击 —— 镜像量到的是 spread+timing 成本,冲击成本另由 VP econ 层
      (λ 标定)覆盖,两者互补不重复;
-   - §7-F5(部分成交跨收盘)降级为防御性路径(默认全成交),保留不删。
+   - §6-F5(部分成交跨收盘)降级为防御性路径(默认全成交),保留不删。
 3. **BDC 小数股(修正 D5 主次)**: 文档未提小数股;LEAN 股票 LotSize=1 的
    默认校验大概率拒绝小数单 → **残差账升为主方案**(整数股执行 +
    `fractional_residual.json` 逐票记差,残差市值>1 股并入下次单),QC 原生
    小数降为 R1 验证的 upside。BDC 六票残差上界 = 6 股市值 ≈ $150,对
-   $950k sleeve 为 1.6bp,在 §6 预算内单列。
+   $950k sleeve 为 1.6bp,在 §5 预算内单列。
 
 **新增研究项:**
 - **R7 股息入账 — 已答(2026-08-16,源码级确证): paper 派息 ✓**。证据链:
@@ -352,7 +362,7 @@ go-live 时刻(一次性):
   - 入账时点 = live 公司行动数据到达时(6–7AM ET,**除息日**口径)。本地
     bdc_inventory 的 DRIP 同样按除息日收盘价再投 —— **两侧同用 ex-date 口径**,
     仅剩"本地凌晨处理→次日 target 增股→QC 次日开盘买入"的 ~1 交易日再投滞后,
-    计入 §6 时点项(量级: 单次分红额×1 日 BDC 波动,≈$50×数千分之一,可忽略
+    计入 §5 时点项(量级: 单次分红额×1 日 BDC 波动,≈$50×数千分之一,可忽略
     但照记);
   - M0 仍保留一次实测(临近除息的持仓票)做上线前的行为验收,非存疑复查。
 - **R8 节点资源**: live 部署需一个可用 live trading node —— M0 确认账号
