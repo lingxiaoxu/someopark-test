@@ -274,9 +274,21 @@ trading_quantconnect/
    $950k sleeve 为 1.6bp,在 §6 预算内单列。
 
 **新增研究项:**
-- **R7 股息入账**: 文档未提 paper 是否派息入现金。若不派 → BDC DRIP 闭环的
-  现金腿缺失 → 方案: 月度现金校准(CashBook deposit,金额=本地 ledger 该月
-  div_cash 合计,逐笔留痕)—— 显式记账,非兜底。M0 用一只临近除息 ETF 实测。
+- **R7 股息入账 — 已答(2026-08-16,源码级确证): paper 派息 ✓**。证据链:
+  1. corporate-actions 文档: raw+live 下"派息金额自动入 cashbook"(表面陈述);
+  2. LEAN `SecurityPortfolioManager.ApplyDividend`: **live 模式提前 return**
+     ("不精确建模 payable date,live 依赖券商现金同步")—— 核心引擎不记息;
+  3. **`PaperBrokerage.Scan()` 自己派息**(决定性):
+     `distribution = Holdings.Quantity × dividend.Distribution;`
+     `security.QuoteCurrency.AddAmount(distribution)`,每时间循环去重防双记。
+  推论与设计影响:
+  - BDC DRIP 现金腿闭环**成立**,月度 CashBook 校准从方案降级为对账核对项;
+  - 入账时点 = live 公司行动数据到达时(6–7AM ET,**除息日**口径)。本地
+    bdc_inventory 的 DRIP 同样按除息日收盘价再投 —— **两侧同用 ex-date 口径**,
+    仅剩"本地凌晨处理→次日 target 增股→QC 次日开盘买入"的 ~1 交易日再投滞后,
+    计入 §6 时点项(量级: 单次分红额×1 日 BDC 波动,≈$50×数千分之一,可忽略
+    但照记);
+  - M0 仍保留一次实测(临近除息的持仓票)做上线前的行为验收,非存疑复查。
 - **R8 节点资源**: live 部署需一个可用 live trading node —— M0 确认账号
   配额,不够则明确升级成本再动手。
 
