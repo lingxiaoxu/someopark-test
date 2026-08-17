@@ -156,10 +156,11 @@ def build_target(snap: dict[str, dict],
 
     legacy: {"mrpt":[{"pair","open_date"}],...} 冻结集;存活=同名+同 open_date
             (同一次 snap 读取内判定 → 与腿数同快照)。
-    scalars(缩放镜像,2026-08-17 用户规格): go-live 冻结的每策略常数
-            scalar_s = 官方equity_s/账本equity_s —— QC 按官方口径资本规模
-            建仓(AISS≈2.68x 等)。缩放在**策略层**发生(legacy 腿同缩放),
-            冻结常数非活比率,不违反 ratio 纪律。None/缺键 = 1.0(字面镜像)。
+    scalars(2026-08-17 用户规格,零 ratio 依赖): go-live 一次性构造
+            "按官方口径 $6M 持股细节建仓"的换算常数(官方equity/账本equity,
+            AISS≈2.68 等),构造后**永不重算、永不再基准、官方 perf 永不再读**。
+            未来换仓沿用同一常数 → QC 各子账与策略持仓严格等比,QC 成为
+            从 $6M 起步的独立自复利账户。legacy 腿同常数。None/缺键=1.0。
     小数(BDC 天然小数 + 缩放产生的全策略小数): 目标取最近整数,
             residual[t] = 真实值 − 整数(本地记账,QC 只见整数股)。
     """
