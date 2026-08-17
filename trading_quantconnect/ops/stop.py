@@ -22,9 +22,16 @@ def main() -> int:
     if pid is None:
         print("project not found")
         return 1
+    from qc_api import QcApiError
     if a.liquidate:
         print(c.live_liquidate(pid))
-    print(c.live_stop(pid))
+    try:
+        print(c.live_stop(pid))
+    except QcApiError as e:
+        if "No running deployment" in str(e):
+            print("(liquidate 已自停,stop 无需执行)")
+        else:
+            raise
     return 0
 
 

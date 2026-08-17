@@ -163,8 +163,11 @@ class QcClient:
 
     def live_logs(self, project_id: int, start_line: int = 0,
                   end_line: int = 250) -> dict:
+        live = self.live_read(project_id)
+        algo_id = live.get("deployId")
         return self.call("live/logs/read",
                          {"format": "json", "projectId": project_id,
+                          "algorithmId": algo_id,
                           "startLine": start_line, "endLine": end_line})
 
     # ── ObjectStore(target 传输面)──────────────────────────────────────────

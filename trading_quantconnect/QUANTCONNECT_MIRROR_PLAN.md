@@ -485,6 +485,39 @@ R7 已证的 PaperBrokerage 派息 → 本地 DRIP 加股 → target 增 → QC 
   配额,不够则明确升级成本再动手。
 
 ---
+
+## 附录 A-3. M0 实测结论 + Go-Live 实录(2026-08-17)
+
+### M0 三项实测结论(周一开盘后探针,全部落定)
+| 项 | 结论 | 证据 |
+|---|---|---|
+| R1 小数股 | **拒绝**:`quantity (0.5) less than lot size (1)` → 残差账为唯一方案(全票整数化 + `fractional_residual.json`,\|残差\|<0.5 股/票) | m0_probe 订单回执 |
+| R2 ObjectStore 传输 | **通**:API `object/set`(multipart)推送 → 算法端 `ObjectStore.Read` 同 key 读到 → 传输面成立 | 探针读回一致 |
+| R6 零费率 | **通**:`SetFeeModel(ConstantFeeModel(0))` 后成交 fee=0.0,与本地零费口径对齐 | 订单事件 fee 字段 |
+| (附)object/get API | 平台侧下载 export 为 Institutional-only;**算法端读取不受影响**,仅影响外部审计路径(M4 用 live/portfolio 代替) | API 报错原文 |
+| (附)SID 命名 | QC holdings 键用**历史首名**(OBDC 显示为 "ORCC …"),同我方 ISIN 锚定;M4 对账需 SID→现名映射 | portfolio 读回 |
+
+### Go-Live 实录(2026-08-17 周一)
+- 08:53 ET `golive`:冻结 legacy(mrpt 1 对 + mtfs 9 对)+ 构造常数
+  scalars(mrpt .5924 / mtfs .3814 / aiss 2.6816 / ssrs .9950 / bdc 1.0),
+  C0 = **$6,000,322.19**(五策略官方口径和,永不重读)。
+- 09:3x 部署 mirror(main.py + mirror_logic.py),v1 target 21 票。
+- 09:36 首轮:21 票全 blocked(新订阅同 tick 无行情)—— **收敛循环设计被
+  生产验证**(部署前深检修的 bug:旧版会在此刻标记已应用并永久丢腿)。
+- 09:37 20 票成交;TSLX 连续 blocked 两轮;09:39 TSLX 成交;
+  09:40 `applied v1 CONVERGED`。全程零人工。
+- 现金自动残差:$945,378(= C0 − 成交成本;成交价低于 8/14 估值,省 ~$182k)。
+- EOD 核对(16:1x ET):持仓 21/21 逐票精确一致;equity $5,986,312;
+  面板头条估算 $6,039,033,差 $52.7k = legacy 对折算市值 $232.5k −
+  建仓成本节省 $182.5k + 楔子 ~$2.7k —— **§9.4 过渡期语义闭环验证通过**。
+- 当日代码修正:qc_api `live_logs` 需 deployId→algorithmId 参数(endLine≤250);
+  stop.py 容忍 liquidate 自停后的 "No running deployment"。
+- 运维化:exporter 落地 launchd 常驻 `com.someopark.qcmirror.exporter`
+  (KeepAlive,日志 `logs/exporter_launchd.log`;坑:wrapper 无 +x → EX_CONFIG 78)。
+- 剩余:M4 日对账(SID 映射/legacy P&L 项/官方引擎楔子/过渡期末 K-rebase 工具
+  + BDC 残差>1 股并单)、M5 面板集成。
+
+---
 *作者注: 本方案刻意把全部"聪明"留在本地(已被生产验证的 controller),QC 端
 只有一个哑执行器 + 状态机。镜像系统的价值在于它简单到不可能错,而所有会错的
 地方都有对账在等着。*
