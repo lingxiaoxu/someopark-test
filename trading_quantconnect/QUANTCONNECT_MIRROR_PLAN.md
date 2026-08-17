@@ -267,6 +267,29 @@ trading_quantconnect/                v2 实际布局(全部开发在此,不出�
 | M4 全书 + 对账平面 | pairs 空头 + AISS 上线;每日对账 job | 换仓日对账分解可解释;连续 5 日无未归因残差报警;**盘中分支**随首次真实 CLOSE_STOP/盘中去风险实测(pairs 上线后自然发生)|
 | M5 前端集成 + 运维交接 | 面板 QC 对账项;运维台账进 memory | 与既有 quality checks 同视觉/同语义 |
 
+## 8.5 开发完成态与剩余清单(2026-08-17 深检后)
+
+**已完成(代码+测试,19/19)**: exporter 全链(直读/防火墙/legacy/缩放建仓
+常数/版本化/ObjectStore 推送)、QC 算法(状态机/收敛式 apply/零费/C0 现金
+初始化)、mirror_logic 纯函数(M2 diff 单测兑现)、M0 探针、ops 三件、runbook。
+深检修复: 旧 _apply 提交即标版本 → 新订阅票无行情被拒后**永久丢腿**
+(go-live 必翻车);改收敛循环(blocked 跳过重试,全清零才标版本)。
+
+**剩余(按先后)**:
+1. **周一 M0 现场联调**(唯一无法本地验证的面): live/create payload 实配、
+   R2 算法端 ObjectStore 读、R1 小数股、R6 零费生效 —— runbook T-2;
+2. golive + 首建仓收敛观察(T-1/T-3);
+3. exporter 生产化: launchd 常驻(现为前台 --loop,周一先人工值守);
+4. **M4 对账平面**(未建): 每日自动 qc_reconcile job(持仓 0 差/€分解/
+   legacy 项/官方引擎差)+ transition 结束日的 K 再基准工具;
+5. M4 附属: BDC 残差 >1 股并入下单(接口已留);
+6. **M5 面板集成**: quality checks 加 QC 镜像项 + 头条旁 QC equity 展示;
+7. 运维交接: 台账进 memory,openclaw 排程。
+
+**"完全可用"判定**: 1-3 完成即可**日常镜像运行**(人工 status 对账);
+4-6 完成才算 plan 全量交付(自动对账+面板可见)。预估: 1-3=周一当天;
+4=1-2 天;5-6=1 天。
+
 ## 9. 冷启动 / 中流上线(Bootstrap,2026-08-16 用户规格)
 
 **问题**: 信号已运行数月,inventory 里已有大量既有仓位(含空头)。QC 从零起步,

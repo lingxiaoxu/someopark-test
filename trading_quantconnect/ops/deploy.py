@@ -18,9 +18,11 @@ from qc_api import QcClient, QcApiError  # noqa: E402
 
 ALGOS = {
     "probe": {"project": "SomeoPark_M0_Probe",
-              "file": _THIS_DIR / "lean" / "m0_probe.py"},
+              "files": {"main.py": _THIS_DIR / "lean" / "m0_probe.py"}},
     "mirror": {"project": "SomeoPark_Mirror",
-               "file": _THIS_DIR / "lean" / "main.py"},
+               "files": {"main.py": _THIS_DIR / "lean" / "main.py",
+                         "mirror_logic.py":
+                             _THIS_DIR / "lean" / "mirror_logic.py"}},
 }
 
 
@@ -39,8 +41,9 @@ def main() -> int:
     else:
         print(f"[deploy] project exists: {spec['project']} id={pid}")
 
-    c.upsert_file(pid, "main.py", spec["file"].read_text())
-    print("[deploy] main.py uploaded")
+    for name, path in spec["files"].items():
+        c.upsert_file(pid, name, path.read_text())
+        print(f"[deploy] {name} uploaded")
     cid = c.compile_project(pid)
     print(f"[deploy] compile OK: {cid}")
     if a.update_only:

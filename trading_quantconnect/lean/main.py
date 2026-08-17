@@ -101,43 +101,54 @@ class SomeoParkMirror(QCAlgorithm):
         return self.Securities[self.spy].Exchange.Hours.IsOpen(self.Time, False)
 
     def _apply(self, doc):
+        """收敛循环(深检修复 2026-08-17): 新订阅票同 tick 无行情/在途单
+        → 跳过等下一轮;**全部 delta 清零才标记版本** —— 部分被拒不再丢腿,
+        每分钟 Poll 自动重入直到收敛(diff 语义幂等,重入安全)。"""
+        from mirror_logic import plan_orders
         if not self.cash_initialized:
             self._init_cash(doc)
         targets = {k: int(v) for k, v in doc["targets"].items()}
         attribution = doc.get("attribution", {})
-        # 目标里的新票先订阅
+        # 目标里的新票先订阅(数据下一分钟到,本轮它们会进 blocked)
         for tkr in targets:
-            if not self.Securities.ContainsKey(Symbol.Create(
-                    tkr, SecurityType.Equity, Market.USA)):
-                self.AddEquity(tkr, Resolution.Minute)
-        n_orders = 0
-        # 现有持仓不在 target → 清零(稳态镜像语义;legacy 从未在此账户,天然无此路径)
-        for kvp in self.Portfolio:
-            sym = kvp.Key
-            if sym == self.spy:
-                continue
-            if kvp.Value.Invested and sym.Value not in targets:
-                self.MarketOrder(sym, -kvp.Value.Quantity,
-                                 tag=f"{POLL_TAG} v{doc['version']} flatten")
-                n_orders += 1
-        for tkr, want in targets.items():
             sym = Symbol.Create(tkr, SecurityType.Equity, Market.USA)
-            have = int(self.Portfolio[sym].Quantity)
-            delta = want - have
-            if delta == 0:
+            if not self.Securities.ContainsKey(sym):
+                self.AddEquity(tkr, Resolution.Minute)
+
+        holdings, blocked = {}, set()
+        universe = set(targets)
+        for kvp in self.Portfolio:
+            if kvp.Key == self.spy:
                 continue
-            tag = (f"{POLL_TAG} v{doc['version']} "
+            if kvp.Value.Invested:
+                universe.add(kvp.Key.Value)
+        for tkr in universe:
+            sym = Symbol.Create(tkr, SecurityType.Equity, Market.USA)
+            holdings[tkr] = int(self.Portfolio[sym].Quantity)
+            sec = self.Securities[sym] if self.Securities.ContainsKey(sym) else None
+            if sec is None or sec.Price <= 0:
+                blocked.add(tkr)                 # 尚无行情(刚订阅)
+            elif len(self.Transactions.GetOpenOrders(sym)) > 0:
+                blocked.add(tkr)                 # 在途单,等成交
+
+        orders, converged = plan_orders(targets, holdings, blocked)
+        for tkr, delta, kind in orders:
+            sym = Symbol.Create(tkr, SecurityType.Equity, Market.USA)
+            tag = (f"{POLL_TAG} v{doc['version']} {kind} "
                    f"{json.dumps(attribution.get(tkr, {}), sort_keys=True)}")
-            ticket = self.MarketOrder(sym, delta, tag=tag[:200])
+            ticket = self.MarketOrder(sym, delta, tag=tag[:190])
             if ticket.Status == OrderStatus.Invalid:
                 self.Error(f"{POLL_TAG} ORDER INVALID {tkr} Δ{delta}: "
                            f"{ticket.SubmitRequest.Response.ErrorMessage} "
-                           f"— 单票挂起,其余照常(F6)")
-            n_orders += 1
-        self.applied_version = doc["version"]
-        self._save_applied(doc["version"])
-        self.Log(f"{POLL_TAG} applied v{doc['version']}: {n_orders} orders, "
-                 f"{len(targets)} target tickers")
+                           f"— 单票下一轮重试,其余照常(F6)")
+        if orders or blocked:
+            self.Log(f"{POLL_TAG} v{doc['version']} converging: "
+                     f"{len(orders)} orders, blocked={sorted(blocked)[:6]}")
+        if converged:
+            self.applied_version = doc["version"]
+            self._save_applied(doc["version"])
+            self.Log(f"{POLL_TAG} applied v{doc['version']} CONVERGED "
+                     f"({len(targets)} target tickers)")
 
     def _init_cash(self, doc):
         c0 = doc.get("initial_cash")
