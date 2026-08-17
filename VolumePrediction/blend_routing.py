@@ -50,11 +50,21 @@ def recent_measured_adv(pred_date: str, n_days: int = MEASURED_ADV_DAYS,
 
 
 def rnn_layer(covered: pd.Index, pred_V: pd.Series, held: set,
-              measured_adv: pd.Series | None = None) -> tuple[set, dict]:
+              measured_adv: pd.Series | None = None,
+              full_coverage: bool = False) -> tuple[set, dict]:
     """→ (RNN 层票集合, 诊断 dict)。纯函数,不做 IO(可测/可复现)。
 
     liq = max(ADV̂, 实测 ADV)(实测缺票按 ADV̂);thr = liq 中位数;
-    层 = {liq ≥ thr} ∪ (持仓 ∩ 覆盖)。"""
+    层 = {liq ≥ thr} ∪ (持仓 ∩ 覆盖)。
+
+    full_coverage=True(RNN promote,用户终判 2026-08-17,AB 10 日 econ 9/10 胜):
+    层 = 全部覆盖票,流动性门退役;lgbm 只守 RNN 覆盖外残尾。门控代码保留,
+    registry blend.rnn_full_coverage 置 false 即回滚到分层模式。"""
+    if full_coverage:
+        layer = set(covered)
+        return layer, {"thr": 0.0, "gate_source": "full_coverage(promote_20260817)",
+                       "n_layer": len(layer), "n_covered": int(len(covered)),
+                       "n_measured_lifted": 0}
     liq_pred = pred_V.reindex(covered)
     if measured_adv is not None and len(measured_adv):
         liq = pd.concat([liq_pred, measured_adv.reindex(covered)],

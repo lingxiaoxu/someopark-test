@@ -938,7 +938,9 @@ class _Ops:
                 _cov = _rn.index.intersection(_pv.index)
                 _layer, _diag = rnn_layer(_cov, _pv.loc[_cov],
                                           _held_tickers(asof),
-                                          recent_measured_adv(asof))
+                                          recent_measured_adv(asof),
+                                          full_coverage=bool(
+                                              _blend_cfg.get("rnn_full_coverage")))
                 _m2 = out["ticker"].isin(_layer)
                 for _c in ("pred_v", "pred_V", "pred_eta",
                            "model_version", "trained_through"):

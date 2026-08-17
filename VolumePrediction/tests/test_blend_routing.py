@@ -73,3 +73,22 @@ def test_recent_measured_adv_degrades_to_empty_on_error():
             raise RuntimeError("no raw store")
     s = recent_measured_adv("2026-08-13", svc=BrokenSvc())
     assert s.empty
+
+
+def test_full_coverage_promote_takes_all_covered():
+    # RNN promote(用户终判 2026-08-17): full_coverage=True → 层=全覆盖,
+    # 流动性门退役;lgbm 只守 RNN 覆盖外残尾。
+    cov = pd.Index(["A", "B", "C", "D"])
+    pv = pd.Series({"A": 1e9, "B": 1e6, "C": 1e3, "D": 10.0})
+    layer, diag = rnn_layer(cov, pv, held={"D"}, full_coverage=True)
+    assert layer == {"A", "B", "C", "D"}
+    assert diag["gate_source"] == "full_coverage(promote_20260817)"
+    assert diag["n_layer"] == 4 and diag["n_covered"] == 4
+
+
+def test_full_coverage_default_off_keeps_layered_gate():
+    # 回滚保障: 不传/False 时旧门语义逐位不变(top50% ∪ held)。
+    cov = pd.Index(["A", "B", "C", "D"])
+    pv = pd.Series({"A": 1e9, "B": 1e6, "C": 1e3, "D": 10.0})
+    layer, _ = rnn_layer(cov, pv, held={"D"})
+    assert layer == {"A", "B", "D"}
