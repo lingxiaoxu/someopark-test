@@ -22,7 +22,7 @@ _THIS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(_THIS_DIR))
 
 from inventory_source import (SOURCE_FILES, SourceError, build_target,   # noqa: E402
-                              content_hash, freeze_legacy, initial_cash,
+                              content_hash, freeze_legacy, golive_scalars,
                               read_snapshot)
 
 STATE_DIR = _THIS_DIR / "state"
@@ -60,7 +60,8 @@ def compose(snap) -> dict:
     st = _load(EXPORTER_STATE, {"version": 0, "hash": None,
                                 "initial_cash": None})
     built = build_target(snap, legacy=legacy.get("frozen"),
-                         prev_residual=_load(RESIDUAL_PATH, {}))
+                         prev_residual=_load(RESIDUAL_PATH, {}),
+                         scalars=st.get("scalars") or {})
     h = content_hash(built["targets"])
     return {"state": st, "built": built, "hash": h, "legacy": legacy}
 
@@ -116,12 +117,17 @@ def golive(push: bool = True) -> dict:
                           f"确要重来先人工归档该文件")
     snap = read_snapshot()
     frozen = freeze_legacy(snap)
-    c0 = initial_cash()
+    sc = golive_scalars()          # 缩放镜像: 官方/账本 每策略冻结常数
     _atomic_write(LEGACY_PATH, {"frozen_at": _now(), "frozen": frozen})
     _atomic_write(EXPORTER_STATE, {"version": 0, "hash": None,
-                                   "initial_cash": c0})
+                                   "initial_cash": sc["C0"],
+                                   "scalars": sc["scalars"],
+                                   "scalar_basis": {"official": sc["official"],
+                                                    "ledger": sc["ledger"],
+                                                    "frozen_at": _now()}})
     n = {k: len(v) for k, v in frozen.items()}
-    print(f"[golive] legacy frozen {n}, C0={c0:,.2f}")
+    print(f"[golive] legacy frozen {n}, C0={sc['C0']:,.2f}, "
+          f"scalars={ {k: round(v,3) for k, v in sc['scalars'].items()} }")
     return export_once(push=push, force=True)
 
 
@@ -145,8 +151,14 @@ def main() -> int:
                                     c["built"]["legacy_alive"].items()},
                    "residual": c["built"]["residual"]}
         else:
-            b = build_target(snap, legacy=freeze_legacy(snap))
-            doc = {"note": "PRE-GOLIVE PREVIEW(legacy=当前全部 pairs 实仓)",
+            sc = golive_scalars()
+            b = build_target(snap, legacy=freeze_legacy(snap),
+                             scalars=sc["scalars"])
+            doc = {"note": "PRE-GOLIVE PREVIEW(legacy=当前全部 pairs 实仓;"
+                           "缩放镜像=官方口径规模)",
+                   "scalars": {k: round(v, 3) for k, v in
+                               sc["scalars"].items()},
+                   "C0": sc["C0"],
                    "targets": b["targets"], "residual": b["residual"],
                    "would_freeze": {k: len(v) for k, v in
                                     freeze_legacy(snap).items()}}

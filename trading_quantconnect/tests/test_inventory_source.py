@@ -131,3 +131,32 @@ def test_real_snapshot_readonly_prego_live():
     for t in (pair_legs & aiss):
         assert b["targets"][t] == int(round(
             snap["aiss"]["positions"][t]["shares"]))
+
+
+def test_scaled_mirror_semantics():
+    """缩放镜像(2026-08-17 用户规格): 策略层缩放、legacy 腿同缩放、
+    残差全票记账。"""
+    s = _snap()
+    scalars = {"mrpt": 0.6, "mtfs": 0.4, "aiss": 2.681, "ssrs": 1.0,
+               "bdc": 1.0}
+    b = build_target(_snap(), scalars=scalars)
+    # AAA: mrpt 100×0.6 + mtfs 30×0.4 + aiss 5×2.681 = 60+12+13.405 = 85.405
+    assert b["targets"]["AAA"] == 85
+    assert abs(b["residual"]["AAA"] - 0.405) < 1e-6
+    assert b["targets"]["BBB"] == -120                  # -200×0.6
+    # legacy 冻结 + 缩放: legacy 腿按同 scalar 减,target 仍零 pairs 腿
+    import copy
+    legacy = freeze_legacy(s)
+    b2 = build_target(s, legacy=legacy, scalars=scalars)
+    assert "BBB" not in b2["targets"] and "CCC" not in b2["targets"]
+    assert b2["targets"]["AAA"] == 13                   # 只剩 aiss 5×2.681
+    # legacy 平仓在缩放下同样 target 不变
+    s3 = copy.deepcopy(s)
+    s3["mrpt"]["pairs"]["AAA/BBB"]["direction"] = None
+    b3 = build_target(s3, legacy=legacy, scalars=scalars)
+    assert content_hash(b3["targets"]) == content_hash(b2["targets"])
+
+
+def test_insane_scalar_rejected():
+    with pytest.raises(SourceError, match="scalar"):
+        build_target(_snap(), scalars={"aiss": -1.0})

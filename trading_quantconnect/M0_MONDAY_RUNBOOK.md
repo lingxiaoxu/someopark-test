@@ -7,7 +7,9 @@
 ## T-0 前置(09:00 ET 前)
 
 ```
-python exporter.py --dry            # 预览: targets 应=AISS9+SSRS6+BDC6, 零 pairs 腿
+python exporter.py --dry            # 预览: targets=AISS9+SSRS6+BDC6, 零 pairs 腿
+                                    # 缩放镜像: scalars≈{mrpt .59, mtfs .38,
+                                    # aiss 2.68, ssrs 1.0, bdc 1.0}, C0≈$6.00M
 python qc_api.py                    # 节点应 idle
 ```
 核对 dry 输出的 `would_freeze`(= 当日凌晨管道后的实仓对数;周日晚为
@@ -44,8 +46,9 @@ python ops/deploy.py --algo mirror
 # ~1-2 分钟后
 python ops/status.py --algo mirror --logs 40
 ```
-预期: 日志 `[MIRROR] cash init → C0` + `applied v1: ~21 orders`;
-portfolio 与 `state/target_portfolio.json` 逐票一致(BDC 整数股)。
+预期: 日志 `[MIRROR] cash init → C0≈$6.0M` + `applied v1: ~21 orders`;
+portfolio 与 `state/target_portfolio.json` 逐票一致(全票整数股,缩放镜像:
+AISS 股数≈inventory×2.68,如 KLAC 1678→4500)。
 
 ## T-4 全天值守
 

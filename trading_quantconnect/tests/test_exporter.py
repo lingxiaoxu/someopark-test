@@ -52,7 +52,7 @@ def sandbox(monkeypatch, tmp_path):
         default = getattr(exporter, name)
         monkeypatch.setattr(exporter, name, state / Path(default).name
                             if name != "STATE_DIR" else state)
-    # accounts for initial_cash
+    # 账本 equity(scalar 分母)
     for n, eq in (("account_mrpt.json", 100.0), ("account_mtfs.json", 200.0)):
         (src / n).write_text(json.dumps({"equity": eq}))
     (src / "qlib-main/semiconductor_strategy").mkdir(parents=True)
@@ -62,6 +62,15 @@ def sandbox(monkeypatch, tmp_path):
     (src / "qlib-main/sector_rotation/account_ssrs.json").write_text(
         json.dumps({"equity": 400.0}))
     (src / "account_bdc.json").write_text(json.dumps({"equity": 500.0}))
+    # 官方 perf json(scalar 分子): aiss=2x 账本,其余 1x → 缩放语义可断言
+    data = src / "someo-park-investment-management/public/data"
+    data.mkdir(parents=True)
+    (data / "strategy_performance.json").write_text(json.dumps(
+        [{"date": "2026-08-14", "mrpt_equity": 100.0, "mtfs_equity": 200.0}]))
+    (data / "master_portfolio_performance.json").write_text(json.dumps(
+        [{"date": "2026-08-14", "sr_equity": 400.0, "aiss_equity": 600.0}]))
+    (data / "private_credit_bdc_performance.json").write_text(json.dumps(
+        [{"date": "2026-08-14", "bdc_equity": 500.0}]))
     return files, base
 
 
@@ -72,11 +81,14 @@ def test_golive_freezes_and_exports(sandbox):
     leg = json.loads(exporter.LEGACY_PATH.read_text())
     assert leg["frozen"]["mrpt"][0]["pair"] == "AAA/BBB"
     st = json.loads(exporter.EXPORTER_STATE.read_text())
-    assert st["initial_cash"] == 1500.0                 # ΣΕquity
+    assert st["initial_cash"] == 1800.0                 # C0 = Σ 官方(aiss 2x)
+    assert st["scalars"] == {"mrpt": 1.0, "mtfs": 1.0, "aiss": 2.0,
+                             "ssrs": 1.0, "bdc": 1.0}
     doc = json.loads(exporter.TARGET_COPY.read_text())
-    # legacy 剔除 → 只有 aiss/ssrs/bdc
+    # legacy 剔除 → 只有 aiss/ssrs/bdc;aiss 股数按 2x 缩放(缩放镜像)
     assert set(doc["targets"]) == {"NVDA", "XLK", "GBDC", "BIL"}
-    assert doc["initial_cash"] == 1500.0
+    assert doc["targets"]["NVDA"] == 6                  # 3 × scalar 2.0
+    assert doc["initial_cash"] == 1800.0
 
 
 def test_golive_is_once_only(sandbox):

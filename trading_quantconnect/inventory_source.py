@@ -149,19 +149,29 @@ def read_snapshot(files: dict[str, Path] | None = None) -> dict[str, dict]:
 
 def build_target(snap: dict[str, dict],
                  legacy: dict[str, list] | None = None,
-                 prev_residual: dict[str, float] | None = None) -> dict:
-    """→ {targets:{ticker:int}, attribution, legacy_alive, residual, meta_src}
+                 prev_residual: dict[str, float] | None = None,
+                 scalars: dict[str, float] | None = None) -> dict:
+    """→ {targets:{ticker:int}, attribution, legacy_alive, residual}
     纯函数(无 IO): 单测直接钉。
 
     legacy: {"mrpt":[{"pair","open_date"}],...} 冻结集;存活=同名+同 open_date
             (同一次 snap 读取内判定 → 与腿数同快照)。
-    BDC 小数: 目标 = floor/ceil 至最近整数(round half-even),
-            residual[t] = 真实小数股 − 整数目标(本地记账,QC 只见整数)。
+    scalars(缩放镜像,2026-08-17 用户规格): go-live 冻结的每策略常数
+            scalar_s = 官方equity_s/账本equity_s —— QC 按官方口径资本规模
+            建仓(AISS≈2.68x 等)。缩放在**策略层**发生(legacy 腿同缩放),
+            冻结常数非活比率,不违反 ratio 纪律。None/缺键 = 1.0(字面镜像)。
+    小数(BDC 天然小数 + 缩放产生的全策略小数): 目标取最近整数,
+            residual[t] = 真实值 − 整数(本地记账,QC 只见整数股)。
     """
     legacy = legacy or {}
+    scalars = scalars or {}
     per_strategy: dict[str, dict[str, float]] = {}
     for st, raw in snap.items():
-        per_strategy[st] = EXTRACTORS[st](raw)
+        k = float(scalars.get(st, 1.0))
+        if not (0 < k < 100):
+            raise SourceError(f"insane scalar for {st}: {k}")
+        per_strategy[st] = {t: sh * k
+                            for t, sh in EXTRACTORS[st](raw).items()}
 
     # legacy 减法(pairs 域): 存活判定与减项同源于 snap
     # legacy_alive 恒含全部冻结策略键(0 也显式 —— 过渡期报表要能看到清零)
@@ -169,12 +179,13 @@ def build_target(snap: dict[str, dict],
                                      if st in PAIR_STRATEGIES}
     for st in PAIR_STRATEGIES:
         alive_pairs = open_pairs(snap[st]) if st in snap else {}
+        k = float(scalars.get(st, 1.0))
         for item in legacy.get(st, []):
             cur = alive_pairs.get(item["pair"])
             if cur and cur.get("open_date") == item.get("open_date"):
                 legacy_alive[st].append(item)
                 for t, sh in cur["legs"].items():
-                    per_strategy[st][t] = per_strategy[st].get(t, 0.0) - sh
+                    per_strategy[st][t] = per_strategy[st].get(t, 0.0) - sh * k
         # 清理减成 0 的键
         per_strategy[st] = {t: v for t, v in per_strategy[st].items()
                             if abs(v) > 1e-9}
@@ -187,15 +198,17 @@ def build_target(snap: dict[str, dict],
             net[t] = net.get(t, 0.0) + sh
             attribution.setdefault(t, {})[st] = sh
 
-    # 整数化: 非 BDC 票必须本来就是整数(pairs/aiss/ssrs 皆整数股,
-    # 非整=数据异常,大声拒绝);BDC 小数 → 残差账
+    # 整数化(缩放镜像后小数遍布全策略): 目标=最近整数,残差全票记账。
+    # 无缩放(scalar=1)时非 BDC 票若出现小数仍是数据异常 → 大声拒绝。
     targets: dict[str, int] = {}
     residual: dict[str, float] = {}
     bdc_tickers = set(per_strategy.get("bdc", {}))
+    scaled = any(abs(float(scalars.get(st, 1.0)) - 1.0) > 1e-12
+                 for st in snap)
     for t, sh in net.items():
         if abs(sh - round(sh)) < 1e-6:
             q = int(round(sh))
-        elif t in bdc_tickers:
+        elif scaled or t in bdc_tickers:
             q = int(round(sh))                   # banker 舍入到整数
             residual[t] = round(sh - q, 6)
         else:
@@ -223,18 +236,64 @@ def freeze_legacy(snap: dict[str, dict]) -> dict[str, list]:
     return out
 
 
-def initial_cash(files: dict[str, Path] | None = None) -> float:
-    """C0 = Σ 五策略 account equity(go-live 一次性读;BDC 用 account_bdc)。"""
+LEDGER_ACCOUNT_FILES = {
+    "mrpt": "account_mrpt.json",
+    "mtfs": "account_mtfs.json",
+    "aiss": "qlib-main/semiconductor_strategy/account_aiss.json",
+    "ssrs": "qlib-main/sector_rotation/account_ssrs.json",
+    "bdc":  "account_bdc.json",
+}
+OFFICIAL_ANCHORS = {   # 官方口径绩效 json(与前端面板同源;仅 go-live 读一次)
+    "mrpt": ("someo-park-investment-management/public/data/strategy_performance.json",
+             "mrpt_equity"),
+    "mtfs": ("someo-park-investment-management/public/data/strategy_performance.json",
+             "mtfs_equity"),
+    "ssrs": ("someo-park-investment-management/public/data/master_portfolio_performance.json",
+             "sr_equity"),
+    "aiss": ("someo-park-investment-management/public/data/master_portfolio_performance.json",
+             "aiss_equity"),
+    "bdc":  ("someo-park-investment-management/public/data/private_credit_bdc_performance.json",
+             "bdc_equity"),
+}
+
+
+def ledger_equities(files: dict[str, Path] | None = None) -> dict[str, float]:
     repo = (files or SOURCE_FILES)["mrpt"].parent
-    paths = [repo / "account_mrpt.json", repo / "account_mtfs.json",
-             repo / "qlib-main/semiconductor_strategy/account_aiss.json",
-             repo / "qlib-main/sector_rotation/account_ssrs.json",
-             repo / "account_bdc.json"]
-    tot = 0.0
-    for p in paths:
-        d = stable_read(p)
+    out = {}
+    for st, rel in LEDGER_ACCOUNT_FILES.items():
+        d = stable_read(repo / rel)
         eq = d.get("equity")
         if eq is None:
-            raise SourceError(f"{p.name}: equity missing")
-        tot += float(eq)
-    return round(tot, 2)
+            raise SourceError(f"{rel}: equity missing")
+        out[st] = float(eq)
+    return out
+
+
+def official_equities(files: dict[str, Path] | None = None) -> dict[str, float]:
+    """官方口径各策略末行 equity(面板头条的锚)。防火墙注: 仅 go-live 调用
+    一次以冻结 scalar 常数;常驻导出循环只读五个持仓文件。"""
+    repo = (files or SOURCE_FILES)["mrpt"].parent
+    out = {}
+    for st, (rel, col) in OFFICIAL_ANCHORS.items():
+        rows = stable_read(repo / rel)
+        nn = [r[col] for r in rows if isinstance(r, dict)
+              and r.get(col) is not None]
+        if not nn:
+            raise SourceError(f"{rel}:{col} no rows")
+        out[st] = float(nn[-1])
+    return out
+
+
+def golive_scalars(files: dict[str, Path] | None = None) -> dict:
+    """→ {scalars:{st: official/ledger}, official:{}, ledger:{}, C0}
+    缩放镜像(2026-08-17 用户规格): QC 按官方口径资本规模建仓。"""
+    led = ledger_equities(files)
+    off = official_equities(files)
+    scalars = {st: round(off[st] / led[st], 8) for st in led}
+    return {"scalars": scalars, "official": off, "ledger": led,
+            "C0": round(sum(off.values()), 2)}
+
+
+def initial_cash(files: dict[str, Path] | None = None) -> float:
+    """(账本口径 ΣΕquity;缩放镜像下 C0 用 golive_scalars()['C0'])。"""
+    return round(sum(ledger_equities(files).values()), 2)
