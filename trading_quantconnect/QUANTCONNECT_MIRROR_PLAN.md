@@ -1,8 +1,25 @@
 # QuantConnect 模拟盘镜像 — 架构设计(PLAN,2026-08-16)
 
-> 状态: **PLAN ONLY,未写代码**。批准后按里程碑实施。
-> 纪律: 不做 fallback 式简化 —— 每个已知难点给出**明确的工程解**;测试全进
-> /tmp,生产文件只读;本目录(`trading_quantconnect/`)是唯一新增写入面。
+> 状态: **v2(2026-08-16 用户四条硬性规格后修订)——开发已开始**。
+> 纪律: 不做 fallback 式简化;测试全进 /tmp,生产文件只读;
+> **全部开发不出本文件夹**(`trading_quantconnect/` 是唯一代码与状态写入面)。
+
+## v2 关键修订(用户规格,覆盖 v1 的两个架构决策)
+
+1. **数据源改版 —— 直读五策略持仓文件**(v1 的"controller flatten 为源"作废):
+   下单链路 = 只读五策略的实时持仓文件 → 本目录内 exporter 扁平化/过滤 →
+   QC。不依赖、不修改 controller/express 任何代码(开发不出文件夹的硬约束)。
+   v1 靠 controller 解决的问题改由本目录自己解决(见 §2.1v2),其中最关键的
+   legacy 原子性在直读设计下**反而变简单**: pair 的存在性与腿数来自同一次
+   json 读取,天然同快照。
+2. **防火墙(用户逐字)**: 只能由持仓文件影响下单,**绝不能反向**。下单模块
+   与外界的关系仅限于: ①五个持仓文件(只读)②API 凭证(.env 只读)。
+   本目录代码零 import 仓库其他模块、零写入仓库其他路径。
+3. **传输改版**: 弃 tunnel/express 路由(在文件夹外),改 **QC ObjectStore
+   推送**(exporter 用 API 把 target 写入 org ObjectStore,算法端读同一
+   对象)—— 只用 API key,完全落在防火墙允许面内。
+4. **时序语义确认**: 8:00 变化→9:30 下单;10:00 变化(策略出仓晚)→10:00
+   即时下单;盘后→次日开盘;节假日顺延(§3 状态机不变)。
 
 ---
 
@@ -104,7 +121,19 @@ inventory_bdc: holdings.{T}:{weight, shares(小数), drip_events, entry_date},
 └────────────────────────────────────────────────────────────────┘
 ```
 
-### 2.1 为什么目标源是 controller 而不是直接读 5 组文件(核心决策)
+### 2.1 【v1,已被 v2 修订 1 作废——保留供审计】为什么目标源曾选 controller
+
+> **v2 注**: 用户防火墙规格要求下单链路只依赖持仓文件+API key,且开发不出
+> 本文件夹 → 改为直读。v1 顾虑的逐项 v2 对策:
+> - 半更新窗(inventory→account 差 1 分钟): pairs/SSRS/BDC 只读 inventory
+>   单文件,AISS 只读 account 单文件 —— **每策略单文件自洽,跨文件原子性
+>   不再需要**(五本书相互独立);单文件写入瞬间的撕裂读用"双读稳定判定
+>   (两次读间隔 300ms 哈希一致才采纳)+ JSON 解析失败重试"解决;
+> - mtime≠变化: 规范化持仓内容哈希(自实现,±0 依赖);
+> - 净额扁平化: 自实现(逐票求和,含跨策略同票);
+> - 改名: 持仓文件里永远是现行代码(BK 型化石槽 direction=null 被过滤),
+>   QC SID 自行跟踪 —— 不 import ticker_aliases(防火墙零依赖);
+> - legacy 原子性红线: pair 存在性+腿数来自**同一次读取** → 构造上同快照。
 
 controller 已经解决了本方案 80% 的难题,且**每天在生产被双引擎对拍验证**:
 
@@ -160,7 +189,7 @@ QC 算法内单一状态机,交易日历/时钟以 **QC 交易所日历为唯一
 | # | 议题 | 决策 | 理由 |
 |---|---|---|---|
 | D1 | 一个算法 vs 五个算法 | **单算法净额镜像** + 订单 tag 归因 | 跨策略同票净额唯一正确;五账户会把 pairs 空头与 AISS 多头拆成两笔虚假对敲 |
-| D2 | 目标传输 | QC 算法主动拉(HTTPS `Download()`,bearer key) | 复用既有 tunnel 基建;推送(ObjectStore API)列 R2 备选,拉模式无本地→QC 依赖 |
+| D2 | 目标传输 | **v2: ObjectStore 推送**(exporter 经 API 写 `mirror/target.json`,算法端 ObjectStore 读)| 防火墙合规(只用 API key);tunnel/express 在文件夹外,作废;Download 拉模式降为备选 |
 | D3 | 幂等 | target 带单调 version;算法 ObjectStore 记 last_applied | 算法重启/重部署/网络抖动全自愈 |
 | D4 | 订单类型 | MarketOrder(RTH)| 用户规格;paper 立即全额按 bid/ask 成交(附录 A-2: **无滑点模型无部分成交**),即所求"最新成交价" |
 | D5 | **BDC 小数股** | 首选 QC 原生小数股下单(R1 验证);若 paper брokerage 限整数 → **显式残差账**: 整数股执行 + `fractional_residual.json` 逐票记差,残差市值>1 股价值时并入下次单 | 这是精确的会计设计,不是舍入了事 |
@@ -213,14 +242,18 @@ QC_equity − controller_ledger_close =
 ## 7. 目录与产物规划
 
 ```
-trading_quantconnect/
-  QUANTCONNECT_MIRROR_PLAN.md      ← 本文件
-  exporter/                         M1: target 导出器(读 controller 输出)
-  server_route/                     M1: /api/qc/target(挂进既有 express)
-  lean/                             M2: QC 算法工程(纯逻辑+本地单测;零回测,见 M2)
-  ops/                              M3: 部署/监控脚本、QC API 封装
-  reconcile/                        M4: 每日对账 job + 报告 json
-  tests/                            全程: pytest(tmp 沙箱 + 只读生产)
+trading_quantconnect/                v2 实际布局(全部开发在此,不出文件夹)
+  QUANTCONNECT_MIRROR_PLAN.md       ← 本文件
+  M0_MONDAY_RUNBOOK.md              周一早测试手册
+  qc_api.py                         QC API 客户端(认证/项目/编译/部署/ObjectStore/live 读)
+  inventory_source.py               五持仓文件直读+双读稳定+扁平化+legacy 过滤+BDC 残差(纯函数核心)
+  exporter.py                       变更检测→target 版本化→ObjectStore 推送;--golive/--once/--loop/--dry
+  lean/main.py                      QC 镜像算法(状态机+diff+零费+现金初始化+幂等)
+  lean/m0_probe.py                  M0 探针算法(R1 小数股/R6 零费/R2 ObjectStore 读)
+  ops/deploy.py|status.py|stop.py   部署/状态/停止(经 API)
+  state/                            exporter 状态(version/legacy/残差/target 副本;gitignore)
+  reconcile/                        M4: 每日对账
+  tests/                            pytest(tmp 沙箱 + 只读生产)
 ```
 
 ## 8. 里程碑与验收
@@ -271,8 +304,8 @@ inventory —— 若从 inventory 读(半更新窗/写入瞬间),可能出现"�
 flatten 里 pair 还在"的错位,target 会突然包含 legacy 腿 → **QC 误开既有仓**,
 恰好违反用户第一原则。flatten 与存活判定取自**同一个** controller snapshot
 (同一 structure_hash),"双边同时消失"由快照原子性保证,错位在构造上不可能。
-前置条件: pair 节点 attrs 需带 open_date(M1 对 controller 的唯一小改,
-装配时从 inventory 带入,与既有 open_sX_price 进 attrs 同款)。
+**v2 化简**: 直读 inventory 后,pair 的存在性/open_date/腿数来自同一次
+`json.load` —— 同快照由构造保证,无需 controller 改动(v1 前置条件作废)。
 
 **这个减法自动给出全部正确行为,无需特殊分支**:
 - legacy 对被策略平仓 → 它同时从 flatten 与减项中消失 → target 无变化
