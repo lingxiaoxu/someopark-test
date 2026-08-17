@@ -233,7 +233,73 @@ trading_quantconnect/
 | M4 全书 + 对账平面 | pairs 空头 + AISS 上线;每日对账 job | 换仓日对账分解可解释;连续 5 日无未归因残差报警 |
 | M5 前端集成 + 运维交接 | 面板 QC 对账项;运维台账进 memory | 与既有 quality checks 同视觉/同语义 |
 
-## 10. 明确不做
+## 10. 冷启动 / 中流上线(Bootstrap,2026-08-16 用户规格)
+
+**问题**: 信号已运行数月,inventory 里已有大量既有仓位(含空头)。QC 从零起步,
+不能对"从未在 QC 建立过的仓位"执行平仓。
+
+**用户原则(逐字)**: 既有仓的关闭一律不交易(无仓可平);只有**新建仓**才开始
+交易;既有仓全部自然关闭后,进入完全镜像态。分策略:
+- **AISS / SSRS / BDC**(月初建仓/被动,仓位长寿): **立即全量建仓**——现在就
+  按当前持仓在 QC 建立(否则要等下月初,且这三本书的仓位本来就该在);
+- **MRPT / MTFS**(pairs,日频开平): **有机上线**(organic onboarding)——
+  QC 从空书开始,只镜像 go-live 之后新开的对;既有对的 CLOSE 在 QC 端为
+  无操作;既有对逐个自然死亡后,pairs 书收敛到完全镜像。
+
+### 11.1 实现: Legacy 过滤在 exporter(QC 端零感知)
+
+保持"QC=哑目标态执行器"不变 —— bootstrap 全部在 Target 平面表达:
+
+```
+go-live 时刻(一次性):
+  legacy_positions.json = 冻结快照
+    { "mrpt": [{"pair":"ACGL/HIG","open_date":"2026-08-14"}, ...],
+      "mtfs": [ 9 个既有对 ... ] }        ← 只减不增,永不回填
+
+每次导出:
+  target = controller 全书 flatten
+         − Σ(仍存活的 legacy 对的腿贡献)     ← risk_matrix 的 leaf→(pair_node,eff)
+                                              反向索引精确给出每对的腿级贡献
+  legacy 存活判定: 对名仍在 inventory 实仓 且 open_date 与冻结值相同
+    (对名相同但 open_date 变了 = 同名新实例 → 按新仓镜像,legacy 项作废)
+```
+
+**这个减法自动给出全部正确行为,无需特殊分支**:
+- legacy 对被策略平仓 → 它同时从 flatten 与减项中消失 → target 无变化
+  → QC 无操作 ✓(正是"无仓可平不交易");
+- 新对开仓 → 不在 legacy 集 → 进 target → QC 开仓 ✓;
+- 新对与某 legacy 对**同票**(如 legacy 空 PFE、新对多 PFE)→ 减法后的净额
+  只含新对贡献 → QC 只执行新对的腿 ✓(逐票净额仍然唯一正确);
+- pairs 纪律"HOLD 不改股数、只有整对 CLOSE"保证 legacy 对不存在部分变形;
+  若未来出现"同对调仓",其形态必是 CLOSE+重开 → open_date 变 → 自动按新仓。
+
+### 11.2 资金与 NAV 对账的过渡期语义
+
+- **QC 初始资金 C0 = go-live 日 Σ 五策略 account equity**(全书资本,不因
+  pairs 空书而少配 —— pairs 本近自融资: 实测 account_mrpt cash 1,043,388 vs
+  equity 1,040,952,净持仓市值仅 −$2.4k;既有对未镜像 ≈ QC 多持等额现金)。
+- 过渡期恒等式(Verification 平面新增项):
+  `QC_equity ≈ controller_ledger_NAV − Σ legacy 对的 (value_t − value_golive)`
+  即减去"既有对自 go-live 起的未镜像 P&L"(controller pair 节点逐对值现成,
+  逐日精确可算,不是估计)。该项随 legacy 对逐个死亡而封闭,全部死亡后恒为
+  常数(计入历史)→ 进入完全镜像态,对账回到 §6 原式。
+- 对账报告增加 `bootstrap: {transition: true, legacy_remaining: n, ages: [...]}`;
+  transition 结束(n=0)当日显式记录里程碑。
+- AISS/SSRS/BDC 立即建仓的成本基差(QC 按 go-live 市价、本地是历史成本)
+  **不影响 NAV 追踪**: 股数相同 → 此后 ΔNAV 逐日 1:1;建仓本身只付一次
+  spread(进对账价差项,一次性,预计全书 <2bp)。
+
+### 11.3 过渡期运营
+
+- 观测: 每日对账列出存活 legacy 对与账龄;pairs 典型持有期数日~数周,预计
+  过渡 2–6 周自然完成。
+- **人工收养(可选,显式操作非自动)**: 若个别 legacy 对长期不死且用户想提前
+  进入完全镜像,提供 operator 命令把指定对按市价在 QC 建立(等同把它移出
+  legacy 集)。默认不启用 —— 遵循用户"等自然关闭"原则。
+- go-live 建仓执行遵循 §4 同一状态机(盘中立即、否则下一开盘),不写特殊
+  初始化路径(D10 不变,只是首个 target 已含 legacy 减法)。
+
+## 11. 明确不做
 
 - 不接真钱经纪商;不在 QC 写任何策略/信号逻辑;不改任何策略生产文件;
 - 不为"简化"合并口径: 官方口径展示归展示,执行镜像只认账本口径;
