@@ -228,7 +228,7 @@ trading_quantconnect/
 |---|---|---|
 | **M0 研究 spike**(先行,QC 账号到手后 0.5–1 天) | R1 小数股 paper 支持;R2 Download vs ObjectStore 推送与频控;R3 开盘单语义(Market@09:30 vs MOO);R4 Read API 拿持仓/成交的字段与延迟;R5 live 算法热更 target 不重部署的正确姿势;R6 零费率+滑点模型配置 | 每项有实测结论写进本文件附录 |
 | M1 Target 平面 | exporter + endpoint + 强 schema | 单测: 半更新窗/化石槽/净额/改名票逐案;target 与 controller flatten 逐票一致 |
-| M2 QC 算法(先回测环境) | 状态机 + diff 执行 + 幂等,LEAN 本地回测重放历史 target 序列 | 回测重放 8 月全月 target 变更,期末持仓与 golden 逐票一致 |
+| M2 QC 算法(纯逻辑先行) | 状态机 + diff 执行 + 幂等;**不做任何回测**(策略回测全在本地,QC 只是执行器)—— diff/幂等/legacy 减法抽成纯函数,本地 pytest 钉死;QC 框架行为(开盘调度/日历)由 M3 paper 灰度直接验收(paper 即零成本沙箱,错了重置重来) | 纯函数单测全过: 历史 target 序列(8 月真实变更)喂 diff 引擎,期末状态与 golden 逐票一致;幂等/乱序/重启用例全绿 |
 | M3 Paper 上线(小书) | 先只镜像 BDC+SSRS(低频、多头、无小数争议面小)| 稳态持仓 0 差连续 3 日;时序规则三分支(盘中/盘前/盘后)各实测一次 |
 | M4 全书 + 对账平面 | pairs 空头 + AISS 上线;每日对账 job | 换仓日对账分解可解释;连续 5 日无未归因残差报警 |
 | M5 前端集成 + 运维交接 | 面板 QC 对账项;运维台账进 memory | 与既有 quality checks 同视觉/同语义 |
