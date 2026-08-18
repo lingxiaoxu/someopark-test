@@ -11,8 +11,14 @@
 量化到可解释），切换报告数据源留作之后有验证的独立步骤 —— 不在跑批前夜换。
 
 用法（**只能 someopark_run**）：
-    python -m pairs_ledger.reports            # 最新日
-    python -m pairs_ledger.reports --date 2026-08-04
+    python -m pairs_ledger.reports            # 最新日（生产：DailySignal 走这条）
+    # 回溯历史日务必带 --out-dir，否则会覆盖当时跑批留下的正品对账文件：
+    python -m pairs_ledger.reports --date 2026-08-04 --out-dir /tmp/audit
+
+**回溯的前提**（2026-08-18 修）：`--date` 曾经只把价格换成历史日，比较的另一
+侧（inventory / account / combined_signals / risk_report）一律取"盘上最新那份"，
+于是历史日的每一项差异都是拿今天的持仓去比那天的价格 —— 全是假的。现在四个
+来源都按 day 解析，取不到就 SKIP，不再静默回退。
 """
 from __future__ import annotations
 
@@ -21,6 +27,7 @@ import glob
 import json
 import logging
 import os
+import re
 import sys
 from collections import defaultdict
 
@@ -122,6 +129,29 @@ def _latest(pattern: str):
     return fs[-1] if fs else None
 
 
+def _artifact_for_day(pattern: str, day: str):
+    """按 `signal_date` **字段**取当日 artifact，不按文件名最新。
+
+    combined_signals / risk_report 的文件名带的是**跑批时刻**（T+1 早晨），
+    里面的 `signal_date` 才是它描述的交易日。回溯历史日时若沿用 `_latest()`，
+    比较的另一侧就永远是最新那份文件 —— 实测 2026-08-03..08-18 逐日跑，
+    "监控 −32.88 / 37,873.34"和"报告 1,187,281.42 / 712,107.35"在 12 个
+    日期上逐字节相同（全是 8/18 那份的值），只有 8/17 那天 27/27 通过，
+    因为 8/17 恰好就是最新 artifact 的 signal_date。那 72 个 FAIL 全是假的。
+
+    同一 signal_date 有多份时取文件名最新者（当天的最终跑批）。
+    """
+    best = None
+    for fp in sorted(glob.glob(os.path.join(BASE_DIR, pattern))):
+        try:
+            d = json.load(open(fp))
+        except Exception:                                  # noqa: BLE001
+            continue
+        if str(d.get("signal_date") or "")[:10] == day:
+            best = (fp, d)
+    return best
+
+
 def _mv_split(strategy: str, day: str, series: dict) -> tuple:
     """当日多头市值 / 空头市值（用与 mark 同源的 Mongo 收盘价）。"""
     sys.path.insert(0, BASE_DIR)
@@ -156,6 +186,11 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
         checks.append({"name": name, "status": "PASS" if ok else
                        ("FAIL" if hard else "INFO"), "detail": detail})
 
+    def skip(name, detail):
+        """**查不了** ≠ **没对上**。回溯历史日时某一侧的当日数据不存在，就明说
+        跳过；静默退回"最新那份"是上一版 72 个假 FAIL 的成因。"""
+        checks.append({"name": name, "status": "SKIP", "detail": detail})
+
     accts, series_by = {}, {}
     for s in STRATEGIES:
         fp = account_path(s, root)
@@ -166,15 +201,104 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
         series_by[s] = load_account_series(s, root)
     day = day or min(a["as_of"] for a in accts.values())
 
-    # R1 持仓 == inventory（净额展平）
+    # ── 按日取数 ────────────────────────────────────────────────────────────
+    # 生产只调 `run()` 不传 day，此时 day = 最新日，下面三个解析器全部退化成
+    # 原来的"读盘上活文件"：`account_history/account_{s}_{day}.json` 与同日
+    # 的 live `account_{s}.json` 实测逐字节相同；live inventory 的 as_of 就是
+    # day；`_artifact_for_day` 选中的也正是 `_latest()` 那一份。故生产路径
+    # 逐项与改前一致（已用 reconcile(None) 前后 27 项对拍验证）。
     from .rebuild import flatten, load_snapshots, load_splits_by_ticker, normalize_snapshots  # noqa: F401
     splits = load_splits_by_ticker()
+    _cache: dict = {}
+
+    def _snap_write_dates(s: str, target: str) -> list:
+        """as_of == target 的快照文件各自的**写入日期**（取自文件名 YYYYMMDD）。
+
+        文件名带的是落盘时刻、内容里的 as_of 才是它描述的交易日，两者能差好几天。
+        """
+        out = []
+        for fp in sorted(glob.glob(os.path.join(BASE_DIR, STRATEGIES[s]["snap_glob"]))):
+            try:
+                if str(json.load(open(fp)).get("as_of") or "") != target:
+                    continue
+            except Exception:                              # noqa: BLE001
+                continue
+            m = re.search(r"_(\d{8})_\d{6}\.json$", os.path.basename(fp))
+            if m:
+                out.append(m.group(1))
+        return sorted(set(out))
+
+    def _inv_raw(s: str):
+        """day 当天的 **原始** inventory pairs（未做拆股归一）；缺则 (None, 原因)。
+
+        inventory_history 里的快照是**改写前的副本**，所以 as_of=D 的快照可能是
+        两种东西之一，只看 as_of 分不出来：
+          • D 那次跑批自己写的 → 落笔中间态。实测 2026-08-17 MTFS：live 有 8 个
+            pair（含当天新开的 VLO/YUM），history 里 as_of=2026-08-17 那份只有 7 个。
+          • **更晚**的跑批写的 → 那时 live 还停在 as_of=D，于是这份就是 D 的终态。
+        `load_snapshots` 对同一 as_of 取文件名最新者，所以只要能证明"存在比 D 那次
+        跑批更晚的一次写入"，拿到的就是终态。两条充分证据（任一成立即可）：
+          1. 存在 as_of > D 的快照 —— 写它的那次跑批必然先把 live(as_of=D) 拷了一份；
+          2. as_of=D 的快照跨了 ≥2 个不同的写入日期 —— 晚的那个必然晚于 D 那次跑批。
+        证据 2 补的是"策略自 D 起没再开平仓、as_of 一直没往前走"这种情况：实测
+        2026-08-14 MRPT 最新快照 as_of 就是 08-14（证据 1 不成立），但文件跨
+        20260815 / 20260818 两天，取 20260818 那份展平后与
+        account_history/account_mrpt_20260814.json 逐票一致（mtfs 14 票同样一致）。
+        两条都不成立就跳过 —— 宁可少查一项，不拿中间态报假差异。
+        """
+        live = json.load(open(os.path.join(BASE_DIR, STRATEGIES[s]["inventory"])))
+        if live.get("as_of") == day:
+            return (live.get("pairs") or {}), "live inventory"
+        sn = load_snapshots(s)
+        if day in sn:
+            if max(sn) > day:
+                return sn[day], f"inventory_history[{day}]（已被 as_of>{day} 的跑批轮转）"
+            wd = _snap_write_dates(s, day)
+            if len(wd) > 1:
+                return sn[day], (f"inventory_history[{day}]（写入日 {'/'.join(wd)}，"
+                                 f"取最晚那份 = 终态）")
+        return None, (f"{day} 无可信 inventory"
+                      + ("（该日快照只有当次跑批自己写的那一份，是落笔中间态）"
+                         if day in sn else "（inventory_history 里没有该日）"))
+
+    def inv_raw_of(s: str):
+        """**必须缓存**：R1 / R2 / R8 都要读同一份 live inventory，而跑批可能
+        正在改写它。不缓存的话三项检查会各自看到文件的不同瞬时状态，报出的
+        不一致是自己造的。"""
+        if ("inv", s) not in _cache:
+            _cache[("inv", s)] = _inv_raw(s)
+        return _cache[("inv", s)]
+
+    def rows_upto(s: str):
+        """成交流只取 <= day 的行 —— 否则回溯历史日时把之后的成交也算了进去。"""
+        if ("rows", s) not in _cache:
+            _cache[("rows", s)] = [r for r in load_ledger_rows(s, root)
+                                   if str(r.get("date") or "") <= day]
+        return _cache[("rows", s)]
+
+    acct = {s: (series_by[s].get(day)
+                or (accts[s] if accts[s].get("as_of") == day else None))
+            for s in STRATEGIES}
+    _miss = [s for s, a in acct.items() if a is None]
+    if _miss:
+        skip("账本按日可用", f"{day}：account_history 与 live 里都没有 "
+                             f"[{','.join(_miss)}] 的账本快照 → 该日全部对账项跳过")
+        return {"as_of": day, "checks": checks, "ok": True, "accounts": {}}
+
+    # 净值序列统一补上 day 这一天：live 账本可能领先 account_history 一步
+    # （sync 先写 account_{s}.json，history 那份要等下一步）。R3b/R5/R9 都
+    # 按 day 索引这个序列，缺了就会静默漏掉一个策略、报出假差额。
+    series_day = {s: {**series_by[s], day: acct[s]} for s in STRATEGIES}
+
+    # R1 持仓 == inventory（净额展平）
     for s in STRATEGIES:
-        inv = json.load(open(os.path.join(BASE_DIR, STRATEGIES[s]["inventory"])))
-        norm, _ = normalize_snapshots({inv.get("as_of", day): inv.get("pairs") or {}},
-                                      splits)
-        tgt, _ = flatten(list(norm.values())[0])
-        led = {t: p["shares"] for t, p in accts[s]["positions"].items()}
+        pairs, src = inv_raw_of(s)
+        if pairs is None:
+            skip(f"R1 持仓==inventory [{s}]", src)
+            continue
+        norm, _ = normalize_snapshots({day: pairs}, splits)
+        tgt, _ = flatten(norm[day])
+        led = {t: p["shares"] for t, p in acct[s]["positions"].items()}
         diff = {t: (led.get(t, 0), tgt.get(t, 0)) for t in set(led) | set(tgt)
                 if led.get(t, 0) != tgt.get(t, 0)}
         add(f"R1 持仓==inventory [{s}]", not diff,
@@ -187,9 +311,11 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
     # 时成立。2026-08-05 新开 CRL/MLM、PANW/LKQ、PANW/NKE 后，NKE/MLM/PANW
     # 各跨两个 pair，账本(混合成本)与监控(各 pair 自己的 open_price)相差
     # −4,490.77 —— 账本没错，是检查的前提错了。
-    f = _latest("trading_signals/combined_signals_*.json")
-    if f:
-        dd = json.load(open(f))
+    _cs = _artifact_for_day("trading_signals/combined_signals_*.json", day)
+    if not _cs:
+        skip("R2 pair级未实现==监控", f"{day} 没有 signal_date 匹配的 combined_signals")
+    if _cs:
+        f, dd = _cs
         sys.path.insert(0, BASE_DIR)
         from PnLReport import download_prices_mongo
         for s in STRATEGIES:
@@ -203,8 +329,11 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
                 _last[p.get("pair")] = p
             mon_v = sum(p.get("unrealized_pnl", 0) or 0 for p in _last.values()
                         if p.get("action") not in ("CLOSE", "CLOSE_STOP"))
-            inv = json.load(open(os.path.join(BASE_DIR, STRATEGIES[s]["inventory"])))
-            prs = {k: v for k, v in (inv.get("pairs") or {}).items()
+            _pairs, _src = inv_raw_of(s)
+            if _pairs is None:
+                skip(f"R2 pair级未实现==监控 [{s}]", _src)
+                continue
+            prs = {k: v for k, v in _pairs.items()
                    if isinstance(v, dict) and v.get("direction") and "/" in k}
             tks = {t for k in prs for t in k.split("/", 1)}
             pair_u, n_pair = 0.0, defaultdict(int)
@@ -228,23 +357,23 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
             add(f"R2 pair级未实现==监控 [{s}]", abs(d_mon) < max(TOL_LOOSE, abs(mon_v) * 0.01),
                 f"pair级 {pair_u:,.2f} vs 监控 {mon_v:,.2f} 差 {d_mon:+,.2f}")
             multi = sorted(t for t, n in n_pair.items() if n > 1)
-            d_led = accts[s]["unrealized"] - pair_u
+            d_led = acct[s]["unrealized"] - pair_u
             add(f"R2b 账本未实现差全在跨pair票 [{s}]",
                 abs(d_led) < TOL_LOOSE or bool(multi),
-                f"账本(按票净敞口) {accts[s]['unrealized']:,.2f} vs pair级 {pair_u:,.2f} "
+                f"账本(按票净敞口) {acct[s]['unrealized']:,.2f} vs pair级 {pair_u:,.2f} "
                 f"差 {d_led:+,.2f}"
                 + (f"；跨多 pair 的票 {multi}（归因差,账本对应券商真实净敞口）"
                    if multi else "；无跨 pair 票,两者应相等"))
 
     # R3 净证券市值 == risk_report 资产负债表（long − short）
     mon_hold = {}
-    rr_f = _latest("trading_signals/risk_management/risk_report_*.json")
-    if rr_f:
-        rr = json.load(open(rr_f))
+    _rrp = _artifact_for_day("trading_signals/risk_management/risk_report_*.json", day)
+    if _rrp:
+        rr_f, rr = _rrp
         bs = ((rr.get("balance_sheet") or {}).get("combined") or {}).get("T") or {}
         rr_net = round(float(bs.get("long_securities", 0))
                        - float(bs.get("short_securities", 0)), 2)
-        led_net = round(sum(a["position_value"] for a in accts.values()), 2)
+        led_net = round(sum(a["position_value"] for a in acct.values()), 2)
         add("R3 净证券市值==risk_report", abs(led_net - rr_net) < TOL_LOOSE,
             f"账本 {led_net:,.2f} vs risk_report {rr_net:,.2f} "
             f"差 {led_net-rr_net:+,.2f}（{os.path.basename(rr_f)}, signal_date "
@@ -253,10 +382,9 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
         # R3b 多空分别对上（更强：净额相等可能来自两边同时错）
         tot_lo = tot_sh = 0.0
         for s in STRATEGIES:
-            if day in series_by[s]:
-                lo, sh = _mv_split(s, day, series_by[s])
-                tot_lo += lo
-                tot_sh += sh
+            lo, sh = _mv_split(s, day, series_day[s])
+            tot_lo += lo
+            tot_sh += sh
         dl = tot_lo - float(bs.get("long_securities", 0))
         ds = tot_sh - float(bs.get("short_securities", 0))
         add("R3b 多/空市值分别对上", abs(dl) < 2.0 and abs(ds) < 2.0,
@@ -264,11 +392,12 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
             f"({dl:+,.2f}) | 空头 账本 {tot_sh:,.2f} vs "
             f"{float(bs.get('short_securities',0)):,.2f} ({ds:+,.2f})")
     else:
-        add("R3 净证券市值==risk_report", False, "未找到 risk_report_*.json")
+        skip("R3 净证券市值==risk_report",
+             f"{day} 没有 signal_date 匹配的 risk_report")
 
     # R4 恒等式（每个策略、当日）
     for s in STRATEGIES:
-        a = accts[s]
+        a = acct[s]
         lhs = round(a["equity"] - a["initial_cash"], 2)
         rhs = round(a["cumulative_realized"] + a["cumulative_dividends"]
                     - a["cumulative_fees"] + a["unrealized"], 2)
@@ -289,8 +418,10 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
                           if "/" in k for t in k.split("/", 1)})
             prices = U.load_prices_mongo(tks, "2026-03-01", day)
             # 剔除分红后再比：生产 reconstruct_equity 不含分红，账本含。
+            # 截到 day 为止：回溯历史日时不能把之后的净值也拉进相关性窗口。
             s1 = pd.Series({d: v["equity"] - v.get("cumulative_dividends", 0.0)
-                            for d, v in series_by[s].items()}).sort_index()
+                            for d, v in series_day[s].items()
+                            if d <= day}).sort_index()
             with contextlib.redirect_stdout(io.StringIO()):
                 sim = U.reconstruct_equity(s, eod, prices,
                                            U.get_trading_days(s1.index[0], s1.index[-1]),
@@ -350,7 +481,7 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
 
     # R6c 分红：账本独有（既有 pairs 报表/净值 JSON 从未记过分红）
     for s in STRATEGIES:
-        dv = accts[s]["cumulative_dividends"]
+        dv = acct[s]["cumulative_dividends"]
         add(f"R6c 累计分红 [{s}]", True,
             f"{dv:+,.2f}（多头收/空头付。strategy_performance 自 2026-08-06 起走"
             f"账本口径**已含**分红；PnL/risk 报表仍未计入。R5 的基准是"
@@ -371,7 +502,7 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
     try:
         import UpdateStrategyPerformance as U2
         for s in STRATEGIES:
-            ser = series_by[s]
+            ser = {d: v for d, v in series_day[s].items() if d <= day}
             d0, d1 = sorted(ser)[0], day
             eod = U2.get_eod_snapshots(s)
             tks = sorted({t for dd2 in eod.values() for k in (dd2.get("pairs") or {})
@@ -426,10 +557,16 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
     try:
         from .rebuild import (_prev_day, day_basis, flatten, load_mongo_prices,
                               load_splits_by_ticker, normalize_snapshots)
-        snaps_all, _ = normalize_snapshots(load_snapshots(list(STRATEGIES)[0]),
-                                           load_splits_by_ticker())
         for s in STRATEGIES:
-            sn, _ = normalize_snapshots(load_snapshots(s), load_splits_by_ticker())
+            sn, _ = normalize_snapshots(load_snapshots(s), splits)
+            # 当日一律以 `inv_raw_of` 的可信源覆盖。inventory_history 里 as_of=day
+            # 的那份是**落笔前的中间态**，缺当天新开的 pair —— 实测 2026-08-17
+            # MTFS 新开了 VLO/YUM，而 R8 读到 7 个 pair 的快照后报"无新开仓 →
+            # 跳过"。也就是说这个「价格口径倒退哨兵」对**它唯一该管的那批仓位**
+            # （当天新开的）一直是瞎的：等快照轮转进来时 day 已经走到下一天了。
+            _cur, _csrc = inv_raw_of(s)
+            if _cur is not None:
+                sn = {**sn, day: normalize_snapshots({day: _cur}, splits)[0][day]}
             if day not in sn:
                 add(f"R8 价格口径新鲜度 [{s}]", True,
                     f"{day} 无快照（当天未开/平仓）→ 无新开仓价可判,跳过", hard=False)
@@ -493,10 +630,10 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
         led_pp = {}
         for s in STRATEGIES:
             m = defaultdict(float)
-            for r in load_ledger_rows(s, root):
+            for r in rows_upto(s):
                 if r.get("lot_realized") is not None and r.get("lot"):
                     m[r["lot"].split("|")[0]] += r["lot_realized"]
-            lots = accts[s].get("lots") or {}
+            lots = acct[s].get("lots") or {}
             tks = {l["ticker"] for l in lots.values()}
             if tks:
                 pxl = _dl3(tks, day, day)
@@ -554,7 +691,7 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
             ropen[(r["strategy"], r["pair"])] = od
         for s in STRATEGIES:
             mine, lo = defaultdict(float), {}
-            for r in load_ledger_rows(s, root):
+            for r in rows_upto(s):
                 if not r.get("lot"):
                     continue
                 pk = r["lot"].split("|")[0]
@@ -562,7 +699,7 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
                     lo.setdefault(pk, r["date"])
                 if r.get("lot_realized") is not None:
                     mine[pk] += r["lot_realized"]
-            lots = accts[s].get("lots") or {}
+            lots = acct[s].get("lots") or {}
             tks = {l["ticker"] for l in lots.values()}
             if tks:
                 pxw = _dl2(tks, day, day)
@@ -585,18 +722,18 @@ def reconcile(day: str | None = None, root: str | None = None) -> dict:
 
     # R7 已实现口径差（账本按票净敞口 vs pair 级归因）—— 记录，不判失败
     for s in STRATEGIES:
-        rows = load_ledger_rows(s, root)
+        rows = rows_upto(s)
         by_t = defaultdict(float)
         for r in rows:
             by_t[r["ticker"]] += r.get("realized_pnl", 0) or 0
         add(f"R7 已实现口径 [{s}]", True,
-            f"账本累计已实现 {accts[s]['cumulative_realized']:,.2f}"
+            f"账本累计已实现 {acct[s]['cumulative_realized']:,.2f}"
             f"（按票净敞口口径；与 pair 级归因对重叠票必然不同，见 PLAN §7）",
             hard=False)
 
     ok = all(c["status"] != "FAIL" for c in checks)
     return {"as_of": day, "checks": checks, "ok": ok,
-            "accounts": {s: {k: accts[s][k] for k in
+            "accounts": {s: {k: acct[s][k] for k in
                              ("as_of", "equity", "cash", "cumulative_realized",
                               "unrealized", "position_value")} for s in STRATEGIES}}
 
@@ -610,15 +747,20 @@ def render_txt(rec: dict) -> str:
                  f"unreal={a['unrealized']:>11,.2f}")
     L += ["-" * 78]
     for c in rec["checks"]:
-        m = {"PASS": "✓", "FAIL": "✗", "INFO": "·"}[c["status"]]
+        m = {"PASS": "✓", "FAIL": "✗", "INFO": "·", "SKIP": "–"}.get(c["status"], "?")
         L.append(f" {m} {c['name']:28s} {c['detail']}")
     L += ["=" * 78,
           "全部通过 ✓" if rec["ok"] else "存在未通过项 ✗"]
     return "\n".join(L)
 
 
-def run(day: str | None = None, root: str | None = None) -> dict:
-    os.makedirs(OUT_DIR, exist_ok=True)
+def run(day: str | None = None, root: str | None = None,
+        out_dir: str | None = None) -> dict:
+    # `out_dir` 只给回溯审计用。`--date` 重跑历史日会写出同名的
+    # reconciliation_{tag}.json —— 那会**覆盖掉当时跑批留下的正品**。生产
+    # (DailySignal 调 run() 不传参) 仍写 OUT_DIR，行为不变。
+    out = out_dir or OUT_DIR
+    os.makedirs(out, exist_ok=True)
     rec = reconcile(day, root)
     d = rec["as_of"]
     tag = d.replace("-", "")
@@ -627,15 +769,17 @@ def run(day: str | None = None, root: str | None = None) -> dict:
     for s in STRATEGIES:
         ser = load_account_series(s, root)
         if d in ser:
-            st[s] = statements(s, d, ser, load_ledger_rows(s, root))
-    with open(os.path.join(OUT_DIR, f"ledger_statements_{tag}.json"), "w") as f:
+            st[s] = statements(s, d, ser,
+                               [r for r in load_ledger_rows(s, root)
+                                if str(r.get("date") or "") <= d])
+    with open(os.path.join(out, f"ledger_statements_{tag}.json"), "w") as f:
         json.dump(st, f, indent=1, ensure_ascii=False)
-    with open(os.path.join(OUT_DIR, f"reconciliation_{tag}.json"), "w") as f:
+    with open(os.path.join(out, f"reconciliation_{tag}.json"), "w") as f:
         json.dump(rec, f, indent=1, ensure_ascii=False)
     txt = render_txt(rec)
-    with open(os.path.join(OUT_DIR, f"reconciliation_{tag}.txt"), "w") as f:
+    with open(os.path.join(out, f"reconciliation_{tag}.txt"), "w") as f:
         f.write(txt + "\n")
-    log.info(f"账本报表+对账已写 {OUT_DIR} (as_of={d}, {'OK' if rec['ok'] else 'FAIL'})")
+    log.info(f"账本报表+对账已写 {out} (as_of={d}, {'OK' if rec['ok'] else 'FAIL'})")
     return rec
 
 
@@ -645,9 +789,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--date", default=None)
     ap.add_argument("--root", default=None)
+    ap.add_argument("--out-dir", default=None,
+                    help="回溯审计时改写到别处，避免覆盖生产的历史对账文件")
     ap.add_argument("--quiet", action="store_true")
     a = ap.parse_args()
-    rec = run(a.date, a.root)
+    rec = run(a.date, a.root, a.out_dir)
     if not a.quiet:
         print(render_txt(rec))
     return 0 if rec["ok"] else 1

@@ -162,8 +162,19 @@ def build_portfolio(inception_date: str, target_start: float) -> tuple[pd.Series
     # 已发布的 bdc_equity 里因此有三天假悬崖(−$65k/−$64k/−$42k),并顺着
     # master_portfolio_performance 传到前端和 controller 官方锚。
     # 宁可整份不出、保留昨天那份好的,也不能发一条假曲线。
-    _holes = {t: [str(d.date()) for d in close_prices.index[close_prices[t].isna()]
-                  if d >= close_prices[t].first_valid_index()]
+    #
+    # 整列缺失单独判:否则下面 close_prices[t] 抛 KeyError,报出来的是一个跟根因
+    # 无关的堆栈。票改名(见 ticker_aliases.py)或退市会走到这里。
+    _missing = [t for t in all_tickers if t not in close_prices.columns]
+    if _missing:
+        sys.exit(f'[ERROR] Polygon 未返回这些票的任何数据(改名/退市?): {_missing}')
+    # **任何** NaN 都致命,包括序列开头的。曾经这里只判 first_valid_index 之后的
+    # 缺口,理由是"上市晚的票开头本来就没数据"——但那恰恰也是错的:开头缺价时
+    # 建仓价取的是首个非 NaN(晚于 inception),而缺价那几天该票被静默排除在净值
+    # 之外,组合凭空少一块再突然补上,和 7/21 那三天是同一种假悬崖。这六票实测
+    # 自 inception 起零 NaN(192×6),所以严判不会误伤;真有新票入池时也应该由人
+    # 显式处理建仓口径,而不是让守卫替它猜。
+    _holes = {t: [str(d.date()) for d in close_prices.index[close_prices[t].isna()]]
               for t in all_tickers}
     _holes = {t: v for t, v in _holes.items() if v}
     if _holes:

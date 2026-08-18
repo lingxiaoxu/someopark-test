@@ -726,7 +726,15 @@ def download_open_prices(tickers: set, price_start: str, price_end: str) -> pd.D
                          and price_start <= sp.get('execution_date', '') <= end_plus}
         if split_tickers:
             from PriceDataStore import PriceDataStore
-            store = PriceDataStore('price_data', os.environ.get('POLYGON_API_KEY', ''))
+            # base_dir 是**仓库根**:PriceDataStore.__init__ 自己会拼一层
+            # os.path.join(base_dir, 'price_data')。此处曾传 'price_data',于是所有
+            # 取数落到 price_data/price_data/ 另起一套缓存(2026-06-12 KLAC 拆股那次
+            # 起,累计 119 票/8.9MB),既拿不到生产缓存的命中,也用不上生产的
+            # dividends_cache.json。价格本身没错(同一个 API),错的是缓存位置。
+            # ⚠️ 切回生产缓存必须配 heal_split_cliff(见下):生产缓存按周永久分区、
+            # 拆股后旧周不回刷,KLAC 断崖卡在周一 06-08 而非 exec 06-12;那套孤儿
+            # 缓存因为整个建于拆股之后才碰巧全程新口径。
+            store = PriceDataStore(BASE_DIR, os.environ.get('POLYGON_API_KEY', ''))
             # 取数终点钳制到今天:end_plus(报告末+2天)在周末/假日重生成时会落到
             # 未来日期,Polygon 对未来起点回 403 → store 三连重试后 raise → 整个
             # overlay 被跳过 → KLAC 退回 yfinance 错误拆股价(section-6 虚高 10×)。
@@ -744,11 +752,18 @@ def download_open_prices(tickers: set, price_start: str, price_end: str) -> pd.D
             # drops the row from section 6 instead of correcting it).
             poly = poly.copy()
             poly.index = pd.DatetimeIndex(poly.index).normalize()
+            from CorporateActions import heal_split_cliff
             for t in split_tickers:
                 col = ('Open', t)
                 if col in poly.columns:
                     src = poly[col]
                     src = src[~src.index.duplicated(keep='last')]
+                    # PriceDataStore 的周分区缓存在拆股后不回刷旧周 → 断崖落在周一
+                    # 边界(KLAC:缓存 06-08,exec 06-12),拆股前的 Open 还是老口径,
+                    # 直接叠上去等于给 section-6 灌 10× 参照价(KLAC 05-27/05-29 四笔
+                    # 成交正好落在这段)。heal 按序列真实跳变定位、幂等,序列本来干净
+                    # 就是 no-op —— 与 PortfolioMRPTRun/MTFSRun 的 polygon 分支同款。
+                    src, _nh = heal_split_cliff(src, t)
                     opens[t] = src.reindex(pd.DatetimeIndex(opens.index).normalize()).values
                     print(f'  [CA] section-6 exec-Open overlaid from Polygon for {t} '
                           f'(yfinance split-adjustment unreliable)')
