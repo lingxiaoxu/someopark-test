@@ -250,16 +250,66 @@ def _process_pair_body(pair, stock_1, stock_2, pair_key, context, data):
     spread = pair[2]['spread']
     hedge_history = pair[2]['hedge_history']
 
+    # ── Kalman 输入的 NaN 对齐(§7.3 KALMAN_HEDGE_NAN_ALIGNMENT_PLAN)────────
+    # 数据完整的对(绝大多数)走 else 分支 = 与此修复前逐字节相同的路径,只多
+    # 一次向量化 isna 扫描。仅当本对两条序列确有 NaN 时才进入特殊处理:
+    #   (a) 全 NaN(票在本 300cd 窗口完全未上市)      → 不重绑 → 原路径抛错跳过
+    #   (b) 仅前导 NaN(新上市/分拆,如 VLTO 2023-10-02)→ 从共同首个有效日起滤波
+    #   (c) 中段缺口(每腿 ≤5 个交易日)               → 两腿删缺失日并集后拼接
+    #       c1 缺口触及当前交易日(尾部/退市进行时)   → 不重绑(下游 spread 追加
+    #          用的是**未修剪原序列** iloc[-1],缝合会把 NaN 静默注入 spread)
+    #       c2 任一腿缺口 >5td                        → 不重绑(时间步扭曲不可忽略)
+    # 拒绝形态一律"不重绑 Y/X",让原序列带 NaN 进 Kalman → 抛 ValueError → 走
+    # 原 except,不新增任何 return 路径;也避免 len==1 重绑后 Kalman "成功"
+    # 返回单点垃圾 hedge。stock_1_P/stock_2_P 原变量始终不动。
+    _Y, _X = stock_1_P, stock_2_P
+    try:
+        if _Y.isna().values.any() or _X.isna().values.any():
+            _y0, _x0 = _Y.first_valid_index(), _X.first_valid_index()
+            if _y0 is not None and _x0 is not None:
+                _s = max(_y0, _x0)
+                _Yt, _Xt = _Y.loc[_s:], _X.loc[_s:]
+                if not _Yt.isna().values.any() and not _Xt.isna().values.any():
+                    if len(_Yt) >= 2:
+                        _Y, _X = _Yt, _Xt                      # (b) 前导修剪
+                elif not (pd.isna(_Yt.iloc[-1]) or pd.isna(_Xt.iloc[-1])):   # 非 c1
+                    if int(_Yt.isna().sum()) <= 5 and int(_Xt.isna().sum()) <= 5:  # 非 c2
+                        _m = _Yt.notna() & _Xt.notna()
+                        if int(_m.sum()) >= 2:
+                            _Y, _X = _Yt[_m], _Xt[_m]          # (c) 缺口缝合
+    except Exception as _e:                                    # noqa: BLE001
+        # 修剪块永不成为新的崩溃面:任何意外 → 回退原序列 → 原 NaN 走原路径
+        log.warning(f"[NAN_ALIGN] {pair_key}: 修剪失败,回退原序列 ({_e!r})")
+        _Y, _X = stock_1_P, stock_2_P
+
     # Get hedge ratio (look into using Kalman Filter)
     try:
-        hedge = context.portfolio_construct.hedge_ratio(stock_1_P, stock_2_P)
+        hedge = context.portfolio_construct.hedge_ratio(_Y, _X)
+        # pykalman 只对**观测矩阵**(X=stock_2_P)的 NaN 抛错;**观测值**
+        # (Y=stock_1_P)的 NaN 被当作缺测掩码,静默返回 hedge=nan(2026-08-18
+        # 实测)。该 NaN 会流进 hedge_history → spread,永久污染该对的 spread
+        # 数组且无任何日志。此守卫让"数据不可用 → 跳过"对两条腿对称成立
+        # (§8.2 统一跳过);干净对 hedge 恒为有限值,不受影响。
+        if not np.isfinite(hedge):
+            raise ValueError(f"hedge_ratio returned non-finite ({hedge}); "
+                             f"s1 leg NaN is masked by pykalman, not raised")
         pair_key = f"{stock_1}/{stock_2}"
         if pair_key not in context.portfolio.hedge_history:
             context.portfolio.hedge_history[pair_key] = []
         context.portfolio.hedge_history[pair_key].append((context.portfolio.current_date, hedge))
 
     except ValueError as e:
-        log.error(e)
+        # 带 pair 名 + 日期,且同一 run 内每对只报一次(此前裸 log.error(e) 单夜
+        # 刷 1.6 万条无上下文错误,淹没真实告警且无法定位是哪只票)。
+        # context.portfolio 每个 backtest 由 initialize() 新建 → 去重集自动按 run 重置。
+        _seen = getattr(context.portfolio, '_hedge_nan_logged', None)
+        if _seen is None:
+            _seen = set()
+            context.portfolio._hedge_nan_logged = _seen
+        if pair_key not in _seen:
+            _seen.add(pair_key)
+            log.error(f"hedge_ratio NaN/inf for {pair_key} @ "
+                      f"{context.portfolio.current_date}: {e} (本 run 后续同对静默)")
         record_vars(context, Y_pct=0, X_pct=0)
         return [stock_1, stock_2,
                 {'in_short': in_short, 'in_long': in_long, 'spread': spread, 'hedge_history': hedge_history}]
