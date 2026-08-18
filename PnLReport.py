@@ -252,7 +252,11 @@ def load_positions(start_ts, end_ts) -> list[dict]:
         if not as_of_str:
             continue
         day = pd.Timestamp(as_of_str)
-        if day < start_ts or day > end_ts:
+        # 窗前快照保留用于建立"窗口起点时仍在持"仓位的开仓状态(2026-08-18
+        # IRM/EFX 案: 6/23 开仓、7/1=窗口首日止损平仓 −6,744 —— 最后活跃快照
+        # 6/30 在窗前被跳过 → 平仓快照因 pair 不在 positions 无处落账 → 该对
+        # 从 summary 消失,而 curve/账本都记了。窗前已平仓的对由末尾过滤剔除。
+        if day > end_ts:
             continue
         _inv_entries.append((day, fpath, data))
     _inv_entries.sort(key=lambda x: (x[0], x[1]))
@@ -308,6 +312,7 @@ def load_positions(start_ts, end_ts) -> list[dict]:
                 'param_set':     p.get('param_set', '—'),
                 'last_pnl':      ml[-1]['unrealized_pnl'] if ml else None,
                 'last_pnl_date': ml[-1]['date'] if ml else None,
+                '_last_active_as_of': str(day.date()),
             }
     # Also read the CURRENT inventory main files — inventory_history snapshots are
     # taken BEFORE Step 2 opens new positions, so the latest snapshot may not contain
@@ -406,7 +411,16 @@ def load_positions(start_ts, end_ts) -> list[dict]:
     for pair_name in closed_pairs:
         if pair_name in positions:
             positions[pair_name]['_closed_in_snapshot'] = True
-    return list(positions.values())
+    # 窗口交集过滤: 生命周期完全在窗前结束的对剔除(配合上方窗前快照放行;
+    # 窗内平仓/窗末仍持有的保留 —— 与 curve/账本的窗口语义一致)。
+    # 判据 = max(平仓快照日, 最后活跃快照日):平仓走"删 key"路径时无
+    # _closed_as_of(AMAT/TRMB 6/15 案),用最后活跃日兜住 —— 该日 < 窗口
+    # 起点且已标记关闭 ⇒ 生命周期不可能触及窗口。
+    _start_str = str(start_ts.date())
+    return [p for p in positions.values()
+            if not (p.get('_closed_in_snapshot')
+                    and max(p.get('_closed_as_of') or '',
+                            p.get('_last_active_as_of') or '') < _start_str)]
 
 
 def load_close_events(start_ts, end_ts) -> dict[str, dict]:
@@ -1516,13 +1530,38 @@ def build_report_data(start: str, end: str) -> dict:
                                               realized_events=realized_events)
     totals['portfolio'] = port_metrics
 
-    # Sanity check: summary grand total vs equity curve end value
+    # Summary vs Curve 差额桥(R9 同款,2026-08-18): 把差拆成命名分项后,
+    # **残差**才是报警对象。分项 = 逐 pair 已实现口径差(curve 的事件集 vs
+    # summary 行的 closed sys+prior / open prior)—— IRM/EFX 类窗口边界丢行、
+    # fake-close 两侧不对称都会在此点名。旧口径对原始 delta 拍固定 $5,000,
+    # 边界项一多就误报,真异常反而可能被吞。
     if port_metrics and 'total_pnl' in port_metrics:
-        delta = abs(totals['grand'] - port_metrics['total_pnl'])
-        if delta > 5000:
-            print(f"  [WARN] Summary/Curve PnL mismatch: "
-                  f"summary={totals['grand']:+,.0f}  curve={port_metrics['total_pnl']:+,.0f}  "
-                  f"delta={delta:,.0f}")
+        from collections import defaultdict as _dd
+        delta = totals['grand'] - port_metrics['total_pnl']
+        _sum_bp, _cur_bp = _dd(float), _dd(float)
+        for _r in rows:
+            if _r.get('is_open'):
+                _sum_bp[_r['pair']] += (_r.get('prior_pnl') or 0)
+            else:
+                _sum_bp[_r['pair']] += ((_r.get('sys_pnl') or 0)
+                                        + (_r.get('prior_pnl') or 0))
+        for (_p, _sd), _pnl in (realized_events or {}).items():
+            _cur_bp[_p] += _pnl
+        _named = [(_sum_bp.get(_p, 0) - _cur_bp.get(_p, 0), _p)
+                  for _p in set(_sum_bp) | set(_cur_bp)
+                  if abs(_sum_bp.get(_p, 0) - _cur_bp.get(_p, 0)) > 1]
+        _named_total = sum(_d for _d, _ in _named)
+        residual = delta - _named_total
+        if _named or abs(residual) > 1000:
+            _top = ', '.join(f'{_p}{_d:+,.0f}' for _d, _p in
+                             sorted(_named, key=lambda x: -abs(x[0]))[:5])
+            print(f"  [BRIDGE] summary−curve = {delta:+,.0f} | 已实现口径分项 "
+                  f"{_named_total:+,.0f}" + (f" ({_top})" if _named else "")
+                  + f" | 残差 {residual:+,.0f}")
+        if abs(residual) > 1000:
+            print(f"  [WARN] Summary/Curve 残差超限: residual={residual:+,.0f} "
+                  f"(summary={totals['grand']:+,.0f} "
+                  f"curve={port_metrics['total_pnl']:+,.0f}) — 桥外分项需排查")
 
     return {
         'start':  start,
