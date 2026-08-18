@@ -59,6 +59,15 @@ class SomeoParkMirror(QCAlgorithm):
 
     # ── target 读取与强校验(损坏拒绝应用,绝不部分应用)──────────────────────
     def _read_target(self):
+        # LEAN ObjectStore 会缓存已读 key——外部 API 推送的更新对运行中算法不可见
+        # (2026-08-18 生产实证: v2 推送 40 分钟不可见)。Clear() 只清状态缓存
+        # 不动远端(LEAN 源码注释: "useful when the object store is used
+        # concurrently by nodes which want to share information"),每分钟一次
+        # 重拉 ~1.6KB,可忽略。
+        try:
+            self.ObjectStore.Clear()
+        except Exception as e:                      # noqa: BLE001
+            self.Error(f"{POLL_TAG} ObjectStore.Clear failed: {e}")
         if not self.ObjectStore.ContainsKey(TARGET_KEY):
             return None
         try:
