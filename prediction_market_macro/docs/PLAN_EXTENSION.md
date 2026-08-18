@@ -2707,11 +2707,58 @@ CREATE TABLE IF NOT EXISTS demo_fills(
 无关,paper 台账(按真实生产盘口定价)仍是唯一的策略裁判;demo 证明的是管线。
 maker(post_only 省费)留到 phase 2,以 phase 1 的滑点/成交率数据为对照组。
 
-### §30.4 分期与测试
+### §30.4 资产负债表管理(用户 2026-08-18 追加指令:"492还要有balance sheet管理
+cash还剩多少 现有仓位多少 等等 都要有程序管理")
+
+demo 账户是一个**有程序管理的资产负债表**,不是一串订单。每个 tick 的 sync 末尾 +
+每日刷新各落一张快照,任何时刻都能回答:现金还剩多少、押在哪些仓上、在途订单占用了
+多少买力、相对 $492 的起点赚亏几何。
+
+**状态模型(单一记账恒等式,每张快照都断言)**:
+```
+equity = cash + Σ(持仓 MTM)
+cash   = 492 + Σrealized − Σfees − Σ(持仓成本) − reserved(在途订单占用)
+```
+恒等式两侧分别来自**两个独立来源**——左侧从交易所 API 读(balance + positions),
+右侧从本地 `demo_fills`/结算推导。两边对不上就是 §30.2-2 的漂移,halt + 告警,
+不是"取一边继续跑"。
+
+**新表**:
+```sql
+CREATE TABLE IF NOT EXISTS demo_balance_sheet(
+  ts TEXT PRIMARY KEY,
+  cash_exchange REAL NOT NULL,        -- GET /portfolio/balance 实读
+  cash_expected REAL NOT NULL,        -- 本地推导(上式右侧)
+  reserved_usd REAL NOT NULL,         -- 在途未终态订单占用的买力
+  positions_cost REAL NOT NULL,       -- Σ 持仓成本基础
+  positions_mtm REAL NOT NULL,        -- Σ 持仓按生产盘口的 MTM
+  equity REAL NOT NULL,               -- cash_exchange + positions_mtm
+  realized_cum REAL NOT NULL, fees_cum REAL NOT NULL,
+  n_open_positions INTEGER NOT NULL,
+  exposure_json TEXT NOT NULL,        -- 逐系列/逐家族敞口(×100 口径,对照风控帽)
+  drift_usd REAL NOT NULL);           -- |cash_exchange − cash_expected|,>容差即 halt
+```
+持仓明细不单独建表——**当前持仓 = Σ`demo_fills` 按 ticker 聚合**(买加卖减,结算清零),
+以查询函数 `demo_positions(conn)` 提供:ticker、张数、均价成本、生产盘口 mark、
+未实现盈亏。交易所 positions 端点只用来**对账**这个推导,不是第二个记账来源。
+
+**三个必须讲清楚的口径**:
+1. **MTM 用生产盘口,不用 demo 盘口**。demo 簿薄且脱节,按它 mark 会让 equity 曲线
+   跳舞;经济视角的 mark 必须与 paper 台账同源(同一份 quotes 快照)。demo 簿的 mark
+   另存进对账日志,只用于"交易所会怎么看我"的核对,不进 equity。
+2. **reserved(在途占用)是买力的一部分**。§30.3 的买力护栏读的是
+   `cash_expected − reserved`,不是裸余额——否则两笔同 tick 的镜像会双花同一块钱。
+3. **快照是 append-only 历史**,`macro_demo_exec.json` 从它导出 demo 账户的资金曲线
+   (equity vs 492 起点)、现金/持仓/在途三分构成、逐系列敞口 vs 风控帽占用率。
+   资金曲线每个点可回溯到快照行,快照行可回溯到 fills——审计链与 paper 台账同规格。
+
+### §30.5 分期与测试
 
 **D0(现在)**:本节 + PR-9 注册。不写实现代码。
-**D1(PR-9 达成日启动)**:`ops/trading_kalshi.py` + 两张表 + kalshi_exec 补
-market-with-cap 支持 + 对账三层 + tick/refresh 挂载 + `macro_demo_exec.json` 导出。
+**D1(PR-9 达成日启动)**:`ops/trading_kalshi.py` + 三张表(demo_orders /
+demo_fills / demo_balance_sheet)+ `demo_positions()` 聚合 + kalshi_exec 补
+market-with-cap 支持 + 对账三层 + tick/refresh 挂载 + `macro_demo_exec.json` 导出
+(含资金曲线与敞口瓦片)。
 **D2(D1 上线两周后)**:执行质量报告(成交率/滑点/缩减率),据此决定 maker 实验
 与是否调 MULT。**prod key 的任何讨论只在用户明示后开始。**
 
@@ -2720,9 +2767,14 @@ D1 测试清单(全部先于上线,不许缩水):
 2. 崩溃恢复:模拟"已发单未落行",重启后按 client_order_id 认领,不重复下单;
 3. 顺序:构造 open+exit 同批,断言镜像顺序;exit 张数被实际持仓截断;
 4. 买力护栏:mock 买力不足,断言缩张、status='partial'、差额入账、告警发出;
+   **护栏读的是 cash_expected − reserved**,同 tick 双单不许双花;
 5. 对账 halt:注入持仓不一致,断言 mirror_halt 写入、后续 sync 全部 skipped_halt、
    ack 后恢复;
 6. 乘数与费:100× 张数的费用按 Kalshi 公式逐档断言;
 7. 三闸门:①任一开关关闭全拒;② kill-switch 摘除单系列;③ circuit_breaker 或
    mirror_halt 未 ack 时全拒;
-8. paper 台账零污染:D1 全套跑完后,`fills`/`decisions`/展示 JSON 与 D1 前逐 bit 一致。
+8. paper 台账零污染:D1 全套跑完后,`fills`/`decisions`/展示 JSON 与 D1 前逐 bit 一致;
+9. 记账恒等式:随机成交序列(开/平/结算/部分成交/缩张混合)重放后,快照恒等式两侧
+   相等到分;`drift_usd` 超容差路径触发 halt;
+10. 持仓聚合:`demo_positions()` 在买加卖减结算清零的全生命周期后与逐笔手工推导一致,
+    与交易所 positions mock 对账通过。
