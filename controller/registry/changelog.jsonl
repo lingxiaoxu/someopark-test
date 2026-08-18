@@ -264,3 +264,6 @@
 {"ts": "2026-08-15T13:27:27+00:00", "event": "register_node", "spid": "SPPR5Z03HXZ", "kind": "pair", "key": "mtfs|L:US6974351057|S:US65473P1057", "display": "PANW/NI"}
 {"ts": "2026-08-15T13:27:27+00:00", "event": "register_node", "spid": "SPPRSX94LNL", "kind": "pair", "key": "mtfs|L:US42824C1099|S:USG667211043", "display": "HPE/NCLH"}
 {"ts": "2026-08-15T13:27:27+00:00", "event": "register_node", "spid": "SPPRLGA5A6Y", "kind": "pair", "key": "mtfs|L:US1598641074|S:US8725401090", "display": "CRL/TJX"}
+{"ts": "2026-08-18T13:09:39+00:00", "event": "register_node", "spid": "SPPRQA5DOMJ", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US9884981013", "display": "VLO/YUM"}
+{"ts": "2026-08-18T13:09:55+00:00", "event": "register_node", "spid": "SPPRQA5DOMJ", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US9884981013", "display": "VLO/YUM"}
+{"ts": "2026-08-18T13:10:20+00:00", "event": "register_node", "spid": "SPPRQA5DOMJ", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US9884981013", "display": "VLO/YUM"}

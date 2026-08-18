@@ -2,72 +2,72 @@
   "param_set": "low_turnover",
   "signal_version": "v1",
   "selection_method": "mcps_oos_filtered",
-  "selected_at": "2026-08-14",
-  "last_updated": "2026-08-14",
-  "mcps_oos_filtered": 1.7746,
-  "recent_sharpe_12m": 1.9823,
-  "full_period_sharpe": 0.8369,
-  "full_period_calmar": 0.4586,
+  "selected_at": "2026-08-17",
+  "last_updated": "2026-08-17",
+  "mcps_oos_filtered": 1.834,
+  "recent_sharpe_12m": 1.9387,
+  "full_period_sharpe": 0.8304,
+  "full_period_calmar": 0.4547,
   "top_candidates": [
-    {
-      "name": "skip_heavy",
-      "version": "v1",
-      "composite": 0.7382,
-      "mcps_score": 2.2452
-    },
-    {
-      "name": "value_proxy",
-      "version": "v1",
-      "composite": 0.6737,
-      "mcps_score": 2.2452
-    },
     {
       "name": "equal_weight_optimizer",
       "version": "v1",
-      "composite": 0.5709,
-      "mcps_score": 2.4142
-    },
-    {
-      "name": "stagflation",
-      "version": "v1",
-      "composite": 0.4881,
-      "mcps_score": 2.2666
-    },
-    {
-      "name": "early_recovery",
-      "version": "v1",
-      "composite": 0.3854,
-      "mcps_score": 2.3339
+      "composite": 1.0284,
+      "mcps_score": 2.1232
     },
     {
       "name": "broad_6_softmax",
       "version": "v1",
-      "composite": 0.1695,
-      "mcps_score": 1.9932
+      "composite": 0.977,
+      "mcps_score": 2.0842
+    },
+    {
+      "name": "skip_heavy",
+      "version": "v1",
+      "composite": 0.3661,
+      "mcps_score": 1.9874
     },
     {
       "name": "dovish_macro",
       "version": "v1",
-      "composite": -0.0517,
-      "mcps_score": 2.1202
+      "composite": 0.0908,
+      "mcps_score": 1.9176
     },
     {
-      "name": "tech_bull_2023",
+      "name": "value_proxy",
       "version": "v1",
-      "composite": -0.155,
-      "mcps_score": 2.0896
-    },
-    {
-      "name": "low_turnover",
-      "version": "v1",
-      "composite": -0.787,
-      "mcps_score": 1.7266
+      "composite": 0.0587,
+      "mcps_score": 1.9874
     },
     {
       "name": "momentum_biased_regime",
       "version": "v1",
-      "composite": -1.0323,
-      "mcps_score": 2.0136
+      "composite": -0.2624,
+      "mcps_score": 1.82
+    },
+    {
+      "name": "early_recovery",
+      "version": "v1",
+      "composite": -0.4113,
+      "mcps_score": 1.9533
+    },
+    {
+      "name": "tech_bull_2023",
+      "version": "v1",
+      "composite": -0.6025,
+      "mcps_score": 1.9477
+    },
+    {
+      "name": "low_turnover",
+      "version": "v1",
+      "composite": -0.6143,
+      "mcps_score": 1.8566
+    },
+    {
+      "name": "stagflation",
+      "version": "v1",
+      "composite": -0.6306,
+      "mcps_score": 1.7867
     }
   ],
   "n_candidates": 37,
@@ -75,20 +75,20 @@
   "oos_filter_applied": true,
   "oos_mean_sharpe": null,
   "oos_n_selected": null,
-  "wf_mean_wfe": 1.3133,
-  "macro_data_days": 2038,
+  "wf_mean_wfe": 1.3244,
+  "macro_data_days": 2039,
   "switch_history": [],
   "health": {
     "days_since_switch": 1,
     "current_rank": 9,
     "anomaly_detected": false,
     "_consecutive_best_days": 1,
-    "_prev_best_param": "skip_heavy"
+    "_prev_best_param": "equal_weight_optimizer"
   },
-  "mcps_score": 1.7266,
-  "composite_score": -0.787,
+  "mcps_score": 1.8566,
+  "composite_score": -0.6143,
   "version_selector": {
     "recommended": "v1",
-    "v1_confidence": 0.775
+    "v1_confidence": 0.85
   }
 }

@@ -263,6 +263,18 @@ def load_positions(start_ts, end_ts) -> list[dict]:
 
     for day, fpath, data in _inv_entries:
         strategy = os.path.basename(fpath).split('_')[1]
+        # 消失检测(2026-08-18): 快照 = 该策略全书 —— 已跟踪的活跃对从本快照
+        # 整体消失(删 key 而非 direction=null 的平仓路径,AMAT/TRMB 6/15 案)
+        # 即视为在本快照日平仓。此前只有 live ghost 检查兜底,历史回填模式
+        # (_is_current_report=False)下僵尸对会以"在持仓"身份被 MTM 到 end 日
+        # (end=8/14 实测 −64,781 全部来自三只 6 月僵尸)。
+        _snap_pairs = set(data.get('pairs', {}) or {})
+        for _pn in list(positions):
+            if (positions[_pn].get('strategy') == strategy
+                    and _pn not in closed_pairs and _pn not in _snap_pairs):
+                closed_pairs.add(_pn)
+                positions[_pn].setdefault('_closed_as_of', str(day.date()))
+                positions[_pn]['_closed_by_disappearance'] = True
         for pair_name, p in data.get('pairs', {}).items():
             if not isinstance(p, dict):
                 continue
@@ -284,11 +296,15 @@ def load_positions(start_ts, end_ts) -> list[dict]:
             if pair_name in closed_pairs:
                 prev_open = positions.get(pair_name, {}).get('open_date')
                 new_open  = p.get('open_date')
-                if prev_open == new_open:
+                # null 墓碑关闭 + 同 open_date 重现 = 僵尸快照(BSX/WMB 案)跳过;
+                # 消失关闭 + 同 open_date 重现 = 瞬时缺失毛刺 → 自愈解封。
+                if (prev_open == new_open
+                        and not positions.get(pair_name, {}).get('_closed_by_disappearance')):
                     continue   # stale snapshot — skip
-                # Genuine re-entry with a new open_date
+                # Genuine re-entry (new open_date) or transient-absence self-heal
                 closed_pairs.discard(pair_name)
                 positions.get(pair_name, {}).pop('_closed_as_of', None)
+                positions.get(pair_name, {}).pop('_closed_by_disappearance', None)
             s1, s2 = pair_name.split('/', 1)
             # Corporate actions：旧口径快照换算为当前价格口径
             # （marker 判据：已调整快照自带 applied_corporate_actions 留痕 → 跳过）

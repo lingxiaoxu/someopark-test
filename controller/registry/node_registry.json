@@ -147,6 +147,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPRQA5DOMJ": {
+  "aliases": [
+   "VLO/YUM"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US91913Y1001|S:US9884981013",
+  "display_name": "VLO/YUM",
+  "first_seen": "2026-08-18T13:10:20+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRSX94LNL": {
   "aliases": [
    "HPE/NCLH"
