@@ -1167,7 +1167,20 @@ def build_report_data(start: str, end: str) -> dict:
     tickers = {p['s1'] for p in positions} | {p['s2'] for p in positions}
     open_dates = [p['open_date'] for p in positions if p['open_date']]
     price_start = min(open_dates) if open_dates else start
-    prices = download_prices(tickers, price_start, end)
+    # MTM 主源 = Mongo(与账本/曲线同源;2026-08-18 R11 红线: yfinance 缺 8/17
+    # 整日 → 持仓行退用 8/14 收盘,与账本 Mongo 口径分叉 -13,793)。
+    # 逐票缺行才退 yfinance,且必须大声 WARN —— 账本依赖 Mongo,持仓票理论上必在。
+    prices = download_prices_mongo(tickers, price_start, end)
+    _missing = sorted(t for t in tickers
+                      if t not in prices.columns or prices[t].dropna().empty)
+    if _missing:
+        print(f"  [WARN] MTM price source: {len(_missing)} tickers missing from "
+              f"Mongo, per-ticker yfinance fallback (投诉: 账本源应含所有持仓票): "
+              f"{_missing}")
+        _yf = download_prices(set(_missing), price_start, end)
+        for _t in _missing:
+            if _t in getattr(_yf, 'columns', []):
+                prices[_t] = _yf[_t]
 
     # Download Open prices for execution-price comparison (Section 六)
     try:

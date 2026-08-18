@@ -279,7 +279,7 @@ conda run -n someopark_run --no-capture-output python -m pytest pairs_ledger/tes
 
 - **重建前先备份**：`tar czf ~/pairs_ledger_backup/x.tar.gz account_*.json trade_ledger_*.jsonl account_history`
 - **对账 FAIL 不中断跑批**，只发 WARNING；详情见 `ledger_reports/reconciliation_<date>.txt`
-- **R11 是准入红线**：`INFRA_CUTOVER=2026-07-07` 起开仓的 pair 必须 diff=0。若变红说明当前口径出现新的不对齐，优先查该日 `combined_signals` 是否缺失
+- **R11 是准入红线**：`INFRA_CUTOVER=2026-07-07` 起开仓的 pair 必须 diff=0。若变红说明当前口径出现新的不对齐，优先查该日 `combined_signals` 是否缺失；**也可能是报告价格源与账本源分叉**（2026-08-18 实例：yfinance 缺 8/17 整日 → PnLReport 持仓行 MTM 退到 8/14 收盘，与账本 Mongo 口径差 −13,793；报告内 Summary/Curve WARN 会同源报警。已修：持仓行 MTM 主源切 Mongo，逐票缺行大声退 yfinance）
 - **环境**：MRPT/MTFS 一律 `someopark_run`；账本**不进** `qlib_run`
 - **账本只读 inventory / monitoring**，任何情况下都不回写审计记录
 
