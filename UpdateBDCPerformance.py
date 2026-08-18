@@ -7,6 +7,11 @@ BDC weights: GBDC 80%, TSLX/OBDC/BXSL/ARCC each 5%
 Cash: tracks BIL (SPDR 1-3 Month T-Bill ETF) as money market proxy
 Dividends: reinvested (DRIP) at ex-date close price
 
+Price/dividend source: Polygon (via PriceDataStore) — same ledger-grade source as
+RiskManager/PnLReport. yfinance was dropped 2026-08-18: it silently lost an entire
+trading day (8/17), which cost this file a row and blew the R11 red line elsewhere.
+A single source is the point — do not add a yfinance fallback.
+
 Output combines BDC + Cash into a single equity series (bdc_equity).
 
 Usage:
@@ -18,11 +23,11 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
 
 import numpy as np
 import pandas as pd
-import yfinance as yf
+
+from PriceDataStore import PriceDataStore
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BDC_JSON = os.path.join(BASE_DIR, 'someo-park-investment-management', 'public', 'data',
@@ -43,6 +48,88 @@ BDC_ALLOC = _INV['allocation']['bdc']
 CASH_ALLOC = _INV['allocation']['cash']
 
 
+# Polygon v3 dividend_type 已知取值——四者都是现金分配,DRIP 全部再投(与被替换的
+# yfinance `Ticker.dividends` 口径一致,后者也是一锅端所有现金分配)。
+# CD=regular cash / SC=special cash / LT=long-term cap-gain / ST=short-term cap-gain。
+# 出现白名单外的类型不静默吞也不静默收——大声 WARN 后仍计入,由人来判。
+_KNOWN_DIV_TYPES = {'CD', 'SC', 'LT', 'ST'}
+
+
+def _fetch_prices_and_dividends(tickers: list[str], start: str, end: str):
+    """Polygon 取收盘价 + 分红。返回 (close_prices, dividends)。
+
+    close_prices: DataFrame[date × ticker],拆股调整、不含分红调整
+                  (Polygon adjusted=true == yfinance auto_adjust=False 的 Close)
+    dividends:    dict[ticker] -> Series,索引 = ex-date
+
+    两个必须踩住的坑:
+      1. PriceDataStore 的索引是 04:00 (Polygon 的 UTC 毫秒戳),yfinance 是 00:00。
+         下游 DRIP 用 `date_idx in dividends[t].index` **精确匹配**——不 normalize
+         就一笔都对不上,分红静默全丢、净值静默走低。同款坑见 PnLReport.py 的
+         section-6 exec-Open overlay 注释。
+      2. store.load 内部按 `.loc[start:end]` 裁剪,end 被解析成当日 00:00,而数据点
+         在 04:00 → **直接传 end 会把最后一天裁掉**。仓库既有调用方都靠多要 1-2 天
+         补偿(RiskManager: signal_date+1;PnLReport: 报告末+2)。这里同样多要一天,
+         但不能越过本 ISO 周的周日:整周落在未来的请求 Polygon 回
+         403 NOT_AUTHORIZED,store 三连重试后 raise(实测)。
+    """
+    _end_d = pd.Timestamp(end).normalize()
+    _sunday = _end_d + pd.Timedelta(days=6 - _end_d.weekday())
+    end_req = str(min(_end_d + pd.Timedelta(days=1), _sunday).date())
+
+    # base_dir 是**仓库根**,不是 price_data —— PriceDataStore.__init__ 自己会拼
+    # `os.path.join(base_dir, 'price_data')`。传 'price_data' 会落到
+    # price_data/price_data/ 另起一套缓存(仓库里那个多余目录就是这么来的,
+    # PnLReport.py:729 至今还这么传),同时也就用不上生产的 dividends_cache.json。
+    api_key = os.environ.get('POLYGON_API_KEY', '')
+    if not api_key:
+        # 空 key 会变成每票每周 401→三连退避重试的风暴,最后抛一个跟根因无关的
+        # HTTPError。直说。
+        sys.exit('[ERROR] POLYGON_API_KEY 未设置(需先 source .env)')
+    store = PriceDataStore(BASE_DIR, api_key)
+    raw = store.load(tickers, start, end_req)
+    if raw.empty:
+        sys.exit('[ERROR] No price data downloaded from Polygon')
+    close_prices = raw['Close'].copy()
+    close_prices.index = pd.DatetimeIndex(close_prices.index).normalize()  # 坑 1
+    close_prices = close_prices[~close_prices.index.duplicated(keep='last')]
+    close_prices = close_prices.dropna(how='all')
+
+    dividends: dict[str, pd.Series] = {}
+    unknown: dict[str, set] = {}
+    for ticker in tickers:
+        recs = store._fetch_dividends(ticker, start, end)
+        bad = {r.get('dividend_type') for r in recs} - _KNOWN_DIV_TYPES
+        if bad:
+            unknown[ticker] = bad
+        by_ex: dict[str, float] = {}
+        for r in recs:                       # 同一 ex-date 多笔(如常规+特别)相加
+            by_ex[r['ex_dividend_date']] = (by_ex.get(r['ex_dividend_date'], 0.0)
+                                            + float(r['cash_amount']))
+        s = pd.Series(by_ex, dtype=float)
+        s.index = pd.DatetimeIndex(s.index).normalize()                    # 坑 1
+        dividends[ticker] = s.sort_index()
+    if unknown:
+        print(f'  [WARN] 未知 dividend_type(仍计入 DRIP,请人工确认口径): {unknown}')
+
+    # cash_amount 是**未按其后拆股还原**的每股金额(Polygon 文档明示),而收盘价是
+    # 拆股调整后的 → 窗口内一旦发生拆股,分红/股与价格就不同基。同时本脚本的
+    # shares 是从 inception 累加的,拆股本身也会打断股数链(替换前的 yfinance 版
+    # 同样如此,非本次引入)。所以只做检测 + 大声报警,不做假装无事的换算。
+    try:
+        from CorporateActions import _load_splits_cache
+        hits = [sp for sp in _load_splits_cache().get('results', [])
+                if sp.get('ticker') in set(tickers)
+                and start <= sp.get('execution_date', '') <= end]
+        if hits:
+            print(f'  [WARN] 窗口内有拆股,DRIP 股数链与分红基准均需人工复核: '
+                  f'{[(h["ticker"], h.get("execution_date")) for h in hits]}')
+    except Exception as e:                                       # noqa: BLE001
+        print(f'  [WARN] 拆股检测跳过(splits cache 不可读): {e}')
+
+    return close_prices, dividends
+
+
 def get_inception_info() -> tuple[str, float]:
     """Get inception date and combined start equity from strategy_performance.json."""
     with open(PERF_JSON) as f:
@@ -58,26 +145,31 @@ def build_portfolio(inception_date: str, target_start: float) -> tuple[pd.Series
         equity_series: combined BDC + cash equity per day
         meta: per-ticker stats
     """
-    end_date = (datetime.now() + pd.Timedelta(days=2)).strftime('%Y-%m-%d')
+    # 终点钳到今天:Polygon 对未来起点回 403 → store 三连重试后 raise。原 yfinance
+    # 版用 now+2d 是为了让 yf 的右开区间包含今天,Polygon 是闭区间不需要。
+    end_date = str(pd.Timestamp.now().normalize().date())
     bdc_capital = target_start * BDC_ALLOC
     cash_capital = target_start * CASH_ALLOC
 
     # === BDC portion ===
     all_tickers = BDC_TICKERS + [CASH_TICKER]
-    prices_raw = yf.download(all_tickers, start=inception_date, end=end_date,
-                             auto_adjust=False, progress=False)
-    close_prices = prices_raw['Close'].dropna(how='all')
-    if close_prices.empty:
-        sys.exit('[ERROR] No price data downloaded')
+    close_prices, dividends = _fetch_prices_and_dividends(
+        all_tickers, inception_date, end_date)
 
-    # Get dividends for BDC tickers + BIL (cash sleeve distributes its yield monthly)
-    dividends: dict[str, pd.Series] = {}
-    for ticker in BDC_TICKERS + [CASH_TICKER]:
-        t = yf.Ticker(ticker)
-        divs = t.dividends
-        divs = divs[divs.index >= inception_date]
-        divs.index = divs.index.tz_localize(None)
-        dividends[ticker] = divs
+    # 缺价必须致命。下面的净值累加对 NaN 是 `if not isna: 加` —— 少一票就**静默**
+    # 少一份市值,曲线凭空塌一个坑再弹回来,没有任何报错。yfinance 时代这事真发生
+    # 过:2026-07-21/22/31 三天随机丢 GBDC/BXSL/OBDC/TSLX(每次调用丢的票还不一样),
+    # 已发布的 bdc_equity 里因此有三天假悬崖(−$65k/−$64k/−$42k),并顺着
+    # master_portfolio_performance 传到前端和 controller 官方锚。
+    # 宁可整份不出、保留昨天那份好的,也不能发一条假曲线。
+    _holes = {t: [str(d.date()) for d in close_prices.index[close_prices[t].isna()]
+                  if d >= close_prices[t].first_valid_index()]
+              for t in all_tickers}
+    _holes = {t: v for t, v in _holes.items() if v}
+    if _holes:
+        sys.exit(f'[ERROR] 价格序列有缺口,拒绝产出(否则净值出假悬崖): '
+                 + '; '.join(f'{t}: {v[:5]}{"..." if len(v) > 5 else ""}'
+                             for t, v in _holes.items()))
 
     # Initialize BDC shares (weighted allocation) — every buy is recorded so the
     # full trade ledger regenerates deterministically on each run (auto-sync).

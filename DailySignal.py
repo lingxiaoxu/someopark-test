@@ -3019,10 +3019,17 @@ def run_daily_signal(
                 _perf_cmd = (f'python UpdateStrategyPerformance.py '
                              f'--start {_perf_start} --end {_perf_end}')
                 subprocess.run(_perf_cmd.split(), capture_output=True, timeout=120)
-                # BDC equity (yfinance buy-and-hold) must be regenerated BEFORE
+                # BDC equity (Polygon via PriceDataStore) must be regenerated BEFORE
                 # UpdateMasterPerformance, which only *reads* the BDC JSON.
-                subprocess.run('python UpdateBDCPerformance.py'.split(),
-                               capture_output=True, timeout=180)
+                # 非零退出 = 价格有缺口、脚本拒绝产出假曲线(2026-08-18 起)。必须喊
+                # 出来:否则 master 静默沿用昨天的 bdc_equity,前端与 controller
+                # 官方锚跟着一起过期,而日志上一片祥和。
+                _bdc = subprocess.run('python UpdateBDCPerformance.py'.split(),
+                                      capture_output=True, timeout=180)
+                if _bdc.returncode != 0:
+                    log.error(f"[PERF_UPDATE] UpdateBDCPerformance 失败 "
+                              f"(exit={_bdc.returncode}) — bdc_equity 未更新: "
+                              f"{_bdc.stderr.decode(errors='replace')[-500:]}")
                 subprocess.run('python UpdateMasterPerformance.py'.split(),
                                capture_output=True, timeout=120)
                 log.info(f"[PERF_UPDATE] strategy + BDC + master performance updated "
@@ -3128,10 +3135,15 @@ def run_daily_signal(
             _perf_cmd = (f'python UpdateStrategyPerformance.py '
                          f'--start {_perf_start} --end {_perf_end}')
             subprocess.run(_perf_cmd.split(), capture_output=True, timeout=120)
-            # BDC equity (yfinance buy-and-hold) must be regenerated BEFORE
+            # BDC equity (Polygon via PriceDataStore) must be regenerated BEFORE
             # UpdateMasterPerformance, which only *reads* the BDC JSON.
-            subprocess.run('python UpdateBDCPerformance.py'.split(),
-                           capture_output=True, timeout=180)
+            # 非零退出 = 价格有缺口、脚本拒绝产出假曲线(2026-08-18 起),见上一处同款注释。
+            _bdc = subprocess.run('python UpdateBDCPerformance.py'.split(),
+                                  capture_output=True, timeout=180)
+            if _bdc.returncode != 0:
+                log.error(f"[PERF_UPDATE] UpdateBDCPerformance 失败 "
+                          f"(exit={_bdc.returncode}) — bdc_equity 未更新: "
+                          f"{_bdc.stderr.decode(errors='replace')[-500:]}")
             subprocess.run('python UpdateMasterPerformance.py'.split(),
                            capture_output=True, timeout=120)
             log.info(f"[PERF_UPDATE] strategy + BDC + master performance updated "
