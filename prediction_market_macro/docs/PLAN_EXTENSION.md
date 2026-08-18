@@ -2663,6 +2663,32 @@ marketable limit,立即成交部分保留、余量撤单")。两种实现的行�
 在案 + 每日报告"目标 vs 实际"敞口比;**这不是 fallback,是外部硬约束的显式测量**
 ——$492 是用户给定的资金面,缩张数是唯一诚实的执行方式,且每一次缩都可见。
 
+**即时镜像与时延预算(用户 2026-08-18 追加:"生产出的交易信号一出现就立即demo交易
+尽量缩短per contract成交价 diff")**:
+
+信号与镜像**住在同一个进程里**,不引入任何"监控/轮询"中间层——轮询一张表再触发
+是在人为加时延,最短路径是 paper fill 落库的下一行代码直接下 demo 单:
+* **内联同步镜像为主**:`decide_all`/`exits`/`arb`/`snipe` 每写完一笔 paper fill,
+  紧接着调 `trading_kalshi.mirror_fill(conn, s, fill_id)`。paper 定价与 demo 订单
+  到达交易所之间只隔一次网络往返(~百毫秒量级);
+* **sync 扫账降级为兜底**:补内联失败/进程崩溃漏掉的成交(幂等由 fill_id 主键 +
+  确定性 client_order_id 保证,两条路径不可能重复下单);
+* **事件窗时延**:tick 的 linger 模式(发布窗内 20s 轮询)本来就在,窗内信号同样
+  内联镜像——价格动得最快的时段恰好是时延压得最低的时段;
+* **隔离约束**:内联调用带 5s 超时预算,失败只发告警、由兜底 sweep 重试——
+  **绝不阻塞、绝不失败交易任务本身**,paper 台账永远第一优先。
+
+**per-contract diff 的分解(必须测,不许混在一起报)**:diff 有两个来源,只有一个
+归我们管——
+| 分量 | 定义 | 性质 |
+|---|---|---|
+| 时延分量 | paper 定价用的生产 ask vs **下单瞬间**重取的生产 ask | 我们的执行速度;内联后应 ≈0,>1¢ 属异常要查 |
+| 场地分量 | 下单瞬间的生产 ask vs demo 实际成交价 | demo 簿与生产簿的结构性脱节;速度无关,prod 环境下自然消失 |
+每笔 `demo_orders` 存三个价:`paper_ask`(paper 定价)、`prod_ask_at_send`(下单
+瞬间重取)、`avg_price`(demo 实际)。`macro_demo_exec.json` 按两条分量分别聚合。
+**比较口径一律 ¢/张**(×100 因子自然消掉);PnL 层面对比用
+`demo_realized / (MULT × 实际成交比)` vs paper realized——买力缩张不得被误记为执行差。
+
 **镜像顺序与生命周期**:
 * 按 paper fills.id 严格升序处理——开仓镜像先于平仓镜像,构造上不可能倒序;
 * exit 镜像的张数 = min(100×paper平仓张数, demo 实际持有张数)——如果开仓当时因
@@ -2684,7 +2710,9 @@ CREATE TABLE IF NOT EXISTS demo_orders(
   ticker TEXT NOT NULL, side TEXT NOT NULL, action TEXT NOT NULL,
   count_target INTEGER NOT NULL,    -- 100 × paper
   count_filled INTEGER NOT NULL DEFAULT 0,
-  avg_price REAL, fee_usd REAL,
+  paper_ask REAL NOT NULL,          -- paper 成交定价用的生产 ask(¢/张 diff 分解基准)
+  prod_ask_at_send REAL,            -- 下单瞬间重取的生产 ask(时延分量)
+  avg_price REAL, fee_usd REAL,     -- demo 实际(场地分量)
   status TEXT NOT NULL,             -- intent|sent|filled|partial|unfilled|skipped_halt|skipped_power
   order_id TEXT, ts_sent TEXT, ts_terminal TEXT, note TEXT);
 CREATE TABLE IF NOT EXISTS demo_fills(
