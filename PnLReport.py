@@ -905,10 +905,17 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices,
             continue
         file_date_str = str(day.date())
         # Collect per-strategy scale_factor for un-scaling
+        # (2026-08-18 补齐 8/06 修复: monitor uPnL 自 MONITOR_RAW_USD_SINCE 起
+        # 已是原始美元 —— load_close_events 早已条件化,此处 HOLD overlay 漏改,
+        # 仍无条件除 scale → 曲线 overlay 段虚差 ~scale 偏离度,实测 8/17
+        # CRL/TJX +303.85 / HPE/NCLH +50.97,正是 summary−curve 残差主体。)
         _scale = {}
         for strat in ('mrpt', 'mtfs'):
-            sf = dr.get(strat, {}).get('scale_factor')
-            _scale[strat] = sf if sf and sf > 0 else 1.0
+            if signal_date_str >= MONITOR_RAW_USD_SINCE:
+                _scale[strat] = 1.0
+            else:
+                sf = dr.get(strat, {}).get('scale_factor')
+                _scale[strat] = sf if sf and sf > 0 else 1.0
         pm = dr.get('position_monitor', {})
         for strat in ('mrpt', 'mtfs'):
             for e in pm.get(strat, []):
@@ -925,7 +932,10 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices,
                     upnl = e.get('unrealized_pnl', 0) or 0
                     # Remove scale_factor to match raw inventory MTM
                     raw_upnl = upnl / _scale[strat]
-                    _hold_by_sigdate[signal_date_str][pair] = raw_upnl
+                    # 带 open_date: overlay 的平仓守卫必须限定本生命周期
+                    # (2026-08-18 ACGL/HIG 案: 7 月旧周期的平仓日误杀 8/14 新仓)
+                    _hold_by_sigdate[signal_date_str][pair] = (
+                        raw_upnl, e.get('open_date') or '')
 
     # Group by (pair, signal_date) and keep only the latest CLOSE per group
     _close_by_pair_date: dict[tuple, list] = {}  # (pair, signal_date) -> [(ts, pnl, file_date)]
@@ -973,6 +983,7 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices,
         # Mark-to-market all currently open positions
         total_mtm = 0.0
         has_pos = False
+        _mtm_pairs: dict = {}          # 末日自证: pair → 本日 MTM 贡献
         _inv_pairs_today: set = set()  # pairs already counted from inventory
 
         for snap_map in (mrpt_snap, mtfs_snap):
@@ -1017,6 +1028,7 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices,
                 if cp1 is not None and cp2 is not None:
                     pair_pnl = (s1_sh * float(cp1) + s2_sh * float(cp2)) - (s1_sh * op1 + s2_sh * op2)
                     total_mtm += pair_pnl
+                    _mtm_pairs[pair_name] = pair_pnl
                     has_pos = True
 
         # Overlay: positions in daily_report HOLD but missing from inventory snap.
@@ -1025,13 +1037,15 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices,
         # value includes DailySignal's scale_factor (small ~2% deviation from
         # raw MTM), it is better than omitting the position entirely.
         dr_holds = _hold_by_sigdate.get(td_str, {})
-        for pair_name, upnl in dr_holds.items():
+        for pair_name, (upnl, _od) in dr_holds.items():
             if pair_name in _inv_pairs_today:
                 continue  # already counted from inventory MTM
             close_dates = _close_sig_dates.get(pair_name, set())
-            if any(cd <= td_str for cd in close_dates):
-                continue  # closed on or before this date
+            # 限定本生命周期(cd > open_date): 同名对旧周期的平仓不挡新仓
+            if any(cd <= td_str and cd > _od for cd in close_dates):
+                continue  # this lifecycle closed on or before this date
             total_mtm += upnl
+            _mtm_pairs[f'{pair_name}(overlay)'] = upnl
             has_pos = True
 
         # Total PnL = locked realized + current unrealized
@@ -1103,6 +1117,13 @@ def _compute_portfolio_metrics(start_ts, end_ts, positions, prices,
     return {
         'daily_pnl': daily_pnl,
         'total_pnl': float(cum_pnl[-1]),
+        # 末值构成自证(summary−curve 桥的排查抓手): cum_realized 应=事件和,
+        # final_mtm 应=末日快照 MTM+overlay —— 哪边偏了一眼可见。
+        '_final_decomp': {'cum_realized': float(cum_realized),
+                          'final_mtm': float(cum_pnl[-1]) - float(cum_realized),
+                          'last_day': str(daily_pnl[-1]['date'].date()),
+                          'mtm_pairs': {k: round(float(v), 2)
+                                        for k, v in _mtm_pairs.items()}},
         'max_dd': max_dd,
         'max_dd_pct': max_dd_pct,
         'max_dd_peak_date': str(daily_pnl[peak_idx]['date'].date()),
