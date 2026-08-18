@@ -129,12 +129,14 @@ def _write_exit(conn, pos, ts: str, hold_edge, legs_exit, note: str) -> None:
          pos["model_version"], "{}",
          f"{note} realized={realized:+.4f}", pos["id"]))
     did = cur.lastrowid
+    from prediction_market_macro.ops import trading_kalshi
     for f, px, _ in legs_exit:
-        conn.execute(
+        curf = conn.execute(
             "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
             " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
             (did, ts, f["ticker"], f"close_{f['side']}", px, f["count"],
              taker_fee(px, f["count"])))
+        trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
 
 
 def frozen(conn, pos, now: datetime) -> bool:

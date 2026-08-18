@@ -53,12 +53,14 @@ def _record(conn, series: str, period: str, legs: list[dict], gross: float,
          json.dumps({"gross": gross, "net": net, "count": count}),
          "arb/1.0", "{}", note))
     did = cur.lastrowid
+    from prediction_market_macro.ops import trading_kalshi
     for l in legs:
-        conn.execute(
+        curf = conn.execute(
             "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
             " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
             (did, now, l["ticker"], l["side"], l["price"], count,
              taker_fee(l["price"], count)))
+        trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
     conn.commit()
     return did
 

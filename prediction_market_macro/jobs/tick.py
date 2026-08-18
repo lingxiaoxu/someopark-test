@@ -42,6 +42,14 @@ def _exec_task(conn, s, md, r) -> str:
         predict_all.run(conn, s)
         decide_all.run(conn, s)
         exits.run(conn, s)
+        # §30 mirror backstop: inline on_fill hooks fire inside decide/exits; this
+        # sweep catches anything they missed and advances order polling + the
+        # balance-sheet snapshot. Best-effort like the export below.
+        try:
+            from prediction_market_macro.ops import trading_kalshi
+            trading_kalshi.sync(conn)
+        except Exception as e:                                   # noqa: BLE001
+            print(f"  trading_kalshi.sync skipped: {e}")
         _export_frontend(conn, s)   # 2026-08-13: intraday trades were invisible
         # until the NEXT MORNING's refresh — the site reads local public/data over
         # the tunnel, so freshness is decided here, not by a deploy.

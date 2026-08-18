@@ -2782,12 +2782,24 @@ CREATE TABLE IF NOT EXISTS demo_balance_sheet(
 
 ### §30.5 分期与测试
 
-**D0(现在)**:本节 + PR-9 注册。不写实现代码。
-**D1(PR-9 达成日启动)**:`ops/trading_kalshi.py` + 三张表(demo_orders /
-demo_fills / demo_balance_sheet)+ `demo_positions()` 聚合 + kalshi_exec 补
-market-with-cap 支持 + 对账三层 + tick/refresh 挂载 + `macro_demo_exec.json` 导出
-(含资金曲线与敞口瓦片)。
-**D2(D1 上线两周后)**:执行质量报告(成交率/滑点/缩减率),据此决定 maker 实验
+**D0(2026-08-18 上午)**:本节 + PR-9 注册。
+**D1(同日用户改道:"现在实现这一套…但是不接入demo kalshi"——已暗建完成)**:
+`ops/trading_kalshi.py` + 四张表(demo_orders / demo_fills / demo_balance_sheet /
+demo_mirror_state)+ `demo_positions()` 聚合 + kalshi_exec `place_taker_order`
+(market_capped 与 marketable_limit 双实现)+ account.py 只读端点(positions/fills/
+order)+ 五个 fills 门的内联钩子 + tick/refresh 挂载 + `macro_demo_exec.json` 导出。
+**暗模式语义**:armed=False 时全管线照跑(闸门/定量/买力护栏/prod-ask 重取),写
+`status='dryrun'` 行,任何交易所写操作按构造不可能(测试用毒化 transport 钉死)。
+PR-9 达成日 = 拨 `arm()` 这一个开关,别无其他改动。
+
+**arming 日协议(达成判据后按序执行,不许跳步)**:
+1. 计算并在 PR-9 结论栏记录判据数字(n、CI);
+2. `trading_kalshi.arm()`(写 watermark = 当时 MAX(fills.id)、start_cash = 实读余额);
+3. **金丝雀单**:在流动性最好的 demo ticker 上手动触发 1 张合约的完整生命周期
+   (下单→轮询→成交回读→对账),验证 demo API 的 market+buy_max_cost 是否受支持、
+   费用与成交字段是否按预期解析;据此写 `taker_mode` 状态行;
+4. 金丝雀通过才算 armed 生效;失败 → halt + 修复 + 重跑金丝雀。
+**D2(armed 两周后)**:执行质量报告(成交率/滑点分解/缩减率),据此决定 maker 实验
 与是否调 MULT。**prod key 的任何讨论只在用户明示后开始。**
 
 D1 测试清单(全部先于上线,不许缩水):

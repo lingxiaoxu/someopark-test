@@ -51,6 +51,52 @@ def fetch_balance_usd() -> float:
     return float(doc["balance"]) / 100.0          # API returns cents
 
 
+def _get_json(path_tail: str, params: dict | None = None) -> dict:
+    """Authenticated READ-ONLY GET on the env-selected account (demo by default).
+    path_tail e.g. '/portfolio/positions'. Signing path excludes the query string
+    (Kalshi signs method+path only)."""
+    import urllib.parse
+    path = "/trade-api/v2" + path_tail
+    url = _base() + path_tail
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "someopark-macro", **_auth_headers("GET", path)})
+    with urllib.request.urlopen(req, timeout=20) as r:
+        return json.load(r)
+
+
+def fetch_positions() -> list[dict]:
+    """All non-zero market positions on the account (§30 reconciliation source).
+    Returns the raw market_positions list; cursor-paged."""
+    out, cursor = [], ""
+    while True:
+        params = {"limit": 200}
+        if cursor:
+            params["cursor"] = cursor
+        d = _get_json("/portfolio/positions", params)
+        out += d.get("market_positions") or []
+        cursor = d.get("cursor") or ""
+        if not cursor:
+            break
+    return out
+
+
+def fetch_fills(ticker: str | None = None, limit: int = 200) -> list[dict]:
+    """Executed fills on the account, newest first (§30 fill read-back)."""
+    params = {"limit": min(limit, 200)}
+    if ticker:
+        params["ticker"] = ticker
+    d = _get_json("/portfolio/fills", params)
+    return d.get("fills") or []
+
+
+def fetch_order(order_id: str) -> dict:
+    """Single order status (terminal-state polling)."""
+    d = _get_json(f"/portfolio/orders/{order_id}")
+    return d.get("order") or d
+
+
 def refresh_bankroll(conn) -> dict:
     """Fetch + persist the live demo balance; returns {bankroll_usd, source, ts}."""
     now = datetime.now(timezone.utc).isoformat()

@@ -200,6 +200,45 @@ CREATE TABLE IF NOT EXISTS event_flags(            -- LLM structural-break layer
   direction TEXT, family TEXT NOT NULL,            -- affected series family
   severity INTEGER NOT NULL DEFAULT 1,             -- 1..5
   expires_ts TEXT NOT NULL);
+
+CREATE TABLE IF NOT EXISTS demo_orders(            -- §30 mirror: one row per paper fill
+  fill_id INTEGER PRIMARY KEY,                     -- the paper fills.id being mirrored, 1:1
+  decision_id INTEGER NOT NULL,
+  client_order_id TEXT NOT NULL UNIQUE,            -- 'spm-m{fill_id}', deterministic
+  ticker TEXT NOT NULL, side TEXT NOT NULL,        -- side: yes|no (original, not close_*)
+  action TEXT NOT NULL,                            -- buy|sell
+  count_target INTEGER NOT NULL,                   -- MIRROR_MULT x paper count
+  count_filled INTEGER NOT NULL DEFAULT 0,
+  paper_ask REAL NOT NULL,                         -- paper fill price (diff baseline, ¢/张)
+  prod_ask_at_send REAL,                           -- prod book re-fetched at send (latency)
+  avg_price REAL, fee_usd REAL,                    -- demo actuals (venue component)
+  status TEXT NOT NULL,                            -- dryrun|intent|sent|filled|partial|
+                                                   -- unfilled|skipped_halt|skipped_power|
+                                                   -- skipped_gate|skipped_noheld
+  order_id TEXT, ts_sent TEXT, ts_terminal TEXT, note TEXT);
+
+CREATE TABLE IF NOT EXISTS demo_fills(             -- §30 actual demo executions (poll results)
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fill_id INTEGER NOT NULL,                        -- back-link demo_orders.fill_id
+  ticker TEXT NOT NULL, side TEXT NOT NULL, action TEXT NOT NULL,
+  price REAL NOT NULL, count INTEGER NOT NULL, fee_usd REAL NOT NULL,
+  exchange_fill_id TEXT UNIQUE, ts TEXT NOT NULL);
+
+CREATE TABLE IF NOT EXISTS demo_balance_sheet(     -- §30.4 append-only snapshots
+  ts TEXT PRIMARY KEY,
+  cash_exchange REAL NOT NULL,                     -- GET /portfolio/balance, live
+  cash_expected REAL NOT NULL,                     -- local derivation (identity RHS)
+  reserved_usd REAL NOT NULL,                      -- in-flight (non-terminal) order hold
+  positions_cost REAL NOT NULL,
+  positions_mtm REAL NOT NULL,                     -- marked on the PRODUCTION book
+  equity REAL NOT NULL,                            -- cash_exchange + positions_mtm
+  realized_cum REAL NOT NULL, fees_cum REAL NOT NULL,
+  n_open_positions INTEGER NOT NULL,
+  exposure_json TEXT NOT NULL,                     -- per-series exposure vs risk caps
+  drift_usd REAL NOT NULL);                        -- |cash_exchange - cash_expected|
+
+CREATE TABLE IF NOT EXISTS demo_mirror_state(      -- §30 k/v: armed | halt | watermark
+  k TEXT PRIMARY KEY, v TEXT NOT NULL);
 """
 
 

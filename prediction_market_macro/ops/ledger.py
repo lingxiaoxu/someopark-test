@@ -36,12 +36,14 @@ def record(conn, *, series: str, period: str, decision: Decision, pred_inputs: d
         # one shared fill model with strategy/decision.py, which sized `count` against
         # these same prices — a flat pad here (the old PAPER_SLIP) was invisible to sizing
         # and blew the $1 cap on cheap legs. See strategy/edge.py::fill_price.
+        from prediction_market_macro.ops import trading_kalshi
         for leg, px in zip(st.legs, st.fill_prices(decision.count)):
-            conn.execute(
+            curf = conn.execute(
                 "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
                 " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
                 (did, now, leg.ticker, leg.side, px, decision.count,
                  taker_fee(px, decision.count)))
+            trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
     conn.commit()
     return did
 

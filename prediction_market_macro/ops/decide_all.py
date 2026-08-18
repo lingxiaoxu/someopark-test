@@ -171,12 +171,15 @@ def _place_argmax(conn, spec, key: str, structs, now, note_extra: str = "") -> b
          "argmax", st.fair, st.cost, st.net_edge(), size,
          json.dumps({"stream": "argmax"}), "argmax/1.0", "{}",
          f"ARGMAX fav fair={st.fair:.3f} {note_extra}".strip()))
+    from prediction_market_macro.ops import trading_kalshi
+    did_argmax = cur.lastrowid
     for leg, px in zip(st.legs, st.fill_prices(count)):
-        conn.execute(
+        curf = conn.execute(
             "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count,"
             " fee_usd, mode) VALUES(?,?,?,?,?,?,?, 'paper')",
-            (cur.lastrowid, now_iso, leg.ticker, leg.side, px, count,
+            (did_argmax, now_iso, leg.ticker, leg.side, px, count,
              taker_fee(px, count)))
+        trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
     conn.commit()
     return True
 

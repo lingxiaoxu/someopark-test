@@ -546,4 +546,37 @@ def run_extended(conn, settings) -> str:
     _write(out_dir / "macro_fed.json",
            {"generated_at": now.isoformat(), "meetings": meetings})
     written.append("macro_fed.json")
+
+    # ── macro_demo_exec.json: §30 mirror state, diff decomposition, balance sheet ──
+    from prediction_market_macro.ops import trading_kalshi as _tk
+    orders = [dict(r) for r in conn.execute(
+        "SELECT * FROM demo_orders ORDER BY fill_id DESC LIMIT 200").fetchall()]
+    # per-contract diff decomposition (¢/张, §30.3): latency = prod_ask_at_send −
+    # paper_ask; venue = avg_price − prod_ask_at_send. Buys only — sells invert.
+    lat, ven = [], []
+    for o in orders:
+        if o["action"] != "buy":
+            continue
+        if o["prod_ask_at_send"] is not None:
+            lat.append((o["prod_ask_at_send"] - o["paper_ask"]) * 100)
+            if o["avg_price"] is not None:
+                ven.append((o["avg_price"] - o["prod_ask_at_send"]) * 100)
+    snaps = [dict(r) for r in conn.execute(
+        "SELECT * FROM demo_balance_sheet ORDER BY ts DESC LIMIT 500").fetchall()]
+    _write(out_dir / "macro_demo_exec.json", {
+        "generated_at": now.isoformat(),
+        "armed": _tk.armed(conn), "halted": _tk.halted(conn),
+        "mirror_mult": _tk.MIRROR_MULT,
+        "start_cash": _tk._start_cash(conn),
+        "orders": orders,
+        "positions": _tk.demo_positions(conn),
+        "diff_cents": {
+            "latency": {"n": len(lat),
+                        "mean": round(sum(lat) / len(lat), 3) if lat else None},
+            "venue": {"n": len(ven),
+                      "mean": round(sum(ven) / len(ven), 3) if ven else None}},
+        "balance_sheet": snaps,
+        "note": ("DARK rehearsal — no orders sent; PR-9 gates arming"
+                 if not _tk.armed(conn) else "LIVE demo mirroring")})
+    written.append("macro_demo_exec.json")
     return ",".join(written)

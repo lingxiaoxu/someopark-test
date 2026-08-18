@@ -117,11 +117,13 @@ def run_for(conn, series: str, period_key: str) -> int:
              "snipe", 1.0, price, round(net, 4), stake,
              json.dumps({"print": y, "net": net, "count": count}),
              "snipe/1.0", "{}", note))
-        conn.execute(
+        from prediction_market_macro.ops import trading_kalshi
+        curf = conn.execute(
             "INSERT INTO fills(decision_id, ts_utc, ticker, side, price, count, fee_usd,"
             " mode) VALUES(?,?,?,?,?,?,?, 'paper')",
             (cur.lastrowid, now, l["ticker"], side, price, count,
              taker_fee(price, count)))
+        trading_kalshi.on_fill(conn, curf.lastrowid)   # §30.3 inline mirror
         conn.execute(
             "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
             (now, "info", "snipe", f"{series}/{period_key}: {note} x{count}"))

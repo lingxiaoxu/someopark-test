@@ -102,6 +102,56 @@ def place_limit_order(conn, settings, *, ticker: str, side: str, action: str,
         return OrderResult("error", str(e))
 
 
+TAKER_CAP_CENTS = 3        # §30.3 price protection: ask+3¢ buys / bid−3¢ sells
+
+
+def place_taker_order(conn, *, ticker: str, side: str, action: str, count: int,
+                      ref_price_cents: int, mode: str = "market_capped",
+                      client_order_id: str) -> OrderResult:
+    """§30.3 mirror-path taker order: immediate execution with a hard price bound.
+
+    NOT gated by trading_allowed — the mirror path's gates live in
+    ops/trading_kalshi (paper-ledger-driven, Brier gate PAUSED per user 2026-08-18);
+    this function is pure transport and must only ever be called by trading_kalshi.
+
+    mode='market_capped': type=market with buy_max_cost (buys only — market sells
+    have no floor param, so sells always go the crossing-limit route).
+    mode='marketable_limit': crossing limit at ref±cap; rests briefly, the §30
+    poller cancels at timeout. The arming-day canary decides which mode the demo
+    API honours; both are implemented so that decision is a config flip, not a
+    code change. Naked market orders are deliberately impossible here — ×100
+    count on a thin demo book must never run the ladder.
+    """
+    assert side in ("yes", "no") and action in ("buy", "sell")
+    assert 1 <= ref_price_cents <= 99 and count >= 1
+    cap_up = min(ref_price_cents + TAKER_CAP_CENTS, 99)
+    cap_dn = max(ref_price_cents - TAKER_CAP_CENTS, 1)
+    if mode == "market_capped" and action == "buy":
+        body = {"ticker": ticker, "side": side, "action": action, "count": count,
+                "type": "market",
+                "buy_max_cost": cap_up * count,          # cents, total
+                "client_order_id": client_order_id}
+    else:
+        px = cap_dn if action == "sell" else cap_up
+        body = {"ticker": ticker, "side": side, "action": action, "count": count,
+                "type": "limit",
+                ("yes_price" if side == "yes" else "no_price"): px,
+                "post_only": False,
+                "client_order_id": client_order_id}
+    path = "/trade-api/v2/portfolio/orders"
+    req = urllib.request.Request(
+        _base() + "/portfolio/orders", data=json.dumps(body).encode(),
+        headers={"User-Agent": "someopark-macro", "Content-Type": "application/json",
+                 **_auth_headers("POST", path)}, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            doc = json.load(r)
+        oid = (doc.get("order") or {}).get("order_id")
+        return OrderResult("accepted", "ok", order_id=oid, raw=doc)
+    except Exception as e:                                       # noqa: BLE001
+        return OrderResult("error", str(e))
+
+
 def cancel_order(conn, order_id: str) -> OrderResult:
     path = f"/trade-api/v2/portfolio/orders/{order_id}"
     req = urllib.request.Request(

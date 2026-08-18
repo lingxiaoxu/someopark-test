@@ -120,6 +120,12 @@ def run(weekly: bool = False) -> dict:
         # which triggers at a looser threshold — must be seen on that last day too.
         step("s2_shadow", lambda: exits.shadow_run(conn, s))
         step("exits", lambda: exits.run(conn, s))
+        # §30 mirror: sweep backstop + order poll + balance-sheet snapshot, then the
+        # daily position/balance reconciliation (armed only; dark mode snapshots too)
+        from prediction_market_macro.ops import trading_kalshi
+        step("trading_kalshi_sync", lambda: json.dumps(trading_kalshi.sync(conn)))
+        step("trading_kalshi_reconcile",
+             lambda: json.dumps(trading_kalshi.reconcile(conn)))
     except ImportError:
         print("  - predict/decide layers not installed yet (pre-M1)")
     # ── §8.0 step 4/5: marks, settle, health, exports (land at M4-M6) ────
