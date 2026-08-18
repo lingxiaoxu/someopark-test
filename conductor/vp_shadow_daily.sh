@@ -86,6 +86,14 @@ nice -n 15 $PY -m VolumePrediction.tca_backfill >>"$LOG" 2>&1
 RC3=$?
 [ $RC3 -ne 0 ] && log "!!! tca_backfill 失败 (exit=$RC3) — 非致命,不影响预测工件"
 
-log "=== VP SHADOW END (daily=0, rnn=$RC2, tca=${RC3:-0}) ==="
+# ── 4) 执行层消费影子(E1-2,2026-08-17;非致命;幂等增量) ──────────────────
+# 把当日真实调仓单(pairs 信号对级 + aiss/ssrs 账本篮子)喂给 execute/econ,
+# 记录排程与成本预算证据 → outputs/execution_shadow/。为逐策略切换积累依据。
+log "--- STEP 4: execution_shadow ---"
+nice -n 15 $PY -m VolumePrediction.execution_shadow >>"$LOG" 2>&1
+RC4=$?
+[ $RC4 -ne 0 ] && log "!!! execution_shadow 失败 (exit=$RC4) — 非致命,不影响预测工件"
+
+log "=== VP SHADOW END (daily=0, rnn=$RC2, tca=${RC3:-0}, exec=${RC4:-0}) ==="
 [ $RC2 -ne 0 ] && exit 2
 exit 0

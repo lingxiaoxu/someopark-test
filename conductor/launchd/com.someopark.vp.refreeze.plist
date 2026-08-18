@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.someopark.vp.refreeze</string>
+    <!-- 每月第一个周六 10:33 ET(脚本自身建议"月初周末",避开 pairs 夜跑
+         20:30-09:00 的内存竞争;周六晨跑批 ~09:26 已结束,重活数小时也在
+         20:30 前收尾)。launchd 的 StartCalendarInterval 各键为 AND 语义,
+         Day 1-7 × Weekday 6 的七个 dict 恰好=「第一个周六」。
+         脚本内置 pairs 互斥守卫(运行中 → exit 3 改期)。
+         只产出候选绝不自动晋升(§7.6 红线在脚本与 refreeze.py 双层保证)。 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/xuling/code/someopark-test/conductor/vp_refreeze_monthly.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Day</key><integer>1</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
+        <dict><key>Day</key><integer>2</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
+        <dict><key>Day</key><integer>3</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
+        <dict><key>Day</key><integer>4</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
+        <dict><key>Day</key><integer>5</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
+        <dict><key>Day</key><integer>6</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
+        <dict><key>Day</key><integer>7</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
+    </array>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_refreeze.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_refreeze.log</string>
+</dict>
+</plist>

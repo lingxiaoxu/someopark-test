@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.someopark.vp.shadowdaily</string>
+    <!-- 每日 17:33 ET: 当日 raw 已可得(实测 16:54 即有,17:30 为脚本保守线);
+         earnings 3 天全量刷新最坏 ~2.8h → 20:19 前收尾,不撞 pairs 夜跑(20:30)。
+         周末/节假日跑 = 幂等空转(按日戳,不二次写状态)。脚本自 source .env
+         并 tee 到 conductor/logs/vp_shadow_YYYYMMDD.log;此处 stdout 仅兜底。 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/xuling/code/someopark-test/conductor/vp_shadow_daily.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>17</integer>
+        <key>Minute</key><integer>33</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_shadowdaily.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_shadowdaily.log</string>
+</dict>
+</plist>
