@@ -2582,3 +2582,147 @@ bar 还没落库时就把合约判死,3 天给日常道 3 次尝试机会,而期
 ```
 600 passed        # 582 + 18
 ```
+
+---
+
+## §30 demo 实盘跟单 —— `trading_kalshi` 镜像执行($492 demo 账户,用户 2026-08-18 指令)
+
+### §30.0 一句话架构
+
+**paper 台账就是 inventory,demo 账户是它的 ×100 放大镜像。**内部系统每写一笔 paper
+成交(open/exit/arb/snipe),跟单器 `ops/trading_kalshi.py` 读到它,在 Kalshi demo
+账户按 **100 倍张数**下同方向同价格档的单:paper 下 $0.42,demo 下 $42。跟单器
+**永远不做自己的交易决策**——它没有模型、没有闸门判断、没有择时,只有"台账有,我就有;
+台账平,我就平"。放大收益,同时把执行管线(鉴权/下单生命周期/部分成交/对账)在真钱
+之前跑熟。
+
+用户指令原文要点(2026-08-18,全文进 git):
+* "每次我们内部系统paper记录下单 就让/trading_kalshi 读取那个然后在kalshi同步下单"
+* "paper下0.42 我们在kalshi demo account通过api 放大100倍下42美金"
+* "'模型 Brier 打赢市场'这个改成paused 优先按照我们macro的系统里面实盘下单了…
+  关闭了一个bet 你也要在kalshi里用api做一样的交易"
+* "我建议用market order而不是limit order。这样一定能成交"
+* "不要简化不要fallback 遇到问题要解决"
+* 不动:KALSHI_ENV=demo、熔断与风控帽原样、三道闸门结构原样、prod key 只在明示时启用。
+
+### §30.1 晋级判据(PR-9,已注册,先于任何实现)
+
+实盘 paper 台账自 2026-08-11 重置起:**≥10 笔结算 且 事件聚类 bootstrap 95% CI 的
+ROI > 0**。达成 → 实施 §30.3;不达成 → 一行代码不写。判据全文与计数在
+`docs/PREREGISTER.md` PR-9,判据不改,K=1。
+
+### §30.2 三个已知缺口,各自的处理(用户点名要求解决,不许敷衍)
+
+**缺口 1 —— `exec/kalshi_exec.py` 无人 import。**
+处理:新模块 `ops/trading_kalshi.py` 是唯一调用方。挂载点 = `jobs/tick.py` 的
+arm/decide/reassess lane 与 `ops/refresh.py` ③ 段,**紧跟在 decide_all / exits /
+arb / snipe 写完 paper fills 之后**调 `trading_kalshi.sync(conn, s)`。sync 的工作
+方式是**扫账补差**而不是事件回调:读"尚未镜像的 paper fill"(按 fills.id 升序),
+逐笔镜像——所以错过一个 tick 不丢单,进程崩溃不丢单,重复调用不重复下单(见 §30.4
+幂等)。
+
+**缺口 2 —— 只有下单没有回读,demo 账本会漂移。**
+处理分三层,全部进 D1 交付物:
+1. **成交回读**:每笔订单发出后轮询到终态(filled / partial / unfilled),真实成交
+   价、张数、手续费写 `demo_fills` 表;未终态的订单每个 tick 续轮询,超时(15 分钟)
+   撤单并记 `status='unfilled'` + 告警。
+2. **每日持仓对账**:`GET /portfolio/positions` 与 Σ`demo_fills` 的期望持仓逐 ticker
+   比对;**任何不一致 → level=error 告警 + 跟单器自动暂停**(写 `mirror_halt` 行,
+   人工 ack 才恢复)。漂移不许带病运行。
+3. **每日余额对账**:demo 余额 vs (492 + Σrealized − Σfees) 的期望值,超容差同样
+   halt + 告警。
+
+**缺口 3 —— 闸门②的 Brier 判据和赚钱不是一回事,$492 永远花不出去。**
+处理:**Brier 判据对跟单路径 PAUSED**(用户指令原文)。三道闸门**结构**保留,内容
+重定义:
+| 门 | 原判据 | 跟单路径新判据 |
+|---|---|---|
+| ① 全局开关 | settings.trading_enabled ∧ env KALSHI_TRADING_ENABLED=1 | **原样** |
+| ② 逐系列 | series_gate real=true(eval.py 按 Brier 赢市场写) | **"paper 台账下了这笔"本身就是判据**(跟单器由台账驱动,天然满足)+ 一个逐系列运维 kill-switch(`mirror_series_off` 行,默认全开,只用于紧急摘除单系列,不是策略判断) |
+| ③ 熔断 | 7 天内无 circuit_breaker 告警 | **原样**,另加 §30.2-2 的 mirror_halt 未 ack 也算红 |
+eval.py 照旧每周计算并写 series_gate 行(**计算不停,只是跟单路径不读它**)——那套
+判据留给未来可能的"模型直接实盘"路径,和本节的镜像路径是两回事,PREREGISTER PR-8/
+README 的口径同步注明 paused。
+
+### §30.3 执行机制(D1 实施规格)
+
+**订单类型:taker,保证成交,但必须带价格保护。**用户要 market order 的本质诉求是
+"一定成交、和 paper 的 ask 成交假设可比"。**裸 market order 在 demo 薄订单簿上
+×100 张会扫穿价格档**(demo 交易所的簿是独立的、远薄于生产簿)——所以规格是
+**market-order 语义 + 成本上限**:优先用 API 的 `type=market` + `buy_max_cost`
+(实施时在 demo 环境实测该参数;若 demo API 不支持,则等价实现为"ask+3¢ 上限的
+marketable limit,立即成交部分保留、余量撤单")。两种实现的行为承诺相同:
+**要么在受控价格内立即成交,要么明确失败并告警**——绝不悄悄挂着,绝不敞开滑点。
+卖出(exit 镜像)对称:bid−3¢ 下限。
+
+**张数与规模**:`MIRROR_MULT = 100`,`count_demo = 100 × count_paper`。paper 的风控
+帽(单事件 $5/家族 $20/日 $30/总 $100)原样不动——跟单器不自设仓位,demo 敞口
+天然 = 100 × paper 敞口轮廓。**买力硬约束要显式处理**:$492 撑不起 100× 的理论
+上限($100×100),下单前查 demo 买力,不足时按买力能容纳的最大张数下(例:目标
+4,200 张只买得起 1,100 张就下 1,100 张),`count_target` vs `count_filled` 差额记录
+在案 + 每日报告"目标 vs 实际"敞口比;**这不是 fallback,是外部硬约束的显式测量**
+——$492 是用户给定的资金面,缩张数是唯一诚实的执行方式,且每一次缩都可见。
+
+**镜像顺序与生命周期**:
+* 按 paper fills.id 严格升序处理——开仓镜像先于平仓镜像,构造上不可能倒序;
+* exit 镜像的张数 = min(100×paper平仓张数, demo 实际持有张数)——如果开仓当时因
+  买力/簿深只成交了部分,平仓自动对齐实际持仓,永不裸卖空;
+* 结算不镜像(交易所自己结算),但结算后触发一次持仓对账确认归零。
+
+**幂等与崩溃恢复(§30.4)**:
+* `demo_orders` 表以 **paper fill_id 为主键**(一笔 paper fill 至多一张 demo 订单);
+* `client_order_id = 'spm-m{fill_id}'` **确定性生成**——进程在"订单已发、本地行未写"
+  之间崩溃,重启后 sync 先按 client_order_id 反查交易所在途订单认领,绝不重复下单;
+* 所有对交易所的写操作(下单/撤单)前先落"intent 行",终态后更新——审计链完整。
+
+**新表**(`ingest/store.py` DDL,`CREATE TABLE IF NOT EXISTS` 惯例):
+```sql
+CREATE TABLE IF NOT EXISTS demo_orders(
+  fill_id INTEGER PRIMARY KEY,      -- 镜像的 paper fills.id,1:1
+  decision_id INTEGER NOT NULL,
+  client_order_id TEXT NOT NULL UNIQUE,   -- 'spm-m{fill_id}',确定性
+  ticker TEXT NOT NULL, side TEXT NOT NULL, action TEXT NOT NULL,
+  count_target INTEGER NOT NULL,    -- 100 × paper
+  count_filled INTEGER NOT NULL DEFAULT 0,
+  avg_price REAL, fee_usd REAL,
+  status TEXT NOT NULL,             -- intent|sent|filled|partial|unfilled|skipped_halt|skipped_power
+  order_id TEXT, ts_sent TEXT, ts_terminal TEXT, note TEXT);
+CREATE TABLE IF NOT EXISTS demo_fills(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  fill_id INTEGER NOT NULL,         -- 回链 demo_orders.fill_id
+  ticker TEXT NOT NULL, side TEXT NOT NULL, action TEXT NOT NULL,
+  price REAL NOT NULL, count INTEGER NOT NULL, fee_usd REAL NOT NULL,
+  exchange_fill_id TEXT UNIQUE, ts TEXT NOT NULL);
+```
+**设计决定与偏离说明**:demo 成交**不写进 `fills` 表的 `mode='demo'` 行**而是独立
+`demo_fills` 表。偏离原因(向用户说明):`fills` 现有几十处读取方全部默认 paper
+口径,任何一处漏加 mode 过滤就会把 ×100 的 demo 数字混进展示台账——这正是 #149
+"三个读账处算错"那一类事故的放大版。独立表 + `decision_id/fill_id` 回链保留全部
+可联查性,把出错面从"每个未来读者"缩到零。paper 台账的任何数字不因 demo 上线而
+改变一个 bit。
+
+**执行质量测量(phase 1 的真正交付物)**:paper 影子照跑(本来就是主账本),逐笔
+导出 paper 假设成交价 vs demo 实际成交价的滑点、成交率、买力缩减率 →
+`macro_demo_exec.json` 前端瓦片。**demo 的 PnL 不当 alpha 裁判**——demo 簿与生产簿
+无关,paper 台账(按真实生产盘口定价)仍是唯一的策略裁判;demo 证明的是管线。
+maker(post_only 省费)留到 phase 2,以 phase 1 的滑点/成交率数据为对照组。
+
+### §30.4 分期与测试
+
+**D0(现在)**:本节 + PR-9 注册。不写实现代码。
+**D1(PR-9 达成日启动)**:`ops/trading_kalshi.py` + 两张表 + kalshi_exec 补
+market-with-cap 支持 + 对账三层 + tick/refresh 挂载 + `macro_demo_exec.json` 导出。
+**D2(D1 上线两周后)**:执行质量报告(成交率/滑点/缩减率),据此决定 maker 实验
+与是否调 MULT。**prod key 的任何讨论只在用户明示后开始。**
+
+D1 测试清单(全部先于上线,不许缩水):
+1. 幂等:同一批 paper fills 上 sync 跑三遍,demo_orders 行数与交易所订单数不变;
+2. 崩溃恢复:模拟"已发单未落行",重启后按 client_order_id 认领,不重复下单;
+3. 顺序:构造 open+exit 同批,断言镜像顺序;exit 张数被实际持仓截断;
+4. 买力护栏:mock 买力不足,断言缩张、status='partial'、差额入账、告警发出;
+5. 对账 halt:注入持仓不一致,断言 mirror_halt 写入、后续 sync 全部 skipped_halt、
+   ack 后恢复;
+6. 乘数与费:100× 张数的费用按 Kalshi 公式逐档断言;
+7. 三闸门:①任一开关关闭全拒;② kill-switch 摘除单系列;③ circuit_breaker 或
+   mirror_halt 未 ack 时全拒;
+8. paper 台账零污染:D1 全套跑完后,`fills`/`decisions`/展示 JSON 与 D1 前逐 bit 一致。
