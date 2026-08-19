@@ -82,7 +82,12 @@ def settle_outcome(side: str, strike: float, spot: float) -> bool:
     return (spot > strike) if side == "yes" else (spot <= strike)
 
 
-def build_ob_index(series: str) -> dict:
+def _files(series: str, sub: str, since: str | None) -> list:
+    fs = sorted((STRIPS / series / sub).glob("2026-*"))
+    return [f for f in fs if since is None or f.name[:10] >= since]
+
+
+def build_ob_index(series: str, since: str | None = None) -> dict:
     """ticker → list[(ts, {no_px:sz}, {yes_px:sz})] from the L2 stream.
 
     Memory: keeps ONLY near-money records (|strike − spot_est| ≤ 60bps — twice
@@ -91,7 +96,7 @@ def build_ob_index(series: str) -> dict:
     the first canonical run OOM-killed; the filter cuts it ~50×.
     """
     idx: dict[str, list] = {}
-    for f in sorted((STRIPS / series / "orderbook").glob("2026-*")):
+    for f in _files(series, "orderbook", since):
         op = gzip.open if f.suffix == ".gz" else open
         try:
             fh = op(f, "rt")
@@ -140,7 +145,7 @@ def depth_at(ob_idx: dict, ticker: str, ts: float, side: str,
 
 
 def stream_trades(series: str, cfg: dict, ob_idx: dict | None,
-                  *, strict: bool = True) -> pd.DataFrame:
+                  *, strict: bool = True, since: str | None = None) -> pd.DataFrame:
     """Replay the snapshot stream. strict=True (canonical) = ask-persistence
     fill at the NEXT snapshot + L2 depth gate; strict=False = naive first-pass
     (kept for comparison so the artifact magnitude stays visible)."""
@@ -148,7 +153,7 @@ def stream_trades(series: str, cfg: dict, ob_idx: dict | None,
     pend: dict[str, dict] = {}
     open_pos: dict[str, dict] = {}
     last_spot: dict[str, tuple] = {}
-    for f in sorted((STRIPS / series / "markets").glob("2026-*")):
+    for f in _files(series, "markets", since):
         op = gzip.open if f.suffix == ".gz" else open
         try:
             fh = op(f, "rt")
@@ -270,20 +275,24 @@ def main(argv=None) -> int:
     ap.add_argument("--naive", action="store_true",
                     help="first-pass mode without persistence/depth (comparison)")
     ap.add_argument("--skip-sweep", action="store_true")
+    ap.add_argument("--since", default=None,
+                    help="only replay files dated >= YYYY-MM-DD (OOS windows)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-    ob = None if args.naive else build_ob_index(args.series)
+    ob = None if args.naive else build_ob_index(args.series, args.since)
     logger.info("orderbook index: %s tickers", len(ob) if ob else 0)
-    tp = stream_trades(args.series, PRIMARY, ob, strict=not args.naive)
+    tp = stream_trades(args.series, PRIMARY, ob, strict=not args.naive,
+                       since=args.since)
     out = {"mode": "naive" if args.naive else "strict(persistence+depth)",
-           "series": args.series, "min_depth": MIN_DEPTH,
+           "series": args.series, "min_depth": MIN_DEPTH, "since": args.since,
            "primary": summarize(tp, "PRIMARY tte5-45 dip5c"), "sweep": []}
     if not args.skip_sweep:
         days_sorted = sorted(tp.day.unique()) if len(tp) else []
         is_days = set(days_sorted[:len(days_sorted) // 2])
         for cfg in SWEEP:
-            pp = stream_trades(args.series, cfg, ob, strict=not args.naive)
+            pp = stream_trades(args.series, cfg, ob, strict=not args.naive,
+                               since=args.since)
             if len(pp):
                 out["sweep"].append({"cfg": cfg,
                                      "full": summarize(pp, "full"),

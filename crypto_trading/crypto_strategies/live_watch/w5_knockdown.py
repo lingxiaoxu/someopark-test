@@ -54,17 +54,34 @@ def _tail_lines(path, max_bytes: int = 2_500_000) -> list[str]:
         return []
 
 
-def latest_snapshot() -> dict | None:
+def snapshots_since(after_ts: float, max_snaps: int = 400) -> list[dict]:
+    """EVERY snapshot recorded since ``after_ts``, oldest-first.
+
+    Critical: the trigger needs LOOKBACK_SNAPS CONSECUTIVE near-ATM
+    observations of the same ticker. Sampling only the newest snapshot each
+    run (the first implementation) sees ~5% of the tape and the accumulator
+    resets constantly — measured 1 signal in 7 days versus 4,023 for the same
+    code replaying the full tape. Live must replay exactly what the backtest
+    replays, so we return the whole gap since the last processed timestamp.
+    """
     day = pd.Timestamp.now(tz="UTC").strftime("%Y-%m-%d")
-    f = STRIPS / "markets" / f"{day}.jsonl"
-    for line in reversed(_tail_lines(f, 3_000_000)):
+    out: list[dict] = []
+    for line in _tail_lines(STRIPS / "markets" / f"{day}.jsonl", 6_000_000):
         line = line.strip()
-        if line:
-            try:
-                return json.loads(line)
-            except json.JSONDecodeError:
-                continue
-    return None
+        if not line:
+            continue
+        try:
+            d = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if d.get("recv_ts", 0) > after_ts:
+            out.append(d)
+    return out[-max_snaps:]
+
+
+def latest_snapshot() -> dict | None:
+    s = snapshots_since(0.0, max_snaps=1)
+    return s[-1] if s else None
 
 
 def latest_books() -> dict:
@@ -90,14 +107,13 @@ def latest_books() -> dict:
 def run(cfg: dict | None = None, **_) -> dict:
     cfg = (cfg or common.load_cfg()).get(NAME, {})
     st = common.load_state(NAME)
-    snap = latest_snapshot()
-    if snap is None:
-        return {"strategy": NAME, "status": "NO_SNAPSHOT"}
     now = pd.Timestamp.now(tz="UTC")
-    snap_age = now.timestamp() - snap["recv_ts"]
+    snaps = snapshots_since(float(st.get("last_snapshot_ts", 0.0)))
+    if not snaps:
+        return {"strategy": NAME, "status": "NO_NEW_SNAPSHOT"}
+    snap_age = now.timestamp() - snaps[-1]["recv_ts"]
     if snap_age > 300:
         return {"strategy": NAME, "status": f"STALE_SNAPSHOT {snap_age:.0f}s"}
-    spot = snap.get("spot_est")
     books = latest_books()
     hist = st.setdefault("hist", {})
     vpos = st.setdefault("virtual_positions", {})
@@ -123,60 +139,73 @@ def run(cfg: dict | None = None, **_) -> dict:
         settled.append({"key": key, "win": win, "pnl_c": round(pnl, 2)})
         vpos.pop(key)
 
-    # ── evaluate the frozen trigger on the latest snapshot ──
+    # ── replay EVERY new snapshot through the frozen trigger (mirrors the
+    # backtest exactly; sampling only the newest snapshot saw 5% of the tape
+    # and produced 1 signal in 7 days vs 4,023 for a full replay) ──
     new_signals = []
-    for m in snap.get("markets", []):
-        try:
-            k = float(m.get("floor_strike") or 0)
-            tkr = m.get("ticker") or ""
-            ct = m.get("close_time")
-            tte = (pd.Timestamp(ct).timestamp() - snap["recv_ts"]) / 60
-            ya = float(m.get("yes_ask_dollars") or 0)
-            na = float(m.get("no_ask_dollars") or 0)
-        except Exception:
+    for snap in snaps:
+        spot = snap.get("spot_est")
+        st["last_snapshot_ts"] = snap["recv_ts"]
+        if not spot:
             continue
-        if k <= 0 or not spot or tte < -1 or tte > 90:
-            continue
-        # keep every open position's settlement spot fresh
-        for key, p in vpos.items():
-            if p["close"] == ct:
-                p["last_spot"] = spot
-        if abs(k - spot) / spot * 1e4 > MONEYNESS_BPS:
-            hist.pop(tkr, None)
-            continue
-        h = hist.setdefault(tkr, [])
-        h.append((ya, na))
-        if len(h) > LOOKBACK_SNAPS + 1:
-            h.pop(0)
-        if tkr in vpos or not (PRIMARY["tte_lo"] <= tte <= PRIMARY["tte_hi"]):
-            continue
-        side = knockdown_trigger(h[:-1], ya, na, PRIMARY["dip_c"])
-        if side is None:
-            continue
-        ask = ya if side == "yes" else na
-        probe["signals"] += 1
-        # ── the capture probe: is real depth present RIGHT NOW? ──
-        depth = 0.0
-        bk = books.get(tkr)
-        if bk and abs(bk[0] - snap["recv_ts"]) <= 180:
-            opp = bk[1] if side == "yes" else bk[2]
-            tgt = round(1 - ask, 2)
-            depth = sum(s for p_, s in opp.items() if abs(p_ - tgt) <= 0.015)
-        capturable = depth >= MIN_DEPTH
-        if capturable:
-            probe["capturable"] += 1
-            contracts = int(cfg.get("contracts", 25))
-            vpos[tkr] = {"side": side, "k": k, "close": ct, "px": ask,
-                         "contracts": contracts, "opened": str(now),
-                         "last_spot": spot}
-            common.log_line(NAME, {
-                "action": "intended_event_order", "ticker": tkr, "side": side,
-                "price": ask, "contracts": contracts, "depth_seen": depth,
-                "note": "events API not wired until capture probe passes — "
-                        "virtual position opened"})
-        new_signals.append({"ticker": tkr, "side": side, "ask": ask,
-                            "depth": depth, "capturable": capturable})
+        for m in snap.get("markets", []):
+            try:
+                k = float(m.get("floor_strike") or 0)
+                tkr = m.get("ticker") or ""
+                ct = m.get("close_time")
+                tte = (pd.Timestamp(ct).timestamp() - snap["recv_ts"]) / 60
+                ya = float(m.get("yes_ask_dollars") or 0)
+                na = float(m.get("no_ask_dollars") or 0)
+            except Exception:
+                continue
+            if k <= 0 or tte < -1 or tte > 90:
+                continue
+            # keep every open position's settlement spot fresh
+            for key, p in vpos.items():
+                if p["close"] == ct:
+                    p["last_spot"] = spot
+            if abs(k - spot) / spot * 1e4 > MONEYNESS_BPS:
+                hist.pop(tkr, None)
+                continue
+            h = hist.setdefault(tkr, [])
+            h.append((ya, na))
+            if len(h) > LOOKBACK_SNAPS + 1:
+                h.pop(0)
+            if tkr in vpos or not (PRIMARY["tte_lo"] <= tte <= PRIMARY["tte_hi"]):
+                continue
+            side = knockdown_trigger(h[:-1], ya, na, PRIMARY["dip_c"])
+            if side is None:
+                continue
+            ask = ya if side == "yes" else na
+            probe["signals"] += 1
+            # ── the capture probe: is real depth present RIGHT NOW? ──
+            depth = 0.0
+            bk = books.get(tkr)
+            if bk and abs(bk[0] - snap["recv_ts"]) <= 180:
+                opp = bk[1] if side == "yes" else bk[2]
+                tgt = round(1 - ask, 2)
+                depth = sum(s for p_, s in opp.items() if abs(p_ - tgt) <= 0.015)
+            capturable = depth >= MIN_DEPTH
+            if capturable:
+                probe["capturable"] += 1
+                contracts = int(cfg.get("contracts", 25))
+                vpos[tkr] = {"side": side, "k": k, "close": ct, "px": ask,
+                             "contracts": contracts, "opened": str(now),
+                             "last_spot": spot}
+                common.log_line(NAME, {
+                    "action": "intended_event_order", "ticker": tkr,
+                    "side": side, "price": ask, "contracts": contracts,
+                    "depth_seen": depth,
+                    "note": "events API not wired until capture probe passes — "
+                            "virtual position opened"})
+            new_signals.append({"ticker": tkr, "side": side, "ask": ask,
+                                "depth": depth, "capturable": capturable})
 
+    # prune expired tickers so hist cannot grow without bound
+    if len(hist) > 3000:
+        keep = {m.get("ticker") for s_ in snaps[-3:] for m in s_.get("markets", [])}
+        for kk in [x for x in hist if x not in keep]:
+            hist.pop(kk, None)
     common.save_state(NAME, st)
     cap_rate = (probe["capturable"] / probe["signals"]
                 if probe["signals"] else None)
