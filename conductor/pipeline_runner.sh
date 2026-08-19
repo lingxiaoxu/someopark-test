@@ -7,6 +7,23 @@ LOCKDIR=$PIPEDIR/daily_pipeline.lock
 FINISHED_FILE=$PIPEDIR/runner.finished_at
 
 mkdir -p "$PIPEDIR/logs"
+
+# ── 日志轮转(2026-08-18 加)────────────────────────────────────────────────
+# pipeline_current.log 此前跨夜纯追加、从不轮转,实测涨到 980MB:tail -f 监控
+# 被系统回收、全文排查极慢。启动时超过阈值就压缩归档(实测 19:1,980MB→51MB),
+# 保留最近 7 份。用 `: >` **原地清空**而非 mv —— 保住 inode,已挂在该文件上的
+# tail -f 监控能识别截断并继续跟随,mv 会让它们静默跟着旧 inode。
+LOG_MAX_BYTES=$((200 * 1024 * 1024))
+if [ -f "$LOGFILE" ] && \
+   [ "$(stat -f%z "$LOGFILE" 2>/dev/null || echo 0)" -gt "$LOG_MAX_BYTES" ]; then
+    mkdir -p "$PIPEDIR/logs/archive"
+    if gzip -c "$LOGFILE" > "$PIPEDIR/logs/archive/pipeline_$(date '+%Y%m%d_%H%M%S').log.gz"; then
+        : > "$LOGFILE"                       # 原地截断,保 inode
+        ls -t "$PIPEDIR/logs/archive"/pipeline_*.log.gz 2>/dev/null \
+            | tail -n +8 | tr '\n' '\0' | xargs -0 rm -f 2>/dev/null
+    fi                                       # 归档失败则原样保留,绝不丢日志
+fi
+
 cd "$REPO" || exit 1
 
 # Initialize conda for non-interactive shell
