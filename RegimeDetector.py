@@ -50,6 +50,12 @@ try:
 except Exception:
     _MACRO_STORE_AVAILABLE = False
 
+# yfinance 取数失败时可回退本地 store 的 key —— 必须同时存在于本模块的
+# tickers_needed 与 MacroDataStore.TICKERS。后者有 vix/vix3m/vix9d/move 四项,
+# 与 tickers_needed 的交集只有下面两个;其余 12 个 ticker(SPY/QQQ/IWM/HYG/
+# NVDA/ARKK/SOXX/XLK/GLD/USO/UUP/^TNX)store 无覆盖,不做兜底。
+_STORE_FALLBACK_KEYS = {'vix', 'move'}
+
 # ── 可选依赖 ──────────────────────────────────────────────────────────────────
 try:
     from fredapi import Fred
@@ -281,7 +287,14 @@ class RegimeDetector:
                 df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
             if df.empty:
                 return pd.Series(dtype=float)
-            close = df['Close'].squeeze()
+            # 显式取列,不用 .squeeze():对 (1,1) 的 DataFrame(上游只回 1 行时)
+            # squeeze() 会把两个维度一起塌陷成 numpy.float64 标量,随后 .dropna()
+            # 抛 AttributeError,整条序列被 except 吞成空 → 该指标静默从评分中消失。
+            # 2026-08-18 ^MOVE 实测 shape=(1,5) 即触发此路径。写法复用本仓库
+            # MacroDataStore._fetch_yf(L220-222);多行单列下与 squeeze() 逐位等价。
+            close = df['Close']
+            if isinstance(close, pd.DataFrame):
+                close = close.iloc[:, 0]
             return close.dropna()
         except Exception as e:
             log.warning(f"yfinance fetch {ticker} failed: {e}")
@@ -521,6 +534,13 @@ class RegimeDetector:
         """
         keys = [k for k, v in scores_dict.items() if v is not None]
         if not keys:
+            # 静默降级发声(2026-08-19):整组子分量全缺时注入中性 0.50,合成分
+            # 因此失真却无任何痕迹(^MOVE 取数失败即让 vol_rt 走到这里)。
+            # 本函数被 'vol_eq' 与 'vol_rt' 共用,故日志必须带 history_key 区分。
+            # 只加日志,不改返回值 —— 改 0.50 等于改评分,超出本次范围。
+            # 只在整组全缺时触发,每次 detect() 最多 2 条,无需去重。
+            log.warning(f"[ciss] {history_key} 全部子分量缺失 → 退化为中性 0.50 "
+                        f"(该分量对 vol_composite 的贡献已失真)")
             return 0.50
         if len(keys) == 1:
             return float(scores_dict[keys[0]])
@@ -1112,7 +1132,24 @@ class RegimeDetector:
         log.debug(f"Fetching {len(tickers_needed)} yfinance tickers...")
         series = {}
         for key, ticker in tickers_needed.items():
-            series[key] = self._fetch_yf(ticker)
+            s = self._fetch_yf(ticker)
+            # 兜底(2026-08-19):yfinance 取空时回退本地 MacroDataStore。
+            # 只在 s.empty 时触发 —— 正常取到数据的路径逐字节不变;主取数仍是
+            # yfinance,store 不抢先。store 由 pre_pipeline 19:15 的
+            # MacroStateStore --update 间接更新(MacroStateStore.py:877),
+            # 用 start/end 增量取数、历史本地累积,故上游即使枯竭仍有全量历史。
+            # 背景:^MOVE 曾因上游只回 1 行导致该指标静默从 vol 评分中消失。
+            if s.empty and _MACRO_STORE_AVAILABLE and key in _STORE_FALLBACK_KEYS:
+                try:
+                    s_fb = _MACRO_STORE.load(key)
+                    if not s_fb.empty:
+                        log.warning(f"[fallback] {ticker} yfinance 返回空 → 改用 "
+                                    f"MacroDataStore({len(s_fb)} 行, 末日 "
+                                    f"{s_fb.index[-1].date()})")
+                        s = s_fb
+                except Exception as e:                       # noqa: BLE001
+                    log.warning(f"[fallback] {ticker} MacroDataStore 读取失败: {e!r}")
+            series[key] = s
 
         # VIX
         if not series['vix'].empty:
