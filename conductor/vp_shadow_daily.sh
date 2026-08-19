@@ -39,6 +39,16 @@ log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 cd "$REPO_ROOT" || exit 1
 set -a; . "$REPO_ROOT/.env"; set +a
 
+# launchd/cron 不 source profile,PATH 只有 /usr/bin:/bin:/usr/sbin:/sbin,
+# 而下面是 `nice … conda …` —— nice 是外部二进制,exec 的必须是**真文件**
+# /Users/xuling/miniforge3/bin/conda,PATH 里没有就是 exit 127。
+# 2026-08-18 17:33 launchd 首次触发即因此挂掉(此前 8/4–8/17 的成功记录全是
+# 手动跑的,PATH 天然是好的,把这个缺陷一直掩盖着)。
+# 与 prediction_market/ops/refresh_and_deploy.sh:27 同款写法:脚本自包含,
+# launchd / cron / 手动跑一致;**不要改成 source profile** —— 非交互 bash
+# source profile 容易直接 abort。
+export PATH="/opt/homebrew/bin:/Users/xuling/miniforge3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
 PY="conda run -n someopark_run --no-capture-output python"
 
 log "=== VP SHADOW START (rnn=$RUN_RNN) ==="

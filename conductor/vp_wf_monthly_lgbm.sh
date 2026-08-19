@@ -31,6 +31,11 @@ log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 cd "$REPO_ROOT" || exit 1
 set -a; . "$REPO_ROOT/.env"; set +a
 
+# launchd/cron 不 source profile → PATH 无 miniforge → `conda` 找不到 → exit 127。
+# 与 vp_shadow_daily.sh 同款(那个已于 2026-08-18 17:33 launchd 首次触发即挂)。
+# 本脚本目前靠台账手动跑,PATH 天然是好的;这行是提前拆雷,将来上调度器即可直接用。
+export PATH="/opt/homebrew/bin:/Users/xuling/miniforge3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
 PIPE_LOG="$REPO_ROOT/pipeline_state/logs/pipeline_current.log"
 if [ -f "$PIPE_LOG" ]; then
     S=$(grep -n "PIPELINE START" "$PIPE_LOG" | tail -1 | cut -d: -f1)

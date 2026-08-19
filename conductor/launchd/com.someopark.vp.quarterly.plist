@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.someopark.vp.quarterly</string>
+    <!-- 窄集 RNN vs 现役 lgbm 的季度复赛(~6 小时),决定 promote/回退。
+
+         调度写法: 这里只说"每周六 10:33",要不要真跑交给脚本里的
+         VP_SCHED_GUARD 守卫判断(1/4/7/10 月的第 2 个周六才放行,其余 exit 0)。
+         不在 plist 里用 Day×Weekday 表达,理由是"本月第几个周六"这种条件
+         Day 枚举根本表达不了 —— 第 2 个周六可能落在 8-14 号里的任意一天,
+         而 8 号本身也可能是周日。
+         (顺带: launchd 的 Day+Weekday 究竟是与还是或,2026-08-18 用一次性
+          测试 job 实测过 —— 条件 Day=今天 + Weekday=周六、当天是周二,
+          到点 runs=0 未触发,**确认是 AND**。所以 vp.refreeze 用
+          Day1-7×Weekday6 表示"第一个周六"的写法是对的。)
+         代价只是每周六 10:33 空跑一次守卫(毫秒级 exit 0)。
+
+         10:33 起跑的理由: 周六无 pairs 夜跑;6 小时约 16:30 收工,离 20:30
+         夜跑窗口有余量;且与 vp.refreeze(每月第 1 个周六 10:33,同样是数
+         小时重活)错开在不同周六,不会抢内存。
+         脚本另有 pairs 管道互斥守卫: 手动跑撞上夜跑 exit 3;launchd 路径改为最多
+         等 2 小时它收尾(错过一次就是错过一个季度,不能一走了之)。
+
+         下次真正触发: 2026-10-10。 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/xuling/code/someopark-test/conductor/vp_wf_quarterly_rnn.sh</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>VP_SCHED_GUARD</key>
+        <string>1</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key><integer>6</integer>
+        <key>Hour</key><integer>10</integer>
+        <key>Minute</key><integer>33</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_quarterly.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_quarterly.log</string>
+</dict>
+</plist>

@@ -38,6 +38,11 @@ log() { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
 cd "$REPO_ROOT" || exit 1
 set -a; . "$REPO_ROOT/.env"; set +a
 
+# launchd/cron 不 source profile → PATH 无 miniforge → `nice … conda …` exit 127。
+# 与 vp_shadow_daily.sh 同一处缺陷(那个已于 2026-08-18 17:33 真实触发);本脚本
+# 由 com.someopark.vp.refreeze 每月首周六拉起,尚未真正触发过,属未爆的同款雷。
+export PATH="/opt/homebrew/bin:/Users/xuling/miniforge3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
 # ── 跑批窗口保护: pairs 管道正在跑时拒绝启动(避免内存竞争导致双双被杀) ──
 PIPE_LOG="$REPO_ROOT/pipeline_state/logs/pipeline_current.log"
 if [ -z "$DRY" ] && [ -f "$PIPE_LOG" ]; then

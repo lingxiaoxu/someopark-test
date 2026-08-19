@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.someopark.vp.semiannual</string>
+    <!-- 全模型总表(9-10 模型 × 12 窗,首次实测 ~36 小时)。不是决策脚本,
+         是模型排序的全景复核。
+
+         调度写法与 com.someopark.vp.quarterly 相同: plist 只说"每周六 10:33",
+         真正的日期条件在脚本的 VP_SCHED_GUARD 守卫里(1 月 / 7 月的第 3 个
+         周六才放行)。理由见 vp.quarterly.plist 的注释。
+         第 1 个周六归 vp.refreeze、第 2 个归 vp.quarterly,最重的这个排第 3。
+
+         关于"必须整段避开夜跑": 36 小时的活整段避开物理上做不到,所以脚本里
+         是**逐窗避让**(wait_out_night)—— 每个窗口是独立进程,开跑前若已进入
+         20:30-09:30 ET、或 pairs 尚未 COMPLETE,就先睡再启。因此这个 job 的墙钟会跨好几天,
+         launchd 期间不会重复拉起(同 Label 已在运行时不并发启动),下个周六
+         守卫也会因"非第 3 个周六"直接跳过。中途被杀重跑即断点续跑。
+
+         下次真正触发: 2027-01-16。 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/xuling/code/someopark-test/conductor/vp_wf_semiannual_full.sh</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>VP_SCHED_GUARD</key>
+        <string>1</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key><integer>6</integer>
+        <key>Hour</key><integer>10</integer>
+        <key>Minute</key><integer>33</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_semiannual.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_semiannual.log</string>
+</dict>
+</plist>
