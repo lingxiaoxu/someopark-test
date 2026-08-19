@@ -218,6 +218,11 @@ def run(weekly: bool = False) -> dict:
         from prediction_market_macro.ops import frontend_export as fe_post
         step("frontend_export_postweekly", lambda: fe_post.run(conn, s))
     step("watchdog_inline", lambda: len(scheduler.watchdog(conn)))
+    # LAST, so the snapshot contains everything this run wrote. `candles` older than
+    # Kalshi's ~75-day window exists only in this file and macro.db is gitignored, so
+    # without this step the whole archive lives on one un-backed-up disk.
+    from prediction_market_macro.ops import backup_db
+    step("backup_db", lambda: backup_db.run(s.db_path))
 
     out = {"ts": datetime.now(timezone.utc).isoformat(), "weekly": weekly, "steps": results}
     (s.output_dir / "refresh_last.json").write_text(json.dumps(out, ensure_ascii=False, indent=1))

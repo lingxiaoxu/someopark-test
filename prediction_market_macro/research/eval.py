@@ -321,7 +321,11 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
     §7-bis shadow gate accrues from the past, not just from the daily shadow."""
     try:
         from prediction_market_macro.model import ts_foundation
-        if series not in ts_foundation._SOURCES:
+        # renamed from _SOURCES in ts_foundation 0.2.0 (the spec table now carries
+        # context length + covariates, not just a source mapping). Kept as an explicit
+        # attribute read rather than a try/except so a future rename fails loudly here
+        # instead of silently disabling the whole replay via the outer handler.
+        if series not in ts_foundation._TARGETS:
             return None
     except Exception:                                      # noqa: BLE001
         return None
@@ -597,7 +601,12 @@ def run_all(conn) -> dict:
             out[series] = run_series(conn, series)
         except Exception as e:                             # noqa: BLE001
             out[series] = {"series": series, "error": str(e)[:200]}
-        for prefix in ("chronos2/", "bridge/", "ensemble/"):
+        # the two chronos2 members are gated SEPARATELY. A bare "chronos2/" prefix would
+        # match both zero-shot and vol-bridge, and since ts_foundation 0.2.0 writes them
+        # at the SAME asof, the "ORDER BY asof DESC LIMIT 1" inside shadow_gate would pick
+        # between them arbitrarily — silently scoring a mixture of two different models.
+        for prefix in ("chronos2/zero-shot", "chronos2/vol-bridge",
+                       "bridge/", "ensemble/"):
             try:
                 shadow_gate(conn, series, prefix)
             except Exception:                              # noqa: BLE001

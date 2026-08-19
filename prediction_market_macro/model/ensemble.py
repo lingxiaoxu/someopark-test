@@ -22,9 +22,12 @@ import json
 import math
 from datetime import datetime, timezone
 
+import numpy as np
+
 from prediction_market_macro.model.common import Empirical, Pred
 
 VERSION = "ensemble/0.1.0"
+N_STUB_SAMPLES = 4000
 TRAIL_N = 60
 W_FLOOR, W_CEIL = 0.10, 0.70
 TRIM_RATIO = 3.0
@@ -80,6 +83,40 @@ def finite_pmf(pmf: dict[float, float]) -> dict[float, float]:
     out = {k: v for k, v in pmf.items() if math.isfinite(k) and math.isfinite(v)}
     z = sum(out.values())
     return {k: v / z for k, v in out.items()} if z > 0 else {}
+
+
+def ladder_samples(pmf: dict[float, float],
+                   n: int = N_STUB_SAMPLES) -> tuple[float, ...]:
+    """Encode a ladder pmf as exactly `n` samples for the Empirical stub dist.
+
+    The previous encoder replicated each grid point `round(p*2000)` times, FLOORED AT 1
+    so no point could vanish, then truncated the concatenation with `vals[:4000]`. Both
+    halves are load-bearing and together they were a silent, order-dependent corruption:
+    the floor makes the list at least as long as the grid, and `sorted()` emits the LOW
+    grid points first, so any pooled ladder with more than ~4000 grid points kept only
+    its bottom tail and threw the entire upper half of the distribution away.
+
+    Measured on the 2026-08-18 preds before the fix:
+
+        KXPAYROLLS  8739 grid pts  ladder mean  +84,376  ->  stub mean -1,886,973
+                                   ladder span  [-3.88M, +4.85M] -> stub [-3.88M, -8k]
+        KXWTIW      3088 grid pts  ladder span  [50, 115]        -> stub [50, 98]
+
+    i.e. the encoder alone moved the payrolls forecast by two million jobs, and every
+    "greater than zero" leg priced at exactly 0.0 against a market at 0.75.
+
+    Stratified u_i=(i+0.5)/n through the inverse CDF instead of replicate-and-truncate:
+    exactly n samples whatever the grid size, no order dependence, and bit-stable across
+    processes without carrying an rng seed.
+    """
+    ks = sorted(k for k, v in pmf.items() if math.isfinite(k) and v > 0)
+    if not ks:
+        raise ValueError("ladder_samples: pmf has no finite positive-mass point")
+    w = np.array([pmf[k] for k in ks], dtype=float)
+    cdf = np.cumsum(w / w.sum())
+    u = (np.arange(n) + 0.5) / n
+    idx = np.searchsorted(cdf, u, side="left").clip(0, len(ks) - 1)
+    return tuple(float(ks[i]) for i in idx)
 
 
 def log_pool(pmfs: dict[str, dict[float, float]], weights: dict[str, float],
@@ -217,11 +254,8 @@ def shadow_run(conn, settings) -> int:
                 pooled = log_pool(pmfs, w)
                 # encode the pooled pmf; grid values ARE the support (already on the
                 # settlement grid) — store as ladder + an Empirical stub dist
-                vals = []
-                for k, v in sorted(pooled.items()):
-                    vals.extend([k] * max(1, int(round(v * 2000))))
                 pred = Pred(series=spec.ticker, period=key,
-                            dist=Empirical(tuple(vals[:4000])), asof=now,
+                            dist=Empirical(ladder_samples(pooled)), asof=now,
                             model_version=VERSION,
                             inputs={"weights": w, "sources": sorted(pmfs)},
                             data_horizon=datetime.fromisoformat(horizon))
