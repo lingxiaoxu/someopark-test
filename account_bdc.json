@@ -1,13 +1,13 @@
 {
  "strategy": "bdc_sleeve",
- "as_of": "2026-08-14",
+ "as_of": "2026-08-18",
  "base_currency": "USD",
  "initial_cash": 921498.8,
  "cash": 0.0,
  "cash_note": "现金以 BIL 持仓形式存在(见 positions.BIL),无 flat cash",
  "positions": {
   "GBDC": {
-   "shares": 28686.3968,
+   "shares": 28686.3975,
    "avg_cost": 13.8437,
    "entry_date": "2025-11-11"
   },
@@ -17,7 +17,7 @@
    "entry_date": "2025-11-11"
   },
   "OBDC": {
-   "shares": 2089.1505,
+   "shares": 2089.1504,
    "avg_cost": 12.0147,
    "entry_date": "2025-11-11"
   },
@@ -27,19 +27,19 @@
    "entry_date": "2025-11-11"
   },
   "ARCC": {
-   "shares": 1223.041,
+   "shares": 1223.0409,
    "avg_cost": 20.205,
    "entry_date": "2025-11-11"
   },
   "BIL": {
-   "shares": 5173.0829,
+   "shares": 5173.0846,
    "avg_cost": 91.5359,
    "entry_date": "2025-11-11"
   }
  },
- "cumulative_dividends": 48621.0,
+ "cumulative_dividends": 48621.15,
  "cumulative_fees": 0.0,
- "equity": 947903.47,
+ "equity": 941135.61,
  "price_basis_state": "official_eod(perf json)",
  "derived_from": [
   "inventory_bdc.json",

@@ -27,6 +27,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR5P5KCKA": {
+  "aliases": [
+   "HPE/MLM"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US42824C1099|S:US5732841060",
+  "display_name": "HPE/MLM",
+  "first_seen": "2026-08-19T13:40:00+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPR5Z03HXZ": {
   "aliases": [
    "PANW/NI"
@@ -112,6 +127,21 @@
   "canonical_key": "mtfs|L:US5951121038|S:US8168511090",
   "display_name": "MU/SRE",
   "first_seen": "2026-08-12T15:22:30+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRJVLKXOB": {
+  "aliases": [
+   "DELL/BLDR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US24703L2025|S:US12008R1077",
+  "display_name": "DELL/BLDR",
+  "first_seen": "2026-08-19T13:40:00+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
