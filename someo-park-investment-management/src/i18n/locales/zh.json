@@ -1344,6 +1344,26 @@
     "errNotRunning": "实时净值:{{err}}(controller 未运行?)",
     "qcStruct": "结构同步",
     "qcStructTitle": "结构同步失败:持仓文件处于半更新窗(如 inventory 已写、account 未写)——沿用上一个一致结构服务,文件齐后自动恢复",
-    "chartHeader": "日内收益曲线(% 与 $)"
+    "chartHeader": "日内收益曲线(% 与 $)",
+    "wfHeld": "持仓合计",
+    "wfCash": "现金",
+    "wfCashTitle": "策略账本 equity − 持仓市值",
+    "wfCapBase": "资金基准差 −C",
+    "wfCapBaseTitle": "go-live 冻结:official = ledger − C(实测 105 天极差 ≤$0.01)",
+    "wfNet": "总策略层净值(官方口径)",
+    "wfK": "K · QC 未镜像持仓市值",
+    "wfKUnknown": "⚠︎队列未知",
+    "wfKTitle": "K 不进上面的加总;它是 QC 账户与官方口径之间的口径差来源。\nL 队列 m=0(go-live 冻结,QC 从未持有)、S 队列 m=k(已镜像,保持不动)都在自然退场;\n两队清空后 QC 只剩 F 队列(m=1),此差不再随行情漂移 → 定格为常数 → 记到 QC 侧现金后 QC = 面板。",
+    "wfPairs": "{{n}} 对",
+    "wfNoScaledFreeze": "S 队列未冻结(未跑 --freeze-scaled)—— 在手的 ×k 仓被当成 F,股数显示不可信",
+    "cohortL": "legacy · QC 未镜像",
+    "cohortS": "已镜像 ×k · QC 不动",
+    "cohortF": "全额镜像 ×1",
+    "cohortLShort": "未镜像",
+    "cohortSShort": "×k 冻结",
+    "cohortFShort": "×1 全额",
+    "cardOfficialTitleAdd": "官方口径(官方 EOD {{date}} + 当日账本盈亏;加性族 official = ledger − C,日 P&L 逐美元相等)",
+    "rolloffDone": "legacy/S 已全部退场 · K 定格 {{k}}(测于 {{date}})· QC 净值 + K ≡ 面板净值",
+    "rolloffTitle": "退场日实测:QC 账户净值 {{qc}} + K = 面板官方口径合计 {{panel}}。\n两队清空后 QC 逐票持有与官方口径相同的股数,净值差只剩现金项,不再随行情漂移。\n此后的残余偏离只来自成交价差(QC 按市价成交,账本按 DailySignal 开仓价记账)。"
   }
 }

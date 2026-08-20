@@ -1317,6 +1317,26 @@
     "errNotRunning": "VL en tiempo real: {{err}} (¿controller no está en marcha?)",
     "qcStruct": "sync estructura",
     "qcStructTitle": "Fallo de sync de estructura: archivos de posiciones a medio actualizar - sirviendo la última estructura consistente; reintenta hasta que las fuentes coincidan",
-    "chartHeader": "Retorno intradía (% y $)"
+    "chartHeader": "Retorno intradía (% y $)",
+    "wfHeld": "Total de posiciones",
+    "wfCash": "Efectivo",
+    "wfCashTitle": "Patrimonio del libro de la estrategia − valor de mercado de las posiciones",
+    "wfCapBase": "Diferencia de base de capital −C",
+    "wfCapBaseTitle": "Congelado en go-live: official = ledger − C (rango medido ≤$0,01 en 105 días)",
+    "wfNet": "NAV de la estrategia (base oficial)",
+    "wfK": "K · valor de posiciones no replicado en QC",
+    "wfKUnknown": "⚠︎cohorte desconocida",
+    "wfKTitle": "K NO forma parte de la suma anterior; es el origen de la diferencia entre la cuenta QC y la base oficial.\nLas cohortes L (m=0, congelada en go-live, nunca en manos de QC) y S (m=k, replicada, sin tocar) están saliendo de forma natural;\ncuando ambas queden vacías QC solo tendrá la cohorte F (m=1), la diferencia dejará de moverse con el mercado, quedará fijada como constante y se contabilizará como efectivo del lado de QC → QC = panel.",
+    "wfPairs": "{{n}} pares",
+    "wfNoScaledFreeze": "cohorte S sin congelar (no se ejecutó --freeze-scaled) — las posiciones ×k vivas se leen como F, el número de acciones no es fiable",
+    "cohortL": "legacy · no replicada en QC",
+    "cohortS": "replicada ×k · QC sin cambios",
+    "cohortF": "replicada íntegramente ×1",
+    "cohortLShort": "sin repl.",
+    "cohortSShort": "×k fijo",
+    "cohortFShort": "×1 total",
+    "cardOfficialTitleAdd": "Base oficial (EOD oficial {{date}} + P&L del libro de hoy; familia aditiva official = ledger − C, el P&L diario coincide dólar a dólar)",
+    "rolloffDone": "legacy/S totalmente retiradas · K fijado en {{k}} (medido el {{date}}) · patrimonio QC + K ≡ NAV del panel",
+    "rolloffTitle": "Medido el día de retirada: patrimonio de la cuenta QC {{qc}} + K = total en base oficial del panel {{panel}}.\nCon ambas cohortes vacías, QC mantiene exactamente el número de acciones de la base oficial en cada valor, por lo que la diferencia de NAV es solo efectivo y deja de moverse con el mercado.\nCualquier desviación residual posterior proviene únicamente de diferencias de precio de ejecución (QC ejecuta a mercado, el libro contabiliza el precio de apertura de DailySignal)."
   }
 }

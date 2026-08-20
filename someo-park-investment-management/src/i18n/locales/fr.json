@@ -1317,6 +1317,26 @@
     "errNotRunning": "VL en temps réel : {{err}} (controller arrêté ?)",
     "qcStruct": "sync structure",
     "qcStructTitle": "Échec de sync structure : fichiers de positions en cours de mise à jour - dernière structure cohérente servie ; réessaie jusqu à accord des sources",
-    "chartHeader": "Rendement intrajournalier (% et $)"
+    "chartHeader": "Rendement intrajournalier (% et $)",
+    "wfHeld": "Total des positions",
+    "wfCash": "Liquidités",
+    "wfCashTitle": "Capitaux propres du registre − valeur de marché des positions",
+    "wfCapBase": "Écart de base de capital −C",
+    "wfCapBaseTitle": "Figé au go-live : official = ledger − C (amplitude mesurée ≤$0,01 sur 105 jours)",
+    "wfNet": "VNI de la stratégie (base officielle)",
+    "wfK": "K · valeur des positions non répliquée sur QC",
+    "wfKUnknown": "⚠︎cohorte inconnue",
+    "wfKTitle": "K n'entre PAS dans le total ci-dessus ; c'est la source de l'écart entre le compte QC et la base officielle.\nLes cohortes L (m=0, figée au go-live, jamais détenue par QC) et S (m=k, répliquée, laissée telle quelle) s'éteignent naturellement ;\nune fois vides, QC ne détient plus que la cohorte F (m=1), l'écart cesse de dériver avec le marché, se fige en constante et est comptabilisé en liquidités côté QC → QC = panneau.",
+    "wfPairs": "{{n}} paires",
+    "wfNoScaledFreeze": "cohorte S non figée (--freeze-scaled non exécuté) — les positions ×k en cours sont lues comme F, nombres d'actions non fiables",
+    "cohortL": "legacy · non répliquée sur QC",
+    "cohortS": "répliquée ×k · QC inchangé",
+    "cohortF": "répliquée intégralement ×1",
+    "cohortLShort": "non répl.",
+    "cohortSShort": "×k figé",
+    "cohortFShort": "×1 total",
+    "cardOfficialTitleAdd": "Base officielle (EOD officiel {{date}} + P&L du registre du jour ; famille additive official = ledger − C, P&L quotidien identique au dollar près)",
+    "rolloffDone": "legacy/S entièrement sorties · K figé à {{k}} (mesuré le {{date}}) · VNI QC + K ≡ VNI du panneau",
+    "rolloffTitle": "Mesuré au jour de sortie : capitaux propres du compte QC {{qc}} + K = total base officielle du panneau {{panel}}.\nLes deux cohortes vidées, QC détient exactement le nombre d'actions de la base officielle sur chaque ligne ; l'écart de VNI n'est plus que de la trésorerie et ne dérive plus avec le marché.\nToute dérive résiduelle ne provient ensuite que des écarts de prix d'exécution (QC exécute au marché, le registre comptabilise le prix d'ouverture de DailySignal)."
   }
 }

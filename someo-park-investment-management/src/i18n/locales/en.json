@@ -1346,6 +1346,26 @@
     "errNotRunning": "Realtime NAV: {{err}} (controller not running?)",
     "qcStruct": "structure sync",
     "qcStructTitle": "Structure sync failed: position files are mid-update (e.g. inventory written, account not yet) - serving the last consistent structure; auto-retries until sources agree",
-    "chartHeader": "Intraday Return (% and $)"
+    "chartHeader": "Intraday Return (% and $)",
+    "wfHeld": "Positions total",
+    "wfCash": "Cash",
+    "wfCashTitle": "Strategy ledger equity − market value of positions",
+    "wfCapBase": "Capital-base offset −C",
+    "wfCapBaseTitle": "Frozen at go-live: official = ledger − C (measured range ≤$0.01 over 105 days)",
+    "wfNet": "Strategy NAV (official basis)",
+    "wfK": "K · position value not mirrored to QC",
+    "wfKUnknown": "⚠︎cohort unknown",
+    "wfKTitle": "K is NOT part of the sum above; it is the source of the QC-vs-official gap.\nCohort L (m=0, frozen at go-live, never held by QC) and cohort S (m=k, mirrored, left untouched) are both rolling off;\nonce both are empty QC holds only cohort F (m=1), the gap stops drifting with the market, freezes to a constant, and is booked as cash on the QC side → QC = panel.",
+    "wfPairs": "{{n}} pairs",
+    "wfNoScaledFreeze": "cohort S not frozen (--freeze-scaled not run) — live ×k positions are being read as F, share counts unreliable",
+    "cohortL": "legacy · not mirrored to QC",
+    "cohortS": "mirrored ×k · QC untouched",
+    "cohortF": "fully mirrored ×1",
+    "cohortLShort": "not mirrored",
+    "cohortSShort": "×k frozen",
+    "cohortFShort": "×1 full",
+    "cardOfficialTitleAdd": "Official basis (official EOD {{date}} + today's ledger P&L; additive family official = ledger − C, daily P&L matches dollar for dollar)",
+    "rolloffDone": "legacy/S fully rolled off · K frozen at {{k}} (measured {{date}}) · QC equity + K ≡ panel NAV",
+    "rolloffTitle": "Measured on roll-off day: QC account equity {{qc}} + K = panel official-basis total {{panel}}.\nWith both cohorts empty QC holds exactly the official-basis share count in every name, so the NAV difference is pure cash and no longer drifts with the market.\nAny residual drift after this comes only from execution price differences (QC fills at market, the ledger books DailySignal's open price)."
   }
 }

@@ -1317,6 +1317,26 @@
     "errNotRunning": "リアルタイムNAV:{{err}}(controller未稼働?)",
     "qcStruct": "構造同期",
     "qcStructTitle": "構造同期失敗:ポジションファイルが更新途中 - 直近の一貫した構造で提供継続、整合後に自動復旧",
-    "chartHeader": "日中リターン(% と $)"
+    "chartHeader": "日中リターン(% と $)",
+    "wfHeld": "ポジション合計",
+    "wfCash": "現金",
+    "wfCashTitle": "戦略台帳エクイティ − ポジション時価",
+    "wfCapBase": "資本基準差 −C",
+    "wfCapBaseTitle": "go-live 時に固定:official = ledger − C(105日間の実測レンジ ≤$0.01)",
+    "wfNet": "戦略NAV(公式ベース)",
+    "wfK": "K · QC に未ミラーのポジション時価",
+    "wfKUnknown": "⚠︎コホート不明",
+    "wfKTitle": "K は上の合計には含まれません。QC 口座と公式ベースの差異の源です。\nコホート L(m=0、go-live で凍結、QC は未保有)と S(m=k、ミラー済み・据え置き)は自然に退場中。\n両者が空になると QC はコホート F(m=1)のみとなり、差は相場で動かなくなり定数に固定 → QC 側の現金に計上 → QC = パネル。",
+    "wfPairs": "{{n}} ペア",
+    "wfNoScaledFreeze": "コホート S 未凍結(--freeze-scaled 未実行)—— 保有中の ×k ポジションが F 扱いになり株数表示は信頼できません",
+    "cohortL": "legacy · QC 未ミラー",
+    "cohortS": "ミラー済み ×k · QC 据え置き",
+    "cohortF": "完全ミラー ×1",
+    "cohortLShort": "未ミラー",
+    "cohortSShort": "×k 据置",
+    "cohortFShort": "×1 全額",
+    "cardOfficialTitleAdd": "公式ベース(公式EOD {{date}} + 当日の台帳損益;加法系 official = ledger − C、日次損益は1ドル単位で一致)",
+    "rolloffDone": "legacy/S は全て退場 · K を {{k}} で固定（{{date}} 実測）· QC 純資産 + K ≡ パネル NAV",
+    "rolloffTitle": "退場日の実測：QC 口座純資産 {{qc}} + K = パネル公式ベース合計 {{panel}}。\n両コホートが空になると QC は全銘柄で公式ベースと同じ株数を保有するため、純資産差は現金項のみとなり相場で動かなくなります。\n以降の残差は約定価格差のみ（QC は成行約定、台帳は DailySignal の建値で記帳）。"
   }
 }
