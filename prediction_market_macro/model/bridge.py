@@ -77,9 +77,32 @@ ensemble by +12k" understated the damage by a factor of three. v0.2.0 improves t
 ensemble by 6.0k / 5.2k. That is a real but modest contribution, and the honest framing
 is that this member earns its place by being DECORRELATED (0.66), not by being accurate:
 solo it is still 15k worse than production. It beats the constant-only benchmark with
-DM t=−2.39 (p=0.017), consistent with the literature — Gavin & Kliesen (FRB St. Louis
-Review 84(3), 2002) find claims fail to beat an AR benchmark for payrolls in expansion
-months in 8 of 10 cells.
+DM t=−2.39 (p=0.017), a real but modest signal.
+
+
+STATE DEPENDENCE — WHY A MODEST GAIN IS THE EXPECTED RESULT
+-----------------------------------------------------------
+The most robust finding in the claims→payrolls literature is that claims are worth very
+little in expansions and a great deal in recessions, and it is the right lens for the
++6.0k above. Gavin & Kliesen (FRB St. Louis Review 84(3), 2002) — the only genuinely
+recursive out-of-sample payroll test in the literature — find AR(12) beats claims on
+RMSE in 8 of 10 expansion-month payroll cells, with OOS-F negative in 8 of 10. McConnell
+(1998) puts a number on both sides: adding claims HURTS expansion forecasts by 11.0k
+(DM p=0.09) and HELPS recession forecasts by 34.2k (p=0.01).
+
+2010-2026 ex-COVID is almost entirely expansion, so a small positive contribution is the
+best a claims-only member should be expected to show over this sample, and the measured
++6.0k is consistent with that rather than disappointing against it. The corollary is the
+reason to keep this member even though it looks marginal: its contribution should be
+strongly convex in a downturn, which is precisely the regime where production's momentum
+term breaks. Do not retire this on expansion-sample evidence alone.
+
+Two warnings that follow from the same literature. First, beware the encompassing tests:
+G&K's ENC-CM statistics reject "AR encompasses claims" in cells where claims LOSE on
+RMSE — read RMSE and OOS-F, not the encompassing columns. Second, the sign of this
+result is not stable across studies (Kliesen & Wheelock 2012 report the reverse, but on
+full-sample fitted values rather than forecasts), so treat state dependence as a reason
+to keep the member, not as a licence to add a regime switch without testing it here.
 
 
 WHY NO AR TERM
@@ -166,23 +189,113 @@ CES counts the pay period including the 12th of the month, so the claims weeks t
 onto month m end in that week, not at month end. `_claims_refweek_logavg` uses that
 window. Honesty about how much this earns: it is a wash empirically (164.6 vs 168.6 for
 plain month-end averaging, and it loses in the most recent sub-sample). It is kept
-because it is the theoretically correct window and costs nothing, NOT because it is
-carrying the result. A survey of Fed nowcasting practice found no publication that
-aligns claims to the CES reference period — Cleveland Fed uses plain monthly averages
-and Chicago Fed aligns to the CPS week — so this is principled but non-standard.
+because it is the defensible window and costs nothing, NOT because it is carrying the
+result.
+
+There is no canonical alignment rule — at least four conventions are in live use, and
+the choice is a judgement call rather than a solved problem:
+
+  1. week containing the 12th vs the same week of the prior month — the de facto market
+     convention (Chicago Fed LMI, Calculated Risk, Reuters). This is what we do.
+  2. claims at t+1 against the employment change at t — Cajner et al. (FEDS 2020-055)
+     adopt the lead to absorb filing and processing lags.
+  3. a cumulative sum from the week after last month's reference week through this
+     month's — same paper, Table 3.
+  4. the average of the middle two weeks — McConnell (1998) fn.9, motivated by exactly
+     the same pay-period logic and used there as a robustness check.
+
+The deeper reason none of these is "correct": the CES reference period is a PAY PERIOD
+straddling the 12th, and it is establishment-specific — weekly, biweekly, semimonthly or
+monthly. Any calendar-week rule, including ours, is a weekly-payroll approximation.
+Convention 2 is the one worth testing next if this is revisited; it is the only one with
+a stated mechanism (lags) rather than a stated definition.
+
+
+OPEN LEADS — the two things most likely to actually improve this
+-----------------------------------------------------------------
+Recorded after a literature sweep, in priority order. Neither is implemented.
+
+1. CONTINUING CLAIMS (CCSA). Gavin & Kliesen's in-sample standard errors rank
+   AR 0.171 > ICSA 0.157 > CCSA 0.143 — continuing claims dominate initial claims in
+   every one of their payroll panels, and the series is essentially unstudied for this
+   purpose (McConnell, Kliesen-Wheelock and Braxton all test ICSA only). The mechanism
+   is exactly the gap documented at INTERCEPT CORRECTION: Cajner et al. (FEDS 2020-055)
+   argue insured unemployment "responds to gross job gains as well as gross job losses,"
+   whereas initial claims see only separations — which is why no ICSA specification here
+   could recover the hiring-side level shift and an intercept correction had to. CCSA is
+   NOT currently in fred_obs; this needs an ingest addition with correct PIT release
+   timing (same Thursday 08:30 ET release as ICSA, but CCSA lags one week).
+2. THE t+1 ALIGNMENT of convention 2 above.
+
+Explicitly NOT worth pursuing: tuning the Almon polynomial. Foroni, Marcellino &
+Schumacher tested frequency ratios of 3, 12 and 60 — weekly-to-monthly (~4.33) falls in
+an untested gap, and their result that small mismatches favour UNRESTRICTED lags argues
+against more polynomial structure, not for it. No source found puts weekly claims into a
+MIDAS specification against monthly CES payrolls at all; this cell of the literature is
+empty. If it is ever revisited, `midasr`'s agk.test (flat weights as the null) and
+hAh.test (is the Almon restriction acceptable) turn it into an in-sample specification
+test on our own data instead of an appeal to authority.
+
+
+TARGET NOISE IS RISING — A LIVE CAVEAT ON SIGMA
+------------------------------------------------
+Sigma is calibrated on 2010-2026 residuals, and the noise in the target itself has grown
+over that window: monthly first-to-third payroll revisions have more than doubled as a
+share of employment (0.028% → 0.065%), the CES collection initiation rate has fallen from
+~80% to ~30%, and the birth/death share of large benchmark revisions dropped from 82%
+(2009-2012) to 34% (2022-2025). Anything calibrated on pre-2020 CES noise understates
+current noise. The emitted effective sd (156k) currently sits just above realised OOS
+RMSE (150k), which is honest on average but is an average over a period whose second half
+is noisier than its first. If coverage starts failing on the wide side of the ladder,
+suspect this before suspecting mu.
+
+Related, and the reason defect 1 was worth treating as the top priority: the payroll
+first print is NOT an efficient forecast of the revised figure. Aruoba (2008) rejects
+both the news and the noise hypotheses for employment, finding a significantly positive
+mean revision correlated with the initial announcement; Stark finds a +17.8k mean
+revision (t=4.3) whose size is predictable from the reported job change itself. Because
+of that, the vintage convention is not a detail — Koenig, Dolmas & Piger showed that
+choice alone flipping a model from beating to losing against Blue Chip.
 
 
 CALIBRATION FLOOR — READ BEFORE "IMPROVING" THIS
 -------------------------------------------------
-The BLS 90% CI on the monthly NFP change is ±122,000 (Technical Note, 1.6-SE
-convention), implying a sampling SE around 76,000 before any forecasting error. The
-professional consensus forecast error SD is 103,700–115,600 (Gürkaynak & Wolfers, NBER
-WP 11929). FEDS 2018-005 Table 8 reports out-of-sample RMSE for private payroll monthly
-changes of 194k constant-only, 154k with real-time labor data, 113k with the Bloomberg
-consensus, 98k with ADP. Any claims-only specification here that backtests materially
-below ~65–70k against a FIRST print is reporting look-ahead bias, not skill. v0.2.0's
-150.1k sits where a claims-only model should sit — between the 194k constant-only and
-the 154k real-time-labor-data rows of that table.
+The BLS 90% CI on the monthly NFP change is ±122,000 (Technical Note, July 2026, at the
+1.6-SE convention), implying a sampling SE around 76,000 before any forecasting error.
+This is NOT a fixed anchor and should be re-read, not memorised: it has widened with the
+shrinking CES sample — ±100k (2012) → 110k (2020) → 130k (2024) → 136k (2025) → 122k
+(2026). It is also sampling error ONLY, excluding birth/death model error, nonresponse
+and benchmark revisions.
+
+Reference points, all against a FIRST print, monthly change, RMSE in thousands:
+
+    Bloomberg consensus (Klein Table 1, OOS 2017-2019)              65.5
+    ADP-FRB microdata model (NBER c14272)                           70.7
+    CES sampling SE, i.e. the measurement floor                    ~65
+    trailing 12-month mean (Klein, calm 2017-2019 window)           77.8
+    trailing 3-month mean (own BLS-API calc, total NFP 1986-2019)  118.1
+    unconditional mean (same calc)                                 197.4
+    THIS MODEL, 2010-2026 ex-COVID                                 150.1
+
+NBER c14272 states the bar directly: with an OOS RMSE of 70,700 against a sampling SE of
+65,000, "any forecast that achieved better performance would be forecasting sampling
+error." Any claims-only specification here that backtests materially below ~65-70k is
+reporting look-ahead bias, not skill.
+
+Two caveats on the comparison, so it is not over-read. FEDS 2018-005 Table 8 (194k
+constant-only / 154k with real-time labor data / 113k with Bloomberg / 98k with ADP) is
+CES *private* payrolls, a different and less noisy series than the total nonfarm target
+here — do not read our 150.1k as beating its 154k row. And the two independent
+constant-only estimates (194k there, 197.4k from our own calculation, 185.8k measured on
+our sample) agree closely, which is the useful cross-check: this model sits well inside
+the naive-benchmark band and nowhere near the consensus.
+
+The uncomfortable implication, worth stating plainly: the gap between a trailing 6-month
+mean (~81k in a calm expansion) and a full real-time ADP-augmented model (70.7k) is only
+a few thousand jobs, and by Gürkaynak & Wolfers' numbers roughly 62% of even the
+consensus error variance is noise in the target rather than forecaster error. There is
+very little room here for a claims-only bridge to be good. It is not supposed to be —
+see the DECORRELATION note in the header.
 """
 from __future__ import annotations
 
