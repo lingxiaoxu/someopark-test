@@ -249,6 +249,11 @@ def append_track(row: dict) -> None:
             log.info(f"[SHADOW_RNN] schema 迁移重写 {TRACK_CSV.name} "
                      f"({len(old.columns)}→{len(merged.columns)} 列): {row}")
             return
+        # 列集相同但**顺序**可能不同(dict 插入序变了就会发生): set() 比较看不出来,
+        # 而 mode="a" 按 df 自己的列序写值、不看已有 header → 静默错位、列数不变、不报错。
+        # 2026-08-17 promote 把 *_econ_w/_econ_abs/ab_lambda_source 从 dict 尾部挪到中间,
+        # 08-17/08-18 两行就是这么被写坏的。这里按已有表头对齐后再 append。
+        df = df[old.columns]
     df.to_csv(TRACK_CSV, mode="a", header=not TRACK_CSV.exists(), index=False)
     log.info(f"[SHADOW_RNN] 追加 {TRACK_CSV.name}: {row}")
 

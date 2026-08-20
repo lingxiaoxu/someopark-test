@@ -164,6 +164,9 @@ def append_track(row: dict) -> None:
             pd.concat([old, df], ignore_index=True).to_csv(TRACK_CSV, index=False)
             log.info(f"[BLEND] schema 迁移重写: {row}")
             return
+        # 列集相同但顺序不同时,mode="a" 会按 df 列序写值而不看已有 header → 静默错位。
+        # 先按已有表头对齐(同款坑在 shadow_rnn 写坏过 08-17/08-18 两行)。
+        df = df[old.columns]
     df.to_csv(TRACK_CSV, mode="a", header=not TRACK_CSV.exists(), index=False)
     log.info(f"[BLEND] 追加 blend_ab_tracking.csv: {row}")
 
