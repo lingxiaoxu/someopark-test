@@ -227,10 +227,36 @@ object than the CES pay period. Foote's paper is careful to distinguish them; if
 says "reference week" without saying which survey, check before borrowing its rule.
 
 
-OPEN LEADS — and one lead that was closed by measurement
----------------------------------------------------------
-1. THE t+1 ALIGNMENT of convention 2 above. The only lead still open, and the weakest of
-   the three originally recorded.
+OPEN LEADS — all three are now closed by measurement
+------------------------------------------------------
+1. THE t+1 ALIGNMENT of convention 2 above — TESTED, REJECTED.
+
+   Motivated by a measured fact, not a hunch: when NFP for month m is released we are
+   holding ICSA weeks running 2 weeks PAST m's reference week (187 of 199 origins since
+   2010; 3 weeks in 9 of them, more in 3). `_claims_refweek_logavg` discards every one of
+   them, and Cajner et al. use exactly that lead to absorb filing and processing lags. So
+   the question "are we throwing away usable data every month" was worth answering.
+
+   Answered two ways. SHIFT variants move the whole window right, asking whether a later
+   window is simply better. AUGMENT variants keep the shipped window and add the
+   post-reference weeks as a SECOND regressor, asking the sharper question — conditional
+   on what we already use, do the extra weeks carry anything? Only the second can be
+   trusted, because a shift can win by relabelling data the baseline already had.
+
+   The augmented coefficient settles it: the extra column gets −227 against the main
+   column's −701867, three orders of magnitude smaller. The fit puts essentially no
+   weight on weeks after the reference week. Blend vs the shipped spec is −0.1 (post 1wk)
+   and −1.0 (post 2wk) on the full panel, +1.3 and +0.2 on recent, DM p 0.33-0.92.
+
+   Shifts behave the same way: −0.5 / −2.2 on the full panel for +1wk / +2wk. The best
+   cell anywhere is "+1wk with a 5-week window" at +0.2 / +1.0 — the only variant
+   non-negative in both panels, but it is the best of nine on p = 0.796 / 0.380, which is
+   what a multiple-comparison survivor looks like. Not adopted.
+
+   So the CES reference-period theory wins over the lead: weeks after the reference week
+   describe NEXT month's labour market. The data is genuinely unused, and genuinely
+   uninformative about month m. That is a satisfying answer rather than a missed
+   opportunity. `/tmp/wf_refreeze/bridge_lab12.py` was the experiment.
 
 2. CONTINUING CLAIMS (CCSA) — TESTED, REJECTED. Do not add this feed.
 
@@ -245,6 +271,12 @@ OPEN LEADS — and one lead that was closed by measurement
    one-week publication lag is real and already encoded in knowledge_time — 802 of 867
    weeks since 2010 lag exactly 7 days behind ICSA, 26 at 6 and 26 at 8 on holiday weeks)
    and tested. It does not earn the feed.
+
+   Rule out the obvious alternative explanation first: CCSA did NOT lose because the lag
+   starved it of data. The lag never binds. NFP for month m releases 2-3 weeks after m's
+   reference week, so both series are long since published, and across all 199 origins
+   since 2010 the CCSA window is IDENTICAL to the ICSA window — zero months differ. CCSA
+   was tested on exactly the same weeks as the shipped regressor.
 
    The mechanism claim is FALSIFIED, and that is the important part. If CCSA carried the
    hiring-side level, variants using it would depend LESS on the intercept correction.
