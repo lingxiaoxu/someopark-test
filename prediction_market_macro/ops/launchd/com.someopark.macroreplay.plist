@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  11:00 local: roll the walk-forward to yesterday, reconcile it against the live ledger,
+  and attribute what the window declined (research/live_replay.py).
+
+  Why 11:00 and not inside the 05:00 refresh: this is a ~10-minute simulation that reads
+  most of the candle table, and it is a DIAGNOSTIC — nothing downstream of it places or
+  exits a trade. Putting it on the trading critical path would let a slow or broken
+  research job delay the decisions, which is the wrong failure direction. 11:00 also sits
+  clear of the 05:00 refresh, its ~05:17 finish, and the weekly job.
+
+  It takes its own flock (`live_replay.lock`), so a run that overruns into the next day
+  refuses the new one rather than stacking two writers on the same DB.
+-->
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.someopark.macroreplay</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-lc</string>
+		<string>cd /Users/xuling/code/someopark-test &amp;&amp; conda run -n someopark_run python -m prediction_market_macro.research.live_replay &gt;&gt; /Users/xuling/code/someopark-test/prediction_market_macro/data/logs/macroreplay.log 2&gt;&amp;1</string>
+	</array>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>11</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+</dict>
+</plist>

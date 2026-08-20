@@ -1,5 +1,5 @@
 #!/bin/bash
-# ops/install_launchd.sh — reproducible install/uninstall of the 4 macro launchd jobs
+# ops/install_launchd.sh — reproducible install/uninstall of the 5 macro launchd jobs
 # (PLAN §8.3; 0-bis whitelist (b): ~/Library/LaunchAgents is the sanctioned target).
 #
 #   bash prediction_market_macro/ops/install_launchd.sh            # install + load
@@ -10,7 +10,8 @@ set -euo pipefail
 SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/launchd" && pwd)"
 DST_DIR="$HOME/Library/LaunchAgents"
 PLISTS=(com.someopark.macrorefresh com.someopark.macrotick
-        com.someopark.macrowatchdog com.someopark.macroweekly)
+        com.someopark.macrowatchdog com.someopark.macroweekly
+        com.someopark.macroreplay)
 
 case "${1:-install}" in
   install)

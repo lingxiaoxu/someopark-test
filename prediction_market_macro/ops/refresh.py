@@ -33,12 +33,18 @@ def _alert(conn, level: str, source: str, msg: str) -> None:
 
 
 class RefreshBusy(RuntimeError):
-    """Another refresh already holds the single-instance lock."""
+    """Another holder already owns the single-instance lock."""
 
 
 @contextmanager
-def _single_instance(output_dir: Path):
+def _single_instance(output_dir: Path, lock_name: str = "refresh.lock"):
     """Refuse to start a second refresh while one is in flight.
+
+    `lock_name` exists so other long, DB-heavy jobs can reuse the mechanism without
+    sharing refresh's lock — `research/live_replay.py` runs a ~10-minute simulation from
+    its own launchd job and needs the same "refuse, don't queue" guarantee against
+    ITSELF, but must not be blocked by (or block) a refresh. Same file, different name,
+    same semantics.
 
     `refresh_last.json` is written by the LAST line of `_run`, so any caller that judges
     "did today's refresh happen" from its `ts` is blind for the whole ~17 min the run
@@ -56,7 +62,7 @@ def _single_instance(output_dir: Path):
     this cannot leave a stale lock that wedges the daily job.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
-    fd = os.open(output_dir / "refresh.lock", os.O_RDWR | os.O_CREAT, 0o644)
+    fd = os.open(output_dir / lock_name, os.O_RDWR | os.O_CREAT, 0o644)
     try:
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
