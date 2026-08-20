@@ -288,39 +288,106 @@ def run(conn, settings) -> int:
             key = kalshi_period_to_key(tok)
             if not key:
                 continue
+            # ── model-free legs first (2026-08-20 gate-ordering fix) ─────────────
+            # The devig consistency scan and §24-A's arb execution need NO prediction,
+            # so they are hoisted above the three MODEL gates. The old order put arb
+            # behind `pr is None`, the §8.2-5 staleness gate and §27.4's information
+            # gate. None of those is a statement about the book: an arb says two of
+            # these QUOTES contradict each other, and a missing prediction, a stale
+            # one, or a model that is late to a gasoline print can neither create that
+            # contradiction nor resolve it. Measured over the ledger, 29% of detected
+            # violations died on a gate with nothing to say about them.
+            #
+            # What deliberately stays ABOVE arb:
+            #   * the circuit breaker (铁律 10). "Tripped series open NOTHING new" is
+            #     about capital and about our own confidence in the whole series, not
+            #     about models — and an arb is still a new position, still capital, and
+            #     still riskless only if the settlement source is behaving. Hoisting
+            #     arb above THIS would trade while halted, which is the one ordering
+            #     the rule exists to forbid.
+            #   * quote staleness. This one IS about the book, so arb answers to it
+            #     below — just to its own half of the gate, not to the pred half.
+            legs = _legs_meta(conn, spec.ticker, tok)
+            if not legs:
+                continue
             # production-model guard: only the registry-bound model's preds may drive
-            # decisions — shadow members (chronos2/*, dfm/*) are analysis-only (§7-bis)
+            # decisions — shadow members (chronos2/*, dfm/*) are analysis-only (§7-bis).
+            # Read here, but NOT yet a `continue`: the arb leg below runs without it.
             pr = conn.execute(
                 "SELECT * FROM preds WHERE series=? AND period=? AND model_version LIKE ?"
                 " ORDER BY asof DESC LIMIT 1",
                 (spec.ticker, key, spec.model + "/%")).fetchone()
-            if pr is None:
-                continue
-            legs = _legs_meta(conn, spec.ticker, tok)
-            if not legs:
-                continue
             # circuit breaker (铁律 10): tripped series open NOTHING new
             from prediction_market_macro.ops import risk
             trip = risk.breaker_tripped(conn, spec.ticker)
             if trip:
-                from prediction_market_macro.strategy.decision import Decision, GATES
-                ledger.record(conn, series=spec.ticker, period=key,
-                              decision=Decision("pass", None, 0.0, 0,
-                                                (f"circuit_breaker [{trip[:100]}]",),
-                                                dict(GATES)),
-                              pred_inputs={}, model_version=pr["model_version"])
-                set_coverage(conn, spec.ticker, key, "passed")
-                n += 1
+                # the ledger row is a MODEL decision ("we would have looked and we
+                # passed"), so it is still conditional on there being a model to speak
+                # for. With no pred this used to `continue` one line earlier and write
+                # nothing; it still writes nothing.
+                if pr is not None:
+                    from prediction_market_macro.strategy.decision import Decision, GATES
+                    ledger.record(conn, series=spec.ticker, period=key,
+                                  decision=Decision("pass", None, 0.0, 0,
+                                                    (f"circuit_breaker [{trip[:100]}]",),
+                                                    dict(GATES)),
+                                  pred_inputs={}, model_version=pr["model_version"])
+                    set_coverage(conn, spec.ticker, key, "passed")
+                    n += 1
                 continue
-            # staleness hard gate (§8.2-5): stale inputs ⇒ forced PASS, never a
-            # decision on old data. Pred >26h or freshest quote >6h old ⇒ stale.
-            pred_age_h = (now - datetime.fromisoformat(pr["asof"])
-                          ).total_seconds() / 3600.0
+            # freshest quote on this book — read once and used by BOTH the arb leg
+            # (which is only about the book) and the §8.2-5 gate below (which is about
+            # the book AND the prediction).
             qt = conn.execute(
                 "SELECT MAX(q.ts) m FROM quotes q JOIN contracts c ON c.ticker=q.ticker"
                 " WHERE c.series=? AND c.period=?", (spec.ticker, tok)).fetchone()
             quote_age_h = ((now - datetime.fromisoformat(qt["m"])).total_seconds()
                            / 3600.0) if qt and qt["m"] else None
+            impl = None
+            if spec.structure != "categorical":
+                is_bucket = any(l.get("strike_type") == "between" for l in legs)
+                impl = (devig.bucket_implied(legs) if is_bucket
+                        else devig.ladder_implied(legs))
+                for v in impl["violations"]:
+                    msg = (f"PARTITION-ARB {spec.ticker}/{tok}: {v['kind']}"
+                           f" gross {v['gross']}" if "kind" in v else
+                           f"MONOTONE-ARB {spec.ticker}/{tok}: buy {v['buy']['ticker']}"
+                           f" sell {v['sell']['ticker']} gross {v['gross']}")
+                    dup = conn.execute(
+                        "SELECT 1 FROM alerts WHERE source='consistency' AND"
+                        " message=? AND ts>=?",
+                        (msg, now.date().isoformat())).fetchone()
+                    if not dup:               # standing arbs re-detected per run
+                        conn.execute(
+                            "INSERT INTO alerts(ts, level, source, message)"
+                            " VALUES(?,?,?,?)",
+                            (now.isoformat(), "info", "consistency", msg))
+                # §24-A: detected free money gets TRADED (paper), not just alerted
+                if impl["violations"]:
+                    from prediction_market_macro.strategy import arb
+                    if quote_age_h is not None and quote_age_h <= QUOTE_STALE_H:
+                        n += arb.execute(conn, spec.ticker, key, legs,
+                                         impl["violations"])
+                    else:
+                        # the one gate an arb DOES answer to, and it gets a line rather
+                        # than a silent drop: "the book is too old to trust" and "there
+                        # was no violation" are different facts, and this module spent
+                        # months unable to tell them apart.
+                        _qage = ("missing" if quote_age_h is None
+                                 else f"{quote_age_h:.1f}h old")
+                        arb._alert_once(
+                            conn,
+                            f"ARB-STALE-BOOK {spec.ticker}/{tok}:"
+                            f" {len(impl['violations'])} violation(s) detected but the"
+                            f" freshest quote is {_qage} (limit {QUOTE_STALE_H}h) —"
+                            f" a 'riskless' trade priced off a book that may have moved"
+                            f" is just a bet that it did not", "warn")
+            if pr is None:
+                continue
+            # staleness hard gate (§8.2-5): stale inputs ⇒ forced PASS, never a
+            # decision on old data. Pred >26h or freshest quote >6h old ⇒ stale.
+            pred_age_h = (now - datetime.fromisoformat(pr["asof"])
+                          ).total_seconds() / 3600.0
             if (pred_age_h > PRED_STALE_H or quote_age_h is None
                     or quote_age_h > QUOTE_STALE_H):
                 from prediction_market_macro.strategy.decision import Decision, GATES
@@ -350,28 +417,14 @@ def run(conn, settings) -> int:
                 structs, impl = _structs_categorical(legs, probs), {"pmf": None,
                                                                     "violations": []}
             else:
-                is_bucket = any(l.get("strike_type") == "between" for l in legs)
-                impl = (devig.bucket_implied(legs) if is_bucket
-                        else devig.ladder_implied(legs))
-                for v in impl["violations"]:
-                    msg = (f"PARTITION-ARB {spec.ticker}/{tok}: {v['kind']}"
-                           f" gross {v['gross']}" if "kind" in v else
-                           f"MONOTONE-ARB {spec.ticker}/{tok}: buy {v['buy']['ticker']}"
-                           f" sell {v['sell']['ticker']} gross {v['gross']}")
-                    dup = conn.execute(
-                        "SELECT 1 FROM alerts WHERE source='consistency' AND"
-                        " message=? AND ts>=?",
-                        (msg, now.date().isoformat())).fetchone()
-                    if not dup:               # standing arbs re-detected per run
-                        conn.execute(
-                            "INSERT INTO alerts(ts, level, source, message)"
-                            " VALUES(?,?,?,?)",
-                            (now.isoformat(), "info", "consistency", msg))
-                # §24-A: detected free money gets TRADED (paper), not just alerted
-                if impl["violations"]:
-                    from prediction_market_macro.strategy import arb
-                    n += arb.execute(conn, spec.ticker, key, legs,
-                                     impl["violations"])
+                # `impl` was already built above, before the model gates, because the
+                # arb leg needs it and does not need them. Reusing it is not just a
+                # saved devig call: recomputing here would re-derive the market pmf
+                # from a book read at a different instant than the one arb priced
+                # against, so the §19-4 market fair and the trade would disagree about
+                # what the book said. It is not None on this branch by construction —
+                # the same `spec.structure != "categorical"` test built it.
+                assert impl is not None
                 if not pr["ladder_json"]:
                     continue
                 pmf = {float(k): v for k, v in json.loads(pr["ladder_json"]).items()}
