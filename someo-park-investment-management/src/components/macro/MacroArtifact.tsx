@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
 import { getMacroJson, analyzeMacro, predSummary, macroFileUrl, getMacroHealth, getMacroPricetrack } from './macroApi';
-import type { MacroBoard, MacroDecision, MacroHealth, MacroPricetrack, MacroReportEntry } from './macroApi';
+import type { MacroBoard, MacroDecision, MacroHealth, MacroLiveReplay, MacroPricetrack, MacroReplayLeg, MacroReportEntry } from './macroApi';
 import {
   mono, fmt, pct, money, Loading, ErrorBox, KV, DataTable, Chip, TabButton, Generated,
   AiResult, useMacroPoll, type AiState,
@@ -1212,6 +1212,162 @@ function SweepView() {
   );
 }
 
+// ── macro_livereplay: replay-vs-live divergence accounting (research/live_replay) ──
+//
+// The panel's job is to stop anyone reading it as a scoreboard. The two paths CANNOT
+// match — the replay looks once a day at a candle close, takes at most one trade per
+// event, and carries no breaker/depth/staleness gate — so the honest question is not
+// "who won" but "is every difference charged to a known limit". Hence: the verdict and
+// the unexplained count lead, the P&L table is explicitly labelled not-a-comparison, and
+// each leg carries the bucket it was charged to.
+
+/** UNEXPLAINED is the only alarm; DISAGREED is worth reading; STRUCTURAL is expected. */
+const bucketColor = (b?: string) =>
+  b?.startsWith('UNEXPLAINED') ? 'var(--error)'
+    : b?.startsWith('DISAGREED') ? 'var(--warning)' : 'var(--text-muted)';
+/** "STRUCTURAL:no_reentry" -> "no reentry" — the prefix is carried by the chip colour. */
+const bucketLabel = (b?: string) => (b ?? '—').split(':').pop()!.replace(/_/g, ' ');
+
+function LiveReplayView() {
+  const { t } = useTranslation();
+  const { data, loading, error } = useMacro<MacroLiveReplay>('macro_livereplay');
+  const [tab, setTab] = useState<'matched' | 'replay_only' | 'live_only'>('live_only');
+  if (loading && !data) return <Loading />;
+  if (error && !data) return <ErrorBox e={error} />;
+  const L = data?.latest;
+  if (!L) return <div className="text-xs py-3" style={{ color: 'var(--text-muted)', ...mono }}>{t('macro.lrNoRun')}</div>;
+  const rec = L.reconciliation ?? {};
+  const opp = L.opportunity ?? {};
+  const rep = L.replay ?? {}; const liv = L.live ?? {};
+  const aligned = !rec.n_unexplained;
+  const legs: MacroReplayLeg[] =
+    (tab === 'matched' ? rec.matched : tab === 'replay_only' ? rec.replay_only : rec.live_only) ?? [];
+  // Both sides' charges in one table: the buckets are disjoint by construction
+  // (a leg is replay-only or live-only, never both), so a plain merge is safe.
+  const causes: [string, number][] = Object.entries<number>({
+    ...(rec.replay_only_by_cause ?? {}), ...(rec.live_only_by_cause ?? {}),
+  }).sort((a, b) => b[1] - a[1]);
+  const hist = data?.history ?? [];
+  const wl = (n?: number, w?: number) => (n == null ? '—' : `${w ?? 0}W-${n - (w ?? 0)}L`);
+
+  return (
+    <div>
+      <Generated ts={L.generated_at ?? data?.latest_ts} />
+      <KV rows={[
+        [t('macro.lrWindow'), <span style={mono}>{L.window_start} → {L.window_end} ({L.days}d)</span>],
+        [t('macro.lrVerdict'),
+          <Chip color={aligned ? 'var(--success)' : 'var(--error)'}>
+            {aligned ? t('macro.lrAligned') : t('macro.lrReview')}
+          </Chip>],
+        [t('macro.lrUnexplained'),
+          <span style={{ ...mono, fontWeight: 700, color: aligned ? 'var(--text-muted)' : 'var(--error)' }}>
+            {rec.n_unexplained ?? '—'}
+          </span>],
+      ]} />
+
+      {/* the two paths, side by side — deliberately NOT framed as a contest */}
+      <SectionTitle>{t('macro.lrTracks')}</SectionTitle>
+      <DataTable
+        cols={['', t('macro.colTrades'), 'W-L', t('macro.colStaked'), t('macro.colPnl'), 'ROI']}
+        rows={[
+          [<Chip color="var(--text-muted)">{t('macro.lrReplay')}</Chip>,
+            rep.n_trades ?? '—', wl(rep.n_trades, rep.won), money(rep.staked),
+            <span style={{ ...mono, color: (rep.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(rep.realized)}</span>,
+            <span style={{ ...mono, color: (rep.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(rep.roi)}</span>],
+          [<Chip color="var(--accent-primary)">{t('macro.lrLive')}</Chip>,
+            liv.n_trades ?? '—', wl(liv.n_trades, liv.won), money(liv.staked),
+            <span style={{ ...mono, color: (liv.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(liv.realized)}</span>,
+            liv.staked ? <span style={{ ...mono, color: (liv.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct((liv.realized ?? 0) / liv.staked)}</span> : '—'],
+        ]} />
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 6, lineHeight: 1.5 }}>
+        {t('macro.lrNotAContest')}
+      </div>
+
+      {/* where the difference went */}
+      <SectionTitle>{t('macro.lrAccounting')}</SectionTitle>
+      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+        {([['matched', rec.n_matched], ['replay_only', rec.n_replay_only],
+           ['live_only', rec.n_live_only]] as const).map(([k, n]) => (
+          // TabButton's props do not include `key` (same as GroupTabs above), so the
+          // key rides on a display:contents wrapper that adds no box of its own.
+          <span key={k} style={{ display: 'contents' }}>
+            <TabButton active={tab === k} onClick={() => setTab(k as typeof tab)}
+              label={`${t(`macro.lr_${k}`)} ${n ?? 0}`} />
+          </span>
+        ))}
+      </div>
+      {legs.length > 0 ? (
+        <div style={{ overflowX: 'auto' }}>
+          <DataTable
+            cols={[t('macro.wfEntryDay'), t('macro.colSeries'), t('macro.wfBetCol'),
+              t('macro.colStaked'), t('macro.colPnl'), t('macro.lrCharge')]}
+            rows={legs.map((x) => [
+              <span style={{ ...mono, fontSize: 10 }}>{String(x.day ?? '').slice(5)}</span>,
+              <span style={mono}>{shortSeries(x.series)}</span>,
+              <span style={{ color: 'var(--text-muted)', fontSize: 10 }} title={x.detail ?? ''}>{trunc(x.desc, 26)}</span>,
+              money(x.staked),
+              <span style={{ ...mono, color: (x.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(x.realized)}</span>,
+              x.bucket
+                ? <span title={x.detail ?? ''}><Chip color={bucketColor(x.bucket)}>{bucketLabel(x.bucket)}</Chip></span>
+                : <span style={{ color: 'var(--text-muted)' }}>—</span>,
+            ])} />
+        </div>
+      ) : (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', ...mono }}>{t('macro.lrNoLegs')}</div>
+      )}
+      {causes.length > 0 && (
+        <DataTable
+          cols={[t('macro.lrCharge'), t('macro.colTrades')]}
+          rows={causes.map(([b, n]) => [
+            <Chip color={bucketColor(b)}>{bucketLabel(b)}</Chip>, n,
+          ])} />
+      )}
+
+      {/* the second half: what never became a decision at all */}
+      <SectionTitle>{t('macro.lrOpportunity')}</SectionTitle>
+      <KV rows={[
+        [t('macro.lrNPass'), <span style={mono}>{opp.n_pass ?? '—'}</span>],
+        [t('macro.lrInfraShare'),
+          <span style={{ ...mono, fontWeight: 700, color: (opp.infra_share ?? 0) > 0.2 ? 'var(--warning)' : 'var(--text-muted)' }}>
+            {pct(opp.infra_share)}
+          </span>],
+      ]} />
+      {opp.by_reason && (
+        <DataTable
+          cols={[t('macro.lrReason'), t('macro.colTrades')]}
+          rows={Object.entries<number>(opp.by_reason).sort((a, b) => b[1] - a[1]).map(([r, n]) => [
+            <span style={{ ...mono, fontSize: 10 }}>{r.replace(/_/g, ' ')}</span>, n,
+          ])} />
+      )}
+
+      {/* the trail — one point per daily run; a verdict that flips is the signal */}
+      {hist.length > 1 && (
+        <>
+          <SectionTitle>{t('macro.lrTrail')}</SectionTitle>
+          <div style={{ width: '100%', height: 150 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={hist} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <XAxis dataKey="window_end" tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }} stroke="var(--text-muted)" />
+                <YAxis width={46} tick={{ fontSize: 9, fontFamily: 'var(--font-mono)' }} stroke="var(--text-muted)" />
+                <Tooltip
+                  formatter={(v: any, n: any) => [money(Number(v)), String(n) === 'replay_realized' ? t('macro.lrReplay') : t('macro.lrLive')]}
+                  contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-subtle)', fontSize: 10, fontFamily: 'var(--font-mono)' }} />
+                <Line type="monotone" dataKey="replay_realized" stroke="var(--text-muted)" strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
+                <Line type="monotone" dataKey="live_realized" stroke="var(--accent-primary)" strokeWidth={1.5} dot={false} connectNulls isAnimationActive={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+
+      <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, marginTop: 8, lineHeight: 1.5 }}>
+        {t('macro.lrNote')}
+      </div>
+      <Ai view="macro_livereplay" />
+    </div>
+  );
+}
+
 export const REGISTRY: Record<string, ComponentType<any>> = {
   macro_bets: BetsView,
   macro_board: BoardView,
@@ -1232,6 +1388,7 @@ export const REGISTRY: Record<string, ComponentType<any>> = {
   macro_reports: ReportsView,
   macro_walkforward: WalkforwardView,
   macro_sweep: SweepView,
+  macro_livereplay: LiveReplayView,
 };
 
 const KEY_BY_TYPE: Record<string, string> = Object.fromEntries(MACRO_ITEMS.map((i) => [i.type, i.i18nKey]));

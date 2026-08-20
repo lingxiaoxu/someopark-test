@@ -523,6 +523,36 @@ def run_extended(conn, settings) -> str:
     _write(out_dir / "macro_walkforward.json", wf_doc)
     written.append("macro_walkforward.json")
 
+    # ── macro_livereplay.json: the rolling replay-vs-live divergence accounting ──
+    # `research/live_replay` runs daily and writes one experiments row per window end.
+    # Latest carries the whole payload; the trail is the part worth watching, because a
+    # verdict that has read ALIGNED for a week and flips is the signal, not the snapshot.
+    lr_doc = {"generated_at": now.isoformat(), "history": []}
+    for r in conn.execute(
+            "SELECT metrics_json, created_ts FROM experiments WHERE name='live_replay'"
+            " ORDER BY created_ts DESC LIMIT 60").fetchall():
+        try:
+            p = json.loads(r["metrics_json"])
+        except json.JSONDecodeError:
+            continue
+        if "latest" not in lr_doc:
+            lr_doc["latest"] = p
+            lr_doc["latest_ts"] = r["created_ts"]
+        rec, opp = p.get("reconciliation") or {}, p.get("opportunity") or {}
+        lr_doc["history"].append({
+            "window_end": p.get("window_end"), "days": p.get("days"),
+            "replay_realized": (p.get("replay") or {}).get("realized"),
+            "live_realized": (p.get("live") or {}).get("realized"),
+            "n_matched": rec.get("n_matched"),
+            "n_replay_only": rec.get("n_replay_only"),
+            "n_live_only": rec.get("n_live_only"),
+            "n_unexplained": rec.get("n_unexplained"),
+            "infra_share": opp.get("infra_share"),
+        })
+    lr_doc["history"].reverse()          # oldest first, so the chart reads left to right
+    _write(out_dir / "macro_livereplay.json", lr_doc)
+    written.append("macro_livereplay.json")
+
     # ── macro_fed.json: meeting-level detail with evidence chain ──
     # decided meetings leave the probability board (a settled decision has no
     # probabilities to show — the outcome lives in decisions/performance views)

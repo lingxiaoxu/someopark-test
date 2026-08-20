@@ -55,10 +55,18 @@ def _close(conn, open_id, series, period, day, realized=0.2):
     conn.commit()
 
 
-def _contract(conn, ticker, series, period, end_ts, bid, ask):
-    conn.execute("INSERT INTO contracts(ticker, series, event_ticker, period,"
-                 " first_seen_ts) VALUES(?,?,?,?,'t')",
-                 (ticker, series, f"{series}-E", period))
+def _contract(conn, ticker, series, token, end_ts, bid, ask, close_time=None):
+    """One contract + one candle row. `token` is KALSHI's period, not the model's key.
+
+    The distinction is the whole point: `contracts.period` holds `26AUG1414` while every
+    trade record holds `2026-08-14`, and 0 of 8872 production contract rows are ISO-
+    shaped. An earlier version of this helper took the ISO key, so the fixture agreed
+    with the code's broken `c.period = ?` filter and both were wrong together — the
+    candle count came back 0 for every real event and `no_candles` absorbed everything.
+    """
+    conn.execute("INSERT INTO contracts(ticker, series, event_ticker, period, close_time,"
+                 " first_seen_ts) VALUES(?,?,?,?,?,'t')",
+                 (ticker, series, f"{series}-E", token, close_time))
     conn.execute("INSERT INTO candles(ticker, end_ts, yes_bid_close, yes_ask_close)"
                  " VALUES(?,?,?,?)", (ticker, end_ts, bid, ask))
     conn.commit()
@@ -207,29 +215,105 @@ def test_still_open_position_cannot_be_in_the_replay(conn):
     assert r["live_only_by_cause"] == {"STRUCTURAL:still_open": 1}
 
 
-def test_a_closed_priceable_live_trade_the_replay_missed_is_UNEXPLAINED(conn):
-    """Settled, has real candle rows, no re-entry excuse — the replay should have seen
-    it and did not. This is the live-side alarm and it must not be swallowed."""
-    did = _open(conn, "KXWTIW", "2026-08-14", "2026-08-13")
-    _close(conn, did, "KXWTIW", "2026-08-14", "2026-08-14")
-    _contract(conn, "KXWTIW-X", "KXWTIW", "2026-08-14", 1755000000, 40, 42)
-    live = lr.live_entries(conn, CUT, UNTIL)
-    assert live[0]["open"] is False
+def _settled_live_trade(conn, token, key="2026-08-14", close_time=None,
+                        end_ts=1755000000, bid=40, ask=42):
+    """A closed KXWTIW live trade plus the contract it was written against.
+
+    `token` and `key` name the SAME event in the two dialects — production always agrees
+    on that (`26AUG1414` ⇄ `2026-08-14`) and a fixture that disagrees is testing the
+    wrong thing.
+    """
+    did = _open(conn, "KXWTIW", key, "2026-08-13")
+    _close(conn, did, "KXWTIW", key, "2026-08-14")
+    _contract(conn, "KXWTIW-X", "KXWTIW", token, end_ts, bid, ask,
+              close_time=close_time)
+    return lr.live_entries(conn, CUT, UNTIL)
+
+
+def test_the_candle_lookup_speaks_kalshis_period_dialect(conn):
+    """REGRESSION. `contracts.period` is `26AUG1414`; the trade says `2026-08-14`.
+
+    The lookup used to compare them with `=`, so it found nothing on every real event and
+    charged every closed live-only trade to `no_candles` — an event with 189 candle rows
+    included. If this test fails with `no_candles`, the token/key join has been undone.
+    """
+    live = _settled_live_trade(conn, "26AUG1414")
     r = lr.reconcile(conn, _wf([]), live, CUT, UNTIL)
-    assert r["n_unexplained"] == 1
-    assert "candle rows" in r["unexplained"][0]["detail"]
+    assert "STRUCTURAL:no_candles" not in r["live_only_by_cause"]
+    assert r["live_only_by_cause"] == {"DISAGREED:replay_declined": 1}
+    assert "189" not in r["live_only"][0]["detail"]      # count is real, not hardcoded
+    assert "1 candle rows" in r["live_only"][0]["detail"]
+
+
+def test_an_event_closing_after_the_cutoff_is_not_a_missing_candle(conn):
+    """The replay stops at yesterday. A position live opened on an event that settles
+    LATER is invisible to it for that reason alone, and folds in on its own next run —
+    charging it to `no_candles` blamed the data for a window boundary."""
+    live = _settled_live_trade(conn, "26AUG2117", key="2026-08-21",
+                               close_time="2026-08-21T21:00:00Z",
+                               end_ts=0, bid=None, ask=None)
+    r = lr.reconcile(conn, _wf([]), live, CUT, UNTIL)
+    assert r["live_only_by_cause"] == {"STRUCTURAL:outside_window": 1}
+    assert "2026-08-21" in r["live_only"][0]["detail"]
+    assert r["n_unexplained"] == 0
 
 
 def test_the_404_sentinel_does_not_count_as_priceable(conn):
     """ingest/kalshi_md writes a NULL-price row at end_ts=0 when the candlestick endpoint
     404s — 6700 of 14683 rows. Counting those as priceable would report 'the replay could
     have seen this' precisely when it could not, i.e. UNEXPLAINED for a real limit."""
-    did = _open(conn, "KXWTIW", "2026-08-14", "2026-08-13")
-    _close(conn, did, "KXWTIW", "2026-08-14", "2026-08-14")
-    _contract(conn, "KXWTIW-X", "KXWTIW", "2026-08-14", 0, None, None)
-    r = lr.reconcile(conn, _wf([]), lr.live_entries(conn, CUT, UNTIL), CUT, UNTIL)
+    live = _settled_live_trade(conn, "26AUG1414", close_time="2026-08-14T21:00:00Z",
+                               end_ts=0, bid=None, ask=None)
+    r = lr.reconcile(conn, _wf([]), live, CUT, UNTIL)
     assert r["live_only_by_cause"] == {"STRUCTURAL:no_candles": 1}
     assert r["n_unexplained"] == 0
+
+
+def test_a_gate_the_replay_applied_itself_is_a_disagreement_not_a_mystery(conn):
+    """The replay priced the event and its OWN gate refused while live traded it. That is
+    a disagreement about a gate — nameable, countable, and not worth an alarm."""
+    live = _settled_live_trade(conn, "26AUG1414")
+    wf = _wf([]) | {"feature_rows": [{"series": "KXWTIW", "period": "2026-08-14",
+                                      "placed": False, "blocked_by": "skill_blocked"}]}
+    r = lr.reconcile(conn, wf, live, CUT, UNTIL)
+    assert r["live_only_by_cause"] == {"DISAGREED:replay_skill_blocked": 1}
+    assert r["n_unexplained"] == 0
+
+
+def test_a_priceable_bet_the_replay_built_and_never_traded_is_UNEXPLAINED(conn):
+    """The live-side alarm, and the ONLY thing that still reaches it.
+
+    The replay produced a placeable bet on this very event, the event is priceable and
+    inside the window, and yet it is absent from the traded set. No documented limit
+    covers that, so it must surface rather than be absorbed.
+    """
+    live = _settled_live_trade(conn, "26AUG1414")
+    wf = _wf([]) | {"feature_rows": [{"series": "KXWTIW", "period": "2026-08-14",
+                                      "placed": True, "blocked_by": None}]}
+    r = lr.reconcile(conn, wf, live, CUT, UNTIL)
+    assert r["n_unexplained"] == 1
+    assert "never traded it" in r["unexplained"][0]["detail"]
+
+
+def test_unexplained_is_reachable_at_all_on_the_live_side(conn):
+    """A meta-test, because the bug this file now guards was not a wrong answer — it was
+    a taxonomy in which the alarm could never fire. Every live-only trade fell into one
+    of three buckets, two of which needed a re-entry or an open position, so ALIGNED was
+    guaranteed rather than earned. If some future refactor makes UNEXPLAINED unreachable
+    again, the suite must fail here instead of going quietly green forever."""
+    import ast
+    import inspect
+    import textwrap
+    fn = ast.parse(textwrap.dedent(inspect.getsource(lr._explain_live_only))).body[0]
+    src = inspect.getsource(lr._explain_live_only)
+    assert "UNEXPLAINED" in src, "the live-side alarm has been removed"
+    # It must also not BE the fallthrough. A function whose final unconditional return is
+    # UNEXPLAINED alarms on every ordinary disagreement; one that can never reach it never
+    # alarms at all. Both are the same failure — the bucket carrying no information.
+    last = fn.body[-1]
+    assert isinstance(last, ast.Return), "the charge list must end in a definite answer"
+    assert "UNEXPLAINED" not in ast.dump(last), \
+        "UNEXPLAINED became the catch-all; give the ordinary case its own bucket"
 
 
 # ── opportunity attribution ────────────────────────────────────────

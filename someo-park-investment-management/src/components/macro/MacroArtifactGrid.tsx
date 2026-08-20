@@ -14,7 +14,7 @@ import {
   LayoutDashboard, Landmark, TrendingUp, Users, Flame, GitCompare,
   ClipboardList, LineChart, Gauge, LayoutGrid, Shield, BookOpen, Download,
   BarChart3, ShieldCheck, FlaskConical, Target, RotateCcw, ListChecks, Bell,
-  Timer,
+  Timer, Scale,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +38,10 @@ export const MACRO_ITEMS: Item[] = [
   // unrelated blocks in one artifact; the blocks are now artifacts of their own,
   // all still under the QUALITY group so the subtitle categorization holds.
   { type: 'macro_replay',      i18nKey: 'replay',      Icon: RotateCcw },
+  // The rolling replay-vs-live reconciliation (research/live_replay), distinct
+  // from macro_replay: that one re-scores past predictions, this one re-runs the
+  // walk-forward over the LIVE window and charges every divergence to a cause.
+  { type: 'macro_livereplay',  i18nKey: 'liveReplay',  Icon: Scale },
   { type: 'macro_scoring',     i18nKey: 'scoring',     Icon: ListChecks },
   { type: 'macro_coverage',    i18nKey: 'coverage',    Icon: LayoutGrid },
   { type: 'macro_alerts',      i18nKey: 'alerts',      Icon: Bell },
@@ -63,9 +67,9 @@ export const MACRO_GROUPS: MacroGroup[] = [
   { key: 'trading',  i18nKey: 'groupTrading',  Icon: ClipboardList,
     types: ['macro_bets', 'macro_decisions', 'macro_performance', 'macro_divergence'] },
   { key: 'quality',  i18nKey: 'groupQuality',  Icon: ShieldCheck,
-    types: ['macro_calibration', 'macro_replay', 'macro_scoring',
-            'macro_walkforward', 'macro_sweep', 'macro_coverage', 'macro_alerts',
-            'macro_risk'] },
+    types: ['macro_calibration', 'macro_replay', 'macro_livereplay',
+            'macro_scoring', 'macro_walkforward', 'macro_sweep', 'macro_coverage',
+            'macro_alerts', 'macro_risk'] },
   { key: 'reports',  i18nKey: 'groupReports',  Icon: Download,
     types: ['macro_reports'] },
 ];

@@ -212,12 +212,53 @@ def _explain_replay_only(t: dict, idx: dict) -> tuple[str, str]:
     return "UNEXPLAINED", "live never wrote any decision for this event in the window"
 
 
-def _explain_live_only(t: dict, replay_keys: Counter, conn) -> tuple[str, str]:
+def _event_facts(conn, series: str, key: str) -> tuple[int, datetime | None]:
+    """(real candle rows, event close) for the event the model calls `key`.
+
+    `contracts.period` holds Kalshi's own token (`26AUG1414`, `26JUL`); every trade and
+    decision record in this file holds the model's period KEY (`2026-08-14`, `2026-07`).
+    They are never equal — 0 of 8872 contract rows have an ISO-shaped period — so the
+    `c.period = ?` filter this function replaces matched nothing on EVERY event, always
+    returned 0, and turned `no_candles` into an alibi that fitted any live-only trade.
+    `research/pit_gates.period_closes` carries the same warning and does the same join;
+    this is that join, done the same way.
+
+    `cd.end_ts > 0` matters: kalshi_md writes a NULL-price sentinel row at end_ts=0 when
+    the candlestick endpoint 404s, and 6700 of 14683 candle rows are that sentinel.
+    Counting them would read "priceable" exactly when it is not.
+    """
+    from prediction_market_macro.util.periods import kalshi_period_to_key
+    n, close = 0, None
+    for r in conn.execute(
+            "SELECT c.period p, MAX(c.close_time) ct,"
+            " SUM(CASE WHEN cd.end_ts>0 AND cd.yes_ask_close IS NOT NULL THEN 1 ELSE 0 END) n"
+            " FROM contracts c LEFT JOIN candles cd ON cd.ticker=c.ticker"
+            " WHERE c.series=? GROUP BY c.period", (series,)):
+        if kalshi_period_to_key(r["p"]) != key:
+            continue
+        n += r["n"] or 0
+        if r["ct"]:
+            ct = datetime.fromisoformat(r["ct"].replace("Z", "+00:00"))
+            close = ct if close is None else max(close, ct)
+    return n, close
+
+
+def _explain_live_only(t: dict, replay_keys: Counter, conn, feat: dict,
+                       sim_end: datetime) -> tuple[str, str]:
     """Charge one live-only trade to a cause.
 
-    Two structural causes exist and both are documented in walkforward.run: the replay
-    takes at most one trade per event (so live's 2nd+ entry on a key can never appear),
-    and it can only price legs that have real candle rows on a settled event.
+    Ordered most-structural first, and deliberately ending somewhere reachable. The
+    previous version could only ever return one of three answers, two of which required a
+    re-entry or an open position, so every remaining live-only trade fell into
+    `no_candles` — including events with hundreds of candle rows. That made `UNEXPLAINED`
+    unreachable on this side of the ledger and the ALIGNED verdict vacuous: it was not
+    that nothing was unexplained, it was that nothing COULD be.
+
+    The two ends of the list are the ones worth reading. `outside_window` is not a defect
+    at all — the replay stops at yesterday, so a position live opened on a still-unsettled
+    event is invisible to it and will fold in on its own once the event closes.
+    `UNEXPLAINED` now means the replay built a placeable bet on this very event and yet
+    the event is missing from its traded set, which no documented limit explains.
     """
     key = (t["series"], t["period"])
     if replay_keys.get(key):
@@ -226,17 +267,30 @@ def _explain_live_only(t: dict, replay_keys: Counter, conn) -> tuple[str, str]:
     if t["open"]:
         return ("STRUCTURAL:still_open",
                 "replay only walks SETTLED events; this position has not closed")
-    n = conn.execute(
-        "SELECT COUNT(*) c FROM candles cd JOIN contracts c ON c.ticker=cd.ticker"
-        " WHERE c.series=? AND c.period=? AND cd.end_ts>0 AND cd.yes_ask_close IS NOT NULL",
-        (t["series"], t["period"])).fetchone()["c"]
+    n, close = _event_facts(conn, t["series"], t["period"])
+    if close is not None and close > sim_end:
+        return ("STRUCTURAL:outside_window",
+                f"event closes {close.date()}, after the replay's cut-off"
+                f" {sim_end.date()} — it settles into a later window, not this one")
     if n == 0:
-        # `cd.end_ts > 0` matters: kalshi_md writes a NULL-price sentinel row at end_ts=0
-        # when the candlestick endpoint 404s, and 6700 of 14683 candle rows are that
-        # sentinel. Counting them would read "priceable" exactly when it is not.
         return ("STRUCTURAL:no_candles",
                 "no real candle rows for this event — the replay cannot price it")
-    return "UNEXPLAINED", f"event has {n} candle rows and no re-entry excuse"
+    rows = feat.get(key) or []
+    blocked = [r["blocked_by"] for r in rows if r.get("blocked_by")]
+    if blocked:
+        # The replay priced the same event and its OWN gate refused. Live's gates are the
+        # shipped ones, so this is a genuine disagreement about a gate rather than about a
+        # price — the mirror of `_explain_replay_only`'s DISAGREED bucket.
+        top = Counter(blocked).most_common(1)[0]
+        return (f"DISAGREED:replay_{top[0]}",
+                f"replay priced it and its own {top[0]} gate blocked it x{top[1]}")
+    if rows:
+        return ("UNEXPLAINED",
+                f"replay built {len(rows)} placeable bet(s) on this event"
+                f" ({n} candle rows) yet never traded it")
+    return ("DISAGREED:replay_declined",
+            f"event was priceable ({n} candle rows) and settled inside the window, but no"
+            " leg cleared the replay's edge rule at any daily candle close")
 
 
 def reconcile(conn, wf: dict, live: list[dict], since: str, until: str) -> dict:
@@ -248,6 +302,13 @@ def reconcile(conn, wf: dict, live: list[dict], since: str, until: str) -> dict:
     favourite bet as an unexplained divergence.
     """
     idx = pass_index(conn, since, until)
+    # Every event the replay PRICED, traded or not. `feature_rows` carries the blocked
+    # ones too (walkforward #147: placed=False / blocked_by=<gate>), which is the only
+    # way to tell "the replay's gate refused" apart from "the replay saw no edge".
+    feat: dict[tuple[str, str], list[dict]] = defaultdict(list)
+    for fr in wf.get("feature_rows") or []:
+        feat[(fr["series"], fr["period"])].append(fr)
+    sim_end = datetime.fromisoformat(until)
     rep = [{"series": t["series"], "period": t["period"],
             "day": t["day"], "desc": t["desc"], "staked": t["staked"],
             "realized": t["realized"], "won": t["won"]}
@@ -271,7 +332,7 @@ def reconcile(conn, wf: dict, live: list[dict], since: str, until: str) -> dict:
         # the re-entries the replay cannot represent, so they belong in live_only.
         if rep_keys.get(k) and seen[k] == 1:
             continue
-        bucket, detail = _explain_live_only(t, rep_keys, conn)
+        bucket, detail = _explain_live_only(t, rep_keys, conn, feat, sim_end)
         live_only.append({**t, "bucket": bucket, "detail": detail})
 
     def _tally(rows):

@@ -39,6 +39,43 @@ export type MacroPricetrack = {
 };
 export const getMacroPricetrack = () => getMacroJson<MacroPricetrack>('macro_pricetrack');
 
+/** research/live_replay — the walk-forward re-run over the live window, reconciled
+ *  trade-by-trade against the live ledger. `bucket` is the charge: STRUCTURAL:* is a
+ *  documented harness limit, DISAGREED:* is the two rules genuinely differing, and
+ *  UNEXPLAINED is the only one that raises an alert. */
+export type MacroReplayLeg = {
+  series: string; period: string; day?: string; desc?: string;
+  staked?: number | null; realized?: number | null; won?: boolean;
+  bucket?: string; detail?: string; n_live_on_key?: number;
+};
+export type MacroLiveReplay = {
+  generated_at?: string;
+  latest_ts?: string;
+  latest?: {
+    window_start?: string; window_end?: string; days?: number; generated_at?: string;
+    replay?: { n_trades?: number; won?: number; staked?: number; realized?: number; roi?: number | null };
+    live?: { n_trades?: number; n_open?: number; won?: number; staked?: number; realized?: number };
+    reconciliation?: {
+      n_replay?: number; n_live?: number; n_matched?: number;
+      n_replay_only?: number; n_live_only?: number; n_unexplained?: number;
+      replay_only_by_cause?: Record<string, number>;
+      live_only_by_cause?: Record<string, number>;
+      matched?: MacroReplayLeg[]; replay_only?: MacroReplayLeg[]; live_only?: MacroReplayLeg[];
+      unexplained?: MacroReplayLeg[]; verdict?: string; note?: string;
+    };
+    opportunity?: {
+      n_pass?: number; infra_share?: number | null;
+      by_bucket?: Record<string, number>; by_reason?: Record<string, number>;
+      counterfactual?: { n_infra_blocked_events?: number; n_replay_traded?: number;
+        replay_realized?: number; replay_staked?: number; caveat?: string };
+    };
+  };
+  history?: { window_end?: string; days?: number; replay_realized?: number | null;
+    live_realized?: number | null; n_matched?: number; n_replay_only?: number;
+    n_live_only?: number; n_unexplained?: number; infra_share?: number | null }[];
+};
+export const getMacroLiveReplay = () => getMacroJson<MacroLiveReplay>('macro_livereplay');
+
 /** On-demand local-model analysis of one macro view (slow; call one at a time). */
 export const analyzeMacro = (view: string, lang: string) =>
   fetch(`${API_BASE}/api/macro/analyze`, {
