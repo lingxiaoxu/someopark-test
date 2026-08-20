@@ -109,8 +109,7 @@ export type MacroBoard = {
 };
 
 /** Compact human summary of a prediction distribution:
- *  gmix → "mu ± sigma"; empirical → "p50 [p5, p95]" (quantile idx 10/100/190);
- *  categorical → top-2 probs. */
+ *  gmix / empirical → "p50 [p5, p95]"; categorical → top-2 probs. */
 /** Compact number: at most 4 decimals, trailing zeros stripped (display-wide rule). */
 export const nice = (v: any): string => {
   const n = Number(v);
@@ -118,20 +117,59 @@ export const nice = (v: any): string => {
   return String(Number(n.toFixed(4)));
 };
 
+/** Standard normal CDF (A&S 7.1.26 erf, |err| < 1.5e-7 — display precision). */
+function normCdf(z: number): number {
+  const s = z < 0 ? -1 : 1, x = Math.abs(z) / Math.SQRT2;
+  const t = 1 / (1 + 0.3275911 * x);
+  const y = 1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t
+    - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+  return 0.5 * (1 + s * y);
+}
+
+/** Quantile of a Gaussian mixture, by bisection on its CDF.
+ *  A scale mixture (all comps share a mean) has a stdev dominated by its fat-tail
+ *  component, so "mu ± sd" describes a region the forecast doesn't believe in —
+ *  KXPAYROLLS reads 74,967 ± 74,431 (±99%) while carrying 80% of its mass inside
+ *  ±73,884. A quantile band states the same distribution without implying symmetry
+ *  of mass, and matches how the empirical branch below reports. */
+function gmixQuantile(comps: any[], p: number): number {
+  let lo = Infinity, hi = -Infinity;
+  for (const [, m, s] of comps) {
+    lo = Math.min(lo, m - 12 * Math.abs(s));
+    hi = Math.max(hi, m + 12 * Math.abs(s));
+  }
+  if (!Number.isFinite(lo) || !Number.isFinite(hi)) return NaN;
+  const wsum = comps.reduce((a, c) => a + c[0], 0) || 1;
+  const cdf = (x: number) => comps.reduce(
+    (a, [w, m, s]) => a + (w / wsum) * (s > 0 ? normCdf((x - m) / s) : (x >= m ? 1 : 0)), 0);
+  for (let i = 0; i < 80; i++) {
+    const mid = (lo + hi) / 2;
+    if (cdf(mid) < p) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 export function predSummary(dist: any): string {
   if (!dist || !dist.kind) return '—';
   if (dist.kind === 'gmix' && Array.isArray(dist.comps) && dist.comps.length) {
-    // comps: [[weight, mu, sigma], ...] → mixture mean ± mixture stdev
-    let mu = 0, m2 = 0;
-    for (const [w, m, s] of dist.comps) { mu += w * m; m2 += w * (s * s + m * m); }
-    const sigma = Math.sqrt(Math.max(0, m2 - mu * mu));
-    return `${nice(mu)} ± ${nice(sigma)}`;
+    // comps: [[weight, mu, sigma], ...]
+    const q = (p: number) => gmixQuantile(dist.comps, p);
+    return `${nice(q(0.5))} [${nice(q(0.05))}, ${nice(q(0.95))}]`;
   }
   if (dist.kind === 'empirical' && Array.isArray(dist.quantiles) && dist.quantiles.length) {
-    const q = dist.quantiles.filter((v: any) => Number.isFinite(v));
+    const q = dist.quantiles.filter((v: any) => Number.isFinite(v)) as number[];
     if (!q.length) return '—';
-    const at = (i: number) => q[Math.min(i, q.length - 1)];
-    return `${nice(at(100))} [${nice(at(10))}, ${nice(at(190))}]`;
+    // quantiles[] is np.linspace(0, 1, N) (model/common.py Empirical.to_json), so
+    // index i is the i/(N-1) quantile and the percentile MUST come off the array's
+    // own length. This used to hardcode 10/100/190 for N=201; the models moved to
+    // N=1001 and `Math.min` clamped instead of throwing, so every energy/rates card
+    // silently printed its 10th percentile as the median (WTI was $4.51/bbl low and
+    // U3's band 3x too narrow) for as long as _EMP_QUANTILES has been 1001.
+    const at = (p: number) => {
+      const pos = p * (q.length - 1), lo = Math.floor(pos), hi = Math.ceil(pos);
+      return q[lo] + (q[hi] - q[lo]) * (pos - lo);
+    };
+    return `${nice(at(0.5))} [${nice(at(0.05))}, ${nice(at(0.95))}]`;
   }
   if (dist.kind === 'categorical' && dist.probs) {
     const top = Object.entries(dist.probs as Record<string, number>)
