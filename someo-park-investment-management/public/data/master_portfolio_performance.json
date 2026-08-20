@@ -5626,5 +5626,33 @@
     "smh_equity": 1500286.66,
     "soxx_equity": 1663316.87,
     "mags_equity": 927662.3
+  },
+  {
+    "date": "2026-08-19",
+    "mrpt_equity": 616435.98,
+    "mrpt_pnl": -950.4,
+    "mrpt_dd": -1.6,
+    "mtfs_equity": 296435.13,
+    "mtfs_pnl": -58022.84,
+    "mtfs_dd": -49.65,
+    "sr_equity": 1042914.56,
+    "sr_pnl": 7407.87,
+    "sr_dd": 0.0,
+    "aiss_equity": 2817057.26,
+    "aiss_pnl": -92055.32,
+    "aiss_dd": -12.86,
+    "bdc_equity": 944433.15,
+    "bdc_pnl": 3297.54,
+    "bdc_dd": -0.94,
+    "combined_equity": 4772842.93,
+    "combined_pnl": -143620.69,
+    "combined_dd": -12.28,
+    "master_equity": 5717276.08,
+    "master_pnl": -140323.15,
+    "master_dd": -10.24,
+    "spy_equity": 1046206.69,
+    "smh_equity": 1476983.33,
+    "soxx_equity": 1626631.81,
+    "mags_equity": 940449.98
   }
 ]

@@ -1,6 +1,6 @@
 {
  "strategy": "bdc_sleeve",
- "as_of": "2026-08-18",
+ "as_of": "2026-08-19",
  "base_currency": "USD",
  "initial_cash": 921498.8,
  "cash": 0.0,
@@ -39,7 +39,7 @@
  },
  "cumulative_dividends": 48621.15,
  "cumulative_fees": 0.0,
- "equity": 941135.61,
+ "equity": 944433.15,
  "price_basis_state": "official_eod(perf json)",
  "derived_from": [
   "inventory_bdc.json",
