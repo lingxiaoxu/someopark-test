@@ -1401,6 +1401,21 @@ def sweep(conn, days: int = 30, leads=(1.0, 3.0, 5.0, 7.0)) -> dict:
         per_lead[f"{lead:g}d"] = {k: r.get(k) for k in
                                   ("n_trades", "win_rate", "staked", "realized",
                                    "roi", "by_series", "curve")}
+        # The keys above are `run`'s headline, which is the EDGE stream alone
+        # (`trades = opened.values()`; the favourite leg lives in `opened_argmax`).
+        # Production trades the HYBRID rule — `decide_all` places the favourite
+        # exactly when the edge decision passed — so choosing an entry lead by the
+        # headline ROI optimises a stream nobody trades. It flatters, consistently:
+        # on the stored 30d/60d runs the argmax leg returns +17.5%/-0.3% against
+        # edge's +153.6%/+36.7%, which is what drags hybrid down to +114.7%/+31.5%.
+        # Carried alongside rather than replacing the headline: `freeze_track` and
+        # the sweep chart read the existing keys, and a lead sweep is worth reading
+        # per stream anyway — the favourite's best lead need not be the edge's.
+        # Trade lists dropped; four leads x three streams of them is payload the
+        # sweep artifact never reads, and `run` already stores the full ones.
+        per_lead[f"{lead:g}d"]["streams"] = {
+            k: {kk: vv for kk, vv in (v or {}).items() if kk != "trades"}
+            for k, v in (r.get("streams") or {}).items()}
     cov = coverage(conn, days)
     out = {"days": days, "leads": per_lead, "coverage": cov,
            "generated_at": now.isoformat(),

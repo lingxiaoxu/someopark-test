@@ -418,9 +418,16 @@ def run_extended(conn, settings) -> str:
     gates = [dict(r) for r in conn.execute(
         "SELECT * FROM experiments WHERE name IN ('dfm_gate','series_gate')"
         " ORDER BY created_ts DESC LIMIT 40").fetchall()]
+    # `window LIKE '30d%'` for the same reason macro_walkforward.json filters: the
+    # `daily_walkforward` name is shared by every run that stores one, so "latest row"
+    # is whatever job finished last. Today that is `research/live_replay`'s 8-day
+    # window (hash `...:livewin`), and before it the 75-day frozen-track rebuild — so
+    # this block has been reporting an 8-day sample as the walk-forward. The `livewin`
+    # tag stopped those runs OVERWRITING the 30d row; it never stopped a reader from
+    # picking them up, and this reader had no filter.
     wf_row = conn.execute(
         "SELECT metrics_json FROM experiments WHERE name='daily_walkforward'"
-        " ORDER BY created_ts DESC LIMIT 1").fetchone()
+        " AND window LIKE '30d%' ORDER BY created_ts DESC LIMIT 1").fetchone()
     walkforward = None
     if wf_row:
         try:
@@ -428,6 +435,18 @@ def run_extended(conn, settings) -> str:
             walkforward = {k: w.get(k) for k in
                            ("days", "n_trades", "win_rate", "staked", "realized",
                             "roi", "by_series", "lead_buckets", "curve", "note")}
+            # Those keys are `walkforward.run`'s headline, which is the EDGE stream
+            # alone. Nothing renders this block any more (it was folded into the
+            # Walk-Forward Lab), but the local model still reads macro_oos for the
+            # calibration and overview narrations, and edge-only ROI reads ~39pp
+            # better than the hybrid rule production actually trades. Ship the
+            # hybrid summary beside it and label which is which, so the narration
+            # is not quoting a stream nobody trades.
+            walkforward["streams"] = {
+                k: {kk: vv for kk, vv in (v or {}).items() if kk != "trades"}
+                for k, v in (w.get("streams") or {}).items()}
+            walkforward["headline_stream"] = "edge"
+            walkforward["live_stream"] = "hybrid"
         except json.JSONDecodeError:
             pass
     _write(out_dir / "macro_oos.json",

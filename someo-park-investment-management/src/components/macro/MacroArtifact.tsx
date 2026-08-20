@@ -1152,8 +1152,15 @@ function SweepView() {
     byDay[p.day][lk] = p.pnl;
   }));
   Object.keys(byDay).sort().forEach((d) => chart.push(byDay[d]));
+  // `lv.roi` is walkforward.run's headline = the EDGE stream alone. Production trades
+  // the HYBRID rule (edge where it fired, favourite where it passed), so the lead this
+  // panel recommends has to be scored on hybrid or it is optimising a stream nobody
+  // trades — and edge flatters consistently, because the favourite leg drags. Runs
+  // stored before sweep carried per-lead streams have no hybrid; fall back rather than
+  // blank the recommendation, and the two ROI columns below make the gap visible.
+  const roiOf = (lv: any) => lv?.streams?.hybrid?.roi ?? lv?.roi;
   const bestLead = leads.length
-    ? leads.reduce((a, b) => ((b[1].roi ?? -9) > (a[1].roi ?? -9) ? b : a))[0] : null;
+    ? leads.reduce((a, b) => ((roiOf(b[1]) ?? -9) > (roiOf(a[1]) ?? -9) ? b : a))[0] : null;
   return (
     <div>
       <Generated ts={sweep?.generated_at ?? data?.generated_at} />
@@ -1166,12 +1173,17 @@ function SweepView() {
       <SectionTitle>{t('macro.wfLeadCompare')}</SectionTitle>
       <DataTable
         cols={[t('macro.wfLead'), t('macro.colTrades'), t('macro.winRate'),
-          t('macro.colPnl'), 'ROI']}
+          t('macro.colPnl'), 'ROI·edge', 'ROI·hybrid']}
         rows={leads.map(([lk, lv]) => [
           <Chip color={LEAD_COLORS[lk] ?? 'var(--text-muted)'}>{lk}</Chip>,
           lv.n_trades ?? '—', pct(lv.win_rate),
           <span style={{ ...mono, color: (lv.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(lv.realized)}</span>,
-          <span style={{ ...mono, color: (lv.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(lv.roi)}</span>,
+          <span style={{ ...mono, color: 'var(--text-muted)' }}>{pct(lv.roi)}</span>,
+          // hybrid is the live rule, so it is the one in full contrast; edge sits
+          // beside it muted because it is the diagnostic, not the record.
+          <span style={{ ...mono, fontWeight: 700, color: (lv.streams?.hybrid?.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>
+            {lv.streams?.hybrid ? pct(lv.streams.hybrid.roi) : '—'}
+          </span>,
         ])} />
       {chart.length > 1 && (
         <>
