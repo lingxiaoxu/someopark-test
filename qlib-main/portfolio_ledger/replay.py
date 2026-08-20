@@ -48,6 +48,9 @@ def replay(strategy: str, force: bool = False) -> Account:
     log.info(f"[{strategy}] replay {first} → {last}, universe={tickers}")
 
     prices = load_store_prices(strategy, tickers)
+    # 收盘 mark 用真实 Close(2026-08-20);成交仍走 prices。两条路径必须一致,
+    # 否则 replay 会把 daily_update 已经改对的 mark 口径又退回 AdjClose。
+    mark_px = load_store_prices(strategy, tickers, field="Close")
     divs = _prepare_dividends(strategy, tickers, first, last, splits)
     fees = load_fees_by_date(strategy)
 
@@ -56,7 +59,7 @@ def replay(strategy: str, force: bool = False) -> Account:
     ts0 = pd.Timestamp(first)
     if ts0 not in prices.index:
         raise SystemExit(f"[{strategy}] live start {first} 不是交易日？")
-    acct.mark(first, prices.loc[ts0])
+    acct.mark(first, mark_px.loc[ts0] if ts0 in mark_px.index else prices.loc[ts0])
     acct.save_history(first)
     log.info(f"[{strategy}] 期初 {first}: cash=${acct.data['cash']:,.2f} "
              f"持仓 {len(acct.data['positions'])} 只 equity=${acct.data['equity']:,.2f}")
@@ -64,7 +67,7 @@ def replay(strategy: str, force: bool = False) -> Account:
     seen: set = set()
     days = [str(d.date()) for d in prices.index if first < str(d.date()) <= last]
     for day in days:
-        process_day(acct, day, prices, snaps, divs, fees, seen)
+        process_day(acct, day, prices, snaps, divs, fees, seen, mark_prices=mark_px)
     acct.save()
 
     _validate(strategy, acct, snaps[last])

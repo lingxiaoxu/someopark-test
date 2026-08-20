@@ -161,9 +161,16 @@ def _fetch_dividends_polygon(symbol: str, api_key: str) -> list | None:
 
 # ── 价格（Polygon store only，禁 yfinance）──────────────────────────────────
 
-def load_store_prices(strategy: str, tickers: list) -> pd.DataFrame:
-    """从策略自己的 Polygon parquet store 读 AdjClose 宽表。
-    缺 ticker = 硬告警（宁缺毋假，不做任何兜底价格源）。"""
+def load_store_prices(strategy: str, tickers: list,
+                      field: str = "AdjClose") -> pd.DataFrame:
+    """从策略自己的 Polygon parquet store 读价格宽表。
+    缺 ticker = 硬告警（宁缺毋假，不做任何兜底价格源）。
+
+    field="Close" 供**收盘 mark** 专用（2026-08-20）：账户是真金白银的盯市，
+    必须用真实收盘价。AdjClose 是总收益序列，用它 mark 会把股息记两遍——
+    除权日 AdjClose 自动抬回 Close（+d×shares 的 unrealized 跳变），而
+    process_day 同日又把同一笔股息入了现金。实测 SSRS 6/19 的 $4,837.86
+    被计两次 = 发布曲线永久虚高 42.82bp。AdjClose 只该喂因子/回测。"""
     store = _cfg(strategy)["store_dir"]
     cols = {}
     for t in sorted(set(tickers)):
@@ -172,7 +179,7 @@ def load_store_prices(strategy: str, tickers: list) -> pd.DataFrame:
             log.error(f"[{strategy}] POLYGON STORE MISSING {t} ({fp}) — ticker skipped")
             continue
         df = pd.read_parquet(fp)
-        col = "AdjClose" if "AdjClose" in df.columns else "Close"
+        col = field if field in df.columns else "Close"
         cols[t] = df[col]
     if not cols:
         raise RuntimeError(f"[{strategy}] no prices loaded from {store}")
@@ -399,14 +406,19 @@ def append_ledger(strategy: str, rows: list, seen_keys: set):
 
 def process_day(acct: Account, day: str, prices: pd.DataFrame,
                 snaps: dict, divs_by_ticker: dict, fees_by_date: dict,
-                seen_keys: set) -> list:
+                seen_keys: set, mark_prices: pd.DataFrame | None = None) -> list:
     """一个交易日的完整记账：分红 → 快照差额成交（Polygon 当日收盘）→ 费用 → mark。
-    返回当日 ledger 行（已去重过滤前的原始行）。"""
+    返回当日 ledger 行（已去重过滤前的原始行）。
+
+    mark_prices：收盘 mark 专用价格帧（真实 Close，见 load_store_prices）。
+    None → 沿用 prices（旧行为）。本参数**只**影响 mark，不动任何成交/成本/已实现。"""
     strategy = acct.strategy
     ts = pd.Timestamp(day)
     if ts not in prices.index:
         return []                                   # 非交易日
     prices_row = prices.loc[ts]
+    mark_row = prices_row if mark_prices is None or ts not in mark_prices.index \
+        else mark_prices.loc[ts]
     rows: list = []
 
     # 1) 分红（ex-date 当日、按当前口径每股金额入现金）
@@ -433,14 +445,20 @@ def process_day(acct: Account, day: str, prices: pd.DataFrame,
             if px is None or pd.isna(px):
                 raise AssertionError(f"[{strategy}] {day} 成交缺 {t} 价格")
             rows.append(acct.trade(day, t, d, float(px)))
-        fee = fees_by_date.get(day)
-        if fee and any(deltas.values()):
-            r = acct.fee(day, fee)
-            if r:
-                rows.append(r)
+
+    # 2b) 费用：只看"这天有没有费用"，不再附加 target/deltas 条件。
+    #     原判据 `if fee and any(deltas.values())` 嵌在快照块里，与 _catch_up_fees
+    #     的补收规则不一致（同一笔费用两条路判法不同）。fees_by_date 只收录
+    #     total_cost_usd 非零的调仓日，所以放开条件不会凭空多扣。
+    #     去重仍由 dedup_key `{day}-FEE` 兜底 —— 已在 seen_keys 里的不会重复入账。
+    fee = fees_by_date.get(day)
+    if fee and f"{day}-FEE" not in seen_keys:
+        r = acct.fee(day, fee)
+        if r:
+            rows.append(r)
 
     # 3) mark + 恒等式 + 落盘
-    acct.mark(day, prices_row)
+    acct.mark(day, mark_row)
     acct.save_history(day)
     append_ledger(strategy, rows, seen_keys)
     return rows
@@ -455,6 +473,38 @@ def _prepare_dividends(strategy: str, tickers: list, start: str, end: str,
             f = caliber_factor(t, dv["ex_dividend_date"], splits_by_ticker)
             dv["_amount_current_caliber"] = float(dv.get("cash_amount", 0) or 0) / f
     return raw
+
+
+def _catch_up_fees(acct: Account, fees_by_date: dict, seen_keys: set) -> list:
+    """补收此前漏记的费用（自愈；2026-08-20 加）。
+
+    根因（已查实，不是判据写错）：daily_update 由 daily signal 的**尾部**调用，
+    而当天的 daily report 是在它**之后**几秒才落盘的 ——
+        AISS 2026-08-03  快照 18:42:12 / 报告 18:42:14
+        SSRS 2026-08-03  快照 17:43:28 / 报告 17:43:31
+    而 load_fees_by_date 读的正是那份报告 ⇒ 调仓日的交易成本当天一律看不见。
+    daily_update 之后只处理 as_of 之后的日子，于是这笔费用永远没人回补。
+    实测漏收：aiss 2026-08-03 $236.80、ssrs 2026-08-03 $138.51。
+    （7/01 那几笔没漏，只是因为账本是次日才补建的 —— 见 account_history mtime。）
+
+    窗口 `live_start < day <= as_of`：live_start 当天是 open_from_snapshot 的
+    期初建仓日（replay §4.5-1 明确不合成虚拟交易），其成本不入账，故用严格大于。
+    去重键与 process_day 同源 ⇒ 幂等，重复调用不会重复扣。
+    现金即时扣减，equity 由随后那天的 mark 重算 —— 不改写任何历史快照。
+    """
+    live_start = _cfg(acct.strategy)["live_start"]
+    rows = []
+    for day in sorted(fees_by_date):
+        if not (live_start < day <= acct.data["as_of"]):
+            continue
+        if f"{day}-FEE" in seen_keys:
+            continue
+        r = acct.fee(day, fees_by_date[day])
+        if r:
+            rows.append(r)
+            log.warning(f"[{acct.strategy}] 补收漏记费用 {day} "
+                        f"${fees_by_date[day]:,.2f}（当日报告晚于账本落盘）")
+    return rows
 
 
 def daily_update(strategy: str, upto: str | None = None) -> int:
@@ -476,14 +526,19 @@ def daily_update(strategy: str, upto: str | None = None) -> int:
     tickers = sorted({t for h in snaps.values() for t in h} |
                      set(acct.data["positions"]))
     prices = load_store_prices(strategy, tickers)
+    mark_px = load_store_prices(strategy, tickers, field="Close")
     divs = _prepare_dividends(strategy, tickers, acct.data["as_of"], upto, splits)
     fees = load_fees_by_date(strategy)
     seen = {r.get("dedup_key") for r in load_ledger_rows(strategy)}
     days = [str(d.date()) for d in prices.index
             if acct.data["as_of"] < str(d.date()) <= upto]
+    # 补收漏记费用：只在确有新交易日要处理时做，这样现金变动会被紧接着的
+    # mark 收进**新的一天**，历史快照一律不动（口径迁移选的是"只向前"）。
+    if days:
+        append_ledger(strategy, _catch_up_fees(acct, fees, seen), seen)
     n = 0
     for day in days:
-        process_day(acct, day, prices, snaps, divs, fees, seen)
+        process_day(acct, day, prices, snaps, divs, fees, seen, mark_prices=mark_px)
         n += 1
     acct.save()
     log.info(f"[{strategy}] ledger 更新 {n} 天 → as_of={acct.data['as_of']} "
