@@ -2587,6 +2587,20 @@ bar 还没落库时就把合约判死,3 天给日常道 3 次尝试机会,而期
 
 ## §30 demo 实盘跟单 —— `trading_kalshi` 镜像执行($492 demo 账户,用户 2026-08-18 指令)
 
+> **2026-08-20 账户余额变更:$492.65 → $2,700.00**(用户充值,API 实测确认,0 持仓)。
+> 本节下文写死的 `$492` 保留原样——它们记录的是 2026-08-18 落笔当时的账户,改掉就
+> 分不清"当时如此"和"现在如此"。**当前余额永远以 `GET /portfolio/balance` 为准**,
+> 缓存在 `experiments(name='bankroll')`,由 `ops/refresh.py` 的 bankroll 步日更。
+>
+> ⚠️ 这次充值暴露了一个真实缺口:**§30.4 的余额恒等式没有出入金项**。
+> `cash_expected = start_cash + Σrealized − Σfees − positions_cost − reserved`
+> 里,一笔充值只会体现在 `cash_exchange` 上,于是 drift = 充值额。今天没有 halt
+> 只是因为镜像还在 dark(`armed` 未设,此时 `cash_expected := cash_exchange`,恒等
+> 式恒真)。**arm 之后再充值就会直接触发 halt**。这不算 bug——"无法解释的现金变动
+> 应当停机"正是这条恒等式存在的理由——但充值是良性事件,arming 之前需要决定是给
+> §30.4 加一张出入金台账,还是把充值当成一次显式的 `start_cash` 重定基(两者都要留
+> 痕,不能靠 ack_halt 一按了事)。
+
 ### §30.0 一句话架构
 
 **paper 台账就是 inventory,demo 账户是它的 ×100 放大镜像。**内部系统每写一笔 paper
@@ -2629,8 +2643,10 @@ arb / snipe 写完 paper fills 之后**调 `trading_kalshi.sync(conn, s)`。sync
 2. **每日持仓对账**:`GET /portfolio/positions` 与 Σ`demo_fills` 的期望持仓逐 ticker
    比对;**任何不一致 → level=error 告警 + 跟单器自动暂停**(写 `mirror_halt` 行,
    人工 ack 才恢复)。漂移不许带病运行。
-3. **每日余额对账**:demo 余额 vs (492 + Σrealized − Σfees) 的期望值,超容差同样
-   halt + 告警。
+3. **每日余额对账**:demo 余额 vs (`start_cash` + Σrealized − Σfees − 持仓成本 −
+   在途冻结) 的期望值,超容差同样 halt + 告警。`start_cash` 是 `arm()` 当时钉住的
+   余额(k/v `demo_mirror_state.start_cash`),**不是**写死的 492——落笔时账户恰好是
+   $492,2026-08-20 已变为 $2,700。注意此式**没有出入金项**,见本节开头的警告。
 
 **缺口 3 —— 闸门②的 Brier 判据和赚钱不是一回事,$492 永远花不出去。**
 处理:**Brier 判据对跟单路径 PAUSED**(用户指令原文)。三道闸门**结构**保留,内容

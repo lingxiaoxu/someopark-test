@@ -50,6 +50,140 @@ from prediction_market_macro.strategy.edge import enumerate_structs, taker_fee
 from prediction_market_macro.util.periods import kalshi_period_to_key
 
 
+class _MLBook:
+    """The `research/selector.py` learned bet-selector, refitted per SIMULATED DAY.
+
+    Why it moved here (2026-08-20, user instruction). `selector.py` runs its own
+    harness: no db_gates, no pit_gates, no exits, flat $1, one bet per event. Its
+    output was nevertheless tabled in the Walk-Forward Lab beside `argmax`, which
+    carries every one of those, and read +104.9% against argmax's +17.5% on the same
+    30 days. That comparison is not close to fair — it is mostly a measurement of
+    which harness is more permissive. Serving the same model inside THIS loop puts it
+    behind the identical gate chain, exit rules and risk vetoes, which is the only way
+    "is the learned line better?" becomes a question about the model.
+
+    PIT contract, unchanged from selector's: the model that scores an event on
+    simulated day D is fit ONLY on structures whose event CLOSED strictly before D.
+    Refit is cached per day rather than per event — the training set is a function of
+    the day alone, so a per-event refit would be the same fit computed ~10x.
+
+    One train/serve gap is real and is NOT hidden: `build_dataset` labels rows from
+    RAW structs, while this loop scores structs after `gs.calibrate_structs` and
+    `gs.filter_capture`. Calibration is identity-pinned in production (README §标定
+    设计研究: identity beat all four candidates), so the gap is normally nil, and
+    `gate_stats['calibrated_events']` is the number that says whether it stayed nil on
+    any given run. Capture only ever REMOVES candidates, which cannot move a fitted
+    coefficient — it can only shrink the menu this scorer chooses from, which is
+    exactly what production does to its own menu.
+    """
+
+    def __init__(self, conn, max_events: int = 400):
+        from prediction_market_macro.research.selector import build_dataset
+        self.data = build_dataset(conn, max_events)
+        self._fits: dict[str, object] = {}
+
+    def fit_for(self, day: datetime):
+        """(scaler, clf) trained on everything settled before `day`, or None."""
+        from prediction_market_macro.research.selector import MIN_TRAIN
+        ck = day.date().isoformat()
+        if ck in self._fits:
+            return self._fits[ck]
+        train = [r for r in self.data if r["close"].date().isoformat() < ck]
+        out = None
+        if len(train) >= MIN_TRAIN and len({r["y"] for r in train}) >= 2:
+            from sklearn.linear_model import LogisticRegression
+            from sklearn.preprocessing import StandardScaler
+            Xt = np.array([r["x"] for r in train])
+            yt = np.array([r["y"] for r in train])
+            # per-event weights: an event's structures are ONE correlated observation,
+            # so an event quoting 14 legs must not outvote one quoting 5. Same reason
+            # and same arithmetic as selector.walkforward_eval — copied deliberately
+            # rather than re-derived, because a second opinion about the weighting
+            # would make the two lines incomparable for a reason unrelated to gates.
+            n_ev: dict[tuple, int] = {}
+            for r in train:
+                n_ev[(r["series"], r["period"])] = \
+                    n_ev.get((r["series"], r["period"]), 0) + 1
+            wt = np.array([1.0 / n_ev[(r["series"], r["period"])] for r in train])
+            sc = StandardScaler().fit(Xt)
+            clf = LogisticRegression(max_iter=500)
+            clf.fit(sc.transform(Xt), yt, sample_weight=wt)
+            out = (sc, clf)
+        self._fits[ck] = out
+        return out
+
+    @staticmethod
+    def features(st, max_fair: float, spread_med: float | None,
+                 entropy: float | None, lead_days: float, family: str) -> list[float]:
+        """selector._event_rows' `x`, in the same order. The order IS the contract —
+        a column added on one side and not the other silently reassigns every
+        coefficient, so both live in one place and this is the copy that must match."""
+        from prediction_market_macro.research.selector import FAMS
+        kind_yes = 1.0 if (st.kind == "single" and st.legs[0].side == "yes") else 0.0
+        kind_no = 1.0 if (st.kind == "single" and st.legs[0].side == "no") else 0.0
+        return [st.fair, st.cost, st.fair - st.cost, abs(st.fair - st.cost),
+                1.0 if st.fair >= max_fair - 1e-9 else 0.0,
+                1.0 if st.fair <= st.cost else 0.0,
+                # selector's own fallbacks when the book gives no spread / no entropy
+                0.05 if spread_med is None else spread_med,
+                0.5 if entropy is None else entropy,
+                lead_days / 7.0, kind_yes, kind_no] + \
+               [1.0 if family == f else 0.0 for f in FAMS]
+
+
+def _arb_scan(meta: list[dict], violations: list[dict]) -> dict:
+    """Price every detected violation exactly as `strategy/arb.execute` prices it.
+
+    The census the backtest never had. `arb` is wired live and has opened zero
+    positions; without this the backtest simply had no arb line, so "zero" and "not
+    modelled" were the same blank. They are not the same fact, and only one of them
+    is evidence.
+
+    Returns the best net-per-contract after the ceil-to-cent per-leg taker fee, and
+    whether it would clear MIN_NET. **Does not size.** Candle rows carry no depth
+    (`bid_depth`/`ask_depth` are 1e9 here), so 铁律 5 cannot bind in simulation — a
+    sized backtest arb would be a fiction about liquidity, and reporting a count with
+    no dollars is the honest shape for a line whose live twin is depth-limited.
+    """
+    from prediction_market_macro.strategy.arb import MIN_NET
+    by_ticker = {m["ticker"]: m for m in meta}
+    best = None
+    # violations that never reached the fee gate at all. Same three drop paths
+    # `arb.execute` has, and counted for the same reason it now alerts on them: a
+    # census reading "4 violations, best net None" is unreadable — it cannot say
+    # whether the fee gate held or the structure was never priceable in the first
+    # place, and those are opposite conclusions about whether the money was real.
+    dropped = 0
+    for v in violations:
+        if "buy" in v:
+            lo, hi = v["buy"], v["sell"]
+            if lo["ticker"] not in by_ticker or hi["ticker"] not in by_ticker:
+                dropped += 1
+                continue
+            prices = [lo["yes_ask"], round(1 - hi["yes_bid"], 4)]
+            payoff_min = 1.0
+        elif v.get("kind") == "buy_all_yes":
+            prices = [m["yes_ask"] for m in meta if m.get("yes_ask") is not None]
+            payoff_min = 1.0
+        elif v.get("kind") == "buy_all_no":
+            prices = [round(1 - m["yes_bid"], 4) for m in meta
+                      if m.get("yes_bid") is not None]
+            payoff_min = float(len(prices) - 1)
+        else:
+            dropped += 1
+            continue
+        if not prices or any(p is None or not (0 < p < 1) for p in prices):
+            dropped += 1
+            continue
+        cost = sum(prices)
+        fees = sum(taker_fee(p, 1) for p in prices)
+        net = payoff_min - cost - fees
+        if best is None or net > best:
+            best = net
+    return {"n_violations": len(violations), "best_net": best, "dropped": dropped,
+            "clears": best is not None and best >= MIN_NET}
+
+
 def _implied(meta: list[dict]) -> dict:
     """The devigged market view of a book, choosing the SAME devig `decide_all` does.
 
@@ -342,7 +476,12 @@ class _GateBook:
                       # on the entry cycle. Counted, not silent: this guard can in
                       # principle empty the argmax stream, and "the stream is quiet"
                       # must be distinguishable from "the stream is switched off".
-                      "argmax_churn_blocked": 0}
+                      "argmax_churn_blocked": 0,
+                      # 2026-08-20 — the `ml` counterfactual's OWN risk vetoes, kept in a
+                      # separate key from `risk_vetoed` so the live-lane number stays a
+                      # statement about the live lane. It is measured against ml's own
+                      # book (`_rows_of`), never the hybrid one.
+                      "ml_risk_vetoed": 0}
 
     def gates_for(self, series: str, day: datetime):
         """`pit_gates.GateState` as of `day`, or None when db gates are off."""
@@ -471,7 +610,8 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
         select_params: bool = True, argmax_filter: bool = True,
         model_exits: bool = True, shadow_blocked: bool = False, log=None,
         param_override: dict[str, dict] | None = None,
-        hash_tag: str = "", select_mode: str = "dsr") -> dict:
+        hash_tag: str = "", select_mode: str = "dsr",
+        ml_stream: bool = True, census: bool = True) -> dict:
     """max_lead_days: entry allowed only when days-to-close <= this (the sweep
     knob — each lead sees DIFFERENT data and different predictions at its asof).
 
@@ -557,6 +697,32 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
       here would move the pool weights, the pmf, the structs and finally the PnL. That is
       the one way this flag could have stopped being PnL-neutral, so it is guarded
       explicitly rather than left to the reader.
+
+    ml_stream / census (2026-08-20): carry ALL of production's legs in THIS harness, so
+    the choice of which to trade is made on one table instead of across incomparable
+    ones. Before today `research/selector.py` reported `ml`'s ROI off its own ungated
+    loop — no db_gates, no PIT gates, no exits, no risk veto, flat $1 stakes — and that
+    number was being read next to `argmax`'s, which carries all of them. Two strategies
+    measured on two harnesses cannot be ranked, and ranking them is the whole point.
+
+      `ml_stream`  adds two lines. `ml` serves selector's learned p(win) INSIDE this
+                   loop (see `_MLBook`), so it inherits db_gates, pit_gates, exits and
+                   the risk veto and becomes comparable. `blend` then switches per event
+                   between `hybrid` (the live rule) and `ml` on whichever has the better
+                   TRAILING settled record — strictly point-in-time, so it is a rule you
+                   could have run, not a hindsight pick of the winner.
+      `census`     adds `arb` and `snipe`. Both are wired live and both have opened zero
+                   positions, and a stream ABSENT from the backtest is indistinguishable
+                   from one that found nothing. Neither can be sized here (candles carry
+                   no depth, so 铁律 5 cannot bind), so both are counts, not PnL: how
+                   many violations existed, how many would have cleared the fee gate, and
+                   how many event-days had a book still open at the print.
+
+    All four are COUNTERFACTUAL LINES. None charges the shared simulated wallet —
+    `_open_rows` still returns the hybrid book alone — so `edge`/`argmax`/`hybrid` come
+    back bit-identical to every stored run with these flags in either state. That is the
+    property that makes it safe to leave them on by default, and it is asserted in
+    tests/test_wf_streams.py rather than merely intended here.
     """
     from prediction_market_macro.model.ensemble import finite_pmf, log_pool
     now = datetime.now(timezone.utc)
@@ -635,6 +801,57 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                              "size_usd": t["staked"]})
         return rows
 
+    # ── counterfactual lines (2026-08-20) ────────────────────────────────────────
+    # None of the state below is read by `_open_rows`, so none of it charges the shared
+    # simulated wallet or can displace a hybrid trade through `_sim_risk_veto`.
+    opened_ml: dict[tuple[str, str], dict] = {}      # learned selector, gated HERE
+    opened_blend: dict[tuple[str, str], dict] = {}   # PIT switch between hybrid and ml
+    mlbook = _MLBook(conn) if ml_stream else None
+    # `blend`'s trailing comparison needs each line's own settled record in the order it
+    # settled. `hybrid` is the live rule, so that is what ml is measured against — not
+    # `argmax` as in selector.py, where no hybrid existed to compare to.
+    def _rows_of(trades, on_day) -> list[dict]:
+        """`_open_rows`' exposure shape for an ARBITRARY book — so the ml line's risk
+        veto is measured against ml's own positions, not the hybrid book's. Vetoing a
+        shadow stream on somebody else's exposure would make its trade count a function
+        of what the live rule happened to be holding, which is the one thing a
+        counterfactual is supposed to hold constant."""
+        return [{"series": t["series"], "period": t["period"], "size_usd": t["staked"]}
+                for t in trades
+                if t["day"] <= on_day.date().isoformat()
+                < (t.get("exit_day") or t["settle"])]
+
+    def _trail(trades, before_iso: str) -> list[float]:
+        """The last `selector.TRAIL` realised PnLs a line had SETTLED before a day.
+
+        Strictly point-in-time, and the day used is the day the cash actually landed —
+        `exit_day` when #142's exit rules closed the position early, `settle` otherwise.
+        Keying it on `settle` alone would let an exited trade sit invisible in the record
+        for days after its money was already back, which is information the switch has
+        and the rule would be pretending it does not."""
+        from prediction_market_macro.research.selector import TRAIL
+        done = sorted((t for t in trades
+                       if (t.get("exit_day") or t["settle"]) < before_iso),
+                      key=lambda t: (t.get("exit_day") or t["settle"]))
+        return [t["realized"] for t in done][-TRAIL:]
+
+    # `arb`/`snipe` census. Counts, not dollars — see `_arb_scan`.
+    cen = {"arb_event_days": 0, "arb_violations": 0, "arb_would_clear": 0,
+           "arb_best_net": None, "arb_unpriceable": 0,
+           # snipe is counted twice on purpose. `in_scope` is the six series
+           # `strategy/snipe.SNIPE_SERIES` actually watches — that is the number that
+           # explains the live stream's zero. `any_series` is every series this loop
+           # sees, and the two differing is itself the finding: a post-print window
+           # that exists on a book nobody is pointed at is a wiring gap, not a
+           # structural wall, and one aggregate number would hide which one this is.
+           "snipe_event_days": 0, "snipe_book_open_at_print": 0,
+           "snipe_event_days_in_scope": 0, "snipe_open_at_print_in_scope": 0,
+           "snipe_no_release_ts": 0,
+           # how many event-days the ml line never got to see because the loop had
+           # already retired the event (both live legs filled). Bounds the handicap
+           # instead of leaving it as an unquantified asterisk — see the skip at the
+           # top of the event loop.
+           "ml_event_days_skipped": 0}
     daily: list[dict] = []
     for d in range(days, 0, -1):
         day = (sim_end - timedelta(days=d)).replace(hour=offset_hour, minute=0,
@@ -655,11 +872,21 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                     still.append((cts, ser, bm, bk))
             pending_scores[:] = still
         day_trades = 0
+        opened_today_ml = 0.0            # ml's own daily stake, for its own risk veto
         for ev in _open_settled_events(conn, day, sim_end):
             key = kalshi_period_to_key(ev["tok"])
             if not key or ((ev["series"], key) in opened
                            and (ev["series"], key) in opened_argmax):
-                continue                       # both streams already entered
+                # both LIVE streams already entered. The counterfactual `ml` line is
+                # deliberately NOT added to this condition: running the event on further
+                # days would increment `book.stats`, re-run `param_select`, and append to
+                # `pending_scores` — which sets the `fair_mode='pooled'` weights and so
+                # moves the hybrid pmf and its PnL. A shadow stream that changes the
+                # measured strategy is worse than a shadow stream with a bounded blind
+                # spot, so the blind spot is counted instead of closed.
+                if ml_stream and key and (ev["series"], key) not in opened_ml:
+                    cen["ml_event_days_skipped"] += 1
+                continue
             spec = REGISTRY[ev["series"]]
             legs_rows = conn.execute(
                 "SELECT c.ticker, c.floor_strike, c.cap_strike, c.strike_type,"
@@ -940,7 +1167,22 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 from prediction_market_macro.strategy.edge import settle_struct
                 return settle_struct(st.legs, count, results)
 
-            def _trade_row(st, count, realized, stream):
+            def _trade_row(st, count, realized, stream, shadow: bool = False):
+                # `shadow=True` (the ml/blend counterfactual lines, 2026-08-20) runs the
+                # IDENTICAL arithmetic — same fees, same `_mtm_path`, same `_first_exit`,
+                # same `staked` convention — and writes NOTHING to the shared artefacts:
+                # no `feature_rows` row, no `held_paths` entry, no `book.stats` exit
+                # counter. That is what keeps edge/argmax/hybrid bit-identical with the
+                # new streams on. The three writes are the only side effects in here, so
+                # guarding exactly them is the whole of the isolation; in particular
+                # `held_paths` is keyed `series/period/desc` with NO stream component, so
+                # an ml pick that lands on the same struct as the edge pick would
+                # otherwise silently OVERWRITE the edge stream's published path.
+                #
+                # It is one function rather than two because a copy would drift: the
+                # comparison "is the learned line better?" is only meaningful while both
+                # lines are priced by the same code, and a second implementation of the
+                # exit rules is exactly how that stops being true.
                 # 2026-08-11 display convention (user instruction): `staked` = net
                 # premium PLUS entry taker fees — the full cash a losing position
                 # forfeits — so ROI bottoms out at exactly -100% instead of running
@@ -978,7 +1220,8 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                     # `mtm` already nets entry fee, exit fee and exits.SLIP, which is the
                     # same arithmetic `ops/exits._write_exit` books live.
                     realized = ex["mtm"]
-                    book.stats[f"exit_{ex['rule']}"] += 1
+                    if not shadow:
+                        book.stats[f"exit_{ex['rule']}"] += 1
                     # everything after the exit is somebody else's PnL — truncate so the
                     # §25.5 oracle cannot claim a peak we were no longer holding
                     path = [p for p in path if p["day"] <= ex["day"]]
@@ -990,7 +1233,11 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 # is the label, never a feature. If a future edit reads `gs` from the
                 # stored artefacts instead, this whole table becomes leakage.
                 _es = (gs.enable_state if gs is not None else None) or {}
-                feature_rows.append({
+                # §25.3's table is the record of bets the LIVE rule placed. A shadow
+                # line's picks in it would train `research/confidence.py` on a strategy
+                # nobody runs, so they go to a throwaway list instead of `feature_rows`.
+                _fr_sink = [] if shadow else feature_rows
+                _fr_sink.append({
                     "series": ev["series"], "period": key, "day": day.date().isoformat(),
                     "settle": ev["close_ts"].date().isoformat(), "desc": st.desc,
                     "stream": stream,
@@ -1036,7 +1283,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 # added here is published; a per-day diagnostic array does not belong in
                 # a customer-facing record and would multiply its size. It is collected
                 # separately below and exposed as `held_paths`.
-                if path and blocked_by is None:      # #147: no held path for a bet nobody held
+                if path and blocked_by is None and not shadow:  # #147: no held path for a bet nobody held
                     # PR-7 pairs each daily mid with the outcome that mid was forecasting,
                     # so the label and the entry mid ride on the rows rather than in a
                     # parallel structure `freeze_track`/`confidence` would have to learn.
@@ -1118,6 +1365,11 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 # argmax leg below free to fire — same here
                 book.stats["risk_vetoed"] += 1
                 take = False
+            # what the LIVE rule bought on this event-day, if anything: the edge bet
+            # where it fired, the favourite where edge passed. `blend` switches against
+            # this, not against `argmax` alone the way selector.py does — selector had no
+            # hybrid line to compare to, and hybrid is what production actually runs.
+            hyb_row = None
             if take:
                 realized = _settle_struct(dec.struct, dec.count)
                 if realized is not None:
@@ -1131,6 +1383,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                                           "size_usd": row["staked"]})
                         opened_today += row["staked"]
                         day_trades += 1
+                        hyb_row = row
             # ── stream 2: ARGMAX (favourite) line — WC hybrid's other leg: buy
             # the MODEL's most likely structure, flat $1, no edge requirement.
             # Price window [0.10, 0.90] keeps payoff room net of fees. ──
@@ -1201,6 +1454,105 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                                 open_rows.append({"series": ev["series"], "period": key,
                                                   "size_usd": row_a["staked"]})
                                 opened_today += row_a["staked"]
+                                hyb_row = row_a
+            # ── stream 4: ML (research/selector.py's learned p(win)) — served HERE so
+            # it carries db_gates, pit_gates, the risk veto and #142's exits, i.e. the
+            # same load selector.py's own loop carries none of. See `_MLBook`. ──
+            ml_row = None
+            if ml_stream and (ev["series"], key) not in opened_ml and structs:
+                _fit = mlbook.fit_for(day)
+                if _fit is not None:
+                    from prediction_market_macro.research.selector import (
+                        EV_MIN as _EV_MIN, STAKE as _STAKE)
+                    _sc, _clf = _fit
+                    _lead = (ev["close_ts"] - day).total_seconds() / 86400.0
+                    _mx = max(st.fair for st in structs)
+                    best_ml = None
+                    for st in structs:
+                        # selector's own price window, identical to argmax's — both
+                        # want payoff room net of a fee that is ceil-to-the-cent
+                        if not (0.10 <= st.cost <= 0.90):
+                            continue
+                        _x = _MLBook.features(st, _mx, ev_spread, entropy_norm,
+                                              _lead, spec.family)
+                        _p = float(_clf.predict_proba(_sc.transform([_x]))[0, 1])
+                        _fee1 = sum(taker_fee(l.price, 1) for l in st.legs)
+                        _ev = _p - st.cost - _fee1
+                        if _ev >= _EV_MIN and (best_ml is None or _ev > best_ml[0]):
+                            best_ml = (_ev, _p, st)
+                    if best_ml is not None and blocked_by is None:
+                        _evx, _p_ml, st_m = best_ml
+                        count_m = max(1, int(_STAKE / max(st_m.cost, 0.10)))
+                        size_m = round(st_m.fill_cost(count_m) * count_m, 2)
+                        _ml_rows = _rows_of(opened_ml.values(), day)
+                        if db_gates and _sim_risk_veto(_ml_rows, ev["series"], key,
+                                                       size_m, opened_today_ml):
+                            book.stats["ml_risk_vetoed"] += 1
+                        else:
+                            realized_m = _settle_struct(st_m, count_m)
+                            if realized_m is not None:
+                                ml_row = _trade_row(st_m, count_m, realized_m, "ml",
+                                                    shadow=True)
+                                ml_row["p_win"] = round(_p_ml, 4)
+                                ml_row["ev"] = round(_evx, 4)
+                                opened_ml[(ev["series"], key)] = ml_row
+                                opened_today_ml += ml_row["staked"]
+            # ── stream 5: BLEND — per event, follow whichever line's TRAILING SETTLED
+            # record is ahead, and fall through to the other when the leader has no pick.
+            # The comparison uses only trades whose cash had landed BEFORE today, so this
+            # is a rule that could have been run, not a hindsight pick of the winner.
+            # `_MIN_SWITCH` settled ml bets are required before ml may lead, which makes
+            # hybrid the default for the first stretch of any window. ──
+            if ml_stream and (ev["series"], key) not in opened_blend:
+                from prediction_market_macro.research.selector import (
+                    MIN_SWITCH as _MIN_SWITCH)
+                _mt = _trail(opened_ml.values(), day_iso)
+                _bt = _trail(list(opened.values())
+                             + [t for k2, t in opened_argmax.items() if k2 not in opened],
+                             day_iso)
+                use_ml = len(_mt) >= _MIN_SWITCH and sum(_mt) > sum(_bt)
+                pick = (ml_row if use_ml else hyb_row) or (hyb_row if use_ml else ml_row)
+                if pick is not None:
+                    # a COPY of the row the underlying stream already built — not a second
+                    # `_trade_row` call. Re-deriving it would recompute `_mtm_path` for no
+                    # new information, and (when the underlying line is hybrid) would write
+                    # a second, non-shadow feature row for one bet.
+                    _br = dict(pick)
+                    _br["used"] = "ml" if pick is ml_row else "hybrid"
+                    opened_blend[(ev["series"], key)] = _br
+            # ── streams 6 & 7: ARB / SNIPE census. Counts only — see `_arb_scan` for
+            # why neither can be sized against candle rows. ──
+            if census:
+                # `spec.structure != "categorical"` is the SAME guard `decide_all` puts
+                # in front of its own devig+arb block, and it is not cosmetic here: a
+                # categorical book is a partition with no ordering, so reading it as a
+                # survival curve manufactures "monotonicity violations" out of a
+                # question that has no monotonicity to violate. Counting those would
+                # make the census report opportunities the live stream is structurally
+                # never shown — the exact failure this census exists to rule out.
+                if spec.structure != "categorical":
+                    cen["arb_event_days"] += 1
+                    _sc_arb = _arb_scan(meta, _implied(meta).get("violations") or [])
+                    cen["arb_violations"] += _sc_arb["n_violations"]
+                    cen["arb_unpriceable"] += _sc_arb["dropped"]
+                    cen["arb_would_clear"] += 1 if _sc_arb["clears"] else 0
+                    if _sc_arb["best_net"] is not None and (
+                            cen["arb_best_net"] is None
+                            or _sc_arb["best_net"] > cen["arb_best_net"]):
+                        cen["arb_best_net"] = round(_sc_arb["best_net"], 4)
+                # snipe's premise is a book still OPEN after its print. Measured the same
+                # way `strategy/snipe._book_shut_before_print` measures it live, off the
+                # same two columns, so a zero here and a zero there mean the same thing.
+                from prediction_market_macro.strategy.snipe import SNIPE_SERIES
+                _in_scope = ev["series"] in SNIPE_SERIES
+                cen["snipe_event_days"] += 1
+                cen["snipe_event_days_in_scope"] += 1 if _in_scope else 0
+                _rel_ts = release_cache.get(rk)
+                if _rel_ts is None:
+                    cen["snipe_no_release_ts"] += 1
+                elif ev["close_ts"] > _rel_ts:
+                    cen["snipe_book_open_at_print"] += 1
+                    cen["snipe_open_at_print_in_scope"] += 1 if _in_scope else 0
         daily.append({"day": day.date().isoformat(), "n_opened": day_trades})
 
     trades = sorted(opened.values(), key=lambda t: t["settle"])
@@ -1300,12 +1652,47 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
     # hybrid = WC live rule: edge bet where it fired, favourite where it passed
     hybrid = list(trades) + [t for k2, t in opened_argmax.items()
                              if k2 not in opened]
+    ml_trades = sorted(opened_ml.values(), key=lambda t: t["settle"])
+    blend_trades = sorted(opened_blend.values(), key=lambda t: t["settle"])
     streams = {"edge": _stream_summary(trades),
                "argmax": _stream_summary(argmax_trades),
                "hybrid": _stream_summary(hybrid)}
+    if ml_stream:
+        streams["ml"] = _stream_summary(ml_trades)
+        streams["blend"] = _stream_summary(blend_trades)
     held = {k: _held_analysis(v) for k, v in
             (("edge", trades), ("argmax", argmax_trades), ("hybrid", hybrid))}
+    if census:
+        # `arb` and `snipe` get an entry in `streams` too, so the table has SIX rows and
+        # a reader cannot mistake "absent" for "found nothing". They carry n_trades=0 by
+        # construction, and `census` says why — a stream that cannot be sized here must
+        # not be given a PnL that looks sized.
+        streams["arb"] = {"n_trades": 0, "won": 0, "win_rate": None, "staked": 0.0,
+                          "realized": 0.0, "roi": None,
+                          "census": {"event_days": cen["arb_event_days"],
+                                     "violations": cen["arb_violations"],
+                                     "unpriceable": cen["arb_unpriceable"],
+                                     "would_clear_fee_gate": cen["arb_would_clear"],
+                                     "best_net_per_contract": cen["arb_best_net"]},
+                          "note": "not sizeable in simulation — candle rows carry no"
+                                  " depth, so 铁律 5 cannot bind. Counts only."}
+        streams["snipe"] = {"n_trades": 0, "won": 0, "win_rate": None, "staked": 0.0,
+                            "realized": 0.0, "roi": None,
+                            "census": {"event_days": cen["snipe_event_days"],
+                                       "book_open_at_print":
+                                           cen["snipe_book_open_at_print"],
+                                       "event_days_in_scope":
+                                           cen["snipe_event_days_in_scope"],
+                                       "open_at_print_in_scope":
+                                           cen["snipe_open_at_print_in_scope"],
+                                       "no_scheduled_release":
+                                           cen["snipe_no_release_ts"]},
+                            "note": "§24-B needs a book still open AFTER its print."
+                                    " `*_in_scope` counts only SNIPE_SERIES, which is"
+                                    " what the live stream watches; the wider count"
+                                    " includes books it is not pointed at."}
     out = {"days": days, "fair_mode": fair_mode, "streams": streams,
+           "census": cen if census or ml_stream else None,
            "held_analysis": held, "held_paths": held_paths,
            "feature_rows": feature_rows,
            "window_start": (sim_end - timedelta(days=days)).date().isoformat(),
@@ -1347,6 +1734,11 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
                 # correctly while the stored training set had silently changed shape.
                 f"{':shadowblocked' if shadow_blocked else ''}"
                 f"{':argminsel' if select_mode == 'argmin' else ''}"
+                # 2026-08-20: the shadow streams are additive and PnL-neutral, so a run
+                # WITHOUT them would otherwise collide with the default run and replace a
+                # six-stream row with a three-stream one. The suffix goes on the poorer
+                # payload, leaving the canonical hash owned by the complete table.
+                f"{'' if (ml_stream and census) else ':noshadow'}"
                 f"{':' + hash_tag if hash_tag else ''}")
     conn.execute(
         "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
@@ -1486,6 +1878,12 @@ def main():
                          " research/param_argmin) instead of the DSR-gated one. PIT via"
                          " matrix masking; this IS the live rule since the policy"
                          " change, so runs backing a displayed segment should use it.")
+    ap.add_argument("--no-shadow-streams", action="store_true",
+                    help="drop the ml/blend/arb/snipe counterfactual lines and report"
+                         " only edge/argmax/hybrid. They are PnL-neutral for those three"
+                         " by construction, so this is a SPEED knob (it skips the"
+                         " per-day selector refit and the per-event arb scan), not an"
+                         " A/B — use it when only the live rule's number is wanted.")
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
     end = None
@@ -1510,6 +1908,8 @@ def main():
               model_exits=not args.no_model_exits,
               shadow_blocked=args.shadow_blocked,
               select_mode="argmin" if args.select_argmin else "dsr",
+              ml_stream=not args.no_shadow_streams,
+              census=not args.no_shadow_streams,
               log=print if args.verbose else None)
     print(json.dumps({k: v for k, v in out.items() if k not in ("trades", "curve")},
                      indent=1, ensure_ascii=False))

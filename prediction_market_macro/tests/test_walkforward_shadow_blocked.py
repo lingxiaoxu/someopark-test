@@ -123,11 +123,32 @@ def test_a_blocked_event_is_logged_once_not_once_per_day():
     assert "in blocked_seen" in seg
 
 
+def _feature_row_literal(body: str) -> str:
+    """The dict literal appended to §25.3's training set.
+
+    2026-08-20: the append is no longer spelled `feature_rows.append(` — the ml/blend
+    counterfactual streams route their rows to a throwaway list, so the call site is
+    `_fr_sink.append(` and the sink is chosen one line above. Three tests scraped the
+    old literal and all three broke at once on a change that did not touch what any of
+    them asserts, which is the argument for having the anchor in ONE place."""
+    return body[body.index("_fr_sink.append("):].split("peak = ")[0]
+
+
+def test_a_shadow_stream_cannot_write_into_the_confidence_training_set():
+    """`feature_rows` is what `research/confidence.py` fits on, and #157's ml/blend lines
+    are counterfactual — they are not bets the live rule placed. If the sink stopped being
+    conditional, the confidence model would silently start learning a strategy that has
+    never run, and every headline would still read correctly while it happened."""
+    body = _run_body()
+    assert "_fr_sink = [] if shadow else feature_rows" in body
+    # ...and the ONLY writer of the real list is that one line
+    assert body.count("feature_rows.append(") == 0
+    assert body.count("_fr_sink.append(") == 1
+
+
 def test_the_feature_row_says_whether_the_bet_actually_happened():
     """A counterfactual row and a real one must not be indistinguishable downstream."""
-    body = _run_body()
-    row = body[body.index("feature_rows.append("):]
-    row = row[:row.index("peak = ")]
+    row = _feature_row_literal(_run_body())
     assert '"placed": blocked_by is None' in row
     assert '"blocked_by": blocked_by' in row
 
@@ -136,9 +157,7 @@ def test_the_stake_on_a_blocked_row_is_the_would_be_stake_not_zero():
     """The label has to stay on ONE scale with the placed rows or the two cannot be pooled
     at all. `placed=False` is what marks a row counterfactual — zeroing `staked` instead
     would make `realized/staked` undefined exactly on the rows this flag exists to add."""
-    body = _run_body()
-    row = body[body.index("feature_rows.append("):]
-    row = row[:row.index("peak = ")]
+    row = _feature_row_literal(_run_body())
     # 2026-08-11: stake now also carries entry taker fees (user display
     # convention, ROI floor -100%). Still fill_cost-based — the §25.2a
     # leg-sum inflation this test guards against remains impossible.

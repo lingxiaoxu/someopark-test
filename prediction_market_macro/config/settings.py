@@ -45,7 +45,16 @@ class Settings:
     kalshi_key_id: str | None = None
     kalshi_pk_path: str | None = None
     trading_enabled: bool = False                    # hard default: paper
-    paper_bankroll_usd: float = 1000.0               # PLAN §13
+    # NOT the bankroll. PLAN §13's static seed, superseded on 2026-08-18 when the
+    # bankroll became a LIVE read of the Kalshi demo balance
+    # (`venues/kalshi/account.fetch_balance_usd` -> cached in `experiments`, served by
+    # `current_bankroll`). Nothing reads this field, and it is left at its original
+    # seed rather than being tracked to the real balance on purpose: a second number
+    # claiming to be the bankroll is how a stale one gets used by accident. The only
+    # surviving seed that can actually be reached is `account.refresh_bankroll`'s
+    # last-resort fallback, and that one fires only when the db has never once seen a
+    # balance — it is flagged `source="seed_fallback"` when it does.
+    paper_bankroll_usd: float = 1000.0               # PLAN §13 (superseded, unused)
 
 
 def load_settings(require_keys: bool = True) -> Settings:
