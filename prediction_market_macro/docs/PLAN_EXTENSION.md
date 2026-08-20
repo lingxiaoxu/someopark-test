@@ -2761,8 +2761,12 @@ demo 账户是一个**有程序管理的资产负债表**,不是一串订单。�
 **状态模型(单一记账恒等式,每张快照都断言)**:
 ```
 equity = cash + Σ(持仓 MTM)
-cash   = 492 + Σrealized − Σfees − Σ(持仓成本) − reserved(在途订单占用)
+cash   = start_cash + Σrealized − Σfees − Σ(持仓成本) − reserved(在途订单占用)
 ```
+`start_cash` = `arm()` 当时钉住的余额(k/v `demo_mirror_state.start_cash`),**不是**
+写死的 492。落笔当天账户恰好是 $492,2026-08-20 已变为 $2,700;代码
+(`trading_kalshi._start_cash`)一直读 k/v,这里曾写死是文档与实现的不一致,已改齐。
+⚠️ **此式没有出入金项**,见 §30 开头的警告——arm 之后再充值会直接判成漂移。
 恒等式两侧分别来自**两个独立来源**——左侧从交易所 API 读(balance + positions),
 右侧从本地 `demo_fills`/结算推导。两边对不上就是 §30.2-2 的漂移,halt + 告警,
 不是"取一边继续跑"。
