@@ -149,10 +149,19 @@ def _model_pmf(conn, series: str, key: str, spec) -> tuple[dict, str] | None:
 
 
 def _bridge_pmf(conn, series: str, key: str) -> dict | None:
+    """Newest bridge pred for this period, pinned to the CURRENT bridge version.
+
+    Pinned rather than `LIKE 'bridge/%'` because predict() raises instead of emitting
+    when a fit is not available, and shadow_run swallows that. With a wildcard match,
+    a superseded version's row stays the newest one forever and keeps feeding the pool
+    — which is exactly how bridge/0.1.0's mis-calibrated KXPAYROLLS ladder would have
+    survived its own replacement.
+    """
+    from prediction_market_macro.model.bridge import VERSION as BRIDGE_VERSION
     r = conn.execute(
         "SELECT ladder_json FROM preds WHERE series=? AND period=?"
-        " AND model_version LIKE 'bridge/%' ORDER BY asof DESC LIMIT 1",
-        (series, key)).fetchone()
+        " AND model_version=? ORDER BY asof DESC LIMIT 1",
+        (series, key, BRIDGE_VERSION)).fetchone()
     if r is None or not r["ladder_json"]:
         return None
     return {float(k): v for k, v in json.loads(r["ladder_json"]).items()}
