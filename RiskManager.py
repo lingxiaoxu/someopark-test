@@ -123,12 +123,80 @@ LIMITS_SPEC = {
     'sector_net':        {'amber': 30.0, 'red': 50.0, 'fmt': '%'},   # % of gross(展示)
     'max_pair':          {'amber': 20.0, 'red': 35.0, 'fmt': '%'},   # % of gross(展示;n<4 不评级)
     'net_market_beta':   {'amber': 2.0,  'red': 3.0,  'fmt': 'b'},   # combined; 历史极值 2.66
-    'var_95_1d':         {'amber': 4.0,  'red': 5.5,  'fmt': '%'},   # % of capital; 历史极值 4.47
+    'var_95_1d':         {'amber': 4.0,  'red': 5.5,  'fmt': '%'},   # % of capital; 见下方重标定
 }
 
 # max_pair 集中度限额的最小评估持仓数:总持仓 <4 对时该比例数学退化
 # (1 对必=100%、2 对必≥50%),不构成有效集中度信号,仅展示不评级。
 MAX_PAIR_MIN_N = 4
+
+# ── VaR 限额 × DRO 状态机联动:REBOUND_HUNT 期定向放宽(2026-08-20)────────────
+# 重标定(57 份报表 2026-06-02→08-20;上方 07-15 注释所称"历史极值 4.47"已过期):
+#   原标定期 06-02→07-15 (n=31): 中位 2.77 / P95 4.05 / 极值 4.47
+#   标定之后 07-16→08-20 (n=26): 中位 2.21 / P95 6.20 / 极值 9.27  ← 极值翻倍
+#   REBOUND_HUNT 期 08-14→  (n=5): 中位 3.18 / P95 5.73 / 极值 6.01
+#
+# 动机:DRO 的 REBOUND_HUNT 语义即"崩盘后故意多冒险抢反弹"(Daniel & Moskowitz
+# 2016),overlay 按设计放宽入场并把容量 8→10;但静态红线不知情,于 2026-08-19
+# VaR 6.01% 触发熔断,次日否决全部 4 个 MTFS 开仓。把"故意冒险"显式写进风控,
+# 而不是让状态机撞自己的线。
+#
+# red=9.0 的依据:6.5–9.0 区间历史触发率同为 1/57,而 9.0 恰好仍**捕获**史上最坏
+# 的 9.27%(2026-08-12,MU 单票占 component VaR 81%),9.5 即全盲。
+# 这是有边界的放宽,不是关闭风控。amber 6.5 ≈ RH 期 P95(5.73)之上。
+#
+# ⚠️ 边界(务必知悉):3 次 red 有 2 次(08-08 6.26%、08-12 9.27%)发生在 RH
+# **之前**,真正驱动是**集中度**而非 RH —— 本机制只覆盖 3 次中的 1 次,放宽后
+# 那两次仍会熔断。集中度问题另案,勿误以为"联动做了就不会再红"。
+# ⚠️ RH 样本仅 n=5,极薄;下一个 RH 周期结束后应复核 9.0。
+# 详见 .claude/plan/systemic-strategies-plan/VAR_LIMIT_DRO_COUPLING_PLAN.md
+LIMITS_SPEC_RH = {'amber': 6.5, 'red': 9.0, 'fmt': '%'}
+
+# MTFS 需占 component VaR 过半才算"主要贡献者"(方案 A2)。
+# 不用 diagnostics 口径判:那里 mtfs 6.07–6.43% vs mrpt ~1.18% 是 NAV 长窗口统计,
+# **恒定成立**,用它判等于退化成"无条件放宽",MRPT 会搭便车。
+_RH_MTFS_SHARE_MIN = 0.50
+
+
+def _dro_var_relax(var_block):
+    """REBOUND_HUNT 期是否放宽 var_95_1d 限额 → (spec, extra) 或 None。
+
+    任何不确定一律返回 None(fail-closed,退回 LIMITS_SPEC 的 red 5.5)。
+
+    模式源取 DailySignal._active_mode(每次 _run_single 由 StrategyMode.detect
+    刷新的进程内字典),而**不是** trading_signals/strategy_mode_state.json:
+      1) 无陈旧风险 —— 状态文件若某日 detect 未运行会僵在 RH,_active_mode 不会;
+      2) 附带 days_in,可加一道时限兜底;
+      3) as_of_positions 与独立 CLI 路径不经 DailySignal 主流程,_active_mode
+         为空 → 自动不放宽,无需特判(历史回放不该被今天的 RH 豁免)。
+
+    时序已核验:generate_risk_report(DailySignal.py:3044)接收的 mrpt_out/mtfs_out
+    是 _run_single 的返回值,而 detect 在 _run_single 内(:3193),故调用本函数时
+    _active_mode 已是当日刷新值。(注意:按行号看似倒置,勿据行号判断。)
+    """
+    try:
+        import DailySignal as DS
+        import StrategyMode as _SM
+        m = (getattr(DS, '_active_mode', {}) or {}).get('mtfs') or {}
+        if m.get('mode') != 'REBOUND_HUNT':
+            return None
+        # 兜底:detect() 本已用 MODE_MAX_TD 强制退出,此处再挡一次
+        if (m.get('days_in') or 0) > _SM.MODE_MAX_TD:
+            return None
+        # 归属歧义(mrpt/mtfs 同名对)→ share 失真,不放宽。见 var()
+        if var_block.get('share_ambiguous'):
+            return None
+        sh = (var_block.get('strategy_share') or {}).get('mtfs')
+        if sh is None or sh <= _RH_MTFS_SHARE_MIN:
+            return None
+        base = LIMITS_SPEC['var_95_1d']
+        return LIMITS_SPEC_RH, {
+            'base_amber': base['amber'], 'base_red': base['red'],
+            'relaxed_by': (f"DRO:REBOUND_HUNT(mtfs_share={sh:.0%}, "
+                           f"day {m.get('days_in')}/{_SM.MODE_MAX_TD})"),
+        }
+    except Exception:
+        return None
 
 
 def _trunc_param(name, n=24):
@@ -1134,6 +1202,17 @@ class RiskManager:
         # component VaR (per pair marginal contribution)
         ps = self._pair_pnl_series()
         comp = []
+        # pair -> strategy 映射(_collect_positions 每条 position 已带 'strategy';
+        # _pair_pnl_series 以 p['pair'] 为 key,与此处 df.columns 同名同源)。
+        # mrpt/mtfs 若持有同名对,_pair_pnl_series 的 dict key 会静默互相覆盖
+        # (既有隐患,非本次引入);实测两个 universe 交集为 0,但仍记录歧义,
+        # 由 _dro_var_relax 据此拒绝放宽。
+        smap, _ambig = {}, set()
+        for _p in self.d.positions:
+            _st = _p.get('strategy')          # .get:缺字段退化为 None(不放宽),不炸报表
+            if smap.setdefault(_p['pair'], _st) != _st:
+                _ambig.add(_p['pair'])
+        ambiguous = sorted(_ambig)
         if len(ps) >= 1:
             df = pd.DataFrame(ps).fillna(0.0)
             cov = df.cov()
@@ -1144,10 +1223,23 @@ class RiskManager:
                 mctr = (cov.values @ w) / port_sd      # marginal contribution to risk
                 for i, pair in enumerate(df.columns):
                     ctr = w[i] * mctr[i]               # component contribution ($ sd)
-                    comp.append({'pair': pair, 'component_var_95': _round(z95 * ctr),
+                    comp.append({'pair': pair, 'strategy': smap.get(pair),
+                                 'component_var_95': _round(z95 * ctr),
                                  'pct_of_total': _round(ctr / port_sd * 100)})
                 comp.sort(key=lambda r: -(r['component_var_95'] or 0))
-        return {'method_param': param, 'method_hist': hist, 'component_var': comp[:15]}
+        # ── 按策略归集 VaR 份额(供 _dro_var_relax 的 A2 判据;2026-08-20)──
+        # 基准取 pct_of_total 而非 component_var_95:Σ ctr/port_sd ≡ 100% 是恒等式,
+        # 分母永不退化;而 component_var_95 可为负(对冲性的对降低组合风险,见上方
+        # sort key),用 Σ/Σ 在有负值时分母可能趋零导致份额爆炸。
+        # 必须在 comp[:15] 截断**之前**归集,否则持仓 >15 对时分母偏小。
+        share = {'mrpt': 0.0, 'mtfs': 0.0}
+        for r in comp:
+            if r['strategy'] in share:
+                share[r['strategy']] += (r['pct_of_total'] or 0.0) / 100.0
+        return {'method_param': param, 'method_hist': hist,
+                'component_var': comp[:15],
+                'strategy_share': {k: _round(v, 4) for k, v in share.items()},
+                'share_ambiguous': ambiguous}
 
     # ── Tier 5: liquidity ─────────────────────────────────────────────────────
     def liquidity(self):
@@ -1194,7 +1286,7 @@ class RiskManager:
         import DailySignal as DS
         checks = []
 
-        def add(name, scope, value, spec):
+        def add(name, scope, value, spec, extra=None):
             if value is None:
                 return
             status = 'green'
@@ -1202,9 +1294,12 @@ class RiskManager:
                 status = 'red'
             elif spec['amber'] is not None and abs(value) >= spec['amber']:
                 status = 'amber'
-            checks.append({'name': name, 'scope': scope, 'value': _round(value),
-                           'amber': spec['amber'], 'red': spec['red'],
-                           'fmt': spec['fmt'], 'status': status})
+            row = {'name': name, 'scope': scope, 'value': _round(value),
+                   'amber': spec['amber'], 'red': spec['red'],
+                   'fmt': spec['fmt'], 'status': status}
+            if extra:                      # 仅 DRO 放宽时携带;不传则与改动前逐位相同
+                row.update(extra)
+            checks.append(row)
 
         for scope in ('mrpt', 'mtfs'):
             e = exposure[scope]
@@ -1237,7 +1332,13 @@ class RiskManager:
             LIMITS_SPEC['net_market_beta'])
         var95 = (var_block.get('method_param') or {}).get('var_95_1d')
         if var95 is not None and self.C:
-            add('var_95_1d', 'combined', var95 / self.C * 100, LIMITS_SPEC['var_95_1d'])
+            # DRO 联动:MTFS 处于 REBOUND_HUNT 且为主要贡献者时用放宽阈值,
+            # 并在该行显式标注 base_red/relaxed_by,使"被放宽过的绿灯"可审计。
+            _spec, _extra = LIMITS_SPEC['var_95_1d'], None
+            _relax = _dro_var_relax(var_block)
+            if _relax:
+                _spec, _extra = _relax
+            add('var_95_1d', 'combined', var95 / self.C * 100, _spec, _extra)
         # open pairs vs DS capacity (enforcement-shared)
         for scope in ('mrpt', 'mtfs'):
             cap = getattr(DS, f'_MAX_OPEN_PAIRS_{scope.upper()}', 8)
