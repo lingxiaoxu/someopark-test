@@ -80,9 +80,14 @@ def test_snipe_executes_on_certain_leg(conn):
         tok = "26JUL30"
         conn.execute(
             "INSERT INTO contracts VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            # close_time is deliberately far future: this test pins the certainty +
+            # sizing logic, and `_book_shut_before_print` would otherwise short-circuit
+            # it on the real reason the live stream never fires (every real Kalshi macro
+            # book closes BEFORE its print). That rule has its own test below; keeping it
+            # out of this one's way is what lets both stay honest.
             (f"KXJOBLESSCLAIMS-{tok}-{strike}", "KXJOBLESSCLAIMS", "EV", tok, "",
              "greater_or_equal", float(strike), None,
-             "2026-07-30T14:00:00Z", "active", kt.isoformat()))
+             "2099-01-01T14:00:00Z", "active", kt.isoformat()))
         conn.execute("INSERT INTO quotes VALUES(?,?,?,?,?,?)",
                      (kt.isoformat(), f"KXJOBLESSCLAIMS-{tok}-{strike}",
                       bid, ask, 300.0, 300.0))
@@ -106,14 +111,49 @@ def test_snipe_boundary_guard(conn):
     conn.execute(
         "INSERT INTO contracts VALUES(?,?,?,?,?,?,?,?,?,?,?)",
         (f"KXJOBLESSCLAIMS-{tok}-195000", "KXJOBLESSCLAIMS", "EV", tok, "",
-         "greater_or_equal", 195000.0, None, "2026-07-30T14:00:00Z", "active",
+         "greater_or_equal", 195000.0, None, "2099-01-01T14:00:00Z", "active",
          kt.isoformat()))
     conn.execute("INSERT INTO quotes VALUES(?,?,?,?,?,?)",
                  (kt.isoformat(), f"KXJOBLESSCLAIMS-{tok}-195000",
                   0.50, 0.55, 300.0, 300.0))
     conn.commit()
-    # print 195100 is within 0.5*round_rule(250)=125 of strike 195000 → skip
+    # print 195100 is within 0.5*round_rule(250)=125 of strike 195000 → skip.
+    # Future close_time so the boundary guard is what returns 0, not the shut-book guard.
     assert snipe.run_for(conn, "KXJOBLESSCLAIMS", "2026-07-30") == 0
+    assert not conn.execute(
+        "SELECT 1 FROM alerts WHERE message LIKE 'SNIPE-BOOK-CLOSED%'").fetchone()
+
+
+def test_snipe_refuses_a_book_that_shut_before_the_print(conn):
+    """The reason the live sniper has opened zero positions since c3d33e0.
+
+    Every series in SNIPE_SERIES closes 1-5 min BEFORE its 08:30 ET print (measured
+    2026-08-20 off `contracts.close_time`: claims/CPI/CPICORE/PCECORE at 12:25Z, U3
+    and payrolls at 12:29Z, all against a 12:30Z release), while the reassess task
+    that calls this module fires at T+3m = 12:33Z. §24-B's post-print window does not
+    exist on this venue. Before this guard the module returned a silent 0 and the
+    absence was indistinguishable from "nothing was mispriced today"."""
+    from prediction_market_macro.strategy import snipe
+    kt = datetime(2026, 7, 30, 12, 30, tzinfo=timezone.utc)
+    conn.execute("INSERT INTO fred_obs VALUES('ICSA','2026-07-25',197000,?,?,?)",
+                 (kt.date().isoformat(), kt.isoformat(), kt.isoformat()))
+    tok = "26JUL30"
+    conn.execute(
+        "INSERT INTO contracts VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        (f"KXJOBLESSCLAIMS-{tok}-190000", "KXJOBLESSCLAIMS", "EV", tok, "",
+         # the real shape: book shuts 12:25Z, print lands 12:30Z
+         "greater_or_equal", 190000.0, None, "2026-07-30T12:25:00Z", "active",
+         kt.isoformat()))
+    conn.execute("INSERT INTO quotes VALUES(?,?,?,?,?,?)",
+                 (kt.isoformat(), f"KXJOBLESSCLAIMS-{tok}-190000",
+                  0.80, 0.85, 300.0, 300.0))
+    conn.commit()
+    # the leg is a certain YES at 0.85 — it would trade if the book were open
+    assert snipe.run_for(conn, "KXJOBLESSCLAIMS", "2026-07-30") == 0
+    msg = conn.execute(
+        "SELECT message FROM alerts WHERE message LIKE 'SNIPE-BOOK-CLOSED%'").fetchone()
+    assert msg is not None and "structurally unfireable" in msg[0]
+    assert conn.execute("SELECT COUNT(*) FROM decisions").fetchone()[0] == 0
 
 
 # ── D. favorite path ─────────────────────────────────────────────────────────
