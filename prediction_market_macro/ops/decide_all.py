@@ -17,6 +17,12 @@ from prediction_market_macro.strategy.decision import decide
 from prediction_market_macro.strategy.edge import enumerate_structs
 from prediction_market_macro.util.periods import kalshi_period_to_key
 
+# §8.2-5 staleness hard gate. Named rather than inlined because `jobs/tick.py` has to
+# top the quotes up to exactly this bar before it calls `run()` — a second copy of the
+# number there would drift silently and re-open the hole it exists to close.
+PRED_STALE_H = 26.0
+QUOTE_STALE_H = 6.0
+
 
 def _structs_categorical(legs: list[dict], probs: dict[str, float]):
     """Single-leg YES/NO structures for mutually-exclusive category markets
@@ -315,7 +321,8 @@ def run(conn, settings) -> int:
                 " WHERE c.series=? AND c.period=?", (spec.ticker, tok)).fetchone()
             quote_age_h = ((now - datetime.fromisoformat(qt["m"])).total_seconds()
                            / 3600.0) if qt and qt["m"] else None
-            if pred_age_h > 26 or quote_age_h is None or quote_age_h > 6:
+            if (pred_age_h > PRED_STALE_H or quote_age_h is None
+                    or quote_age_h > QUOTE_STALE_H):
                 from prediction_market_macro.strategy.decision import Decision, GATES
                 reason = (f"stale_inputs pred={pred_age_h:.0f}h"
                           f" quotes={quote_age_h if quote_age_h is None else round(quote_age_h, 1)}h")

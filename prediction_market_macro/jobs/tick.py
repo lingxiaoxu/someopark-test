@@ -32,6 +32,53 @@ def _export_frontend(conn, s) -> None:
         print(f"  frontend_export skipped: {e}")
 
 
+def _top_up_stale_quotes(conn, md, now: datetime) -> dict:
+    """Re-snapshot every series `decide_all` is about to scan whose quotes went stale.
+
+    `_exec_task` snapshots the triggering run's OWN series and then calls
+    `decide_all.run()`, which scans every registered series. `predict_all.run()` was
+    already made global to match — quotes never were, and that asymmetry is the whole
+    bug: decide_all's §8.2-5 hard gate force-passes anything whose freshest quote is
+    over QUOTE_STALE_H old, before it ever computes an edge.
+
+    So on a weekly-close evening the one series that triggered the run is decidable and
+    the other thirteen are not. Measured: 08-13 103 force-passes at 19:27Z (the tick
+    after `weekly_close/arm`), 08-14 204 across decide/freeze/reassess, 08-17 55 across
+    the KXAAAGASW close_anchor + weekly_close chain — every one of them reading
+    `stale_inputs pred=0h quotes=8.6..15.9h`. Pred fresh, quote stale, edge never looked
+    at. The 09:00 refresh is the only thing that snapshots broadly, so the gate shuts
+    ~15:00Z and stays shut for the rest of the day.
+
+    Only stale series are fetched. On a day when the morning refresh already covered
+    everything this is one SELECT and zero API calls; `snapshot_series` costs an
+    orderbook request per market (~8s for a 23-market series), which is why it is not
+    simply run unconditionally.
+
+    Best-effort per series: a venue error leaves that series stale and decide_all
+    force-passes it exactly as it does today, which is the right failure direction.
+    """
+    from prediction_market_macro.ops.decide_all import QUOTE_STALE_H
+    refreshed, failed = {}, {}
+    for spec in REGISTRY.values():
+        # mirror decide_all's own loop entry: no active period ⇒ it never looks at this
+        # series, so refreshing it would be pure API cost
+        row = conn.execute(
+            "SELECT MAX(q.ts) m FROM contracts c LEFT JOIN quotes q ON q.ticker=c.ticker"
+            " WHERE c.series=? AND c.status='active'", (spec.ticker,)).fetchone()
+        if row is None or row["m"] is None:
+            continue
+        age_h = (now - datetime.fromisoformat(row["m"])).total_seconds() / 3600.0
+        if age_h <= QUOTE_STALE_H:
+            continue
+        try:
+            refreshed[spec.ticker] = md.snapshot_series(spec.ticker)
+        except Exception as e:                                   # noqa: BLE001
+            failed[spec.ticker] = str(e)[:80]
+    if failed:
+        print(f"  ! quote top-up failed: {failed}")
+    return refreshed
+
+
 def _exec_task(conn, s, md, r) -> str:
     task, series = r["task"], r["series"]
     from prediction_market_macro.ops import decide_all, exits, pnl, predict_all
@@ -39,6 +86,11 @@ def _exec_task(conn, s, md, r) -> str:
         if series in REGISTRY:
             md.snapshot_series(series)
     if task in ("arm", "decide", "reassess"):
+        # decide_all scans ALL series; give it fresh quotes for all of them, not just
+        # this run's. See _top_up_stale_quotes.
+        topped = _top_up_stale_quotes(conn, md, datetime.now(timezone.utc))
+        if topped:
+            print(f"  quote top-up: {topped}")
         predict_all.run(conn, s)
         decide_all.run(conn, s)
         exits.run(conn, s)
