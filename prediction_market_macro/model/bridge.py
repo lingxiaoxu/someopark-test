@@ -227,21 +227,50 @@ object than the CES pay period. Foote's paper is careful to distinguish them; if
 says "reference week" without saying which survey, check before borrowing its rule.
 
 
-OPEN LEADS — the two things most likely to actually improve this
------------------------------------------------------------------
-Recorded after a literature sweep, in priority order. Neither is implemented.
+OPEN LEADS — and one lead that was closed by measurement
+---------------------------------------------------------
+1. THE t+1 ALIGNMENT of convention 2 above. The only lead still open, and the weakest of
+   the three originally recorded.
 
-1. CONTINUING CLAIMS (CCSA). Gavin & Kliesen's in-sample standard errors rank
-   AR 0.171 > ICSA 0.157 > CCSA 0.143 — continuing claims dominate initial claims in
-   every one of their payroll panels, and the series is essentially unstudied for this
-   purpose (McConnell, Kliesen-Wheelock and Braxton all test ICSA only). The mechanism
-   is exactly the gap documented at INTERCEPT CORRECTION: Cajner et al. (FEDS 2020-055)
-   argue insured unemployment "responds to gross job gains as well as gross job losses,"
-   whereas initial claims see only separations — which is why no ICSA specification here
-   could recover the hiring-side level shift and an intercept correction had to. CCSA is
-   NOT currently in fred_obs; this needs an ingest addition with correct PIT release
-   timing (same Thursday 08:30 ET release as ICSA, but CCSA lags one week).
-2. THE t+1 ALIGNMENT of convention 2 above.
+2. CONTINUING CLAIMS (CCSA) — TESTED, REJECTED. Do not add this feed.
+
+   This was recorded here as the #1 lead, on two grounds. Gavin & Kliesen's in-sample
+   standard errors rank AR 0.171 > ICSA 0.157 > CCSA 0.143, continuing claims dominating
+   initial claims in every one of their payroll panels; and Cajner et al. (FEDS 2020-055)
+   supply a mechanism — insured unemployment "responds to gross job gains as well as
+   gross job losses," whereas initial claims see only separations. That mechanism was
+   supposed to be the missing hiring-side signal that forced the intercept correction.
+
+   CCSA was pulled into a scratch copy of the store (ALFRED vintages, PIT verified: the
+   one-week publication lag is real and already encoded in knowledge_time — 802 of 867
+   weeks since 2010 lag exactly 7 days behind ICSA, 26 at 6 and 26 at 8 on holiday weeks)
+   and tested. It does not earn the feed.
+
+   The mechanism claim is FALSIFIED, and that is the important part. If CCSA carried the
+   hiring-side level, variants using it would depend LESS on the intercept correction.
+   They depend MORE. Blend cost of setting IC=0, full / recent panel:
+
+       ICSA only (shipped)   +1.4k  /  +4.9k
+       CCSA only             +1.8k  /  +7.0k
+       ICSA + CCSA           +1.8k  /  +6.4k
+
+   The 2026 means say it plainly: at IC=0, CCSA-only predicts 149.9k against ICSA-only's
+   149.5k, versus 76.7k actual. CCSA repairs none of the level-blindness. Whatever
+   Gavin & Kliesen's in-sample ranking reflects, it is not a hiring-side level signal
+   that survives to this specification.
+
+   Nor does it win on accuracy, with the correction left in: blend vs the shipped spec is
+   −0.5 (CCSA only) and −0.4 (ICSA+CCSA) on the full panel, +0.1 and +1.0 on recent — the
+   sign flips, and every Diebold-Mariano p is between 0.478 and 0.964. An 8-week CCSA
+   window is clearly worse (−6.2 full, −4.1 recent). A CCSA/ICSA ratio term (an inverse
+   exit-rate proxy) reproduces the ICSA+CCSA numbers to the digit, as it must — it is a
+   linear reparameterisation spanning the same column space, which is a useful check that
+   the harness is doing what it claims.
+
+   Conclusion: a new weekly data feed, a new PIT release-timing edge case, and a
+   permanent ingest dependency, in exchange for a statistically indistinguishable blend
+   and a falsified mechanism. Not worth it. `/tmp/wf_refreeze/bridge_lab11.py` was the
+   experiment; /tmp is not durable, but the numbers above are the result.
 
 Explicitly NOT worth pursuing: the weekly lag polynomial, in either direction. This was
 the obvious remaining lead. The flat 4-week mean is a hard restriction — it forces all
@@ -280,11 +309,12 @@ what they earn. Do not re-run this sweep. If it is ever revisited anyway, `midas
 agk.test (flat weights as the null) and hAh.test (is the Almon restriction acceptable at
 all) turn it into an in-sample specification test rather than another horse race.
 
-Two further transformations from the same sweep were considered and NOT tested, both
-blocked by the same wall as CCSA — they need a feed we do not have. Lindgren & Nilsson
-divide claims by labor-force size and find the normalised series generally beats the raw
-one; there is no labor-force series in fred_obs. Rho, Liu & Ahn STL-seasonally-adjust
-weekly claims; ICSA is already seasonally adjusted at source, so that one is moot.
+Two further transformations from the same sweep were considered and NOT tested. Lindgren
+& Nilsson divide claims by labor-force size and find the normalised series generally
+beats the raw one; there is no labor-force series in fred_obs, and after the CCSA result
+above the bar for adding a feed on literature grounds alone is high. Rho, Liu & Ahn
+STL-seasonally-adjust weekly claims; ICSA is already seasonally adjusted at source, so
+that one is moot.
 
 
 TARGET NOISE IS RISING — A LIVE CAVEAT ON SIGMA
