@@ -210,6 +210,22 @@ monthly. Any calendar-week rule, including ours, is a weekly-payroll approximati
 Convention 2 is the one worth testing next if this is revisited; it is the only one with
 a stated mechanism (lags) rather than a stated definition.
 
+The principle itself — align the high-frequency predictor to the CES pay period, do not
+use calendar-month averages — is Fed-published, just never for claims. Foote, "Did
+Abnormal Weather Affect U.S. Employment Growth in Early 2015?" (Boston Fed CPP 15-2)
+makes the argument for daily WEATHER: citing Boldin & Wright, bad weather "has the
+biggest effect on measured employment when it occurs on or shortly before the 12th day
+of the month," so "researchers should not use calendar-month averages of weather data."
+That is our defence, applied to a different high-frequency series.
+
+Two negatives worth recording so they are not re-searched. An enumeration of all 105
+Boston Fed Current Policy Perspectives (full text) found ZERO documents containing both
+a claims term and a reference-period term — the two concepts never co-occur. And the
+CPS/CES trap is real and easy to fall into: several Fed papers discuss a "reference week
+containing the 12th," but that is the CPS HOUSEHOLD survey week, a different and shorter
+object than the CES pay period. Foote's paper is careful to distinguish them; if a source
+says "reference week" without saying which survey, check before borrowing its rule.
+
 
 OPEN LEADS — the two things most likely to actually improve this
 -----------------------------------------------------------------
