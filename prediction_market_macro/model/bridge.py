@@ -227,14 +227,48 @@ Recorded after a literature sweep, in priority order. Neither is implemented.
    timing (same Thursday 08:30 ET release as ICSA, but CCSA lags one week).
 2. THE t+1 ALIGNMENT of convention 2 above.
 
-Explicitly NOT worth pursuing: tuning the Almon polynomial. Foroni, Marcellino &
-Schumacher tested frequency ratios of 3, 12 and 60 — weekly-to-monthly (~4.33) falls in
-an untested gap, and their result that small mismatches favour UNRESTRICTED lags argues
-against more polynomial structure, not for it. No source found puts weekly claims into a
-MIDAS specification against monthly CES payrolls at all; this cell of the literature is
-empty. If it is ever revisited, `midasr`'s agk.test (flat weights as the null) and
-hAh.test (is the Almon restriction acceptable) turn it into an in-sample specification
-test on our own data instead of an appeal to authority.
+Explicitly NOT worth pursuing: the weekly lag polynomial, in either direction. This was
+the obvious remaining lead. The flat 4-week mean is a hard restriction — it forces all
+four weekly coefficients equal — and it comes from FRED's IC4WSA convention, not from any
+mixed-frequency paper; no source found puts weekly claims into a MIDAS specification
+against monthly CES payrolls at all. Foroni, Marcellino & Schumacher's U-MIDAS result
+says that restriction should hurt at a small frequency ratio, and their one
+claims-specific head-to-head (Conference Board claims → quarterly GDP) has unrestricted
+lags beating restricted MIDAS in 6 of 6 cells, ratios 0.94-0.97.
+
+It was measured on our own data and it is a wash. Blend gain vs production, same PIT
+harness as every other round (240mo, ex-COVID, Huber, IC=12), thousands of jobs, with `k`
+the number of free regressors:
+
+    variant                 k    2010-2026 (n=187)     2023-2026 (n=43)
+    flat 4wk (SHIPPED)      1        +6.0                  +5.2
+    U-MIDAS 4wk free        4        +5.3  (DM p 0.10)     +5.9  (DM p 0.56)
+    U-MIDAS 6wk free        6        +3.2  (DM p 0.08)     +6.0  (DM p 0.70)
+    U-MIDAS 8wk free        8        +5.7  (DM p 0.92)     +6.1  (DM p 0.69)
+    Almon 4wk / 8wk         1        +5.4 / +5.4           +5.1 / +5.2
+    flat 4wk + slope        2        +5.7                  +5.1
+    flat 8wk                1        +7.6  (DM p 0.65)     +5.1
+
+Nothing separates from the shipped spec: every Diebold-Mariano p is ≥ 0.08, and the sign
+of the difference FLIPS between the two samples for all three U-MIDAS widths. Flat 8wk is
+the best single cell (+7.6) but gives it all back on recent data (+5.1 vs +5.2) — the
+signature of a sample-specific artefact, not a better regressor.
+
+This is a stronger negative than it looks, because FMS's win condition is a JOINT one —
+small frequency ratio AND a persistent dependent variable — and BOTH hold here. Ours is
+k = 52/12 = 4.33, just above their k=3 win region, and the target is firmly persistent:
+AC1/AC2/AC3 = +0.815/+0.763/+0.719 over the 206 non-COVID months the shipped fit actually
+sees. So this is the setup most favourable to unrestricted lags and it still buys nothing.
+The flat mean is costing us no information, and three extra free parameters cost about
+what they earn. Do not re-run this sweep. If it is ever revisited anyway, `midasr`'s
+agk.test (flat weights as the null) and hAh.test (is the Almon restriction acceptable at
+all) turn it into an in-sample specification test rather than another horse race.
+
+Two further transformations from the same sweep were considered and NOT tested, both
+blocked by the same wall as CCSA — they need a feed we do not have. Lindgren & Nilsson
+divide claims by labor-force size and find the normalised series generally beats the raw
+one; there is no labor-force series in fred_obs. Rho, Liu & Ahn STL-seasonally-adjust
+weekly claims; ICSA is already seasonally adjusted at source, so that one is moot.
 
 
 TARGET NOISE IS RISING — A LIVE CAVEAT ON SIGMA
