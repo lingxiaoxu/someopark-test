@@ -517,7 +517,7 @@ function PerformanceView() {
                     <span style={{ color: 'var(--text-muted)', fontSize: 10 }}>{trunc(x.desc, 28)}</span>,
                     money(x.staked),
                     <span style={{ color: x.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>
-                      {x.won ? t('macro.betWon') : t('macro.betLost')}
+                      {x.won ? t('prediction.betWon') : t('prediction.betLost')}
                     </span>,
                     <span style={{ ...mono, color: (x.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(x.realized)}</span>,
                     <span style={{ ...mono, color: x.cum >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(x.cum)}</span>,
@@ -1016,29 +1016,114 @@ function WalkforwardView() {
       )}
       <KV rows={[
         [t('macro.wfWindow'), <span style={mono}>{daily?.days ?? '—'}d</span>],
+        // Each block in this artifact is a SEPARATE experiments row written by a
+        // separate job, and they do not have to be from the same day: the 30d/60d runs
+        // are daily, the selector eval is weekly. Showing one `generated_at` for the
+        // page made a week-old ML table look as fresh as this morning's hybrid number.
+        [t('macro.wfAsOf'), (
+          <span style={{ ...mono, fontSize: 10, color: 'var(--text-muted)' }}>
+            {([['30d', data?.daily_ts], ['60d', data?.daily60_ts],
+               ['ML', data?.ml_ts], ['sweep', data?.sweep_ts]] as const)
+              .filter(([, ts]) => ts)
+              .map(([lbl, ts]) => `${lbl} ${String(ts).slice(0, 10)}`).join('  ·  ') || '—'}
+          </span>
+        )],
       ]} />
-      {data?.ml && (data.ml.last30?.n_trades != null) && (() => {
-        // baseline rows = the LIVE-scope favourite stream (identical numbers to
-        // the bet-log Favourite tab): last30 from the 30d run, last60 from the
-        // 60d run. ML/blend run on the selector dataset (fewer entry points).
-        const streamWin = (run: any, w: string) => {
-          const s = run?.streams?.argmax;
-          if (s?.n_trades == null) return null;
-          const won = s.won ?? Math.round((s.win_rate ?? 0) * s.n_trades);
-          return { ...s, won, window: w };
-        };
-        const argmaxRows = [streamWin(data.daily, 'last30'), streamWin(data.daily60, 'last60')]
-          .filter(Boolean) as any[];
+      {/* ── every stream, ONE harness ────────────────────────────────────────────
+          #157: each line below is priced by research/walkforward's gated loop — the
+          same db_gates, PIT gates, exit rules and risk veto. That is what makes the
+          rows comparable TO EACH OTHER, and it is exactly what the selector table
+          further down does not share. `ml`/`blend` are counterfactual: they book no
+          capital in the simulated wallet, so they cannot move the hybrid number they
+          are being compared against. */}
+      {daily?.streams && (() => {
+        const LINES = ['hybrid', 'edge', 'argmax', 'ml', 'blend'];
         const rows: any[] = [];
-        argmaxRows.forEach((v) => rows.push([
-          <span style={mono}>{t('macro.stream_argmax')}</span>,
-          <span style={mono}>{v.window}</span>, v.n_trades,
-          `${v.won}W-${v.n_trades - v.won}L`, pct(v.win_rate),
-          <span style={{ ...mono, color: (v.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
-          <span style={{ ...mono, color: (v.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(v.roi)}</span>,
-        ]));
+        // '30d'/'60d', not 'last30'/'last60': these are two SEPARATE runs over
+        // different horizons, not two trailing windows of one run the way the selector
+        // table below reads them. Same words would imply they are the same thing.
+        LINES.forEach((k) => ([['30d', daily], ['60d', data?.daily60]] as [string, any][])
+          .forEach(([w, run]) => {
+            const v = run?.streams?.[k];
+            if (v?.n_trades == null) return;
+            const won = v.won ?? Math.round((v.win_rate ?? 0) * v.n_trades);
+            rows.push([
+              <span style={{ ...mono, fontWeight: k === 'hybrid' ? 700 : 400 }}>{t(`macro.stream_${k}`)}</span>,
+              <span style={mono}>{w}</span>, v.n_trades,
+              `${won}W-${v.n_trades - won}L`, pct(v.win_rate),
+              <span style={{ ...mono, color: (v.realized ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(v.realized)}</span>,
+              <span style={{ ...mono, color: (v.roi ?? 0) >= 0 ? 'var(--success)' : 'var(--error)' }}>{pct(v.roi)}</span>,
+            ]);
+          }));
+        if (!rows.length) return null;
+        // arb/snipe cannot be SIZED against candle rows (no depth in the archive), so
+        // they get counts and no PnL. A zero-PnL row in the table above would read as
+        // "tried and made nothing"; these are "wired, watched, never had a setup".
+        const cen = (k: string) => daily.streams?.[k]?.census;
+        return (
+          <>
+            <SectionTitle>{t('macro.wfStreamsTitle')}</SectionTitle>
+            <DataTable
+              cols={[t('macro.colLine'), t('macro.wfWindow'), t('macro.colTrades'),
+                'W-L', t('macro.winRate'), t('macro.colPnl'), 'ROI']}
+              rows={rows} />
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono, margin: '2px 0 6px' }}>
+              {t('macro.wfStreamsNote')}
+            </div>
+            {cen('arb') && (
+              <div style={{ fontSize: 10, ...mono, color: 'var(--text-muted)' }}>
+                <b style={{ color: 'var(--warning)' }}>{t('macro.stream_arb')}</b>{' — '}
+                {t('macro.arbCensus', {
+                  days: cen('arb').event_days ?? 0,
+                  v: cen('arb').violations ?? 0,
+                  // "N violations, best net —" cannot distinguish "the fee gate held"
+                  // from "a leg was missing from the archived book", and those are
+                  // opposite conclusions about whether the money was ever there.
+                  unp: cen('arb').unpriceable ?? 0,
+                  clear: cen('arb').would_clear_fee_gate ?? 0,
+                  net: cen('arb').best_net_per_contract == null ? '—'
+                    : `${cen('arb').best_net_per_contract > 0 ? '+' : ''}${cen('arb').best_net_per_contract}`,
+                })}
+              </div>
+            )}
+            {cen('snipe') && (
+              <div style={{ fontSize: 10, ...mono, color: 'var(--text-muted)', marginBottom: 6 }}>
+                <b style={{ color: 'var(--warning)' }}>{t('macro.stream_snipe')}</b>{' — '}
+                {/* the headline numbers are the IN-SCOPE ones — the six SNIPE_SERIES
+                    the live stream is actually pointed at. The wide count is carried
+                    alongside because if the two differ, the difference IS the finding:
+                    a post-print window on an unwatched series is a wiring gap, while a
+                    zero on the watched ones is the structural wall. */}
+                {t('macro.snipeCensus', {
+                  days: cen('snipe').event_days_in_scope ?? cen('snipe').event_days ?? 0,
+                  open: cen('snipe').open_at_print_in_scope ?? 0,
+                  wide: cen('snipe').book_open_at_print ?? 0,
+                })}
+              </div>
+            )}
+          </>
+        );
+      })()}
+      {data?.ml && (data.ml.last30?.n_trades != null) && (() => {
+        // 2026-08-20 honesty fix. This table used to put `data.daily.streams.argmax`
+        // — a line carrying db_gates, PIT gates, #142's exits and the risk veto — in
+        // the same column as `data.ml`, which carries NONE of them, and invite the
+        // reader to compare the two ROIs. That comparison was mostly a measurement of
+        // which harness is more permissive.
+        //
+        // `data.ml.baseline` is the matched control: selector's OWN defer-to-market
+        // favourite, run through selector's own loop. It was computed and exported all
+        // along and simply never rendered, so the one row that made this table
+        // internally comparable was the one row missing from it. The gated comparison
+        // now lives in the six-stream table above; this block is the research harness,
+        // labelled as such.
         const lines: [string, any][] = [
+          // its own key, not `stream_argmax`: the label has to say WHICH favourite this
+          // is, or the reader has two rows called "Favourite" with different numbers
+          // and no way to know the difference is the harness rather than the rule.
+          ['mlBaseline', data.ml.baseline],
           ['stream_ml', data.ml], ['stream_blend', data.ml.blend]];
+        const rows: any[] = [];
         lines.forEach(([label, ln]) => (['last30', 'last60'] as const).forEach((w) => {
           const v = ln?.[w];
           if (v?.n_trades == null) return;
@@ -1120,7 +1205,7 @@ function WalkforwardView() {
                   <span style={{ ...mono, fontSize: 10 }}>{tr.lead_days}d</span>,
                   money(tr.staked),
                   <span style={{ color: tr.won ? 'var(--success)' : 'var(--error)', fontWeight: 700 }}>
-                    {tr.won ? t('macro.betWon') : t('macro.betLost')}
+                    {tr.won ? t('prediction.betWon') : t('prediction.betLost')}
                   </span>,
                   <span style={{ ...mono, color: tr.realized >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(tr.realized)}</span>,
                   <span style={{ ...mono, color: tr.cum >= 0 ? 'var(--success)' : 'var(--error)' }}>{money(tr.cum)}</span>,

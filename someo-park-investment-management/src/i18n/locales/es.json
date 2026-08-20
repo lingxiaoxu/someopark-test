@@ -1180,8 +1180,8 @@
     "infoSweeps": "{{n}} entradas info (controles rutinarios, no hallazgos)",
     "riskEnforceNote": "Los límites se aplican por orden vía risk.check antes de cada operación (exceso = rechazo); escenario = pérdida máx. estimada bajo estrés.",
     "wfAsIfLive": "En producción desde hace {{days}}d · historial real (PIT estricto)",
-    "mlTitle": "Selector ML (candidato, no adoptado)",
-    "mlNote": "Filas Favorito = alcance real, cifras idénticas a la pestaña Favorito del registro (last30/last60 de los runs PIT completos de 30/60 días). ML/cambio corren sobre el dataset del selector (una entrada PIT por evento) — menos oportunidades. Candidatos NO en producción: adopción = ganar en AMBAS ventanas + muestra duplicada",
+    "mlTitle": "Selector ML de apuestas — banco de investigación (candidato, no adoptado)",
+    "mlNote": "LEA ESTA TABLA SOLO CONTRA SÍ MISMA. Las tres filas corren en el bucle propio del selector: una entrada PIT por evento, $1 fijo, SIN filtros db/PIT, SIN reglas de salida, SIN veto de riesgo — sus ROI no están en pie de igualdad con la tabla filtrada de arriba, y la fila de favorito es aquí deliberadamente la base del propio selector y no la de alcance real. Para la comparación equivalente y filtrada, vea 'Todos los flujos' arriba. La adopción exige ganar en AMBAS ventanas y duplicar la muestra; la operativa real sigue con la regla híbrida (edge+favorito).",
     "wfBets": "apuestas",
     "wfEntryDay": "Entrada",
     "wfBetCol": "Apuesta",
@@ -1300,7 +1300,15 @@
     "lrTrail": "Serie de divergencias",
     "lrNote": "STRUCTURAL es un límite documentado del arnés de replay: solo recorre eventos liquidados, con granularidad diaria y una entrada por evento. DISAGREED significa que ambas vías vieron el evento y sus reglas difirieron de verdad. UNEXPLAINED significa que el replay construyó una apuesta ejecutable en un evento que nunca operó: la única categoría cuyo valor no nulo merece investigarse.",
     "scoring": "Replays de puntuación (Brier)",
-    "sweepLab": "Barrido de entrada"
+    "sweepLab": "Barrido de entrada",
+    "stream_arb": "Arbitraje",
+    "stream_snipe": "Snipe",
+    "mlBaseline": "Favorito (banco del selector)",
+    "wfAsOf": "Bloques al",
+    "wfStreamsTitle": "Todos los flujos — un solo banco de pruebas, una sola cadena de filtros",
+    "wfStreamsNote": "Cada línea se valora con el MISMO bucle walk-forward con filtros: filtros PIT reconstruidos por día simulado, las reglas de salida reales, el veto de riesgo y la misma aritmética de comisiones. Eso es lo que hace comparables estas filas entre sí. ML / cambio inteligente son contrafactuales: no consumen capital de la cartera simulada, así que no pueden mover el número híbrido con el que se comparan. La operativa real sigue usando Híbrido (edge + favorito); aquí no hay nada adoptado.",
+    "arbCensus": "{{days}} días-evento escaneados, {{v}} violaciones entre strikes — {{unp}} de ellas nunca valorables (falta una pata en el libro archivado), {{clear}} habrían superado el filtro de comisiones (mejor neto {{net}}/contrato). No dimensionable en simulación: las velas archivadas no llevan profundidad, así que el tope del 20% de la pata más fina no puede actuar y una cifra en dólares aquí sería una ficción sobre la liquidez. Recuentos, no dólares.",
+    "snipeCensus": "{{days}} días-evento en las seis series que el sniper vigila realmente, {{open}} de ellos con el libro aún abierto DESPUÉS del dato — eso es lo que exige el sniping post-dato, y todas esas series cierran 1–5 min ANTES de su publicación de las 08:30 ET. Estructuralmente inejecutable, no simplemente desafortunado. ({{wide}} en todas las series; la diferencia son libros que nadie vigila.)"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en vivo · {{time}} ET)",

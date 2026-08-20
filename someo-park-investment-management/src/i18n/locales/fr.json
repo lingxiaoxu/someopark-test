@@ -1180,8 +1180,8 @@
     "infoSweeps": "{{n}} entrées info (contrôles de routine, pas des anomalies)",
     "riskEnforceNote": "Limites imposées par risk.check avant chaque ordre (dépassement = rejet) ; scénario = perte max estimée des positions sous stress.",
     "wfAsIfLive": "En production depuis {{days}}j · historique réel (PIT strict)",
-    "mlTitle": "Sélecteur ML (candidat, non adopté)",
-    "mlNote": "Lignes Favori = périmètre réel, chiffres identiques à l'onglet Favori du journal (last30/last60 des runs PIT 30j/60j complets). ML/bascule tournent sur le dataset du sélecteur (une entrée PIT par événement) — moins d'opportunités. Candidats NON en production : adoption = victoire sur les DEUX fenêtres + échantillon doublé",
+    "mlTitle": "Sélecteur ML de paris — banc de recherche (candidat, non adopté)",
+    "mlNote": "NE COMPAREZ CE TABLEAU QU'À LUI-MÊME. Les trois lignes tournent sur la boucle propre au sélecteur : une entrée PIT par événement, 1 $ fixe, AUCUN filtre db/PIT, AUCUNE règle de sortie, AUCUN veto de risque — leurs ROI ne sont donc pas au même niveau que le tableau filtré ci-dessus, et la ligne favori y est délibérément la base du sélecteur lui-même, pas celle du périmètre réel. Pour la comparaison équivalente et filtrée, voir « Tous les flux » ci-dessus. L'adoption exige un gain sur LES DEUX fenêtres et un échantillon doublé ; le trading réel applique toujours la règle hybride (edge+favori).",
     "wfBets": "paris",
     "wfEntryDay": "Entrée",
     "wfBetCol": "Pari",
@@ -1300,7 +1300,15 @@
     "lrTrail": "Historique des écarts",
     "lrNote": "STRUCTURAL est une limite documentée du harnais de replay : il ne parcourt que les événements réglés, au pas journalier, une entrée par événement. DISAGREED signifie que les deux voies ont vu l'événement et que leurs règles ont réellement divergé. UNEXPLAINED signifie que le replay a construit un pari exécutable sur un événement qu'il n'a jamais traité — seule catégorie dont un non-zéro mérite une enquête.",
     "scoring": "Replays de scoring (Brier)",
-    "sweepLab": "Balayage d'entrée"
+    "sweepLab": "Balayage d'entrée",
+    "stream_arb": "Arbitrage",
+    "stream_snipe": "Snipe",
+    "mlBaseline": "Favori (banc du sélecteur)",
+    "wfAsOf": "Blocs au",
+    "wfStreamsTitle": "Tous les flux — un seul banc d'essai, une seule chaîne de filtres",
+    "wfStreamsNote": "Chaque ligne est valorisée par la MÊME boucle walk-forward filtrée : filtres PIT reconstruits par jour simulé, règles de sortie réelles, veto de risque, même arithmétique de frais. C'est ce qui rend ces lignes comparables entre elles. ML / bascule intelligente sont contrefactuels — ils n'immobilisent aucun capital du portefeuille simulé et ne peuvent donc pas déplacer le chiffre hybride auquel on les compare. Le trading réel applique toujours Hybride (edge + favori) ; rien ici n'est adopté.",
+    "arbCensus": "{{days}} jours-événement analysés, {{v}} violations entre strikes — dont {{unp}} jamais valorisables (une jambe absente du carnet archivé), {{clear}} auraient franchi le filtre de frais (meilleur net {{net}}/contrat). Non dimensionnable en simulation : les chandelles archivées ne portent pas de profondeur, le plafond de 20% de la jambe la plus mince ne peut donc pas mordre, et un montant affiché ici serait une fiction sur la liquidité. Des comptages, pas des dollars.",
+    "snipeCensus": "{{days}} jours-événement sur les six séries que le sniper surveille réellement, dont {{open}} avec un carnet encore ouvert APRÈS la publication — c'est ce qu'exige le snipe post-publication, et chacune de ces séries ferme 1–5 min AVANT sa publication de 08h30 ET. Structurellement inexécutable, et non simplement malchanceux. ({{wide}} toutes séries confondues ; l'écart, ce sont des carnets que personne ne surveille.)"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en direct · {{time}} ET)",

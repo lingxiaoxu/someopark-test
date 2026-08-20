@@ -1209,8 +1209,8 @@
     "infoSweeps": "{{n}} info-level sweep entries (term-structure / ladder cross-checks — routine instrumentation, not findings)",
     "riskEnforceNote": "Limits are enforced per order by risk.check before every fill (breach = rejected); scenario = max estimated loss of current positions under stress.",
     "wfAsIfLive": "Production started {{days}}d ago · live track record (strict PIT — each day uses only that day's information)",
-    "mlTitle": "ML bet selector (candidate, not adopted)",
-    "mlNote": "Favourite rows = live scope, the exact numbers of the Favourite bet-log tab (last30/last60 from the full 30d/60d PIT runs). ML/smart-switch run on the selector dataset (one PIT entry per event — fewer opportunities than the daily scan), so lower counts are expected; compare ROI and win rate. Candidates are NOT live: adoption needs a win on BOTH windows plus a doubled sample — live betting still runs the hybrid (edge+favourite) rule",
+    "mlTitle": "ML bet selector — research harness (candidate, not adopted)",
+    "mlNote": "READ THIS TABLE ONLY AGAINST ITSELF. All three rows run on the selector's own loop: one PIT entry per event, flat $1, NO db/PIT gates, NO exit rules, NO risk veto — so their ROIs are not on the same footing as the gated table above, and the favourite row here is deliberately the selector's own baseline rather than the live-scope one. For the gated, like-for-like comparison see 'All streams' above. Adoption needs a win on BOTH windows plus a doubled sample; live betting still runs the hybrid (edge+favourite) rule.",
     "wfBets": "bets",
     "wfEntryDay": "Entry",
     "wfBetCol": "Bet",
@@ -1329,7 +1329,15 @@
     "lrTrail": "Divergence trail",
     "lrNote": "STRUCTURAL is a documented limit of the replay harness: it walks settled events only, at daily granularity, one entry per event. DISAGREED means both paths saw the event and their rules genuinely differed. UNEXPLAINED means the replay built a placeable bet on an event it never traded — the only bucket whose non-zero value is worth chasing.",
     "scoring": "Scoring Replays (Brier)",
-    "sweepLab": "Entry-Lead Sweep"
+    "sweepLab": "Entry-Lead Sweep",
+    "stream_arb": "Arb",
+    "stream_snipe": "Snipe",
+    "mlBaseline": "Favourite (selector harness)",
+    "wfAsOf": "Blocks as of",
+    "wfStreamsTitle": "All streams — one harness, one gate chain",
+    "wfStreamsNote": "Every line here is priced by the SAME gated walk-forward loop: PIT gates rebuilt per simulated day, the live exit rules, the risk veto, the same fee arithmetic. That is what makes these rows comparable to each other. ML / smart-switch are counterfactual — they book no capital in the simulated wallet, so they cannot move the hybrid number they are measured against. Live betting still runs Hybrid (edge + favourite); nothing here is adopted.",
+    "arbCensus": "{{days}} event-days scanned, {{v}} cross-strike violations found — {{unp}} of them never priceable (a leg missing from the archived book), {{clear}} would have cleared the fee gate (best net {{net}}/contract). Not sizeable in simulation: archived candles carry no depth, so the 20%-of-thinnest-leg cap cannot bind, and a dollar figure here would be a fiction about liquidity. Counts, not dollars.",
+    "snipeCensus": "{{days}} event-days on the six series the live sniper actually watches, {{open}} of which still had a book open AFTER the print — that is what post-print sniping needs, and every one of those series closes 1–5 min BEFORE its 08:30 ET release. Structurally unfireable, not merely unlucky. ({{wide}} across all series; the gap is books nobody is pointed at.)"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (live · {{time}} ET)",
