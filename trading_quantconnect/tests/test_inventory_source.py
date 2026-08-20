@@ -133,18 +133,29 @@ def test_real_snapshot_readonly_prego_live():
             snap["aiss"]["positions"][t]["shares"]))
 
 
+_SCALARS = {"mrpt": 0.6, "mtfs": 0.4, "aiss": 2.681, "ssrs": 1.0, "bdc": 1.0}
+
+
 def test_scaled_mirror_semantics():
-    """缩放镜像(2026-08-17 用户规格): 策略层缩放、legacy 腿同缩放、
-    残差全票记账。"""
+    """缩放镜像(2026-08-17 用户规格)+ 三队列(2026-08-19 修订)。
+
+    非 pairs 策略仍按 scalar 缩放;pairs 的倍数改由队列决定,
+    "旧口径 = 全部在手仓都在 S 队列"这一等价关系在此钉死。"""
     s = _snap()
-    scalars = {"mrpt": 0.6, "mtfs": 0.4, "aiss": 2.681, "ssrs": 1.0,
-               "bdc": 1.0}
+    scalars = _SCALARS
+    # ① 无冻结集: pairs 全落 F(m=1),只有非 pairs 被缩放
     b = build_target(_snap(), scalars=scalars)
-    # AAA: mrpt 100×0.6 + mtfs 30×0.4 + aiss 5×2.681 = 60+12+13.405 = 85.405
-    assert b["targets"]["AAA"] == 85
+    # AAA: mrpt 100×1 + mtfs 30×1 + aiss 5×2.681 = 100+30+13.405 = 143.405
+    assert b["targets"]["AAA"] == 143
     assert abs(b["residual"]["AAA"] - 0.405) < 1e-6
-    assert b["targets"]["BBB"] == -120                  # -200×0.6
-    # legacy 冻结 + 缩放: legacy 腿按同 scalar 减,target 仍零 pairs 腿
+    assert b["targets"]["BBB"] == -200                  # F 队列全额
+    # ② 全部在手仓进 S 队列 == 2026-08-17 旧口径(策略层 ×k)
+    allpairs = freeze_legacy(s)
+    bS = build_target(_snap(), scalars=scalars, scaled=allpairs)
+    assert bS["targets"]["AAA"] == 85                   # 60+12+13.405
+    assert abs(bS["residual"]["AAA"] - 0.405) < 1e-6
+    assert bS["targets"]["BBB"] == -120                 # -200×0.6
+    # legacy 冻结 + 缩放: legacy 腿按 m=0 剔除,target 仍零 pairs 腿
     import copy
     legacy = freeze_legacy(s)
     b2 = build_target(s, legacy=legacy, scalars=scalars)
@@ -155,6 +166,76 @@ def test_scaled_mirror_semantics():
     s3["mrpt"]["pairs"]["AAA/BBB"]["direction"] = None
     b3 = build_target(s3, legacy=legacy, scalars=scalars)
     assert content_hash(b3["targets"]) == content_hash(b2["targets"])
+
+
+# ── 三队列(2026-08-19 用户规格: 不动 QC 既有仓,新仓全额,legacy 自然退场)──
+
+def _snap3():
+    """L=AAA/BBB(legacy) · S=CCC/AAA(已 ×k 镜像) · F 由用例追加。"""
+    s = _snap()
+    s["aiss"]["positions"] = {"NVDA": {"shares": 10, "avg_cost": 1.0}}
+    s["ssrs"]["holdings"] = {}
+    s["bdc"] = {"holdings": {}, "cash": {"ticker": "BIL", "shares": 1.0}}
+    return s
+
+
+_L3 = {"mrpt": [{"pair": "AAA/BBB", "open_date": "2026-08-01"}]}
+_S3 = {"mtfs": [{"pair": "CCC/AAA", "open_date": "2026-08-05"}]}
+
+
+def test_three_cohorts_multipliers():
+    """L→0 股、S→×k、F→×1,三种倍数在同一次 build 里并存。"""
+    s = _snap3()
+    s["mtfs"]["pairs"]["DDD/EEE"] = {"direction": "long", "s1_shares": 11,
+                                     "s2_shares": -22,
+                                     "open_date": "2026-08-19"}   # F
+    b = build_target(s, legacy=_L3, scalars=_SCALARS, scaled=_S3)
+    assert "BBB" not in b["targets"]                     # L: m=0
+    assert b["targets"]["CCC"] == -20                    # S: -50×0.4
+    assert b["targets"]["AAA"] == 12                     # S: 30×0.4 = 12.0
+    assert b["targets"]["DDD"] == 11 and b["targets"]["EEE"] == -22   # F: ×1
+    assert [i["pair"] for i in b["legacy_alive"]["mrpt"]] == ["AAA/BBB"]
+    assert [i["pair"] for i in b["scaled_alive"]["mtfs"]] == ["CCC/AAA"]
+
+
+def test_new_pair_does_not_disturb_existing_legs():
+    """核心承诺: 明早开新仓,只加新腿,S/L 队列既有腿一股不动。"""
+    s = _snap3()
+    before = build_target(s, legacy=_L3, scalars=_SCALARS, scaled=_S3)
+    s2 = copy.deepcopy(s)
+    s2["mtfs"]["pairs"]["DDD/EEE"] = {"direction": "long", "s1_shares": 11,
+                                      "s2_shares": -22,
+                                      "open_date": "2026-08-19"}
+    after = build_target(s2, legacy=_L3, scalars=_SCALARS, scaled=_S3)
+    assert set(after["targets"]) - set(before["targets"]) == {"DDD", "EEE"}
+    for t, v in before["targets"].items():
+        assert after["targets"][t] == v, f"{t} 被新仓扰动: {v} → {after['targets'][t]}"
+
+
+def test_cohort_membership_survives_reopen_of_same_pair():
+    """同名 pair 平掉再开(新 open_date)→ 掉出 S,按 F 全额镜像。"""
+    s = copy.deepcopy(_snap3())
+    s["mtfs"]["pairs"]["CCC/AAA"]["open_date"] = "2026-08-25"       # 重开
+    b = build_target(s, legacy=_L3, scalars=_SCALARS, scaled=_S3)
+    assert b["scaled_alive"]["mtfs"] == []
+    assert b["targets"]["CCC"] == -50                    # 全额,不是 -20
+
+
+def test_cohort_collision_rejected():
+    """同一 pair 同时在 L 与 S → 倍数不唯一,必须大声拒绝。"""
+    with pytest.raises(SourceError, match="倍数不唯一"):
+        build_target(_snap3(), legacy=_L3, scalars=_SCALARS,
+                     scaled={"mrpt": [{"pair": "AAA/BBB",
+                                       "open_date": "2026-08-01"}]})
+
+
+def test_scaled_alive_shrinks_as_s_queue_closes():
+    """S 队列平仓 → scaled_alive 减少,其腿从 target 消失(K 就此定格)。"""
+    s = copy.deepcopy(_snap3())
+    s["mtfs"]["pairs"]["CCC/AAA"]["direction"] = None
+    b = build_target(s, legacy=_L3, scalars=_SCALARS, scaled=_S3)
+    assert b["scaled_alive"]["mtfs"] == []
+    assert "CCC" not in b["targets"]
 
 
 def test_insane_scalar_rejected():

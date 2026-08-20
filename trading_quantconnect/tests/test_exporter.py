@@ -47,7 +47,7 @@ def sandbox(monkeypatch, tmp_path):
         files[st] = p
     monkeypatch.setattr(isrc, "SOURCE_FILES", files)
     state = tmp_path / "state"
-    for name in ("STATE_DIR", "LEGACY_PATH", "EXPORTER_STATE",
+    for name in ("STATE_DIR", "LEGACY_PATH", "SCALED_PATH", "EXPORTER_STATE",
                  "TARGET_COPY", "RESIDUAL_PATH"):
         default = getattr(exporter, name)
         monkeypatch.setattr(exporter, name, state / Path(default).name

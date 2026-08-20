@@ -150,8 +150,9 @@ def read_snapshot(files: dict[str, Path] | None = None) -> dict[str, dict]:
 def build_target(snap: dict[str, dict],
                  legacy: dict[str, list] | None = None,
                  prev_residual: dict[str, float] | None = None,
-                 scalars: dict[str, float] | None = None) -> dict:
-    """→ {targets:{ticker:int}, attribution, legacy_alive, residual}
+                 scalars: dict[str, float] | None = None,
+                 scaled: dict[str, list] | None = None) -> dict:
+    """→ {targets:{ticker:int}, attribution, legacy_alive, scaled_alive, residual}
     纯函数(无 IO): 单测直接钉。
 
     legacy: {"mrpt":[{"pair","open_date"}],...} 冻结集;存活=同名+同 open_date
@@ -160,36 +161,63 @@ def build_target(snap: dict[str, dict],
             "按官方口径 $6M 持股细节建仓"的换算常数(官方equity/账本equity,
             AISS≈2.68 等),构造后**永不重算、永不再基准、官方 perf 永不再读**。
             未来换仓沿用同一常数 → QC 各子账与策略持仓严格等比,QC 成为
-            从 $6M 起步的独立自复利账户。legacy 腿同常数。None/缺键=1.0。
+            从 $6M 起步的独立自复利账户。None/缺键=1.0。
+    scaled(2026-08-19 用户规格,pairs 三队列): 切换日一次性冻结的"已按 k 镜像"
+            集合。pairs 的镜像倍数在**开仓那一刻**定死、此后永不改:
+              L = legacy 冻结集              m = 0    QC 不持有,有机退场
+              S = scaled 冻结集              m = k    保持现有持仓,不补不减
+              F = 其余(切换后新开)           m = 1    全额镜像,与账本同步
+            L/S 都是有限寿命退场队列;两队清空后 QC 与官方口径的差不再随行情
+            漂移(只剩成交价差这种在成交时刻一次性落定的量)。
+            None/缺键 → 该策略无 S 队列(全部非 legacy 仓按 m=1)。
     小数(BDC 天然小数 + 缩放产生的全策略小数): 目标取最近整数,
             residual[t] = 真实值 − 整数(本地记账,QC 只见整数股)。
     """
     legacy = legacy or {}
     scalars = scalars or {}
+    scaled = scaled or {}
     per_strategy: dict[str, dict[str, float]] = {}
     for st, raw in snap.items():
         k = float(scalars.get(st, 1.0))
         if not (0 < k < 100):
             raise SourceError(f"insane scalar for {st}: {k}")
+        if st in PAIR_STRATEGIES:
+            continue                       # pairs 走三队列逐对倍数,见下
         per_strategy[st] = {t: sh * k
                             for t, sh in EXTRACTORS[st](raw).items()}
 
-    # legacy 减法(pairs 域): 存活判定与减项同源于 snap
-    # legacy_alive 恒含全部冻结策略键(0 也显式 —— 过渡期报表要能看到清零)
+    # pairs 三队列: 存活判定与建仓同源于 snap(同快照原子)
+    # legacy_alive/scaled_alive 恒含全部冻结策略键(0 也显式 —— 过渡期报表要能看到清零)
     legacy_alive: dict[str, list] = {st: [] for st in legacy
+                                     if st in PAIR_STRATEGIES}
+    scaled_alive: dict[str, list] = {st: [] for st in scaled
                                      if st in PAIR_STRATEGIES}
     for st in PAIR_STRATEGIES:
         alive_pairs = open_pairs(snap[st]) if st in snap else {}
         k = float(scalars.get(st, 1.0))
+        l_names, s_names = set(), set()
+        # 存活判定按冻结表顺序遍历 → *_alive 的元素顺序与冻结表一致(报表可比)
         for item in legacy.get(st, []):
             cur = alive_pairs.get(item["pair"])
             if cur and cur.get("open_date") == item.get("open_date"):
                 legacy_alive[st].append(item)
-                for t, sh in cur["legs"].items():
-                    per_strategy[st][t] = per_strategy[st].get(t, 0.0) - sh * k
-        # 清理减成 0 的键
-        per_strategy[st] = {t: v for t, v in per_strategy[st].items()
-                            if abs(v) > 1e-9}
+                l_names.add(item["pair"])
+        for item in scaled.get(st, []):
+            cur = alive_pairs.get(item["pair"])
+            if cur and cur.get("open_date") == item.get("open_date"):
+                scaled_alive[st].append(item)
+                s_names.add(item["pair"])
+        if l_names & s_names:
+            raise SourceError(f"{st}: pair 同时在 legacy 与 scaled 冻结集 "
+                              f"{sorted(l_names & s_names)} — 倍数不唯一,拒绝")
+        pos: dict[str, float] = {}
+        for name, cur in alive_pairs.items():
+            if name in l_names:
+                continue                                   # m = 0
+            m = k if name in s_names else 1.0
+            for t, sh in cur["legs"].items():
+                pos[t] = pos.get(t, 0.0) + sh * m
+        per_strategy[st] = {t: v for t, v in pos.items() if abs(v) > 1e-9}
 
     # 净额扁平化 + 归因
     net: dict[str, float] = {}
@@ -204,12 +232,12 @@ def build_target(snap: dict[str, dict],
     targets: dict[str, int] = {}
     residual: dict[str, float] = {}
     bdc_tickers = set(per_strategy.get("bdc", {}))
-    scaled = any(abs(float(scalars.get(st, 1.0)) - 1.0) > 1e-12
-                 for st in snap)
+    any_scaled = any(abs(float(scalars.get(st, 1.0)) - 1.0) > 1e-12
+                     for st in snap)   # 注: 不可复用名 `scaled`(= S 队列冻结集入参)
     for t, sh in net.items():
         if abs(sh - round(sh)) < 1e-6:
             q = int(round(sh))
-        elif scaled or t in bdc_tickers:
+        elif any_scaled or t in bdc_tickers:
             q = int(round(sh))                   # banker 舍入到整数
             residual[t] = round(sh - q, 6)
         else:
@@ -220,6 +248,7 @@ def build_target(snap: dict[str, dict],
     return {"targets": targets,
             "attribution": {t: a for t, a in attribution.items()},
             "legacy_alive": legacy_alive,
+            "scaled_alive": scaled_alive,
             "residual": residual}
 
 
