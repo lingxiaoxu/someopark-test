@@ -76,7 +76,14 @@ def _exec_task(conn, s, md, r) -> str:
                     < timedelta(hours=20):
                 return "covered_by_daily_refresh"
         from prediction_market_macro.ops import refresh
-        refresh.run()
+        # The stamp above is written only by refresh's LAST line, so between 09:00:05
+        # (launchd fires) and ~09:17 (it finishes) this branch cannot tell that today's
+        # refresh is already running — and this run is materialised at exactly 09:00:00Z,
+        # so the first tick after it lands inside that window essentially every day.
+        # refresh.run() holds an flock and refuses; leaving the run 'late' means the next
+        # tick re-checks, by which time the stamp is fresh -> covered_by_daily_refresh.
+        # If instead the 05:00 job never fired, the lock is free and this really does run.
+        refresh.run()                                    # raises RefreshBusy -> mark_late
         return "ran_full_refresh"
     return "ok"
 

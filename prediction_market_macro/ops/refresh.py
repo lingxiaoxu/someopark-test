@@ -8,10 +8,14 @@ kills the rest; every step prints ✓/✗ and the failures land in alerts.
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
+import os
 import time
 import traceback
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from prediction_market_macro.config.registry import REGISTRY, p0
 from prediction_market_macro.config.settings import load_settings
@@ -28,7 +32,52 @@ def _alert(conn, level: str, source: str, msg: str) -> None:
     conn.commit()
 
 
+class RefreshBusy(RuntimeError):
+    """Another refresh already holds the single-instance lock."""
+
+
+@contextmanager
+def _single_instance(output_dir: Path):
+    """Refuse to start a second refresh while one is in flight.
+
+    `refresh_last.json` is written by the LAST line of `_run`, so any caller that judges
+    "did today's refresh happen" from its `ts` is blind for the whole ~17 min the run
+    takes. jobs/tick.py does exactly that, and its `daily_refresh` run is materialised at
+    09:00:00Z — the same instant the launchd refresh fires — so the first tick after 09:00
+    always lands inside that blind window and starts a concurrent full pass.
+
+    That is not merely wasted CPU: `_run` calls decide_all AND exits, in that order, so a
+    single pass can never re-enter a position it closed in the same cycle. On 2026-08-20
+    the second pass ran decide_all 13 s after the first pass's exits had flattened
+    KXNATGASW, saw the `already_open_no_averaging_down` gate lifted, and opened a
+    same-day reversal leg (decision 7389, YES T2.799) that no single pass would have taken.
+
+    flock is released by the kernel when the holding fd closes, including on SIGKILL, so
+    this cannot leave a stale lock that wedges the daily job.
+    """
+    output_dir.mkdir(parents=True, exist_ok=True)
+    fd = os.open(output_dir / "refresh.lock", os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            holder = os.pread(fd, 256, 0).decode(errors="replace").strip()
+            raise RefreshBusy(holder or "held by an unidentified process") from None
+        os.ftruncate(fd, 0)
+        os.pwrite(fd, f"pid={os.getpid()} started="
+                      f"{datetime.now(timezone.utc).isoformat()}".encode(), 0)
+        yield
+    finally:
+        os.close(fd)                                     # releases the flock
+
+
 def run(weekly: bool = False) -> dict:
+    """Single-instance entry point. Raises RefreshBusy if one is already running."""
+    with _single_instance(load_settings().output_dir):
+        return _run(weekly)
+
+
+def _run(weekly: bool = False) -> dict:
     s = load_settings()
     conn = init_db(s.db_path)
     fred = FredPIT(s.fred_api_key, conn)
