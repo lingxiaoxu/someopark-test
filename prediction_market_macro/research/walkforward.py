@@ -232,11 +232,28 @@ def _first_exit(st, path: list[dict], min_leg_price: float) -> dict | None:
     """The first day `ops/exits.py` would have closed this position, or None.
 
     Ports rules 1 and 3 verbatim; rule 2 (red-light forced exit on
-    `risk.breaker_tripped`) is NOT ported and that is a measured decision, not an
-    oversight: across the entire live ledger 52 of 52 exits are rule 1 and rule 2 has
-    never fired once, so simulating a breaker whose PIT state the harness cannot rebuild
-    would add modelling risk to buy nothing. If it ever fires live, this comment is the
-    thing to come back to.
+    `risk.breaker_tripped`) is NOT ported. That used to rest on "52 of 52 live exits are
+    rule 1 and rule 2 has never fired once", and it said that if rule 2 ever fired this
+    comment was the thing to come back to. **It fired.** On 2026-08-12 a
+    `health_red:replay_mismatch` breaker closed three positions at once, and as of
+    2026-08-20 the live ledger reads 5 rule-1 exits and 3 rule-2 exits.
+
+    The cost of the omission is now measurable and it is not small. All five settled live
+    positions exited early; held to settlement they would have returned -$1.65, and the
+    exits turned that into +$0.52 — early exit IS the live PnL, worth +$2.17. Rule 2's
+    three exits account for +$1.30 of it, and the simulation cannot see any of that: it
+    exits 5 of 35 positions on the 60d window against live's 8 of 8. That is most of why
+    `research/live_replay` reads the replay losing where live wins.
+
+    Still not ported, and the reason is unchanged rather than convenient: the breaker's
+    PIT state (health colour, ledger-mismatch flag, rolling-20 drawdown) is not
+    reconstructible from what this harness stores, so a simulated rule 2 would be a guess
+    with a $1.30 thumb on the scale. Note also WHAT tripped it — `replay_mismatch` is a
+    plumbing alarm, not a market view; it had no opinion about the CPI print that was
+    about to go against those three legs. Crediting the strategy with that $1.30 would be
+    crediting it with a coin flip that landed well. The honest reading is that the
+    backtest understates live's exit discipline AND that live's headline overstates its
+    own skill, and porting rule 2 would fix the first by baking in the second.
 
     Both live rules read only that day's model and that day's book, so scanning the path
     forward and taking the FIRST trigger is exactly the live sequence — `exits.run` gets
