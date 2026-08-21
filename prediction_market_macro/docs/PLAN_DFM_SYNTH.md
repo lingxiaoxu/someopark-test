@@ -522,6 +522,38 @@ code change the day a lambda row lands. The honest next measurement is a walk-fo
 calibration on the **monthly** series — rolling cutoffs over ~2 years, pooling many more
 real events, and removing the weekly→monthly extrapolation this one had to make.
 
+### 6b. The walk-forward that is actually possible (S5-WF, built 2026-08-21)
+
+The "~2 years" above was written without checking the book. Checked: **candles begin
+2026-05-16** (verified in every backup db — they all start there), Kalshi deletes them at
+75 days, and the real reference for any month before May 2026 therefore does not exist
+and can never be recovered. Each monthly series has exactly **3** quotable settled
+releases today (26MAY/26JUN/26JUL periods; KXPCECORE 26APR–26JUN). This is a data-reality
+ceiling of the same species as the 14% K-line coverage ceiling — documented, not coded
+around.
+
+What ships instead is an **accrual** (`calibrate.wf_accrue` / `wf_aggregate`, weekly
+steps): every monthly release that settles adds one real improvement row per series,
+scored point-in-time — generator spliced at `close − 75d`, the exact S5 geometry — and
+stored in `synth_wf_mats` (worlds deleted after scoring; the matrices are the
+measurement). Aggregation intersects drifted grids by `set_hash`, correlates at
+`n_real ≥ 3`, identifies at `≥ 4`, and **persists the series' own measured lambda** when
+warranted; `synth_lambda()`'s read order then makes it govern over the pooled `'*'` row
+with no code change.
+
+The persistence gate is asymmetric on purpose: `lam_lo > 0` persists at `n ≥ 4`; a
+**zero** does not persist until `n ≥ 8`, because at n=4 the bootstrap lower bound of
+anything is 0 (§6a measured exactly that on a series whose pick beat the default at the
+86.8th percentile) and a measured per-series row SHADOWS `'*'` — an artifact zero would
+re-kill the feature on schedule every month.
+
+Two honesty notes carried on every stored row's meta: the grid is TODAY's ladder union
+(a PIT grid design cannot exist — the pre-cutoff probe window is empty before 2026-05),
+so key-liveness leaks backwards while outcomes never enter design; and the donor book
+pools the whole recorded span including post-release quotes, the same practice §5b
+measured under. Timeline: with the 26AUG releases settling in September, every monthly
+series reaches the n=4 identification floor; n=8 lands around New Year.
+
 ## 7. Storage and cadence (S7) — as built, 2026-08-21
 
 `research/synth/regen.py`, wired into `ops/refresh.py`'s **weekly** block as
@@ -716,7 +748,8 @@ log is not mistaken for a fault.
 | S5 lambda | **DONE** (2026-08-21). Reported whatever it said, and it said **zero**: pooled `rho` 5th pct **−0.095**, `P(mean rho <= 0) = 0.20`, and the reference-free decision test puts the synthetic pick at the **44.8th** percentile of real improvement against a null of 50 — worse than the default on 2 of 3 series. **Read the identification caveat before reading that as a refutation**: real-sample split-half reliability is −0.272 (KXWTIW) and −0.561 (KXNATGASW), so on those two the reference cannot correlate with itself, which caps `rho` at zero by construction. Only KXJOBLESSCLAIMS is identified and it is n=4. See §6a |
 | S6 wiring | **DONE** (2026-08-21). `n_eff = n_real + lambda*n_synth` feeds `sample_cap`; `_objective` blends only a grid the stored run fully covers and logs the refusal otherwise; every gate log carries `n_eff` and a `synth` block naming the run, its age and its lambda. Building it exposed a **real defect in the gate itself**: it sized the grid on the *quotable* universe while `score_matrix` keeps only what replays, so KXJOBLESSCLAIMS — skill-BLOCKED since 2026-07-09, `0/91` sets scoring on its last 6 events — was ranking 91 sets on **4** events (1.50 sd of selection bias, worse than the KXPAYROLLS case that motivated the gate) while the log read n=10. `resolve_grid` now re-narrows on the scored sample, never widens, and says which count it resized on |
 | S7 ops | **DONE** (2026-08-21). See §7. `weekly_synth_regen` in `ops/refresh.py`; one market's generator failure cannot starve the other six; `synth_runs`/`synth_scores` ride `backup_db`; worlds are one generation deep and gitignored. **Proven on a full seven-market pass**: 50.7 min wall (7.5× the serial projection), 7/7 `ok`, 7 `synth_runs` + 1,206 `synth_scores` rows, `-m` spawn path verified. **All seven report `weight=0.0`** — see §7c, `synth_lambda` has no writer |
-| S8 lambda persistence | **NOT STARTED** — the one thing between S1–S7 and any effect at all. `calibrate.py` computes lambda and nothing stores it, so `read_synth` refuses every market every day. Done when a job writes `synth_lambda` rows that are honest about measured-vs-pre-registered, the pooled `'*'` row exists for the monthly markets, and a live `rescore` shows a monthly market's `cap` moving off 1. See §7c |
+| S8 lambda persistence | **DONE** (2026-08-21, `cb9a04f`). `calibrate.persist` writes per-series rows under the committed lower-bound rule (zeros included — a measured refusal must shadow a positive pool) and the pooled `'*'` row under a three-step policy: measured `min(lam_lo)` over IDENTIFIED series when positive, else the pre-registered min squared **disattenuated** rho over identified series, else nothing (no invented floor). On the 2026-08-21 measurement: `'*' = 0.1356` from KXJOBLESSCLAIMS (`rho_disatt +0.3682` — the same number §7b probed as "plausible", now with a derivation). Production seeded (rows + runs via the same `regen.run` the Sunday weekly uses; pre-change snapshot `macro_pre_s8_lambda.db`). `weekly_synth_lambda` states the switch position in the weekly log. 9 tests |
+| S5-WF monthly accrual | **BUILT** (2026-08-21, see §6b). "2 years of cutoffs" is impossible — candles begin 2026-05-16, 3 releases per series exist. `wf_accrue`/`wf_aggregate` accrue one PIT-scored row per release into `synth_wf_mats` and self-persist a series' own measured lambda at identification, with the asymmetric zero gate (n≥8) so an underpowered zero cannot shadow `'*'`. First 21-release backfill running 2026-08-21 overnight; n=4 identification lands with the September settlements |
 
 Nothing writes to production state until S5 has a number. S5 now has one, and it is zero,
 so what ships is the machinery and not yet its influence: `weekly_synth_regen` builds and
@@ -730,5 +763,9 @@ That paragraph was written before the full pass, and it credits the inertness to
 number. §7c corrects it: **even a non-zero S5 would change nothing today**, because
 `synth_lambda` has no writer at all — `read_synth` takes the `source: null` branch, not the
 `lam <= 0` branch reached through a stored row. Both roads end at the same log line, which
-is exactly why it went unnoticed. S8 is the open item; everything above it is built,
-measured and running.
+is exactly why it went unnoticed.
+
+**S8 closed the switch the same day** (`cb9a04f`): `'*' = 0.1356` is live in production,
+the runs are seeded, and the first blended morning pass is 2026-08-22 09:00Z. The upgrade
+path from pre-registered to measured is the §6b accrual, and it completes itself as
+monthly releases land — no further code is waiting on anything.
