@@ -488,6 +488,40 @@ Repeat over folds and seeds. The fraction of the synthetic-claimed improvement t
 survives on real events is the exchange rate between a synthetic and a real observation.
 `lambda` is set at the lower end of its bootstrap interval, not its point estimate.
 
+### 6a. What it measured — 2026-08-21: **lambda = 0**
+
+Three series carried a scoreable real sample (KXJOBLESSCLAIMS n=4, KXWTIW, KXNATGASW).
+Everything below is on **improvement against `grid[0]`**, never on the PnL level, because
+§5c already showed the synthetic world is uniformly easier to trade — a common level shift
+has to cancel or it would be read as agreement.
+
+* **Reference-free decision test.** Take the synthetic argmin's pick, look up where its
+  *real* improvement falls in the distribution of real improvements over the whole grid.
+  A useless sample lands at the 50th percentile. Measured: **86.8% / 19.0% / 28.6%**,
+  mean **44.8%**. On two of three the synthetic pick is worse than picking the default.
+* **Pooled correlation.** Bootstrapped cross-series mean `rho` **+0.166**, 5th percentile
+  **−0.095**, `P(mean rho <= 0) = 0.20`. Taking the lower end as the method requires gives
+  `lambda = 0.0000`. The degenerate min-across-series rule and the fairer mean rule agree.
+* **Saturation** is incoherent across series (last doubling of `n_paths` moves rho by
+  −0.024 / +0.012 / +0.111), which is itself evidence that rho here is mostly noise.
+
+**The caveat that matters, and it is not a formality.** Split-half reliability with a
+Spearman-Brown correction on the *real* improvement vector is **+0.439 / −0.272 / −0.561**.
+`rho` is bounded above by `sqrt(rel_real * rel_synth)`, so on KXWTIW and KXNATGASW the real
+reference cannot correlate with *itself* and therefore cannot correlate with anything.
+That is **non-identification, not refutation**: those two series say nothing about the
+synthetic sample either way, and NG is noise-dominated on both sides (synth reliability
+−0.522). Only KXJOBLESSCLAIMS is identified, and it is n=4. `calibrate.py` now reports
+`rel_real`, `rel_synth`, `rho_disattenuated` and an `identified` flag by construction, so
+this can never again be read as a verdict when it is an absence of evidence.
+
+So `lambda = 0` is **the measured value, not a placeholder** — but it is measured on a
+sample too small to have found a positive value if one existed. The store and the weekly
+regeneration ship anyway: the sample exists, stays fresh, and the lane switches on with no
+code change the day a lambda row lands. The honest next measurement is a walk-forward
+calibration on the **monthly** series — rolling cutoffs over ~2 years, pooling many more
+real events, and removing the weekly→monthly extrapolation this one had to make.
+
 ## 7. Storage and cadence (S7) — as built, 2026-08-21
 
 `research/synth/regen.py`, wired into `ops/refresh.py`'s **weekly** block as
@@ -542,8 +576,14 @@ against a real sample at all.
 | S2 generator | purged blocked k-fold, three arms. **Paired CRPS vs `block_bootstrap` must be < 1 with t < −2** (the conditional arm has to be sharper than the unconditional resample of its own history), **and** rank calibration must not degrade materially against it. `knn_bootstrap` clears this on all five panels; the global conditional DFM does not and is a **documented negative**. The shipped arm is `fit_local`, which must additionally TIE its own `knn` on identical rows — see §4b |
 | S3 worlds | **DONE** (2026-08-21). **Round-trip proof passes 14/14 series, 75 events, 0 mismatches**: every real event rebuilt through `write_event` reproduces production `event_pnl` on `edge`/`argmax`/`hybrid`/`staked`/`traded`/`stream`. Re-run with `worlds.roundtrip(conn, series)`. See §4c for the four defects it caught |
 | S4 book | **DONE** (2026-08-21). Overlap gate passes with **outside = 0.0** (median gap 0.020, p95 0.143; synthetic `z_y` [−2.23,+4.30] inside donor [−5.14,+4.60]). Delivered `corr(z_m, z_y) = +0.500` against the real **+0.571**, the residual accounted for by the measured devig round trip of +0.908 (0.571×0.908 = 0.518) — i.e. at the cent-ladder ceiling. Half-spread q25/q50/q75 synthetic 0.006/0.008/0.018 vs real 0.007/0.010/0.019; `r` 0.660/0.873/1.143 vs 0.657/1.055/1.628. **Carry into S5:** `mean\|z_y\|` is 0.725 synthetic vs 0.964 real — the synthetic world is easier to trade than reality. See §5c |
-| S5 lambda | a bootstrap interval on lambda, reported whatever it says |
+| S5 lambda | **DONE** (2026-08-21). Reported whatever it said, and it said **zero**: pooled `rho` 5th pct **−0.095**, `P(mean rho <= 0) = 0.20`, and the reference-free decision test puts the synthetic pick at the **44.8th** percentile of real improvement against a null of 50 — worse than the default on 2 of 3 series. **Read the identification caveat before reading that as a refutation**: real-sample split-half reliability is −0.272 (KXWTIW) and −0.561 (KXNATGASW), so on those two the reference cannot correlate with itself, which caps `rho` at zero by construction. Only KXJOBLESSCLAIMS is identified and it is n=4. See §6a |
 | S6 wiring | **DONE** (2026-08-21). `n_eff = n_real + lambda*n_synth` feeds `sample_cap`; `_objective` blends only a grid the stored run fully covers and logs the refusal otherwise; every gate log carries `n_eff` and a `synth` block naming the run, its age and its lambda. Building it exposed a **real defect in the gate itself**: it sized the grid on the *quotable* universe while `score_matrix` keeps only what replays, so KXJOBLESSCLAIMS — skill-BLOCKED since 2026-07-09, `0/91` sets scoring on its last 6 events — was ranking 91 sets on **4** events (1.50 sd of selection bias, worse than the KXPAYROLLS case that motivated the gate) while the log read n=10. `resolve_grid` now re-narrows on the scored sample, never widens, and says which count it resized on |
 | S7 ops | **DONE** (2026-08-21). See §7. `weekly_synth_regen` in `ops/refresh.py`; one market's generator failure cannot starve the other six; `synth_runs`/`synth_scores` ride `backup_db`; worlds are one generation deep and gitignored |
 
-Nothing writes to production state until S5 has a number.
+Nothing writes to production state until S5 has a number. S5 now has one, and it is zero,
+so what ships is the machinery and not yet its influence: `weekly_synth_regen` builds and
+stores the sample every week, `param_argmin` reads it every morning, and `read_synth`
+refuses it out loud — `"lambda is zero — the synthetic sample carries no weight"` — so
+`n_eff == n_real` and the chosen parameters are bit-identical to the pre-S6 lane. The one
+thing that is *not* deferred is the gate defect S6 uncovered, which was real, independent
+of any of this, and is fixed.

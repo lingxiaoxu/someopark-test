@@ -81,6 +81,9 @@ class SeriesLambda:
     real_improve_of_synth_pick: float
     real_improve_oracle: float
     default_real: float
+    pick_percentile: float = 0.5
+    rel_real: float = 0.0
+    rel_synth: float = 0.0
     detail: dict = field(default_factory=dict)
 
 
@@ -127,11 +130,79 @@ def agreement(mat_real: list[list[float]], mat_synth: list[list[float]],
         _rho(R[rng.integers(len(R), size=len(R))], S[rng.integers(len(S), size=len(S))])
         for _ in range(reps)])
     lam = np.clip(boot, 0.0, None) ** 2
+    rel_r, rel_s = reliability(R, seed=seed), reliability(S, seed=seed)
     return {"rho": point, "rho_lo": float(np.percentile(boot, 5)),
             "rho_hi": float(np.percentile(boot, 95)),
             "lam_point": float(max(point, 0.0) ** 2),
             "lam_lo": float(np.percentile(lam, 5)),
-            "lam_hi": float(np.percentile(lam, 95))}
+            "lam_hi": float(np.percentile(lam, 95)),
+            "rel_real": rel_r, "rel_synth": rel_s,
+            "rho_disattenuated": (float(point / (rel_r * rel_s) ** 0.5)
+                                  if rel_r > 0 and rel_s > 0 else None),
+            "identified": rel_r > 0 and rel_s > 0}
+
+
+def reliability(mat, seed: int = 0, reps: int = 400) -> float:
+    """How well an improvement vector correlates with ITSELF, at this sample size.
+
+    Split the events in half at random, build the improvement vector on each half, correlate
+    the two, and step the result back up to full length with Spearman-Brown
+    (`r_full = 2*r_hh / (1 + r_hh)`). This is the quantity that decides whether `rho` means
+    anything: `rho` is bounded above by `sqrt(rel_real * rel_synth)`, so a reference with
+    zero reliability forces `rho` to zero no matter how good the synthetic sample is.
+
+    Measured 2026-08-21 on the three weekly markets, and it is the reason the lambda headline
+    cannot be read as a refutation: KXJOBLESSCLAIMS real **+0.439** (on 4 events), KXWTIW
+    **−0.272**, KXNATGASW **−0.561**. On two of three the real reference does not correlate
+    with itself, so `lambda = 0` there is non-identification rather than disagreement — and it
+    independently indicts running a 21-set argmin on those two markets at all. KXNATGASW's
+    SYNTHETIC side is **−0.522** on 104 events, which says its scoring is noise-dominated on
+    both sides and no amount of generation would fix it.
+
+    A negative value is returned as measured, not clipped. It means "worse than chance at
+    reproducing itself", which is information, and clipping it to zero would make an
+    unidentified measurement look merely weak.
+    """
+    M = np.asarray(mat, dtype=float)
+    n = len(M)
+    if n < 4:
+        return 0.0
+    rng = np.random.default_rng(seed)
+    rs = []
+    for _ in range(reps):
+        p = rng.permutation(n)
+        half = n // 2
+        a = M[p[:half]].mean(axis=0)
+        b = M[p[half:2 * half]].mean(axis=0)
+        a, b = a - a[0], b - b[0]
+        if a.std() and b.std():
+            rs.append(np.corrcoef(a, b)[0, 1])
+    if not rs:
+        return 0.0
+    hh = float(np.median(rs))
+    return 2 * hh / (1 + hh) if hh > -1 else -1.0
+
+
+def pick_percentile(mat_real, mat_synth) -> dict:
+    """Where the SYNTHETIC argmin's real improvement lands among all candidates' real ones.
+
+    The one statistic here that needs no reliable reference, and therefore the only one that
+    survives the finding above. It asks the decision-level question directly: take the set the
+    synthetic sample would have adopted, and ask how it actually did. Under the null that the
+    synthetic sample knows nothing, the percentile is uniform on [0, 1] and its mean is 50%.
+
+    Measured 2026-08-21: KXJOBLESSCLAIMS **86.8%**, KXWTIW **19.0%**, KXNATGASW **28.6%** —
+    mean **44.8%**, and on two of three the synthetic pick was WORSE than doing nothing. That
+    is the finding that sets lambda to zero, and unlike rho it cannot be explained away by an
+    unreliable reference.
+    """
+    mr, ms = _means(mat_real), _means(mat_synth)
+    mr, ms = mr - mr[0], ms - ms[0]
+    j = int(np.argmax(ms))
+    return {"pick_idx": j, "pick_real_improve": float(mr[j]),
+            "oracle_real_improve": float(mr.max()),
+            "percentile": float((mr < mr[j]).mean()),
+            "beats_default": bool(mr[j] > 0)}
 
 
 def run(src: sqlite3.Connection, series: str, now: datetime, *,
@@ -177,11 +248,17 @@ def run(src: sqlite3.Connection, series: str, now: datetime, *,
         return None
 
     ag = agreement(mat_r, mat_s, seed=seed)
+    pp = pick_percentile(mat_r, mat_s)
     mr, msy = _means(mat_r), _means(mat_s)
     pick = int(np.argmax(msy))
     oracle = int(np.argmax(mr))
     say(f"  rho {ag['rho']:+.3f} [{ag['rho_lo']:+.3f}, {ag['rho_hi']:+.3f}]  "
         f"lambda {ag['lam_point']:.3f} [{ag['lam_lo']:.3f}, {ag['lam_hi']:.3f}]")
+    say(f"  reliability real {ag['rel_real']:+.3f} synth {ag['rel_synth']:+.3f}"
+        f"{'' if ag['identified'] else '  <- rho NOT identified, not refuted'}")
+    say(f"  synth pick lands at {pp['percentile']:.1%} of the real improvement "
+        f"distribution (null 50%), {'beats' if pp['beats_default'] else 'LOSES TO'}"
+        " the default")
     return SeriesLambda(
         series=series, n_real=len(kept_r), n_synth=len(kept_s), k=len(grid),
         rho=ag["rho"], lam_point=ag["lam_point"], lam_lo=ag["lam_lo"],
@@ -189,7 +266,11 @@ def run(src: sqlite3.Connection, series: str, now: datetime, *,
         real_improve_of_synth_pick=float(mr[pick] - mr[0]),
         real_improve_oracle=float(mr[oracle] - mr[0]),
         default_real=float(mr[0]),
+        pick_percentile=pp["percentile"],
+        rel_real=ag["rel_real"], rel_synth=ag["rel_synth"],
         detail={"grid_report": grep, "coverage": built.coverage,
+                "rho_disattenuated": ag["rho_disattenuated"],
+                "identified": ag["identified"],
                 "synth_pick_idx": pick, "oracle_idx": oracle,
                 "synth_pick_params": grid[pick], "oracle_params": grid[oracle],
                 "splice": built.splice.isoformat(), "meta": built.meta})
@@ -203,16 +284,38 @@ def pool(results: list[SeriesLambda]) -> dict:
     survive the series that agreed least — averaging would let a series where the synthetic
     world happens to rank well pay for one where it does not, on markets that resemble
     neither.
+
+    The min rule is degenerate by construction — adding series can only lower it — so the
+    bootstrapped cross-series MEAN is reported alongside as `lambda_mean_rule`, to keep the
+    difference between "the evidence is against it" and "the rule cannot go up" visible. On
+    the 2026-08-21 measurement the two agree: mean rho +0.166 with a 5th percentile of
+    **−0.095** and P(mean rho <= 0) = 0.20, so the fairer rule also lands on zero.
+
+    `mean_pick_percentile` is the number to read first. It is the only figure here that does
+    not depend on the real reference being reliable, and on two of three series that
+    reference is not (see `reliability`). Measured **44.8%** against a null of 50%.
     """
     if not results:
         return {"lambda": 0.0, "n_series": 0, "note": "no series measured"}
     lo = min(r.lam_lo for r in results)
+    pcts = [r.pick_percentile for r in results]
+    ident = [r for r in results if r.rel_real > 0 and r.rel_synth > 0]
     return {"lambda": float(lo), "n_series": len(results),
+            "mean_pick_percentile": round(float(np.mean(pcts)), 3),
+            "n_beating_default": sum(1 for r in results
+                                     if r.real_improve_of_synth_pick > 0),
+            "n_identified": len(ident),
+            "lambda_mean_rule": round(float(max(np.mean(
+                [r.lam_lo for r in results]), 0.0)), 4),
             "per_series": {r.series: {"rho": round(r.rho, 3),
                                       "lam_point": round(r.lam_point, 3),
                                       "lam_lo": round(r.lam_lo, 3),
                                       "lam_hi": round(r.lam_hi, 3),
+                                      "pick_pct": round(r.pick_percentile, 3),
+                                      "rel_real": round(r.rel_real, 3),
+                                      "rel_synth": round(r.rel_synth, 3),
                                       "n_real": r.n_real, "n_synth": r.n_synth,
                                       "k": r.k}
                            for r in results},
-            "note": "min of per-series 5th-percentile bootstrap bounds"}
+            "note": ("min of per-series 5th-percentile bootstrap bounds; read "
+                     "mean_pick_percentile first — it needs no reliable reference")}
