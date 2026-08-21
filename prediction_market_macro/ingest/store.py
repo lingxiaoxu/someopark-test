@@ -240,6 +240,15 @@ CREATE TABLE IF NOT EXISTS demo_balance_sheet(     -- §30.4 append-only snapsho
 CREATE TABLE IF NOT EXISTS demo_mirror_state(      -- §30 k/v: armed | halt | watermark
   k TEXT PRIMARY KEY, v TEXT NOT NULL);
 
+CREATE TABLE IF NOT EXISTS demo_transfers(         -- §30.4 deposits/withdrawals ledger
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts TEXT NOT NULL,
+  amount_usd REAL NOT NULL,                        -- always positive; kind carries the sign
+  kind TEXT NOT NULL CHECK(kind IN ('deposit','withdrawal')),
+  note TEXT NOT NULL,                              -- mandatory: who/why, never ''
+  recorded_ts TEXT NOT NULL);                      -- when the row was written (vs ts = when
+                                                   -- the transfer happened at the exchange)
+
 -- ── DFM synthetic sample (PLAN_DFM_SYNTH S7) ────────────────────────────────
 -- The consumable output only. The worlds themselves are multi-GB sqlite files under
 -- data/synth/ and are regenerable; what the daily lane needs is one number per candidate
@@ -293,6 +302,14 @@ def init_db(db_path: Path | str) -> sqlite3.Connection:
     cols = {r[1] for r in conn.execute("PRAGMA table_info(decisions)")}
     if "closes_decision_id" not in cols:
         conn.execute("ALTER TABLE decisions ADD COLUMN closes_decision_id INTEGER")
+    # §30.4 transfers ledger: the balance identity gained a deposits/withdrawals term, and
+    # the snapshot row records its cumulative value so every historical drift stays
+    # interpretable. Same IF-NOT-EXISTS trap as #149 above — the DDL only reaches a fresh
+    # db, the live one needs the ALTER.
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(demo_balance_sheet)")}
+    if "transfers_cum" not in cols:
+        conn.execute("ALTER TABLE demo_balance_sheet ADD COLUMN transfers_cum REAL"
+                     " NOT NULL DEFAULT 0.0")
     _migrate_fed_statements(conn)
     conn.commit()
     return conn

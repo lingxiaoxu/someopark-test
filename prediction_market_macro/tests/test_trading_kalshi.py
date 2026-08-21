@@ -278,3 +278,88 @@ def test_paper_ledger_untouched_by_dark_mirroring(conn):
     assert [tuple(r) for r in before] == [tuple(r) for r in after]
     assert conn.execute("SELECT COUNT(*) FROM decisions WHERE kind NOT IN"
                         " ('open','exit')").fetchone()[0] == 0
+
+
+# ── §30.4 transfers ledger (the 2026-08-20 top-up gap) ───────────────────────
+
+def test_post_arm_deposit_halts_then_heals_through_the_ledger(conn, monkeypatch):
+    """The exact scenario the top-up exposed, end to end: a benign deposit after arming
+    IS unexplained drift until a human records it — then the identity heals, the halt is
+    acked with a paper trail, and nothing was auto-explained."""
+    tk.arm(conn, start_cash=492.0)
+    tk.snapshot_balance_sheet(conn, cash_exchange=492.0)
+    assert tk.halted(conn) is None
+    # user tops up $2,207.35 at the exchange; the mirror knows nothing
+    tk.snapshot_balance_sheet(conn, cash_exchange=2700.0 - 0.65)
+    assert tk.halted(conn) is not None and "drift" in tk.halted(conn)
+    rep = tk.record_transfer(conn, 2207.35, "deposit", "user top-up 2026-08-20")
+    assert rep["transfers_net"] == pytest.approx(2207.35)
+    s = tk.snapshot_balance_sheet(conn, cash_exchange=2700.0 - 0.65)
+    assert s["drift_usd"] == 0.0
+    assert s["transfers_cum"] == pytest.approx(2207.35)
+    tk.ack_halt(conn)
+    assert tk.halted(conn) is None
+    # the paper trail: a ledger row AND an alert, neither optional
+    assert conn.execute("SELECT COUNT(*) FROM demo_transfers").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM alerts WHERE message LIKE"
+                        " 'TRANSFER recorded%'").fetchone()[0] == 1
+
+
+def test_withdrawal_is_signed_and_shrinks_buying_power(conn):
+    """Withdrawals subtract: net = deposits − withdrawals, and cash_expected follows.
+    A withdrawal the guard ignored would let the mirror spend money that left."""
+    tk._set_state(conn, "start_cash", "492.00")
+    tk.record_transfer(conn, 100.0, "deposit", "test deposit")
+    tk.record_transfer(conn, 30.0, "withdrawal", "test withdrawal")
+    assert tk._transfers_net(conn) == pytest.approx(70.0)
+    s = tk.snapshot_balance_sheet(conn)
+    assert s["cash_expected"] == pytest.approx(492.0 + 70.0)
+
+
+def test_transfer_validation_refuses_the_unexplainable(conn):
+    """No sign smuggling through amount, no unknown kinds, and above all no empty note —
+    a transfer with no reason on record is exactly what the identity exists to catch."""
+    with pytest.raises(ValueError):
+        tk.record_transfer(conn, -50.0, "deposit", "negative amount")
+    with pytest.raises(ValueError):
+        tk.record_transfer(conn, 0.0, "deposit", "zero amount")
+    with pytest.raises(ValueError):
+        tk.record_transfer(conn, 50.0, "adjustment", "unknown kind")
+    with pytest.raises(ValueError):
+        tk.record_transfer(conn, 50.0, "deposit", "   ")
+    assert conn.execute("SELECT COUNT(*) FROM demo_transfers").fetchone()[0] == 0
+
+
+def test_transfers_do_not_touch_pnl_attribution(conn):
+    """realized_cum must not move when capital moves — the ledger separates 'capital
+    injected' from 'PnL earned', which is why it beats a start_cash rebase."""
+    tk._set_state(conn, "start_cash", "492.00")
+    s0 = tk.snapshot_balance_sheet(conn)
+    tk.record_transfer(conn, 1000.0, "deposit", "capital injection")
+    s1 = tk.snapshot_balance_sheet(conn)
+    assert s1["realized_cum"] == s0["realized_cum"] == 0.0
+    assert s1["cash_expected"] - s0["cash_expected"] == pytest.approx(1000.0)
+
+
+def test_migration_adds_transfers_cum_to_an_existing_balance_sheet(tmp_path):
+    """The live db predates the column; init_db must ALTER it in (the #149 lesson:
+    IF-NOT-EXISTS DDL only reaches a fresh db)."""
+    import sqlite3
+    p = tmp_path / "old.db"
+    c = sqlite3.connect(p)
+    c.execute("""CREATE TABLE demo_balance_sheet(
+        ts TEXT PRIMARY KEY, cash_exchange REAL NOT NULL, cash_expected REAL NOT NULL,
+        reserved_usd REAL NOT NULL, positions_cost REAL NOT NULL,
+        positions_mtm REAL NOT NULL, equity REAL NOT NULL, realized_cum REAL NOT NULL,
+        fees_cum REAL NOT NULL, n_open_positions INTEGER NOT NULL,
+        exposure_json TEXT NOT NULL, drift_usd REAL NOT NULL)""")
+    c.execute("INSERT INTO demo_balance_sheet VALUES('2026-08-18T00:00:00',492,492,0,"
+              "0,0,492,0,0,0,'{}',0)")
+    c.commit(); c.close()
+    conn2 = init_db(p)
+    cols = {r[1] for r in conn2.execute("PRAGMA table_info(demo_balance_sheet)")}
+    assert "transfers_cum" in cols
+    # old rows read back at 0.0, not NULL
+    assert conn2.execute("SELECT transfers_cum FROM demo_balance_sheet"
+                         ).fetchone()[0] == 0.0
+    conn2.close()

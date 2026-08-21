@@ -2600,6 +2600,19 @@ bar 还没落库时就把合约判死,3 天给日常道 3 次尝试机会,而期
 > 应当停机"正是这条恒等式存在的理由——但充值是良性事件,arming 之前需要决定是给
 > §30.4 加一张出入金台账,还是把充值当成一次显式的 `start_cash` 重定基(两者都要留
 > 痕,不能靠 ack_halt 一按了事)。
+>
+> ✅ **2026-08-21 已修:选台账,弃重定基**。重定基把「注资」和「赚亏」揉进同一个数,
+> equity-vs-start 曲线、买力护栏、drift 判据从此都讲不清自己在量什么;台账
+> (`demo_transfers`)把两者分开且天然 append-only 留痕。恒等式改为
+> `cash_expected = start_cash + Σtransfers + Σrealized − Σfees − positions_cost − reserved`,
+> 买力护栏同步(否则 arm 后充值对 sizing 不可见、提现后镜像会花已经离场的钱)。
+> **入账只有一条路**:`trading_kalshi.record_transfer(conn, amount, kind, note)`——
+> 手工、note 必填、金额恒正(方向由 kind 表达)、写 alerts 留痕。**没有任何自动分类**:
+> 镜像若能自己把 drift 解释成充值,恒等式就失去了存在的理由。良性充值的完整流程:
+> snapshot halt → 人认出是充值 → `record_transfer` 入账 → 下一张 snapshot 恒等式愈合
+> → `ack_halt`(此时台账行就是 ack 的书面依据)。快照表加列 `transfers_cum`
+> (init_db 幂等 ALTER 迁移,#149 教训),前端导出加 `transfers_net`
+> (PnL = equity − start_cash − transfers_net)。测试 5 项含充值全流程复现。
 
 ### §30.0 一句话架构
 
@@ -2761,12 +2774,13 @@ demo 账户是一个**有程序管理的资产负债表**,不是一串订单。�
 **状态模型(单一记账恒等式,每张快照都断言)**:
 ```
 equity = cash + Σ(持仓 MTM)
-cash   = start_cash + Σrealized − Σfees − Σ(持仓成本) − reserved(在途订单占用)
+cash   = start_cash + Σtransfers + Σrealized − Σfees − Σ(持仓成本) − reserved(在途订单占用)
 ```
 `start_cash` = `arm()` 当时钉住的余额(k/v `demo_mirror_state.start_cash`),**不是**
 写死的 492。落笔当天账户恰好是 $492,2026-08-20 已变为 $2,700;代码
 (`trading_kalshi._start_cash`)一直读 k/v,这里曾写死是文档与实现的不一致,已改齐。
-⚠️ **此式没有出入金项**,见 §30 开头的警告——arm 之后再充值会直接判成漂移。
+`Σtransfers` = `demo_transfers` 出入金台账的净额(2026-08-21 补上,见 §30 开头的
+警告块):入账仅经 `record_transfer`(手工、note 必填),镜像永不自动分类 drift。
 恒等式两侧分别来自**两个独立来源**——左侧从交易所 API 读(balance + positions),
 右侧从本地 `demo_fills`/结算推导。两边对不上就是 §30.2-2 的漂移,halt + 告警,
 不是"取一边继续跑"。

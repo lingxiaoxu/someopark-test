@@ -20,7 +20,12 @@ sync() is the catch-up backstop for crashes, not the primary path.
 
 Accounting (§30.4): one identity, asserted from two independent sources on every
 snapshot — equity = cash + Σposition MTM;
-cash = start_cash + Σrealized − Σfees − Σopen cost − reserved.
+cash = start_cash + Σtransfers + Σrealized − Σfees − Σopen cost − reserved.
+Σtransfers is the deposits/withdrawals ledger (`demo_transfers`), added after the
+2026-08-20 top-up showed the identity had no way to say "capital moved" — a benign
+deposit after arming would have halted the mirror as unexplained drift. Transfers
+enter ONLY through `record_transfer` (manual, note mandatory): the identity's job is
+to halt on unexplained movement, so nothing may explain drift away automatically.
 LHS from the exchange API, RHS derived from demo_fills + settlements. Disagreement
 beyond DRIFT_TOL_USD is a HALT (mirror stops, alert, human ack) — never "pick a side".
 MTM marks come from the PRODUCTION book (`quotes`); the demo book is thin and disjoint
@@ -121,6 +126,56 @@ def _start_cash(conn) -> float:
         return float(v)
     from prediction_market_macro.venues.kalshi.account import current_bankroll
     return current_bankroll(conn)
+
+
+def _transfers_net(conn) -> float:
+    """Σdeposits − Σwithdrawals since arming — the §30.4 identity's missing term.
+
+    The 2026-08-20 top-up ($492.65 → $2,700) exposed this: the identity had no way to
+    say "capital moved", so a benign deposit after arming would have read as
+    unexplained drift and halted the mirror. The fix is a LEDGER, not a start_cash
+    rebase: rebasing conflates "capital injected" with "PnL earned", and every
+    downstream figure — the equity-vs-start curve, the buying-power guard, the drift
+    check — needs those separated to mean anything.
+    """
+    r = conn.execute(
+        "SELECT COALESCE(SUM(CASE WHEN kind='deposit' THEN amount_usd"
+        " ELSE -amount_usd END), 0) FROM demo_transfers").fetchone()
+    return round(float(r[0]), 2)
+
+
+def record_transfer(conn, amount_usd: float, kind: str, note: str,
+                    ts: str | None = None) -> dict:
+    """The ONLY way a cash movement enters the identity. Deliberately manual.
+
+    Auto-classifying drift as a deposit would delete the reason the identity exists —
+    "unexplained cash movement halts the mirror" stops meaning anything if the mirror
+    explains its own drift away. So the flow on a benign transfer is: snapshot halts →
+    a human recognizes the deposit → this function records it with a mandatory note →
+    the next snapshot's identity heals → `ack_halt` is pressed with the ledger row as
+    its paper trail. Every step leaves a record; none is skippable (the plan's
+    "两者都要留痕,不能靠 ack_halt 一按了事").
+    """
+    if kind not in ("deposit", "withdrawal"):
+        raise ValueError(f"kind must be deposit|withdrawal, got {kind!r}")
+    if not (amount_usd > 0):
+        raise ValueError(f"amount_usd must be positive (kind carries the sign),"
+                         f" got {amount_usd}")
+    if not note or not note.strip():
+        raise ValueError("note is mandatory — a transfer with no reason on record is "
+                         "exactly the unexplained movement the identity exists to catch")
+    now = datetime.now(timezone.utc).isoformat()
+    conn.execute(
+        "INSERT INTO demo_transfers(ts, amount_usd, kind, note, recorded_ts)"
+        " VALUES(?,?,?,?,?)", (ts or now, round(amount_usd, 2), kind, note.strip(), now))
+    conn.execute(
+        "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+        (now, "warn", "trading_kalshi",
+         f"TRANSFER recorded: {kind} ${amount_usd:.2f} ({note.strip()}) — "
+         f"net transfers now ${_transfers_net(conn):.2f}"))
+    conn.commit()
+    return {"kind": kind, "amount_usd": round(amount_usd, 2),
+            "transfers_net": _transfers_net(conn)}
 
 
 # ── gates (§30.2: ledger-driven; Brier series_gate PAUSED for this path) ─────
@@ -224,10 +279,11 @@ def snapshot_balance_sheet(conn, cash_exchange: float | None = None) -> dict:
     pos = demo_positions(conn)
     realized, fees = _realized_and_fees(conn)
     reserved = _reserved(conn)
+    transfers = _transfers_net(conn)
     positions_cost = round(sum(p["cost"] for p in pos), 2)
     positions_mtm = round(sum(p["mtm"] for p in pos), 2)
-    cash_expected = round(_start_cash(conn) + realized - fees - positions_cost
-                          - reserved, 2)
+    cash_expected = round(_start_cash(conn) + transfers + realized - fees
+                          - positions_cost - reserved, 2)
     if cash_exchange is None:
         if armed(conn):
             from prediction_market_macro.venues.kalshi.account import fetch_balance_usd
@@ -241,12 +297,15 @@ def snapshot_balance_sheet(conn, cash_exchange: float | None = None) -> dict:
            "equity": round(cash_exchange + positions_mtm, 2),
            "realized_cum": realized, "fees_cum": fees,
            "n_open_positions": len(pos),
-           "exposure_json": json.dumps(_exposure(pos)), "drift_usd": drift}
+           "exposure_json": json.dumps(_exposure(pos)), "drift_usd": drift,
+           "transfers_cum": transfers}
     conn.execute(
-        "INSERT OR REPLACE INTO demo_balance_sheet VALUES"
+        "INSERT OR REPLACE INTO demo_balance_sheet(ts, cash_exchange, cash_expected,"
+        " reserved_usd, positions_cost, positions_mtm, equity, realized_cum, fees_cum,"
+        " n_open_positions, exposure_json, drift_usd, transfers_cum) VALUES"
         " (:ts,:cash_exchange,:cash_expected,:reserved_usd,:positions_cost,"
         "  :positions_mtm,:equity,:realized_cum,:fees_cum,:n_open_positions,"
-        "  :exposure_json,:drift_usd)", row)
+        "  :exposure_json,:drift_usd,:transfers_cum)", row)
     conn.commit()
     if armed(conn) and drift > DRIFT_TOL_USD:
         halt(conn, f"balance drift ${drift:.2f} > ${DRIFT_TOL_USD:.2f}"
@@ -378,10 +437,13 @@ def _mirror_one(conn, fill_id: int) -> None:
         write(base)
         return
     if action == "buy":
-        # buying-power guard reads cash_expected − reserved (never the raw balance)
+        # buying-power guard reads cash_expected − reserved (never the raw balance);
+        # transfers included, or a post-arm deposit would exist at the exchange but be
+        # invisible to sizing while a withdrawal would let the mirror spend money that left
         realized, fees = _realized_and_fees(conn)
         pos_cost = sum(p["cost"] for p in demo_positions(conn))
-        power = _start_cash(conn) + realized - fees - pos_cost - _reserved(conn)
+        power = (_start_cash(conn) + _transfers_net(conn) + realized - fees
+                 - pos_cost - _reserved(conn))
         affordable = int(power / max(base["paper_ask"], 0.01))
         if affordable <= 0:
             base.update(status="skipped_power", note=f"power ${power:.2f} affords 0")

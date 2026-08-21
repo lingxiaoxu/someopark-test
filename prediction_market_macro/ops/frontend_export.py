@@ -617,6 +617,9 @@ def run_extended(conn, settings) -> str:
         "armed": _tk.armed(conn), "halted": _tk.halted(conn),
         "mirror_mult": _tk.MIRROR_MULT,
         "start_cash": _tk._start_cash(conn),
+        # PnL-vs-start must subtract capital movements or a deposit reads as a winning
+        # streak: pnl = equity − start_cash − transfers_net (§30.4 transfers ledger)
+        "transfers_net": _tk._transfers_net(conn),
         "orders": orders,
         "positions": _tk.demo_positions(conn),
         "diff_cents": {
