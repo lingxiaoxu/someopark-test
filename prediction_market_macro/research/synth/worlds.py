@@ -197,6 +197,17 @@ def write_fred(dst: sqlite3.Connection, sid: str, values: pd.Series,
     neither. It is safe for every model in the registry today because none of them trades
     the revision process; a model that did would be scored generously here, and this is
     the line to revisit if one is ever written.
+
+    **The two DELETEs are load-bearing and neither is housekeeping.** `fred_obs` is keyed
+    `(sid, event_time, vintage_date)`, so `INSERT OR REPLACE` alone does NOT replace a real
+    observation of the same week — it lands BESIDE it whenever the real vintage date
+    differs by even a day, which it routinely does (holiday-shifted releases, any revision).
+    `FeatureStore` would then serve whichever vintage its own rule picks, and a synthetic
+    world would be reading a mixture of the generated path and the history it was supposed
+    to replace, week by week, with nothing raising. The first DELETE clears every vintage
+    of every week being generated. The second clears every real week AFTER the generated
+    path begins, because a real print the path happens not to cover is a leaked future
+    observation of a series the model reads, and it would be read as fact.
     """
     rows = []
     for ts, v in values.dropna().items():
@@ -205,6 +216,10 @@ def write_fred(dst: sqlite3.Connection, sid: str, values: pd.Series,
         kt = datetime(vint.year, vint.month, vint.day, hour, tzinfo=timezone.utc)
         rows.append((sid, ev.date().isoformat(), float(v), vint.isoformat(),
                      kt.isoformat(), first_seen))
+    if not rows:
+        return 0
+    start = min(r[1] for r in rows)
+    dst.execute("DELETE FROM fred_obs WHERE sid=? AND event_time>=?", (sid, start))
     dst.executemany(
         "INSERT OR REPLACE INTO fred_obs(sid, event_time, value, vintage_date,"
         " knowledge_time, first_seen_ts) VALUES(?,?,?,?,?,?)", rows)
@@ -219,6 +234,11 @@ def write_fut(dst: sqlite3.Connection, root: str, closes: pd.Series,
     Nothing in the consuming models reads open/high/low — `FeatureStore.fut_closes` selects
     `close` alone — so inventing an intrabar range would be fabricating detail no scorer
     can see, in a table a human might later mistake for real bars.
+
+    `fut_daily` is keyed `(root, event_time)` so the REPLACE genuinely replaces, but the
+    trailing DELETE is still needed for the same reason as in `write_fred`: a real bar on a
+    date the generated path skips (the path is weekly, the real series daily) would survive
+    inside the synthetic future as a true observation of where the market went.
     """
     rows = []
     for ts, v in closes.dropna().items():
@@ -226,6 +246,10 @@ def write_fut(dst: sqlite3.Connection, root: str, closes: pd.Series,
         kt = datetime(d.year, d.month, d.day, hour, tzinfo=timezone.utc)
         rows.append((root, d.date().isoformat(), float(v), float(v), float(v), float(v),
                      None, kt.isoformat(), first_seen))
+    if not rows:
+        return 0
+    dst.execute("DELETE FROM fut_daily WHERE root=? AND event_time>=?",
+                (root, min(r[1] for r in rows)))
     dst.executemany(
         "INSERT OR REPLACE INTO fut_daily(root, event_time, open, high, low, close,"
         " volume, knowledge_time, first_seen_ts) VALUES(?,?,?,?,?,?,?,?,?)", rows)
@@ -537,6 +561,39 @@ def rebuild_event(dst: sqlite3.Connection, plan: EventPlan,
                          "not be the whole event")
     dst.commit()
     return write_event(dst, plan, first_seen=first_seen)
+
+
+def clear_series(dst: sqlite3.Connection, series: str) -> dict[str, int]:
+    """Drop every real contract, settlement and candle of `series` from a world.
+
+    A world inherits the whole market side by byte copy, which is right for `rebuild_event`
+    — the round trip's claim is precisely that a real event survives being rewritten — and
+    wrong for GENERATION. There, the real events are the ones whose outcomes the generated
+    path is meant to replace, and leaving them in place would let `quotable_events` return
+    a mixture: some events priced against a synthetic macro path, some against the real one
+    that actually happened. That mixture scores, and it scores as though the synthetic
+    sample were larger and more real than it is, which is the one error this whole exercise
+    cannot afford.
+
+    Ordering matters: candles and settlements are cleared through the ticker list read from
+    `contracts`, so `contracts` goes last.
+    """
+    tks = [r[0] for r in dst.execute("SELECT ticker FROM contracts WHERE series=?",
+                                     (series,)).fetchall()]
+    out = {}
+    if tks:
+        marks = ",".join("?" * len(tks))
+        for table in ("candles", "settlements"):
+            out[table] = dst.execute(
+                f"DELETE FROM {table} WHERE ticker IN ({marks})", tks).rowcount
+    out["contracts"] = dst.execute("DELETE FROM contracts WHERE series=?",
+                                   (series,)).rowcount
+    # `settlements` also carries a series column, and a settlement whose contract row was
+    # already missing from the copy would otherwise survive as an outcome with no ladder.
+    out["settlements"] = out.get("settlements", 0) + dst.execute(
+        "DELETE FROM settlements WHERE series=?", (series,)).rowcount
+    dst.commit()
+    return out
 
 
 def roundtrip(conn: sqlite3.Connection, series: str, limit: int | None = None,

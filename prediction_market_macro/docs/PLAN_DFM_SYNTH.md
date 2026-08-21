@@ -343,6 +343,82 @@ range. If the incumbent's `P_sd` on synthetic worlds is systematically different
 `P_sd` on real ones, `z_y*` lands outside the donor pool and every draw is an
 extrapolation. That is checkable, so it is checked and reported rather than assumed.
 
+### 5c. What the S4 build measured (2026-08-21) — and the two things that were wrong
+
+Built end to end on KXJOBLESSCLAIMS: 8 DFM paths × 12 weekly events = **96/96 synthetic
+events**, every one quotable, all scored by unmodified `pnl_score.event_pnl`.
+
+**The overlap gate passes.** `n_donors=75, n_synth=96`; donor `z_y` range
+[−5.14, +4.60] contains the synthetic range [−2.23, +4.30]; median gap to the nearest
+donor 0.020, p95 0.143, **outside = 0.0**. No draw is an extrapolation.
+
+The gate that mattered, though, was the one §5b argued for: re-measure the descriptor on
+the finished worlds — reading candles back out through `_implied`/devig, the same path the
+real measurement used — and check that the +0.571 dependence actually arrived. The first
+build delivered **+0.276**, less than half. Decomposed link by link (`/tmp/wfdev/diag_chain.py`):
+
+| link | measured |
+|---|---|
+| 1. real `corr(donor z_m, donor z_y)` | **+0.571** |
+| 2. selection `corr(donor z_y, target z_y)` | +0.898 |
+| 3. transplant `corr(donor z_m, target z_y)` | +0.445 |
+| 4. devig round trip `corr(recovered z_m, donor z_m)` | +0.908 |
+| 5. delivered `corr(recovered z_m, target z_y)` | **+0.258** |
+
+Link 4 is a floor we cannot cross: quotes are integer cents, so a book written at `z_m`
+and read back through devig returns `z_m` with 0.908 correlation no matter what. Links 2
+and 3 were defects.
+
+**Defect 1 — ladder geometry is a venue fact, not a market view.** The original `draw`
+moved the whole donor across, offsets included, so a 40-leg KXNATGASW ladder could be
+stamped onto a claims event. Saturation (fraction of quotes pinned at the 1¢/99¢ band) by
+series on the real book: claims **19.7%**, KXWTIW 29.3%, KXAAAGASW 63.0%, KXNATGASW
+**75.9%**. A saturated ladder carries no information about `z_m` — the price is at the band
+regardless — so mixing geometries drowned the signal: synthetic saturation came out 49.1%
+against the real 19.7%. `draw_ladder` now takes offsets from the **target series' own**
+donors and refuses a series whose geometry has never been observed. **+0.276 → +0.406.**
+
+**Defect 2 — the k=10 selection smear attenuates, and is correctable in closed form.**
+k=10 buys donor diversity at a `z_y` mismatch of 0.24 mean, biased −0.12. Since
+`z_m = a + b·z_y_donor + e` on the pool, shifting every day of the drawn donor by
+`b·(z_y_target − z_y_donor)` yields `a + b·z_y_target + e`: the real slope restored, the
+donor's own residual `e` untouched. It cannot overshoot into a fabricated dependence
+precisely because `e` is not touched — there is a regression test pinning that. `b` is
+re-measured on the pool it is handed (`zm_slope`), never hardcoded, so a pool rebuilt after
+more events settle re-measures. **+0.406 → +0.500.**
+
+**+0.500 is the ceiling, not a shortfall.** 0.571 × 0.908 = 0.518, and the remaining 0.018
+is sampling noise on n=672 day-rows. The transplant now delivers everything the cent
+ladder can carry.
+
+Final descriptor, real donors vs synthetic worlds re-measured (q25/q50/q75):
+
+| | real | synthetic |
+|---|---|---|
+| `z_m` | −0.245 / +0.262 / +0.557 | +0.326 / +0.603 / +0.910 |
+| `r` | 0.657 / 1.055 / 1.628 | 0.660 / 0.873 / 1.143 |
+| half-spread | 0.007 / 0.010 / 0.019 | 0.006 / 0.008 / 0.018 |
+| `tail_mass` | 0.005 / 0.011 / 0.053 | 0.015 / 0.035 / 0.121 |
+| `corr(z_m, z_y)` | **+0.571** (n=496) | **+0.500** (n=672) |
+| our error `mean\|z_y\|` | **0.964** | **0.725** |
+
+**The number S5 has to price.** `mean|z_y|` is 0.725 synthetic against 0.964 real: the
+incumbent is materially *more accurate* on synthetic worlds than on real ones, which
+inflates strategy PnL there directly. The residual dependence gap (+0.500 vs +0.571) points
+the same way — a slightly less informed counterparty. Both biases say the synthetic world
+is **easier to trade than reality**, which is precisely what `lambda` exists to discount.
+Strategy on the 96 synthetic events for the record: `hybrid mean +1.022, sd 7.143,
+se 0.729, win 45%, traded 96/96, staked mean 1.136` at `BANKROLL = 100.0`.
+
+Two smaller defects the build caught, both now regression-tested:
+
+* `fred_obs` is keyed `(sid, event_time, vintage_date)`, so `INSERT OR REPLACE` landed
+  synthetic prints **beside** real ones whenever the vintage date differed by a day, and
+  `FeatureStore` would have served a mixture of the two worlds. `write_fred`/`write_fut`
+  now DELETE from the generated path's start before inserting.
+* Real Kalshi events of the target series survived in the world alongside the synthetic
+  ones, so `quotable_events` would have scored both. `clear_series` removes them.
+
 ## 6. Calibrating lambda (S5)
 
 For each weekly series (KXWTIW, KXNATGASW, KXAAAGASW, KXJOBLESSCLAIMS — n_real 10–11):
@@ -372,7 +448,7 @@ survives on real events is the exchange rate between a synthetic and a real obse
 | S1 panel | **DONE** (`bd8540f`+). Leakage test passes: no row contains a value dated after the window's right edge, `integrate` inverts the increment transform exactly, and each column reads the vintage its consuming model reads. See the point-in-time caveat in §4 |
 | S2 generator | purged blocked k-fold, three arms. **Paired CRPS vs `block_bootstrap` must be < 1 with t < −2** (the conditional arm has to be sharper than the unconditional resample of its own history), **and** rank calibration must not degrade materially against it. `knn_bootstrap` clears this on all five panels; the global conditional DFM does not and is a **documented negative**. The shipped arm is `fit_local`, which must additionally TIE its own `knn` on identical rows — see §4b |
 | S3 worlds | **DONE** (2026-08-21). **Round-trip proof passes 14/14 series, 75 events, 0 mismatches**: every real event rebuilt through `write_event` reproduces production `event_pnl` on `edge`/`argmax`/`hybrid`/`staked`/`traded`/`stream`. Re-run with `worlds.roundtrip(conn, series)`. See §4c for the four defects it caught |
-| S4 book | the transplanted books reproduce the real events' spread and devigged-width distribution |
+| S4 book | **DONE** (2026-08-21). Overlap gate passes with **outside = 0.0** (median gap 0.020, p95 0.143; synthetic `z_y` [−2.23,+4.30] inside donor [−5.14,+4.60]). Delivered `corr(z_m, z_y) = +0.500` against the real **+0.571**, the residual accounted for by the measured devig round trip of +0.908 (0.571×0.908 = 0.518) — i.e. at the cent-ladder ceiling. Half-spread q25/q50/q75 synthetic 0.006/0.008/0.018 vs real 0.007/0.010/0.019; `r` 0.660/0.873/1.143 vs 0.657/1.055/1.628. **Carry into S5:** `mean\|z_y\|` is 0.725 synthetic vs 0.964 real — the synthetic world is easier to trade than reality. See §5c |
 | S5 lambda | a bootstrap interval on lambda, reported whatever it says |
 | S6 wiring | `n_eff` feeds `sample_cap`; gate logs distinguish real from synthetic sample |
 | S7 ops | regeneration runs unattended and its output is backed up |

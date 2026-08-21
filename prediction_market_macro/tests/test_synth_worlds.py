@@ -230,11 +230,81 @@ def test_write_fred_stamps_knowledge_time_at_the_measured_lag(tmp_path):
     assert rows[1]["knowledge_time"] == "2026-02-22T13:00:00+00:00"
 
 
+def test_write_fred_replaces_a_real_week_that_carries_a_different_vintage(tmp_path):
+    """`fred_obs` is keyed (sid, event_time, vintage_date). A real release that shifted for
+    a holiday, or any revision, gives the same week a different vintage — so INSERT OR
+    REPLACE lands the generated value BESIDE the real one instead of over it, and
+    `FeatureStore` then serves whichever its own rule picks. The world would be reading a
+    mixture of the generated path and the history it was meant to replace, week by week,
+    with nothing raising anywhere."""
+    conn = _db(tmp_path)
+    conn.execute("INSERT INTO fred_obs(sid, event_time, value, vintage_date,"
+                 " knowledge_time, first_seen_ts) VALUES('ICSA','2026-03-07',999000.0,"
+                 "'2026-03-13','2026-03-13T13:00:00+00:00','real')")
+    conn.commit()
+    W.write_fred(conn, "ICSA", pd.Series([210000.0], index=pd.to_datetime(["2026-03-07"])),
+                 lag_days=5, hour=12)
+    rows = conn.execute("SELECT value FROM fred_obs WHERE sid='ICSA'").fetchall()
+    assert [r[0] for r in rows] == [210000.0], "the real vintage survived alongside"
+
+
+def test_write_fred_clears_real_prints_after_the_generated_path_starts(tmp_path):
+    """A real observation the path happens not to cover is a leaked future fact about a
+    series the model reads. History BEFORE the splice is real on purpose and must stay."""
+    conn = _db(tmp_path)
+    for ev in ("2026-02-28", "2026-03-14", "2026-03-21"):
+        conn.execute("INSERT INTO fred_obs(sid, event_time, value, vintage_date,"
+                     " knowledge_time, first_seen_ts) VALUES('ICSA',?,999000.0,?,?, 'real')",
+                     (ev, ev, ev + "T13:00:00+00:00"))
+    conn.commit()
+    W.write_fred(conn, "ICSA", pd.Series([210000.0], index=pd.to_datetime(["2026-03-07"])),
+                 lag_days=5, hour=12)
+    got = {r[0]: r[1] for r in conn.execute(
+        "SELECT event_time, value FROM fred_obs WHERE sid='ICSA'").fetchall()}
+    assert got == {"2026-02-28": 999000.0, "2026-03-07": 210000.0}
+
+
 def test_write_fut_fills_ohlc_from_the_close_it_was_given(tmp_path):
     conn = _db(tmp_path)
     W.write_fut(conn, "CL", pd.Series([61.5], index=pd.to_datetime(["2026-03-02"])))
     r = conn.execute("SELECT open, high, low, close FROM fut_daily").fetchone()
     assert tuple(r) == (61.5, 61.5, 61.5, 61.5)
+
+
+def test_write_fut_clears_real_bars_after_the_generated_path_starts(tmp_path):
+    """The generated path is weekly and `fut_daily` is daily, so most real bars inside the
+    synthetic future are on dates the path never names and REPLACE never touches."""
+    conn = _db(tmp_path)
+    for ev in ("2026-03-01", "2026-03-03", "2026-03-04"):
+        conn.execute("INSERT INTO fut_daily(root, event_time, open, high, low, close,"
+                     " volume, knowledge_time, first_seen_ts)"
+                     " VALUES('CL',?,9,9,9,9,NULL,?,'real')", (ev, ev + "T20:00:00+00:00"))
+    conn.commit()
+    W.write_fut(conn, "CL", pd.Series([61.5], index=pd.to_datetime(["2026-03-02"])))
+    got = {r[0]: r[1] for r in conn.execute(
+        "SELECT event_time, close FROM fut_daily WHERE root='CL'").fetchall()}
+    assert got == {"2026-03-01": 9.0, "2026-03-02": 61.5}
+
+
+def test_clear_series_leaves_no_real_event_to_mix_with_the_synthetic_one(tmp_path):
+    """A world inherits the market side by byte copy. Left in place, `quotable_events`
+    returns a MIXTURE: some events priced against the generated macro path, some against
+    the real one that actually happened — and the mixture scores, as though the synthetic
+    sample were both larger and more real than it is."""
+    conn = _db(tmp_path)
+    W.write_event(conn, W.EventPlan(
+        series="KXCPI", period="26MAR", legs=[_leg("A", "greater", floor=3.0)],
+        close_time=datetime(2026, 3, 11, 12, 30, tzinfo=UTC), outcome=3.2,
+        book={"A": [(1_770_000_000, 0.4, 0.5)]}))
+    W.write_event(conn, W.EventPlan(
+        series="KXU3", period="26MAR", legs=[_leg("B", "greater", floor=4.0)],
+        close_time=datetime(2026, 3, 6, 13, 30, tzinfo=UTC), outcome=4.1,
+        book={"B": [(1_770_000_000, 0.6, 0.7)]}))
+    W.clear_series(conn, "KXCPI")
+    for table in ("contracts", "settlements", "candles"):
+        left = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+        assert left == 1, f"{table} kept {left} rows"
+    assert conn.execute("SELECT series FROM contracts").fetchone()[0] == "KXU3"
 
 
 # ── point-in-time truncation ─────────────────────────────────────────────────
