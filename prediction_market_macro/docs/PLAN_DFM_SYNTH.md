@@ -191,6 +191,38 @@ So the information the project needs **is there**, and the global score net was 
 instrument: on `claims_weekly` it scored CRPS/boot **1.032 (t = +3.30, significantly
 worse)** where the analog draw scored 0.978.
 
+**5. Which arm to ship, measured properly on both families.** 130 held-out anchors per
+panel, one local fit each, 3000 epochs. **This corrects the "the global DFM loses"
+headline above**: under CRPS the global net is *fine on labor* (0.932, t = −3.56) and only
+*insignificant on energy* (0.983, t = −1.42). What replicates is not that it loses but
+that it is **inconsistent**, while `fit_local` is the strongest arm against the baseline in
+both panels.
+
+| arm | labor CRPS/boot (t) | energy CRPS/boot (t) |
+|---|---|---|
+| boot | 1.000 | 1.000 |
+| dfm (global, 2 PCs) | 0.932 (−3.56) | 0.983 (−1.42) |
+| knn40 | 0.914 (−3.50) | 0.931 (−1.98) |
+| knn80 | 0.936 (−3.88) | 0.925 (−2.62) |
+| **loc40** | 0.935 (**−5.20**) | 0.957 (**−2.87**) |
+| **loc80** | 0.940 (**−5.53**) | 0.956 (**−3.42**) |
+
+`loc` vs its OWN `knn` on identical rows — the test of what the smoothing costs — is a tie
+in both panels (labor t = +0.94 / +0.39; energy t = +0.75 / +1.14, none significant).
+
+One claim was made from labor alone and **does not replicate**: there, smoothing repaired
+the analog draw's under-dispersion (cover50 0.382 → 0.456 against a nominal 0.50). On
+energy it did not (0.417 → 0.410). That is a panel property, not a property of the method,
+and it is not part of the case for shipping `loc`.
+
+The case that does survive is two measured facts and one structural one:
+
+* `loc` has the best paired t against the unconditional baseline in **both** panels.
+* `loc` ties `knn` on CRPS, so the smoothing is not bought at the cost of accuracy.
+* **Only `loc` can emit a path that never happened.** `knn` at k=80 is 80 distinct worlds
+  no matter how many times it is drawn from; §0 needs thousands. This is structural, holds
+  without measurement, and is the reason the generative model is in the design at all.
+
 **Consequence for the architecture.** `knn_bootstrap` is not shippable on its own: k
 neighbours are k distinct worlds, and §0's purpose is thousands of them. So the DFM keeps
 its place with its job inverted — `Generator.fit_local` fits **unconditionally on the
