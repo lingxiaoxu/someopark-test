@@ -51,7 +51,22 @@ def sandbox(tmp_path, monkeypatch):
     monkeypatch.setattr(es, "SHADOW_DIR", tmp_path / "execution_shadow")
     monkeypatch.setattr(es, "TRACKING",
                         tmp_path / "execution_shadow" / "exec_shadow_tracking.csv")
+    # E1-2 真开关三件套必须一并隔离 —— 否则 run() 会读到生产 exec_switch.json
+    # (2026-08-21 起全开)并把测试 plan 写进生产 execution_live/。
+    monkeypatch.setattr(es, "LIVE_DIR", tmp_path / "execution_live")
+    monkeypatch.setattr(es, "SWITCH_PATH",
+                        tmp_path / "execution_live" / "exec_switch.json")
+    monkeypatch.setattr(es, "CONSUMPTION",
+                        tmp_path / "execution_live" / "consumption_log.csv")
     return tmp_path
+
+
+def _switch_on(tmp_path, strategies=("mrpt", "mtfs", "aiss", "ssrs")):
+    p = tmp_path / "execution_live" / "exec_switch.json"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps({"schema": "v1",
+                             "strategies": {s: True for s in strategies}}))
+    return p
 
 
 def test_collect_pairs_filters_actions_and_dedups(sandbox):
@@ -148,6 +163,7 @@ def test_run_idempotent_via_tracking(sandbox, monkeypatch):
                         lambda: FakeSvc({"AAA": 100_000.0, "BBB": 200_000.0}))
     r1 = es.run(since="2026-08-01")
     assert r1["new"] == 2
+    assert r1["consumed"] == 0                               # 无开关文件 = 全关
     r2 = es.run(since="2026-08-01")
     assert r2["new"] == 0                                    # 幂等
     track = pd.read_csv(es.TRACKING)
@@ -155,3 +171,83 @@ def test_run_idempotent_via_tracking(sandbox, monkeypatch):
     day_json = es.SHADOW_DIR / "exec_shadow_mrpt_2026-08-14.json"
     doc = json.loads(day_json.read_text())
     assert len(doc["trades"]) == 2
+    assert not (sandbox / "execution_live").exists()         # 关 = 零写入
+
+
+# ── E1-2 真开关 ──────────────────────────────────────────────────────────────
+
+def test_switch_missing_is_all_off_and_corrupt_raises(sandbox):
+    assert es.load_switch() == {"strategies": {}}
+    p = _switch_on(sandbox)
+    p.write_text(json.dumps({"strategies": "yes"}))          # 坏结构
+    with pytest.raises(ValueError):
+        es.load_switch()
+
+
+def test_compliance_verdicts(sandbox):
+    assert es._compliance({"status": "ok", "days_scheduled": 1}) == "compliant_1day"
+    assert es._compliance({"status": "partial", "days_scheduled": 3}) == "DIVERGENT_multiday"
+    assert es._compliance({"status": "no_adv_data"}) == "no_schedule(no_adv_data)"
+
+
+def test_run_with_switch_writes_instruction_of_record(sandbox, monkeypatch):
+    _signals_file(sandbox)
+    _switch_on(sandbox)
+    import VolumePrediction.service as _svc_mod
+    monkeypatch.setattr(_svc_mod, "VolumeService",
+                        lambda: FakeSvc({"AAA": 100_000.0, "BBB": 200_000.0}))
+    r = es.run(since="2026-08-01")
+    assert r["consumed"] == 2
+    assert r["divergent"] == 0                               # cap 充裕 → 全 1 天合规
+    plan = json.loads((sandbox / "execution_live"
+                       / "exec_plan_mrpt_2026-08-14.json").read_text())
+    assert plan["instruction_of_record"] is True
+    verd = {t["unit"]: t["compliance"] for t in plan["trades"]}
+    assert verd["AAA/BBB"] == "compliant_1day"
+    assert verd["EEE/FFF"].startswith("no_schedule")
+    con = pd.read_csv(sandbox / "execution_live" / "consumption_log.csv")
+    assert len(con) == 2
+    assert list(con.columns) == es._CONSUME_COLS
+
+
+def test_run_divergent_multiday_flags_loudly(sandbox, monkeypatch, caplog):
+    # AAA ADV 压到 50k、目标 50k 股 → cap 0.2 逼出 5 天排程 = 绊线场景
+    doc = {"signal_date": "2026-08-14",
+           "mrpt": {"signals": [
+               {"pair": "AAA/BBB", "action": "CLOSE",
+                "s1": "AAA", "s2": "BBB", "s1_shares": 50_000,
+                "s2_shares": -50_000, "s1_price": 50.0, "s2_price": 25.0}]},
+           "mtfs": {"signals": []}}
+    (sandbox / "combined_signals_20260814_090000.json").write_text(json.dumps(doc))
+    _switch_on(sandbox)
+    import VolumePrediction.service as _svc_mod
+    monkeypatch.setattr(_svc_mod, "VolumeService",
+                        lambda: FakeSvc({"AAA": 50_000.0, "BBB": 500_000.0}))
+    with caplog.at_level("WARNING"):
+        r = es.run(since="2026-08-01")
+    assert r["divergent"] == 1
+    assert any("EXEC_DIVERGENT" in m for m in caplog.messages)
+    con = pd.read_csv(sandbox / "execution_live" / "consumption_log.csv")
+    assert con.iloc[0]["compliance"] == "DIVERGENT_multiday"
+
+
+def test_consumption_log_column_alignment_guard(sandbox, monkeypatch):
+    # 已有 log 列序被打乱 → 追加必须按旧表头对齐;列集不同必须大声抛
+    _signals_file(sandbox)
+    _switch_on(sandbox)
+    live = sandbox / "execution_live"; live.mkdir(parents=True, exist_ok=True)
+    shuffled = list(reversed(es._CONSUME_COLS))
+    (live / "consumption_log.csv").write_text(
+        ",".join(shuffled) + "\n" + ",".join(["x"] * len(shuffled)) + "\n")
+    import VolumePrediction.service as _svc_mod
+    monkeypatch.setattr(_svc_mod, "VolumeService",
+                        lambda: FakeSvc({"AAA": 100_000.0, "BBB": 200_000.0}))
+    es.run(since="2026-08-01")
+    con = pd.read_csv(live / "consumption_log.csv")
+    assert list(con.columns) == shuffled                      # 尊重已有表头
+    assert con.iloc[-1]["strategy"] == "mrpt"                 # 值落对了列
+    # 列集不一致 → 抛
+    (live / "consumption_log.csv").write_text("bogus_col\n1\n")
+    _signals_file(sandbox, sd="2026-08-15")
+    with pytest.raises(ValueError, match="表头不匹配"):
+        es.run(since="2026-08-01")

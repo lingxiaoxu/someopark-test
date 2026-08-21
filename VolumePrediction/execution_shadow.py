@@ -28,6 +28,23 @@ PIT: 事件价用信号/成交价(决策时点);ADV̂ 用 svc.adv.info(date=事�
 
 幂等: tracking CSV 按 key=(strategy,date,unit,action) 去重,重复运行不灌重。
 
+── E1-2 真开关(2026-08-21 用户批准全部四策略开启)────────────────────────
+开关文件 outputs/execution_live/exec_switch.json,per-strategy 布尔。开启后,
+执行层升格为该策略的**执行指令记录方(instruction of record)**:每笔真实调仓
+在此产出正式排程写入 execution_live/exec_plan_{strat}_{date}.json,并把
+账面实际成交(单日全量,纸面成交的既有约定)与排程对拍出 compliance 判决,
+追加 execution_live/consumption_log.csv。
+
+为什么"开"不等于拆单成交 —— 两个候选消费点都被审慎排除:
+  账面层拆单 = 执行模块反向改 inventory 成交节奏,违反用户防火墙
+  (inventory→下单单向,绝无反向);QC exporter 层拆单 = 镜像故意偏离
+  它所镜像的账本,当场破坏 QC↔面板逐股对齐恒等式(镜像的职责是保真,
+  不是优化执行)。所以排程>1 天时账面照旧单日成交,但产出
+  **EXEC_DIVERGENT 大声告警** —— 这就是规模拐点的绊线(T4 容量图
+  ×100-1000 拐点的在线检测器):绊线响起时,真实拆单路径(真钱券商侧
+  或 QC 练兵模式)才值得建,届时再由用户裁决在哪一层建。
+  当前规模(峰值参与率 0.08% ADV)下所有排程都是 1 天,开着零成本。
+
 用法:
     python -m VolumePrediction.execution_shadow --dry-run
     python -m VolumePrediction.execution_shadow            # 增量(默认 since 2026-08-01)
@@ -51,6 +68,9 @@ log = get_logger("execution_shadow")
 
 SHADOW_DIR = OUT / "execution_shadow"
 TRACKING = SHADOW_DIR / "exec_shadow_tracking.csv"
+LIVE_DIR = OUT / "execution_live"
+SWITCH_PATH = LIVE_DIR / "exec_switch.json"
+CONSUMPTION = LIVE_DIR / "consumption_log.csv"
 SIGNALS_GLOB = str(REPO / "trading_signals" / "combined_signals_*.json")
 LEDGERS = {
     "aiss": REPO / "qlib-main" / "semiconductor_strategy" / "trade_ledger_aiss.jsonl",
@@ -243,6 +263,83 @@ def shadow_basket(svc, ev: dict) -> dict:
     return rec
 
 
+# ── E1-2 真开关: 指令记录 + 分歧绊线 ────────────────────────────────────────
+
+_CONSUME_COLS = ["strategy", "date", "unit", "action", "status",
+                 "days_scheduled", "est_saving", "compliance"]
+
+
+def load_switch() -> dict:
+    """开关文件缺失 = 全关(影子照跑);存在但坏 = 大声抛(绝不静默当关)。"""
+    if not SWITCH_PATH.exists():
+        return {"strategies": {}}
+    sw = json.loads(SWITCH_PATH.read_text())
+    if not isinstance(sw.get("strategies"), dict):
+        raise ValueError(f"{SWITCH_PATH} 缺 strategies dict — 修文件,不猜语义")
+    return sw
+
+
+def _compliance(rec: dict) -> str:
+    if rec.get("status") not in ("ok", "partial"):
+        return f"no_schedule({rec.get('status')})"
+    if (rec.get("days_scheduled") or 0) <= 1:
+        return "compliant_1day"
+    return "DIVERGENT_multiday"
+
+
+def _consume(recs: list[dict], by_day: dict) -> tuple[int, int]:
+    """开关内策略: 写指令记录 exec_plan_{strat}_{date}.json + consumption_log。
+    返回 (consumed, divergent)。排程>1 天 → log.warning EXEC_DIVERGENT
+    (账面按既有约定仍单日全量成交 —— 防火墙禁止执行层反向改 inventory,
+    分歧本身就是要的产出: 规模拐点绊线)。"""
+    on = {s for s, v in (load_switch().get("strategies") or {}).items() if v}
+    consumed = [r for r in recs if r["strategy"] in on]
+    if not consumed:
+        return 0, 0
+    LIVE_DIR.mkdir(parents=True, exist_ok=True)
+    for (strat, dt), rows in by_day.items():
+        if strat not in on:
+            continue
+        rows_on = [{**r, "compliance": _compliance(r)} for r in rows]
+        p = LIVE_DIR / f"exec_plan_{strat}_{dt}.json"
+        existing = []
+        if p.exists():
+            try:
+                existing = json.loads(p.read_text()).get("trades", [])
+            except Exception:  # noqa: BLE001
+                pass
+        doc = {"schema_version": "v1", "instruction_of_record": True,
+               "strategy": strat, "date": dt,
+               "generated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
+               "trades": existing + rows_on}
+        doc, _bad = sanitize_for_json(doc)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(doc, indent=2, ensure_ascii=False,
+                                  default=str, allow_nan=False))
+        tmp.replace(p)
+    rows = [{**{c: r.get(c) for c in _CONSUME_COLS[:-1]},
+             "compliance": _compliance(r)} for r in consumed]
+    df = pd.DataFrame(rows, columns=_CONSUME_COLS)
+    if CONSUMPTION.exists():
+        # to_csv(mode="a") 按 df 自己的列序写值、不看已有 header → 列序漂移
+        # 会静默错位(2026-08-17 shadow_blend 真炸过,320ad27)。按已有表头对齐,
+        # 列集不一致大声退。
+        old_cols = list(pd.read_csv(CONSUMPTION, nrows=0).columns)
+        if set(old_cols) != set(df.columns):
+            raise ValueError(f"consumption_log 表头不匹配: 已有 {old_cols} "
+                             f"vs 新 {list(df.columns)} — 需人工迁移")
+        df = df[old_cols]
+    df.to_csv(CONSUMPTION, mode="a", header=not CONSUMPTION.exists(), index=False)
+    divergent = [r for r in consumed if _compliance(r) == "DIVERGENT_multiday"]
+    for r in divergent:
+        log.warning(
+            f"EXEC_DIVERGENT [{r['strategy']}] {r['date']} {r['unit']} "
+            f"{r['action']}: 排程 {r['days_scheduled']}d,账面单日全量成交 — "
+            f"拆单本可省 ${r.get('est_saving', 0):.2f};规模拐线绊响,"
+            f"真实拆单路径该提上议程(用户裁决建在哪层)")
+    return len(consumed), len(divergent)
+
+
 # ── 主流程(幂等增量)─────────────────────────────────────────────────────────
 
 _TRACK_COLS = ["strategy", "date", "unit", "action", "trade_type", "status",
@@ -306,11 +403,12 @@ def run(since: str = DEFAULT_SINCE, dry_run: bool = False) -> dict:
     tdf = pd.DataFrame(track_rows)
     header = not TRACKING.exists()
     tdf.to_csv(TRACKING, mode="a", header=header, index=False)
+    n_consumed, n_div = _consume(recs, by_day)
     n_ok = sum(1 for r in recs if r.get("status") in ("ok", "partial"))
-    log.info(f"execution_shadow: +{len(recs)} rows ({n_ok} scheduled) "
-             f"→ {TRACKING.name}")
+    log.info(f"execution_shadow: +{len(recs)} rows ({n_ok} scheduled, "
+             f"{n_consumed} consumed, {n_div} divergent) → {TRACKING.name}")
     return {"status": "ok", "events": len(events), "new": len(recs),
-            "scheduled": n_ok}
+            "scheduled": n_ok, "consumed": n_consumed, "divergent": n_div}
 
 
 def main() -> int:
