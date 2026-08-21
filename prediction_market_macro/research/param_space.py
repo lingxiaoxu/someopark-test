@@ -150,8 +150,14 @@ CANDIDATES: dict[str, dict[str, tuple]] = {
         "base_months": (9, [3, 6]),
         "w_base": (0.1, [0.5, 0.6, 0.75]),
         "jobs_per_claim": (8.0, [1.0, 2.0, 3.0]),
-        "sigma_core": (20_000.0, [45_000.0, 55_000.0, 65_000.0]),
-        "sigma_tail": (400_000.0, [110_000.0, 140_000.0]),
+        # payrolls/0.2.0 searches the SHAPE and the SCALING of the mixture, not absolute
+        # widths. sigma_core/sigma_tail are gone because they no longer set the width —
+        # and note they would have LOOKED live if left here, since predict() echoes a
+        # retired key into inputs and live_keys() reads inputs. The grid asks how much to
+        # trust the rolling estimate, not what number to pin.
+        "sigma_window": (3, [18, 24, 36]),
+        "sigma_mult": (3.0, [0.9, 1.0, 1.15]),
+        "tail_mult": (8.0, [2.0, 2.55, 3.0]),
         "w_tail": (0.6, [0.15, 0.2, 0.3]),
     },
     "u3": {

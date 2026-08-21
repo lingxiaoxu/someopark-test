@@ -67,8 +67,11 @@ SPACES: dict[str, dict[str, tuple]] = {
         "w_base": (0.1, [0.4, 0.5, 0.6, 0.75]),
         "jobs_per_claim": (8.0, [1.0, 2.0, 3.0]),
         "claims_clip": (10_000, [100_000, 150_000, 200_000]),
-        "sigma_core": (20_000.0, [45_000.0, 55_000.0, 65_000.0]),
-        "sigma_tail": (400_000.0, [110_000.0, 140_000.0, 180_000.0]),
+        # 0.2.0: absolute widths retired — the mixture scale now tracks the model's own
+        # residuals, so what is searchable is the window, the multiplier and the shape.
+        "sigma_window": (3, [18, 24, 36]),
+        "sigma_mult": (3.0, [0.85, 0.9, 1.0, 1.15]),
+        "tail_mult": (8.0, [2.0, 2.55, 3.0]),
         "w_tail": (0.6, [0.15, 0.2, 0.3]),
     },
     "u3": {

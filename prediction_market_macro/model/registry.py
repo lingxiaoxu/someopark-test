@@ -78,12 +78,21 @@ _CARDS: list[ModelSpec] = [
               ["CPILFESL→PCEPILFE bridge (PIT)", "回归残差 σ"], _TT, True,
               "**pce/0.1.0** — CPI-core 桥回归。已知失效: CPI/PCE 权重月度背离"
               "(医疗/金融服务权重差)、年度基准修订月。"),
-    ModelSpec("KXPAYROLLS", "payrolls", "payrolls/0.1.0",
-              {"tail_mix": True},
-              ["PAYEMS printed-change 重建 (vintages)", "claims 信号", "肥尾混合"],
+    ModelSpec("KXPAYROLLS", "payrolls", "payrolls/0.2.0",
+              {"tail_mix": True, "sigma_window": 24, "sigma_mult": 1.0, "tail_mult": 2.55},
+              ["PAYEMS printed-change 重建 (vintages)", "claims 信号",
+               "自身残差滚动 robust scale", "肥尾混合"],
               _TT, True,
-              "**payrolls/0.1.0** — 首印变动重建 + claims 信号 + 肥尾混合。"
-              "已知失效: 罢工/天气月、benchmark 修订月、birth-death 转折。"),
+              "**payrolls/0.2.0** — 首印变动重建 + claims 信号 + 肥尾混合;"
+              "σ 由**模型自身近 24 个月残差**的 1.4826·MAD 定标,不再是常数。\n"
+              "为什么改: 0.1.0 的 0.8·N(0,55k)+0.2·N(0,140k)(sd 79,624)蕴含 "
+              "P(|e|>1sd)=23.2%,2010-2026 剔 2020 实测 **41.3%**;常数 σ 的 MLE 重拟合 "
+              "sd=137,443,按锚聚类自助 90% 区间 [120,396, 160,772] —— 线上宽度在区间之外。"
+              "且宽度非平稳(74k/65k/149k/94k 四个时代),常数必错。\n"
+              "视野: **σ 不随期数变宽,这是实测结论不是遗漏** —— h=1..6 的 robust sd 比值 "
+              "1.00/0.96/1.00/0.90/0.95/0.93。mu 是三月均值,几乎不含月度专属信息。\n"
+              "已知失效: 罢工/天气月、benchmark 修订月、birth-death 转折;"
+              "σ 窗口滞后于波动率突变(24 个月半衰)。"),
     ModelSpec("KXU3", "u3", "u3/0.1.0",
               {"kernel": "empirical delta", "kfold_convolution": True},
               ["UNRATE 首印 Δ 核 (PIT)", "多月卷积"], _TT, True,
@@ -97,13 +106,25 @@ _CARDS: list[ModelSpec] = [
     ModelSpec("KXFED", "fed", "fed/0.1.0", {},
               ["decision categorical → 上界梯子 Empirical"], _TT, True,
               "fed/0.1.0 的梯子投影;失效同 KXFEDDECISION。"),
-    ModelSpec("KXGDP", "gdp", "gdp/0.1.0",
-              {"anchor": "GDPNow", "sigma_floor": 0.5},
-              ["GDPNOW ALFRED vintages (PIT)", "A191RL1Q225SBEA 首印误差 σ"],
+    ModelSpec("KXGDP", "gdp", "gdp/0.2.0",
+              {"anchor": "GDPNow", "sigma_floor": 0.5, "ar_window": 80, "ar_winsor": 2.5},
+              ["GDPNOW ALFRED vintages (PIT)", "A191RL1Q225SBEA 首印误差 σ",
+               "首印 winsorised AR(1)(离季 mu 收缩 + 视野 σ)"],
               _TT, True,
-              "**gdp/0.1.0** — GDPNow 锚 + 历史 nowcast-vs-首印误差 σ。已知失效: "
-              "季度早期(GDPNow 数据覆盖不足月)、政府停摆(源数据断供)、"
-              "基准修订季。上线前提: Kalshi KXGDP 合约结构实测 + 两个 paper print(铁律2)。"),
+              "**gdp/0.2.0** — 当季: GDPNow 锚 + 历史 nowcast-vs-首印误差 σ(同 0.1.0)。"
+              "**离季(k≥1 季)**: mu = m + φ^k·(GDPNow − m),σ = "
+              "hypot(σ_nowcast·φ^k, σ_ar·√Σφ^2j)。\n"
+              "为什么改: 0.1.0 离季直接拿当季 nowcast 当 mu,σ 恒为 hypot(1.302, 0.5)"
+              "=1.394pp 且与 k 无关 —— 于是 2026-Q4/2027-Q1/Q2/Q3 四张合约逐 bit 相同。"
+              "实测 GDPNow 对 Q+k 首印 RMSE: k=0 **0.99pp**,k=1..4 **2.54/2.63/2.18/2.76**"
+              "(剔 2020),是 k=1 的**阶跃**而非斜坡(φ=0.364/0.338/−0.026 三个样本期)。"
+              "OOS PIT 136 条/37 个锚: RMSE 2.533 → **1.57**;按锚聚类自助 B=4000 "
+              "差值 +0.772pp,90% 区间 [+0.395, +1.146],P(收缩更好)=100%。\n"
+              "winsorise 2.5% 是用来**替代手工剔 2020** 的(生产看不到未来);"
+              "不 winsorise 时 φ 在含疫情窗口上翻成 −0.23。\n"
+              "已知失效: 季度早期(GDPNow 数据覆盖不足月)、政府停摆(源数据断供)、"
+              "基准修订季;AR(1) 假设增长无结构性断裂(疫情式断裂靠 winsorise 兜,不是靠模型)。"
+              "上线前提: Kalshi KXGDP 合约结构实测 + 两个 paper print(铁律2)。"),
     ModelSpec("KXWTIW", "energy", "energy/0.1.0",
               {"n_samples": 20000, "vol_window": 20, "vol_floor": 0.008, "rng_seed": 0},
               ["CL front-month closes (fut_daily, PIT)", "20d MAD vol"], _TT, True,
