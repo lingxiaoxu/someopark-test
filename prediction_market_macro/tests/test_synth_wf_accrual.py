@@ -122,6 +122,36 @@ def test_informative_measurement_persists_and_supersedes_star(conn):
     assert star == 1
 
 
+def test_accrue_hands_score_matrix_keyed_events(conn, tmp_path, monkeypatch):
+    """Regression: `ps.score_matrix` reads e['key'], and `quotable_events` does not
+    provide it — the raw dict KeyError'd the first live backfill after ~10 min of
+    generation. The keying is `run`'s, applied at the accrual boundary."""
+    from types import SimpleNamespace
+    from prediction_market_macro.research import pnl_score as ps2
+    from prediction_market_macro.research.synth import build as BD
+    from prediction_market_macro.research.synth import regen as RG
+    from prediction_market_macro.research.synth import worlds as W
+
+    evs = [{"series": "KXPAYROLLS", "tok": "26MAY", "close_ts": NOW}]
+    monkeypatch.setattr(ps2, "quotable_events", lambda *a, **k: list(evs))
+    monkeypatch.setattr(W, "snapshot", lambda src, dst: tmp_path / "snap.db")
+    monkeypatch.setattr(RG, "donors", lambda *a, **k: [])
+    from prediction_market_macro.research import param_argmin as PA2
+    monkeypatch.setattr(PA2, "grid_ladder", lambda *a, **k: ([GRID], GRID))
+    built = SimpleNamespace(events=[], n_synth=0, coverage={}, worlds=[])
+    monkeypatch.setattr(BD, "build", lambda *a, **k: built)
+    monkeypatch.setattr(BD, "score_matrix", lambda *a, **k: ([], []))
+    seen = {}
+    def fake_real_score(conn_, series, grid, universe, log=None):
+        seen["events"] = universe
+        return [], [], []
+    monkeypatch.setattr(ps2, "score_matrix", fake_real_score)
+    s = SimpleNamespace(db_path=tmp_path / "t.db")
+    C.wf_accrue(conn, s, now=NOW, series=["KXPAYROLLS"])
+    assert seen["events"], "score_matrix was never called"
+    assert all("key" in e and e["key"] for e in seen["events"])
+
+
 def test_accrue_is_a_noop_when_every_release_is_stored(conn, tmp_path, monkeypatch):
     """The weekly call must cost nothing 3 weeks out of 4. If every settled release is
     already stored, no snapshot, no generation, no scoring."""

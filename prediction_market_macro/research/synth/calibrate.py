@@ -522,8 +522,12 @@ def wf_accrue(conn, s, *, now: datetime | None = None, series: list[str] | None 
         for name in (series or wf_targets()):
             done = {r[0] for r in conn.execute(
                 "SELECT release_tok FROM synth_wf_mats WHERE series=?", (name,))}
-            todo = [e for e in ps2.quotable_events(conn, name, before=now)
+            # keyed exactly as `run` keys its universe — `ps.score_matrix` reads e["key"],
+            # and a period whose token doesn't parse has no threshold to replay against
+            todo = [{**e, "key": kalshi_period_to_key(e["tok"])}
+                    for e in ps2.quotable_events(conn, name, before=now)
                     if e["tok"] not in done]
+            todo = [e for e in todo if e["key"]]
             if not todo:
                 out[name] = []
                 continue
