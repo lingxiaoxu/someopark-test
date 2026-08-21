@@ -239,6 +239,35 @@ CREATE TABLE IF NOT EXISTS demo_balance_sheet(     -- §30.4 append-only snapsho
 
 CREATE TABLE IF NOT EXISTS demo_mirror_state(      -- §30 k/v: armed | halt | watermark
   k TEXT PRIMARY KEY, v TEXT NOT NULL);
+
+-- ── DFM synthetic sample (PLAN_DFM_SYNTH S7) ────────────────────────────────
+-- The consumable output only. The worlds themselves are multi-GB sqlite files under
+-- data/synth/ and are regenerable; what the daily lane needs is one number per candidate
+-- parameter set, which is small enough to live here and be caught by ops/backup_db.py.
+CREATE TABLE IF NOT EXISTS synth_runs(             -- one generation of synthetic worlds
+  run_id TEXT PRIMARY KEY,                         -- series:cutoff:seed
+  series TEXT NOT NULL,
+  cutoff_ts TEXT NOT NULL,                         -- generator training cut (= now - 75d)
+  splice_ts TEXT NOT NULL,                         -- first instant that is invented
+  built_ts TEXT NOT NULL,                          -- staleness is measured against this
+  n_paths INTEGER NOT NULL, n_events INTEGER NOT NULL,
+  grid_hash TEXT NOT NULL,                         -- the grid these scores are FOR
+  meta_json TEXT NOT NULL);                        -- panel, generator, coverage, clocks
+CREATE INDEX IF NOT EXISTS ix_synth_runs_series ON synth_runs(series, built_ts);
+
+CREATE TABLE IF NOT EXISTS synth_scores(           -- per candidate, mean PnL per event
+  run_id TEXT NOT NULL, set_hash TEXT NOT NULL,
+  set_json TEXT NOT NULL, set_idx INTEGER NOT NULL,
+  n_events INTEGER NOT NULL, mean_pnl REAL NOT NULL, sd_pnl REAL NOT NULL,
+  PRIMARY KEY(run_id, set_hash));
+
+CREATE TABLE IF NOT EXISTS synth_lambda(           -- what one synthetic event is worth
+  series TEXT NOT NULL,                            -- '*' is the pooled value the lane uses
+  measured_ts TEXT NOT NULL,
+  lam REAL NOT NULL, lam_point REAL NOT NULL, lam_lo REAL NOT NULL, lam_hi REAL NOT NULL,
+  rho REAL, n_real INTEGER, n_synth INTEGER, k INTEGER,
+  detail_json TEXT NOT NULL,
+  PRIMARY KEY(series, measured_ts));
 """
 
 

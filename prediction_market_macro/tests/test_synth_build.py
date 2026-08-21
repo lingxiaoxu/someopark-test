@@ -97,12 +97,6 @@ def test_aaa_is_not_generatable_and_says_so_rather_than_inventing_an_outcome():
 
 
 # ── clocks measured from the db ──────────────────────────────────────────────
-def _contract(conn, series, ticker, close):
-    conn.execute("INSERT INTO contracts(ticker, series, event_ticker, period, close_time,"
-                 " first_seen_ts) VALUES(?,?,?,?,?,'x')",
-                 (ticker, series, series, "P", close))
-
-
 def test_fred_weekday_reads_each_series_own_convention(tmp_path):
     """ICSA dates its weeks on the Saturday, GASREGW on the Monday. A weekly panel stamps
     W-SAT for both, and writing GASREGW on Saturday would date it five days early — then
@@ -336,3 +330,137 @@ def test_score_matrix_returns_no_partial_rows(tmp_path):
                                                        and tmp_path / "empty.db"))
     kept, mat = BD.score_matrix([ev], [{}, {"fut_vol_window": 10}])
     assert kept == [] and mat == []
+
+
+# ── the sub-monthly expansion (2026-08-21) ──────────────────────────────────
+# `claims` enters labor_monthly and `gas_retail` enters inflation_monthly as `agg="mean"`
+# of a WEEKLY FRED series. The generator produces one number per month for each; writing
+# that one number as one observation would leave `payrolls`' icsa.rolling(4).mean() and
+# `cpi._gas_effect`'s obs_frac = min(len(cur)/4.3, 1) reading a series that had gone
+# quiet — a data outage, not a macro path. These pin the expansion that avoids it.
+def _monthly(vals, start="2026-01-01"):
+    return pd.Series([float(v) for v in vals],
+                     index=pd.date_range(start, periods=len(vals), freq="MS"))
+
+
+def test_sub_monthly_prints_average_back_to_the_generated_month():
+    """The pin. The generator learned how claims co-moves with payems; a world whose ICSA
+    does not aggregate to the generated `claims` has broken exactly that co-movement."""
+    m = _monthly([220.0, 240.0, 210.0])
+    wk = BD._sub_monthly(m, 5, 0.05, np.random.default_rng(0))
+    got = wk.groupby(wk.index.to_period("M")).mean()
+    for per, want in zip(m.index, m.values):
+        assert got[per.to_period("M")] == pytest.approx(want, rel=1e-9)
+
+
+def test_sub_monthly_lands_on_the_series_own_weekday_and_covers_every_week():
+    m = _monthly([220.0, 240.0])
+    wk = BD._sub_monthly(m, 5, 0.03, np.random.default_rng(1))
+    assert {d.weekday() for d in wk.index} == {5}
+    jan = pd.date_range("2026-01-01", "2026-01-31", freq="D")
+    assert len(wk[:"2026-01-31"]) == sum(1 for d in jan if d.weekday() == 5)
+
+
+def test_sub_monthly_actually_varies_within_the_month():
+    """The failure mode of guessing sigma_within is a flat path, which makes every model
+    reading the weekly series more certain than it has any right to be."""
+    m = _monthly([220.0] * 3)
+    flat = BD._sub_monthly(m, 5, 0.0, np.random.default_rng(2))
+    wig = BD._sub_monthly(m, 5, 0.06, np.random.default_rng(2))
+    assert flat.std() == pytest.approx(0.0, abs=1e-9)
+    assert wig.std() > 2.0, "a 6% within-month sd on ~220 must show up as several units"
+
+
+def test_sub_monthly_holds_real_prints_and_moves_the_residual_onto_the_free_weeks():
+    """The straddling first month: weeks knowable before the splice are already in the
+    world and rewriting them would be a PIT violation inside the synthetic history."""
+    m = _monthly([220.0])
+    days = [d for d in pd.date_range("2026-01-01", "2026-01-31", freq="D")
+            if d.weekday() == 5]
+    real = pd.Series([300.0], index=[pd.Timestamp(days[0])])
+    wk = BD._sub_monthly(m, 5, 0.04, np.random.default_rng(3), fixed=real)
+    assert pd.Timestamp(days[0]) not in wk.index, "a held week must not be rewritten"
+    assert (wk.sum() + 300.0) / len(days) == pytest.approx(220.0, rel=1e-9)
+    assert (wk < 220.0).all(), "the residual after a high held print must land low"
+
+
+def test_sub_monthly_drops_the_pin_rather_than_spiking_one_week():
+    """With fewer than two free weeks the pin puts the whole monthly residual on a single
+    print. A visible unpinned month is better than an invented spike."""
+    said = []
+    m = _monthly([220.0])
+    days = [d for d in pd.date_range("2026-01-01", "2026-01-31", freq="D")
+            if d.weekday() == 5]
+    real = pd.Series([300.0] * (len(days) - 1), index=[pd.Timestamp(d) for d in days[:-1]])
+    wk = BD._sub_monthly(m, 5, 0.02, np.random.default_rng(4), fixed=real,
+                         log=said.append)
+    assert len(wk) == 1
+    assert wk.iloc[0] == pytest.approx(220.0, rel=0.2), "left on the backbone, not spiked"
+    assert said and "unpinned" in said[0]
+
+
+def test_sub_monthly_slopes_toward_the_next_month_instead_of_stepping():
+    """`payrolls` reads a 4-week rolling mean straight across the boundary, so two flat
+    months are a fake claims shock on the first week of the second one. With sigma 0 the
+    backbone IS the path, so the tilt that avoids it is exactly visible."""
+    m = _monthly([200.0, 250.0, 300.0])
+    wk = BD._sub_monthly(m, 5, 0.0, np.random.default_rng(5))
+    jan, feb = wk[:"2026-01-31"], wk["2026-02-01":"2026-02-28"]
+    assert jan.is_monotonic_increasing and feb.is_monotonic_increasing
+    assert jan.iloc[-1] > 200.0 > jan.iloc[0], "January must lean toward February"
+    assert feb.iloc[0] < 250.0 < feb.iloc[-1], "and February must lean back"
+    gap = feb.iloc[0] - jan.iloc[-1]
+    assert 0 < gap < 50.0, f"boundary step {gap:.1f} is no better than the flat 50"
+
+
+def test_sigma_within_measures_deviation_from_the_month_not_week_to_week(tmp_path):
+    """The week-to-week sd contains the monthly movement the generator already produces;
+    double-counting it would inflate every synthetic claims path."""
+    conn = init_db(tmp_path / "s.db")
+    lvl = 200.0
+    rng = np.random.default_rng(7)
+    for d in pd.date_range("2021-01-02", "2026-01-02", freq="7D"):
+        if d.day <= 7:
+            lvl *= 1.05                                   # big MONTHLY steps
+        v = lvl * float(np.exp(rng.standard_normal() * 0.01))   # small within-month
+        conn.execute("INSERT INTO fred_obs(sid, event_time, value, vintage_date,"
+                     " knowledge_time, first_seen_ts) VALUES('ICSA',?,?,?,?,'x')",
+                     (d.date().isoformat(), v, d.date().isoformat(),
+                      (d + pd.Timedelta(days=5)).isoformat()))
+    conn.commit()
+    got = BD._sigma_within(conn, "ICSA", datetime(2026, 1, 1, tzinfo=UTC))
+    assert 0.002 < got < 0.03, f"within-month sd {got:.4f} picked up the monthly steps"
+
+
+def test_sigma_within_refuses_rather_than_guessing_on_a_short_history(tmp_path):
+    conn = init_db(tmp_path / "s.db")
+    for d in pd.date_range("2025-12-06", periods=5, freq="7D"):
+        conn.execute("INSERT INTO fred_obs(sid, event_time, value, vintage_date,"
+                     " knowledge_time, first_seen_ts) VALUES('ICSA',?,220.0,?,?,'x')",
+                     (d.date().isoformat(), d.date().isoformat(), d.isoformat()))
+    conn.commit()
+    with pytest.raises(ValueError, match="cannot measure"):
+        BD._sigma_within(conn, "ICSA", datetime(2026, 1, 1, tzinfo=UTC))
+
+
+def test_every_monthly_panel_maps_its_sub_monthly_columns_to_a_fred_sid():
+    """The bug this closes: inflation_monthly generated four columns with no SINKS entry,
+    so `build` raised 'nowhere to write them' for every monthly market."""
+    for st in BD.SETTLES.values():
+        panel = P.PANELS[st.panel]
+        if panel.freq != "MS":
+            continue
+        sinks = BD._sinks(st.panel)
+        for c in panel.gen_columns:
+            if c.agg == "mean":
+                assert sinks[c.name].kind == "fred", \
+                    f"{st.panel}.{c.name} is a monthly mean of a sub-monthly source"
+
+
+def test_build_refuses_a_series_whose_cadence_disagrees_with_its_panel():
+    """`_token` names every generated event off the panel's frequency. A weekly SeriesSpec
+    on a monthly panel would name each event wrong and settle it against the wrong period,
+    silently — this raises instead."""
+    import inspect
+    src = inspect.getsource(BD.build)
+    assert "settles off panel" in src, "the cadence guard was removed"

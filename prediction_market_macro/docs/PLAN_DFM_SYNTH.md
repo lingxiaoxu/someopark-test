@@ -488,14 +488,51 @@ Repeat over folds and seeds. The fraction of the synthetic-claimed improvement t
 survives on real events is the exchange rate between a synthetic and a real observation.
 `lambda` is set at the lower end of its bootstrap interval, not its point estimate.
 
-## 7. Storage and cadence (S7)
+## 7. Storage and cadence (S7) — as built, 2026-08-21
 
-* Generator weights + the panel that produced them: `prediction_market_macro/data/synth/`
-  as `.pt` + `.npz` keyed by a config hash. Regenerable; not in git.
-* The consumable output — per (series, config hash, parameter-set hash) synthetic PnL
-  aggregates — in `macro.db`, small, and covered by `ops/backup_db.py`.
-* Regeneration cadence: monthly is enough for the panel; the **conditioning** vector is
-  re-read every run, so "close to the current environment" tracks daily without retraining.
+`research/synth/regen.py`, wired into `ops/refresh.py`'s **weekly** block as
+`weekly_synth_regen`. The split is the point: this is the only step that imports torch, and
+the morning `param_argmin` pass reads `synth_scores` and never touches a world again.
+
+| where | what | lifetime |
+|---|---|---|
+| `macro.db synth_runs` | one row per (series, build): cutoff, splice, grid hash, provenance | newest 3 per series, then pruned |
+| `macro.db synth_scores` | one row per candidate: `set_hash`, mean and sd of synthetic PnL | with its run |
+| `data/synth/<series>/world_*.db` | the worlds themselves | one generation, gitignored |
+| `data/synth/donors.json` | the pooled donor book | 30 days (`DONOR_MAX_AGE_DAYS`) |
+
+The consumable half lives in `macro.db`, so `ops/backup_db.py` already covers it. The worlds
+do not, deliberately: ~40 MB each, ~290 MB per series per run, and reproducible from the
+snapshot plus the seed. They are kept between runs only so `rescore_latest` can re-score a
+drifted grid without paying for generation again, and last week's copies are deleted **after**
+the new ones exist so a crash mid-generation leaves the old sample in place rather than none.
+
+Three decisions worth recording, each of which was a bug first:
+
+* **Cutoff is `now`, not the start of the real window.** `calibrate` splices at the window
+  start so synthetic and real events overlay and can be compared; production must not, because
+  the parameters being chosen will be used on the *next* month. Conditioning on today's anchor
+  is what makes the draws sit close to 当前环境, and it also makes every generated event
+  genuinely out-of-sample — it has not happened yet.
+* **What is scored is the LADDER UNION, not today's grid.** The morning grid is a function of
+  `n_eff = n_real + lambda * n_synth`, and both halves move between this job running and the
+  sample being read. `param_argmin.grid_ladder` enumerates every grid the cap ladder can
+  reach and scores their union. Measured on KXPAYROLLS: 10 reachable grids of width
+  1/3/4/5/9/13/17/33/49/97 unioning to **222** candidates — not 97, because narrowing drops
+  whole *keys*, so a narrow grid is not a subset of a wide one. That 2.3× premium is what
+  makes the sample usable at whatever lambda turns out to be, and it is paid once a week in
+  a 3am job rather than every morning before the board trades.
+* **It stores at lambda 0.** Otherwise the table stays empty until lambda is measured, and is
+  then empty at the exact moment it is first needed. Storing unconditionally is what lets the
+  lane switch on with no code change the day a lambda row lands.
+
+Cadence is weekly, not monthly: a weekly regeneration keeps every stored run inside
+`param_argmin.SYNTH_MAX_AGE_DAYS = 45`, which is the daily lane's own staleness limit.
+Scope is the **monthly** markets only, derived from the panel frequency rather than tabulated
+— the weekly ones settle 10–11 times in a 75-day window, so `sample_cap` sits far above their
+static `CAP` and a synthetic sample buys them nothing. The weekly series are still generated
+on request by `synth/calibrate.py`, because they are the only place lambda can be measured
+against a real sample at all.
 
 ## 8. Order of work and gates between stages
 
@@ -506,7 +543,7 @@ survives on real events is the exchange rate between a synthetic and a real obse
 | S3 worlds | **DONE** (2026-08-21). **Round-trip proof passes 14/14 series, 75 events, 0 mismatches**: every real event rebuilt through `write_event` reproduces production `event_pnl` on `edge`/`argmax`/`hybrid`/`staked`/`traded`/`stream`. Re-run with `worlds.roundtrip(conn, series)`. See §4c for the four defects it caught |
 | S4 book | **DONE** (2026-08-21). Overlap gate passes with **outside = 0.0** (median gap 0.020, p95 0.143; synthetic `z_y` [−2.23,+4.30] inside donor [−5.14,+4.60]). Delivered `corr(z_m, z_y) = +0.500` against the real **+0.571**, the residual accounted for by the measured devig round trip of +0.908 (0.571×0.908 = 0.518) — i.e. at the cent-ladder ceiling. Half-spread q25/q50/q75 synthetic 0.006/0.008/0.018 vs real 0.007/0.010/0.019; `r` 0.660/0.873/1.143 vs 0.657/1.055/1.628. **Carry into S5:** `mean\|z_y\|` is 0.725 synthetic vs 0.964 real — the synthetic world is easier to trade than reality. See §5c |
 | S5 lambda | a bootstrap interval on lambda, reported whatever it says |
-| S6 wiring | `n_eff` feeds `sample_cap`; gate logs distinguish real from synthetic sample |
-| S7 ops | regeneration runs unattended and its output is backed up |
+| S6 wiring | **DONE** (2026-08-21). `n_eff = n_real + lambda*n_synth` feeds `sample_cap`; `_objective` blends only a grid the stored run fully covers and logs the refusal otherwise; every gate log carries `n_eff` and a `synth` block naming the run, its age and its lambda. Building it exposed a **real defect in the gate itself**: it sized the grid on the *quotable* universe while `score_matrix` keeps only what replays, so KXJOBLESSCLAIMS — skill-BLOCKED since 2026-07-09, `0/91` sets scoring on its last 6 events — was ranking 91 sets on **4** events (1.50 sd of selection bias, worse than the KXPAYROLLS case that motivated the gate) while the log read n=10. `resolve_grid` now re-narrows on the scored sample, never widens, and says which count it resized on |
+| S7 ops | **DONE** (2026-08-21). See §7. `weekly_synth_regen` in `ops/refresh.py`; one market's generator failure cannot starve the other six; `synth_runs`/`synth_scores` ride `backup_db`; worlds are one generation deep and gitignored |
 
 Nothing writes to production state until S5 has a number.

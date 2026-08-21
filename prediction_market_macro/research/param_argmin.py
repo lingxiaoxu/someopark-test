@@ -23,10 +23,12 @@ Mechanics:
 """
 from __future__ import annotations
 
+import hashlib
 import importlib
 import itertools
 import json
 import math
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
@@ -74,7 +76,7 @@ WINDOW_DAYS = 75
 ARGMIN_TOLERANCE = 1.0
 
 
-def sample_cap(n_events: int, tolerance: float = ARGMIN_TOLERANCE) -> int:
+def sample_cap(n_events: float, tolerance: float = ARGMIN_TOLERANCE) -> int:
     """Widest `width` (the cross-product, EXCLUDING the default row) the sample supports.
 
     `build` returns [{}] + product(...), so the number of trials the argmin actually
@@ -82,11 +84,120 @@ def sample_cap(n_events: int, tolerance: float = ARGMIN_TOLERANCE) -> int:
     default row given back, which is why this returns k_max-1 rather than k_max.
     Returns 0 when the sample supports no search at all — the caller must then ship
     defaults rather than pick.
+
+    `n_events` is a float rather than a count because the synthetic sample enters it
+    DISCOUNTED — `n_eff = n_real + lambda * n_synth` (S6) — and 2 + 0.07*96 is not an
+    integer. The bound itself never cared: `sqrt(2 ln K / n)` is the standard deviation of
+    a mean over n draws and is defined for any positive n.
     """
     if n_events <= 0:
         return 0
     k_max = math.floor(math.exp(n_events * tolerance * tolerance / 2.0))
     return max(0, min(4096, k_max - 1))
+
+# ── the synthetic sample (S6, PLAN_DFM_SYNTH) ───────────────────────────────────
+# The DFM generator produces worlds that resemble the current environment and the current
+# bet, and every candidate set is replayed on them. That sample cannot enter `n` at face
+# value — a synthetic event is not a real one — so it enters DISCOUNTED:
+#
+#     n_eff = n_real + lambda * n_synth
+#
+# `lambda` is measured, not chosen (`synth/calibrate.py`), and is read from `synth_lambda`
+# rather than hard-coded so a re-measurement takes effect without a code change.
+#
+# **Nothing here imports the generator.** The daily lane reads per-candidate MEANS that a
+# separate, slower job (S7) has already written to `synth_scores`; torch never loads in the
+# morning pass. The cost of that separation is that the two must agree on which grid was
+# scored, which is what `grid_hash` is for — a grid the job did not score is not blended, it
+# is skipped and logged.
+SYNTH_MAX_AGE_DAYS = 45
+
+
+def set_hash(params: dict) -> str:
+    """A parameter set's identity, stable across dict ordering and float formatting."""
+    return hashlib.sha1(
+        json.dumps(params, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16]
+
+
+def grid_hash(grid: list[dict]) -> str:
+    """The identity of an ORDERED grid. Order matters because index 0 is the default row
+    that every improvement is measured against."""
+    return hashlib.sha1("|".join(set_hash(p) for p in grid).encode()).hexdigest()[:16]
+
+
+@dataclass(frozen=True)
+class SynthSample:
+    """The synthetic half of the sample: one mean per candidate, plus its exchange rate."""
+    run_id: str
+    lam: float
+    n_synth: int
+    built_ts: datetime
+    means: dict[str, float]          # set_hash -> mean PnL per synthetic event
+
+    @property
+    def weight(self) -> float:
+        return self.lam * self.n_synth
+
+
+def synth_lambda(conn, series: str) -> tuple[float, dict]:
+    """The most recent measured lambda: the series' own if present, else the pooled '*'.
+
+    A per-series row is preferred where it exists because the exchange rate is a property
+    of how well the generator models THAT market. The pooled row is the fallback and is
+    deliberately the min of the per-series lower bounds, so a market that was never
+    measured — every monthly one, which is the whole reason the gate binds — inherits the
+    worst case rather than an average it has no claim to.
+    """
+    # A db that predates S7 has no such table. That is an absent optional input, not a
+    # failure — but it is reported by name rather than caught as an exception, because a
+    # swallowed OperationalError would read identically to a typo in the query.
+    have = {r[0] for r in conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name IN"
+        " ('synth_lambda','synth_runs','synth_scores')")}
+    if len(have) < 3:
+        return 0.0, {"source": None,
+                     "note": f"synthetic store not initialised (missing "
+                             f"{sorted({'synth_lambda', 'synth_runs', 'synth_scores'} - have)})"}
+    for key in (series, "*"):
+        row = conn.execute("SELECT * FROM synth_lambda WHERE series=?"
+                           " ORDER BY measured_ts DESC LIMIT 1", (key,)).fetchone()
+        if row:
+            return float(row["lam"]), {"source": key, "measured_ts": row["measured_ts"],
+                                       "lam_point": row["lam_point"],
+                                       "lam_lo": row["lam_lo"], "lam_hi": row["lam_hi"]}
+    return 0.0, {"source": None, "note": "no lambda measured — synthetic sample unused"}
+
+
+def read_synth(conn, series: str, now: datetime) -> tuple[SynthSample | None, dict]:
+    """The freshest usable synthetic sample for `series`, or None and the reason why.
+
+    Refusal is never silent and never partial. A stale run, a missing lambda and a run that
+    scored a different grid are three different situations and the log says which.
+    """
+    lam, lam_rep = synth_lambda(conn, series)
+    rep = {"lambda": lam, **lam_rep}
+    if lam <= 0.0:
+        rep["skipped"] = "lambda is zero — the synthetic sample carries no weight"
+        return None, rep
+    row = conn.execute("SELECT * FROM synth_runs WHERE series=?"
+                       " ORDER BY built_ts DESC LIMIT 1", (series,)).fetchone()
+    if not row:
+        rep["skipped"] = "no synthetic run for this series"
+        return None, rep
+    built = datetime.fromisoformat(row["built_ts"])
+    age = (now - built).days
+    rep.update({"run_id": row["run_id"], "built_ts": row["built_ts"], "age_days": age,
+                "n_synth": row["n_events"], "grid_hash": row["grid_hash"]})
+    if age > SYNTH_MAX_AGE_DAYS:
+        rep["skipped"] = f"run is {age}d old, limit {SYNTH_MAX_AGE_DAYS}d"
+        return None, rep
+    means = {r["set_hash"]: float(r["mean_pnl"]) for r in conn.execute(
+        "SELECT set_hash, mean_pnl FROM synth_scores WHERE run_id=?", (row["run_id"],))}
+    if not means:
+        rep["skipped"] = "run exists but scored nothing"
+        return None, rep
+    return SynthSample(row["run_id"], lam, int(row["n_events"]), built, means), rep
+
 
 SPACES: dict[str, dict[str, tuple]] = {
     "claims": {
@@ -155,8 +266,25 @@ CAP = {"KXJOBLESSCLAIMS": 100, "KXCPI": 110, "KXCPICORE": 110, "KXCPIYOY": 110,
 MARKETS = list(CAP)
 
 
+def probe(conn, series: str, window_start: datetime) -> tuple[dict, list[str], list[str]]:
+    """(space, live keys, dead keys) — the expensive half of `build`, done once.
+
+    `live_keys` replays the model on probe events to find which knobs actually move its
+    output, which is several model evaluations. `build` is called repeatedly with different
+    sample sizes (the re-narrow loop, and `grid_ladder`), and every one of those calls used
+    to redo this. Nothing in it depends on `n_events`.
+    """
+    space = SPACES.get(MODULE_OF[series], {})
+    if not space:
+        return {}, [], []
+    pre = settled_events(conn, series, limit=8, before=window_start)
+    fn = _predict_fn(series)
+    live, dead = live_keys(conn, series, fn, {k: v[0] for k, v in space.items()}, pre)
+    return space, live, dead
+
+
 def build(conn, series: str, window_start: datetime,
-          n_events: int | None = None) -> tuple[list[dict], dict]:
+          n_events: int | None = None, probed=None) -> tuple[list[dict], dict]:
     """Live-key-filtered grid, default at index 0. Probe events close BEFORE the
     window so grid design never sees the evaluation sample (the grid75 protocol).
 
@@ -165,8 +293,11 @@ def build(conn, series: str, window_start: datetime,
     tuned to the evaluation, it can only be made narrower because the evaluation is small.
     Passing None keeps the pre-2026-08-21 behaviour (the static CAP alone) and is what
     the study scripts use to reproduce the original spaces.
+
+    `probed` is a cached `probe()` result. It changes nothing about the grid — same inputs,
+    same output — and exists only so repeated calls do not replay the model each time.
     """
-    spec = SPACES.get(MODULE_OF[series], {})
+    spec, live, dead = probed if probed is not None else probe(conn, series, window_start)
     if not spec:
         return [{}], {"note": "no space"}
     cap = CAP[series]
@@ -174,9 +305,6 @@ def build(conn, series: str, window_start: datetime,
     if n_events is not None:
         scap = sample_cap(n_events)
         cap = min(cap, scap)
-    pre = settled_events(conn, series, limit=8, before=window_start)
-    fn = _predict_fn(series)
-    live, dead = live_keys(conn, series, fn, {k: v[0] for k, v in spec.items()}, pre)
     ordered = sorted(live, key=lambda k: -len(spec[k][1]))
     chosen, width, dropped = [], 1, []
     for k in ordered:
@@ -203,6 +331,47 @@ def build(conn, series: str, window_start: datetime,
     return grid, rep
 
 
+def grid_ladder(conn, series: str, window_start: datetime,
+                probed=None) -> tuple[list[dict], list[dict]]:
+    """(every distinct grid the cap ladder can produce, the union of their candidates).
+
+    The synthetic sample is generated weekly and read daily, and `_objective` will not blend
+    a grid the generation job did not fully cover. So the job cannot simply score "today's
+    grid" — by the time it is read, `n_eff` may have moved and the morning lane may be
+    holding a NARROWER grid, whose members are not a subset of the wider one. Narrowing
+    drops whole KEYS, so `{"vol_window": 26}` and `{"vol_window": 26, "clip": 0.15}` are
+    different dictionaries and hash differently even when the second's clip is the default.
+
+    The set of grids is small and enumerable, which is what makes covering all of them cheap
+    rather than clever: `build` chooses keys greedily widest-first until the cap is reached,
+    so as the cap rises the chosen set only ever grows, and there are at most one grid per
+    key plus the empty one. Scoring their union costs about 1.5x the widest grid alone and
+    makes the stored sample independent of whatever lambda turns out to be — which matters
+    because lambda is still being measured, and a sample keyed to today's guess at it would
+    be worthless the moment the measurement lands.
+    """
+    probed = probed if probed is not None else probe(conn, series, window_start)
+    grids, seen, union, uhash = [], set(), [], set()
+    n = 0.0
+    while True:
+        g, _ = build(conn, series, window_start, n_events=n, probed=probed)
+        h = grid_hash(g)
+        if h not in seen:
+            seen.add(h)
+            grids.append(g)
+            for p in g:
+                ph = set_hash(p)
+                if ph not in uhash:
+                    uhash.add(ph)
+                    union.append(p)
+        if sample_cap(n) >= CAP[series]:
+            break
+        n += 0.5
+        if n > 40:                # sample_cap(40) is astronomically above any CAP
+            break
+    return grids, union
+
+
 def _fingerprint(conn, series: str, now: datetime) -> str:
     lo = now - timedelta(days=WINDOW_DAYS)
     evs = [e for e in _ps.quotable_events(conn, series, before=now)
@@ -211,8 +380,17 @@ def _fingerprint(conn, series: str, now: datetime) -> str:
     # anchor) changes every replayed score, and an events-only fingerprint would keep
     # serving the OLD model's argmin until the next settle happened to land.
     ver = getattr(importlib.import_module(SERIES_DISPATCH[series][0]), "VERSION", "?")
+    # ...and so is the synthetic sample, for exactly the same reason. `regen` runs weekly
+    # and lambda is measured on its own schedule; both change `n_eff`, hence the grid width
+    # and the objective. On a monthly market a new settlement is up to 31 days away, so
+    # without this the sample this job paid to generate would sit unread for a month — and
+    # the day lambda first lands, NOTHING would rescore. `synth` is a cheap read (one row
+    # from each of two indexed tables) on a path that already runs a `quotable_events` scan.
+    syn = conn.execute("SELECT run_id FROM synth_runs WHERE series=?"
+                       " ORDER BY built_ts DESC LIMIT 1", (series,)).fetchone()
+    lam, _ = synth_lambda(conn, series)
     return (f"{len(evs)}:{max((e['close_ts'].isoformat() for e in evs), default='-')}"
-            f":{ver}")
+            f":{ver}:{(syn['run_id'] if syn else '-')}:{lam:.4f}")
 
 
 def _last_log(conn, series: str):
@@ -221,32 +399,128 @@ def _last_log(conn, series: str):
         " ORDER BY created_ts DESC LIMIT 1", (series,)).fetchone()
 
 
+def universe(conn, series: str, now: datetime) -> list[dict]:
+    """The quotable events in the trailing window, keyed. Only its COUNT sizes the grid."""
+    uni = [{**e, "key": kalshi_period_to_key(e["tok"]), "close": e["close_ts"]}
+           for e in _ps.quotable_events(conn, series, before=now)
+           if e["close_ts"] >= now - timedelta(days=WINDOW_DAYS)]
+    return [e for e in uni if e["key"]]
+
+
+def resolve_grid(conn, series: str, lo: datetime, uni: list[dict],
+                 synth_weight: float = 0.0, log=None, probed=None):
+    """(grid, kept, mat, report) — the grid the sample can actually support, and its scores.
+
+    Shared by the morning lane and by the regeneration job (`synth/regen.py`) precisely so
+    the two cannot disagree about which grid was scored: the job stores per-candidate means
+    under `set_hash`, and `_objective` refuses to blend a grid it does not fully cover. If
+    the job resolved the grid by its own reasoning, every drift between the two would
+    surface as a silent no-blend rather than as a bug.
+
+    Narrowing only, never widening. A smaller grid may well keep MORE events (fewer sets to
+    fail), but re-widening on that would make the sample size a function of the grid that
+    the grid is a function of. Only the COUNT crosses over either way, never an outcome, so
+    the grid75 protocol holds exactly as it did before.
+    """
+    probed = probed if probed is not None else probe(conn, series, lo)
+    n_eff = len(uni) + synth_weight
+    grid, rep = build(conn, series, lo, n_events=n_eff, probed=probed)
+    rep["n_eff"] = round(n_eff, 2)
+    if len(grid) < 2:
+        return grid, [], [], rep
+    kept, mat, _det = _ps.score_matrix(conn, series, grid, uni, log=log)
+    if not kept:
+        return grid, [], [], rep
+    # ── the gate must bind on the sample the argmin RANKS on, not the one it was offered.
+    # `quotable_events` and `event_pnl` do not agree on what is scoreable: an event the
+    # live rule would not have traded at all — a skill-BLOCKED series, a disabled one —
+    # is quotable and unscoreable, and `score_matrix` drops it for every candidate at once.
+    # Measured 2026-08-21: KXJOBLESSCLAIMS has been blocked since 07-09, so its universe of
+    # 10 is a scored sample of 4, and sizing the grid on 10 let 91 candidate sets be ranked
+    # on 4 events — 1.50 sd of selection bias, above the 1.0 the gate exists to enforce and
+    # worse than the KXPAYROLLS case that motivated it. Sizing on the universe was the
+    # original shape of the gate and this is the hole in it.
+    for _ in range(3):
+        n_eff = len(kept) + synth_weight
+        if len(grid) - 1 <= sample_cap(n_eff):
+            break
+        narrowed, rep = build(conn, series, lo, n_events=n_eff, probed=probed)
+        rep.update({"n_eff": round(n_eff, 2), "renarrowed_from": len(grid),
+                    "renarrow_reason": (f"{len(uni)} quotable but {len(kept)} scoreable "
+                                        f"— resized on the scored sample")})
+        if len(narrowed) >= len(grid):
+            break
+        grid = narrowed
+        if len(grid) < 2:
+            return grid, kept, mat, rep
+        kept, mat, _det = _ps.score_matrix(conn, series, grid, uni, log=log)
+        if not kept:
+            return grid, [], [], rep
+    return grid, kept, mat, rep
+
+
 def rescore(conn, series: str, now: datetime, log=None) -> dict | None:
     lo = now - timedelta(days=WINDOW_DAYS)
     # the universe is built FIRST so the grid can be sized to it (see `sample_cap`).
-    # Only len(uni) crosses over; no outcome does.
-    uni = [{**e, "key": kalshi_period_to_key(e["tok"]), "close": e["close_ts"]}
-           for e in _ps.quotable_events(conn, series, before=now)
-           if e["close_ts"] >= lo]
-    uni = [e for e in uni if e["key"]]
+    uni = universe(conn, series, now)
     if not uni:
         return None
-    grid, grep_ = build(conn, series, lo, n_events=len(uni))
+    syn, srep = read_synth(conn, series, now)
+    grid, kept, mat, grep_ = resolve_grid(
+        conn, series, lo, uni, syn.weight if syn else 0.0, log=log)
+    grep_["synth"] = srep
     if len(grid) < 2:
         # Not an error and not "no sample": the sample exists, it is just too small to
         # tell K candidates apart. Returned as a result so `daily` can log the reason
         # instead of silently looking like a market with no data.
-        return {"grid": grid, "grid_report": grep_, "n_events": len(uni),
+        return {"grid": grid, "grid_report": grep_, "n_events": len(kept) or len(uni),
                 "best_idx": 0, "best_params": {}, "pnl_best": None,
                 "pnl_default": None, "gated": True}
-    kept, mat, _det = _ps.score_matrix(conn, series, grid, uni, log=log)
     if not kept:
         return None
     totals = [sum(row[j] for row in mat) for j in range(len(grid))]
-    best = max(range(len(grid)), key=lambda j: totals[j])
+    obj, blended = _objective(totals, len(kept), grid, syn, srep)
+    best = max(range(len(grid)), key=lambda j: obj[j])
     return {"grid": grid, "grid_report": grep_, "n_events": len(kept),
-            "best_idx": best, "best_params": grid[best],
+            "best_idx": best, "best_params": grid[best], "blended": blended,
             "pnl_best": round(totals[best], 2), "pnl_default": round(totals[0], 2)}
+
+
+def _objective(totals: list[float], n_real: int, grid: list[dict],
+               syn: SynthSample | None, srep: dict) -> tuple[list[float], bool]:
+    """Per-event mean IMPROVEMENT over the default, real and synthetic pooled by weight.
+
+    Improvement over index 0, not level, and that is the load-bearing choice. §5c measured
+    the synthetic world to be uniformly EASIER to trade than reality (`mean|z_y|` 0.725 vs
+    0.964), so synthetic PnL levels are inflated; a level shift common to every candidate
+    cancels in the difference and only disagreement about WHICH set is better survives.
+
+        obj[j] = (n_real * (mr[j] - mr[0]) + lambda * n_synth * (ms[j] - ms[0])) / n_eff
+
+    At lambda = 0 this is `mr[j] - mr[0]`, whose argmax is the argmax of `totals` — the
+    pre-S6 behaviour exactly, which is what makes an unmeasured or zero lambda a no-op
+    rather than a silent change of objective.
+
+    The synthetic side is used ONLY if it covers EVERY candidate in the grid. A partial
+    blend would compare candidates on different samples, which is the same bias
+    `score_matrix`'s all-sets keep rule exists to remove.
+    """
+    mr = [t / n_real for t in totals]
+    base = [m - mr[0] for m in mr]
+    if syn is None:
+        return base, False
+    hashes = [set_hash(p) for p in grid]
+    missing = [h for h in hashes if h not in syn.means]
+    if missing:
+        srep["skipped"] = (f"synthetic run covers {len(hashes) - len(missing)}/"
+                           f"{len(hashes)} of today's grid — blending a subset would "
+                           "compare candidates on different samples")
+        return base, False
+    ms = [syn.means[h] for h in hashes]
+    w_r, w_s = float(n_real), syn.weight
+    srep["blend_weight_real"] = round(w_r / (w_r + w_s), 3)
+    return [(w_r * base[j] + w_s * (ms[j] - ms[0])) / (w_r + w_s)
+            for j in range(len(grid))], True
 
 
 def daily(conn, now: datetime | None = None, log=print) -> dict:
@@ -272,14 +546,25 @@ def daily(conn, now: datetime | None = None, log=print) -> dict:
         # decision the user already made; undoing those is a separate, explicit act.
         changed = (not r.get("gated")) and r["best_params"] != cur_params
         if changed:
+            grep_ = r["grid_report"]
+            srep = grep_.get("synth", {})
+            # A set chosen with synthetic evidence and one chosen without are different
+            # decisions and the change log has to say which, because `param_select.history`
+            # is exported to the frontend and is the record a human reads back.
+            syn_note = (f" Blended with {srep.get('n_synth')} DFM synthetic events at "
+                        f"lambda={srep.get('lambda'):.3f} (run {srep.get('run_id')}, "
+                        f"{srep.get('age_days')}d old, real weight "
+                        f"{srep.get('blend_weight_real')}); n_eff={grep_.get('n_eff')}."
+                        ) if r.get("blended") else \
+                       f" Real events only ({srep.get('skipped', 'no synthetic sample')})."
             set_manual(conn, series, r["best_params"],
                        note=(f"daily argmin {now.date()}: window {WINDOW_DAYS}d, "
                              f"n_events={r['n_events']}, sets={len(r['grid'])}, "
                              f"pnl {r['pnl_default']:+.2f} -> {r['pnl_best']:+.2f}. "
                              "Raw argmin per standing user policy 2026-08-11; the "
                              "DSR gate's objection (n below MIN_OBS) is on record. "
-                             f"Search width capped at {r['grid_report'].get('cap')} "
-                             f"by the {r['n_events']}-event sample gate."))
+                             f"Search width capped at {grep_.get('cap')} "
+                             f"by the {grep_.get('n_eff')}-event sample gate." + syn_note))
         conn.execute(
             "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
             " metrics_json, created_ts) VALUES('param_argmin',?,?,?,?,?)",
@@ -290,6 +575,7 @@ def daily(conn, now: datetime | None = None, log=print) -> dict:
                          "pnl_default": r["pnl_default"],
                          "pnl_best": r["pnl_best"], "adopted_change": changed,
                          "gated": bool(r.get("gated")),
+                         "blended": bool(r.get("blended")),
                          "grid_report": r["grid_report"]}),
              now.isoformat()))
         conn.commit()

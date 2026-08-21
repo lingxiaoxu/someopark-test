@@ -228,6 +228,13 @@ def _run(weekly: bool = False) -> dict:
         step("weekly_dfm_gate",
              lambda: {k: v for k, v in dfm_bridge.gate_check(conn, s).items()
                       if k.startswith(("pass", "cov_"))})
+        # DFM synthetic sample for the argmin lane (§S7). Weekly, not daily: this is the
+        # only step that imports torch and it costs minutes, while `param_argmin` reads
+        # the *scores* it leaves in macro.db and never touches a world again. Regenerating
+        # weekly keeps every sample inside `param_argmin.SYNTH_MAX_AGE_DAYS`.
+        from prediction_market_macro.research.synth import regen as synth_regen
+        step("weekly_synth_regen",
+             lambda: json.dumps(synth_regen.run(conn, s, log=None))[:600])
         from prediction_market_macro.research import eval as eval_mod
         step("weekly_eval_gates",
              # `enabled` is §25.4's per-series switch, refreshed by this very step —

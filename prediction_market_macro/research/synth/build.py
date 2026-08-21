@@ -83,6 +83,25 @@ SINKS: dict[str, dict[str, Sink]] = {
         "rbob": Sink("fut", "RB"),
         "gas_retail": Sink("fred", "GASREGW"),
     },
+    # The monthly panels — the ones the sample gate actually binds on. `claims` and
+    # `gas_retail` appear here as MONTHLY MEANS of series that print weekly, which is what
+    # `Column.agg == "mean"` records, and they are written back out week by week rather than
+    # as one observation on the first of the month. See `_sub_monthly` for why that is not
+    # cosmetic: `payrolls` reads ICSA as `icsa.rolling(4).mean()` and its own 4-week change
+    # `c4.iloc[-1] - c4.iloc[-5]`, and `cpi._gas_effect` weights the current month by
+    # `min(len(cur)/4.3, 1.0)` — one observation a month makes all three read as if the
+    # series had gone quiet.
+    "labor_monthly": {
+        "payems": Sink("fred", "PAYEMS"),
+        "unrate": Sink("fred", "UNRATE"),
+        "claims": Sink("fred", "ICSA"),
+    },
+    "inflation_monthly": {
+        "cpi": Sink("fred", "CPIAUCSL"),
+        "cpi_core": Sink("fred", "CPILFESL"),
+        "pce_core": Sink("fred", "PCEPILFE"),
+        "gas_retail": Sink("fred", "GASREGW"),
+    },
 }
 
 @dataclass(frozen=True)
@@ -331,6 +350,113 @@ def _daily_bridge(weekly: pd.Series, sigma_d: float,
     return pd.Series(out).sort_index()
 
 
+# ── monthly -> weekly, for the sub-monthly sources a monthly panel carries as a mean ─────
+def _sigma_within(conn: sqlite3.Connection, sid: str, asof: datetime,
+                  n_months: int = 60) -> float:
+    """Log sd of a weekly print around its OWN month's mean, from real history.
+
+    Not the week-to-week sd, which contains the monthly movement the generator is already
+    producing. What is needed here is only the part the monthly aggregate threw away: how
+    far a single week sits from the month it belongs to. Measured rather than assumed, for
+    the same reason `_sigma_daily` is — the failure mode of guessing it is a path whose
+    within-month variation is too small, which makes every model reading the weekly series
+    more certain than it has any right to be.
+    """
+    rows = conn.execute(
+        "SELECT event_time, value FROM fred_obs WHERE sid=? AND knowledge_time<=?"
+        " AND value>0 ORDER BY event_time DESC LIMIT ?",
+        (sid, asof.isoformat(), n_months * 6)).fetchall()
+    if len(rows) < 24:
+        raise ValueError(f"_sigma_within: only {len(rows)} usable prints of {sid!r} before "
+                         f"{asof} — cannot measure a within-month spread on that")
+    ser = pd.Series({pd.Timestamp(r[0]): float(r[1]) for r in rows}).sort_index()
+    ser = ser[~ser.index.duplicated(keep="last")]
+    lg = np.log(ser)
+    dev = lg - lg.groupby(lg.index.to_period("M")).transform("mean")
+    # months with a single print contribute an exact zero and would drag the sd down
+    keep = lg.groupby(lg.index.to_period("M")).transform("count") > 1
+    dev = dev[keep]
+    if len(dev) < 12:
+        raise ValueError(f"_sigma_within: {sid!r} has {len(dev)} prints in multi-print "
+                         "months — not enough to measure a within-month spread")
+    return float(np.std(dev, ddof=1))
+
+
+def _sub_monthly(monthly: pd.Series, weekday: int, sigma_w: float,
+                 rng: np.random.Generator, *, fixed: pd.Series | None = None,
+                 log=None) -> pd.Series:
+    """Weekly prints through a generated monthly MEAN, pinned to that mean exactly.
+
+    `monthly` is indexed by period start (MS). Each month's prints land on `weekday`, the
+    sid's own dating convention as measured by `_fred_weekday`. Within a month the values
+    are a smooth log-space interpolation between neighbouring monthly means plus a mean-zero
+    wiggle at `sigma_w`, and the whole month is then rescaled so its ARITHMETIC mean is the
+    generated value — arithmetic because that is the aggregation `Column.agg == "mean"`
+    applied when the panel was built. The pin is what keeps the world internally consistent:
+    the generator learned how `claims` co-moves with `payems`, and a world whose ICSA does
+    not aggregate back to the generated `claims` has broken exactly that co-movement, which
+    is the reason the payrolls model is being shown a claims path at all.
+
+    `fixed` carries real prints that are already in the world for a straddling first month —
+    weeks that were knowable before the splice and must not be rewritten. They are held and
+    the remaining weeks absorb the whole adjustment, so the month still aggregates to its
+    generated value. With fewer than two free weeks that solve puts the entire monthly
+    residual on one print, so the pin is dropped for that month and said so rather than
+    producing a spike.
+    """
+    idx = pd.DatetimeIndex(monthly.index)
+    lg = np.log(monthly.astype(float))
+    out: dict[pd.Timestamp, float] = {}
+    unpinned: list[str] = []
+    for k, per in enumerate(idx):
+        days = pd.date_range(per, per + pd.offsets.MonthEnd(0), freq="D")
+        days = pd.DatetimeIndex([d for d in days if d.weekday() == weekday])
+        held = pd.Series(dtype=float) if fixed is None else fixed.reindex(days).dropna()
+        free = days.difference(held.index)
+        if len(free) == 0:
+            continue
+        # log-space backbone: straight line between this month's mean and the next one's,
+        # so consecutive months connect instead of stepping at the boundary. `payrolls`
+        # reads a 4-week rolling mean straight across that boundary.
+        nxt = lg.iloc[k + 1] if k + 1 < len(lg) else lg.iloc[k]
+        frac = (np.arange(len(days)) + 0.5) / len(days)
+        back = np.exp(lg.iloc[k] + (nxt - lg.iloc[k]) * (frac - 0.5) * 0.5)
+        wig = rng.standard_normal(len(days))
+        vals = pd.Series(back * np.exp(sigma_w * (wig - wig.mean())), index=days)
+        target = float(monthly.iloc[k]) * len(days)
+        if len(held):
+            if len(free) < 2:
+                unpinned.append(str(per.date()))
+                for ts in free:
+                    out[ts] = float(vals[ts])
+                continue
+            target -= float(held.sum())
+        raw = float(vals[free].sum())
+        if raw <= 0 or target <= 0:
+            unpinned.append(str(per.date()))
+            for ts in free:
+                out[ts] = float(vals[ts])
+            continue
+        for ts in free:
+            out[ts] = float(vals[ts]) * target / raw
+    if unpinned and log:
+        log(f"    sub-monthly: {len(unpinned)} month(s) left unpinned "
+            f"({', '.join(unpinned)}) — too few free weeks to absorb the residual")
+    return pd.Series(out).sort_index()
+
+
+def _real_prints(src: sqlite3.Connection, sid: str, upto: datetime) -> pd.Series:
+    """Real observations of `sid` knowable at `upto` — the weeks a straddling first month
+    already has in the world and must keep."""
+    rows = src.execute(
+        "SELECT event_time, value FROM fred_obs WHERE sid=? AND knowledge_time<=?"
+        " AND value IS NOT NULL ORDER BY event_time", (sid, upto.isoformat())).fetchall()
+    if not rows:
+        return pd.Series(dtype=float)
+    ser = pd.Series({pd.Timestamp(r[0]): float(r[1]) for r in rows})
+    return ser[~ser.index.duplicated(keep="last")].sort_index()
+
+
 # ── one built world ──────────────────────────────────────────────────────────
 @dataclass
 class SynthEvent:
@@ -380,6 +506,17 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     st = SETTLES[series]
     panel_name, settle_col = st.panel, st.column
     spec = REGISTRY[series]
+    # `_token` names a weekly market for the day it CLOSES and a monthly one for its
+    # REFERENCE period, and it reads that off the panel. The panel is chosen by `SETTLES`,
+    # the cadence by the registry, and nothing else forces the two to agree — so they are
+    # checked here rather than assumed. A mismatch produces tokens no `quotable_events` will
+    # ever match, which surfaces as "0 events generated" and looks like a modelling failure.
+    cad = {"MS": "monthly"}.get(P.PANELS[panel_name].freq, "weekly")
+    if cad != spec.cadence:
+        raise ValueError(
+            f"build: {series} settles off panel {panel_name!r} ({P.PANELS[panel_name].freq}"
+            f" = {cad}) but the registry calls it {spec.cadence!r} — the event token "
+            "convention is derived from the panel and would name every generated event wrong")
     sinks = _sinks(panel_name)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -418,6 +555,18 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     rng = np.random.default_rng(seed + 11)
     sigmas = {c: _sigma_daily(src, s.name, splice)
               for c, s in sinks.items() if s.kind == "fut"}
+    # A monthly panel carries a weekly source as a monthly MEAN (`Column.agg == "mean"`).
+    # Written back as one observation on the first of the month it would read as a series
+    # that had gone quiet, so those columns are disaggregated — see `_sub_monthly`.
+    cols = {c.name: c for c in psp.gen_columns}
+    submonthly = {c: (_fred_weekday(src, sk.name), _sigma_within(src, sk.name, splice),
+                      _real_prints(src, sk.name, splice))
+                  for c, sk in sinks.items()
+                  if sk.kind == "fred" and not _weekly(psp) and cols[c].agg == "mean"}
+    if submonthly:
+        say("  sub-monthly sinks: " + ", ".join(
+            f"{c} -> {sinks[c].name} on weekday {w}, within-month sd {sd:.4f}"
+            for c, (w, sd, _) in submonthly.items()))
 
     world_paths, events, z_ys = [], [], []
     for i in range(n_paths):
@@ -437,7 +586,17 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
                 outcomes = outcome_path(pd.concat([real_tail, lv]), st).reindex(fwd)
             ck = clocks[col]
             idx = pd.DatetimeIndex([observation_date(psp, ck, t) for t in lv.index])
-            if sk.kind == "fred":
+            if col in submonthly:
+                weekday, sigma_w, real = submonthly[col]
+                wk = _sub_monthly(lv, weekday, sigma_w, rng, fixed=real, log=say)
+                # Only weeks the splice has not already made real. `write_fred` deletes
+                # from its first row onward, so writing a pre-splice week would rewrite
+                # history that was genuinely knowable — not a leak, but a world claiming a
+                # past that did not happen, and `_sub_monthly` has already held those weeks
+                # fixed when solving for the month's mean.
+                wk = wk[wk.index > pd.Timestamp(splice.date())]
+                W.write_fred(dst, sk.name, wk, lag_days=ck.lag_days, hour=ck.hour)
+            elif sk.kind == "fred":
                 W.write_fred(dst, sk.name, lv.set_axis(idx),
                              lag_days=ck.lag_days, hour=ck.hour)
             else:
@@ -451,7 +610,7 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
         for w in range(1, psp.horizon):
             per = fwd[w]
             close = knowable_at(psp, clocks[settle_col], per) - CLOSE_LEAD
-            tok = _token(spec, close, per)
+            tok = _token(psp, close, per)
             key = kalshi_period_to_key(tok)
             y = outcomes.iloc[w]
             if not np.isfinite(y):
