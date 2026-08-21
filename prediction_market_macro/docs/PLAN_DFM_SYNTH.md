@@ -594,8 +594,36 @@ the measurement it exists to serve.
 So the only lever that changes nothing about *what* is computed is concurrency, and worlds
 are independent SQLite files. `score_matrix` pools over **worlds** — not over the grid,
 which would reopen each world K times, and not over events, which would put workers in
-contention for one file's page cache. 8 worlds a market on 12 performance cores takes the
-pass to roughly **45–50 min**.
+contention for one file's page cache.
+
+**Measured, full seven-market pass, 2026-08-21: 3,039.8 s = 50.7 min** against the 6.3 h
+serial projection — **7.5×** on 8 workers, on a machine already carrying the crypto
+recorders and the controller at load ~19. Per market, `kept/generated × K_union`:
+
+| market | kept/generated | K_union | ladder |
+|---|---|---|---|
+| KXPAYROLLS | 80/88 | 222 | 1/3/4/5/9/13/17/33/49/97 |
+| KXU3 | 85/88 | 121 | 1/4/10/28/82 |
+| KXCPI | 56/88 | 201 | 1/3/4/7/10/19/28/55/82 |
+| KXCPICORE | 85/88 | 228 | 1/3/4/7/10/19/28/55/109 |
+| KXCPIYOY | 72/80 | 201 | 1/3/4/7/10/19/28/55/82 |
+| KXCPICOREYOY | 78/80 | 228 | 1/3/4/7/10/19/28/55/109 |
+| KXPCECORE | 84/88 | 5 | 1/5 |
+
+Two things in that table are worth naming rather than glossing. **KXCPI keeps 56/88 where
+its own core twin keeps 85/88** — same panel, same generator hash, same ladder width, so
+the drop is a property of that series' quotable events, not of the CPI family; it is
+logged, not silently absorbed, and is the first thing to look at if KXCPI's blend ever
+reads oddly. And **KXCPI/KXCPIYOY share generator hash `3d906423f0f81007` while
+KXCPICORE/KXCPICOREYOY share `d57899f2f4e34186`** — the year-over-year and month-over-month
+markets on one index are priced off one generator, which is the intended de-duplication and
+a useful integrity check that the panel routing is not crossing indices.
+
+The pass runs under `python -m`, which is how `ops/refresh.py` enters it, and that path was
+verified separately: spawn re-imports the parent's `__main__` in each child, so a caller
+without an `if __name__ == "__main__"` guard dies with `BrokenProcessPool`. A `-m` harness
+driving the real `_score_world` against real world files printed its module body exactly
+once and matched the serial matrix.
 
 The hazard that needed a test rather than a review: `mat[i]` is paired to `kept[i]`, every
 downstream use is a paired comparison, and `as_completed` yields in *completion* order — so
@@ -634,6 +662,49 @@ static `CAP` and a synthetic sample buys them nothing. The weekly series are sti
 on request by `synth/calibrate.py`, because they are the only place lambda can be measured
 against a real sample at all.
 
+### 7c. The chain is complete and it is inert — `synth_lambda` has no writer
+
+The full-pass run stored what it was supposed to store: 7 rows in `synth_runs`, **1,206** in
+`synth_scores` (one per candidate per market — 222+121+201+228+201+228+5, so every union
+member has a mean), and 8 world dbs per market on disk. Every market reported `ok`. And
+every market also reported `weight=0.0`, and the daily-lane view of all seven reads:
+
+```
+{"lambda": 0.0, "source": null,
+ "note": "no lambda measured — synthetic sample unused",
+ "skipped": "lambda is zero — the synthetic sample carries no weight"}
+```
+
+`synth_lambda` is **empty — 0 rows**, and `grep` finds no writer anywhere in the package:
+`param_argmin.synth_lambda` reads it, `regen.run` reads it to compute `weight`, and
+`calibrate.py` *computes* the quantity but never persists it and no job calls it. So the
+pipeline is a complete circuit with an open switch. This is the honest status against the
+requirement that the feature be *integrated and effective*: **integrated yes, effective no.**
+
+Note what this is not. It is not the §6a measurement deciding against the sample — §6a's
+`lambda = 0` came out of a comparison whose *reference* had negative split-half reliability
+(−0.272 KXWTIW, −0.561 KXNATGASW), i.e. non-identification, and §7b showed a merely
+plausible 0.136 takes KXPCECORE's cap from 1 to 11. It is a missing persistence step. The
+distinction matters because the fix for a refutation is to abandon the feature and the fix
+for an open switch is to close it, and only one of those is warranted here.
+
+Two consequences to carry forward: the pooled `'*'` row is the intended vehicle for the
+monthly markets (`synth_lambda`'s docstring already commits it to be the *min* of the
+per-series lower bounds, so an unmeasured market inherits the worst case rather than an
+average it has no claim to); and any row written must record on its face whether it was
+measured or pre-registered, because `lam_point`/`lam_lo`/`lam_hi` are the only place that
+distinction can survive into the daily log.
+
+### 7d. Residual: the weekly block holds `refresh.lock` for the whole pass
+
+`weekly_synth_regen` runs inside `refresh.run()`, which takes a non-blocking flock on
+`data/output/refresh.lock` (`ebdf6a9`). At 50.7 min the Sunday 10:30Z weekly therefore holds
+that lock for most of an hour, and the 15-minute ticks landing in the window will log
+`✗ daily_refresh: pid=… started=…` and `mark_late`, then be picked up by the next tick.
+That is the designed behaviour — refuse rather than queue — and it is contained, because
+only the three daily tasks route through `refresh.run()`. It is recorded here so the Sunday
+log is not mistaken for a fault.
+
 ## 8. Order of work and gates between stages
 
 | stage | done when |
@@ -644,7 +715,8 @@ against a real sample at all.
 | S4 book | **DONE** (2026-08-21). Overlap gate passes with **outside = 0.0** (median gap 0.020, p95 0.143; synthetic `z_y` [−2.23,+4.30] inside donor [−5.14,+4.60]). Delivered `corr(z_m, z_y) = +0.500` against the real **+0.571**, the residual accounted for by the measured devig round trip of +0.908 (0.571×0.908 = 0.518) — i.e. at the cent-ladder ceiling. Half-spread q25/q50/q75 synthetic 0.006/0.008/0.018 vs real 0.007/0.010/0.019; `r` 0.660/0.873/1.143 vs 0.657/1.055/1.628. **Carry into S5:** `mean\|z_y\|` is 0.725 synthetic vs 0.964 real — the synthetic world is easier to trade than reality. See §5c |
 | S5 lambda | **DONE** (2026-08-21). Reported whatever it said, and it said **zero**: pooled `rho` 5th pct **−0.095**, `P(mean rho <= 0) = 0.20`, and the reference-free decision test puts the synthetic pick at the **44.8th** percentile of real improvement against a null of 50 — worse than the default on 2 of 3 series. **Read the identification caveat before reading that as a refutation**: real-sample split-half reliability is −0.272 (KXWTIW) and −0.561 (KXNATGASW), so on those two the reference cannot correlate with itself, which caps `rho` at zero by construction. Only KXJOBLESSCLAIMS is identified and it is n=4. See §6a |
 | S6 wiring | **DONE** (2026-08-21). `n_eff = n_real + lambda*n_synth` feeds `sample_cap`; `_objective` blends only a grid the stored run fully covers and logs the refusal otherwise; every gate log carries `n_eff` and a `synth` block naming the run, its age and its lambda. Building it exposed a **real defect in the gate itself**: it sized the grid on the *quotable* universe while `score_matrix` keeps only what replays, so KXJOBLESSCLAIMS — skill-BLOCKED since 2026-07-09, `0/91` sets scoring on its last 6 events — was ranking 91 sets on **4** events (1.50 sd of selection bias, worse than the KXPAYROLLS case that motivated the gate) while the log read n=10. `resolve_grid` now re-narrows on the scored sample, never widens, and says which count it resized on |
-| S7 ops | **DONE** (2026-08-21). See §7. `weekly_synth_regen` in `ops/refresh.py`; one market's generator failure cannot starve the other six; `synth_runs`/`synth_scores` ride `backup_db`; worlds are one generation deep and gitignored |
+| S7 ops | **DONE** (2026-08-21). See §7. `weekly_synth_regen` in `ops/refresh.py`; one market's generator failure cannot starve the other six; `synth_runs`/`synth_scores` ride `backup_db`; worlds are one generation deep and gitignored. **Proven on a full seven-market pass**: 50.7 min wall (7.5× the serial projection), 7/7 `ok`, 7 `synth_runs` + 1,206 `synth_scores` rows, `-m` spawn path verified. **All seven report `weight=0.0`** — see §7c, `synth_lambda` has no writer |
+| S8 lambda persistence | **NOT STARTED** — the one thing between S1–S7 and any effect at all. `calibrate.py` computes lambda and nothing stores it, so `read_synth` refuses every market every day. Done when a job writes `synth_lambda` rows that are honest about measured-vs-pre-registered, the pooled `'*'` row exists for the monthly markets, and a live `rescore` shows a monthly market's `cap` moving off 1. See §7c |
 
 Nothing writes to production state until S5 has a number. S5 now has one, and it is zero,
 so what ships is the machinery and not yet its influence: `weekly_synth_regen` builds and
@@ -653,3 +725,10 @@ refuses it out loud — `"lambda is zero — the synthetic sample carries no wei
 `n_eff == n_real` and the chosen parameters are bit-identical to the pre-S6 lane. The one
 thing that is *not* deferred is the gate defect S6 uncovered, which was real, independent
 of any of this, and is fixed.
+
+That paragraph was written before the full pass, and it credits the inertness to S5's
+number. §7c corrects it: **even a non-zero S5 would change nothing today**, because
+`synth_lambda` has no writer at all — `read_synth` takes the `source: null` branch, not the
+`lam <= 0` branch reached through a stored row. Both roads end at the same log line, which
+is exactly why it went unnoticed. S8 is the open item; everything above it is built,
+measured and running.
