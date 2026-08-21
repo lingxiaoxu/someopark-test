@@ -554,6 +554,30 @@ pools the whole recorded span including post-release quotes, the same practice �
 measured under. Timeline: with the 26AUG releases settling in September, every monthly
 series reaches the n=4 identification floor; n=8 lands around New Year.
 
+**First backfill, 2026-08-21 (21 releases, 3.1 h).** All seven series stored 3/3
+releases; every aggregate correctly reports *measured but unidentifiable* (n=3 < 4) and
+correctly persists nothing. The preliminary readings, reported for the record and NOT for
+conclusions — at n_real=3 these are noise-level:
+
+| series | rho | pick_pct | rel_synth | note |
+|---|---|---|---|---|
+| KXPAYROLLS | +0.182 | **77.0%** | −0.653 | pick beats null; synth side unreliable |
+| KXCPIYOY | +0.217 | 26.9% | −0.638 | synth side unreliable |
+| KXCPICORE | −0.283 | 34.7% | +0.699 | |
+| KXCPI | −0.132 | 14.9% | +0.122 | |
+| KXU3 | −0.068 | 9.9% | +0.633 | pick worse than default |
+| KXCPICOREYOY | −0.009 | 0.0% | +0.539 | pick was the worst candidate |
+| KXPCECORE | 0.000 | 0.0% | 0.000 | K=5, degenerate at this sample |
+
+Mean pick percentile ≈ 27% against a null of 50 — **below** null, the opposite sign of
+the weekly-series decision test (44.8%) and of KXJOBLESSCLAIMS alone (86.8%). If this
+holds as rows accrue, the accrual will keep refusing to persist zeros (the n≥8 rule) and
+the right act at n≥8 would be to persist the measured zeros AND retire the
+pre-registered `'*'` — the mechanism for both already exists. Decision points: first
+identified readings in September (n=4); evidence-grade by New Year (n=8). Nothing about
+these numbers changes tomorrow's lane: the gate, the discount and the blend behave
+exactly as registered.
+
 ## 7. Storage and cadence (S7) — as built, 2026-08-21
 
 `research/synth/regen.py`, wired into `ops/refresh.py`'s **weekly** block as
