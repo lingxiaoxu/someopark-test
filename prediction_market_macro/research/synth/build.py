@@ -872,6 +872,18 @@ def score_matrix(events: list[SynthEvent], grid: list[dict],
     extending as futures land would silently permute the sample. Serial below two worlds:
     process startup would dominate, and a subprocess drops any `event_pnl` fake a caller
     installed, turning a fast test into a real model run.
+
+    **Callers must be import-safe.** macOS spawns rather than forks, so each worker
+    re-imports the parent's `__main__`; a script without an `if __name__ == "__main__"`
+    guard re-runs itself in every child and the pool dies with `BrokenProcessPool`. The
+    production entry points entered via `python -m` are guarded, but an ad-hoc script is
+    not until it is written that way. Fork would sidestep it and is the wrong trade: `one`
+    generates with torch in this same process, and forking an interpreter that already has
+    torch's thread pool up is how you get a deadlock instead of an exception.
+
+    Verified equal to the serial path on real worlds with the real model, not just against
+    fakes: KXPCECORE's 26 events x 5 candidates over 2 worlds return identical `kept` order
+    and an identical matrix, 12.9 s serial against 7.8 s parallel.
     """
     by_world: dict[str, list[SynthEvent]] = {}
     for e in events:

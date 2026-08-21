@@ -605,6 +605,27 @@ serial path walks; two tests drive a pool whose futures complete backwards, one 
 order and one checking each row still names its own world, because "right events, rows
 shifted by one world" survives an order check.
 
+### 7b. Does the stored sample actually reach the morning lane?
+
+Directly tested rather than argued, by running `param_argmin.rescore` on a copy of the live
+DB three ways against KXPCECORE's stored run:
+
+| | lambda | n_eff | cap | K | outcome |
+|---|---|---|---|---|---|
+| A | no row (as shipped) | 2.0 | 1 | **1** | refused: `"lambda is zero — the synthetic sample carries no weight"` |
+| B | 0.136 | 4.99 | 11 | 5 | `blended=True` |
+| C | 1.0 | 24.0 | 20 | 5 | `blended=True` |
+
+The point is arm A. With `n_real = 2` the sample gate allows **one** candidate — the market
+cannot rank anything at all, which is the gate working as designed on a market with almost
+no settlements. A synthetic sample is the only thing that reopens it, and at lambda 0.136 it
+does: `cap` goes 1 → 11 and the whole reachable ladder becomes searchable. So the wiring is
+live end to end and the only thing standing between it and effect is the measured lambda.
+
+On this market the reopened search then chose the default anyway (`best = {}`,
+`pnl 2.5 → 2.5`), which is the honest outcome to report: the mechanism is proven, the
+improvement is not.
+
 Cadence is weekly, not monthly: a weekly regeneration keeps every stored run inside
 `param_argmin.SYNTH_MAX_AGE_DAYS = 45`, which is the daily lane's own staleness limit.
 Scope is the **monthly** markets only, derived from the panel frequency rather than tabulated
