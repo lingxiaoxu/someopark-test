@@ -236,6 +236,44 @@ one fit per run, on today's state — the expensive direction is the one that ru
 `dfm/` is still only called, never modified: `fit_local` is `fit` on a row subset with
 `cond_pcs=0`, and factors are budgeted out of the neighbourhood (`factor_dim <= k // 6`).
 
+## 4c. What the S3 round trip settled (2026-08-21)
+
+**The gate passes: 14/14 series, 75 events, 0 mismatches, 0 unrebuildable events.** Every
+real quotable event was read back out of the database as an `EventPlan`, re-settled from a
+recovered outcome, and re-written through the same `write_event` a synthetic world uses;
+`event_pnl` then returned identical `edge`/`argmax`/`hybrid`/`staked`/`traded`/`stream`
+against the rebuilt world and against production.
+
+Passing was not free, and the four things it cost are the point of having run it:
+
+**1. `settled_ts` is read, and it is point-in-time.** `energy._aaa_settled_mids` builds the
+AAA drift prior from `settlements.settled_ts <= asof`. A world that stamped settlement at
+the market close — or left it NULL — would hand that model outcomes before they were
+knowable, with no symptom other than an energy model that looks better than it is. It is a
+separate field on `EventPlan`, defaulting to the close, which is the conservative direction.
+
+**2. Close time is per leg, not per event.** 10 of 808 real events quote legs with
+different closes (KXFED/22DEC spans five). `quotable_events` filters candles against *each
+leg's* close, so flattening them to the event maximum makes legs quotable that production
+never quoted. Per-leg values win over the event-level one.
+
+**3. Categorical markets cannot be laddered at all.** KXFEDDECISION is five mutually
+exclusive `custom` legs with no numeric strike anywhere — the first round-trip run refused
+all of it, correctly, via `_implied_outcome`. It is now settled by category (the ticker
+suffix, which is exactly the key `decide_all._structs_categorical` prices against), and
+which rule applies is read from `REGISTRY[series].structure`, never inferred from the legs.
+
+**4. A world must be copied through sqlite's backup API, not `shutil.copyfile`.**
+`macro.db` is WAL with a live writer, so everything committed since the last checkpoint is
+in the `-wal` sidecar. A file copy drops it *intermittently*, depending on when the last
+checkpoint landed — the worst available failure mode for a gate, since it would pass most
+days.
+
+Two decisions were made by refusing rather than guessing, and both stay: `custom`/NULL
+strike types on a *ladder* raise instead of settling by a plausible default, and an event
+whose stored settlements pin no consistent value is reported as unrebuildable rather than
+approximated. Neither fired on today's data; both would have been silent wrong numbers.
+
 ## 5. The market book (S4) — the part that can kill the project
 
 The model's side of the trade can be synthesized honestly. The market's side cannot be
@@ -291,7 +329,7 @@ survives on real events is the exchange rate between a synthetic and a real obse
 |---|---|
 | S1 panel | **DONE** (`bd8540f`+). Leakage test passes: no row contains a value dated after the window's right edge, `integrate` inverts the increment transform exactly, and each column reads the vintage its consuming model reads. See the point-in-time caveat in §4 |
 | S2 generator | purged blocked k-fold, three arms. **Paired CRPS vs `block_bootstrap` must be < 1 with t < −2** (the conditional arm has to be sharper than the unconditional resample of its own history), **and** rank calibration must not degrade materially against it. `knn_bootstrap` clears this on all five panels; the global conditional DFM does not and is a **documented negative**. The shipped arm is `fit_local`, which must additionally TIE its own `knn` on identical rows — see §4b |
-| S3 worlds | **round-trip proof**: materialize the *real* history through the same writer and reproduce production `event_pnl` numbers exactly. Nothing downstream is trustworthy until this passes |
+| S3 worlds | **DONE** (2026-08-21). **Round-trip proof passes 14/14 series, 75 events, 0 mismatches**: every real event rebuilt through `write_event` reproduces production `event_pnl` on `edge`/`argmax`/`hybrid`/`staked`/`traded`/`stream`. Re-run with `worlds.roundtrip(conn, series)`. See §4c for the four defects it caught |
 | S4 book | the transplanted books reproduce the real events' spread and devigged-width distribution |
 | S5 lambda | a bootstrap interval on lambda, reported whatever it says |
 | S6 wiring | `n_eff` feeds `sample_cap`; gate logs distinguish real from synthetic sample |
