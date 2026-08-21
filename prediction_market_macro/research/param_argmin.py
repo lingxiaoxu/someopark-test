@@ -26,6 +26,7 @@ from __future__ import annotations
 import importlib
 import itertools
 import json
+import math
 from datetime import datetime, timedelta, timezone
 
 from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
@@ -36,6 +37,56 @@ from prediction_market_macro.research.param_wf import MODULE_OF, _predict_fn
 from prediction_market_macro.util.periods import kalshi_period_to_key
 
 WINDOW_DAYS = 75
+
+# ── sample gate (2026-08-21) ────────────────────────────────────────────────────
+# The policy above is unchanged: raw argmin, no DSR deflation. What this adds is a
+# FLOOR on how wide a search that argmin is allowed to run when the sample is thin.
+#
+# The argmin of K trials on n events overstates the winner by about sqrt(2*ln K / n)
+# per-event sd even when every set is identical, so K and n are not independent knobs.
+# Measured on the live db 2026-08-20, before this gate:
+#
+#     KXAAAGASW        n=11  K=7    0.59 sd      KXFED       n=2  K=10   1.52 sd
+#     KXWTIW/NATGASW   n=10  K=21   0.78 sd      KXCPI(YOY)  n=3  K=82   1.71 sd
+#     KXJOBLESSCLAIMS  n=10  K=91   0.95 sd      KXCPICORE   n=3  K=109  1.77 sd
+#                                                KXU3        n=2  K=82   2.10 sd
+#                                                KXPAYROLLS  n=2  K=97   2.14 sd
+#
+# The weekly markets settle ~weekly, so 75 days is 10-11 events and they sit under 1 sd.
+# The monthly ones settle once a month: 2-3 events against 82-109 candidate sets. A
+# concrete instance — KXPAYROLLS on 2026-08-21 would have turned pnl -1.84 into +8.11
+# picking from 97 sets on 2 events. Nearly all of that +9.95 is the bias above.
+#
+# TOLERANCE is the ceiling on that bias, in per-event sd. Inverting gives K <= exp(n*t^2/2).
+# 1.0 is deliberately looser than param_space.SELECTION_TOLERANCE (0.35): this lane was
+# chosen to be less conservative than the DSR one and the gate is not a back-door revert
+# of that choice. It only removes searches so wide the winner is unidentifiable:
+#
+#     n=2  -> K<=2      n=3  -> K<=4      n=10 -> K<=148     n=11 -> K<=244
+#
+# so the four weekly markets are untouched (their CAP already binds well below 148) and
+# the monthly ones narrow to a couple of sets — at n=2 to defaults only — until they have
+# the history to support a search. Nothing is adopted on their behalf in the meantime;
+# whatever was adopted before stays until it is rescored or cleared.
+#
+# NOTE: param_space.max_sets is the same inversion but hard-returns 1 below MIN_EVENTS=12,
+# which is DSR-lane policy and would shut this lane down entirely. Hence a local function.
+ARGMIN_TOLERANCE = 1.0
+
+
+def sample_cap(n_events: int, tolerance: float = ARGMIN_TOLERANCE) -> int:
+    """Widest `width` (the cross-product, EXCLUDING the default row) the sample supports.
+
+    `build` returns [{}] + product(...), so the number of trials the argmin actually
+    chooses among is width+1; the bias bound is inverted on that trial count and the
+    default row given back, which is why this returns k_max-1 rather than k_max.
+    Returns 0 when the sample supports no search at all — the caller must then ship
+    defaults rather than pick.
+    """
+    if n_events <= 0:
+        return 0
+    k_max = math.floor(math.exp(n_events * tolerance * tolerance / 2.0))
+    return max(0, min(4096, k_max - 1))
 
 SPACES: dict[str, dict[str, tuple]] = {
     "claims": {
@@ -104,12 +155,25 @@ CAP = {"KXJOBLESSCLAIMS": 100, "KXCPI": 110, "KXCPICORE": 110, "KXCPIYOY": 110,
 MARKETS = list(CAP)
 
 
-def build(conn, series: str, window_start: datetime) -> tuple[list[dict], dict]:
+def build(conn, series: str, window_start: datetime,
+          n_events: int | None = None) -> tuple[list[dict], dict]:
     """Live-key-filtered grid, default at index 0. Probe events close BEFORE the
-    window so grid design never sees the evaluation sample (the grid75 protocol)."""
+    window so grid design never sees the evaluation sample (the grid75 protocol).
+
+    `n_events` is the size of the sample the grid will be SCORED on. Only its count is
+    used — never an outcome — so the grid75 protocol still holds: the design cannot be
+    tuned to the evaluation, it can only be made narrower because the evaluation is small.
+    Passing None keeps the pre-2026-08-21 behaviour (the static CAP alone) and is what
+    the study scripts use to reproduce the original spaces.
+    """
     spec = SPACES.get(MODULE_OF[series], {})
     if not spec:
         return [{}], {"note": "no space"}
+    cap = CAP[series]
+    scap = None
+    if n_events is not None:
+        scap = sample_cap(n_events)
+        cap = min(cap, scap)
     pre = settled_events(conn, series, limit=8, before=window_start)
     fn = _predict_fn(series)
     live, dead = live_keys(conn, series, fn, {k: v[0] for k, v in spec.items()}, pre)
@@ -117,18 +181,26 @@ def build(conn, series: str, window_start: datetime) -> tuple[list[dict], dict]:
     chosen, width, dropped = [], 1, []
     for k in ordered:
         w = len(spec[k][1])
-        if width * w > CAP[series]:
+        if width * w > cap:
             dropped.append(k)
             continue
         chosen.append(k)
         width *= w
+    rep = {"live": chosen, "dead": dead, "dropped_for_cap": dropped,
+           "cap": cap, "sample_cap": scap, "n_events_for_cap": n_events}
     if not chosen:                      # no live keys → defaults only, no dup {} row
-        return [{}], {"live": [], "dead": dead, "dropped_for_cap": dropped,
-                      "n_sets": 1}
+        rep.update({"live": [], "n_sets": 1})
+        # a thin sample is a different situation from a model with no live keys, and the
+        # two must not read the same in the log — one waits for history, one is a bug.
+        if scap is not None and scap < min((len(v[1]) for v in spec.values()), default=1):
+            rep["reason"] = (f"sample too thin: {n_events} events support at most "
+                             f"{scap + 1} trials, narrowest key has "
+                             f"{min(len(v[1]) for v in spec.values())} values")
+        return [{}], rep
     grid = [{}] + [dict(zip(chosen, c))
                    for c in itertools.product(*[spec[k][1] for k in chosen])]
-    return grid, {"live": chosen, "dead": dead, "dropped_for_cap": dropped,
-                  "n_sets": len(grid)}
+    rep["n_sets"] = len(grid)
+    return grid, rep
 
 
 def _fingerprint(conn, series: str, now: datetime) -> str:
@@ -151,15 +223,22 @@ def _last_log(conn, series: str):
 
 def rescore(conn, series: str, now: datetime, log=None) -> dict | None:
     lo = now - timedelta(days=WINDOW_DAYS)
-    grid, grep_ = build(conn, series, lo)
-    if len(grid) < 2:
-        return None
+    # the universe is built FIRST so the grid can be sized to it (see `sample_cap`).
+    # Only len(uni) crosses over; no outcome does.
     uni = [{**e, "key": kalshi_period_to_key(e["tok"]), "close": e["close_ts"]}
            for e in _ps.quotable_events(conn, series, before=now)
            if e["close_ts"] >= lo]
     uni = [e for e in uni if e["key"]]
     if not uni:
         return None
+    grid, grep_ = build(conn, series, lo, n_events=len(uni))
+    if len(grid) < 2:
+        # Not an error and not "no sample": the sample exists, it is just too small to
+        # tell K candidates apart. Returned as a result so `daily` can log the reason
+        # instead of silently looking like a market with no data.
+        return {"grid": grid, "grid_report": grep_, "n_events": len(uni),
+                "best_idx": 0, "best_params": {}, "pnl_best": None,
+                "pnl_default": None, "gated": True}
     kept, mat, _det = _ps.score_matrix(conn, series, grid, uni, log=log)
     if not kept:
         return None
@@ -188,14 +267,19 @@ def daily(conn, now: datetime | None = None, log=print) -> dict:
             continue
         cur = manual_params(conn, series, now)
         cur_params = cur[0] if cur else {}
-        changed = r["best_params"] != cur_params
+        # A gated market adopts NOTHING — and in particular does not adopt `{}` over an
+        # existing row. The gate is a bar on new selection, not a retro-revert of a
+        # decision the user already made; undoing those is a separate, explicit act.
+        changed = (not r.get("gated")) and r["best_params"] != cur_params
         if changed:
             set_manual(conn, series, r["best_params"],
                        note=(f"daily argmin {now.date()}: window {WINDOW_DAYS}d, "
                              f"n_events={r['n_events']}, sets={len(r['grid'])}, "
                              f"pnl {r['pnl_default']:+.2f} -> {r['pnl_best']:+.2f}. "
                              "Raw argmin per standing user policy 2026-08-11; the "
-                             "DSR gate's objection (n below MIN_OBS) is on record."))
+                             "DSR gate's objection (n below MIN_OBS) is on record. "
+                             f"Search width capped at {r['grid_report'].get('cap')} "
+                             f"by the {r['n_events']}-event sample gate."))
         conn.execute(
             "INSERT OR REPLACE INTO experiments(name, config_hash, series, window,"
             " metrics_json, created_ts) VALUES('param_argmin',?,?,?,?,?)",
@@ -205,11 +289,17 @@ def daily(conn, now: datetime | None = None, log=print) -> dict:
                          "best_params": r["best_params"],
                          "pnl_default": r["pnl_default"],
                          "pnl_best": r["pnl_best"], "adopted_change": changed,
+                         "gated": bool(r.get("gated")),
                          "grid_report": r["grid_report"]}),
              now.isoformat()))
         conn.commit()
-        out[series] = ("ADOPTED " + json.dumps(r["best_params"])[:60]) if changed \
-            else "unchanged"
+        if r.get("gated"):
+            out[series] = (f"GATED n={r['n_events']} "
+                           f"(cap {r['grid_report'].get('sample_cap')}) — "
+                           f"{'holding ' + json.dumps(cur_params)[:40] if cur_params else 'defaults'}")
+        else:
+            out[series] = ("ADOPTED " + json.dumps(r["best_params"])[:60]) if changed \
+                else "unchanged"
         if log:
             log(f"  param_argmin {series}: {out[series]}")
     return out
