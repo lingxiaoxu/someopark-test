@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.someopark.vp.monthly</string>
+    <!-- 现役 lgbm 的月度 walk-forward 健康检查(12 窗 OOS 复算,2-3 分钟,极轻)。
+         这是 5 个 vp_*.sh 里最后一个还归台账手动跑的,装上后 VP 运维全自动。
+
+         调度写法: 这里只说"每天 12:33",跑不跑交给脚本里的 VP_SCHED_GUARD:
+           - 周六 → 跳过(10:33 那三个数小时重活的地盘,全面板 5.6GB,不去挤);
+           - 本月已有 wf_lgbm_YYYYMM.csv → 跳过;
+           - 否则跑。
+         效果 = 每月 1 号(或 1 号后第一个非周六)自动跑一次,当月再拉起都是 exit 0。
+
+         为什么用"产出存在性"而不是日期条件: 文件头写的"每月 1 号后第一个交易日"
+         需要交易日历,plist 表达不了;而本脚本是对历史窗口的回看复算,跑在哪天与
+         结果无关,那个条件本来就是惯例不是约束。更要紧的是产出守卫**自带次日重试** ——
+         撞上 pairs 夜跑脚本会 exit 3,若像 vp.refreeze 那样一个月只拉起一次,
+         exit 3 就等于静默丢掉一整月的健康检查。每天拉起 + 产出守卫 = exit 3 自愈。
+
+         12:33 的理由: 与 vp.shadowdaily(17:33)、周六 10:33 三件套、pairs 夜跑
+         (20:30-09:00 ET)全部错开。脚本另有 pairs 管道互斥守卫(运行中 exit 3)。
+
+         手动补跑/重跑: bash conductor/vp_wf_monthly_lgbm.sh(不带 VP_SCHED_GUARD,
+         守卫不生效,照旧立即执行)。
+
+         PATH 是必须的: launchd 不 source profile,PATH 恒为 /usr/bin:/bin:...,
+         脚本里 `nice conda` 的 conda 找不到就是 exit 127 —— 见脚本内注释与
+         com.someopark.vp.shadowdaily 2026-08-18 首次触发即挂的先例。脚本自带
+         export PATH 一行,这里不重复注入。 -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/xuling/code/someopark-test/conductor/vp_wf_monthly_lgbm.sh</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>VP_SCHED_GUARD</key>
+        <string>1</string>
+    </dict>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key><integer>12</integer>
+        <key>Minute</key><integer>33</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_monthly.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/xuling/code/someopark-test/conductor/logs/launchd_vp_monthly.log</string>
+</dict>
+</plist>

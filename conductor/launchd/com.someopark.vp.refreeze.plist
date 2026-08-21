@@ -5,27 +5,46 @@
 <dict>
     <key>Label</key>
     <string>com.someopark.vp.refreeze</string>
-    <!-- 每月第一个周六 10:33 ET(脚本自身建议"月初周末",避开 pairs 夜跑
-         20:30-09:00 的内存竞争;周六晨跑批 ~09:26 已结束,重活数小时也在
-         20:30 前收尾)。launchd 的 StartCalendarInterval 各键为 AND 语义,
-         Day 1-7 × Weekday 6 的七个 dict 恰好=「第一个周六」。
-         脚本内置 pairs 互斥守卫(运行中 → exit 3 改期)。
-         只产出候选绝不自动晋升(§7.6 红线在脚本与 refreeze.py 双层保证)。 -->
+    <!-- 月度重冻结(全量面板重训 ~4.5h,只产候选绝不自动晋升 —— §7.6 红线
+         在脚本与 refreeze.py 双层保证)。
+
+         调度写法(2026-08-21 改): 这里只说"每周六 10:33",跑不跑交给脚本里的
+         VP_SCHED_GUARD 守卫 —— registry 里已有本月 lgbm_prod_YYYYMM* 候选键
+         就 exit 0;quarterly(1/4/7/10 月第 2 周六)/semiannual(1/7 月第 3
+         周六)的触发日让位顺延。效果 = 每月首个无冲突周六跑一次,失败自动
+         下周六重试。
+
+         为什么放弃原 Day1-7×Weekday6 的"首周六"写法(语义本身是对的,
+         2026-08-18 已实测 Day+Weekday 为 AND): 一个月只拉起一次,撞上 pairs
+         夜跑 exit 3 就**静默丢一整月候选** —— quarterly/semiannual 当初正是
+         为此把 launchd 路径改成"等",本脚本被漏掉。现在守卫自带周重试,
+         脚本内 launchd 路径也补了与 quarterly 同款的"最多等 2 小时"。
+
+         10:33 起跑: 周六晨 pairs 跑批 ~09:26 已结束,4.5h 约 15:10 收工,
+         离 20:30 夜跑窗口有余量。
+         手动跑(不带 VP_SCHED_GUARD)不受守卫影响,照旧立即执行/exit 3。
+
+         下次真正触发: **2026-08-22(装上后的第一个周六)** —— registry 里
+         8 月没有 lgbm_prod_202608* 候选(7/31 冻结的键是 prodv6 命名,不算),
+         守卫会放行,当天即为 real 路径首次真实执行(7/31 冻结未走本脚本,
+         8/04、8/09 仅 dry-run),产出候选 lgbm_prod_20260821。
+         之后 9/5 再跑 9 月的。 -->
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
         <string>/Users/xuling/code/someopark-test/conductor/vp_refreeze_monthly.sh</string>
     </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>VP_SCHED_GUARD</key>
+        <string>1</string>
+    </dict>
     <key>StartCalendarInterval</key>
-    <array>
-        <dict><key>Day</key><integer>1</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
-        <dict><key>Day</key><integer>2</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
-        <dict><key>Day</key><integer>3</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
-        <dict><key>Day</key><integer>4</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
-        <dict><key>Day</key><integer>5</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
-        <dict><key>Day</key><integer>6</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
-        <dict><key>Day</key><integer>7</integer><key>Weekday</key><integer>6</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>33</integer></dict>
-    </array>
+    <dict>
+        <key>Weekday</key><integer>6</integer>
+        <key>Hour</key><integer>10</integer>
+        <key>Minute</key><integer>33</integer>
+    </dict>
     <key>RunAtLoad</key>
     <false/>
     <key>StandardOutPath</key>

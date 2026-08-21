@@ -33,8 +33,35 @@ set -a; . "$REPO_ROOT/.env"; set +a
 
 # launchd/cron 不 source profile → PATH 无 miniforge → `conda` 找不到 → exit 127。
 # 与 vp_shadow_daily.sh 同款(那个已于 2026-08-18 17:33 launchd 首次触发即挂)。
-# 本脚本目前靠台账手动跑,PATH 天然是好的;这行是提前拆雷,将来上调度器即可直接用。
 export PATH="/opt/homebrew/bin:/Users/xuling/miniforge3/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+# ── 调度守卫(只对 launchd 生效) ───────────────────────────────────────────
+# com.someopark.vp.monthly 每天 12:33 拉起,这里只判一件事:**本月跑过没有**。
+# 产出 wf_lgbm_YYYYMM.csv 已在 → exit 0;不在 → 跑。
+#
+# 为什么不按文件头写的"每月 1 号后第一个交易日"来判:
+#   1. "第一个交易日"要交易日历,plist 表达不了,脚本里判又得多引一个数据源;
+#      而本脚本是对历史窗口的回看复算,跑在哪天与结果无关,这个条件本就是惯例不是约束。
+#   2. 产出存在性天然幂等 —— 当月第一次成功后,后续每天拉起都是毫秒级 exit 0。
+#   3. **失败自动次日重试**,这条对本脚本尤其要紧: 撞上 pairs 夜跑会 exit 3,
+#      若像 vp.refreeze 那样一个月只拉起一次,exit 3 就等于静默丢掉一整月健康检查。
+#      每天拉起 + 产出守卫 = exit 3 自愈,不需要给它加"等夜跑收尾"的逻辑
+#      (那是 quarterly/semiannual 那种数小时重活才需要的,本脚本 2-3 分钟)。
+# 跳过分支故意用 echo 而不是 log(): log() 会 tee 出一个当日 vp_wf_lgbm_YYYYMMDD.log,
+# 每天空跑一次就是每年 365 个只有一行的空日志文件。echo 进 launchd 的 StandardOutPath。
+# 手动跑(不带这个环境变量)不受影响,照旧立即执行 —— 当月补跑/重跑走这条路。
+if [ "${VP_SCHED_GUARD:-0}" = "1" ]; then
+    # 周六 10:33 归三个数小时重活(refreeze / quarterly / semiannual,全面板 5.6GB)。
+    # 本脚本虽轻也吃 1.3GB 面板,没必要去挤。跳过周六的唯一代价: 某月 1 号恰好是
+    # 周六时顺延到 2 号 —— 对"月度回看健康检查"没有任何影响。
+    if [ "$(date +%u)" -eq 6 ]; then
+        echo "[$(date '+%F %H:%M:%S')] 守卫: 周六让位给 refreeze/quarterly/semiannual — 跳过"; exit 0
+    fi
+    if [ -f "$OUT_DIR/wf_lgbm_$YM.csv" ]; then
+        echo "[$(date '+%F %H:%M:%S')] 守卫: $YM 已有产出 — 跳过"; exit 0
+    fi
+    echo "[$(date '+%F %H:%M:%S')] 守卫: 通过($YM 本月尚无产出)"
+fi
 
 PIPE_LOG="$REPO_ROOT/pipeline_state/logs/pipeline_current.log"
 if [ -f "$PIPE_LOG" ]; then
@@ -68,7 +95,17 @@ p = f"{out}/health_log.csv"
 prev = pd.read_csv(p) if os.path.exists(p) else pd.DataFrame()
 row["vs_prev"] = (round(row["pooled_r2"] - float(prev.iloc[-1]["pooled_r2"]), 6)
                   if len(prev) and pooled is not None else None)
-pd.DataFrame([row]).to_csv(p, mode="a", header=not os.path.exists(p), index=False)
+new = pd.DataFrame([row])
+if len(prev):
+    # mode="a" 按 df 自己的列序写值、**不看已有 header** → 列序一变就静默错位:
+    # 行数列数都对、不报错,只是每列的值挪了位。2026-08-17 promote 时
+    # shadow_blend/shadow_rnn 就是这么写坏两行的(320ad27 已修)。
+    # 这里按已有表头对齐;列集不一致就大声退,绝不静默追加。
+    if set(new.columns) != set(prev.columns):
+        raise SystemExit(f"health_log.csv 表头不匹配 — 新增 {sorted(set(new.columns)-set(prev.columns))} "
+                         f"缺失 {sorted(set(prev.columns)-set(new.columns))};需人工迁移表头")
+    new = new[prev.columns]
+new.to_csv(p, mode="a", header=not os.path.exists(p), index=False)
 print("HEALTH:", row)
 alert = []
 if pooled is not None and pooled < 0.15: alert.append(f"pooled_r2 {pooled:.4f} < 0.15")
@@ -76,6 +113,10 @@ if row["vs_prev"] is not None and row["vs_prev"] < -0.02: alert.append(f"环比 
 if row["neg_windows"] > 0: alert.append(f"{row['neg_windows']} 个窗为负")
 print("ALERT: " + ("; ".join(alert) if alert else "无"))
 PY
+RC2=$?
+# 这段汇总原来没接退出码: 它挂了(比如表头不匹配 SystemExit)脚本照样打印
+# "END (exit=0)" 走人,当月就少了一行 health_log 而没人知道。
+[ $RC2 -ne 0 ] && { log "!!! 健康汇总失败 (exit=$RC2) — WF 已跑完,产出见 $OUT_DIR"; exit 1; }
 
 grep -E "^HEALTH:|^ALERT:" "$LOG" | tail -2 | while read -r l; do log "$l"; done
 log "=== WF LGBM HEALTH END (exit=0) ==="
