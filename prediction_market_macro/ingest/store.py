@@ -270,6 +270,18 @@ CREATE TABLE IF NOT EXISTS synth_scores(           -- per candidate, mean PnL pe
   n_events INTEGER NOT NULL, mean_pnl REAL NOT NULL, sd_pnl REAL NOT NULL,
   PRIMARY KEY(run_id, set_hash));
 
+CREATE TABLE IF NOT EXISTS synth_wf_mats(          -- S5-WF: per-release scored matrices
+  series TEXT NOT NULL, release_tok TEXT NOT NULL, -- one row per settled monthly release
+  cutoff_ts TEXT NOT NULL,                         -- generator splice = close - 75d (PIT)
+  built_ts TEXT NOT NULL,
+  grid_json TEXT NOT NULL,                         -- ordered candidate sets (default first)
+  grid_hash TEXT NOT NULL,
+  real_json TEXT NOT NULL,                         -- rows x K real PnL ([] if unscoreable)
+  synth_json TEXT NOT NULL,                        -- rows x K synthetic PnL
+  meta_json TEXT NOT NULL,
+  PRIMARY KEY(series, release_tok));               -- worlds are deleted after scoring;
+                                                   -- the matrices ARE the measurement
+
 CREATE TABLE IF NOT EXISTS synth_lambda(           -- what one synthetic event is worth
   series TEXT NOT NULL,                            -- '*' is the pooled value the lane uses
   measured_ts TEXT NOT NULL,

@@ -337,7 +337,8 @@ def _disattenuated_lam(r: SeriesLambda) -> float | None:
     return float(min(max(rho_d, 0.0), 1.0) ** 2)
 
 
-def persist(conn, results: list[SeriesLambda], *, now: datetime, log=None) -> dict:
+def persist(conn, results: list[SeriesLambda], *, now: datetime, log=None,
+            pooled: bool = True) -> dict:
     """Write the measurement into `synth_lambda` — the step whose absence was §7c.
 
     Everything upstream of this function existed and ran (worlds generated weekly, scores
@@ -404,6 +405,13 @@ def persist(conn, results: list[SeriesLambda], *, now: datetime, log=None) -> di
     ident = [r for r in results if r.rel_real > 0 and r.rel_synth > 0]
     rep: dict = {"n_series": len(results), "n_identified": len(ident),
                  "per_series": {r.series: float(max(r.lam_lo, 0.0)) for r in results}}
+    if not pooled:
+        # A partial measurement (e.g. one series from the monthly walk-forward accrual)
+        # may write ITS row, but must not recompute the board-wide '*' row from a set
+        # that is not the board-wide measurement.
+        rep["pooled"] = "skipped (partial measurement)"
+        conn.commit()
+        return rep
     if not ident:
         rep["pooled"] = None
         rep["note"] = ("no identified series — '*' not written, the lane keeps refusing; "
@@ -448,4 +456,196 @@ def persist(conn, results: list[SeriesLambda], *, now: datetime, log=None) -> di
     rep["sourced_from"] = src.series
     say(f"  synth_lambda['*'] = {lam:.4f} ({basis}, from {src.series})")
     conn.commit()
+    return rep
+
+
+# ── S5-WF: the accruing monthly measurement ─────────────────────────────────
+#
+# The §6a plan line said "rolling cutoffs over ~2 years". The book says otherwise:
+# candles begin 2026-05-16 and Kalshi deletes them at 75 days, so the real reference
+# for any month before May 2026 does not exist and can never be recovered. That is a
+# data-reality ceiling (same species as the 14% K-line coverage ceiling), not a bug.
+# What IS possible is an accrual: every monthly release that settles adds one real
+# improvement row per series, this job scores it point-in-time (generator spliced 75d
+# before the release's close, exactly the S5 geometry) and stores the matrices; when a
+# series has enough rows, its OWN lambda gets measured and persisted, superseding the
+# pooled '*' row through `synth_lambda()`'s read order with no code change.
+#
+# Two honesty notes carried on every row's meta:
+#   * the grid is TODAY's ladder union, not a grid designed at the historical cutoff —
+#     the pre-cutoff probe window is empty before 2026-05 so a PIT grid design does not
+#     exist. Key-LIVENESS therefore leaks backwards; outcomes never enter grid design.
+#   * the donor book pools quotes from the whole recorded span, including post-release
+#     ones — the same practice S5 measured under (§5b: the book moves with venue
+#     liquidity, not with the macro state).
+
+MONTHLY_WF_MIN_REAL = 3     # below this a cross-candidate correlation is not defined
+MONTHLY_WF_MIN_IDENT = 4    # below this split-half reliability is not defined
+MONTHLY_WF_MIN_N_FOR_ZERO = 8
+# A measured per-series row SHADOWS the pooled '*' row, so writing one is only justified
+# when it carries information. lam_lo > 0 always does. A ZERO lower bound does not until
+# the sample is big enough that zero is evidence rather than the bootstrap floor — at
+# n_real=4 the lower bound of ANY quantity is 0 (S5 measured exactly that on a series
+# whose pick beat the default at the 86.8th percentile), and letting that artifact
+# shadow a positive pooled prior would re-kill the feature on schedule every month.
+
+
+def wf_targets() -> list[str]:
+    from prediction_market_macro.research.synth import regen as RG
+    return RG.targets()
+
+
+def wf_accrue(conn, s, *, now: datetime | None = None, series: list[str] | None = None,
+              n_paths: int = 8, seed: int = 0, log=None) -> dict:
+    """Score every settled-but-unstored monthly release, PIT, and store the matrices.
+
+    Idempotent and incremental: a release already in `synth_wf_mats` is never redone, so
+    the weekly call pays ~10 minutes once a month per series when a new release lands and
+    is a no-op every other week. Worlds are deleted after scoring — the matrices are the
+    measurement, and 21 releases of kept worlds would be ~6 GB of reproducible files.
+    """
+    import shutil
+
+    from prediction_market_macro.research import pnl_score as ps2
+    from prediction_market_macro.research.synth import regen as RG
+    from prediction_market_macro.research.synth import worlds as W
+
+    say = log or (lambda *_a, **_k: None)
+    now = now or datetime.now(UTC)
+    root = Path(s.db_path).parent / "synth_wf"
+    root.mkdir(parents=True, exist_ok=True)
+    lo_today = now - timedelta(days=PA.WINDOW_DAYS)
+    out: dict[str, list[str]] = {}
+    snap = None
+    src = None
+    try:
+        for name in (series or wf_targets()):
+            done = {r[0] for r in conn.execute(
+                "SELECT release_tok FROM synth_wf_mats WHERE series=?", (name,))}
+            todo = [e for e in ps2.quotable_events(conn, name, before=now)
+                    if e["tok"] not in done]
+            if not todo:
+                out[name] = []
+                continue
+            if src is None:                       # snapshot lazily, once, like regen.run
+                snap = W.snapshot(s.db_path, root / "snapshot.db")
+                src = sqlite3.connect(snap)
+                src.row_factory = sqlite3.Row
+            book = RG.donors(src, Path(s.db_path).parent / "synth", now=now, log=say)
+            _, union = PA.grid_ladder(conn, name, lo_today)
+            if len(union) < 3:
+                out[name] = [f"grid too narrow ({len(union)}) — nothing to correlate"]
+                continue
+            stored = []
+            for e in todo:
+                cutoff = e["close_ts"] - timedelta(days=PA.WINDOW_DAYS)
+                say(f"{name} {e['tok']}: cutoff {cutoff.date()} (close {e['close_ts'].date()})")
+                out_dir = root / name / e["tok"]
+                try:
+                    built = BD.build(src, name, cutoff, donors=book, out_dir=out_dir,
+                                     n_paths=n_paths, seed=seed, log=say)
+                    kept_s, mat_s = BD.score_matrix(built.events, union, log=say)
+                    kept_r, mat_r, _ = ps2.score_matrix(conn, name, union, [e], log=say)
+                finally:
+                    shutil.rmtree(out_dir, ignore_errors=True)
+                conn.execute(
+                    "INSERT OR REPLACE INTO synth_wf_mats(series, release_tok, cutoff_ts,"
+                    " built_ts, grid_json, grid_hash, real_json, synth_json, meta_json)"
+                    " VALUES(?,?,?,?,?,?,?,?,?)",
+                    (name, e["tok"], cutoff.isoformat(), now.isoformat(),
+                     json.dumps(union, sort_keys=True), PA.grid_hash(union),
+                     json.dumps(mat_r), json.dumps(mat_s),
+                     json.dumps({"n_synth_kept": len(kept_s),
+                                 "n_synth_generated": built.n_synth,
+                                 "real_scored": len(kept_r),
+                                 "coverage": built.coverage,
+                                 "grid_note": "today's ladder union — key-liveness leaks "
+                                              "backwards, outcomes never enter design",
+                                 "close_ts": e["close_ts"].isoformat()}, default=str)))
+                conn.commit()
+                stored.append(f"{e['tok']}: real {len(kept_r)} synth {len(kept_s)}")
+                say(f"  {name} {e['tok']}: stored (real {len(kept_r)} rows, "
+                    f"synth {len(kept_s)} rows x {len(union)})")
+            out[name] = stored
+    finally:
+        if src is not None:
+            src.close()
+    return out
+
+
+def wf_aggregate(conn, series: str, *, now: datetime | None = None,
+                 log=None) -> dict:
+    """Pool a series' stored release matrices; measure and PERSIST its lambda when warranted.
+
+    Candidates are intersected by `set_hash` across releases (grids drift when live_keys
+    move), keeping the newest release's order with the default first. The persistence gate
+    is asymmetric on purpose (see MONTHLY_WF_MIN_N_FOR_ZERO): positive evidence persists
+    at n>=MONTHLY_WF_MIN_IDENT, a zero only once it means something.
+    """
+    say = log or (lambda *_a, **_k: None)
+    now = now or datetime.now(UTC)
+    rows = conn.execute("SELECT * FROM synth_wf_mats WHERE series=?"
+                        " ORDER BY release_tok", (series,)).fetchall()
+    rep: dict = {"series": series, "n_releases": len(rows)}
+    if not rows:
+        rep["status"] = "no releases stored yet"
+        return rep
+    grids = [json.loads(r["grid_json"]) for r in rows]
+    hashes = [[PA.set_hash(p) for p in g] for g in grids]
+    common = set(hashes[0]).intersection(*hashes[1:]) if len(hashes) > 1 else set(hashes[0])
+    newest = hashes[-1]
+    keep = [h for h in newest if h in common]
+    default_h = PA.set_hash({})
+    if default_h in keep:                       # default must be column 0 — it is the
+        keep = [default_h] + [h for h in keep if h != default_h]   # improvement baseline
+    rep["k_common"] = len(keep)
+    if len(keep) < 3:
+        rep["status"] = f"only {len(keep)} candidates survive the grid intersection"
+        return rep
+    mat_r, mat_s = [], []
+    for r, hs in zip(rows, hashes):
+        idx = {h: j for j, h in enumerate(hs)}
+        cols = [idx[h] for h in keep]
+        for row in json.loads(r["real_json"]):
+            mat_r.append([row[j] for j in cols])
+        for row in json.loads(r["synth_json"]):
+            mat_s.append([row[j] for j in cols])
+    rep["n_real"] = len(mat_r)
+    rep["n_synth"] = len(mat_s)
+    if len(mat_r) < MONTHLY_WF_MIN_REAL or len(mat_s) < MONTHLY_WF_MIN_REAL:
+        rep["status"] = (f"accruing — {len(mat_r)} real rows, need "
+                         f">={MONTHLY_WF_MIN_REAL} to correlate")
+        return rep
+    ag = agreement(mat_r, mat_s, seed=0)
+    pp = mat_s and pick_percentile(mat_r, mat_s)
+    rep.update({"rho": round(ag["rho"], 4), "lam_point": round(ag["lam_point"], 4),
+                "lam_lo": round(ag["lam_lo"], 4), "lam_hi": round(ag["lam_hi"], 4),
+                "rel_real": round(ag["rel_real"], 4),
+                "rel_synth": round(ag["rel_synth"], 4),
+                "identified": ag["identified"],
+                "pick_percentile": round(pp["percentile"], 4) if pp else None})
+    if len(mat_r) < MONTHLY_WF_MIN_IDENT:
+        rep["status"] = (f"measured but unidentifiable — reliability needs "
+                         f">={MONTHLY_WF_MIN_IDENT} real rows")
+        return rep
+    if not ag["identified"]:
+        rep["status"] = "unidentified — the real reference cannot correlate with itself"
+        return rep
+    informative = ag["lam_lo"] > 0 or len(mat_r) >= MONTHLY_WF_MIN_N_FOR_ZERO
+    if not informative:
+        rep["status"] = (f"identified, lower bound 0 at n={len(mat_r)} — the bootstrap "
+                         f"floor, not evidence; not persisted until "
+                         f"n>={MONTHLY_WF_MIN_N_FOR_ZERO} (would shadow '*')")
+        return rep
+    sl = SeriesLambda(
+        series=series, n_real=len(mat_r), n_synth=len(mat_s), k=len(keep),
+        rho=ag["rho"], lam_point=ag["lam_point"], lam_lo=ag["lam_lo"],
+        lam_hi=ag["lam_hi"],
+        real_improve_of_synth_pick=0.0, real_improve_oracle=0.0, default_real=0.0,
+        pick_percentile=pp["percentile"] if pp else 0.5,
+        rel_real=ag["rel_real"], rel_synth=ag["rel_synth"],
+        detail={"source": "monthly_walkforward",
+                "releases": [r["release_tok"] for r in rows]})
+    persist(conn, [sl], now=now, log=say, pooled=False)
+    rep["status"] = f"PERSISTED measured per-series row lam={max(ag['lam_lo'], 0.0):.4f}"
     return rep

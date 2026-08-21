@@ -242,6 +242,17 @@ def _run(weekly: bool = False) -> dict:
         # and the row's age, every week, whether or not anything changed.
         step("weekly_synth_lambda",
              lambda: json.dumps(synth_regen.lambda_board(conn))[:600])
+        # S5-WF accrual: each monthly release that settled since last week gets scored
+        # point-in-time and stored (~10 min once a month per series, no-op other weeks);
+        # then every series' pooled matrices are re-aggregated, and a series that has
+        # reached identification persists its OWN measured lambda, superseding '*'.
+        from prediction_market_macro.research.synth import calibrate as synth_cal
+        step("weekly_synth_wf_accrue",
+             lambda: json.dumps({k: v for k, v in
+                                 synth_cal.wf_accrue(conn, s, log=None).items()})[:600])
+        step("weekly_synth_wf_aggregate",
+             lambda: json.dumps({name: synth_cal.wf_aggregate(conn, name).get("status")
+                                 for name in synth_cal.wf_targets()})[:600])
         from prediction_market_macro.research import eval as eval_mod
         step("weekly_eval_gates",
              # `enabled` is §25.4's per-series switch, refreshed by this very step —
