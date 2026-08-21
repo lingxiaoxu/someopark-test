@@ -231,6 +231,33 @@ def run(conn, s, *, series: list[str] | None = None, now: datetime | None = None
     return out
 
 
+def lambda_board(conn, *, now: datetime | None = None) -> dict:
+    """What lambda every monthly target would trade at TODAY, with its basis and age.
+
+    Pure read, logged by the weekly refresh right after `weekly_synth_regen`. This exists
+    because the lane's two refusal paths — "no lambda row" and "a lambda row that is zero" —
+    print the same line in the daily log, which is precisely how the missing writer (§7c)
+    went unnoticed. The weekly log therefore states the switch position explicitly: the
+    effective lambda, whether it is per-series or pooled, whether it was measured or
+    pre-registered, and how old the row is.
+    """
+    now = now or datetime.now(UTC)
+    out: dict[str, dict] = {}
+    for name in targets():
+        lam, rep = PA.synth_lambda(conn, name)
+        entry: dict = {"lambda": lam, "source": rep.get("source")}
+        if rep.get("source") is not None:
+            row = conn.execute(
+                "SELECT measured_ts, detail_json FROM synth_lambda WHERE series=?"
+                " ORDER BY measured_ts DESC LIMIT 1", (rep["source"],)).fetchone()
+            entry["basis"] = json.loads(row["detail_json"]).get("basis")
+            entry["age_days"] = (now - datetime.fromisoformat(row["measured_ts"])).days
+        else:
+            entry["note"] = rep.get("note")
+        out[name] = entry
+    return out
+
+
 def rescore_latest(conn, s, series: str, *, now: datetime | None = None, log=print) -> dict:
     """Re-score the worlds already on disk against the current ladder, without regenerating.
 

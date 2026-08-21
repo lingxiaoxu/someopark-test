@@ -235,6 +235,13 @@ def _run(weekly: bool = False) -> dict:
         from prediction_market_macro.research.synth import regen as synth_regen
         step("weekly_synth_regen",
              lambda: json.dumps(synth_regen.run(conn, s, log=None))[:600])
+        # The switch position, stated out loud (§7c): "no lambda row" and "a lambda row
+        # that is zero" refuse with the same line in the daily log, which is how a missing
+        # writer went unnoticed for a full build cycle. The weekly log therefore records
+        # the effective lambda per monthly target, its basis (measured vs pre-registered)
+        # and the row's age, every week, whether or not anything changed.
+        step("weekly_synth_lambda",
+             lambda: json.dumps(synth_regen.lambda_board(conn))[:600])
         from prediction_market_macro.research import eval as eval_mod
         step("weekly_eval_gates",
              # `enabled` is §25.4's per-series switch, refreshed by this very step —

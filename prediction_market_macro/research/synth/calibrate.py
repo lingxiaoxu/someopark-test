@@ -52,6 +52,7 @@ the monthly series have a sample of their own.
 """
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -319,3 +320,132 @@ def pool(results: list[SeriesLambda]) -> dict:
                            for r in results},
             "note": ("min of per-series 5th-percentile bootstrap bounds; read "
                      "mean_pick_percentile first — it needs no reliable reference")}
+
+
+def _disattenuated_lam(r: SeriesLambda) -> float | None:
+    """`(rho / sqrt(rel_real * rel_synth))^2`, clipped into [0, 1] — or None if unidentified.
+
+    The standard errors-in-variables correction: the measured `rho` is attenuated by noise
+    in BOTH improvement vectors, and dividing by the geometric mean of their reliabilities
+    estimates what the correlation would have been against noiseless references. Only
+    defined when both reliabilities are positive; when either is not, the series is
+    unidentified and has no business contributing a number at all.
+    """
+    if r.rel_real <= 0 or r.rel_synth <= 0:
+        return None
+    rho_d = r.rho / (r.rel_real * r.rel_synth) ** 0.5
+    return float(min(max(rho_d, 0.0), 1.0) ** 2)
+
+
+def persist(conn, results: list[SeriesLambda], *, now: datetime, log=None) -> dict:
+    """Write the measurement into `synth_lambda` — the step whose absence was §7c.
+
+    Everything upstream of this function existed and ran (worlds generated weekly, scores
+    stored, the daily lane reading them) while the lane refused every market every day,
+    because `calibrate` computed lambda and nothing ever persisted it. This closes that
+    switch, and it does so with the basis of every number written on the row's face, because
+    the daily log quotes these rows and a pre-registered value read as a measured one would
+    poison every later reading of that log.
+
+    ## Per-series rows: the committed rule, even when it writes zero
+
+    Each measured series gets a row at `lam = max(lam_lo, 0)` — the LOWER end of the
+    bootstrap interval, which is the rule §6 registered before any number existed. On the
+    2026-08-21 sample that is 0.0 for all three weekly series, and those zeros are written
+    anyway: a per-series row is preferred by `synth_lambda()` over the pooled one, and a
+    weekly series with an unidentified reference SHOULD refuse a synthetic sample it cannot
+    price. Suppressing the zeros would let the pooled row apply to series the measurement
+    explicitly declined to vouch for.
+
+    ## The pooled '*' row: identified series only, measured before pre-registered
+
+    The '*' row is what the monthly markets read — they have no measurement of their own,
+    which is the §6 extrapolation. Three-step policy, first that produces a positive number
+    wins, `basis` recorded in `detail_json`:
+
+    1. **measured**: `min(lam_lo)` over IDENTIFIED series. The original pool rule, restricted
+       to series whose reference can correlate with itself. Unidentified series are excluded
+       not to flatter the result but because their `lam_lo = 0` is an artifact of a broken
+       reference (rho is bounded by `sqrt(rel_real*rel_synth)`), and an artifact zero in a
+       min() silently converts "no evidence" into "evidence of nothing".
+    2. **preregistered**: `min` over identified series of the squared DISATTENUATED rho.
+       Reached when every identified lower bound is 0 — which at n_real=4 is a property of
+       the bootstrap, not of the generator (KXJOBLESSCLAIMS's synthetic pick lands at the
+       86.8th percentile of real improvement and beats the default, and its lower bound is
+       still 0). The point estimate is corrected for reference noise and labeled as what it
+       is: a provisional exchange rate pending the walk-forward measurement on the monthly
+       series themselves, which supersedes this row the day it lands.
+    3. **none**: no identified series — nothing is written, and the lane keeps refusing.
+       There is no floor value: a synthetic sample with no identified evidence anywhere has
+       no claim to a weight, whatever the cost of having generated it.
+
+    `lam_point`/`lam_lo`/`lam_hi` on the '*' row carry the sourcing series' numbers so the
+    uncertainty band survives onto the row the daily log will quote.
+    """
+    say = log or (lambda *_a, **_k: None)
+    ts = now.isoformat()
+    for r in results:
+        conn.execute(
+            "INSERT OR REPLACE INTO synth_lambda(series, measured_ts, lam, lam_point,"
+            " lam_lo, lam_hi, rho, n_real, n_synth, k, detail_json)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            (r.series, ts, float(max(r.lam_lo, 0.0)), float(r.lam_point),
+             float(r.lam_lo), float(r.lam_hi), float(r.rho), r.n_real, r.n_synth, r.k,
+             json.dumps({"basis": "measured_lower_bound",
+                         "rel_real": r.rel_real, "rel_synth": r.rel_synth,
+                         "identified": r.rel_real > 0 and r.rel_synth > 0,
+                         "pick_percentile": r.pick_percentile,
+                         "real_improve_of_synth_pick": r.real_improve_of_synth_pick,
+                         "real_improve_oracle": r.real_improve_oracle,
+                         "disattenuated_lam": _disattenuated_lam(r)})))
+        say(f"  synth_lambda[{r.series}] = {max(r.lam_lo, 0.0):.4f} "
+            f"(lower bound; point {r.lam_point:.4f})")
+
+    ident = [r for r in results if r.rel_real > 0 and r.rel_synth > 0]
+    rep: dict = {"n_series": len(results), "n_identified": len(ident),
+                 "per_series": {r.series: float(max(r.lam_lo, 0.0)) for r in results}}
+    if not ident:
+        rep["pooled"] = None
+        rep["note"] = ("no identified series — '*' not written, the lane keeps refusing; "
+                       "this is absence of evidence, and it stays absent on the record")
+        say("  synth_lambda['*']: NOT written — no identified series")
+        conn.commit()
+        return rep
+
+    measured = min(r.lam_lo for r in ident)
+    if measured > 0:
+        lam, basis = float(measured), "measured_min_lo_identified"
+        src = min(ident, key=lambda r: r.lam_lo)
+    else:
+        disatt = [(r, _disattenuated_lam(r)) for r in ident]
+        lam = float(min(d for _, d in disatt))
+        src = min(disatt, key=lambda t: t[1])[0]
+        basis = "preregistered_disattenuated_point"
+    if lam <= 0:
+        rep["pooled"] = None
+        rep["note"] = ("identified series exist but both the measured lower bound and the "
+                       "disattenuated point are zero — '*' not written")
+        say("  synth_lambda['*']: NOT written — identified evidence is zero either way")
+        conn.commit()
+        return rep
+
+    conn.execute(
+        "INSERT OR REPLACE INTO synth_lambda(series, measured_ts, lam, lam_point,"
+        " lam_lo, lam_hi, rho, n_real, n_synth, k, detail_json)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+        ("*", ts, lam, float(src.lam_point), float(src.lam_lo), float(src.lam_hi),
+         float(src.rho), src.n_real, src.n_synth, src.k,
+         json.dumps({"basis": basis,
+                     "identified_series": [r.series for r in ident],
+                     "sourced_from": src.series,
+                     "sourced_rel_real": src.rel_real, "sourced_rel_synth": src.rel_synth,
+                     "sourced_pick_percentile": src.pick_percentile,
+                     "note": ("applies to monthly markets with no measurement of their "
+                              "own (the §6 extrapolation); superseded by the walk-forward "
+                              "monthly calibration when it lands")})))
+    rep["pooled"] = lam
+    rep["basis"] = basis
+    rep["sourced_from"] = src.series
+    say(f"  synth_lambda['*'] = {lam:.4f} ({basis}, from {src.series})")
+    conn.commit()
+    return rep
