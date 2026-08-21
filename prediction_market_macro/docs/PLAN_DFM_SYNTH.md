@@ -560,6 +560,51 @@ Three decisions worth recording, each of which was a bug first:
   then empty at the exact moment it is first needed. Storing unconditionally is what lets the
   lane switch on with no code change the day a lambda row lands.
 
+### 7a. What it costs, and why scoring is a pool
+
+Scoring is effectively the whole bill; generation is ~2 min a market. `event_pnl` costs
+**~215 ms per (event, candidate) pair**, and the seven monthly markets come to **111,536
+pairs ≈ 380 min**. KXPAYROLLS alone is 88 × 222 = 19,536 and had run 70 min when it was
+timed.
+
+| market | n_synth | K_union | pairs | serial |
+|---|---|---|---|---|
+| KXPAYROLLS | 88 | 222 | 19,536 | 70.0 min |
+| KXCPICORE | 88 | 228 | 20,064 | 71.9 min |
+| KXCPICOREYOY | 88 | 228 | 20,064 | 71.9 min |
+| KXCPI | 88 | 201 | 17,688 | 63.4 min |
+| KXCPIYOY | 88 | 201 | 17,688 | 63.4 min |
+| KXU3 | 88 | 121 | 10,648 | 38.2 min |
+| KXPCECORE | 88 | 5 | 440 | 1.6 min |
+| | | | | **6.3 h** |
+
+That does not fit inside `refresh`'s flock, which the weekly block holds for the duration —
+it would have pushed `weekly_eval_gates` and everything behind it into Sunday afternoon and
+made every 15-minute tick in between take `RefreshBusy`.
+
+**It is not a scan that could be indexed away, and that was worth checking.** 215 ms looks
+exactly like an unindexed query, and the generated worlds do carry fewer indices than
+`macro.db`. But `event_pnl` re-runs the *forecasting model* for each candidate — `params`
+changes the model — so the quote tape genuinely cannot be loaded once and reused across the
+grid, and `_pmf_for` re-runs it again per held day. The function is also required to stay
+bit-identical to `walkforward`'s inner loop, and both S5 and S6 are comparisons against the
+real-sample matrix formed by that same code, so reimplementing a fast path would invalidate
+the measurement it exists to serve.
+
+So the only lever that changes nothing about *what* is computed is concurrency, and worlds
+are independent SQLite files. `score_matrix` pools over **worlds** — not over the grid,
+which would reopen each world K times, and not over events, which would put workers in
+contention for one file's page cache. 8 worlds a market on 12 performance cores takes the
+pass to roughly **45–50 min**.
+
+The hazard that needed a test rather than a review: `mat[i]` is paired to `kept[i]`, every
+downstream use is a paired comparison, and `as_completed` yields in *completion* order — so
+extending as futures land would permute the sample silently, looking like noise rather than
+a bug. Results are slotted by world index and concatenated in the same sorted order the
+serial path walks; two tests drive a pool whose futures complete backwards, one checking the
+order and one checking each row still names its own world, because "right events, rows
+shifted by one world" survives an order check.
+
 Cadence is weekly, not monthly: a weekly regeneration keeps every stored run inside
 `param_argmin.SYNTH_MAX_AGE_DAYS = 45`, which is the daily lane's own staleness limit.
 Scope is the **monthly** markets only, derived from the panel frequency rather than tabulated
