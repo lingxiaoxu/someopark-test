@@ -39,7 +39,9 @@ simplification, and it is stated here rather than discovered later.
 """
 from __future__ import annotations
 
+import concurrent.futures as cf
 import importlib
+import os
 import sqlite3
 from collections import Counter
 from dataclasses import dataclass, field
@@ -813,8 +815,35 @@ def _panel_period(spec: P.PanelSpec, ck: Clock, index: pd.DatetimeIndex, key: st
 
 
 # ── scoring a grid on already-built worlds ───────────────────────────────────
+def _score_world(wp: str, evs: list[SynthEvent],
+                 grid: list[dict]) -> tuple[list[SynthEvent], list[list[float]]]:
+    """One world's rows. Module-level and self-contained so it can be pickled to a pool."""
+    conn = sqlite3.connect(wp)
+    conn.row_factory = sqlite3.Row
+    kept: list[SynthEvent] = []
+    mat: list[list[float]] = []
+    try:
+        for e in evs:
+            row = []
+            for p in grid:
+                r = ps.event_pnl(conn, e.series, e.period, e.key, e.close,
+                                 params=(p or None))
+                if r is None:
+                    row = None
+                    break
+                row.append(float(r["hybrid"]))
+            if row is None:
+                continue
+            kept.append(e)
+            mat.append(row)
+    finally:
+        conn.close()
+    return kept, mat
+
+
 def score_matrix(events: list[SynthEvent], grid: list[dict],
-                 log=None) -> tuple[list[SynthEvent], list[list[float]]]:
+                 log=None, workers: int | None = None
+                 ) -> tuple[list[SynthEvent], list[list[float]]]:
     """(kept events, [[hybrid PnL per set] per event]) — `pnl_score.score_matrix`'s contract.
 
     Deliberately the same shape and the same keep-rule as the real-sample scorer, because
@@ -827,31 +856,49 @@ def score_matrix(events: list[SynthEvent], grid: list[dict],
     of K candidates is K passes over the SAME worlds, so the synthetic sample is held fixed
     across the grid exactly as the real one is. Regenerating per candidate would be scoring
     parameter sets on different data and calling the difference skill.
+
+    **Why this is parallel, and why only here.** This loop is the weekly job's entire cost.
+    `event_pnl` re-runs the forecasting model per candidate — `params` changes the model, so
+    the tape cannot be loaded once and reused across the grid, and the 215 ms a pair costs is
+    model time rather than a scan that could be indexed away. Measured over the seven monthly
+    markets that is ~380 min of one pinned core (KXPAYROLLS alone 88 x 222 = 19,536 pairs),
+    which is too long to hold `refresh`'s flock. Worlds are independent files, so a pool over
+    them is the one speed-up available that changes NOTHING about what is computed: same
+    events, same grid, same `event_pnl`. It is deliberately not a pool over the grid, which
+    would reopen each world K times, nor over events, which would fight for one file's page
+    cache. Results are slotted by world index and concatenated in the same sorted order the
+    serial path walks, because `mat[i]` is paired to `kept[i]` and every use of this matrix
+    downstream is a paired comparison — `as_completed` returns in completion order and
+    extending as futures land would silently permute the sample. Serial below two worlds:
+    process startup would dominate, and a subprocess drops any `event_pnl` fake a caller
+    installed, turning a fast test into a real model run.
     """
     by_world: dict[str, list[SynthEvent]] = {}
     for e in events:
         by_world.setdefault(e.world, []).append(e)
+    items = sorted(by_world.items())
+    if workers is None:
+        workers = min(len(items), max(1, (os.cpu_count() or 4) - 4))
     kept: list[SynthEvent] = []
     mat: list[list[float]] = []
-    for wp, evs in sorted(by_world.items()):
-        conn = sqlite3.connect(wp)
-        conn.row_factory = sqlite3.Row
-        try:
-            for e in evs:
-                row = []
-                for p in grid:
-                    r = ps.event_pnl(conn, e.series, e.period, e.key, e.close,
-                                     params=(p or None))
-                    if r is None:
-                        row = None
-                        break
-                    row.append(float(r["hybrid"]))
-                if row is None:
-                    continue
-                kept.append(e)
-                mat.append(row)
-        finally:
-            conn.close()
+    if workers > 1 and len(items) > 1:
+        # Results are collected into a slot per world and concatenated in the SAME
+        # sorted order the serial path walks, so the pool changes the wall clock and
+        # nothing else — `test_parallel_scoring_matches_serial_exactly` pins that.
+        with cf.ProcessPoolExecutor(max_workers=workers) as pool:
+            futs = {pool.submit(_score_world, wp, evs, grid): i
+                    for i, (wp, evs) in enumerate(items)}
+            slots: list[tuple[list, list] | None] = [None] * len(items)
+            for f in cf.as_completed(futs):
+                slots[futs[f]] = f.result()
+        for k, m in slots:
+            kept.extend(k)
+            mat.extend(m)
+    else:
+        for wp, evs in items:
+            k, m = _score_world(wp, evs, grid)
+            kept.extend(k)
+            mat.extend(m)
     if log:
         log(f"  {events[0].series if events else '?'}: synthetic-scored {len(kept)}/"
             f"{len(events)} events x {len(grid)} sets")

@@ -464,3 +464,95 @@ def test_build_refuses_a_series_whose_cadence_disagrees_with_its_panel():
     import inspect
     src = inspect.getsource(BD.build)
     assert "settles off panel" in src, "the cadence guard was removed"
+
+
+# ── parallel scoring (2026-08-21) ───────────────────────────────────────────
+# Scoring is the weekly job's whole cost: `event_pnl` re-runs the forecasting model for
+# every (event, candidate) pair, so it cannot be hoisted across candidates, and at 215 ms
+# a pair the seven monthly markets came to ~6.3 h of one pinned core. Worlds are
+# independent SQLite files, so the fix is a pool -- but ONLY if the pool cannot reorder
+# the rows, because `mat[i]` is paired to `kept[i]` and both halves of S5 are paired tests.
+def test_parallel_scoring_reassembles_in_sorted_world_order(tmp_path, monkeypatch):
+    """`as_completed` yields in COMPLETION order, not submission order. Slotting by index
+    is what keeps the pool from silently permuting the sample; this drives a pool whose
+    futures complete backwards, which is the permutation that would do the damage."""
+    worlds = {}
+    for name in ("c_world", "a_world", "b_world"):
+        p = tmp_path / f"{name}.db"
+        p.write_text("")
+        worlds[str(p)] = name
+    evs = [BD.SynthEvent(series="KXWTIW", path=i, period="26JUN05", key="2026-06-05",
+                         close=datetime(2026, 6, 5, 18, 30, tzinfo=UTC), outcome=80.0,
+                         z_y=0.0, donor="x/y", world=w)
+           for i, w in enumerate(sorted(worlds))]
+
+    def fake_score_world(wp, es, grid):
+        return list(es), [[float(worlds[wp].startswith("a")) + len(worlds[wp])] for _ in es]
+
+    class RevFuture:
+        def __init__(self, v): self._v = v
+        def result(self): return self._v
+
+    class FakePool:
+        def __init__(self, max_workers=None): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def submit(self, fn, *a): return RevFuture(fn(*a))
+
+    monkeypatch.setattr(BD, "_score_world", fake_score_world)
+    monkeypatch.setattr(BD.cf, "ProcessPoolExecutor", FakePool)
+    monkeypatch.setattr(BD.cf, "as_completed", lambda fs: list(reversed(list(fs))))
+
+    kept, mat = BD.score_matrix(evs, [{}], workers=3)
+    serial_kept, serial_mat = BD.score_matrix(evs, [{}], workers=1)
+    assert [e.world for e in kept] == sorted(worlds), "the pool permuted the sample"
+    assert [e.world for e in kept] == [e.world for e in serial_kept]
+    assert mat == serial_mat, "parallel and serial must agree row for row"
+
+
+def test_parallel_scoring_keeps_each_row_paired_to_its_event(tmp_path, monkeypatch):
+    """The failure that survives an order check: right events, rows off by one world. Each
+    world here returns a row that names itself, so a mis-slot is visible in the values."""
+    paths = []
+    for name in ("w2", "w0", "w1"):
+        p = tmp_path / f"{name}.db"
+        p.write_text("")
+        paths.append(str(p))
+    evs = [BD.SynthEvent(series="KXWTIW", path=i, period="26JUN05", key="2026-06-05",
+                         close=datetime(2026, 6, 5, 18, 30, tzinfo=UTC), outcome=80.0,
+                         z_y=0.0, donor="x/y", world=w) for i, w in enumerate(paths)]
+    tag = {w: float(i) for i, w in enumerate(sorted(paths))}
+    monkeypatch.setattr(BD, "_score_world",
+                        lambda wp, es, grid: (list(es), [[tag[wp]] for _ in es]))
+
+    class F:
+        def __init__(self, v): self._v = v
+        def result(self): return self._v
+
+    class FakePool:
+        def __init__(self, max_workers=None): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def submit(self, fn, *a): return F(fn(*a))
+
+    monkeypatch.setattr(BD.cf, "ProcessPoolExecutor", FakePool)
+    monkeypatch.setattr(BD.cf, "as_completed", lambda fs: list(reversed(list(fs))))
+    kept, mat = BD.score_matrix(evs, [{}], workers=3)
+    for e, row in zip(kept, mat):
+        assert row == [tag[e.world]], f"{e.world} got another world's row"
+
+
+def test_scoring_stays_serial_for_a_single_world(tmp_path, monkeypatch):
+    """A pool costs seconds of process startup. Most unit tests and `calibrate`'s smaller
+    builds have one world, where that is pure loss -- and a subprocess would also drop any
+    monkeypatch the caller installed, turning a fast fake into a real model run."""
+    monkeypatch.setattr(BD.cf, "ProcessPoolExecutor",
+                        lambda **k: pytest.fail("spawned a pool for one world"))
+    p = tmp_path / "only.db"
+    p.write_text("")
+    ev = BD.SynthEvent(series="KXWTIW", path=0, period="26JUN05", key="2026-06-05",
+                       close=datetime(2026, 6, 5, 18, 30, tzinfo=UTC), outcome=80.0,
+                       z_y=0.0, donor="x/y", world=str(p))
+    monkeypatch.setattr(BD, "_score_world", lambda wp, es, grid: (list(es), [[1.0]]))
+    kept, mat = BD.score_matrix([ev], [{}])
+    assert mat == [[1.0]]
