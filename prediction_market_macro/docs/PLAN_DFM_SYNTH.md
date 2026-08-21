@@ -301,6 +301,48 @@ The descriptor is anchored to the incumbent and held fixed across the grid, for 
 reason `pnl_score.gate_history` builds gate state once from the incumbent: a candidate
 that was never deployed did not move the real market either.
 
+### 5b. The measurement (2026-08-21) — the market knows, and that changes the design
+
+Measured on **75 events / 496 replay-days**, all 13 numeric series (KXFEDDECISION is
+categorical and has no numeric book moments). Open-ended `±inf` devig buckets are pinned
+one `round_rule` step past the outermost finite strike, the same convention
+`_implied_outcome` uses; the pinned mass is carried as `tail_mass` rather than dropped,
+because renormalising it away would narrow the market's view for free.
+
+| | pooled | by series |
+|---|---|---|
+| `corr(z_m, z_y)` | **+0.703** (day-rows), **+0.711** (event means) | +0.29 … +0.98, positive on all 12 fittable |
+| our error `mean\|z_y\|` | **0.90** | — |
+| market error `mean\|z_y − z_m\|` | **0.78** | — |
+| `r` (market sd / our sd) | median **1.04**, IQR 0.66–1.63 | 0.40 (KXPAYROLLS) … 3.01 (KXCPICOREYOY) |
+| half-spread | median **1.0¢**, p95 9.6¢ | — |
+
+Two consequences, and they are the reason this section is "the part that can kill the
+project":
+
+**1. The market is a better forecaster than we are on this sample** — 0.78 against 0.90,
+measured in *our own* sd units. Any synthetic book drawn with `z_m` independent of `z_y`
+would be an uninformed counterparty, and the strategy would print money against it. So the
++0.70 dependence is not a nuisance parameter to be smoothed over; reproducing it *is* the
+deliverable, and a synthetic world that loses it is worse than no synthetic world.
+
+**2. Therefore the transplant is at EVENT granularity, not day granularity.** A whole
+donor event's trajectory — its `(z_m, r, half-spread)` path across replay days, its
+standardized market pmf shape, and its ladder offsets — moves across together, selected by
+nearest `z_y`. Drawing each day independently would destroy both the market's convergence
+toward the close and its correlation with the outcome, which are the only two things here
+worth preserving.
+
+`r`'s spread across series (0.40 to 3.01) also rules out a pooled constant width: a
+transplant that used the pooled median would make KXPAYROLLS' market 2.5× too wide and
+KXCPICOREYOY's 3× too tight, which is a direct thumb on the edge the strategy is measured
+finding.
+
+**Gate for S4 (added):** the synthetic `z_y*` distribution must OVERLAP the donor `z_y`
+range. If the incumbent's `P_sd` on synthetic worlds is systematically different from its
+`P_sd` on real ones, `z_y*` lands outside the donor pool and every draw is an
+extrapolation. That is checkable, so it is checked and reported rather than assumed.
+
 ## 6. Calibrating lambda (S5)
 
 For each weekly series (KXWTIW, KXNATGASW, KXAAAGASW, KXJOBLESSCLAIMS — n_real 10–11):
