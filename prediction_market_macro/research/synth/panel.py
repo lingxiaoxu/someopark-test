@@ -1,0 +1,512 @@
+"""synth/panel.py — the point-in-time macro panel the generator is trained on.
+
+**What a training row is.** A diffusion model generates iid cross-sections; macro data is
+a time series. The bridge used here is *anchor + forward path*: one row is
+
+    c  = the macro state at an anchor date T   (levels, recent drift, recent vol, calendar)
+    z  = the next H periods of INCREMENTS      (H x d, flattened)
+
+and the generator learns p(z | c). Two properties fall out of that choice and both are
+load-bearing:
+
+* **Generation starts from today by construction.** Increments are re-integrated from a
+  supplied anchor level (`integrate`), so a path generated at c = "today" begins at
+  today's oil price, today's claims level, today's unemployment rate. Modelling levels
+  instead would have the generator happily reproduce 1998's $12 crude, which is not the
+  environment any parameter set is about to be used in. This is the user requirement that
+  the synthetic sample resemble *now* rather than the average of forty years.
+* **The lookback the models need is real data, not generated data.** A synthetic world
+  splices H generated periods onto the actual history (`worlds.py`), so `payrolls.predict`
+  reading 12 prints back, or `u3.predict` reading 60 months back, is reading mostly the
+  real series. Only the part that has not happened yet is invented.
+
+**First prints, not latest vintages.** A Kalshi contract settles on the first print, and
+the print-anchored models (payrolls, u3, claims) read `fred_first_prints`. Training the
+generator on revised history would fit a series nobody ever traded. The consequence,
+stated rather than hidden: a synthetic world has no revisions at all (first == latest),
+so a model that exploited the revision process would be scored generously here. None of
+the current models do; if one ever does, this is the assumption that has to be revisited.
+
+**Overlapping windows.** Anchors step one period at a time, so rows share most of their
+history. That inflates the row count without inflating the information: the effective
+number of independent draws is about `n_rows / horizon`, and `PanelData.n_eff_hint`
+carries that number so nothing downstream can quietly treat 400 windows as 400
+observations.
+"""
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass, replace
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+
+from prediction_market_macro.model.features import FeatureStore
+
+# ── column algebra ───────────────────────────────────────────────────────────
+# `transform` is how a level becomes a stationary increment, and it is also the rule
+# `integrate` inverts. "diff" and "level" are self-explanatory; "dlog" is the log change,
+# used for every strictly-positive series (prices, stocks, claims) so that a generated
+# path cannot walk negative no matter how long it runs.
+TRANSFORMS = ("diff", "dlog", "level", "pct100")
+
+
+@dataclass(frozen=True)
+class Column:
+    """One panel column: where it comes from and how it is made stationary.
+
+    `agg` collapses a source sampled faster than the panel ("mean" for prices and stocks,
+    whose monthly average is the economically meaningful summary; "last" for anything the
+    models read as a point-in-time level).
+
+    `prints` must match what the CONSUMING model reads, not what feels more correct in the
+    abstract. `payrolls`/`u3` are print-anchored and read `fred_first_prints`; `cpi`/`pce`
+    read `fred_series` (latest vintage) and must keep doing so here, because BEA rebases
+    PCEPILFE every few years and a first-print chain across a rebase is a chain across two
+    different index bases — that showed up as an 8.8% monthly "core PCE print" in the
+    first build of this panel.
+
+    `scale` is the factor between the increment's units and the level's: PAYEMS is stored
+    in thousands of persons and the model works in jobs, so the column carries scale=1000
+    and `integrate` divides back out.
+
+    `inc_fn` overrides how the increment is derived when the model computes something a
+    plain difference of the stored level cannot reproduce — see `_INC_FNS`.
+
+    `generate=False` makes the column CONTEXT ONLY: it enters the condition vector but not
+    the forward path. This is close to free and it matters a great deal. Output dimension
+    is what the generator pays for — H*d dims learned from a few hundred overlapping
+    windows — while condition dimension is only an input. The models this package feeds
+    read two to four series each (`payrolls` reads PAYEMS and ICSA; `energy` reads CL/NG/RB,
+    GASREGW and AAA_DAILY; nothing reads the storage series at all), so generating a
+    twelve-column world was paying twelve columns of estimation cost to score a two-column
+    model. Storage, rates and the rest stay in as context because "resembles the current
+    environment" is the entire point of conditioning, and context costs nothing to carry.
+    """
+    name: str
+    source: str          # "fred" | "fut"
+    sid: str             # FRED series id or futures root
+    prints: str          # "first" | "latest"  (ignored for futures)
+    agg: str             # "mean" | "last"
+    transform: str
+    unit: str
+    scale: float = 1.0
+    inc_fn: str | None = None
+    generate: bool = True
+
+    def __post_init__(self):
+        if self.transform not in TRANSFORMS:
+            raise ValueError(f"{self.name}: unknown transform {self.transform!r}")
+        if self.source not in ("fred", "fut"):
+            raise ValueError(f"{self.name}: unknown source {self.source!r}")
+
+
+@dataclass(frozen=True)
+class PanelSpec:
+    """A named panel. `horizon` is H, the number of forward periods in a training row.
+
+    `drop_spans` removes ANCHORS whose forward path overlaps the span, while leaving the
+    rows in `inc` so conditions computed near the span still see it. It exists for COVID
+    and the reasoning is the same one that runs through `payrolls._residual_sigma`: 2020
+    is not a draw from the distribution a parameter set chosen today will face, and at
+    24 of 394 monthly anchors it would otherwise supply 6% of the synthetic sample. The
+    cost is stated rather than hidden — the generator trained this way CANNOT produce a
+    pandemic-scale tail, so the synthetic sample understates disaster risk and must never
+    be read as a stress test.
+
+    `level_lag` is the trailing window the condition measures each level AGAINST — see
+    `condition_row`. It costs `level_lag - VOL_LAG` anchors off the front of the panel.
+    """
+    name: str
+    freq: str            # pandas offset alias: "MS" monthly, "W-SAT" weekly
+    horizon: int
+    columns: tuple[Column, ...]
+    start: str           # first period kept; set by the latest-starting column
+    note: str = ""
+    drop_spans: tuple[tuple[str, str], ...] = ()
+    level_lag: int = 60
+
+    @property
+    def gen_columns(self) -> tuple[Column, ...]:
+        return tuple(c for c in self.columns if c.generate)
+
+    @property
+    def d(self) -> int:
+        """The GENERATED width. Everything downstream — Z, `integrate`, the synthetic
+        world's writable columns — is this wide, not `d_all`."""
+        return len(self.gen_columns)
+
+    @property
+    def d_all(self) -> int:
+        return len(self.columns)
+
+    @property
+    def names(self) -> list[str]:
+        return [c.name for c in self.gen_columns]
+
+    @property
+    def all_names(self) -> list[str]:
+        return [c.name for c in self.columns]
+
+
+# The monthly column set. Start is 1990-09 because GASREGW's first observation is
+# 1990-08-20 and the gasoline/crude stock series begin 1990-01/1982-08; everything else
+# reaches further back (PAYEMS 1939, CPI 1947, UNRATE 1948). Natural gas is deliberately
+# absent: NG_STORAGE_WEEKLY only starts 2010 and would cost 20 years of every other
+# column. Gas lives in the weekly panel, which is the frequency its market trades at.
+_MONTHLY_COLS = (
+    Column("payems", "fred", "PAYEMS", "first", "last", "diff", "jobs",
+           scale=1000.0, inc_fn="payems_printed"),
+    Column("claims", "fred", "ICSA", "latest", "mean", "dlog", "count"),
+    Column("unrate", "fred", "UNRATE", "first", "last", "diff", "pct"),
+    Column("cpi", "fred", "CPIAUCSL", "latest", "last", "pct100", "%mom"),
+    Column("cpi_core", "fred", "CPILFESL", "latest", "last", "pct100", "%mom"),
+    Column("pce_core", "fred", "PCEPILFE", "latest", "last", "pct100", "%mom"),
+    Column("gas_retail", "fred", "GASREGW", "latest", "mean", "dlog", "$gal"),
+    Column("wti", "fred", "DCOILWTICO", "latest", "mean", "dlog", "$bbl"),
+    Column("crude_stocks", "fred", "CRUDE_STOCKS_WEEKLY", "latest", "mean", "dlog", "kb"),
+    Column("gaso_stocks", "fred", "GASOLINE_STOCKS_WEEKLY", "latest", "mean", "dlog",
+           "kb"),
+    Column("dgs2", "fred", "DGS2", "latest", "mean", "diff", "pct"),
+    Column("dgs10", "fred", "DGS10", "latest", "mean", "diff", "pct"),
+)
+
+# The weekly column set. Start 2010-01 is NG_STORAGE_WEEKLY's first observation, and
+# natural gas is the point of the weekly panels.
+_WEEKLY_COLS = (
+    Column("claims", "fred", "ICSA", "latest", "last", "dlog", "count"),
+    Column("gas_retail", "fred", "GASREGW", "latest", "last", "dlog", "$gal"),
+    Column("wti", "fut", "CL", "latest", "last", "dlog", "$bbl"),
+    Column("natgas", "fut", "NG", "latest", "last", "dlog", "$mmbtu"),
+    Column("rbob", "fut", "RB", "latest", "last", "dlog", "$gal"),
+    Column("crude_stocks", "fred", "CRUDE_STOCKS_WEEKLY", "latest", "last", "dlog", "kb"),
+    Column("gaso_stocks", "fred", "GASOLINE_STOCKS_WEEKLY", "latest", "last", "dlog",
+           "kb"),
+    Column("ng_stocks", "fred", "NG_STORAGE_WEEKLY", "latest", "last", "dlog", "bcf"),
+    Column("dgs2", "fred", "DGS2", "latest", "mean", "diff", "pct"),
+    Column("dgs10", "fred", "DGS10", "latest", "mean", "diff", "pct"),
+)
+
+
+def _scope(cols: tuple[Column, ...], generate: tuple[str, ...]) -> tuple[Column, ...]:
+    """Keep every column as CONTEXT, mark only `generate` as producing a forward path.
+
+    The order of `cols` is preserved, so the condition vector is identical across every
+    panel built from the same column set and the panels differ only in what they pay to
+    generate.
+    """
+    want = set(generate)
+    unknown = want - {c.name for c in cols}
+    if unknown:
+        raise ValueError(f"_scope: no such column(s) {sorted(unknown)}")
+    return tuple(replace(c, generate=c.name in want) for c in cols)
+
+
+_MONTHLY = dict(freq="MS", horizon=12, start="1990-09-01",
+                drop_spans=(("2020-02-01", "2021-01-01"),),
+                # five years: long enough to define "normal", short enough that a regime
+                # (the 2021- inflation era) still reads as a deviation
+                level_lag=60)
+_WEEKLY = dict(freq="W-SAT", horizon=13, start="2010-01-09",
+               drop_spans=(("2020-02-01", "2021-01-01"),),
+               # two years; the monthly panel's five, in weeks, would eat a quarter of a
+               # panel that only starts in 2010
+               level_lag=104)
+
+# The wide panels: every column generated. These are the CONTROL arm, not the product.
+# Measured on a purged 5-fold, `core_monthly` at 144 output dims from ~27 independent
+# draws loses to a block bootstrap of its own history at every conditioning width
+# including zero (KS 0.113 unconditional vs 0.067 bootstrap). They are kept because that
+# comparison is the evidence for the narrow panels below and has to stay reproducible.
+CORE_MONTHLY = PanelSpec(
+    name="core_monthly",
+    note="ALL monthly columns generated — wide control arm, 12 x 12 = 144 dims",
+    columns=_scope(_MONTHLY_COLS, tuple(c.name for c in _MONTHLY_COLS)),
+    **_MONTHLY,
+)
+ENERGY_WEEKLY_WIDE = PanelSpec(
+    name="energy_weekly_wide",
+    note="ALL weekly columns generated — wide control arm, 10 x 13 = 130 dims",
+    columns=_scope(_WEEKLY_COLS, tuple(c.name for c in _WEEKLY_COLS)),
+    **_WEEKLY,
+)
+
+# The narrow panels, one per model family. Each generates only what its consuming models
+# read and carries the rest as context. The audit that fixed these lists, taken from the
+# models' own `FeatureStore` calls:
+#
+#   payrolls  ICSA PAYEMS          claims  ICSA              u3    ICSA UNRATE
+#   cpi       CPILFESL GASREGW RB  pce     CPILFESL PCEPILFE bridge GASREGW ICSA
+#   energy    AAA_DAILY GASREGW RB + fut CL/NG/RB
+#   fed       CPILFESL DFEDTARU DGS2 UNRATE
+#
+# Nothing reads the crude/gasoline/natgas STORAGE series, so those are context-only
+# everywhere — they were 3 of the 12 generated monthly columns, generated for no consumer.
+LABOR_MONTHLY = PanelSpec(
+    name="labor_monthly",
+    note="payrolls / u3 / claims / bridge: 3 x 12 = 36 dims",
+    columns=_scope(_MONTHLY_COLS, ("payems", "unrate", "claims")),
+    **_MONTHLY,
+)
+INFLATION_MONTHLY = PanelSpec(
+    name="inflation_monthly",
+    note="cpi / pce: 4 x 12 = 48 dims (gas_retail is a cpi input, not decoration)",
+    columns=_scope(_MONTHLY_COLS, ("cpi", "cpi_core", "pce_core", "gas_retail")),
+    **_MONTHLY,
+)
+ENERGY_WEEKLY = PanelSpec(
+    name="energy_weekly",
+    note="energy: 4 x 13 = 52 dims. Also the lambda-calibration panel — the weekly Kalshi "
+         "series (KXWTIW, KXNATGASW, KXAAAGASW, KXJOBLESSCLAIMS) are the only ones with a "
+         "real sample to check the synthetic one against",
+    columns=_scope(_WEEKLY_COLS, ("wti", "natgas", "rbob", "gas_retail")),
+    **_WEEKLY,
+)
+CLAIMS_WEEKLY = PanelSpec(
+    name="claims_weekly",
+    note="claims / u3 at the frequency ICSA actually prints: 1 x 13 = 13 dims",
+    columns=_scope(_WEEKLY_COLS, ("claims",)),
+    **_WEEKLY,
+)
+
+PANELS: dict[str, PanelSpec] = {p.name: p for p in (
+    CORE_MONTHLY, ENERGY_WEEKLY_WIDE,
+    LABOR_MONTHLY, INFLATION_MONTHLY, ENERGY_WEEKLY, CLAIMS_WEEKLY,
+)}
+
+# How many trailing increments the condition vector summarises. `DRIFT_LAG` is "where has
+# this been going lately" and `VOL_LAG` is "how noisy has it been" — the two pieces of
+# state a forecaster would actually condition on, and the two the models themselves use
+# (payrolls' 3-month base, its 24-month residual MAD).
+DRIFT_LAG = 3
+VOL_LAG = 12
+
+
+@dataclass
+class PanelData:
+    """A built panel plus everything needed to invert it.
+
+    `levels` is in natural units (dollars, thousands of jobs, percent) and is what
+    `worlds.py` writes into a synthetic db. `inc` is the stationary matrix the generator
+    sees. `Z`/`C` are the standardized training arrays.
+    """
+    spec: PanelSpec
+    levels: pd.DataFrame
+    inc: pd.DataFrame
+    anchors: list[pd.Timestamp]
+    Z: np.ndarray            # (n, H*d) standardized forward paths
+    C: np.ndarray            # (n, c_dim) standardized conditions
+    scaler: dict
+    end: datetime
+
+    @property
+    def n_eff_hint(self) -> float:
+        """Independent-draw count, not row count. Anchors step one period and each row
+        spans H periods, so consecutive rows share H-1 periods of path."""
+        return len(self.anchors) / float(self.spec.horizon)
+
+    def path_of(self, z_row: np.ndarray) -> pd.DataFrame:
+        """One standardized row -> an (H, d) increment frame in natural increment units."""
+        raw = z_row * self.scaler["sd"] + self.scaler["mu"]
+        return pd.DataFrame(raw.reshape(self.spec.horizon, self.spec.d),
+                            columns=self.spec.names)
+
+
+# ── reading ──────────────────────────────────────────────────────────────────
+def _read(fs: FeatureStore, col: Column, end: datetime) -> pd.Series:
+    """One column's source series at its native frequency, PIT <= `end`."""
+    if col.source == "fut":
+        s, _ = fs.fut_closes(col.sid, end, n=100_000)
+    elif col.prints == "first":
+        s, _ = fs.fred_first_prints(col.sid, end)
+    else:
+        s, _ = fs.fred_series(col.sid, end)
+    s = s.dropna()
+    if s.empty:
+        raise ValueError(f"{col.name}: no rows for {col.sid} at {end.isoformat()}")
+    s.index = pd.to_datetime(s.index)
+    return s.sort_index()
+
+
+def _resample(s: pd.Series, freq: str, agg: str) -> pd.Series:
+    """Collapse to the panel frequency.
+
+    A source already at (or slower than) the panel frequency is reindexed and
+    forward-filled rather than aggregated — quarterly GDP inside a monthly panel is the
+    same number for three months, and re-aggregating it would invent variation.
+    """
+    r = s.resample(freq)
+    out = r.mean() if agg == "mean" else r.last()
+    return out.ffill()
+
+
+def _payems_printed(conn, end: datetime, freq: str) -> pd.Series:
+    """The NFP change AS PRINTED — level(t) minus level(t-1) read from the same first
+    vintage of t. Imported from the model rather than re-derived: a plain difference of
+    the first-print level chain mixes two vintages and therefore silently folds the
+    revision to t-1 into the change, which is not the number the market settles on.
+    Units are jobs (`payrolls.printed_changes` multiplies PAYEMS' thousands by 1000)."""
+    from prediction_market_macro.model.payrolls import printed_changes
+    s = printed_changes(conn, end)
+    s.index = pd.to_datetime(s.index)
+    return s.sort_index().resample(freq).last()
+
+
+_INC_FNS = {"payems_printed": _payems_printed}
+
+
+def _to_increment(level: pd.Series, transform: str, scale: float = 1.0) -> pd.Series:
+    if transform == "level":
+        return level
+    if transform == "diff":
+        return level.diff() * scale
+    if transform == "dlog":
+        pos = level.where(level > 0)
+        return np.log(pos).diff()
+    if transform == "pct100":
+        pos = level.where(level > 0)
+        return 100.0 * (np.log(pos).diff())
+    raise ValueError(transform)
+
+
+def _from_increment(inc: np.ndarray, anchor: float, transform: str,
+                    scale: float = 1.0) -> np.ndarray:
+    """Invert `_to_increment` forward from a known anchor level. Returns H levels."""
+    if transform == "level":
+        return np.asarray(inc, dtype=float)
+    if transform == "diff":
+        return anchor + np.cumsum(np.asarray(inc, dtype=float) / scale)
+    if transform == "dlog":
+        return anchor * np.exp(np.cumsum(inc))
+    if transform == "pct100":
+        return anchor * np.exp(np.cumsum(np.asarray(inc, dtype=float) / 100.0))
+    raise ValueError(transform)
+
+
+# ── condition vector ─────────────────────────────────────────────────────────
+def _level_feature(x, transform: str):
+    """The level as the condition should see it: log for multiplicative columns, so that
+    "oil at 63" and "oil at 126" are one unit apart the way the increments are.
+    Accepts a scalar or an array."""
+    if transform in ("dlog", "pct100"):
+        return np.log(np.maximum(np.asarray(x, dtype=float), 1e-9))
+    return np.asarray(x, dtype=float)
+
+
+def condition_row(levels: pd.DataFrame, inc: pd.DataFrame, spec: PanelSpec,
+                  t: pd.Timestamp) -> np.ndarray:
+    """The macro state at anchor `t`: level-vs-trend, recent drift, recent vol, calendar.
+
+    Everything here is measured at or before `t`; nothing from the forward path leaks in.
+    That is what `tests/test_synth_panel.py::test_condition_uses_no_future` pins.
+
+    **Why the level enters as a deviation, not as itself.** The first build fed the raw
+    (log) level in. Measured on the monthly panel, the leading principal component of the
+    resulting condition matrix correlated **0.955 with calendar time** — CPI, core CPI,
+    core PCE and PAYEMS are indices that only go up, so "the level" was very nearly "the
+    year". A generator conditioned on the year cannot do anything at a held-out date except
+    extrapolate off the end of its training range, and the held-out sweep showed exactly
+    that: calibration degraded monotonically as more condition dimensions were admitted
+    (cover80 0.74 unconditional -> 0.50 at the full 38 dims), i.e. conditioning was strictly
+    harmful. Measuring each level against its own trailing `level_lag` mean keeps the part
+    that is state ("oil is expensive relative to normal", "we are in a high-inflation
+    regime") and discards the part that is a clock.
+
+    The bet's own ABSOLUTE number is not lost by this: it enters through
+    `Generator.level_paths`, which integrates the generated increments forward from today's
+    real levels. The condition says what kind of environment this is; the anchor says where
+    it starts.
+    """
+    i = levels.index.get_loc(t)
+    feats: list[float] = []
+    for col in spec.columns:
+        win = levels[col.name].iloc[max(0, i - spec.level_lag + 1):i + 1].to_numpy()
+        f = _level_feature(win, col.transform)
+        feats.append(float(f[-1] - f.mean()))
+    for col in spec.columns:
+        past = inc[col.name].iloc[max(0, i - DRIFT_LAG + 1):i + 1]
+        feats.append(float(past.mean()) if len(past) else 0.0)
+    for col in spec.columns:
+        past = inc[col.name].iloc[max(0, i - VOL_LAG + 1):i + 1]
+        feats.append(float(past.std(ddof=0)) if len(past) > 1 else 0.0)
+    # calendar: seasonality is real in claims and in every storage series, and a window's
+    # whole seasonal position is determined by where it starts.
+    ang = 2.0 * math.pi * (t.month - 1 + (t.day - 1) / 31.0) / 12.0
+    feats += [math.sin(ang), math.cos(ang)]
+    return np.asarray(feats, dtype=float)
+
+
+def condition_dim(spec: PanelSpec) -> int:
+    """Over ALL columns, generated or context-only — the condition is the environment."""
+    return 3 * spec.d_all + 2
+
+
+# ── build ────────────────────────────────────────────────────────────────────
+def build(conn, name: str, end: datetime) -> PanelData:
+    """Assemble the named panel from `conn`, using only data known at `end`.
+
+    `end` is the generator's training cut. `param_argmin` runs its search over the last
+    75 days, so callers building a panel to select on pass `now - 75d`: otherwise a set
+    chosen on synthetic samples has, through the generator's fit, already seen the
+    outcomes of the events it is about to be scored on. That is the diffuse version of
+    the leak the grid75 protocol exists to prevent, and it costs nothing to close.
+    """
+    spec = PANELS[name]
+    fs = FeatureStore(conn)
+    cols: dict[str, pd.Series] = {}
+    for col in spec.columns:
+        cols[col.name] = _resample(_read(fs, col, end), spec.freq, col.agg)
+    levels = pd.DataFrame(cols).loc[spec.start:]
+    levels = levels.dropna()
+    if levels.empty:
+        raise ValueError(f"{name}: panel is empty after aligning columns from {spec.start}")
+    incs = {}
+    for c in spec.columns:
+        if c.inc_fn:
+            incs[c.name] = _INC_FNS[c.inc_fn](conn, end, spec.freq).reindex(levels.index)
+        else:
+            incs[c.name] = _to_increment(levels[c.name], c.transform, c.scale)
+    inc = pd.DataFrame(incs).dropna()
+    levels = levels.loc[inc.index]
+
+    H = spec.horizon
+    # An anchor needs `back` periods behind it (the longest window the condition uses) and
+    # H ahead of it (the path). Anchors that cannot supply both are dropped rather than
+    # padded — a padded condition is a fabricated state, and a SHORTER trailing window on
+    # the early anchors would reintroduce the clock the deviation encoding exists to remove.
+    idx = list(inc.index)
+    back = max(VOL_LAG, spec.level_lag)
+    kept = [k for k in range(len(idx)) if k >= back - 1 and k + H < len(idx)]
+    for lo, hi in spec.drop_spans:
+        lo_t, hi_t = pd.Timestamp(lo), pd.Timestamp(hi)
+        kept = [k for k in kept if not (idx[k + 1] <= hi_t and idx[k + H] >= lo_t)]
+    anchors = [idx[k] for k in kept]
+    if not anchors:
+        raise ValueError(f"{name}: no anchor supports {back} back + {H} forward")
+
+    zs, cs = [], []
+    for k, t in zip(kept, anchors):
+        block = inc.iloc[k + 1:k + 1 + H][list(spec.names)].to_numpy(dtype=float)
+        zs.append(block.reshape(-1))
+        cs.append(condition_row(levels, inc, spec, t))
+    Zr = np.asarray(zs, dtype=float)
+    Cr = np.asarray(cs, dtype=float)
+    mu, sd = Zr.mean(0), Zr.std(0) + 1e-12
+    cmu, csd = Cr.mean(0), Cr.std(0) + 1e-12
+    scaler = {"mu": mu, "sd": sd, "cmu": cmu, "csd": csd,
+              "names": spec.names, "horizon": H,
+              "transforms": [c.transform for c in spec.gen_columns]}
+    return PanelData(spec=spec, levels=levels, inc=inc, anchors=anchors,
+                     Z=(Zr - mu) / sd, C=(Cr - cmu) / csd, scaler=scaler, end=end)
+
+
+def integrate(inc_path: pd.DataFrame, anchor_levels: pd.Series,
+              spec: PanelSpec) -> pd.DataFrame:
+    """(H, d) increments + the level at the anchor -> (H, d) levels in natural units."""
+    out = {}
+    for col in spec.gen_columns:
+        out[col.name] = _from_increment(inc_path[col.name].to_numpy(dtype=float),
+                                        float(anchor_levels[col.name]), col.transform,
+                                        col.scale)
+    return pd.DataFrame(out, index=inc_path.index)
