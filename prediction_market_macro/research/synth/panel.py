@@ -174,8 +174,20 @@ _MONTHLY_COLS = (
 
 # The weekly column set. Start 2010-01 is NG_STORAGE_WEEKLY's first observation, and
 # natural gas is the point of the weekly panels.
+#
+# `claims` is "first" HERE and "latest" in `_MONTHLY_COLS`, and the split is not cosmetic:
+# it follows the consumer. `claims.predict` reads ICSA through `fred_first_prints` and
+# KXJOBLESSCLAIMS settles on the advance print; `payrolls`/`u3` read ICSA through
+# `fred_series` as a context feature and never settle on it. Measured on the production db,
+# 1042 of 3110 weeks carry a revision (mean |rev| 4,228 claims) and the advance print is the
+# noisier series — dlog sd 0.07150 first vs 0.06729 latest. Training the generator on the
+# revised chain therefore understated settlement noise by ~6%, which is one measurable piece
+# of the §5c finding that the synthetic world is easier to trade than the real one. The
+# check that surfaced it: of the 7 weeks where `build.verify_settle` put the computed
+# outcome outside the Kalshi interval, all 7 had a revision and 6 land INSIDE the interval
+# on the first print.
 _WEEKLY_COLS = (
-    Column("claims", "fred", "ICSA", "latest", "last", "dlog", "count"),
+    Column("claims", "fred", "ICSA", "first", "last", "dlog", "count"),
     Column("gas_retail", "fred", "GASREGW", "latest", "last", "dlog", "$gal"),
     Column("wti", "fut", "CL", "latest", "last", "dlog", "$bbl"),
     Column("natgas", "fut", "NG", "latest", "last", "dlog", "$mmbtu"),

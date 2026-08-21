@@ -419,6 +419,62 @@ Two smaller defects the build caught, both now regression-tested:
 * Real Kalshi events of the target series survived in the world alongside the synthetic
   ones, so `quotable_events` would have scored both. `clear_series` removes them.
 
+### 5d. The settlement transform, checked against every real settlement (2026-08-21)
+
+`SETTLES` is ten one-line claims of the form "KXU3 settles on the LEVEL of `unrate`, which
+the panel carries as a difference" or "KXPAYROLLS settles in jobs while PAYEMS is in
+thousands". Each is a sentence someone can write confidently and get backwards, and a world
+built on a backwards one is perfectly self-consistent while scoring a market nobody trades.
+`build.verify_settle` closes that by recomputing every real settled outcome from the real
+panel and asking it to fall inside the interval the legs actually paid — interval, not
+equality, because the stored outcome is a bucket midpoint and is up to half a ladder step
+from the truth by construction.
+
+Across all ten series against the production db at 2026-08-21: **446 consistent, 38 not.**
+A units error would be 100% wrong, not 8%, so **every transform in `SETTLES` is confirmed.**
+
+| series | ok | bad | skipped | what the residual is |
+|---|---|---|---|---|
+| KXPAYROLLS | 38 | 0 | 3 | — |
+| KXU3 | 42 | 0 | 19 | — |
+| KXJOBLESSCLAIMS | 50 | 1 | 0 | the 2025 shutdown, below |
+| KXWTIW | 139 | 4 | 12 | reference contract |
+| KXNATGASW | 15 | 4 | 1 | reference contract |
+| KXCPI / KXCPICORE | 35 / 37 | 8 / 5 | 19 / 8 | seasonal revision |
+| KXCPIYOY / KXCPICOREYOY | 34 / 39 | 7 / 4 | 4 / 1 | seasonal revision |
+| KXPCECORE | 17 | 5 | 1 | seasonal revision |
+
+Three residual causes, all measured rather than assumed:
+
+* **CPI family — annual reseasonalization.** Every one of the 29 CPI/PCE misses is exactly
+  **one 0.1pp bucket** outside the interval. These columns read the LATEST vintage on
+  purpose (§4: BEA rebases PCEPILFE and a first-print chain across a rebase produced an 8.8%
+  "core PCE print"), and BLS re-estimates seasonal factors each January, so the current
+  vintage's MoM differs from the one that settled by about a tenth. The cost is a settlement
+  value up to one bucket off in the synthetic world, which is the same order as the bucket
+  midpoint error already present by construction. Reading first prints instead would trade a
+  0.1pp error for a several-percent one.
+* **WTI / natgas — a different reference contract.** For all four bad NG weeks the implied
+  interval matches a *neighbouring session's* bar and never the Friday settle
+  (e.g. 2026-07-24 target [2.899, 2.999], our Friday bar 2.871, matching only Jul 22–23).
+  That is a front-month roll or a different settlement reference, not a units error; the
+  generator's own path is internally consistent either way.
+* **KXJOBLESSCLAIMS — one week, and it is the shutdown.** For the week ending 2025-09-27
+  the earliest ALFRED vintage is **2025-11-20**, a 54-day lag against a normal 5: the release
+  cycle was suspended and the advance print that settled the contract does not exist in the
+  vintage record at all. Every ICSA week from 2025-09-27 to 2025-11-08 carries the same gap.
+
+**The one actionable finding: `claims` was training on the wrong vintage.** `_WEEKLY_COLS`
+carried ICSA at `prints="latest"` while `claims.predict` reads it through
+`fred_first_prints` and KXJOBLESSCLAIMS settles on the advance print. Measured on the
+production db: 1042 of 3110 weeks carry a revision, mean |rev| 4,228 claims, and the advance
+print is the **noisier** series — `dlog` sd **0.07150 first vs 0.06729 latest**. Training the
+generator on the revised chain therefore understated settlement noise by ~6%, a direct and
+measurable contribution to §5c's finding that the synthetic world is easier to trade than
+reality. Changed to `prints="first"`; `verify_settle` on KXJOBLESSCLAIMS went **44/7 → 50/1**,
+the remaining one being the shutdown week above. `_MONTHLY_COLS` keeps `"latest"`, because
+there ICSA is a context feature for `payrolls`/`u3`, which read it through `fred_series`.
+
 ## 6. Calibrating lambda (S5)
 
 For each weekly series (KXWTIW, KXNATGASW, KXAAAGASW, KXJOBLESSCLAIMS — n_real 10–11):

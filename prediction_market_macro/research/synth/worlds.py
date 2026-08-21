@@ -57,10 +57,15 @@ import pandas as pd
 from prediction_market_macro.config.registry import REGISTRY
 
 # Tables carried into a world, with the column whose value decides whether a row was
-# knowable at the cutoff. `None` means the table is copied whole: `contracts` and
-# `settlements` describe the ladder and the outcome, which the world REPLACES rather than
-# inherits, and copying them whole then overwriting the target event is both simpler and
-# safer than a partial copy that might leave a stale leg behind.
+# knowable at the cutoff. `None` means the table is copied whole.
+#
+# `contracts` is copied whole ON PURPOSE, and it is the one table where that is the PIT-safe
+# choice rather than a shortcut. Its `first_seen_ts` is not a listing time — it is the
+# 2026-07-28 backfill stamp, identical for years of history — so truncating on it would
+# empty the table in every world spliced before that date. What a contract row carries is
+# the ladder: strikes and close time, both published well in advance and therefore knowable.
+# The OUTCOME lives in `settlements` and the PRICES in `candles`, and those two are
+# truncated, which is what actually stops a world from seeing its own future.
 _PIT_TABLES: dict[str, str | None] = {
     "fred_obs": "knowledge_time",
     "fut_daily": "knowledge_time",
@@ -71,8 +76,8 @@ _PIT_TABLES: dict[str, str | None] = {
     "releases": "scheduled_ts",
     "preds": "asof",
     "contracts": None,
-    "settlements": None,
-    "candles": None,
+    "settlements": "settled_ts",
+    "candles": None,          # end_ts is an epoch INTEGER — special-cased in materialize
 }
 
 # Kalshi's 404 sentinel: `kalshi_md.candles` writes end_ts=0 when a ticker has no
@@ -80,6 +85,11 @@ _PIT_TABLES: dict[str, str | None] = {
 # A synthetic world must clear the same bar or its events are invisible to the very
 # function that is supposed to score them.
 CANDLE_SENTINEL = 100_000
+
+# When a futures settlement becomes knowable: the evening of its own session. Named rather
+# than left as a bare default so a caller computing a splice from a futures anchor uses the
+# same hour the bars are stamped with, instead of a second copy that can drift.
+FUT_CLOSE_HOUR = 20
 
 
 # ── schema ───────────────────────────────────────────────────────────────────
@@ -119,6 +129,15 @@ def materialize(src: sqlite3.Connection, dst_path: Path | str,
     that was published inside T — truncating on event_time would silently delete the most
     recent data every model actually reads, and every model would then be run on a
     shorter history than production gives it.
+
+    The market side is truncated too, and that is not decoration. `settlements` reaches back
+    to 2021 with a real `settled_ts`, and KXAAAGASW's model regresses its settle-vs-proxy
+    gap on PAST settled events (`energy._aaa_settled_mids`); left whole, a world spliced at
+    T would hand that regression the outcomes of events that had not happened yet. The
+    model does filter `settled_ts <= asof` itself, so today this is defence in depth rather
+    than a live leak — but "no leak because every consumer remembered to filter" is the
+    weaker of the two guarantees, and this repo has been bitten twice by the strong one
+    being absent.
     """
     dst_path = Path(dst_path)
     if dst_path.exists():
@@ -138,6 +157,13 @@ def materialize(src: sqlite3.Connection, dst_path: Path | str,
         if cut is not None and tcol is not None:
             sel += f" WHERE {tcol}<=?"
             args = (cut,)
+        elif cut is not None and table == "candles":
+            # `end_ts` is epoch seconds, so it cannot go through the ISO comparison above.
+            # The 404 sentinel (end_ts=0) is kept deliberately: it records "this ticker has
+            # no candlesticks at all", which was as true before the cutoff as after, and
+            # dropping it would make an unquotable event look merely unrecorded.
+            sel += " WHERE end_ts<=?"
+            args = (int(cutoff.timestamp()),)
         rows = src.execute(sel, args).fetchall()
         if rows:
             dst.executemany(
@@ -228,7 +254,7 @@ def write_fred(dst: sqlite3.Connection, sid: str, values: pd.Series,
 
 
 def write_fut(dst: sqlite3.Connection, root: str, closes: pd.Series,
-              hour: int = 20, first_seen: str = "synthetic") -> int:
+              hour: int = FUT_CLOSE_HOUR, first_seen: str = "synthetic") -> int:
     """Write generated futures bars. Only `close` is generated; OHLC are set to it.
 
     Nothing in the consuming models reads open/high/low — `FeatureStore.fut_closes` selects
@@ -479,6 +505,33 @@ def _implied_outcome(legs: list[dict], series: str) -> float | str:
             raise ValueError(f"_implied_outcome: {series} is categorical and mutually "
                              f"exclusive but {len(yes)} legs settled YES")
         return leg_category(yes[0])
+    lo, hi = implied_interval(legs, series)
+    step = REGISTRY[series].round_rule
+    # An open side has to be closed SOMEHOW to name a single number, and one grid step past
+    # the last strike is the least committal choice. It is a choice, not a fact, which is
+    # why `implied_interval` does not make it: the top bucket of KXPAYROLLS is "300,000 or
+    # more" and January 2024 printed 353,000, so treating `lo + step` as an upper BOUND
+    # would call a correct settlement value inconsistent.
+    if np.isinf(lo):
+        lo = hi - step
+    if np.isinf(hi):
+        hi = lo + step
+    return float(0.5 * (lo + hi))
+
+
+def implied_interval(legs: list[dict], series: str) -> tuple[float, float]:
+    """The tightest interval the legs' yes/no pattern pins the outcome to, infinities kept.
+
+    Split out from `_implied_outcome` because the interval is the stronger statement and the
+    two callers want different things from it. The round trip needs a single number, so it
+    closes an open side arbitrarily and takes the midpoint — harmless, because any value
+    inside reproduces the pattern it is about to re-derive. `build.verify_settle` is asking
+    whether a recomputed settlement value is CONSISTENT with what actually paid out, and for
+    that an open side must stay open: the extreme buckets of every ladder here are
+    unbounded, and closing them one step out would reject exactly the large prints the
+    market cared most about.
+    """
+    spec = REGISTRY[series]
     lo, hi = -np.inf, np.inf
     for leg in legs:
         st, f, c, res = (leg.get("strike_type"), leg.get("floor_strike"),
@@ -495,17 +548,12 @@ def _implied_outcome(legs: list[dict], series: str) -> float | str:
                 lo = max(lo, c)
         elif st == "between" and f is not None and c is not None and res == "yes":
             lo, hi = max(lo, f), min(hi, c)
-    step = spec.round_rule
     if np.isinf(lo) and np.isinf(hi):
-        raise ValueError(f"_implied_outcome: {series} legs pin no interval at all")
-    if np.isinf(lo):
-        lo = hi - step
-    if np.isinf(hi):
-        hi = lo + step
+        raise ValueError(f"implied_interval: {series} legs pin no interval at all")
     if lo > hi:
-        raise ValueError(f"_implied_outcome: {series} settlements are inconsistent — "
+        raise ValueError(f"implied_interval: {series} settlements are inconsistent — "
                          f"legs imply the value is both >{lo} and <{hi}")
-    return float(0.5 * (lo + hi))
+    return float(lo), float(hi)
 
 
 # ── verification ─────────────────────────────────────────────────────────────
@@ -563,8 +611,10 @@ def rebuild_event(dst: sqlite3.Connection, plan: EventPlan,
     return write_event(dst, plan, first_seen=first_seen)
 
 
-def clear_series(dst: sqlite3.Connection, series: str) -> dict[str, int]:
-    """Drop every real contract, settlement and candle of `series` from a world.
+def clear_series(dst: sqlite3.Connection, series: str,
+                 after: datetime | None = None) -> dict[str, int]:
+    """Drop the real contracts, settlements and candles of `series` that the generated
+    path replaces — those closing strictly after `after`, or all of them if `after` is None.
 
     A world inherits the whole market side by byte copy, which is right for `rebuild_event`
     — the round trip's claim is precisely that a real event survives being rewritten — and
@@ -575,23 +625,39 @@ def clear_series(dst: sqlite3.Connection, series: str) -> dict[str, int]:
     sample were larger and more real than it is, which is the one error this whole exercise
     cannot afford.
 
+    `after` exists because "clear the series" and "clear the replaced events" are not the
+    same set, and the difference is a model. KXAAAGASW's drift regression is fitted on its
+    OWN past settled events (`energy._aaa_settled_mids`, min_fit=10, ~28 available); wiping
+    the series wholesale leaves that fit with nothing, the model silently falls back, and
+    the synthetic world would then be scoring a materially weaker model than production
+    runs. Pre-splice events are history the model is entitled to read. Pass the splice.
+
     Ordering matters: candles and settlements are cleared through the ticker list read from
     `contracts`, so `contracts` goes last.
     """
-    tks = [r[0] for r in dst.execute("SELECT ticker FROM contracts WHERE series=?",
-                                     (series,)).fetchall()]
+    if after is None:
+        where, args = "series=?", (series,)
+    else:
+        # A NULL close_time cannot be placed relative to the splice. It is treated as
+        # replaced, because an event whose ladder we cannot date is not history we can
+        # justify letting a model read.
+        where = "series=? AND (close_time IS NULL OR close_time>?)"
+        args = (series, after.isoformat())
+    # The ticker list goes in as a SUBQUERY, not as an expanded parameter list: KXWTIW
+    # alone has 2,408 contracts, and an IN(?,?,...) of that width is one SQLite build away
+    # from SQLITE_MAX_VARIABLE_NUMBER.
+    pick = f"SELECT ticker FROM contracts WHERE {where}"
     out = {}
-    if tks:
-        marks = ",".join("?" * len(tks))
-        for table in ("candles", "settlements"):
-            out[table] = dst.execute(
-                f"DELETE FROM {table} WHERE ticker IN ({marks})", tks).rowcount
-    out["contracts"] = dst.execute("DELETE FROM contracts WHERE series=?",
-                                   (series,)).rowcount
+    for table in ("candles", "settlements"):
+        out[table] = dst.execute(
+            f"DELETE FROM {table} WHERE ticker IN ({pick})", args).rowcount
+    out["contracts"] = dst.execute(f"DELETE FROM contracts WHERE {where}", args).rowcount
     # `settlements` also carries a series column, and a settlement whose contract row was
     # already missing from the copy would otherwise survive as an outcome with no ladder.
-    out["settlements"] = out.get("settlements", 0) + dst.execute(
-        "DELETE FROM settlements WHERE series=?", (series,)).rowcount
+    orphan, oargs = ("series=?", (series,)) if after is None else (
+        "series=? AND (settled_ts IS NULL OR settled_ts>?)", (series, after.isoformat()))
+    out["settlements"] += dst.execute(
+        f"DELETE FROM settlements WHERE {orphan}", oargs).rowcount
     dst.commit()
     return out
 

@@ -307,6 +307,49 @@ def test_clear_series_leaves_no_real_event_to_mix_with_the_synthetic_one(tmp_pat
     assert conn.execute("SELECT series FROM contracts").fetchone()[0] == "KXU3"
 
 
+def test_clear_series_after_the_splice_keeps_the_history_a_model_fits_on(tmp_path):
+    """"Clear the series" and "clear the events the generated path replaces" are different
+    sets, and the difference is a model: KXAAAGASW regresses its settle-vs-proxy gap on its
+    OWN past settled events (min_fit=10). Wiping the series wholesale leaves that fit with
+    nothing and the model falls back silently, so the synthetic world would score a weaker
+    model than production runs."""
+    conn = _db(tmp_path)
+    for period, close in (("26FEB", datetime(2026, 2, 9, 12, tzinfo=UTC)),
+                          ("26MAR", datetime(2026, 3, 9, 12, tzinfo=UTC)),
+                          ("26APR", datetime(2026, 4, 9, 12, tzinfo=UTC))):
+        W.write_event(conn, W.EventPlan(
+            series="KXAAAGASW", period=period, legs=[_leg(f"T{period}", "greater",
+                                                          floor=3.0)],
+            close_time=close, outcome=3.2,
+            book={f"T{period}": [(int(close.timestamp()) - 86400, 0.4, 0.5)]}))
+    splice = datetime(2026, 3, 20, tzinfo=UTC)
+    W.clear_series(conn, "KXAAAGASW", after=splice)
+    kept = [r[0] for r in conn.execute(
+        "SELECT period FROM contracts ORDER BY period").fetchall()]
+    assert kept == ["26FEB", "26MAR"], "pre-splice history is not the generated path's to replace"
+    assert [r[0] for r in conn.execute(
+        "SELECT period FROM settlements ORDER BY period").fetchall()] == ["26FEB", "26MAR"]
+    # ...and the candles of the replaced event go with it, or `quotable_events` still sees it
+    assert conn.execute(
+        "SELECT COUNT(*) FROM candles WHERE ticker='T26APR'").fetchone()[0] == 0
+
+
+def test_clear_series_after_removes_a_settlement_whose_contract_never_arrived(tmp_path):
+    """The orphan case: `settlements` carries its own series column, so a row whose contract
+    was missing from the copy would survive as an outcome with no ladder — an event that
+    settles but cannot be priced."""
+    conn = _db(tmp_path)
+    conn.execute("INSERT INTO settlements(ticker, series, period, result, settled_ts,"
+                 " first_seen_ts) VALUES('ORPHAN','KXAAAGASW','26APR','yes',"
+                 "'2026-04-09T12:00:00+00:00','x')")
+    conn.execute("INSERT INTO settlements(ticker, series, period, result, settled_ts,"
+                 " first_seen_ts) VALUES('OLD','KXAAAGASW','26FEB','yes',"
+                 "'2026-02-09T12:00:00+00:00','x')")
+    conn.commit()
+    W.clear_series(conn, "KXAAAGASW", after=datetime(2026, 3, 20, tzinfo=UTC))
+    assert [r[0] for r in conn.execute("SELECT ticker FROM settlements").fetchall()] == ["OLD"]
+
+
 # ── point-in-time truncation ─────────────────────────────────────────────────
 def test_materialize_truncates_on_knowledge_time_not_event_time(tmp_path):
     """The distinction the module was written around. A CPI print for month T is knowable
@@ -324,6 +367,42 @@ def test_materialize_truncates_on_knowledge_time_not_event_time(tmp_path):
         "SELECT event_time FROM fred_obs ORDER BY event_time").fetchall()]
     # Jan (known 15 Jan) and Feb (known 15 Feb) survive; Mar (known 15 Mar) does not.
     assert got == ["2026-01-01", "2026-02-01"]
+
+
+def test_materialize_truncates_the_market_side_so_a_world_cannot_read_its_own_future(tmp_path):
+    """`settlements` reaches back to 2021 with a real `settled_ts` and `candles` carry a
+    real epoch `end_ts`. Copied whole, a world spliced at T hands every model the outcomes
+    and prices of events that had not happened yet — KXAAAGASW's drift fit reads exactly
+    that table. The models do filter by asof themselves; this is the guarantee that does
+    not depend on them remembering to."""
+    src = _db(tmp_path, "src.db")
+    past = datetime(2026, 2, 9, 12, tzinfo=UTC)
+    future = datetime(2026, 4, 9, 12, tzinfo=UTC)
+    for period, close in (("26FEB", past), ("26APR", future)):
+        W.write_event(src, W.EventPlan(
+            series="KXAAAGASW", period=period, legs=[_leg(f"T{period}", "greater",
+                                                          floor=3.0)],
+            close_time=close, outcome=3.2,
+            book={f"T{period}": [(int(close.timestamp()) - 86400, 0.4, 0.5)]}))
+    dst = W.materialize(src, tmp_path / "w.db", cutoff=datetime(2026, 3, 20, tzinfo=UTC))
+    assert [r[0] for r in dst.execute("SELECT period FROM settlements").fetchall()] == ["26FEB"]
+    assert [r[0] for r in dst.execute(
+        "SELECT ticker FROM candles ORDER BY ticker").fetchall()] == ["T26FEB"]
+    # contracts are NOT truncated: their `first_seen_ts` is the backfill stamp, not a
+    # listing time, and what they carry — strikes and close time — is published in advance.
+    assert dst.execute("SELECT COUNT(*) FROM contracts").fetchone()[0] == 2
+
+
+def test_materialize_keeps_the_404_sentinel_candle_across_the_cutoff(tmp_path):
+    """`end_ts=0` records "this ticker has no candlesticks at all", which was as true before
+    the cutoff as after. Dropping it on an epoch comparison would make an unquotable event
+    look merely unrecorded — a different fact."""
+    src = _db(tmp_path, "src.db")
+    src.execute("INSERT INTO candles(ticker, end_ts, yes_bid_close, yes_ask_close,"
+                " price_close, volume) VALUES('DEAD', 0, NULL, NULL, NULL, 0)")
+    src.commit()
+    dst = W.materialize(src, tmp_path / "w.db", cutoff=datetime(2026, 3, 20, tzinfo=UTC))
+    assert dst.execute("SELECT COUNT(*) FROM candles WHERE end_ts=0").fetchone()[0] == 1
 
 
 def test_materialize_clones_every_table_so_a_world_is_the_shape_production_reads(tmp_path):
