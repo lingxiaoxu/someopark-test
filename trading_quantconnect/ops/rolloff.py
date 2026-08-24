@@ -157,7 +157,14 @@ def _et_now() -> datetime:
 # 现名 OBDC。这不是持仓不符,是两边叫法不同 —— 不归一化就会让退场日永远冻不了 K。
 # 只放在这里(而不是仓库根 ticker_aliases.json):它描述的是 QC 怎么命名,不是市场
 # 事件,写进那份全仓库共用的映射会波及 VP/价格归一化等无关链路。
-QC_SYMBOL_ALIAS = {"ORCC": "OBDC"}
+QC_SYMBOL_ALIAS = {
+    "ORCC": "OBDC",
+    # 2026-08-24 F 队列首日实测:QC 给 BAC/JPM 的 security ID 历史首名分别是
+    # NB(NationsBank,1998 并入 BankAmerica)与 CMB(Chemical Banking,
+    # 经 Chase 并入 JPM)。股数与 target 分毫不差,纯命名差。
+    "NB": "BAC",
+    "CMB": "JPM",
+}
 
 
 def _canon(t: str) -> str:
