@@ -117,8 +117,14 @@ const usd = (v: number) =>
   `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
 // A2 + K 行(仅加性族 MRPT/MTFS)——把"展开项加总 ≠ 卡片主数字"这件事画出来。
-// 加性族的净值构成: Σ持仓市值 + 现金 − C = 官方口径净值。现金过去压根没画,
-// C 更是从来没出现过,所以展开项本来就加不出总额。
+// 多空组合占用的资金不能净额化(2026-08-24 用户指正:132k 多 − 56k 空 ≠ 76k 占用)。
+// 资金构成与 RiskManager._balance_sheet_one 同式(prime-broker market-neutral,
+// 文档 .claude/plan/strategies-plan/RISK_MANAGEMENT_MODULE_PLAN.md §3):
+//   L = Σmax(腿市值,0)   S = Σ|min(腿市值,0)|
+//   受限现金 = 1.02×S(PB 对空头卖出所得扣 102% 抵押,不可动用)
+//   融资负债 M = max(0, L + 0.02×S − E)   自由现金 = max(0, E − L − 0.02×S)
+//   恒等式: 自由现金 + 受限现金 + L − S − M ≡ E(账本 equity,日内唯一可算口径)
+// 官方口径杠杆另差一个 C: gross/(E−C),tooltip 里同时给出。
 // K 行是**信息行**(不参与上面的加总): QC 因队列倍数没镜像到的那部分持仓市值。
 // L(m=0)与 S(m=k)都是有限寿命的退场队列 —— 两队清空后 QC 只剩 F(m=1),
 // 净值层的差就此定格为常数,届时由 ops/rolloff.py 实测冻结、记到 QC 侧现金上。
@@ -127,8 +133,21 @@ function waterfall(s: NavNode, kids: NavNode[],
                    mirror: MirrorState | null, t: (k: string, o?: any) => string) {
   const st = OFFICIAL_KEY[s.display_name];
   const C = mirror?.capital_base?.[st];
-  const held = kids.reduce((a, k) => a + k.value, 0);
-  const cash = s.value - held;
+  // 多空拆腿:逐腿按符号归边,绝不 net。kid 无 holdings 时退回 kid.value 归边。
+  let Lmv = 0, Smv = 0;
+  for (const k of kids) {
+    const hs = k.holdings || [];
+    if (hs.length === 0) { if (k.value >= 0) Lmv += k.value; else Smv += -k.value; continue; }
+    for (const h of hs) { if (h.value >= 0) Lmv += h.value; else Smv += -h.value; }
+  }
+  const E = s.value;                            // 账本 equity(日内唯一可算)
+  const shortDue = 0.02 * Smv;                  // 102% 抵押中超出卖出所得的 2%
+  const restrictedCash = 1.02 * Smv;            // PB 扣押的空头抵押
+  const marginLoan = Math.max(0, Lmv + shortDue - E);
+  const freeCash = Math.max(0, E - Lmv - shortDue);
+  const gross = Lmv + Smv;
+  const levLedger = E > 0 ? gross / E : null;
+  const levOfficial = C !== undefined && E - C > 0 ? gross / (E - C) : null;
   const row = (label: string, v: number | null, opt?: {
     bold?: boolean; color?: string; top?: string; title?: string }) => (
     <div style={{ fontSize: 10.5, display: 'flex', justifyContent: 'space-between',
@@ -155,14 +174,27 @@ function waterfall(s: NavNode, kids: NavNode[],
   const gap = byCohort.L + byCohort.S + byCohort.F;
   return (
     <div style={{ marginTop: 3 }}>
-      {row(t('realtimeNav.wfHeld'), held, { top: '1px solid #111' })}
-      {row(t('realtimeNav.wfCash'), cash, { title: t('realtimeNav.wfCashTitle') })}
+      {row(t('realtimeNav.wfLong'), Lmv, { top: '1px solid #111' })}
+      {row(t('realtimeNav.wfShort'), -Smv, { title: t('realtimeNav.wfShortTitle') })}
+      {row(t('realtimeNav.wfRestricted'), restrictedCash,
+        { title: t('realtimeNav.wfRestrictedTitle') })}
+      {row(t('realtimeNav.wfFreeCash'), freeCash, { title: t('realtimeNav.wfFreeCashTitle') })}
+      {row(t('realtimeNav.wfMarginLoan'), -marginLoan,
+        { color: marginLoan > 0 ? '#b45309' : '#555',
+          title: t('realtimeNav.wfMarginLoanTitle') })}
+      {row(t('realtimeNav.wfLedgerEq'), E,
+        { top: '1px solid #111', title: t('realtimeNav.wfLedgerEqTitle') })}
       {row(`${t('realtimeNav.wfCapBase')}${C === undefined ? ' (n/a)' : ''}`,
         C === undefined ? null : -C,
         { color: C === undefined ? '#b45309' : '#555',
           title: t('realtimeNav.wfCapBaseTitle') })}
       {row(t('realtimeNav.wfNet'), C === undefined ? null : s.value - C,
         { bold: true, top: '1px solid #111' })}
+      {row(t('realtimeNav.wfGross'), gross,
+        { color: '#888',
+          title: t('realtimeNav.wfGrossTitle', {
+            lev: levLedger === null ? '—' : levLedger.toFixed(2),
+            levOff: levOfficial === null ? '—' : levOfficial.toFixed(2) }) })}
       <div style={{ fontSize: 9.5, marginTop: 4, padding: '3px 0',
         borderTop: '1px dotted #999', color: '#666' }}
         title={t('realtimeNav.wfKTitle')}>
