@@ -199,8 +199,10 @@ class Controller:
         # `--build-master` 补完新票后**常驻进程看不见**,只能重启 —— rebuild_error
         # 里那句"run --build-master"的指引形同虚设(8/14 JNJ/PFE 新开仓卡住)。
         # 两次 json 读(~250 条)成本可忽略,让磁盘状态始终是唯一事实。
-        self.reg = Registry()
-        new_s = assemble(self.reg)
+        # 先构局部,验证通过才提交(含 reg 本身:旧版在这里就写 self.reg,
+        # assemble 失败会留下半新半旧状态)。
+        reg = Registry()
+        new_s = assemble(reg)
         fe, te = FlattenEngine(new_s), TreeEngine(new_s)
         init_f, init_t = fe.initial_emissions(), te.initial_emissions()
         if init_f != init_t:
@@ -212,6 +214,12 @@ class Controller:
                 fe.apply_tick(replayable)
                 te.apply_tick(replayable)
         self.S, self.fe, self.te = new_s, fe, te
+        self.reg = reg
+        # snapshot/拍平取价路径持有的是 feed 自己的 reg 引用 —— 不同步它,
+        # 热重载就只救了树引擎:2026-08-24 build-master 补录 LII 后结构重建
+        # 成功,但 snapshot 仍拿开机时的旧 master 报 "ISIN not in security
+        # master",每轮 tick stale,发布把 MTFS/MRPT 整个丢掉,只能重启自愈。
+        self.feed.reg = reg
         self._verify("rebuild-replay")
         # 换结构的日内盈亏衔接 = 纯美元账(零比值):
         # ① 旧持仓按换出时市场价"实现"当日至此的盈亏 → realized($,shares×价差);
@@ -522,8 +530,14 @@ class Controller:
                 if now >= next_tick:
                     out = self.tick()
                     if "skipped" not in out:
+                        # portfolio 可为 None(降级发布,如 snapshot 失败沿用上轮
+                        # 又无可估值节点)—— 对 None 用 :,.2f 会 TypeError,
+                        # 把一轮优雅降级变成 tick_error(2026-08-24 实测刷屏)。
+                        _pv = out.get("portfolio")
                         print(f"[tick] {out['ts']} portfolio="
-                              f"{out['portfolio']:,.2f} stale={out['stale']}"
+                              + (f"{_pv:,.2f}" if isinstance(_pv, (int, float))
+                                 else str(_pv))
+                              + f" stale={out['stale']}"
                               + (" REBUILD-ERR" if self.rebuild_error else ""))
                     next_tick = now + interval_s
                 if self.tick_error:                       # 本轮走通 → 自愈
