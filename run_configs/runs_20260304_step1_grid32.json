@@ -8,60 +8,60 @@
       "param_set": "default",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -74,60 +74,60 @@
       "param_set": "no_leverage",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -140,60 +140,60 @@
       "param_set": "high_leverage",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -206,60 +206,60 @@
       "param_set": "tight_stop",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -272,60 +272,60 @@
       "param_set": "fast_signal",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -338,60 +338,60 @@
       "param_set": "slow_signal",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -404,60 +404,60 @@
       "param_set": "long_z_short_v",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -470,60 +470,60 @@
       "param_set": "short_z_long_v",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -536,60 +536,60 @@
       "param_set": "low_entry",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -602,60 +602,60 @@
       "param_set": "high_entry",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -668,60 +668,60 @@
       "param_set": "static_threshold",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -734,60 +734,60 @@
       "param_set": "vol_gated",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -800,60 +800,60 @@
       "param_set": "quick_exit",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -866,60 +866,60 @@
       "param_set": "patient_hold",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -932,60 +932,60 @@
       "param_set": "flash_hold",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -998,60 +998,60 @@
       "param_set": "symmetric_exit",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1064,60 +1064,60 @@
       "param_set": "aggressive",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1130,60 +1130,60 @@
       "param_set": "conservative",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1196,60 +1196,60 @@
       "param_set": "deep_dislocation",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1262,60 +1262,60 @@
       "param_set": "high_turnover",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1328,60 +1328,60 @@
       "param_set": "low_vol_specialist",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1394,60 +1394,60 @@
       "param_set": "high_vol_specialist",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1460,60 +1460,60 @@
       "param_set": "vol_adaptive",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1526,60 +1526,60 @@
       "param_set": "vol_agnostic",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1592,60 +1592,60 @@
       "param_set": "fast_reentry",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1658,60 +1658,60 @@
       "param_set": "slow_reentry",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1724,60 +1724,60 @@
       "param_set": "stable_signal_quick_exit",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1790,60 +1790,60 @@
       "param_set": "fast_signal_tight_stop",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1856,60 +1856,60 @@
       "param_set": "medium_signal_high_leverage",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1922,60 +1922,60 @@
       "param_set": "deep_entry_quick_exit",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -1988,60 +1988,60 @@
       "param_set": "conservative_no_leverage",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -2054,60 +2054,60 @@
       "param_set": "balanced_plus",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -2120,60 +2120,60 @@
       "param_set": "vol_release",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -2186,60 +2186,60 @@
       "param_set": "vol_release_deep",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",
@@ -2252,60 +2252,60 @@
       "param_set": "aggressive_vol_release",
       "pairs": [
         [
-          "ACGL",
-          "HIG"
-        ],
-        [
-          "RMD",
-          "SYK"
+          "IDXX",
+          "STE"
         ],
         [
           "SBUX",
           "WYNN"
         ],
         [
+          "ACGL",
+          "HIG"
+        ],
+        [
           "AXON",
           "VRSK"
         ],
         [
-          "IDXX",
-          "STE"
-        ],
-        [
-          "AFL",
-          "PFG"
-        ],
-        [
-          "BAC",
-          "JPM"
-        ],
-        [
-          "GILD",
-          "PFE"
-        ],
-        [
-          "AMD",
-          "NVDA"
+          "RMD",
+          "SYK"
         ],
         [
           "LEN",
           "ROST"
         ],
         [
-          "JNJ",
-          "PFE"
+          "AFL",
+          "PFG"
+        ],
+        [
+          "HWM",
+          "ROP"
+        ],
+        [
+          "ALGN",
+          "BMY"
+        ],
+        [
+          "AIZ",
+          "MS"
         ],
         [
           "CDW",
           "ROP"
         ],
         [
-          "HWM",
-          "VLTO"
+          "GILD",
+          "PFE"
         ],
         [
-          "ALGN",
-          "BMY"
+          "HWM",
+          "IT"
+        ],
+        [
+          "HWM",
+          "VLTO"
         ],
         [
           "ENPH",

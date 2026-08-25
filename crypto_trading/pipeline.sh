@@ -59,6 +59,7 @@ case "$MODE" in
   brackets)  exec "${PY[@]}" -m crypto_trading.crypto_common.bracket_watcher "$@" ;;
   watch)     exec "${PY[@]}" -m crypto_trading.crypto_strategies.live_watch.runner "$@" ;;
   watchlist) exec "${PY[@]}" -m crypto_trading.crypto_strategies.research_watchlist "$@" ;;
+  recheck)   exec "${PY[@]}" -m crypto_trading.crypto_strategies.research_archive_recheck "$@" ;;
   daily)
     "${PY[@]}" -m crypto_trading.ops.backup_data --keep 5 || true    # protect recorded data FIRST
     "${PY[@]}" -m crypto_trading.ops.disk_monitor --quiet || true   # once/day = clean rate sample

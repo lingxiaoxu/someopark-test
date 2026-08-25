@@ -7,6 +7,9 @@ data/dfm_ckpt/
 data/logs/
 data/output/
 data/macro_backup_*.db
+data/macro_backup_*.db-*
+# S5-WF 自累积快照(ops/backup_db.py 有外部备份;db 体积超 GitHub 100MB 上限)
+data/synth_wf/
 # DFM synthetic worlds (research/synth/regen.py). Regenerable from macro.db + the
 # generator seed, ~300MB per series per run, and a copy of the live db by construction.
 data/synth/

@@ -2,6 +2,7 @@
 ships disarmed, dry-run never submits, kill switch trips and stays tripped."""
 import json
 
+import pandas as pd
 import pytest
 
 from crypto_trading.crypto_common.execution import Order
@@ -87,3 +88,76 @@ def test_knockdown_settle_and_fee():
     assert settle_outcome("no", 64000, 63900) is True
     assert abs(fee(0.5) - 0.0175) < 1e-9          # 0.07·P(1−P) peak
     assert fee(0.22, 0.10) > fee(0.22, 0.07)      # premium-mult sensitivity
+
+
+# ── W6 residual jump lead-lag pure-logic tests ───────────────────────────────
+
+def test_residual_is_the_unfollowed_gap():
+    from crypto_trading.crypto_strategies.jump_leadlag.research_residual import (
+        residual_bps)
+    # index +30bps, perp hasn't moved → full gap is tradeable
+    assert residual_bps(30.0, 0.0) == pytest.approx(30.0)
+    # index +30, perp already followed +25 → only 5 left
+    assert residual_bps(30.0, 25.0) == pytest.approx(5.0)
+    # perp OVERSHOT the index → negative residual, never traded
+    assert residual_bps(30.0, 40.0) < 0
+    # down-jump mirrors exactly (sign handling is the easy bug here)
+    assert residual_bps(-30.0, -25.0) == pytest.approx(5.0)
+    assert residual_bps(-30.0, 0.0) == pytest.approx(30.0)
+    assert residual_bps(-30.0, -40.0) < 0
+
+
+def test_w6_filter_thresholds_are_frozen():
+    from crypto_trading.crypto_strategies.jump_leadlag import research_residual as rr
+    assert (rr.RESIDUAL_MIN, rr.SPREAD_MAX_BPS) == (7.0, 2.1)
+    assert (rr.JUMP_BPS, rr.HOLD_MIN) == (25.0, 1)
+    ev = pd.DataFrame({"residual_bps": [8.0, 6.0, 9.0],
+                       "spread_bps": [1.5, 1.5, 3.0]})
+    kept = rr.apply_filter(ev)
+    assert list(kept.index) == [0]          # only residual>7 AND spread<=2.1
+
+
+def test_w6_live_imports_backtest_constants():
+    """live and canonical must share one source of truth, not two copies."""
+    from crypto_trading.crypto_strategies.jump_leadlag import research_residual as rr
+    from crypto_trading.crypto_strategies.live_watch import w6_residual as w6
+    assert w6.RESIDUAL_MIN is rr.RESIDUAL_MIN
+    assert w6.SPREAD_MAX_BPS is rr.SPREAD_MAX_BPS
+    assert w6.JUMP_BPS is rr.JUMP_BPS
+
+
+def test_w6_exit_path_executes(sandbox, monkeypatch):
+    """Drive the EXIT branch end-to-end.
+
+    Regression: a rename during the tier-aware-accounting edit left the exit
+    branch referencing a dead name. Entry-only smoke tests passed for a full
+    day while every exit raised NameError, so the probe silently stopped
+    settling. Exit paths need their own test — they are the branch that
+    touches P&L.
+    """
+    from crypto_trading.crypto_strategies.live_watch import w6_residual as w6
+
+    st = {"positions": {"KXBTCPERP": {"side": 1, "entry": 6.40,
+                                      "opened": "2026-08-24T00:00:00+00:00",
+                                      "exit_due": "2026-08-24T00:01:00+00:00"}},
+          "probe": {"jumps": 5, "fired": 1}, "trades": [], "cum_net_usd": 0.0}
+    common.save_state("w6_residual", st)
+
+    idx = pd.date_range("2026-08-24", periods=3, freq="10s", tz="UTC")
+    quotes = pd.DataFrame({"bid": [6.44, 6.45, 6.45], "ask": [6.46, 6.47, 6.47]},
+                          index=idx)
+    monkeypatch.setattr(w6, "load_poll_market_stats", lambda *a, **k: quotes)
+
+    rep = w6.run({"w6_residual": {"enabled": False, "contracts": 10,
+                                  "max_cum_loss_usd": 30,
+                                  "min_trades_for_kill": 40}})
+
+    btc = rep["markets"]["KXBTCPERP"]
+    assert btc["status"] == "EXIT"
+    assert "net_bps" in btc and "net_bps_t4" in btc
+    # long from 6.40 exited at the bid 6.45 → gross ≈ +78bps, well above fees
+    assert btc["net_bps"] > 0 and btc["net_bps_t4"] > btc["net_bps"]
+    back = common.load_state("w6_residual")
+    assert len(back["trades"]) == 1
+    assert back["positions"]["KXBTCPERP"] is None
+    assert back["cum_net_usd"] > 0

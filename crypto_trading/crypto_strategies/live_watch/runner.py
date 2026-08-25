@@ -19,13 +19,14 @@ import time
 
 import pandas as pd
 
-from . import common, w1_basis, w2_chronos, w3_mom24, w4_carry, w5_knockdown
+from . import (common, w1_basis, w2_chronos, w3_mom24, w4_carry,
+               w5_knockdown, w6_residual)
 
 logger = logging.getLogger(__name__)
 
 STRATS = {"w1": w1_basis, "w2": w2_chronos, "w3": w3_mom24, "w4": w4_carry,
-          "w5": w5_knockdown}
-CADENCE_S = {"w1": 60, "w2": 300, "w3": 3600, "w4": 86400, "w5": 90}
+          "w5": w5_knockdown, "w6": w6_residual}
+CADENCE_S = {"w1": 60, "w2": 300, "w3": 3600, "w4": 86400, "w5": 90, "w6": 10}
 TOPUP_S = 21600          # 6h: keep the data the modules depend on fresh
 
 
@@ -68,7 +69,7 @@ def run_once(names: list[str], *, confirm_spot: bool = False) -> dict:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--strategy", default="all",
-                    choices=["all", "w1", "w2", "w3", "w4", "w5"])
+                    choices=["all", "w1", "w2", "w3", "w4", "w5", "w6"])
     ap.add_argument("--loop", type=int, default=0,
                     help="seconds between iterations (0 = run once)")
     ap.add_argument("--confirm-spot", action="store_true",

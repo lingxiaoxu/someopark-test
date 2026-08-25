@@ -36,3 +36,5 @@
 {"date": "2026-08-03", "ticker": "WDC", "side": "BUY", "shares": 55, "price": 527.22, "gross": -28997.1, "dedup_key": "2026-08-03-WDC-BUY"}
 {"date": "2026-08-06", "ticker": "SIMO", "side": "DIV", "shares": 59, "price": 0.5, "gross": 29.5, "dedup_key": "2026-08-06-SIMO-DIV"}
 {"date": "2026-08-17", "ticker": "KLAC", "side": "DIV", "shares": 1678, "price": 0.23, "gross": 385.94, "dedup_key": "2026-08-17-KLAC-DIV"}
+{"date": "2026-08-03", "ticker": "", "side": "FEE", "gross": -236.8, "dedup_key": "2026-08-03-FEE"}
+{"date": "2026-08-20", "ticker": "AMAT", "side": "DIV", "shares": 37, "price": 0.53, "gross": 19.61, "dedup_key": "2026-08-20-AMAT-DIV"}

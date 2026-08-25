@@ -116,7 +116,10 @@ const bankersRound = (x: number) => {
 const usd = (v: number) =>
   `${v < 0 ? '−' : ''}$${Math.abs(v).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 
-// A2 + K 行(仅加性族 MRPT/MTFS)——把"展开项加总 ≠ 卡片主数字"这件事画出来。
+// A2 + K 行——把"展开项加总 ≠ 卡片主数字"这件事画出来。
+// 加性族 MRPT/MTFS:账本口径 → −C 落官方,附 K 三队列;乘性族 SSRS/AISS/BDC
+// (mul 传 k):整段直接官方口径(×k,与展开行金额同刻度),底行=卡片主数字,
+// 无 −C/K 段(全额缩放镜像,无退场队列)。
 // 多空组合占用的资金不能净额化(2026-08-24 用户指正:132k 多 − 56k 空 ≠ 76k 占用)。
 // 资金构成与 RiskManager._balance_sheet_one 同式(prime-broker market-neutral,
 // 文档 .claude/plan/strategies-plan/RISK_MANAGEMENT_MODULE_PLAN.md §3):
@@ -130,24 +133,36 @@ const usd = (v: number) =>
 // 净值层的差就此定格为常数,届时由 ops/rolloff.py 实测冻结、记到 QC 侧现金上。
 function waterfall(s: NavNode, kids: NavNode[],
                    cohorts: Record<string, Cohort> | undefined,
-                   mirror: MirrorState | null, t: (k: string, o?: any) => string) {
+                   mirror: MirrorState | null, t: (k: string, o?: any) => string,
+                   mul?: { k: number }) {
   const st = OFFICIAL_KEY[s.display_name];
   const C = mirror?.capital_base?.[st];
-  // 多空拆腿:逐腿按符号归边,绝不 net。kid 无 holdings 时退回 kid.value 归边。
+  // 乘性族(mul 给定 k)整段用**官方口径**(×k)——与上方展开行显示的金额同刻度,
+  // 底行直接等于卡片主数字;加性族 scale=1(账本口径),经 −C 落到官方。
+  const scale = mul ? mul.k : 1;
+  // 多空拆腿:逐腿按符号归边,绝不 net。kid 无 holdings 时退回 kid.value 归边;
+  // 无 kids(SSRS/BDC 直接持股)取策略节点自己的 holdings。
   let Lmv = 0, Smv = 0;
-  for (const k of kids) {
-    const hs = k.holdings || [];
-    if (hs.length === 0) { if (k.value >= 0) Lmv += k.value; else Smv += -k.value; continue; }
-    for (const h of hs) { if (h.value >= 0) Lmv += h.value; else Smv += -h.value; }
+  const addLeg = (v: number) => { if (v >= 0) Lmv += v; else Smv += -v; };
+  if (kids.length) {
+    for (const k of kids) {
+      const hs = k.holdings || [];
+      if (hs.length === 0) { addLeg(k.value * scale); continue; }
+      for (const h of hs) addLeg(h.value * scale);
+    }
+  } else {
+    for (const h of s.holdings || []) addLeg(h.value * scale);
   }
-  const E = s.value;                            // 账本 equity(日内唯一可算)
+  const E = s.value * scale;                    // add: 账本 equity;mul: 官方净值
   const shortDue = 0.02 * Smv;                  // 102% 抵押中超出卖出所得的 2%
   const restrictedCash = 1.02 * Smv;            // PB 扣押的空头抵押
   const marginLoan = Math.max(0, Lmv + shortDue - E);
   const freeCash = Math.max(0, E - Lmv - shortDue);
   const gross = Lmv + Smv;
+  // 乘性族 official = ledger×k ⇒ gross 与 E 同乘 k,杠杆两口径恒等
   const levLedger = E > 0 ? gross / E : null;
-  const levOfficial = C !== undefined && E - C > 0 ? gross / (E - C) : null;
+  const levOfficial = mul ? levLedger
+    : (C !== undefined && E - C > 0 ? gross / (E - C) : null);
   const row = (label: string, v: number | null, opt?: {
     bold?: boolean; color?: string; top?: string; title?: string }) => (
     <div style={{ fontSize: 10.5, display: 'flex', justifyContent: 'space-between',
@@ -182,20 +197,30 @@ function waterfall(s: NavNode, kids: NavNode[],
       {row(t('realtimeNav.wfMarginLoan'), -marginLoan,
         { color: marginLoan > 0 ? '#b45309' : '#555',
           title: t('realtimeNav.wfMarginLoanTitle') })}
-      {row(t('realtimeNav.wfLedgerEq'), E,
-        { top: '1px solid #111', title: t('realtimeNav.wfLedgerEqTitle') })}
-      {row(`${t('realtimeNav.wfCapBase')}${C === undefined ? ' (n/a)' : ''}`,
-        C === undefined ? null : -C,
-        { color: C === undefined ? '#b45309' : '#555',
-          title: t('realtimeNav.wfCapBaseTitle') })}
-      {row(t('realtimeNav.wfNet'), C === undefined ? null : s.value - C,
-        { bold: true, top: '1px solid #111' })}
+      {mul
+        ? row(t('realtimeNav.wfNet'), E,
+            { bold: true, top: '1px solid #111',
+              title: t('realtimeNav.wfNetMulTitle',
+                { ledger: usd(s.value), k: String(mul.k) }) })
+        : (<>
+            {row(t('realtimeNav.wfLedgerEq'), E,
+              { top: '1px solid #111', title: t('realtimeNav.wfLedgerEqTitle') })}
+            {row(`${t('realtimeNav.wfCapBase')}${C === undefined ? ' (n/a)' : ''}`,
+              C === undefined ? null : -C,
+              { color: C === undefined ? '#b45309' : '#555',
+                title: t('realtimeNav.wfCapBaseTitle') })}
+            {row(t('realtimeNav.wfNet'), C === undefined ? null : s.value - C,
+              { bold: true, top: '1px solid #111' })}
+          </>)}
       {row(t('realtimeNav.wfGross'), gross,
         { color: '#888',
-          title: t('realtimeNav.wfGrossTitle', {
-            lev: levLedger === null ? '—' : levLedger.toFixed(2),
-            levOff: levOfficial === null ? '—' : levOfficial.toFixed(2) }) })}
-      <div style={{ fontSize: 9.5, marginTop: 4, padding: '3px 0',
+          title: mul
+            ? t('realtimeNav.wfGrossTitleMul', {
+                lev: levLedger === null ? '—' : levLedger.toFixed(2) })
+            : t('realtimeNav.wfGrossTitle', {
+                lev: levLedger === null ? '—' : levLedger.toFixed(2),
+                levOff: levOfficial === null ? '—' : levOfficial.toFixed(2) }) })}
+      {!mul && <div style={{ fontSize: 9.5, marginTop: 4, padding: '3px 0',
         borderTop: '1px dotted #999', color: '#666' }}
         title={t('realtimeNav.wfKTitle')}>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
@@ -217,7 +242,7 @@ function waterfall(s: NavNode, kids: NavNode[],
             ⚠︎ {t('realtimeNav.wfNoScaledFreeze')}
           </div>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -697,7 +722,10 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                     ? bankersRound(h.shares * kf) : h.shares;
                   // A4:加性族显示"账本股数 → QC 股数",QC 侧用与 exporter 同一套
                   // banker 舍入;L 队列恒 0 股(go-live 冻结,有机退场中)。
-                  const qc = mul ? (mul.m === 0 ? 0 : bankersRound(h.shares * mul.m)) : null;
+                  // 乘性族(全额缩放镜像 ×k)无队列:QC 股数 = 显示股数本身
+                  // (面板已按 ×k+banker 舍入换算),标签把镜像关系显式画出来。
+                  const qc = mul ? (mul.m === 0 ? 0 : bankersRound(h.shares * mul.m))
+                    : (scalable && !missingK ? sh : null);
                   return (
                   <div key={h.id} style={{ fontSize: 10, display: 'flex',
                     justifyContent: 'space-between', padding: '2px 0',
@@ -713,9 +741,22 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                         {missingK ? '⚠︎' : ''}{sh > 0 ? '+' : ''}{sh.toLocaleString()}
                       </span>
                       {qc !== null && (
-                        <span title={`QC m=${mul!.m} · ${t(`realtimeNav.cohort${mul!.cohort}`)}`}
-                          style={{ color: COHORT_COLOR[mul!.cohort], marginLeft: 6 }}>
+                        <span title={mul
+                            ? `QC m=${mul!.m} · ${t(`realtimeNav.cohort${mul!.cohort}`)}`
+                            : t('realtimeNav.qcScaledTitle', { k: kf })}
+                          style={{ color: mul ? COHORT_COLOR[mul!.cohort] : COHORT_COLOR.F,
+                            marginLeft: 6 }}>
                           → QC {qc.toLocaleString()}
+                        </span>
+                      )}
+                      {!mul && qc !== null && (   /* 乘性族镜像徽章,同 pair 行 F 徽章样式 */
+                        <span style={{ marginLeft: 5, fontSize: 9,
+                          color: COHORT_COLOR.F,
+                          border: `1px solid ${COHORT_COLOR.F}`, padding: '0 3px' }}
+                          title={t('realtimeNav.qcScaledTitle', { k: kf })}>
+                          {/* 3 位小数:SSRS k=0.995 用 2 位会显示成 ×1.00,与 BDC 真 ×1 混淆 */}
+                          {t('realtimeNav.qcScaledShort',
+                            { k: kf === 1 ? '1' : String(+(kf as number).toFixed(3)) })}
                         </span>
                       )}
                     </span>
@@ -726,6 +767,14 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                 if (kids.length) {
                   const rows = kids.map(k => {
                     const mul = cohorts?.[k.display_name];
+                    // 配对行不显示净额(多空腿资金占用不能 net,与策略层瀑布同理):
+                    // 有空头腿时右侧改为 多/空 两腿并示,占用资金(多头 + 空头抵押 2%,
+                    // RiskManager 同式)与净值进 tooltip。纯多头行保持单数字。
+                    let pL = 0, pS = 0;
+                    for (const h of k.holdings || []) {
+                      const v = h.value * scale;
+                      if (v >= 0) pL += v; else pS += -v;
+                    }
                     return (
                     <div key={k.node_id}>
                       <div onClick={e => {                      // 二级展开:pair→腿 / subsector→成分股
@@ -751,21 +800,44 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                             </span>
                           )}
                         </span>
-                        <span style={{ fontWeight: 700 }}>
-                          ${(k.value * scale).toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                        </span>
+                        {pS > 0 ? (
+                          <span style={{ textAlign: 'right', lineHeight: 1.25 }}
+                            title={t('realtimeNav.pairLegsTitle', {
+                              occ: usd(pL + 0.02 * pS), long: usd(pL),
+                              coll: usd(0.02 * pS), net: usd(pL - pS) })}>
+                            <span style={{ fontWeight: 700, display: 'block' }}>
+                              {t('realtimeNav.pairLong')} {usd(pL)}
+                            </span>
+                            <span style={{ color: '#e11d48', display: 'block' }}>
+                              {t('realtimeNav.pairShort')} {usd(-pS)}
+                            </span>
+                          </span>
+                        ) : (
+                          <span style={{ fontWeight: 700 }}>
+                            ${(k.value * scale).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                          </span>
+                        )}
                       </div>
                       {expanded.has(k.node_id) && k.holdings?.map(h => leafRow(h, true, mul))}
                     </div>
                     );
                   });
-                  return <>{rows}{additive && waterfall(s, kids, cohorts, mirror, t)}</>;
+                  return (<>
+                    {rows}
+                    {additive && waterfall(s, kids, cohorts, mirror, t)}
+                    {scalable && !missingK &&
+                      waterfall(s, kids, undefined, mirror, t, { k: kf as number })}
+                  </>);
                 }
                 if (s.holdings?.length) {                        // 直接持股(SSRS/BDC):股票级明细
                   return (
-                    <div style={{ borderTop: '1px dashed #ddd', marginTop: 2 }}>
-                      {s.holdings.map(h => leafRow(h, false))}
-                    </div>
+                    <>
+                      <div style={{ borderTop: '1px dashed #ddd', marginTop: 2 }}>
+                        {s.holdings.map(h => leafRow(h, false))}
+                      </div>
+                      {scalable && !missingK &&
+                        waterfall(s, [], undefined, mirror, t, { k: kf as number })}
+                    </>
                   );
                 }
                 return (                                          // 空仓(MRPT 0 对):全现金

@@ -2422,5 +2422,41 @@
     "mrpt_dd": -1.6,
     "mtfs_dd": -49.65,
     "combined_dd": -24.2
+  },
+  {
+    "date": "2026-08-20",
+    "mrpt_equity": 616435.98,
+    "mtfs_equity": 291799.07,
+    "combined_equity": 908235.05,
+    "mrpt_pnl": 0.0,
+    "mtfs_pnl": -4636.06,
+    "combined_pnl": -4636.06,
+    "mrpt_dd": -1.6,
+    "mtfs_dd": -50.44,
+    "combined_dd": -24.59
+  },
+  {
+    "date": "2026-08-21",
+    "mrpt_equity": 616435.98,
+    "mtfs_equity": 292461.34,
+    "combined_equity": 908897.32,
+    "mrpt_pnl": 0.0,
+    "mtfs_pnl": 662.27,
+    "combined_pnl": 662.27,
+    "mrpt_dd": -1.6,
+    "mtfs_dd": -50.32,
+    "combined_dd": -24.53
+  },
+  {
+    "date": "2026-08-24",
+    "mrpt_equity": 616078.98,
+    "mtfs_equity": 288842.21,
+    "combined_equity": 904921.19,
+    "mrpt_pnl": -357.0,
+    "mtfs_pnl": -3619.13,
+    "combined_pnl": -3976.13,
+    "mrpt_dd": -1.66,
+    "mtfs_dd": -50.94,
+    "combined_dd": -24.86
   }
 ]

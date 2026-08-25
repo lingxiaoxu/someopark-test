@@ -20,7 +20,7 @@ Kalshi crypto 永续合约(KXBTCPERP 等 13 个市场)的完整研究栈:自建�
 PIT 严格的回测/walk-forward 框架、成交感知撮合、以及 **12 个策略 × 3 个费率档位**的系统性验证。
 独立于 someopark-test 主项目(配对交易)与 qlib-main(SSRS/AISS),零依赖交叉。
 
-**当前结论(2026-08-10,Tier 4±1 资本规划下):证实可交易策略 = 0;五个观察候选(S1/S8/S9 统计待证 + S3改 结构收入待确认 + **W5 knockdown 回测全过、待 live 捕获率**);
+**当前结论(2026-08-10,Tier 4±1 资本规划下):证实可交易策略 = 0;**六个观察候选**(W1/W2/W3 统计待证 + W4 结构收入待确认 + **W5 knockdown 三重验证已过** + W6 residual lead-lag 新注册);
 详见[主验证表](#主验证表策略--时间结构--费率档位)。** 本框架的方法论产出已外溢至生产策略
 (SSRS/AISS 的同 bar 泄露报告与 DSR 公式修正均源于此)。
 
@@ -37,6 +37,7 @@ PIT 严格的回测/walk-forward 框架、成交感知撮合、以及 **12 个�
 | W2 / S8 Chronos | bolt-base/指数/4h/ctx512/40bps 带 | 注册后 t≥2 **且**注册后均值>0 | ~9 月中起 |
 | W3 / S9 24h 动量 | 统一延续/\|z\|≥1/13 市场 | n≥1260 且 t≥2 | ~明年 3 月 |
 | **W4 / S3改 同资产 carry** | **常持空 perp+现货多,30d 资金费和止损** | 注册后 ≥60 天 且 t≥2 且 @spot50 净>0 | **~10 月中(或经批准提前小额实盘)** |
+| **W6 / N2-residual 跳变 lead-lag** | **指数跳≥25bps 且 perp 未跟(residual>7bps)+ 点差≤2.1bps,持有 1 分钟,taker 进出** | **注册后 n≥60 且 netTT t≥2 且剔最佳日仍正** | **~9 月下旬(2.6 事件/天)** |
 | **W5 / knockdown(Poly 逆向复刻)** | **买刚被砸的近ATM二元侧,zone .15-.45/dip5c/tte5-45/深度≥50 张,KXBTC** | **探针捕获率 ≥25% 持续 ≥7 天 且纸面 P&L 达回测 50%**(回测已过全部对抗关:+24.5c/张 t=18.4) | **~8 月下旬(探针跑一周即判)** |
 
 **四个实盘执行模块已建成(`crypto_strategies/live_watch/`),全部默认 DISARMED:**
@@ -208,6 +209,7 @@ L2 盘口失衡(545MB 从未用过的数据,出清:执行过滤 +0.2bps 不显�
 |---|---|---|
 | 每月 | `python -m crypto_trading.crypto_strategies.research_watchlist` | **四候选前注册观察(注册日 2026-08-10,配置冻结)**:W1/S1 post n≥30 且 t≥2;W2/S8 post t≥2 且 post 均值>0;W3/S9 n≥1260 且 t≥2;**W4/S3改 post≥60 天且 t≥2 且 @spot50 净>0 且 30d 资金费仍正;**W5 探针捕获率≥25%×7 天+纸面达回测 50%** |
 | 每月 | `python -m crypto_trading.crypto_strategies.research_tier_study` | 三档全策略;S8 新时段符号 |
+| 每月 | `./pipeline.sh recheck` | **归档策略定时复查**(N4/N2基线/S4/S9/日级knockdown 逐窗重测;预注册复活判据 net>0 且 NW-t≥2 → REVIEW 标记)。另 8 个结构性归档只在外部事实变化时翻牌 |
 | 每月 | `python -m crypto_trading.crypto_strategies.research_selection_scaling` | Spearman ≥0.15 且 top10 t≥2 → 才进 fill-aware |
 | 每月 | `python -m …funding_carry.research_cross_venue` | 跨所差分是否扩大 |
 | 外生 | kalshi.com/incentives(需登录) | Liquidity Incentive Program 是否覆盖 crypto perp(按挂单深度付 $1-1000/市场/天 → 改写 maker 恒等式) |
@@ -232,4 +234,5 @@ tests/            318 green
 
 00-08 建设计划 · `09_ml_directional.md` 三闸 ML · `10_pit_audit_20260728.md` **PIT 大审计(12+ 泄露)** ·
 `11_horizon_investigation.md` 视界图谱+数据卫生 · `12_how_to_make_money.md` carry/Chronos/二元+根本诊断 ·
-`13_max_effort_audit.md` 尽力度复审(盘口/lead-lag/时段/文献) · `14_tier_study.md` **档位重测(本表出处)**
+`13_max_effort_audit.md` 尽力度复审(盘口/lead-lag/时段/文献) · `14_tier_study.md` **档位重测(本表出处)** ·
+`15_live_trading_accounts.md` **实盘账户手册(demo/prod 三大差异、W5 走 events API、两级闸门与前置清单)**

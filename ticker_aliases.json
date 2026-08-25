@@ -1,6 +1,6 @@
 {
  "schema": "v1",
- "updated": "2026-08-17T23:39:49+00:00",
+ "updated": "2026-08-24T21:33:37+00:00",
  "aliases": {
   "BK": {
    "current": "BNY",
@@ -10,7 +10,7 @@
    "name": "Bank of New York Mellon Corporation",
    "verified": "polygon_events",
    "asof": "2026-08-15",
-   "recycled_checked": "2026-08-17"
+   "recycled_checked": "2026-08-24"
   }
  }
 }

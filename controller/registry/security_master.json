@@ -358,10 +358,10 @@
  },
  "US0534841012": {
   "asset_class": "equity",
-  "cik": "0000915912",
+  "cik": null,
   "cusip": "053484101",
-  "figi": "BBG000BLPBL5",
-  "name": "AvalonBay Communities, Inc.",
+  "figi": null,
+  "name": "AVB",
   "polygon_ticker": "AVB",
   "registered_at": "2026-08-12T06:53:08+00:00",
   "status": "active",
@@ -1155,6 +1155,23 @@
    }
   ]
  },
+ "US30233Q1085": {
+  "asset_class": "equity",
+  "cik": "0002115436",
+  "cusip": "30233Q108",
+  "figi": "BBG023CY9MM1",
+  "name": "ExxonMobil Holdings Corporation",
+  "polygon_ticker": "XOM",
+  "registered_at": "2026-08-24T13:38:01+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-24",
+    "ticker": "XOM",
+    "to": null
+   }
+  ]
+ },
  "US3024913036": {
   "asset_class": "equity",
   "cik": "0000037785",
@@ -1279,7 +1296,7 @@
   "cik": "0000038777",
   "cusip": "354613101",
   "figi": "BBG000BD0TF8",
-  "name": "Franklin Resources, Inc.",
+  "name": "Franklin Templeton, Inc.",
   "polygon_ticker": "BEN",
   "registered_at": "2026-08-12T06:53:08+00:00",
   "status": "active",
@@ -1848,6 +1865,23 @@
    {
     "from": "2026-08-12",
     "ticker": "LEN",
+    "to": null
+   }
+  ]
+ },
+ "US5261071071": {
+  "asset_class": "equity",
+  "cik": "0001069202",
+  "cusip": "526107107",
+  "figi": "BBG000BB5B84",
+  "name": "Lennox International Inc.",
+  "polygon_ticker": "LII",
+  "registered_at": "2026-08-24T13:37:56+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-24",
+    "ticker": "LII",
     "to": null
    }
   ]
@@ -2532,6 +2566,23 @@
    }
   ]
  },
+ "US69608A1088": {
+  "asset_class": "equity",
+  "cik": "0001321655",
+  "cusip": "69608A108",
+  "figi": "BBG000N7QR55",
+  "name": "Palantir Technologies Inc. Class A Common Stock",
+  "polygon_ticker": "PLTR",
+  "registered_at": "2026-08-24T13:37:58+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-24",
+    "ticker": "PLTR",
+    "to": null
+   }
+  ]
+ },
  "US6974351057": {
   "asset_class": "equity",
   "cik": "0001327567",
@@ -2545,6 +2596,23 @@
    {
     "from": "2026-08-12",
     "ticker": "PANW",
+    "to": null
+   }
+  ]
+ },
+ "US70432V1026": {
+  "asset_class": "equity",
+  "cik": "0001590955",
+  "cusip": "70432V102",
+  "figi": "BBG0064N0ZZ5",
+  "name": "PAYCOM SOFTWARE, INC.",
+  "polygon_ticker": "PAYC",
+  "registered_at": "2026-08-24T13:37:58+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-24",
+    "ticker": "PAYC",
     "to": null
    }
   ]
@@ -3038,6 +3106,23 @@
    {
     "from": "2026-08-12",
     "ticker": "SWKS",
+    "to": null
+   }
+  ]
+ },
+ "US8447411088": {
+  "asset_class": "equity",
+  "cik": "0000092380",
+  "cusip": "844741108",
+  "figi": "BBG000BNJHS8",
+  "name": "Southwest Airlines Co.",
+  "polygon_ticker": "LUV",
+  "registered_at": "2026-08-24T13:37:56+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-24",
+    "ticker": "LUV",
     "to": null
    }
   ]

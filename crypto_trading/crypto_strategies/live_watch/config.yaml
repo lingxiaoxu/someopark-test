@@ -42,3 +42,11 @@ w5_knockdown:             # knockdown replication, KXBTC hourly binaries
   min_trades_for_kill: 40
   # LIVE criteria (watchlist): probe capture_rate >= 0.25 over >= 7 days AND
   # paper mean pnl per contract within 50% of the backtest's +24.5c
+
+w6_residual:              # N2-residual jump lead-lag, BTC+ETH perps
+  enabled: false
+  contracts: 10           # ≈$64 notional/leg
+  max_cum_loss_usd: 30
+  min_trades_for_kill: 40
+  # LIVE criteria (watchlist): post-registration n >= 60 AND netTT NW-t >= 2
+  # AND ex-best-day still positive AND live entry slippage vs backtest < 3bps

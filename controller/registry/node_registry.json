@@ -12,6 +12,36 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR0JW0BZC": {
+  "aliases": [
+   "PAYC/LII"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US70432V1026|S:US5261071071",
+  "display_name": "PAYC/LII",
+  "first_seen": "2026-08-24T13:38:06+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPR4RIX80D": {
+  "aliases": [
+   "PLTR/LUV"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US69608A1088|S:US8447411088",
+  "display_name": "PLTR/LUV",
+  "first_seen": "2026-08-24T13:38:06+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPR5GA214X": {
   "aliases": [
    "ACGL/HIG"
@@ -72,6 +102,21 @@
   "retired_at": null,
   "status": "active"
  },
+ "SPPR7LOZRE1": {
+  "aliases": [
+   "PSX/NI"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US7185461040|S:US65473P1057",
+  "display_name": "PSX/NI",
+  "first_seen": "2026-08-24T13:38:06+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
  "SPPRA6740TX": {
   "aliases": [
    "AMD/PEG"
@@ -127,6 +172,36 @@
   "canonical_key": "mtfs|L:US5951121038|S:US8168511090",
   "display_name": "MU/SRE",
   "first_seen": "2026-08-12T15:22:30+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRE2LA02U": {
+  "aliases": [
+   "PAYC/BLDR"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US70432V1026|S:US12008R1077",
+  "display_name": "PAYC/BLDR",
+  "first_seen": "2026-08-24T13:38:06+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPREY5NNH9": {
+  "aliases": [
+   "VLO/NCLH"
+  ],
+  "attrs": {
+   "strategy": "mtfs"
+  },
+  "canonical_key": "mtfs|L:US91913Y1001|S:USG667211043",
+  "display_name": "VLO/NCLH",
+  "first_seen": "2026-08-24T13:38:06+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,
@@ -292,6 +367,21 @@
   "canonical_key": "mrpt|L:US4781601046|S:US7170811035",
   "display_name": "JNJ/PFE",
   "first_seen": "2026-08-14T15:08:29+00:00",
+  "kind": "pair",
+  "probe": 0,
+  "retired_at": null,
+  "status": "active"
+ },
+ "SPPRZR7GRWG": {
+  "aliases": [
+   "BAC/JPM"
+  ],
+  "attrs": {
+   "strategy": "mrpt"
+  },
+  "canonical_key": "mrpt|L:US0605051046|S:US46625H1005",
+  "display_name": "BAC/JPM",
+  "first_seen": "2026-08-24T13:38:06+00:00",
   "kind": "pair",
   "probe": 0,
   "retired_at": null,

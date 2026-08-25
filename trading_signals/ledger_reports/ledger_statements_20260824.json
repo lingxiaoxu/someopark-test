@@ -1,0 +1,264 @@
+{
+ "mrpt": {
+  "as_of": "2026-08-24",
+  "balance_sheet": {
+   "cash": 1040598.92,
+   "net_securities": -254.31,
+   "nav": 1040344.61,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -357.0,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -574.2,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": 4729.43,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": 32078.97,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 1040701.61,
+    "net_income": -357.0,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1040344.61,
+    "return_pct": -0.0343,
+    "max_drawdown_pct": -0.03
+   },
+   "1W": {
+    "beginning_nav": 1040918.81,
+    "net_income": -574.2,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1040344.61,
+    "return_pct": -0.0552,
+    "max_drawdown_pct": -0.13
+   },
+   "1M": {
+    "beginning_nav": 1035615.18,
+    "net_income": 4729.43,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1040344.61,
+    "return_pct": 0.4567,
+    "max_drawdown_pct": -0.64
+   },
+   "ITD": {
+    "beginning_nav": 1008265.64,
+    "net_income": 32078.97,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 1040344.61,
+    "return_pct": 3.1816,
+    "max_drawdown_pct": -3.21
+   }
+  },
+  "positions": {
+   "BAC": {
+    "shares": 1757,
+    "avg_cost": 61.69,
+    "entry_date": "2026-08-21"
+   },
+   "JPM": {
+    "shares": -308,
+    "avg_cost": 351.58,
+    "entry_date": "2026-08-21"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": 41166.09,
+   "cumulative_dividends": -464.48,
+   "cumulative_fees": 0.0,
+   "unrealized": -357.0,
+   "total": 40344.61
+  },
+  "activity_today": {
+   "n_trades": 0,
+   "realized_today": 0,
+   "trades": []
+  }
+ },
+ "mtfs": {
+  "as_of": "2026-08-24",
+  "balance_sheet": {
+   "cash": 263345.2,
+   "net_securities": 610502.92,
+   "nav": 873848.12,
+   "initial_cash": 1000000.0,
+   "balance_check": 0.0
+  },
+  "income_statement": {
+   "1D": {
+    "net_income": -3619.13,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1W": {
+    "net_income": -73455.63,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "1M": {
+    "net_income": -133657.4,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   },
+   "ITD": {
+    "net_income": -127157.79,
+    "source": "pairs_ledger（成交+盯市，非 strategy_performance）"
+   }
+  },
+  "capital_statement": {
+   "1D": {
+    "beginning_nav": 877467.25,
+    "net_income": -3619.13,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 873848.12,
+    "return_pct": -0.4125,
+    "max_drawdown_pct": -0.41
+   },
+   "1W": {
+    "beginning_nav": 947303.75,
+    "net_income": -73455.63,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 873848.12,
+    "return_pct": -7.7542,
+    "max_drawdown_pct": -7.75
+   },
+   "1M": {
+    "beginning_nav": 1007505.52,
+    "net_income": -133657.4,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 873848.12,
+    "return_pct": -13.2662,
+    "max_drawdown_pct": -14.78
+   },
+   "ITD": {
+    "beginning_nav": 1001005.91,
+    "net_income": -127157.79,
+    "contributions": 0.0,
+    "withdrawals": 0.0,
+    "ending_nav": 873848.12,
+    "return_pct": -12.703,
+    "max_drawdown_pct": -26.85
+   }
+  },
+  "positions": {
+   "MLM": {
+    "shares": -105,
+    "avg_cost": 553.37,
+    "entry_date": "2026-07-31"
+   },
+   "CRL": {
+    "shares": 448,
+    "avg_cost": 260.72,
+    "entry_date": "2026-08-05"
+   },
+   "PSX": {
+    "shares": 914,
+    "avg_cost": 242.87,
+    "entry_date": "2026-08-21"
+   },
+   "NI": {
+    "shares": -2421,
+    "avg_cost": 40.62,
+    "entry_date": "2026-08-21"
+   },
+   "PLTR": {
+    "shares": 1257,
+    "avg_cost": 179.94,
+    "entry_date": "2026-08-21"
+   },
+   "LUV": {
+    "shares": -2337,
+    "avg_cost": 40.38,
+    "entry_date": "2026-08-21"
+   },
+   "PAYC": {
+    "shares": 1244,
+    "avg_cost": 229.07,
+    "entry_date": "2026-08-21"
+   },
+   "VLO": {
+    "shares": 408,
+    "avg_cost": 348.86,
+    "entry_date": "2026-08-21"
+   },
+   "NCLH": {
+    "shares": -4132,
+    "avg_cost": 17.24,
+    "entry_date": "2026-08-21"
+   },
+   "BLDR": {
+    "shares": -1014,
+    "avg_cost": 70.21,
+    "entry_date": "2026-08-21"
+   }
+  },
+  "pnl": {
+   "cumulative_realized": -129969.96,
+   "cumulative_dividends": -7658.11,
+   "cumulative_fees": 0.0,
+   "unrealized": 11476.19,
+   "total": -126151.88
+  },
+  "activity_today": {
+   "n_trades": 3,
+   "realized_today": 1351.49,
+   "trades": [
+    {
+     "date": "2026-08-24",
+     "ticker": "PAYC",
+     "side": "DIV",
+     "shares": 2488,
+     "price": 0.375,
+     "gross": 933.0,
+     "dedup_key": "2026-08-24-PAYC-DIV"
+    },
+    {
+     "date": "2026-08-24",
+     "ticker": "PAYC",
+     "side": "SELL",
+     "shares": 1244,
+     "price": 229.62,
+     "avg_cost_at_trade": 229.07,
+     "realized_pnl": 684.2,
+     "gross": 285647.28,
+     "dedup_key": "2026-08-24-PAYC-SELL-PAYC/LII|s1",
+     "lot": "PAYC/LII|s1",
+     "lot_action": "CLOSE",
+     "lot_cost": 229.07,
+     "lot_realized": 684.2,
+     "price_basis": "close_resolved"
+    },
+    {
+     "date": "2026-08-24",
+     "ticker": "LII",
+     "side": "BUY",
+     "shares": 177,
+     "price": 399.1,
+     "avg_cost_at_trade": 402.87,
+     "realized_pnl": 667.29,
+     "gross": -70640.7,
+     "dedup_key": "2026-08-24-LII-BUY-PAYC/LII|s2",
+     "lot": "PAYC/LII|s2",
+     "lot_action": "CLOSE",
+     "lot_cost": 402.87,
+     "lot_realized": 667.29,
+     "price_basis": "close_resolved"
+    }
+   ]
+  }
+ }
+}
