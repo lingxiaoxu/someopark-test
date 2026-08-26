@@ -168,3 +168,67 @@ def test_accrue_is_a_noop_when_every_release_is_stored(conn, tmp_path, monkeypat
     out = C.wf_accrue(conn, s, now=NOW, series=["KXPAYROLLS"])
     assert out == {"KXPAYROLLS": []}
     assert called == []
+
+
+class TestPickPercentileTies:
+    """The tie rule, fixed 2026-08-26.
+
+    `pick_percentile` scored with a strict `<`. Real improvement vectors on short windows are
+    heavily tied (most parameter sets move no decision), and a FULLY tied matrix made the
+    expression 0.0 for every candidate — so a release with no information read as 0%, the
+    most damning value, instead of the 50% that "no information" means. Across the 21 stored
+    monthly releases that turned a true 48.7% (p=1.000) into an apparent 16.7% (p=0.000).
+    """
+
+    def test_a_fully_tied_matrix_is_fifty_percent_not_zero(self):
+        """THE bug. Nothing separates the candidates, so no candidate can rank anywhere."""
+        real = [[1.0, 1.0, 1.0, 1.0]]
+        synth = [[0.0, 5.0, 1.0, 2.0]]          # synth has a clear favourite; real does not
+        pp = C.pick_percentile(real, synth)
+        assert pp["uninformative"] is True
+        assert pp["n_distinct"] == 1
+        assert pp["tied_frac"] == 1.0
+        assert pp["percentile"] == pytest.approx(0.5)      # the null, correctly
+        assert pp["percentile_strict"] == 0.0              # what shipped before
+
+    def test_midrank_never_below_strict(self):
+        """Direction of the old bias: it could only ever understate the synthetic sample,
+        so lambda was conservative because of it, never inflated."""
+        import numpy as np
+        rng = np.random.default_rng(7)
+        for _ in range(200):
+            k = int(rng.integers(3, 12))
+            real = [list(np.round(rng.normal(size=k), 1))]   # rounding forces ties
+            synth = [list(rng.normal(size=k))]
+            pp = C.pick_percentile(real, synth)
+            assert pp["percentile"] >= pp["percentile_strict"] - 1e-12
+
+    def test_untied_matrix_is_unchanged_by_the_fix(self):
+        """No ties => mid-rank collapses to the strict rank, so old readings stay valid."""
+        real = [[0.0, 3.0, 1.0, 2.0]]
+        synth = [[0.0, 9.0, 1.0, 2.0]]          # synth picks idx 1, which is the real oracle
+        pp = C.pick_percentile(real, synth)
+        assert pp["tied_frac"] == pytest.approx(0.25)       # only itself
+        assert pp["percentile"] == pytest.approx(pp["percentile_strict"] + 0.125)
+        assert pp["pick_idx"] == 1
+        assert pp["beats_default"] is True
+
+    def test_partial_ties_split_the_tied_mass(self):
+        real = [[0.0, 1.0, 1.0, 1.0]]           # 3 of 4 tied at the top
+        synth = [[0.0, 5.0, 1.0, 2.0]]          # picks idx 1, one of the tied winners
+        pp = C.pick_percentile(real, synth)
+        assert pp["percentile_strict"] == pytest.approx(0.25)      # only the default below
+        assert pp["percentile"] == pytest.approx(0.25 + 0.5 * 0.75)
+        assert pp["uninformative"] is False
+
+    def test_wf_aggregate_surfaces_the_tie_diagnostics(self, conn):
+        """A pick_percentile with no tie context is unreadable — the flat-matrix case looks
+        exactly like a real result. The report must carry both."""
+        # >=MONTHLY_WF_MIN_REAL real rows, or the report returns at "accruing" first
+        _release(conn, "KXPCECORE", "26MAY", [[1.0, 1.0, 1.0, 1.0, 1.0]] * 3,
+                 [[0.0, 9.0, 1.0, 2.0, 3.0]] * 4)
+        rep = C.wf_aggregate(conn, "KXPCECORE", now=NOW)
+        assert rep["pick_uninformative"] is True
+        assert rep["pick_tied_frac"] == pytest.approx(1.0)
+        assert rep["pick_percentile"] == pytest.approx(0.5)
+        assert rep["pick_percentile_strict"] == pytest.approx(0.0)

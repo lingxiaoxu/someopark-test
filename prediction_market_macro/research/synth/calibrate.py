@@ -195,14 +195,45 @@ def pick_percentile(mat_real, mat_synth) -> dict:
     Measured 2026-08-21: KXJOBLESSCLAIMS **86.8%**, KXWTIW **19.0%**, KXNATGASW **28.6%** —
     mean **44.8%**, and on two of three the synthetic pick was WORSE than doing nothing. That
     is the finding that sets lambda to zero, and unlike rho it cannot be explained away by an
-    unreliable reference.
+    unreliable reference. (Those three are `percentile_strict`; see below. Their matrices are
+    gone, but all three have a NON-ZERO `real_improve_of_synth_pick` on record, so none of
+    them is the degenerate case the tie correction is about, and the 44.8% reading stands.)
+
+    ## Ties, and why the strict rank was wrong (2026-08-26)
+
+    The original `(mr < mr[j]).mean()` is a STRICT less-than. Most candidate parameter sets
+    move no decision at all on a short window, so real improvement vectors are heavily tied —
+    and when EVERY candidate ties, that expression is 0.0 for every `j`, including the oracle.
+    A release carrying no information was therefore recorded as a 0% pick, the most damning
+    value available, rather than the 50% that "no information" means.
+
+    On the 21 stored monthly walk-forward releases this was not a rounding detail: 8 of 21
+    real matrices are entirely flat, and the strict mean reads **16.7%** — apparently a strong
+    refutation, sign test p=0.000 — where the mid-rank mean is **48.7%**, p=1.000. The honest
+    monthly finding is "no information either way", not "actively harmful".
+
+    `percentile` is now the mid-rank, `(#below + 0.5*#tied) / k`, which is 50% under the null
+    with or without ties. `percentile_strict` is kept so older readings stay comparable.
+    Because mid-rank >= strict always, this bug could only ever UNDERSTATE the synthetic
+    sample; lambda was biased conservative by it, never inflated. Nothing here feeds a lambda
+    value — `agreement`/`_disattenuated_lam` do that — so this is a reporting fix, and no
+    persisted lambda changes.
     """
     mr, ms = _means(mat_real), _means(mat_synth)
     mr, ms = mr - mr[0], ms - ms[0]
     j = int(np.argmax(ms))
+    below = float((mr < mr[j]).mean())
+    tied = float((mr == mr[j]).mean())
+    n_distinct = int(np.unique(mr).size)
     return {"pick_idx": j, "pick_real_improve": float(mr[j]),
             "oracle_real_improve": float(mr.max()),
-            "percentile": float((mr < mr[j]).mean()),
+            "percentile": below + 0.5 * tied,
+            "percentile_strict": below,
+            "tied_frac": tied,
+            "n_distinct": n_distinct,
+            # every candidate scored identically: the release separates nothing, and any
+            # percentile read off it is an artifact of the tie rule rather than a result
+            "uninformative": bool(n_distinct == 1),
             "beats_default": bool(mr[j] > 0)}
 
 
@@ -627,7 +658,13 @@ def wf_aggregate(conn, series: str, *, now: datetime | None = None,
                 "rel_real": round(ag["rel_real"], 4),
                 "rel_synth": round(ag["rel_synth"], 4),
                 "identified": ag["identified"],
-                "pick_percentile": round(pp["percentile"], 4) if pp else None})
+                "pick_percentile": round(pp["percentile"], 4) if pp else None,
+                # the tie diagnostics travel with the number: a pick_percentile read off a
+                # mostly-flat matrix is a statement about the tie rule, not about the sample
+                "pick_percentile_strict": (round(pp["percentile_strict"], 4)
+                                           if pp else None),
+                "pick_tied_frac": round(pp["tied_frac"], 4) if pp else None,
+                "pick_uninformative": pp["uninformative"] if pp else None})
     if len(mat_r) < MONTHLY_WF_MIN_IDENT:
         rep["status"] = (f"measured but unidentifiable — reliability needs "
                          f">={MONTHLY_WF_MIN_IDENT} real rows")

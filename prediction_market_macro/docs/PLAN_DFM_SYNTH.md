@@ -559,24 +559,64 @@ releases; every aggregate correctly reports *measured but unidentifiable* (n=3 <
 correctly persists nothing. The preliminary readings, reported for the record and NOT for
 conclusions — at n_real=3 these are noise-level:
 
-| series | rho | pick_pct | rel_synth | note |
-|---|---|---|---|---|
-| KXPAYROLLS | +0.182 | **77.0%** | −0.653 | pick beats null; synth side unreliable |
-| KXCPIYOY | +0.217 | 26.9% | −0.638 | synth side unreliable |
-| KXCPICORE | −0.283 | 34.7% | +0.699 | |
-| KXCPI | −0.132 | 14.9% | +0.122 | |
-| KXU3 | −0.068 | 9.9% | +0.633 | pick worse than default |
-| KXCPICOREYOY | −0.009 | 0.0% | +0.539 | pick was the worst candidate |
-| KXPCECORE | 0.000 | 0.0% | 0.000 | K=5, degenerate at this sample |
+| series | rho | pick_pct (strict, as first read) | pick_pct (mid-rank, correct) | rel_synth | note |
+|---|---|---|---|---|---|
+| KXPAYROLLS | +0.182 | 77.0% | **88.3%** | −0.653 | pick beats null; synth side unreliable |
+| KXCPIYOY | +0.217 | 26.9% | **63.4%** | −0.638 | synth side unreliable |
+| KXPCECORE | 0.000 | 0.0% | **50.0%** | 0.000 | K=5; real matrix entirely flat — no information, not a bad pick |
+| KXCPICORE | −0.283 | 34.7% | **40.6%** | +0.699 | |
+| KXCPI | −0.132 | 14.9% | **15.7%** | +0.122 | barely tied; a genuine below-null reading |
+| KXU3 | −0.068 | 9.9% | **14.9%** | +0.633 | |
+| KXCPICOREYOY | −0.009 | 0.0% | **13.8%** | +0.539 | |
 
-Mean pick percentile ≈ 27% against a null of 50 — **below** null, the opposite sign of
-the weekly-series decision test (44.8%) and of KXJOBLESSCLAIMS alone (86.8%). If this
-holds as rows accrue, the accrual will keep refusing to persist zeros (the n≥8 rule) and
-the right act at n≥8 would be to persist the measured zeros AND retire the
-pre-registered `'*'` — the mechanism for both already exists. Decision points: first
-identified readings in September (n=4); evidence-grade by New Year (n=8). Nothing about
-these numbers changes tomorrow's lane: the gate, the discount and the blend behave
-exactly as registered.
+**The strict column is wrong — see §6c.** Mean pick percentile is **41.0%** pooled per
+series (not ≈27%), and per-release **48.7%** against a null of 50, sign test 7/21 above
+null, **p = 0.19**. The monthly finding at n=3 is therefore *no information either way* —
+NOT the apparent refutation the first read produced. It is consistent with, not opposite
+to, the weekly decision test (44.8%).
+
+The accrual behaves identically either way: it keeps refusing to persist zeros (the n≥8
+rule). What changed is what a reader should conclude today, which is nothing. Decision
+points unchanged: first identified readings in September (n=4); evidence-grade by New
+Year (n=8). Nothing here changes the daily lane — the gate, the discount and the blend
+behave exactly as registered.
+
+### 6c. The tie rule that manufactured a refutation (found and fixed 2026-08-26)
+
+`pick_percentile` scored with a strict `<`: `(mr < mr[j]).mean()`. On a 75-day window most
+candidate parameter sets move **no decision at all**, so real improvement vectors are
+heavily tied — and when *every* candidate ties, that expression returns 0.0 for every `j`,
+including the oracle. A release carrying zero information was therefore recorded as a **0%
+pick**, the most damning value in the range, instead of the 50% that "no information" means.
+
+This was not a rounding detail. **8 of the 21** stored monthly releases have a completely
+flat real matrix. Scored strictly they read mean **16.7%**, sign test **p = 0.000** — which
+looks like hard evidence that the synthetic sample actively picks badly. Scored with the
+standard mid-rank `(#below + 0.5·#tied)/k` — 50% under the null with or without ties — the
+same 21 releases read **48.7%**, **p = 1.000**.
+
+Three things make this survivable rather than serious:
+
+1. **It never touched a lambda.** `pick_percentile` feeds reports and `detail_json` only;
+   lambda comes from `agreement` / `_disattenuated_lam`. No persisted lambda changes, and
+   the production `'*' = 0.1356` is unaffected.
+2. **Its direction is always conservative.** mid-rank ≥ strict identically, so the bug could
+   only ever *understate* the synthetic sample. It biased the project toward distrusting
+   DFM, never toward over-trusting it.
+3. **The §6a weekly readings stand.** Those matrices are deleted and cannot be re-scored —
+   but all three have a non-zero `real_improve_of_synth_pick` on record (+0.0675 / −0.090 /
+   −0.076) and non-zero oracles, so none is the degenerate flat case. 44.8% remains the
+   weekly number and λ = 0 there remains correctly derived.
+
+Fixed in `pick_percentile`: `percentile` is now the mid-rank; `percentile_strict`,
+`tied_frac`, `n_distinct` and `uninformative` ride alongside so a flat matrix can never
+again be mistaken for a result. `wf_aggregate` surfaces all four. 5 tests pin it, including
+the exact degenerate case and the mid-rank ≥ strict invariant over 200 random matrices.
+
+**Method note worth keeping:** this came from checking the null against the data, not from
+reading the code. A statistic whose null is 50% returning a **median of exactly 0.0%** across
+21 independent samples is not a strong result, it is a broken estimator. "Too strong to be
+true" is a testable signal and should be tested before it is reported.
 
 ## 7. Storage and cadence (S7) — as built, 2026-08-21
 
