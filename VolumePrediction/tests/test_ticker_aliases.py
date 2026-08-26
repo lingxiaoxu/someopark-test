@@ -228,3 +228,206 @@ def test_recheck_skips_when_still_unclaimed(monkeypatch, tmp_path):
     e = ta.load_aliases()["BK"]
     assert e.get("recycled") is None and e.get("recycled_checked")
     ta._CACHE.update(mtime=None, data={})
+
+# ══════════════════ 退市(2026-08-26;AVB 并购摘牌实证)══════════════════
+# AVB 2026-08-18 并购交割摘牌,最后一根 bar 2026-08-14。此后 8 天 VP 仍为它
+# 报出 997,536 股的"健康" ADV —— trailing 窗口一直命中死前旧 bar,而下游三
+# 个消费点只过滤 None/nan/非正数,正数一律放行。以下不变量锁死这类事故:
+#   1. 退市记录与别名同规矩: 日期窗口 + 身份锚 + 回收守卫(绝不前视判死);
+#   2. 判定顺序 改名优先于退市(改名票在 reference 里同样 active=false);
+#   3. 两个块共用一个文件,任一写入点都不许抹掉另一块;
+#   4. ADV 陈旧守卫**不依赖**登记处 —— 停牌/断源/尚未查证的退市都要拦住。
+
+DELISTED_FIXTURE = {
+    "AVB": {"delisted": "2026-08-18", "name": "AvalonBay Communities, Inc.",
+            "cik": "0000915912", "figi": "BBG000BLPBL5",
+            "successor_candidates": [], "verified": "polygon_reference"},
+}
+
+
+@pytest.fixture()
+def fake_registry(monkeypatch, tmp_path):
+    """别名 + 退市 双块影子登记处(绝不碰生产 ticker_aliases.json)。"""
+    p = tmp_path / "ticker_aliases.json"
+    p.write_text(json.dumps({"schema": "v2", "aliases": {
+        "BK": {"current": "BNY", "changed": "2026-05-21",
+               "cik": "0001390777", "verified": "polygon_events"},
+    }, "delistings": DELISTED_FIXTURE}))
+    monkeypatch.setattr(ta, "ALIAS_PATH", p)
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    yield p
+    ta._CACHE.update(mtime=None, data={}, delist={})
+
+
+def test_delisting_is_date_windowed(fake_registry):
+    """PIT 红线: 退市前该票**完全正常** —— 拿"后来退市了"去判死历史是前视。"""
+    assert ta.delisting_of("AVB", "2026-08-14") is None      # 最后交易日,活的
+    assert ta.delisting_of("AVB", "2026-08-17") is None      # 摘牌前一日,活的
+    assert ta.delisting_of("AVB", "2026-08-18")["delisted"] == "2026-08-18"
+    assert ta.is_delisted("AVB", "2026-08-26") is True
+    assert ta.is_delisted("AAPL", "2026-08-26") is False
+
+
+def test_delisted_name_recycled_stops(fake_registry):
+    """名字被新实体取用后必须止步 —— 否则新公司一直背着旧公司的死亡记录
+    (与 FB 回收同一条红线)。"""
+    al = json.loads(fake_registry.read_text())
+    al["delistings"]["AVB"]["recycled"] = "2028-01-10"
+    fake_registry.write_text(json.dumps(al))
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    assert ta.is_delisted("AVB", "2027-06-01") is True        # 空悬期,仍是死的
+    assert ta.delisting_of("AVB", "2028-01-10") is None       # 新实体启用日起止步
+    assert ta.delisting_of("AVB", "2029-05-05") is None
+
+
+def test_describe_reports_both_classes_and_omits_healthy(fake_registry):
+    d = ta.describe(["AVB", "BK", "AAPL", None, "AVB"], "2026-08-26")
+    assert d["AVB"]["status"] == "delisted" and d["AVB"]["delisted"] == "2026-08-18"
+    assert d["BK"] == {"status": "renamed", "current": "BNY"}
+    assert "AAPL" not in d                                    # 健康票不出现
+
+
+def test_save_never_drops_the_other_block(fake_registry):
+    """v1 的两个写入点只落 aliases,加 delistings 后若不走 _save 会静默抹掉
+    整个退市册。两个方向都锁。"""
+    ta._save(aliases={**ta.load_aliases(), "FOO": {"current": "BAR",
+                                                   "changed": "2026-01-01"}})
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    assert "AVB" in ta.load_delistings(), "写 aliases 抹掉了 delistings"
+    assert "FOO" in ta.load_aliases()
+
+    ta._save(delistings={**ta.load_delistings(), "ZZZ": {"delisted": "2026-02-02"}})
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    assert "BK" in ta.load_aliases() and "FOO" in ta.load_aliases(), \
+        "写 delistings 抹掉了 aliases"
+    assert {"AVB", "ZZZ"} <= set(ta.load_delistings())
+    assert json.loads(fake_registry.read_text())["schema"] == "v2"
+
+
+def test_classify_gone_prefers_rename_over_delisting(monkeypatch, tmp_path):
+    """判定顺序红线: 改名票在 reference 里**同样是 active=false**(BK 实证)。
+    先查 active 会把每一次改名都误判成退市 —— 必须 events 优先。"""
+    p = tmp_path / "ticker_aliases.json"
+    monkeypatch.setattr(ta, "ALIAS_PATH", p)
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    monkeypatch.setattr(ta, "_events", lambda s, id_, k: {
+        "name": "Bank of New York Mellon", "cik": "0001390777",
+        "composite_figi": "BBG000BD8PN9", "events": [
+            {"type": "ticker_change", "date": "2007-07-02",
+             "ticker_change": {"ticker": "BK"}},
+            {"type": "ticker_change", "date": "2026-05-21",
+             "ticker_change": {"ticker": "BNY"}}]})
+
+    def _boom(*a, **k):                       # 退市路径一旦被走到就炸
+        raise AssertionError("改名票不该走退市判定")
+    monkeypatch.setattr(ta, "_reference_row", _boom)
+    r = ta.classify_gone(["BK"], api_key="stub")
+    assert r["renamed"]["BK"]["current"] == "BNY"
+    assert r["delisted"] == {} and r["unresolved"] == []
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    assert "BK" not in ta.load_delistings()
+
+
+def test_classify_gone_records_delisting_and_stops_requerying(monkeypatch, tmp_path):
+    """AVB 型: 无改名事件 → reference(active=false) 确证退市 → 入册。
+    入册后第二次调用必须**完全不发网络请求**(AVB 此前天天重查的根因)。"""
+    p = tmp_path / "ticker_aliases.json"
+    monkeypatch.setattr(ta, "ALIAS_PATH", p)
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    monkeypatch.setattr(ta, "_events", lambda s, id_, k: None)   # 无改名事件
+    monkeypatch.setattr(ta, "_master_ids", lambda t: [])
+    calls = []
+    monkeypatch.setattr(ta, "_reference_row", lambda s, t, k, active: (
+        calls.append(t) or {"ticker": "AVB", "name": "AvalonBay Communities, Inc.",
+                            "cik": "0000915912", "composite_figi": "BBG000BLPBL5",
+                            "primary_exchange": "XNYS",
+                            "delisted_utc": "2026-08-18T00:00:00Z"}))
+    monkeypatch.setattr(ta, "_active_under_cik", lambda s, c, k: [])
+    r = ta.classify_gone(["AVB"], api_key="stub")
+    assert r["delisted"]["AVB"]["delisted"] == "2026-08-18"
+    assert r["delisted"]["AVB"]["successor_candidates"] == []
+    assert r["renamed"] == {} and r["unresolved"] == []
+    assert len(calls) == 1
+
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    r2 = ta.classify_gone(["AVB"], api_key="stub")               # 已入册
+    assert len(calls) == 1, "已入册的票仍在重查 Polygon"
+    assert r2 == {"renamed": {}, "delisted": {}, "unresolved": []}
+
+
+def test_classify_gone_leaves_unverifiable_unresolved(monkeypatch, tmp_path):
+    """既非改名也无摘牌日 → 存疑(停牌/断源),**不得**臆断为退市。"""
+    p = tmp_path / "ticker_aliases.json"
+    monkeypatch.setattr(ta, "ALIAS_PATH", p)
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    monkeypatch.setattr(ta, "_events", lambda s, id_, k: None)
+    monkeypatch.setattr(ta, "_master_ids", lambda t: [])
+    monkeypatch.setattr(ta, "_reference_row", lambda s, t, k, active: None)
+    r = ta.classify_gone(["HALTED"], api_key="stub")
+    assert r["unresolved"] == ["HALTED"]
+    assert r["delisted"] == {}
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    assert ta.load_delistings() == {}
+
+
+# ── ADV 陈旧守卫(service._Adv.info)──────────────────────────────────────
+
+@pytest.fixture()
+def synth_service(tmp_path):
+    """合成 raw: LIVE 每天都印,DEAD 只印到 08-14(AVB 形态)。
+    零生产依赖、零网络,artifacts 目录为空 → forecast 走 ma5 回退,
+    正是 fallback_trailing 那条被守卫的路径。"""
+    raw = tmp_path / "raw"
+    raw.mkdir()
+    days = [d.strftime("%Y-%m-%d") for d in
+            pd.bdate_range("2026-07-20", "2026-08-26")]
+    for d in days:
+        rows = [{"ticker": "LIVE", "v": 1_000_000.0, "vw": 50.0, "c": 50.0}]
+        if d <= "2026-08-14":
+            rows.append({"ticker": "DEAD", "v": 900_000.0, "vw": 180.0, "c": 184.06})
+        pd.DataFrame(rows).to_parquet(raw / f"grouped_{d}.parquet")
+    from VolumePrediction.service import VolumeService
+    return VolumeService(artifacts_dir=tmp_path / "art", raw_dir=raw), days
+
+
+def test_adv_guard_blocks_stale_ticker(synth_service):
+    svc, _ = synth_service
+    i = svc.adv.info("DEAD", date="2026-08-26")
+    assert i["adv_shares"] is None, "退市票仍给出 ADV(守卫失效)"
+    assert i["source"] == "stale"
+    assert i["last_bar"] == "2026-08-14" and i["stale_td"] == 8
+    # 下游拿到的必须是 nan —— RiskManager/_vp_adv_forecast 的 isfinite 才拦得住
+    v = svc.adv.get_adv_forecast("DEAD", date="2026-08-26")
+    assert v != v, "get_adv_forecast 未退化为 NaN"
+    assert svc.execute.days_to_liquidate("DEAD", 1000, date="2026-08-26")["days"] is None
+    assert svc.execute.participation_cap("DEAD", date="2026-08-26")["max_shares_per_day"] is None
+
+
+def test_adv_guard_silent_for_live_ticker(synth_service):
+    """活票一分不能受影响(守卫误伤=全市场 sizing 断流)。"""
+    svc, _ = synth_service
+    i = svc.adv.info("LIVE", date="2026-08-26")
+    assert i["source"] == "fallback_trailing"
+    assert i["adv_shares"] == pytest.approx(1_000_000.0)
+
+
+def test_adv_guard_is_point_in_time(synth_service):
+    """PIT: 死前的每一天都必须照常给数;阈值内的短空档也不误杀。"""
+    svc, _ = synth_service
+    for d in ("2026-08-10", "2026-08-14", "2026-08-17", "2026-08-19"):
+        i = svc.adv.info("DEAD", date=d)
+        assert i["adv_shares"] is not None, f"{d} 被前视判死"
+        assert i["source"] == "fallback_trailing"
+    assert svc.adv.info("DEAD", date="2026-08-20")["source"] == "stale"
+
+
+def test_adv_guard_annotates_reason_when_registry_knows(synth_service, fake_registry):
+    """登记处已确证 → 标注原因;但守卫本身不依赖登记处(上面几个用例
+    在空登记处下同样生效),停牌与未查证的退市一样拦得住。"""
+    svc, _ = synth_service
+    al = json.loads(fake_registry.read_text())
+    al["delistings"]["DEAD"] = {"delisted": "2026-08-18", "name": "Dead Co"}
+    fake_registry.write_text(json.dumps(al))
+    ta._CACHE.update(mtime=None, data={}, delist={})
+    i = svc.adv.info("DEAD", date="2026-08-26")
+    assert i["corporate_action"] == "delisted" and i["delisted"] == "2026-08-18"

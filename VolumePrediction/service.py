@@ -32,6 +32,11 @@ log = get_logger("service")
 
 _LATEST = "volume_forecast_latest.parquet"
 
+# ADV 陈旧阈值(交易日;2026-08-26 AVB 退市实证)。一两天的空档是 grouped
+# 日频常见的零星缺行,>3 个交易日不印价就不再是"数据噪声"而是停牌/退市/
+# 断源 —— 那时候的 trailing 均值只是死前旧 bar 的回声,不能当 ADV 用。
+STALE_TD = 3
+
 
 def _as_list(symbols) -> list[str]:
     if isinstance(symbols, str):
@@ -496,7 +501,10 @@ class _Execute:
         info = self.s.adv.info(ticker, date=date)
         adv_sh = info.get("adv_shares")
         if not adv_sh:
-            return {"ticker": ticker, "days": None, "source": "unavailable"}
+            # source 透传(stale/unavailable 要能分辨:前者是票死了/停了,
+            # 后者是这票本来就没数据 —— 排障时是两码事)
+            return {"ticker": ticker, "days": None,
+                    "source": info.get("source") or "unavailable"}
         return {"ticker": ticker,
                 "days": abs(float(shares)) / (cap * adv_sh),
                 "adv_shares": adv_sh, "cap": cap, "source": info.get("source")}
@@ -701,6 +709,34 @@ class _Adv:
              blend: float = 0.5) -> dict:
         """trailing/前瞻混合 ADV 的完整信息(get_adv_forecast 的 dict 版)。"""
         tf = self.s._ticker_frame(ticker, date, lookback=window + 3)
+
+        # ── 陈旧守卫(2026-08-26, AVB 并购退市实证)────────────────────────
+        # _ticker_frame 取的是"最近 lookback 个交易日里**该票出现过**的行",
+        # 不校验这些行离参照日多远。退市/长停牌票的窗口会一直命中死前的旧
+        # bar,于是 trailing 交出一个外观完全健康的正数 ADV、last_price 永远
+        # 冻结在最后一个交易日 —— 而下游三个消费点只过滤 None/nan/非正数
+        # (RiskManager._vp_adv_forecast / days_to_liquidate / participation_cap),
+        # 正数一律放行。AVB 退市 8 天仍报 997,536 股就是这么来的。
+        #
+        # 参照日必须取 **_last_raw_date(date)** —— 即"市场确实开过盘、raw 也
+        # 确实落盘了的最后一天",而不是 date 或今天:周末/节假日/当日 raw 未
+        # 到都会让全市场集体误判为陈旧。
+        ref = self.s._last_raw_date(date)
+        last_bar = str(tf["date"].iloc[-1])[:10] if len(tf) else None
+        stale_td = (int(np.busday_count(last_bar, ref))
+                    if (last_bar and ref and last_bar < ref) else 0)
+        if stale_td > STALE_TD:
+            # 公司行为登记处若已确证原因就一并标注(纯本地查表,零网络)。
+            # 注意守卫本身**不依赖**登记处: 陈旧是本地可测的事实,停牌和尚未
+            # 查证的退市都必须拦住,不能等到登记处有记录才生效。
+            from ticker_aliases import delisting_of
+            ca = delisting_of(ticker, ref)
+            return {"ticker": ticker, "adv_shares": None, "source": "stale",
+                    "last_bar": last_bar, "stale_td": stale_td,
+                    "last_price": float(tf["close"].iloc[-1]),
+                    "corporate_action": "delisted" if ca else None,
+                    "delisted": (ca or {}).get("delisted")}
+
         trailing = float(tf["shares"].iloc[-window:].mean()) if len(tf) else None
         last_price = float(tf["close"].iloc[-1]) if len(tf) else None
         fsh, fsrc = None, None

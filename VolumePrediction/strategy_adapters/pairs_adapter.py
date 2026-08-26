@@ -80,6 +80,30 @@ def run(strategy: str = "mrpt", date: Optional[str] = None,
                                  s2: svc.adv.get_adv_forecast(s2, date=date)},
                 "objective": "pairs_entry"})
 
+    # 公司行为体检(2026-08-26 AVB 实证): 槽位里含已退市/已改名的票要**单列**
+    # 告警并点名到具体配对 —— 此前只有 sanitize 的 "no VP data" 一句笼统话,
+    # 分不清是退市、改名还是新上市,更看不出是哪几个槽位受影响。
+    # 纯本地查表(ticker_aliases 登记处),零网络,不拖慢日更。
+    from ticker_aliases import describe
+    ca = describe([t for p in positions + candidates
+                   for t in (p.get("s1"), p.get("s2"))], date)
+    for t, d in sorted(ca.items()):
+        slots = sorted({p.get("pair") or f"{p['s1']}/{p['s2']}"
+                        for p in positions + candidates
+                        if t in (p.get("s1"), p.get("s2"))})
+        if d["status"] == "delisted":
+            succ = d.get("successor_candidates") or []
+            warnings.append(
+                f"CORPORATE ACTION [delisted] {t} ({d.get('name') or '?'}) "
+                f"摘牌于 {d['delisted']} — 影响槽位 {', '.join(slots)};"
+                f"该腿 ADV 已按 stale 拦截(不参与 sizing)"
+                + (f";同 CIK 仍在交易: {', '.join(succ)}(疑似改名,请复核)"
+                   if succ else ""))
+        elif d["status"] == "renamed":
+            warnings.append(
+                f"CORPORATE ACTION [renamed] {t} → {d['current']} "
+                f"— 影响槽位 {', '.join(slots)};取数已自动转发至现名")
+
     advice = {"schema_version": "v1", "strategy": strategy, "date": date,
               "generated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
               "positions": positions, "candidates": candidates,

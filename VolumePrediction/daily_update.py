@@ -80,9 +80,12 @@ def run(date: Optional[str] = None, fetch: bool = True,
         return {"status": "error", "stage": "refresh", "detail": res}
     asof = res["asof"]
 
-    # 2b) 改名发现(2026-08-15,BK→BNY 驱动;fail-open): 消费票(四策略持仓/
-    # 槽位)从当日 raw 消失 → 查 Polygon events(旧名 404 再走 security master
-    # CUSIP/CIK)确证改名并落 ticker_aliases.json —— 服务/历史归一自动生效。
+    # 2b) 公司行为发现(2026-08-15 BK→BNY 驱动;2026-08-26 AVB 退市扩展;
+    # fail-open): 消费票(四策略持仓/槽位)从当日 raw 消失 → classify_gone
+    # 先查 Polygon events(旧名 404 再走 security master CUSIP/CIK)认**改名**,
+    # 剩下的用 reference(active=false) 认**退市**,两类都落 ticker_aliases.json
+    # —— 服务/历史归一与 adapter 告警自动生效,且判定结果**入册即不再重查**
+    # (AVB 此前连续 8 天天天重查一遍,就是因为退市无处可存)。
     aliases = None
     try:
         import ticker_aliases as ta
@@ -96,17 +99,22 @@ def run(date: Optional[str] = None, fetch: bool = True,
                 inv = json.loads((REPO / f).read_text())
                 for name in (inv.get("pairs") or {}):
                     consumed.update(name.split("/"))
+            known = set(ta.load_aliases()) | set(ta.load_delistings())
             gone = sorted(t for t in consumed
-                          if t and t not in rawset and t not in ta.load_aliases())
+                          if t and t not in rawset and t not in known)
             if gone:
-                r = ta.refresh_aliases(gone)
+                r = ta.classify_gone(gone)
                 aliases = r
-                if r["added"]:
+                if r["renamed"]:
                     log.warning(f"ticker renames detected: "
-                                f"{ {k: v['current'] for k, v in r['added'].items()} }")
+                                f"{ {k: v['current'] for k, v in r['renamed'].items()} }")
+                if r["delisted"]:
+                    log.warning(f"DELISTINGS confirmed (入册,adapter 告警已生效): "
+                                f"{ {k: v['delisted'] for k, v in r['delisted'].items()} }")
                 if r["unresolved"]:
-                    log.warning(f"tickers missing from raw, NOT a verified rename "
-                                f"(delist/halt?): {r['unresolved']}")
+                    log.warning(f"tickers missing from raw, NEITHER verified rename "
+                                f"NOR confirmed delisting (halt/data gap?): "
+                                f"{r['unresolved']}")
             # 已入册条目的回收复查(≤每 7 天一次/条;旧名被新实体启用时
             # resolve 必须止步,否则 BK 型解析在回收后继续错给现名)
             rc = ta.recheck_recycled()

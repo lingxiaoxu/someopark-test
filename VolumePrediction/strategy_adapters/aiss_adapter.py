@@ -62,6 +62,16 @@ def run(date: Optional[str] = None,
     cap_universe = sorted(tickers) or watch
     cap = svc.signals.capitulation(cap_universe, date=date) if cap_universe else None
 
+    # 公司行为体检(2026-08-26;与 pairs/ssrs adapter 同一登记处,纯本地零网络)
+    from ticker_aliases import describe
+    for t, d in sorted(describe([h["ticker"] for h in holdings_advice],
+                                date).items()):
+        warnings.append(
+            f"CORPORATE ACTION [delisted] {t} ({d.get('name') or '?'}) "
+            f"摘牌于 {d['delisted']} — 持仓票,该腿 ADV 已按 stale 拦截"
+            if d["status"] == "delisted" else
+            f"CORPORATE ACTION [renamed] {t} → {d['current']} — 取数已转发至现名")
+
     advice = {"schema_version": "v1", "strategy": "aiss", "date": date,
               "generated_at": pd.Timestamp.now().isoformat(timespec="seconds"),
               "aum": aum,
