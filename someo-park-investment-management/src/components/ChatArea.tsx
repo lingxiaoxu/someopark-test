@@ -213,6 +213,8 @@ import StockArtifactGrid from './stock/StockArtifactGrid'
 import PredictionUpcoming from './prediction/PredictionUpcoming'
 import MacroArtifactGrid from './macro/MacroArtifactGrid'
 import MacroUpcoming from './macro/MacroUpcoming'
+import SoccerArtifactGrid from './soccer/SoccerArtifactGrid'
+import SoccerUpcoming from './soccer/SoccerUpcoming'
 import { useApi } from '../hooks/useApi'
 import { getInventory, API_BASE, apiHeaders, callAgent, answerAgentQuestion } from '../lib/api'
 import { db } from '../lib/firebase'
@@ -244,7 +246,7 @@ export default function ChatArea({
   onMessagesChange,
 }: {
   agentMode: 'cloud' | 'local'
-  appMode: 'stock' | 'prediction' | 'macro'
+  appMode: 'stock' | 'prediction' | 'macro' | 'soccer'
   isLocalConnected: boolean
   cardCategorized?: boolean
   setActiveArtifact: (a: any) => void
@@ -831,6 +833,8 @@ export default function ChatArea({
                 <PredictionUpcoming />
               ) : appMode === 'macro' ? (
                 <MacroUpcoming />
+              ) : appMode === 'soccer' ? (
+                <SoccerUpcoming />
               ) : (
               <div className="p-4 relative" style={{ background: '#fff', border: '3px solid #111', boxShadow: 'var(--shadow-pixel-sm)' }}>
                 {/* Corner dots */}
@@ -901,6 +905,9 @@ export default function ChatArea({
               ) : appMode === 'macro' ? (
                 /* Macro artifacts are public static data too → open directly. */
                 <MacroArtifactGrid onOpen={(a) => setActiveArtifact(a)} categorized={cardCategorized} />
+              ) : appMode === 'soccer' ? (
+                /* Soccer artifacts are public static data too → open directly. */
+                <SoccerArtifactGrid onOpen={(a) => setActiveArtifact(a)} categorized={cardCategorized} />
               ) : (
                 <StockArtifactGrid onOpen={guardedSetArtifact} strategy={selectedStrategy} categorized={cardCategorized} />
               )}

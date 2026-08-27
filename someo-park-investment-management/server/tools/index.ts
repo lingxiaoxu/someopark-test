@@ -91,6 +91,7 @@ import { pnlReportsTool } from './pnlReportTool.js'
 import { riskReportsTool } from './riskReportTool.js'
 import { inventoryHistoryTool } from './inventoryHistoryTool.js'
 import { predictionMarketTool, predictionMarketTeamTool, predictionMarketMatchTool, predictionMarketCompareTool, predictionMarketTrackRecordTool } from './predictionMarketTool.js'
+import { soccerMarketTool, soccerClubTool, soccerMatchTool, soccerCompareTool, soccerTrackRecordTool } from './soccerMarketTool.js'
 import { macroMarketDataTool } from './macroMarketDataTool.js'
 
 // General-purpose data tools
@@ -154,6 +155,9 @@ export function registerAllTools() {
     // Prediction market (World Cup 2026 — Kalshi + Polymarket)
     predictionMarketTool, predictionMarketTeamTool, predictionMarketMatchTool,
     predictionMarketCompareTool, predictionMarketTrackRecordTool,
+    // Club Soccer (12 competitions — the same five shapes, reading public/data/soccer/)
+    soccerMarketTool, soccerClubTool, soccerMatchTool,
+    soccerCompareTool, soccerTrackRecordTool,
     macroMarketDataTool,
     // General-purpose data (11)
     mongodbTool, calculatorTool, statisticsTool, readFileTool,

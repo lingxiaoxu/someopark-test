@@ -34,6 +34,7 @@ export const STOCK_ITEMS: Item[] = [
   { type: 'risk_report',          title: 'Risk Report',           i18nKey: 'btnRiskReport' },
   { type: 'strategy_performance', title: 'Strategy Performance',  i18nKey: 'btnStrategyPerformance' },
   { type: 'realtime_nav',         title: 'Realtime NAV',          i18nKey: 'btnRealtimeNav' },
+  { type: 'volume_prediction',    title: 'Volume Prediction',     i18nKey: 'btnVolumePrediction',     needsStrategy: true },
 ]
 
 type Group = {
@@ -44,7 +45,7 @@ type Group = {
 
 export const STOCK_GROUPS: Group[] = [
   { key: 'overview',   i18nKey: 'groupOverview',   Icon: LayoutDashboard,
-    types: ['daily_report', 'dashboard'] },
+    types: ['daily_report', 'dashboard', 'volume_prediction'] },
   { key: 'positions',  i18nKey: 'groupPositions',  Icon: Layers,
     types: ['pair_universe', 'table', 'inventory', 'inventory_history'] },
   { key: 'research',   i18nKey: 'groupResearch',   Icon: FlaskConical,

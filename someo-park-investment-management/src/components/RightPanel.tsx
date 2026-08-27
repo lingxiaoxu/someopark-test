@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { X, Maximize2, Minimize2, Download } from 'lucide-react';
 import PredictionArtifact, { isPredictionArtifact } from './prediction/PredictionArtifact';
+import SoccerArtifact, { isSoccerArtifact } from './soccer/SoccerArtifact';
 import EquityChart from './artifacts/EquityChart';
 import SignalTable from './artifacts/SignalTable';
 import RegimeDashboard from './artifacts/RegimeDashboard';
@@ -19,6 +20,7 @@ import PnlReportViewer from './artifacts/PnlReportViewer';
 import RiskReportViewer from './artifacts/RiskReportViewer';
 import StrategyPerformanceViewer from './artifacts/StrategyPerformanceViewer';
 import RealtimeNavViewer from './artifacts/RealtimeNavViewer';
+import VolumePredictionViewer from './artifacts/VolumePredictionViewer';
 
 // Artifact type → i18n title key mapping
 const ARTIFACT_TITLE_KEYS: Record<string, string> = {
@@ -38,6 +40,7 @@ const ARTIFACT_TITLE_KEYS: Record<string, string> = {
   pnl_report: 'artifactTitles.pnlReport',
   strategy_performance: 'artifactTitles.strategyPerformance',
   realtime_nav: 'artifactTitles.realtimeNav',
+  volume_prediction: 'artifactTitles.volumePrediction',
 };
 
 // Download URLs for artifact types that have downloadable files
@@ -53,7 +56,7 @@ function getDownloadUrl(artifact: any): string | null {
   }
 }
 
-export default function RightPanel({ artifact, appMode, onClose, onMaximize, isMaximized }: { artifact: any, appMode?: 'stock' | 'prediction', onClose: () => void, onMaximize?: () => void, isMaximized?: boolean }) {
+export default function RightPanel({ artifact, appMode, onClose, onMaximize, isMaximized }: { artifact: any, appMode?: 'stock' | 'prediction' | 'soccer', onClose: () => void, onMaximize?: () => void, isMaximized?: boolean }) {
   const { t } = useTranslation();
   const params = artifact.params || {};
 
@@ -150,6 +153,7 @@ export default function RightPanel({ artifact, appMode, onClose, onMaximize, isM
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
         {isPredictionArtifact(artifact.type)   && <PredictionArtifact type={artifact.type} params={params} />}
+        {isSoccerArtifact(artifact.type)       && <SoccerArtifact type={artifact.type} params={params} />}
         {artifact.type === 'chart'             && <EquityChart params={params} />}
         {artifact.type === 'table'             && <SignalTable params={params} />}
         {artifact.type === 'dashboard'         && <RegimeDashboard params={params} />}
@@ -167,6 +171,7 @@ export default function RightPanel({ artifact, appMode, onClose, onMaximize, isM
         {artifact.type === 'risk_report'       && <RiskReportViewer params={params} />}
         {artifact.type === 'strategy_performance' && <StrategyPerformanceViewer params={params} />}
         {artifact.type === 'realtime_nav'      && <RealtimeNavViewer params={params} />}
+        {artifact.type === 'volume_prediction' && <VolumePredictionViewer params={params} />}
       </div>
     </div>
   );

@@ -116,12 +116,12 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentMode>('cloud');
   const [isLocalConnected, setIsLocalConnected] = useState(false);
-  // App mode: 'stock' (default, pixel-identical to before) | 'prediction' | 'macro'.
+  // App mode: 'stock' (default, pixel-identical to before) | 'prediction' | 'macro' | 'soccer'.
   // The attribute lives on <html> so the whole viewport (incl. <body>) inverts.
-  const [appModeRaw, setAppMode] = useLocalStorage<'stock' | 'prediction' | 'macro'>('sp-appMode', 'stock');
+  const [appModeRaw, setAppMode] = useLocalStorage<'stock' | 'prediction' | 'macro' | 'soccer'>('sp-appMode', 'stock');
   // Unknown/legacy stored values fall back to 'stock'.
-  const appMode: 'stock' | 'prediction' | 'macro' =
-    appModeRaw === 'prediction' || appModeRaw === 'macro' ? appModeRaw : 'stock';
+  const appMode: 'stock' | 'prediction' | 'macro' | 'soccer' =
+    appModeRaw === 'prediction' || appModeRaw === 'macro' || appModeRaw === 'soccer' ? appModeRaw : 'stock';
   const [activeArtifact, setActiveArtifact] = useState<any>(null);
   // Global "card categorization" toggle (Settings page) — applies to the home-screen
   // artifact grids in all three modes (stock / prediction / macro). Default false
@@ -133,9 +133,9 @@ export default function App() {
     document.documentElement.setAttribute('data-mode', appMode);
   }, [appMode]);
 
-  // Three direct-entry mode buttons (no more toggle/flip semantics) — clicking a
+  // Direct-entry mode buttons (no more toggle/flip semantics) — clicking a
   // button always enters that mode; clicking the already-active one is a no-op.
-  const enterAppMode = useCallback((m: 'stock' | 'prediction' | 'macro') => {
+  const enterAppMode = useCallback((m: 'stock' | 'prediction' | 'macro' | 'soccer') => {
     setActiveArtifact(null);   // drop any open artifact so modes never cross-render
     setShowSettings(false);
     setAppMode(m);

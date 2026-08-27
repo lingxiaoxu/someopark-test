@@ -117,6 +117,12 @@ export const getPairDb = (collection: string) =>
   fetchApi<any>(`/api/pairs/db/${collection}`);
 
 // ═══════════════════════════════════════════════════════════════════════
+// Volume Prediction — 每日流动性建议(launchd vp.shadowdaily 17:33 ET 产出)
+// ═══════════════════════════════════════════════════════════════════════
+export const getVolumePrediction = (strategy: string) =>
+  fetchApi<any>(`/api/vp/daily/${strategy}`);
+
+// ═══════════════════════════════════════════════════════════════════════
 // WF xlsx viewer / File Structure
 // ═══════════════════════════════════════════════════════════════════════
 export const getWFXlsxList = (strategy: string) =>

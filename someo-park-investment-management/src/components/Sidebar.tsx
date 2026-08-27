@@ -1,4 +1,4 @@
-import { MessageSquare, Plus, Terminal, Settings, SlidersHorizontal, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2, Landmark } from 'lucide-react';
+import { MessageSquare, Plus, Terminal, Settings, SlidersHorizontal, Cloud, Laptop, LogIn, Trash2, Zap, Brain, User, Trophy, Building2, Landmark, Goal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
@@ -35,8 +35,8 @@ export default function Sidebar({
   onConnectClick: () => void,
   agentMode: 'cloud' | 'local',
   setAgentMode: (mode: 'cloud' | 'local') => void,
-  appMode: 'stock' | 'prediction' | 'macro',
-  onSetAppMode: (mode: 'stock' | 'prediction' | 'macro') => void,
+  appMode: 'stock' | 'prediction' | 'macro' | 'soccer',
+  onSetAppMode: (mode: 'stock' | 'prediction' | 'macro' | 'soccer') => void,
   isLocalConnected: boolean,
   onSettingsClick?: () => void,
   cardCategorized?: boolean,
@@ -190,6 +190,32 @@ export default function Sidebar({
             </span>
             <span style={{ fontSize: '10px', color: appMode === 'macro' ? '#555' : '#ccc' }}>
               {t('sidebar.macroMarketSub')}
+            </span>
+          </div>
+        </button>
+
+        {/* Club Soccer Market (prediction_market_soccer) — same styling pattern. */}
+        <button
+          onClick={() => onSetAppMode('soccer')}
+          className="flex items-center gap-3 px-3 py-2.5 transition-all w-full"
+          style={{
+            marginTop: '8px',
+            background: appMode === 'soccer' ? '#fff' : '#111',
+            color: appMode === 'soccer' ? '#111' : '#fff',
+            border: '2px solid var(--ink)',
+            borderLeft: '4px solid var(--ink)',
+            boxShadow: 'var(--shadow-pixel-sm)',
+            fontFamily: 'var(--font-mono)',
+            cursor: 'pointer',
+          }}
+        >
+          <Goal className="w-4 h-4" style={{ color: appMode === 'soccer' ? '#111' : '#fff' }} />
+          <div className="flex flex-col items-start flex-1">
+            <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+              {t('sidebar.soccerMarket')}
+            </span>
+            <span style={{ fontSize: '10px', color: appMode === 'soccer' ? '#555' : '#ccc' }}>
+              {t('sidebar.soccerMarketSub')}
             </span>
           </div>
         </button>

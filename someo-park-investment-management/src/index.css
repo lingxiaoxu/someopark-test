@@ -923,3 +923,136 @@
 }
 [data-mode="macro"] .auth-light input::placeholder,
 [data-mode="macro"] .auth-light textarea::placeholder { color: var(--text-muted) !important; }
+
+/* ════════════════════════════════════════════════════════════
+   CLUB SOCCER MARKET MODE — dark shell (mirror of prediction mode)
+   ────────────────────────────────────────────────────────────
+   Activated ONLY by [data-mode="soccer"] on the app root. Every rule is
+   scoped under [data-mode="soccer"], so the stock / prediction / macro
+   modes are pixel-identical to before — this block is purely additive
+   (nothing above is modified). Same near-black palette as prediction
+   mode, but with a distinct PITCH-GREEN accent (--accent-primary) so the
+   dark families are visually distinguishable at a glance.
+   ════════════════════════════════════════════════════════════ */
+
+[data-mode="soccer"] {
+  /* — semantic tokens flip (same dark shell as prediction) — */
+  --ink:       #f4f4f4;
+  --paper:     #151815;   /* dark surface, a hint of green cast */
+  --ink-soft:  #cfcfcf;
+  --ink-dim:   #9a9a9a;
+  --ink-mute:  #8a8a8a;
+  --page:      #0a0d0a;   /* near-black page, green cast */
+  --hairline:  #3a423a;
+
+  /* — legacy :root aliases (artifact components consume var(--*)) — */
+  --bg-primary:    #151815;
+  --bg-secondary:  #0a0d0a;
+  --bg-tertiary:   #1c211c;
+  --text-primary:  #f4f4f4;
+  --text-secondary:#cfcfcf;
+  --text-muted:    #8a8a8a;
+  --border-subtle: #f4f4f4;
+  --accent-primary:#43d97e;   /* soccer accent: pitch green (vs macro's blue) */
+  --success:       #19e08a;
+  --error:         #ff5a5a;
+
+  /* — @theme palette (body / scrollbar / links / tables consume these) — */
+  --color-bg:          #0a0d0a;
+  --color-surface:     #151815;
+  --color-pixel-black: #f4f4f4;
+  --color-pixel-white: #151815;
+  --color-pixel-gray:  #8a8a8a;
+
+  /* — pixel shadows become light on dark — */
+  --shadow-pixel:    4px 4px 0 0 #f4f4f4;
+  --shadow-pixel-lg: 6px 6px 0 0 #f4f4f4;
+  --shadow-pixel-sm: 2px 2px 0 0 #f4f4f4;
+}
+
+[data-mode="soccer"],
+[data-mode="soccer"] .sidebar,
+[data-mode="soccer"] .right-panel,
+[data-mode="soccer"] .card,
+[data-mode="soccer"] .message-content > p {
+  transition: background-color .35s ease, color .35s ease, border-color .35s ease;
+}
+
+[data-mode="soccer"] body { background: var(--page); color: var(--ink); }
+
+[data-mode="soccer"] .sidebar { background: var(--paper); }
+[data-mode="soccer"] .section-label { color: var(--ink-mute); }
+
+[data-mode="soccer"] .chat-item { color: var(--ink-soft); }
+[data-mode="soccer"] .chat-item:hover {
+  background: var(--page); color: var(--ink); border-left-color: var(--ink-mute); border-color: var(--hairline);
+}
+[data-mode="soccer"] .chat-item.active {
+  background: var(--ink); color: var(--page); border-color: var(--ink); border-left-color: var(--ink);
+}
+[data-mode="soccer"] .chat-item.active svg { color: var(--page) !important; }
+
+[data-mode="soccer"] .button { border-color: var(--ink); }
+[data-mode="soccer"] .button-primary   { background: var(--ink);   color: var(--page); }
+[data-mode="soccer"] .button-secondary { background: var(--paper); color: var(--ink); }
+[data-mode="soccer"] .button-ghost:hover { background: var(--page); color: var(--ink); border-color: var(--hairline); }
+
+[data-mode="soccer"] .chat-input { background: var(--paper); border-color: var(--ink); }
+[data-mode="soccer"] .chat-input::before { color: var(--ink-mute); }
+[data-mode="soccer"] .chat-textarea { color: var(--ink); caret-color: var(--ink); }
+[data-mode="soccer"] .chat-textarea::placeholder { color: var(--ink-mute); }
+
+[data-mode="soccer"] .message-user { background: var(--ink); color: var(--page); border-color: var(--ink); }
+[data-mode="soccer"] .message-user::before { color: var(--ink-mute); }
+[data-mode="soccer"] .message-user .text-white { color: var(--page); }
+[data-mode="soccer"] .message-content > p { background: var(--paper); border-color: var(--ink); color: var(--ink); }
+
+[data-mode="soccer"] .grid.grid-cols-2 > button,
+[data-mode="soccer"] .grid.grid-cols-2 > a {
+  background: var(--paper) !important; border-color: var(--ink) !important; color: var(--ink-soft) !important;
+}
+[data-mode="soccer"] .grid.grid-cols-2 > button:hover,
+[data-mode="soccer"] .grid.grid-cols-2 > a:hover {
+  background: var(--ink) !important; color: var(--page) !important; border-color: var(--ink) !important;
+}
+[data-mode="soccer"] .grid.grid-cols-2 > button:hover svg,
+[data-mode="soccer"] .grid.grid-cols-2 > a:hover svg { color: var(--page) !important; }
+[data-mode="soccer"] .grid.grid-cols-2 > button svg,
+[data-mode="soccer"] .grid.grid-cols-2 > a svg { color: var(--accent-primary); }
+
+[data-mode="soccer"] .table th { color: var(--ink); border-bottom-color: var(--ink); }
+[data-mode="soccer"] .table td { color: var(--ink-soft); border-bottom-color: var(--hairline); }
+[data-mode="soccer"] .table tr:hover td { color: var(--ink); }
+
+[data-mode="soccer"] .pixel-card,
+[data-mode="soccer"] .card,
+[data-mode="soccer"] .pair-card,
+[data-mode="soccer"] .inventory-box { background: var(--paper); border-color: var(--ink); }
+[data-mode="soccer"] .pixel-card::before,
+[data-mode="soccer"] .pixel-card::after { background: var(--ink); }
+[data-mode="soccer"] .inventory-box { border-left-color: var(--ink); }
+[data-mode="soccer"] .card-header { color: var(--ink); border-bottom-color: var(--ink); }
+[data-mode="soccer"] .right-panel { background: var(--bg-tertiary); border-left-color: var(--ink); }
+
+[data-mode="soccer"] input,
+[data-mode="soccer"] textarea,
+[data-mode="soccer"] select {
+  color: var(--ink) !important; background: var(--paper); border-color: var(--ink);
+}
+[data-mode="soccer"] input::placeholder,
+[data-mode="soccer"] textarea::placeholder { color: var(--ink-mute) !important; }
+[data-mode="soccer"] ::-webkit-scrollbar-thumb { background: var(--ink); border-color: var(--page); }
+[data-mode="soccer"] ::-webkit-scrollbar-thumb:hover { background: var(--ink-soft); }
+[data-mode="soccer"] ::selection { background: var(--ink); color: var(--page); }
+[data-mode="soccer"] a:hover { color: var(--ink-soft); }
+
+/* Auth dialog inputs keep the light styling in soccer mode (mirror of prediction). */
+[data-mode="soccer"] .auth-light input,
+[data-mode="soccer"] .auth-light textarea,
+[data-mode="soccer"] .auth-light select {
+  color: var(--text-primary) !important;
+  background: var(--bg-secondary);
+  border-color: var(--border-subtle);
+}
+[data-mode="soccer"] .auth-light input::placeholder,
+[data-mode="soccer"] .auth-light textarea::placeholder { color: var(--text-muted) !important; }

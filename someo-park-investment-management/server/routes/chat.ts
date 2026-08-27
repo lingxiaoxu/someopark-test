@@ -90,7 +90,7 @@ router.post('/', async (req: Request, res: Response) => {
     model: LLMModel
     config: LLMModelConfig
     selectedTemplate?: string
-    appMode?: 'stock' | 'prediction' | 'macro'
+    appMode?: 'stock' | 'prediction' | 'macro' | 'soccer'
     think?: boolean   // local (ollama) reasoning toggle; undefined/true = thinking ON (default)
   } = req.body
 
@@ -219,6 +219,23 @@ router.post('/', async (req: Request, res: Response) => {
         if (ctx) chatSystem += '\n\n' + ctx
       } catch (e) {
         console.error('macro grounding failed (continuing without it):', e)
+      }
+    }
+
+    // Club Soccer grounding (same additive pattern as the macro block above): if a
+    // soccer_* view was detected in Club Soccer mode, hand the model the SAME slice the
+    // panel shows. The scope the detector resolved (which competition / club the question
+    // named) is passed through — the league→match hierarchy means an unscoped injection
+    // would spend its whole budget on twelve competitions at once. Coding path untouched.
+    const soccerHits = detectedArtifacts.filter(a => a.type.startsWith('soccer_'))
+    if (appMode === 'soccer' && soccerHits.length > 0) {
+      try {
+        const { soccerContextForArtifacts } = await import('../tools/soccerMarketTool.js')
+        const scope = soccerHits.find(a => a.params)?.params ?? {}
+        const ctx = await soccerContextForArtifacts(soccerHits.map(a => a.type), scope)
+        if (ctx) chatSystem += '\n\n' + ctx
+      } catch (e) {
+        console.error('soccer grounding failed (continuing without it):', e)
       }
     }
 

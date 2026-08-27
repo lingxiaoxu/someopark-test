@@ -1,4 +1,5 @@
 import { MACRO_KEYWORD_PATTERNS } from '../tools/macroMarketTool.js'
+import { detectSoccerArtifacts } from '../tools/soccerTriggers.js'
 
 export interface ArtifactTrigger {
   type: string
@@ -139,7 +140,7 @@ const ARTIFACT_PATTERNS: Array<{
   { type: 'wc_pdfs',          title: 'PDF Reports',         keywords: ['pdf', 'pdf report', 'download report', 'pdf 报告', '下载报告', 'pdf报告'] },
 ]
 
-export function detectArtifacts(message: string, mode?: 'stock' | 'prediction' | 'macro'): ArtifactTrigger[] {
+export function detectArtifacts(message: string, mode?: 'stock' | 'prediction' | 'macro' | 'soccer'): ArtifactTrigger[] {
   if (!message) return []
 
   const lowerMessage = message.toLowerCase()
@@ -158,6 +159,17 @@ export function detectArtifacts(message: string, mode?: 'stock' | 'prediction' |
       }
     }
     return detected
+  }
+
+  // Club Soccer mode: detect ONLY soccer_* types, from the trigger vocabulary kept in
+  // soccerTriggers next to the soccer tools + grounding loader (附录 C-32). Unlike the
+  // flat tables above, a soccer trigger also carries which competition and clubs the
+  // question named — the league→match hierarchy means an unscoped answer would be a
+  // thin slice of all twelve competitions. Early return keeps soccer-mode chat from
+  // matching the broad wc_/stock keywords below; fully additive — the
+  // stock/prediction/no-mode behaviour is untouched.
+  if (mode === 'soccer') {
+    return detectSoccerArtifacts(lowerMessage)
   }
 
   for (const pattern of ARTIFACT_PATTERNS) {

@@ -9,8 +9,10 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
     "build": "vite build",
     "sync:wc": "node scripts/sync_prediction_data.mjs",
+    "sync:soccer": "node scripts/sync_soccer_data.mjs",
     "sync:microfootball": "node scripts/sync_microfootball.mjs",
     "build:wc": "node scripts/sync_prediction_data.mjs && vite build",
+    "build:soccer": "npm run sync:soccer && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"

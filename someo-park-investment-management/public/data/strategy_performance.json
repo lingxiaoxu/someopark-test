@@ -2458,5 +2458,17 @@
     "mrpt_dd": -1.66,
     "mtfs_dd": -50.94,
     "combined_dd": -24.86
+  },
+  {
+    "date": "2026-08-25",
+    "mrpt_equity": 616162.28,
+    "mtfs_equity": 281160.25,
+    "combined_equity": 897322.53,
+    "mrpt_pnl": 83.3,
+    "mtfs_pnl": -7681.96,
+    "combined_pnl": -7598.66,
+    "mrpt_dd": -1.65,
+    "mtfs_dd": -52.24,
+    "combined_dd": -25.49
   }
 ]
