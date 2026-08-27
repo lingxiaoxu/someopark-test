@@ -125,6 +125,28 @@ prediction_market/research/
 # Remote-access doc — operational/access info, never commit
 prediction_market/docs/REMOTE_DATA_ACCESS.md
 
+# prediction_market_soccer — club-soccer fork of the WC module (2026-08-26): secrets +
+# generated data + WC-copied artifacts. Its own .gitignore also covers these;
+# this is the same belt-and-suspenders umbrella as prediction_market above.
+prediction_market_soccer/.env
+prediction_market_soccer/**/*.key
+prediction_market_soccer/**/*.pem
+prediction_market_soccer/data/*.lock
+prediction_market_soccer/data/output/
+prediction_market_soccer/data/raw/
+prediction_market_soccer/data/logs/
+prediction_market_soccer/data/soccer.db
+prediction_market_soccer/data/soccer.db-wal
+prediction_market_soccer/data/soccer.db-shm
+prediction_market_soccer/data/wc.db
+prediction_market_soccer/data/wc.db-wal
+prediction_market_soccer/data/wc.db-shm
+prediction_market_soccer/data/output_wc_archive/
+prediction_market_soccer/data/logs_wc_archive/
+prediction_market_soccer/data/kalshi_docs/
+prediction_market_soccer/research/
+prediction_market_soccer/docs/REMOTE_DATA_ACCESS.md
+
 # dfm + crypto-dev: local-only projects, do not track (2026-07-06)
 # dfm: 2026-08-03 — source only. The heavy artifacts (383M of the 389M) stay out;
 # the ~35 .py files go in so code fixes are reviewable/revertable.

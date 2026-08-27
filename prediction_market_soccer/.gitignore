@@ -1,0 +1,35 @@
+# prediction_market_soccer — local artifacts, never committed
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Runtime single-instance locks (refresh_all / live_refresh flock targets). Pure
+# process state — committing one would ship a "someone is already running" marker.
+data/*.lock
+
+# Generated data (model runs, raw API snapshots, DB, logs). Priors + seed are kept.
+data/output/
+data/raw/
+data/logs/
+data/soccer.db
+data/soccer.db-wal
+data/soccer.db-shm
+
+# World Cup copies carried over by the wholesale fork (idle reference; never committed).
+data/wc.db
+data/wc.db-wal
+data/wc.db-shm
+data/output_wc_archive/
+data/logs_wc_archive/
+data/kalshi_docs/
+
+# Research papers/figures/tick data carried over by the fork — keep out of git.
+research/
+
+# Remote-access doc — operational/access info, never commit.
+docs/REMOTE_DATA_ACCESS.md
+
+# Secrets: Kalshi PEM private keys must live OUTSIDE git entirely.
+*.key
+*.pem
