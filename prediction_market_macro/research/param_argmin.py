@@ -585,6 +585,28 @@ def parity_veto(conn, series: str, now: datetime, params: dict) -> dict | None:
                            _bp.live_branch_mix(conn, series, now=now, params=params))
     if par.get("parity"):
         return None
+    if par.get("unknown"):
+        # #201b. `unknown` is the check having NOTHING TO LOOK AT, which is a different
+        # thing from a measured mismatch and must not be spent as one. `parity_check`
+        # returns parity=False there on purpose — for the real-money gate, "cannot verify"
+        # and "verified wrong" both mean don't trade, and a series with no open market
+        # cannot trade anyway. That reasoning does not carry over to a write veto: the
+        # null action is to keep the CURRENT override, which is no better verified than
+        # the proposed one, so refusing buys no safety and only freezes whatever is
+        # already in force.
+        #
+        # It would also fire on the calendar. Measured 2026-08-27 on KXJOBLESSCLAIMS:
+        # the Thursday 12:25Z close leaves no active contract until the next morning's
+        # ingest, a ~21h `none_open` gap (4 weeks measured, median 20.8h, max 20.9h);
+        # composed with a version bump three hours earlier — claims/0.2.0 landed 12:18Z
+        # and `recorded_branch_mix` filters `preds` to the production version — both
+        # live sources were empty at once and the series read FAIL on a model that has
+        # exactly ONE branch (52/52 of the graded sample).
+        conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                     (now.isoformat(), "info", "param_argmin",
+                      f"{series}: adopted {json.dumps(params)} WITHOUT a parity check — "
+                      f"{par.get('reason')}. Not a mismatch; nothing to compare."))
+        return None
     conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                  (now.isoformat(), "warn", "param_argmin",
                   f"{series}: argmin write refused — {par.get('reason')}"))
@@ -607,6 +629,17 @@ def stale_override_warning(conn, series: str, now: datetime) -> dict | None:
     par = _bp.parity_check(_bp.hist_branch_mix(conn, series, params=cur[0]),
                            _bp.live_branch_mix(conn, series, now=now, params=cur[0]))
     if par.get("parity"):
+        return None
+    if par.get("unknown"):
+        # #201b, and the sharper half of it: the message below ASSERTS "was chosen on a
+        # branch production does not run". On `unknown` that sentence is not weakly
+        # supported, it is unsupported — production's branch was never observed. Saying it
+        # anyway would put a claim in the alert stream that the evidence cannot carry, on
+        # a schedule (a listing gap, a version bump) that has nothing to do with branches.
+        conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                     (now.isoformat(), "info", "param_argmin",
+                      f"{series}: an ACTIVE override {json.dumps(cur[0])} could not be "
+                      f"parity-checked — {par.get('reason')}. No mismatch is claimed."))
         return None
     conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
                  (now.isoformat(), "warn", "param_argmin",

@@ -57,7 +57,8 @@ def _patch(monkeypatch, best_params, fp="3:2026-08-08"):
     monkeypatch.setattr(pa, "stale_override_warning", lambda *a, **k: None)
 
 
-def _parity(monkeypatch, ok: bool, reason="graded on X but production runs Y"):
+def _parity(monkeypatch, ok: bool, reason="graded on X but production runs Y",
+            unknown=False):
     """Stub the parity verdict itself, so `parity_veto`/`stale_override_warning` run for
     real. Both of them build the mixes first, so those are stubbed too — they read a live
     db and this fixture has none."""
@@ -65,7 +66,8 @@ def _parity(monkeypatch, ok: bool, reason="graded on X but production runs Y"):
     monkeypatch.setattr(bp, "hist_branch_mix", lambda *a, **k: {"n": 40})
     monkeypatch.setattr(bp, "live_branch_mix", lambda *a, **k: {"n": 1})
     monkeypatch.setattr(bp, "parity_check",
-                        lambda *a, **k: {"parity": ok, "reason": None if ok else reason})
+                        lambda *a, **k: {"parity": ok, "unknown": unknown,
+                                         "reason": None if ok else reason})
 
 
 def _hermetic_manual(monkeypatch):
@@ -205,6 +207,48 @@ def test_a_gated_market_still_gets_the_stale_override_warning(conn, monkeypatch)
     assert out["KXFED"].startswith("GATED")
     assert "STALE-OVERRIDE" in out["KXFED"]
     assert store["KXFED"] == {"w_rule": 0.25}
+
+
+def test_an_unverifiable_series_is_not_treated_as_a_mismatch(conn, monkeypatch):
+    """#201b. `parity_check` returns parity=False on an empty live mix on purpose — for the
+    real-money gate "cannot verify" and "verified wrong" are the same answer. Spending that
+    as a write veto is a different claim and a wrong one: the null action keeps the CURRENT
+    override, which is no better verified than the proposal, so refusing buys no safety.
+
+    It would also fire on the calendar rather than on evidence. Measured 2026-08-27:
+    KXJOBLESSCLAIMS closes Thursday 12:25Z and has no active contract until the next
+    morning's ingest (~21h, 4 weeks measured), and claims/0.2.0 landed 12:18Z that same
+    day so `recorded_branch_mix`'s production-version filter emptied the other source too.
+    Both live sources blank at once, on a model with exactly ONE branch in 52/52 events.
+    """
+    store = _hermetic_manual(monkeypatch)
+    _patch_no_parity_stub(monkeypatch, {"w_rule": 0.25})
+    _parity(monkeypatch, ok=False, unknown=True,
+            reason="no live prediction to compare against")
+    out = pa.daily(conn, now=NOW, log=None)
+    assert out["KXFED"].startswith("ADOPTED"), "unverifiable must not read as refuted"
+    assert store["KXFED"] == {"w_rule": 0.25}
+    lvl, msg = conn.execute("SELECT level, message FROM alerts"
+                            " WHERE source='param_argmin'").fetchone()
+    assert lvl == "info", "a listing gap is not a finding"
+    assert "WITHOUT a parity check" in msg and "refused" not in msg
+
+
+def test_an_unverifiable_series_makes_no_claim_about_a_live_override(conn, monkeypatch):
+    """The stale-override text ASSERTS the override "was chosen on a branch production does
+    not run". With production's branch never observed that sentence is unsupported, not
+    weakly supported, and must not enter the alert stream."""
+    store = _hermetic_manual(monkeypatch)
+    store["KXFED"] = {"w_rule": 0.25}
+    _patch_no_parity_stub(monkeypatch, {"w_rule": 0.25})
+    _parity(monkeypatch, ok=False, unknown=True,
+            reason="no live prediction to compare against")
+    out = pa.daily(conn, now=NOW, log=None)
+    assert "STALE-OVERRIDE" not in out["KXFED"]
+    rows = conn.execute("SELECT level, message FROM alerts").fetchall()
+    assert [r[0] for r in rows] == ["info"]
+    assert "could not be parity-checked" in rows[0][1]
+    assert "does not run" not in rows[0][1]
 
 
 def test_no_parity_work_is_done_when_nothing_would_change(conn, monkeypatch):

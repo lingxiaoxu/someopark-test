@@ -509,12 +509,23 @@ def run_series(conn, series: str) -> dict:
         from prediction_market_macro.research.param_select import manual_params as _mp
         _cur = _mp(conn, series, datetime.now(timezone.utc))
         _ov = _cur[0] if _cur else {}
+        # #201b: the GATE stays shut on `unknown` — for real money "cannot verify" and
+        # "verified wrong" are the same answer — but the ALERT must not say the same thing
+        # for both. An unverifiable series is a calendar fact (KXJOBLESSCLAIMS spends ~21h
+        # a week with no active contract, and a version bump empties the recorded mix for
+        # one cycle); a mismatch is a finding. Filing them at one severity, in one wording,
+        # is how a real finding gets read as the weekly noise.
+        _unk = bool(parity.get("unknown"))
         conn.execute(
             "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
-            (datetime.now(timezone.utc).isoformat(), "warn", "branch_parity",
+            (datetime.now(timezone.utc).isoformat(), "info" if _unk else "warn",
+             "branch_parity",
              f"{series}: {parity.get('reason')}" + (
+                 "" if not _ov else
+                 f" — an override {json.dumps(_ov)} is live and could not be checked"
+                 if _unk else
                  f" — AND an override {json.dumps(_ov)} chosen on that sample is LIVE in "
-                 "production right now" if _ov else "")))
+                 "production right now")))
         conn.commit()
     # #198 params parity: the in-sample counterfactual described in the docstring. Only
     # run when something is adopted — with `{}` live the defaults ARE production and the
