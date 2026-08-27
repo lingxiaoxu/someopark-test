@@ -104,6 +104,83 @@ def test_gap_refuses_to_serve(frozen, monkeypatch):
         pmr.serve(art, far)
 
 
+def test_serve_output_moves_day_to_day(tmp_path):
+    """P0 回归(2026-08-26 事故): 连续两日 serve 的输出不得逐位相同。
+
+    事故: serve() 只有 fast 分支,X 全部来自冻结的 per_ticker(z_next /
+    ma5v_next 是为 first_serve_date 单日预算的常量),完全不含 target_date
+    依赖。_roll_seq_tail 每天把同一行滚进窗,滚满 L=9 次后(2026-08-14)窗
+    变成同一行的 10 份拷贝,η̂ 落到不动点 —— 8/14→8/26 连续 9 个交易日
+    3,869 票预测值一个 bit 都没变,同期全市场成交额跌 17.8%,持仓票 MAPE
+    25.7→56.4,而 refreeze 日历计数器和 A/B 都没报警。
+
+    构造(关键): 两次 serve 都 **update_state=False**,窗字节完全相同 —— 于是
+    输出的任何差异只可能来自"当日特征行随 target_date 重算"这条通路。反过来,
+    只要 P0 被回改,X 与锚就重新与 target_date 无关,两日输出必然逐位相同,
+    本断言立刻炸。(若改成 update_state=True 逐日滚,窗每天进一格,带 bug 的
+    代码在前 9 天也会给出微小差异,要等窗饱和才暴露 —— 那样的测试抓不住。)
+
+    只读: 用真工件的 tmp 副本,serve 不写状态,生产工件零接触。
+    代价: 两次通用路径各读 ~330 个 raw 日,约 1 分钟。
+    """
+    import shutil
+
+    from VolumePrediction.common import OUT
+    from VolumePrediction.data import polygon_loader as pl
+
+    src = OUT / "registry" / "artifacts" / "rnn_v6f32n_20260731"
+    if not (src / "per_ticker.parquet").exists():
+        pytest.skip("生产 RNN 工件不存在")
+    raws = sorted(pl.RAW_DIR.glob("grouped_*.parquet"))
+    if len(raws) < 300:
+        pytest.skip("raw 存量不足以走通用路径")
+
+    art = tmp_path / "rnn_art_copy"
+    shutil.copytree(src, art)
+    meta = json.loads((art / "meta.json").read_text())
+    d2 = raws[-1].stem.split("_")[-1]
+    d1 = pmr._prev_trading_day(d2)
+    assert d1 > meta["first_serve_date"], "两个目标日都必须走通用路径"
+
+    def _serve_at(target):
+        m = json.loads((art / "meta.json").read_text())
+        m["seq_tail_date"] = pmr._prev_trading_day(target)   # 只挪戳,不动窗
+        (art / "meta.json").write_text(json.dumps(m))
+        return pmr.serve(art, target).set_index("ticker")
+
+    o1, o2 = _serve_at(d1), _serve_at(d2)
+    common = o1.index.intersection(o2.index)
+    assert len(common) > 1000, f"两日票交集过小: {len(common)}"
+    same = np.isclose(o1.loc[common, "pred_V"].to_numpy(float),
+                      o2.loc[common, "pred_V"].to_numpy(float),
+                      rtol=1e-9, atol=0.0).mean()
+    assert same < 0.5, (
+        f"serve({d1}) 与 serve({d2}) 有 {same:.1%} 的票预测值逐位相同 —— "
+        f"输出不随目标日变化,serve 已冻死(P0 被回改?)")
+    # 锚(ma5v_next)本身也必须动: 冻结锚是这次事故里 pred_v 水平的直接病灶
+    lvl = np.isclose(o1.loc[common, "pred_v"].to_numpy(float)
+                     - o1.loc[common, "pred_eta"].to_numpy(float),
+                     o2.loc[common, "pred_v"].to_numpy(float)
+                     - o2.loc[common, "pred_eta"].to_numpy(float),
+                     rtol=1e-9, atol=0.0).mean()
+    assert lvl < 0.5, f"水平锚 ma5_v 有 {lvl:.1%} 逐位相同 —— 锚仍钉在冻结日"
+
+
+def test_serve_general_path_is_wired():
+    """结构守卫(无 raw 存量时 P0 的兜底): serve 必须有通用路径分支。
+
+    上面的功能测试要真 raw 才跑得动;这条零依赖,防止有人回改后测试静默 skip。
+    """
+    import inspect
+
+    src = inspect.getsource(pmr.serve)
+    assert "_tech_and_ma5_from_raw" in src, "serve 缺通用路径(退回冻结常量)"
+    # 水平锚必须走 ma5_src(fast=冻结值 / 否则=当日重算值),而不是在两条分支
+    # 汇合之后无条件读 per_ticker["ma5v_next"] —— 后者是 7/31 的常量。
+    assert "ma5 = ma5_src.reindex(keep)" in src
+    assert 'ma5 = per_ticker["ma5v_next"]' not in src
+
+
 def test_roll_is_idempotent(frozen, monkeypatch, tmp_path):
     import shutil
 

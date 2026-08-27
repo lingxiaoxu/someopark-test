@@ -790,30 +790,107 @@ class _Ops:
         # 学习模型 drift(2026-08-01 ②晋升配套): 距冻结日的交易日数。
         # 通用serve路径的冻结统计漂移 O(1/n)/日 + fund末值随 filings 陈旧
         # → >25td 建议 refreeze(prod_model.freeze / refreeze.py)。
+        #
+        # 2026-08-26 修(C): 口径改为**按工件里实际服务的层**逐层算,不再读
+        # registry.production 的 meta。原因: production 槽位(lgbm)与真正
+        # 服务的层可以分家 —— blend.rnn_full_coverage 让 RNN 覆盖了 100% 的行,
+        # 而 drift 却在数 lgbm 的冻结日。今天两者恰好都是 7/31,所以是"碰巧
+        # 正确"的潜伏 bug。工件每行自带 trained_through,那才是事实源。
         prod_ver = None
-        drift_td = None
         try:
             prod_ver = self.s.registry.load().get("production")
-            if prod_ver and prod_ver != "baselines.ma5":
-                import json as _json
-                _mp = self.s.art / "registry" / "artifacts" / prod_ver / "meta.json"
-                if _mp.exists():
-                    _tt = _json.loads(_mp.read_text()).get("trained_through")
-                    if _tt:
-                        drift_td = int(np.busday_count(
-                            _tt, pd.Timestamp.now().strftime("%Y-%m-%d")))
         except Exception:  # noqa: BLE001
             pass
+        layers: dict = {}
+        if art is not None and not art.empty and "trained_through" in art.columns:
+            _today = pd.Timestamp.now().strftime("%Y-%m-%d")
+            for _mv, _g in art.groupby(art["model_version"].astype(str)):
+                _tt = str(_g["trained_through"].iloc[0])[:10]
+                layers[_mv] = {
+                    "rows": int(len(_g)), "trained_through": _tt,
+                    "drift_tradedays": (None if _mv == "baselines.ma5"
+                                        else int(np.busday_count(_tt, _today)))}
+        _learned = {k: v for k, v in layers.items() if k != "baselines.ma5"}
+        drift_td = max((v["drift_tradedays"] for v in _learned.values()
+                        if v["drift_tradedays"] is not None), default=None)
         out = {"fresh_through": fresh, "raw_through": raw_last,
                "model_version": mv or self.s.registry.production(),
                "coverage_n": cov, "staleness_days": stale,
                "stale": bool(stale is None
                              or stale > int(self.s.cfg["service"]["staleness_max_days"]))}
-        if prod_ver and prod_ver != "baselines.ma5":
+        if layers:
+            out["serving_layers"] = layers
+        # 静止检测(2026-08-26 B'): 比 MAPE 阈值早得多的确定性信号
+        static = self._static_check()
+        if static:
+            out["layer_identical_frac"] = {k: v["identical_frac"]
+                                           for k, v in static.items()}
+            _frozen = sorted(k for k, v in static.items()
+                             if v["identical_frac"] > 0.99)
+            out["forecast_static"] = bool(_frozen)
+            if _frozen:
+                out["forecast_static_layers"] = _frozen
+        # 地板连败(2026-08-26 B 配套): AB 表里 RNN 在持仓票上连续输给朴素 ma5 的
+        # 天数。事故期这个数悄悄走到 13/17 天 —— 静止检测抓"冻死",这条抓"还在动
+        # 但已经没价值",两种失效模式不重叠。
+        _fs = self._floor_streak()
+        if _fs is not None:
+            out["rnn_floor_loss_streak"] = _fs
+            out["rnn_below_floor"] = bool(_fs >= 3)
+        if _learned:
             out["production"] = prod_ver
             out["model_drift_tradedays"] = drift_td
             out["refreeze_due"] = bool(drift_td is not None and drift_td > 25)
         return out
+
+    def _floor_streak(self) -> Optional[int]:
+        """AB 追踪表末尾连续 rnn_beats_ma5_held == False 的行数(只读,失败返 None)。"""
+        p = self.s.art / "shadow_rnn" / "rnn_ab_tracking.csv"
+        if not p.exists():
+            return None
+        try:
+            col = pd.read_csv(p, usecols=["rnn_beats_ma5_held"])["rnn_beats_ma5_held"]
+        except Exception:  # noqa: BLE001 — 列不存在(旧表)/表破损都按"无信号"
+            return None
+        n = 0
+        for v in col.iloc[::-1]:
+            if pd.isna(v):
+                break                      # 未评的行(旧口径)不算连败,也不跨过
+            if bool(v):
+                break
+            n += 1
+        return n
+
+    def _static_check(self, min_n: int = 50) -> dict:
+        """相邻两日预测工件逐位对拍 —— 某层几乎全票预测值不变 = 该层已冻死。
+
+        为什么需要这条(2026-08-26 事故): RNN 层因 serve 漏写通用分支,自 8/14 起
+        连续 9 个交易日 3,869 票 pred_V **逐位相同**,而唯二的探测器都瞎了 ——
+        A/B 因候选臂与生产臂同源 rnn_wins 恒 False,refreeze_due 是纯日历计数。
+        靠 MAPE 阈值要 6+ 天才反应,靠"输出没变"当天就能抓到,且几乎无假阳:
+        ma5 层窗口天天前移,学习层特征天天更新,正常情况下不可能 >99% 逐位相同。
+        """
+        hist = sorted((self.s.art / "history").glob("volume_forecast_*.parquet"))
+        if len(hist) < 2:
+            return {}
+        try:
+            cols = ["ticker", "pred_V", "model_version"]
+            cur = pd.read_parquet(hist[-1], columns=cols)
+            prv = pd.read_parquet(hist[-2], columns=cols).set_index("ticker")["pred_V"]
+        except Exception:  # noqa: BLE001 — 体检项绝不阻断调用方
+            return {}
+        res: dict = {}
+        for _mv, _g in cur.groupby(cur["model_version"].astype(str)):
+            s = _g.set_index("ticker")["pred_V"]
+            common = s.index.intersection(prv.index)
+            if len(common) < min_n:
+                continue
+            same = float(np.isclose(s.loc[common].to_numpy(float),
+                                    prv.loc[common].to_numpy(float),
+                                    rtol=1e-9, atol=0.0).mean())
+            res[_mv] = {"n": int(len(common)), "identical_frac": round(same, 6),
+                        "vs": hist[-2].stem.split("_")[-1]}
+        return res
 
     def refresh(self, date: Optional[str] = None, fetch: bool = True) -> dict:
         """日更: (可选)拉最新原始日 → 以 production 模型生成预测工件。
@@ -931,16 +1008,23 @@ class _Ops:
                 from VolumePrediction.shadow_rnn import _held_tickers
                 _rart = (self.s.art / "registry" / "artifacts"
                          / _blend_cfg["rnn_version"])
-                # RNN serve 约定与影子一致: serve(D)=用截至 D 的窗做次日预测
-                # (lgbm 的 _target=asof+1 语义不适用——会撞断档守卫)。
+                # serve(T) 预测的是 **T 日**(锚 ma5v_next = T 之前 5 个交易日
+                # 的均值,同 features/pipeline.py 的 ma5_v=shift(1).rolling(5))。
+                # 所以 asof 收盘后要的目标是 next_trading_day(asof),与本函数
+                # 上方 lgbm 路径的 _target 完全同款。
+                # 2026-08-26 修: 原先传 asof,预测的是**今天**(已发生),被当作
+                # 次日预测消费 → 整层晚一天。冻结路径下 target_date 不影响特征,
+                # 所以这个错位一直隐形;P0 修好 serve 后它会立刻变成真实错一天。
+                # "会撞断档守卫"的原注释不成立: 目标日连续递增,守卫自然满足。
                 # 逐日补滚: seq_tail 落后时(如某日 RNN serve 失败后停滚)把
-                # (seq_tail, asof] 的 raw 日按序滚齐,否则次日永久断档。
-                # 同日重跑: seq_tail 已到 asof,serve 会拒绝 → 缓存,缓存丢了
+                # (seq_tail, target] 的交易日按序滚齐,否则次日永久断档。
+                # 同日重跑: seq_tail 已到 target,serve 会拒绝 → 缓存,缓存丢了
                 # 退影子当日工件 —— 绝不让重跑把当日工件降级回两层。
                 _cache = _rart / f"blend_serve_{asof}.parquet"
                 with open(_rart / "meta.json") as _mf2:
                     _seq_d = json.load(_mf2).get("seq_tail_date") or ""
-                if _seq_d >= asof:
+                _rtgt = _pmr2.next_trading_day(asof)
+                if _seq_d >= _rtgt:
                     if _cache.exists():
                         _rn = pd.read_parquet(_cache).set_index("ticker")
                         log.info(f"refresh: blend3 同日重跑 — 复用缓存 {_cache.name}")
@@ -952,12 +1036,16 @@ class _Ops:
                                  f" {_shadow_p.name}")
                 else:
                     _rn = None
-                    for _d in [d for d in ds if _seq_d < d <= asof]:
+                    from VolumePrediction.data import polygon_loader as _pl3
+                    _tspan = _pl3.trading_days(
+                        str((pd.Timestamp(_rtgt) - pd.Timedelta(days=60)).date()),
+                        _rtgt)
+                    for _d in [d for d in _tspan if _seq_d < d <= _rtgt]:
                         _rn = _pmr2.serve(_rart, _d,
                                           update_state=True).set_index("ticker")
                     if _rn is None:
                         raise RuntimeError(
-                            f"blend3: seq_tail={_seq_d} 与 asof={asof} 间无 raw 日")
+                            f"blend3: seq_tail={_seq_d} 与 target={_rtgt} 间无交易日")
                     _ctmp = _cache.with_suffix(".tmp")
                     _rn.reset_index().to_parquet(_ctmp, index=False)
                     os.replace(_ctmp, _cache)
@@ -977,6 +1065,25 @@ class _Ops:
                                           recent_measured_adv(asof),
                                           full_coverage=bool(
                                               _blend_cfg.get("rnn_full_coverage")))
+                # ── 反事实存档(2026-08-26 修 B): 覆盖前把 RNN 将要接管的那批票
+                # 的 **两层(lgbm+ma5)** 预测原样存下来。没有它,AB 表的对照臂
+                # 就是被 RNN 自己覆盖过的生产工件 —— 持仓票恰好全在 RNN 层里,
+                # 于是 rnn_* 与 prod_* 逐位相同、rnn_wins 结构性恒 False,
+                # RNN 连输 13/17 天(8/07 起)一声没吭。零额外算力: out 此刻
+                # 正好就是两层结果。
+                try:
+                    _cfp = (self.s.art / "history"
+                            / f"counterfactual_noblend_{asof}.parquet")
+                    _cfp.parent.mkdir(parents=True, exist_ok=True)
+                    _cftmp = _cfp.with_suffix(".tmp")
+                    (out[out["ticker"].isin(_cov)]
+                     .to_parquet(_cftmp, index=False))
+                    os.replace(_cftmp, _cfp)
+                    for _oldcf in sorted((self.s.art / "history").glob(
+                            "counterfactual_noblend_*.parquet"))[:-90]:
+                        _oldcf.unlink()               # 只留近 90 日
+                except Exception as _cfe:  # noqa: BLE001 — 存档失败不阻断服务
+                    log.error(f"refresh: 反事实存档失败(AB 对照臂会退化): {_cfe}")
                 _m2 = out["ticker"].isin(_layer)
                 for _c in ("pred_v", "pred_V", "pred_eta",
                            "model_version", "trained_through"):

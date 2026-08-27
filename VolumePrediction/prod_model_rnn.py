@@ -200,7 +200,8 @@ def serve(art_dir: str | Path, target_date: str,
         per_ticker = per_ticker[per_ticker["active"]]
         log.info(f"serve(rnn): active 过滤 {len(per_ticker)}/{n0}")
 
-    if target_date != meta["first_serve_date"]:
+    fast = (target_date == meta["first_serve_date"])
+    if not fast:
         # 有状态服务的断档纪律: 只在"冻结日之后首个交易日"给精确窗;更晚需要
         # 逐日滚动过来的 seq_tail。此处要求调用方按日连续调用(update_state=True),
         # 否则窗与目标日错位 → 拒绝出数,不静默降级。
@@ -208,11 +209,35 @@ def serve(art_dir: str | Path, target_date: str,
             raise RuntimeError(
                 f"serve(rnn): seq_tail 停在 {meta.get('seq_tail_date')},"
                 f" 目标 {target_date} 的前一交易日是 {_prev_trading_day(target_date)}"
-                f" — 窗断档。请按日连续 serve(update_state=True) 或 refreeze。")
+                f" — 窗断档。请按日连续 serve(update_state=True),或用"
+                f" rebuild_seq_tail(art, '{target_date}') 从 raw 重建窗,或 refreeze。")
 
-    # 当日特征行(与 lgbm fast path 同口径: 冻结 z_next + fund1 末值)
-    tech = per_ticker[[f"{c}__z_next" for c in TECH_COLS]].copy()
-    tech.columns = TECH_COLS
+    # ── 当日特征行 ──────────────────────────────────────────────────────────
+    # fast(target == first_serve_date): 用冻结时预算好的 z_next / ma5v_next。
+    # 否则**必须从 raw 重算**(与 lgbm serve 的通用路径同一函数)。
+    #
+    # 2026-08-26 事故根因: 此处原先只有 fast 分支 —— per_ticker 是冻结工件,
+    # z_next/ma5v_next 是为 first_serve_date **单日**预算的常量,X 完全不含
+    # target_date 依赖。于是 _roll_seq_tail 每天把同一行滚进窗,滚满 L=9 次后
+    # (2026-08-14)整个 10 行窗变成同一行的 10 份拷贝,η̂ 落到不动点,输出
+    # 逐位冻结:8/14→8/26 连续 9 个交易日 3,869 票预测值一个 bit 都没变,
+    # 而同期全市场成交额跌了 17.8%,持仓票 MAPE 25.7→56.4。
+    # lgbm 的 prod_model.serve 一直有这条通用分支,只有 RNN 漏写了。
+    if fast:
+        tech = per_ticker[[f"{c}__z_next" for c in TECH_COLS]].copy()
+        tech.columns = list(TECH_COLS)
+        ma5_src = per_ticker["ma5v_next"]
+    else:
+        from VolumePrediction.prod_model import _tech_and_ma5_from_raw
+        gen = _tech_and_ma5_from_raw(set(per_ticker.index),
+                                     meta["trained_through"], target_date,
+                                     per_ticker)
+        tech = gen[list(TECH_COLS)]
+        ma5_src = gen["ma5v_next"]
+        log.warning(
+            f"serve(rnn) 通用路径: target={target_date}"
+            f"(freeze={meta['trained_through']};冻结 mu/sd 随距离产生 O(1/n)"
+            f" 漂移,建议月度 refreeze)")
     X = tech.join(per_ticker[meta["fund_cols"]], how="left")
     missing = [c for c in cols if c not in X.columns]
     if missing:
@@ -235,7 +260,10 @@ def serve(art_dir: str | Path, target_date: str,
     eta_hat = np.mean(preds, axis=0)
     log.info(f"serve(rnn): {len(keep)} tickers × {len(preds)} seeds")
 
-    ma5 = per_ticker.loc[keep, "ma5v_next"].values
+    # 水平锚必须与 tech 同源: fast=冻结值,否则=通用路径当日重算值。
+    # (原先无条件读 per_ticker["ma5v_next"] —— 那是 7/31 的常量,pred_v 的
+    #  整个水平永久钉死在冻结日,正是 8/14 起输出逐位冻结的直接成因。)
+    ma5 = ma5_src.reindex(keep).values.astype(float)
     ok = np.isfinite(ma5)
     pred_v = ma5 + eta_hat
     out = pd.DataFrame({
@@ -294,3 +322,81 @@ def _prev_trading_day(target_date: str) -> str:
     if not ds:
         raise RuntimeError(f"无法确定 {target_date} 的前一交易日")
     return ds[-1]
+
+
+def next_trading_day(asof: str) -> str:
+    """asof 之后的首个 NYSE 交易日 = serve() 的正确 target。
+
+    serve(T) 预测的是 **T 日**(锚 ma5v_next = T 之前 5 个交易日的 log 量均值,
+    与 features/pipeline.py 的 `ma5_v = v.shift(1).rolling(5).mean()` 同一规则)。
+    所以日更在 asof 收盘后要的是 serve(next_trading_day(asof)),**不是**
+    serve(asof) —— 后者预测的是今天,已经发生过了。
+    """
+    from VolumePrediction.data import polygon_loader as pl
+    end = str((pd.Timestamp(asof) + pd.Timedelta(days=15)).date())
+    ds = [d for d in pl.trading_days(asof, end) if d > asof]
+    if not ds:
+        raise RuntimeError(f"无法确定 {asof} 的下一交易日")
+    return ds[0]
+
+
+def rebuild_seq_tail(art_dir: str | Path, target_date: str) -> dict:
+    """从 raw 重建 seq_tail 的 L 行序列窗(通用路径口径),修复污染/断档。
+
+    为什么需要它: seq_tail 是**有状态**的,一旦滚进过错误的行,单靠"以后滚对"
+    要等 L 个交易日才能把脏行挤出窗。2026-08-26 事故里窗内 10 行全是同一行
+    冻结值,只修 serve() 的话还要再烂 9 天 —— 必须能一次性重建。
+
+    窗语义(与 _roll_seq_tail 一致): 第 j 行 = 第 j 个交易日的**特征行**,
+    "d 日的特征行"用 < d 的数据算(features/pipeline.py 的特征是 shift(1) 滞后的)。
+    窗末行 = _prev_trading_day(target_date),重建后 serve(target_date) 恰好接上。
+
+    代价: L 次 _tech_and_ma5_from_raw,每次约 26s(读 330 个 raw 日 + 逐票复权),
+    L=9 时约 4 分钟。因此**只做显式修复,不挂日更自动跑** —— 自动重建会把
+    "窗坏了"这件事悄悄掩盖掉。
+    """
+    from VolumePrediction.data import polygon_loader as pl
+    from VolumePrediction.prod_model import _tech_and_ma5_from_raw
+
+    art, meta, per_ticker, seq = _load(art_dir)
+    cols, L = meta["feature_cols"], meta["seq_len"] - 1
+    if "active" in per_ticker.columns:
+        per_ticker = per_ticker[per_ticker["active"]]
+
+    start = str((pd.Timestamp(target_date) - pd.Timedelta(days=40)).date())
+    days = [d for d in pl.trading_days(start, target_date) if d < target_date][-L:]
+    if len(days) < L:
+        raise RuntimeError(f"rebuild_seq_tail: {target_date} 前不足 {L} 个交易日")
+
+    tickers = seq["tickers"]
+    feats = np.zeros((len(tickers), L, len(cols)), dtype=np.float32)
+    for j, d in enumerate(days):
+        gen = _tech_and_ma5_from_raw(set(per_ticker.index),
+                                     meta["trained_through"], d, per_ticker)
+        Xd = (gen[list(TECH_COLS)]
+              .join(per_ticker[meta["fund_cols"]], how="left"))[cols].fillna(0.0)
+        # 工件宇宙里当日无数据的票 → 零填充(与 freeze 对新票的左填充同语义)
+        feats[:, j, :] = Xd.reindex(tickers).fillna(0.0).values.astype(np.float32)
+        log.info(f"rebuild_seq_tail: {d} 特征行就位 ({j + 1}/{L})")
+
+    # 自检: 重建后窗内各行必须**不全相同** —— 全相同正是本次事故的病征。
+    # 逐票沿时间轴求标准差,任一特征 >0 即该票的窗在动。
+    varying = int((feats.std(axis=1) > 1e-9).any(axis=1).sum())
+    if varying == 0:
+        raise RuntimeError("rebuild_seq_tail: 重建后窗内所有行仍完全相同 — "
+                           "特征源有问题,拒绝落盘")
+    log.info(f"rebuild_seq_tail: {varying}/{len(tickers)} 票窗内存在逐日变化")
+
+    tmp = art / "seq_tail.tmp.npz"
+    np.savez(tmp, tickers=tickers, feats=feats,
+             last_date=np.array([days[-1]] * len(tickers)))
+    tmp.replace(art / "seq_tail.npz")
+    meta["seq_tail_date"] = days[-1]
+    meta["seq_tail_rebuilt_at"] = datetime.now().isoformat(timespec="seconds")
+    mtmp = art / "meta.json.tmp"
+    with open(mtmp, "w") as f:
+        json.dump(meta, f, indent=1)
+    mtmp.replace(art / "meta.json")
+    log.info(f"rebuild_seq_tail: 窗重建完成 {days[0]}..{days[-1]} → seq_tail_date={days[-1]}")
+    return {"days": days, "seq_tail_date": days[-1], "n_tickers": len(tickers),
+            "n_varying": varying}

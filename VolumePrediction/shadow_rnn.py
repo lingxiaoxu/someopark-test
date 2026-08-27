@@ -79,6 +79,34 @@ def _held_tickers(pred_date: str) -> set:
     return held
 
 
+def _ma5_floor(svc, pred_date: str) -> pd.Series | None:
+    """pred_date 收盘后的 ma5 地板预测($成交额),与生产口径逐字同款。
+
+    **几何**均值 —— service.refresh 是 `v = np.log(piv); ma5 = v[-5:].mean();
+    pred_V = np.exp(ma5)`。用算术均值重建会系统性偏高(实测中位 1.15 倍),
+    对照臂立刻失真。窗 = 截至 pred_date(含)的 5 个交易日,和 refresh 在
+    asof 当天算出、供次日消费的那一份完全一致。
+    """
+    try:
+        ds = [d for d in svc._raw_dates() if d <= pred_date][-5:]
+        if len(ds) < 5:
+            return None
+        fr = []
+        for d in ds:
+            day = svc._load_day(d)
+            if day is None or day.empty:
+                return None
+            fr.append(day[["ticker", "dollar_volume"]].assign(date=d))
+        lf = pd.concat(fr)
+        lf = lf[lf["dollar_volume"] > 0]
+        piv = lf.pivot_table(index="ticker", columns="date",
+                             values="dollar_volume", aggfunc="first")
+        return np.exp(np.log(piv).mean(axis=1)).dropna()
+    except Exception as e:  # noqa: BLE001 — 地板臂缺失不阻断 AB
+        log.warning(f"[SHADOW_RNN] ma5 地板重建失败: {e}")
+        return None
+
+
 def _metrics(pred_V: pd.Series, actual: pd.Series, mu: float | None = None,
              min_n: int = 30) -> dict:
     """多指标评估(评估纪律 2026-08-08):R² 分母被大票方差主导,只看 R² 会误判;
@@ -134,16 +162,25 @@ def _metrics(pred_V: pd.Series, actual: pd.Series, mu: float | None = None,
             "lambda_source": lam_src}
 
 
-def serve_candidate(target: str, roll: bool = True) -> pd.DataFrame:
-    """跑候选 RNN 的真实服务路径并落盘。"""
+def serve_candidate(asof: str, roll: bool = True) -> pd.DataFrame:
+    """asof 收盘后跑候选 RNN 的真实服务路径并落盘。
+
+    两套日期不能混(2026-08-26 修):
+      - **落盘命名 = as-of 日**: rnn_pred_{asof} 存的是"截至 asof 所做的、对下一
+        交易日的预测"。evaluate 正是按 stem < actual_date 配对的,改名会错位。
+      - **serve 的 target = next_trading_day(asof)**: serve(T) 预测 T 日
+        (锚 ma5v_next = T 之前 5 个交易日均值)。原先直接传 asof,预测的是
+        今天(已发生),却被当作次日预测评估 —— 整条 AB 线晚一天。
+    """
     from VolumePrediction import prod_model_rnn as pmr
-    out = pmr.serve(CANDIDATE, target, update_state=roll)
+    tgt = pmr.next_trading_day(asof)
+    out = pmr.serve(CANDIDATE, tgt, update_state=roll)
     SHADOW_DIR.mkdir(parents=True, exist_ok=True)
-    p = SHADOW_DIR / f"rnn_pred_{target}.parquet"
+    p = SHADOW_DIR / f"rnn_pred_{asof}.parquet"
     tmp = p.with_suffix(".tmp")
     out.to_parquet(tmp, index=False)
     tmp.replace(p)
-    log.info(f"[SHADOW_RNN] {target}: {len(out)} 票预测 → {p.name}")
+    log.info(f"[SHADOW_RNN] asof={asof} → target={tgt}: {len(out)} 票预测 → {p.name}")
     return out
 
 
@@ -174,7 +211,21 @@ def evaluate(actual_date: str) -> dict | None:
         return None
     prod = pd.read_parquet(prod_f[-1]).set_index("ticker")
 
-    # 干净对照: 三档取**同一交集票**
+    # ── 对照臂(2026-08-26 修 B)────────────────────────────────────────────
+    # prod = 当日**已发布**的工件。blend3 启用后 RNN 层直接覆盖了它,而持仓票
+    # 恰好全在 RNN 层里 —— 于是 rnn_* 与 prod_* 在消费子集上逐位相同,
+    # rnn_wins 结构性恒 False,自比自,毫无判别力(RNN 从 8/07 起连输 13/17 天
+    # 无人察觉,这是两个盲区之一)。
+    # 真候选臂:
+    #   cf_*  = 反事实"不开 blend"(lgbm+ma5),refresh 在覆盖前存档,零额外算力
+    #   ma5_* = 地板(几何 ma5)。RNN 必须打得过地板,否则这一层就是负价值。
+    cf_p = OUT / "history" / f"counterfactual_noblend_{pred_date}.parquet"
+    cf = pd.read_parquet(cf_p).set_index("ticker") if cf_p.exists() else None
+    if cf is None:
+        log.warning(f"[SHADOW_RNN] {pred_date} 无反事实存档 — cf 臂缺失"
+                    f"(8/26 之前的日期本就没有,之后出现说明 refresh 存档失败)")
+
+    # 干净对照: 各档取**同一交集票**
     common = rnn.index.intersection(prod.index).intersection(actual.index)
     if len(common) < 30:
         log.error(f"[SHADOW_RNN] 交集票仅 {len(common)} — 跳过")
@@ -183,8 +234,36 @@ def evaluate(actual_date: str) -> dict | None:
     mu, mu_src = _ab_mu()
     row = {"pred_date": pred_date, "actual_date": actual_date,
            "n_common": int(len(common))}
-    for tag, s in (("rnn", rnn.loc[common, "pred_V"]),
-                   ("prod", prod.loc[common, "pred_V"])):
+    arms = [("rnn", rnn["pred_V"]), ("prod", prod["pred_V"])]
+    if cf is not None:
+        arms.append(("cf", cf["pred_V"]))
+    ma5f = _ma5_floor(svc, pred_date)
+    if ma5f is not None:
+        arms.append(("ma5", ma5f))
+    # 所有臂必须评**同一批票**(样本不同 = 对照不成立,见模块 docstring)。
+    # 缺票少 → 把 common 收到各臂交集;缺票多(>2%)→ 弃用那条臂,不让它
+    # 反过来把 rnn/prod 的历史口径搅了。两种情况都如实记账,不静默。
+    keep, drop = [], []
+    for tag, s in arms:
+        miss = len(common.difference(s.index))
+        if miss > max(1, int(0.02 * len(common))):
+            log.warning(f"[SHADOW_RNN] {tag} 臂缺 {miss}/{len(common)} 票(>2%)"
+                        f" — 弃用该臂,不缩 common")
+            row[f"{tag}_n_missing"] = int(miss)
+            drop.append(tag)
+            continue
+        keep.append((tag, s))
+        common = common.intersection(s.index)
+    if len(common) < 30:
+        log.error(f"[SHADOW_RNN] 各臂取交后仅 {len(common)} 票 — 跳过")
+        return None
+    a = a.loc[common]
+    row["n_common"] = int(len(common))
+    ok_arms = [(tag, s.reindex(common)) for tag, s in keep]
+    row["ab_arms"] = ";".join(t for t, _ in ok_arms)
+    if drop:
+        row["ab_arms_dropped"] = ";".join(drop)
+    for tag, s in ok_arms:
         m = _metrics(s, a, mu=mu)
         row[f"{tag}_r2"] = m["r2"]
         row[f"{tag}_mape"] = m["mape"]
@@ -200,8 +279,8 @@ def evaluate(actual_date: str) -> dict | None:
     held = _held_tickers(pred_date)
     hc = [t for t in common if t in held]
     row["n_held"] = len(hc)
-    for tag, src in (("rnn", rnn), ("prod", prod)):
-        hm = _metrics(src.loc[hc, "pred_V"], a.loc[hc], mu=mu, min_n=20) if hc else \
+    for tag, s in ok_arms:
+        hm = _metrics(s.loc[hc], a.loc[hc], mu=mu, min_n=20) if hc else \
             {"mape": None, "log_mse": None}
         row[f"{tag}_held_mape"] = hm["mape"]
         row[f"{tag}_held_log_mse"] = hm["log_mse"]
@@ -218,8 +297,15 @@ def evaluate(actual_date: str) -> dict | None:
     # 次裁(子集不可用时 fallback): 全宇宙 MAPE。
     # 参考列: econ regret(待 E2 λ 实测/AUM 进 material 区后才有真实牙齿)、R²
     #       (分母被超大票方差主导)、全宇宙 log-MSE(尾部否决项,供 promote 复核)。
+    #
+    # 对照臂选择(2026-08-26 修 B): 优先 cf(反事实不开 blend),没有才退 prod。
+    # blend 启用后 prod 的持仓票行**就是 RNN 自己写进去的**,拿它当对照是自比自。
+    # 这里把用了哪条臂如实记进 ab_ref,整张表自解释、新旧行不会被混读。
+    ref = "cf" if any(t == "cf" for t, _ in ok_arms) else "prod"
+    row["ab_ref"] = ref
+
     def _lower_wins(k: str):
-        r, p = row.get(f"rnn_{k}"), row.get(f"prod_{k}")
+        r, p = row.get(f"rnn_{k}"), row.get(f"{ref}_{k}")
         if r is None or p is None:
             return None
         return bool(r < p)
@@ -227,12 +313,22 @@ def evaluate(actual_date: str) -> dict | None:
     row["rnn_wins_held_log_mse"] = _lower_wins("held_log_mse")
     row["rnn_wins_econ"] = _lower_wins("econ")
     row["rnn_wins_mape"] = _lower_wins("mape")
-    row["rnn_wins_r2"] = (row["rnn_r2"] is not None and row["prod_r2"] is not None
-                          and row["rnn_r2"] > row["prod_r2"])
+    row["rnn_wins_r2"] = (row["rnn_r2"] is not None and row.get(f"{ref}_r2") is not None
+                          and row["rnn_r2"] > row[f"{ref}_r2"])
     if row["rnn_wins_held_mape"] is not None and row["rnn_wins_held_log_mse"] is not None:
         row["rnn_wins"] = bool(row["rnn_wins_held_mape"] and row["rnn_wins_held_log_mse"])
     else:
         row["rnn_wins"] = row["rnn_wins_mape"]
+
+    # 地板否决: RNN 在持仓票上打不过朴素 ma5,这一层就是负价值 —— 与 cf 谁赢无关。
+    # (事故期实测 RNN 从 8/07 起连输 ma5 13/17 天,而当时的 AB 表一个信号都没给。)
+    if row.get("ma5_held_mape") is not None and row.get("rnn_held_mape") is not None:
+        row["rnn_beats_ma5_held"] = bool(row["rnn_held_mape"] < row["ma5_held_mape"])
+        if not row["rnn_beats_ma5_held"]:
+            log.warning(
+                f"[SHADOW_RNN] {pred_date}: 持仓票上 RNN 输给 ma5 地板 "
+                f"({row['rnn_held_mape']:.1f} vs {row['ma5_held_mape']:.1f}) "
+                f"— RNN 层当前为负价值,连续多日出现应考虑 set_blend(False)")
     return row
 
 
@@ -304,11 +400,13 @@ def run_daily(target: str | None = None, roll: bool = True,
             except Exception:  # noqa: BLE001 — registry 读不到按未启用处理
                 pass
         seq_d = meta.get("seq_tail_date", meta["trained_through"])
-        # 只 serve seq_tail 之后、且有真实 raw 数据的交易日（按序，有状态滚动）。
-        pending = [target] if target else [d for d in raw if d > seq_d]
+        # pending 是 **as-of 日**(有真实 raw 数据的交易日),serve_candidate 内部
+        # 再转成 target=next_trading_day(as-of)。seq_d 记的是最后服务过的 target,
+        # 故"还没服务过的 as-of 日" ⟺ next(A) > seq_d ⟺ A >= seq_d。
+        pending = [target] if target else [d for d in raw if d >= seq_d]
         for tgt in pending:
-            if tgt > raw_last:                 # 双保险：绝不 serve 越过 raw_last
-                log.warning(f"[SHADOW_RNN] 跳过越界目标 {tgt} > raw_last {raw_last}")
+            if tgt > raw_last:                 # 双保险：as-of 日绝不越过 raw_last
+                log.warning(f"[SHADOW_RNN] 跳过越界 as-of {tgt} > raw_last {raw_last}")
                 continue
             try:
                 serve_candidate(tgt, roll=roll)

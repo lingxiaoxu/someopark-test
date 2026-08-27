@@ -1,6 +1,6 @@
 {
- "schema": "v1",
- "updated": "2026-08-24T21:33:37+00:00",
+ "schema": "v2",
+ "updated": "2026-08-27T00:24:16+00:00",
  "aliases": {
   "BK": {
    "current": "BNY",
@@ -11,6 +11,19 @@
    "verified": "polygon_events",
    "asof": "2026-08-15",
    "recycled_checked": "2026-08-24"
+  }
+ },
+ "delistings": {
+  "AVB": {
+   "delisted": "2026-08-18",
+   "name": "AvalonBay Communities, Inc.",
+   "cik": "0000915912",
+   "figi": "BBG000C2FJB1",
+   "exchange": "XNYS",
+   "successor_candidates": [],
+   "verified": "polygon_reference",
+   "asof": "2026-08-27",
+   "recycled_checked": "2026-08-27"
   }
  }
 }

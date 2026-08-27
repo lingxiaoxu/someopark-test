@@ -16,10 +16,17 @@ def test_refresh_blend_block_is_wired():
     assert '_blend_cfg.get("enabled")' in src
     assert "blend_routing" in src                     # 路由=单一事实源
     assert "blend_serve_" in src                      # 同日重跑缓存
-    # RNN serve 必须用影子同款约定 serve(raw 日)+逐日补滚到 asof
-    # (lgbm 的 _target=asof+1 会撞 seq_tail 断档守卫)
+    # serve 的 target = **被预测的那一天** = next_trading_day(asof),与本函数
+    # 上方 lgbm 路径的 _target 同款。理由: 锚 ma5v_next 取 T 之前 5 个交易日的
+    # log 量均值(features/pipeline.py 的 ma5_v = v.shift(1).rolling(5).mean()),
+    # 所以 serve(T) 预测 T,serve(asof) 预测的是已经发生过的今天。
+    # 本断言 2026-08-26 前写反了(assert "_seq_d < d <= asof"),把"晚一天"
+    # 固化成了守卫 —— 冻结路径下 target_date 不影响特征所以一直没暴露。
+    # "asof+1 会撞 seq_tail 断档守卫"的原理由也不成立: 目标日连续递增,
+    # 滚动后 seq_tail_date == target,次日守卫自然满足。
+    assert "_pmr2.next_trading_day(asof)" in src
     assert "_pmr2.serve(_rart, _d" in src
-    assert "_seq_d < d <= asof" in src                # 补滚域=(seq_tail, asof]
+    assert "_seq_d < d <= _rtgt" in src               # 补滚域=(seq_tail, target]
 
 
 def test_shadow_rnn_goes_readonly_when_blend_enabled():
@@ -107,7 +114,8 @@ def test_refresh_blend_e2e_sandbox(tmp_path, monkeypatch):
     assert r["status"] == "ok"
     asof = r["asof"]
     assert served["update_state"] is True, "正式路径必须滚动 seq_tail"
-    assert served["target"] == asof, "RNN serve 必须用影子同款 serve(asof) 约定"
+    assert served["target"] == prod_model_rnn.next_trading_day(asof), \
+        "RNN serve 的 target 必须是被预测日(asof 的下一交易日),不是 asof"
 
     out = pd.read_parquet(art / "history" / f"volume_forecast_{asof}.parquet")
     mix = out["model_version"].value_counts().to_dict()
@@ -142,8 +150,11 @@ def test_refresh_blend_same_day_rerun_no_downgrade(tmp_path, monkeypatch):
     monkeypatch.setattr(prod_model_rnn, "serve", fake_serve)
     svc = service.VolumeService(artifacts_dir=art, raw_dir=real_raw)
     asof = svc._raw_dates()[-1]
+    # 首跑后的状态: serve(target=asof 的下一交易日, update_state=True) 把窗滚到
+    # target,故 seq_tail_date == target(不是 asof —— 2026-08-26 前的错约定)。
     (rdir / "meta.json").write_text(json.dumps(
-        {"kind": "learned.rnn", "seq_tail_date": asof}))
+        {"kind": "learned.rnn",
+         "seq_tail_date": prod_model_rnn.next_trading_day(asof)}))
     # 无缓存 → 应退影子当日工件
     day = pd.read_parquet(sorted(real_raw.glob("grouped_*.parquet"))[-1])
     shadow = art / "shadow_rnn"

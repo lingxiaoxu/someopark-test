@@ -170,10 +170,23 @@ def run(date: str, service=None, out_dir: Optional[Path] = None) -> dict:
         "w4_breach_new": w4.get("dtl_breach_new"),
         "status": result["status"],
     }])
+    # 幂等写入(2026-08-26 修): 原先裸 mode="a" 追加 —— 同一日重跑就多一行,
+    # 8/07、8/14、8/21 各留下一条重复行(周四重跑),下游按日读会取到旧那条。
+    # 改成 "同日去重(留最新) + 按列对齐 + 整表原子重写",与 shadow_rnn.
+    # append_track 同纪律(裸 append 不看已有 header,列序一变就静默错位)。
     if csv_p.exists():
-        row.to_csv(csv_p, mode="a", header=False, index=False)
-    else:
-        row.to_csv(csv_p, index=False)
+        old = pd.read_csv(csv_p)
+        old = old[old["date"].astype(str) != str(date)]
+        if set(old.columns) == set(row.columns):
+            row = row[old.columns]                    # 列序对齐,防错位
+        n_dup = len(pd.read_csv(csv_p)) - len(old)
+        if n_dup:
+            log.info(f"wiring_shadow: {date} 已有 {n_dup} 行,覆盖为本次结果")
+        row = pd.concat([old, row], ignore_index=True)
+        row = row.sort_values("date", kind="stable").reset_index(drop=True)
+    ctmp = csv_p.with_suffix(".tmp")
+    row.to_csv(ctmp, index=False)
+    ctmp.replace(csv_p)
     if result["errors"]:
         result["status"] = "partial" if (isinstance(w3, dict) and "error" not in w3) \
             or (isinstance(w4, dict) and "error" not in w4) else "error"

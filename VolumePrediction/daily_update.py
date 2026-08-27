@@ -183,6 +183,19 @@ def run(date: Optional[str] = None, fetch: bool = True,
             blend_ab = {"status": "error", "error": str(e)}
 
     health = svc.ops.health()
+    # 静止检测告警(2026-08-26 B'): 某服务层与前一日预测**逐位相同** = 已冻死。
+    # 这是比 MAPE 阈值早得多的确定性信号 —— RNN 层曾这样冻了 9 个交易日无人察觉。
+    if health.get("forecast_static"):
+        log.error(f"FORECAST STATIC(需排查!): 服务层 "
+                  f"{health.get('forecast_static_layers')} 与前一日预测逐位相同 "
+                  f"({health.get('layer_identical_frac')}) —— 该层已停止预测,"
+                  f"检查 serve 特征是否随日期更新 / seq_tail 是否在动")
+    # 地板连败告警(2026-08-26 B 配套): RNN 层在持仓票上连输朴素 ma5 ≥3 天 =
+    # 这一层在赔钱,与"冻死"是两种失效模式(可能还在动,只是动错方向)。
+    if health.get("rnn_below_floor"):
+        log.error(f"RNN 层连续 {health.get('rnn_floor_loss_streak')} 天在持仓票上"
+                  f"输给朴素 ma5 地板 —— 该层当前为负价值,复核 AB 表后考虑"
+                  f" ops.set_blend(False) 单行回退")
     # §5.3 计划命名的健康工件落盘(plan L424): 供外部监控免起服务进程直接读。
     # 原子写(tmp+replace),失败绝不阻断日更主流程。
     try:
