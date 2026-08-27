@@ -75,16 +75,63 @@ def _prev_month(period: str, k: int = 1) -> str:
     return f"{y:04d}-{m:02d}"
 
 
+# Series whose settlement quantity is NOT the registry's FRED series. Measured against
+# the ladders that actually paid out (2026-08-27, /tmp/dfm_verify/label_fix_probe.py);
+# the agreement rate for each rule is quoted where it is used.
+_FUT_SETTLE = {"KXWTIW": "CL"}          # NYMEX front-month settle, not EIA spot
+_DAILY_MONTH_END = {"KXFED"}            # DFEDTARU is daily; the month key needs its END
+_DAILY_SID = {"KXAAAGASW": "AAA_DAILY"}  # AAA national average, not the EIA weekly
+
+
+def _daily_value_on(conn, sid: str, day: str) -> float | None:
+    r = conn.execute(
+        "SELECT value FROM fred_obs WHERE sid=? AND event_time LIKE ?"
+        " ORDER BY knowledge_time LIMIT 1", (sid, day + "%")).fetchone()
+    return None if r is None or r["value"] is None else float(r["value"])
+
+
 def _realized_print(conn, series: str, period: str) -> float | None:
     """First-print label for the settled period, in the CONTRACT'S unit (the
     registry sid may be an index level — %mom/%yoy/k_jobs need transformation).
-    Returns None when no honest label exists in contract units."""
+    Returns None when no honest label exists in contract units.
+
+    Every branch below is scored against the settled ladder — the thing that actually
+    paid out — in tests/test_settlement_labels.py. That test exists because five of
+    these branches were silently wrong until 2026-08-27, and a wrong label is worse
+    than no label: strategy/snipe.py buys the "certain" side of a ladder from this
+    number, and research/health.py fuses the global breaker on it.
+    """
     from prediction_market_macro.config.registry import REGISTRY
     spec = REGISTRY.get(series)
-    if spec is None or not spec.fred_first_release:
+    if spec is None:
+        return None
+    if len(period) == 10 and series in _FUT_SETTLE:
+        # KXWTIW settles on the NYMEX front-month CL settle for the contract date.
+        # DCOILWTICO (EIA Cushing SPOT) disagreed with the ladder on 61 of 141 periods,
+        # mean +31.6 grid steps; CL agrees on 139 of 143.
+        r = conn.execute(
+            "SELECT close FROM fut_daily WHERE root=? AND event_time LIKE ? LIMIT 1",
+            (_FUT_SETTLE[series], period + "%")).fetchone()
+        return None if r is None or r["close"] is None else round(float(r["close"]), 4)
+    if len(period) == 10 and series in _DAILY_SID:
+        # AAA daily national average. Only ingested from 2026-07-31 (ingest/aaa_daily.py:
+        # "No history is available"), so older periods have NO honest label and get None
+        # rather than the EIA weekly proxy, which sat a mean 3.1 grid steps LOW and
+        # disagreed with the ladder on 27 of 73 periods.
+        return _daily_value_on(conn, _DAILY_SID[series], period)
+    if not spec.fred_first_release:
         return None
     sid = spec.fred_first_release
     if len(period) == 7:                              # monthly 'YYYY-MM'
+        if series in _DAILY_MONTH_END:
+            # DFEDTARU is a DAILY series keyed here by month. Taking its first row in
+            # the month returns the PRE-meeting rate: 6 of 28 FOMC periods came out
+            # exactly one 25bp grid step high. The settlement is the range upper bound
+            # AFTER the meeting, which is the month's last daily value (28/28).
+            r = conn.execute(
+                "SELECT value FROM fred_obs WHERE sid=? AND event_time LIKE ?"
+                " ORDER BY event_time DESC LIMIT 1", (sid, period + "%")).fetchone()
+            return None if r is None or r["value"] is None else float(r["value"])
         if spec.unit == "%mom":
             pair = _same_vintage_pair(conn, sid, period, _prev_month(period))
             if pair is None:
@@ -93,13 +140,27 @@ def _realized_print(conn, series: str, period: str) -> float | None:
                 pair = (a, b) if a and b else None
             return round((pair[0] / pair[1] - 1) * 100, 4) if pair else None
         if spec.unit == "%yoy":
-            a = _first_print_value(conn, sid, period)
-            b = _first_print_value(conn, sid, _prev_month(period, 12))
-            return round((a / b - 1) * 100, 4) if a and b else None
+            # Same-vintage, for the same reason %mom is: differencing two independent
+            # first prints lets every intervening revision into the label. 33/41 -> 36/41
+            # (headline) and 36/43 -> 40/43 (core). The residual gap is NOT noise — the
+            # published CPI YoY is computed on the NSA index and CPIAUCSL/CPILFESL are
+            # seasonally adjusted. Closing it needs CPIAUCNS/CPILFENS ingested; until
+            # then this label is right most of the time and test_settlement_labels.py
+            # holds it to the measured rate rather than to 100%.
+            pair = _same_vintage_pair(conn, sid, period, _prev_month(period, 12))
+            if pair is None:
+                a = _first_print_value(conn, sid, period)
+                b = _first_print_value(conn, sid, _prev_month(period, 12))
+                pair = (a, b) if a and b else None
+            return round((pair[0] / pair[1] - 1) * 100, 4) if pair else None
         if spec.unit == "k_jobs":                     # PAYEMS level → change in jobs
-            a = _first_print_value(conn, sid, period)
-            b = _first_print_value(conn, sid, _prev_month(period))
-            return round((a - b) * 1000, 1) if a is not None and b is not None else None
+            # Same-vintage is not a refinement here, it is the whole label: differencing
+            # two independent first prints put every prior-month revision — and January's
+            # annual benchmark revision — into the number. 14/39 agreement became 39/39.
+            # The worst case was 2026-01: -899,000 against a ladder that settled above
+            # +125,000, which strategy/snipe.py would have read as a certainty.
+            pair = _same_vintage_pair(conn, sid, period, _prev_month(period))
+            return None if pair is None else round((pair[0] - pair[1]) * 1000, 1)
         return _first_print_value(conn, sid, period)  # pct levels (U3, rates)
     # claims: period = RELEASE date. Pick the event whose true first print landed
     # that day — filter on the aggregated MIN(kt), never on raw rows (a same-day
