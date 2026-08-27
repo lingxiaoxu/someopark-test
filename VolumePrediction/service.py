@@ -869,27 +869,60 @@ class _Ops:
         A/B 因候选臂与生产臂同源 rnn_wins 恒 False,refreeze_due 是纯日历计数。
         靠 MAPE 阈值要 6+ 天才反应,靠"输出没变"当天就能抓到,且几乎无假阳:
         ma5 层窗口天天前移,学习层特征天天更新,正常情况下不可能 >99% 逐位相同。
+
+        覆盖两处工件:
+          发布层 history/volume_forecast_* —— 当天真正服务下游的那份;
+          休眠层 history/counterfactual_noblend_* —— RNN 吃满学习层后 lgbm 不再
+            出行(8/18 起),发布工件里查不到它,可它仍是 set_blend(False) 的回退
+            目标。回退到一个没人体检过的层 = 第二次事故。反事实存档正好每天存
+            的就是被覆盖前的 lgbm 行,拿来当休眠层的体检样本零额外算力。
         """
-        hist = sorted((self.s.art / "history").glob("volume_forecast_*.parquet"))
-        if len(hist) < 2:
-            return {}
+        base = self.s.art / "history"
+        res: dict = {}
+        hist = sorted(base.glob("volume_forecast_*.parquet"))
+        if len(hist) >= 2:
+            res.update(self._pairwise_static(hist[-1], hist[-2], min_n))
+        cf = sorted(base.glob("counterfactual_noblend_*.parquet"))
+        if len(cf) >= 2:
+            for _k, _v in self._pairwise_static(cf[-1], cf[-2], min_n).items():
+                res[f"dormant:{_k}"] = _v
+        return res
+
+    @staticmethod
+    def _pairwise_static(cur_p, prv_p, min_n: int = 50) -> dict:
+        """两份工件按**层内**逐位对拍。
+
+        2026-08-26 修: 初版把 prv 取成**整份工件**按 ticker 索引(所有层混在
+        一起),于是"今天在 A 层的票 vs 昨天它在 B 层的值"—— 跨层比必然不同,
+        把 identical_frac 稀释**下去**,漏报而不是误报。实测代价: 8/17 那天
+        RNN 层真值 1.0(已冻死),混层算法给 0.975 < 0.99 阈值 → 不告警,
+        要拖到 8/19 全层换完才炸,白丢两天。层路由每天都有票进出,这不是
+        边缘情况。正解 = 两边都按 model_version 分组,只比同层同票。
+        """
         try:
             cols = ["ticker", "pred_V", "model_version"]
-            cur = pd.read_parquet(hist[-1], columns=cols)
-            prv = pd.read_parquet(hist[-2], columns=cols).set_index("ticker")["pred_V"]
+            cur = pd.read_parquet(cur_p, columns=cols)
+            prv = pd.read_parquet(prv_p, columns=cols)
         except Exception:  # noqa: BLE001 — 体检项绝不阻断调用方
             return {}
+        pl = {str(mv): g.set_index("ticker")["pred_V"]
+              for mv, g in prv.groupby(prv["model_version"].astype(str))}
         res: dict = {}
         for _mv, _g in cur.groupby(cur["model_version"].astype(str)):
+            prev_s = pl.get(str(_mv))
+            if prev_s is None:
+                continue                      # 该层昨天不存在(首日上线),无从比
             s = _g.set_index("ticker")["pred_V"]
-            common = s.index.intersection(prv.index)
+            s, prev_s = s[~s.index.duplicated()], prev_s[~prev_s.index.duplicated()]
+            common = s.index.intersection(prev_s.index)
             if len(common) < min_n:
                 continue
             same = float(np.isclose(s.loc[common].to_numpy(float),
-                                    prv.loc[common].to_numpy(float),
+                                    prev_s.loc[common].to_numpy(float),
                                     rtol=1e-9, atol=0.0).mean())
-            res[_mv] = {"n": int(len(common)), "identical_frac": round(same, 6),
-                        "vs": hist[-2].stem.split("_")[-1]}
+            res[str(_mv)] = {"n": int(len(common)),
+                             "identical_frac": round(same, 6),
+                             "vs": prv_p.stem.split("_")[-1]}
         return res
 
     def refresh(self, date: Optional[str] = None, fetch: bool = True) -> dict:
