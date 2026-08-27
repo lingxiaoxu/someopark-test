@@ -50,6 +50,23 @@
    }
   ]
  },
+ "US0090661010": {
+  "asset_class": "equity",
+  "cik": "0001559720",
+  "cusip": "009066101",
+  "figi": "BBG001Y2XS07",
+  "name": "Airbnb, Inc. Class A Common Stock",
+  "polygon_ticker": "ABNB",
+  "registered_at": "2026-08-26T14:08:49+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-26",
+    "ticker": "ABNB",
+    "to": null
+   }
+  ]
+ },
  "US00971T1016": {
   "asset_class": "equity",
   "cik": "0001086222",
@@ -539,6 +556,23 @@
    {
     "from": "2026-08-12",
     "ticker": "CBOE",
+    "to": null
+   }
+  ]
+ },
+ "US12514G1085": {
+  "asset_class": "equity",
+  "cik": "0001402057",
+  "cusip": "12514G108",
+  "figi": "BBG001P63B80",
+  "name": "CDW Corporation",
+  "polygon_ticker": "CDW",
+  "registered_at": "2026-08-26T14:08:51+00:00",
+  "status": "active",
+  "ticker_history": [
+   {
+    "from": "2026-08-26",
+    "ticker": "CDW",
     "to": null
    }
   ]

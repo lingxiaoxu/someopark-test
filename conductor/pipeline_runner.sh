@@ -121,6 +121,14 @@ conda run -n someopark_run --no-capture-output python "$REPO/MacroSimilarity.py"
     || log "[macro-sim] WARN: update failed (non-fatal, DailySignal falls back to last-window)"
 
 run_step 7 "DailySignal.py --strategy both --vix-forecast --vix-forecast-finetune" "DailySignal"
+# Controller security master 补录(STEP 7 之后:吃当天最终 inventory,新开仓的
+# 首见票注册进白名单,shadow 循环下一轮热重载即吃进新结构,免手跑)。
+# NON-FATAL:构建失败 master 原样不动(save 前任何异常都不落盘,原子替换),
+# controller 继续服务旧结构 + 前端结构同步亮 ×,当天手动补跑即可 —— 与旧流程同。
+log "[sec-master] refreshing controller security master (non-fatal)..."
+conda run -n someopark_run --no-capture-output python -m controller.registry --build-master >> "$LOGFILE" 2>&1 \
+    && log "[sec-master] build done" \
+    || log "[sec-master] WARN: build failed (non-fatal, controller serves old structure; run manually)"
 run_step 8 "WalkForwardDiagnostic.py" "WalkForwardDiagnostic"
 # 起始日期**不再硬编码**（此前固定 2026-03-19）。不传 --start 时 PnLReport 走
 # default_report_start()：取运行日前一月所属季度的首日 —— 季度首月沿用上一季度

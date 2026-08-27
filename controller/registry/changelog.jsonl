@@ -3101,3 +3101,12 @@
 {"ts": "2026-08-24T13:38:06+00:00", "event": "register_node", "spid": "SPPR0JW0BZC", "kind": "pair", "key": "mtfs|L:US70432V1026|S:US5261071071", "display": "PAYC/LII"}
 {"ts": "2026-08-24T13:38:06+00:00", "event": "register_node", "spid": "SPPREY5NNH9", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:USG667211043", "display": "VLO/NCLH"}
 {"ts": "2026-08-24T13:38:06+00:00", "event": "register_node", "spid": "SPPRE2LA02U", "kind": "pair", "key": "mtfs|L:US70432V1026|S:US12008R1077", "display": "PAYC/BLDR"}
+{"ts": "2026-08-26T14:08:49+00:00", "event": "register_security", "isin": "US0090661010", "ticker": "ABNB", "cusip": "009066101"}
+{"ts": "2026-08-26T14:08:51+00:00", "event": "register_security", "isin": "US12514G1085", "ticker": "CDW", "cusip": "12514G108"}
+{"ts": "2026-08-26T14:09:00+00:00", "event": "build_master", "total": 228, "cusip_hit": 228, "placeholder": 0}
+{"ts": "2026-08-26T14:09:01+00:00", "event": "register_node", "spid": "SPPRE131TWE", "kind": "pair", "key": "mrpt|L:US7766961061|S:US12514G1085", "display": "CDW/ROP"}
+{"ts": "2026-08-26T14:09:01+00:00", "event": "register_node", "spid": "SPPRBK5I17K", "kind": "pair", "key": "mtfs|L:US1598641074|S:USG7S00T1042", "display": "CRL/PNR"}
+{"ts": "2026-08-26T14:09:01+00:00", "event": "register_node", "spid": "SPPRE7AH91A", "kind": "pair", "key": "mtfs|L:US91913Y1001|S:US5732841060", "display": "VLO/MLM"}
+{"ts": "2026-08-26T14:09:01+00:00", "event": "register_node", "spid": "SPPRKWAXB8C", "kind": "pair", "key": "mtfs|L:US7185461040|S:US2435371073", "display": "PSX/DECK"}
+{"ts": "2026-08-26T14:09:01+00:00", "event": "register_node", "spid": "SPPREEZ25NW", "kind": "pair", "key": "mtfs|L:US0090661010|S:US8168511090", "display": "ABNB/SRE"}
+{"ts": "2026-08-26T14:23:19+00:00", "event": "build_master", "total": 228, "cusip_hit": 228, "placeholder": 0}

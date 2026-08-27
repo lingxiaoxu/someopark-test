@@ -208,3 +208,9 @@
 2026-08-24T23:01:19Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
 2026-08-25T13:14:59Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
 2026-08-25T13:14:59Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=11 applicable-splits=none pending=none applied=0
+2026-08-25T21:47:21Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=6 applicable-splits=none pending=none applied=0
+2026-08-25T23:01:20Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
+2026-08-26T13:20:49Z [CA][mrpt] status=NO-ACTION-NEEDED | tickers=2 applicable-splits=none pending=none applied=0
+2026-08-26T13:20:49Z [CA][mtfs] status=NO-ACTION-NEEDED | tickers=10 applicable-splits=none pending=none applied=0
+2026-08-26T21:48:27Z [CA][ssrs] status=NO-ACTION-NEEDED | tickers=6 applicable-splits=none pending=none applied=0
+2026-08-26T23:01:20Z [CA][aiss] status=ALREADY-APPLIED | tickers=9 applicable-splits=['KLAC@2026-06-12'] pending=none applied=0
