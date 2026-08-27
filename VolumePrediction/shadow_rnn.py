@@ -107,6 +107,51 @@ def _ma5_floor(svc, pred_date: str) -> pd.Series | None:
         return None
 
 
+def _paired(rnn_s: pd.Series | None, other_s: pd.Series | None,
+            actual: pd.Series, min_n: int = 20) -> dict:
+    """逐票配对检验: 同一天、同一批票上,RNN 与对照臂谁的 |log 误差| 更小。
+
+    为什么需要(用户批准 2026-08-26): 现有裁决是"当日聚合 MAPE 谁低"再数天数 ——
+    10 天的 7/10 做符号检验 p≈0.17,**不显著**,只够当运营直觉。而持仓票每天有
+    ~200 只,逐票配对后单日 n≈200、10 日累计 n≈2000,Wilcoxon 才有统计力。
+    两种口径互补: 聚合看"平均水平",配对看"多数票上谁更准",聚合会被少数几只
+    巨额票主导(事故期 RNN 的 held MAPE 被高估的大票拖成 56.4)。
+
+    误差用 **|log(pred/actual)|** 而非平方: 配对问的是"多数票谁更准",尾部单票
+    爆炸由 log_mse 那条指标单管,不该在这里被重复计入。
+    → {n, winrate, p}。winrate = RNN 更准的票占比;p = Wilcoxon 符号秩双侧。
+    样本不足/退化(两臂逐位相同,如 blend 开启后 ref=prod 的自比自)→ p=None。
+    """
+    if rnn_s is None or other_s is None:
+        return {"n": 0, "winrate": None, "p": None}
+    idx = rnn_s.index.intersection(other_s.index).intersection(actual.index)
+    if len(idx) < min_n:
+        return {"n": int(len(idx)), "winrate": None, "p": None}
+    r = rnn_s.reindex(idx).to_numpy(float)
+    o = other_s.reindex(idx).to_numpy(float)
+    a = actual.reindex(idx).to_numpy(float)
+    ok = (r > 0) & (o > 0) & (a > 0) & np.isfinite(r) & np.isfinite(o) & np.isfinite(a)
+    if ok.sum() < min_n:
+        return {"n": int(ok.sum()), "winrate": None, "p": None}
+    er = np.abs(np.log(r[ok] / a[ok]))
+    eo = np.abs(np.log(o[ok] / a[ok]))
+    diff = er - eo                                   # <0 = RNN 更准
+    n = int(ok.sum())
+    wr = float((diff < 0).mean())
+    p = None
+    try:
+        from scipy import stats
+        if np.any(diff != 0):                        # 全 0 = 两臂同源,无从检验
+            p = float(stats.wilcoxon(diff).pvalue)
+    except Exception as e:  # noqa: BLE001 — 统计量缺失不阻断 AB 记账
+        log.warning(f"[SHADOW_RNN] Wilcoxon 失败: {e}")
+    # p 用有效数字而不是 round(p, 6): 强效应下 Wilcoxon 会给到 1e-30 量级,
+    # 定点舍入一律压成 0.0,"极显著"和"刚好压线"就分不出来了(实测 8/26 真数据
+    # 冻死臂 p 被压成 0.0)。3 位有效数字保留量级,CSV 里也读得懂。
+    return {"n": n, "winrate": round(wr, 4),
+            "p": None if p is None else float(f"{p:.3g}")}
+
+
 def _metrics(pred_V: pd.Series, actual: pd.Series, mu: float | None = None,
              min_n: int = 30) -> dict:
     """多指标评估(评估纪律 2026-08-08):R² 分母被大票方差主导,只看 R² 会误判;
@@ -303,6 +348,17 @@ def evaluate(actual_date: str) -> dict | None:
     # 这里把用了哪条臂如实记进 ab_ref,整张表自解释、新旧行不会被混读。
     ref = "cf" if any(t == "cf" for t, _ in ok_arms) else "prod"
     row["ab_ref"] = ref
+
+    # 逐票配对检验(用户批准 2026-08-26,10 日观察期的主证据)。列名**固定**不随
+    # ref 变(用了哪条臂看 ab_ref),否则 CSV 的 schema 会随配置漂移、跨日不可比。
+    _arm = dict(ok_arms)
+    _ah = a.loc[hc] if hc else a.iloc[:0]
+    _rh = _arm["rnn"].loc[hc] if hc and "rnn" in _arm else None
+    for _key, _tag in (("paired_ref", ref), ("paired_ma5", "ma5")):
+        _pr = _paired(_rh, _arm[_tag].loc[hc] if hc and _tag in _arm else None, _ah)
+        row[f"{_key}_held_n"] = _pr["n"]
+        row[f"{_key}_held_winrate"] = _pr["winrate"]
+        row[f"{_key}_held_p"] = _pr["p"]
 
     def _lower_wins(k: str):
         r, p = row.get(f"rnn_{k}"), row.get(f"{ref}_{k}")
