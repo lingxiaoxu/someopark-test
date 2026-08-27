@@ -107,7 +107,8 @@ def _candle_quote(conn, ticker: str, asof: datetime):
 
 def decision_replay(conn, series: str, offset_hours: float = 1.0,
                     max_events: int = 200, bankroll: float = 100.0,
-                    collect_trades: bool = False) -> dict:
+                    collect_trades: bool = False,
+                    params: dict | None = None, params_pit: bool = False) -> dict:
     """For every settled event: rebuild the book from candles, run the SAME
     enumerate_structs + decide() the production path uses, settle the opened
     structure against real results, and account PnL net of fees.
@@ -128,7 +129,15 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
     sum over the whole history, which cannot be sliced to an as-of date; `research/
     pit_gates` needs the individual (period, cap_key, expected, realized) rows to rebuild
     the capture memory as it stood on a given simulated day. Off by default because the
-    result is persisted into an `experiments` row and the trade list would bloat it."""
+    result is persisted into an `experiments` row and the trade list would bloat it.
+
+    `params` / `params_pit` (#198): this function claims ENTRY POLICY = PRODUCTION POLICY
+    and then predicted at the registered DEFAULTS, while production has predicted through
+    `param_select.current()` since 2026-08-11. Two of the gate's five criteria — `roi` and
+    `edge_capture` — come from here, so the claim was false for exactly the reason
+    `backtest.replay_series` documents at length. `params_pit=True` predicts each entry
+    candidate at the params in force at THAT candidate's asof, which is the policy in the
+    sentence above; `params` pins one set for the in-sample counterfactual."""
     import importlib
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.model.common import Categorical, grid_pmf
@@ -138,6 +147,9 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
     from prediction_market_macro.strategy.edge import enumerate_structs, taker_fee
     from prediction_market_macro.util.periods import kalshi_period_to_key
 
+    if params_pit and params is not None:
+        raise ValueError("decision_replay: params and params_pit answer two different"
+                         " questions; passing both silently answers only one")
     spec = REGISTRY[series]
     disp = SERIES_DISPATCH[series]
     fn = getattr(importlib.import_module(disp[0]), disp[1])
@@ -189,8 +201,14 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
                 results[l["ticker"]] = l["result"]
             if not meta:
                 continue
+            if params_pit:
+                from prediction_market_macro.research.param_select import params_asof
+                eff = params_asof(conn, series, cand) or None
+            else:
+                eff = params
             try:
-                pred = fn(conn, cand, key, series=series)
+                pred = (fn(conn, cand, key, series=series) if eff is None
+                        else fn(conn, cand, key, series=series, params=eff))
             except Exception:                              # noqa: BLE001
                 continue
             model_mean, entropy_norm = None, None
@@ -279,7 +297,8 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
 
 
 def gate_verdict(replay_agg: dict, dec: dict, dm: dict,
-                 parity: dict | None = None) -> dict:
+                 parity: dict | None = None,
+                 params_parity: dict | None = None) -> dict:
     """Pure §9.5 verdict from the metric bundles (unit-testable).
 
     `parity` is #196's branch check. `None` means "not checked" and is accepted only so
@@ -287,6 +306,12 @@ def gate_verdict(replay_agg: dict, dec: dict, dm: dict,
     pass it. Without it the other five criteria are statements about whatever branch the
     replay happened to take, which for KXFED and KXAAAGASW was not the one production
     runs — a gate that passes on the wrong model is worse than no gate.
+
+    `params_parity` is #198's, and it is the same sentence one level down: branch parity
+    reads input KEY NAMES and is blind by construction to adopted parameters, which
+    change values only. Same `None` convention, same reason. It carries the verdict of
+    an IN-SAMPLE re-score at the live params, admitted only because AND-ing a generous
+    measurement can only tighten a gate — see `branch_parity.params_parity_check`.
     """
     reasons = []
     n = replay_agg.get("n_scored-1h") or 0
@@ -306,11 +331,15 @@ def gate_verdict(replay_agg: dict, dec: dict, dm: dict,
         reasons.append(f"dm p {p} !< 0.10 (not significant — 铁律7)")
     if parity is not None and not parity.get("parity"):
         reasons.append("branch parity: " + (parity.get("reason") or "failed"))
+    if params_parity is not None and not params_parity.get("parity"):
+        reasons.append("params parity: " + (params_parity.get("reason") or "failed"))
     return {"real": not reasons, "reasons": reasons,
-            "parity": parity,
+            "parity": parity, "params_parity": params_parity,
             "criteria": {"n_scored": n, "brier_model": bm, "brier_market": bk,
                          "roi": roi, "edge_capture": ec, "dm_p": p,
-                         "branch_parity": None if parity is None else parity.get("parity")}}
+                         "branch_parity": None if parity is None else parity.get("parity"),
+                         "params_parity": (None if params_parity is None
+                                           else params_parity.get("parity"))}}
 
 
 def _store(conn, name: str, series: str, window: str, metrics: dict) -> None:
@@ -412,9 +441,34 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
 
 def run_series(conn, series: str) -> dict:
     """Replay → decision replay → DM/CI → calibration → drift → gate. Stores
-    experiments rows: decision_replay / calibration / series_gate."""
+    experiments rows: decision_replay / calibration / series_gate.
+
+    #198 — WHICH PARAMETERS THE FIVE CRITERIA ARE ABOUT. Until 2026-08-27 the answer was
+    "the registered defaults", by omission: this function called `replay_series` and
+    `decision_replay` without params while `ops/predict_all` predicts through
+    `param_select.current()`, which has returned adopted, weekly-changing sets since
+    2026-08-11. The gate therefore authorised real money on a configuration production
+    had stopped running. Now there are two replays and they answer different questions:
+
+      primary       `params_pit=True` — each event at the params in force at its own
+                    asof. The track record of what production ACTUALLY ran, with no
+                    look-ahead. All five criteria are computed here.
+      counterfactual  history re-scored at TODAY's adopted set (skipped entirely when
+                    nothing is adopted, which is 5 of 14 series). IN-SAMPLE by
+                    construction — the selection lanes picked those params by scoring
+                    these very events — so it is admitted ONLY as an extra bar to clear,
+                    never as a substitute for the primary. An optimistic measurement
+                    failing is conclusive; its passing buys nothing.
+
+    The asymmetry is the whole design. AND-ing a generous number can only tighten the
+    gate, so no leakage can turn into a pass; and it catches the case that motivated the
+    ticket — KXU3, where the defaults beat the market (0.03774 < 0.04159) and the live
+    params lose to it (0.04270). The reverse case is KXFED, whose live params look
+    BETTER (0.00206 vs a default 0.00307 that fails); it stays failed, because we do not
+    get to swap in the in-sample number when it happens to flatter us.
+    """
     from prediction_market_macro.research.backtest import replay_series
-    rep = replay_series(conn, series, collect_legs=True)
+    rep = replay_series(conn, series, collect_legs=True, params_pit=True)
     agg, per = rep["agg"], rep["per_release"]
     if agg["n"] == 0:
         return {"series": series, "skip": "no settled history"}
@@ -428,7 +482,7 @@ def run_series(conn, series: str) -> dict:
     # collect_trades because §25.4's per-series switch is a fold over the individual
     # trades, not over the aggregate: the hysteresis makes the verdict path-dependent.
     # The trade list is stripped back out before the row is stored (see below).
-    dec = decision_replay(conn, series, collect_trades=True)
+    dec = decision_replay(conn, series, collect_trades=True, params_pit=True)
     dr = drift_check([p.get("brier_model-1h") for p in per])
     if dr.get("drift"):
         conn.execute(
@@ -440,7 +494,11 @@ def run_series(conn, series: str) -> dict:
     # exact events scored above — so only the live side costs anything, and it costs one
     # predict per open period, which is what `predict_all` already does every morning.
     from prediction_market_macro.research import branch_parity as _bp
-    parity = _bp.parity_check(_bp.mix_from_counts(agg.get("branch_mix-1h")),
+    # branch_mix_scored, not branch_mix (#198): the Brier above is a mean over the events
+    # that also had a market quote at asof, and for KXWTIW that is 14 of 156. Checked
+    # against the 156 the live branch can hold a comfortable majority while every one of
+    # the 14 events behind the number ran something else.
+    parity = _bp.parity_check(_bp.mix_from_counts(agg.get("branch_mix_scored-1h")),
                               _bp.live_branch_mix(conn, series))
     if not parity.get("parity"):
         conn.execute(
@@ -448,7 +506,32 @@ def run_series(conn, series: str) -> dict:
             (datetime.now(timezone.utc).isoformat(), "warn", "branch_parity",
              f"{series}: {parity.get('reason')}"))
         conn.commit()
-    verdict = gate_verdict(agg, dec, dm, parity=parity)
+    # #198 params parity: the in-sample counterfactual described in the docstring. Only
+    # run when something is adopted — with `{}` live the defaults ARE production and the
+    # primary replay already is the counterfactual, so a second identical replay would
+    # be pure cost.
+    from prediction_market_macro.research import param_select as _ps
+    live_params = _ps.current(conn, series) or {}
+    live_ok, live_agg = None, None
+    if live_params:
+        try:
+            live_agg = replay_series(conn, series, asof_offsets=("-1h",),
+                                     params=live_params)["agg"]
+            lbm, lbk = live_agg.get("brier_model-1h"), live_agg.get("brier_market-1h")
+            live_ok = lbm is not None and lbk is not None and lbm < lbk
+        except Exception as e:                                   # noqa: BLE001
+            live_ok, live_agg = None, {"error": f"{type(e).__name__}: {e}"}
+    pparity = _bp.params_parity_check(agg.get("params_mix-1h"), live_params, live_ok)
+    pparity["counterfactual"] = None if live_agg is None else {
+        k: live_agg.get(k) for k in
+        ("brier_model-1h", "brier_market-1h", "n_scored-1h", "error")}
+    if not pparity.get("parity"):
+        conn.execute(
+            "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+            (datetime.now(timezone.utc).isoformat(), "warn", "params_parity",
+             f"{series}: {pparity.get('reason')}"))
+        conn.commit()
+    verdict = gate_verdict(agg, dec, dm, parity=parity, params_parity=pparity)
     # per-event source scores → ensemble weight learning (§19-2)
     now_iso = datetime.now(timezone.utc).isoformat()
     for p in per:
@@ -541,7 +624,12 @@ def run_series(conn, series: str) -> dict:
            {**verdict, "dm": dm, "ci": ci, "drift": dr})
     return {"series": series, "real": verdict["real"], "reasons": verdict["reasons"],
             "roi": dec.get("roi"), "edge_capture": dec.get("edge_capture"),
-            "dm_p": dm.get("p"), "enabled": se["enabled"]}
+            "dm_p": dm.get("p"), "enabled": se["enabled"],
+            # #198: surfaced in the summary, not just buried in the stored row, because
+            # the whole failure mode was a mismatch nobody had to look at to trade.
+            "branch_parity": parity.get("parity"),
+            "params_parity": pparity.get("parity"),
+            "n_scored_at_live_params": pparity.get("n_hist_at_live_params")}
 
 
 def shadow_gate(conn, series: str, prefix: str, min_weekly: int = 8,

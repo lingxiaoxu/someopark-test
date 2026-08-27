@@ -30,6 +30,17 @@ fewer than 3 same-week history points exist is invisible here). The fix for a bl
 is to make the model emit `mode`, NOT to teach this module about that model — a per-series
 table of branch rules would go stale exactly when the model changes, i.e. when it matters.
 
+**The blind spot that mattered (#198).** One class of value-only change is not a model
+quirk, it is the daily path: `param_select.current()` has returned adopted, weekly-
+changing parameters since 2026-08-11, while the replay behind the gate predicted at the
+registered DEFAULTS. Identical key sets, so everything above says "parity" — and yet the
+gate was certifying a configuration production stopped running months ago. Measured
+2026-08-27 across all 14 series, re-scoring history at the live sets moves the gate's
+brier criterion in BOTH directions: KXU3 from 0.03774 (beats market 0.04159) to 0.04270
+(loses), KXFED from 0.00307 (loses to 0.00298) to 0.00206 (beats). `params_of` and
+`params_parity_check` below are the counterpart check; `backtest.replay_series`
+(`params_pit=True`) is the replay that finally runs the production branch.
+
 **What counts as parity.** Compare the branch mix of the historical sample against the
 branch mix production is actually running, and require that the branch production runs
 most of the time also accounts for a majority of the sample it is being graded on. Not
@@ -78,6 +89,69 @@ def branch_of(inputs: dict | None) -> str:
     keys = sorted(k for k in inputs
                   if not any(k.endswith(s) for s in _IGNORED_SUFFIXES))
     return "keys:" + ",".join(keys)
+
+
+def params_of(params: dict | None) -> str:
+    """Canonical label for one PARAMETER SET — the blind spot named above (#198).
+
+    `branch_of`'s rule 2 reads the input KEY NAMES and ignores their values, so it cannot
+    see the layer production actually varies: `param_select.current()` has returned an
+    adopted, weekly-changing dict since 2026-08-11, and every one of those changes leaves
+    the key set identical. The gate was therefore free to certify on a configuration
+    nobody runs. Sorted-JSON so `{a:1,b:2}` and `{b:2,a:1}` are one label, and `{}` gets
+    its own name rather than being lumped in with an unread value.
+    """
+    if not params:
+        return "defaults"
+    return json.dumps(params, sort_keys=True, default=str)
+
+
+def params_parity_check(hist_mix: dict | Counter | None, live: dict | None,
+                        live_ok: bool | None = None) -> dict:
+    """Does the graded sample describe the params production will trade with?
+
+    Deliberately NOT `parity_check` with a params label swapped in. Branch parity can
+    demand a majority share because a branch is a property of the DATA and changes rarely.
+    A parameter set is chosen by a lane that re-runs weekly, so requiring a majority of
+    history at today's set would be permanently unsatisfiable — the gate would be closed
+    by the selection schedule rather than by evidence, which is a deadlock, not a safety
+    property.
+
+    So the share is DISCLOSED and the bar is elsewhere. `live_ok` is the caller's verdict
+    from re-scoring history at today's set: an in-sample number, because the selection
+    lanes chose those params BY scoring these very events. That direction is the whole
+    point — an optimistic measurement FAILING is conclusive, while its passing buys
+    nothing. Requiring it can only tighten the gate, never loosen it, which is why it may
+    be ANDed in without laundering leakage into a pass.
+    """
+    c = Counter(hist_mix or {})
+    n = sum(c.values())
+    label = params_of(live)
+    at_live = int(c.get(label, 0))
+    share = round(at_live / n, 4) if n else 0.0
+    out = {"live_params": live or {}, "live_label": label, "n_hist": n,
+           "n_hist_at_live_params": at_live, "hist_share_at_live_params": share,
+           "counts": dict(c.most_common()),
+           "live_params_are_defaults": not live,
+           "counterfactual_ok": live_ok}
+    if not live:
+        # nothing was adopted, so the defaults ARE production and the replay's own
+        # default arm already is the counterfactual. Nothing to check.
+        out["parity"] = True
+        out["reason"] = None
+        return out
+    if live_ok is None:
+        out["parity"] = False
+        out["reason"] = (f"production runs adopted params ({at_live}/{n} of the graded"
+                         f" sample ran them) and nobody re-scored history at them")
+        return out
+    out["parity"] = bool(live_ok)
+    out["reason"] = None if live_ok else (
+        f"re-scored at the LIVE params ({label[:80]}) the model no longer beats the"
+        f" market. Only {at_live}/{n} graded events ran them, so the passing number"
+        f" above describes a configuration production abandoned; and the re-score is"
+        f" in-sample generous, so failing it is conclusive")
+    return out
 
 
 def mix_from_counts(counts: dict | Counter | None) -> dict:

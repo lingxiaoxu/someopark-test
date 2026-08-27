@@ -179,7 +179,7 @@ def _settle_release_ts(conn, spec, key: str) -> datetime | None:
 
 def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                   max_events: int = 200, collect_legs: bool = False,
-                  params: dict | None = None) -> dict:
+                  params: dict | None = None, params_pit: bool = False) -> dict:
     """Generic settled-history replay for ANY ladder/categorical series.
 
     Brier needs no y: settled leg results ARE the outcomes. For each settled event,
@@ -195,13 +195,39 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
     below) and drops an event whose `data_horizon` reached past it; `param_wf` uses a
     flat close−1h. Scoring a candidate one way and the market the other way would make
     the "paired" comparison a comparison of two different asofs.
+
+    `params_pit` (#198) is the THIRD meaning, and it is the one the gate wants. `None`
+    means the registered defaults and a dict means one fixed set; neither is what
+    production did. Production predicts through `param_select.current()`, which has
+    returned an adopted, CHANGING set since 2026-08-11 — so the gate that authorises
+    real money was grading a configuration nobody has run since. Measured 2026-08-27 on
+    the live adopted sets: KXU3 flips from beating the market (0.03774 < 0.04159) to
+    losing to it (0.04270), and KXFED flips the other way. #196's observer cannot see
+    this by construction — it identifies a branch from the input KEY NAMES, and adopted
+    params change values, never keys.
+
+    With `params_pit=True` each event is predicted at the params that were IN FORCE at
+    that event's own asof (`param_select.params_asof`, the PIT reader added 2026-08-12
+    for the health canary). Not today's set applied backwards: the selection lanes chose
+    those params BY scoring these very events, so replaying history at today's choice is
+    an in-sample number. It has a use — see `eval.run_series`, which requires it as an
+    additional bar precisely because it is optimistic — but it is not the track record.
+
+    `params_mix{off}` reports which sets the graded sample actually ran, so a caller can
+    tell "12 events at the live config" from "12 events at a config we abandoned".
     """
     import importlib
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.model.common import Categorical, leg_fair
     from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
     from prediction_market_macro.research.branch_parity import branch_of as _branch_of
+    from prediction_market_macro.research.branch_parity import params_of as _params_of
     from prediction_market_macro.util.periods import kalshi_period_to_key
+    if params_pit and params is not None:
+        raise ValueError(
+            "replay_series: params and params_pit are two different questions —"
+            " one fixed set over all history, versus the set in force at each event."
+            " Passing both would silently answer only one of them.")
     spec = REGISTRY[series]
     disp = SERIES_DISPATCH[series]
     fn = getattr(importlib.import_module(disp[0]), disp[1])
@@ -216,6 +242,11 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
     # survive every drop below, because the branch mix is only evidence about the gate if
     # it is the mix of the exact sample the gate scores — a separate walk would drift.
     branch_mix: dict[str, dict[str, int]] = {off: {} for off in asof_offsets}
+    # #198: and which PARAMS each graded event ran. Same reasoning, same sample — the
+    # blind spot `branch_parity`'s own docstring names ("blind to one that only changes
+    # their values") is exactly the params layer, and this is the counter that closes it.
+    params_mix: dict[str, dict[str, int]] = {off: {} for off in asof_offsets}
+    scored_branch_mix: dict[str, dict[str, int]] = {off: {} for off in asof_offsets}
     # SQL orders newest-first so LIMIT keeps the MOST RECENT max_events; the returned
     # per_release must nonetheless be CHRONOLOGICAL. eval.run_series feeds it to a
     # pooled walk-forward accumulator ("weights learned only from past events") and to
@@ -243,9 +274,18 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 # very number it is about to be scored on. Step back behind the print.
                 asof = release_ts - timedelta(seconds=1)
                 n_clamped += 1
+            if params_pit:
+                # the set in force at THIS event's asof, not today's. `params_asof`
+                # reads the manual override PIT on its adoption timestamp, else that
+                # day's param_selection row, else {} — the same order `current()` uses,
+                # with wall-clock swapped for asof so a later adoption cannot leak back.
+                from prediction_market_macro.research.param_select import params_asof
+                eff = params_asof(conn, series, asof) or None
+            else:
+                eff = params
             try:
-                pred = (fn(conn, asof, key, series=series) if params is None
-                        else fn(conn, asof, key, series=series, params=params))
+                pred = (fn(conn, asof, key, series=series) if eff is None
+                        else fn(conn, asof, key, series=series, params=eff))
             except Exception:                                    # noqa: BLE001
                 skipped += 1
                 rec = None
@@ -285,6 +325,7 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 if collect_legs:
                     leg_pairs.append((round(fair, 5), round(mp, 5), out))
             rec[f"branch{off}"] = _branch_of(pred.inputs)
+            rec[f"params{off}"] = _params_of(eff)
             if n_legs:
                 rec[f"brier_model{off}"] = bs_m / n_legs
                 rec[f"brier_market{off}"] = bs_k / n_legs
@@ -297,6 +338,14 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 b = rec.get(f"branch{off}")
                 if b:
                     branch_mix[off][b] = branch_mix[off].get(b, 0) + 1
+                # SCORED events only — see the agg block below for why this denominator
+                # differs from branch_mix's.
+                if rec.get(f"brier_model{off}") is not None:
+                    p_ = rec.get(f"params{off}")
+                    if p_:
+                        params_mix[off][p_] = params_mix[off].get(p_, 0) + 1
+                    if b:
+                        scored_branch_mix[off][b] = scored_branch_mix[off].get(b, 0) + 1
     agg = {"n": len(per), "skipped": skipped, "n_asof_clamped": n_clamped,
            "n_leak_dropped": n_leaked, "n_release_unknown": n_unknown}
     for off in asof_offsets:
@@ -306,6 +355,19 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
         agg[f"brier_market{off}"] = round(float(np.mean(bk)), 5) if bk else None
         agg[f"n_scored{off}"] = len(bm)
         agg[f"branch_mix{off}"] = dict(sorted(branch_mix[off].items(),
+                                              key=lambda kv: -kv[1]))
+        # #198. The two mixes above and below have DIFFERENT denominators and the
+        # difference is not cosmetic. `branch_mix` counts every event that survived the
+        # drops; the Brier in this same dict is a mean over the far smaller subset that
+        # also had a market quote at asof — KXWTIW replays 156 settled events and scores
+        # 14. So a parity check run against `branch_mix` can pass on 156 events while all
+        # 14 that actually produced the gate's number ran a different path. The `_scored`
+        # variants are the sample the criteria are computed on, and they are what
+        # `eval.run_series` feeds the parity checks. `branch_mix{off}` is kept unchanged
+        # because #196's stored rows and its alert history are keyed to it.
+        agg[f"branch_mix_scored{off}"] = dict(sorted(scored_branch_mix[off].items(),
+                                                     key=lambda kv: -kv[1]))
+        agg[f"params_mix{off}"] = dict(sorted(params_mix[off].items(),
                                               key=lambda kv: -kv[1]))
     return {"series": series, "agg": agg, "per_release": per}
 
