@@ -158,17 +158,35 @@ def test_the_counterfactual_can_only_tighten_the_gate():
 # ── replay_series: the PIT reader ────────────────────────────────────────────
 
 
-def test_params_and_params_pit_cannot_both_be_asked_for():
-    """One fixed set over all history and the set in force at each event are different
-    questions. Answering only one of them silently is how #198 happened in the first
-    place, so the ambiguous call is an error rather than a precedence rule."""
+@pytest.mark.parametrize("kw", [
+    {"params": {"a": 1}, "params_pit": True},
+    # #199 added a third: the set a SIMULATED selector would have chosen. Every pair is
+    # ambiguous, not just the original one — the failure mode is identical.
+    {"params": {"a": 1}, "params_at": (lambda _asof: {"b": 2})},
+    {"params_pit": True, "params_at": (lambda _asof: {"b": 2})},
+    {"params": {"a": 1}, "params_pit": True, "params_at": (lambda _asof: {"b": 2})},
+])
+def test_the_three_params_questions_cannot_be_asked_together(kw):
+    """One fixed set over all history, the set production adopted at each event, and the
+    set a simulated selector would have chosen there are three different questions.
+    Answering only one of them silently is how #198 happened in the first place, so the
+    ambiguous call is an error rather than a precedence rule."""
     from prediction_market_macro.research.backtest import replay_series
-    with pytest.raises(ValueError, match="two different questions"):
-        replay_series(None, "KXWTIW", params={"a": 1}, params_pit=True)
+    with pytest.raises(ValueError, match="three different questions"):
+        replay_series(None, "KXWTIW", **kw)
 
     from prediction_market_macro.research.eval import decision_replay
-    with pytest.raises(ValueError, match="two different questions"):
-        decision_replay(None, "KXWTIW", params={"a": 1}, params_pit=True)
+    with pytest.raises(ValueError, match="three different questions"):
+        decision_replay(None, "KXWTIW", **kw)
+
+
+def test_params_at_alone_is_not_flagged_as_ambiguous():
+    """`params_at=<callable>` with neither other knob is the ONLY way walkforward calls
+    these, so a guard that tripped on it would take the whole harness down."""
+    from prediction_market_macro.research.backtest import replay_series
+    with pytest.raises(Exception) as e:                # dies later, on conn=None
+        replay_series(None, "KXWTIW", params_at=lambda _asof: None)
+    assert "three different questions" not in str(e.value)
 
 
 def _ladder_db(tmp_path, name="p.db", periods=(("26MAR26", "2026-03-26T12:25:00"),)):

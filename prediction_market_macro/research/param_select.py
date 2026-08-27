@@ -265,6 +265,58 @@ def params_asof(conn, series: str, asof: datetime) -> dict:
         return {}
 
 
+def cached_answer(conn, series: str, key: str) -> dict | None:
+    """The stored `select_for` params for this sample key, or None for a miss.
+
+    A HIT of `{}` is a real answer — "the gate held, use the registered defaults" — and
+    must stay distinguishable from a miss, which is why this returns None rather than
+    `{}` when there is no row.
+    """
+    try:
+        row = conn.execute(
+            "SELECT params_json FROM param_selection_cache WHERE series=? AND"
+            " sample_key=?", (series, key)).fetchone()
+    except Exception:                                            # noqa: BLE001
+        return None                                              # table absent ⇒ miss
+    if row is None:
+        return None
+    try:
+        return json.loads(row["params_json"]) or {}
+    except Exception:                                            # noqa: BLE001
+        return None
+
+
+def store_answer(conn, series: str, key: str, params: dict, report: dict | None = None,
+                 now: datetime | None = None) -> None:
+    """Record one `select_for` answer under its sample key. Never raises.
+
+    Swallowing the write error is deliberate and is not the usual silent-failure smell:
+    this table is a cache, a failed write costs time and nothing else, and the callers
+    are a research sim and the daily refresh — neither should die because the db is open
+    read-only or a concurrent writer holds the lock.
+    """
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO param_selection_cache(series, sample_key,"
+            " params_json, adopted, report_json, created_ts) VALUES(?,?,?,?,?,?)",
+            (series, key, json.dumps(params or {}, sort_keys=True),
+             1 if params else 0,
+             json.dumps(report, default=str) if report is not None else None,
+             (now or datetime.now(timezone.utc)).isoformat()))
+        conn.commit()
+    except Exception:                                            # noqa: BLE001
+        pass
+
+
+def drop_cached(conn, series: str) -> None:
+    """Forget every stored answer for one series — the `force=True` half of the remedy."""
+    try:
+        conn.execute("DELETE FROM param_selection_cache WHERE series=?", (series,))
+        conn.commit()
+    except Exception:                                            # noqa: BLE001
+        pass
+
+
 def select_for(conn, series: str, before: datetime, adopt_p: float = _dsr.ADOPT_P,
                log=None) -> tuple[dict, dict]:
     """(params, report) for one series as of `before`. `params` is {} for the defaults.
@@ -346,6 +398,12 @@ def refresh(conn, asof: datetime | None = None, series: list[str] | None = None,
     for s in todo:
         try:
             key = _sample_key(conn, s, now)
+            # #202. `force` is the documented remedy for the one thing the fingerprint
+            # deliberately does not cover — a code change that moves predictions. It has
+            # to reach the sample-keyed table too, or the walk-forward lab would keep
+            # serving pre-change answers after the very command run to purge them.
+            if force:
+                drop_cached(conn, s)
             # `day<=` and not `day<`: the daily pipeline can run more than once, and a row
             # already written today was computed from the same or an earlier `asof`, so
             # reusing it is PIT-safe. The fingerprint still governs — an event that settled
@@ -365,6 +423,12 @@ def refresh(conn, asof: datetime | None = None, series: list[str] | None = None,
                 params, rep = select_for(conn, s, now, adopt_p=adopt_p, log=None)
                 rep["sample_key"] = key
                 rep["carried_forward"] = False
+                # #202. Seed the sample-keyed cache with the PRE-veto answer, because
+                # that is what `select_for` returns and therefore what a reader of this
+                # table is entitled to assume it holds. The branch-parity veto below is
+                # production's own overlay on that answer (#201) and is applied by the
+                # caller that needs it, not baked into the cached selector output.
+                store_answer(conn, s, key, params, rep, now)
                 params, rep = _veto_on_branch_parity(conn, s, now, params, rep)
             conn.execute(
                 "INSERT OR REPLACE INTO param_selection(series, day, params_json,"

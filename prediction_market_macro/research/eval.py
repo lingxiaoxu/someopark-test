@@ -108,7 +108,8 @@ def _candle_quote(conn, ticker: str, asof: datetime):
 def decision_replay(conn, series: str, offset_hours: float = 1.0,
                     max_events: int = 200, bankroll: float = 100.0,
                     collect_trades: bool = False,
-                    params: dict | None = None, params_pit: bool = False) -> dict:
+                    params: dict | None = None, params_pit: bool = False,
+                    params_at=None) -> dict:
     """For every settled event: rebuild the book from candles, run the SAME
     enumerate_structs + decide() the production path uses, settle the opened
     structure against real results, and account PnL net of fees.
@@ -137,7 +138,12 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
     `edge_capture` — come from here, so the claim was false for exactly the reason
     `backtest.replay_series` documents at length. `params_pit=True` predicts each entry
     candidate at the params in force at THAT candidate's asof, which is the policy in the
-    sentence above; `params` pins one set for the in-sample counterfactual."""
+    sentence above; `params` pins one set for the in-sample counterfactual.
+
+    `params_at` (#199) is the simulation's version of `params_pit`: a callable
+    `asof -> params|None` supplying the answer of the selector UNDER TEST rather than the
+    one production adopted. Used only by `pit_gates.GateHistory` on behalf of
+    `walkforward._GateBook`; mutually exclusive with the other two."""
     import importlib
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.model.common import Categorical, grid_pmf
@@ -147,9 +153,11 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
     from prediction_market_macro.strategy.edge import enumerate_structs, taker_fee
     from prediction_market_macro.util.periods import kalshi_period_to_key
 
-    if params_pit and params is not None:
-        raise ValueError("decision_replay: params and params_pit answer two different"
-                         " questions; passing both silently answers only one")
+    if sum(x is not None and x is not False
+           for x in (params, params_pit or None, params_at)) > 1:
+        raise ValueError("decision_replay: params, params_pit and params_at answer three"
+                         " different questions; passing more than one silently answers"
+                         " only one")
     spec = REGISTRY[series]
     disp = SERIES_DISPATCH[series]
     fn = getattr(importlib.import_module(disp[0]), disp[1])
@@ -201,7 +209,9 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
                 results[l["ticker"]] = l["result"]
             if not meta:
                 continue
-            if params_pit:
+            if params_at is not None:
+                eff = params_at(cand) or None          # #199, the simulated selector
+            elif params_pit:
                 from prediction_market_macro.research.param_select import params_asof
                 eff = params_asof(conn, series, cand) or None
             else:

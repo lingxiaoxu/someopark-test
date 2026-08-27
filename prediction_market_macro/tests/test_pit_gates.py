@@ -88,26 +88,30 @@ def test_calibrate_structs_uses_the_same_interp_the_live_path_uses():
 
 # ── the history slice: strictly earlier, and it moves when the sample moves ─────
 
-def _history(monkeypatch, closes, per, dec_trades=(), params_pit=False):
+def _history(monkeypatch, closes, per, dec_trades=(), params_pit=False, params_at=None):
     """The two replays stubbed out; these tests are about the SLICE, not the replay.
 
-    `params_pit` is asserted rather than ignored: #198 threads it through both calls and
-    #199 is the ticket to change its default, so a stub that silently swallowed it would
-    let that default flip without a single test noticing.
+    `params_pit` and `params_at` are asserted rather than ignored: #198 threads the first
+    through both calls and #199 threads the second, so a stub that silently swallowed
+    either would let BOTH replays quietly fall back to the registered defaults while every
+    test still passed. That is the precise failure #199 exists to fix, so it must not be
+    reachable through the test helper.
     """
     def _replay(conn, series, max_events=200, collect_legs=False, **kw):
         assert kw.get("params_pit") is params_pit
+        assert kw.get("params_at") is params_at
         return {"per_release": per}
 
     def _decide(conn, series, max_events=200, collect_trades=False, **kw):
         assert kw.get("params_pit") is params_pit
+        assert kw.get("params_at") is params_at
         return {"trades": list(dec_trades)}
     monkeypatch.setattr(pg, "period_closes", lambda conn, series: closes)
     monkeypatch.setattr(
         "prediction_market_macro.research.backtest.replay_series", _replay)
     monkeypatch.setattr(
         "prediction_market_macro.research.eval.decision_replay", _decide)
-    return pg.GateHistory(None, "KXWTIW", params_pit=params_pit)
+    return pg.GateHistory(None, "KXWTIW", params_pit=params_pit, params_at=params_at)
 
 
 def _rec(period, bm, bk, legs=()):
@@ -260,3 +264,91 @@ def test_a_selector_failure_falls_back_to_defaults_instead_of_aborting(conn,
         RuntimeError("grid blew up")))
     assert _GateBook(conn, db_gates=False, select_params=True).params_for("KXWTIW",
                                                                          D) is None
+
+
+# ── #199: the gate history is built at the params the sim actually predicts with ──
+
+def _spy_gatehistory(monkeypatch):
+    """Capture the kwargs `_GateBook.gates_for` hands GateHistory, without building one."""
+    seen = {}
+
+    class _H:
+        def __init__(self, conn, series, **kw):
+            seen.update(kw)
+
+        def asof(self, day):
+            return "STATE"
+    monkeypatch.setattr(pg, "GateHistory", _H)
+    return seen
+
+
+def test_the_gate_history_is_built_at_the_books_own_per_day_params(conn, monkeypatch):
+    """The #199 fix. Before it, the sim predicted at the selected params while the skill /
+    capture / conformal state was replayed at the registered defaults — a pairing that ran
+    neither in production nor in any backtest."""
+    from prediction_market_macro.research import param_select as ps
+    from prediction_market_macro.research.walkforward import _GateBook
+    monkeypatch.setattr(ps, "_sample_key", lambda c, s, d: "k")
+    monkeypatch.setattr(ps, "select_for", lambda c, s, d, log=None: ({"w": 0.5}, {}))
+    seen = _spy_gatehistory(monkeypatch)
+
+    b = _GateBook(conn, db_gates=True, select_params=True)
+    assert b.gates_for("KXWTIW", D) == "STATE"
+    at = seen["params_at"]
+    assert callable(at)
+    # and it must resolve to what the PREDICTION path would get for that same moment
+    assert at(D) == b.params_for("KXWTIW", D) == {"w": 0.5}
+
+
+def test_the_ab_switch_restores_the_pre_199_pairing(conn, monkeypatch):
+    from prediction_market_macro.research import param_select as ps
+    from prediction_market_macro.research.walkforward import _GateBook
+    monkeypatch.setattr(ps, "_sample_key", lambda c, s, d: "k")
+    monkeypatch.setattr(ps, "select_for", lambda c, s, d, log=None: ({"w": 0.5}, {}))
+    seen = _spy_gatehistory(monkeypatch)
+
+    _GateBook(conn, db_gates=True, select_params=True,
+              gate_params=False).gates_for("KXWTIW", D)
+    assert seen["params_at"] is None
+
+
+def test_a_research_param_override_reaches_the_gates_too(conn, monkeypatch):
+    """`param_override` beats both selector lanes on the prediction path, so a gate state
+    built without it would describe a config the sweep arm never ran."""
+    from prediction_market_macro.research.walkforward import _GateBook
+    seen = _spy_gatehistory(monkeypatch)
+    b = _GateBook(conn, db_gates=True, select_params=False,
+                  param_override={"KXWTIW": {"vol_window": 30}})
+    b.gates_for("KXWTIW", D)
+    assert seen["params_at"](D) == {"vol_window": 30}
+
+
+def test_with_the_selector_off_the_thread_is_a_noop(conn, monkeypatch):
+    """`--fixed-params` must be bit-identical before and after #199: the per-day choice is
+    the registered defaults, so the callable returns None at every asof and both replays
+    take their `eff = params` branch exactly as they did."""
+    from prediction_market_macro.research.walkforward import _GateBook
+    seen = _spy_gatehistory(monkeypatch)
+    _GateBook(conn, db_gates=True, select_params=False).gates_for("KXWTIW", D)
+    at = seen["params_at"]
+    assert at is not None                       # passed, not omitted
+    assert all(at(D + timedelta(days=i)) is None for i in range(-30, 5))
+
+
+def test_the_gate_history_is_still_built_once_per_series(conn, monkeypatch):
+    """`params_at` is a closure over `series`; building it per call would be harmless, but
+    rebuilding the HISTORY per call is two full replays per simulated day."""
+    from prediction_market_macro.research.walkforward import _GateBook
+    builds = []
+
+    class _H:
+        def __init__(self, conn, series, **kw):
+            builds.append(series)
+
+        def asof(self, day):
+            return "STATE"
+    monkeypatch.setattr(pg, "GateHistory", _H)
+    b = _GateBook(conn, db_gates=True, select_params=False)
+    for i in range(10):
+        b.gates_for("KXWTIW", D + timedelta(days=i))
+    assert builds == ["KXWTIW"]

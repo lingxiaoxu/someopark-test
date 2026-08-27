@@ -179,25 +179,36 @@ class GateHistory:
     `param_override`. Reading the real adoption history here regardless would pair a
     defaults-predicted (or argmin-replayed, or overridden) sim with a gate state built
     from what production actually adopted, which is a THIRD combination that never ran.
-    Making the two agree means threading `_GateBook`'s per-day choice into this replay,
-    and that changes every published Walk-Forward Lab number, so it is its own ticket
-    with its own before/after — not a default flipped in a commit about the money gate.
+
+    `params_at` (#199) is that thread, and it is what `_GateBook` now passes: a callable
+    `asof -> params|None` returning the choice of the selector UNDER TEST. It supersedes
+    `params_pit` for simulation callers, because "what production adopted" and "what this
+    sim's selector would choose" are the same answer only in the one case where the sim
+    is replaying the live lane. `params_pit` stays for `eval.run_series`, whose question
+    genuinely IS the adoption history.
+
+    NOT wired into `pnl_score.gate_history`, deliberately and for the reason written
+    there: that history is held at the incumbent defaults so a 73-set grid does not
+    become 73 replays, and so the gates are not fit on the very predictions being scored.
+    Making it per-candidate there would be circular. Here it is not — the sim's params
+    come from a selector whose own scoring runs against that defaults-pinned history, so
+    the dependency is one-way and terminates.
     """
 
     def __init__(self, conn, series: str, max_events: int = 200,
-                 params_pit: bool = False):
+                 params_pit: bool = False, params_at=None):
         from prediction_market_macro.research.backtest import replay_series
         from prediction_market_macro.research.eval import decision_replay
         self.series = series
         self.closes = period_closes(conn, series)
-        per = replay_series(conn, series, max_events=max_events,
-                            collect_legs=True, params_pit=params_pit)["per_release"]
+        per = replay_series(conn, series, max_events=max_events, collect_legs=True,
+                            params_pit=params_pit, params_at=params_at)["per_release"]
         # (close_ts, record) chronological — replay_series already returns chronological
         # order but sorting on the close we just resolved makes that independent of it.
         self.per = sorted(((self.closes[p["period"]], p) for p in per
                            if p["period"] in self.closes), key=lambda t: t[0])
         dec = decision_replay(conn, series, max_events=max_events, collect_trades=True,
-                              params_pit=params_pit)
+                              params_pit=params_pit, params_at=params_at)
         self.dec = sorted(((self.closes[t["period"]], t) for t in dec["trades"]
                            if t["period"] in self.closes), key=lambda t: t[0])
         self._cache: dict[int, GateState] = {}

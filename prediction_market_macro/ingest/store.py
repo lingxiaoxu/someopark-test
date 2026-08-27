@@ -85,6 +85,28 @@ CREATE TABLE IF NOT EXISTS param_selection(       -- #119 daily DSR-gated param 
   report_json TEXT NOT NULL, created_ts TEXT NOT NULL,
   PRIMARY KEY(series, day));
 
+CREATE TABLE IF NOT EXISTS param_selection_cache(  -- #202 selector answers by SAMPLE
+  -- `param_selection` above is keyed by DAY, because production asks the selector one
+  -- question a day. #199's walk-forward gate history asks it at every graded event's
+  -- own asof, which lands on days production never stood on — so the day-keyed
+  -- carry-forward cannot serve them and every one is a full grid rescore (~9s each,
+  -- measured; 105 minutes added to a 40-second 30d run).
+  --
+  -- The key here is `param_select._sample_key`: the sample fingerprint plus the manual
+  -- override stamp. It is the module's OWN invalidation contract — two `before`
+  -- instants carrying the same key see the same events and the same override, so
+  -- `select_for` cannot tell them apart. That is the assumption `refresh`'s
+  -- carry-forward already runs on; this table only widens its scope from one day to
+  -- any day.
+  --
+  -- Like the fingerprint, this is deliberately NOT invalidated by a code change.
+  -- `refresh(force=True)` clears it, which is the same remedy the module docstring
+  -- already names for the day-keyed cache.
+  series TEXT NOT NULL, sample_key TEXT NOT NULL,
+  params_json TEXT NOT NULL, adopted INTEGER NOT NULL,
+  report_json TEXT, created_ts TEXT NOT NULL,
+  PRIMARY KEY(series, sample_key));
+
 CREATE TABLE IF NOT EXISTS experiments(
   name TEXT NOT NULL, config_hash TEXT NOT NULL, series TEXT, window TEXT,
   metrics_json TEXT, created_ts TEXT NOT NULL,

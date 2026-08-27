@@ -439,9 +439,17 @@ class _GateBook:
 
     def __init__(self, conn, db_gates: bool, select_params: bool, log=None,
                  param_override: dict[str, dict] | None = None,
-                 select_mode: str = "dsr", argmin_start=None, argmin_end=None):
+                 select_mode: str = "dsr", argmin_start=None, argmin_end=None,
+                 gate_params: bool = True):
         self.conn, self.db_gates, self.select_params, self.log = (conn, db_gates,
                                                                   select_params, log)
+        # #199. Build the PIT gate history at the SAME per-day params this book hands the
+        # prediction path, instead of at the registered defaults. Correctness, not a knob:
+        # with it off, a run predicts at the selector's params while its skill ratio,
+        # capture memory and conformal state describe a different configuration — the
+        # "third combination" pit_gates.GateHistory's docstring names. False restores the
+        # pre-#199 pairing for A/B only, the same status `model_exits=False` has.
+        self.gate_params = gate_params
         # research knob (brute-force param sweep): {series: params} that takes
         # precedence over BOTH the daily selector and the registered defaults for
         # that series. Never set on a production-shaped run; the caller must carry
@@ -462,6 +470,11 @@ class _GateBook:
         self.stats = {"skill_blocked": 0, "skill_defensive": 0, "capture_dropped": 0,
                       "calibrated_events": 0, "conformal_throttled": 0,
                       "risk_vetoed": 0, "params_adopted": 0, "param_rescores": 0,
+                      # #202. Rescores AVOIDED by the sample-keyed cache. Reported rather
+                      # than left implicit: `param_rescores` alone cannot distinguish "the
+                      # selector was asked twice and the memo held" from "the cache is
+                      # stale and the selector is no longer being asked at all".
+                      "param_cache_hits": 0,
                       "series_disabled": 0,
                       # #155: the same verdict while the switch is off. Mutually exclusive
                       # with the line above — never both nonzero in one run.
@@ -492,7 +505,19 @@ class _GateBook:
             from prediction_market_macro.research.pit_gates import GateHistory
             if self.log:
                 self.log(f"  building PIT gate history: {series}")
-            h = self._hist[series] = GateHistory(self.conn, series)
+            # #199. `params_for` is memoised on `param_select._sample_key`, so feeding it
+            # one asof per graded event collapses to a handful of rescores per series
+            # rather than one per event. MEASURED, because the first draft of this comment
+            # stopped there and was wrong about what that costs: on KXJOBLESSCLAIMS the
+            # 124 asofs do collapse to 15 rescores, but each one is a full grid replay at
+            # ~8.8s, so the series went 3.0s -> 135.3s and the 30d run went 40s -> 6315s.
+            # #202's sample-keyed cache is what makes that affordable on the second run.
+            # The callable is passed even when the selector is off, where it returns None
+            # for every asof and the history is bit-identical to the pre-#199 one — the
+            # switch below is what turns the behaviour off, not an absent callable.
+            at = ((lambda asof: self.params_for(series, asof))
+                  if self.gate_params else None)
+            h = self._hist[series] = GateHistory(self.conn, series, params_at=at)
         return h.asof(day)
 
     def params_for(self, series: str, day: datetime) -> dict | None:
@@ -502,6 +527,13 @@ class _GateBook:
         cannot change until a new scoreable event settles OR a `manual_params` row is
         written, so a 60-day sim costs one rescore per such change rather than 60 per
         series.
+
+        TWO caches, on the same key and for two different lifetimes. `self._params` is
+        per-run and collapses the repeats within one sim; `param_selection_cache` (#202)
+        is per-db and collapses them ACROSS runs, which is the one that matters once
+        #199 started asking this question at every graded event's own asof. The weekly
+        regen alone makes eight of these calls in one process — a sweep per lead, then
+        60d, then 30d — and without the second cache each pays the full grid rescore.
 
         **The second clause is #198c and it was missing.** `_sample_key` used to be the
         sample fingerprint alone, on the reasoning that only a settle can move the
@@ -526,13 +558,25 @@ class _GateBook:
             return None
         hit = self._params.get((series, key))
         if hit is None:
-            self.stats["param_rescores"] += 1
-            try:
-                params, _rep = _ps.select_for(self.conn, series, day, log=None)
-            except Exception as e:                               # noqa: BLE001
-                if self.log:
-                    self.log(f"  param_select failed {series} {day.date()}: {e}")
-                params = {}
+            # #202. Before paying for a grid rescore, ask whether this exact sample has
+            # already been scored — by an earlier run, or by the daily refresh. Measured
+            # on the 30d A/B: #199 asks this question at 124 asofs per series instead of
+            # ~30, and the extra ones land on days production never stood on, so the
+            # DAY-keyed `param_selection` carry-forward cannot serve one of them. A miss
+            # costs ~9s of grid rescore; the lookup costs one indexed SELECT.
+            params = _ps.cached_answer(self.conn, series, key)
+            if params is None:
+                self.stats["param_rescores"] += 1
+                try:
+                    params, _rep = _ps.select_for(self.conn, series, day, log=None)
+                except Exception as e:                           # noqa: BLE001
+                    if self.log:
+                        self.log(f"  param_select failed {series} {day.date()}: {e}")
+                    params = {}
+                else:
+                    _ps.store_answer(self.conn, series, key, params, now=day)
+            else:
+                self.stats["param_cache_hits"] += 1
             if params:
                 self.stats["params_adopted"] += 1
                 if self.log:
@@ -622,7 +666,8 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
         model_exits: bool = True, shadow_blocked: bool = False, log=None,
         param_override: dict[str, dict] | None = None,
         hash_tag: str = "", select_mode: str = "dsr",
-        ml_stream: bool = True, census: bool = True) -> dict:
+        ml_stream: bool = True, census: bool = True,
+        gate_params: bool = True) -> dict:
     """max_lead_days: entry allowed only when days-to-close <= this (the sweep
     knob — each lead sees DIFFERENT data and different predictions at its asof).
 
@@ -648,6 +693,14 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
     day instead of using the registered defaults, matching production's daily
     re-selection. The gate inside it is unchanged — on a day it holds, the registered
     defaults are what comes back, and the run is then identical to --fixed-params.
+
+    gate_params (#199): build the per-day gate history at those same selected params.
+    Both switches above default True, and before this one existed that combination
+    predicted at the selector's params while the skill / capture / conformal state was
+    replayed at the registered defaults — a pairing that ran nowhere. Like `model_exits`
+    this is a CORRECTNESS fix rather than a knob; False exists to reproduce the pre-#199
+    numbers for A/B and nothing else. It has no effect when `select_params=False` and no
+    `param_override` is set, because the per-day choice is then the defaults anyway.
 
     argmax_filter: keep `_place_argmax`'s defer-to-market rule (`fair <= cost`), which is
     what production does. False measures the counterfactual — the same favourite bought
@@ -782,7 +835,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
     book = _GateBook(conn, db_gates=db_gates, select_params=select_params, log=log,
                      param_override=param_override, select_mode=select_mode,
                      argmin_start=sim_end - timedelta(days=days),
-                     argmin_end=sim_end)
+                     argmin_end=sim_end, gate_params=gate_params)
 
     def _open_rows(on_day: datetime) -> list[dict]:
         """The simulated book on `on_day`: entered on or before it, not yet closed out.
@@ -1717,6 +1770,7 @@ def run(conn, days: int = 30, offset_hour: int = 16, bankroll: float = 100.0,
            "by_series": by_series, "lead_buckets": lead_buckets,
            "curve": curve[-60:], "trades": trades[-60:],
            "db_gates": db_gates, "select_params": select_params,
+           "gate_params": gate_params,
            "select_mode": select_mode,
            "argmax_filter": argmax_filter, "model_exits": model_exits,
            "gate_stats": dict(book.stats),
@@ -1877,6 +1931,13 @@ def main():
                          " pipeline always calls exits.run, so this measures a strategy"
                          " production does not run. Use it to A/B the exit rules, never"
                          " to produce a displayed number.")
+    ap.add_argument("--no-gate-params", action="store_true",
+                    help="build the PIT gate history at the registered defaults instead"
+                         " of at the per-day selected params (#199). Diagnostic ONLY:"
+                         " with --select-params on, this is the pre-#199 pairing where"
+                         " predictions used one config and the skill/capture/conformal"
+                         " state described another. Use it to A/B, never to produce a"
+                         " displayed number.")
     ap.add_argument("--shadow-blocked", action="store_true",
                     help="also emit §25.3 feature rows for gate-aborted events"
                          " (placed=False, blocked_by=<gate>), so ser_roi/skill_ratio are"
@@ -1917,6 +1978,7 @@ def main():
               db_gates=not args.pure_gates, select_params=not args.fixed_params,
               argmax_filter=not args.no_argmax_filter,
               model_exits=not args.no_model_exits,
+              gate_params=not args.no_gate_params,
               shadow_blocked=args.shadow_blocked,
               select_mode="argmin" if args.select_argmin else "dsr",
               ml_stream=not args.no_shadow_streams,

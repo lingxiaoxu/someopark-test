@@ -179,7 +179,8 @@ def _settle_release_ts(conn, spec, key: str) -> datetime | None:
 
 def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                   max_events: int = 200, collect_legs: bool = False,
-                  params: dict | None = None, params_pit: bool = False) -> dict:
+                  params: dict | None = None, params_pit: bool = False,
+                  params_at=None) -> dict:
     """Generic settled-history replay for ANY ladder/categorical series.
 
     Brier needs no y: settled leg results ARE the outcomes. For each settled event,
@@ -213,6 +214,15 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
     an in-sample number. It has a use — see `eval.run_series`, which requires it as an
     additional bar precisely because it is optimistic — but it is not the track record.
 
+    `params_at` (#199) is the FOURTH meaning and the only one a SIMULATION can use:
+    a callable `asof -> params|None` answering "what would the selector under test have
+    chosen at this moment". `params_pit` reads what production actually adopted, which is
+    right for the real-money gate and wrong inside `walkforward`, where the simulated
+    prediction path may be running the DSR selector, the argmin selector, a research
+    `param_override`, or the registered defaults. Pairing any of those with a gate state
+    built from production's adoption history yields a fifth configuration that never ran
+    anywhere. See `pit_gates.GateHistory`, which is where this is threaded.
+
     `params_mix{off}` reports which sets the graded sample actually ran, so a caller can
     tell "12 events at the live config" from "12 events at a config we abandoned".
     """
@@ -223,11 +233,13 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
     from prediction_market_macro.research.branch_parity import branch_of as _branch_of
     from prediction_market_macro.research.branch_parity import params_of as _params_of
     from prediction_market_macro.util.periods import kalshi_period_to_key
-    if params_pit and params is not None:
+    if sum(x is not None and x is not False
+           for x in (params, params_pit or None, params_at)) > 1:
         raise ValueError(
-            "replay_series: params and params_pit are two different questions —"
-            " one fixed set over all history, versus the set in force at each event."
-            " Passing both would silently answer only one of them.")
+            "replay_series: params, params_pit and params_at are three different"
+            " questions — one fixed set over all history, versus the set production"
+            " adopted at each event, versus the set a simulated selector would have"
+            " chosen there. Passing more than one would silently answer only one.")
     spec = REGISTRY[series]
     disp = SERIES_DISPATCH[series]
     fn = getattr(importlib.import_module(disp[0]), disp[1])
@@ -274,7 +286,11 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 # very number it is about to be scored on. Step back behind the print.
                 asof = release_ts - timedelta(seconds=1)
                 n_clamped += 1
-            if params_pit:
+            if params_at is not None:
+                # #199: the SIMULATED selector's answer at this asof. Same shape as the
+                # branch below, different source of truth — see the docstring.
+                eff = params_at(asof) or None
+            elif params_pit:
                 # the set in force at THIS event's asof, not today's. `params_asof`
                 # reads the manual override PIT on its adoption timestamp, else that
                 # day's param_selection row, else {} — the same order `current()` uses,
