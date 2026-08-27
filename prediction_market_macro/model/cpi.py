@@ -77,6 +77,28 @@ DEFAULT_PARAMS = {
     "gas_sigma_unobs": 0.08,   # additional extra sigma at zero observation
     "food_drift": FOOD_DRIFT,
     "horizon_widen": 0.10,     # sigma inflation per month beyond the next unprinted one
+    # PR-8 (0.3.0, YoY) and PR-10 (0.4.0, headline MoM) each registered a SIX-EVENT forward
+    # criterion, and both are graded by `research/shadow_nowcast.py` (#195). Grading needs
+    # the UN-anchored arm produced by this same code at the same asof — reconstructing it
+    # from `inputs["yoy_mu_model"]` would round the mu to 3dp, and importing an old copy of
+    # the module would let something other than the anchor differ between the arms.
+    #
+    # This is not a new branch. `_nowcast` already returns None when the feed is stale or
+    # the target month has no row yet, and production already falls back to the internal
+    # chain there; the key only makes that existing path reachable on demand. Default True
+    # is bit-identical — proved on the live db, 2026-08-27, against HEAD's copy of this
+    # module loaded side by side: 200/200 settled CPI-family predictions match exactly,
+    # comps + inputs + data_horizon. So VERSION is deliberately NOT bumped. Flipped, it
+    # moves 151/151 of the events where an anchor is available, so the arm it exposes is
+    # a real counterfactual and not a silently-dead switch.
+    #
+    # Deliberately absent from BOTH selection lanes (`param_space.CANDIDATES` and
+    # `param_argmin.SPACES`): whether to anchor is a registered hypothesis with a
+    # preregistered falsification rule. Letting a lane flip it would answer by dollar
+    # argmin on ~10 events a question PR-10 says is answerable only by six forward events
+    # of paired interval log-likelihood — and would be able to un-adopt the anchor without
+    # anyone writing down that the registration failed.
+    "nowcast_anchor": True,
 }
 
 
@@ -190,6 +212,8 @@ def predict_mom(conn, asof: datetime, ref_month: str, core: bool,
     pred = _predict_mom(conn, asof, ref_month, core, params)[0]
     if core:
         return pred                       # PR-10 rejects core; see _nowcast's docstring
+    if not _p(params)["nowcast_anchor"]:
+        return pred                       # PR-10's baseline arm; see DEFAULT_PARAMS
     anch = _nowcast(conn, asof, ref_month, "cpi", "mom")
     if anch is None:
         return pred
@@ -275,7 +299,8 @@ def predict_yoy(conn, asof: datetime, ref_month: str, core: bool,
     # 0.3.0 anchor (module docstring): nowcast REPLACES mu, sigma stays. Headline and
     # core each read their OWN measure — crosstalk here would silently feed core the
     # headline nowcast, which no validation ever measured.
-    anch = _nowcast_yoy(conn, asof, ref_month, "corecpi" if core else "cpi")
+    anch = (_nowcast_yoy(conn, asof, ref_month, "corecpi" if core else "cpi")
+            if _p(params)["nowcast_anchor"] else None)   # PR-8's baseline arm
     if anch is not None:
         inputs["yoy_mu_model"] = round(yoy_mu, 3)
         inputs["nowcast_date"], yoy_mu = anch

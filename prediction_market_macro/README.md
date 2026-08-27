@@ -145,7 +145,7 @@ cd /Users/xuling/code/someopark-test && \
 | 模块 | 方法 | 备注 |
 |---|---|---|
 | `claims.py` | 对数水平加权均值 + ISO 周季节性偏离 + 26 周 MAD 波动率（带 2% 下限）→ 高斯阶梯 | 唯一的周频劳动力系列 |
-| `cpi.py` | **未取整指数**的 MoM 连续性 + 汽油泵价（GASREGW）传导（RB 系数 0.55）+ YoY 精确递推；**0.3.0 起 YoY 双系列 mu 锚定 Cleveland nowcast**（headline 读 `cpi`、core 读 `corecpi`，σ 不动，缺失/陈旧 >7 天回退内部链） | 一个模块喂四个系列；锚定依据不对称：headline 是 45 事件泄漏免疫回放 Brier −33% 的证据判决，core 是 44 事件平局后的用户决定（PREREGISTER PR-8 有案） |
+| `cpi.py` | **未取整指数**的 MoM 连续性 + 汽油泵价（GASREGW）传导（RB 系数 0.55）+ YoY 精确递推；**0.3.0 起 YoY 双系列 mu 锚定 Cleveland nowcast**（headline 读 `cpi`、core 读 `corecpi`），**0.4.0 起 `predict_mom(core=False)` 的 mu 也整体换成 MoM nowcast**（只动 KXCPI；锚放在 `predict_mom` 而非 `_predict_mom`，所以 `predict_yoy` 走的 MoM 链与 KXPCECORE 逐 bit 不变）。三处 σ 都不动，缺失/陈旧 >7 天回退内部链 | 一个模块喂四个系列；三次锚定的依据各不相同,不许混为一谈：headline-YoY 是 45 事件泄漏免疫回放 Brier −33% 的证据判决，core-YoY 是 44 事件平局后的**用户决定**，headline-MoM 是 62 事件区间 LL 的 OOS 判决（PR-8 / PR-10 有案）；KXCPICORE 的 MoM 锚**被明确否决**。`nowcast_anchor` 键是 PR-8/PR-10 判据的未锚对照臂（默认 `True` 逐 bit 无变化），由 `research/shadow_nowcast.py` 使用，**不进任何选参通道** |
 | `pce.py` | CPI 核心 → PCE 核心的桥接回归（OLS + 残差 σ） | 已知风险：CPI/PCE 权重分歧、年度基准修订 |
 | `payrolls.py` | 首发变动重建 + 初请信号 + 胖尾混合（高斯 + Student-t） | 经验阶梯，非解析式 |
 | `u3.py` | 经验 Δ 核 + 多月卷积；显式建模 0.1 取整边界 | |
@@ -205,6 +205,7 @@ cd /Users/xuling/code/someopark-test && \
 | `attribution.py` | 每周归因：模型错、市场错、还是运气 |
 | `martingale.py` | 鞅性质检验（漂移检测） |
 | `shadow_claims.py` / `shadow_pr2.py` / `shadow_s2.py` | 三个**预注册前瞻检验**的记分器，见下 |
+| `shadow_nowcast.py` | PR-8 / PR-10 的记分器（登记 2026-08-15 / 08-27，落地 08-27，早于第一个前向事件 09-11）。特别之处：锚**已经在生产里**，所以要重建的是**未锚**的对照臂——`model/cpi.py` 加了 `nowcast_anchor`（默认 `True`）。默认值经并排实测逐 bit 无变化（**200/200** 已结算预测的 comps+inputs+data_horizon 完全相同，故 `VERSION` 不 bump），翻掉时 **151/151** 有锚事件全部移动。该键**两条选参通道都不收**——它是判据的对照臂，不是可搜的参数。两个登记内部各有一处不自洽，评分器把两边都算出来并标注哪一条 grades nothing：PR-8 的"两系列合计"对上改道注记的"headline 六"（core 单独计数并单独出判词，因为 core 的接线依据是用户决定不是证据），PR-10 的 T-26h 判据对上发现期用的 close−1h |
 | `shadow_seasonal.py` / `shadow_width.py` | PR-11 / PR-12 的记分器。两者都是**回放**而非实时日志（`asof` 是存储时间戳的确定性函数，所以两臂都能重放），都带 `REGISTERED_FINGERPRINT`：登记之后模型文件若再动，输出会自己说出来，而不是静默跨版本比较。`shadow_width.py` 另有一条吃重的测试——它 MIRROR 了 `backtest.replay_series` 的两条 asof 规则，测试用打桩的 `energy.predict` 记录**真实回放实际问了哪个 asof**，再逐事件比对，镜像一旦漂移就红 |
 | `DECISION_RULE_113.md` / `DECISION_RULE_119.md` / `TRADEABILITY_129.md` | 三份决策记录：判据在**看到结果之前**就写死 |
 
@@ -318,9 +319,9 @@ python -m prediction_market_macro.research.walkforward --days 75 --end 2026-08-0
 | **PR-1** | 初请模型改用激进近因权重 `(0, 0, 0.3, 0.7)` 更准 | K=1；≥8 次结算；配对 Brier(候选) < Brier(市场) | 前瞻中 |
 | **PR-2** | argmax 单加"贵于公允就不下"的过滤更赚 | K=1；≥20 条 argmax 腿；ROI 差 ≥ 5pp | 前瞻中（双臂已接线，等样本） |
 | **PR-7/S2** | 更紧的平仓阈值（`hold_edge <= 0` 而非 `< −0.06`） | K=3；≥30 笔；ROI 差 ≥ 5pp 且事件聚类 95% CI 不跨零 | 前瞻中（08-11 台账重置后计数重启） |
-| **PR-8** | CPI-YoY 族 mu 锚定 Cleveland nowcast | K=1；前向 6 个结算事件,T-26h 配对逐腿 Brier | **登记数小时后被用户指令改道**：改跑判据的历史等价物（45/44 事件泄漏免疫回放）。headline 判决性通过（Brier −33%）→ 已上线；core 平局 → 用户决定也上线（依据=决定非证据,原文有案）。前向计数降级为确认监控 |
+| **PR-8** | CPI-YoY 族 mu 锚定 Cleveland nowcast | K=1；前向 6 个结算事件,T-26h 配对逐腿 Brier | **登记数小时后被用户指令改道**：改跑判据的历史等价物（45/44 事件泄漏免疫回放）。headline 判决性通过（Brier −33%）→ 已上线；core 平局 → 用户决定也上线（依据=决定非证据,原文有案）。前向计数降级为确认监控（记分器 `shadow_nowcast.py` 2026-08-27 落地，headline 与 core **分开计数、分开出判词**） |
 | **PR-9** | demo 账户镜像跟单可以晋级为 arm | K=1；paper 台账 ≥10 笔结算 且事件聚类 bootstrap 95% CI 的 ROI > 0 | 前瞻中（登记时 6/10）。代码以**暗模式**先建，判据门控的是 `arm()` 而不是写代码 |
-| **PR-10** | KXCPI 的 headline MoM 分支 mu 锚定 Cleveland **MoM** nowcast | K=12；前向 6 个结算事件,T-26h 配对**区间对数似然** 且 ≥4/6 逐事件为正 | 前瞻中 **0/6**。**首个前向事件 2026-09-11**。KXCPICORE 已明确否决（单事件贡献 101.8% 的增益） |
+| **PR-10** | KXCPI 的 headline MoM 分支 mu 锚定 Cleveland **MoM** nowcast | K=12；前向 6 个结算事件,T-26h 配对**区间对数似然** 且 ≥4/6 逐事件为正 | 前瞻中 **0/6**。**首个前向事件 2026-09-11**，记分器 `shadow_nowcast.py` 已在同日落地、赶在第一个事件之前。KXCPICORE 已明确否决（单事件贡献 101.8% 的增益） |
 | **PR-11** | KXJOBLESSCLAIMS 季节中心改用离群筛过的均值（claims/0.2.0） | K=10；前向 ≥6 个**开火事件**,T−1h 配对区间 LL 均值 > 0 且 ≥4/6 为正 | 前瞻中 **0/6 开火事件**。筛一年只在 ISO 周 12/13/14/15/18 开火 ⇒ **最早出判决 ~2027-04-15**，已预先写死 |
 | **PR-12** | energy 预测分布过宽，`fut_sigma_scale` 应当离开 1.0 | K=19+3；每市场前向 12 个结算周,T−1h 配对区间 LL > LL(1.0),单边 Wilcoxon,Bonferroni α=0.01667 | 前瞻中 **NG 0/12、WTIW 0/12**。**标尺是默认值不是市场**——赢了只授权改默认值,下单口仍由 `skill.py` 按市场比值拦着。阶梯含 1.2 档,**可以变宽**;若 1.0 守住,#192 的过宽就是 19 重搜索假象且不许再搜 |
 

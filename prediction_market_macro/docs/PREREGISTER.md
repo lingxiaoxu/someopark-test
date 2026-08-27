@@ -432,7 +432,7 @@ S2 从没触发的仓**不剔除**,两臂同值计入 —— 只在它出手的�
 | 背景(发现期证据,不判决) | 28 期 PIT 回放:headline 平均\|err\| nowcast 0.099 vs 模型 0.143;core 0.096 vs 0.099。2026-07 反事实:入场日(T-6d)nowcast headline 3.42/core 2.52,实际 3.4/2.5——本周两笔方向性输单会被完全避免。数据源 `cleveland_nowcast` 表,60,182 行 vintage 回溯 2013-07,CC-BY-4.0 |
 | 事前假设 | nowcast 是 CPI 交易员的公共锚,其信息集(日频油价/周度汽油/已印 CPI-PCE)严格包含我们 cpi.py 的输入;替换应降低逐腿 Brier |
 | 判据 | 前向 **6 个已结算 CPI-YoY 族事件**(两系列合计,自登记日起),T-26h 成对逐腿 Brier:candidate < 当前生产模型(含每日 argmin 参数),且 6 事件中 ≥4 个方向一致。做不到即证伪,不换混合权重重试 |
-| 影子实现 | `research/shadow_nowcast.py`(评分器,登记后、下一个 CPI 发布(≈09-15)前落地);两臂同 asof 同书本,candidate 不进 decisions |
+| 影子实现 | `research/shadow_nowcast.py`(评分器,**2026-08-27 落地**,晚于登记 12 天但早于第一个前向事件 2026-09-11);两臂同 asof 同书本,candidate 不进 decisions。因为锚**已经上线**,要重建的是**未锚**那一臂:`model/cpi.py` 的 `DEFAULT_PARAMS` 加 `nowcast_anchor`(默认 `True`)。默认值逐 bit 无变化,已对 HEAD 并排实测:**200/200** 已结算 CPI 族预测(comps+inputs+data_horizon)完全相同,所以 `VERSION` 故意不 bump;翻成 `False` 时 **151/151** 有锚可用的事件全部移动。该键**同时不在** `param_space.CANDIDATES` 与 `param_argmin.SPACES` 里——它是判据的对照臂,不是可搜的参数 |
 | K | 1(单一替换,无扫参) |
 | 结论 | **登记当日被用户指令改道**(见下方注记):headline 已上线,core 判负不上线。前向计数继续作为确认:headline 0 / 6 |
 
@@ -473,6 +473,7 @@ S2 从没触发的仓**不剔除**,两臂同值计入 —— 只在它出手的�
 | 已预先声明的风险 | 年切片显示 **2021(−0.25 nats)与 2022(−0.13 nats)是负的**,2023–2026 全正。2021-22 正是通胀加速期,Cleveland nowcast 当时系统性低估。**如果前向窗落进一个再加速的通胀体制,这个锚预计会落后**——这句写在前面,不许事后当解释 |
 | 明确否决(不许日后"再试一次") | **KXCPICORE 不接线。** 47 事件:dLL +0.0298 nats DM p=0.325,win 22/47,中位数 **−0.0035**,而且**单个事件贡献了全部增益的 101.8%**(即去掉那一个事件后增益为负);年切片 2022/2023/2024 三个都是负的。扩展窗 OOS 最好的 w=0.75 也只有 +0.069 nats p=0.159。这是干净的否决,与 0.3.0 当年 core-YoY 的"平局"形态一致 |
 | K | **12**(本数据上试过的候选:每个序列 5 个臂 `nowcast` / `blend_0.25` / `blend_0.50` / `blend_0.75` / `no_gas_food`,× 2 序列 = 10,加上两次 21 点的扩展窗 w 网格选择 = 12)。另需计入:这个假设本身是从 14 序列校准扫描里挑出来的最强项,选题自由度不为零 |
+| 影子实现 | `research/shadow_nowcast.py`(与 PR-8 同一个评分器、同一次提交落地,PR-8 那一行写了对照臂怎么重建的)。`REGISTERED_FINGERPRINT = a1f654f0d8e9`(`model/cpi.py` 的 sha1 前缀),只在本次落地提交里盖一次:登记之后模型文件再动,输出会自己说 `UNDOCUMENTED CHANGE`,而不是静默跨版本比较。**判据的 asof 是 T-26h**——发现期证据表用的是 close−1h,评分器把 −1h 那一行也算出来但明确标注"grades nothing",两者的差异因此可见而不是被抹掉 |
 | 结论 | 待前向计数。**0 / 6** |
 
 **发现期证据(历史等价物,K=12,不判决)。** 与 PR-8 同一套做法:60 个已结算 KXCPI 事件(2021→2026),asof = close−1h 并在书本晚于印数时回退到 release−1s,`data_horizon >= release` 的事件直接丢弃,标签用 `ops/pnl._realized_print`(2026-08-27 起 42/42 与结算阶梯一致)。
