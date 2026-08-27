@@ -81,13 +81,50 @@ def _fingerprint(conn, series: str, before: datetime) -> str:
     return f"{len(evs)}:{last.isoformat() if last else '-'}"
 
 
+def _manual_stamp(conn, series: str, before: datetime) -> str:
+    """Adoption instant of the `manual_params` row in force at `before`, or ''.
+
+    The SECOND thing a selection answer depends on, and the one #198c found missing. A
+    manual row is written by a human or by the `param_argmin` cron; no event settles, so
+    the sample fingerprint does not move — and every cache keyed on the fingerprint alone
+    keeps serving the pre-adoption answer straight through the adoption.
+    """
+    r = conn.execute(
+        "SELECT created_ts FROM experiments WHERE name='manual_params' AND series=?"
+        " AND created_ts<=? ORDER BY created_ts DESC LIMIT 1",
+        (series, before.isoformat())).fetchone()
+    return r["created_ts"] if r else ""
+
+
 def _sample_key(conn, series: str, before: datetime) -> str:
+    """The key a cached selection answer may be stored under: it must move whenever the
+    answer can.
+
+    Two components, because `select_for` has two inputs. The fingerprint covers the DSR
+    path (the answer cannot change until a new scoreable event settles); the manual stamp
+    covers the override path, which changes on a WRITE rather than on a settle.
+
+    **#198c.** Until 2026-08-27 this was the fingerprint alone, and the docstring on
+    `walkforward._GateBook.params_for` reasoned from that half only. Measured over the 75
+    simulated days ending 2026-08-27: eight series, 4-16 days each (101 series-days in
+    total), served a cached `{}` on days when an adopted set was in force — so the
+    walk-forward simulated the registered defaults across the ENTIRE adoption period
+    while production ran the adopted params. That is #198's own sentence, one layer down:
+    the backtest was running a strategy the live path does not run.
+
+    Changing the format invalidates every `sample_key` stored in `param_selection`'s
+    `report_json`, which costs exactly one forced rescore per series on the next daily
+    run and then self-heals.
+    """
+    stamp = _manual_stamp(conn, series, before)
     if series in POOLED_SERIES:
         name = POOLED_SERIES[series]
         parts = [f"{s}={_fingerprint(conn, s, before)}"
                  for s in POOLS[name]["series"]]
-        return f"pool:{name}|" + "|".join(parts)
-    return _fingerprint(conn, series, before)
+        # the pool shares a SAMPLE, not an override: `manual_params` is per series and
+        # `select_for` consults this series' own row, so the stamp stays un-pooled.
+        return f"pool:{name}|" + "|".join(parts) + f"|m:{stamp}"
+    return f"{_fingerprint(conn, series, before)}|m:{stamp}"
 
 
 def _matrix_for(conn, series: str, before: datetime, log=None):
@@ -133,14 +170,31 @@ def manual_params(conn, series: str, before: datetime) -> tuple[dict, str] | Non
     `clear_manual` and auditable in `experiments`. The PIT clause matters for the
     walkforward: a simulated day BEFORE the adoption instant uses the normal
     selector path, so historical replays are not contaminated by today's decision.
+
+    **The row that was in force, not the row that is in force (#198).** Until
+    2026-08-27 this read the LATEST row and then discarded it when `before` sat
+    earlier, so any asof before the most recent adoption fell through to the
+    selector — correct for a single adoption and wrong the moment there were two.
+    There are nine such series: KXJOBLESSCLAIMS has 9 rows, KXCPIYOY 5, KXCPI 4.
+    An event replayed at 2026-08-15 was graded at the defaults because a DIFFERENT
+    set had been adopted on 08-26, which is the same class of error as #198 itself
+    — grading a configuration production was not running — hiding one layer down
+    inside the reader that was supposed to be the fix for it. The filter therefore
+    belongs in the WHERE clause: the newest row at or before `before`, whatever
+    came after it. `active=False` is an adoption too (it re-adopts the defaults),
+    so a `clear_manual` correctly stops applying to days that precede it.
+
+    At `before = now` the newest row at-or-before now IS the newest row, so
+    `current()`, `select_for(now)` and `frontend_export` are bit-identical.
     """
     r = conn.execute(
         "SELECT metrics_json, created_ts FROM experiments WHERE name='manual_params'"
-        " AND series=? ORDER BY created_ts DESC LIMIT 1", (series,)).fetchone()
+        " AND series=? AND created_ts<=? ORDER BY created_ts DESC LIMIT 1",
+        (series, before.isoformat())).fetchone()
     if r is None:
         return None
     m = json.loads(r["metrics_json"] or "{}")
-    if not m.get("active") or before.isoformat() < r["created_ts"]:
+    if not m.get("active"):
         return None
     return dict(m.get("params") or {}), r["created_ts"]
 

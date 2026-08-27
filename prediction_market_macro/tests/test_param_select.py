@@ -185,9 +185,51 @@ def test_a_pool_members_sample_key_moves_when_either_member_moves(monkeypatch):
     leave one member running on a verdict computed without half its sample."""
     fps = {"KXWTIW": "11:a", "KXNATGASW": "11:b"}
     monkeypatch.setattr(psel, "_fingerprint", lambda conn, s, before: fps[s])
+    monkeypatch.setattr(psel, "_manual_stamp", lambda conn, s, before: "")
     before = psel._sample_key(None, "KXWTIW", _NOW)
     fps["KXNATGASW"] = "12:c"
     assert psel._sample_key(None, "KXWTIW", _NOW) != before
+
+
+def test_the_sample_key_moves_when_a_manual_row_is_adopted(monkeypatch):
+    """#198c. A `manual_params` write settles no event, so the fingerprint holds still —
+    and every cache keyed on it alone (`walkforward._GateBook.params_for`, `refresh`'s
+    daily carry-forward) kept serving the pre-adoption answer across the adoption. The
+    key has to move on the WRITE, because that is when the answer moves."""
+    stamp = {"v": ""}
+    monkeypatch.setattr(psel, "_fingerprint", lambda conn, s, before: "11:a")
+    monkeypatch.setattr(psel, "_manual_stamp", lambda conn, s, before: stamp["v"])
+    at_defaults = psel._sample_key(None, "KXU3", _NOW)
+    stamp["v"] = "2026-08-11T04:44:41+00:00"
+    adopted = psel._sample_key(None, "KXU3", _NOW)
+    stamp["v"] = "2026-08-22T09:13:53+00:00"
+    readopted = psel._sample_key(None, "KXU3", _NOW)
+    assert len({at_defaults, adopted, readopted}) == 3, \
+        "each adoption is its own cache generation, re-adoption included"
+
+
+def test_the_manual_stamp_is_the_row_in_force_not_the_newest(_now=_NOW):
+    """The stamp inherits `manual_params`' PIT rule (#198b) — it has to, or a cache key
+    computed for a pre-adoption simulated day would carry today's adoption instant and
+    invalidate answers that were never stale."""
+    import json
+    import sqlite3
+    from datetime import datetime, timezone
+    c = sqlite3.connect(":memory:")
+    c.row_factory = sqlite3.Row
+    c.execute("""CREATE TABLE experiments(name TEXT, config_hash TEXT, series TEXT,
+                 window TEXT, metrics_json TEXT, created_ts TEXT,
+                 PRIMARY KEY(name, config_hash))""")
+    for ts in ("2026-08-11T04:44:41+00:00", "2026-08-22T09:13:53+00:00"):
+        c.execute("INSERT INTO experiments(name, config_hash, series, window,"
+                  " metrics_json, created_ts) VALUES('manual_params',?,?,'live',?,?)",
+                  (f"m:{ts}", "KXU3",
+                   json.dumps({"active": True, "params": {"laplace": 1.0}}), ts))
+    at = lambda d: psel._manual_stamp(                                 # noqa: E731
+        c, "KXU3", datetime.fromisoformat(d).replace(tzinfo=timezone.utc))
+    assert at("2026-08-05T16:00:00") == ""
+    assert at("2026-08-15T16:00:00") == "2026-08-11T04:44:41+00:00"
+    assert at("2026-08-26T16:00:00") == "2026-08-22T09:13:53+00:00"
 
 
 def test_predict_all_hands_the_model_none_rather_than_an_empty_dict(monkeypatch):

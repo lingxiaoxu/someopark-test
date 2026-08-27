@@ -499,8 +499,19 @@ class _GateBook:
         """Selected parameters as of `day`, or None for the registered defaults.
 
         Cached on `param_select._sample_key`, not on the day: the selector's answer
-        cannot change until a new scoreable event settles, so a 60-day sim costs one
-        rescore per settle rather than 60 per series.
+        cannot change until a new scoreable event settles OR a `manual_params` row is
+        written, so a 60-day sim costs one rescore per such change rather than 60 per
+        series.
+
+        **The second clause is #198c and it was missing.** `_sample_key` used to be the
+        sample fingerprint alone, on the reasoning that only a settle can move the
+        answer. True of the DSR path, false of the override path: the `param_argmin`
+        cron writes a row most weeks with no event settling, so the key held still and
+        this cache served the pre-adoption answer across the adoption. Over the 75 days
+        to 2026-08-27 that was 101 series-days on which the sim ran the registered
+        defaults while production ran adopted params — including every simulated day of
+        the live period. The stamp now lives in the key, so the invalidation is the
+        selector's own concern rather than something this call site has to know about.
         """
         if series in self.param_override:      # research sweep: fixed for the whole run
             return self.param_override[series]

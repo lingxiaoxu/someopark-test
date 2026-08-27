@@ -407,7 +407,13 @@ def replay_all(conn, md=None, deep: bool = False, max_candle_markets: int = 4000
             rep = replay_claims(conn, n_releases=104)      # full vintage history window
             name = "claims_replay"
         else:
-            rep = replay_series(conn, series)
+            # #198 params_pit: these rows are the track record `health`'s 2-window and
+            # CRPS-spike detectors watch. Replayed at the defaults they were blind to the
+            # one drift that is fully under our control — a parameter adoption that makes
+            # the model worse. Verified not to move either detector on the transition:
+            # `_detect_brier_2win` is a bm>bk comparison that no series is near, and
+            # `_detect_crps_spike` reads `crps-1h`, which this function does not emit.
+            rep = replay_series(conn, series, params_pit=True)
             name = f"{series[2:].lower()}_replay"
         if rep["agg"]["n"] == 0:
             continue

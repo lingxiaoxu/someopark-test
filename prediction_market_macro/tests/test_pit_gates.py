@@ -88,16 +88,26 @@ def test_calibrate_structs_uses_the_same_interp_the_live_path_uses():
 
 # ── the history slice: strictly earlier, and it moves when the sample moves ─────
 
-def _history(monkeypatch, closes, per, dec_trades=()):
+def _history(monkeypatch, closes, per, dec_trades=(), params_pit=False):
+    """The two replays stubbed out; these tests are about the SLICE, not the replay.
+
+    `params_pit` is asserted rather than ignored: #198 threads it through both calls and
+    #199 is the ticket to change its default, so a stub that silently swallowed it would
+    let that default flip without a single test noticing.
+    """
+    def _replay(conn, series, max_events=200, collect_legs=False, **kw):
+        assert kw.get("params_pit") is params_pit
+        return {"per_release": per}
+
+    def _decide(conn, series, max_events=200, collect_trades=False, **kw):
+        assert kw.get("params_pit") is params_pit
+        return {"trades": list(dec_trades)}
     monkeypatch.setattr(pg, "period_closes", lambda conn, series: closes)
     monkeypatch.setattr(
-        "prediction_market_macro.research.backtest.replay_series",
-        lambda conn, series, max_events=200, collect_legs=False: {"per_release": per})
+        "prediction_market_macro.research.backtest.replay_series", _replay)
     monkeypatch.setattr(
-        "prediction_market_macro.research.eval.decision_replay",
-        lambda conn, series, max_events=200, collect_trades=False: {
-            "trades": list(dec_trades)})
-    return pg.GateHistory(None, "KXWTIW")
+        "prediction_market_macro.research.eval.decision_replay", _decide)
+    return pg.GateHistory(None, "KXWTIW", params_pit=params_pit)
 
 
 def _rec(period, bm, bk, legs=()):

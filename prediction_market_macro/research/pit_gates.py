@@ -166,20 +166,38 @@ class GateState:
 
 
 class GateHistory:
-    """Two replays of one series, sliceable to any as-of day."""
+    """Two replays of one series, sliceable to any as-of day.
 
-    def __init__(self, conn, series: str, max_events: int = 200):
+    `params_pit` (#198) carries the same fix the §9.5 gate got — replay each event at the
+    parameters in force at its own asof instead of at the registered defaults — and it
+    DEFAULTS OFF here on purpose, which is the one place in that ticket where the honest
+    answer is "not yet".
+
+    The reason is a coupling, not a doubt about the fix. This class is driven by
+    `walkforward._GateBook`, whose PREDICTION path already chooses params per simulated
+    day through `params_for()` — honouring `select_params`, `select_mode='argmin'` and
+    `param_override`. Reading the real adoption history here regardless would pair a
+    defaults-predicted (or argmin-replayed, or overridden) sim with a gate state built
+    from what production actually adopted, which is a THIRD combination that never ran.
+    Making the two agree means threading `_GateBook`'s per-day choice into this replay,
+    and that changes every published Walk-Forward Lab number, so it is its own ticket
+    with its own before/after — not a default flipped in a commit about the money gate.
+    """
+
+    def __init__(self, conn, series: str, max_events: int = 200,
+                 params_pit: bool = False):
         from prediction_market_macro.research.backtest import replay_series
         from prediction_market_macro.research.eval import decision_replay
         self.series = series
         self.closes = period_closes(conn, series)
         per = replay_series(conn, series, max_events=max_events,
-                            collect_legs=True)["per_release"]
+                            collect_legs=True, params_pit=params_pit)["per_release"]
         # (close_ts, record) chronological — replay_series already returns chronological
         # order but sorting on the close we just resolved makes that independent of it.
         self.per = sorted(((self.closes[p["period"]], p) for p in per
                            if p["period"] in self.closes), key=lambda t: t[0])
-        dec = decision_replay(conn, series, max_events=max_events, collect_trades=True)
+        dec = decision_replay(conn, series, max_events=max_events, collect_trades=True,
+                              params_pit=params_pit)
         self.dec = sorted(((self.closes[t["period"]], t) for t in dec["trades"]
                            if t["period"] in self.closes), key=lambda t: t[0])
         self._cache: dict[int, GateState] = {}
