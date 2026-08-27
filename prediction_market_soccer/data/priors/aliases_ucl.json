@@ -1,0 +1,26 @@
+{
+ "comp": "ucl",
+ "series": "KXUCLGAME",
+ "as_of": "2026-08-26T05:31:51.581597+00:00",
+ "aliases": {
+  "AEK Athens": "aek_athens_fc",
+  "Dinamo Zagreb": "dinamo_zagreb",
+  "Fenerbahce": "fenerbahe",
+  "Levski Sofia": "levski_sofia",
+  "Lyon": "lyon",
+  "NK Celje": "celje",
+  "Slovan Bratislava": "slovan_bratislava",
+  "Viking": "viking"
+ },
+ "codes": {
+  "aek_athens_fc": "AEK",
+  "levski_sofia": "LEV",
+  "celje": "CEL",
+  "slovan_bratislava": "SLO",
+  "lyon": "OL",
+  "fenerbahe": "FEN",
+  "viking": "VIK",
+  "dinamo_zagreb": "DIN"
+ },
+ "unmatched": []
+}

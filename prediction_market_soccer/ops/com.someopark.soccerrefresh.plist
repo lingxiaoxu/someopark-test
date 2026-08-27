@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd schedule for the unattended daily prediction refresh + deploy.
+  Runs refresh_and_deploy.sh once a day at 07:30 ET — after the previous day's
+  matches everywhere have finished (Europe ends by ~17:00 ET, South America by ~midnight ET),
+  and before the 09:10 ET pairs pipelines (plan §6.4). Contains NO secrets — the script loads FIREBASE_TOKEN and the
+  API keys from the gitignored .env files.
+
+  Install:
+    cp prediction_market_soccer/ops/com.someopark.soccerrefresh.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.someopark.soccerrefresh.plist
+  Run once now to test:
+    launchctl start com.someopark.soccerrefresh
+  Disable:
+    launchctl unload ~/Library/LaunchAgents/com.someopark.soccerrefresh.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.someopark.soccerrefresh</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/xuling/code/someopark-test/prediction_market_soccer/ops/refresh_and_deploy.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key><integer>7</integer>
+    <key>Minute</key><integer>30</integer>
+  </dict>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>/Users/xuling/code/someopark-test/prediction_market_soccer/data/logs/launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/xuling/code/someopark-test/prediction_market_soccer/data/logs/launchd.err.log</string>
+</dict>
+</plist>

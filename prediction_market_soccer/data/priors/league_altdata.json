@@ -1,0 +1,288 @@
+{
+  "ts": "2026-08-26T22:56:01.135930+00:00",
+  "method": "per-competition grid on that competition's own 2025-26 history; PIT weekly alt-data index; selection on TRAIN only, kept only if it beats zero weights by >= 0.002 calibrated Brier",
+  "index_options": {
+    "unknown_opp": 0.0,
+    "shrink_k": 5.0
+  },
+  "weights": {
+    "epl": {
+      "oppadj_def_weight": 0.003,
+      "oppadj_off_weight": 0.0,
+      "mode": "residual"
+    },
+    "laliga": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.0,
+      "mode": "none"
+    },
+    "seriea": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.0,
+      "mode": "none"
+    },
+    "bundesliga": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.0,
+      "mode": "none"
+    },
+    "ligue1": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.0,
+      "mode": "none"
+    },
+    "ucl": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.0,
+      "mode": "none"
+    },
+    "uel": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.0,
+      "mode": "none"
+    },
+    "uecl": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.0,
+      "mode": "none"
+    },
+    "libertadores": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.029,
+      "mode": "residual"
+    },
+    "sudamericana": {
+      "oppadj_def_weight": 0.024,
+      "oppadj_off_weight": 0.085,
+      "mode": "residual"
+    },
+    "brasileirao": {
+      "oppadj_def_weight": 0.0,
+      "oppadj_off_weight": 0.0,
+      "mode": "none"
+    },
+    "argentina": {
+      "oppadj_def_weight": 0.046,
+      "oppadj_off_weight": 0.041,
+      "mode": "residual"
+    }
+  },
+  "detail": [
+    {
+      "comp": "epl",
+      "n": 282,
+      "n_train": 211,
+      "n_test": 71,
+      "def_w": 0.003,
+      "off_w": 0.0,
+      "mode": "residual",
+      "slope_off": -0.002,
+      "t_off": -0.04,
+      "slope_def": 0.0394,
+      "t_def": 0.74,
+      "n_regression": 404,
+      "lambda_bar": 1.416,
+      "test_brier_zero": 0.6184,
+      "test_brier_fitted": 0.6179,
+      "kept": true
+    },
+    {
+      "comp": "laliga",
+      "n": 290,
+      "n_train": 217,
+      "n_test": 73,
+      "def_w": 0.0,
+      "off_w": 0.0,
+      "mode": "none",
+      "slope_off": 0.0079,
+      "t_off": 0.16,
+      "slope_def": 0.004,
+      "t_def": 0.08,
+      "n_regression": 414,
+      "lambda_bar": 1.42,
+      "test_brier_zero": 0.5569,
+      "test_brier_fitted": 0.5569,
+      "kept": false
+    },
+    {
+      "comp": "seriea",
+      "n": 282,
+      "n_train": 211,
+      "n_test": 71,
+      "def_w": 0.0,
+      "off_w": 0.0,
+      "mode": "none",
+      "slope_off": -0.0449,
+      "t_off": -0.88,
+      "slope_def": -0.0392,
+      "t_def": -0.77,
+      "n_regression": 404,
+      "lambda_bar": 1.265,
+      "test_brier_zero": 0.6173,
+      "test_brier_fitted": 0.6173,
+      "kept": false
+    },
+    {
+      "comp": "bundesliga",
+      "n": 210,
+      "n_train": 157,
+      "n_test": 53,
+      "def_w": 0.0,
+      "off_w": 0.0,
+      "mode": "none",
+      "slope_off": -0.0109,
+      "t_off": -0.15,
+      "slope_def": -0.0684,
+      "t_def": -0.98,
+      "n_regression": 300,
+      "lambda_bar": 1.741,
+      "test_brier_zero": 0.5628,
+      "test_brier_fitted": 0.5628,
+      "kept": false
+    },
+    {
+      "comp": "ligue1",
+      "n": 249,
+      "n_train": 186,
+      "n_test": 63,
+      "def_w": 0.0,
+      "off_w": 0.0,
+      "mode": "none",
+      "slope_off": -0.0463,
+      "t_off": -0.7,
+      "slope_def": -0.0023,
+      "t_def": -0.03,
+      "n_regression": 358,
+      "lambda_bar": 1.471,
+      "test_brier_zero": 0.6276,
+      "test_brier_fitted": 0.6276,
+      "kept": false
+    },
+    {
+      "comp": "ucl",
+      "n": 298,
+      "n_train": 28,
+      "n_test": 75,
+      "def_w": 0.0,
+      "off_w": 0.0,
+      "mode": "none",
+      "slope_off": 0.0,
+      "t_off": 0.0,
+      "slope_def": 0.0,
+      "t_def": 0.0,
+      "n_regression": 46,
+      "lambda_bar": 1.836,
+      "test_brier_zero": 0.6537,
+      "test_brier_fitted": 0.6537,
+      "kept": false
+    },
+    {
+      "comp": "uel",
+      "n": 230,
+      "n_train": 19,
+      "n_test": 58,
+      "def_w": 0.0,
+      "off_w": 0.0,
+      "mode": "none",
+      "slope_off": 0.0,
+      "t_off": 0.0,
+      "slope_def": 0.0,
+      "t_def": 0.0,
+      "n_regression": 30,
+      "lambda_bar": 1.694,
+      "test_brier_zero": 0.6564,
+      "test_brier_fitted": 0.6564,
+      "kept": false
+    },
+    {
+      "comp": "uecl",
+      "n": 432,
+      "n_train": 211,
+      "n_test": 108,
+      "def_w": 0.0,
+      "off_w": 0.0,
+      "mode": "none",
+      "slope_off": 0.0183,
+      "t_off": 0.24,
+      "slope_def": -0.0314,
+      "t_def": -0.36,
+      "n_regression": 316,
+      "lambda_bar": 1.223,
+      "test_brier_zero": 0.6209,
+      "test_brier_fitted": 0.6209,
+      "kept": false
+    },
+    {
+      "comp": "libertadores",
+      "n": 274,
+      "n_train": 125,
+      "n_test": 69,
+      "def_w": 0.0,
+      "off_w": 0.029,
+      "mode": "residual",
+      "slope_off": 0.1001,
+      "t_off": 1.61,
+      "slope_def": 0.0121,
+      "t_def": 0.17,
+      "n_regression": 222,
+      "lambda_bar": 1.38,
+      "test_brier_zero": 0.6103,
+      "test_brier_fitted": 0.6067,
+      "kept": true
+    },
+    {
+      "comp": "sudamericana",
+      "n": 235,
+      "n_train": 116,
+      "n_test": 59,
+      "def_w": 0.024,
+      "off_w": 0.085,
+      "mode": "residual",
+      "slope_off": 0.1885,
+      "t_off": 2.59,
+      "slope_def": 0.1124,
+      "t_def": 1.3,
+      "n_regression": 214,
+      "lambda_bar": 1.384,
+      "test_brier_zero": 0.607,
+      "test_brier_fitted": 0.6046,
+      "kept": true
+    },
+    {
+      "comp": "brasileirao",
+      "n": 475,
+      "n_train": 356,
+      "n_test": 119,
+      "def_w": 0.0,
+      "off_w": 0.0,
+      "mode": "none",
+      "slope_off": -0.0541,
+      "t_off": -1.33,
+      "slope_def": -0.01,
+      "t_def": -0.24,
+      "n_regression": 692,
+      "lambda_bar": 1.31,
+      "test_brier_zero": 0.6134,
+      "test_brier_fitted": 0.6134,
+      "kept": false
+    },
+    {
+      "comp": "argentina",
+      "n": 793,
+      "n_train": 594,
+      "n_test": 199,
+      "def_w": 0.046,
+      "off_w": 0.041,
+      "mode": "residual",
+      "slope_off": 0.0706,
+      "t_off": 2.45,
+      "slope_def": 0.0754,
+      "t_def": 2.61,
+      "n_regression": 1150,
+      "lambda_bar": 1.026,
+      "test_brier_zero": 0.6678,
+      "test_brier_fitted": 0.6653,
+      "kept": true
+    }
+  ]
+}

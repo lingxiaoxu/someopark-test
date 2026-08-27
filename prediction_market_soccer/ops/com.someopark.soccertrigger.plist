@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Event-driven trigger: every 15 minutes, runs refresh_and_deploy.sh --trigger,
+  which is a cheap gate — it only runs the full refresh+build+deploy when a NEW
+  match result has just landed (so 3 matches/day → 3 deploys, each ~15 min after a
+  match finishes). Outside the match window it costs nothing (no API call).
+  Pairs with the once-daily com.someopark.soccerrefresh.plist (backstop).
+
+  Install:
+    cp prediction_market_soccer/ops/com.someopark.soccertrigger.plist ~/Library/LaunchAgents/
+    launchctl load ~/Library/LaunchAgents/com.someopark.soccertrigger.plist
+  Disable:
+    launchctl unload ~/Library/LaunchAgents/com.someopark.soccertrigger.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.someopark.soccertrigger</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/xuling/code/someopark-test/prediction_market_soccer/ops/refresh_and_deploy.sh</string>
+    <string>--trigger</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>900</integer>
+  <key>RunAtLoad</key>
+  <false/>
+  <key>StandardOutPath</key>
+  <string>/Users/xuling/code/someopark-test/prediction_market_soccer/data/logs/trigger.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/xuling/code/someopark-test/prediction_market_soccer/data/logs/trigger.err.log</string>
+</dict>
+</plist>

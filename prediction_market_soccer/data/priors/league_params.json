@@ -1,0 +1,96 @@
+{
+ "epl": {
+  "base_mu": 0.2019,
+  "home_adv": 0.221,
+  "n_matches": 380,
+  "mean_home_goals": 1.526,
+  "mean_away_goals": 1.224,
+  "season": 2025
+ },
+ "laliga": {
+  "base_mu": 0.1143,
+  "home_adv": 0.3392,
+  "n_matches": 380,
+  "mean_home_goals": 1.574,
+  "mean_away_goals": 1.121,
+  "season": 2025
+ },
+ "seriea": {
+  "base_mu": 0.1398,
+  "home_adv": 0.1042,
+  "n_matches": 380,
+  "mean_home_goals": 1.276,
+  "mean_away_goals": 1.15,
+  "season": 2025
+ },
+ "bundesliga": {
+  "base_mu": 0.3767,
+  "home_adv": 0.1986,
+  "n_matches": 306,
+  "mean_home_goals": 1.778,
+  "mean_away_goals": 1.458,
+  "season": 2025
+ },
+ "ligue1": {
+  "base_mu": 0.2172,
+  "home_adv": 0.2445,
+  "n_matches": 305,
+  "mean_home_goals": 1.587,
+  "mean_away_goals": 1.243,
+  "season": 2025
+ },
+ "ucl": {
+  "base_mu": 0.3725,
+  "home_adv": 0.2853,
+  "n_matches": 144,
+  "mean_home_goals": 1.931,
+  "mean_away_goals": 1.451,
+  "season": 2025
+ },
+ "uel": {
+  "base_mu": 0.1482,
+  "home_adv": 0.2711,
+  "n_matches": 144,
+  "mean_home_goals": 1.521,
+  "mean_away_goals": 1.16,
+  "season": 2025
+ },
+ "uecl": {
+  "base_mu": -0.1713,
+  "home_adv": 0.5951,
+  "n_matches": 108,
+  "mean_home_goals": 1.528,
+  "mean_away_goals": 0.843,
+  "season": 2025
+ },
+ "libertadores": {
+  "n_matches": 95,
+  "note": "insufficient league history — inherits big-5 mean",
+  "base_mu": 0.1229,
+  "home_adv": 0.296,
+  "inherited": true
+ },
+ "sudamericana": {
+  "n_matches": 96,
+  "note": "insufficient league history — inherits big-5 mean",
+  "base_mu": 0.1229,
+  "home_adv": 0.296,
+  "inherited": true
+ },
+ "brasileirao": {
+  "base_mu": -0.0026,
+  "home_adv": 0.4255,
+  "n_matches": 380,
+  "mean_home_goals": 1.526,
+  "mean_away_goals": 0.997,
+  "season": 2025
+ },
+ "argentina": {
+  "base_mu": -0.1674,
+  "home_adv": 0.2759,
+  "n_matches": 480,
+  "mean_home_goals": 1.115,
+  "mean_away_goals": 0.846,
+  "season": 2025
+ }
+}

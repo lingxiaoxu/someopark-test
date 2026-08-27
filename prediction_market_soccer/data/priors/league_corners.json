@@ -1,0 +1,101 @@
+{
+  "ts": "2026-08-27T01:30:14.351633+00:00",
+  "method": "empirical-Bayes shrinkage of each competition's mean full-match total corners toward the pooled mean, weight n/(n+n0) with n0 = within-comp variance / positive-part between-comp variance; dispersion emitted only at n >= 100",
+  "pooled_mu": 9.316,
+  "pooled_var": 12.915,
+  "n_total": 193,
+  "n0": 206.6,
+  "within_var": 12.858,
+  "between_var": 0.0622,
+  "min_n_dispersion": 100,
+  "competitions": {
+    "uecl": {
+      "mu": 9.313,
+      "k": null,
+      "n": 50,
+      "raw_mean": 9.3,
+      "raw_var": 16.255,
+      "k_floor": 12.44
+    },
+    "argentina": {
+      "mu": 9.287,
+      "k": null,
+      "n": 28,
+      "raw_mean": 9.071,
+      "raw_var": 10.958,
+      "k_floor": 43.63
+    },
+    "brasileirao": {
+      "mu": 9.46,
+      "k": null,
+      "n": 20,
+      "raw_mean": 10.95,
+      "raw_var": 10.05,
+      "k_floor": null
+    },
+    "laliga": {
+      "mu": 9.295,
+      "k": null,
+      "n": 18,
+      "raw_mean": 9.056,
+      "raw_var": 19.585,
+      "k_floor": 7.79
+    },
+    "sudamericana": {
+      "mu": 9.325,
+      "k": null,
+      "n": 13,
+      "raw_mean": 9.462,
+      "raw_var": 11.269,
+      "k_floor": 49.52
+    },
+    "uel": {
+      "mu": 9.343,
+      "k": null,
+      "n": 13,
+      "raw_mean": 9.769,
+      "raw_var": 13.359,
+      "k_floor": 26.59
+    },
+    "libertadores": {
+      "mu": 9.341,
+      "k": null,
+      "n": 11,
+      "raw_mean": 9.818,
+      "raw_var": 12.964,
+      "k_floor": 30.65
+    },
+    "ucl": {
+      "mu": 9.208,
+      "k": null,
+      "n": 11,
+      "raw_mean": 7.182,
+      "raw_var": 11.164,
+      "k_floor": 12.95
+    },
+    "seriea": {
+      "mu": 9.292,
+      "k": null,
+      "n": 10,
+      "raw_mean": 8.8,
+      "raw_var": 13.067,
+      "k_floor": 18.15
+    },
+    "epl": {
+      "mu": 9.255,
+      "k": null,
+      "n": 10,
+      "raw_mean": 8.0,
+      "raw_var": 5.333,
+      "k_floor": null
+    },
+    "ligue1": {
+      "mu": 9.354,
+      "k": null,
+      "n": 9,
+      "raw_mean": 10.222,
+      "raw_var": 2.694,
+      "k_floor": null
+    }
+  }
+}
