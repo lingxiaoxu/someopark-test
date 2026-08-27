@@ -50,16 +50,24 @@ def register(conn, spec: ModelSpec) -> bool:
 _TT = date(2026, 7, 27)     # stats models are parameter-light; window = data at build
 
 _CARDS: list[ModelSpec] = [
-    ModelSpec("KXJOBLESSCLAIMS", "claims", "claims/0.1.0",
+    ModelSpec("KXJOBLESSCLAIMS", "claims", "claims/0.2.0",
               {"level_weights": [0.4, 0.3, 0.2, 0.1], "sigma_floor": 0.02,
-               "seasonal_clip": 0.25, "seasonal_years": 10},
-              ["ICSA first prints (PIT)", "ISO-week seasonal dev", "26w robust vol"],
+               "seasonal_clip": 0.25, "seasonal_years": 10,
+               "seasonal_estimator": "mad_screen:10"},
+              ["ICSA first prints (PIT)", "ISO-week seasonal dev (screened)",
+               "26w robust vol"],
               _TT, True,
-              "**claims/0.1.0** — log-level weighted mean + PIT ISO-week seasonal +"
-              " MAD vol.\n已知失效: 突发大规模裁员冲击(模型无新闻项)、政府停摆周、"
-              "假日周历法漂移(Thanksgiving/July-4 retooling 依赖 10y 样本)。\n"
-              "OOS 复盘(26 期 replay): Brier 0.165-0.172 vs 市场 0.090-0.097 —"
-              " **输给市场,保持 paper**;改进路径=市场先验对数池。"),
+              "**claims/0.2.0** — log-level weighted mean + PIT ISO-week seasonal +"
+              " MAD vol。0.2.0(#197 / PR-11)把季节中心从 10 年**均值**换成**离群筛过**"
+              "的均值:2020 年 3-4 月 ICSA 从 23 万跳到 690 万,log 偏差 +2.66/+2.69,"
+              "污染 ISO 周 12/13/14/15/18;`seasonal_clip` 挡不住它——clip 是**残留伤害"
+              "的大小**,不是防线。筛阈 k=10 由全样本 MAD 间隙推出(非 COVID 最大偏差"
+              " 7.64 MAD、COVID 衰减尾 7.8-10.1、干净间隙在 16.9 以上),**不是扫参选的**"
+              "——扫参最优是 k=6。\n已知失效: 突发大规模裁员冲击(模型无新闻项)、"
+              "政府停摆周、假日周历法漂移(Thanksgiving/July-4 retooling 依赖 10y 样本)。\n"
+              "OOS 复盘(45 期 replay,0.1.0 → 0.2.0): Brier 0.1523 → 0.1295、"
+              "sd(z) 1.379 → 1.106、10/90 尾外 33.3% → 28.9%,区间 LL +0.310 nats/事件。"
+              "**仍输给市场**(同窗市场 0.090-0.097),保持 paper;改进路径=市场先验对数池。"),
     ModelSpec("KXCPI", "cpi", "cpi/0.1.0",
               {"gasoline_passthrough": True, "horizon_widen_per_month": 0.10},
               ["CPIAUCSL unrounded index (PIT)", "GASREGW passthrough"],

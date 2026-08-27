@@ -1,9 +1,11 @@
-"""prereg.run_all: the weekly caller's three load-bearing behaviors.
+"""prereg.run_all: the weekly caller's load-bearing behaviors.
 
 1. PENDING verdicts produce NO alert — the weekly line must not cry wolf for weeks.
 2. A matured (non-PENDING) verdict alerts exactly ONCE — edge-triggered against the
    last alert text, so maturation is an event, not a weekly drumbeat.
-3. A grader crashing must not silence the OTHER two registrations.
+3. A grader crashing must not silence the OTHER registrations.
+4. Every name in REGS is actually dispatched to a grader — a registration that is
+   documented but never run is the exact failure this module was built to end.
 """
 from __future__ import annotations
 
@@ -34,11 +36,22 @@ def _alerts(conn):
 
 
 def test_pending_never_alerts(conn, monkeypatch):
-    _patch(monkeypatch, {"pr1_claims": "PENDING — 1/8", "pr2_argmax": "PENDING — 0/20",
-                         "pr7_s2": "PENDING — 9/30"})
+    # built from REGS rather than a hand-listed three, so ADDING a registration cannot
+    # pass this test by leaving the new grader unwired — the real risk is a registration
+    # that exists in the docs and is never run.
+    _patch(monkeypatch, {name: "PENDING — 1/8" for name in prereg.REGS})
     out = prereg.run_all(conn)
     assert set(out) == set(prereg.REGS)
     assert _alerts(conn) == []
+
+
+def test_every_registration_in_REGS_has_a_real_grader_wired():
+    """The unpatched dispatch. `REGS` is what the weekly line claims to cover; `_graders`
+    is what it actually calls. PR-11 was written a week before it was wired, and during
+    that week the only thing that would have noticed is this."""
+    graders = prereg._graders()
+    assert set(graders) == set(prereg.REGS)
+    assert all(callable(g) for g in graders.values())
 
 
 def test_matured_verdict_alerts_once_not_weekly(conn, monkeypatch):

@@ -1,8 +1,8 @@
-"""research/prereg.py — the weekly caller the three preregistered graders never had.
+"""research/prereg.py — the weekly caller the preregistered graders never had.
 
-The audit finding this closes: `shadow_claims` / `shadow_pr2` / `shadow_s2` each judge
-themselves at a preregistered sample threshold (8 weeks / 20 legs / 30 trades), but no
-scheduled job ever ran them — so the day a registration matures, nobody is told, and a
+The audit finding this closes: `shadow_claims` / `shadow_pr2` / `shadow_s2` /
+`shadow_seasonal` each judge themselves at a preregistered sample threshold (8 weeks /
+20 legs / 30 trades / 6 FIRING weeks), but no scheduled job ever ran them — so the day a registration matures, nobody is told, and a
 matured-but-unread verdict slowly turns into "we kept trading a rule the data had
 already rejected" (or the mirror image). This module makes maturation an ALERT, not a
 thing someone has to remember.
@@ -18,13 +18,14 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
-REGS = ("pr1_claims", "pr2_argmax", "pr7_s2")
+REGS = ("pr1_claims", "pr2_argmax", "pr7_s2", "pr11_seasonal")
 
 
 def _graders():
-    from prediction_market_macro.research import shadow_claims, shadow_pr2, shadow_s2
+    from prediction_market_macro.research import (shadow_claims, shadow_pr2,
+                                                  shadow_s2, shadow_seasonal)
     return {"pr1_claims": shadow_claims.run, "pr2_argmax": shadow_pr2.run,
-            "pr7_s2": shadow_s2.run}
+            "pr7_s2": shadow_s2.run, "pr11_seasonal": shadow_seasonal.run}
 
 
 def run_all(conn) -> dict:

@@ -67,12 +67,53 @@ N_FORWARD = 8                              # registered sample size
 OFFSET = "-1h"                             # the offset the registration's evidence used
 K = 1                                      # single pre-registered hypothesis
 
+# The docstring above promised that a fingerprint differing from the registration's would
+# be visible in the output. Until 2026-08-27 only the CURRENT fingerprint was emitted, so
+# there was nothing to differ FROM and the promise was not kept — the file had in fact
+# already changed once, on 2026-08-10, and no run said so. Both changes are recorded here
+# with the reason each is or is not numerically inert, because the useful question is
+# never "did the bytes move" but "did the two arms move".
+REGISTERED_FINGERPRINT = "c23dc975945f"    # model/claims.py at 224ad2e, 2026-07-31
+KNOWN_FINGERPRINTS = {
+    "c23dc975945f": "2026-07-31 — the registration itself",
+    "6b52d629c385": (
+        "2026-08-10 (#118) — DEFAULT_PARAMS made actually readable; seasonal_years, "
+        "seasonal_clip, vol_window and sigma_floor had been declared and hardcoded. "
+        "INERT for both arms: the hardcoded values WERE the defaults (10 / 0.25 / 27 "
+        "levels / 0.02) and the candidate passes seasonal_years=10, so every number on "
+        "both sides is unchanged."),
+    "8da8764eaa2c": (
+        "2026-08-27 (#197, claims/0.2.0, PR-11) — the ISO-week seasonal centre became an "
+        "outlier-screened mean so that March-April 2020 stops entering it. NOT inert in "
+        "general (it moves 5 of 45 scored events by up to 6.0 nats), but inert for THIS "
+        "registration: the screen fires only on ISO weeks 12/13/14/15/18 and PR-1's "
+        "counted weeks are ISO 32/33/34. Verified by re-running this scorer across the "
+        "change — all three events' cand/default/market Brier are bit-identical."),
+}
+
+
 def code_fingerprint() -> str:
     """sha1 prefix of `model/claims.py`. Recorded on every run so that a mid-flight change
     to the model is visible in the output rather than invisible — both arms would move
     together and the pairing would survive, but the registered effect size would not."""
     p = pathlib.Path(__file__).resolve().parent.parent / "model" / "claims.py"
     return hashlib.sha1(p.read_bytes()).hexdigest()[:12]
+
+
+def code_change_note(fp: str | None = None) -> dict:
+    """What the current fingerprint means for the registration. An UNKNOWN fingerprint is
+    the loud case: it means `model/claims.py` changed and nobody wrote down whether the
+    registered comparison survived it, which is the state this function exists to end."""
+    fp = fp or code_fingerprint()
+    known = fp in KNOWN_FINGERPRINTS
+    return {"fingerprint": fp, "registered_fingerprint": REGISTERED_FINGERPRINT,
+            "code_changed_since_registration": fp != REGISTERED_FINGERPRINT,
+            "change_is_documented": known,
+            "note": KNOWN_FINGERPRINTS.get(fp, (
+                "UNDOCUMENTED CHANGE — model/claims.py no longer matches any recorded "
+                "version. Establish whether the registered comparison survived it and "
+                "record the answer in KNOWN_FINGERPRINTS before reading the numbers "
+                "below as PR-1's."))}
 
 
 def _close_times(conn, series: str) -> dict[str, datetime]:
@@ -152,6 +193,7 @@ def run(conn, asof: datetime | None = None) -> dict:
                       for k, v in CANDIDATE.items()},
         "offset": OFFSET, "asof": now.isoformat(),
         "code_fingerprint": code_fingerprint(),
+        "code_change": code_change_note(),
         "n_forward": len(both), "n_required": N_FORWARD,
         "n_dropped_asymmetric": len(asym), "dropped": asym,
         "market_column_mismatch": mismatched,

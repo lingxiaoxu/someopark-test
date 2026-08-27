@@ -208,6 +208,19 @@ SPACES: dict[str, dict[str, tuple]] = {
         "seasonal_years": (3, [6, 10, 15]),
         "seasonal_clip": (0.0, [0.15, 0.25]),
         "vol_window": (8, [13, 26, 52]),
+        # #197/PR-11: `seasonal_estimator` is deliberately NOT here, and that is not the
+        # #196 disease — claims/0.2.0 put the screen in DEFAULT_PARAMS, so every row this
+        # lane scores (including the `{}` default row it has adopted since 2026-08-26)
+        # already runs it. What is absent is the ability to search AWAY from it, and this
+        # lane is the wrong place for that in both regimes the sample gate produces:
+        #   thin  (n=3 -> sample_cap 3): the key is the second-widest at 4 values and is
+        #         dropped before it is ever tried, so adding it changes nothing;
+        #   thick (n=10 -> cap 100): 5*4*3 = 60 fits but 5*4*3*3 does not, so it EVICTS
+        #         vol_window and seasonal_clip — two knobs this lane has actually adopted
+        #         from (2026-08-19 took vol_window=13, seasonal_clip=0.15).
+        # And the objective is realised dollars over ~10 events, which has no power to see
+        # the +0.31 nats/event this parameter is about. `param_space.CANDIDATES` searches
+        # it under DSR deflation on 52 events instead; that is the lane that can judge it.
     },
     "cpi": {
         "w_last": (0.2, [0.3, 0.4, 0.5]),

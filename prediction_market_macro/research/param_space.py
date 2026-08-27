@@ -129,6 +129,19 @@ CANDIDATES: dict[str, dict[str, tuple]] = {
         "vol_window": (8, [13, 26]),
         "sigma_floor": (0.50, [0.015, 0.02]),
         "seasonal_clip": (0.0, [0.15, 0.25]),
+        # #197 / PR-11. claims/0.2.0 moved the DEFAULT to `mad_screen:10`; the reasoning
+        # and the measured MAD gap that fixes k=10 are in model/claims.py, and the reason
+        # it is not the scan winner (mad_screen:6 scores higher) is #192's rule. This list
+        # keeps all four arms so the DSR-deflated walk-forward can still overrule the
+        # default on evidence — including a revert to `mean`, which is why `mean` is in it.
+        #
+        # THE PROBE IS `median`, NOT A SCREEN. `live_keys` proves a key alive by perturbing
+        # it alone on eight sampled events; a screen probe moves nothing unless one of those
+        # eight happens to land on ISO week 12/13/14/15/18, so it would be filed dead and
+        # dropped on most samples. `median` moves every event, so liveness is decided by
+        # whether the key is wired, not by which weeks the sampler drew.
+        "seasonal_estimator": ("median", ["mean", "median",
+                                          "mad_screen:10", "mad_screen:6"]),
     },
     "cpi": {
         "w_last": (0.2, [0.4, 0.5]),          # §29.6: the RMSE grid is FLAT over 0.3..0.5,

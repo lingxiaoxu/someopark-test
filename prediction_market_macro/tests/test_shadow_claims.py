@@ -65,6 +65,23 @@ def test_the_constants_still_match_what_was_registered():
     assert "Brier(market)" in block
 
 
+def test_the_current_model_file_is_a_documented_version():
+    """The module's docstring promises that a `model/claims.py` differing from the
+    registration's is visible in the output. For four weeks it was not: the file changed
+    on 2026-08-10 and every run kept printing a fingerprint with nothing to compare it to.
+
+    This is the comparison. It does not forbid changing the model — #197 changed it on
+    purpose — it forbids changing it without writing down whether PR-1's two arms moved.
+    A failure here is not "revert"; it is "add the new fingerprint and say which".
+    """
+    note = sc.code_change_note()
+    assert note["change_is_documented"], (
+        f"model/claims.py is at {note['fingerprint']}, which no one has assessed against"
+        f" PR-1. Add it to shadow_claims.KNOWN_FINGERPRINTS with the reason the"
+        f" registered comparison does or does not survive it.")
+    assert sc.REGISTERED_FINGERPRINT in sc.KNOWN_FINGERPRINTS
+
+
 def test_the_only_knob_the_candidate_actually_moves_is_the_weights():
     """`seasonal_years=10` is already `DEFAULT_PARAMS`, so the registration lists two
     changes and makes one. Worth a test, because "we changed two things" and "we changed
