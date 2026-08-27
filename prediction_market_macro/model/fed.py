@@ -88,6 +88,23 @@ DEFAULT_PARAMS = {
 def _p(params: dict | None) -> dict:
     return {**DEFAULT_PARAMS, **(params or {})}
 
+# How far out the ZQ chain may price a meeting. This is a BEHAVIOUR FREEZE, not a tuned
+# knob, and it is deliberately decoupled from ingest._ZQ_STRIP_MONTHS (24).
+#
+# Until 2026-08-27 the ingest pulled only the current month through +7, so this reach was
+# never a decision — it was whatever the strip happened to contain, and _ff_path's own
+# docstring recorded the resulting edge ("the store carries ZQ through H27, so nothing
+# past 2027-03 is priceable here") as though it were a property of the market. Widening
+# the ingest to bank the full strip before expiry deletes it would, as a side effect,
+# silently switch every far meeting from rule+dgs2 onto a ZQ chain built from contracts
+# whose volume is 207 (ZQU27) and 13 (ZQZ27) lots a day.
+#
+# That is precisely the §27.1 failure surface: both archived KXFEDDECISION losers were
+# long-horizon. So the accident is pinned here at the reach the +7 strip actually gave,
+# which makes the data capture output-neutral, and RAISING it becomes a preregistered,
+# separately-measured change rather than a side effect of an ingest fix.
+_FF_MAX_MONTHS = 7
+
 _ZQ_MONTH = "FGHJKMNQUVXZ"
 
 
@@ -171,8 +188,10 @@ def _ff_path(fs: FeatureStore, asof: datetime,
 
     * v0.2 recorded the move only for `meetings[0]` and handed that back for whatever
       period was asked, so every horizon shared the next meeting's number. This walks to
-      the requested meeting, and returns None when the strip cannot reach it — the store
-      carries ZQ through H27, so nothing past 2027-03 is priceable here.
+      the requested meeting, and returns None when the strip cannot reach it. Reach is
+      capped at _FF_MAX_MONTHS; before 2026-08-27 there was no cap and the effective
+      limit was an ingest accident (the store then held only H27 and earlier), which
+      that comment used to state as if it were a fact about the strip.
     * The day-weighted solve divides by the post-meeting fraction of the month, so a
       meeting in the last week levers every upstream error 8-10x. Oct-2026 (28th, frac
       0.097) and Jan-2027 (27th, frac 0.129) both hit that, and the compounding is what
@@ -193,6 +212,8 @@ def _ff_path(fs: FeatureStore, asof: datetime,
     rate = float(r0) - 0.125                   # upper bound → corridor midpoint
     meetings = [e.scheduled_ts for e in CALENDARS["FOMC"] if e.scheduled_ts > asof]
     if meeting not in meetings:
+        return None, None, None
+    if (meeting.year - asof.year) * 12 + meeting.month - asof.month > _FF_MAX_MONTHS:
         return None, None, None
 
     def _implied(y: int, m: int) -> tuple[float | None, str | None]:

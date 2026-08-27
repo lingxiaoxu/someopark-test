@@ -30,12 +30,37 @@ def _kt(d: date, hh: int, mm: int = 0) -> str:
 _ZQ_MONTH = "FGHJKMNQUVXZ"                    # CME month codes Jan..Dec
 
 
+# How far out to REQUEST contracts. Not how far model/fed.py may price — see
+# fed._FF_MAX_MONTHS, which is capped separately and deliberately lower.
+#
+# This was +7 until 2026-08-27, and that number quietly cost the project its entire ZQ
+# history. Two facts, both measured that day against the live feed:
+#
+#   * a ZQ contract is listed ~4.5 YEARS before expiry and carries daily bars for all of
+#     it (ZQJ27 1087 bars back to 2022-04; ZQZ27 917 back to 2022-12), and
+#   * yfinance 404s a contract the moment it expires — ZQH24/ZQZ23/ZQF25/ZQM26 all return
+#     nothing at all, not "a handful of bars".
+#
+# So every month that passes destroys ~1000 bars permanently, and only the contracts we
+# have ALREADY stored survive. Requesting the whole listed strip is the only way to bank
+# it. The cost of asking for a root that does not exist is one 404 that pull_futures
+# already swallows, so the range is set past the end of the strip on purpose.
+#
+# What this cost concretely: model/fed.py's ZQ source carries WEIGHT 0.50 — the model's
+# single deepest read — and on the 40 settled KXFED events it fired on ONE. 36 failed for
+# exactly one reason, "no ZQ bar for the meeting's own month". The historical KXFED
+# calibration therefore measures a rule+dgs2 fallback that production does not run, and
+# it cannot be repaired retroactively: the near-month contracts those chains need are
+# already gone from the source. Forward capture is the only remaining move.
+_ZQ_STRIP_MONTHS = 24
+
+
 def _zq_contracts(today) -> dict[str, str]:
-    """root 'ZQU26' → yfinance 'ZQU26.CBT' for the current month through +7 —
-    covers the next ~5 FOMC meetings for the FedWatch chain (model/fed.py)."""
+    """root 'ZQU26' → yfinance 'ZQU26.CBT' for the current month through
+    +_ZQ_STRIP_MONTHS, i.e. the whole listed strip rather than the near end of it."""
     out = {}
     y, m = today.year, today.month
-    for k in range(0, 8):
+    for k in range(0, _ZQ_STRIP_MONTHS + 1):
         mm = (m - 1 + k) % 12 + 1
         yy = y + (m - 1 + k) // 12
         code = f"ZQ{_ZQ_MONTH[mm - 1]}{yy % 100:02d}"

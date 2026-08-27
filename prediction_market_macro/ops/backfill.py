@@ -56,11 +56,19 @@ def run(fed: bool = False, news: bool = False, weather: bool = False,
         from prediction_market_macro.ingest import weather as wx
         step("weather", lambda: wx.pull(conn, start=weather_since))
     if futures:
-        # roots=list(FUT_ROOTS) on purpose: the ZQ strip that pull_futures adds by
-        # default is a rolling set of short-lived contracts, and 'max' on a dead
-        # contract is a handful of bars — nothing to backfill there.
-        from prediction_market_macro.ingest.market_data import FUT_ROOTS, pull_futures
-        step("futures", lambda: pull_futures(conn, roots=list(FUT_ROOTS), period="max"))
+        # This used to pass roots=list(FUT_ROOTS), excluding the ZQ strip, on the stated
+        # grounds that ZQ is "a rolling set of short-lived contracts" and that "'max' on a
+        # dead contract is a handful of bars". Both halves are false, and the pair of them
+        # is why the project has no usable ZQ history (2026-08-27, measured on the live
+        # feed): a ZQ contract is listed ~4.5 years out and carries bars for all of it,
+        # and an EXPIRED one 404s — zero bars, not a handful. The exclusion did not skip
+        # something worthless, it skipped the only chance to bank the strip before expiry
+        # deleted it. See _ZQ_STRIP_MONTHS for what that cost model/fed.py.
+        #
+        # roots=None now, so the default set (FUT_ROOTS + the full ZQ strip) is pulled at
+        # period='max'. Dead roots cost one swallowed 404 each.
+        from prediction_market_macro.ingest.market_data import pull_futures
+        step("futures", lambda: pull_futures(conn, period="max"))
     return out
 
 
