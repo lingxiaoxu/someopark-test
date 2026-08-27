@@ -200,6 +200,7 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
     from prediction_market_macro.config.registry import REGISTRY
     from prediction_market_macro.model.common import Categorical, leg_fair
     from prediction_market_macro.ops.predict_all import SERIES_DISPATCH
+    from prediction_market_macro.research.branch_parity import branch_of as _branch_of
     from prediction_market_macro.util.periods import kalshi_period_to_key
     spec = REGISTRY[series]
     disp = SERIES_DISPATCH[series]
@@ -211,6 +212,10 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
         (series, max_events)).fetchall()
     per, skipped = [], 0
     n_clamped = n_leaked = n_unknown = 0
+    # #196: which code path each graded event took. Recorded HERE, on the events that
+    # survive every drop below, because the branch mix is only evidence about the gate if
+    # it is the mix of the exact sample the gate scores — a separate walk would drift.
+    branch_mix: dict[str, dict[str, int]] = {off: {} for off in asof_offsets}
     # SQL orders newest-first so LIMIT keeps the MOST RECENT max_events; the returned
     # per_release must nonetheless be CHRONOLOGICAL. eval.run_series feeds it to a
     # pooled walk-forward accumulator ("weights learned only from past events") and to
@@ -279,6 +284,7 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 n_legs += 1
                 if collect_legs:
                     leg_pairs.append((round(fair, 5), round(mp, 5), out))
+            rec[f"branch{off}"] = _branch_of(pred.inputs)
             if n_legs:
                 rec[f"brier_model{off}"] = bs_m / n_legs
                 rec[f"brier_market{off}"] = bs_k / n_legs
@@ -287,6 +293,10 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                     rec[f"legs{off}"] = leg_pairs
         if rec:
             per.append(rec)
+            for off in asof_offsets:
+                b = rec.get(f"branch{off}")
+                if b:
+                    branch_mix[off][b] = branch_mix[off].get(b, 0) + 1
     agg = {"n": len(per), "skipped": skipped, "n_asof_clamped": n_clamped,
            "n_leak_dropped": n_leaked, "n_release_unknown": n_unknown}
     for off in asof_offsets:
@@ -295,6 +305,8 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
         agg[f"brier_model{off}"] = round(float(np.mean(bm)), 5) if bm else None
         agg[f"brier_market{off}"] = round(float(np.mean(bk)), 5) if bk else None
         agg[f"n_scored{off}"] = len(bm)
+        agg[f"branch_mix{off}"] = dict(sorted(branch_mix[off].items(),
+                                              key=lambda kv: -kv[1]))
     return {"series": series, "agg": agg, "per_release": per}
 
 

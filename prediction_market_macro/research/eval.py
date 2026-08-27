@@ -278,8 +278,16 @@ def decision_replay(conn, series: str, offset_hours: float = 1.0,
 # ── the gate ─────────────────────────────────────────────────────────────────
 
 
-def gate_verdict(replay_agg: dict, dec: dict, dm: dict) -> dict:
-    """Pure §9.5 verdict from the three metric bundles (unit-testable)."""
+def gate_verdict(replay_agg: dict, dec: dict, dm: dict,
+                 parity: dict | None = None) -> dict:
+    """Pure §9.5 verdict from the metric bundles (unit-testable).
+
+    `parity` is #196's branch check. `None` means "not checked" and is accepted only so
+    the four criteria above stay unit-testable in isolation; every production caller must
+    pass it. Without it the other five criteria are statements about whatever branch the
+    replay happened to take, which for KXFED and KXAAAGASW was not the one production
+    runs — a gate that passes on the wrong model is worse than no gate.
+    """
     reasons = []
     n = replay_agg.get("n_scored-1h") or 0
     bm, bk = replay_agg.get("brier_model-1h"), replay_agg.get("brier_market-1h")
@@ -296,9 +304,13 @@ def gate_verdict(replay_agg: dict, dec: dict, dm: dict) -> dict:
     p = dm.get("p")
     if p is None or not p < 0.10:
         reasons.append(f"dm p {p} !< 0.10 (not significant — 铁律7)")
+    if parity is not None and not parity.get("parity"):
+        reasons.append("branch parity: " + (parity.get("reason") or "failed"))
     return {"real": not reasons, "reasons": reasons,
+            "parity": parity,
             "criteria": {"n_scored": n, "brier_model": bm, "brier_market": bk,
-                         "roi": roi, "edge_capture": ec, "dm_p": p}}
+                         "roi": roi, "edge_capture": ec, "dm_p": p,
+                         "branch_parity": None if parity is None else parity.get("parity")}}
 
 
 def _store(conn, name: str, series: str, window: str, metrics: dict) -> None:
@@ -424,7 +436,19 @@ def run_series(conn, series: str) -> dict:
             (datetime.now(timezone.utc).isoformat(), "warn", "drift",
              f"{series}: trailing Brier {dr['trail_mean']} vs prior {dr['prior_mean']}"))
         conn.commit()
-    verdict = gate_verdict(agg, dec, dm)
+    # #196 branch parity. The historical side is free — `replay_series` counted it on the
+    # exact events scored above — so only the live side costs anything, and it costs one
+    # predict per open period, which is what `predict_all` already does every morning.
+    from prediction_market_macro.research import branch_parity as _bp
+    parity = _bp.parity_check(_bp.mix_from_counts(agg.get("branch_mix-1h")),
+                              _bp.live_branch_mix(conn, series))
+    if not parity.get("parity"):
+        conn.execute(
+            "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+            (datetime.now(timezone.utc).isoformat(), "warn", "branch_parity",
+             f"{series}: {parity.get('reason')}"))
+        conn.commit()
+    verdict = gate_verdict(agg, dec, dm, parity=parity)
     # per-event source scores → ensemble weight learning (§19-2)
     now_iso = datetime.now(timezone.utc).isoformat()
     for p in per:

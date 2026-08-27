@@ -243,6 +243,40 @@ def select_for(conn, series: str, before: datetime, adopt_p: float = _dsr.ADOPT_
     return (dict(grid[sel["chosen"]]) if sel["adopted"] else {}), rep
 
 
+def _veto_on_branch_parity(conn, series: str, now: datetime, params: dict,
+                           rep: dict) -> tuple[dict, dict]:
+    """#196: a parameter set may only be adopted if the sample that chose it graded the
+    branch production runs.
+
+    Lives in `refresh` and NOT in `select_for` on purpose. `select_for` is also the engine
+    of `param_wf`'s historical simulation, and the live half of a parity check reads
+    today's open contracts — a not-PIT fact. Vetoing inside `select_for` would push that
+    fact into every simulated day and make the walk-forward answer depend on the future.
+    Here it guards only the row production reads.
+
+    Only runs when something would actually be adopted. The check costs a full replay plus
+    one predict per open period, and on every day so far the DSR gate holds and nothing is
+    adopted, so the daily cost is zero.
+    """
+    if not params or not rep.get("adopted") or rep.get("chosen") == "manual":
+        # manual overrides are the user's explicit instruction (§E, 2026-08-11) and are
+        # not the selector's to refuse; the parity finding belongs in the report, not in
+        # a silent substitution of what the user adopted.
+        return params, rep
+    from prediction_market_macro.research import branch_parity as _bp
+    par = _bp.parity_check(_bp.hist_branch_mix(conn, series, params=params),
+                           _bp.live_branch_mix(conn, series, now=now, params=params))
+    rep["branch_parity"] = par
+    if par.get("parity"):
+        return params, rep
+    conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                 (now.isoformat(), "warn", "param_select",
+                  f"{series}: adoption vetoed — {par.get('reason')}"))
+    rep.update({"adopted": False, "vetoed": "branch_parity",
+                "reason": f"branch parity: {par.get('reason')}"})
+    return {}, rep
+
+
 def refresh(conn, asof: datetime | None = None, series: list[str] | None = None,
             adopt_p: float = _dsr.ADOPT_P, force: bool = False, log=print) -> dict:
     """Write one `param_selection` row per series for today. Returns {series: params}.
@@ -277,6 +311,7 @@ def refresh(conn, asof: datetime | None = None, series: list[str] | None = None,
                 params, rep = select_for(conn, s, now, adopt_p=adopt_p, log=None)
                 rep["sample_key"] = key
                 rep["carried_forward"] = False
+                params, rep = _veto_on_branch_parity(conn, s, now, params, rep)
             conn.execute(
                 "INSERT OR REPLACE INTO param_selection(series, day, params_json,"
                 " adopted, n_obs, n_trials, dsr_p, report_json, created_ts)"

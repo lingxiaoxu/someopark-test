@@ -35,7 +35,7 @@ def conn():
     return c
 
 
-def _stub(monkeypatch, params, rep=None, key="k1", counter=None):
+def _stub(monkeypatch, params, rep=None, key="k1", counter=None, parity=True):
     def fake(conn, series, before, adopt_p=0.95, log=None):
         if counter is not None:
             counter.append(series)
@@ -43,6 +43,15 @@ def _stub(monkeypatch, params, rep=None, key="k1", counter=None):
                                           "n_trials": 10, "dsr_p": 0.99})
     monkeypatch.setattr(psel, "select_for", fake)
     monkeypatch.setattr(psel, "_sample_key", lambda conn, s, before: key)
+    if parity:
+        # #196's veto replays settled history and predicts the open periods; on these
+        # empty in-memory stores it finds neither, and "no evidence" is a veto by design.
+        # The tests below are about the cache and the row, so it is stubbed to a
+        # pass-through here — `test_branch_parity_vetoes_an_adoption` exercises it for
+        # real. Stubbed rather than weakened: an unverifiable series must STAY
+        # unverifiable in production, which is the entire point of the veto.
+        monkeypatch.setattr(psel, "_veto_on_branch_parity",
+                            lambda conn, s, now, p, rep: (p, rep))
 
 
 # ── 1. the gate holding is a recorded event, not an absence ─────────────────────
@@ -207,3 +216,50 @@ def test_predict_all_hands_the_model_none_rather_than_an_empty_dict(monkeypatch)
     c.executescript(SCHEMA)
     pa.run(c, None)
     assert seen and set(seen.values()) == {None}
+
+
+# ── 4. #196: a parameter set may not be adopted on evidence about another branch ──
+
+def test_branch_parity_vetoes_an_adoption(conn, monkeypatch):
+    """The DSR gate asks "did this set earn more dollars over the settled sample". It
+    cannot ask whether that sample ran the code production runs — on KXAAAGASW the sample
+    is 51/73 `damped_trend_fallback` while production is 100% `aaa_daily_anchor`, so a set
+    tuned on it is tuned for a model that has never placed a bet. The veto is what stops
+    that from reaching `predict_all`.
+    """
+    from prediction_market_macro.research import branch_parity as bp
+    _stub(monkeypatch, {"vol_window": 26}, parity=False)
+    monkeypatch.setattr(bp, "hist_branch_mix",
+                        lambda c, s, **k: bp.mix_from_counts({"damped_trend_fallback": 51,
+                                                              "aaa_daily_anchor": 4}))
+    monkeypatch.setattr(bp, "live_branch_mix",
+                        lambda c, s, **k: bp.mix_from_counts({"aaa_daily_anchor": 96}))
+    psel.refresh(conn, asof=_NOW, series=["KXAAAGASW"], log=None)
+    row = conn.execute("SELECT * FROM param_selection WHERE series='KXAAAGASW'").fetchone()
+    assert row["adopted"] == 0 and json.loads(row["params_json"]) == {}
+    rep = json.loads(row["report_json"])
+    assert rep["vetoed"] == "branch_parity"
+    assert "aaa_daily_anchor" in rep["reason"]
+    # and the veto is loud: a silent {} is indistinguishable from the gate holding
+    assert conn.execute("SELECT COUNT(*) c FROM alerts WHERE source='param_select'"
+                        " AND message LIKE '%vetoed%'").fetchone()["c"] == 1
+    # `predict_all` must see the defaults, not the vetoed set
+    assert psel.current(conn, "KXAAAGASW", day=_NOW.date().isoformat()) == {}
+
+
+def test_a_manual_override_is_not_the_selectors_to_veto(conn, monkeypatch):
+    """The 2026-08-11 adoption was the user's explicit instruction over the DSR gate's
+    objection (README §E). Silently substituting defaults for what a human adopted would
+    be a production change nobody asked for; the finding belongs in the report."""
+    from prediction_market_macro.research import branch_parity as bp
+    _stub(monkeypatch, {"vol_window": 26},
+          rep={"adopted": True, "chosen": "manual", "mode": "manual", "n_obs": None},
+          parity=False)
+    monkeypatch.setattr(bp, "hist_branch_mix",
+                        lambda c, s, **k: bp.mix_from_counts({"fallback": 51}))
+    monkeypatch.setattr(bp, "live_branch_mix",
+                        lambda c, s, **k: bp.mix_from_counts({"live": 96}))
+    psel.refresh(conn, asof=_NOW, series=["KXAAAGASW"], log=None)
+    row = conn.execute("SELECT * FROM param_selection WHERE series='KXAAAGASW'").fetchone()
+    assert json.loads(row["params_json"]) == {"vol_window": 26}
+    assert row["adopted"] == 1
