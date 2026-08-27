@@ -1,4 +1,4 @@
-"""model/cpi.py — CPI MoM/YoY, headline & core (PLAN §7, §19.1). cpi/0.3.0
+"""model/cpi.py — CPI MoM/YoY, headline & core (PLAN §7, §19.1). cpi/0.4.0
 
 Serves KXCPI, KXCPICORE (MoM ladders) and KXCPIYOY, KXCPICOREYOY (YoY ladders).
 
@@ -31,6 +31,11 @@ Mechanics (all inputs via PIT vintage reads):
                              to revisit first.
                  Missing/stale nowcast (>NOWCAST_MAX_AGE_D) falls back to the internal
                  chain, so the feed dying degrades to 0.2.0 behaviour, never to an error.
+  * 0.4.0 — the SAME anchor on the HEADLINE MoM leg (KXCPI only), reading measure 'cpi'
+                 freq 'mom'. Those vintages were ingested from the start and never read.
+                 PR-10; the evidence and the explicit core rejection are in _nowcast's
+                 docstring, and the anchor sits in predict_mom (not _predict_mom) so
+                 predict_yoy and model/pce.py are bit-identical to 0.3.0.
 """
 from __future__ import annotations
 
@@ -45,7 +50,7 @@ from prediction_market_macro.ingest.cleveland_nowcast import latest as _nowcast_
 from prediction_market_macro.model.common import GaussianMix, Pred, grid_pmf
 from prediction_market_macro.model.features import FeatureStore
 
-VERSION = "cpi/0.3.0"
+VERSION = "cpi/0.4.0"
 NOWCAST_MAX_AGE_D = 7        # nowcast is business-daily; older than this = feed died,
                              # fall back to the internal chain rather than anchor stale
 GAS_WEIGHT = 0.031
@@ -175,16 +180,56 @@ def _predict_mom(conn, asof: datetime, ref_month: str, core: bool,
 
 def predict_mom(conn, asof: datetime, ref_month: str, core: bool,
                 params: dict | None = None) -> Pred:
-    return _predict_mom(conn, asof, ref_month, core, params)[0]
+    """The MoM ladders (KXCPI, KXCPICORE).
+
+    0.4.0 anchors HEADLINE mu on the Cleveland MoM nowcast — see _nowcast, PR-10.
+    The anchor lives HERE and not in _predict_mom on purpose: predict_yoy and
+    model/pce.py both call _predict_mom, and neither had this change measured on it, so
+    the YoY channel and the PCE bridge stay bit-identical.
+    """
+    pred = _predict_mom(conn, asof, ref_month, core, params)[0]
+    if core:
+        return pred                       # PR-10 rejects core; see _nowcast's docstring
+    anch = _nowcast(conn, asof, ref_month, "cpi", "mom")
+    if anch is None:
+        return pred
+    nc_day, val = anch
+    _w, mu, sg = pred.dist.comps[0]
+    inputs = {**pred.inputs, "mom_mu_model": round(float(mu), 4),
+              "nowcast_date": nc_day, "mom_mu": round(val, 4)}
+    return Pred(series=pred.series, period=pred.period,
+                dist=GaussianMix(((1.0, float(val), sg),)), asof=pred.asof,
+                model_version=VERSION, inputs=inputs,
+                data_horizon=pred.data_horizon)
 
 
-def _nowcast_yoy(conn, asof: datetime, ref_month: str,
-                 measure: str) -> tuple[str, float] | None:
-    """Cleveland YoY nowcast (measure 'cpi' or 'corecpi') visible at `asof`, or None
-    when the table is absent (bare test DBs), the target has no row yet, or the feed
-    is stale."""
+def _nowcast(conn, asof: datetime, ref_month: str, measure: str,
+             freq: str) -> tuple[str, float] | None:
+    """Cleveland nowcast (measure 'cpi'|'corecpi', freq 'yoy'|'mom') visible at `asof`,
+    or None when the table is absent (bare test DBs), the target has no row yet, or the
+    feed is stale.
+
+    Both anchored branches read their OWN measure. Crosstalk here would silently feed
+    core the headline nowcast, which no validation ever measured.
+
+    WHY 'mom' IS ANCHORED ONLY FOR HEADLINE (PR-10, 2026-08-27). The MoM vintages have
+    been in the db since the feed was ingested — 4,639 per measure back to 2013-08 — and
+    nothing read them until now. On 60 settled KXCPI events the replacement takes the mu
+    bias from +0.0432 to -0.0026, the PIT from KS 0.182 (p=0.029, 17 of 62 events in the
+    bottom decile) to KS 0.099 (p=0.56), and the interval log-likelihood from -2.3313 to
+    -1.9196; expanding-window OOS over 48 events is +0.5678 nats/event, DM p=0.0068.
+    KXCPICORE was measured the same way and REJECTED: +0.0298 nats, DM p=0.325, 22/47
+    wins, median -0.0035, and a single event carrying 101.8% of the mean gain. That is
+    the same split the 0.3.0 YoY anchor found, and the reason core stays on the internal
+    chain here. Do not "retry core with a blend" — PR-10 registers that as closed.
+
+    Pre-declared risk, recorded before the forward window: the 2021 and 2022 year slices
+    LOSE (-0.25 and -0.13 nats). Those are the acceleration years, when this nowcast
+    systematically underestimated. If inflation re-accelerates the anchor is expected to
+    lag, and that is not allowed to be discovered as an excuse afterwards.
+    """
     try:
-        got = _nowcast_latest(conn, measure, "yoy", ref_month, asof)
+        got = _nowcast_latest(conn, measure, freq, ref_month, asof)
     except sqlite3.OperationalError:
         return None
     if got is None:
@@ -193,6 +238,11 @@ def _nowcast_yoy(conn, asof: datetime, ref_month: str,
     if (asof.date() - date.fromisoformat(nc_day)).days > NOWCAST_MAX_AGE_D:
         return None
     return nc_day, float(val)
+
+
+def _nowcast_yoy(conn, asof: datetime, ref_month: str,
+                 measure: str) -> tuple[str, float] | None:
+    return _nowcast(conn, asof, ref_month, measure, "yoy")
 
 
 def predict_yoy(conn, asof: datetime, ref_month: str, core: bool,

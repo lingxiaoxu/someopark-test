@@ -13,6 +13,11 @@ moving part stay. The four boundaries these tests pin, each a real failure mode:
      degrades to 0.2.0 behaviour, never to an exception.
   4. measure separation: headline reads 'cpi', core reads 'corecpi' — crosstalk would
      silently feed core a number no validation ever measured.
+
+0.4.0 later anchored the headline MoM leg off the same feed's 'mom' vintages. That is a
+DIFFERENT call site (predict_mom, not _predict_mom) and is pinned separately in
+tests/test_cpi_mom_nowcast_anchor.py — which also asserts that the YoY channel here
+stays bit-identical across that change.
 """
 from __future__ import annotations
 
@@ -59,7 +64,9 @@ def test_headline_anchor_moves_mu_only(env):
     assert anchored.inputs["yoy_mu"] == pytest.approx(9.9, abs=1e-3)
     assert anchored.inputs["yoy_mu_model"] == pytest.approx(mu0, abs=1e-3)
     assert anchored.inputs["nowcast_date"] == (asof - timedelta(days=1)).date().isoformat()
-    assert anchored.model_version == "cpi/0.3.0"
+    # the *current* version, not a literal: the literal pin lives once, in
+    # test_cpi_mom_nowcast_anchor.py. Two files pinning it means every bump edits both.
+    assert anchored.model_version == m_cpi.VERSION
 
 
 def test_pit_future_nowcast_does_not_anchor(env):
