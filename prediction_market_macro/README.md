@@ -260,7 +260,9 @@ python -m prediction_market_macro.ops.refresh --weekly
 ⑤ 影子成员（只写预测，永不进决策）
    chronos_shadow → bridge_shadow → ensemble_shadow
 ⑥ 无模型一致性检查 → LLM 标注 → 健康检查 → 前端导出 → 日报 PDF
-   （周更另有：prereg 影子记分 → 归因 → 30d/60d 走查 → ML 选择器 → 周报 → 二次导出）
+   （周更另有：prereg 影子记分【9 个登记，含 PR-8 headline/core 分别计数、PR-10、PR-12 双市场；
+     成熟即告警，边沿触发只响一次；指纹变动走 `PREREG-CODE` 独立通道，PENDING 期间照响】
+     → 归因 → 30d/60d 走查 → ML 选择器 → 周报 → 二次导出）
 ```
 
 ### 定时任务（`ops/launchd/`）
