@@ -501,10 +501,20 @@ def run_series(conn, series: str) -> dict:
     parity = _bp.parity_check(_bp.mix_from_counts(agg.get("branch_mix_scored-1h")),
                               _bp.live_branch_mix(conn, series))
     if not parity.get("parity"):
+        # #201: a broken parity and a broken parity WITH A LIVE OVERRIDE ON TOP are two
+        # different severities, and the second one was invisible. `param_argmin` refuses
+        # new writes on a parity-failing series, but it cannot un-adopt what is already in
+        # force, and it only rechecks on its rescore cadence (KXFED settles ~6-weekly). So
+        # the weekly sweep is where an already-deployed one has to show up.
+        from prediction_market_macro.research.param_select import manual_params as _mp
+        _cur = _mp(conn, series, datetime.now(timezone.utc))
+        _ov = _cur[0] if _cur else {}
         conn.execute(
             "INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
             (datetime.now(timezone.utc).isoformat(), "warn", "branch_parity",
-             f"{series}: {parity.get('reason')}"))
+             f"{series}: {parity.get('reason')}" + (
+                 f" — AND an override {json.dumps(_ov)} chosen on that sample is LIVE in "
+                 "production right now" if _ov else "")))
         conn.commit()
     # #198 params parity: the in-sample counterfactual described in the docstring. Only
     # run when something is adopted — with `{}` live the defaults ARE production and the

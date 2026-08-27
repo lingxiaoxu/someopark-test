@@ -161,6 +161,11 @@ def test_a_gated_market_does_not_adopt_empty_over_an_existing_row(monkeypatch):
         "grid": [{}], "grid_report": {"cap": 1, "sample_cap": 1}, "n_events": 2,
         "best_idx": 0, "best_params": {}, "pnl_best": None, "pnl_default": None,
         "gated": True})
+    # #201's stale-override check DOES run on a gated market — being thin does not make a
+    # live-wrong override less wrong — but it needs a real db, and this test's `_Conn` is a
+    # stub. Its subject is the gate/adoption interaction, so the check is stubbed out here
+    # and exercised for real in tests/test_param_argmin.py.
+    monkeypatch.setattr(pa, "stale_override_warning", lambda *a, **k: None)
 
     class _Conn:
         def execute(self, *a):

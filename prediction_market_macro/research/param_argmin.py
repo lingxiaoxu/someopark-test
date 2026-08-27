@@ -17,6 +17,11 @@ Mechanics:
             scoreable event has settled, so most days most markets cost one SELECT
   adoption  argmin params -> param_select.set_manual (history-preserving rows;
             `param_select.history` is the change log, exported to the frontend)
+  parity    #201: a write is REFUSED when the sample that chose it graded a branch
+            production does not run. #196 built that check for the DSR lane, which then
+            exempted `chosen == 'manual'` as "the user's explicit instruction" — an
+            exemption meant for one 2026-08-11 adoption that had ended up covering this
+            robot's weekly rewrites of the same rows. See `parity_veto`.
   approx    per-event replay, NOT full-portfolio sim — the measured caveat from the
             cross-product study (WTIW −13.9% vs −27.7%); the brute sweep
             (docs/PLAN_BRUTE_SWEEP.md) is the periodic ground-truth check.
@@ -544,6 +549,73 @@ def _objective(totals: list[float], n_real: int, grid: list[dict],
             for j in range(len(grid))], True
 
 
+def parity_veto(conn, series: str, now: datetime, params: dict) -> dict | None:
+    """#201: refuse to WRITE an override chosen on a branch production does not run.
+
+    `param_select._veto_on_branch_parity` implements #196 for the DSR lane, and it
+    deliberately exempts `chosen == 'manual'` — "manual overrides are the user's explicit
+    instruction and are not the selector's to refuse". That exemption was written for the
+    user's one-off 2026-08-11 adoption. THIS module is a robot that rewrites those same
+    rows every morning, so the exemption had been covering an automated lane it was never
+    meant to cover, and this module had no parity check of its own.
+
+    What that cost, measured 2026-08-27 on the live db: KXFED's active row
+    `{'w_dgs2': 0.2, 'w_rule': 0.25}` was chosen on a 40-event sample in which 97.5% of
+    events ran the two-term `rule+dgs2` branch, while production runs the four-term
+    `rule+market+ff` branch. `w_dgs2` turns out to be INERT there (removing it leaves the
+    prediction bit-identical) but `w_rule=0.25` MOVES production — a weight tuned to carry
+    one of two terms, deployed where it carries one of four.
+
+    Two deliberate exemptions, both narrow:
+
+      * a proposal of `{}` is ALLOWED through. Reverting to the registered default is the
+        one move that needs no evidence, and letting it through is how a bad row gets
+        cleaned up by measurement instead of by hand.
+      * a veto never touches the EXISTING row. Same rule as the sample gate above: this is
+        a bar on new selection, not a retro-revert of a decision already made. Undoing one
+        is an explicit act and belongs to the user, so the finding is raised as an alert
+        and reported in the status rather than acted on.
+
+    Returns the parity report when the write must be refused, else None.
+    """
+    if not params:
+        return None
+    from prediction_market_macro.research import branch_parity as _bp
+    par = _bp.parity_check(_bp.hist_branch_mix(conn, series, params=params),
+                           _bp.live_branch_mix(conn, series, now=now, params=params))
+    if par.get("parity"):
+        return None
+    conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                 (now.isoformat(), "warn", "param_argmin",
+                  f"{series}: argmin write refused — {par.get('reason')}"))
+    return par
+
+
+def stale_override_warning(conn, series: str, now: datetime) -> dict | None:
+    """#201: an override adopted BEFORE the parity broke is still live today.
+
+    `parity_veto` stops new writes; it cannot un-adopt what is already in production, and
+    on the day this landed KXFED's row was exactly that. Silence here would mean the only
+    trace of a live-wrong override is the day it was refused a REPLACEMENT — which is the
+    wrong day and might never come. So every pass re-checks the row that is actually in
+    force and says so.
+    """
+    cur = manual_params(conn, series, now)
+    if not cur or not cur[0]:
+        return None
+    from prediction_market_macro.research import branch_parity as _bp
+    par = _bp.parity_check(_bp.hist_branch_mix(conn, series, params=cur[0]),
+                           _bp.live_branch_mix(conn, series, now=now, params=cur[0]))
+    if par.get("parity"):
+        return None
+    conn.execute("INSERT INTO alerts(ts, level, source, message) VALUES(?,?,?,?)",
+                 (now.isoformat(), "warn", "param_argmin",
+                  f"{series}: an ACTIVE override {json.dumps(cur[0])} was chosen on a "
+                  f"branch production does not run — {par.get('reason')}. Not reverted "
+                  "automatically; clearing it is an explicit decision."))
+    return par
+
+
 def daily(conn, now: datetime | None = None, log=print) -> dict:
     """The morning pass. Returns {series: status}."""
     now = now or datetime.now(timezone.utc)
@@ -566,6 +638,12 @@ def daily(conn, now: datetime | None = None, log=print) -> dict:
         # existing row. The gate is a bar on new selection, not a retro-revert of a
         # decision the user already made; undoing those is a separate, explicit act.
         changed = (not r.get("gated")) and r["best_params"] != cur_params
+        # #201. Only when a write is actually about to happen — a parity check costs a
+        # full replay plus one predict per open period, and on most days nothing changes.
+        veto = parity_veto(conn, series, now, r["best_params"]) if changed else None
+        if veto is not None:
+            changed = False
+        stale = stale_override_warning(conn, series, now)
         if changed:
             grep_ = r["grid_report"]
             srep = grep_.get("synth", {})
@@ -597,16 +675,24 @@ def daily(conn, now: datetime | None = None, log=print) -> dict:
                          "pnl_best": r["pnl_best"], "adopted_change": changed,
                          "gated": bool(r.get("gated")),
                          "blended": bool(r.get("blended")),
+                         "branch_parity_veto": veto,
+                         "stale_override_parity": stale,
                          "grid_report": r["grid_report"]}),
              now.isoformat()))
         conn.commit()
-        if r.get("gated"):
+        if veto is not None:
+            out[series] = f"PARITY-VETOED — {veto.get('reason')}"
+        elif r.get("gated"):
             out[series] = (f"GATED n={r['n_events']} "
                            f"(cap {r['grid_report'].get('sample_cap')}) — "
                            f"{'holding ' + json.dumps(cur_params)[:40] if cur_params else 'defaults'}")
         else:
             out[series] = ("ADOPTED " + json.dumps(r["best_params"])[:60]) if changed \
                 else "unchanged"
+        if stale is not None:
+            # appended, never substituted: "unchanged" and "an override that should not be
+            # in force is still in force" are both true and the second must not hide.
+            out[series] += " | STALE-OVERRIDE (parity): " + str(stale.get("reason"))
         if log:
             log(f"  param_argmin {series}: {out[series]}")
     return out
