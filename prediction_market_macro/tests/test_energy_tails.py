@@ -232,3 +232,99 @@ def test_negative_wti_print_drops_out_instead_of_splicing_a_45pct_day():
     # (~-0.60) would stick far out of the range if it had been kept
     assert abs(np.log(10.01) - np.log(18.27)) > 0.55
     assert float(np.max(np.abs(pool))) < 0.01
+
+
+# ── #192 / PR-12: fut_sigma_scale ──────────────────────────────────────────────
+# The over-width at KXNATGASW survived hypothesis 1 (the vol floor: binds 1/21 NG events),
+# hypothesis 2 (MAD/sd scale-shape mixing: real, but rank-inverted against the data) and
+# hypothesis 3 (bracket-midpoint censoring artifact: refuted for NG specifically, which
+# scores 21/21 with zero dropped events). What is left is a plain width defect and there
+# was no key that could express one, so `fut_sigma_scale` exists. These tests pin the two
+# properties that make it safe to add: at the default it changes NOTHING, and off the
+# default it changes ONLY the width.
+
+
+def _seed_fut(conn, root: str = "NG", n: int = 400, seed: int = 11, s0: float = 3.0):
+    """Daily futures bars with fat innovations — enough to clear _MIN_POOL."""
+    rng = np.random.default_rng(seed)
+    px = s0
+    start = ASOF - timedelta(days=n + 5)
+    for i in range(n):
+        day = start + timedelta(days=i)
+        px = max(px * math.exp(0.02 * rng.standard_t(4)), 0.2)
+        kt = day + timedelta(hours=20)
+        conn.execute(
+            "INSERT OR IGNORE INTO fut_daily(root, event_time, open, high, low, close,"
+            " volume, knowledge_time, first_seen_ts) VALUES(?,?,?,?,?,?,NULL,?,?)",
+            (root, day.date().isoformat(), px, px, px, round(px, 4),
+             kt.isoformat(), kt.isoformat()))
+    conn.commit()
+
+
+def test_fut_sigma_scale_defaults_to_a_byte_identical_no_op(conn):
+    """1.0 must be a no-op to the BYTE, not merely to five decimals.
+
+    A new key that shifts predictions by a rounding step is not a no-op: it would move
+    every stored prediction on the day it lands, break health's replay canary against
+    yesterday's rows, and make the before/after of whatever the grid later picks
+    unreadable. `float(x) * 1.0` is exact in IEEE754, and this asserts we actually get
+    that rather than something that merely looks like it.
+    """
+    _seed_fut(conn)
+    per = (ASOF + timedelta(days=5)).date().isoformat()
+    a = energy.predict(conn, ASOF, per, "KXNATGASW")
+    b = energy.predict(conn, ASOF, per, "KXNATGASW", params={"fut_sigma_scale": 1.0})
+    assert a.inputs == b.inputs
+    assert a.dist.to_json() == b.dist.to_json()
+
+
+@pytest.mark.parametrize("series,root", [("KXNATGASW", "NG"), ("KXWTIW", "CL")])
+def test_fut_sigma_scale_is_live_on_both_futures_series(conn, series, root):
+    """`param_space.live_keys` drops a key that moves nothing, so a key that is wired but
+    invisible in `inputs` would be silently dropped from the grid and the search would
+    quietly not happen. Both futures series must see it."""
+    _seed_fut(conn, root=root, s0=3.0 if root == "NG" else 70.0)
+    per = (ASOF + timedelta(days=5)).date().isoformat()
+    a = energy.predict(conn, ASOF, per, series)
+    b = energy.predict(conn, ASOF, per, series, params={"fut_sigma_scale": 0.5})
+    assert a.inputs != b.inputs
+    assert repr(a.dist) != repr(b.dist)
+
+
+def test_fut_sigma_scale_scales_the_width_and_only_the_width(conn):
+    """lambda must multiply sigma_h exactly and leave the anchor, the horizon and the
+    shape alone — otherwise a grid rung is not the hypothesis it claims to test."""
+    _seed_fut(conn)
+    per = (ASOF + timedelta(days=5)).date().isoformat()
+    a = energy.predict(conn, ASOF, per, "KXNATGASW")
+    for lam in (0.7, 0.85, 1.2):
+        b = energy.predict(conn, ASOF, per, "KXNATGASW",
+                           params={"fut_sigma_scale": lam})
+        assert b.inputs["sigma_h"] == pytest.approx(a.inputs["sigma_h"] * lam, rel=1e-4)
+        for k in ("s0", "h_bdays", "shape", "root", "sigma_daily", "last_bar"):
+            assert b.inputs[k] == a.inputs[k], k
+
+
+def test_the_scale_is_applied_after_the_floor_not_before(conn):
+    """If the scale sat on sigma_daily the floor would eat a narrowing on exactly the
+    low-vol events, so a rung of 0.7 would mean 0.7 sometimes and 1.0 the rest of the
+    time. Pinned by forcing a floor so high that it binds, then checking the scale still
+    bites the full amount."""
+    _seed_fut(conn)
+    per = (ASOF + timedelta(days=5)).date().isoformat()
+    hi = {"fut_min_sigma_daily": {"NG": 5.0, "CL": 5.0}}
+    a = energy.predict(conn, ASOF, per, "KXNATGASW", params=hi)
+    b = energy.predict(conn, ASOF, per, "KXNATGASW",
+                       params={**hi, "fut_sigma_scale": 0.7})
+    assert a.inputs["sigma_daily"] == b.inputs["sigma_daily"] == 5.0   # floor binds
+    assert b.inputs["sigma_h"] == pytest.approx(a.inputs["sigma_h"] * 0.7, rel=1e-4)
+
+
+def test_the_grid_ladder_can_widen_as_well_as_narrow():
+    """A one-sided ladder cannot refute the hypothesis it is testing — it can only
+    agree with it. The default must also be IN the list, or selection can never return
+    'the current model'."""
+    from prediction_market_macro.research.param_space import CANDIDATES
+    _probe, vals = CANDIDATES["energy"]["fut_sigma_scale"]
+    assert energy.DEFAULT_PARAMS["fut_sigma_scale"] in vals
+    assert any(v > 1.0 for v in vals) and any(v < 1.0 for v in vals)

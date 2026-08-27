@@ -58,6 +58,35 @@ DEFAULT_PARAMS = {
     "fut_pool_bars": 1500,         # bars the bootstrap SHAPE is drawn from
     "fut_min_sigma_daily": dict(_MIN_SIGMA_DAILY),   # per-root vol floor (fraction/day)
     "fut_min_pool": _MIN_POOL,
+    # #192. A scalar on the horizon sigma, DEFAULT 1.0 — a bit-identical no-op until a
+    # selection lane moves it. It exists because the over-width at KXNATGASW survived
+    # every attempt to kill it and there was no searchable key that could express it:
+    # `fut_vol_window` and `fut_pool_bars` change the width only as a side effect of
+    # changing what is estimated, and `fut_min_sigma_daily` (the key the ticket originally
+    # nominated) is not the mechanism — the floor binds on 1/21 NG events and 1/156 CL.
+    #
+    # What survived, measured 2026-08-27 on 21/21 NG events with NO censoring drop
+    # (`interval kinds: {interior: 21}`, so the "it is my own bracket-midpoint artifact"
+    # hypothesis is refuted for this series): the randomized-PIT deciles are
+    # [0.4,1.3,2.1,2.2,3.3,3.3,2.8,3.1,2.1,0.4] against 2.1 flat, realizations land
+    # outside the 10/90 band 3.8% of the time (expected 20%) and outside 5/95 0.9%
+    # (expected 10%). Four independent width estimators all point the same way and
+    # nowhere near each other: interior width_ratio 0.61, CRPS lambda* 0.65,
+    # censoring-aware interval-LL lambda* 0.45, PIT-KS lambda* 0.30.
+    #
+    # That spread is the reason this is a GRID KEY and not a number. Do not hand-set it;
+    # the ladder in `param_space.CANDIDATES['energy']` is deliberately coarse, symmetric
+    # about 1.0 in log space and able to WIDEN, so the walk-forward can refute the
+    # hypothesis rather than only confirm it. See PR-12 in docs/PREREGISTER.md for the
+    # judgment criterion and the K count.
+    #
+    # VERSION is deliberately NOT bumped for this. A bump is a claim that predictions
+    # changed; this one is exact (`x * 1.0` in IEEE754), pinned by
+    # test_fut_sigma_scale_defaults_to_a_byte_identical_no_op. Bumping anyway would force
+    # `param_argmin` to rescore all of energy and the d75 WF pin to be regenerated, for a
+    # difference of zero. The bump belongs to whatever LANDS a non-1.0 default, if one
+    # ever earns it.
+    "fut_sigma_scale": 1.0,
     # --- AAA gasoline branch (KXAAAGASW) ---
     "aaa_fresh_days": 3,           # daily AAA reading counts as fresh within this many days
     "aaa_drift_days": 5,           # daily diffs averaged into the short drift
@@ -144,7 +173,10 @@ def _gbm_futures(conn, asof: datetime, period: str, series: str,
     rets = np.diff(np.log(closes.values))[-vw:]
     sigma_d = max(_mad_sigma(rets), float(p["fut_min_sigma_daily"][root]))
     h = _remaining_bdays(datetime.fromisoformat(horizon), pd.Timestamp(period))
-    sig = sigma_d * math.sqrt(h)
+    # #192: the scale multiplies the HORIZON sigma, after the floor. Putting it on
+    # sigma_daily instead would let a narrowing be silently eaten by `fut_min_sigma_daily`
+    # on exactly the events where vol is lowest, which is the opposite of a clean scalar.
+    sig = sigma_d * math.sqrt(h) * float(p["fut_sigma_scale"])
     # v0.6: NO storage/inventory drift. The v0.4 tilt regressed the next 3-bday move on
     # the EIA inventory surprise and applied b * latest_surprise. Replayed the way the
     # model actually used it over 782 prints (rolling 150-pair fit, PIT): sign hit rate

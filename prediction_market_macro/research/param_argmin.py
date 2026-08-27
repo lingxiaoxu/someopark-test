@@ -264,6 +264,14 @@ SPACES: dict[str, dict[str, tuple]] = {
     "energy": {
         "fut_vol_window": (60, [5, 10, 20, 40, 60]),
         "fut_pool_bars": (200, [375, 750, 1500, 3000]),
+        # #192/PR-12: `fut_sigma_scale` is deliberately NOT here, same reasoning as
+        # claims' `seasonal_estimator` above. This lane writes `manual_params` rows that
+        # OVERRIDE the DSR-deflated selector, on ~10 events, scored in realised dollars —
+        # it would adopt a width rung months before PR-12's forward window can judge one,
+        # and the registration would then be grading a default the lane had already moved.
+        # A width claim is about the shape of the distribution, not about ten realised
+        # tickets; `param_space.CANDIDATES` searches it under deflation, and PR-12 judges
+        # it forward. Adding it here silently repeals both.
         "aaa_sig_w_window": (8, [26, 52, 104]),
         "aaa_sig_w_floor": (0.9, [0.005, 0.01]),
         "aaa_min_fit": (99999, [10, 16]),

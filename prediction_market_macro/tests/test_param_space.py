@@ -78,6 +78,26 @@ def test_every_default_can_win_its_own_grid():
             assert cur in vals, f"{mod}.{key}: default {cur!r} missing from {vals!r}"
 
 
+def test_the_natgas_cap_cannot_hold_the_width_ladder_and_that_is_recorded():
+    """#192 / PR-12. KXNATGASW has ~21 settled events, so `max_sets` allows a THREE-set
+    grid — one 3-valued key and nothing else. The width ladder has four rungs, so on the
+    one series the width hypothesis is actually about, the DSR lane drops it for size and
+    `fut_vol_window` keeps the only slot (measured 2026-08-27 on the live db:
+    `dropped=['fut_sigma_scale', 'fut_pool_bars']`, n_sets 3 either way).
+
+    That is not a bug to route around by trimming the ladder — a 3-rung ladder would lose
+    either the refuting rung 1.2 or CL's optimum 0.85, and it would STILL be dropped,
+    because at a tie `fut_vol_window` sorts first. It is recorded here so that "the grid
+    searches it" is never assumed: on KXNATGASW the only route to a new default is PR-12's
+    forward window. KXWTIW (156 events, cap 512) does search it — 9 sets become 36 with no
+    eviction.
+    """
+    from prediction_market_macro.research.param_space import max_sets
+    assert max_sets(21) == 3
+    assert len(CANDIDATES["energy"]["fut_sigma_scale"][1]) == 4 > max_sets(21)
+    assert max_sets(156) >= 36
+
+
 def test_probe_values_are_not_themselves_defaults():
     """A probe equal to the default proves nothing — the liveness check would pass every
     key by comparing the model against itself."""

@@ -192,6 +192,32 @@ CANDIDATES: dict[str, dict[str, tuple]] = {
     "energy": {
         "fut_vol_window": (60, [10, 20, 40]),
         "fut_pool_bars": (200, [750, 1500, 3000]),
+        # #192 / PR-12. The one key that expresses "the predictive distribution is the
+        # wrong WIDTH" without also changing what is estimated. Four estimators put the
+        # NG optimum between 0.30 and 0.65 and the CL optimum at 0.76-0.85, so the ladder
+        # is coarse and log-symmetric about 1.0 (1/1.2 = 0.83, next rung 0.7) rather than
+        # centred on any of them. 1.2 is in the list on purpose: a grid that can only
+        # narrow cannot refute the hypothesis, it can only agree with it.
+        #
+        # It is NOT set here to the in-sample argmin. Scanning 12 values of it against the
+        # fixed gate found the Brier dip at 0.60-0.65 — and also found that the dip beats
+        # the market by 0.00008 on 14 scored events with DM p stuck at 0.48 at every rung.
+        # That is a number no one may act on directly; it goes through the deflated
+        # walk-forward or nowhere.
+        #
+        # MEASURED CONSEQUENCE (2026-08-27, live db) — "the grid searches it" must not be
+        # assumed just because the key is written here:
+        #   KXWTIW    n=156 cap=512 -> searched; 9 sets become 36, nothing evicted.
+        #   KXNATGASW n=21  cap=3   -> DROPPED FOR SIZE. Four rungs do not fit a three-set
+        #                              grid, so `fut_vol_window` keeps the only slot and
+        #                              n_sets is 3 either way.
+        #   KXAAAGASW               -> DEAD, correctly: that branch has no futures sigma.
+        # Trimming to three rungs would NOT fix KXNATGASW (at a tie `fut_vol_window` sorts
+        # first) and would cost either the refuting rung 1.2 or CL's optimum 0.85. So on
+        # the one series #192 is actually about, the only route to a new default is PR-12's
+        # forward window — the right shape anyway, since a 21-event in-sample argmin is
+        # exactly what the DSR floor exists to refuse.
+        "fut_sigma_scale": (0.5, [0.7, 0.85, 1.0, 1.2]),
         "aaa_sig_w_window": (8, [26, 52, 104]),
         "aaa_sig_w_floor": (0.9, [0.005, 0.01]),
         "aaa_min_fit": (99999, [10, 16]),
