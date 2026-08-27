@@ -27,6 +27,9 @@ def test_refresh_blend_block_is_wired():
     assert "_pmr2.next_trading_day(asof)" in src
     assert "_pmr2.serve(_rart, _d" in src
     assert "_seq_d < d <= _rtgt" in src               # 补滚域=(seq_tail, target]
+    # 路由覆盖度的读点: refresh 只认这一个键名。写点(set_blend)与读点必须同名 ——
+    # 拼错/漏写 = 缺键 = 静默按 False 走分层模式,没有任何报错。
+    assert 'rnn_full_coverage' in src
 
 
 def test_shadow_rnn_goes_readonly_when_blend_enabled():
@@ -63,9 +66,50 @@ def test_set_blend_switch(tmp_path, monkeypatch):
     assert reg_state["blend"]["rnn_version"] == real  # 版本保留,便于再启用
 
 
+def test_set_blend_preserves_full_coverage(monkeypatch):
+    """P2 回归(2026-08-26): set_blend 不得静默改动 rnn_full_coverage。
+
+    原实现整字典覆写,字面量里没有这三个覆盖度键(它们是 8/17 晋升时手写进
+    registry 的),于是任何一次 set_blend 调用都会把它们抹掉 —— 一轮
+    set_blend(False) 应急回退 + set_blend(True) 复原,RNN 路由就从"吃满
+    学习层"悄悄降回 50/50 门控子集,日志无一字提示。
+    现在: 不传 full_coverage → 原样保留;传了才改,并重新盖 by/at 戳。
+    """
+    svc = service.VolumeService()
+    real = "rnn_v6f32n_20260731"
+    if not (svc.art / "registry" / "artifacts" / real).exists():
+        pytest.skip("candidate artifact absent")
+    reg_state = {"blend": {"enabled": True, "variant": "blend3",
+                           "rnn_version": real, "by": "seed", "at": "2026-08-15",
+                           "rnn_full_coverage": True,
+                           "full_coverage_by": "user_approved_20260817",
+                           "full_coverage_at": "2026-08-17T19:44:25"}}
+    monkeypatch.setattr(svc.registry, "load", lambda: dict(reg_state))
+    monkeypatch.setattr(svc.registry, "save", lambda d: reg_state.update(d))
+    ops = svc.ops
+
+    ops.set_blend(False, by="test")                    # 应急回退
+    b = ops.set_blend(True, by="test")                 # 复原
+    assert b["rnn_full_coverage"] is True, "覆盖度被 set_blend 静默抹掉"
+    assert b["full_coverage_by"] == "user_approved_20260817", \
+        "覆盖度的批准留痕不属于本次动作,不得被改写"
+    assert b["full_coverage_at"] == "2026-08-17T19:44:25"
+    assert b["by"] == "test" and b["at"] != "2026-08-15"   # 开关自身的戳要更新
+
+    b2 = ops.set_blend(True, by="test2", full_coverage=False)   # 显式降级
+    assert b2["rnn_full_coverage"] is False
+    assert b2["full_coverage_by"] == "test2"
+    assert b2["full_coverage_at"] == b2["at"], "显式改覆盖度必须重新留痕"
+
+
 def test_registry_blend_production_state():
-    """生产 registry.json 的 blend 键: 2026-08-15 用户批准 enabled=True;
-    工件指向必须有效(回退=ops.set_blend(False) 单行)。"""
+    """生产 registry.json 的 blend 键: 2026-08-15 用户批准 enabled=True,
+    8/17 终判 rnn_full_coverage=True(RNN 吃满学习层,lgbm 不再出行);
+    工件指向必须有效(回退=ops.set_blend(False) 单行)。
+
+    覆盖度这条断言是上面那个 bug 的最终安全网 —— 它直接盯生产 registry,
+    任何路径把这个键弄丢(手改/回改 set_blend/工具脚本重写)都会在这里炸。
+    真要下线覆盖度,改断言的同时必须在此写明批准人与日期。"""
     from VolumePrediction.common import OUT
     data = json.loads((OUT / "registry" / "registry.json").read_text())
     blend = data.get("blend")
@@ -73,6 +117,8 @@ def test_registry_blend_production_state():
     assert blend["enabled"] is True
     assert blend["rnn_version"] == "rnn_v6f32n_20260731"
     assert (OUT / "registry" / "artifacts" / blend["rnn_version"]).exists()
+    assert blend.get("rnn_full_coverage") is True, \
+        "生产覆盖度键丢失/被降级 —— 用户 2026-08-17 终判是 True"
 
 
 def test_refresh_blend_e2e_sandbox(tmp_path, monkeypatch):

@@ -1120,13 +1120,19 @@ class _Ops:
                 "resid_std": resid_std}
 
     def set_blend(self, enabled: bool, rnn_version: Optional[str] = None,
-                  by: str = "user") -> dict:
+                  by: str = "user",
+                  full_coverage: Optional[bool] = None) -> dict:
         """blend3 分层服务总开关(E10 实施-1;晋升纪律与 promote 同:人工显式)。
 
         enabled=True 前提: rnn_version 工件存在;写 registry.blend 并留痕。
-        回退 = set_blend(False) 单行,下一次 refresh 即回两层(lgbm+ma5)。"""
+        回退 = set_blend(False) 单行,下一次 refresh 即回两层(lgbm+ma5)。
+
+        full_coverage: RNN 是否吃满整个学习层(None=不动,沿用现值)。
+        None 而不是 False 是**故意的** —— 覆盖度是独立的晋升决策(生产现值由
+        用户 2026-08-17 终判置 true),不该被"开/关 blend"这个动作顺手改掉。
+        """
         data = self.s.registry.load()
-        cur = data.get("blend") or {}
+        cur = dict(data.get("blend") or {})
         ver = rnn_version or cur.get("rnn_version")
         if enabled:
             if not ver:
@@ -1134,12 +1140,27 @@ class _Ops:
             art = self.s.art / "registry" / "artifacts" / ver
             if not art.exists():
                 raise FileNotFoundError(f"RNN 工件不存在: {art}")
-        data["blend"] = {"enabled": bool(enabled), "variant": "blend3",
-                         "rnn_version": ver, "by": by,
-                         "at": pd.Timestamp.now().isoformat(timespec="seconds")}
+        # 2026-08-26 修: 原先是整字典覆写 `data["blend"] = {...}`,而字面量里
+        # 没有 rnn_full_coverage/full_coverage_by/full_coverage_at —— 这三个键
+        # 是 8/17 晋升时手写进 registry 的,谁调一次 set_blend() 就被静默抹掉。
+        # 后果: refresh 只读 `_blend_cfg.get("rnn_full_coverage")`,缺键 = False,
+        # 于是一次 set_blend(False) 应急回退 + 事后 set_blend(True) 复原,RNN
+        # 路由就从"吃满学习层"悄悄掉回 50/50 分层,日志一个字都不说。
+        # 改成**合并**语义: 只覆写本次动作显式负责的字段,其余原样保留。
+        _at = pd.Timestamp.now().isoformat(timespec="seconds")
+        cur.update({"enabled": bool(enabled), "variant": "blend3",
+                    "rnn_version": ver, "by": by, "at": _at})
+        if full_coverage is not None:
+            cur["rnn_full_coverage"] = bool(full_coverage)
+            cur["full_coverage_by"] = by
+            cur["full_coverage_at"] = _at
+        data["blend"] = cur
         self.s.registry.save(data)
+        # 生效路由必须每次都打出来 —— 这个 bug 之所以能潜伏,正是因为改了路由
+        # 却无声无息。full_coverage=False 时 RNN 只吃 blend_routing 的门控子集。
         log.info(f"[OPS] blend3 {'ENABLED' if enabled else 'disabled'} "
-                 f"(rnn={ver}, by={by})")
+                 f"(rnn={ver}, full_coverage="
+                 f"{bool(cur.get('rnn_full_coverage'))}, by={by})")
         return data["blend"]
 
     def retrain(self, config: Optional[dict] = None) -> dict:
