@@ -112,6 +112,17 @@ class Order:
         s = f"{self.tick_size:.6f}".rstrip("0")
         return min(6, max(4, len(s.split(".")[1]) if "." in s else 0))
 
+    def to_demo(self) -> "Order":
+        """Demo-environment twin: demo perp tickers carry a ``1`` suffix
+        (KXBTCPERP → KXBTCPERP1, probed 2026-08-23) and the demo account has a
+        single subaccount 0 (prod trades on 64). A fresh client_order_id keeps
+        the mirror out of the prod idempotency set."""
+        import dataclasses
+        import uuid as _uuid
+        tkr = self.ticker if self.ticker.endswith("1") else self.ticker + "1"
+        return dataclasses.replace(self, ticker=tkr, subaccount=0,
+                                   client_order_id="demo-" + str(_uuid.uuid4()))
+
     def body(self) -> dict:
         # format to the tick's precision (up to 6dp) so tick-snapping isn't
         # truncated away for perps with a finer tick than 0.0001
@@ -129,6 +140,29 @@ class Order:
         return b
 
 
+    # ── demo mirror plumbing ───────────────────────────────────────────────
+
+DEMO_GTC_EXPIRE_S = 900          # resting mirror orders self-destruct in 15min
+
+
+def demo_order_body(order: "Order", *, now_ts: float,
+                    expire_s: int = DEMO_GTC_EXPIRE_S) -> tuple[dict, "Order"]:
+    """Wire body for the demo twin of ``order``.
+
+    GTC orders get an ``expiration_ts``: the paper loop cancels its pending
+    entries implicitly (fill-verify timeout), but a mirrored GTC order on the
+    demo venue would rest FOREVER — zombie orders accumulating margin. The
+    self-destruct keeps demo lifecycle in sync with the paper loop without
+    the mirror thread having to track order ids (fire-and-forget stays true).
+    IOC/FOK orders need nothing — they die at the matching engine.
+    """
+    d = order.to_demo()
+    b = d.body()
+    if d.tif == "good_till_canceled":
+        b["expiration_ts"] = int(now_ts + expire_s)
+    return b, d
+
+
 class ExecutionRouter:
     def __init__(self, strategy: str, *, env: str | None = None,
                  margin_client=None):
@@ -141,6 +175,8 @@ class ExecutionRouter:
         self._s = requests.Session()
         self._s.headers["User-Agent"] = "someopark-crypto/0.1"
         self._key = None
+        self._demo_key = None
+        self._demo_pk = None
         self._pk = None
 
     # ── the gate ───────────────────────────────────────────────────────────
@@ -202,6 +238,59 @@ class ExecutionRouter:
         record["response"] = r.json()
         self._dry_writer.write(".", record)      # live orders logged too
         return record
+
+    def submit_demo(self, order: Order) -> dict:
+        """Mirror an order into the DEMO environment (parallel link rehearsal).
+
+        Runs OUTSIDE the prod gate on purpose: demo is the sandbox the gate
+        exists to protect us into. Its own safety instead: the URL is asserted
+        to be the demo host, the borrowed demo key is allowed, and the order is
+        translated via Order.to_demo() (ticker suffix + subaccount 0). Never
+        raises into the caller's paper loop — the mirror must not be able to
+        break the probe.
+        """
+        try:
+            base = rest_base("demo")
+            if "demo" not in base:
+                return {"status": "refused", "error": f"not a demo base: {base}"}
+            body, d = demo_order_body(order, now_ts=time.time())
+            if self._demo_key is None:
+                self._demo_key = kalshi_key("margin", borrowed_ok=True)
+                self._demo_pk = load_private_key(self._demo_key.expanded_path())
+            self.limiter.acquire_write()
+            headers = auth_headers(self._demo_pk, self._demo_key.key_id,
+                                   "POST", f"{API_ROOT}{ORDERS_PATH}")
+            r = self._s.post(base + ORDERS_PATH, json=body,
+                             headers=headers, timeout=20)
+            rec = {"ts": time.time(), "mode": "demo_mirror",
+                   "strategy": self.strategy, "order": asdict(d),
+                   "status_code": r.status_code, "response": r.text[:400]}
+            self._dry_writer.write(".", rec)
+            logger.info("[%s] DEMO-MIRROR %s %s %.2f @ %.4f → %s",
+                        self.strategy, d.ticker, d.side, d.count, d.price,
+                        r.status_code)
+            return rec
+        except Exception as e:                              # noqa: BLE001
+            logger.warning("[%s] demo mirror failed: %s", self.strategy, e)
+            return {"status": "error", "error": str(e)[:200]}
+
+    def cancel_demo(self, order_id: str) -> dict:
+        """Cancel a demo-mirror order (no prod gates — demo host asserted)."""
+        try:
+            base = rest_base("demo")
+            if "demo" not in base:
+                return {"status": "refused", "error": f"not a demo base: {base}"}
+            if self._demo_key is None:
+                self._demo_key = kalshi_key("margin", borrowed_ok=True)
+                self._demo_pk = load_private_key(self._demo_key.expanded_path())
+            path = ORDER_PATH.format(order_id=order_id)
+            headers = auth_headers(self._demo_pk, self._demo_key.key_id,
+                                   "DELETE", f"{API_ROOT}{path}")
+            self.limiter.acquire_cancel()
+            r = self._s.delete(base + path, headers=headers, timeout=15)
+            return {"status_code": r.status_code, "response": r.text[:200]}
+        except Exception as e:                              # noqa: BLE001
+            return {"status": "error", "error": str(e)[:200]}
 
     def cancel(self, order_id: str, *, live: bool = False) -> dict:
         if not live:

@@ -235,4 +235,4 @@ tests/            318 green
 00-08 建设计划 · `09_ml_directional.md` 三闸 ML · `10_pit_audit_20260728.md` **PIT 大审计(12+ 泄露)** ·
 `11_horizon_investigation.md` 视界图谱+数据卫生 · `12_how_to_make_money.md` carry/Chronos/二元+根本诊断 ·
 `13_max_effort_audit.md` 尽力度复审(盘口/lead-lag/时段/文献) · `14_tier_study.md` **档位重测(本表出处)** ·
-`15_live_trading_accounts.md` **实盘账户手册(demo/prod 三大差异、W5 走 events API、两级闸门与前置清单)**
+`15_live_trading_accounts.md` **实盘账户手册 + §9 15分钟盘研究全记录(逆向工程终局、热门–冷门偏差机制、W7 冻结配置、三个数据陷阱)**

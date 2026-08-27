@@ -78,8 +78,38 @@ def knockdown_trigger(hist: list[tuple[float, float]], ya: float, na: float,
     return None
 
 
-def settle_outcome(side: str, strike: float, spot: float) -> bool:
-    return (spot > strike) if side == "yes" else (spot <= strike)
+import re as _re
+
+_CAP_RE = _re.compile(r"to\s+\$?([\d,]+(?:\.\d+)?)")
+
+
+def _cap_from_subtitle(m: dict) -> float | None:
+    """Bucket cap from the subtitle text ("$64,200 to 64,299.99") — the
+    snapshot schema carries no cap_strike field. Threshold markets → None."""
+    for k in ("yes_sub_title", "subtitle", "no_sub_title"):
+        t = m.get(k) or ""
+        mm = _CAP_RE.search(t)
+        if mm:
+            try:
+                return float(mm.group(1).replace(",", ""))
+            except ValueError:
+                pass
+    return None
+
+
+def settle_outcome(side: str, strike: float, spot: float,
+                   cap: float | None = None) -> bool:
+    """Official semantics. B-tickers are BUCKETS: yes wins iff
+    floor ≤ spot ≤ cap. The original one-sided check (spot > floor) counted a
+    cap-breach as a yes-win — official result says NO (verified against
+    settled markets 2026-08-26: e.g. B64250 floor 64200/cap 64299.99 settled
+    64376.33 → result "no" while the old code said yes). T-tickers (no cap)
+    keep the threshold rule."""
+    if cap is not None:
+        yes_win = strike <= spot <= cap
+    else:
+        yes_win = spot > strike
+    return yes_win if side == "yes" else not yes_win
 
 
 def _files(series: str, sub: str, since: str | None) -> list:
@@ -153,6 +183,7 @@ def stream_trades(series: str, cfg: dict, ob_idx: dict | None,
     pend: dict[str, dict] = {}
     open_pos: dict[str, dict] = {}
     last_spot: dict[str, tuple] = {}
+    official: dict[str, str] = {}      # ticker → settled result ("yes"/"no")
     for f in _files(series, "markets", since):
         op = gzip.open if f.suffix == ".gz" else open
         try:
@@ -188,6 +219,10 @@ def stream_trades(series: str, cfg: dict, ob_idx: dict | None,
                     # an outcome-misclassification vector caught in audit)
                     if ct and tte > -0.5:
                         last_spot[ct] = (spot, rts_t)
+                    # official settled result rides in the same feed — harvest
+                    res = m.get("result")
+                    if res in ("yes", "no"):
+                        official[tkr] = res
                     if k <= 0 or tte < -1 or tte > 90:
                         continue
                     key = tkr or f"{k}|{ct}"
@@ -212,28 +247,44 @@ def stream_trades(series: str, cfg: dict, ob_idx: dict | None,
                     side = knockdown_trigger(h[:-1], ya, na, cfg["dip_c"])
                     if side is None:
                         continue
-                    rec = {"ts": rts_t, "side": side, "k": k, "close": ct,
-                           "px": ya if side == "yes" else na,
+                    cap = _cap_from_subtitle(m)
+                    rec = {"ts": rts_t, "tkr": tkr, "side": side, "k": k, "cap": cap,
+                           "close": ct, "px": ya if side == "yes" else na,
                            "day": str(rts_t.date()), "tte": round(tte, 1)}
                     if strict:
                         pend[key] = rec
                     else:
                         open_pos[key] = {**rec, "depth": np.nan}
     rows = []
+    n_official = n_fallback = n_dropped = 0
     for key, p in open_pos.items():
-        s = last_spot.get(p["close"])
-        if s is None:
-            continue
-        spot, sts = s
-        ct_ts = pd.Timestamp(p["close"])
-        if (ct_ts - sts).total_seconds() > 600:
-            continue
-        if abs(spot - p["k"]) / spot * 1e4 < KNIFE_BPS:
-            continue
-        win = settle_outcome(p["side"], p["k"], spot)
+        res = official.get(key)
+        if res in ("yes", "no"):
+            win = (res == p["side"])            # ground truth
+            n_official += 1
+        else:
+            s = last_spot.get(p["close"])
+            if s is None:
+                n_dropped += 1
+                continue
+            spot, sts = s
+            ct_ts = pd.Timestamp(p["close"])
+            if (ct_ts - sts).total_seconds() > 600:
+                n_dropped += 1
+                continue
+            if abs(spot - p["k"]) / spot * 1e4 < KNIFE_BPS:
+                n_dropped += 1
+                continue
+            if p.get("cap") is None:
+                n_dropped += 1                   # bucket w/o cap: refuse to guess
+                continue
+            win = settle_outcome(p["side"], p["k"], spot, p.get("cap"))
+            n_fallback += 1
         rows.append({**p, "series": series, "win": win,
                      "pnl_c": ((1.0 if win else 0.0) - p["px"]
                                - fee(p["px"])) * 100})
+    logger.info("%s settle: official=%d fallback=%d dropped=%d",
+                series, n_official, n_fallback, n_dropped)
     return pd.DataFrame(rows)
 
 

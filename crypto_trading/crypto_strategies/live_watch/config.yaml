@@ -8,6 +8,9 @@
 # controls money and safety, never signal logic.
 
 subaccount: 64            # real account's perps subaccount (verified 2026-07-12)
+demo_mirror: false        # true → every emitted perp order is ALSO sent to the
+                          # demo venue (KXBTCPERP1/subaccount 0); paper loop
+                          # unchanged. W5 events mirror has its own flag below.
 
 w1_basis:                 # S1 basis-selective, BTC
   enabled: false
@@ -30,6 +33,13 @@ w3_mom24:                 # S9 24h momentum, majors only for live (depth)
 
 w4_carry:                 # S3-improved same-asset hedged carry, BTC
   enabled: false
+  paper_hedge: true       # ON 2026-08-26: open the VIRTUAL hedged position
+                          # without a real spot fill so the probe produces a
+                          # P&L curve (a real position still needs
+                          # --confirm-spot). Backtest comparand: +3~9%/yr.
+  demo_mirror: false      # OFF 2026-08-26 (user): demo P&L is structurally
+                          # meaningless (no near-term book, alien index/fees);
+                          # the paper hedge account is W4's real scoreboard
   contracts: 100          # ≈ $640/leg — the pilot size discussed
   # kill/exit: trailing 30d settled funding sum < 0  (the frozen stop)
   # spot leg is EXTERNAL (Coinbase/Kraken): module emits explicit instructions;
@@ -38,6 +48,8 @@ w4_carry:                 # S3-improved same-asset hedged carry, BTC
 w5_knockdown:             # knockdown replication, KXBTC hourly binaries
   enabled: false          # events-API wiring is the arming step (separate)
   contracts: 25           # virtual/paper sizing during the capture probe
+  demo_mirror: false      # OFF 2026-08-26 (user): strategy archived after the
+                          # settlement-bug re-verdict; probe stays for observation
   max_cum_loss_usd: 50
   min_trades_for_kill: 40
   # LIVE criteria (watchlist): probe capture_rate >= 0.25 over >= 7 days AND
@@ -50,3 +62,15 @@ w6_residual:              # N2-residual jump lead-lag, BTC+ETH perps
   min_trades_for_kill: 40
   # LIVE criteria (watchlist): post-registration n >= 60 AND netTT NW-t >= 2
   # AND ex-best-day still positive AND live entry slippage vs backtest < 3bps
+
+w7_noisefade:             # RE-FROZEN 2026-08-27: 15M up-side-premium fade
+                          # (buy the favorite's NO ~8min out, cost .50-.98).
+                          # Replaces the hourly noise-deficit rule — the scan
+                          # showed that family bought the PAYING side.
+  enabled: false          # prod path does not even exist — paper + demo mirror
+  demo_mirror: true       # ON 2026-08-26 (user): entries ALSO order on demo
+                          # (KXBTCD preferred, flagship fallback; deviation logged)
+  contracts: 25
+  max_cum_loss_usd: 30
+  min_trades_for_kill: 40
+  # LIVE criteria (watchlist): post-registration n>=60 AND hit>=45% AND NW-t>=2

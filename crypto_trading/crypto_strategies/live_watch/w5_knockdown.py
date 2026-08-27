@@ -31,8 +31,8 @@ from crypto_trading.crypto_common.config import PRICE_DATA
 
 from . import common
 from crypto_trading.crypto_strategies.event_binary.research_knockdown import (
-    MIN_DEPTH, MONEYNESS_BPS, KNIFE_BPS, LOOKBACK_SNAPS, PRIMARY, ZONE, fee,
-    knockdown_trigger, settle_outcome)
+    MIN_DEPTH, MONEYNESS_BPS, KNIFE_BPS, LOOKBACK_SNAPS, PRIMARY, ZONE,
+    _cap_from_subtitle, fee, knockdown_trigger, settle_outcome)
 
 logger = logging.getLogger(__name__)
 
@@ -128,10 +128,23 @@ def run(cfg: dict | None = None, **_) -> dict:
         s_spot = p.get("last_spot")
         if s_spot is None:
             continue
-        if abs(s_spot - p["k"]) / s_spot * 1e4 < KNIFE_BPS:
-            vpos.pop(key)
-            continue
-        win = settle_outcome(p["side"], p["k"], s_spot)
+        # official result first (definitive; catches bucket-cap breaches)
+        win = None
+        try:
+            import requests as _rq
+            from crypto_trading.crypto_common.kalshi.enums import rest_base
+            r = _rq.get(rest_base("prod") + f"/markets/{key}", timeout=6,
+                        headers={"User-Agent": "someopark-crypto/0.1"})
+            res = r.json().get("market", {}).get("result") if r.status_code == 200 else None
+            if res in ("yes", "no"):
+                win = (res == p["side"])
+        except Exception:                                   # noqa: BLE001
+            pass
+        if win is None:
+            if p.get("cap") is None or                     abs(s_spot - p["k"]) / s_spot * 1e4 < KNIFE_BPS:
+                vpos.pop(key)
+                continue
+            win = settle_outcome(p["side"], p["k"], s_spot, p.get("cap"))
         pnl = ((1.0 if win else 0.0) - p["px"] - fee(p["px"])) * 100
         st["cum_net_usd"] = st.get("cum_net_usd", 0.0) + pnl / 100 * p["contracts"]
         st.setdefault("trades", []).append(
@@ -189,15 +202,25 @@ def run(cfg: dict | None = None, **_) -> dict:
             if capturable:
                 probe["capturable"] += 1
                 contracts = int(cfg.get("contracts", 25))
-                vpos[tkr] = {"side": side, "k": k, "close": ct, "px": ask,
+                vpos[tkr] = {"side": side, "k": k,
+                             "cap": _cap_from_subtitle(m),
+                             "close": ct, "px": ask,
                              "contracts": contracts, "opened": str(now),
                              "last_spot": spot}
-                common.log_line(NAME, {
+                log_rec = {
                     "action": "intended_event_order", "ticker": tkr,
                     "side": side, "price": ask, "contracts": contracts,
                     "depth_seen": depth,
-                    "note": "events API not wired until capture probe passes — "
-                            "virtual position opened"})
+                    "note": "prod events API not armed — virtual position "
+                            "opened"}
+                if cfg.get("demo_mirror", False):
+                    from crypto_trading.crypto_common.execution_events import (
+                        EventExecutionRouter)
+                    log_rec["demo_mirror"] = common.mirror_async(
+                        NAME, EventExecutionRouter(strategy=NAME).mirror_demo,
+                        side=side, close_time=ct, entry_price=ask,
+                        contracts=contracts)      # PAPER-IDENTICAL size
+                common.log_line(NAME, log_rec)
             new_signals.append({"ticker": tkr, "side": side, "ask": ask,
                                 "depth": depth, "capturable": capturable})
 

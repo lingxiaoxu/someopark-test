@@ -73,6 +73,33 @@ def kill_check(name: str, st: dict, cfg: dict) -> bool:
     return False
 
 
+def mirror_async(name: str, fn, *args, **kwargs) -> str:
+    """PRINCIPLE (user, 2026-08-25): the 24/7 probes are the product; demo
+    trading only CONSUMES their signals and must never be able to affect them.
+
+    Therefore every demo-venue call runs in a fire-and-forget daemon thread:
+    the probe loop never waits on a demo HTTP round-trip (measured 429-backoff
+    loops of minutes), never sees a demo exception, and a lost mirror order is
+    acceptable — the paper record is the source of truth, the mirror is only a
+    link rehearsal. The thread logs its own result line when it finishes.
+    """
+    import threading
+
+    def _run():
+        try:
+            res = fn(*args, **kwargs)
+        except Exception as e:                              # noqa: BLE001
+            res = {"status": "error", "error": str(e)[:200]}
+        try:
+            log_line(name, {"action": "demo_mirror_result", **(
+                res if isinstance(res, dict) else {"result": str(res)[:200]})})
+        except Exception:                                   # noqa: BLE001
+            pass
+    threading.Thread(target=_run, daemon=True,
+                     name=f"demo-mirror-{name}").start()
+    return "dispatched_async"
+
+
 def emit(name: str, order: "execution.Order", *, enabled: bool,
          reason: str) -> dict:
     """Log the intended order; submit only if armed at BOTH levels.
@@ -106,6 +133,13 @@ def emit(name: str, order: "execution.Order", *, enabled: bool,
     else:
         rec["submitted"] = False
         rec["note"] = "DRY-RUN (strategy disabled or global gates closed)"
+    # parallel DEMO mirror: paper loop untouched; the same order is also sent
+    # to the demo venue (ticker/subaccount translated) when the global switch
+    # is on. Failures are recorded, never raised — the mirror must not be able
+    # to break the probe.
+    _cfg = load_cfg()
+    if _cfg.get("demo_mirror", False) or _cfg.get(name, {}).get("demo_mirror", False):
+        rec["demo_mirror"] = mirror_async(name, router.submit_demo, order)
     log_line(name, rec)
     return rec
 

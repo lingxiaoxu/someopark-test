@@ -69,3 +69,94 @@ class KalshiEventClient:
     def orderbook_raw(self, ticker: str) -> dict:
         """Raw orderbook payload (yes_dollars/no_dollars) — recorder persists as-is."""
         return self._get(f"/markets/{ticker}/orderbook")
+
+
+# ── order flow (added 2026-08-25, V2 endpoint) ──────────────────────────────
+# Events orders moved to V2: POST /portfolio/events/orders with the SAME wire
+# shape as perps (single-book bid/ask on the YES leg, fixed-point dollar
+# prices, 2-dp count). The legacy /portfolio/orders returns 410 (probed
+# 2026-08-25). Semantics: bid = buy YES; ask = sell YES ≡ buy NO at (1−p).
+
+EVENTS_ORDERS_V2 = "/portfolio/events/orders"
+
+
+class KalshiEventOrderClient:
+    """Minimal authed V2 order client for event contracts.
+
+    Env-aware; the borrowed demo key is acceptable for env="demo", prod
+    ordering requires the dedicated key upstream (Plan 00 §3.8 applies at the
+    caller — this class only refuses cross-env confusion by binding the base
+    URL at construction).
+    """
+
+    def __init__(self, *, env: str | None = None, timeout: float = 15.0):
+        from crypto_trading.crypto_common.config import kalshi_key
+        from crypto_trading.crypto_common.kalshi.auth import load_private_key
+        from crypto_trading.crypto_common.kalshi.enums import rest_base
+        self.env = env or "demo"
+        self.base = rest_base(self.env)
+        self.timeout = timeout
+        self._key = kalshi_key("margin", borrowed_ok=(self.env != "prod"))
+        self._pk = load_private_key(self._key.expanded_path())
+        import requests
+        self._s = requests.Session()
+        self._s.headers["User-Agent"] = "someopark-crypto/0.1"
+
+    def _authed(self, method: str, path: str, body: dict | None = None):
+        from crypto_trading.crypto_common.kalshi.auth import auth_headers
+        from crypto_trading.crypto_common.kalshi.enums import API_ROOT
+        h = auth_headers(self._pk, self._key.key_id, method, f"{API_ROOT}{path}")
+        fn = {"GET": self._s.get, "POST": self._s.post,
+              "DELETE": self._s.delete}[method]
+        kw = {"headers": h, "timeout": self.timeout}
+        if body is not None:
+            kw["json"] = body
+        return fn(f"{self.base}{path}", **kw)
+
+    @staticmethod
+    def v2_body(*, ticker: str, contract_side: str, price_dollars: float,
+                count: int, client_order_id: str | None = None,
+                tif: str = "immediate_or_cancel",
+                post_only: bool = False) -> dict:
+        """Translate contract-side semantics (yes/no) to the V2 single book.
+
+        Buying YES at p  → bid @ p.  Buying NO at p → ask @ (1 − p): selling
+        the YES leg at 1−p is экономически identical to owning NO at p.
+        """
+        import uuid
+        assert contract_side in ("yes", "no")
+        assert 0.0 < price_dollars < 1.0
+        side = "bid" if contract_side == "yes" else "ask"
+        px = price_dollars if contract_side == "yes" else round(1.0 - price_dollars, 4)
+        b = {"ticker": ticker, "side": side, "count": f"{int(count)}.00",
+             "price": f"{px:.4f}", "time_in_force": tif,
+             "self_trade_prevention_type": "taker_at_cross",
+             "client_order_id": client_order_id or str(uuid.uuid4())}
+        if post_only:
+            b["post_only"] = True
+        return b
+
+    def create_order(self, *, ticker: str, side: str, action: str = "buy",
+                     count: int = 1, price_cents: int | None = None,
+                     price_dollars: float | None = None,
+                     client_order_id: str | None = None,
+                     tif: str = "immediate_or_cancel") -> dict:
+        """side: yes|no (contract semantics; translated to V2 bid/ask)."""
+        assert action == "buy", "sell = buy the other side; keep semantics simple"
+        px = price_dollars if price_dollars is not None else price_cents / 100.0
+        body = self.v2_body(ticker=ticker, contract_side=side,
+                            price_dollars=px, count=count,
+                            client_order_id=client_order_id, tif=tif)
+        r = self._authed("POST", EVENTS_ORDERS_V2, body)
+        return {"status_code": r.status_code, "response": r.text[:400],
+                "body_sent": body}
+
+    def cancel_order(self, order_id: str) -> dict:
+        r = self._authed("DELETE", f"{EVENTS_ORDERS_V2}/{order_id}")
+        return {"status_code": r.status_code, "response": r.text[:200]}
+
+    def get_orders(self, **params) -> dict:
+        import urllib.parse
+        q = ("?" + urllib.parse.urlencode(params)) if params else ""
+        r = self._authed("GET", f"{EVENTS_ORDERS_V2}{q}")
+        return r.json() if r.status_code == 200 else {"status_code": r.status_code}

@@ -36,6 +36,18 @@ logger = logging.getLogger(__name__)
 DEFAULT_SERIES = {
     "KXBTCD": "KXBTCPERP", "KXBTC": "KXBTCPERP",
     "KXETHD": "KXETHPERP", "KXETH": "KXETHPERP",
+    # added 2026-08-26 for W7 sample expansion (add-only: existing series and
+    # their files are untouched — the standing rule is never lose recordings)
+    "KXSOLD": "KXSOLPERP",
+    # 15-MINUTE UP/DOWN (added 2026-08-27): the structural twin of the
+    # Polymarket instrument the reverse-engineered account traded — one
+    # contract per window, strike = the window's opening price. Kalshi's API
+    # only serves ~10 days of settled history, so recording starts the clock
+    # on everything beyond that (candlesticks cover the past, tape covers the
+    # future — and only the tape carries L2 depth).
+    "KXBTC15M": "KXBTCPERP", "KXETH15M": "KXETHPERP",
+    "KXSOL15M": "KXSOLPERP", "KXDOGE15M": "KXDOGEPERP",
+    "KXXRP15M": "KXXRPPERP",
 }
 
 
@@ -124,10 +136,23 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--horizons", type=int, default=2)
     ap.add_argument("--atm-window", type=float, default=0.15)
     ap.add_argument("--cycles", type=int, default=0, help="0 = run until killed")
+    ap.add_argument("--series", default=None,
+                    help="comma-separated series subset (default: all configured). "
+                         "Lets a second recorder cover newly-added series without "
+                         "restarting the long-running one — recordings are never "
+                         "interrupted, and each series owns its own directory so "
+                         "two instances cannot collide.")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    series = None
+    if args.series:
+        keys = [x.strip().upper() for x in args.series.split(",") if x.strip()]
+        missing = [k for k in keys if k not in DEFAULT_SERIES]
+        if missing:
+            raise SystemExit(f"unknown series: {missing}; known: {sorted(DEFAULT_SERIES)}")
+        series = {k: DEFAULT_SERIES[k] for k in keys}
     StripRecorder(env=args.env, horizons=args.horizons, atm_window=args.atm_window,
-                  interval=args.interval).run(args.cycles)
+                  interval=args.interval, series=series).run(args.cycles)
     return 0
 
 
