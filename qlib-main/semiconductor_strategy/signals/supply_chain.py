@@ -23,7 +23,7 @@ backtest).  When the optional PIT external datasets are present and visible as o
 ``t`` they ADD a small confirmation tilt (never look-ahead — they are already
 PIT-shifted by the data layer):
     * foundry      += z(TSMC monthly-revenue YoY)
-    * equipment    += z(ASML net bookings)            (equipment feedback edge)
+    * equipment    += z(ASML forward demand)          (equipment feedback edge)
     * memory_hbm   += z(DRAM proxy) + MU-DIO signal
 Missing external data simply contributes 0 → graceful fallback to the price proxy.
 
@@ -66,7 +66,7 @@ SUPPLY_CHAIN_GRAPH: Dict[Tuple[str, str], Tuple[float, int, str]] = {
     ("ai_gpu",      "foundry"):       (0.80, 4,  "TSMC monthly revenue YoY"),
     ("foundry",     "equipment"):     (0.90, 4,  "KLAC/LRCX strength (V1 proxy)"),
     ("memory_hbm",  "equipment"):     (0.70, 4,  "MU inventory days change"),
-    ("equipment",   "foundry"):       (0.50, 12, "ASML net bookings (feedback)"),
+    ("equipment",   "foundry"):       (0.50, 12, "ASML forward demand (feedback)"),
     ("foundry",     "custom_asic"):   (0.60, 0,  "CoWoS tightness"),
     ("logic_cpu",   "ai_gpu"):        (-0.20, 0, "AMD share (negative competition)"),
     (NODE_CONSUMER, "rf_edge"):       (0.80, 0,  "Apple/IDC PC demand"),
@@ -113,6 +113,33 @@ def _ts_zscore_df(df: pd.DataFrame) -> pd.DataFrame:
     return df.apply(_ts_zscore, axis=0)
 
 
+def _asml_tilt(orders: Optional[pd.Series], guidance: Optional[pd.Series],
+               monthly_index: pd.DatetimeIndex) -> Optional[pd.Series]:
+    """ASML 前瞻需求 tilt —— net bookings(已停更)与净销售指引的**z 空间**拼接。
+
+    ASML 从 2026Q1 起把季度 net bookings 整行从财报里删了,序列到 2026-01-28 为止。
+    接续用的是下季度净销售指引(每季必发、同为前瞻量),但两者口径不同:一个是新增
+    订单额,一个是预期营收。所以先**各自**做滚动 z 再按优先级取,而不是先拼后 z ——
+    后者会把口径切换本身当成一次几个标准差的"信号跳变",纯属人造。
+
+    指引优先;指引尚未攒够 ``_TS_Z_MIN`` 个月(其 z 为 NaN)时回落到 bookings。
+    于是 2024 年秋以前的历史与切换前**逐位相同**,只有 bookings 真正失效的近端才变。
+    两条都没有 → None,调用方跳过 tilt(回落到纯价格代理,V1 行为)。
+    """
+    z = []
+    for s in (orders, guidance):
+        z.append(_ts_zscore(_to_monthly(s, monthly_index))
+                 if s is not None and not s.empty else None)
+    z_orders, z_guid = z
+    if z_guid is None and z_orders is None:
+        return None
+    if z_guid is None:
+        return z_orders.fillna(0.0)
+    if z_orders is None:
+        return z_guid.fillna(0.0)
+    return z_guid.combine_first(z_orders).fillna(0.0)
+
+
 def _lagged_with_decay(s: pd.Series, lag: int, lam: float,
                        window: int = _DECAY_WINDOW) -> pd.Series:
     """Geometric-decay weighted lag (Hong-Stein gradual information diffusion).
@@ -144,6 +171,7 @@ def compute_supply_chain_scores(
     monthly_index: pd.DatetimeIndex,
     tsmc_yoy: Optional[pd.Series] = None,
     asml_orders: Optional[pd.Series] = None,
+    asml_guidance: Optional[pd.Series] = None,
     dram_proxy: Optional[pd.Series] = None,
     mu_dio: Optional[pd.Series] = None,
     pmi_series: Optional[pd.Series] = None,
@@ -160,6 +188,9 @@ def compute_supply_chain_scores(
     vix : daily VIX (unused in V1 propagation; regime tilt handled in composite)
     monthly_index : month-end index to produce scores on (== cs_mom.index)
     tsmc_yoy / asml_orders / dram_proxy / mu_dio : optional daily PIT series
+    asml_guidance : optional daily PIT ASML next-quarter net-sales guidance
+        (EUR bn midpoint).  Succeeds ``asml_orders`` as the equipment tilt once
+        bookings stopped being disclosed — spliced in z space, see ``_asml_tilt``.
     pmi_series : optional daily PIT manufacturing-trend proxy (IPMAN YoY); drives
         the ``pmi_proxy`` source node.  None/empty → that source contributes 0
         (V1 behaviour).  V2 feeds the real FRED IPMAN series.
@@ -217,8 +248,8 @@ def compute_supply_chain_scores(
         if tsmc_yoy is not None and not tsmc_yoy.empty:
             t = _ts_zscore(_to_monthly(tsmc_yoy, monthly_index)).fillna(0.0)
             score["foundry"] = score["foundry"] + _EXTERNAL_TILT_WEIGHT * t
-        if asml_orders is not None and not asml_orders.empty:
-            a = _ts_zscore(_to_monthly(asml_orders, monthly_index)).fillna(0.0)
+        a = _asml_tilt(asml_orders, asml_guidance, monthly_index)
+        if a is not None:
             score["equipment"] = score["equipment"] + _EXTERNAL_TILT_WEIGHT * a
         if dram_proxy is not None and not dram_proxy.empty:
             d = _to_monthly(dram_proxy, monthly_index).fillna(0.0)  # already z-scored daily
@@ -299,6 +330,7 @@ if __name__ == "__main__":
     sc = compute_supply_chain_scores(
         px, capex, None, monthly_idx,
         tsmc_yoy=ind.load_tsmc_monthly(), asml_orders=ind.load_asml_orders(),
+        asml_guidance=ind.load_asml_guidance(),
         dram_proxy=ind.load_dram_proxy(), mu_dio=comp.load_mu_dio(),
     )
     print("Propagation matrix (source × target):")

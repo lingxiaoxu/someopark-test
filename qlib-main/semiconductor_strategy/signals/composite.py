@@ -88,7 +88,8 @@ def _cs_zscore(df: pd.DataFrame) -> pd.DataFrame:
 def _load_aux_signals(prices: pd.DataFrame, signal_kwargs: dict) -> dict:
     """Load CapEx pulse + external PIT series bounded to the price window."""
     end = prices.index[-1].strftime("%Y-%m-%d") if len(prices) else None
-    out = {"capex": None, "tsmc": None, "asml": None, "dram": None, "mu_dio": None, "pmi": None}
+    out = {"capex": None, "tsmc": None, "asml": None, "asml_guidance": None,
+           "dram": None, "mu_dio": None, "pmi": None}
     try:
         from ..data import company_signals as comp
         from ..data import industry_signals as ind
@@ -103,6 +104,7 @@ def _load_aux_signals(prices: pd.DataFrame, signal_kwargs: dict) -> dict:
         out["mu_dio"] = comp.load_mu_dio(end=end)
         out["tsmc"] = ind.load_tsmc_monthly(end=end)
         out["asml"] = ind.load_asml_orders(end=end)
+        out["asml_guidance"] = ind.load_asml_guidance(end=end)
         out["dram"] = ind.load_dram_proxy(end=end)
         out["pmi"] = ind.load_pmi_series(end=end)
     except Exception as e:  # noqa: BLE001
@@ -225,6 +227,7 @@ def compute_composite_signals(
         prices, aux["capex"], macro.get("vix") if macro is not None else None,
         monthly_index,
         tsmc_yoy=aux["tsmc"], asml_orders=aux["asml"],
+        asml_guidance=aux["asml_guidance"],
         dram_proxy=aux["dram"], mu_dio=aux["mu_dio"],
         pmi_series=sc_pmi,
         use_external_macro=signal_kwargs.get("use_external_macro", True),

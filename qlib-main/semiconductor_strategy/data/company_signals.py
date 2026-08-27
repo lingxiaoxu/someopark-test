@@ -168,21 +168,120 @@ def load_capex_pulse(start: Optional[str] = None, end: Optional[str] = None) -> 
 # MU DIO (SEC XBRL)
 # ===========================================================================
 
-def _quarterly_duration_points(points: list) -> list:
-    """Keep only single-quarter (~80-100 day) duration facts (drop YTD/annual)."""
-    out = []
-    for p in points:
-        s, e = p.get("start"), p.get("end")
-        if not s or not e:
+def _duration_facts(facts: dict, concept: str,
+                    forms: tuple = ("10-Q", "10-K")) -> dict:
+    """All duration facts for ``concept``, keyed by ``(start, end)``.
+
+    **``(start, end)`` — not ``end`` alone.**  ``sec.concept_series`` de-dupes by
+    ``end``, which is the right key for *instant* concepts (InventoryNet) but wrong
+    for *duration* concepts: a 10-Q tags both the fiscal-YTD span and the standalone
+    quarter with the SAME ``end`` and the SAME ``filed`` date, so an end-keyed dict
+    silently keeps whichever the file happened to list first.  That is exactly how
+    MU's Q2/Q3 COGS were lost (see ``_standalone_quarters``).
+
+    Dedups within a key by EARLIEST ``filed`` — a restatement must not retroactively
+    change what we believed on the original filing date (PIT).
+    """
+    node = facts.get("facts", {}).get("us-gaap", {}).get(concept)
+    if not node:
+        return {}
+    out: dict = {}
+    for item in node.get("units", {}).get("USD", []):
+        if item.get("form") not in forms:
+            continue
+        s, e, val, fy = (item.get("start"), item.get("end"),
+                         item.get("val"), item.get("fy"))
+        if not s or not e or val is None or fy is None:
             continue
         try:
             days = (date.fromisoformat(e) - date.fromisoformat(s)).days
         except Exception:
             continue
-        if 80 <= days <= 100:
-            p = dict(p)
-            p["_days"] = days
-            out.append(p)
+        if days < 60 or days > 380:
+            continue  # keep quarterly..annual durations; drop instants & odd ranges
+        filed = item.get("filed") or ""
+        key = (s, e)
+        prev = out.get(key)
+        if prev is None or (filed and filed < (prev["filed"] or "9999")):
+            out[key] = {"start": s, "end": e, "val": float(val), "filed": filed,
+                        "fy": fy, "fp": item.get("fp"), "days": days}
+    return out
+
+
+def _standalone_quarters(facts: dict, concept: str,
+                         forms: tuple = ("10-Q", "10-K"),
+                         prefer_tagged: bool = False) -> dict:
+    """Standalone (single-quarter) values for a cumulative-duration concept.
+
+    → ``{end_iso: {"val", "filed", "start", "days", "fy", "fp", "source"}}``
+
+    Default path is **decumulation** of the fiscal-YTD chain, which every filer
+    supports (META tags only YTD CapEx):
+        Q1 = YTD(Q1);  Q2 = YTD(Q2) - YTD(Q1);  …;  Q4 = FY - YTD(Q3).
+    Availability = the *later* YTD's ``filed`` date, which is the day the
+    subtraction first becomes computable — the earlier term is already public by
+    then, so this stays PIT-honest.
+
+    ``prefer_tagged=True`` additionally lets an explicitly-tagged ~90-day fact
+    override the decumulated value for the same ``end``.  It is **off by default**
+    on purpose: for MU the two agree exactly (2026Q2 tagged 6,105mn vs decumulated
+    12,102-5,997 = 6,105mn; 2026Q3 6,400 vs 18,502-12,102 = 6,400), but for the
+    hyperscalers it is not neutral — it recovers AMZN quarters whose YTD chain is
+    incomplete (e.g. CY2018Q3 goes 3→4 companies), which would silently rewrite a
+    live signal's history.  Flipping it is a deliberate, separately-reviewed change.
+
+    2026-08-27: added when MU's "quarterly" DIO turned out to be annual.  MU tags
+    BOTH a 181-day YTD and a 90-day standalone fact on ``end=2026-02-26``, both
+    ``filed=2026-03-19``; the old end-keyed dedup kept the YTD, and the downstream
+    80-100 day filter then dropped it.  Only each year's Q1 (whose YTD *is* the
+    quarter) survived, so the signal moved once a year, every December.
+    """
+    by_se = _duration_facts(facts, concept, forms=forms)
+    if not by_se:
+        return {}
+
+    from collections import defaultdict
+    by_fy: dict = defaultdict(list)
+    for rec in by_se.values():
+        by_fy[rec["fy"]].append(rec)
+
+    out: dict = {}
+    for fy, recs in by_fy.items():
+        # fy_start = start of the true first fiscal quarter (fp=Q1, ~90d) — NOT
+        # min(start), which would catch trailing-12-month facts (e.g. AMZN's TTM
+        # start a year earlier).  Fall back to the shortest-duration fact's start.
+        q1 = [r for r in recs if r.get("fp") == "Q1" and 80 <= r["days"] <= 100]
+        if q1:
+            fy_start = min(r["start"] for r in q1)
+        else:
+            shortq = [r for r in recs if 80 <= r["days"] <= 100]
+            fy_start = min(r["start"] for r in (shortq or recs))
+        # YTD chain = facts sharing fy_start, durations increasing (~3/6/9/12mo)
+        ytd = sorted([r for r in recs if r["start"] == fy_start and r["days"] <= 370],
+                     key=lambda r: r["end"])
+        prev_val, prev_end, prev_days = 0.0, fy_start, 0
+        for r in ytd:
+            cand = {"val": r["val"] - prev_val, "filed": r["filed"], "start": prev_end,
+                    "days": r["days"] - prev_days, "fy": fy, "fp": r.get("fp"),
+                    "source": "decumulated"}
+            prev_val, prev_end, prev_days = r["val"], r["end"], r["days"]
+            # The same ``end`` can surface under two ``fy`` values (a 10-K restates
+            # the prior year's quarters in its own fiscal context).  Keep the
+            # EARLIEST filing — that is when the number first became knowable.
+            prev = out.get(r["end"])
+            if prev is None or (cand["filed"] and cand["filed"] < (prev["filed"] or "9999")):
+                out[r["end"]] = cand
+
+    if prefer_tagged:
+        # Explicitly-tagged standalone quarters win over anything decumulated above;
+        # among two tagged facts for the same end, earliest filed wins (as above).
+        for r in by_se.values():
+            if not (80 <= r["days"] <= 100):
+                continue
+            cur = out.get(r["end"])
+            if (cur is None or cur.get("source") != "tagged"
+                    or (r["filed"] and r["filed"] < (cur["filed"] or "9999"))):
+                out[r["end"]] = {**r, "source": "tagged"}
     return out
 
 
@@ -192,23 +291,32 @@ def compute_mu_dio() -> dict:
     inv = sec.concept_series(facts, "InventoryNet", forms=["10-Q", "10-K"])
     inv_by_end = {p["end"]: p for p in inv}
 
-    cogs = []
+    # COGS is a cumulative-duration flow — must NOT go through ``concept_series``
+    # (end-keyed dedup silently drops the standalone quarter; see _standalone_quarters).
+    # prefer_tagged=True: MU publishes explicit 90-day COGS facts and they agree
+    # with decumulation to the euro (2026Q2 6,105mn both ways), but the tagged path
+    # also repairs quarters the fiscal-year grouping drops — FY2010's ``fy_start``
+    # resolves to a prior-year comparative Q1, which excludes end=2009-12-03 from
+    # its own YTD chain.  Using the filer's own figure sidesteps that entirely.
+    cogs_q: dict = {}
     for concept in ("CostOfGoodsAndServicesSold", "CostOfRevenue", "CostOfGoodsSold"):
-        cogs = sec.concept_series(facts, concept, forms=["10-Q", "10-K"])
-        cogs = _quarterly_duration_points(cogs)
-        if cogs:
-            log.info("MU DIO using COGS concept: %s (%d quarterly pts)", concept, len(cogs))
+        cogs_q = _standalone_quarters(facts, concept, prefer_tagged=True)
+        if cogs_q:
+            n_tag = sum(1 for c in cogs_q.values() if c["source"] == "tagged")
+            log.info("MU DIO using COGS concept: %s (%d quarters: %d tagged, %d decumulated)",
+                     concept, len(cogs_q), n_tag, len(cogs_q) - n_tag)
             break
 
     records: dict = {}
-    for c in cogs:
-        end = c["end"]
+    for end, c in cogs_q.items():
         inv_pt = inv_by_end.get(end)
         if inv_pt is None:
             continue
         inv_val = inv_pt.get("val")
         cogs_val = c.get("val")
-        days = c.get("_days", 91)
+        days = c.get("days") or 91
+        if not (60 <= days <= 110):
+            continue  # a decumulation artefact (gap/overlap in the YTD chain)
         if not inv_val or not cogs_val or cogs_val <= 0:
             continue
         dio = float(inv_val) / (float(cogs_val) / days)
@@ -281,65 +389,22 @@ def _raw_quarterly_capex(facts: dict, concept: str) -> dict:
     Each standalone quarter is bucketed by the CALENDAR quarter of its ``end``
     (aligning the 4 firms' differing fiscal years) with the EARLIEST filing date
     for PIT correctness.  Returns {calendar_frame: {val, filed, end}}.
+
+    2026-08-27: the decumulation itself moved to ``_standalone_quarters`` so MU's
+    COGS and the hyperscalers' CapEx share one implementation; this function is now
+    just the calendar-quarter bucketing on top.
     """
-    node = facts.get("facts", {}).get("us-gaap", {}).get(concept)
-    if not node:
-        return {}
-    # 1) collect duration facts, dedup by (start,end) keeping EARLIEST filed
-    by_se: dict = {}
-    for item in node.get("units", {}).get("USD", []):
-        if item.get("form") not in ("10-Q", "10-K"):
-            continue
-        s, e, val, fy, fp = (item.get("start"), item.get("end"), item.get("val"),
-                             item.get("fy"), item.get("fp"))
-        if not s or not e or val is None or fy is None:
-            continue
+    out: dict = {}
+    for end, r in _standalone_quarters(facts, concept).items():
         try:
-            days = (date.fromisoformat(e) - date.fromisoformat(s)).days
+            edt = date.fromisoformat(end)
         except Exception:
             continue
-        if days < 60 or days > 380:
-            continue  # keep quarterly..annual durations; drop instants & odd ranges
-        filed = item.get("filed") or ""
-        key = (s, e)
-        prev = by_se.get(key)
-        if prev is None or (filed and filed < (prev["filed"] or "9999")):
-            by_se[key] = {"start": s, "end": e, "val": float(val), "filed": filed,
-                          "fy": fy, "fp": fp, "days": days}
-
-    # 2) group by fiscal year, isolate the YTD chain, decumulate
-    from collections import defaultdict
-    by_fy: dict = defaultdict(list)
-    for rec in by_se.values():
-        by_fy[rec["fy"]].append(rec)
-
-    out: dict = {}
-    for fy, recs in by_fy.items():
-        # fy_start = start of the true first fiscal quarter (fp=Q1, ~90d) — NOT
-        # min(start), which would catch trailing-12-month facts (e.g. AMZN's TTM
-        # start a year earlier).  Fall back to the shortest-duration fact's start.
-        q1 = [r for r in recs if r.get("fp") == "Q1" and 80 <= r["days"] <= 100]
-        if q1:
-            fy_start = min(r["start"] for r in q1)
-        else:
-            shortq = [r for r in recs if 80 <= r["days"] <= 100]
-            fy_start = min(r["start"] for r in (shortq or recs))
-        # YTD chain = facts sharing fy_start, durations increasing (~3/6/9/12mo)
-        ytd = sorted([r for r in recs if r["start"] == fy_start and r["days"] <= 370],
-                     key=lambda r: r["end"])
-        prev_val = 0.0
-        for r in ytd:
-            qv = r["val"] - prev_val
-            prev_val = r["val"]
-            try:
-                edt = date.fromisoformat(r["end"])
-            except Exception:
-                continue
-            frame = f"CY{edt.year}Q{(edt.month - 1) // 3 + 1}"
-            filed = r["filed"]
-            prev = out.get(frame)
-            if prev is None or (filed and filed < (prev.get("filed") or "9999")):
-                out[frame] = {"val": float(qv), "filed": filed, "end": r["end"]}
+        frame = f"CY{edt.year}Q{(edt.month - 1) // 3 + 1}"
+        filed = r["filed"]
+        prev = out.get(frame)
+        if prev is None or (filed and filed < (prev.get("filed") or "9999")):
+            out[frame] = {"val": float(r["val"]), "filed": filed, "end": end}
     return out
 
 
@@ -455,12 +520,21 @@ def get_aiss_signals_snapshot(as_of_date) -> dict:
     snap["tsmc_yoy_latest"] = (tsmc or {}).get("yoy_pct")
     asml = ind.asml_value_at(as_of_date)
     snap["asml_orders_latest"] = (asml or {}).get("net_bookings_eur_bn")
+    # bookings 已停更(冻在 2026Q1);接续的前瞻量是下季度净销售指引中值
+    guid = ind.asml_guidance_value_at(as_of_date)
+    snap["asml_guidance_eur_bn"] = (guid or {}).get("mid_eur_bn")
+    snap["asml_guidance_quarter"] = (guid or {}).get("quarter")
     dram = ind.load_dram_proxy(end=str(as_of_date))
     snap["dram_signal"] = float(dram.iloc[-1]) if len(dram) else None
     return snap
 
 
 def verify() -> bool:
+    """存在性 + **时效性** 双检。
+
+    2026-08-27 加时效检查:此前只查 `if len(x)`,于是 capex_pulse 冻在 2026-06-04
+    整整 57 个交易日,每周 weekly 照打 `RESULT: OK`。阈值与语义见 aiss_pit.staleness()。
+    """
     cap = load_capex_pulse()
     mu = load_mu_dio()
     print("=" * 70)
@@ -468,16 +542,24 @@ def verify() -> bool:
     print("=" * 70)
     ok = True
     if len(cap):
+        # 日频(每个交易日一个 z 点),用最后一个数据点本身当新鲜度基准
+        tag = pit.stale_tag(cap.index[-1].date(), "daily")
         print(f"  capex_pulse : {len(cap):5} pts {cap.index[0].date()}→{cap.index[-1].date()} "
-              f"last z={cap.iloc[-1]:+.2f}")
+              f"last z={cap.iloc[-1]:+.2f}{tag}")
+        if tag:
+            ok = False
     else:
         print("  capex_pulse : MISSING"); ok = False
     payload = pit.load_json(MU_DIO_PATH, default={})
     recs = payload.get("records", {})
     if recs:
         latest = sorted(recs.values(), key=lambda r: r["period_end"])[-1]
+        # 季频:基准取 filed_date(真正可用那天),不取 period_end —— 后者天生晚 90 天
+        tag = pit.stale_tag(latest["filed_date"], "quarterly")
         print(f"  mu_dio      : {len(recs):5} quarters, latest {latest['period_end']} "
-              f"DIO={latest['dio_days']} sig={latest['signal']:+d} filed={latest['filed_date']}")
+              f"DIO={latest['dio_days']} sig={latest['signal']:+d} filed={latest['filed_date']}{tag}")
+        if tag:
+            ok = False
     else:
         print("  mu_dio      : MISSING"); ok = False
     hpayload = pit.load_json(HYPERSCALER_CAPEX_PATH, default={})
@@ -485,12 +567,16 @@ def verify() -> bool:
     if hrecs:
         latest = sorted(hrecs.values(), key=lambda r: r["period_end"])[-1]
         first = sorted(hrecs.values(), key=lambda r: r["period_end"])[0]
+        tag = pit.stale_tag(latest["filed_date"], "quarterly")
         print(f"  hyperscaler_capex: {len(hrecs):3} quarters {first['period_end']}→{latest['period_end']}, "
-              f"latest sum=${latest['capex_usd_mn']/1e3:.1f}B YoY={latest['capex_yoy_pct']}% filed={latest['filed_date']}")
+              f"latest sum=${latest['capex_usd_mn']/1e3:.1f}B YoY={latest['capex_yoy_pct']}% "
+              f"filed={latest['filed_date']}{tag}")
+        if tag:
+            ok = False
     else:
         print("  hyperscaler_capex: MISSING (run --update-hyperscaler-capex)")  # not fatal for V1
     print("=" * 70)
-    print("RESULT:", "OK" if ok else "INCOMPLETE")
+    print("RESULT:", "OK" if ok else "STALE/INCOMPLETE")
     return ok
 
 
@@ -514,11 +600,19 @@ def main() -> None:
         update_mu_dio_proxy(); did = True
     if args.init or args.hyperscaler_capex:
         update_hyperscaler_capex(); did = True
+    _ok = True
     if args.verify or did:
-        verify()
+        _ok = verify()
     if not did and not args.verify:
         print("Nothing to do. Use --init / --update-capex / --check-mu-dio / "
               "--update-hyperscaler-capex / --verify.")
+    # 退出码只在**显式** --verify 时才反映体检结果。
+    # 为什么不在 update 之后也退非零: update_data 是每日跑的,而 ASML(2026 起停止
+    # 披露季度 bookings)之类结构性缺口会让它天天红,红久了就没人看 —— 正是本次要
+    # 修的病理本身。weekly 走的是显式 `--verify`(semiconductor_pipeline.sh),
+    # 那条路径必须炸。
+    if args.verify and not _ok:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

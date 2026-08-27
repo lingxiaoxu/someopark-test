@@ -341,6 +341,146 @@ def asml_value_at(as_of_date) -> Optional[dict]:
 
 
 # ===========================================================================
+# ASML next-quarter net-sales GUIDANCE (SEC EDGAR 6-K press release)
+# ===========================================================================
+# 2026-08-27: ASML 从 2026Q1 起不再披露季度 net bookings —— 不是措辞变了,是整行
+# 从财报里删了(2026-04-15 / 2026-07-15 全篇零命中,新闻稿只剩定性的 "order intake
+# remained extremely strong")。没有任何正则能捞回一个没发布的数字。
+#
+# 为什么不换 Backlog: 实测 backlog 只在每年 1 月的 Q4 财报里出现一次,且给的是
+# **财年总值**(FY2025 €38,797mn / FY2024 €35,938mn)。换过去等于把一条季频信号
+# 降级成年频 —— 比现在更差,而且一年里有 11 个月都会被时效检测判 STALE。
+#
+# 改用**下季度净销售指引**: 每季必发、前瞻(与 bookings 同为"未来需求"而非已实现
+# 出货),取区间中值。注意它的 SEC 覆盖面比 bookings 窄 —— 见 update_asml_guidance。
+ASML_GUIDANCE_PATH = pit.INDUSTRY_DIR / "asml_quarterly_guidance.json"
+
+# 匹配跑在**去掉全部空白**的小写文本上。原因: 交易所的 HTML 会把一个单词拆进相邻
+# 的内联标签,按 `<[^>]+>` → " " 清洗后会得到 "total net sale s between"(2024-07-17
+# 就是这样),任何按词写的正则都会漏。去空白后 "totalnetsalesbetween" 稳定可匹配,
+# 而数字本身("11.0")内部无空格,不受影响。
+_ASML_GUIDANCE_PATTERNS = [
+    re.compile(r"expectsq([1-4])(\d{4})(?:total)?netsalesbetweeneur"
+               r"([0-9]+(?:\.[0-9]+)?)(?:billion)?andeur([0-9]+(?:\.[0-9]+)?)billion"),
+    re.compile(r"expectsq([1-4])(\d{4})(?:total)?netsalesofbetweeneur"
+               r"([0-9]+(?:\.[0-9]+)?)(?:billion)?andeur([0-9]+(?:\.[0-9]+)?)billion"),
+]
+
+
+def _squashed_text(raw_html: str) -> str:
+    """HTML → 去标签、去实体、**去全部空白**的小写串(专供上面的 pattern 匹配)。"""
+    t = _html.unescape(raw_html)
+    t = re.sub(r"<[^>]+>", "", t)          # 不插空格: 被标签劈开的单词要能重新粘上
+    t = t.replace("€", "eur").replace(" ", "")
+    return re.sub(r"\s+", "", t).lower()   # \s 也覆盖 unescape 出的 \xa0(&nbsp;)
+
+
+def _parse_guidance(raw_html: str) -> Optional[dict]:
+    """从一份 exhibit 里抽下季度净销售指引 → {quarter, low, high, mid} (EUR bn)。"""
+    text = _squashed_text(raw_html)
+    for pat in _ASML_GUIDANCE_PATTERNS:
+        m = pat.search(text)
+        if not m:
+            continue
+        q, yr, lo, hi = int(m.group(1)), int(m.group(2)), float(m.group(3)), float(m.group(4))
+        if not (0.5 <= lo <= hi <= 100.0):
+            continue          # 区间反了或量级离谱 → 当没解析到,绝不写进存储
+        return {"quarter": f"{yr}Q{q}", "low_eur_bn": lo, "high_eur_bn": hi,
+                "mid_eur_bn": round((lo + hi) / 2, 3)}
+    return None
+
+
+def update_asml_guidance(max_new: int = 60, full_history: bool = True) -> int:
+    """Parse ASML's next-quarter net-sales guidance from 6-K press releases.
+
+    **覆盖面的硬约束**: 指引这句话只出现在*新闻稿* exhibit 里,而 ASML 并非每季都把
+    新闻稿附进 6-K —— 2021-04 ~ 2023-10 以及 2025-10 的季度 6-K 只附了财务报表/中期
+    报告(净销售指引在公司官网发布,没进 EDGAR)。所以本序列的历史必然短于 bookings
+    的 20 期。这是数据可得性的边界,不是解析 bug;能拿到多少就记多少,并如实上报。
+    """
+    pit.ensure_dirs()
+    payload = pit.load_json(ASML_GUIDANCE_PATH, default={"meta": {}, "records": {}})
+    records = payload.setdefault("records", {})
+
+    try:
+        filings = sec.list_filings(ASML_CIK, form="6-K",
+                                   primary_doc_contains="quarterly",
+                                   include_history=full_history)
+    except Exception as e:  # noqa: BLE001
+        log.warning("ASML 6-K enumeration failed (%s); keeping %d records", e, len(records))
+        return len(records)
+
+    have = {v.get("accession") for v in records.values()}
+    parsed_new = no_release = 0
+    for f in filings:
+        if parsed_new >= max_new:
+            break
+        acc = f.get("accessionNumber")
+        if acc in have:
+            continue
+        try:
+            docs = sec.list_filing_documents(ASML_CIK, acc)
+        except Exception as e:  # noqa: BLE001
+            log.warning("ASML doc list failed %s: %s", acc, e)
+            continue
+        press = [d for d in docs
+                 if d.lower().endswith((".htm", ".html")) and "pressrelease" in d.lower()]
+        if not press:
+            no_release += 1
+            continue
+        got = None
+        for doc in press:
+            try:
+                got = _parse_guidance(sec.fetch_filing_document(ASML_CIK, acc, doc))
+            except Exception:  # noqa: BLE001
+                continue
+            if got:
+                break
+        if not got:
+            log.info("ASML %s: guidance not parsed (press release present)", f.get("filingDate"))
+            continue
+        timing, _r = sec.reaction_from_acceptance(f.get("acceptanceDateTime"))
+        # 键用**被指引的那个季度**(前瞻标的),不是发布季 —— 两条 6-K 不会指向同一季。
+        records[got["quarter"]] = {
+            **got,
+            "filing_date": f.get("filingDate"),
+            "acceptance_datetime": f.get("acceptanceDateTime"),
+            "release_timing": timing,
+            "accession": acc,
+            "reported_quarter": _reporting_quarter(f.get("filingDate")),
+        }
+        parsed_new += 1
+        log.info("ASML guidance %s: €%.2f-%.2fbn mid=%.2f (filed %s)", got["quarter"],
+                 got["low_eur_bn"], got["high_eur_bn"], got["mid_eur_bn"], f.get("filingDate"))
+
+    payload["meta"] = {"source": "sec_edgar_6k_press_release", "cik": ASML_CIK,
+                       "metric": "next_quarter_total_net_sales_guidance_midpoint",
+                       "updated_at": date.today().isoformat(), "n": len(records),
+                       "parsed_new": parsed_new, "filings_without_press_release": no_release}
+    pit.save_json(ASML_GUIDANCE_PATH, payload)
+    log.info("ASML guidance: %d total records (%d new, %d filings had no press release)",
+             len(records), parsed_new, no_release)
+    return len(records)
+
+
+def load_asml_guidance(start: Optional[str] = None, end: Optional[str] = None) -> pd.Series:
+    """PIT-correct daily ASML guidance-midpoint (EUR bn) series, ffilled from filing_date."""
+    payload = pit.load_json(ASML_GUIDANCE_PATH, default={})
+    recs = payload.get("records", {})
+    if not recs:
+        return pd.Series(dtype="float64", name="asml_guidance")
+    avail = pit.pit_series(recs, value_field="mid_eur_bn", date_field="filing_date")
+    s = pit.reindex_pit_daily(avail, start=start, end=end)
+    s.name = "asml_guidance"
+    return s
+
+
+def asml_guidance_value_at(as_of_date) -> Optional[dict]:
+    payload = pit.load_json(ASML_GUIDANCE_PATH, default={})
+    return pit.get_latest_available(payload.get("records", {}), as_of_date, "filing_date")
+
+
+# ===========================================================================
 # DRAM spot proxy (MU vs SOXX relative strength from the price store)
 # ===========================================================================
 
@@ -481,6 +621,11 @@ def pmi_value_at(as_of_date) -> Optional[dict]:
 # ===========================================================================
 
 def verify() -> bool:
+    """存在性 + **时效性** 双检(2026-08-27 加后者,理由见 aiss_pit.staleness())。
+
+    月频/季频的新鲜度基准一律取 **release_date / filing_date**(数据真正可用那天),
+    绝不取 period_month / period_end —— 后者天生落后一整期,阈值会全部作废。
+    """
     print("=" * 72)
     print("AISS INDUSTRY-LAYER SIGNALS")
     print("=" * 72)
@@ -488,34 +633,57 @@ def verify() -> bool:
     tp = pit.load_json(TSMC_PATH, default={}).get("records", {})
     if tp:
         latest = sorted(tp.values(), key=lambda r: r["period_month"])[-1]
+        tag = pit.stale_tag(latest["release_date"], "monthly")
         print(f"  tsmc_monthly : {len(tp):4} months, latest {latest['period_month']} "
-              f"YoY={latest['yoy_pct']:+.1f}% release={latest['release_date']}")
+              f"YoY={latest['yoy_pct']:+.1f}% release={latest['release_date']}{tag}")
+        if tag:
+            ok = False
     else:
         print("  tsmc_monthly : EMPTY (forward-only source; will accrue, "
               "supply_chain uses foundry price-proxy fallback)")
+    # asml_orders 是**已停更的历史序列**(ASML 2026Q1 起不再披露季度 net bookings),
+    # 保留供回测复现,但不再计入 ok —— 对一个上游已经消失的源报警毫无信息量,只会
+    # 制造告警疲劳。活的那条是下面的 asml_guidance。
     ap = pit.load_json(ASML_PATH, default={}).get("records", {})
     if ap:
         latest = sorted(ap.values(), key=lambda r: r.get("filing_date", ""))[-1]
         print(f"  asml_orders  : {len(ap):4} quarters, latest {latest['quarter']} "
-              f"€{latest['net_bookings_eur_bn']}bn filed={latest['filing_date']}")
+              f"€{latest['net_bookings_eur_bn']}bn filed={latest['filing_date']}"
+              f"  (RETIRED — 上游停止披露,历史保留)")
     else:
-        print("  asml_orders  : EMPTY (equipment edge uses price-proxy fallback)")
+        print("  asml_orders  : EMPTY (retired series)")
+    ag = pit.load_json(ASML_GUIDANCE_PATH, default={}).get("records", {})
+    if ag:
+        latest = sorted(ag.values(), key=lambda r: r.get("filing_date", ""))[-1]
+        tag = pit.stale_tag(latest["filing_date"], "quarterly")
+        print(f"  asml_guidance: {len(ag):4} quarters, latest {latest['quarter']} "
+              f"€{latest['mid_eur_bn']}bn mid filed={latest['filing_date']}{tag}")
+        if tag:
+            ok = False
+    else:
+        print("  asml_guidance: EMPTY (equipment edge uses price-proxy fallback)")
         ok = False
     dram = load_dram_proxy()
     if len(dram):
+        tag = pit.stale_tag(dram.index[-1].date(), "daily")
         print(f"  dram_proxy   : {len(dram):4} pts {dram.index[0].date()}→{dram.index[-1].date()} "
-              f"last z={dram.iloc[-1]:+.2f}")
+              f"last z={dram.iloc[-1]:+.2f}{tag}")
+        if tag:
+            ok = False
     else:
         print("  dram_proxy   : MISSING"); ok = False
     pm = pit.load_json(PMI_PATH, default={}).get("records", {})
     if pm:
         latest = sorted(pm.values(), key=lambda r: r["period_month"])[-1]
+        tag = pit.stale_tag(latest["release_date"], "monthly")
         print(f"  pmi (IPMAN)  : {len(pm):4} months, latest {latest['period_month']} "
-              f"YoY={latest['ipman_yoy']*100:+.1f}% release={latest['release_date']}")
+              f"YoY={latest['ipman_yoy']*100:+.1f}% release={latest['release_date']}{tag}")
+        if tag:
+            ok = False
     else:
         print("  pmi (IPMAN)  : EMPTY (analog_defense pmi edge contributes 0 → fallback)")
     print("=" * 72)
-    print("RESULT:", "OK" if ok else "PARTIAL (price-proxy fallbacks cover gaps)")
+    print("RESULT:", "OK" if ok else "STALE/PARTIAL (price-proxy fallbacks cover gaps)")
     return ok
 
 
@@ -525,7 +693,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="AISS industry-layer signals")
     ap.add_argument("--init", action="store_true")
     ap.add_argument("--check-tsmc", action="store_true")
-    ap.add_argument("--check-asml", action="store_true")
+    ap.add_argument("--check-asml", action="store_true",
+                    help="ASML 指引(活)+ net bookings(已停更,仅补历史)")
     ap.add_argument("--update-dram", action="store_true")
     ap.add_argument("--update-pmi", action="store_true")
     ap.add_argument("--verify", action="store_true")
@@ -536,15 +705,23 @@ def main() -> None:
     if args.init or args.check_tsmc:
         update_tsmc_monthly_revenue(); did = True
     if args.init or args.check_asml:
+        update_asml_guidance(full_history=True); did = True
+        # bookings 已停更;仍跑一次是为了在 ASML 万一恢复披露时自动接上,
+        # 解析不到只会打一行 info,不影响退出码。
         update_asml_orders(full_history=args.init); did = True
     if args.init or args.update_dram:
         update_dram_proxy(end_date=args.end); did = True
     if args.init or args.update_pmi:
         update_pmi_series(refreeze=args.init); did = True
+    _ok = True
     if args.verify or did:
-        verify()
+        _ok = verify()
     if not did and not args.verify:
         print("Nothing to do. Use --init / --check-tsmc / --check-asml / --update-dram / --update-pmi / --verify.")
+    # 退出码只在**显式** --verify 时反映体检结果 —— 理由见 company_signals.main()
+    # 同处注释(每日 update 天天红 = 告警疲劳 = 本次要修的病理本身)。
+    if args.verify and not _ok:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

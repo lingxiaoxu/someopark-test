@@ -424,14 +424,16 @@ def load_macro_data(
 
 def load_industry_data(config: Optional[dict] = None,
                        start: Optional[str] = None, end: Optional[str] = None) -> dict:
-    """Return {tsmc_yoy, asml_orders, dram_proxy} PIT daily Series."""
+    """Return {tsmc_yoy, asml_orders, asml_guidance, dram_proxy} PIT daily Series."""
     try:
         from semiconductor_strategy.data import industry_signals as ind
     except Exception:  # pragma: no cover
         import industry_signals as ind  # type: ignore
     return {
         "tsmc_yoy": ind.load_tsmc_monthly(start=start, end=end),
+        # asml_orders 到 2026-01-28 为止(上游停更),asml_guidance 是它的接续序列
         "asml_orders": ind.load_asml_orders(start=start, end=end),
+        "asml_guidance": ind.load_asml_guidance(start=start, end=end),
         "dram_proxy": ind.load_dram_proxy(start=start, end=end),
     }
 

@@ -123,19 +123,35 @@ print('CLOSED:' + str(t) + '-weekend' if t.weekday() >= 5 else 'OPEN-WEEKDAY')
     log "NYSE status: $NYSE_STATUS — proceeding"
 }
 
+# 步骤集合 = data/ 层**所有**带 --update/--check 的 updater。
+# 2026-08-27 补上 6/7 两步: `--update-pmi` 和 `--update-hyperscaler-capex` 一直存在
+# 于 CLI 却从未被这里调用,于是 pmi_series 停在 2026-04(缺 5/6/7 三期)。新增
+# updater 时**必须同步加进这个函数**,否则又是一条无人调用的死通路。
+# 每步独立失败(一个源挂了不该拖垮其余六个),但**失败要记账**并反映到返回值上:
+# 原写法末尾是 `log "…complete."`,函数因此恒返回 0,调用方的 `|| log WARN` 守卫
+# 永远不可能触发 —— 又一条"跑着但永不报警"的死通路,与本次要修的病理同源。
 run_update_data() {
     hr; log "AISS update_data — incremental refresh"; hr
-    log "1/5 prices (Polygon incremental)…"
-    PY -m $PKG.data.aiss_fetch_prices --update            "$@"
-    log "2/5 CapEx pulse (yfinance)…"
-    PY -m $PKG.data.company_signals  --update-capex        "$@"
-    log "3/5 MU DIO (SEC XBRL)…"
-    PY -m $PKG.data.company_signals  --check-mu-dio        "$@"
-    log "4/5 TSMC / ASML (TWSE + SEC, PIT)…"
-    PY -m $PKG.data.industry_signals --check-tsmc --check-asml "$@"
-    log "5/5 DRAM proxy (computed)…"
-    PY -m $PKG.data.industry_signals --update-dram         "$@"
-    log "update_data complete."
+    local rc=0 n=0
+    _step() {   # _step "<描述>" <cmd...>
+        n=$((n + 1)); local desc="$1"; shift
+        # ${} 是必须的: bash 3.2(macOS 自带)按**字节**解析变量名,紧跟其后的多字节
+        # 字符 '…' 会被吃进名字里 → `$desc…` 变成未绑定变量 desc…,set -u 直接中止。
+        log "${n}/7 ${desc}…"
+        if ! PY "$@"; then
+            rc=1; log "  WARN: $desc 失败(继续下一步;weekly --verify 会把它标 STALE)"
+        fi
+    }
+    _step "prices (Polygon incremental)"        -m $PKG.data.aiss_fetch_prices --update "$@"
+    _step "CapEx pulse (yfinance)"              -m $PKG.data.company_signals  --update-capex "$@"
+    _step "MU DIO (SEC XBRL)"                   -m $PKG.data.company_signals  --check-mu-dio "$@"
+    _step "hyperscaler actual CapEx (SEC XBRL)" -m $PKG.data.company_signals  --update-hyperscaler-capex "$@"
+    _step "TSMC / ASML (TWSE + SEC, PIT)"       -m $PKG.data.industry_signals --check-tsmc --check-asml "$@"
+    _step "DRAM proxy (computed)"               -m $PKG.data.industry_signals --update-dram "$@"
+    _step "PMI / IPMAN (FRED, PIT)"             -m $PKG.data.industry_signals --update-pmi "$@"
+    if [ "$rc" -eq 0 ]; then log "update_data complete (7/7 ok)."
+    else log "update_data complete WITH FAILURES — 见上面的 WARN 行。"; fi
+    return "$rc"
 }
 
 case "$MODE" in
@@ -152,6 +168,20 @@ case "$MODE" in
         hr; log "event-risk data refresh (non-fatal)"; hr
         PY "$REPO_ROOT/RefreshEventRiskData.py" 2>&1 | tee "$LOG_DIR/aiss_event_refresh_$TS.log" \
             || log "WARN: event-risk data refresh failed (non-fatal, continuing)"
+        # PIT 信号层刷新 (NON-FATAL, 幂等 append-only)。
+        # 2026-08-27 接线。此前 update_data 只存在于手工调用,没有任何 cron/launchd
+        # 调它 —— capex_pulse 与 dram_proxy 从 2026-06-04 冻到 08-27(57 个交易日),
+        # 而这两者 + tsmc/asml/mu_dio/pmi 一起喂 composite 的 **0.70 权重**
+        # (capex_tilt .25 + cycle_regime .10 + supply_chain .35)。实测代价: 真实
+        # capex z 在 7/31 月末翻负(-0.45),生产仍用冻结的 +0.43,而 capex_tilt =
+        # cs_zscore(z × beta) 只保留**符号** → 8/3 那次月度调仓方向做反了。
+        # 与 macro self-heal (AISSdailySignal._load_macro_from_store) 同模式:
+        # 补一次、失败降级、**绝不阻断 signal** —— 数据旧总好过当天没信号。
+        # 不传 "$@": daily 的参数是 AISSdailySignal 的(--date/--dry-run 等),
+        # 喂给 updater 会直接 argparse 报错。
+        hr; log "PIT signal data refresh (non-fatal)"; hr
+        run_update_data 2>&1 | tee "$LOG_DIR/aiss_update_data_$TS.log" \
+            || log "WARN: PIT data refresh failed (non-fatal, signal proceeds on existing data)"
         # AISSdailySignal refreshes its own price store (incremental, before marking)
         # so positions mark to today's close regardless of how it's invoked.
         hr; log "AISS daily signal"; hr
@@ -224,14 +254,55 @@ print('inventory as_of:', d.get('as_of')); print('holdings:', d.get('holdings'))
         PY -m $PKG.data.aiss_fetch_prices --update 2>&1 | tee -a "$WK_LOG" \
           || log "  WARN: weekly price refresh failed (non-fatal, verify will report)"
         log "1/4 data + PIT health checks (prices / company / industry coverage)…"
-        PY -m $PKG.data.aiss_fetch_prices --verify 2>&1 | tee -a "$WK_LOG" || true
-        PY -m $PKG.data.company_signals  --verify 2>&1 | tee -a "$WK_LOG" || true
-        PY -m $PKG.data.industry_signals --verify 2>&1 | tee -a "$WK_LOG" || true
+        # 2026-08-27: 原本三行都是 `|| true`,把体检结果整个吞掉 —— 加上 verify()
+        # 当时只查"有没有"不查"新不新",于是 capex_pulse 冻死 57 个交易日期间,
+        # weekly 日志白纸黑字打着 `→2026-06-04` 和 `RESULT: OK`,一次没报警。
+        # 现在 verify 会在过期时退非零,这里把它汇总成一条**显式的 FAILED 横幅**。
+        # 仍不 `exit 1`:weekly 后面还有 review + dry-run,数据旧不该让它们不跑;
+        # 要的是"看日志的人一眼看见",不是让整个 weekly 崩掉。
+        #
+        # 措辞里的 "FAILED" 是**必须**的,不是修辞: 跑 weekly 的是 openclaw cron
+        # (aiss-weekly, 周日 02:00 ET),它的 runbook 判"干净成功"的条件是
+        # 「…and there is no clear ERROR / FAILED / traceback」。原来写 "PIT DATA
+        # STALE" —— STALE 不在那串关键词里,于是脚本喊得再响,Telegram 那头照报
+        # success。这是同一病理的第四层: 数据没人更新 → 体检看不出新旧 → 体检结果
+        # 被 `|| true` 吞掉 → **看护人的判据认不出这个词**。
+        VERIFY_OUT="/tmp/aiss_weekly_verify_$TS.txt"   # 收尾横幅要靠它列出具体是哪几条
+        PIT_STALE=0
+        PY -m $PKG.data.aiss_fetch_prices --verify 2>&1 | tee -a "$WK_LOG" "$VERIFY_OUT" || PIT_STALE=1
+        PY -m $PKG.data.company_signals  --verify 2>&1 | tee -a "$WK_LOG" "$VERIFY_OUT" || PIT_STALE=1
+        PY -m $PKG.data.industry_signals --verify 2>&1 | tee -a "$WK_LOG" "$VERIFY_OUT" || PIT_STALE=1
+        if [ "$PIT_STALE" -ne 0 ]; then
+            hr | tee -a "$WK_LOG"
+            log "!!! PIT DATA HEALTH FAILED — 上面标了 ← STALE 的序列已过期。它们喂 composite" | tee -a "$WK_LOG"
+            log "!!! 的 0.70 权重(capex_tilt .25 + cycle_regime .10 + supply_chain .35)。" | tee -a "$WK_LOG"
+            log "!!! 先跑: bash $SELF update_data   再查上游数据源是否还在发布。" | tee -a "$WK_LOG"
+            hr | tee -a "$WK_LOG"
+        fi
         log "2/4 weekly review (multi-horizon + param drift + regime trend + P0-cache health)…"
         PY -m $PKG.weekly_review "$@" 2>&1 | tee -a "$WK_LOG" \
           || log "  WARN: weekly_review failed — continuing with dry-run"
         log "3/4 dry-run validation (full pipeline healthy, no inventory write)…"
         PY -m $PKG.AISSdailySignal --dry-run 2>&1 | tee -a "$WK_LOG"
+        # 收尾复述 —— 位置本身就是修复的一部分。上面那条横幅打在 1/4,而 2/4 的
+        # weekly_review(多轮回测)+ 3/4 dry-run 会往后刷成百上千行;cron runbook
+        # 的验收只 `tail -25`,横幅早被冲出视野。所以必须在**最后**再喊一次,并把
+        # 具体过期的序列名带上,让 tail 到的人不用回头翻日志。
+        if [ "${PIT_STALE:-0}" -ne 0 ]; then
+            # verify 行形如 `  capex_pulse  : … ← STALE (57交易日 > 5交易日)`;
+            # 取第一个冒号前的名字,逗号分隔(名字本身可能带空格,如 "pmi (IPMAN)")。
+            # substr 兜底: 万一某个 verify 的行没有冒号,$1 就是整行,截断免得糊屏。
+            # 抽不出来就退回一句指路,绝不假装知道是哪条。
+            STALE_LIST=$(awk -F: '
+                /← STALE/ { gsub(/^[ \t]+|[ \t]+$/, "", $1)
+                            out = out (out ? ", " : "") substr($1, 1, 40) }
+                END { print out }' "$VERIFY_OUT" 2>/dev/null)
+            hr | tee -a "$WK_LOG"
+            log "!!! PIT DATA HEALTH FAILED — 过期序列: ${STALE_LIST:-见日志中 ← STALE 标记}" | tee -a "$WK_LOG"
+            log "!!! 修复: bash $SELF update_data" | tee -a "$WK_LOG"
+            hr | tee -a "$WK_LOG"
+        fi
+        rm -f "$VERIFY_OUT"
         log "WEEKLY MAINTENANCE COMPLETE  (log: $WK_LOG)"
         ;;
 
