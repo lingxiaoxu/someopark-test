@@ -1427,6 +1427,72 @@ structure the independent per-contract prices cannot express. None of these is m
 and none may be assumed; they are the scope of #183 and are stated here as *hypotheses*, not
 as a fallback claim to soften a negative result.
 
+#### The blend is dead too, and this closes the last route that needs no new machinery (#184a, 2026-08-28)
+
+§5b-2 closed the family "remap *their* number". It did not close the family "combine *both*
+numbers", and those are different claims: a forecaster can be uniformly worse and still carry
+information the better one lacks, in which case a convex combination beats both. Nothing in
+this document had combined the two — recalibration only ever remapped one of them.
+`market_recal.py`'s own docstring asserted log-pooling "by construction cannot create alpha:
+it converges onto the market", but that is an assertion about where a *fitted* weight lands,
+not a measurement of what a *fixed* weight does.
+
+`blend_wf.py`, same 81 events / 1642 legs, same −1h PIT production replay, same event
+ordering and same ≥ 8-training-event rule as `market_recal.py`, so the baselines are
+comparable line for line. The primary is deliberately the **parameter-free** arm: the whole
+out-of-sample curve `ΔBrier(w)` over a fixed grid of `w` held constant across every event.
+A fixed weight cannot overfit, so if that curve is monotone away from `w = 0` the question is
+settled and no cleverness about *estimating* `w` can revive it. Registered before the run:
+argmin at `w = 0` is an outright rejection; the best non-zero cell needs paired
+cluster-bootstrap `P(better) ≥ 0.95`; **K = 24 looks** (11 grid points × 2 pooling families,
+plus 2 fitted arms), so a lone marginal winner would have been noise.
+
+| `w` on the model | 0.0 | 0.1 | 0.2 | 0.3 | 0.5 | 0.7 | 1.0 |
+|---|---|---|---|---|---|---|---|
+| linear pool ΔBrier | 0 | +0.00111 | +0.00283 | +0.00515 | +0.01162 | +0.02052 | +0.03842 |
+| log pool ΔBrier | 0 | +0.00067 | +0.00175 | +0.00327 | +0.00791 | +0.01593 | +0.03842 |
+
+**Monotone increasing in both families, from the first step, with no interior minimum
+anywhere.** The argmin over the full grid is `w = 0` — the preregistered kill switch — and it
+is not close: the *gentlest* cell in the study, `log` at `w = 0.1`, is already worse at
+`P(better) = 0.073`, and every cell from `linear w = 0.1` onward has a 95% CI strictly above
+zero. Event win rates fall monotonically too, 38% → 30%. There is no weight, in either
+pooling geometry, at which our model's information improves the market's price.
+
+The walk-forward fitted arm confirms it from the other side and is worth recording because it
+is what a live system would actually do: the fitted weight is **exactly zero on 77–78% of
+events**, means 0.091 (linear) / 0.111 (log), and is 0.000 at the last event — and the arm
+*still* comes out +0.00026 / +0.00015 worse than the raw market, because the 22% of events
+where it picks a non-zero weight lose more than the rest save. So the assertion in
+`market_recal.py` was right about the direction and understated the cost: the fitted blend
+does not merely converge onto the market, it converges onto the market *and pays for the
+journey*.
+
+One reading trap, recorded so the table is not misread: the `log` pool at `w = 0` prints
+ΔBrier `−0.000000` with a 55% bootstrap. That is not a finding, it is the `EPS = 1e-4` logit
+clip — at `w = 0` the log pool is the market's own price pushed inside `[1e-4, 1 − 1e-4]`, and
+on this book that rounding is worth less than 10⁻⁶ of Brier. It is the identity arm, and it is
+in the table precisely so the identity can be checked rather than assumed.
+
+**Per-series, which is where the temptation is.** Only one series has model Brier below market
+— KXU3, 0.0378 vs 0.0416, on **n = 3 events** — and the four series whose in-sample best `w`
+lands at 0.4–0.9 (KXFED, KXFEDDECISION, KXNATGASW, KXPCECORE) are all cases where model and
+market are within 1% of each other on Briers of 0.003–0.10, i.e. `w` is unidentified rather
+than large. That column is in-sample on 2–14 events and is descriptive only. §5b-2 already
+paid for the lesson that counting series is not counting money, and this is the same trap
+wearing a different hat.
+
+**What is left of #184 after this.** Route (a), blending, is closed by measurement. Route (d),
+per-series routing, is closed as a corollary — it needs a series where the model wins, and
+there is one, at n = 3. The two that survive are the two that need machinery this study does
+not yet have: (b) gating on market thinness/staleness, which needs a PIT-visible liquidity
+field that `replay_series(collect_legs=True)` does not currently emit (its legs are
+`(fair, market, outcome)` and nothing else), and (c) cross-contract ladder coherence, which is
+the only route aligned with what the DFM actually produces — a *joint* draw — rather than with
+the per-contract comparison we have now lost four different ways.
+
+Artifact: `/tmp/dfm_verify/blend_wf.py`, `blend_wf.json`.
+
 ### 5c. What the S4 build measured (2026-08-21) — and the two things that were wrong
 
 Built end to end on KXJOBLESSCLAIMS: 8 DFM paths × 12 weekly events = **96/96 synthetic
