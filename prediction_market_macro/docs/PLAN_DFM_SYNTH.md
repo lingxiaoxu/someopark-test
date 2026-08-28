@@ -3315,6 +3315,60 @@ exists.
 Registration: `PREREGISTER.md` §PR-19 (Stage 1, NOT ADOPTED). Artifacts:
 `/tmp/dfm_verify/pr19_joint_weekly.py` (+ `.json`, `.log`).
 
+### 5d-3. Rank pairing measured and killed before it was registered (#214, 2026-08-28)
+
+§5d-2's "next architecture" — keep the narrow generators bit-identical, couple after the draw
+by rank-reordering which path of A pairs with which path of B — was probed before anyone wrote
+a registration for it (`xcouple_probe.py`: both weekly panels fitted on production's own
+`fit_local(k=120)` path, 256 printed-increment draws each, Iman–Conover pairing on 13-week
+totals targeting the strongest bridge). **It fails on the two dimensions that carry the money,
+and the probe is recorded here so it is not retried.**
+
+What worked, first: at 256 draws the *summary-level* transfer is faithful with one degree of
+freedom — paired on `rbob` (target −0.218 on the weekly clock), the achieved 13-week-total
+correlations were `rbob` −0.202, `wti` −0.168 (target −0.167), `gas_retail` −0.124 (−0.111),
+riding the energy panel's internal structure. `natgas` sign-flips (+0.171 vs −0.033): one
+permutation cannot fix a 4-target profile the internal structure disagrees with. The identity
+check held (uncoupled cross-corr ≈ 0).
+
+The two kills:
+
+1. **The coupling never reaches the weeks that trade.** Whole-path pairing carries totals, not
+   weeks: contemporaneous weekly-increment correlation after coupling is +0.002…+0.023 against
+   targets of −0.11…−0.22 — dilution is arithmetically ~r/H and measured as total. On the
+   settlement-relevant object (cumulative *levels*), transfer is back-loaded ≈ r·w/H: at w=13
+   it reaches the targets (−0.200/−0.173/−0.123), at w=1–6 it is zero to wrong-signed. Weekly
+   markets settle every week, mostly at the front. The architecture delivers the correlation
+   where no event is listed and none where they all are.
+2. **At production granularity the law itself attenuates.** With `n_paths = 8`, the best
+   deterministic rank template (Spearman −0.214 vs target −0.218) realizes a product-moment
+   correlation of **mean −0.057, sd 0.210** across fresh 8-draw pairs — a quarter of the
+   target, drowned by its own noise. This is not estimator noise the selector could average
+   away; it is what the coupled sample's law actually is at n=8.
+
+Also measured and worth its own line: **the weekly-clock bridge targets are −0.03…−0.22**
+(n=866 common weeks), NOT §5d's headline −0.52…−0.56 — those live on the monthly clock, where
+aggregation averages out idiosyncratic weekly noise. Any future registration must say which
+clock its target lives on, or it will look 2.5× better or worse than it is.
+
+**The surviving candidate (unregistered, designed, not yet probed): couple the driving noise,
+not the finished paths.** Both reverse SDEs run in macro's own `_reverse` copy; the state `x`
+lives in output coordinates, so "week w of claims" and "week w × `rbob` of energy" are
+identifiable noise coordinates. Give `rbob`'s per-step (and base) noise at week w a correlated
+component with claims' week-w noise — ONE coupled column, exactly §5d-2's one degree of
+freedom — and each panel's *marginal* law is untouched by construction (each panel still sees
+jointly-iid standard normal noise; the correlation exists only across panels, which neither
+marginal can observe). Contemporaneous transfer is structural rather than back-loaded, and it
+is in the draw, so n=8 carries the coupled law rather than a rank approximation of it. Two
+things must be measured before registering: how the `start="marginal"` correction `base @ R.T`
+smears week-w coupling across weeks (R mixes coordinates), and the ρ → achieved-correlation
+map (the score drift transforms noise correlation nonlinearly; ρ needs a 1-D calibration per
+bridge). Fits cost 5s and draws seconds, so the calibration is cheap. Probe next; register
+only what the probe survives.
+
+Artifacts: `/tmp/dfm_verify/xcouple_probe.py` (+ `.json`, `.log`), `xcouple_paths.npz`,
+`xcouple_levels.json`.
+
 ## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
 
 #184b measured a denominator and stopped there on purpose: of **8360** settled legs across the
