@@ -2097,6 +2097,20 @@ mispredicts **53 of 2171** complete weeks (2.44%) — **33 of them Good Friday**
 close that is not a federal holiday, the rest Saturday-observed federal holidays and the 1994
 national day of mourning. A federal calendar structurally cannot describe H.15.
 
+**And the obvious repair was tried and does not work — recorded so it is not retried blindly.**
+The attribution above suggests a fix: H.15 quotes *market* yields, so build the bond-market
+calendar instead — federal holidays with the Saturday→Friday observance removed (the government
+observes the Friday; the bond market does not close) plus Good Friday. That candidate does help,
+and not enough: mismatches fall **53 → 29 of 2171 weeks (2.44% → 1.34%)**, which is nowhere near
+the `1.0000` that conditions 3 and 5 require, and the residue is spread across every decade
+**including two weeks in 2026**, so the recency fence (condition 4) fails as well. The rule is
+also internally inconsistent — Good Friday 1996-04-05 has five prints, so even "the market is
+shut on Good Friday" is not reliably true of this series. The correct response is **not** to relax
+condition 5 to accept 98.7%: a grid you cannot guarantee is strictly worse than no grid, because
+writing values onto a *wrong* grid is precisely the defect PR-17 exists to remove. `DGS2`/`DGS10`
+therefore keep the scalar, and the weekly panels still have no sub-week expander. This stays an
+open, measured defect rather than a solved one.
+
 **Truncation is not a hole, and conflating them would have made the rule flicker.** A panel's
 first or last period is short because the source's coverage window clips it, not because a print
 was skipped — that says nothing about whether a future *complete* period will print `n_cal` times,
