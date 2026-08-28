@@ -1179,6 +1179,13 @@ there is no honest number to compare an improvement to. §4e-E has now measured 
 `fit` path, and they moved by 0.064–0.226, so this sequencing was load-bearing rather than
 procedural.
 
+> **LANDED, AND NOT ADOPTED — see §4e-L (PR-15, 2026-08-28, same day).** The end-to-end run
+> demanded by this paragraph was registered, run and harvested. Everything in this section's
+> z-space table stands unchanged; the inference from it to the product does not. `cover80`'s
+> mean `|gap − 0.80|` fell 12.9% against a registered bar of 30%, on 2 of 4 panels against a bar
+> of 3, so `GenConfig.whiten` stays `False` and nothing downstream moves. The paragraph above
+> asked for exactly the right test, and got the answer it warned was possible.
+
 **Landing shape when it does land.** A whiten/unwhiten wrapper inside
 `research/synth/generator.py` — `Z @ U / sqrt(λ)` in, `diag(sqrt(λ)) @ U.T` back out, with the
 round-trip asserted per fit as `fixB_rotate.py` already asserts it. `dfm/` is not touched; the
@@ -1926,8 +1933,129 @@ landing a lattice change underneath it would void its control — which is preci
 sequencing PR-16 was careful about and stated. Registered as **PR-17**, to land after PR-15
 is harvested. #203 remains open until it does, but no longer for want of a statistic.
 
+> **PR-15 was harvested the same day (§4e-L, NOT ADOPTED), so PR-17 is unblocked.** The
+> sequencing did its job: PR-15's two passes both ran on the old lattice, its control held
+> bit-identically, and its numbers are labelled pre-PR-16 accordingly.
+
 Artifacts: `/tmp/dfm_verify/lattice_conditional.py` (+ `.json`), `level_step_audit.py`
 (+ `.json`).
+
+### 4e-L. §4e-D's whitening, end-to-end — NOT ADOPTED (PR-15, #207, 2026-08-28)
+
+§4e-D closed with a section headed *"What this is not, yet"*: a z-space result on `Generator.fit`
+with a zero condition vector, owed the same end-to-end treatment §4e-B's start fix got before it
+could be quoted as a product improvement. This is that run, and it is the **landing section for
+PR-15**. The verdict is **NOT ADOPTED**. `GenConfig.whiten` stays `False`, `worlds.py` and
+`param_argmin` are bit-unchanged, and the three live-trading clauses (i)(ii)(iii) registered
+against adoption are therefore all untriggered.
+
+> **The absolute numbers below are on the OLD (pre-PR-16) lattice**, as PR-16's *"与 PR-15 的
+> 先后"* row requires them to be labelled. Both passes built their `pdata` before §4e-I landed,
+> so `labor_monthly.claims` is on the 10-grid and `gas_retail` has no grid in either arm. This
+> does **not** touch PR-15's criteria — every one of them is `whi` against `raw` inside one run,
+> two arms sharing one lattice, and the grid is exactly symmetric between them — but the levels
+> are not comparable to any run made after PR-16.
+
+**How it was run.** Four panels × 3 folds × `holdout=0.3` × `fit_local(k=120)` ×
+`n_samples=256` × `knn_k=40` × `printed=True` × `start='marginal'` × `seed=7`, the two passes
+identical in every parameter except `cfg.whiten`. `k_local = 120` is inherited from §4e-E and was
+not chosen here. The whitening map itself has **zero free parameters** — `mu`, `U`, `λ` all come
+from the fit's own rows — which is the whole reason it was worth an end-to-end run at all.
+
+**CONTROL first, because the run was VOID for twenty minutes on my own arithmetic.** The
+registered control is that every number of the `boot` and `knn` arms is *逐位相同* across the two
+passes. The first harvest reported **FAIL — 12 differing numbers**, every one of them `raw=nan`
+vs `whi=nan`: the cross-series `dep` fields, undefined on both passes for the same structural
+reason. `a != b` is not a bit-identity test — NaN compares unequal to itself. Two NaNs at the
+same path *are* the same bits, and the criterion says nothing about which values are allowed to
+be NaN. Re-comparing on `struct.pack("<d", …)` gives **PASS**. This is the comparator being
+corrected to the one that was registered, not a retry: no threshold moves, and a genuine
+difference at any of those paths still fails.
+
+**PRIMARY-1 (calibration) fails both of its legs.**
+
+| panel | `cover80` raw | `cover80` whi | `g` raw | `g` whi | `g` smaller? |
+|---|---|---|---|---|---|
+| claims_weekly | 0.8638 | 0.7319 | 0.0638 | 0.0681 | **NO** |
+| inflation_monthly | 0.6730 | 0.6941 | 0.1270 | **0.1059** | yes |
+| energy_weekly | 0.7409 | 0.7312 | 0.0591 | 0.0688 | **NO** |
+| labor_monthly | 0.7623 | 0.8077 | 0.0377 | **0.0077** | yes |
+| **mean `g`** | | | **0.0719** | **0.0626** | **−12.9%** |
+
+`2/4` panels against a bar of `≥3`, and a `12.9%` relative drop against a bar of `≥30%`. Either
+leg alone would have sunk it.
+
+**The direction is right on three panels and the failure is overshoot, and that observation is
+recorded rather than acted on.** Read as a movement rather than a distance: `claims` was
+**over**-covering at 0.864 and whitening pushed it down by 0.132 when 0.064 was wanted —
+past the target to 0.732, an almost symmetric overshoot; `labor` 0.762 → 0.808 and `inflation`
+0.673 → 0.694 both moved *toward* 0.80 from below. Only `energy` (0.741 → 0.731) moved the wrong
+way, and by 0.010. So the mechanism §4e-D identified does appear to reach the end of the pipe —
+it is the *magnitude* that is uncalibrated. The obvious next move from that sentence is a partial
+rotation `Z U / λ^(p/2)` with `p` swept, and PR-15's registration **forbids exactly that**, by
+name, in the same line that forbids threshold, panel and `k_local` retries. §4e-D also declined
+to run it, for the same reason, before any of these numbers existed. It stays declined.
+
+**The month/week split is likewise recorded and not used to slice panels.** The two panels that
+improved are the two monthly ones; the two that worsened are the two weekly ones. With `n = 4`
+that is not a frequency axis, it is a coin. It may be carried into a *future* registration as an
+ex-ante hypothesis; it may not be used to pick a subset out of this one.
+
+**PRIMARY-2 (no buying coverage with width) passes with room.** `crps_ratio` is `dfm`/`boot`,
+so "worse" is a rise:
+
+| panel | `crps_ratio` raw | `crps_ratio` whi | Δ | ≤ +0.02? |
+|---|---|---|---|---|
+| claims_weekly | 0.9848 | 0.9863 | +0.0015 | yes |
+| inflation_monthly | 0.9259 | 0.9323 | +0.0064 | yes |
+| energy_weekly | 0.9520 | **0.9373** | **−0.0147** | yes |
+| labor_monthly | 0.9258 | 0.9384 | +0.0126 | yes |
+
+Worst worsening `+0.0126`. Whitening did not buy anything by widening — which is the specific
+failure mode `rot` exhibited in §4e-D — it simply did not buy enough.
+
+**VETO untriggered, and by an exact zero.** `dup_frac` for the `dfm` arm is `0.000000` in both
+passes on all four panels, so the delta is `+0.000000`, not merely under `+0.02`; the `boot`
+arm's `mem` is exactly `0.000000` everywhere. Both primaries were required to hold
+simultaneously; PRIMARY-1 does not, so the verdict is settled without the veto mattering.
+
+**Two things moved that were deliberately not registered, and are therefore reported ungraded.**
+The `dfm` arm's `mem` rose on all four panels (0.862 → 0.904, 0.940 → 0.990, 0.927 → 0.955,
+0.942 → 0.983) — not gradeable, because #208 retracted `mem`'s calibration and §4e-F showed an
+honest Gaussian reproduces production's verdicts on 4/4 panels, so there is no band to read these
+against. The separability AUC of the `dfm` arm went 0.473 → 0.490, 0.780 → 0.806, 0.834 → 0.797,
+0.793 → 0.791: two up, two down, no panel moved by 0.04. Neither was a criterion and neither is
+being retro-fitted into one.
+
+**The side result points the other way, and is explicitly refused as a rescue.** Reading `acf1`
+off the *same pair of runs* under #205's reachable-target convention, the `dfm` arm's mean
+`|gap|` over 12 columns goes **0.0618 → 0.0340 (−44.9%)**, 7/12 columns improved, signed mean
+−0.0311 → −0.0133. Persistence was systematically **too low** and whitening restores most of it:
+it moves `dfm` from worse than `knn` (0.0269) to better, still ~5× the `boot` floor (0.0070). The
+diagnostic carries its own control — `boot` and `knn` `acf1` unmoved, zero drift — and it passed.
+That is a real reading, and it changes nothing here. `acf1` is not one of PR-15's criteria, and
+a result discovered *after* the run cannot be promoted into the criteria of the run that
+discovered it. **If whitening is to be adopted for persistence it needs its own registration,
+with its own K, effective forward only, and it may not be back-applied to this run.** This is the
+same discipline §4e-H used when it recorded a finding and deliberately did not apply it.
+
+**What this costs §4e-D, and what it does not.** §4e-D's z-space table is untouched: `tail` into
+[0.80, 1.25] on 4/4, `var/tr` ≥ 0.929 on 4/4, `top8` 0.663–0.903 → 0.901–0.971, the `rot`
+falsifier collapsing to the `1e-4` `sigma0` floor exactly as predicted. All of that is still the
+correct account of what happens in z-space. What died is the inference from it to the product,
+and it died in the manner §4e-D itself flagged as the reason to demand this run: **this is the
+second consecutive z-space fix that did not survive to the end of the pipe.** The registration
+derived its 30% bar from that precedent — a fix that *really* landed should be "four to eight
+times" §4e-B's 3.6–7.6% start-fix residue. Whitening came in at 12.9%, roughly 1.7–3.6× the
+start fix. Bigger than the last one, and still less than half the bar. The pattern worth carrying
+forward is not "whitening is useless"; it is that the quantiser plus the local fit absorb most of
+a z-space dispersion correction, and any future z-space result should be priced accordingly
+**before** it is registered.
+
+Artifacts: `/tmp/dfm_verify/pr15_whiten.py` (the two-pass runner), `pr15_{panel}.json` ×4,
+`pr15_harvest.py` (+ `pr15_harvest.json` — criteria quoted verbatim from the registration,
+no threshold of its own), `pr15_acf1.py` (+ `.json`, the ungraded diagnostic).
+Registration and 结论: `docs/PREREGISTER.md`, PR-15 row.
 
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
