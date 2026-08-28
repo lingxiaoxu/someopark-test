@@ -2361,6 +2361,36 @@ fixed-point one, which the probes have already shown to overfit. Condition-DEPEN
 flexibility the discipline says needs its own registration and an out-of-sample kill switch
 before anyone fits it.
 
+### 4e-Q. PR-21 judged: both primaries pass for the first time, one cover clause kills it (#205, 2026-08-28)
+
+§4e-P's per-column AR(1) noise went through the full registered judgment (`PREREGISTER.md`
+§PR-21: phi frozen from the xar2 diagonal solve, PR-18's criteria verbatim, four panels,
+two arms in one process each). Controls all clean: `boot`/`knn` moved 0 columns, and the
+`raw` arm reproduced `pr17_post` bit for bit on all four panels.
+
+**A PASS** — mean |acf1 gap| 0.0618 → **0.0223 (−64.0%)**, improved **10 of 12** (whitening
+managed −44.9% and 7/12). **B PASS** — 0.0223 against same-run `knn`'s 0.0269: the first
+candidate in #205's history to beat the structure-free resampler on persistence. **(b)
+TRIPPED on one panel**: `claims_weekly`'s `cover80` moved 0.8638 → 0.8841, |gap| 0.0638 →
+0.0841 — away from 0.80 with zero slack allowed, so **NOT ADOPTED**, while its `crps`
+(+0.0110) stayed inside the bar and the other three panels *improved* on both `crps`
+(−0.0041/−0.0038/−0.0018) and cover distance. The tripping panel is exactly the one where
+the mechanism must worsen calibration: claims was already over-covered at 0.8638, and
+positive phi makes draws more persistent and wider-spread, pushing over-coverage further.
+
+Two observations recorded for whoever writes the next registration, not as a complaint
+about this one: (i) the zero-slack cover clause — inherited verbatim from PR-17's text,
+where cover was sub-resolution and the clause was free — has now killed two changes whose
+every other criterion passed (PR-19's B2 by 0.0018, this by 0.0203 on one panel of four);
+(ii) the single-panel failure has a single-panel fix that needs no bar-loosening:
+`claims_weekly` at phi = 0 makes its ar arm bit-identical to raw, so (b) cannot fire there
+by construction. That is PR-22 — registered with a FRESH seed precisely because on seed 7
+its numbers are derivable bit-for-bit from this run (A −63.3%, 9/12; B 0.0227 ≤ 0.0269),
+and a judgment whose numbers are already visible is not a judgment. K = 3 on the acf1
+criterion, said out loud so the reader discounts accordingly.
+
+Artifacts: `/tmp/dfm_verify/pr21_persist.py`, `pr21_verdict.{py,json}`, `pr21_<panel>.{json,log}` ×4.
+
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
 > This section is the *survey*, and its counts are as of the survey. KXGDP was built the same
