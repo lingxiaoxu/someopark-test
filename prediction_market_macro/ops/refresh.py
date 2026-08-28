@@ -235,6 +235,11 @@ def _run(weekly: bool = False) -> dict:
         from prediction_market_macro.research.synth import regen as synth_regen
         step("weekly_synth_regen",
              lambda: json.dumps(synth_regen.run(conn, s, log=None))[:600])
+        # The coupled weekly pass (#214, PR-20). Separate from `run` on purpose: `run`'s
+        # loop is monthly-only by construction, and the weekly series need ONE joint draw
+        # shared across all three, which no per-series loop can produce.
+        step("weekly_synth_regen_coupled",
+             lambda: json.dumps(synth_regen.run_weekly(conn, s, log=None))[:600])
         # The switch position, stated out loud (§7c): "no lambda row" and "a lambda row
         # that is zero" refuse with the same line in the daily log, which is how a missing
         # writer went unnoticed for a full build cycle. The weekly log therefore records
