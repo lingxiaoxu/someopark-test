@@ -2261,6 +2261,69 @@ it — which was the reason it was filed as unexplained in the first place.
 
 Artifacts: `/tmp/dfm_verify/boot_auc_regroup.py` (+ `.json`), building on `boot_auc_anomaly.py`.
 
+### 4e-O. Whitening judged prospectively as a persistence fix — NOT ADOPTED (PR-18, #205, 2026-08-28)
+
+PR-15 killed `GenConfig.whiten = True` on the three criteria it had registered (`cover80` /
+`crps_ratio` / `mem`). `acf1` was not among them; `pr15_acf1.py` was read *after* that verdict and
+says so in its own header. Under the discipline that forbids reviving a change by swapping in a
+criterion chosen after seeing the data, that reading could only generate a hypothesis. PR-18
+registered the hypothesis with its thresholds fixed in advance, and this is how it came out.
+
+**Controls first, because a failed control voids the run.** Falsifier (c) — `boot`/`knn` must be
+bit-unchanged between the two arms, since neither passes through the generator's latent space —
+held on all four panels: **0 columns moved**. The extra cross-run control also held: this run's
+`whiten=False` arm is **bit-identical to PR-17's post-landing run** on all four panels (per-arm
+diff dicts all empty), so `validate` is seed-deterministic across processes and PR-17's falsifier
+(b) verdict does not have to be re-judged.
+
+**Primary A — FAIL, on the second half.** Mean |acf1 gap| for the `dfm` arm went
+**0.061832 → 0.034043, a 44.94% relative drop** — comfortably past the registered 25% bar. But A
+required *both* halves, and the improved-column count came in at **7 of 12**, one short of the
+registered 8. The five that got worse: `cpi_core` (0.0791→0.0795), `pce_core` (0.0503→0.0995),
+`wti` (0.0087→0.0167), `natgas` (0.0103→0.0104), `payems` (0.0695→0.0780). The mean improves
+because a few columns improve enormously — `cpi` 0.0697→0.0033, `gas_retail` 0.0998→0.0168 on
+`inflation_monthly` and 0.1678→0.0621 on `energy_weekly` — not because the defect is uniformly
+reduced. That is exactly the asymmetry the two-part criterion was written to catch.
+
+**Primary B — FAIL, as the registration predicted it would.** The whitened `dfm` arm sits at
+**0.0340 against `knn`'s 0.0269**, and per column `knn` is closer to the real `acf1` on **7 of 12**.
+B was written from a prior, not from an observation: `knn` learns no structure at all, so losing
+persistence to it means the fix is not yet a fix. PR-18 registered in advance that PR-15's numbers
+already failed B and that reproducing the relationship would make PR-18 NOT ADOPTED. It reproduced.
+
+**Falsifier (b) — TRIPPED, on `cover80`, on two panels.** `crps_ratio` was never in danger
+(+0.0015, +0.0064, −0.0147, +0.0126 against a +0.02 bar). Coverage was: `claims_weekly`
+0.8638 → 0.7319 (|gap| 0.0638 → 0.0681) and `energy_weekly` 0.7409 → 0.7312 (0.0591 → 0.0688).
+The `claims_weekly` move deserves to be read as more than its |gap| suggests — it crosses from
+over-coverage to under-coverage, a 0.13 move that the distance metric happens to net down to
+0.0043. Persistence was bought with calibration, which is what (b) exists to detect.
+
+**Verdict: NOT ADOPTED** (A fail, B fail, (b) tripped, (c) clean). K = 2 on `whiten`, K = 1 on the
+`acf1` criterion, reported as registered. PR-15's NOT ADOPTED is unchanged — none of its three
+criteria were re-judged here. **#205 stays open and needs a remedy that is not this one.**
+
+**One unregistered finding, reported because it is load-bearing for how this run should be read.**
+Comparing this run's `whiten=False` arm to PR-15's old-lattice diagnostic column by column,
+**10 of 12 are bit-identical**, and the only two that moved are
+`inflation_monthly.gas_retail` (raw −1.68e-06, whi −1.35e-07) and `labor_monthly.claims`
+(raw −2.08e-05, whi −1.74e-05) — precisely the two of PR-17's six touched column-instances that
+live in these four panels, the other four being in `core_monthly`, which `validate` does not score.
+Two consequences, and they point in opposite directions:
+
+- *In PR-17's favour.* This is a fourth independent confirmation of §4e-M's 影响面 statement,
+  arrived at from a different direction, and it shows the new print grid perturbs `acf1` at the
+  1e-5 level — the grid changed the data without changing its persistence structure, which is what
+  a correct grid should do.
+- *Against over-reading PR-18.* The registration's first stated reason for demanding a fresh run
+  was that the new lattice made PR-15's absolute numbers incomparable. Measured, that premise is
+  **false**: `acf1` is lattice-invariant here to ~1e-5, so this run reproduces PR-15's numbers
+  rather than supplying independent data. What PR-18 actually bought is the *second* reason —
+  thresholds fixed before the numbers were looked at — and that is the only weight its verdict
+  should carry. It should not be described as replication on new data, because it is not.
+
+Artifacts: `/tmp/dfm_verify/pr18_persist.py`, `pr18_verdict.py` (+ `pr18_verdict.json`),
+`pr18_<panel>.json` and `.log` ×4.
+
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
 > This section is the *survey*, and its counts are as of the survey. KXGDP was built the same
