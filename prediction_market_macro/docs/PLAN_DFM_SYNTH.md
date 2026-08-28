@@ -641,7 +641,9 @@ worlds on disk are clean and production λ was never at risk.
 What *is* corrupted is the validation **report**, and that is a smaller object and a bigger
 problem: it is where every number in this section comes from. So the rule stands with the
 right referent — **no `excess_over_boot` in §4e may be quoted until the reports are
-re-measured** — and the re-measurement is §4e-C below.
+re-measured** — and the re-measurement is §4e-E below. (An earlier draft of this line pointed
+at §4e-C, which is the persistence section and one of the things the re-measurement *revises*,
+not the place it lives.)
 
 Scope of what still stands: `local`/`global` rows are generated and never exactly equal each
 other or a real row (§4d measured 0 duplicates on all four panels), so the raw-vs-printed moves
@@ -1037,10 +1039,20 @@ making the sample *more* separable. The remaining honest question is not how to 
 utility question (§6), not a generative one. #181C is closed as **premise corrected**; the
 utility question is tracked in #183.
 
+> **CORRECTED BY §4e-E (2026-08-28).** The paragraph above is left standing because the
+> reasoning above *it* — the unreachable held-out `acf1` target, and `acf1` being mostly a
+> second-moment quantity — is unaffected and still load-bearing. Its **verdict sentence is
+> not.** Every excess in that table was read against a `floor_boot` inflated by duplicate rows
+> (#209). Re-measured on de-duplicated pools, `claims_weekly`'s floor is 0.486 rather than
+> 0.611, the −0.048 becomes **+0.100**, and it is the *worst* panel rather than the only good
+> one. The DFM is behind real block-bootstrap on **all four** panels, by +0.029 to +0.144.
+> The question "does a gap this size matter to the consumer" survives; the gap is two to three
+> times larger than stated here and points the other way on one panel. #205 is reopened.
+
 Artifacts: `/tmp/dfm_verify/auc1_probe.py`, `underdisp.py`, `lattice.py`, `lattice_v2.py`,
 `cov_table.py`, `fut_grid_probe.py`, `fixA_pools.py`, `fixA_score.py`, `fixB_euler.py`,
 `fixB_diag.py`, `fixB_fix.py`, `fixB_m2.py`, `fixB_ab.py`, `fixC_recolour.py`,
-`fixC_plain.py`, `fixC_split.py`, `fixB_rotate.py`.
+`fixC_plain.py`, `fixC_split.py`, `fixB_rotate.py`, `sep_redo.py`.
 
 ### D. The residual of B, fixed — whiten the basis instead of widening it (#207, 2026-08-28)
 
@@ -1142,8 +1154,10 @@ start fix looked decisive in z-space (`var/train` 0.76 → 0.94) and closed only
 coverage gap end-to-end. Before any of this can be quoted as a product improvement it needs the
 same treatment the start fix got — `Generator.validate` end-to-end, on `fit_local` rather than
 `fit`, with `boot`/`knn` asserted bit-identical across the passes, against the **de-duplicated**
-floor #209 established. That is sequenced after §4e-C, because until the floors are re-measured
-there is no honest number to compare an improvement to.
+floor #209 established. That is sequenced after §4e-E, because until the floors are re-measured
+there is no honest number to compare an improvement to. §4e-E has now measured them on the
+`fit` path, and they moved by 0.064–0.226, so this sequencing was load-bearing rather than
+procedural.
 
 **Landing shape when it does land.** A whiten/unwhiten wrapper inside
 `research/synth/generator.py` — `Z @ U / sqrt(λ)` in, `diag(sqrt(λ)) @ U.T` back out, with the
@@ -1151,6 +1165,105 @@ round-trip asserted per fit as `fixB_rotate.py` already asserts it. `dfm/` is no
 one-line alternative (passing a corrected `init_sigma_diag` into `train_conditional`) is not
 available because `sigma0` is derived internally, and `dfm/` is call-only. Preregistration for
 the end-to-end run is owed before it is written, per `docs/PREREGISTER.md`.
+
+### E. The floors, re-measured on de-duplicated pools — and §4e-C's headline reverses (#211, 2026-08-28)
+
+§4e-A's #209 paragraph ends with a rule and a prediction: no `excess_over_boot` in §4e may be
+quoted until the reports are re-measured, because a floor inflated by duplicate rows makes
+every excess **too negative** and has therefore been *flattering* the DFM. This is that
+re-measurement on all four panels, and the prediction was not a formality — **the sign of the
+headline flips.**
+
+**How it was run.** `/tmp/dfm_verify/sep_redo.py`: 3 folds, 30% holdout, 256 samples per arm,
+`SEED = 7`, `K_LOCAL = 120`, `KNN_K = 40`, and **never pooling across folds**, which is the
+other half of §4d's diagnosis. Each fold scores the *same* pool twice — once the way production
+reported it, once after `_unique_rows` — with the same classifier, the same split and the same
+seed, so `d auc` isolates the de-duplication and nothing else. The `boot` arm's own excess
+differences to exactly 0.000 on every fold by construction; that is the identity check and it
+holds on all twelve.
+
+| panel | fold | dup `boot` | `boot` AUC raw → dedup | DFM AUC | DFM excess raw → dedup | `knn` AUC raw → dedup |
+|---|---|---|---|---|---|---|
+| labor_monthly | 0 | 20.7% | 0.785 → **0.670** | 0.882 | +0.097 → **+0.211** | 0.887 → 0.660 |
+| | 1 | 25.5% | 0.847 → **0.737** | 0.785 | −0.062 → **+0.047** | 0.878 → 0.701 |
+| | 2 | 20.9% | 0.889 → **0.825** | 0.804 | −0.085 → **−0.021** | 0.884 → 0.792 |
+| claims_weekly | 0 | 21.3% | 0.610 → **0.486** | 0.566 | −0.044 → **+0.080** | 0.688 → 0.391 |
+| | 1 | 23.9% | 0.664 → **0.462** | 0.588 | −0.076 → **+0.127** | 0.696 → 0.394 |
+| | 2 | 24.3% | 0.713 → **0.487** | 0.580 | −0.133 → **+0.093** | 0.753 → 0.460 |
+| inflation_monthly | 0 | 20.7% | 0.810 → **0.743** | 0.675 | −0.135 → **−0.068** | 0.873 → 0.638 |
+| | 1 | 25.5% | 0.823 → **0.722** | 0.792 | −0.031 → **+0.070** | 0.825 → 0.526 |
+| | 2 | 20.9% | 0.788 → **0.670** | 0.755 | −0.033 → **+0.086** | 0.865 → 0.664 |
+| energy_weekly | 0 | 21.3% | 0.787 → **0.711** | 0.873 | +0.086 → **+0.162** | 0.834 → 0.668 |
+| | 1 | 23.9% | 0.781 → **0.639** | 0.794 | +0.013 → **+0.155** | 0.845 → 0.639 |
+| | 2 | 24.3% | 0.898 → **0.794** | 0.909 | +0.012 → **+0.115** | 0.906 → 0.792 |
+
+The DFM column has no raw/dedup pair because its `dup_frac` is **0.000 on all twelve folds** —
+the generator never emits a verbatim repeat, which is the same fact §4d measured and is why the
+whole correction lands on the baselines rather than on the arm being graded.
+
+**Mean excess per panel, raw → de-duplicated:** labor −0.017 → **+0.079**, claims −0.084 →
+**+0.100**, inflation −0.066 → **+0.029**, energy +0.037 → **+0.144**. Every panel moves the
+same direction by +0.095 to +0.184, and the count of folds where the DFM is worse than the
+block-bootstrap floor goes from **4 of 12 to 10 of 12**.
+
+**The mechanism, stated as the thing that should have been obvious.** `block_bootstrap` copies
+whole rows out of the fold's training set. Once you stop counting the same row twice, a
+block-bootstrapped real row is close to indistinguishable from a held-out real row — which is
+exactly what a *correct* null looks like, and on `claims_weekly` the floor duly collapses to
+0.462–0.487, i.e. chance. The inflated floor was never measuring "how separable is resampled
+real history"; it was measuring how easily a classifier spots a row it has already seen. That
+number was then subtracted from the DFM's AUC and the difference reported as the DFM's merit.
+
+**§4e-C's headline is a duplicate-bias artifact and it reverses.** That section closes on
+"the DFM is +0.012 to +0.066 away on three panels and **0.048 better than real block-bootstrap
+on the fourth**". The fourth panel is `claims_weekly`, and the −0.048 was read against a floor
+of 0.611 that is really 0.486. Re-measured, claims is the panel where the DFM is **worst**
+relative to its floor: +0.080 / +0.127 / +0.093, mean +0.100. The corrected statement is that
+**the DFM is behind real block-bootstrap on all four panels**, by a per-panel mean of +0.029
+to +0.144, and there is no panel where it beats resampled history. §4e-C's *reasoning* about
+`acf1` — that the held-out target is unreachable and that `acf1` is mostly a second-moment
+quantity — is untouched by this, because none of it was scored against `floor_boot`; only its
+verdict sentence was.
+
+**§4e-C's raw arm reproduces the shape it was originally read off, on the two panels where the
+comparison is meaningful.** The raw column above gives claims fold 0 at −0.044 against §4e-C's
+−0.048 and energy fold 2 at +0.012 against §4e-C's +0.012. Labor and inflation do not line up
+fold-for-fold (raw means −0.017 and −0.066 against §4e-C's +0.044 and +0.066) and that is
+expected rather than alarming: this is an independent 3-fold re-run with its own splits, not a
+replay of the production report, so only the *within-fold* raw-vs-dedup contrast is a
+controlled comparison. It is the one being claimed.
+
+**#185 is amended a second time, in the direction that costs it.** Its surviving claim was that
+C2ST floors are panel-specific and *never* 0.5. Panel-specific survives with room to spare —
+the de-duplicated floors span 0.462 to 0.825, a range of 0.36 — but "never 0.5" is now false on
+`claims_weekly`, where all three folds sit at chance. The honest version: on the single-column
+panel, block bootstrap destroys nothing a classifier can see, so its floor *is* chance; on the
+three multivariate panels it destroys real cross-column and long-range structure and the floor
+stays at 0.64–0.83. The floor is a property of what the resampler breaks in that panel, which
+is why it cannot be assumed and has to be measured every time.
+
+**One result is flagged and not explained.** Post-dedup `knn` lands at 0.391 / 0.394 / 0.460 on
+claims and 0.526 on inflation fold 1 — below chance again, in a test that never pools across
+folds and has had its duplicates removed, so neither of §4d's two deaths applies. A plausible
+mechanism is that dedup removes 30–38% of the `knn` pool and the rows it removes are the ones
+*with* near twins, leaving a surviving pool biased toward atypical rows; but that is a story,
+not a measurement, and it goes in the same drawer as §4e-A's unexplained 0.235/0.248. Both stay
+open and neither is used to support any conclusion here.
+
+**What this does and does not disturb elsewhere.** §4e-D's whitening result is a z-space
+variance/tail measurement on `Generator.fit`, not a C2ST, so none of its numbers move — but
+its end-to-end adoption run must be scored against *these* floors, which is what "sequenced
+after the re-measurement" meant. #205 (defect C) is reopened by this: its closure rested on the
+inflated floors. #208 is untouched; `mem` is scored against #206's null band, not against
+`boot`. The stored worlds in `data/synth/` remain unaffected for the reason §4e-A gives —
+`_separability` has no production caller — so this is a correction to the **report**, not to
+the product.
+
+The remaining leg is the per-fold local pass (`SEP_LOCAL=1`, `k_local = 120` on `fit_local`
+rather than `fit`), which is the arm production actually generates from. It is running; until
+it lands, every number above is the `fit`-path arm and is labelled as such.
+
+Artifacts: `/tmp/dfm_verify/sep_redo.py`, `sep_redo.json`, `sep_redo.log`.
 
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
