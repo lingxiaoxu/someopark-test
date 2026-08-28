@@ -471,6 +471,172 @@ by adding noise, so the *auxiliary* rows a world writes are off-grid even when t
 column is on it. A model reading those rows sees prints the real series never made. Tracked
 separately.
 
+#### What the fix actually bought, on all four panels — and the rule that predicts it
+
+`fixA_pools.py` regenerates every arm twice, raw and printed, and `fixA_score.py` scores both.
+The move is the printed AUC minus the raw AUC on the `local` arm; negative is the fix working.
+
+| panel | column grids | real on-grid (`boot`) | RAW | PRT | move | move (global) |
+|---|---|---|---|---|---|---|
+| labor_monthly | payems 1, claims 10, unrate 0.1 | 100% / 0.5% / 100% | 1.000 | 0.775 | **−0.224** | −0.251 |
+| claims_weekly | claims 1000 | 3.4% | 0.570 | 0.491 | −0.078 | −0.076 |
+| inflation_monthly | 0.001 ×3, gas NONE | 0.4 / 0.2 / 0.0% | 0.737 | 0.727 | −0.009 | +0.016 |
+| energy_weekly | 0.001 / 0.01 / 0.001 / 0.0001 | 0.5 / 0.8 / 0.4 / 2.3% | 0.790 | 0.795 | +0.004 | +0.006 |
+
+**The hypothesis I went in with was wrong and the data says so plainly.** I predicted the move
+would scale with grid COARSENESS relative to the increment sd, so `claims_weekly` — a grid of
+1000, by far the coarsest step/sd in the table at 0.045 — was supposed to move like
+`labor_monthly`. It moved −0.078, a third as much. Recording the refutation rather than
+softening it, because the replacement is a sharper rule and I would not have found it by
+protecting the first one.
+
+**The rule that does hold, 12 of 12 columns with no exceptions, is the TRANSFORM.** Read the
+`real on-grid` column against §4e-A's transform column: every column at ~100% is `diff`, and
+every column at 0–3.4% is `dlog` or `pct100`. That is arithmetic, not a coincidence:
+
+* a `diff` column reconstructs as `L = anchor + cumsum(inc)`, so a real anchor sitting on the
+  grid plus increments that are grid multiples stays on the grid **no matter which rows the
+  increments came from** — which is why `boot` and `knn`, resampled real history, come back at
+  100% and the DFM at 0%. That is a free classifier split, and it is the whole of the
+  `labor_monthly` AUC of 1.000.
+* a `dlog`/`pct100` column reconstructs as `L = anchor × exp(cumsum(inc))`. A product of a
+  grid-spaced anchor and an exponential lands off-grid even when every increment is real, and
+  the 0.4–3.4% figures in the table are `boot` — REAL resampled history — failing its own
+  lattice test. There is nothing there for a classifier to exploit, so there is nothing for
+  quantisation to remove.
+
+So the fix's ceiling is set by the panel's transforms, not by its grids, and `labor_monthly` is
+the only panel in the current universe where a large move was ever available. `energy_weekly`'s
++0.004 and `inflation_monthly`'s +0.016 are the correct size for "no signal here" and are not
+evidence the quantisation is harmful. This also tells us where the remaining lattice work is:
+on a `dlog` column the tell would have to be *anchor-conditional* — on-grid given the anchor
+that generated the path — which the current `measure_lattice` does not test for. #203 stays
+open for that.
+
+#### §4d's remedy does not work, and the per-fold C2ST is corrupted too
+
+The raw `boot` AUCs in the Fix A run came back at 0.235–0.287, below the measured null band of
+roughly [0.43, 0.58], and were left flagged as unexplained. **They were already explained.**
+§4d "Death 2" diagnosed this exact inversion — fold concatenation puts a row held out in fold 1
+into folds 2–5's training set, where the bootstrap draws it verbatim, so the same path carries
+label 1 once and label 0 *k* times. `boot_auc_anomaly.py` re-derived that from scratch (H1
+GroupKFold dead: stratifying moves labor 0.235 → 0.309; H3 aggregation dead: every fold is
+individually below 0.5; 265 of 265 unique pool rows are exact rows of the real side) at real
+CPU cost, because I did not check the section of this document that had already recorded it.
+Noted so the next reader does not pay for it a third time.
+
+What follows is the part that is **not** in §4d, and it matters more than the part that is.
+
+§4d closes with a remedy: *"a per-fold-honest C2ST that never pools is the only version worth
+running, and that is #181."* Production `_separability` implements exactly that — one call per
+fold, pool drawn from that fold's own `tr`, real side that fold's `te`. `prod_dupes.py` confirms
+the inverting form is gone: **`cross = 0` on every fold and every arm**, so no pool row is ever
+an exact row of the real side. And the C2ST is corrupted anyway:
+
+| panel | fold | arm | pool rows | unique | dup | `auc` | `auc` after dedup |
+|---|---|---|---|---|---|---|---|
+| labor_monthly | 0 | boot | 111 | 84 | 24.3% | 0.763 | **0.600** |
+| labor_monthly | 0 | knn | 111 | 57 | 48.6% | 0.961 | **0.794** |
+| labor_monthly | 1 | boot | 110 | 87 | 20.9% | 0.808 | 0.727 |
+| labor_monthly | 1 | knn | 110 | 67 | 39.1% | 0.914 | **0.669** |
+| labor_monthly | 2 | boot | 110 | 89 | 19.1% | 0.937 | 0.850 |
+| labor_monthly | 2 | knn | 110 | 73 | 33.6% | 0.878 | 0.738 |
+| claims_weekly | 0 | boot | 230 | 179 | 22.2% | 0.620 | **0.440** |
+| claims_weekly | 0 | knn | 230 | 147 | 36.1% | 0.708 | **0.429** |
+| claims_weekly | 1 | boot | 230 | 187 | 18.7% | 0.615 | **0.486** |
+| claims_weekly | 1 | knn | 230 | 139 | 39.6% | 0.746 | **0.389** |
+| claims_weekly | 2 | boot | 230 | 186 | 19.1% | 0.638 | **0.468** |
+| claims_weekly | 2 | knn | 230 | 162 | 29.6% | 0.718 | 0.508 |
+| inflation_monthly | 0 | boot | 111 | 84 | 24.3% | 0.770 | 0.634 |
+| inflation_monthly | 0 | knn | 111 | 57 | 48.6% | 0.922 | **0.556** |
+| inflation_monthly | 1 | boot | 110 | 87 | 20.9% | 0.785 | 0.675 |
+| inflation_monthly | 1 | knn | 110 | 67 | 39.1% | 0.823 | **0.484** |
+| inflation_monthly | 2 | boot | 110 | 89 | 19.1% | 0.764 | 0.731 |
+| inflation_monthly | 2 | knn | 110 | 73 | 33.6% | 0.867 | 0.650 |
+| energy_weekly | 0 | boot | 230 | 179 | 22.2% | 0.760 | 0.685 |
+| energy_weekly | 0 | knn | 230 | 147 | 36.1% | 0.852 | **0.627** |
+| energy_weekly | 1 | boot | 230 | 187 | 18.7% | 0.746 | 0.608 |
+| energy_weekly | 1 | knn | 230 | 139 | 39.6% | 0.868 | **0.683** |
+| energy_weekly | 2 | boot | 230 | 186 | 19.1% | 0.866 | 0.800 |
+| energy_weekly | 2 | knn | 230 | 162 | 29.6% | 0.885 | 0.828 |
+
+Twenty-four arm-folds, four panels, and **`cross = 0` in every one of them** — the inverting
+form really is gone, exactly as §4d predicted. `dup` is 18.7–24.3% on `boot` and 29.6–48.6% on
+`knn`, with no panel exempt, and dedup lowers the AUC in **24 of 24** cases — by 0.033–0.180 on
+`boot` and 0.057–0.366 on `knn`, never once raising it. A one-sided result across every cell is
+what makes this a bias rather than noise.
+
+`claims_weekly` is the panel that shows what this costs, because it is the one where the honest
+floor lands **below** 0.5: deduped, five of its six arms score 0.389–0.486, i.e. a real
+resampled block is *harder* to tell from held-out history than a coin flip, which is what a
+short weekly panel with 230-row pools should look like. Undeduped it reads 0.615–0.746 and
+looks like a floor that is nearly separable. Every DFM excess on that panel has been measured
+against the wrong one of those two numbers.
+
+The duplicates are now **within one class** rather than straddling both, because
+`block_bootstrap` copies whole rows (`Z[rng.integers(0, len(Z), size=n)]`) and two held-out
+anchors can draw the same training row, while `knn_bootstrap` draws its rows from a
+40-neighbour candidate set and collides constantly. A memorized duplicate on the label-0 side
+raises the AUC exactly as a straddling one lowers it, so the floors come out **too high by
+0.033–0.180 points on `boot` and 0.057–0.366 on `knn`**.
+
+`boot_twin.py` isolates that claim on real rows with no model at all, and it began by refuting a
+prediction of mine: I expected the disjoint-halves control — real half A against a bootstrap
+resample of real half B, distributionally identical, **zero** twins — to land at ~0.5. It came
+back well above, on every panel, and the four values sit in a band 0.03 wide:
+
+| panel | twin100 (same rows resampled) | **twin000 (disjoint halves)** | observed cached pool | twinned p(real) vs untwinned |
+|---|---|---|---|---|
+| labor_monthly | 0.334 | **0.712** | 0.316 | 0.282 / 0.844 |
+| inflation_monthly | 0.329 | **0.739** | 0.301 | 0.266 / 0.794 |
+| claims_weekly | 0.285 | **0.758** | 0.295 | 0.249 / 0.727 |
+| energy_weekly | 0.277 | **0.738** | 0.311 | 0.270 / 0.823 |
+
+Resampling alone, with no cross-class contamination whatever, is enough — and it is enough by
+about the same amount everywhere, which is what makes it a property of the procedure rather than
+of any one panel. The twin100 column reproduces the inverting form for comparison, and inside
+the observed cached pool the ~80% of real rows that have a twin score p(real) ≈ 0.27 against
+≈ 0.80 for those that do not.
+
+So the general statement is stronger than §4d's: **any bootstrap pool with duplicate rows
+breaks a cross-validated C2ST**, and the sign only tells you which side of the label boundary
+the duplicates sit on. Never pooling across folds removes the inversion and does not make the
+test honest.
+
+**The direction of the error is the uncomfortable part.** `floor_boot` is the reference every
+arm is read against, so a floor inflated by ~0.1 makes every `excess_over_boot` in this study
+**too negative** — it has been flattering the DFM. That is the #185 error with the sign
+reversed: #185 read the AUC against a floor that was too *low* and condemned the generator,
+and this reads it against a floor that is too *high*. Both come from not measuring the
+baseline.
+
+**The fix, as landed.** `_unique_rows` in `research/synth/generator.py` returns the indices of
+the first occurrence of each distinct row, keyed on bytes after rounding to 1e-9 so a row that
+survived a float round-trip still counts as one row while a genuine near neighbour at 1e-4 does
+not. `_separability` calls it **once**, at the top, before any of the three legs sees a pool, so
+the C2ST, `mem` and the new dependence leg all score the same rows. Dropping a verbatim copy
+cannot change whether two *distributions* differ, which is the only question a C2ST asks, so
+this removes a bias without spending any of the evidence.
+
+`dup_frac` is kept per arm and printed, rather than absorbed silently, because a high value is a
+fact about the **generator**: a `knn` arm at 0.49 is offering 57 distinct worlds where the run
+header says 111. Tests:
+`test_unique_rows_drops_verbatim_copies_and_keeps_genuine_neighbours` pins the 1e-9/1e-4
+boundary, and `test_a_duplicate_heavy_pool_no_longer_scores_above_a_clean_one` reproduces the
+whole effect small — two pools drawn from the *same* real training rows, one repeating 40 rows
+three times, scoring 0.929 against 0.565 before the fix and indistinguishable after it. That
+test asserts against the clean arm rather than against a number, for the same reason every other
+metric here is read against `boot`.
+
+What still has to happen: `data/synth/` and `data/synth_wf/` were written by the pre-fix code,
+so **no `excess_over_boot` in §4e may be quoted again until those artifacts are regenerated.**
+Production λ is unaffected — the corrupted quantity is the validation report, not the sample —
+but the study's headline numbers are, and in the direction that flatters the DFM.
+
+Scope of what still stands: `local`/`global` rows are generated and never exactly equal each
+other or a real row (§4d measured 0 duplicates on all four panels), so the raw-vs-printed moves
+in the table above are unaffected — they are within-arm comparisons on duplicate-free pools.
+
 ### B. Under-dispersion — the failure `validate`'s own docstring calls disqualifying
 
 Variance ratio synth/real, per panel and column (`/tmp/dfm_verify/underdisp.py`):
@@ -604,12 +770,133 @@ loose where it isn't. Capacity sweep (`factor_dim` × `epochs`, with a nearest-n
 memorization guard so that a config cannot win on moments by copying the training set) is
 `/tmp/dfm_verify/fixB_m2.py`. Tracked as #181B.
 
+#### The capacity sweep, all four panels — and it refutes the hypothesis it was built to test
+
+`fixB_m2.py`, `factor_dim ∈ {8, 16, 24, 32}` × `epochs ∈ {6000, 18000}` × `start ∈ {N(0,I),
+Σ̂}`, each cell fit on the early 70% and graded on the late 30%, with the `mem` guard alongside
+so a config cannot win on variance by copying. `claims_weekly` admits only `factor_dim = 8`
+(`d_flat = 13`); the other three run the full grid. Σ̂ rows only, at 6000 epochs, since the
+epochs axis is discussed below:
+
+| panel (`d_flat`, top-8 share) | metric | fd 8 | fd 16 | fd 24 | fd 32 |
+|---|---|---|---|---|---|
+| labor_monthly (36, 61%) | `var/train` | **0.814** | 0.729 | 0.703 | 0.982 |
+| | `tail` | 1.79 | 1.12 | **0.84** | 0.93 |
+| | `mem` | 1.07 | 0.94 | 0.84 | 0.88 |
+| | `acf1` (real −0.179) | −0.034 | −0.090 | **−0.121** | −0.100 |
+| claims_weekly (13, 77%) | `var/train` | **0.929** | — | — | — |
+| | `tail` / `mem` | 1.01 / 1.00 | — | — | — |
+| | `acf1` (real −0.212) | −0.228 | — | — | — |
+| inflation_monthly (48, 59%) | `var/train` | **0.791** | 0.640 | 0.573 | 0.631 |
+| | `tail` | 3.38 | 2.19 | 1.28 | **0.91** |
+| | `mem` | 1.01 | 0.89 | 0.82 | 0.80 |
+| | `acf1` (real +0.133) | 0.060 | 0.059 | 0.061 | **0.076** |
+| energy_weekly (52, 49%) | `var/train` | **0.919** | 0.802 | 0.765 | 0.788 |
+| | `tail` | 2.16 | 1.20 | 1.13 | **1.07** |
+| | `mem` | 0.85 | 0.79 | 0.75 | 0.76 |
+| | `acf1` (real −0.028) | 0.051 | **0.014** | 0.021 | 0.023 |
+
+**The identity holds without exception.** Σ̂ beats `N(0,I)` on `var/train` in **all 26**
+(panel, fd, epochs) cells in the sweep — no panel, no capacity, no training length where the
+corrected start is not the wider one. That is the strongest form of the check §4e-B's γ-shrink
+already passed, and it is why the start fix is not in question here.
+
+**The capacity hypothesis is refuted.** The prediction written above was that a residual caused
+by `span(V)` being only 8 columns wide would shrink as `factor_dim` grows. `var/train` **falls**
+with capacity on all three panels that can run the grid — 0.814 → 0.703, 0.791 → 0.573,
+0.919 → 0.765 — and the one apparent exception, labor at `fd = 32` (0.982), is not one: the same
+cell at 18000 epochs collapses to 0.723, its KS p is 0.003 (the worst in the whole sweep), and
+its top-4 eigen-ratios are 0.94/0.88/**1.19**/**1.13**, i.e. it bought its variance by
+*over*-shooting two of the four dominant directions. It is an unstable cell, not an optimum.
+
+**The mechanism is visible in the two halves of the spectrum, and it is the opposite of what
+was wanted.** The `tail` prediction is *confirmed* — over-dispersion outside the span falls
+monotonically toward 1 as the span widens (labor 1.79 → 0.84, inflation 3.38 → 0.91, energy
+2.16 → 1.07), crossing 1 around `fd = 24`. But the top-4 directions get **worse** at the same
+time (labor 0.64/0.67/0.85/0.84 → 0.72/0.59/0.70/0.66; inflation 0.50/0.53/0.71/0.73 →
+0.39/0.52/0.60/0.58; energy 0.86/0.88/0.85/0.87 → 0.76/0.76/0.71/0.77). Added capacity does not
+add width, it **moves** width off the dominant factors and onto the tail. Since the top
+directions carry 49–77% of the variance, the panel-level ratio falls. The `span(V)` diagnosis
+was right about *where* the residual lives and wrong about the sign of the remedy.
+
+**More epochs is not a knob either, and it points the wrong way.** 6000 → 18000 lowers
+`var/train` in 10 of the 13 Σ̂ cells, ties one (labor `fd = 16`, 0.729 both) and raises two, both
+on `inflation_monthly` and both by ≤ 0.014 — so the direction is clear without being universal,
+and the exceptions are recorded rather than rounded away. Training the score net three times
+longer makes the sample *tighter*, not wider. Whatever it is converging to, it is not the
+training covariance, and no amount of the training budget already on the table gets it there.
+
+**`mem` closes the question.** It falls monotonically with capacity on every panel — labor 1.07
+→ 0.84, inflation 1.01 → 0.80, energy 0.85 → 0.75 — so the large-`fd` cells are not merely
+failing to help, they are drifting into copying. Read against #206's **measured** bands rather
+than an implicit 1.0:
+
+| panel | measured band | passing cells |
+|---|---|---|
+| claims_weekly | [0.933, 1.088] | `fd 8` at both epoch settings (1.00, 0.95) |
+| inflation_monthly | [0.879, 1.156] | `fd 8` only (1.01, 1.00); `fd 16` at 0.89/0.85 is the boundary |
+| labor_monthly | [0.956, 1.052] | **none** — `fd 8` is 1.07/1.06, *above* the band |
+| energy_weekly | [0.953, 1.043] | **none** — `fd 8` is 0.85, and it only falls from there |
+
+So the two panels that pass do so at the **smallest** capacity in the grid, and the two that
+fail fail in opposite directions: labor is over-dispersed relative to a genuine held-out row and
+energy is copying. That is #208, reproduced here from a completely independent code path.
+
+**And `acf1` moves the other way, which makes this a trade and not an oversight.** Capacity
+*helps* persistence on labor (−0.034 → −0.121 against real −0.179, closing 60% of the gap) and
+on energy (0.051 → 0.014 against −0.028, closing 47%), while it is simultaneously what destroys
+the variance ratio and the memorization guard. The single knob that would fix C is the knob that
+breaks B. **No cell in
+this 26-cell sweep satisfies B, C and the `mem` band at once**, and after this sweep that is an
+architectural statement rather than a search that was not run long enough: it is the same
+`span(V)` bottleneck seen from both ends. Which is exactly the case for #207 — rotate the basis
+so the span is spent where the variance is, instead of buying more span.
+
 Honest note on the two things the start fix does **not** buy. It corrects the second moment
 by construction, so the only informative question is whether anything it does not construct
 moves with it. Marginal *shape* (per-coordinate KS against held-out real) gets slightly
 worse on three of four panels, and `acf1` moves toward the real value on two panels and away
-on two. So this is a variance fix and nothing more; **C is not a corollary of B** and #181C
-stays open on its own merits.
+on two. So this is a variance fix and nothing more.
+
+Worse than nothing more, on one axis, and it is recorded here rather than in a footnote: the
+corrected start makes **persistence measurably worse at every `factor_dim`** — on
+`labor_monthly`, `acf1` goes −0.069 → −0.034 at `fd = 8` and −0.160 → −0.122 at `fd = 24`,
+each time *away* from the real −0.179. B and C therefore trade against each other under the
+current architecture, which is itself evidence for the shared `span(V)` root diagnosed in
+§4e-C: width added outside the span is width with no persistence in it.
+
+**End-to-end A/B, all four panels (`/tmp/dfm_verify/fixB_ab.py`).** Everything above is
+measured in the sampler's own z-space, which is where the defect lives but not where the
+product is. So the fix was run through `Generator.validate` itself — two passes per panel,
+identical in every argument but `start`, with the `boot`/`knn` control arms asserted
+**bit-identical** between the passes (they are, on all four panels, which is what makes the
+DFM columns' movement attributable). Direction was committed before the run: coverage must
+rise, KS must fall.
+
+| panel | c50 identity → marginal | c80 identity → marginal | boot c50 / c80 | ΔKS | share of gap closed |
+|---|---|---|---|---|---|
+| labor_monthly | 0.332 → 0.335 | 0.532 → 0.542 | 0.415 / 0.634 | −0.000 | 3.6% |
+| inflation_monthly | 0.220 → **0.241** | 0.406 → **0.427** | 0.495 / 0.733 | −0.010 | 7.6% |
+| energy_weekly | 0.459 → **0.478** | 0.710 → **0.730** | 0.509 / 0.772 | −0.005 | 38% |
+| claims_weekly | 0.701 → 0.701 | 0.865 → 0.862 | 0.520 / 0.767 | −0.004 | n/a |
+
+KS falls on all four. Coverage rises on three and is flat on the fourth — and the flat one is
+`claims_weekly`, which at c50 = 0.701 against a nominal 0.50 is **over**-covered, so a fix
+that widens it would have been a fix doing damage. That it declines to widen the one panel
+that does not need widening is a better argument for the correction being real than any of
+the panels where it helped.
+
+**Verdict: real, directionally correct on every panel, never harmful, and small.** It closes
+3.6% of the DFM-to-`boot` coverage gap on labor and 7.6% on inflation. The 38% on
+`energy_weekly` is not a counter-example to "small" — energy's gap was only 0.050 wide to
+begin with, so the fix closes a large share of very little. Sharpness is unharmed: CRPS
+against `boot` comes out 0.959 (t = −2.29, DFM sharper), 1.069, 1.011 and 0.949.
+
+One reading trap, recorded because it cost time. `validate`'s printed `sd` barely moves under
+this fix and that is not a contradiction: it is `paths.std(axis=1)`, the **within-path** std
+along the horizon, while the fix restores **across-draw** variance. In z-space over the same
+run, `var/train` goes 0.76 → 0.94. The two quantities are not the same number and only one of
+them is what B is about.
 
 ### C. Persistence
 
@@ -619,13 +906,130 @@ mean-revert slightly where the real series persists slightly.
 
 The plan was to measure this again **after** B, on the theory that a guidance term crushing
 the variance was a plausible common root and a C that disappeared with B would need no
-separate treatment. That theory is now dead twice over: the guidance term never ran, and the
-start fix moves `acf1` toward the real value on two panels and away on two. C is its own
-defect. Tracked as #181C.
+separate treatment. That theory died twice over — the guidance term never ran, and the start
+fix moves `acf1` toward the real value on two panels and away on two — and the conclusion
+drawn from that, *"C is its own defect"*, **was wrong**. It confused B's *primary* root (the
+reverse-SDE start) with B's *residual* root (`span(V)`). C shares the second one.
+
+**C and the residual of B are one defect.** The diagonal-outside-`span(V)` score model emits
+**white** noise in every direction the factor basis cannot reach, and lag-1 autocorrelation
+along the horizon is exactly an off-diagonal structure — so `|acf1|` is dragged toward zero
+in proportion to how much variance sits outside the span. Every measurement in hand agrees,
+and none of them was collected to test this:
+
+| panel | top-8 share | real `acf1` | prod `acf1` | recovered |
+|---|---|---|---|---|
+| claims_weekly | **77%** | −0.212 | −0.202 | **95%** |
+| labor_monthly | 61% | −0.179 | −0.071 | 40% |
+| inflation_monthly | 59% | +0.133 | +0.016 | 12% |
+| energy_weekly | 49% | −0.028 | +0.020 | (both ≈ 0, uninformative) |
+
+The cross-panel ordering is suggestive at n = 3; the within-panel sweep is not. On
+`labor_monthly`, widening `factor_dim` walks `acf1` monotonically toward the real value **in
+lockstep with the tail eigen-ratio falling toward 1** — two different symptoms of one cause
+moving together, which is far harder to get by coincidence than either alone:
+
+| `factor_dim` | `acf1` (real −0.179) | tail ratio | `mem` | KS p |
+|---|---|---|---|---|
+| 8 | −0.069 | 1.91 | 1.03 | 0.074 |
+| 16 | −0.130 | 1.13 | 0.88 | 0.060 |
+| 24 | **−0.160** | 0.82 | **0.74** | 0.050 |
+| 32 | −0.130 | 0.69 | **0.71** | 0.036 |
+
+And, as in B, **capacity is not the remedy**: `fd = 24` buys 89% of the persistence at
+`mem = 0.74`, i.e. the sample sits closer to the training rows than a genuine held-out
+observation does. That is copying, and a copying generator would score better on every moment
+test here while being `boot` with extra steps.
+
+#### Three candidate fixes, all three refuted — and the diagnosis above refuted with them
+
+Each was pre-registered with its own kill criterion before it ran, and each died on its own
+criterion rather than on judgement.
+
+**1. z-space recolouring** (`fixC_recolour.py`, 4 panels). Carry the generated covariance onto
+an α-blend with `Σ̂` from the fit's own rows. Legitimate for the production estimator because
+`fit_local` fits *unconditionally* on a k-neighbourhood, so the neighbourhood covariance is
+the right target. Registered criterion: the C2ST must **fall**, or the change is invisible to
+a discriminator and therefore not a fix. It rises on three of four — labor 0.881 → 0.934,
+inflation 0.694 → 0.746, claims 0.515 → 0.525 — and falls only on energy. REJECTED.
+
+**2. `arch='plain'`** (`fixC_plain.py`, 4 panels), dfm's own full-dimensional ablation, which
+removes the `span(V)` bottleneck outright and needs no change to `dfm/`. Registered criteria:
+`acf1`, kurtosis and the tail ratio must improve **together**, and `mem` well below 1 is a
+veto because copying wins every moment test. `mem` comes out 0.78 / 0.77 / 0.76 / 0.70 at
+6000 epochs and 0.71 / 0.66 / 0.69 / 0.59 at 18000, the tail ratio *inverts* from
+over-dispersed to collapsed (0.44 / 0.44 / 0.91 / 0.79), and the C2ST worsens on three panels.
+REJECTED, unanimously, on the veto. Removing the bottleneck does not free the model; it frees
+it to memorize 231–482 training rows.
+
+**3. Panel splitting** (`fixC_split.py`, 3 multi-column panels). The idea the cross-panel table
+above points at: raise coverage not by widening `factor_dim` — already rejected for buying
+persistence at `mem = 0.74` — but by lowering `d_flat`, one generator per column or per
+consuming-model block. `claims_weekly`, the one panel whose persistence matches real, is the
+one panel that is a single generated column, so production already contained the treatment.
+Registered verdict criterion: the **joint-space** C2ST must beat the joint panel, since better
+marginals bought with broken cross-column dependence is a bad trade, not a fix.
+
+| panel | `cov8` J → 2-blk → full | joint C2ST | `xcorr` err | `incorr` err |
+|---|---|---|---|---|
+| labor_monthly | 61% → 77% → 84% | 0.907 → 0.957 → 0.971 | 0.127 → 0.174 → 0.178 | 0.120 → 0.164 → 0.176 |
+| inflation_monthly | 59% → 65% → 84% | 0.791 → 0.876 → 0.902 | 0.276 → 0.296 → 0.298 | 0.362 → 0.396 → 0.357 |
+| energy_weekly | 49% → 58% → 73% | 0.866 → **0.839** → 0.950 | 0.083 → 0.093 → 0.098 | 0.089 → 0.091 → 0.102 |
+
+The premise holds — coverage rises exactly as intended, 49–61% up to 73–84%. The verdict fails
+anyway: the joint C2ST gets **monotonically worse** on two panels and on the third only the
+2-block arm helps. And `incorr_err`, which was registered as the control that should be
+*unaffected* by splitting, degrades too. So the split generators are not differently-scoped,
+they are simply worse. REJECTED.
+
+**The diagnosis this section was built on does not survive #3.** Coverage was raised by 23
+points on `labor_monthly` and the sample got more separable, not less — the exact opposite of
+what "quality tracks `span(V)` coverage" predicts. So the cross-panel ordering was a
+confound, and once each panel is scored against **its own measured floor** it disappears
+entirely:
+
+| panel | top-8 share | DFM C2ST | `boot` floor | excess over floor |
+|---|---|---|---|---|
+| claims_weekly | 77% | 0.563 | 0.611 | **−0.048** |
+| energy_weekly | 49% | 0.866 | 0.854 | +0.012 |
+| labor_monthly | 61% | 0.907 | 0.863 | +0.044 |
+| inflation_monthly | 59% | 0.791 | 0.725 | +0.066 |
+
+Sorted by excess, the coverage column is unordered — 77 / 49 / 61 / 59. The apparent
+relationship was raw C2ST read across panels whose floors differ by 0.24, which is the same
+absolute-versus-relative error §4d catches one level down, made again one level up.
+
+Two reachability facts, measured in `fixC_plain.py` before any generator was graded, that
+reframe what C was ever asking for:
+
+* **The held-out `acf1` is not a reachable target.** The training rows' own `acf1` differs
+  from it on every panel and on `energy_weekly` differs in **sign** (train +0.044, held-out
+  −0.028). Part of what §4e-C called a defect is a train/test regime difference that no
+  generator fitted on train can close. Re-scored against the reachable target, the DFM's gaps
+  are 0.072 / 0.048 / 0.070 / **0.006**, an order tighter and far more uniform than the
+  0.163 / 0.012 / 0.100 / 0.067 measured against held-out.
+* **`acf1` is mostly a second-moment quantity, and the claim that it is not was `labor_monthly`
+  alone.** A draw from `N(μ̂, Σ̂)` recovers 93% and 94% of the training rows' `acf1` on
+  claims and inflation, 73% on energy — and only 47% on labor. That single panel was
+  generalized from once here and should not have been. It also gives recolouring's failure a
+  simpler cause than "acf1 lives in higher moments": recolouring pulls toward the *training*
+  covariance, and on `claims_weekly` the training span is **more** persistent than held-out
+  (−0.272 vs −0.212), so matching it overshoots to −0.239 and the discriminator sees the
+  overshoot.
+
+**Where C stands.** Not "the generator has a persistence defect" but: measured against the
+floor that real resampled history sets on each panel, the DFM is +0.012 to +0.066 away on
+three panels and **0.048 better than real block-bootstrap on the fourth**. Three fixes aimed
+at a defect diagnosed against the wrong baseline all failed, and two of the three failed by
+making the sample *more* separable. The remaining honest question is not how to close a gap of
+0.012–0.066 but whether a gap that size matters to the consumer — which is a λ-calibration and
+utility question (§6), not a generative one. #181C is closed as **premise corrected**; the
+utility question is tracked in #183.
 
 Artifacts: `/tmp/dfm_verify/auc1_probe.py`, `underdisp.py`, `lattice.py`, `lattice_v2.py`,
-`cov_table.py`, `fut_grid_probe.py`, `fixA_pools.py`, `fixB_euler.py`, `fixB_diag.py`,
-`fixB_fix.py`, `fixB_m2.py`.
+`cov_table.py`, `fut_grid_probe.py`, `fixA_pools.py`, `fixA_score.py`, `fixB_euler.py`,
+`fixB_diag.py`, `fixB_fix.py`, `fixB_m2.py`, `fixB_ab.py`, `fixC_recolour.py`,
+`fixC_plain.py`, `fixC_split.py`.
 
 ## 5. The market book (S4) — the part that can kill the project
 
@@ -695,6 +1099,59 @@ finding.
 range. If the incumbent's `P_sd` on synthetic worlds is systematically different from its
 `P_sd` on real ones, `z_y*` lands outside the donor pool and every draw is an
 extrapolation. That is checkable, so it is checked and reported rather than assumed.
+
+### 5b-2. Can the market's own price be improved? No (#184, 2026-08-27)
+
+§5b establishes that the market forecasts better than we do. That leaves one obvious route to
+edge that does **not** require beating it: take the market price as the base rate and correct
+its *calibration*. If prices are systematically over- or under-confident, a monotone map
+fitted on settled events would beat the raw price without any forecasting skill at all. This
+is worth testing precisely because it is the cheap answer, and it should be killed early if it
+is wrong.
+
+Measured on **81 settled events / 1642 legs** across all 14 series, production-model replay at
+−1h PIT, walk-forward with a minimum of 8 prior training events so no map is ever fitted on
+the event it scores (`/tmp/dfm_verify/market_recal.py`).
+
+| Brier (pooled, 73 scorable events) | |
+|---|---|
+| raw market | **0.04956** |
+| logit-recalibrated market | 0.05082 |
+| isotonic-recalibrated market | 0.05318 |
+| our model | **0.08902** |
+
+| comparison | mean Δ Brier | 95% CI | P(better) | event win rate |
+|---|---|---|---|---|
+| logit vs market | +0.00126 | [−0.00260, +0.00583] | 0.298 | 55% |
+| isotonic vs market | +0.00363 | [−0.00129, +0.00908] | 0.075 | 42% |
+| model vs market | **+0.03946** | [+0.02512, +0.05445] | 0.000 | 29% |
+
+Read three ways, all of them negative for the cheap answer:
+
+1. **The model is 80% worse than the market** in Brier (0.089 vs 0.050), and the CI excludes
+   zero by a wide margin. This is what "the model has never beaten the market" means as a
+   number, and it is not close.
+2. **Recalibration does not help either.** Both maps come out *worse* than the raw price, and
+   neither CI excludes zero. The fitted slope is `b ≈ 1.24` pooled and `1.96` by series —
+   in-sample the map always wants to sharpen prices toward the extremes, and out-of-sample
+   that sharpening costs more than it gains. With 81 events the slope is fitting noise.
+3. **The per-series table is a trap.** `logit` wins on 9 of 13 series, which reads like a
+   result until the pooled number is checked: the three series where it loses
+   (KXJOBLESSCLAIMS n=13, KXWTIW n=14, KXPAYROLLS n=3) lose by more than the nine win by.
+   Counting series is not the same as counting money, and the win-rate/mean-diff split — 55%
+   of events better, mean worse — is the signature of exactly that.
+
+**What this forecloses, and what it does not.** It forecloses the entire family of "our number
+against their number on the same contract": we lose that comparison, and we cannot repair
+their number either. It does **not** foreclose the DFM, because a per-contract probability is
+not what the DFM produces. Its output is a *joint* object — many series, many horizons, one
+coherent draw — and the market prices each contract separately with no mechanism for making
+them mutually consistent. So the remaining honest places for value are (a) sizing and
+λ-calibration under a correct joint distribution rather than a per-leg one, (b) events with no
+liquid quote at all, where there is no market number to lose to, and (c) cross-series
+structure the independent per-contract prices cannot express. None of these is measured yet,
+and none may be assumed; they are the scope of #183 and are stated here as *hypotheses*, not
+as a fallback claim to soften a negative result.
 
 ### 5c. What the S4 build measured (2026-08-21) — and the two things that were wrong
 

@@ -669,14 +669,63 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
     (`Generator.sample_printed`) rather than the sampler's raw output. That is not a
     cosmetic choice about which array to grab: `worlds.py` writes levels, settlement reads
     levels, and scoring the un-quantised intermediate meant every validity number here
-    described an object no consumer ever sees. `boot`/`knn` need no such treatment — they
-    resample real rows, which are already on the grid by construction, and that is exactly
-    why they are the control.
+    described an object no consumer ever sees. `boot`/`knn` are deliberately NOT quantised,
+    and the reason first given for that — "they resample real rows, so they are on the grid
+    by construction" — is measurably **false**, so it is corrected here rather than left to
+    mislead the next reader. Those arms splice a real increment block onto a DIFFERENT
+    anchor. For an additive (`diff`) column that stays on the grid, because a grid-spaced
+    anchor plus grid-spaced increments is grid-spaced — measured at 100% for `payems` and
+    `unrate`. For a multiplicative (`dlog`/`pct100`) column it does not, because
+    `anchor * exp(some other period's dlog)` has no reason to land on a publication grid —
+    measured at **0.5%** for labor_monthly's `claims` (`/tmp/dfm_verify/fixA_score.py`).
+    They stay un-quantised anyway, for the reason that actually holds: they are the CONTROL,
+    and a control given the same treatment as the arm can no longer isolate what the
+    treatment did.
 
     `start` selects the reverse-SDE initialization (`Generator._reverse`). The default is
     the corrected one; `start="identity"` reproduces dfm's `N(0, I)` and therefore the
     pre-#181B under-dispersion, and exists so that the A/B which established the fix can be
     re-run on demand rather than trusted from a doc.
+
+    3. **Separability**, added in #181 — `out["separability"]`. Calibration and moments are
+       both *marginal* checks: a generator can pass every one of them and still be trivially
+       recognisable from a property no moment names. A classifier two-sample test asks the
+       only question that subsumes them — can anything tell the two samples apart. Two design
+       constraints, and both of them are scar tissue:
+
+       * **Never pooled.** #185's C2ST scored `n_samples` draws per anchor against the real
+         rows, so near-duplicate draws from one anchor landed on both sides of the
+         classifier's own split and the AUC measured that leakage. Here each held-out anchor
+         contributes exactly ONE draw, folds are scored separately and never concatenated,
+         and the per-fold values are returned alongside the mean so a fold that disagrees
+         cannot hide inside an average.
+       * **Never without its floor.** #185 also read the AUC against an implicit 0.5. Real
+         data does not score 0.5 against real data at these sample sizes: the measured
+         `floor_train` (real training rows) and `floor_boot` (a real resampled block) run
+         **0.44–0.86** across the four panels, and the whole DFM-vs-real verdict changes sign
+         on `claims_weekly` depending on which baseline is used. So both floors are computed
+         from the same rows with the same classifier on every call, and `excess_over_boot`
+         — the DFM's AUC minus the resampled-history AUC — is the number to read. Zero means
+         "as hard to distinguish from real as real history is". It is negative on
+         `claims_weekly`.
+
+       `mem` is the memorization guard that makes the rest of it meaningful: median
+       nearest-neighbour distance from the generated pool to the training rows, over the same
+       distance for the real held-out rows. Near 1 is honest; well below 1 means the sample is
+       winning by copying, which improves every other number in this report at once. The band
+       around 1 is measured, not assumed — see `docs/PLAN_DFM_SYNTH.md` §4e-B — and it is
+       TWO-sided: above the band is over-dispersion, which is a different defect, not a pass.
+
+       `dep_within`/`dep_cross`, the third leg, close a gap the first two leave open by
+       construction. `moments` scores each coordinate alone and the C2ST says only whether
+       ANYTHING separates the samples, never what. A generator can match every marginal and
+       still get the joint law wrong, and for this codebase that is the consumed quantity: a
+       synthetic world is read as a ladder of contracts on one event and as several series
+       moving together, so the correlation structure is most of what `param_argmin` sees.
+       Split in two because they fail differently — `within` is persistence resolved over
+       every lag rather than acf1's lag 1, `cross` is the co-movement a per-column generator
+       would lose entirely — and both carry `..._excess`, against `boot`, for the same reason
+       the AUC does.
     """
     n_rows = len(pdata.anchors)
     H, d = pdata.spec.horizon, pdata.spec.d
@@ -686,6 +735,7 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
     crps = {a: [] for a in arms}
     real_all: list[np.ndarray] = []
     n_train: list[int] = []
+    sep_folds: list[dict] = []
     for f, (tr, te) in enumerate(splits(n_rows, H, holdout, folds)):
         if len(te) < 10 or len(tr) < 50:
             raise ValueError(f"fold {f}: {len(tr)} train / {len(te)} test is too small "
@@ -695,6 +745,12 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
         real = (pdata.Z[te] * pdata.scaler["sd"] + pdata.scaler["mu"]).reshape(len(te), H, d)
         rs = path_stats(real)
         real_all.append(real)
+        # One draw per held-out anchor, kept in the standardized flat space, for the
+        # separability battery below. Collected inside the loop because it must come from
+        # the SAME draws the calibration numbers are computed on — a second sampling pass
+        # would be a different generator state and the two reports could disagree.
+        sep_pool: dict[str, list[np.ndarray]] = {a: [] for a in arms}
+        sep_rng = np.random.default_rng(seed + 6151 * (f + 1))
         for i, k in enumerate(te):
             c_raw = P.condition_row(pdata.levels, pdata.inc, pdata.spec, pdata.anchors[k])
             sd = seed + 977 * f + i
@@ -712,6 +768,14 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
                 ranks[tag].append((st["cum"] < rs["cum"][i]).mean(axis=0))
                 crps[tag].append([_crps(st["cum"][:, j], rs["cum"][i, j])
                                   for j in range(d)])
+                sep_pool[tag].append(np.asarray(s, dtype=float)[
+                    sep_rng.integers(len(s))].reshape(-1))
+
+        sep_folds.append(_separability(
+            pdata, tr, te,
+            {t: (np.asarray(v) - pdata.scaler["mu"]) / pdata.scaler["sd"]
+             for t, v in sep_pool.items()},
+            seed=seed + 6151 * (f + 1)))
 
     real_stats = path_stats(np.concatenate(real_all))
     out = {"panel": pdata.spec.name, "cfg": asdict(cfg), "config_key": cfg.key(),
@@ -774,6 +838,216 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
             tstat.append(t)
         out["arms"][tag]["crps_ratio"] = float(np.mean(ratio))
         out["arms"][tag]["crps_t_vs_boot"] = float(np.mean(tstat))
+
+    # Folds are averaged for the headline and kept individually underneath. `_mean_or_none`
+    # rather than `np.mean` because a short fold legitimately returns None, and a mean that
+    # silently treated that as 0.0 would report a perfectly indistinguishable generator.
+    def _mean_or_none(vals):
+        got = [v for v in vals if v is not None]
+        return float(np.mean(got)) if got else None
+
+    def _dep_mean(tag, field, key):
+        """Mean of one dependence entry across folds. Non-finite entries are dropped rather
+        than averaged, because `cross` is legitimately `nan` on a single-column panel — there
+        are no cross-column pairs — and `np.mean` would turn that honest non-measurement into
+        a `nan` headline indistinguishable from a broken one. Empty means None, which the
+        report prints as `n/a`."""
+        got = [s["arms"][tag][field][key] for s in sep_folds
+               if s["arms"][tag][field] is not None]
+        got = [v for v in got if v is not None and np.isfinite(v)]
+        return float(np.mean(got)) if got else None
+
+    out["separability"] = {
+        "folds": sep_folds,
+        "floor_train": _mean_or_none([s["floor_train"] for s in sep_folds]),
+        "floor_boot": _mean_or_none([s["floor_boot"] for s in sep_folds]),
+        "arms": {tag: {
+            "auc": _mean_or_none([s["arms"][tag]["auc"] for s in sep_folds]),
+            "dup_frac": _mean_or_none([s["arms"][tag]["dup_frac"] for s in sep_folds]),
+            "mem": _mean_or_none([s["arms"][tag]["mem"] for s in sep_folds]),
+            "excess_over_boot": _mean_or_none(
+                [s["arms"][tag]["excess_over_boot"] for s in sep_folds]),
+            "dep_within": _dep_mean(tag, "dep", "within"),
+            "dep_cross": _dep_mean(tag, "dep", "cross"),
+            "dep_within_excess": _dep_mean(tag, "dep_excess_over_boot", "within"),
+            "dep_cross_excess": _dep_mean(tag, "dep_excess_over_boot", "cross"),
+        } for tag in arms},
+    }
+    return out
+
+
+def _auc_2sample(real: np.ndarray, synth: np.ndarray, seed: int) -> float | None:
+    """Cross-validated classifier AUC separating `real` from `synth`. `None` when there are
+    too few rows for the answer to mean anything, which is a real outcome on short folds and
+    is reported as such rather than filled with a number."""
+    from sklearn.ensemble import HistGradientBoostingClassifier
+    from sklearn.metrics import roc_auc_score
+    from sklearn.model_selection import StratifiedKFold
+
+    n = min(len(real), len(synth))
+    if n < 25:
+        return None
+    rng = np.random.default_rng(seed)
+    X = np.vstack([np.asarray(real)[rng.choice(len(real), n, replace=False)],
+                   np.asarray(synth)[rng.choice(len(synth), n, replace=False)]])
+    y = np.r_[np.ones(n), np.zeros(n)]
+    aucs = []
+    for a, b in StratifiedKFold(5, shuffle=True, random_state=seed % (2 ** 31)).split(X, y):
+        clf = HistGradientBoostingClassifier(max_iter=200, min_samples_leaf=5,
+                                             random_state=seed % (2 ** 31))
+        clf.fit(X[a], y[a])
+        aucs.append(roc_auc_score(y[b], clf.predict_proba(X[b])[:, 1]))
+    return float(np.mean(aucs))
+
+
+def _nn_median(A: np.ndarray, B: np.ndarray, chunk: int = 256) -> float:
+    """Median over `A` of the distance to the nearest row of `B`. Chunked because the panels
+    are small in rows but the pairwise block is d_flat-wide and there is no reason to
+    materialize it whole."""
+    out = np.empty(len(A))
+    for i in range(0, len(A), chunk):
+        blk = A[i:i + chunk]
+        out[i:i + chunk] = np.sqrt(((blk[:, None, :] - B[None, :, :]) ** 2).sum(-1).min(1))
+    return float(np.median(out))
+
+
+def _unique_rows(A: np.ndarray) -> np.ndarray:
+    """Indices of the first occurrence of each distinct row, in order.
+
+    Rows are keyed on their bytes after rounding to 1e-9, so two rows differing only by float
+    noise still count as one row — which is what is wanted here, because the thing being
+    removed is a VERBATIM copy, not a near neighbour.
+
+    Why this has to run before any classifier sees the pool (#209). `block_bootstrap` copies
+    whole rows, so two held-out anchors that draw the same training row put the same vector in
+    the pool twice; `knn_bootstrap` draws from a 40-neighbour candidate set and collides far
+    harder. Measured on the real fold structure, `boot` pools are 19-24% duplicates and `knn`
+    pools 34-49%. A cross-validated classifier then meets one copy in training and its twin in
+    test, memorizes it, and scores the twin confidently — which INFLATES the AUC by 0.08-0.25
+    points on the arms that resample real history.
+
+    That is not a small bookkeeping issue, because `boot` IS the floor every other arm is read
+    against: an inflated floor makes every `excess_over_boot` too negative and flatters the
+    DFM. It is the #185 error with the sign reversed — that one read the AUC against a floor
+    that was too low and condemned the generator.
+
+    §4d diagnosed the same corruption in its cross-class form (a row held out in one fold is a
+    training row in the next, so it carries both labels) and concluded that a per-fold C2ST
+    that never pools was the cure. It is not: per-fold scoring removes the label straddling —
+    `prod_dupes.py` confirms zero cross-class copies — and leaves the within-class duplicates
+    untouched. `boot_twin.py` isolates that half with real rows and no model at all: two
+    disjoint halves of real history, zero shared rows, score 0.712 against each other once one
+    side is bootstrap-resampled.
+
+    Duplicates carry no information about whether two DISTRIBUTIONS differ, which is the only
+    question a C2ST asks, so dropping them costs nothing and is not a fudge.
+    """
+    seen: set[bytes] = set()
+    keep = []
+    for i, r in enumerate(np.asarray(A, dtype=float)):
+        k = r.round(9).tobytes()
+        if k not in seen:
+            seen.add(k)
+            keep.append(i)
+    return np.asarray(keep, dtype=int)
+
+
+def _dependence(Zte: np.ndarray, pool: np.ndarray, H: int, d: int) -> dict:
+    """Mean absolute correlation error, split into WITHIN-column and CROSS-column entries.
+
+    The third leg of #181, and the one the moment tests cannot see. `moments` scores each
+    coordinate's mean/sd/skew/kurtosis on its own, and `separability` answers whether
+    ANYTHING distinguishes the samples but not WHAT. A generator can match every marginal and
+    still get the joint law wrong, which for this codebase is not an abstract concern: a
+    synthetic world is consumed as a LADDER of contracts on the same event and as several
+    series moving together, so the dependence structure is most of what the parameter argmin
+    is actually reading.
+
+    Two numbers rather than one because they fail for different reasons and admit different
+    fixes:
+
+    * `within` — pairs of horizon steps inside ONE column. This is the persistence structure,
+      the same thing `acf1` measures at lag 1, resolved over every lag at once.
+    * `cross` — pairs spanning two different columns. This is the co-movement the panel exists
+      to capture, and it is the one a per-column generator would lose entirely.
+
+    `nan` for `cross` on a single-column panel (claims_weekly) is the honest answer, not a
+    missing measurement — there are no cross-column pairs to score.
+
+    The reference is the HELD-OUT correlation matrix. Correlations estimated on tens of rows
+    are noisy, so the absolute level of these numbers means little on its own and they must be
+    read against the `boot` arm's value, exactly like the C2ST is read against its floor.
+    `validate` reports `excess_over_boot` for that reason.
+    """
+    iu = np.triu_indices(H * d, k=1)
+    # `same[i, j]` is True when flat coordinates i and j belong to the same column. Z is laid
+    # out (H, d) row-major, so the column index of flat coordinate k is k % d.
+    col = np.arange(H * d) % d
+    within = (col[:, None] == col[None, :])[iu]
+
+    err = np.abs(np.corrcoef(pool, rowvar=False)[iu]
+                 - np.corrcoef(Zte, rowvar=False)[iu])
+    return {"within": float(err[within].mean()) if within.any() else float("nan"),
+            "cross": float(err[~within].mean()) if (~within).any() else float("nan")}
+
+
+def _separability(pdata: P.PanelData, tr: np.ndarray, te: np.ndarray,
+                  pools: dict[str, np.ndarray], seed: int) -> dict:
+    """One fold of the #181 separability battery. See `validate`'s docstring for why this is
+    never pooled across folds and never reported without its floors."""
+    Ztr, Zte = pdata.Z[tr], pdata.Z[te]
+    base_nn = _nn_median(Zte, Ztr)
+
+    # De-duplicate ONCE, here, so all three legs below score the same pool. `dup_frac` is kept
+    # and reported: a `knn` pool that was half copies is a thinner sample than its row count
+    # claims, and the reader has to be able to see that rather than infer it. See
+    # `_unique_rows` for why this is a correctness fix and not a convenience.
+    dup_frac = {tag: 1.0 - len(_unique_rows(p)) / len(p) if len(p) else float("nan")
+                for tag, p in pools.items()}
+    pools = {tag: np.asarray(p, dtype=float)[_unique_rows(p)] for tag, p in pools.items()}
+
+    # The floors, measured with the identical classifier on the identical real rows. Held-out
+    # real against a same-sized sample of real TRAINING rows is the strictest honest floor:
+    # both sides are real, so whatever the classifier finds is the train/test regime
+    # difference and nothing a generator could remove.
+    rng = np.random.default_rng(seed + 1)
+    idx = rng.choice(len(Ztr), min(len(Ztr), len(Zte)), replace=False)
+
+    # Every arm is scored at the SAME seed. `floor_boot` is not a separate measurement of the
+    # `boot` arm, it IS the `boot` arm's AUC — scoring it twice under two seeds made the boot
+    # row report a 0.022 excess over itself, which is a number that cannot exist.
+    aucs = {tag: _auc_2sample(Zte, pool, seed + 4) for tag, pool in pools.items()}
+    floor_boot = aucs.get("boot")
+
+    # The joint-dependence leg, scored against the SAME held-out rows as everything above and
+    # referenced to the SAME `boot` arm. It gets its own excess because a raw correlation
+    # error has no more meaning against an implicit 0 than an AUC has against an implicit 0.5
+    # — the reference is what a real resampled block scores, and that is panel-specific.
+    H, d = pdata.spec.horizon, pdata.spec.d
+    deps = {tag: _dependence(Zte, pool, H, d) for tag, pool in pools.items()}
+    dep_boot = deps.get("boot")
+
+    out = {"n_real": int(len(Zte)),
+           "floor_train": _auc_2sample(Zte, Ztr[idx], seed + 4),
+           "floor_boot": floor_boot,
+           "dep_boot": dep_boot,
+           "arms": {}}
+    for tag, pool in pools.items():
+        auc = aucs[tag]
+        out["arms"][tag] = {
+            "auc": auc,
+            "dup_frac": dup_frac[tag],
+            "mem": float(_nn_median(pool, Ztr) / base_nn) if base_nn > 0 else float("nan"),
+            "excess_over_boot": (None if auc is None or floor_boot is None
+                                 else float(auc - floor_boot)),
+            "dep": deps[tag],
+            # Subtraction, not a ratio: the boot value can be near zero on a well-behaved
+            # panel and a ratio would explode there. `boot` differences itself to exactly
+            # 0.0, which is the identity check the AUC leg already earns by construction.
+            "dep_excess_over_boot": (None if dep_boot is None else
+                                     {k: float(deps[tag][k] - dep_boot[k])
+                                      for k in ("within", "cross")}),
+        }
     return out
 
 
@@ -804,4 +1078,43 @@ def report(v: dict) -> str:
         "  `boot` scoring 100% on moments is near-tautological — it IS the history — so",
         "  that column judges the other arms and says nothing about the baseline.",
     ]
+    sep = v.get("separability")
+    if sep:
+        def _f(x, w=8):
+            return f"{'  n/a':>{w}}" if x is None else f"{x:>{w}.3f}"
+
+        lines += ["", f"{'separability':<6} {'C2ST':>8} {'vs boot':>8} {'mem':>8} "
+                      f"{'dup':>8} {'dep in':>8} {'vs boot':>8} {'dep x':>8} {'vs boot':>8}"]
+        for tag, a in sep["arms"].items():
+            lines.append(f"{tag:<6}       {_f(a['auc'])} {_f(a['excess_over_boot'])} "
+                         f"{_f(a['mem'])} {_f(a.get('dup_frac'))} {_f(a.get('dep_within'))} "
+                         f"{_f(a.get('dep_within_excess'))} {_f(a.get('dep_cross'))} "
+                         f"{_f(a.get('dep_cross_excess'))}")
+        lines += [
+            f"  floors on this panel: real train rows {_f(sep['floor_train'], 0)}, "
+            f"real resampled blocks {_f(sep['floor_boot'], 0)}.",
+            "  READ `vs boot`, NOT the raw C2ST. Real data does not score 0.5 against real",
+            "  data at these sample sizes, so an AUC of 0.86 can be at the floor and an AUC",
+            "  of 0.56 can be above it — it depends on the panel and the floor is measured",
+            "  here for exactly that reason. 0 means as hard to tell from real as real",
+            "  history is; negative means harder.",
+            "  `mem` well below 1 VOIDS the row: the sample sits closer to the training rows",
+            "  than a genuine held-out observation does, which is copying, and copying",
+            "  improves every other number in this report at the same time. `boot`/`knn` sit",
+            "  at ~0 by construction — they ARE training rows — which is why they are the",
+            "  baseline to beat and never a candidate. The veto applies to `dfm`.",
+            "  `boot`'s own excess is 0 by definition; it is printed as the identity check.",
+            "  `dup` is the fraction of the arm's pool that was a VERBATIM copy of another row",
+            "  in the same pool, before scoring. Those copies are dropped (#209), so the pool",
+            "  actually scored is smaller than `draws` claims by this fraction — a `knn` arm at",
+            "  0.40 is drawing 60 distinct worlds where the header says 100. It is reported",
+            "  rather than silently fixed because a high value is a fact about the GENERATOR,",
+            "  not about the test: it means that arm's effective sample is thin.",
+            "  `dep in`/`dep x` are the mean absolute correlation error against the held-out",
+            "  rows, WITHIN one column (persistence over every lag, not just acf1's lag 1)",
+            "  and ACROSS columns (the co-movement a per-column generator would lose). They",
+            "  are read against boot for the same reason the C2ST is: correlations from tens",
+            "  of rows are noisy and the noise floor is panel-specific. `dep x` is n/a on a",
+            "  single-column panel, where there are no cross-column pairs to score.",
+        ]
     return "\n".join(lines)
