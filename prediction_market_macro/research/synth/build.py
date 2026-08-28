@@ -806,8 +806,11 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     # a guard that recomputes what it guards can drift away from it.
     settle_step = _check_settle_grid_nests(st, spec, pdata, say)
     # The panel's own offset, not a hardcoded week: `_MONTHLY` steps MS and `_WEEKLY` W-SAT,
-    # and generating a monthly path on a weekly calendar would date every print wrong.
-    fwd = pd.date_range(anchor, periods=psp.horizon + 1, freq=psp.freq)[1:]
+    # and generating a monthly path on a weekly calendar would date every print wrong. Shared
+    # with `quantise_levels`, which since PR-17 picks each period's lattice off these same
+    # stamps — two copies of the derivation could date a level under a month it was not
+    # quantised for.
+    fwd = P.forward_periods(psp, anchor, psp.horizon)
     col_ix = {c.name: j for j, c in enumerate(psp.gen_columns)}
     # The real history the settlement transform reads BEFORE the generated path starts. For
     # the first generated period that lookback is real data — dropping it would silently

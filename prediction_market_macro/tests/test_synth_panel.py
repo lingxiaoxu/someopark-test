@@ -311,6 +311,282 @@ def test_to_increments_inverts_integrate_paths():
     np.testing.assert_array_equal(qq, P.quantise_levels(levels, spec, lat))
 
 
+# ── PR-17 / #203: the grid a mean-aggregated column can actually reach ───────────────────
+# The pooled grid `gcd(g/4, g/5) = g/20` DESCRIBES such a column correctly and is still the
+# wrong thing to round onto: the union of {multiples of g/4} and {multiples of g/5} covers
+# 40% of the g/20 lattice, so a quantiser handed the scalar emits an unprintable level about
+# 60% of the time. Everything below exists to make that fix fail loudly instead of quietly —
+# quietly is the whole danger, since a wrongly-quantised level is still on *a* measured grid
+# and still passes every nesting check `build._check_settle_grid_nests` runs.
+
+def _sub_spec(freq="MS", agg="mean", **kw):
+    """One column aggregated from a faster source — the only shape PR-17 can touch."""
+    return _spec(freq=freq, columns=(
+        P.Column("avg", "fred", "WKY", "latest", agg, "dlog", "$"),), **kw)
+
+
+def _weekly_source(n=800, dow=0, source_step=1000.0, seed=17, start="2006-01-02"):
+    """A source that prints on ONE weekday, every print an exact multiple of `source_step`.
+
+    ICSA to the day: weekly, one weekday, values on a 1000 grid. 800 prints is ~15.3 years,
+    which is what lets a test put a hole OUTSIDE `_SUB_HOLE_FREE_YEARS` and mean it.
+    """
+    idx = pd.date_range(start, periods=n, freq="7D")
+    assert idx[0].dayofweek == dow, "the fixture's start day is part of the fixture"
+    rng = np.random.default_rng(seed)
+    v = np.round((300_000 + np.cumsum(rng.normal(0, 6_000, n))) / source_step) * source_step
+    return pd.Series(v, index=idx)
+
+
+def _sub_levels(src, freq="MS"):
+    """The panel column, built the way `_resample` builds it — mean THEN forward-fill, so a
+    period with no print at all reaches the rule as a level rather than as a NaN."""
+    return pd.DataFrame({"avg": src.resample(freq).mean().ffill()})
+
+
+def _sub_lattice(src=None, freq="MS", agg="mean"):
+    src = _weekly_source() if src is None else src
+    spec = _sub_spec(freq=freq, agg=agg)
+    return spec, src, P.measure_lattice(_sub_levels(src, freq), spec, {"avg": src})
+
+
+def test_period_bounds_puts_the_bin_label_at_opposite_ends_for_a_month_and_a_week():
+    """"MS" labels the FIRST day of its bin and "W-SAT" the LAST. A single generic answer
+    written off the alias would be wrong for one of the two, and the failure would be a
+    level quantised on the wrong month's grid — silent, and on-grid-looking."""
+    assert P.period_bounds("MS", "2026-02-01") == (pd.Timestamp("2026-02-01"),
+                                                   pd.Timestamp("2026-02-28"))
+    assert P.period_bounds("W-SAT", "2026-02-07") == (pd.Timestamp("2026-02-01"),
+                                                      pd.Timestamp("2026-02-07"))
+    assert P.period_bounds("QS", "2026-01-01") is None, "an unknown convention must not guess"
+
+
+def test_sub_period_count_is_arithmetic_on_a_period_no_data_exists_for():
+    """The load-bearing property: `quantise_levels` runs on FUTURE paths, so `n` has to come
+    from the calendar and not from a row count. September 2030 has five Mondays and October
+    2030 has four; nothing in any database says so."""
+    rule = {"kind": "weekly", "dayofweek": 0}
+    assert P.sub_period_count(rule, "MS", "2030-09-01") == 5
+    assert P.sub_period_count(rule, "MS", "2030-10-01") == 4
+    assert P.sub_period_count(rule, "MS", "2026-02-01") == 4
+    # a week contains exactly one of any weekday, whatever the label's own day is
+    for dow in range(7):
+        assert P.sub_period_count({"kind": "weekly", "dayofweek": dow},
+                                  "W-SAT", "2030-09-07") == 1
+    with pytest.raises(ValueError):
+        P.sub_period_count(rule, "QS", "2030-01-01")
+    with pytest.raises(ValueError):
+        P.sub_period_count({"kind": "business_daily"}, "MS", "2030-09-01")
+
+
+def test_weekly_print_dow_reads_through_a_hole_but_refuses_a_daily_index():
+    """GASREGW is missing six consecutive Mondays in 1990-12 and is still a Monday series;
+    demanding gaps of exactly 7 rejected it, and rejecting it costs `gas_retail` the fix for
+    a 36-year-old hole. What must still be refused is a source whose print days are NOT a
+    weekly calendar, because for those `n(future period)` is not arithmetic at all."""
+    src = _weekly_source()
+    assert P._weekly_print_dow(src.index) == 0
+    holed = pd.concat([src.iloc[:40], src.iloc[46:]])          # six consecutive Mondays gone
+    assert P._weekly_print_dow(holed.index) == 0, "a hole is still a weekly calendar"
+    daily = pd.Series(1.0, index=pd.bdate_range("2006-01-02", periods=800))
+    assert P._weekly_print_dow(daily.index) is None
+    mixed = pd.concat([src, pd.Series(1.0, index=src.index[:60] + pd.Timedelta(days=2))])
+    assert P._weekly_print_dow(mixed.sort_index().index) is None
+    assert P._weekly_print_dow(src.index[:49]) is None, "49 prints is not a measured calendar"
+
+
+def test_a_mean_column_gets_the_grid_of_its_own_period_and_a_last_column_never_does():
+    """The entry is pinned whole, not field by field: an extra key would travel into every
+    saved `scaler["lattice"]` and out again into artefacts this package cannot re-read.
+
+    `step` stays on it because `_check_settle_grid_nests` compares Kalshi ladders against
+    that number, and dropping it to "replace" the grid would silently disable the nesting
+    check rather than tighten it."""
+    spec, src, lat = _sub_lattice()
+    assert lat["avg"] == {"step": 50.0, "dtype": "float64", "source_step": 1000.0,
+                          "sub_period": {"kind": "weekly", "dayofweek": 0}}
+    # 1000/lcm(4,5) is the pooled step: the conditional grids still nest inside it
+    assert P.on_lattice(np.array([250.0, 200.0]), lat["avg"]["step"]) == 1.0
+    _, _, last = _sub_lattice(src=src, agg="last")
+    assert "sub_period" not in last["avg"], "an `agg=last` column is one print, not a mean"
+
+
+def test_the_lattice_is_unchanged_when_no_sources_are_passed():
+    """Backward compatibility is exact, not approximate. A Generator pickled before PR-17
+    carries entries with no `source_step`, and `_grid`/`quantise_levels` must keep taking the
+    scalar path for them — otherwise every artefact on disk becomes unloadable."""
+    spec, src, _ = _sub_lattice()
+    lv = _sub_levels(src)
+    assert P.measure_lattice(lv, spec) == {"avg": {"step": 50.0, "dtype": "float64"}}
+    assert P.measure_lattice(lv, spec, {}) == P.measure_lattice(lv, spec)
+    old = {"avg": 50.0}                                    # the bare float an old one carries
+    paths = np.full((2, 4, 1), 300_123.4)
+    np.testing.assert_array_equal(P.quantise_levels(paths, spec, old),
+                                  np.full((2, 4, 1), 300_100.0))
+
+
+@pytest.mark.parametrize("case", ["daily_source", "source_off_its_own_grid", "level_off_g_n",
+                                  "recent_hole", "one_n_group", "pooled_disagrees",
+                                  "a_period_with_no_print"])
+def test_every_refusal_path_leaves_the_column_on_the_pooled_scalar(case):
+    """Seven ways the derivation can fail to hold, and one verdict for all of them: keep the
+    scalar. That asymmetry is the design — a column that keeps the pooled step is exactly as
+    wrong as it was yesterday, while a column handed a conditional grid the source does not
+    obey is newly wrong in a way nothing downstream can see."""
+    src, freq = _weekly_source(), "MS"
+    if case == "pooled_disagrees":
+        # the one condition `measure_lattice` cannot stage, because it measures the pooled
+        # step itself: a `_best_step` the derivation's `g_src/lcm(n)` cannot reproduce means
+        # one of the two measurements is wrong, and neither may be acted on.
+        lv, spec = _sub_levels(src, freq), _sub_spec(freq=freq)
+        assert P._sub_period_rule(lv["avg"], src, spec,
+                                  {"step": 7.0, "dtype": "float64"}) is None
+        return
+    if case == "daily_source":
+        src = pd.Series(np.round(np.linspace(300_000, 500_000, 800) / 1000) * 1000,
+                        index=pd.bdate_range("2006-01-02", periods=800))
+    elif case == "source_off_its_own_grid":
+        src.iloc[123] += 0.37                              # `_exact_gcd_step` -> None
+    elif case == "recent_hole":
+        src = src.drop(src.index[776])                     # one 2020-11 print never published
+    elif case == "one_n_group":
+        freq = "W-SAT"                                     # every week holds exactly one print
+    elif case == "a_period_with_no_print":
+        src = pd.concat([src.iloc[:200], src.iloc[206:]])  # a whole month, forward-filled
+    lv = _sub_levels(src, freq)
+    if case == "level_off_g_n":
+        lv.iloc[30, 0] += 1.0                              # falsifier (c), one period
+    spec = _sub_spec(freq=freq)
+    if case == "pooled_disagrees":
+        pooled = {"step": 7.0, "dtype": "float64"}         # a step the derivation cannot make
+        assert P._sub_period_rule(lv["avg"], src, spec, pooled) is None
+    lat = P.measure_lattice(lv, spec, {"avg": src})
+    assert "sub_period" not in lat.get("avg", {}), f"{case} must not carry a conditional grid"
+    assert "source_step" not in lat.get("avg", {})
+
+
+def test_a_truncated_edge_period_is_not_a_hole():
+    """The counterpart to `recent_hole`, and the reason the two are distinguished at all.
+    The panel's last period always runs past the PIT cut, so its observed print count is
+    short — by arithmetic, not because the publisher skipped anything. Counting that as a
+    hole would make the conditional grid appear and disappear with the DAY OF THE MONTH the
+    training cut lands on, which is the least defensible kind of non-determinism."""
+    full = _weekly_source()
+    cut = full.iloc[:-2]                        # the cut lands mid-month, two prints missing
+    lat = P.measure_lattice(_sub_levels(cut), _sub_spec(), {"avg": cut})
+    assert lat["avg"]["sub_period"] == {"kind": "weekly", "dayofweek": 0}
+    # an OLD hole is tolerated — GASREGW skipped six Mondays in 1990 and is fine today
+    old = full.drop(full.index[19])                        # 2006-05-15, ~15 years back
+    lat_old = P.measure_lattice(_sub_levels(old), _sub_spec(), {"avg": old})
+    assert lat_old["avg"]["sub_period"] == {"kind": "weekly", "dayofweek": 0}
+    # same count mismatch, opposite verdict: a RECENT skip says the next `n` may be wrong too
+    recent = full.drop(full.index[776])                    # 2020-11-16
+    lat_new = P.measure_lattice(_sub_levels(recent), _sub_spec(), {"avg": recent})
+    assert lat_new["avg"] == {"step": 50.0, "dtype": "float64"}, "refused, and still measured"
+
+
+def test_quantise_uses_each_period_own_grid_and_refuses_to_guess_the_period():
+    """The fix itself, plus the omission that would undo it. `periods` is REQUIRED once an
+    entry is conditional: falling back to the pooled step is the exact defect PR-17 removes
+    and it fails silently, so it raises instead."""
+    spec, src, lat = _sub_lattice()
+    H = spec.horizon
+    periods = P.forward_periods(spec, "2021-01-01", H)
+    ns = [P.sub_period_count(lat["avg"]["sub_period"], spec.freq, t) for t in periods]
+    assert set(ns) == {4, 5}, "a test that only saw one month length would prove nothing"
+    rng = np.random.default_rng(203)
+    paths = rng.uniform(300_000, 400_000, (500, H, 1))
+    with pytest.raises(ValueError, match="period-conditional"):
+        P.quantise_levels(paths, spec, lat)
+    with pytest.raises(ValueError, match="period labels"):
+        P.quantise_levels(paths, spec, lat, periods[:-1])
+    q = P.quantise_levels(paths, spec, lat, periods)
+    for h, n in enumerate(ns):
+        assert P.on_lattice(q[:, h, 0], 1000.0 / n) == 1.0
+        other = 1000.0 / (9 - n)                          # the OTHER month length's grid
+        assert P.on_lattice(q[:, h, 0], other) < 1.0, "conditioning did nothing at step h"
+    # and the pooled scalar — what the column had before — emits mostly unprintable levels
+    scalar = {"avg": {k: v for k, v in lat["avg"].items()
+                      if k not in ("source_step", "sub_period")}}
+    b = P.quantise_levels(paths, spec, scalar)[..., 0]
+    reachable = np.zeros(b.shape, dtype=bool)
+    for n in (4, 5):
+        d = b / (1000.0 / n)
+        reachable |= np.abs(d - np.round(d)) < 1e-6
+    assert reachable.mean() < 0.5, "the pooled grid was never 60% unreachable to begin with"
+
+
+def test_integrate_paths_takes_the_period_labels_from_the_anchor_stamp():
+    """One derivation of the forward stamps, shared with `build.build`. Two copies that
+    drifted apart would quantise a level on one month's lattice and write it under another
+    month's date — on-grid, correctly nested, and wrong."""
+    spec, src, lat = _sub_lattice()
+    lv = _sub_levels(src)
+    anchor = lv.iloc[-30]
+    assert isinstance(anchor.name, pd.Timestamp)
+    # the pin against build.py's own `date_range(anchor, periods=H+1, freq=...)[1:]`
+    pd.testing.assert_index_equal(
+        P.forward_periods(spec, anchor.name, spec.horizon),
+        pd.date_range(anchor.name, periods=spec.horizon + 1, freq=spec.freq)[1:])
+    rng = np.random.default_rng(5)
+    inc = rng.normal(0, 0.05, (7, spec.horizon, 1))
+    raw = P.integrate_paths(inc, anchor, spec, None)
+    got = P.integrate_paths(inc, anchor, spec, lat)
+    np.testing.assert_array_equal(
+        got, P.quantise_levels(raw, spec, lat,
+                               P.forward_periods(spec, anchor.name, spec.horizon)))
+    nameless = pd.Series(anchor.to_dict())
+    with pytest.raises(ValueError, match="period-conditional"):
+        P.integrate_paths(inc, nameless, spec, lat)
+
+
+def test_integrate_dates_the_quantiser_off_the_increment_index():
+    """`integrate` is the DataFrame twin and already knows the stamps — it must use them.
+    Its index IS the period labels, so a path whose months alternate 4/5 prints must come
+    back on two different grids."""
+    spec, src, lat = _sub_lattice()
+    lv = _sub_levels(src)
+    idx = pd.date_range("2021-02-01", periods=4, freq="MS")
+    inc = pd.DataFrame({"avg": [0.03, -0.02, 0.05, -0.01]}, index=idx)
+    out = P.integrate(inc, lv.iloc[-30], spec, lat)
+    for t, v in out["avg"].items():
+        n = P.sub_period_count(lat["avg"]["sub_period"], spec.freq, t)
+        assert P.on_lattice(np.array([v]), 1000.0 / n) == 1.0
+    assert len({P.sub_period_count(lat["avg"]["sub_period"], spec.freq, t)
+                for t in idx}) == 2
+
+
+def _seed_weekly(conn, sid, n=800, start="2006-01-02", source_step=1000.0, seed=17):
+    """The weekly source as ALFRED would hold it: printed five days after the week it dates."""
+    src = _weekly_source(n=n, source_step=source_step, seed=seed, start=start)
+    for ev, v in src.items():
+        know = (ev + timedelta(days=5)).isoformat()
+        _put(conn, sid, ev.strftime("%Y-%m-%d"), float(v), know[:10], know)
+    conn.commit()
+    return src
+
+
+def test_build_conditions_the_lattice_on_the_print_calendar(tmp_path):
+    """End to end, because the wiring is where this can be lost: `build` must hand
+    `measure_lattice` the PRE-resample series. Reading them back separately would be a second
+    PIT cut, and reading them not at all silently restores the pooled scalar."""
+    conn = init_db(tmp_path / "w.db")
+    src = _seed_weekly(conn, "WKY")
+    end = datetime(*(src.index[-1] + timedelta(days=6)).timetuple()[:3], tzinfo=UTC)
+    spec = _sub_spec(start="2007-01-01")
+    pdata = _build(conn, spec, end)
+    assert pdata.lattice["avg"]["sub_period"] == {"kind": "weekly", "dayofweek": 0}
+    assert pdata.lattice["avg"]["source_step"] == 1000.0
+    assert pdata.scaler["lattice"] == pdata.lattice
+    # and the generated levels land where a mean of that month's prints could land
+    rng = np.random.default_rng(9)
+    inc = rng.normal(0, 0.04, (3, spec.horizon, 1))
+    lv = P.integrate_paths(inc, pdata.levels.loc[pdata.anchors[-1]], spec, pdata.lattice)
+    for h, t in enumerate(P.forward_periods(spec, pdata.anchors[-1], spec.horizon)):
+        n = P.sub_period_count(pdata.lattice["avg"]["sub_period"], spec.freq, t)
+        assert P.on_lattice(lv[:, h, 0], 1000.0 / n) == 1.0
+
+
 def test_build_carries_the_lattice_into_the_scaler(env):
     """A saved Generator quantises from `scaler["lattice"]`, not from the panel it was
     fitted on — the panel is long gone by the time `build.py` samples."""

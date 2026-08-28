@@ -484,6 +484,28 @@ _LATTICE_HIT = 0.995     # fraction of real levels that must sit exactly on the 
 _LATTICE_MIN_PTS = 20    # distinct grid points the real series must occupy
 _F32_EPS = float(np.finfo(np.float32).eps)
 
+# ── the period-conditional grid (PR-17, #203) ────────────────────────────────
+# The pooled grid above is `gcd(g/4, g/5) = g/20`, and it describes the column correctly
+# while still being the wrong thing to ROUND ONTO. The union of {multiples of g/4} and
+# {multiples of g/5} is not the g/20 lattice — 1, 2, 3, 6, 7 of every 20 rungs belong to
+# neither — so a quantiser handed the scalar emits a value the publication process cannot
+# produce about 60% of the time, measured (§4e-K). The real column lands in that hole 0
+# times in 425.
+#
+# The fix is to round onto `g_src / n(period)`, where `n` is how many sub-period prints that
+# period contains. `n` has to be knowable for a FUTURE period, which is the whole difficulty:
+# it is a calendar fact only when the source prints on a fixed weekly weekday, where the
+# count of that weekday in a month is arithmetic. It is NOT a calendar fact for a
+# business-daily source — measured 2026-08-28, `USFederalHolidayCalendar` mispredicts the
+# H.15 publication count on 18 of 866 weeks (Good Friday is not a federal holiday; Veterans
+# Day and Juneteenth are, and H.15 published anyway), and a rule that is right 97.9% of the
+# time would emit an off-grid level 2% of the time while claiming a grid. So DGS2/DGS10 keep
+# the scalar and are recorded as still defective rather than fixed with a rule that does not
+# hold. They appear only in `energy_weekly_wide`, the wide control arm.
+_SUB_MIN_PERIODS = 20    # periods at one `n` before that group's hit rate is a measurement
+_SUB_MIN_GROUPS = 2      # distinct `n` groups that big, else there is nothing conditional
+_SUB_HOLE_FREE_YEARS = 10   # recent history in which the source may not skip a print
+
 
 def on_lattice(x: np.ndarray, step: float, tol: float = _LATTICE_TOL,
                dtype: str = "float64") -> float:
@@ -618,7 +640,149 @@ def _best_step(x: np.ndarray) -> dict | None:
     return {"step": float(exact), "dtype": "float64"}
 
 
-def measure_lattice(levels: pd.DataFrame, spec: PanelSpec) -> dict[str, dict]:
+def period_bounds(freq: str, t) -> tuple[pd.Timestamp, pd.Timestamp] | None:
+    """The closed [first day, last day] a resample bin labelled `t` covers, or None.
+
+    Only the two conventions this package resamples on are implemented, and an unknown one
+    returns None rather than a guess: the bin label means opposite ends of the interval for
+    the two ("MS" labels the FIRST day of the month, "W-SAT" the LAST day of the week), so a
+    generic answer written from the alias alone would be wrong half the time.
+    """
+    t = pd.Timestamp(t)
+    if freq == "MS":
+        return t.normalize(), t.normalize() + pd.offsets.MonthBegin(1) - pd.Timedelta(days=1)
+    if freq.startswith("W-") or freq == "W":
+        return t.normalize() - pd.Timedelta(days=6), t.normalize()
+    return None
+
+
+def _weekly_print_dow(idx: pd.DatetimeIndex) -> int | None:
+    """The single weekday a WEEKLY source prints on, or None if it is not weekly.
+
+    Gaps are required to be positive multiples of 7 rather than exactly 7: a source that
+    prints every Monday and is missing six of them (GASREGW, 1990-12-03 to 1991-01-21) is
+    still on a weekly Monday calendar with a hole in it, and the hole is handled explicitly
+    by `_sub_period_rule` rather than by loosening what "weekly" means.
+    """
+    if len(idx) < 50:
+        return None
+    dows = set(int(d) for d in idx.dayofweek)
+    if len(dows) != 1:
+        return None
+    gaps = np.diff(idx.values).astype("timedelta64[D]").astype(int)
+    if not len(gaps) or np.any(gaps <= 0) or np.any(gaps % 7 != 0):
+        return None
+    return next(iter(dows))
+
+
+def sub_period_count(rule: dict, freq: str, t) -> int:
+    """How many sub-period prints the period labelled `t` contains — from the CALENDAR.
+
+    This is the function that has to work on a period no data exists for yet, which is why
+    it counts weekday stamps in an interval instead of counting rows. For a weekly source
+    that is exact arithmetic and needs nothing but the panel's own offset alias.
+    """
+    b = period_bounds(freq, t)
+    if b is None:
+        raise ValueError(f"sub_period_count: no period convention for freq {freq!r}")
+    lo, hi = b
+    if rule.get("kind") != "weekly":
+        raise ValueError(f"sub_period_count: unknown rule {rule!r}")
+    first = lo + pd.Timedelta(days=(int(rule["dayofweek"]) - lo.dayofweek) % 7)
+    return 0 if first > hi else int((hi - first).days // 7) + 1
+
+
+def _sub_period_rule(col_levels: pd.Series, source: pd.Series, spec: PanelSpec,
+                     pooled: dict) -> dict | None:
+    """The period-conditional grid for one `agg="mean"` column, or None if it cannot be had.
+
+    Every condition below is a way this can fail to be true, and each one costs the column
+    nothing worse than the scalar it already has. In order:
+
+      1. the source must print on a fixed weekly weekday (`_weekly_print_dow`), because that
+         is the only case where `n(period)` is calendar arithmetic rather than a lookup;
+      2. the source must sit on an exact grid `g_src` of its own;
+      3. the calendar's `n` must equal the OBSERVED count on every panel period, except where
+         the source index has a genuine hole — a period whose prints are missing really is a
+         mean over fewer numbers, and its level really is on the coarser `g_src/n_obs`;
+      4. no such hole in the last `_SUB_HOLE_FREE_YEARS` years, because a source that skipped
+         a print recently is one that may skip the next one, and then the forward `n` this
+         returns would be confidently wrong;
+      5. the real levels of EVERY observed `n` must sit on `g_src/n` at exactly 1.0000 — this
+         is the registered falsifier (c), checked here rather than left to a report;
+      6. at least `_SUB_MIN_GROUPS` values of `n` with `_SUB_MIN_PERIODS` periods each, or
+         there is no variation to condition on and the scalar is already right;
+      7. `g_src / lcm(n)` must reproduce the pooled step `_best_step` already found. The
+         pooled grid is a measurement made independently, and if the derivation cannot
+         reproduce it then one of the two is wrong and neither should be acted on.
+    """
+    dow = _weekly_print_dow(source.index)
+    if dow is None:
+        return None
+    g_src = _exact_gcd_step(source.to_numpy(dtype=float))
+    if g_src is None:
+        return None
+    rule = {"kind": "weekly", "dayofweek": int(dow)}
+    idx = col_levels.index
+    n_obs = source.resample(spec.freq).count().reindex(idx).fillna(0).astype(int)
+    try:
+        n_cal = pd.Series([sub_period_count(rule, spec.freq, t) for t in idx], index=idx)
+    except ValueError:
+        return None
+
+    # 3 + 4: disagreements must be holes in the source, and none of them recent.
+    #
+    # Two different things make the calendar count disagree with the observed one and they
+    # are not the same defect. A period can be TRUNCATED — the panel's first period starts
+    # before the source's first print, its last one runs past the PIT cut — and that is
+    # arithmetic, not a skipped print: it says nothing about whether a future complete
+    # period will have `n_cal` prints, and it is the only one of the two that depends on
+    # what day of the month the training cut lands on. Counting truncation as a hole would
+    # make the whole rule appear and disappear with the cut date, so it is separated out:
+    # what must hold is that the stamps the rule predicts INSIDE the source's own coverage
+    # are exactly the rows observed, and the recency fence applies only to genuine holes.
+    holes = n_cal != n_obs
+    if holes.any():
+        first, last = source.index[0], source.index[-1]
+        present = set(source.index)
+        skipped = []
+        for t in idx[holes]:
+            lo, hi = period_bounds(spec.freq, t)
+            want = [d for d in pd.date_range(max(lo, first), min(hi, last), freq="D")
+                    if d.dayofweek == dow]
+            have = sum(d in present for d in want)
+            if have != int(n_obs[t]):
+                return None                    # the rule does not describe this period at all
+            if len(want) > have:
+                skipped.append(t)              # a genuine missing print
+        cut = idx[-1] - pd.DateOffset(years=_SUB_HOLE_FREE_YEARS)
+        if any(t >= cut for t in skipped):
+            return None
+
+    # 5 + 6: the derivation itself, on this column's own history.
+    big = 0
+    for n in sorted(set(int(v) for v in n_obs)):
+        if n < 1:
+            return None                        # a forward-filled period has no mean at all
+        v = col_levels[n_obs == n].to_numpy(dtype=float)
+        v = v[np.isfinite(v)]
+        if not len(v) or on_lattice(v, g_src / n) < 1.0:
+            return None
+        big += int(len(v) >= _SUB_MIN_PERIODS)
+    if big < _SUB_MIN_GROUPS:
+        return None
+
+    # 7: the conditional grids must have the pooled grid as their gcd.
+    lcm = 1
+    for n in set(int(v) for v in n_obs):
+        lcm = lcm * n // math.gcd(lcm, n)
+    if abs(g_src / lcm - float(pooled["step"])) > 1e-12 * max(1.0, float(pooled["step"])):
+        return None
+    return {"source_step": float(g_src), "sub_period": rule}
+
+
+def measure_lattice(levels: pd.DataFrame, spec: PanelSpec,
+                    sources: dict[str, pd.Series] | None = None) -> dict[str, dict]:
     """Per GENERATED column, the grid DISCOVERED from the real level series.
 
     Columns with no grid are absent, so a caller reads "no entry" as "continuous" and never
@@ -638,25 +802,38 @@ def measure_lattice(levels: pd.DataFrame, spec: PanelSpec) -> dict[str, dict]:
     exactly as happily as an institutional one, and at 0.0003 of the column's increment sd
     it costs the sample nothing.
 
-    WHAT THIS RETURNS IS THE POOLED GRID, AND THE POOLED GRID IS NOT THE ACHIEVABLE SET.
+    THE POOLED GRID IS NOT THE ACHIEVABLE SET, AND `sources` IS HOW A COLUMN ESCAPES IT.
     Measured (§4e-K, #203): of `labor_monthly.claims`'s 715 months, the 467 with four ICSA
     prints sit on 250 and the 248 with five sit on 200 — each at a hit rate of 1.0000, each
     confirmed by an independent exact GCD. 50 is the gcd of those two lattices and so
     describes the POOLED column correctly, but the UNION of {multiples of 250} and
     {multiples of 200} covers only 40.3% of the 50-grid. A caller that rounds onto the scalar
-    returned here therefore emits an unreachable number about 60% of the time, while real
-    `claims` lands in that hole 0 times in 425 — a one-bit separator at AUC 0.800, against a
-    pooled C2ST that cannot see the same defect at all (0.7854 vs 0.7853, §4e-I). Fixing it
-    means a PERIOD-CONDITIONAL grid rather than a scalar, which changes generated levels, so
-    it is registered as PR-17 and deliberately not slipped in here mid-A/B.
+    alone therefore emits an unreachable number about 60% of the time, while real `claims`
+    lands in that hole 0 times in 425 — a one-bit separator at AUC 0.800, against a pooled
+    C2ST that cannot see the same defect at all (0.7854 vs 0.7853, §4e-I).
+
+    `sources` is the PRE-RESAMPLE series per column, which is the only place the sub-period
+    grid `g_src` and the print calendar can be read from — `levels` has already averaged them
+    away. Supplying it adds `source_step` and `sub_period` to the entry for every column that
+    passes all seven conditions in `_sub_period_rule`; `quantise_levels` then rounds each
+    period onto `g_src / n(period)`. Omitting it (older callers, saved artefacts) yields
+    exactly the entries this returned before PR-17, and the scalar path is byte-identical.
+    `step` is kept on every entry either way: it remains the true gcd of the conditional
+    grids, which is what `build._check_settle_grid_nests` needs to compare a ladder against.
     """
     out: dict[str, dict] = {}
     for col in spec.gen_columns:
         if col.name not in levels.columns:
             continue
         g = _best_step(levels[col.name].to_numpy(dtype=float))
-        if g is not None:
-            out[col.name] = g
+        if g is None:
+            continue
+        src = (sources or {}).get(col.name)
+        if col.agg == "mean" and src is not None and g["dtype"] == "float64":
+            cond = _sub_period_rule(levels[col.name], src, spec, g)
+            if cond is not None:
+                g = {**g, **cond}
+        out[col.name] = g
     return out
 
 
@@ -670,8 +847,19 @@ def _grid(entry) -> tuple[float, str] | None:
     return float(entry), "float64"
 
 
-def quantise_levels(paths: np.ndarray, spec: PanelSpec,
-                    lattice: dict | None) -> np.ndarray:
+def forward_periods(spec: PanelSpec, anchor, H: int) -> pd.DatetimeIndex:
+    """The H period labels a path anchored at `anchor` covers, on the PANEL's own offset.
+
+    One place, because there were two: `build.build` derived this to date the generated
+    prints and `quantise_levels` now needs the identical stamps to pick each period's grid.
+    Two copies of `date_range(anchor, periods=H+1, freq=...)[1:]` that drifted apart would
+    put a level on one month's lattice and write it under another's date.
+    """
+    return pd.date_range(pd.Timestamp(anchor), periods=H + 1, freq=spec.freq)[1:]
+
+
+def quantise_levels(paths: np.ndarray, spec: PanelSpec, lattice: dict | None,
+                    periods=None) -> np.ndarray:
     """Round generated LEVELS onto each column's measured grid. Copy, never in place.
 
     Quantising the LEVEL rather than the increment is the only correct placement, and the
@@ -687,14 +875,42 @@ def quantise_levels(paths: np.ndarray, spec: PanelSpec,
     the real class means matching its representation too. Emitting an exact 71.41 against a
     real class that stores 71.41000366 would not close the separability hole — it would
     invert it, and hand the classifier the same free split with the labels swapped.
+
+    `periods` is the H period labels the path covers, and it is REQUIRED — not defaulted —
+    once any column's entry carries a `sub_period` rule (PR-17). Falling back to the pooled
+    scalar when the caller forgets is the exact defect that change exists to remove, and it
+    would fail silently: the levels would still be on *a* measured grid, would still pass
+    every nesting check, and would still be values the publication process cannot print. So
+    the omission raises instead.
     """
     out = np.array(paths, dtype=float, copy=True)
+    lat = lattice or {}
+    if periods is not None:
+        periods = pd.DatetimeIndex(periods)
+        if len(periods) != out.shape[-2]:
+            raise ValueError(f"quantise_levels: {len(periods)} period labels for "
+                             f"{out.shape[-2]} path steps")
     for j, col in enumerate(spec.gen_columns):
-        g = _grid((lattice or {}).get(col.name))
+        entry = lat.get(col.name)
+        g = _grid(entry)
         if g is None:
             continue
         step, dtype = g
-        q = np.round(out[..., j] / step) * step
+        rule = (entry or {}).get("sub_period") if isinstance(entry, dict) else None
+        if rule is None:
+            q = np.round(out[..., j] / step) * step
+        else:
+            if periods is None:
+                raise ValueError(
+                    f"quantise_levels: {spec.name}.{col.name} carries a period-conditional "
+                    f"grid ({entry['source_step']:g} / n(period)) and no period labels were "
+                    "passed. Rounding it onto the pooled step would emit levels the "
+                    "publication process cannot print — see PR-17 / §4e-K.")
+            g_src = float(entry["source_step"])
+            q = np.empty_like(out[..., j])
+            for h, t in enumerate(periods):
+                s = g_src / sub_period_count(rule, spec.freq, t)
+                q[..., h] = np.round(out[..., h, j] / s) * s
         out[..., j] = q.astype(np.float32).astype(float) if dtype == "float32" else q
     return out
 
@@ -707,6 +923,11 @@ def integrate_paths(inc: np.ndarray, anchor_levels: pd.Series, spec: PanelSpec,
     so that the integrate-then-quantise sequence exists in exactly one place. A validity
     harness that re-implemented these two lines to save a second sampling pass would be
     scoring its own copy of production rather than production.
+
+    The period labels a PR-17 lattice needs are derived from `anchor_levels.name` — every
+    caller passes a row of `pdata.levels`, so the anchor timestamp is already in hand and
+    asking for it twice would let the two answers disagree. A `Series` with no name still
+    reaches `quantise_levels`, which raises rather than quietly using the pooled step.
     """
     inc = np.asarray(inc, dtype=float)
     out = np.empty_like(inc)
@@ -717,7 +938,12 @@ def integrate_paths(inc: np.ndarray, anchor_levels: pd.Series, spec: PanelSpec,
         for i in range(len(flat)):
             res[i] = _from_increment(flat[i], a, col.transform, col.scale)
         out[..., j] = res.reshape(inc[..., j].shape)
-    return quantise_levels(out, spec, lattice) if lattice else out
+    if not lattice:
+        return out
+    anchor = getattr(anchor_levels, "name", None)
+    periods = (forward_periods(spec, anchor, inc.shape[-2])
+               if isinstance(anchor, (pd.Timestamp, datetime, str)) else None)
+    return quantise_levels(out, spec, lattice, periods)
 
 
 def to_increments(level_paths: np.ndarray, anchor_levels: pd.Series,
@@ -818,8 +1044,13 @@ def build(conn, name: str, end: datetime) -> PanelData:
     spec = PANELS[name]
     fs = FeatureStore(conn)
     cols: dict[str, pd.Series] = {}
+    # The pre-resample series is kept, not re-read: `measure_lattice` needs the sub-period
+    # print grid and the print calendar (PR-17), and both are averaged away by `_resample`.
+    # Re-reading them below would be a second PIT cut that could differ from this one.
+    srcs: dict[str, pd.Series] = {}
     for col in spec.columns:
-        cols[col.name] = _resample(_read(fs, col, end), spec.freq, col.agg)
+        srcs[col.name] = _read(fs, col, end)
+        cols[col.name] = _resample(srcs[col.name], spec.freq, col.agg)
     levels = pd.DataFrame(cols).loc[spec.start:]
     levels = levels.dropna()
     if levels.empty:
@@ -857,7 +1088,7 @@ def build(conn, name: str, end: datetime) -> PanelData:
     Cr = np.asarray(cs, dtype=float)
     mu, sd = Zr.mean(0), Zr.std(0) + 1e-12
     cmu, csd = Cr.mean(0), Cr.std(0) + 1e-12
-    lattice = measure_lattice(levels, spec)
+    lattice = measure_lattice(levels, spec, srcs)
     scaler = {"mu": mu, "sd": sd, "cmu": cmu, "csd": csd,
               "names": spec.names, "horizon": H,
               "transforms": [c.transform for c in spec.gen_columns],
@@ -882,6 +1113,7 @@ def integrate(inc_path: pd.DataFrame, anchor_levels: pd.Series, spec: PanelSpec,
                                         col.scale)
     df = pd.DataFrame(out, index=inc_path.index)
     if lattice:
-        arr = quantise_levels(df[spec.names].to_numpy(dtype=float), spec, lattice)
+        arr = quantise_levels(df[spec.names].to_numpy(dtype=float), spec, lattice,
+                              inc_path.index)
         df = pd.DataFrame(arr, index=inc_path.index, columns=spec.names)
     return df
