@@ -208,12 +208,34 @@ router.get('/scalars', (_req, res) => {
   }
 });
 
+// 报告日(不含)到 ET 今天(含)之间的工作日数:今天出的=0,昨天(工作日)出的=1,
+// 周五出的到周一=1。不可解析或来自未来 → null(调用方按 stale 处理)。
+// 只数周一~周五、不查节假日:假期只会让它提前一天喊 stale —— 宁可假 stale,不可假 ok。
+function businessDaysSince(dateIso: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) return null;
+  const today = etToday();                                  // YYYYMMDD(ET)
+  const end = Date.UTC(+today.slice(0, 4), +today.slice(4, 6) - 1, +today.slice(6, 8));
+  const start = Date.UTC(+dateIso.slice(0, 4), +dateIso.slice(5, 7) - 1, +dateIso.slice(8, 10));
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return null;
+  let n = 0;
+  for (let t = start + 86400000; t <= end; t += 86400000) {
+    const wd = new Date(t).getUTCDay();
+    if (wd >= 1 && wd <= 5) n++;
+  }
+  return n;
+}
+
 // 最近一次对账报告(看板头部 vs official 徽标)
+// 时效守卫(2026-08-27):reconcile_eod.py 曾 13 天没跑,而本路由只取"文件名最大"的
+// 那份、前端只读 verdict —— 于是 8/14 的 ok 一直冒充今天的绿灯。裁决必须自带年龄。
+// 阈值 1 个交易日:当日对账 16:45 ET 才出,盘中拿到的本来就是昨天那份,属正常。
 router.get('/reconcile', (_req, res) => {
   if (!fs.existsSync(OUT)) return res.status(404).json({ error: 'no output dir' });
   const files = fs.readdirSync(OUT).filter(f => f.startsWith('reconcile_')).sort();
-  if (!files.length) return res.json({ verdict: 'none' });
-  res.json(JSON.parse(fs.readFileSync(path.join(OUT, files[files.length - 1]), 'utf-8')));
+  if (!files.length) return res.json({ verdict: 'none', age_bdays: null, stale: true });
+  const rep = JSON.parse(fs.readFileSync(path.join(OUT, files[files.length - 1]), 'utf-8'));
+  const age = businessDaysSince(String(rep.date ?? ''));
+  res.json({ ...rep, age_bdays: age, stale: age === null || age > 1 });
 });
 
 export default router;

@@ -112,6 +112,25 @@ export const soccerLeagueDef = (id?: string | null) => (id ? LEAGUE_BY_ID.get(id
 // only), which is what lets broad words like "risk"/"总览"/"calendrier" live here
 // without colliding with the stock / wc_ / macro_ tables.
 export const SOCCER_KEYWORD_PATTERNS: Array<{ type: string; title: string; keywords: string[] }> = [
+  // Risk limits. Deliberately narrow: bare "risk" already routes to soccer_venues,
+  // so these are the words that mean the LIMIT itself, not the risk posture generally.
+  { type: 'soccer_risk', title: 'Risk limits', keywords: [
+    'risk limit', 'position limit', 'position cap', 'stake limit', 'kelly', 'kill switch',
+    'killswitch', 'bankroll', 'exposure', 'order cap', 'max stake', 'daily loss',
+    '风控', '风控限额', '限额', '仓位上限', '敞口', '熔断', '凯利', '下注上限', '本金',
+    'リスク上限', 'ポジション上限', 'エクスポージャー', 'キルスイッチ', 'ケリー',
+    'límite de riesgo', 'límites de riesgo', 'exposición', 'interruptor', 'kelly',
+    'limite de risque', 'limites de risque', 'exposition', 'coupe-circuit',
+  ] },
+  // How the system works, in client-facing terms — not the model internals.
+  { type: 'soccer_methodology', title: 'Methodology', keywords: [
+    'methodology', 'how does it work', 'how does this work', 'how it works',
+    'what does this system do', 'what does it do', 'explain the system', 'approach',
+    '方法论', '系统说明', '怎么做的', '怎么运作', '原理', '这套系统', '如何运作', '做什么的',
+    '方法論', 'システム概要', 'どうやって', '仕組み',
+    'metodología', 'cómo funciona', 'qué hace este sistema',
+    'méthodologie', 'comment ça marche', 'que fait ce système',
+  ] },
   // The knockout bracket card. Cup vocabulary only — a bracket question is always
   // about a two-legged tie or a round of a cup, never about a league table.
   { type: 'soccer_bracket', title: 'Bracket', keywords: [

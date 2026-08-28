@@ -9,9 +9,14 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import ClubName from './ClubName';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useAdvanceMode } from '../prediction/AdvanceMode';
-import { leagueLabel, stageLabel } from './soccerLabels';
+import { clubName, leagueLabel, stageLabel } from './soccerLabels';
+
+// Re-exported for views that already import it from here; the definition now lives in
+// soccerLabels so ClubName can use it without a cycle back through this file.
+export { clubName };
 import type { SoccerUpcomingMatch, SoccerVenueQuote } from '../../lib/soccerApi';
 
 const pct = (v?: number | null) => (v == null ? '—' : `${Math.round(v * 100)}%`);
@@ -36,28 +41,6 @@ function kickoffLabel(m: any): string {
   return m?.et || '';
 }
 
-export function clubName(
-  c?: { name?: string; zh?: string; id?: string; club_id?: string; team_id?: string } | null,
-  lang?: string, t?: (k: string, o?: any) => string,
-): string {
-  if (!c) return '—';
-  // Club names are looked up by club_id in the locale files (soccer.club.<id>), so
-  // Chinese and Japanese get real names instead of the Latin spelling. English,
-  // Spanish and French use the club's own name, which is what those languages
-  // print anyway — the lookup simply finds nothing and falls through.
-  const id = c.club_id || c.team_id || c.id;
-  if (t && id) {
-    const key = `soccer.club.${id}`;
-    // fallbackLng:[] keeps the lookup inside the ACTIVE language. The app-wide chain
-    // ends in Chinese, so without it an English/Spanish/French reader resolves
-    // soccer.club.arsenal all the way to "阿森纳" instead of falling through to the
-    // club's own name below.
-    const v = t(key, { defaultValue: '', fallbackLng: [] });
-    if (v && v !== key) return v;
-  }
-  if ((lang || '').startsWith('zh') && c.zh) return c.zh;
-  return c.name || '—';
-}
 
 // Overround + de-vigged implied probability line (3-way or 2-way advance book).
 function VigNote({ q, twoWay }: { q: SoccerVenueQuote; twoWay?: boolean }) {
@@ -121,7 +104,7 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
       <div className="pair-card" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 300, flex: '1 1 360px' }}>
         <div className="flex items-center justify-between">
           <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
-            {home} <span style={{ color: 'var(--text-muted)' }}>{t('soccer.versus')}</span> {away}
+            <ClubName club={m.home} /> <span style={{ color: 'var(--text-muted)' }}>{t('soccer.versus')}</span> <ClubName club={m.away} />
           </span>
           <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>{kickoffLabel(m)}</span>
         </div>
@@ -177,7 +160,7 @@ export default function SoccerMatchCard({ m, showLeague = false }: { m: SoccerUp
         <div className="flex items-center justify-between">
           <span style={{ fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '.03em' }}>
             <Chevron className="inline w-3.5 h-3.5" style={{ marginRight: 4, verticalAlign: '-2px', color: 'var(--text-muted)' }} />
-            {home} <span style={{ color: 'var(--text-muted)' }}>{t('soccer.versus')}</span> {away}
+            <ClubName club={m.home} /> <span style={{ color: 'var(--text-muted)' }}>{t('soccer.versus')}</span> <ClubName club={m.away} />
           </span>
           <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
             {twoWay ? <span style={{ color: 'var(--accent-primary)', marginRight: 6 }}>{t('soccer.modeAdvance')}</span> : null}{kickoffLabel(m)}

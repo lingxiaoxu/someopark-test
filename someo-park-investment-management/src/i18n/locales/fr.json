@@ -1735,7 +1735,77 @@
       "WC": "Jeu de la Coupe du monde",
       "REFIT": "Réajusté sur données clubs"
     },
-    "boardLabel": "Football de clubs"
+    "boardLabel": "Football de clubs",
+    "cap": {
+      "dataT": "Données et entrées",
+      "data": [
+        "Tous les clubs et le calendrier complet de 12 compétitions : Premier League, Liga, Serie A, Bundesliga, Ligue 1, Ligue des champions, Ligue Europa, Ligue Conférence, Libertadores, Sudamericana, Brasileirão et le championnat argentin",
+        "Flux du match en direct : score, minute, qualité des occasions (xG), cartons, compositions et remplacements",
+        "La force de chaque club est modélisée par compétition, à partir de trois ancrages : le classement de la saison passée, l'Elo des clubs européens et les cotes de titre du marché lui-même",
+        "Profondeur d'effectif et talent des joueurs (notes de la série FIFA), plus la forme récente et la tendance des xG"
+      ],
+      "preT": "Avant le match",
+      "pre": [
+        "Chaque match est valorisé en 3 issues (domicile/nul/extérieur) et sur le total de buts, comparé aux cotes en direct de Kalshi et Polymarket une fois la marge retirée",
+        "Une confrontation aller-retour est valorisée comme UNE seule : le retour est conditionné au score de l'aller, et une égalité au cumul se tranche selon la règle propre à la compétition — prolongation puis tirs au but en Europe, tirs au but directs dans les deux coupes de la CONMEBOL",
+        "Les championnats font tourner un Monte-Carlo de saison : titre, places européennes, relégation, plus points et classement attendus",
+        "Les notes ne sont comparables qu'**au sein d'une même compétition** : ne classez jamais un club d'un championnat face à celui d'un autre sur la base de sa note"
+      ],
+      "liveT": "En cours de match",
+      "live": [
+        "Les 3 issues sont recalculées chaque minute à partir du score, de la minute, des expulsions et des xG en cours",
+        "Une confrontation à élimination fait aussi tourner un modèle parallèle à 2 issues « qui se qualifie », du temps réglementaire à la prolongation puis aux tirs au but",
+        "Lectures tactiques en direct : surréaction du marché, domination aux xG, valeur temporelle du nul, pièges de possession, fragilité du dispositif",
+        "Protection de position : couvertures à l'équilibre et totales, meilleur pire cas, encaissement partiel et blocages sur les trois issues"
+      ],
+      "decisionT": "Modèle de décision de pari",
+      "decision": [
+        "Le camp est choisi sur la VALEUR, pas sur la probabilité : on soutient l'issue que le modèle valorise le plus au-dessus du prix de marché hors marge",
+        "La mise est un quart de Kelly ajusté par la confiance, sous un plafond strict de 1 $ par ordre",
+        "Chaque compétition a sa propre porte de négociation, et trois conditions doivent être réunies pour l'ouvrir : au moins 30 matchs réglés ; une précision calibrée dépassant la référence de plus d'un écart-type (l'égaler ne suffit pas) ; et un calibrateur qui n'a pas dégénéré en abandon du modèle. Si l'une manque, la compétition n'affiche que des prévisions."
+      ],
+      "otherT": "Calibration, risque et reporting",
+      "other": [
+        "Les probabilités sont calibrées statistiquement, ajustées sur les 120 derniers matchs réglés de chaque compétition — comptés en matchs et non en jours, sinon une compétition au calendrier clairsemé passerait pour manquant de preuves du seul fait de la date.",
+        "L'évaluation hors échantillon est une marche avant hebdomadaire : chaque match n'est valorisé qu'avec ce qui était connu avant sa semaine. Notes, effectif, forme et ajustements adverses sont tous coupés dans le temps, et les ancrages du prior sont reconstruits sur le classement d'alors.",
+        "Limites de risque strictes : plafond par ordre, vérification d'exécutabilité sur la place, plafonds d'exposition et coupe-circuit sur perte journalière",
+        "Trading sur papier uniquement, sans argent réel. Le relevé match par match, la courbe de résultats et la ventilation par compétition sont tous consultables"
+      ]
+    },
+    "riskLimits": "Limites de risque",
+    "subRisk": "Plafonds de position, exposition et coupe-circuit",
+    "methodology": "Ce que fait le système",
+    "subMethodology": "Ce que fait ce système",
+    "riskLimitsHead": "Plafonds de mise",
+    "riskExposureHead": "Exposition actuelle",
+    "riskKillSwitchHead": "Coupe-circuit sur perte journalière",
+    "riskKelly": "Fraction de Kelly",
+    "riskPerMarket": "Par marché (du capital)",
+    "riskPerTheme": "Par thème (du capital)",
+    "riskMinEdge": "Avantage net minimal pour parier",
+    "riskMinLock": "Avantage verrouillé minimal pour arbitrer",
+    "riskOrderCap": "Plafond strict par ordre",
+    "riskOpenPositions": "Positions ouvertes",
+    "riskAtRisk": "Montant à risque",
+    "riskKillArmed": "Armé — les paris cessent à une perte journalière de {{pct}}",
+    "riskKillTripped": "Déclenché — perte journalière au-delà de {{pct}}, paris arrêtés",
+    "riskPaperNote": "Trading sur papier uniquement, sans argent réel.",
+    "clubAppearsIn": "Apparaît dans",
+    "clubNoOther": "Aucune autre carte ne contient ce club",
+    "clubNavHint": "Voir dans quelles cartes figure ce club",
+    "seasonStatus": {
+      "title": "Course au titre {{p}}",
+      "europe": "Places européennes {{p}}",
+      "mid": "Milieu de tableau",
+      "relegationFight": "Lutte pour le maintien {{p}}",
+      "relegated": "Relégué",
+      "qualDirect": "Qualification directe {{p}}",
+      "qualPlayoff": "Places de barrage {{p}}",
+      "pendingDraw": "En attente du tirage",
+      "cupAlive": "Toujours en lice · {{p}} de la gagner",
+      "cupOut": "Éliminé"
+    },
+    "possNotMeasured": "possession pas encore mesurée"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en direct · {{time}} ET)",

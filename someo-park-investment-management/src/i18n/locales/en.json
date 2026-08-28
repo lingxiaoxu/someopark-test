@@ -1737,7 +1737,77 @@
       "WC": "World Cup set",
       "REFIT": "Refit on club data"
     },
-    "boardLabel": "Club Football"
+    "boardLabel": "Club Football",
+    "cap": {
+      "dataT": "Data & inputs",
+      "data": [
+        "Every club and full fixture list across 12 competitions — Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, Conference League, Libertadores, Sudamericana, Brasileirão and the Argentine league",
+        "Live match feed: score, minute, chance quality (xG), cards, formations and substitutions",
+        "Club strength modelled per competition, built from three anchors: last season's table, European club Elo, and the market's own title book",
+        "Squad strength and player talent (FIFA-series ratings), plus recent form and xG trend"
+      ],
+      "preT": "Pre-match",
+      "pre": [
+        "Every match priced 3-way (home/draw/away) and on goal totals, compared against live Kalshi and Polymarket quotes with the vig removed",
+        "A two-legged tie is priced as ONE tie: the second leg is conditioned on the first leg's score, and a level aggregate resolves by that competition's own rule — extra time then penalties in Europe, straight to penalties in both CONMEBOL cups",
+        "Leagues run a season Monte-Carlo: title, European places, relegation, plus expected points and finishing position",
+        "Ratings are comparable only WITHIN a competition — never rank a club from one league against a club from another by rating"
+      ],
+      "liveT": "In-play",
+      "live": [
+        "The 3-way is recomputed every minute from the live score, minute, red cards and running xG",
+        "A knockout tie also runs a parallel 2-way 'who advances' model through regulation → extra time → penalties",
+        "In-play tactical reads: market over-reaction, xG dominance, the draw's time value, possession traps, formation fragility",
+        "Position protection: break-even and full hedges, best-worst-case, partial cash-out and three-way locks"
+      ],
+      "decisionT": "Betting decision model",
+      "decision": [
+        "The side is chosen on VALUE, not likelihood: back whichever outcome the model prices above the market's de-vigged price by the widest margin",
+        "Stake is quarter-Kelly scaled by confidence, under a hard $1 per-order cap",
+        "Each competition carries its own trading gate, and three things must hold before it opens: at least 30 settled matches; a calibrated accuracy better than the baseline by more than one standard error (merely tying it does not count); and a calibrator that has not degenerated into discarding the model. Fail any one and the competition shows forecasts only, no trade advice."
+      ],
+      "otherT": "Calibration, risk & reporting",
+      "other": [
+        "Model probabilities are statistically calibrated, fitted on each competition's most recent 120 settled matches — counted in matches rather than days, or a competition with a sparse calendar reads as short of evidence purely because of where the season sits.",
+        "Out-of-sample evaluation is a weekly walk-forward: each match is priced only by what was known before its week. Ratings, squad strength, form and the opponent adjustments are all time-cut, and the prior's anchors are rebuilt from the table as it stood then.",
+        "Hard risk limits: per-order cap, venue-executability checks, exposure ceilings and a daily-loss kill switch",
+        "Paper trading only, no real money. The per-match record, P&L curve and per-competition breakdown are all inspectable"
+      ]
+    },
+    "riskLimits": "Risk limits",
+    "subRisk": "Position caps, exposure and the kill switch",
+    "methodology": "What this does",
+    "subMethodology": "What this system does",
+    "riskLimitsHead": "Staking limits",
+    "riskExposureHead": "Current exposure",
+    "riskKillSwitchHead": "Daily-loss kill switch",
+    "riskKelly": "Kelly fraction",
+    "riskPerMarket": "Per market (of bankroll)",
+    "riskPerTheme": "Per theme (of bankroll)",
+    "riskMinEdge": "Minimum net edge to bet",
+    "riskMinLock": "Minimum locked edge to arb",
+    "riskOrderCap": "Hard per-order cap",
+    "riskOpenPositions": "Open positions",
+    "riskAtRisk": "Amount at risk",
+    "riskKillArmed": "Armed — betting stops at a {{pct}} daily loss",
+    "riskKillTripped": "Tripped — daily loss passed {{pct}}, betting stopped",
+    "riskPaperNote": "Paper trading only — no real money.",
+    "clubAppearsIn": "Appears in",
+    "clubNoOther": "No other card carries this club",
+    "clubNavHint": "See which cards carry this club",
+    "seasonStatus": {
+      "title": "Title race {{p}}",
+      "europe": "European places {{p}}",
+      "mid": "Mid-table",
+      "relegationFight": "Relegation fight {{p}}",
+      "relegated": "Relegated",
+      "qualDirect": "Direct qualification {{p}}",
+      "qualPlayoff": "Playoff places {{p}}",
+      "pendingDraw": "Awaiting the draw",
+      "cupAlive": "Still in · {{p}} to win it",
+      "cupOut": "Eliminated"
+    },
+    "possNotMeasured": "possession not measured yet"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (live · {{time}} ET)",
@@ -1756,10 +1826,12 @@
     "qcQuotes": "full-book quotes",
     "qcQuotesMissing": "quotes missing {{n}}",
     "qcRecon": "position reconcile",
+    "qcReconStale": "position reconcile ({{n}} trading days stale)",
     "qcAnchor": "official anchor",
     "qcTitle": "Dual-engine match: flatten/tree engines must agree node-by-node before publishing. Position reconcile: golden shares x independent official close recompute (no ratio dependence). Pending = accumulating data.",
     "reconLabel": "reconcile",
-    "reconTitle": "Position-level reconcile: golden position shares x independent official close vs controller close (no ratio; official jsons informational only)",
+    "reconStaleTag": "{{n}} trading days stale",
+    "reconTitle": "Position-level reconcile: golden position shares x independent official close vs controller close (no ratio; official jsons informational only). Today's verdict lands at 16:45 ET, so intraday you see the prior session's; anything older than 1 trading day is greyed out and no longer counts as a pass",
     "splitTitle": "Split effective today: prices are post-split, position files adjust in their own pipelines (shares follow position files)",
     "splitTag": "split",
     "structUpdated": "Positions updated",

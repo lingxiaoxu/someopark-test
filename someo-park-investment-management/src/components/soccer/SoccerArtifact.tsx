@@ -14,7 +14,7 @@
  *    never a hard error.
  */
 import type { CSSProperties, ReactNode, ReactElement } from 'react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApi } from '../../hooks/useApi';
 import { usePoll } from '../prediction/usePoll';
@@ -27,6 +27,8 @@ import {
   type SoccerModelLeague, type SoccerUpcomingMatch,
 } from '../../lib/soccerApi';
 import SoccerMatchCard, { clubName } from './SoccerMatchCard';
+import ClubName from './ClubName';
+import { SoccerFocusContext, useClubFocusScroll } from '../../contexts/SoccerFocusContext';
 import SoccerBracket from './SoccerBracket';
 import {
   leagueLabel, stageLabel, statusLabel, sideAbbr,
@@ -313,7 +315,7 @@ function LeagueTable() {
             const o = oddsById[r.club_id] || {};
             return [
               posCell(i),
-              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{clubName(r, lang, t)}</span>,
+              <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}><ClubName club={r} /></span>,
               r.played, <b>{r.pts}</b>, r.gd > 0 ? `+${r.gd}` : r.gd, r.gf,
               num(o.e_points), num(o.e_rank),
             ];
@@ -617,7 +619,7 @@ function SquadStrength() {
         <span title={t('soccer.colFc26Hint')}>{t('soccer.colFc26')}</span>, t('soccer.colTopPlayers')]}
         rows={shown.map((x: any) => [
           rankCell(x, sel),
-          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{clubName(x, lang, t)}</span>,
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}><ClubName club={x} /></span>,
           signed(x.score_z), num(x.mw_rating, 2), num(x.ga_per90, 2),
           num(x.talent_ovr, 1),
           // top 3 inline (WC layout); full list in the hover title.
@@ -662,7 +664,9 @@ function TeamStyles() {
     if (sortCode === code) setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'));
     else { setSortCode(code); setSortDir('desc'); }
   };
-  const cellPoss = (x: any, code: string) => { const c = cellOf(x, code); return c ? c.poss : -1; };
+  // poss is null when the club has never been measured — it must sort with the
+  // unmeasured, not at 0% and not at a style default dressed up as data.
+  const cellPoss = (x: any, code: string) => { const c = cellOf(x, code); return c && c.poss != null ? c.poss : -1; };
   const rows = [...teams].sort((a: any, b: any) => {
     if (sortCode) {
       const va = cellPoss(a, sortCode), vb = cellPoss(b, sortCode);
@@ -697,14 +701,14 @@ function TeamStyles() {
           <tbody>
             {rows.map((x: any) => (
               <tr key={x.team_id}>
-                <td style={{ ...td, position: 'sticky', left: 0, background: 'var(--bg-primary)', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--text-primary)' }}>{clubName(x, lang, t)}</td>
+                <td style={{ ...td, position: 'sticky', left: 0, background: 'var(--bg-primary)', textAlign: 'left', whiteSpace: 'nowrap', fontWeight: 600, color: 'var(--text-primary)' }}><ClubName club={x} /></td>
                 {styles.map((s: any) => {
                   const c = cellOf(x, s.code);
                   return (
                     <td key={s.code}
                         style={{ ...td, background: c ? 'var(--bg-tertiary)' : 'transparent', color: c ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: c ? 700 : 400 }}
-                        title={c ? `${clubName(x, lang, t)} · ${styleName(s)} · ${t('soccer.possession')} ${Math.round(c.poss * 100)}% · #${c.rank}` : ''}>
-                      {c ? Math.round(c.poss * 100) : '·'}
+                        title={c ? `${clubName(x, lang, t)} · ${styleName(s)}${c.poss != null ? ` · ${t('soccer.possession')} ${Math.round(c.poss * 100)}% · #${c.rank}` : ` · ${t('soccer.possNotMeasured')}`}` : ''}>
+                      {c && c.poss != null ? Math.round(c.poss * 100) : '·'}
                     </td>
                   );
                 })}
@@ -738,7 +742,7 @@ function FormCard() {
       <DataTable cols={[t('soccer.colRank'), t('soccer.colClub'), t('soccer.colForm'), t('soccer.colWgd'), t('soccer.colRecent')]}
         rows={shown.map((x: any) => [
           rankCell(x, sel),
-          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{clubName(x, lang, t)}</span>,
+          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}><ClubName club={x} /></span>,
           signed(x.form_z), signed(x.weighted_gd),
           (x.recent ?? []).join(' '),
         ])}
@@ -821,7 +825,7 @@ function Divergence() {
             rows={([...(lg?.rows ?? [])] as any[])
               .sort((a, b) => Math.abs(b.divergence ?? 0) - Math.abs(a.divergence ?? 0))
               .map((r: any) => [
-                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{clubName(r, lang, t)}</span>,
+                <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}><ClubName club={r} /></span>,
                 pct(r.p_model), cc(r.kalshi_c), pct(r.p_kalshi_devig),
                 divCell('', r.divergence),
               ])} />
@@ -1276,6 +1280,40 @@ function Overview() {
           {modelNotes.map((n: string, i: number) => <li key={i} style={{ marginBottom: 4 }}>{n}</li>)}
         </ul>
       )}
+      <CapabilitySections />
+    </div>
+  );
+}
+
+/** What the system does, in client-facing terms — the second half of 系统 & 模型说明.
+ *
+ * This shipped briefly as its own card next to the overview, which left the grid with
+ * "系统说明" and "系统 & 模型说明" sitting side by side: two names for one subject. It
+ * belongs under the overview, after the live status, because a reader who wants to know
+ * what the numbers above MEAN is already looking at them. Deliberately no model
+ * parameters, methods or version numbers. */
+function CapabilitySections() {
+  const { t } = useTranslation();
+  const cap = t('soccer.cap', { returnObjects: true }) as any;
+  const sections: [string, string[]][] = [
+    [cap?.dataT, cap?.data], [cap?.preT, cap?.pre], [cap?.liveT, cap?.live],
+    [cap?.decisionT, cap?.decision], [cap?.otherT, cap?.other],
+  ];
+  const ok = sections.filter(([h, items]) => h && Array.isArray(items));
+  if (!ok.length) return null;
+  return (
+    <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border-subtle)' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono, marginBottom: 8 }}>
+        {t('soccer.subMethodology')}
+      </div>
+      {ok.map(([head, items]) => (
+        <div key={head} style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text-secondary)', ...mono, marginBottom: 5 }}>{head}</div>
+          <ul style={{ paddingLeft: 16, fontSize: 11, lineHeight: 1.6, color: 'var(--text-muted)', ...mono }}>
+            {items.map((it, i) => <li key={i} style={{ marginBottom: 3 }}>{it}</li>)}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1317,8 +1355,85 @@ function Pdfs() {
   );
 }
 
+/** 风控限额 — the half of risk_report.json no surface was reading. VenuesApi renders
+ * gates / balances / budget / blocked; `limits`, `exposure` and `kill_switch` were
+ * exported every run and consumed by nothing, so the numbers that actually bound a
+ * position (¼-Kelly, 5% per market, 10% per theme, 8% daily-loss cut-out) were only
+ * visible from the chat tool. */
+function RiskLimits() {
+  const { t } = useTranslation();
+  const { data, loading, error } = useApi<any>(() => getSoccerRisk(), []);
+  if (loading) return <Loading />;
+  if (error || !data) {
+    return (<div><Title sub={t('soccer.subRisk')} /><EmptyBox title={t('soccer.empty')} hint={t('soccer.emptyHint')} /></div>);
+  }
+  const lim = data.limits ?? {}, exp = data.exposure ?? {}, ks = data.kill_switch ?? {};
+  const pct = (v: any) => (typeof v === 'number' ? `${(v * 100).toFixed(v * 100 % 1 ? 1 : 0)}%` : '—');
+  const rows: [string, string][] = [
+    [t('soccer.riskKelly'), pct(lim.kelly_fraction)],
+    [t('soccer.riskPerMarket'), pct(lim.max_single_market_frac)],
+    [t('soccer.riskPerTheme'), pct(lim.max_theme_frac)],
+    [t('soccer.riskMinEdge'), pct(lim.min_net_edge_theta)],
+    [t('soccer.riskMinLock'), pct(lim.min_net_lock_theta_arb)],
+    [t('soccer.riskOrderCap'), '$1.00'],
+  ];
+  const triggered = !!ks.triggered;
+  return (
+    <div>
+      <Title sub={t('soccer.subRisk')} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono, marginBottom: 6 }}>{t('soccer.riskLimitsHead')}</div>
+          <table style={{ width: '100%', fontSize: 11.5, ...mono }}>
+            <tbody>
+              {rows.map(([k, v]) => (
+                <tr key={k}>
+                  <td style={{ color: 'var(--text-secondary)', padding: '3px 0' }}>{k}</td>
+                  <td style={{ textAlign: 'right', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{v}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono, marginBottom: 6 }}>{t('soccer.riskExposureHead')}</div>
+          <table style={{ width: '100%', fontSize: 11.5, ...mono }}>
+            <tbody>
+              <tr>
+                <td style={{ color: 'var(--text-secondary)', padding: '3px 0' }}>{t('soccer.riskOpenPositions')}</td>
+                <td style={{ textAlign: 'right', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>{exp.open_positions ?? 0}</td>
+              </tr>
+              <tr>
+                <td style={{ color: 'var(--text-secondary)', padding: '3px 0' }}>{t('soccer.riskAtRisk')}</td>
+                <td style={{ textAlign: 'right', color: 'var(--text-primary)', fontVariantNumeric: 'tabular-nums' }}>${(exp.total_at_risk_usd ?? 0).toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono, marginBottom: 6 }}>{t('soccer.riskKillSwitchHead')}</div>
+          <div style={{ fontSize: 11.5, ...mono, color: triggered ? 'var(--error)' : 'var(--success)' }}>
+            {triggered
+              ? t('soccer.riskKillTripped', { pct: pct(ks.daily_loss_killswitch_frac) })
+              : t('soccer.riskKillArmed', { pct: pct(ks.daily_loss_killswitch_frac) })}
+          </div>
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--text-muted)', ...mono }}>{t('soccer.riskPaperNote')}</div>
+      </div>
+    </div>
+  );
+}
+
+
 // ── dispatcher ───────────────────────────────────────────────────────────────
 const REGISTRY: Record<string, () => ReactElement> = {
+  soccer_risk: RiskLimits,
+  // Merged into the overview (see CapabilitySections). Kept as an alias so a deep
+  // link or a chat answer that names it still lands somewhere real.
+  soccer_methodology: Overview,
+  // Grid-less compatibility slot, same discipline as soccer_model_notes: the budget
+  // lives inside the venues card, but a deep link or a chat answer may name it.
+  soccer_budget: VenuesApi,
   soccer_season_odds: SeasonOdds,
   soccer_league_table: LeagueTable,
   soccer_top_scorer: TopScorer,
@@ -1345,23 +1460,32 @@ const REGISTRY: Record<string, () => ReactElement> = {
 const KEY_BY_TYPE: Record<string, string> = {
   ...Object.fromEntries(SOCCER_ITEMS.map((i) => [i.type, i.i18nKey])),
   soccer_model_notes: 'overview',   // alias shares the overview title
+  soccer_budget: 'venuesApi',       // compat slot shares the venues title
+  soccer_methodology: 'overview',   // merged into the overview card
 };
 
 export default function SoccerArtifact({ type, params }: { type: string; params?: any }) {
   const { t } = useTranslation();
-  void params;
   const View = REGISTRY[type];
+  // Cross-artifact club focus (附录 C-31): a ClubName click elsewhere navigates here
+  // carrying the club, and the scroll/flash finds it once this view has painted.
+  const focusClub: string | null = params?.focusClub ?? null;
+  const focusNonce: number = params?.focusNonce ?? 0;
+  const containerRef = useRef<HTMLDivElement>(null);
+  useClubFocusScroll(containerRef, focusClub, focusNonce);
   if (!View) return <div className="text-xs py-3" style={{ color: 'var(--text-muted)', ...mono }}>{t('soccer.unknownArtifact', { type })}</div>;
   const key = KEY_BY_TYPE[type];
   return (
-    <div>
-      {key && (
-        <div className="flex items-center justify-between" style={{ marginBottom: 6, minHeight: 22 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono }}>{t(`soccer.${key}`)}</div>
-        </div>
-      )}
-      <View />
-    </div>
+    <SoccerFocusContext.Provider value={{ club: focusClub, nonce: focusNonce, selfType: type }}>
+      <div ref={containerRef}>
+        {key && (
+          <div className="flex items-center justify-between" style={{ marginBottom: 6, minHeight: 22 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--text-primary)', ...mono }}>{t(`soccer.${key}`)}</div>
+          </div>
+        )}
+        <View />
+      </div>
+    </SoccerFocusContext.Provider>
   );
 }
 

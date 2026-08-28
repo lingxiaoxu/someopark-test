@@ -488,8 +488,15 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
   if (error) return <ErrorState message={t('realtimeNav.errNotRunning', { err: error })} />;
   if (!latest) return <ErrorState message="no data" />;
 
-  const verdictColor = reconcile?.verdict === 'ok' ? '#16a34a'
-    : reconcile?.verdict === 'breach' ? '#e11d48'
+  // 对账时效闸门(2026-08-27):verdict 本身不带年龄,8/14 那份 ok 在面板上绿了 13 天
+  // (reconcile_eod.py 当时根本没有调度)。服务端给出 age_bdays 后,超 1 个交易日的
+  // 裁决一律降级 —— 旧结论不许冒充今天。但 breach 不降级:陈旧可以让绿灯失效,
+  // 不能让红灯闭嘴。
+  const reconStale = reconcile?.stale === true;
+  const reconAge = reconcile?.age_bdays ?? '?';
+  const verdictColor = reconcile?.verdict === 'breach' ? '#e11d48'
+    : reconStale ? '#999'
+    : reconcile?.verdict === 'ok' ? '#16a34a'
     : reconcile?.verdict === 'partial' ? '#b45309' : '#999';
 
   // 心跳闸门(2026-08-14):常驻循环 1 分钟一跳,闭市也跳(平移续写)——所以
@@ -551,8 +558,11 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
                   ? t('realtimeNav.qcQuotesMissing', { n: latest.missing.length })
                   : t('realtimeNav.qcQuotes'),
                 state: latest.missing?.length ? 'fail' : 'pass' },
-              { label: t('realtimeNav.qcRecon'),
-                state: rec === 'ok' ? 'pass' : rec === 'breach' ? 'fail' : 'pending' },
+              { label: reconStale ? t('realtimeNav.qcReconStale', { n: reconAge })
+                  : t('realtimeNav.qcRecon'),
+                state: rec === 'breach' ? 'fail'
+                  : reconStale ? 'pending'
+                  : rec === 'ok' ? 'pass' : 'pending' },
               { label: t('realtimeNav.qcAnchor'), state: allOfficial ? 'pass' : 'fail' },
               // 持仓文件半更新窗(inventory→account 约 1 分钟)是每日常规:
               // 短窗琥珀"同步中",超 10 分钟才是真异常升级红色
@@ -620,6 +630,8 @@ export default function RealtimeNavViewer({ params }: { params?: any }) {
           <span style={{ padding: '3px 8px', border: `1px solid ${verdictColor}`, color: verdictColor }}
             title={t('realtimeNav.reconTitle')}>
             {t('realtimeNav.reconLabel')}: {reconcile?.verdict ?? '—'}
+            {reconcile?.date ? ` @${String(reconcile.date).slice(5)}` : ''}
+            {reconStale ? ` · ${t('realtimeNav.reconStaleTag', { n: reconAge })}` : ''}
           </span>
           {Object.keys(latest.corp_actions || {}).length > 0 && (
             <span style={{ padding: '3px 8px', background: '#ffedd5', border: '1px solid #ea580c' }}

@@ -1735,7 +1735,77 @@
       "WC": "Conjunto del Mundial",
       "REFIT": "Reajuste con datos de clubes"
     },
-    "boardLabel": "Fútbol de clubes"
+    "boardLabel": "Fútbol de clubes",
+    "cap": {
+      "dataT": "Datos y entradas",
+      "data": [
+        "Todos los clubes y el calendario completo de 12 competiciones: Premier League, LaLiga, Serie A, Bundesliga, Ligue 1, Champions, Europa League, Conference League, Libertadores, Sudamericana, Brasileirão y la liga argentina",
+        "Datos en vivo del partido: marcador, minuto, calidad de ocasiones (xG), tarjetas, alineaciones y cambios",
+        "La fuerza de cada club se modela por competición, a partir de tres anclas: la tabla de la temporada pasada, el Elo de clubes europeos y las propias cuotas de campeón del mercado",
+        "Fondo de plantilla y talento de los jugadores (valoraciones de la serie FIFA), más el estado de forma y la tendencia de xG"
+      ],
+      "preT": "Antes del partido",
+      "pre": [
+        "Cada partido se valora a 3 vías (local/empate/visitante) y por total de goles, comparado con las cuotas en vivo de Kalshi y Polymarket una vez retirado el margen",
+        "Una eliminatoria a doble partido se valora como UNA sola: la vuelta se condiciona al resultado de la ida, y un global empatado se resuelve según la norma de cada competición — prórroga y luego penaltis en Europa, penaltis directos en las dos copas de la CONMEBOL",
+        "Las ligas ejecutan un Monte Carlo de temporada: título, plazas europeas, descenso, más puntos y posición esperados",
+        "Las valoraciones solo son comparables **dentro de una misma competición**: nunca ordenes un club de una liga frente a uno de otra por su valoración"
+      ],
+      "liveT": "En directo",
+      "live": [
+        "El 3 vías se recalcula cada minuto con el marcador, el minuto, las expulsiones y el xG acumulado",
+        "Una eliminatoria ejecuta además un modelo paralelo a 2 vías de «quién pasa», a través del tiempo reglamentario → prórroga → penaltis",
+        "Lecturas tácticas en directo: sobrerreacción del mercado, dominio por xG, valor temporal del empate, trampas de posesión, fragilidad del sistema",
+        "Protección de la posición: coberturas a punto de equilibrio y totales, mejor peor caso, retirada parcial y bloqueos a tres vías"
+      ],
+      "decisionT": "Modelo de decisión de apuesta",
+      "decision": [
+        "El lado se elige por VALOR, no por probabilidad: se respalda el resultado que el modelo valora por encima del precio de mercado sin margen con la mayor diferencia",
+        "El importe es un cuarto de Kelly escalado por confianza, con un tope duro de 1 $ por orden",
+        "Cada competición tiene su propia puerta de negociación y deben cumplirse tres condiciones para abrirla: al menos 30 partidos liquidados; una precisión calibrada que supere la referencia en más de un error estándar (empatar con ella no cuenta); y un calibrador que no haya degenerado en descartar el modelo. Si falla una, la competición solo muestra pronósticos."
+      ],
+      "otherT": "Calibración, riesgo e informes",
+      "other": [
+        "Las probabilidades están calibradas estadísticamente, ajustadas sobre los 120 partidos liquidados más recientes de cada competición — contados en partidos y no en días, o una competición con calendario disperso parecería falta de evidencia solo por dónde cae la temporada.",
+        "La evaluación fuera de muestra es una marcha adelante semanal: cada partido se valora solo con lo conocido antes de su semana. Valoraciones, plantilla, forma y ajustes por rival se cortan en el tiempo, y los anclajes del previo se reconstruyen con la tabla de entonces.",
+        "Límites de riesgo estrictos: tope por orden, verificación de ejecutabilidad en el mercado, límites de exposición e interruptor por pérdida diaria",
+        "Solo operativa simulada, sin dinero real. El registro por partido, la curva de resultados y el desglose por competición son consultables"
+      ]
+    },
+    "riskLimits": "Límites de riesgo",
+    "subRisk": "Topes de posición, exposición e interruptor",
+    "methodology": "Qué hace esto",
+    "subMethodology": "Qué hace este sistema",
+    "riskLimitsHead": "Límites de apuesta",
+    "riskExposureHead": "Exposición actual",
+    "riskKillSwitchHead": "Interruptor por pérdida diaria",
+    "riskKelly": "Fracción de Kelly",
+    "riskPerMarket": "Por mercado (del capital)",
+    "riskPerTheme": "Por tema (del capital)",
+    "riskMinEdge": "Ventaja neta mínima para apostar",
+    "riskMinLock": "Ventaja bloqueada mínima para arbitrar",
+    "riskOrderCap": "Tope estricto por orden",
+    "riskOpenPositions": "Posiciones abiertas",
+    "riskAtRisk": "Importe en riesgo",
+    "riskKillArmed": "Armado — se deja de apostar con una pérdida diaria del {{pct}}",
+    "riskKillTripped": "Activado — la pérdida diaria superó el {{pct}}; apuestas detenidas",
+    "riskPaperNote": "Solo operativa simulada, sin dinero real.",
+    "clubAppearsIn": "Aparece en",
+    "clubNoOther": "Ninguna otra tarjeta incluye este club",
+    "clubNavHint": "Ver en qué tarjetas aparece este club",
+    "seasonStatus": {
+      "title": "Lucha por el título {{p}}",
+      "europe": "Plazas europeas {{p}}",
+      "mid": "Zona media",
+      "relegationFight": "Lucha por la permanencia {{p}}",
+      "relegated": "Descendido",
+      "qualDirect": "Clasificación directa {{p}}",
+      "qualPlayoff": "Plazas de playoff {{p}}",
+      "pendingDraw": "Pendiente del sorteo",
+      "cupAlive": "Sigue vivo · {{p}} de ganarla",
+      "cupOut": "Eliminado"
+    },
+    "possNotMeasured": "posesión aún no medida"
   },
   "realtimeNav": {
     "portfolioLive": "PORTFOLIO (en vivo · {{time}} ET)",

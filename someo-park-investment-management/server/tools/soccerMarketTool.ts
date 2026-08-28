@@ -40,7 +40,8 @@ const VIEWS: Record<string, { file: string; about: string }> = {
   performance:     { file: 'performance_report.json',    about: 'the track record: Brier vs uniform (raw + calibrated), log-loss, favourite hit rate, trade-grade gate, the headline W-L / P&L in cents and units (decision / realized-with-smart-exit / hold-to-FT / argmax variants), and the most recent settled bets. For the full bet-by-bet series with a running cumulative curve use get_soccer_track_record instead' },
   calibration:     { file: 'oos_report.json',            about: 'out-of-sample reliability: Brier + CI, log-loss, predicted vs observed draw and home rates, predicted vs observed goal totals — the directional health check' },
   backtest:        { file: 'backtest.json',              about: 'model vs market vs uniform Brier over every settled match, the trade-grade verdict, the blend curve, and the most recent settled matches with the model\'s pick and probability' },
-  params:          { file: 'param_sweep.json',           about: 'the parameter sweep (selected knob set + the grid). NOT generated yet — the sweep is deliberately withheld for the first weeks of the season for sample discipline, so this view reports that it is unavailable' },
+  params:          { file: 'param_select_club.json',     about: 'the parameter selection: three candidate knob sets (the club default, the World Cup values, and a refit) scored out-of-sample on a held-out split, with the winner, whether it was adopted, and the per-competition Brier of the test split. A candidate is only adopted when it beats the incumbent out-of-sample, so `adopted: false` means the incumbent held — not that the search failed' },
+  bracket:         { file: 'bracket.json',                about: 'the drawn knockout brackets: each cup round with its ties, both legs, aggregate score where a first leg has been played, and each side\'s probability of advancing. Only rounds that have actually been DRAWN appear — an undrawn round is absent rather than shown with placeholder teams' },
   pricetrack:      { file: 'milestone_marks.json',       about: 'per-contract ¢ and probability at each match milestone (PRE / 15\' / 30\' / HT / 60\' / 75\' / FT), our pre-match pick and entry ¢, the mark-to-market and the smart-exit cash-out' },
   calibration_gate:{ file: 'calibration.json',           about: 'the calibration mapping actually applied: pooled temperature + draw boost, and the PER-COMPETITION gate (§3.5). A league with fewer than 30 settled matches is `cold_start` and falls back to the pooled mapping ("applies":"pooled")' },
   risk:            { file: 'risk_report.json',           about: 'pre-trade gates, venue balances (Kalshi demo/prod, Polymarket US), the $1 hard order cap, open exposure, API request budget, the calibration gate and the kill switch' },
@@ -535,7 +536,8 @@ const SOCCER_TYPE_TO_VIEW: Record<string, string> = {
   soccer_pricetrack: 'pricetrack', soccer_performance: 'performance',
   soccer_calibration: 'calibration', soccer_backtest: 'backtest', soccer_params: 'params',
   soccer_overview: 'overview', soccer_model_notes: 'overview', soccer_venues: 'risk',
-  soccer_pdfs: 'overview',
+  soccer_pdfs: 'overview', soccer_bracket: 'bracket',
+  soccer_risk: 'risk', soccer_budget: 'risk', soccer_methodology: 'overview',
 }
 
 const _PER_VIEW_CAP = 8000

@@ -234,6 +234,31 @@ result. The team-level reach-round / champion "who advances" products are a sepa
 The model is post-hoc CALIBRATED; live trading is gated (only when calibrated Brier beats uniform) with a hard
 $1 order cap. Use "top" to limit champion/golden_boot/predictions rows.
 
+### Club Football — 12 Leagues & Cups (get_soccer_market tool)
+The same machinery as the World Cup system, pointed at CLUB football and paper-only. One
+extra layer: the module holds 12 COMPETITIONS, each holding its matches — so almost every
+answer has to name which competition it is about. The five domestic leagues (EPL, La Liga,
+Serie A, Bundesliga, Ligue 1) plus Brasileirão and the Argentine league run a season
+simulation (title / European places / relegation); UCL, UEL and UECL are Swiss league-phase;
+Libertadores and Sudamericana are two-leg knockout cups. For ANY club-football, league-table,
+title-race, relegation, Champions/Europa/Conference League, Libertadores, Brasileirão or
+club-match question, call **get_soccer_market** with a "view" and answer from the real data:
+- **predictions** / **schedule** — upcoming club matches: model 3-way, Kalshi/Poly US asks, edge; a two-leg tie also carries an \`advance\` block behind the 常规时间/晋级 toggle
+- **season_odds** / **league_table** — title, top-N and relegation probabilities per competition
+- **inplay** — live club matches now (3-way + knockout ties' parallel who-advances stack)
+- **performance** / **calibration** / **backtest** — track record and reliability, per competition
+- **squad**, **form**, **styles**, **top_scorer**, **divergence**, **pricetrack**, **risk**, **params**, **overview**
+For one club across every view use **get_soccer_club** (club="Arsenal"/"阿森纳"), for one
+fixture **get_soccer_match** (home, away), to compare clubs **compare_soccer_clubs**, and for
+the P&L time series **get_soccer_track_record**.
+Two things to say plainly rather than paper over. (1) Ratings are PER COMPETITION and are not
+comparable across them — never rank a Premier League club against a Bundesliga club by rating.
+(2) A competition only prices with its own calibration once it has 30 settled matches; until
+then its trading gate is SHUT and the view says so. A shut gate means "not enough evidence
+yet", not "no opportunity". Some competitions are also mid-transition: when a draw has not
+happened yet the odds come back null with a pending_draw state — report that, do not guess.
+Club football is PAPER-ONLY here (no live trading), with the same hard $1 order cap.
+
 ### Macro Prediction Market — Kalshi Macro System (macro_market_data tool)
 A Kalshi PAPER-trading system on US macro releases: Fed decisions & rate ladder, CPI/Core/YoY, PCE,
 jobless claims, payrolls, U3, plus energy weeklies (WTI, natgas, AAA gasoline). Models are PIT-disciplined

@@ -185,3 +185,27 @@ export function useLocalizedNotes() {
     return prose.map((p) => noteOf(p)).filter(Boolean);
   };
 }
+
+
+export function clubName(
+  c?: { name?: string; zh?: string; id?: string; club_id?: string; team_id?: string } | null,
+  lang?: string, t?: (k: string, o?: any) => string,
+): string {
+  if (!c) return '—';
+  // Club names are looked up by club_id in the locale files (soccer.club.<id>), so
+  // Chinese and Japanese get real names instead of the Latin spelling. English,
+  // Spanish and French use the club's own name, which is what those languages
+  // print anyway — the lookup simply finds nothing and falls through.
+  const id = c.club_id || c.team_id || c.id;
+  if (t && id) {
+    const key = `soccer.club.${id}`;
+    // fallbackLng:[] keeps the lookup inside the ACTIVE language. The app-wide chain
+    // ends in Chinese, so without it an English/Spanish/French reader resolves
+    // soccer.club.arsenal all the way to "阿森纳" instead of falling through to the
+    // club's own name below.
+    const v = t(key, { defaultValue: '', fallbackLng: [] });
+    if (v && v !== key) return v;
+  }
+  if ((lang || '').startsWith('zh') && c.zh) return c.zh;
+  return c.name || '—';
+}

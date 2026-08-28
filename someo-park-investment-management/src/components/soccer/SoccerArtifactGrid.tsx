@@ -9,7 +9,7 @@
 import {
   Trophy, ListOrdered, Activity, CalendarClock, Clock, Zap, LayoutGrid,
   Target, Users, Shapes, TrendingUp, GitCompare, Coins, LineChart, Gauge,
-  FlaskConical, SlidersHorizontal, Landmark, Download, Network,
+  FlaskConical, SlidersHorizontal, Landmark, Download, Network, ShieldAlert,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +42,7 @@ export const SOCCER_ITEMS: Item[] = [
   { type: 'soccer_params',        i18nKey: 'paramSweep',        Icon: SlidersHorizontal },
   { type: 'soccer_overview',      i18nKey: 'overview',          Icon: LayoutGrid },
   { type: 'soccer_venues',        i18nKey: 'venuesApi',         Icon: Landmark },
+  { type: 'soccer_risk',          i18nKey: 'riskLimits',        Icon: ShieldAlert },
   { type: 'soccer_pdfs',          i18nKey: 'downloadReports',   Icon: Download },
 ];
 
@@ -55,7 +56,7 @@ type Group = {
 
 export const SOCCER_GROUPS: Group[] = [
   { key: 'overview', i18nKey: 'groupOverview', Icon: LayoutGrid,
-    types: ['soccer_overview', 'soccer_venues'] },
+    types: ['soccer_overview', 'soccer_venues', 'soccer_risk'] },
   { key: 'teamIntel', i18nKey: 'groupTeamIntel', Icon: Users,
     types: ['soccer_season_odds', 'soccer_league_table', 'soccer_top_scorer', 'soccer_squad', 'soccer_styles', 'soccer_form'] },
   { key: 'live', i18nKey: 'groupLive', Icon: Zap,
