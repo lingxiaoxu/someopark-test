@@ -479,6 +479,125 @@ def test_sub_monthly_slopes_toward_the_next_month_instead_of_stepping():
     assert 0 < gap < 50.0, f"boundary step {gap:.1f} is no better than the flat 50"
 
 
+# ── the weekly prints land on the source's own grid (PR-17 顺带一条) ──────────
+# ICSA prints multiples of 1000 and GASREGW of 0.001; `_sub_monthly` used to write
+# continuous floats, so a settlement reading the WEEKLY series saw 237_412.83. The fix is
+# only arithmetically possible under the period-conditional lattice — see `_sub_monthly`'s
+# docstring — which is why it lands with PR-17 and not before it.
+def _sat_monthly(vals, start="2026-01-01"):
+    """Months whose means are multiples of `1000/n`: Jan 2026 has five Saturdays, Feb and
+    Mar have four. A fixture that only exercised one month length would prove nothing —
+    the whole claim is that `n` changes and the grid changes with it."""
+    m = _monthly(vals, start)
+    ns = [sum(1 for d in pd.date_range(p, p + pd.offsets.MonthEnd(0), freq="D")
+              if d.weekday() == 5) for p in m.index]
+    assert set(ns) == {4, 5}, "the fixture must span both month lengths"
+    for v, n in zip(m.values, ns):
+        assert abs(v * n / 1000.0 - round(v * n / 1000.0)) < 1e-9, \
+            f"{v} is not a multiple of 1000/{n}; the lattice would never have emitted it"
+    return m
+
+
+def test_largest_remainder_hits_the_total_exactly_and_moves_nothing_by_a_whole_cell():
+    """Plain rounding moves the sum by up to n/2 cells, and the sum is the pin. Largest
+    remainder hits it by construction, which is why it is used instead of `np.round`."""
+    # every value 0.4 of a cell above a multiple, and the total exactly on the grid — the
+    # shape `_sub_monthly` produces, and the one where rounding each value alone loses 2 cells
+    vals = np.array([230_400.0, 240_400.0, 250_400.0, 214_400.0, 214_400.0])
+    assert vals.sum() == 1_150_000.0
+    got = BD._largest_remainder(vals, 1000.0, 1_150_000.0)
+    assert got is not None
+    assert got.sum() == pytest.approx(1_150_000.0, abs=1e-6)
+    assert np.all(np.abs(got / 1000.0 - np.round(got / 1000.0)) < 1e-9)
+    assert np.max(np.abs(got - vals)) < 1000.0, "no value may move a full cell"
+    naive = np.round(vals / 1000.0) * 1000.0
+    assert abs(naive.sum() - 1_150_000.0) > 1e-6, "the naive version had to be wrong here"
+
+
+def test_largest_remainder_refuses_rather_than_approximating_an_impossible_total():
+    """The pooled-lattice case, kept as a test because it is what made the fix impossible
+    before PR-17: `n * mean` is not a multiple of the grid, so one of pin and grid has to
+    give, and this function is not the place that decides which."""
+    vals = np.array([230_000.0, 240_000.0, 250_000.0, 260_000.0])
+    assert BD._largest_remainder(vals, 1000.0, 980_500.0) is None
+    # and a total so far below the values that flooring alone already overshoots it
+    assert BD._largest_remainder(vals, 1000.0, 4_000.0) is None
+    # a grid so coarse the prints would floor to zero is a refusal, not a zero print
+    assert BD._largest_remainder(np.array([500.0, 500.0]), 1000.0, 1000.0) is None
+
+
+def test_sub_monthly_writes_every_print_on_the_source_grid_and_still_hits_the_pin():
+    """PR-17's 顺带一条, in one assertion pair: 0% on grid before, 100% after, pin intact
+    on both sides. The real ICSA is 100% on its own grid, so this is the reference."""
+    m = _sat_monthly([220_000.0, 240_250.0, 210_500.0])
+    before = BD._sub_monthly(m, 5, 0.04, np.random.default_rng(41))
+    after = BD._sub_monthly(m, 5, 0.04, np.random.default_rng(41), grid=1000.0)
+    on = lambda s: float(np.mean(np.abs(s / 1000.0 - np.round(s / 1000.0)) < 1e-9))  # noqa: E731
+    assert on(before) == 0.0, "the defect the registration named"
+    assert on(after) == 1.0
+    for s in (before, after):
+        got = s.groupby(s.index.to_period("M")).mean()
+        for per, want in zip(m.index, m.values):
+            assert got[per.to_period("M")] == pytest.approx(want, rel=1e-12)
+    assert np.max(np.abs(after - before)) < 1000.0, "rounding, not resampling"
+
+
+def test_sub_monthly_keeps_the_pin_and_says_so_when_the_month_is_off_the_grid():
+    """A monthly level that is NOT a multiple of `1000/n` cannot have both properties.
+    The pin wins — a world whose ICSA does not aggregate back to the generated `claims`
+    has broken the co-movement the generator was fitted for — and the month is named."""
+    said = []
+    m = _monthly([220_100.0])                          # * 5 Saturdays = 1_100_500, off 1000
+    wk = BD._sub_monthly(m, 5, 0.03, np.random.default_rng(12), grid=1000.0, log=said.append)
+    assert wk.mean() == pytest.approx(220_100.0, rel=1e-12), "the pin is what survives"
+    assert float(np.mean(np.abs(wk / 1000.0 - np.round(wk / 1000.0)) < 1e-9)) < 1.0
+    assert said and "OFF the 1000 print grid" in said[0] and "2026-01-01" in said[0]
+
+
+def test_sub_monthly_rounds_the_unpinned_weeks_onto_the_grid_too():
+    """The months that drop the pin are the ones something is already wrong with; leaving
+    their prints continuous would put the world's only off-grid values exactly there."""
+    said = []
+    days = [d for d in pd.date_range("2026-01-01", "2026-01-31", freq="D") if d.weekday() == 5]
+    real = pd.Series([300_000.0] * (len(days) - 1), index=[pd.Timestamp(d) for d in days[:-1]])
+    wk = BD._sub_monthly(_monthly([220_000.0]), 5, 0.02, np.random.default_rng(13),
+                         fixed=real, grid=1000.0, log=said.append)
+    assert len(wk) == 1 and said and "unpinned" in said[0]
+    assert wk.iloc[0] % 1000.0 == pytest.approx(0.0, abs=1e-6)
+
+
+def test_sub_monthly_without_a_grid_is_the_function_that_was_there_before():
+    """`grid=None` is the DGS2/DGS10 path — no calendar could be established, so no grid was
+    measured — and it must be untouched by the fix, continuous floats and all."""
+    m = _sat_monthly([220_000.0, 240_250.0, 210_500.0])
+    a = BD._sub_monthly(m, 5, 0.04, np.random.default_rng(41))
+    b = BD._sub_monthly(m, 5, 0.04, np.random.default_rng(41), grid=None)
+    assert a.equals(b)
+    assert float(np.mean(np.abs(a / 1000.0 - np.round(a / 1000.0)) < 1e-9)) == 0.0
+
+
+def test_sub_print_grid_takes_the_step_the_lattice_measured_and_checks_the_weekday():
+    """The two halves have to agree. `_fred_weekday` DATES the prints and the lattice rule
+    COUNTS them; if they disagree then `n` weeks of `grid` is not the month's total and the
+    largest-remainder solve would silently move the generated monthly mean."""
+    class _Pdata:                                      # only `.lattice` is read
+        def __init__(self, lattice):
+            self.lattice = lattice
+
+    cond = {"step": 50.0, "dtype": "float64", "source_step": 1000.0,
+            "sub_period": {"kind": "weekly", "dayofweek": 5}}
+    assert BD._sub_print_grid(_Pdata({"claims": cond}), "claims", 5) == 1000.0
+    assert BD._sub_print_grid(_Pdata({"claims": cond}), "claims", 0) is None, "weekday clash"
+    assert BD._sub_print_grid(_Pdata({"claims": {"step": 10.0, "dtype": "float64"}}),
+                              "claims", 5) is None, "the pooled-scalar column, e.g. DGS2"
+    no_rule = {k: v for k, v in cond.items() if k != "sub_period"}
+    assert BD._sub_print_grid(_Pdata({"claims": no_rule}), "claims", 5) is None
+    no_step = {k: v for k, v in cond.items() if k != "source_step"}
+    assert BD._sub_print_grid(_Pdata({"claims": no_step}), "claims", 5) is None
+    assert BD._sub_print_grid(_Pdata({}), "claims", 5) is None
+    assert BD._sub_print_grid(_Pdata(None), "claims", 5) is None
+
+
 def test_sigma_within_measures_deviation_from_the_month_not_week_to_week(tmp_path):
     """The week-to-week sd contains the monthly movement the generator already produces;
     double-counting it would inflate every synthetic claims path."""

@@ -460,9 +460,46 @@ def _sigma_within(conn: sqlite3.Connection, sid: str, asof: datetime,
     return float(np.std(dev, ddof=1))
 
 
+def _largest_remainder(vals: np.ndarray, grid: float, total: float) -> np.ndarray | None:
+    """Round `vals` onto `grid` so that their SUM is EXACTLY `total`, or None if it cannot be.
+
+    Plain rounding cannot do this — n independent roundings move the sum by up to n/2 grid
+    cells — and the sum is the thing `_sub_monthly` exists to preserve. Largest remainder
+    floors every value and then hands the +1s to the largest fractional parts, so no value
+    moves by more than one cell and the total is hit by construction.
+
+    It returns None rather than an approximation when `total` is not itself a multiple of
+    `grid`, because at that point one of the two properties HAS to give and the caller is the
+    only place that can decide which. Silently keeping the grid would break the pin that makes
+    the world internally consistent; silently keeping the pin would emit weekly prints the
+    publisher cannot print. The caller keeps the pin and says so.
+    """
+    n = int(round(total / grid))
+    if abs(n * grid - total) > 1e-6 * max(1.0, abs(total)):
+        return None
+    q = np.floor(vals / grid)
+    rem = n - int(q.sum())
+    if rem < 0 or rem > len(vals):
+        return None
+    if rem:
+        q[np.argsort(-(vals / grid - q))[:rem]] += 1
+    out = q * grid
+    return out if np.all(out > 0) else None
+
+
+def _emit(out: dict, stamps, vals: np.ndarray, grid: float | None) -> None:
+    """Write the UNPINNED weeks of a month. They carry no total to preserve, so each one is
+    rounded on its own — dropping the grid here as well would leave the only off-grid prints
+    in the world sitting in the months that already had something wrong with them."""
+    if grid:
+        vals = np.round(vals / grid) * grid
+    for ts, v in zip(stamps, vals):
+        out[ts] = float(v)
+
+
 def _sub_monthly(monthly: pd.Series, weekday: int, sigma_w: float,
                  rng: np.random.Generator, *, fixed: pd.Series | None = None,
-                 log=None) -> pd.Series:
+                 grid: float | None = None, log=None) -> pd.Series:
     """Weekly prints through a generated monthly MEAN, pinned to that mean exactly.
 
     `monthly` is indexed by period start (MS). Each month's prints land on `weekday`, the
@@ -481,11 +518,27 @@ def _sub_monthly(monthly: pd.Series, weekday: int, sigma_w: float,
     generated value. With fewer than two free weeks that solve puts the entire monthly
     residual on one print, so the pin is dropped for that month and said so rather than
     producing a spike.
+
+    `grid` is the SOURCE print grid — ICSA prints multiples of 1000, GASREGW of 0.001 — and
+    passing it makes the weekly prints land on it. Without it this function emits continuous
+    floats, which is what a settlement reading the WEEKLY series (KXJOBLESSCLAIMS) sees, and
+    no real weekly claims print has ever been 237_412.83.
+
+    That fix is unlocked by PR-17 and was impossible before it. The pin requires
+    `sum(week) = n * mean`, so the grid can only survive the pin if `n * mean` is itself a
+    multiple of the grid. Under the pooled lattice the monthly mean was a multiple of
+    `g/20`, and `n * g/20` is not a multiple of `g` for n = 4 or 5 — the two properties were
+    arithmetically incompatible and rounding here would have broken the pin every month.
+    Under the period-conditional lattice the mean is a multiple of `g/n(period)`, so
+    `n * mean` is an exact multiple of `g` and both hold at once. `_largest_remainder` is
+    what makes "both" exact rather than approximate. Held real prints are on the grid too
+    (that is `_sub_period_rule`'s condition 2), so subtracting them keeps the target on it.
     """
     idx = pd.DatetimeIndex(monthly.index)
     lg = np.log(monthly.astype(float))
     out: dict[pd.Timestamp, float] = {}
     unpinned: list[str] = []
+    off_grid: list[str] = []
     for k, per in enumerate(idx):
         days = pd.date_range(per, per + pd.offsets.MonthEnd(0), freq="D")
         days = pd.DatetimeIndex([d for d in days if d.weekday() == weekday])
@@ -505,22 +558,54 @@ def _sub_monthly(monthly: pd.Series, weekday: int, sigma_w: float,
         if len(held):
             if len(free) < 2:
                 unpinned.append(str(per.date()))
-                for ts in free:
-                    out[ts] = float(vals[ts])
+                _emit(out, free, vals[free].to_numpy(dtype=float), grid)
                 continue
             target -= float(held.sum())
         raw = float(vals[free].sum())
         if raw <= 0 or target <= 0:
             unpinned.append(str(per.date()))
-            for ts in free:
-                out[ts] = float(vals[ts])
+            _emit(out, free, vals[free].to_numpy(dtype=float), grid)
             continue
-        for ts in free:
-            out[ts] = float(vals[ts]) * target / raw
+        scaled = vals[free].to_numpy(dtype=float) * target / raw
+        if grid:
+            snapped = _largest_remainder(scaled, grid, target)
+            if snapped is None:
+                off_grid.append(str(per.date()))   # pin kept, grid dropped — see the docstring
+            else:
+                scaled = snapped
+        for ts, v in zip(free, scaled):
+            out[ts] = float(v)
     if unpinned and log:
         log(f"    sub-monthly: {len(unpinned)} month(s) left unpinned "
             f"({', '.join(unpinned)}) — too few free weeks to absorb the residual")
+    if off_grid and log:
+        log(f"    sub-monthly: {len(off_grid)} month(s) written OFF the {grid:g} print grid "
+            f"({', '.join(off_grid)}) — the month's pinned total is not a multiple of it, so "
+            "the pin was kept and the grid dropped")
     return pd.Series(out).sort_index()
+
+
+def _sub_print_grid(pdata, col: str, weekday: int) -> float | None:
+    """The source print grid `_sub_monthly` may round onto, or None if none was measured.
+
+    Read off the PANEL's lattice rather than re-derived from the source, because the entry is
+    the same measurement the monthly level was quantised with and the two have to agree for
+    the pin to survive the rounding at all (see `_sub_monthly`). A column with no
+    `sub_period` — DGS2/DGS10, or any column whose calendar could not be established — gets
+    None and keeps writing continuous weekly values, which is a defect that is recorded
+    rather than papered over with a grid nobody measured.
+
+    The weekday is checked, not assumed. `_fred_weekday` dates the prints and the lattice
+    rule counts them; if those two disagree then `n` weeks of `grid` is not the month's
+    total and the largest-remainder solve would silently move the month's mean.
+    """
+    entry = (getattr(pdata, "lattice", None) or {}).get(col) or {}
+    rule = entry.get("sub_period") or {}
+    if not rule or "source_step" not in entry:
+        return None
+    if int(rule.get("dayofweek", -1)) != int(weekday):
+        return None
+    return float(entry["source_step"])
 
 
 def _real_prints(src: sqlite3.Connection, sid: str, upto: datetime) -> pd.Series:
@@ -828,14 +913,16 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     # that had gone quiet, so those columns are disaggregated — see `_sub_monthly`.
     cols = {c.name: c for c in psp.gen_columns}
     submonthly = {c: (_fred_weekday(src, sk.name), _sigma_within(src, sk.name, splice),
-                      _real_prints(src, sk.name, splice))
+                      _real_prints(src, sk.name, splice),
+                      _sub_print_grid(pdata, c, _fred_weekday(src, sk.name)))
                   for c, sk in sinks.items()
                   if sk.kind == "fred" and cadence(psp).expander == "sub_monthly"
                   and cols[c].agg == "mean"}
     if submonthly:
         say("  sub-monthly sinks: " + ", ".join(
-            f"{c} -> {sinks[c].name} on weekday {w}, within-month sd {sd:.4f}"
-            for c, (w, sd, _) in submonthly.items()))
+            f"{c} -> {sinks[c].name} on weekday {w}, within-month sd {sd:.4f}, "
+            + (f"print grid {g:g}" if g else "NO print grid (continuous weekly values)")
+            for c, (w, sd, _, g) in submonthly.items()))
     # The donor blocks are PIT at the splice and independent of the path, so they are read
     # once. `nc_rel` likewise: the release calendar is a property of the panel's clock.
     ncst = NOWCASTS.get(panel_name)
@@ -873,8 +960,9 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
             ck = clocks[col]
             idx = pd.DatetimeIndex([observation_date(psp, ck, t) for t in lv.index])
             if col in submonthly:
-                weekday, sigma_w, real = submonthly[col]
-                wk = _sub_monthly(lv, weekday, sigma_w, rng, fixed=real, log=say)
+                weekday, sigma_w, real, wgrid = submonthly[col]
+                wk = _sub_monthly(lv, weekday, sigma_w, rng, fixed=real, grid=wgrid,
+                                  log=say)
                 # Only weeks the splice has not already made real. `write_fred` deletes
                 # from its first row onward, so writing a pre-splice week would rewrite
                 # history that was genuinely knowable — not a leak, but a world claiming a
