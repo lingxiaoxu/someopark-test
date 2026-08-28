@@ -146,6 +146,14 @@ prediction_market_soccer/data/logs_wc_archive/
 prediction_market_soccer/data/kalshi_docs/
 prediction_market_soccer/research/
 prediction_market_soccer/docs/REMOTE_DATA_ACCESS.md
+# 回测重建的 PIT 先验:model/pit_strength.py 用 _pit 后缀把"为过去某日重建的"
+# 先验写在实盘 clubs_<comp>.json 旁边(见该文件 L25-27),每次回测重生 → 派生物,
+# 不入库。_pittest 是一次性试跑后缀,代码零引用。
+prediction_market_soccer/data/priors/clubs_*_pit.json
+prediction_market_soccer/data/priors/clubs_*_pittest.json
+
+# 根目录一次性分析脚本(读 /tmp、含硬编码绝对路径),非系统组成部分
+/econ.py
 
 # dfm + crypto-dev: local-only projects, do not track (2026-07-06)
 # dfm: 2026-08-03 — source only. The heavy artifacts (383M of the 389M) stay out;
