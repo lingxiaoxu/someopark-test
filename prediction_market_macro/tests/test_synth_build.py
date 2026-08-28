@@ -457,6 +457,56 @@ def test_every_monthly_panel_maps_its_sub_monthly_columns_to_a_fred_sid():
                     f"{st.panel}.{c.name} is a monthly mean of a sub-monthly source"
 
 
+# ── #212: the four axes `_weekly` used to carry as one bit ──────────────────
+def test_cadence_reproduces_exactly_what_the_weekly_boolean_decided():
+    """The refactor's whole safety claim. Ten live series build through these five call
+    sites, so every axis must return, for every panel that exists today, precisely what
+    `spec.freq.upper().startswith("W")` used to hand that site. Asserted per panel rather
+    than in aggregate so a failure names the panel it broke."""
+    for name, spec in P.PANELS.items():
+        was_weekly = spec.freq.upper().startswith("W")
+        cad = BD.cadence(spec)
+        assert (cad.token == "close_date") is was_weekly, name       # _token, _panel_period
+        assert cad.dates_within is was_weekly, name                  # clock's weekday
+        assert (cad.expander == "sub_monthly") is (not was_weekly), name  # sub-monthly sinks
+        assert cad.registry_cadence == ("weekly" if was_weekly else "monthly"), name
+
+
+def test_cadence_separates_frequency_from_token_convention():
+    """The reason the boolean had to go, stated as an assertion rather than a comment.
+    KXGDP is quarterly *and* named for its release date (KXGDP-27JAN28), so it takes the
+    weekly answer on the token axis and the monthly answer on the other two. No single bit
+    can produce that combination, which is what makes the four axes independent rather than
+    a renaming."""
+    q = BD.CADENCES["QS"]
+    w, m = BD.CADENCES["W"], BD.CADENCES["MS"]
+    assert q.token == w.token == "close_date"
+    assert q.dates_within is m.dates_within is False
+    assert q.expander is w.expander is None
+    assert q.registry_cadence == "quarterly"
+
+
+def test_cadence_refuses_a_frequency_nobody_has_decided_the_axes_for():
+    """A new frequency must not fall through to a default. Falling through is exactly how
+    the old boolean would have handled quarterly — silently, as 'not weekly' — and it would
+    have been wrong on the one axis that matters for KXGDP."""
+    from dataclasses import replace
+    with pytest.raises(ValueError, match="not one of"):
+        BD.cadence(replace(P.PANELS["labor_monthly"], freq="B"))
+
+
+def test_panel_period_search_window_comes_from_the_index_not_a_hardcoded_week():
+    """`_panel_period`'s close-date branch searched +/-14 days at a half-week tolerance.
+    Those are 'two periods' and 'half a period' written out for a weekly panel; on a
+    quarterly index they would find no candidate at all. Read off the index, a weekly panel
+    must still resolve exactly as before -- that is the bit-identity claim -- and a
+    quarterly one must resolve at all."""
+    import inspect
+    src = inspect.getsource(BD._panel_period)
+    assert "asi8" in src and "0.5 * step" in src, "the spacing generalisation was reverted"
+    assert "Timedelta(days=14)" not in src
+
+
 def test_build_refuses_a_series_whose_cadence_disagrees_with_its_panel():
     """`_token` names every generated event off the panel's frequency. A weekly SeriesSpec
     on a monthly panel would name each event wrong and settle it against the wrong period,

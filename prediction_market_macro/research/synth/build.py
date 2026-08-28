@@ -256,8 +256,72 @@ def _on_weekday(idx: pd.DatetimeIndex, weekday: int) -> pd.DatetimeIndex:
     return idx - pd.Timedelta(days=(5 - weekday) % 7)
 
 
-def _weekly(spec: P.PanelSpec) -> bool:
-    return spec.freq.upper().startswith("W")
+@dataclass(frozen=True)
+class Cadence:
+    """What a panel's period frequency decides — one field per decision (#212).
+
+    Until this existed the whole thing was a single predicate, `_weekly(spec)`, read at five
+    call sites that ask five *different* questions. With exactly two frequencies in the
+    project the five answers were perfectly correlated, so one bit carried all of them and
+    nothing was wrong — it was merely unfalsifiable. KXGDP breaks the correlation: quarterly
+    data under a token named for the RELEASE DATE, which is the weekly convention on the
+    token axis and the monthly convention on every other one. A boolean cannot express that,
+    and writing `or _quarterly(spec)` at each site would leave whoever adds the sixth
+    frequency to rediscover which of the five flip. Ten live series build through this path,
+    so the axes are separated first and the panel added second.
+
+    `registry_cadence` is the `SeriesSpec.cadence` string a series settling off this panel
+    must carry. `build_worlds` checks the two agree rather than assuming it, because a
+    mismatch names every generated event wrong and surfaces as "0 events generated", which
+    looks like a modelling failure.
+
+    `token` is `"close_date"` when a market is named for the day it closes (KXWTIW-26MAY2914,
+    KXGDP-27JAN28) and `"reference_period"` when it is named for the period the number
+    describes (KXCPI-26JUL is July's CPI, released in August). It drives `_token` and its
+    inverse `_panel_period` from the same field, so the two cannot drift apart.
+
+    `dates_within` is whether a FRED sink dates its observation somewhere INSIDE the panel's
+    bucket rather than on the bucket's own label. Weekly does, and the two conventions
+    disagree: a W-SAT bucket holds ICSA on the Saturday and GASREGW on the Monday. Monthly
+    and quarterly do not — FRED labels both by the first day of the period, which is exactly
+    how the panel labels them, so the observation moves nowhere.
+
+    `expander` names the routine that turns one generated bucket value into the finer
+    observations a model reads, or None when this build has none for that cadence. It is
+    deliberately NOT "does this cadence aggregate a finer source": `energy_weekly_wide`
+    carries DGS2/DGS10 as weekly means of a DAILY series and has no expander either, and the
+    old `not _weekly(psp)` test silently gave that the same answer for a different reason.
+    Naming the gap as a None is the point; closing it for weekly panels is a separate
+    question and is not decided here.
+    """
+    registry_cadence: str
+    token: str                 # "close_date" | "reference_period"
+    dates_within: bool
+    expander: str | None
+    period_floor: str | None   # pandas Period alias, for the reference_period inverse
+
+
+CADENCES: dict[str, Cadence] = {
+    "W":  Cadence("weekly",    "close_date",       True,  None,          None),
+    "MS": Cadence("monthly",   "reference_period", False, "sub_monthly", "M"),
+    "QS": Cadence("quarterly", "close_date",       False, None,          None),
+}
+
+
+def cadence(spec: P.PanelSpec) -> Cadence:
+    """The `Cadence` for a panel, keyed on the family of its pandas offset alias.
+
+    Split on "-" so every weekly anchor ("W-SAT", "W-MON") lands on the one weekly entry:
+    which weekday the bucket ENDS on is a panel's business and changes nothing about the
+    four axes above.
+    """
+    key = spec.freq.upper().split("-")[0]
+    if key not in CADENCES:
+        raise ValueError(
+            f"build: panel {spec.name!r} has frequency {spec.freq!r}, which is not one of "
+            f"{sorted(CADENCES)}. Adding one means deciding all four axes of `Cadence` "
+            "explicitly — that is the whole reason this table exists rather than a boolean")
+    return CADENCES[key]
 
 
 def clock(src: sqlite3.Connection, spec: P.PanelSpec, sk: Sink) -> Clock:
@@ -265,7 +329,7 @@ def clock(src: sqlite3.Connection, spec: P.PanelSpec, sk: Sink) -> Clock:
     if sk.kind == "fred":
         lag, hour = W.publication_lag(src, sk.name)
         return Clock("fred", lag, hour,
-                     _fred_weekday(src, sk.name) if _weekly(spec) else None)
+                     _fred_weekday(src, sk.name) if cadence(spec).dates_within else None)
     # A futures session is knowable the evening it closes; `worlds.write_fut` stamps that
     # same hour, so the two cannot drift apart.
     return Clock("fut", 0, W.FUT_CLOSE_HOUR, None)
@@ -513,7 +577,7 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     # the cadence by the registry, and nothing else forces the two to agree — so they are
     # checked here rather than assumed. A mismatch produces tokens no `quotable_events` will
     # ever match, which surfaces as "0 events generated" and looks like a modelling failure.
-    cad = {"MS": "monthly"}.get(P.PANELS[panel_name].freq, "weekly")
+    cad = cadence(P.PANELS[panel_name]).registry_cadence
     if cad != spec.cadence:
         raise ValueError(
             f"build: {series} settles off panel {panel_name!r} ({P.PANELS[panel_name].freq}"
@@ -564,7 +628,8 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     submonthly = {c: (_fred_weekday(src, sk.name), _sigma_within(src, sk.name, splice),
                       _real_prints(src, sk.name, splice))
                   for c, sk in sinks.items()
-                  if sk.kind == "fred" and not _weekly(psp) and cols[c].agg == "mean"}
+                  if sk.kind == "fred" and cadence(psp).expander == "sub_monthly"
+                  and cols[c].agg == "mean"}
     if submonthly:
         say("  sub-monthly sinks: " + ", ".join(
             f"{c} -> {sinks[c].name} on weekday {w}, within-month sd {sd:.4f}"
@@ -648,11 +713,15 @@ def _token(spec: P.PanelSpec, close: datetime, period: pd.Timestamp) -> str:
     KXJOBLESSCLAIMS-26JUL30 is the 30 July release of the week ending 25 July, which is why
     `claims.predict` recovers its target week as `period - 5 days`.
 
-    Both fall out of the same two facts, so neither is a table: the token is the reference
-    period monthly and the close date weekly, and the close date is itself derived from when
-    the number becomes knowable.
+    Both fall out of the same two facts, so neither is a table: the token names either the
+    reference period or the close date, and the close date is itself derived from when the
+    number becomes knowable.
+
+    Which of the two it is comes from `Cadence.token` rather than from the frequency, and
+    KXGDP is why: it is quarterly and named for its release date (KXGDP-27JAN28), so the
+    frequency and the naming convention genuinely disagree. See `Cadence` (#212).
     """
-    if _weekly(spec):
+    if cadence(spec).token == "close_date":
         return close.strftime("%y%b%d").upper()
     return period.strftime("%y%b").upper()
 
@@ -740,10 +809,11 @@ def verify_settle(src: sqlite3.Connection, series: str, now: datetime,
     pdata = P.build(src, st.panel, now)
     got = pdata.inc[st.column] if st.how == "diff" \
         else outcome_path(pdata.levels[st.column], st)
-    # Only the weekly inverse needs a clock; a monthly token names its reference month
-    # outright. Measuring one anyway would make this refuse a panel whose sink map is still
-    # being built, which is a different question from whether the transform is right.
-    ck = clock(src, pspec, SINKS[st.panel][st.column]) if _weekly(pspec) else None
+    # Only the close-date inverse needs a clock; a reference-period token names its own
+    # bucket outright. Measuring one anyway would make this refuse a panel whose sink map is
+    # still being built, which is a different question from whether the transform is right.
+    ck = clock(src, pspec, SINKS[st.panel][st.column]) \
+        if cadence(pspec).token == "close_date" else None
 
     periods = [r[0] for r in src.execute(
         "SELECT DISTINCT s.period FROM settlements s JOIN contracts c ON c.ticker=s.ticker"
@@ -787,21 +857,33 @@ def _panel_period(spec: P.PanelSpec, ck: Clock, index: pd.DatetimeIndex, key: st
                   close: datetime | None) -> pd.Timestamp | None:
     """The panel bucket a real event refers to — the inverse of `_token`, by inversion.
 
-    Monthly is direct: the token IS the reference month and the panel labels months by their
-    first day. Weekly is not, and the two weekly conventions disagree in opposite directions
+    A reference-period token is direct: the token IS the bucket, and the panel labels buckets
+    by their first day, so flooring the parsed date onto `Cadence.period_floor` recovers it.
+    A close-date token is not, and the two weekly conventions disagree in opposite directions
     — KXJOBLESSCLAIMS closes five days AFTER the Saturday its number is dated, KXWTIW closes
     the day BEFORE the Saturday of the week its session belongs to. Rather than encode both
     offsets a second time and risk them drifting from the ones `build` writes with, the
     bucket is found by running `knowable_at` forward over the panel's own index and taking
     the period whose publication lands closest to the real close. A wrong answer here would
     have to be a whole bucket wrong, which the surrounding consistency check would catch.
+
+    The branch is `Cadence.token`, not the frequency (#212), so a quarterly close-date series
+    such as KXGDP takes the search rather than falling through to a monthly label it does not
+    have. The search's own window and tolerance are read off the panel's index spacing rather
+    than tabulated as a week, for the same reason: at ±14 days a quarterly panel would find
+    no candidate at all, and the number that is actually meant here is "two periods" and
+    "half a period". On a weekly index the median spacing is exactly 7 days, so both come out
+    at the values they were written as and nothing about the ten live series moves.
     """
-    if not _weekly(spec):
-        return pd.Timestamp(key).normalize().replace(day=1)
+    cad = cadence(spec)
+    if cad.token != "close_date":
+        return pd.Timestamp(key).normalize().to_period(cad.period_floor).start_time
     if close is None or len(index) == 0:
         return None
-    cand = index[(index >= pd.Timestamp(close.date()) - pd.Timedelta(days=14))
-                 & (index <= pd.Timestamp(close.date()) + pd.Timedelta(days=14))]
+    step = (float(np.median(np.diff(index.asi8))) / 1e9 if len(index) > 1
+            else 7.0 * 86400.0)
+    cand = index[(index >= pd.Timestamp(close.date()) - pd.Timedelta(seconds=2 * step))
+                 & (index <= pd.Timestamp(close.date()) + pd.Timedelta(seconds=2 * step))]
     if len(cand) == 0:
         return None
     gaps = [abs((knowable_at(spec, ck, t) - close).total_seconds()) for t in cand]
@@ -811,7 +893,7 @@ def _panel_period(spec: P.PanelSpec, ck: Clock, index: pd.DatetimeIndex, key: st
     # this the search silently snaps to the week before and reports a $4 discrepancy that is
     # entirely the checker's own doing. Half a period is the widest a correct match can miss
     # by, since publication lags are constant within a series.
-    return cand[best] if gaps[best] < 0.5 * 7 * 86400 else None
+    return cand[best] if gaps[best] < 0.5 * step else None
 
 
 # ── scoring a grid on already-built worlds ───────────────────────────────────
