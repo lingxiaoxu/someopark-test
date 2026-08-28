@@ -949,3 +949,43 @@ def test_sample_coupled_refuses_a_multi_column_hub_and_mismatched_horizons():
         G.sample_coupled(gb, ga, c, c, 8, rho={}, seed=9)
     with pytest.raises(ValueError, match="not in panel B"):
         G.sample_coupled(ga, gb, c, c, 8, rho={"nope": -0.5}, seed=9)
+
+
+# ── ar_phi (#205, §4e-P) ─────────────────────────────────────────────────────
+def test_ar_phi_none_is_the_default_and_changes_nothing():
+    """Every config written before the field must sample bit-identically — the same
+    guarantee `whiten=False` carries, held the same way."""
+    pdata = _toy_panel(n=400, H=4, d=1)
+    cfg = G.GenConfig(panel="toy", factor_dim=2, epochs=1, noise_steps=8)
+    g = G.Generator.fit(pdata, cfg)
+    assert g._noise_mix() is None
+    a = g.sample(np.array([1.0, 0.0]), 16, seed=3)
+    import dataclasses
+    g.cfg = dataclasses.replace(cfg, ar_phi=(0.0,))
+    assert np.array_equal(a, g.sample(np.array([1.0, 0.0]), 16, seed=3))
+
+
+def test_ar_phi_raises_the_paths_acf1_and_zero_leaves_it():
+    """The mechanism: AR(1) noise -> more persistent increments. Sign only; the magnitude
+    is §4e-P's calibrated quantity, not a unit test's."""
+    import dataclasses
+    pdata = _toy_panel(n=400, H=4, d=1)
+    cfg = G.GenConfig(panel="toy", factor_dim=2, epochs=1, noise_steps=8)
+    g = G.Generator.fit(pdata, cfg)
+    a0 = G.path_stats(g.sample(np.array([1.0, 0.0]), 128, seed=3))["acf1"].mean()
+    g.cfg = dataclasses.replace(cfg, ar_phi=(0.6,))
+    a1 = G.path_stats(g.sample(np.array([1.0, 0.0]), 128, seed=3))["acf1"].mean()
+    assert a1 > a0 + 0.05
+
+
+def test_ar_phi_refuses_misalignment_and_out_of_range():
+    import dataclasses
+    pdata = _toy_panel(n=400, H=4, d=1)
+    cfg = G.GenConfig(panel="toy", factor_dim=2, epochs=1, noise_steps=8)
+    g = G.Generator.fit(pdata, cfg)
+    g.cfg = dataclasses.replace(cfg, ar_phi=(0.2, 0.2))
+    with pytest.raises(ValueError, match="misaligned|entries"):
+        g.sample(np.array([1.0, 0.0]), 8, seed=3)
+    g.cfg = dataclasses.replace(cfg, ar_phi=(1.0,))
+    with pytest.raises(ValueError, match="inside"):
+        g.sample(np.array([1.0, 0.0]), 8, seed=3)

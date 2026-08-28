@@ -153,6 +153,13 @@ class GenConfig:
     guidance_weight: float = 0.4
     guidance_lam: float = 3.0
     whiten: bool = False            # #207 — see the class docstring
+    # #205 (probed in §4e-P, judged by PR-21 if registered): per-column AR(1)-in-time
+    # driving noise. A d-length tuple of phi_j aligned to the panel's gen_columns, or None.
+    # None is the default and every config written before this field samples bit-identically
+    # — the same note `whiten` carries. The mixing is chol(Toeplitz(phi^|i-k|)) applied to
+    # each column's H week-coordinates of the base draw and every Euler step; marginally
+    # N(0,1) per coordinate, zero trained parameters.
+    ar_phi: tuple | None = None
 
     def key(self) -> str:
         """Hash of every field. Adding a field therefore moves the key of every config,
@@ -332,6 +339,30 @@ class Generator:
         return g
 
     # -- sampling -------------------------------------------------------------
+    def _noise_mix(self):
+        """None, or the per-column temporal mixer from `cfg.ar_phi` (#205)."""
+        if not self.cfg.ar_phi:
+            return None
+        import torch
+        from scipy.linalg import toeplitz, cholesky
+        phis = tuple(self.cfg.ar_phi)
+        if len(phis) != self.d:
+            raise ValueError(f"ar_phi has {len(phis)} entries for a {self.d}-column panel "
+                             f"({self.names}) — a misaligned phi would persist the wrong "
+                             "column")
+        if any(abs(p) >= 1.0 for p in phis):
+            raise ValueError(f"ar_phi must be inside (-1, 1), got {phis}")
+        Ts = {j: torch.as_tensor(cholesky(toeplitz(p ** np.arange(self.H)), lower=True),
+                                 dtype=torch.float32)
+              for j, p in enumerate(phis) if p != 0.0}
+        coords = {j: [w * self.d + j for w in range(self.H)] for j in Ts}
+
+        def mix(eps):
+            for j, Tm in Ts.items():
+                eps[:, coords[j]] = eps[:, coords[j]] @ Tm.T
+            return eps
+        return mix
+
     def _reverse(self, c_z: np.ndarray, n: int, seed: int, guidance, start: str):
         """`dfm.generate.reverse_sample` with the INITIAL DRAW exposed — see `_start_root`.
 
@@ -356,6 +387,9 @@ class Generator:
         dim = self._dim
         g = torch.Generator(device="cpu").manual_seed(int(seed))
         base = torch.randn(n, dim, generator=g)
+        noise_mix = self._noise_mix()
+        if noise_mix is not None:
+            base = noise_mix(base)
         if start == "marginal":
             if self._start is None:
                 raise ValueError(
@@ -379,8 +413,10 @@ class Generator:
                 score = self.net(x, tt, c)
                 if guidance is not None:
                     score = score + float(torch.exp(-0.5 * t)) * guidance(x)
-                x = x + (0.5 * x + score) * dt + np.sqrt(dt) * torch.randn(
-                    x.shape, generator=g).to(dev)
+                eps = torch.randn(x.shape, generator=g)
+                if noise_mix is not None:
+                    eps = noise_mix(eps)
+                x = x + (0.5 * x + score) * dt + np.sqrt(dt) * eps.to(dev)
             tt = times[-1].expand(n).to(dev)
             a0 = float(np.exp(-0.5 * t0))
             score = self.net(x, tt, c)
