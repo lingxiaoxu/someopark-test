@@ -250,10 +250,13 @@ def _lone_threat(conn, fixture_row, *, min_team_shots: int = 5):
         "SELECT player_api_id, assist_api_id, type, detail FROM fixture_event "
         "WHERE fixture_api_id=? AND (type='subst' OR (type='Card' AND detail LIKE '%Red%'))",
         (fixture_row["api_id"],)):
-        if r["type"] == "subst":
-            gone.add(r["assist_api_id"])           # API-Football subst: player=IN, assist=OFF
-        else:
-            gone.add(r["player_api_id"])           # red card: the carded player leaves
+        # Both events name the DEPARTING player in `player_api_id`: for a red card the
+        # carded player, for a substitution the one going OFF (`assist` is the one coming
+        # ON). Checked against is_starter over every unambiguous substitution on record:
+        # 1414 of 1414 had `player` as the STARTER, and a starter cannot be substituted ON.
+        # The 3-way twin was corrected earlier and this copy was missed — the same
+        # fix-one-forget-the-other that inplay_constants was created to stop.
+        gone.add(r["player_api_id"])
     for side, tid in (("home", fixture_row["home_api_id"]), ("away", fixture_row["away_api_id"])):
         rows = per.get(tid, [])
         total = sum(x["shots_total"] for x in rows)

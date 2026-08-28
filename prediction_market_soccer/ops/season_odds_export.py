@@ -20,7 +20,16 @@ from prediction_market_soccer.config import CONFIG
 from prediction_market_soccer.config.leagues import active
 
 _FAMS_LEAGUE = (("champion", "冠军"), ("top_n", "欧战区"), ("relegation", "降级"))
-_FAMS_SWISS = (("champion", "冠军"), ("qual_direct", "Top 8"), ("qual_playoff", "9-24 播降"))
+# The knockout LADDER — each rung is its own Kalshi season market (KXUCLRO16 / RO8 /
+# RO4 / FINALIST), and the registry has carried those tickers since day one. The board
+# shipped without them because the KO tree only ever reported its winner; model/ucl_phase
+# now records membership at every stage it already walks through. A rung is emitted only
+# once the tree actually passes through it, so a quarter-final field publishes ro8/ro4/
+# finalist and no ro16 — an absent rung means "that round is behind us", not "unknown".
+_FAMS_LADDER = (("ro16", "16 强"), ("ro8", "8 强"), ("ro4", "4 强"), ("finalist", "决赛"))
+_FAMS_SWISS = (("champion", "冠军"), ("qual_direct", "Top 8"), ("qual_playoff", "9-24 播降"),
+               *_FAMS_LADDER)
+_FAMS_CUP = (("champion", "冠军"), *_FAMS_LADDER)
 
 
 def build(conn=None) -> dict:
@@ -52,16 +61,19 @@ def build(conn=None) -> dict:
                 cents = season_odds_cents(comp.key)
             except Exception as e:  # noqa: BLE001
                 print(f"[season_odds:{comp.key}] venue cents skipped ({e})")
-        fam_defs = _FAMS_SWISS if comp.kind == "swiss_ucl" else _FAMS_LEAGUE
+        fam_defs = (_FAMS_SWISS if comp.kind == "swiss_ucl"
+                    else _FAMS_CUP if comp.kind == "cup_two_leg" else _FAMS_LEAGUE)
         fam_to_kalshi = {"champion": "champion", "top_n": "top4", "relegation": "relegation",
-                         "qual_direct": "top8", "qual_playoff": None}
+                         "qual_direct": "top8", "qual_playoff": None,
+                         "ro16": "ro16", "ro8": "ro8", "ro4": "ro4", "finalist": "finalist"}
         boards = []
         for fam, label in fam_defs:
             rows = []
             for so in lg.get("season_odds", []):
                 pmod = so.get({"champion": "p_champion", "top_n": "p_top_n",
                                "relegation": "p_relegation", "qual_direct": "p_qual_direct",
-                               "qual_playoff": "p_qual_playoff"}[fam])
+                               "qual_playoff": "p_qual_playoff", "ro16": "p_ro16",
+                               "ro8": "p_ro8", "ro4": "p_ro4", "finalist": "p_finalist"}[fam])
                 if pmod is None:
                     continue
                 kfam = fam_to_kalshi.get(fam)

@@ -142,10 +142,15 @@ def _path(comp_key: str) -> Path:
     return _PRIORS / f"clubs_{comp_key}.json"
 
 
-def load_prior(league: str | None = None) -> ClubPriorSnapshot:
+def load_prior(league: str | None = None, *, suffix: str = "") -> ClubPriorSnapshot:
     """Load one competition's club prior; ``league=None`` loads the merged all-comps
-    snapshot (clubs_all.json — cross-league Elo ranks, used by confidence tiers)."""
-    path = _PRIORS / "clubs_all.json" if league is None else _path(league)
+    snapshot (clubs_all.json — cross-league Elo ranks, used by confidence tiers).
+
+    ``suffix`` selects a parallel set written by ``build_all(suffix=...)`` — the
+    walk-forward builds point-in-time priors under "_pit" so a backtest never reads,
+    and never overwrites, the nightly file the live exports price from.
+    """
+    path = (_PRIORS / f"clubs_all{suffix}.json") if league is None else _path(league + suffix)
     if not path.exists():
         raise PriorValidationError(f"club prior not found: {path} (run: python -m "
                                    "prediction_market_soccer.ingest.club_prior --build)")
@@ -289,6 +294,45 @@ def _match_elo(elo_rows: list[dict], registry_rows: list[dict],
     return by_alias
 
 
+
+def _current_table(conn, comp, season, as_of: str) -> dict:
+    """{team_api_id: {points, played}} for the CURRENT season as it stood at ``as_of``.
+
+    The `standing` table is a snapshot of NOW and carries no history, so a prior built
+    for a past date read a table that already knew the rest of the season. That is a
+    real leak for the mid-season competitions this anchor exists for — Brasileirão and
+    the Argentine league are half-played, so `_cur_ppr` is the dominant term, and a
+    walk-forward model scoring a July match was anchored on the August table. Measured:
+    corr(anchor_points, the CURRENT season's realised points-per-round) = 0.986.
+
+    For a PAST date the table is therefore reconstructed from the fixtures that had
+    actually finished by then — the only source that can answer the question. For today
+    the official `standing` feed is used unchanged, because it is authoritative (it
+    carries points deductions and administrative rulings that fixtures cannot show).
+    """
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if not as_of or as_of >= today:
+        return {r["team_api_id"]: dict(r) for r in conn.execute(
+            "SELECT team_api_id, points, rank, played FROM standing WHERE league_id=? AND season=?",
+            (comp.api_football_id, (season or comp.season)))}
+    from prediction_market_soccer.config.leagues import Stage, stage_of
+    out: dict[int, dict] = {}
+    for r in conn.execute(
+        "SELECT round, home_api_id, away_api_id, home_goals, away_goals FROM fixture "
+        "WHERE league_id=? AND season=? AND status_short IN ('FT','AET','PEN') "
+        "AND home_goals IS NOT NULL AND kickoff_ts < ?",
+            (comp.api_football_id, (season or comp.season), as_of)):
+        if stage_of(comp.key, r["round"]) != Stage.LEAGUE:
+            continue          # a cup round is not a league table
+        hg, ag = int(r["home_goals"]), int(r["away_goals"])
+        for tid, gf, ga in ((r["home_api_id"], hg, ag), (r["away_api_id"], ag, hg)):
+            if tid is None:
+                continue
+            d = out.setdefault(tid, {"team_api_id": tid, "points": 0, "rank": None, "played": 0})
+            d["points"] += 3 if gf > ga else (1 if gf == ga else 0)
+            d["played"] += 1
+    return out
+
 def build_all(conn, *, as_of: str | None = None, season: int | None = None,
               suffix: str = "") -> dict:
     """Build clubs_<comp>.json for every enabled comp + merged clubs_all.json.
@@ -317,9 +361,7 @@ def build_all(conn, *, as_of: str | None = None, season: int | None = None,
             "SELECT team_api_id, points, rank, played FROM standing WHERE league_id=? AND season=?",
             (comp.api_football_id, (season or comp.season) - 1))}
         # current standings (mid-season comps: BRA/ARG already half-played)
-        cur = {r["team_api_id"]: dict(r) for r in conn.execute(
-            "SELECT team_api_id, points, rank, played FROM standing WHERE league_id=? AND season=?",
-            (comp.api_football_id, (season or comp.season)))}
+        cur = _current_table(conn, comp, season, as_of)
 
         clubs = []
         for rr in regs:

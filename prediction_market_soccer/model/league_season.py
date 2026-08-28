@@ -120,7 +120,69 @@ def _live_table(conn, comp) -> dict[str, dict]:
             pass
         out[cid] = {"pts": int(r["points"] or 0), "gd": int(r["goals_diff"] or 0),
                     "gf": gf, "played": int(r["played"] or 0), "zone": zone}
+    _topup_unrecorded(conn, comp, out, cmap)
     return out
+
+
+def _topup_unrecorded(conn, comp, table: dict[str, dict], cmap: dict[int, str]) -> None:
+    """Apply finished league matches the standings have not absorbed yet, in place.
+
+    The two halves of the simulation read different sources: the table comes from the
+    API's `standing` feed and the fixtures to simulate come from our own `fixture`
+    rows. A match that has just finished is already FT in `fixture` — so it is not
+    simulated — while the standings refresh on a slower cadence, so its points are not
+    in the table either. The result simply vanishes from the season. Measured on La Liga
+    mid-matchday: standings held 17 played pairs against 18 finished fixtures.
+
+    Only fixtures that kicked off AFTER the standings were fetched are eligible, which
+    is what "the standings have not seen this yet" means. Scoping by the fetch time
+    rather than by the whole season matters for a split-season competition: Argentina
+    runs Apertura and Clausura as separate tables under one league id, both tagged
+    Stage.LEAGUE, so a season-wide top-up folds all 240 finished Apertura matches into
+    the Clausura table (measured: 90 played pairs → 330). A three-hour lead-in covers a
+    match that was already in progress when the standings were read.
+    """
+    fetched = conn.execute(
+        "SELECT MAX(updated_at) FROM standing WHERE league_id=? AND season=?",
+        (comp.api_football_id, comp.season)).fetchone()[0]
+    if not fetched:
+        return
+    want: dict[str, list] = {}
+    for r in conn.execute(
+        "SELECT round, home_api_id, away_api_id, home_goals, away_goals, kickoff_ts FROM fixture "
+        "WHERE league_id=? AND season=? AND status_short IN ({}) AND home_goals IS NOT NULL "
+        "AND kickoff_ts > datetime(?, '-3 hours') "
+        "ORDER BY kickoff_ts DESC".format(",".join("?" * len(_FINISHED))),
+            (comp.api_football_id, comp.season, *_FINISHED, fetched)):
+        if stage_of(comp.key, r["round"]) != Stage.LEAGUE:
+            continue
+        for cid, gf, ga in ((cmap.get(r["home_api_id"]), r["home_goals"], r["away_goals"]),
+                            (cmap.get(r["away_api_id"]), r["away_goals"], r["home_goals"])):
+            if cid is not None and cid in table:
+                want.setdefault(cid, []).append((int(gf), int(ga)))
+    # Safety cap: never credit a club with more matches than it has actually finished
+    # all season. The eligibility filter above is what scopes the phase; this only stops
+    # a malformed feed from inflating a table.
+    total: dict[str, int] = {}
+    for r in conn.execute(
+        "SELECT round, home_api_id, away_api_id FROM fixture "
+        "WHERE league_id=? AND season=? AND status_short IN ({}) AND home_goals IS NOT NULL"
+            .format(",".join("?" * len(_FINISHED))),
+            (comp.api_football_id, comp.season, *_FINISHED)):
+        if stage_of(comp.key, r["round"]) != Stage.LEAGUE:
+            continue
+        for aid in (r["home_api_id"], r["away_api_id"]):
+            cid = cmap.get(aid)
+            if cid is not None:
+                total[cid] = total.get(cid, 0) + 1
+    for cid, results in want.items():
+        row = table[cid]
+        headroom = total.get(cid, 0) - int(row.get("played") or 0)
+        for gf, ga in results[:max(0, min(len(results), headroom))]:   # most recent first
+            row["pts"] += 3 if gf > ga else (1 if gf == ga else 0)
+            row["gd"] += gf - ga
+            row["gf"] += gf
+            row["played"] += 1
 
 
 def _remaining_fixtures(conn, comp) -> list[tuple[str, str]]:

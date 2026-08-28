@@ -660,8 +660,56 @@ def sync_predictions(api: ApiFootball, conn, *, limit: int = 5, force: bool = Fa
     return pulled
 
 
+# Consecutive empty pulls after which the pre-match odds lane drops to a daily probe.
+_ODDS_BACKOFF_AFTER = 40
+_ODDS_PROBE_LIMIT = 2          # fixtures per probe once backed off
+_ODDS_PROBE_EVERY_H = 24.0
+
+
+def _odds_lane_state(conn) -> tuple[int, str | None]:
+    """(consecutive empty pulls, last probe ts) for the pre-match odds endpoint."""
+    r = conn.execute("SELECT last_synced_at, note FROM watermark WHERE resource='odds:empty_streak'").fetchone()
+    if not r:
+        return 0, None
+    try:
+        return int(r["note"] or 0), r["last_synced_at"]
+    except (TypeError, ValueError):
+        return 0, r["last_synced_at"]
+
+
+def _set_odds_lane_state(conn, streak: int) -> None:
+    conn.execute(
+        "INSERT INTO watermark (resource, last_synced_at, note) VALUES ('odds:empty_streak', ?, ?) "
+        "ON CONFLICT(resource) DO UPDATE SET last_synced_at=excluded.last_synced_at, note=excluded.note",
+        (datetime.now(timezone.utc).isoformat(), str(streak)))
+    conn.commit()
+
+
 def sync_odds(api: ApiFootball, conn, *, limit: int = 30, force: bool = False,
               include_settled: bool = True) -> int:
+    """Pre-match bookmaker odds. Backs off to a daily probe once the endpoint has proved
+    empty, instead of re-proving it every run.
+
+    API-Football returns NOTHING for these club competitions: measured 690 calls with
+    sum(results_count) = 0 and not one pre-match row ever stored, ~390 calls a day spent
+    re-establishing the same fact. The fixture query can never go quiet on its own either,
+    because "has odds" is exactly what never becomes true. So the lane now remembers its
+    own emptiness and keeps a small daily probe — enough to light up on its own the day the
+    provider starts covering these leagues, and visible in the log either way rather than
+    silently burning budget."""
+    streak, last_probe = _odds_lane_state(conn)
+    if streak >= _ODDS_BACKOFF_AFTER and not force:
+        if last_probe:
+            try:
+                age_h = (datetime.now(timezone.utc)
+                         - datetime.fromisoformat(last_probe)).total_seconds() / 3600.0
+            except ValueError:
+                age_h = _ODDS_PROBE_EVERY_H
+            if age_h < _ODDS_PROBE_EVERY_H:
+                return 0
+        print(f"[odds] lane empty for {streak} consecutive pulls — daily probe only "
+              f"({_ODDS_PROBE_LIMIT} fixtures). Pass force=True to sweep in full.")
+        limit = _ODDS_PROBE_LIMIT
     statuses = "('NS','FT','AET','PEN')" if include_settled else "('NS')"
     lids = _our_league_ids()
     rows = conn.execute(
@@ -705,8 +753,13 @@ def sync_odds(api: ApiFootball, conn, *, limit: int = 30, force: bool = False,
     # Count what was actually STORED, not just queried: API-Football answers
     # results=0 (no error) for club fixtures outside its odds coverage, and the
     # old message reported those as "pulled odds", hiding an empty book column.
+    # Record the outcome so the lane can back itself off — and so a run that finally
+    # finds coverage resets the streak and returns to a full sweep on its own.
+    if pulled:
+        _set_odds_lane_state(conn, 0 if stored else streak + pulled)
     print(f"[odds] queried {pulled} fixtures → stored {stored} bookmaker rows"
-          + ("  (no pre-match odds coverage for these fixtures)" if not stored else ""))
+          + ("  (no pre-match odds coverage for these fixtures; "
+             f"empty streak {streak + pulled})" if not stored else ""))
     return stored
 
 

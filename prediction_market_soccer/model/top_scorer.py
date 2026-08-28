@@ -62,7 +62,7 @@ def _remaining_by_club(conn, comp) -> dict[int, int]:
 def _candidates(conn, comp) -> list[dict]:
     """Scorers on record this season, with a talent prior attached."""
     rows = conn.execute(
-        "SELECT ps.player_api_id pid, p.name, ps.team_api_id tid, ps.goals, "
+        "SELECT ps.player_api_id pid, p.name, p.position, ps.team_api_id tid, ps.goals, "
         "       ps.appearances, ps.minutes, tm.canonical_team_id cid "
         "FROM player_stat ps "
         "JOIN player p ON p.api_id = ps.player_api_id "
@@ -82,7 +82,12 @@ def _candidates(conn, comp) -> list[dict]:
         nm = r["name"] or ""
         surname = nm.split()[-1].lower().strip(".") if nm else ""
         hit = fc.get((r["cid"], surname))
-        prior = hit[0] if hit else _POS_PRIOR.get((hit or (None, None))[1], _DEFAULT_PRIOR)
+        # No FC26 row → fall back on the player's POSITION, which comes from the player
+        # table, not from the FC26 miss. The previous expression indexed into the failed
+        # lookup itself — `(hit or (None, None))[1]` is None whenever `hit` is None — so
+        # _POS_PRIOR was unreachable and every unmatched player, striker or centre-back,
+        # got the same 0.20 default.
+        prior = hit[0] if hit else _POS_PRIOR.get(r["position"], _DEFAULT_PRIOR)
         apps = int(r["appearances"] or 0)
         goals = int(r["goals"] or 0)
         mu = (goals + _SHRINK_ALPHA * prior) / (apps + _SHRINK_ALPHA) if (apps + _SHRINK_ALPHA) else prior
@@ -91,6 +96,52 @@ def _candidates(conn, comp) -> list[dict]:
                     "club_id": r["cid"], "goals": goals, "appearances": apps,
                     "prior_rate": round(float(prior), 4), "mu": float(mu),
                     "from_fc26": bool(hit)})
+    out.extend(_squad_candidates(conn, comp, {c["player_id"] for c in out},
+                                 {(c["club_id"], c["name"].split()[-1].lower()) for c in out}))
+    return out
+
+
+# How many attackers per club to carry beyond the scorers feed. The feed is the API's
+# TOP-20 for the competition, so on its own it asserts that the season's top scorer is
+# already one of twenty players — after one or two rounds that is plainly false, and it
+# was the reason a striker with 3 goals in 2 appearances came out at a 91% chance of
+# finishing top scorer. Three per club is roughly a first-choice front line; a fourth
+# adds squad players whose minutes make them non-contenders anyway.
+_SQUAD_PER_CLUB = 3
+_SQUAD_MIN_RATE = 0.12          # below this a player is not a top-scorer candidate
+
+
+def _squad_candidates(conn, comp, seen_ids: set, seen_keys: set) -> list[dict]:
+    """Attackers from the FIFA-series roster who have not scored yet.
+
+    They enter with no goals and no appearances, so their rate IS their talent prior
+    and their expected total is that rate over the club's remaining fixtures — exactly
+    what an unproven contender should look like. Without them the field is closed at
+    twenty and every probability is inflated by the players who cannot be counted."""
+    rows = conn.execute(
+        "SELECT fp.name, fp.goal_rate, fp.canonical_team_id cid, tm.api_id tid "
+        "FROM fc_player fp "
+        "JOIN club_registry cr ON cr.club_id = fp.canonical_team_id "
+        "LEFT JOIN team_meta tm ON tm.canonical_team_id = fp.canonical_team_id "
+        "WHERE cr.comp = ? AND fp.goal_rate >= ? "
+        "ORDER BY fp.canonical_team_id, fp.goal_rate DESC",
+        (comp.key, _SQUAD_MIN_RATE)).fetchall()
+    out: list[dict] = []
+    per_club: dict[str, int] = {}
+    for r in rows:
+        cid = r["cid"]
+        if per_club.get(cid, 0) >= _SQUAD_PER_CLUB:
+            continue
+        nm = r["name"] or ""
+        key = (cid, nm.split()[-1].lower() if nm else "")
+        if key in seen_keys:            # already in the scorers feed under either spelling
+            continue
+        per_club[cid] = per_club.get(cid, 0) + 1
+        seen_keys.add(key)
+        out.append({"player_id": None, "name": nm, "team_api_id": r["tid"],
+                    "club_id": cid, "goals": 0, "appearances": 0,
+                    "prior_rate": round(float(r["goal_rate"]), 4),
+                    "mu": float(r["goal_rate"]), "from_fc26": True})
     return out
 
 
@@ -113,8 +164,28 @@ def top_scorer_board(conn, comp_key: str, *, n_sims: int = 50_000,
     mu = np.array([c["mu"] for c in cands])
     left = np.array([rem.get(c["team_api_id"], 0) for c in cands], dtype=float)
     have = np.array([c["goals"] for c in cands], dtype=np.int64)
-    lam = mu * left                                   # expected goals still to come
-    draws = rng.poisson(lam[None, :], size=(n_sims, len(cands)))
+    # A player's scoring RATE is estimated, not known, and two rounds into a season it is
+    # barely estimated at all. Drawing goals from Poisson(mu * left) treats mu as a fact,
+    # so the sim's only uncertainty is match-to-match noise — which is why a striker with
+    # 3 goals in 2 appearances came out at a 91% chance of finishing top scorer, a claim
+    # no one would make in August. Each simulation now draws its own rate from the
+    # shrinkage posterior before drawing goals (Gamma-Poisson): the shape is exactly the
+    # pseudo-count that shrinkage already assigns him, so a player with a long record
+    # keeps a tight rate and a newcomer gets a wide one, with no new free parameter.
+    # POSTERIOR shape, not the exposure count. The shrinkage above,
+    #     mu = (goals + alpha*prior) / (appearances + alpha),
+    # is the mean of a Gamma-Poisson posterior whose prior is Gamma(alpha*prior, alpha):
+    # observing `goals` over `appearances` gives posterior shape alpha*prior + goals and
+    # posterior rate alpha + appearances. Using `appearances + alpha` as the shape used
+    # the RATE parameter in the shape's place — it makes the rate look far better
+    # determined than the evidence allows, because a player who has appeared often but
+    # scarcely scored gets a tight distribution around a rate nobody has actually
+    # observed. It left the favourite over-stated by roughly a third (Haaland 0.386 vs
+    # 0.249 on the corrected shape, Mbappe 0.481 vs 0.331).
+    shape = np.array([max(_SHRINK_ALPHA * c["prior_rate"] + c["goals"], 1e-6)
+                      for c in cands], dtype=float)
+    rates = rng.gamma(shape[None, :], (mu / shape)[None, :], size=(n_sims, len(cands)))
+    draws = rng.poisson(rates * left[None, :])
     totals = have[None, :] + draws
 
     best = totals.max(axis=1, keepdims=True)

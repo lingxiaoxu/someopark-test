@@ -74,9 +74,20 @@ def _tie_win_prob(conn, comp, sm: StrengthModel, tie: dict,
     return a, b, float(p_a)
 
 
-def ko_champion(conn, comp_key: str, sm: StrengthModel, *,
-                n_sims: int = 20_000, seed: int | None = None) -> dict[str, float] | None:
-    """P(champion) over the remaining knockout tree of a cup-state competition.
+# Alive-count → the season family that count IS. "Reaching the round of 16" means
+# being one of the 16 clubs still standing when that round is played, which is exactly
+# a stage of the simulation the tree already walks through — it was simply not recorded.
+_LADDER_BY_ALIVE = {16: "ro16", 8: "ro8", 4: "ro4", 2: "finalist"}
+
+
+def ko_ladder(conn, comp_key: str, sm: StrengthModel, *,
+              n_sims: int = 20_000, seed: int | None = None) -> dict[str, dict] | None:
+    """{family: {club_id: p}} for champion AND every reach-round rung the tree passes.
+
+    The same Monte-Carlo as ``ko_champion``, recording membership at each stage rather
+    than only the winner: Kalshi lists RO16 / RO8 / RO4 / FINALIST as separate season
+    markets (the registry has carried those tickers all along) and the board could not
+    price them because nothing produced the probabilities.
 
     Returns None when the comp is not in a simulable KO state (pre-draw swiss)."""
     comp = get(comp_key)
@@ -98,6 +109,7 @@ def ko_champion(conn, comp_key: str, sm: StrengthModel, *,
     cfg = sm.cfg
     clubs = sorted({c for e in entries for c in e[:2]})
     champ_count = {c: 0 for c in clubs}
+    reach: dict[int, dict[str, int]] = {}
 
     # neutral single-match advance matrix for hypothetical later rounds
     def p_beat(x: str, y: str) -> float:
@@ -113,8 +125,21 @@ def ko_champion(conn, comp_key: str, sm: StrengthModel, *,
     names = []
     for a, b, _pp in entries:
         names.extend([a, b])
+    def _record(cols) -> None:
+        """Count each club still alive at this stage (once per simulation)."""
+        k = int(cols.shape[1])
+        if k not in _LADDER_BY_ALIVE:
+            return
+        d = reach.setdefault(k, {c: 0 for c in clubs})
+        for idx, cnt in zip(*_np.unique(cols, return_counts=True)):
+            d[names[int(idx)]] += int(cnt)
+
+    # Everyone in a live tie has ALREADY reached the round those ties constitute.
+    _entrants = _np.tile(_np.arange(2 * len(entries)), (n_sims, 1))
+    _record(_entrants)
     cur = _np.where(rng.random((n_sims, len(entries))) < ent_p[None, :],
                     _np.arange(len(entries)) * 2, _np.arange(len(entries)) * 2 + 1)
+    _record(cur)
     while cur.shape[1] > 1:
         n_pairs = cur.shape[1] // 2
         nxt_cols = []
@@ -131,10 +156,26 @@ def ko_champion(conn, comp_key: str, sm: StrengthModel, *,
         if cur.shape[1] % 2:
             nxt_cols.append(cur[:, -1])
         cur = _np.stack(nxt_cols, axis=1)
+        _record(cur)
     winners = cur[:, 0]
     for w_idx, cnt in zip(*_np.unique(winners, return_counts=True)):
         champ_count[names[int(w_idx)]] = int(cnt)
-    return {c: round(nn / n_sims, 5) for c, nn in champ_count.items() if nn > 0}
+    out: dict[str, dict] = {
+        "champion": {c: round(nn / n_sims, 5) for c, nn in champ_count.items() if nn > 0}}
+    for alive, fam in _LADDER_BY_ALIVE.items():
+        d = reach.get(alive)
+        if d:
+            out[fam] = {c: round(nn / n_sims, 5) for c, nn in d.items() if nn > 0}
+    return out
+
+
+def ko_champion(conn, comp_key: str, sm: StrengthModel, *,
+                n_sims: int = 20_000, seed: int | None = None) -> dict[str, float] | None:
+    """P(champion) over the remaining knockout tree of a cup-state competition.
+
+    Returns None when the comp is not in a simulable KO state (pre-draw swiss)."""
+    lad = ko_ladder(conn, comp_key, sm, n_sims=n_sims, seed=seed)
+    return lad["champion"] if lad else None
 
 
 if __name__ == "__main__":

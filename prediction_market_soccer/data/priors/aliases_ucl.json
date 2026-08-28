@@ -1,26 +1,143 @@
 {
  "comp": "ucl",
- "series": "KXUCLGAME",
- "as_of": "2026-08-26T05:31:51.581597+00:00",
+ "series": "KXUCLADVANCE",
+ "as_of": "2026-08-28T00:03:39.174833+00:00",
  "aliases": {
   "AEK Athens": "aek_athens_fc",
-  "Dinamo Zagreb": "dinamo_zagreb",
+  "Bodoe/Glimt": "bodo_glimt",
   "Fenerbahce": "fenerbahe",
-  "Levski Sofia": "levski_sofia",
-  "Lyon": "lyon",
-  "NK Celje": "celje",
+  "Sabah Masazir": "sabah_fa",
   "Slovan Bratislava": "slovan_bratislava",
   "Viking": "viking"
  },
  "codes": {
   "aek_athens_fc": "AEK",
-  "levski_sofia": "LEV",
-  "celje": "CEL",
-  "slovan_bratislava": "SLO",
-  "lyon": "OL",
+  "bodo_glimt": "BOG",
   "fenerbahe": "FEN",
-  "viking": "VIK",
-  "dinamo_zagreb": "DIN"
+  "sabah_fa": "SBH",
+  "slovan_bratislava": "SLO",
+  "viking": "VIK"
  },
- "unmatched": []
+ "unmatched": [
+  {
+   "kalshi_name": "Arsenal",
+   "code": "ARS"
+  },
+  {
+   "kalshi_name": "Manchester City",
+   "code": "MCI"
+  },
+  {
+   "kalshi_name": "Manchester United",
+   "code": "MUN"
+  },
+  {
+   "kalshi_name": "Aston Villa",
+   "code": "AVL"
+  },
+  {
+   "kalshi_name": "Liverpool",
+   "code": "LFC"
+  },
+  {
+   "kalshi_name": "Barcelona",
+   "code": "BAR"
+  },
+  {
+   "kalshi_name": "Real Madrid",
+   "code": "RMA"
+  },
+  {
+   "kalshi_name": "Villarreal",
+   "code": "VIL"
+  },
+  {
+   "kalshi_name": "Atletico",
+   "code": "ATM"
+  },
+  {
+   "kalshi_name": "Real Betis",
+   "code": "RBB"
+  },
+  {
+   "kalshi_name": "Bayern Munich",
+   "code": "BMU"
+  },
+  {
+   "kalshi_name": "Dortmund",
+   "code": "BVB"
+  },
+  {
+   "kalshi_name": "Leipzig",
+   "code": "RBL"
+  },
+  {
+   "kalshi_name": "Stuttgart",
+   "code": "VFB"
+  },
+  {
+   "kalshi_name": "PSG",
+   "code": "PSG"
+  },
+  {
+   "kalshi_name": "Lens",
+   "code": "RCL"
+  },
+  {
+   "kalshi_name": "Lille",
+   "code": "LIL"
+  },
+  {
+   "kalshi_name": "PSV Eindhoven",
+   "code": "PSV"
+  },
+  {
+   "kalshi_name": "Feyenoord",
+   "code": "FEY"
+  },
+  {
+   "kalshi_name": "Porto",
+   "code": "FCP"
+  },
+  {
+   "kalshi_name": "Sporting CP",
+   "code": "SPO"
+  },
+  {
+   "kalshi_name": "Club Brugge",
+   "code": "BRU"
+  },
+  {
+   "kalshi_name": "Slavia Prague",
+   "code": "SLA"
+  },
+  {
+   "kalshi_name": "Galatasaray",
+   "code": "GAL"
+  },
+  {
+   "kalshi_name": "Shakhtar",
+   "code": "SHA"
+  },
+  {
+   "kalshi_name": "Inter",
+   "code": "INT"
+  },
+  {
+   "kalshi_name": "Napoli",
+   "code": "NAP"
+  },
+  {
+   "kalshi_name": "Roma",
+   "code": "ROM"
+  },
+  {
+   "kalshi_name": "Como",
+   "code": "COM"
+  },
+  {
+   "kalshi_name": "LASK",
+   "code": "ASK"
+  }
+ ]
 }

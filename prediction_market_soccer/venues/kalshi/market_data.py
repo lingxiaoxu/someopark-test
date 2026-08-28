@@ -11,6 +11,7 @@ Prices use Decimal throughout (plan 01 §4.3 — never float for money).
 """
 from __future__ import annotations
 
+import time
 from decimal import Decimal
 
 import requests
@@ -81,9 +82,45 @@ class KalshiMarketData:
     def list_series(self, category: str = "Sports") -> list[dict]:
         return self._get("/series", {"category": category}).get("series", [])
 
+    # One series' open events are the same answer for every fixture in that
+    # competition, but the exporters ask per fixture: the live loop was re-fetching
+    # the identical list ~150 times a cycle, which at the 0.18s pace plus 429 backoff
+    # is where a "60 second" loop spent 188 seconds. Cached per process — each live
+    # cycle is a fresh process, so a hit can never outlive the cycle that made it,
+    # whatever the TTL says. The TTL is therefore sized to COVER a whole cycle (a
+    # measured 92s at the 12-hour horizon) rather than expire inside one: at 45s the
+    # back half of a cycle re-fetched every series it had already read.
+    _EVENTS_TTL_S = 180.0
+    _events_cache: dict = {}
+    #: series tickers whose discovery was rate-limited this process, and why. Read by
+    #: the exporters so an empty board can say WHICH markets it could not see — an
+    #: unreported empty list is indistinguishable from "this series has no markets".
+    unavailable: dict = {}
+
     def list_events(self, series_ticker: str, status: str = "open") -> list[dict]:
+        key = (series_ticker, status)
+        hit = KalshiMarketData._events_cache.get(key)
+        if hit is not None and (time.time() - hit[0]) < self._EVENTS_TTL_S:
+            return hit[1]
         params = {"series_ticker": series_ticker, "status": status, "with_nested_markets": "true"}
-        return self._get("/events", params).get("events", [])
+        try:
+            events = self._get("/events", params).get("events", [])
+        except requests.HTTPError as e:
+            # A rate-limited series must not take the whole scan down with it. During a
+            # busy window (21 live matches across 12 competitions) discovery walks ~80
+            # series, Kalshi starts refusing, and the exception propagated all the way
+            # out of find_opportunities — so the cycles with the MOST matches produced
+            # NO signals at all. One blind series is a gap; an aborted scan is a blackout.
+            if e.response is None or e.response.status_code != 429:
+                raise
+            KalshiMarketData.unavailable[series_ticker] = "rate limited (429)"
+            # Cache the miss too. Without this every fixture in the competition retried
+            # the same refused series, which is what turned one 429 into a storm.
+            KalshiMarketData._events_cache[key] = (time.time(), [])
+            return []
+        KalshiMarketData.unavailable.pop(series_ticker, None)
+        KalshiMarketData._events_cache[key] = (time.time(), events)
+        return events
 
     def list_markets(self, **filters) -> list[dict]:
         """Paginated market listing (cursor-followed)."""

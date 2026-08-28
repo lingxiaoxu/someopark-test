@@ -66,13 +66,41 @@ def _market_cents(m: dict) -> float | None:
 
 
 def _champ_mark(m: dict) -> float | None:
-    """Champion-market mark: prefer LAST-TRADED, then bid, then a real (<$1) ask
-    (verbatim WC ``_kalshi_champ_cents`` preference order)."""
+    """Champion-market mark: the last trade, CLAMPED INTO the live book.
+
+    Two corrections to the inherited World Cup order. First, `previous_price_dollars`
+    is the previous CLOSE and `last_price_dollars` is the actual last trade; taking the
+    former first published a stale print (Fluminense 18¢ while the tape said 19¢).
+
+    Second, a season-champion contract is thin and its last trade can be days old, so on
+    its own it is not a price anyone can get. Clamping it into [bid, ask] is what makes
+    the mark executable, and it is also the elimination guard this board was missing:
+    a club knocked out in the round of 16 still shows an old 5¢ print while its book has
+    collapsed to bid 0 / ask 1¢, and the clamp reports the 1¢ the market will actually
+    pay rather than the memory of a trade made when it was still alive.
+
+    A settled market is read from its result, not its book — the same discipline
+    ``_market_cents`` already applies.
+    """
+    status = str(m.get("status") or "").lower()
+    if status in ("finalized", "settled", "determined"):
+        res = str(m.get("result") or "").lower()
+        if res == "yes":
+            return 100.0
+        if res == "no":
+            return 0.0
+        return None
     ask = _num(m.get("yes_ask_dollars"))
     bid = _num(m.get("yes_bid_dollars"))
-    last = _num(m.get("previous_price_dollars")) or _num(m.get("last_price_dollars"))
-    price = last
-    if price is None:
+    last = _num(m.get("last_price_dollars")) or _num(m.get("previous_price_dollars"))
+    # A well-formed book (bid <= ask, ask a real price rather than the $1 placeholder)
+    # bounds the mark; a crossed or absent book leaves the trade to speak for itself.
+    book_ok = (bid is not None and ask is not None and ask < 0.99 and bid <= ask)
+    if last is not None:
+        price = min(max(last, bid), ask) if book_ok else last
+    elif book_ok:
+        price = ask
+    else:
         price = bid if bid else (ask if (ask is not None and ask < 0.99) else None)
     return to_cents(price) if price is not None else None
 
@@ -141,3 +169,52 @@ if __name__ == "__main__":
         top = sorted(cc.items(), key=lambda kv: -(kv[1]["kalshi_c"] or 0))[:6]
         print(f"— {k} champion ¢ (Kalshi): " +
               ", ".join(f"{c} {v['kalshi_c']:.0f}¢" for c, v in top))
+
+_NAME_SUFFIXES = {"jr", "jnr", "junior", "sr", "snr", "ii", "iii", "iv",
+                  "filho", "neto", "segundo"}
+
+
+def _norm_person(name: str) -> str:
+    """Surname key for matching a market subject to one of our players.
+
+    Kalshi writes the display name its own way ("E. Haaland", "Erling Haaland",
+    "Haaland"), so the join is on the LAST token, accent-folded — the same discipline
+    fc_ingest uses for the FIFA-series roster join. Deliberately not fuzzy: a wrong
+    player attached to a price is worse than no price (the WC iron rule — live paths
+    match exactly, fuzzy is bootstrap-only).
+    """
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(name or ""))
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    toks = [t for t in s.replace(".", " ").split() if len(t) > 1]
+    # Drop generational suffixes before taking the last token: they are extremely
+    # common in Brazilian and Argentine squads, and without this "Vinicius Jr" keys
+    # on "jr" — which would collide every Junior in the competition onto one price.
+    while len(toks) > 1 and toks[-1].lower().strip(".") in _NAME_SUFFIXES:
+        toks.pop()
+    return toks[-1].lower() if toks else ""
+
+
+def topscorer_cents(comp_key: str) -> dict[str, float]:
+    """{surname key: ¢} for a competition's SEASON top-scorer market.
+
+    Kalshi carries these as their own series (KXUEFACLTOPGOAL for the Champions League);
+    the registry has always listed the ticker while nothing fetched it, so the top-scorer
+    board shipped as a pure model view with no market column. Returns {} when the
+    competition has no such series registered OR when Kalshi has not opened it yet —
+    which, measured 2026-08-27, is every one of them: all seven candidate series
+    returned zero open events with the season barely underway. The column is therefore
+    expected to be empty until they list, and lights up on its own when they do.
+    """
+    d = KalshiDiscovery(comp_key)
+    series = d.comp.kalshi.get("topscorer")
+    if not series:
+        return {}
+    out: dict[str, float] = {}
+    for ev in d.md.list_events(series, status="open"):
+        for m in ev.get("markets", []):
+            key = _norm_person(_sub_team(m))
+            c = _market_cents(m)
+            if key and c is not None:
+                out[key] = c
+    return out

@@ -365,9 +365,6 @@ def run(*, test_frac: float = 0.25, min_gain: float = 0.002,
               f"slope_off={r.get('slope_off')}(t={r.get('t_off')}) "
               f"| test {r.get('test_brier_zero')}→{r.get('test_brier_fitted')} "
               f"{'KEEP' if r.get('kept') else 'zero'}", flush=True)
-    CONFIG.paths.priors.mkdir(parents=True, exist_ok=True)
-    (CONFIG.paths.priors / "league_altdata.json").write_text(
-        json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
     # family fallback for competitions whose own regression had too few points
     fam_pool: dict = {}
     for d in out["detail"]:
@@ -388,6 +385,14 @@ def run(*, test_frac: float = 0.25, min_gain: float = 0.002,
         out["weights"][d["comp"]] = {"oppadj_def_weight": dw, "oppadj_off_weight": ow,
                                      "mode": "residual", "source": f"family:{f}"}
         print(f"  {d['comp']:14s} → family {f}: def={dw} off={ow} (own n={d.get('n_regression')})")
+
+    # Written AFTER the family fallback, not before it: the fallback block only mutates
+    # `out` in memory, so writing first meant every family-borrowed weight was printed
+    # to the operator and returned to the caller while the file on disk — the thing the
+    # model actually loads — never had them.
+    CONFIG.paths.priors.mkdir(parents=True, exist_ok=True)
+    (CONFIG.paths.priors / "league_altdata.json").write_text(
+        json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
 
     kept = [d["comp"] for d in out["detail"] if d.get("kept")]
     print(f"\nleague_altdata.json written — weights kept for {len(kept)}/12: {kept}")

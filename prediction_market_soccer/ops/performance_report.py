@@ -69,7 +69,9 @@ class PerformanceReport:
     n_skipped: int = 0                # settled matches skipped (no tradable edge)
     decision_staked_usd: float = 0.0  # total $ staked across the decision bets
     # Argmax 口径 (parallel reference, every settled match): bet the most-likely side.
-    argmax_record: str = ""           # e.g. "12W-10L" over all settled matches
+    argmax_record: str = ""           # W-L over the PRICED matches (the ¢ P&L's own set)
+    argmax_accuracy_record: str = ""  # W-L over every resolvable prediction (model quality)
+    argmax_priced_n: int = 0          # how many of the settled matches carried an entry price
     argmax_pnl_cents_total: float = 0.0  # ¢ P&L betting argmax every match
     # REALISED 口径 — the actual strategy is decision + smart-exit cash-out (not hold-to-FT).
     realized_record: str = ""            # profitable-bets record with cash-out, e.g. "12-6"
@@ -450,6 +452,7 @@ def _bet_log(conn) -> list[dict]:
     # the parallel reference track shown alongside the decision model.
     am_cum_c = 0.0       # cumulative per-contract ¢ P&L (argmax, all matches)
     am_n = am_wins = 0
+    am_priced_n = am_priced_wins = 0   # the subset the ¢ P&L is actually built from
     # REALISED 口径: the strategy is decision + smart-exit cash-out (we don't hold to FT).
     realized_cum_c = 0.0   # cumulative ¢ P&L with the model-aware cash-out applied
     realized_wins = 0      # bets that REALISED a profit (cash-out or settle)
@@ -520,6 +523,15 @@ def _bet_log(conn) -> list[dict]:
         if am_won is not None:        # only count resolvable predictions in the accuracy record
             am_n += 1
             am_wins += int(am_won)
+            # The RECORD published beside the ¢ P&L must come from the same matches the
+            # P&L does. It did not: the record counted every resolvable prediction (163)
+            # while the P&L could only be marked where an entry price existed (101), and
+            # the 62 unpriced matches happened to run 49W-13L — so the headline read 12.8
+            # points better than the rows the money came from. Accuracy over everything is
+            # still worth reporting; it is just a different number and now says so.
+            if am_pnl_c is not None:
+                am_priced_n += 1
+                am_priced_wins += int(am_won)
 
         # ── decision 口径 (value pick) — populated only when the model actually bet ──
         if mr["bet"]:
@@ -638,8 +650,12 @@ def _bet_log(conn) -> list[dict]:
             "advance": mr.get("advance"),
         })
     return log, {"skipped": skipped, "n_bets": n_bets, "model_n": am_n, "model_hits": am_wins,
+                 "argmax_priced_n": am_priced_n, "argmax_priced_hits": am_priced_wins,
                  "staked_usd": round(staked, 2), "argmax_pnl_cents_total": round(am_cum_c, 1),
-                 "argmax_record": f"{am_wins}W-{am_n - am_wins}L",
+                 # Record over the PRICED matches — the ones argmax_pnl_cents_total sums.
+                 "argmax_record": f"{am_priced_wins}W-{am_priced_n - am_priced_wins}L",
+                 # Hit rate over every resolvable prediction, priced or not (model quality).
+                 "argmax_accuracy_record": f"{am_wins}W-{am_n - am_wins}L",
                  # REALISED 口径 (decision + smart-exit cash-out — the actual strategy).
                  # W/L here = PROFITABLE / not (a 'W' can be a cash-out at a gain on a bet
                  # that would have lost at settlement). Same W-L format as the other modes.
@@ -891,12 +907,17 @@ def build(conn=None) -> PerformanceReport:
         "min": f"{CONFIG.decision.min_stake_usd:.1f}", "max": f"{CONFIG.decision.max_stake_usd:.1f}",
         "since": bet_since, "record": pnl_record, "pnl": f"{pnl_units:+.2f}",
         "roi": f"{pnl_roi*100:+.1f}", "bets": len(log), "skipped": betmeta['skipped']}})
-    notes.append(f"Argmax track (reference, every match): bet the most-likely side all "
-                 f"{betmeta['model_n']} settled matches — {argmax_record} "
-                 f"({model_pred_accuracy:.1%}), {argmax_pnl_cents_total:+.0f}¢/contract. This is the "
-                 f"OLD naive rule, shown alongside so both methods are comparable on the full sample.")
+    _apn = betmeta.get("argmax_priced_n", betmeta["model_n"])
+    notes.append(f"Argmax track (reference): bet the most-likely side. Priced on "
+                 f"{_apn} of {betmeta['model_n']} settled matches — {argmax_record}, "
+                 f"{argmax_pnl_cents_total:+.0f}¢/contract. Separately, the model's pick was "
+                 f"right in {model_pred_accuracy:.1%} of all {betmeta['model_n']} resolvable "
+                 f"matches ({betmeta.get('argmax_accuracy_record', argmax_record)}) — a "
+                 f"model-quality figure, not a P&L one: the matches with no entry price "
+                 f"contribute to it and cannot contribute to the money.")
     notes_i18n.append({"key": "argmaxTrack", "args": {
-        "n": betmeta['model_n'], "record": argmax_record,
+        "n": _apn, "n_all": betmeta['model_n'], "record": argmax_record,
+        "acc_record": betmeta.get("argmax_accuracy_record", argmax_record),
         "acc": f"{model_pred_accuracy*100:.1f}", "pnl": f"{argmax_pnl_cents_total:+.0f}"}})
     notes.append("Calibration P&L (fair-odds) is a separate over/under-confidence diagnostic.")
     notes_i18n.append({"key": "calibPnlNote", "args": {}})
@@ -929,6 +950,8 @@ def build(conn=None) -> PerformanceReport:
         n_skipped=betmeta["skipped"],
         decision_staked_usd=round(decision_staked, 2),
         argmax_record=argmax_record,
+        argmax_accuracy_record=betmeta.get("argmax_accuracy_record", ""),
+        argmax_priced_n=betmeta.get("argmax_priced_n", 0),
         argmax_pnl_cents_total=argmax_pnl_cents_total,
         realized_record=betmeta["realized_record"],
         realized_pnl_cents_total=betmeta["realized_pnl_cents_total"],

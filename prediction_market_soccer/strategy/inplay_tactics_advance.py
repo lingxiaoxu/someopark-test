@@ -49,6 +49,7 @@ from prediction_market_soccer.model.inplay_advance import LiveAdvanceProb
 # Tactical thresholds live in ONE place (model/inplay_constants): four copies of
 # OVERSHOOT_MARGIN had already drifted to two different values.
 from prediction_market_soccer.model.inplay_constants import (  # noqa: F401
+    MOMENTUM_XG_EDGE, XG_CHASE_EDGE, XG_CHASE_MAX_MIN,
     OVERSHOOT_MARGIN, FINISHING_UPLIFT, FRAGILE_FORMATIONS, LATE_MINUTE, EARLY_MINUTE, DRAW_LOCK_FAIR, MIN_CORNER_EDGE, CROSSVAL_VENUE_MOVE, CROSSVAL_LEAD_MOVE, DORMANT_REMAINING_GOALS, FRAGILITY_MAX_MINUTE, CORNER_EDGE_ALARM)
 
 
@@ -171,9 +172,10 @@ def totals_time_decay(lp: LiveAdvanceProb, line: float = 2.5, *,
 
 
 def momentum_value(*, xg_for: float, xg_against: float, goals_for: int, goals_against: int,
-                   minute: int, side: str = "home", xg_edge: float = 1.0) -> TradeAction:
+                   minute: int, side: str = "home",
+                   xg_edge: float = MOMENTUM_XG_EDGE) -> TradeAction:
     """Flag a side that dominates xG without the scoreline to match (value next-goal/win)."""
-    if xg_for - xg_against >= xg_edge and goals_for <= goals_against and minute <= 80:
+    if xg_for - xg_against >= xg_edge and goals_for <= goals_against and minute <= XG_CHASE_MAX_MIN:
         return TradeAction("BUY", side,
                            f"{side} xG {xg_for:.1f} vs {xg_against:.1f} but score {goals_for}:{goals_against} — under-priced", "normal",
                            reason_key="momentum",
@@ -290,7 +292,6 @@ DORMANT_MIN_FROM = 40         # only flag the "quiet but loaded" window from ~HT
 DORMANT_MIN_TO = 70           # …until it is too late for the 2H surge to pay
 DORMANT_MAX_GOALS = 1         # combined goals so far (≤1 = still "quiet")
 DORMANT_XG_MIN = 1.0          # combined live xG (chances ARE being created)
-XG_CHASE_EDGE = 1.0           # live xG lead that flags an "应得未得" chase
 XG_CHASE_MAX_MIN = 80         # still time for the deserved goal to arrive
 POSSESSION_TRAP_MIN = 0.58    # ≥58% possession…
 POSSESSION_TRAP_XG_MAX = 0.8  # …but ≤0.8 xG = sterile control, fade the over-rated side
@@ -408,7 +409,7 @@ def formation_fragility(lp: LiveAdvanceProb, *, home_formation: str | None,
     lean OVER / toward the solid side's attack."""
     hf = home_formation in FRAGILE_FORMATIONS
     af = away_formation in FRAGILE_FORMATIONS
-    if hf == af or lp.minute > LATE_MINUTE or lp.exp_remaining_goals < MIN_REMAINING_GOALS:
+    if hf == af or lp.minute > FRAGILITY_MAX_MINUTE or lp.exp_remaining_goals < MIN_REMAINING_GOALS:
         return TradeAction("HOLD", "over", "no one-sided fragile formation")
     fragile_side, fragile_form = ("home", home_formation) if hf else ("away", away_formation)
     attack = "away" if fragile_side == "home" else "home"

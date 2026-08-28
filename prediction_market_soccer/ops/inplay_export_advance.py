@@ -16,6 +16,7 @@ import time
 from datetime import datetime, timezone
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData as _KMD
 
 _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
 _ET_STATUS = ("ET", "BT")
@@ -303,6 +304,10 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
 
     return {"ts": datetime.now(timezone.utc).isoformat(), "n_live": len(matches),
             **({"scan_error": scan_error} if scan_error else {}),
+            # Series Kalshi refused this cycle. An empty board with no note reads as
+            # "the market was quiet"; this is what distinguishes it from "we were not
+            # allowed to look".
+            **({"venue_blind": dict(_KMD.unavailable)} if _KMD.unavailable else {}),
             "matches": matches}
 
 

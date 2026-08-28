@@ -33,17 +33,30 @@ PUB = "https://api.elections.kalshi.com/trade-api/v2"
 # pass over the 53 auto-unmatched names). Checked before any fuzzy matching, so
 # re-runs self-heal. comp-scoped to avoid cross-league collisions ("Austria").
 CURATED: dict[str, dict[str, str]] = {
-    "epl": {"Leeds United": "leeds"},
-    "laliga": {"Bilbao": "athletic_club", "Atletico": "atletico_madrid"},
+    # 2026-08-27 pass over the SEASON markets (champion / top-4 / relegation), which the
+    # first pass — scoped to GAME markets — never walked. 24 subjects were unresolvable;
+    # these 15 were each checked against club_registry before being written down, and the
+    # other 9 are UCL league-phase clubs that are not in the registry yet because the draw
+    # has not happened. They stay unresolved on purpose.
+    #
+    # Two of them are why this table is curated rather than fuzzy. "Paris" is NOT Paris
+    # Saint-Germain: Kalshi lists PSG separately at 87c and "Paris" at 2c, so it is the
+    # promoted Paris FC, and a nearest-name match would have put PSG's club id on a 2c
+    # contract. Likewise the closest names to "Slavia Prague", "Porto" and "Feyenoord" in
+    # our registry are Sparta Praha, Cerro Porteno and Brentford — three different clubs.
+    "libertadores": {"Coquimbo": "coquimbo_unido", "Estudiantes de La Plata": "estudiantes_l_p", "Ind. del Valle": "independiente_del_valle", "Independiente Rivadavia": "independ_rivadavia", "LDU Quito": "ldu_de_quito", "Tolima": "deportes_tolima", },
+    "ucl": {"Bodoe/Glimt": "bodo_glimt", "Sabah Masazir": "sabah_fa", },
+    "epl": {"Coventry City": "coventry", "Newcastle United": "newcastle", "Leeds United": "leeds"},
+    "laliga": {"Athletic Bilbao": "athletic_club", "Betis": "real_betis", "Bilbao": "athletic_club", "Atletico": "atletico_madrid"},
     "seriea": {"Parma Calcio": "parma"},
-    "bundesliga": {
+    "bundesliga": {"FC Cologne": "1_fc_kln", 
         "Mainz": "fsv_mainz_05", "M´gladbach": "borussia_mnchengladbach",
         "M'gladbach": "borussia_mnchengladbach", "Frankfurt": "eintracht_frankfurt",
         "Dortmund": "borussia_dortmund", "Bremen": "werder_bremen",
         "Schalke": "fc_schalke_04", "Bayern Munich": "bayern_mnchen",
         "Koln": "1_fc_kln", "Cologne": "1_fc_kln",
     },
-    "ligue1": {"PSG": "paris_saint_germain", "Troyes": "estac_troyes",
+    "ligue1": {"Paris": "paris_fc", "Stade Rennes": "rennes", "PSG": "paris_saint_germain", "Troyes": "estac_troyes",
                "Stade Rennais": "rennes"},
     "uel": {"Uni Craiova": "universitatea_craiova", "Iberia": "fc_iberia_1999",
             "Kauno": "kauno_algiris", "Salzburg": "red_bull_salzburg",
@@ -104,9 +117,19 @@ def bootstrap(statuses: tuple[str, ...] = ("open",)) -> dict:
     conn = store.init_db()
     summary = {}
     for comp in active():
-        series = comp.kalshi.get("game")
-        if not series:
+        # The GAME series plus every SEASON series the registry lists. Scoping this to
+        # `game` alone was why 24 season-market subjects stayed unresolvable no matter
+        # how many times this ran: Kalshi writes a club's name differently on a champion
+        # contract than on a match contract ("Newcastle United" vs "Newcastle",
+        # "Athletic Bilbao" vs "Athletic Club"), and the season spellings were never
+        # walked, so they were never learned — and the curated map, which is only
+        # consulted for a name this scan actually sees, could not reach them either.
+        _fams = ["game", "champion", "top4", "top8", "relegation", "last", "advance"]
+        series_list = [comp.kalshi.get(f) for f in _fams]
+        series_list = [x for i, x in enumerate(series_list) if x and x not in series_list[:i]]
+        if not series_list:
             continue
+        series = series_list[0]
         regs = [dict(r) for r in conn.execute(
             "SELECT club_id, name FROM club_registry WHERE comp=?", (comp.key,))]
         reg_ids = {r["club_id"] for r in regs}
@@ -116,6 +139,7 @@ def bootstrap(statuses: tuple[str, ...] = ("open",)) -> dict:
         n_events = 0
         fetch_failed = False
         for st in statuses:
+          for series in series_list:
             try:
                 evs = _events(series, status=st)
             except Exception as e:  # noqa: BLE001 — venue hiccup must not kill the run

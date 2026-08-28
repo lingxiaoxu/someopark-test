@@ -1,7 +1,7 @@
 {
  "comp": "epl",
- "series": "KXEPLGAME",
- "as_of": "2026-08-26T05:31:47.792378+00:00",
+ "series": "KXEPLLAST",
+ "as_of": "2026-08-28T00:01:45.358605+00:00",
  "aliases": {
   "Arsenal": "arsenal",
   "Aston Villa": "aston_villa",
@@ -10,6 +10,7 @@
   "Brighton": "brighton",
   "Chelsea": "chelsea",
   "Coventry": "coventry",
+  "Coventry City": "coventry",
   "Crystal Palace": "crystal_palace",
   "Everton": "everton",
   "Fulham": "fulham",
@@ -20,6 +21,7 @@
   "Manchester City": "manchester_city",
   "Manchester United": "manchester_united",
   "Newcastle": "newcastle",
+  "Newcastle United": "newcastle",
   "Nottingham": "nottingham_forest",
   "Nottingham Forest": "nottingham_forest",
   "Sunderland": "sunderland",

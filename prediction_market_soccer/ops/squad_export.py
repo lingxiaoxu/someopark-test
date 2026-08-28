@@ -229,15 +229,33 @@ def build(conn=None) -> dict:
     # 已踢 3 轮的联赛和一场没踢、走 fc26_talent 兜底的联赛(德甲 8/28 才开赛),
     # 全局第 194 只说明它排在 193 支样本更成熟的球队后面。真正可读的是 league_rank。
     # Within a competition the two blocks must be ranked on ONE comparable axis.
-    # score_z exists only for season rows and talent_ovr only for FC26-covered
-    # clubs, so rank on the FC26 talent where both have it and fall back to the
-    # season z — a club with neither sinks to the bottom of its own league rather
-    # than inheriting a position from the global two-block ordering.
+    # score_z exists only for season rows and talent_ovr only for FC26-covered clubs,
+    # so the fallback has to CONVERT rather than offset: `60 + score_z` spans [59.0,
+    # 61.8] against a talent_ovr spanning [60.0, 85.0], which does not put season-only
+    # clubs "mid-table" — it puts all 62 of them below the FC26 median of 72.5
+    # regardless of how good their season has been. The two axes are calibrated on the
+    # 131 clubs that carry BOTH, matching mean and spread, so a z of +1 lands where a
+    # club one standard deviation above average actually sits on the talent scale.
+    _pairs = [(r["talent_ovr"], r["score_z"]) for r in teams
+              if r.get("talent_ovr") is not None and r.get("score_z") is not None]
+    if len(_pairs) >= 20:
+        import statistics as _st
+        _tv = [p[0] for p in _pairs]
+        _zv = [p[1] for p in _pairs]
+        _z_sd = _st.pstdev(_zv)
+        _mu_t, _mu_z = _st.mean(_tv), _st.mean(_zv)
+        _sd_t = _st.pstdev(_tv)
+        _scale = (_sd_t / _z_sd) if _z_sd > 1e-9 else 0.0
+    else:
+        # Too little overlap to calibrate — leave season-only rows unranked rather
+        # than invent a position for them.
+        _mu_t = _mu_z = _scale = None
+
     def _quality(r):
         if r.get("talent_ovr") is not None:
             return r["talent_ovr"]
-        if r.get("score_z") is not None:
-            return 60.0 + r["score_z"]          # season-only rows land mid-table
+        if r.get("score_z") is not None and _scale is not None:
+            return _mu_t + (r["score_z"] - _mu_z) * _scale
         return None
     n_by_league = attach_league_rank(teams, sort_key=_quality)
     # score_z 用全池 mu/sd(model/squad_strength.squad_index),所以再给一份把

@@ -14,6 +14,7 @@ Usage: one KalshiDiscovery instance per competition:
 from __future__ import annotations
 
 import json
+from functools import lru_cache
 import re
 from dataclasses import dataclass
 
@@ -34,13 +35,31 @@ class KalshiMarketRef:
     label: str                   # yes_sub_title
 
 
-def _load_aliases(comp_key: str) -> dict[str, str]:
+@lru_cache(maxsize=64)
+def _load_aliases_cached(comp_key: str, mtime: float) -> tuple:
+    """(name, club_id) pairs for one competition, memoised on the file's mtime.
+
+    Every KalshiDiscovery reads THIRTEEN alias files at construction (its own plus the
+    twelve it merges into the global map), and the live poller builds one per competition
+    with fixtures in the window — so a single cycle re-read and re-parsed the same files
+    dozens of times. Keying on mtime keeps a bootstrap_aliases run picked up immediately
+    without a restart.
+    """
     p = CONFIG.paths.priors / f"aliases_{comp_key}.json"
     try:
         doc = json.loads(p.read_text(encoding="utf-8"))
-        return dict(doc.get("aliases") or {})
+        return tuple((dict(doc.get("aliases") or {})).items())
     except Exception:
-        return {}
+        return ()
+
+
+def _load_aliases(comp_key: str) -> dict[str, str]:
+    p = CONFIG.paths.priors / f"aliases_{comp_key}.json"
+    try:
+        mt = p.stat().st_mtime
+    except OSError:
+        mt = 0.0
+    return dict(_load_aliases_cached(comp_key, mt))
 
 
 class KalshiDiscovery:

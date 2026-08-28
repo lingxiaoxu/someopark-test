@@ -1,8 +1,45 @@
 {
  "comp": "libertadores",
- "series": "KXCONMEBOLLIBGAME",
- "as_of": "2026-08-26T05:31:53.922442+00:00",
- "aliases": {},
- "codes": {},
- "unmatched": []
+ "series": "KXCONMEBOLLIBADVANCE",
+ "as_of": "2026-08-28T00:03:46.798300+00:00",
+ "aliases": {
+  "Cerro Porteno": "cerro_porteno",
+  "Coquimbo": "coquimbo_unido",
+  "Corinthians": "corinthians",
+  "Cruzeiro": "cruzeiro",
+  "Estudiantes de La Plata": "estudiantes_l_p",
+  "Flamengo": "flamengo",
+  "Fluminense": "fluminense",
+  "Ind. del Valle": "independiente_del_valle",
+  "Independiente Rivadavia": "independ_rivadavia",
+  "LDU Quito": "ldu_de_quito",
+  "Mirassol": "mirassol",
+  "Palmeiras": "palmeiras",
+  "Platense": "platense",
+  "Tolima": "deportes_tolima",
+  "Universidad Catolica": "universidad_catolica"
+ },
+ "codes": {
+  "fluminense": "FLU",
+  "independ_rivadavia": "IRM",
+  "estudiantes_l_p": "ELP",
+  "universidad_catolica": "UC",
+  "deportes_tolima": "TOL",
+  "independiente_del_valle": "IND",
+  "platense": "PLA",
+  "coquimbo_unido": "COQ",
+  "palmeiras": "PAL",
+  "cerro_porteno": "CPO",
+  "cruzeiro": "CRU",
+  "flamengo": "FLA",
+  "mirassol": "MIR",
+  "ldu_de_quito": "LDU",
+  "corinthians": "COR"
+ },
+ "unmatched": [
+  {
+   "kalshi_name": "Rosario",
+   "code": "CARC"
+  }
+ ]
 }

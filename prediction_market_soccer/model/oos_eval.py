@@ -45,6 +45,14 @@ class OOSReport:
     pred_avg_total_goals: float
     obs_avg_total_goals: float
     notes: list[str]
+    # The baseline that actually has to be beaten. "Uniform" means 1/3-1/3-1/3, which
+    # nobody would forecast — home teams win ~45% of club matches and everyone knows it.
+    # Climatology (always predict the observed base rates) is the free forecast, so it is
+    # the honest zero point for skill. Reported alongside a PAIRED t-stat, because the
+    # bootstrap CI on `brier` answers a different question than "is the model better".
+    brier_climatology: float = float("nan")
+    skill_vs_climatology: float = float("nan")     # climatology − model (positive = better)
+    skill_t: float = float("nan")                  # paired t on the per-match difference
 
 
 def _canonical_map(conn) -> dict[int, str]:
@@ -58,22 +66,25 @@ def evaluate(conn=None, sm: StrengthModel | None = None, *, since_days: float = 
     """Club edition: pooled across every enabled comp's RECENT settled fixtures,
     each priced with its own league model + stage-aware knockout flag (C1)."""
     from prediction_market_soccer.config.leagues import Stage, active, stage_of
-    from prediction_market_soccer.model.strength_cache import cached_strength
+    from prediction_market_soccer.model.pit_strength import WalkForwardStrength
 
     conn = conn or store.init_db()
     cmap = _canonical_map(conn)
 
+    # Out-of-sample means the model did not see the result. A caller-supplied `sm` is
+    # taken as-is (tests pass a fixed model); otherwise each match is priced by the
+    # model frozen before its week — see model/pit_strength for the measured leak.
+    wf = None if sm is not None else WalkForwardStrength(conn)
     work: list[tuple] = []   # (sm, knockout, row)
     for comp in active():
-        try:
-            csm = sm or cached_strength(conn, comp.key)
-        except Exception:
-            continue
         for r in conn.execute(
-            "SELECT round, home_api_id, away_api_id, home_goals, away_goals FROM fixture "
+            "SELECT round, home_api_id, away_api_id, home_goals, away_goals, kickoff_ts FROM fixture "
             "WHERE league_id=? AND season=? AND status_short IN ({}) AND home_goals IS NOT NULL "
             "AND kickoff_ts >= datetime('now', ?)".format(",".join("?" * len(_FINISHED))),
             (comp.api_football_id, comp.season, *_FINISHED, f"-{since_days} days")):
+            csm = sm if sm is not None else wf.for_match(comp.key, r["kickoff_ts"])
+            if csm is None:
+                break
             ko = stage_of(comp.key, r["round"]) in (Stage.CUP_TWO_LEG, Stage.CUP_SINGLE)
             work.append((csm, ko, r))
 
@@ -106,8 +117,11 @@ def evaluate(conn=None, sm: StrengthModel | None = None, *, since_days: float = 
         notes.append(f"skipped {skipped} fixtures with unmapped teams")
     if n == 0:
         notes.append("no scored matches available yet — run soccer_ingest --scope results")
-        return OOSReport(0, float("nan"), (float("nan"), float("nan")), float("nan"),
-                         float("nan"), *(float("nan"),) * 6, notes=notes)
+        nan = float("nan")
+        return OOSReport(n_matches=0, brier=nan, brier_ci95=(nan, nan), log_loss=nan,
+                         brier_uniform=nan, pred_draw_rate=nan, obs_draw_rate=nan,
+                         pred_home_rate=nan, obs_home_rate=nan, favourite_hit_rate=nan,
+                         pred_avg_total_goals=nan, obs_avg_total_goals=nan, notes=notes)
 
     probs_arr = np.array(probs)
     outcomes_arr = np.array(outcomes)
@@ -124,9 +138,25 @@ def evaluate(conn=None, sm: StrengthModel | None = None, *, since_days: float = 
     gt_pred, gt_obs = float(np.mean(exp_totals)), float(np.mean(obs_totals))
     if abs(gt_pred - gt_obs) > 0.5:
         notes.append(f"goal-total bias: pred {gt_pred:.2f} vs obs {gt_obs:.2f}")
+    # Climatology = always forecast the OBSERVED base rates. This is generous to the
+    # baseline (it is fitted in-sample on the very matches it scores), so a model that
+    # cannot beat it here has not demonstrated skill.
+    base = np.array([np.mean(outcomes_arr == k) for k in range(3)])
+    per_sample_clim = np.sum((base[None, :] - np.eye(3)[outcomes_arr]) ** 2, axis=1)
+    brier_clim = float(np.mean(per_sample_clim))
+    diff = per_sample_clim - per_sample_brier          # positive = model better
+    skill = float(np.mean(diff))
+    se = float(np.std(diff, ddof=1) / np.sqrt(n)) if n > 1 else float("nan")
+    t_stat = skill / se if se and np.isfinite(se) and se > 0 else float("nan")
+    if np.isfinite(t_stat) and t_stat < 2.0:
+        notes.append(f"skill over base rates NOT significant: {skill:+.4f} Brier, "
+                     f"t={t_stat:.2f} on n={n}")
     notes.append("DIRECTIONAL check only — do NOT fine-tune params to this (plan 03 §7).")
 
     return OOSReport(
+        brier_climatology=round(brier_clim, 4),
+        skill_vs_climatology=round(skill, 4),
+        skill_t=round(t_stat, 2) if np.isfinite(t_stat) else float("nan"),
         n_matches=n,
         brier=brier_score(probs, outcomes),
         brier_ci95=bootstrap_ci(per_sample_brier),
@@ -147,8 +177,9 @@ def main() -> None:
     out.write_text(json.dumps(asdict(rep), ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"OOS over {rep.n_matches} played matches")
     if rep.n_matches:
-        print(f"  Brier      {rep.brier:.4f}  (95% CI {rep.brier_ci95[0]:.3f}-{rep.brier_ci95[1]:.3f}); "
-              f"uniform baseline {rep.brier_uniform:.4f}")
+        print(f"  Brier      {rep.brier:.4f}  (95% CI {rep.brier_ci95[0]:.3f}-{rep.brier_ci95[1]:.3f})")
+        print(f"  baselines  uniform {rep.brier_uniform:.4f} · base-rates {rep.brier_climatology:.4f} "
+              f"→ skill {rep.skill_vs_climatology:+.4f} (paired t={rep.skill_t:.2f})")
         print(f"  Log-loss   {rep.log_loss:.4f}")
         print(f"  draws      pred {rep.pred_draw_rate:.2f} vs obs {rep.obs_draw_rate:.2f}")
         print(f"  fav hit    {rep.favourite_hit_rate:.2f}")

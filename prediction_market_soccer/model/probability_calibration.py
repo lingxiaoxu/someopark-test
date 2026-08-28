@@ -85,6 +85,38 @@ def _brier(P, Y):
     return tot / n
 
 
+# A calibrator at these values has thrown the model away rather than corrected it.
+_DEGENERATE_SHRINK = 0.90     # lambda: 90%+ of the way to uniform
+_DEGENERATE_TEMP = 4.0        # temperature: flattened past any plausible over-confidence
+# Absolute floor on the gate margin. The standard-error test alone is not enough: for a
+# model whose per-match Brier barely varies (the uninformative constant forecast is the
+# limiting case) the s.e. collapses toward zero, and floating-point summation error over
+# a few hundred matches — measured 2.9e-15 on a constant 1/3 forecast — then clears it.
+# One Brier point is the smallest margin worth calling skill; on the current book only
+# argentina (0.0020) fails on this floor rather than on the s.e.
+_MIN_GATE_MARGIN = 0.01
+
+
+def _brier_se(P, Y, method: str, param: float, draw_boost: float):
+    """Standard error of the CALIBRATED per-match Brier, or None when n < 2.
+
+    The gate compares a mean against a fixed baseline, so it needs the spread of the
+    thing being averaged; without it "beats 2/3" cannot tell a real margin from noise.
+    """
+    n = len(Y)
+    if n < 2:
+        return None
+    if method == "shrinkage":
+        cal = [apply_shrinkage(p, param) for p in P]
+    else:
+        cal = [apply_draw_boost(apply_temperature(p, param), draw_boost) for p in P]
+    per = [sum((q - (1.0 if k == y else 0.0)) ** 2 for k, q in enumerate(p))
+           for p, y in zip(cal, Y)]
+    mean = sum(per) / n
+    var = sum((x - mean) ** 2 for x in per) / (n - 1)
+    return (var / n) ** 0.5
+
+
 def fit_calibration(P, Y) -> dict:
     """Fit temperature + shrinkage on (P, Y); return the lower-Brier calibrator.
 
@@ -137,9 +169,38 @@ def fit_calibration(P, Y) -> dict:
         method, param, draw_boost, cbest = "shrinkage", round(bestL, 3), 1.0, bL
     else:
         method, param, draw_boost, cbest = "temperature", round(bestT, 3), round(bestB, 3), cb
+
+    # ── the trade gate ───────────────────────────────────────────────────────
+    # `cbest <= 2/3` was a TAUTOLOGY. The shrinkage grid runs to lambda = 1.0, and
+    # apply_shrinkage(p, 1.0) IS the uniform forecast, whose Brier is exactly 2/3. The
+    # search family therefore CONTAINS the baseline, so its best member can never be
+    # worse than the baseline and the test can never fail. Demonstrated: a model that
+    # backs the WRONG outcome at 95% every match (raw Brier 1.85) is shrunk to
+    # lambda = 1.0, reports calibrated_brier 0.6667, and is graded TRADE-GRADE.
+    #
+    # A gate has to ask whether the MODEL has skill, not whether the calibrator can
+    # retreat to the baseline. Two conditions replace the tautology:
+    #   * the winning calibrator must not be the degenerate one — shrinking almost
+    #     everything away, or a temperature pinned at the grid ceiling, is the fit
+    #     saying "discard this model", which must not read as "cleared to trade";
+    #   * the calibrated model must beat uniform by more than one standard error, i.e.
+    #     be DISTINGUISHABLE from the baseline rather than merely tied with it.
+    # Measured on the current book this closes argentina (shrinkage 0.81, margin
+    # 0.0020 — the competition carrying the most live paper bets), libertadores
+    # (temperature pinned at 8.0) and sudamericana, and leaves the seven with a real
+    # margin open.
+    degenerate = (method == "shrinkage" and param >= _DEGENERATE_SHRINK) or \
+                 (method == "temperature" and param >= _DEGENERATE_TEMP)
+    margin = (2 / 3) - cbest
+    se = _brier_se(P, Y, method, param, draw_boost)
+    graded = bool(not degenerate and se is not None
+                  and margin > max(se, _MIN_GATE_MARGIN))
     return {"method": method, "param": param, "draw_boost": draw_boost,
             "raw_brier": round(raw, 4), "calibrated_brier": round(cbest, 4),
-            "uniform_brier": uniform, "trade_grade": bool(cbest <= 2 / 3), "n": n}
+            "uniform_brier": uniform, "trade_grade": graded, "n": n,
+            "gate_margin": round(margin, 4),
+            "gate_margin_se": (round(se, 4) if se is not None else None),
+            "gate_degenerate": degenerate}
 
 
 # A competition needs this many settled matches of its own before its gate can

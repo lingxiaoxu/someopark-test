@@ -19,6 +19,7 @@ import time
 from datetime import datetime, timezone
 
 from prediction_market_soccer.config import CONFIG
+from prediction_market_soccer.venues.kalshi.market_data import KalshiMarketData as _KMD
 
 _LIVE = ("1H", "HT", "2H", "ET", "BT", "P", "LIVE", "INT", "SUSP")
 
@@ -100,20 +101,38 @@ def _match_hedge(conn, fx, pick_name, lam_h, lam_a, gh, ga, minute, lp, prices, 
     else:
         lead_state = "behind"
 
-    draw_c = None
+    # The whole three-sided book, not just the draw. Six hedge shapes are solved below
+    # and three of them (partial cash-out, lay, dutching) need prices this function was
+    # never handing over: it built Quotes(draw_ask=…) alone, leaving both other asks and
+    # all three bids None, so those three could not price on ANY match — the "not
+    # available right now" they reported was structural, not a property of the market.
+    # One venue for all three sides: mixing venues would price a basket that cannot be
+    # bought as one. Buying the hedge pays the ASK (the draw leg previously used the mid,
+    # which understated what the protection costs).
+    book: dict[str, dict] = {}
     for v in ("kalshi", "poly_us"):
-        blk = (prices or {}).get(v)
-        if blk and blk.get("draw") and blk["draw"].get("mid_c") is not None:
-            draw_c = blk["draw"]["mid_c"]
+        blk = (prices or {}).get(v) or {}
+        sides = {s: blk.get(s) for s in ("home", "draw", "away")}
+        if all(sides[s] and sides[s].get("ask_c") is not None for s in sides):
+            book = sides
             break
-    if draw_c is None:
-        draw_c = to_cents(lp.p_draw)
+    def _px(side: str, field: str):
+        s = book.get(side) or {}
+        return s.get(field)
+    draw_c = _px("draw", "ask_c")
+    if draw_c is None:                      # no full book — model fair for the draw leg
+        blk = next((((prices or {}).get(v) or {}).get("draw") for v in ("kalshi", "poly_us")
+                    if ((prices or {}).get(v) or {}).get("draw")), None)
+        draw_c = (blk or {}).get("ask_c") or (blk or {}).get("mid_c") or to_cents(lp.p_draw)
     if entry_c is None or draw_c is None or draw_c >= 100.0:
         return None
 
     SHARES = 10.0
     pos = ih.Position(shares=SHARES, entry_c=float(entry_c), side=pick)
-    quotes = ih.Quotes(draw_ask=float(draw_c), minute=minute, score=f"{gh}-{ga}")
+    quotes = ih.Quotes(draw_ask=float(draw_c), minute=minute, score=f"{gh}-{ga}",
+                       home_ask=_px("home", "ask_c"), away_ask=_px("away", "ask_c"),
+                       home_bid=_px("home", "bid_c"), draw_bid=_px("draw", "bid_c"),
+                       away_bid=_px("away", "bid_c"))
     be = ih.break_even_b(pos, quotes, hedge_side="draw")
     if be.b is None:
         return None
@@ -380,7 +399,57 @@ def build(conn=None, *, with_venues: bool = True) -> dict:
             # Present ONLY when the scanner crashed. Its absence is what lets a reader
             # trust that "no opportunities" means the market was quiet.
             **({"scan_error": scan_error} if scan_error else {}),
+            # Series Kalshi refused this cycle. An empty board with no note reads as
+            # "the market was quiet"; this is what distinguishes it from "we were not
+            # allowed to look".
+            **({"venue_blind": dict(_KMD.unavailable)} if _KMD.unavailable else {}),
             "matches": matches}
+
+
+def graft_advance(doc: dict, adv_doc: dict | None) -> dict:
+    """Attach each live tie's 2-way advance block to its 3-way row, in place.
+
+    SoccerMatchCard switches the whole card to the advance product when the user picks
+    that lens, and it needs `m.advance.model` to do it — but it only OFFERS the lens
+    when `m.caps.advance` is set. The in-play export was setting caps.advance (a real
+    two-leg tie does carry the market) while emitting no `advance` key at all, so in the
+    live view the Advances toggle appeared and then changed nothing when clicked. The
+    2-way numbers existed the whole time, in the SEPARATE inplay_live_advance.json that
+    the frontend has no fetcher for.
+
+    The block is shaped exactly like upcoming_export's, using upcoming_export's own
+    helpers, so a tie prices identically before kickoff and during the match.
+    """
+    if not adv_doc or not adv_doc.get("matches"):
+        return doc
+    from prediction_market_soccer.ops.upcoming_export import (
+        _best_buy_edge_2way, _venue_devig_2way)
+    by_fid = {m["fixture_id"]: m for m in adv_doc["matches"]}
+    for row in doc.get("matches", []):
+        a = by_fid.get(row["fixture_id"])
+        if a is None:
+            continue
+        model = {"home": a["model"]["home"], "away": a["model"]["away"]}
+        prices = a.get("prices") or {}
+        kalshi, poly = prices.get("kalshi"), prices.get("poly_us")
+        theta = CONFIG.risk.min_net_edge          # same gate the 3-way rows use
+        best = None
+        for q, venue in ((kalshi, "kalshi"), (poly, "poly_us")):
+            e = _best_buy_edge_2way(model, q, venue, theta)
+            if e and (best is None or e["net_edge"] > best["net_edge"]):
+                best = e
+        row["advance"] = {
+            "model": {**model, "cents": prices.get("model_c")},
+            "kalshi": ({**kalshi, "devig": _venue_devig_2way(kalshi)} if kalshi else None),
+            "poly_us": ({**poly, "devig": _venue_devig_2way(poly)} if poly else None),
+            "edge": {"best": best} if best else None,
+            # Timing/decider split is what the live 2-way card adds over the pre-match one.
+            "legs": {k: a["model"][k] for k in
+                     ("p_reg_decides", "p_et_decides", "p_pens_decides") if k in a["model"]},
+            "opportunities": a.get("opportunities") or [],
+            "hedge_advance": a.get("hedge_advance"),
+        }
+    return doc
 
 
 def main() -> None:

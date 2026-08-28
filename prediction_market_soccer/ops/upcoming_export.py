@@ -392,7 +392,7 @@ def _stash_pre(conn, fixture_id, kickoff_ts, kalshi_q, poly_q, kalshi_a=None, po
 
 
 def build(*, limit: int = 6, conn=None, with_venues: bool = True,
-          per_league_limit: int | None = None) -> list[dict]:
+          per_league_limit: int | None = None, horizon_hours: float | None = None) -> list[dict]:
     """Upcoming fixtures across every enabled competition, fully enriched.
 
     Club edition: iterates the LEAGUE REGISTRY; each row carries ``league`` +
@@ -422,7 +422,7 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
     theta = CONFIG.risk.min_net_edge
 
     from prediction_market_soccer.model.probability_calibration import (
-        gate_open_for, load_calibration)
+        calibration_for, gate_open_for, load_calibration)
     _cal = load_calibration()
     # Gate is PER COMPETITION (§3.5): a league nine matches into its season has no
     # verdict of its own, so it stays shut while a competition with 30+ settled
@@ -442,12 +442,22 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
 
     out: list[dict] = []
     for comp in active():
-        fixtures = conn.execute(
-            "SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, raw_json "
-            "FROM fixture WHERE league_id=? AND season=? AND status_short IN ({}) "
-            "AND kickoff_ts IS NOT NULL AND kickoff_ts >= datetime('now', '-3 hours') "
-            "ORDER BY kickoff_ts LIMIT ?".format(",".join("?" * len(_UPCOMING))),
-            (comp.api_football_id, comp.season, *_UPCOMING, per_league_limit)).fetchall()
+        _ph = ",".join("?" * len(_UPCOMING))
+        _q = ("SELECT api_id, home_api_id, away_api_id, kickoff_ts, round, status_short, raw_json "
+              f"FROM fixture WHERE league_id=? AND season=? AND status_short IN ({_ph}) "
+              "AND kickoff_ts IS NOT NULL AND kickoff_ts >= datetime('now', '-3 hours') ")
+        _args: list = [comp.api_football_id, comp.season, *_UPCOMING]
+        if horizon_hours:
+            # A horizon keeps the 60-second live loop off fixtures whose quotes cannot
+            # have moved: without it every cycle re-priced ~156 matches (some months
+            # out) against the venues, which took 188s — so a "60s" loop actually ran
+            # every 416s during a match window, and nothing said so. The daily refresh
+            # passes None and still prices the whole calendar.
+            _q += "AND kickoff_ts <= datetime('now', ?) "
+            _args.append(f"+{horizon_hours} hours")
+        _q += "ORDER BY kickoff_ts LIMIT ?"
+        _args.append(per_league_limit)
+        fixtures = conn.execute(_q, _args).fetchall()
         if not fixtures:
             continue
         try:
@@ -472,14 +482,14 @@ def build(*, limit: int = 6, conn=None, with_venues: bool = True,
         out.extend(_build_comp_rows(
             conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fidx, book,
             theta, _calib_conf, gate_open_for(_cal, comp.key), caps_for, caps_dict,
-            stage_of, leg_of, price_match))
+            stage_of, leg_of, price_match, calibration_for(_cal, comp.key)))
     out.sort(key=lambda r: r.get("kickoff") or "")
     return out
 
 
 def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fidx,
                      book, theta, _calib_conf, _gate_open, caps_for, caps_dict,
-                     stage_of, leg_of, price_match) -> list[dict]:
+                     stage_of, leg_of, price_match, _comp_cal=None) -> list[dict]:
     out: list[dict] = []
     for f in fixtures:
         hi, ai = cmap.get(f["home_api_id"]), cmap.get(f["away_api_id"])
@@ -505,7 +515,13 @@ def _build_comp_rows(conn, comp, fixtures, sm, kd, pd_, cmap, name_of, zh_of, fi
         leg, agg = leg_of(conn, f["api_id"])
         cp = caps_for(comp.key, f["round"], leg=leg)
         ko = cp.advance   # §3.0: advance path exists ⇔ caps say so (C1 done right)
-        mp = price_match(sm, hi, ai, host_neutral=cp.neutral)
+        # Price with THIS competition's calibrator (§3.5), not the pool. calibration_for
+        # had zero call sites: every competition was priced with the pooled fit while
+        # calibration.json published applies="own" for the ones that had earned their
+        # own — the design was fitted, serialised, displayed, and then ignored at the
+        # one place it decides anything. calibration_for falls back to the pool itself
+        # for a cold-start competition, so this is the selection, not a second one.
+        mp = price_match(sm, hi, ai, host_neutral=cp.neutral, cal=_comp_cal)
         model = {"home": round(mp.p_home, 4), "draw": round(mp.p_draw, 4), "away": round(mp.p_away, 4),
                  "over_2_5": round(mp.p_over_2_5, 4), "btts": round(mp.p_btts, 4),
                  # per-contract ¢ view of the model's fair (= prob×100); ADD ONLY.

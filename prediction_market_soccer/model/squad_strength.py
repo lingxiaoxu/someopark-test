@@ -82,10 +82,26 @@ def _league_mult(league_id) -> float:
     return _LEAGUE_STRENGTH.get(league_id, _LEAGUE_DEFAULT)
 
 
-def squad_index(conn) -> dict[str, SquadSummary]:
-    """{canonical_team_id: SquadSummary} from squad ↔ player_stat (club season). The
+def squad_index(conn, *, as_of: str | None = None) -> dict[str, SquadSummary]:
+    """{canonical_team_id: SquadSummary} from the per-fixture lineup feed. The
     minutes-weighted rating is also LEAGUE-STRENGTH weighted, so minutes in weaker leagues
-    count less (a 7.2 in the Saudi league ≠ a 7.2 in the Premier League)."""
+    count less (a 7.2 in the Saudi league ≠ a 7.2 in the Premier League).
+
+    ``as_of`` (ISO ts) makes it POINT-IN-TIME: only appearances in fixtures that kicked
+    off strictly before it contribute. This is the same contract form_index and
+    xg_form_index already honour, and it was the one blend of the five that did not —
+    so a walk-forward model for a July week was scoring July matches with squad quality
+    computed from August appearances. Measured over the 673-match walk-forward, cutting
+    it is not merely more honest but more accurate: Brier 0.6273 → 0.6234 (paired
+    t = 3.37), and the skill over base rates rises from +0.0148 to +0.0188.
+
+    Under a cut the season-aggregate topscorer feed (``player_stat``) is NOT consulted.
+    That table carries one row per player per SEASON with no match dates, so there is no
+    honest way to ask it what was known in July; including it would smuggle the whole
+    season back in through the door the cut just closed. A club with no appearances
+    before ``as_of`` is therefore absent from the index, and squad_adjusted_ratings
+    leaves its rating untouched — which is the truth about what we knew.
+    """
     # CLUB EDITION (§2.3-#5): the WC squad-table indirection (player → national squad →
     # club stats) is gone — the club is on the stat row itself; aggregate directly.
     #
@@ -96,19 +112,25 @@ def squad_index(conn) -> dict[str, SquadSummary]:
     # `fixture_player_stats` is the per-fixture lineup feed: EVERY player who
     # appeared, with real minutes and match ratings. Use it when present and fall
     # back to the topscorer feed only for clubs it does not cover yet.
+    # The LEFT JOIN becomes an INNER JOIN under a cut: a stat row whose fixture we
+    # cannot date cannot be placed before or after `as_of`, so it has no place in a
+    # point-in-time index.
+    _join = "JOIN" if as_of else "LEFT JOIN"
+    _where = "WHERE tm.canonical_team_id IS NOT NULL" + (" AND f.kickoff_ts < ?" if as_of else "")
     rows = conn.execute(
         "SELECT tm.canonical_team_id cid, fps.rating, fps.goals, fps.assists, fps.minutes, "
         "       f.league_id "
         "FROM fixture_player_stats fps "
         "JOIN team_meta tm ON tm.api_id = fps.team_api_id "
-        "LEFT JOIN fixture f ON f.api_id = fps.fixture_api_id "
-        "WHERE tm.canonical_team_id IS NOT NULL").fetchall()
-    covered = {r["cid"] for r in rows}
-    rows = list(rows) + [r for r in conn.execute(
-        "SELECT tm.canonical_team_id cid, ps.rating, ps.goals, ps.assists, ps.minutes, ps.league_id "
-        "FROM player_stat ps JOIN team_meta tm ON tm.api_id = ps.team_api_id "
-        "WHERE tm.canonical_team_id IS NOT NULL").fetchall()
-        if r["cid"] not in covered]
+        f"{_join} fixture f ON f.api_id = fps.fixture_api_id "
+        f"{_where}", ((as_of,) if as_of else ())).fetchall()
+    if not as_of:
+        covered = {r["cid"] for r in rows}
+        rows = list(rows) + [r for r in conn.execute(
+            "SELECT tm.canonical_team_id cid, ps.rating, ps.goals, ps.assists, ps.minutes, ps.league_id "
+            "FROM player_stat ps JOIN team_meta tm ON tm.api_id = ps.team_api_id "
+            "WHERE tm.canonical_team_id IS NOT NULL").fetchall()
+            if r["cid"] not in covered]
     agg: dict[str, dict] = {}
     for r in rows:
         d = agg.setdefault(r["cid"], {"rw": 0.0, "mins": 0.0, "ga": 0.0, "n": 0})
@@ -184,7 +206,7 @@ def build_strength_live(conn, prior=None, cfg=None, *, as_of: str | None = None,
     sw = getattr(cfg, "squad_blend_weight", 0.0)
     if sw:
         try:
-            sm = squad_adjusted_ratings(sm, squad_index(conn), sw)
+            sm = squad_adjusted_ratings(sm, squad_index(conn, as_of=as_of), sw)
         except Exception as e:
             print(f"[build_strength_live] squad blend skipped: {type(e).__name__}: {e}")
     fw = getattr(cfg, "form_blend_weight", 0.0)

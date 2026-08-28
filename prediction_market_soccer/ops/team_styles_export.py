@@ -426,11 +426,26 @@ def build(conn=None) -> dict:
         chosen = [ranked[0]]
         if blend[ranked[1]] >= _SECOND_STYLE_FRAC * blend[ranked[0]] and blend[ranked[1]] > 0:
             chosen.append(ranked[1])
-        poss = round(raw[t]["poss"] / 100.0, 3) if t in raw else _DEFAULT_POSS[chosen[0]]
+        # MEASURED possession, taken straight from the match feed and independent of the
+        # style-vector requirement above. `raw` demands poss AND passpct AND shots AND xG
+        # together — the style z-scores need a complete vector — so a club that played but
+        # whose fixture carried no xG was dropped entirely and then shown the style's
+        # _DEFAULT_POSS constant in the same field, formatted the same way, as if measured.
+        # Arsenal read 58% (the possession-style default) while the feed had it at 64%;
+        # 115 of the 264 "unplayed" clubs had a real number being overwritten like this,
+        # and the remaining 149 had a constant presented as data. The prior still picks the
+        # STYLE — that is what a prior is for — but it no longer supplies a measurement.
+        _meas = agg(t, "poss")
+        poss = round(_meas / 100.0, 3) if _meas is not None else None
         teams_out.append({
             "team_id": t, "league": league_of.get(t), "leagues": leagues_of.get(t, []),
             "name": name.get(t, t), "zh": zh.get(t, ""),
             "poss": poss, "played": t in raw,
+            # What the style prior would say, kept separate so a surface can show the
+            # style without ever printing its default as a possession measurement.
+            "poss_prior": _DEFAULT_POSS[chosen[0]],
+            "poss_measured": _meas is not None,
+            "n_poss_matches": len(prof.get(t, {}).get("poss", [])),
             "styles": [{"code": c} for c in chosen],
             "_raw": raw.get(t),
         })
@@ -441,7 +456,9 @@ def build(conn=None) -> dict:
     #    名次 + 该赛事在这一列的球队数,筛选后才有可读的分母。
     for c in STYLE_CODES:
         members = [tm for tm in teams_out if any(s["code"] == c for s in tm["styles"])]
-        members.sort(key=lambda tm: -tm["poss"])
+        # Rank on the MEASURED value only; a club with no measurement has no place in a
+        # possession ranking and sorts last rather than borrowing its style's default.
+        members.sort(key=lambda tm: (tm["poss"] is None, -(tm["poss"] or 0.0)))
         n_in_col: dict[str, int] = {}
         for tm in members:
             lg = tm.get("league")
@@ -460,7 +477,9 @@ def build(conn=None) -> dict:
 
     # 7) legacy projection so existing downstream readers work unchanged
     teams_final = [_with_legacy(tm) for tm in teams_out]
-    teams_final.sort(key=lambda x: (x["style"], -x["poss"]))
+    # Unmeasured clubs sort last within their style rather than crashing or borrowing a
+    # default: `poss` is now None when the feed never gave us one.
+    teams_final.sort(key=lambda x: (x["style"], x["poss"] is None, -(x["poss"] or 0.0)))
     n_by_league: dict[str, int] = {}
     for tm in teams_final:
         lg = tm.get("league")
@@ -493,6 +512,12 @@ def _with_legacy(tm: dict) -> dict:
         "team_id": tm["team_id"], "league": tm.get("league"), "leagues": tm.get("leagues", []),
         "name": tm["name"], "zh": tm["zh"],
         "poss": tm["poss"], "played": tm["played"],
+        # Provenance travels with the number. Without it a reader cannot tell a measured
+        # 58% from the style prior that happens to be 58%, which is exactly how 264 clubs
+        # came to display a constant as data.
+        "poss_measured": tm.get("poss_measured"),
+        "poss_prior": tm.get("poss_prior"),
+        "n_poss_matches": tm.get("n_poss_matches"),
         # NEW: 1–2 styles, each with poss + within-style rank (global AND within its own comp)
         "styles": [{"code": s["code"], "label": STYLE_LABEL[s["code"]], "poss": tm["poss"],
                     "rank": s["rank"], "global_rank": s["rank"],

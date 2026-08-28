@@ -124,8 +124,10 @@ def _state_at(timeline, mn, dims=2):
 def _inplay_entry(conn, fx_row, hi, ai):
     """Causal (non-hindsight) in-play relative-value entry, frozen alongside the pre-match bet.
 
-    Scans EVERY in-game Polymarket price point (``price_tick``, ~13/match — finer than the 5
-    fixed milestones) in match-minute order. At each, prices the model's LIVE fair 3-way from
+    Scans EVERY in-game price point in match-minute order — the Polymarket ``price_tick``
+    series (~13/match) where it exists, else our own 5 milestone snapshots, which for club
+    football is nearly always the live source (Polymarket Global lists 1 of these fixtures
+    against 164 in milestone_snapshot). At each, prices the model's LIVE fair 3-way from
     ONLY the then-known state (minute, score reconstructed from fixture_event, red cards) with
     the PIT pre-match lambdas, and takes the FIRST side whose live fair beats the then market
     price by the in-play edge threshold (relative value — the market over-reacted). This is the
@@ -139,7 +141,8 @@ def _inplay_entry(conn, fx_row, hi, ai):
     from prediction_market_soccer.model.inplay import live_match_prob
     from prediction_market_soccer.ops.performance_report import _pit_strength
     from prediction_market_soccer.strategy.decision_model import _clip, _kelly_fraction
-    from prediction_market_soccer.strategy.smart_exit import _match_minute, smart_exit_cashout
+    from prediction_market_soccer.strategy.smart_exit import (
+        _MILESTONE_MIN, _match_minute, smart_exit_cashout)
     from prediction_market_soccer.util.pricing import pnl_cents, reg_score
 
     if not fx_row["kickoff_ts"]:
@@ -159,17 +162,34 @@ def _inplay_entry(conn, fx_row, hi, ai):
     # vs-market disagreement (validated: earliest→52%/+$8, min30→54%/+$23, postevent→65%/+$29).
     event_mins = sorted({g[0] for g in goals} | {x[0] for x in reds})
 
-    # In-game price points (poly_global), grouped by wall-clock rel_min → {side: price}. The 3
-    # sides are captured together, so each rel_min carries a full 3-way quote.
-    by_rel: dict = {}
+    # In-game price points keyed by MATCH minute → {side: price}. The 3 sides are captured
+    # together, so each minute carries a full 3-way quote.
+    by_min: dict = {}
     for r in conn.execute(
             "SELECT rel_min, side, price FROM price_tick WHERE fixture_api_id=? AND rel_min "
             "BETWEEN 1 AND ? ORDER BY rel_min", (fid, _SCAN_MAX_RELMIN)):
-        by_rel.setdefault(r["rel_min"], {})[r["side"]] = r["price"]
+        by_min.setdefault(_match_minute(r["rel_min"]), {})[r["side"]] = r["price"]
+    if not by_min:
+        # CLUB EDITION fallback, mirroring smart_exit._milestone_ticks: price_tick comes
+        # from the Polymarket global history, which does not list club fixtures — it holds
+        # 1 match against 164 in milestone_snapshot. Without this the in-play track could
+        # never freeze an entry on any club match, which is exactly what the empty
+        # 0W-0L in-play record was: not "no edge appeared", but "no prices to look at".
+        # Coarser (5 points instead of ~13), so the entry lands on a milestone minute.
+        for r in conn.execute(
+                "SELECT milestone, poly_home_ask ph, poly_draw_ask pd, poly_away_ask pa, "
+                "       kalshi_home_ask kh, kalshi_draw_ask kd, kalshi_away_ask ka "
+                "FROM milestone_snapshot WHERE fixture_api_id=?", (fid,)):
+            mn = _MILESTONE_MIN.get(r["milestone"])
+            if mn is None:
+                continue
+            px = {s: (r[f"p{s[0]}"] if r[f"p{s[0]}"] is not None else r[f"k{s[0]}"])
+                  for s in _SIDES}
+            if all(v is not None for v in px.values()):
+                by_min[mn] = px
 
     entry = None
-    for rel_min in sorted(by_rel):             # match-minute order → first tradable is causal
-        mn = _match_minute(rel_min)
+    for mn in sorted(by_min):                  # match-minute order → first tradable is causal
         if mn < 1 or mn > _MAX_ENTRY_MIN:
             continue
         if not any(e <= mn for e in event_mins):   # no goal/red yet → not an in-play over-reaction
@@ -178,7 +198,7 @@ def _inplay_entry(conn, fx_row, hi, ai):
         rh, ra = _state_at(reds, mn)
         lp = live_match_prob(lam_h, lam_a, mn, sh, sa, red_home=rh, red_away=ra)
         lpp = {"home": lp.p_home, "draw": lp.p_draw, "away": lp.p_away}
-        px = by_rel[rel_min]
+        px = by_min[mn]
         best = None
         for s in _SIDES:
             ask = px.get(s)
@@ -313,9 +333,69 @@ def frozen_inplay(conn, fixture_api_id):
     return json.loads(row["inplay_json"])
 
 
-def main() -> None:
+def backfill_inplay(conn=None, *, dry_run: bool = True) -> dict:
+    """Fill ``inplay_json`` on rows frozen while the in-play scan had no prices to read.
+
+    ADDITIVE ONLY — touches rows where inplay_json IS NULL and never rewrites a placed
+    pre-match bet, so "a bet, once placed, never changes" still holds for every decision
+    already on the ledger. The NULLs are not "no edge was found": ``_inplay_entry`` scanned
+    only the Polymarket per-minute series, which lists 1 of these club fixtures against 164
+    in milestone_snapshot, so on nearly every match it had nothing to look at. The entries
+    written here are still causal — each prices the live fair from ONLY the then-known
+    minute/score/reds with that match's point-in-time lambdas, and takes the first side
+    that cleared the edge bar in time.
+
+    Returns {n_rows, n_filled, n_no_edge}; dry_run reports without writing.
+    """
     from prediction_market_soccer.ingest import store
+
+    conn = conn or store.init_db()
+    cmap = {r["api_id"]: r["canonical_team_id"] for r in conn.execute(
+        "SELECT api_id, canonical_team_id FROM team_meta WHERE canonical_team_id IS NOT NULL")}
+    rows = conn.execute(
+        "SELECT f.* FROM fixture f JOIN settled_bet s ON s.fixture_api_id = f.api_id "
+        "WHERE s.inplay_json IS NULL ORDER BY f.kickoff_ts").fetchall()
+    filled = no_edge = 0
+    for r in rows:
+        hi, ai = cmap.get(r["home_api_id"]), cmap.get(r["away_api_id"])
+        if not (hi and ai):
+            no_edge += 1
+            continue
+        try:
+            entry = _inplay_entry(conn, r, hi, ai)
+        except Exception as e:  # noqa: BLE001 — one bad match must not stop the backfill
+            print(f"  [skip] fixture {r['api_id']}: {type(e).__name__}: {e}")
+            no_edge += 1
+            continue
+        if entry is None:
+            no_edge += 1
+            continue
+        filled += 1
+        if not dry_run:
+            conn.execute("UPDATE settled_bet SET inplay_json=? WHERE fixture_api_id=? "
+                         "AND inplay_json IS NULL",
+                         (json.dumps(entry, ensure_ascii=False), r["api_id"]))
+    if not dry_run:
+        conn.commit()
+    return {"n_rows": len(rows), "n_filled": filled, "n_no_edge": no_edge}
+
+
+def main() -> None:
+    import argparse
+
+    from prediction_market_soccer.ingest import store
+    ap = argparse.ArgumentParser(description="freeze newly-settled bets; optionally backfill in-play")
+    ap.add_argument("--backfill-inplay", action="store_true",
+                    help="fill inplay_json on already-frozen rows that were frozen with no price series")
+    ap.add_argument("--apply", action="store_true", help="actually write (default is a dry run)")
+    args = ap.parse_args()
     conn = store.init_db()
+    if args.backfill_inplay:
+        res = backfill_inplay(conn, dry_run=not args.apply)
+        mode = "WROTE" if args.apply else "dry run"
+        print(f"in-play backfill ({mode}): {res['n_rows']} rows with no in-play entry → "
+              f"{res['n_filled']} filled, {res['n_no_edge']} genuinely had no tradable entry")
+        return
     n = freeze_settled_bets(conn)
     total = conn.execute("SELECT COUNT(*) FROM settled_bet").fetchone()[0]
     print(f"settled_bet: froze {n} new match(es); {total} total frozen")

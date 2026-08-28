@@ -1,13 +1,14 @@
 {
  "comp": "bundesliga",
- "series": "KXBUNDESLIGAGAME",
- "as_of": "2026-08-26T05:31:50.088265+00:00",
+ "series": "KXBUNDESLIGALAST",
+ "as_of": "2026-08-28T00:03:23.748298+00:00",
  "aliases": {
   "Augsburg": "fc_augsburg",
   "Bayern Munich": "bayern_mnchen",
   "Bremen": "werder_bremen",
   "Dortmund": "borussia_dortmund",
   "Elversberg": "sv_elversberg",
+  "FC Cologne": "1_fc_kln",
   "FC Köln": "1_fc_kln",
   "Frankfurt": "eintracht_frankfurt",
   "Freiburg": "sc_freiburg",

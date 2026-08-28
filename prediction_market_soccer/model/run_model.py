@@ -90,6 +90,10 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
             print(f"[run_model:{comp.key}] ratings cache save failed: {e}")
         sim = simulate_season(conn, comp.key, sm, n_sims=n_sims, seed=seed)
 
+        # Reset per competition — the KO branch fills this, the league branch does not,
+        # and a value left over from the previous comp would publish one cup's ladder
+        # against another competition's clubs.
+        ladder: dict[str, dict] = {}
         # KO/pre-draw guard: a CUP is never crowned by a table. `cup_two_leg`
         # (Libertadores/Sudamericana) plays a group phase whose standings ARE
         # populated, so the "has a live table" test used to pass and the group
@@ -116,11 +120,16 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
             and (comp.kind != "swiss_ucl" or swiss_league_phase))
         if not season_valid:
             try:
-                from prediction_market_soccer.model.ucl_phase import ko_champion
-                ko = ko_champion(conn, comp.key, sm)
+                from prediction_market_soccer.model.ucl_phase import ko_ladder
+                _lad = ko_ladder(conn, comp.key, sm) or {}
             except Exception as e:  # noqa: BLE001
                 print(f"[run_model:{comp.key}] KO champion sim unavailable ({e})")
-                ko = None
+                _lad = {}
+            ko = _lad.get("champion")
+            # Reach-round rungs (RO16/RO8/RO4/FINALIST) — Kalshi lists each as its own
+            # season market and the registry has always carried the tickers; the board
+            # could not price them because nothing produced these probabilities.
+            ladder = {f: _lad.get(f) or {} for f in ("ro16", "ro8", "ro4", "finalist")}
             sim.p_champion = (ko or {})
             sim.p_top_n = {}; sim.p_relegation = {}; sim.p_last = {}
             sim.p_qual_direct = sim.p_qual_playoff = None
@@ -134,6 +143,14 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
                 sim.club_ids = sorted(set(sim.club_ids) | set(ko))
 
         cents = champ_cents.get(comp.key) or {}
+        try:
+            from prediction_market_soccer.venues.champion_prices import (
+                _norm_person, topscorer_cents)
+            _ts_cents = topscorer_cents(comp.key)
+        except Exception as e:  # noqa: BLE001 — a missing market must not sink the board
+            print(f"[run_model:{comp.key}] top-scorer market skipped ({type(e).__name__}: {e})")
+            from prediction_market_soccer.venues.champion_prices import _norm_person
+            _ts_cents = {}
         # Honest empty state: when NO champion distribution could be computed
         # (pre-draw swiss, or a cup with no live KO bracket yet) the season-odds
         # probabilities are UNKNOWN, not 0% — emit null so the frontend shows
@@ -157,6 +174,8 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
                 "p_last": _p(sim.p_last, cid),
                 "p_qual_direct": (sim.p_qual_direct or {}).get(cid),
                 "p_qual_playoff": (sim.p_qual_playoff or {}).get(cid),
+                **{f"p_{f}": (ladder.get(f) or {}).get(cid) for f in
+                   ("ro16", "ro8", "ro4", "finalist")},
                 "e_points": sim.e_points.get(cid),
                 "e_rank": sim.e_rank.get(cid),
                 "rating": round(sm.ratings.get(cid, 0.0), 4),
@@ -196,7 +215,15 @@ def build_payload(*, n_sims: int = 200_000, seed: int | None = None,
             "top_scorer": [
                 {**r, "club": {"id": r["club_id"],
                                "name": name_of.get(r["club_id"], r["club_id"]),
-                               "zh": zh_of.get(r["club_id"], "")}}
+                               "zh": zh_of.get(r["club_id"], "")},
+                 # Market column. Empty until Kalshi opens the season top-scorer
+                 # series — measured 2026-08-27, none of the seven candidate series
+                 # had a single open event this early in the season — so a null here
+                 # means "not listed yet", not "no edge".
+                 "kalshi_c": _ts_cents.get(_norm_person(r["name"])),
+                 "edge_vs_kalshi": (
+                     round(r["p_top_scorer"] * 100 - _ts_cents[_norm_person(r["name"])], 1)
+                     if _norm_person(r["name"]) in _ts_cents else None)}
                 for r in top_scorer_board(conn, comp.key, n_sims=50_000, seed=seed)],
             "odds_state": odds_state,
             # zoned competitions (Argentina Apertura/Clausura = two 15-club zones,

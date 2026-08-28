@@ -66,6 +66,58 @@ def _write_both(name: str, doc) -> None:
         (d / name).write_text(payload, encoding="utf-8")
 
 
+
+_LIVE_OR_DONE = {"1H", "2H", "HT", "ET", "BT", "P", "LIVE", "FT", "AET", "PEN"}
+
+
+def _read_upcoming() -> list:
+    """The board currently on disk, or [] when there is none to build on."""
+    try:
+        doc = json.loads((CONFIG.paths.output / "upcoming.json").read_text(encoding="utf-8"))
+        return list(doc.get("matches") or [])
+    except Exception:
+        return []
+
+
+def _started_since(conn, ids) -> set:
+    """Of ``ids``, those no longer awaiting kickoff — asked of the DATABASE, not of the
+    carried-over rows.
+
+    The stale rows cannot answer this question about themselves: upcoming_export only
+    ever emits not-started fixtures, so every archived row says status "NS" forever
+    (measured: 128 of 128). Reading that field to decide "has this kicked off since?"
+    was a test whose answer was fixed before it was asked, and a match already in play
+    would have sat on the board as a pre-match row until the next daily rebuild.
+    """
+    ids = [i for i in ids if i is not None]
+    if not ids:
+        return set()
+    ph = ",".join("?" * len(ids))
+    return {r[0] for r in conn.execute(
+        f"SELECT api_id FROM fixture WHERE api_id IN ({ph}) AND status_short <> 'NS'", ids)}
+
+
+def _merge_upcoming(existing: list, fresh: list, conn=None) -> list:
+    """Fresh rows replace their counterparts; everything else survives untouched.
+
+    Ordering follows the fresh slice first (it is the near-term, actionable half) and
+    then the remaining calendar in its original order, so the top of the card stays the
+    part a desk can act on. A fixture that has kicked off or finished is dropped from
+    the carried-over half: it belongs to the live feed or to recent_finished, and
+    leaving a stale pre-match row for a match already in play is worse than omitting it.
+    """
+    by_id = {}
+    for m in fresh:
+        fid = m.get("fixture_id")
+        if fid is not None:
+            by_id[fid] = m
+    carry = [m for m in existing
+             if m.get("fixture_id") is not None and m["fixture_id"] not in by_id]
+    gone = (_started_since(conn, [m["fixture_id"] for m in carry]) if conn is not None
+            else {m["fixture_id"] for m in carry
+                  if str(m.get("status") or "") in _LIVE_OR_DONE})
+    return list(fresh) + [m for m in carry if m["fixture_id"] not in gone]
+
 def _append_review_log(inplay: dict, synced: int) -> None:
     """Append a per-match, per-cycle record to a JSONL post-match review log.
 
@@ -210,6 +262,32 @@ def _maybe_backfill_milestones(conn) -> bool:
     return True
 
 
+
+# How stale a non-time-critical export may get during a match window. The loop exists to
+# keep the IN-PLAY card current; everything after that write serves cards that do not
+# change minute to minute (the price track, the upcoming board, the divergence table).
+# Measured before this split: 71% of a cycle ran AFTER inplay_live.json was already on
+# disk, and 104 of 104 match-window cycles overran the 60s launchd interval — median
+# 430s, max 1,593s — so the in-play card the loop is FOR was refreshing every seven
+# minutes in order to keep a price-track export a reader was not watching up to the
+# second. Milestone CAPTURE stays on every cycle: it has to catch 15/30/45/60/75', and a
+# minute skipped there is a snapshot lost for good.
+_TAIL_INTERVAL_S = 300.0
+
+
+def _due(name: str, seconds: float) -> bool:
+    """True when ``name``'s last write is older than ``seconds`` (or it never happened).
+
+    Uses the artefact's own mtime as the clock, the same stateless trick
+    _maybe_refresh_risk already relies on — no extra state file to fall out of sync.
+    """
+    import os
+    import time
+    p = CONFIG.paths.output / name
+    if not p.exists():
+        return True
+    return (time.time() - os.path.getmtime(p)) >= seconds
+
 def _maybe_refresh_risk(conn) -> None:
     """Regenerate risk_report.json (Venues & Gates view) at most every ~10 min — its
     venue balances are live Kalshi/Poly API calls, so we throttle to avoid spamming."""
@@ -258,6 +336,16 @@ def _maybe_refresh_champion(conn) -> None:
         from prediction_market_soccer.ops import performance_report
         rep = performance_report.build(conn)
         _write_both("performance_report.json", asdict(rep))
+        # OOS calibration rides the SAME settle event. It used to run every cycle, which
+        # was affordable while it scored with the cached live model — but it now refits a
+        # weekly walk-forward (~100 strength builds, measured 66.8s), and an unconditional
+        # 67s on a 60-second loop is most of why a match-window cycle took 500-1200s.
+        # Nothing in it can change until a match settles, so this is where it belongs.
+        try:
+            from prediction_market_soccer.model import oos_eval
+            _write_both("oos_report.json", asdict(oos_eval.evaluate(conn=conn)))
+        except Exception as e:  # noqa: BLE001
+            print(f"[live_refresh] oos_report rebuild skipped: {e}")
         # Re-render the PnL report PDF too (the "下载报告" view) from the SAME report,
         # so the JSON views and the PDF never disagree after a match settles.
         try:
@@ -401,56 +489,70 @@ def refresh_once(conn=None) -> dict:
     from prediction_market_soccer.ops import inplay_export, inplay_export_advance, upcoming_export
 
     inplay = inplay_export.build(conn, with_venues=True)
-    _write_both("inplay_live.json", inplay)
-    _append_review_log(inplay, synced)
     # 2-way ADVANCE in-play (plan 24) — built + recorded in PARALLEL to the 3-way above.
     # Separate JSON + separate review-log file; failure-tolerant (never blocks the 3-way path).
+    inplay_adv = None
     try:
         inplay_adv = inplay_export_advance.build(conn, with_venues=True)
         _write_both("inplay_live_advance.json", inplay_adv)
         _append_review_log_advance(inplay_adv, synced)
     except Exception as e:
         print(f"[warn] advance in-play export skipped: {e}")
+    # …and grafted ONTO the 3-way rows before writing, because that is where the card
+    # reads it from: the Advances lens is offered off caps.advance but rendered off
+    # m.advance, so without this the live toggle was inert (the standalone advance JSON
+    # has no frontend fetcher). Must run before the write below.
+    inplay_export.graft_advance(inplay, inplay_adv)
+    _write_both("inplay_live.json", inplay)
+    _append_review_log(inplay, synced)
     # Record per-milestone price/prob snapshots as live matches cross 15/30/45/60/75',
     # then regenerate the milestone price-track export (PriceTrack / Mark-to-Market view).
     try:
+        # CAPTURE every cycle — this is the one piece of the tail that is time-critical,
+        # because a milestone minute passed unrecorded cannot be recovered later.
         _capture_milestones(conn, inplay)
-        # Fill PRE/FT (+ any milestone missed live) for settled matches from venue
-        # history; retries across cycles until the just-ended match's history is up.
-        _maybe_backfill_milestones(conn)
-        from prediction_market_soccer.ops import milestone_export
-        _write_both("milestone_marks.json", milestone_export.build(conn))
     except Exception as e:
-        print(f"[live_refresh] milestone capture/export skipped: {e}")
-    try:
-        rows = upcoming_export.build(limit=16, conn=conn, with_venues=True)
-        # Same envelope the daily refresh writes (frontend reads `.matches`).
-        # recent_finished surfaces just-ended matches (FT + score) so a live match
-        # that finishes is marked ended in the top region, not silently dropped.
+        print(f"[live_refresh] milestone capture skipped: {e}")
+    if _due("milestone_marks.json", _TAIL_INTERVAL_S):
+        try:
+            # Fill PRE/FT (+ any milestone missed live) for settled matches from venue
+            # history; retries across cycles until the just-ended match's history is up.
+            _maybe_backfill_milestones(conn)
+            from prediction_market_soccer.ops import milestone_export
+            _write_both("milestone_marks.json", milestone_export.build(conn))
+        except Exception as e:
+            print(f"[live_refresh] milestone backfill/export skipped: {e}")
+    if _due("upcoming.json", _TAIL_INTERVAL_S):
+      try:
+        # 12-hour horizon: the live loop only needs the boards a desk could act on in
+        # this cycle. The 07:30 daily refresh prices the whole calendar.
+        rows = upcoming_export.build(limit=16, conn=conn, with_venues=True,
+                                     horizon_hours=12)
+        # MERGED into the existing board, never written over it. This loop rebuilds a
+        # NEAR-TERM slice, and writing that slice as the whole file replaced the daily
+        # calendar with it — at 12 hours that means a quiet evening published an EMPTY
+        # upcoming.json and the two most prominent cards (Today's Predictions, Match
+        # Pricing) went blank until the next daily run. Refresh what we re-priced, keep
+        # what we did not look at.
+        merged = _merge_upcoming(_read_upcoming(), rows, conn)
         _write_both("upcoming.json", {
-            "as_of": datetime.now(timezone.utc).isoformat(), "n": len(rows),
+            "as_of": datetime.now(timezone.utc).isoformat(), "n": len(merged),
             "note": "Real Kalshi + Polymarket US single-match quotes; venue=null only when unlisted.",
-            "matches": rows,
+            "matches": merged,
             "recent_finished": upcoming_export.recent_finished(conn),
         })
-    except Exception as e:
+      except Exception as e:
         print(f"[live_refresh] upcoming rebuild failed (kept previous): {e}")
 
     # Model-vs-market (Divergence view) — not-started fixtures only, so a match that
     # just finished drops out of it instead of lingering.
-    try:
-        from prediction_market_soccer.strategy.xv_monitor import compare_matches
-        _write_both("xv_matches.json", compare_matches(limit=12))
-    except Exception as e:
-        print(f"[live_refresh] xv_matches rebuild skipped: {e}")
+    if _due("xv_matches.json", _TAIL_INTERVAL_S):
+        try:
+            from prediction_market_soccer.strategy.xv_monitor import compare_matches
+            _write_both("xv_matches.json", compare_matches(limit=12))
+        except Exception as e:
+            print(f"[live_refresh] xv_matches rebuild skipped: {e}")
 
-    # OOS calibration (Calibration view) — grows as matches finish (was stuck at 15).
-    try:
-        from dataclasses import asdict
-        from prediction_market_soccer.model import oos_eval
-        _write_both("oos_report.json", asdict(oos_eval.evaluate(conn=conn)))
-    except Exception as e:
-        print(f"[live_refresh] oos_report rebuild skipped: {e}")
 
     # Risk / Venues & Gates view — its venue balances are LIVE Kalshi/Poly API calls,
     # so refresh it on a ~10-min throttle (not every minute) to keep the balance current
