@@ -49,13 +49,27 @@ def _set_key(p: dict) -> str:
            f"s{p['seasonal_years']}v{p['vol_window']}f{p['sigma_floor']}"
 
 
-def _release_universe(conn) -> list[dict]:
-    """Settled claims events with legs + market probs at close−1h, oldest first."""
+def _release_universe(conn, cov: dict | None = None) -> list[dict]:
+    """Settled claims events with legs + market probs at close−1h, oldest first.
+
+    Legs with no usable market bar at `asof` are dropped, and that is deliberate: the
+    market baseline defines the scored universe so no parameter set can win by being
+    scored on legs another set never saw. What was NOT deliberate is that the drop used
+    to be silent. Across the fourteen macro series 80.4% of settled legs have no
+    two-sided quote at close−1h (PLAN_DFM_SYNTH.md §5e), so an unreported count lets a
+    Brier computed on a fifth of the book read as if it covered the book. `cov`, if
+    given, is filled with `legs_settled` / `legs_scored` and surfaces in the report.
+    """
     evs = conn.execute(
         "SELECT s.period, MAX(c.close_time) ct FROM settlements s"
         " JOIN contracts c ON c.ticker=s.ticker WHERE s.series=?"
         " AND s.result IN ('yes','no') GROUP BY s.period ORDER BY ct", (SERIES,)).fetchall()
     from prediction_market_macro.util.periods import kalshi_period_to_key
+    if cov is not None:
+        # seeded, not accumulated into existence: a coverage dict that omits
+        # `legs_scored` when nothing scored is the same silent zero this is here to end.
+        cov.setdefault("legs_settled", 0)
+        cov.setdefault("legs_scored", 0)
     out = []
     for ev in evs:
         key = kalshi_period_to_key(ev["period"])
@@ -68,11 +82,15 @@ def _release_universe(conn) -> list[dict]:
                 "SELECT c.ticker, c.floor_strike, c.strike_type, s.result FROM contracts c"
                 " JOIN settlements s ON s.ticker=c.ticker WHERE c.series=? AND s.period=?"
                 " AND s.result IN ('yes','no')", (SERIES, ev["period"])):
+            if cov is not None:
+                cov["legs_settled"] += 1
             if l["floor_strike"] is None:
                 continue
             mp = _market_leg_prob(conn, l["ticker"], asof)
             if mp is None:
                 continue
+            if cov is not None:
+                cov["legs_scored"] += 1
             legs.append({"strike": float(l["floor_strike"]),
                          "strike_type": l["strike_type"] or "greater_or_equal",
                          "result": l["result"], "market_p": mp})
@@ -92,7 +110,8 @@ def _brier(pmf: dict, legs: list[dict]) -> tuple[float, float]:
 
 
 def run_grid(conn, min_trail: int = 12) -> dict:
-    universe = _release_universe(conn)
+    cov: dict = {"legs_settled": 0, "legs_scored": 0}
+    universe = _release_universe(conn, cov)
     keys = [_set_key(p) for p in GRID]
     scores: dict[str, list[float]] = {k: [] for k in keys}     # per-release Brier per set
     market: list[float] = []
@@ -117,8 +136,11 @@ def run_grid(conn, min_trail: int = 12) -> dict:
         market.append(row["market"])
         rows.append(row)
     n = len(rows)
+    cov["leg_coverage"] = (round(cov["legs_scored"] / cov["legs_settled"], 4)
+                           if cov["legs_settled"] else None)
     if n < min_trail + 4:
-        return {"n": n, "error": f"not enough scored releases (need {min_trail + 4})"}
+        return {"n": n, "leg_universe": cov,
+                "error": f"not enough scored releases (need {min_trail + 4})"}
 
     # walk-forward selection path: at t, pick argmin trailing-mean Brier over (<t)
     wf_sel, wf_default = [], []
@@ -138,8 +160,12 @@ def run_grid(conn, min_trail: int = 12) -> dict:
         "per_set_full_period": {k: round(float(np.mean(v)), 5)
                                 for k, v in sorted(scores.items(),
                                                    key=lambda kv: np.mean(kv[1]))},
+        "leg_universe": cov,
         "note": "per_set_full_period is descriptive ONLY (lookahead if used to pick);"
-                " adoption requires wf_selected < default AND < market + §9.5 gate",
+                " adoption requires wf_selected < default AND < market + §9.5 gate."
+                " leg_universe.leg_coverage is the fraction of SETTLED legs that had a"
+                " usable market bar and were therefore scored — every Brier above is on"
+                " that subsample, which is selected on liquidity, not at random",
     }
     return {"agg": agg, "per_release": rows, "picks": picks}
 

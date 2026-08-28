@@ -393,6 +393,12 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
         (series, max_events)).fetchall()
     now_iso = datetime.now(timezone.utc).isoformat()
     per_b, mkt_b, scored = [], [], 0
+    # Legs with no usable market bar at asof are dropped so this track and the
+    # production track score the SAME universe. The drop is right; leaving it
+    # uncounted was not. 80.4% of settled legs across the fourteen series carry no
+    # two-sided quote at close−1h (PLAN_DFM_SYNTH.md §5e), so an unreported
+    # denominator lets a Brier on a fifth of the book read as a Brier on the book.
+    legs_settled = legs_scored = 0
     for ev in events:
         key = kalshi_period_to_key(ev["period"])
         if not key or not ev["ct"]:
@@ -415,12 +421,14 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
             " WHERE c.series=? AND s.period=? AND s.result IN ('yes','no')",
             (series, ev["period"])).fetchall()
         bs, bk, n = 0.0, 0.0, 0
+        legs_settled += len(legs)
         for l in legs:
             # one shared market reader with replay_series, so the shadow track and the
             # production track score the SAME leg universe and stay comparable
             mp = _market_leg_prob(conn, l["ticker"], asof)
             if mp is None or l["floor_strike"] is None:
                 continue
+            legs_scored += 1
             try:
                 fair = leg_fair(pmf, l["strike_type"] or "greater",
                                 l["floor_strike"], l["cap_strike"])
@@ -444,7 +452,12 @@ def chronos_replay_scores(conn, series: str, max_events: int = 20) -> dict | Non
     m = {"n": scored, "brier_model-1h": round(float(np.mean(per_b)), 5),
          "brier_market-1h": round(float(np.mean(mkt_b)), 5),
          "n_scored-1h": scored,
-         "note": "chronos2 zero-shot replayed at -1h (PIT); evidence for §7-bis"}
+         "legs_settled": legs_settled, "legs_scored": legs_scored,
+         "leg_coverage": (round(legs_scored / legs_settled, 4)
+                          if legs_settled else None),
+         "note": "chronos2 zero-shot replayed at -1h (PIT); evidence for §7-bis."
+                 " leg_coverage = scored/settled: both Briers are on the quoted"
+                 " subsample, selected on liquidity rather than at random"}
     _store(conn, "chronos_replay", series, f"n{scored}", m)
     return m
 

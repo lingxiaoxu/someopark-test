@@ -110,6 +110,16 @@ def replay_series(conn, series: str, max_events: int, days: int,
     mkt: dict[int, dict] = defaultdict(dict)
     dead: dict[str, dict[int, list]] = defaultdict(lambda: defaultdict(list))
     modes: dict[str, int] = defaultdict(int)
+    # Per lag: settled legs offered vs legs that had a usable market bar and were
+    # therefore scored. The market baseline defining the universe is the design and it
+    # stays; counting it is what was missing. 80.4% of settled legs across the fourteen
+    # series carry no two-sided quote at close−1h (PLAN_DFM_SYNTH.md §5e), and coverage
+    # generally FALLS as the lag grows because earlier bars are rarer — so one variant
+    # is compared across lags on shrinking, liquidity-selected books. Same universe per
+    # lag for every variant, so the A/B is unaffected; the scope is not readable unless
+    # it is reported.
+    cov_settled: dict[int, int] = defaultdict(int)
+    cov_scored: dict[int, int] = defaultdict(int)
     errors: list[str] = []
     event_ids: list[str] = []
     n_events = 0
@@ -142,6 +152,8 @@ def replay_series(conn, series: str, max_events: int, days: int,
                 if mp is None or l["floor_strike"] is None:
                     continue
                 universe.append((l, mp))
+            cov_settled[lag] += len(legs)
+            cov_scored[lag] += len(universe)
             if not universe:
                 continue
 
@@ -205,6 +217,12 @@ def replay_series(conn, series: str, max_events: int, days: int,
         "per_event_market": per_event(mkt),
         "event_ids": event_ids,
         "n_scored": {lag: len(x) for lag, x in sorted(mkt.items())},
+        # scored/settled per lag. Every Brier above is on this subsample, which is
+        # selected on liquidity rather than at random; see §5e.
+        "leg_coverage": {lag: round(cov_scored[lag] / cov_settled[lag], 4)
+                         for lag in sorted(cov_settled) if cov_settled[lag]},
+        "legs_settled": {lag: cov_settled[lag] for lag in sorted(cov_settled)},
+        "legs_scored": {lag: cov_scored[lag] for lag in sorted(cov_scored)},
         "dead_on_live": {v: {lag: int(np.sum(x)) for lag, x in sorted(dead[v].items())}
                          for v in dead},
         "modes": dict(modes),
