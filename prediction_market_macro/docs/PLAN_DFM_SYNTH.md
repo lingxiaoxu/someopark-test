@@ -2532,6 +2532,117 @@ reality. Changed to `prints="first"`; `verify_settle` on KXJOBLESSCLAIMS went **
 the remaining one being the shutdown week above. `_MONTHLY_COLS` keeps `"latest"`, because
 there ICSA is a context feature for `payrolls`/`u3`, which read it through `fred_series`.
 
+## 5d. Cross-series structure — the surviving hypothesis, set to zero by the build (#213, 2026-08-28)
+
+§5b-2 closed "remap *their* number" and #184a closed "combine *both* numbers". What §5b-2
+left standing, deliberately as hypotheses and not as a consolation prize, was the family a
+per-contract comparison cannot even pose: (a) sizing and λ-calibration under a correct joint
+law, (b) events with no liquid quote, (c) cross-series structure the independent per-contract
+prices cannot express. This section measures (c), because **(c) is the precondition for (a)**
+— if contemporaneous settlement surprises in different series are independent, then a joint
+law and fourteen independent marginals imply the same portfolio variance and (a) is dead
+before a sizing harness is written.
+
+### The obvious way to ask it has no power, and the first answer it gave was an artifact
+
+`xseries_dep.py` scores, per settled event at the −1h production asof, `r = mean_i(y_i −
+p_mkt_i)`. On a monotone ladder `Σ y_i` is a monotone function of the settled level and
+`Σ p_mkt_i` is the market's implied expectation of that count, so `r` is a normalised level
+surprise; marginal calibration forces `E[r] = 0` per series and says nothing about
+`corr(r_A, r_B)`. The floor is a circular shift of B's residuals against B's own dates,
+which preserves each series' autocorrelation and destroys only the alignment.
+
+The first run reported **9 of 13 cross-print pairs outside the permutation band**, headed by
+KXJOBLESSCLAIMS/KXPAYROLLS at `corr = 0.547`. **That number is an artifact of a defect in the
+measuring script, and it is recorded here rather than quietly replaced.** `MIN_N` was applied
+to the number of *matches*, which is the length of the A side; ten of those thirteen pairs had
+a B series with **three settled events in total**, so "n = 13" meant 13 numbers correlated
+against 3 distinct values, and the circular-shift null had two non-identity rotations to draw
+from. Both the statistic and its own floor were degenerate. Buggy output kept at
+`xseries_dep_BUGGY_matchcount.{json,log}`.
+
+With the estimability guard (both sides ≥ 8 events, matched side ≥ 8 *distinct* events):
+
+| pair | n | corr | permutation 95% band | p |
+|---|---|---|---|---|
+| KXAAAGASW ~ KXWTIW | 14 | −0.425 | [−0.493, +0.633] | 0.189 |
+| KXJOBLESSCLAIMS ~ KXWTIW | 13 | −0.196 | [−0.622, +0.683] | 0.549 |
+| KXAAAGASW ~ KXJOBLESSCLAIMS | 14 | +0.096 | [−0.574, +0.636] | 0.758 |
+
+K = 3 estimable pairs, mean |corr| **0.239** against a floor of **0.243**, 0 of 3 outside,
+portfolio variance ratio 0.987. **This is not a refutation of (c); it is a sample with no
+power.** 81 settled events across 14 series, most series carrying three, cannot answer a
+question about pairs — the bands are ±0.6 wide. Recorded as unanswerable *from settled Kalshi
+outcomes*, which is a fact about the sample and not about the hypothesis.
+
+### Asking it where the data is forced a look at the build, and the build answers first
+
+Two facts, read off the code rather than inferred from output:
+
+* `build.build(src, series, cutoff, …)` takes **one** series and resolves **one** panel
+  through `SETTLES[series].panel`; `regen.regen_series` writes its worlds to `root / series`.
+  A world is **per-series**. There is no world in which KXCPI and KXJOBLESSCLAIMS both settle.
+* The four production panels are fitted and drawn **independently** — separate `GenConfig`,
+  separate fit, separate draw.
+
+So in the sample the selector actually consumes, the correlation between any labor quantity
+and any inflation quantity is **exactly zero**: not estimated as zero, not shrunk to zero,
+but absent, because the two are never drawn together. §5b-2's own defence of the DFM was that
+"its output is a *joint* object — many series, many horizons, one coherent draw". **Within a
+panel that is true. Across panels it is not true today**, and that turns (c) from an open
+question into a measurable cost.
+
+### The cost, measured on real data in the space the generator is fitted in (`xpanel_dep.py`)
+
+Contemporaneous `inc` increments, block-permutation floor (block = 12 periods), weekly summed
+into calendar months for the cross-frequency block (exact for an additive increment):
+
+| block | pairs | mean \|corr\| | floor | outside band (chance) | mean var ratio |
+|---|---|---|---|---|---|
+| same-frequency | 16 | **0.232** | 0.039 | **14 / 16** (0.8) | 0.883 |
+| cross-frequency | 33 | **0.187** | 0.050 | **19 / 33** (1.7) | 1.018 |
+| **CONTROL — duplicated column** | 2 | **0.907** | 0.041 | 2 / 2 (0.1) | 1.885 |
+
+The strongest cells are economically legible, which is the point: `inflation_monthly.cpi ~
+energy_weekly.gas_retail` **+0.676** (gasoline is a component of headline CPI),
+`labor_monthly.claims ~ energy_weekly.wti` **−0.557**, `energy_weekly.rbob ~
+claims_weekly.claims` **−0.523**, `labor_monthly.payems ~ inflation_monthly.cpi_core`
+**+0.294** on n = 425. Every one of them is generated at 0.000.
+
+**The control block is the sharpest finding and it needs no interpretation.** `claims` is a
+generated column of **both** `labor_monthly` and `claims_weekly`; `gas_retail` of **both**
+`inflation_monthly` and `energy_weekly`. The same economic variable is fitted twice by two
+generators that never see each other. On real data those pairs correlate **0.881** and
+**0.933** (not 1.000 only because one side is a monthly mean of ICSA and the other a monthly
+sum of weekly increments — different aggregations of one series, which is exactly what the
+0.88 measures). The generated sample puts them at **0**. That is not "structure we are
+missing"; it is a world in which KXCPI's gasoline and KXAAAGASW's gasoline are different
+numbers, and an accounting identity is violated by construction.
+
+### What this establishes, and what it explicitly does not
+
+**Established.** (c) is real and large on the data, the current build sets all of it to zero,
+and two columns are generated twice with no reconciliation. This is a **fidelity** defect of
+the same kind as §4e's three, and it is the first one that lives in the architecture rather
+than in the sampler.
+
+**Not established.** That fixing it makes money. That is (a), it needs a sizing harness this
+file does not contain, and the direction is not even obvious: the same-frequency block's mean
+variance ratio is **0.883**, i.e. below 1, so on those pairs independent sizing *overstates*
+portfolio variance and the joint law would license *more* risk, not less. A fidelity fix that
+loosens a risk limit is exactly the kind of change that must not be adopted on a fidelity
+argument alone. **No sizing, λ, or execution change is proposed on the strength of this
+section.**
+
+**Not proposed here either:** the fix. Making worlds multi-panel — one world, all panels drawn
+from a joint law, with `claims` and `gas_retail` reconciled instead of drawn twice — changes
+every generated world and therefore every downstream number in this document. It is tracked as
+**#214**, is gated behind PR-15 and PR-17 for the same sequencing reason PR-16 recorded, and
+will need its own preregistration before any of it is scored.
+
+Artifacts: `/tmp/dfm_verify/xseries_dep.py`, `xpanel_dep.py`, and the preserved
+`xseries_dep_BUGGY_matchcount.{json,log}`.
+
 ## 6. Calibrating lambda (S5)
 
 For each weekly series (KXWTIW, KXNATGASW, KXAAAGASW, KXJOBLESSCLAIMS — n_real 10–11):
