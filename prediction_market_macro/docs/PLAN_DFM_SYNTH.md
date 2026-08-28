@@ -2324,6 +2324,43 @@ Two consequences, and they point in opposite directions:
 Artifacts: `/tmp/dfm_verify/pr18_persist.py`, `pr18_verdict.py` (+ `pr18_verdict.json`),
 `pr18_<panel>.json` and `.log` ×4.
 
+### 4e-P. Per-column AR(1) driving noise probed for #205 — halves the defect, plateaus above knn (2026-08-28)
+
+PR-20's mechanism applied WITHIN a panel across time: mix each column's H week-coordinates
+of the driving noise by `chol(Toeplitz(phi_j^|i-k|))` — AR(1)-in-time noise, marginally
+N(0,1) per coordinate, zero trained parameters, `phi=0` bit-identical to `sample` (held as
+a control in every probe run). Three probes, all exploratory, none registered, numbers not
+citable as a verdict (`xar_probe.py`, `xar2_probe.py`, `xar3_probe.py` + `.json`/`.log`):
+
+1. **A single panel-wide phi cannot work.** The acf1 defect is per-column and SIGNED —
+   claims/cpi/gas_retail/payems under-persistent, wti/rbob/natgas/unrate over-persistent
+   (at the probed anchor). One phi helps some columns exactly as it hurts the others.
+2. **Per-column phi solved off the diagonal response, confirmed out of sample** (4 training
+   anchors, targets = real per-column H-block acf1 on de-standardized TRAINING rows):
+   mean |gap| 0.0527→0.0175 (claims_weekly), 0.0445→0.0271, 0.0767→0.0379, 0.0615→0.0375;
+   sd ratio 0.987–0.997 everywhere, so the persistence is NOT bought with dispersion —
+   the failure mode that killed PR-18's whitening does not appear. Pooled 12-col: 0.0325
+   against knn's 0.0269 (PR-18's frame). Solved phis are modest: |phi| ≤ 0.45, most ≤ 0.25.
+3. **A joint fixed-point refinement that drives the TRAINING residual to zero generalizes
+   WORSE** (pooled 0.0377): gas_retail's phi balloons to +0.58 on the calibration anchors
+   and overshoots at the held-out one; labor's negative phis likewise. The binding
+   constraint is anchor-to-anchor variability of the acf1 response — a calibration exact on
+   its anchors is overfitting them, and the cruder xar2 solve is the better-regularized one.
+
+**Where this leaves #205.** The mechanism robustly halves the defect for free (no dispersion
+cost, no new trained parameters, bit-identity at zero) but plateaus at ~0.032 pooled against
+knn's 0.0269 in a not-directly-comparable frame (single-anchor 2-seed confirm vs validate's
+pooled-holdout; per-column acf1 SE at n=256 is ~0.016, comparable to the gaps being judged).
+A PR-21 registration would be: land `GenConfig.ar_phi` (default None, every existing config
+bit-identical), judge by a four-panel two-arm validate exactly as PR-18 did, with PR-18's B
+(beat same-run knn on pooled mean |acf1 gap|) and (b)/(c) falsifiers. The probe puts that
+judgment at roughly even odds — registering a likely-failing verdict is permitted (PR-18 did
+it knowingly), but the xar2-style calibration must be the registered procedure, NOT the
+fixed-point one, which the probes have already shown to overfit. Condition-DEPENDENT phi
+(a function, not a vector) is the obvious next dial and is exactly the kind of added
+flexibility the discipline says needs its own registration and an out-of-sample kill switch
+before anyone fits it.
+
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
 > This section is the *survey*, and its counts are as of the survey. KXGDP was built the same
