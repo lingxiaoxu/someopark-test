@@ -327,6 +327,36 @@ def test_market_leg_prob_filter_is_symmetric(conn):
     assert _market_leg_prob(conn, "NOSUCH", asof) is None
 
 
+def test_market_leg_bar_accepts_exactly_what_market_leg_prob_accepts(conn):
+    """#184b added `_market_leg_bar` so a thinness gate can read spread/volume/staleness
+    from the SAME bar the price came from, with `_market_leg_prob` reduced to a wrapper.
+    The one thing that must never drift is the acceptance rule: a leg that is scored must
+    have metadata and a leg that is dropped must have none, or the gate would be
+    conditioning on a different universe than the Brier it is trying to explain."""
+    from prediction_market_macro.research.backtest import (_market_leg_bar,
+                                                           _market_leg_prob)
+    asof = datetime(2026, 8, 1, tzinfo=timezone.utc)
+    ts = int(asof.timestamp()) - 120
+    for tk, b, a, v in (("BHI", 0.99, 1.00, 7.0),
+                        ("BLO", 0.00, 0.01, 0.0),
+                        ("BEMPTY", 0.00, 1.00, 0.0),
+                        ("BNULL", None, 0.50, 3.0)):
+        conn.execute("INSERT INTO candles(ticker, end_ts, yes_bid_close, yes_ask_close,"
+                     " volume) VALUES(?,?,?,?,?)", (tk, ts, b, a, v))
+    conn.commit()
+    for tk in ("BHI", "BLO", "BEMPTY", "BNULL", "BNOSUCH"):
+        bar, mp = _market_leg_bar(conn, tk, asof), _market_leg_prob(conn, tk, asof)
+        assert (bar is None) == (mp is None), tk
+        if bar is not None:
+            assert bar["mid"] == mp, tk
+    hi = _market_leg_bar(conn, "BHI", asof)
+    assert hi["spread"] == pytest.approx(0.01)
+    assert hi["volume"] == 7.0
+    # staleness is asof MINUS the bar's end, so it is >= 0 for a PIT-legal bar and is the
+    # age of the quote, not its timestamp. A sign slip here would invert the gate.
+    assert hi["staleness_s"] == 120.0
+
+
 def test_settle_release_ts_exact_mapping_never_matches_neighbour_day(conn):
     """DCOILWTICO/GASREGW publish DAILY, so a nearest-match window returns the previous
     day's print and manufactures a leak. The mapping must be exact-or-None."""

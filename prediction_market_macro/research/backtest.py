@@ -57,8 +57,8 @@ def backfill_candles(conn, md, series: str, max_markets: int = 4000) -> int:
     return n
 
 
-def _market_leg_prob(conn, ticker: str, asof: datetime) -> float | None:
-    """Mid of the newest bar at or before asof, or None when the book is empty.
+def _market_leg_bar(conn, ticker: str, asof: datetime) -> dict | None:
+    """The newest bar at or before asof, with its mid — or None when the book is empty.
 
     The empty-book test must be SYMMETRIC. It used to be `a < 1.0`, which threw away
     every leg the market had priced as near-certain YES while keeping the mirror image
@@ -67,10 +67,19 @@ def _market_leg_prob(conn, ticker: str, asof: datetime) -> float | None:
     quotes, not a missing-ask sentinel, and dropping them conditioned the scored leg
     universe on price level, which correlates with the outcome. Only bid=0.00 AND
     ask=1.00 together (1 bar) means nobody is quoting.
+
+    Returns the fields a liquidity gate needs alongside the price, because they must
+    come from the SAME bar the price came from. Deriving them in a second query would
+    let the two disagree the moment the acceptance rule above changes, and the whole
+    point of a thinness gate is that it conditions on the book that was actually read.
+    `staleness_s` is asof − bar end, i.e. how old the quote the model is being compared
+    against actually was; `spread` and `volume` are the two thinness proxies. All three
+    are PIT by construction — they are properties of a bar with `end_ts <= asof`.
     """
     r = conn.execute(
-        "SELECT yes_bid_close, yes_ask_close FROM candles WHERE ticker=? AND end_ts<=?"
-        " ORDER BY end_ts DESC LIMIT 1", (ticker, int(asof.timestamp()))).fetchone()
+        "SELECT yes_bid_close, yes_ask_close, volume, end_ts FROM candles"
+        " WHERE ticker=? AND end_ts<=? ORDER BY end_ts DESC LIMIT 1",
+        (ticker, int(asof.timestamp()))).fetchone()
     if r is None:
         return None
     b, a = r["yes_bid_close"], r["yes_ask_close"]
@@ -78,7 +87,21 @@ def _market_leg_prob(conn, ticker: str, asof: datetime) -> float | None:
         return None
     if b <= 0.0 and a >= 1.0:
         return None                          # genuinely no two-sided market
-    return (b + a) / 2
+    return {"mid": (b + a) / 2, "bid": float(b), "ask": float(a),
+            "spread": float(a) - float(b),
+            "volume": None if r["volume"] is None else float(r["volume"]),
+            "staleness_s": float(int(asof.timestamp()) - int(r["end_ts"]))}
+
+
+def _market_leg_prob(conn, ticker: str, asof: datetime) -> float | None:
+    """Mid of the newest bar at or before asof, or None when the book is empty.
+
+    Thin wrapper over `_market_leg_bar` so that every caller — this one, the replay
+    loops, and anything reading leg metadata — accepts or rejects a leg by exactly one
+    rule. See `_market_leg_bar` for that rule and why it is symmetric.
+    """
+    r = _market_leg_bar(conn, ticker, asof)
+    return None if r is None else r["mid"]
 
 
 def replay_claims(conn, n_releases: int = 26, asof_offsets=("-24h", "-1h")) -> dict:
@@ -180,7 +203,7 @@ def _settle_release_ts(conn, spec, key: str) -> datetime | None:
 def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                   max_events: int = 200, collect_legs: bool = False,
                   params: dict | None = None, params_pit: bool = False,
-                  params_at=None) -> dict:
+                  params_at=None, collect_leg_meta: bool = False) -> dict:
     """Generic settled-history replay for ANY ladder/categorical series.
 
     Brier needs no y: settled leg results ARE the outcomes. For each settled event,
@@ -321,10 +344,12 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 pmf = grid_pmf(pred.dist, spec.round_rule)
             bs_m, bs_k, n_legs = 0.0, 0.0, 0
             leg_pairs = []
+            leg_meta = []
             for l in legs:
-                mp = _market_leg_prob(conn, l["ticker"], asof)
-                if mp is None:
+                bar = _market_leg_bar(conn, l["ticker"], asof)
+                if bar is None:
                     continue
+                mp = bar["mid"]
                 try:
                     if pmf is None:                              # categorical leg
                         fair = float(probs.get(l["ticker"].rsplit("-", 1)[-1], 0.0))
@@ -340,6 +365,18 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 n_legs += 1
                 if collect_legs:
                     leg_pairs.append((round(fair, 5), round(mp, 5), out))
+                if collect_leg_meta:
+                    # A PARALLEL list, index-aligned with `legs{off}`, rather than a wider
+                    # leg tuple: every existing consumer unpacks exactly three fields
+                    # (`for f, mp, o in legs`), so widening the tuple would break them
+                    # silently at the first extra element. Appended here, inside the same
+                    # `n_legs += 1` branch, so the alignment cannot drift when a leg is
+                    # skipped for an empty book or a bad strike.
+                    leg_meta.append({"ticker": l["ticker"], "spread": bar["spread"],
+                                     "volume": bar["volume"],
+                                     "staleness_s": bar["staleness_s"],
+                                     "floor": l["floor_strike"], "cap": l["cap_strike"],
+                                     "strike_type": l["strike_type"]})
             rec[f"branch{off}"] = _branch_of(pred.inputs)
             rec[f"params{off}"] = _params_of(eff)
             if n_legs:
@@ -348,6 +385,8 @@ def replay_series(conn, series: str, asof_offsets=("-24h", "-1h"),
                 rec[f"n_legs{off}"] = n_legs
                 if collect_legs:
                     rec[f"legs{off}"] = leg_pairs
+                if collect_leg_meta:
+                    rec[f"legmeta{off}"] = leg_meta
         if rec:
             per.append(rec)
             for off in asof_offsets:
