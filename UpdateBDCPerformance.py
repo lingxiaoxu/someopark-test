@@ -138,8 +138,12 @@ def get_inception_info() -> tuple[str, float]:
     return first['date'], first['mrpt_equity'] + first['mtfs_equity']
 
 
-def build_portfolio(inception_date: str, target_start: float) -> tuple[pd.Series, dict]:
+def build_portfolio(inception_date: str, target_start: float,
+                    end_date: str | None = None) -> tuple[pd.Series, dict]:
     """Build daily PC BDC + Cash portfolio equity.
+
+    Args:
+        end_date: 终点(含),YYYY-MM-DD。None = 今天(保持旧行为)。
 
     Returns:
         equity_series: combined BDC + cash equity per day
@@ -147,7 +151,24 @@ def build_portfolio(inception_date: str, target_start: float) -> tuple[pd.Series
     """
     # 终点钳到今天:Polygon 对未来起点回 403 → store 三连重试后 raise。原 yfinance
     # 版用 now+2d 是为了让 yf 的右开区间包含今天,Polygon 是闭区间不需要。
-    end_date = str(pd.Timestamp.now().normalize().date())
+    #
+    # end_date 参数(2026-08-27):不传仍然是今天,夜间 pipeline 语义一个字不变。
+    # 加它是因为不传时本函数钳到「现在」—— 于是**盘中**跑一次就会写出一行拿盘中价
+    # 冒充收盘的当日行。8/27 10:17 真发生过:8/26→8/27 只差 −$7.93(−0.0008%),
+    # 六只 BDC 一整个交易日不可能这么平,那是 10:17 的快照。那一行的下游后果:
+    #   (a) 面板卡片的日内 % 分母走 official EOD 最后一行(RealtimeNavViewer.tsx:670),
+    #       于是 BDC 拿盘中值当基准,而另外四个策略拿的是前一交易日收盘;
+    #   (b) rolloff.py:115 的「五策略官方 EOD 日期必须一致」闸门判定不一致 → 拒绝冻 K。
+    # 另外四个策略一直是 DailySignal 传 --end signal_date 的,只有 BDC 漏了。
+    today = str(pd.Timestamp.now().normalize().date())
+    if end_date is None:
+        end_date = today
+    else:
+        end_date = str(pd.Timestamp(end_date).normalize().date())   # 非法格式直接抛
+        if end_date > today:
+            raise ValueError(
+                f'--end {end_date} 晚于今天 {today}:Polygon 对未来日期回 403,'
+                f'不做静默钳位 —— 调用方传错了要喊出来')
     bdc_capital = target_start * BDC_ALLOC
     cash_capital = target_start * CASH_ALLOC
 
@@ -290,6 +311,11 @@ def build_portfolio(inception_date: str, target_start: float) -> tuple[pd.Series
 def main():
     parser = argparse.ArgumentParser(description='Generate private_credit_bdc_performance.json')
     parser.add_argument('--dry-run', action='store_true', help='Print results without writing')
+    # 夜间 pipeline 传 signal_date(= 最后一个已完成交易日),与 UpdateStrategyPerformance
+    # 的 --end 对齐;不传 = 今天,保持手工跑的旧行为。见 build_portfolio 的说明。
+    parser.add_argument('--end', default=None, metavar='YYYY-MM-DD',
+                        help='终点日期(含);不传=今天。盘中跑务必传,否则会写出'
+                             '拿盘中价冒充收盘的当日行')
     args = parser.parse_args()
 
     inception_date, combined_start = get_inception_info()
@@ -302,7 +328,8 @@ def main():
     print(f'  Cash (BIL): ${target * CASH_ALLOC:,.0f}')
     print()
 
-    equity, meta = build_portfolio(inception_date, target)
+    equity, meta = build_portfolio(inception_date, target, end_date=args.end)
+    print(f'  End requested: {args.end or "(today)"}')
     print(f'  Days: {len(equity)} ({equity.index[0].date()} -> {equity.index[-1].date()})')
     print(f'  Start: ${equity.iloc[0]:,.0f}  End: ${equity.iloc[-1]:,.0f}')
     ret = (equity.iloc[-1] / equity.iloc[0] - 1) * 100

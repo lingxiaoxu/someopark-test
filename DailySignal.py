@@ -3024,8 +3024,13 @@ def run_daily_signal(
                 # 非零退出 = 价格有缺口、脚本拒绝产出假曲线(2026-08-18 起)。必须喊
                 # 出来:否则 master 静默沿用昨天的 bdc_equity,前端与 controller
                 # 官方锚跟着一起过期,而日志上一片祥和。
-                _bdc = subprocess.run('python UpdateBDCPerformance.py'.split(),
-                                      capture_output=True, timeout=180)
+                # --end 必须传(2026-08-27):不传时脚本自己钳到「现在」,盘中跑一次就会
+                # 写出一行拿盘中价冒充收盘的当日行 —— 面板卡片的日内 % 分母(official
+                # EOD 最后一行)与 rolloff.py:115 的五策略 EOD 日期闸门双双受害。
+                # 用的就是上面 UpdateStrategyPerformance 那个 _perf_end,两者对齐。
+                _bdc = subprocess.run(
+                    f'python UpdateBDCPerformance.py --end {_perf_end}'.split(),
+                    capture_output=True, timeout=180)
                 if _bdc.returncode != 0:
                     log.error(f"[PERF_UPDATE] UpdateBDCPerformance 失败 "
                               f"(exit={_bdc.returncode}) — bdc_equity 未更新: "
@@ -3138,8 +3143,10 @@ def run_daily_signal(
             # BDC equity (Polygon via PriceDataStore) must be regenerated BEFORE
             # UpdateMasterPerformance, which only *reads* the BDC JSON.
             # 非零退出 = 价格有缺口、脚本拒绝产出假曲线(2026-08-18 起),见上一处同款注释。
-            _bdc = subprocess.run('python UpdateBDCPerformance.py'.split(),
-                                  capture_output=True, timeout=180)
+            # --end 同上一处:不传会在盘中写出「当日行」,污染面板基准与冻 K 闸门。
+            _bdc = subprocess.run(
+                f'python UpdateBDCPerformance.py --end {_perf_end}'.split(),
+                capture_output=True, timeout=180)
             if _bdc.returncode != 0:
                 log.error(f"[PERF_UPDATE] UpdateBDCPerformance 失败 "
                           f"(exit={_bdc.returncode}) — bdc_equity 未更新: "
