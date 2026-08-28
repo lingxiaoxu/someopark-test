@@ -3240,18 +3240,39 @@ risk profiles and a single up-or-down verdict would let the safe piece smuggle i
 one. Each stage gates the next: a stage that fails kills everything after it, and nothing lands
 in a generated world until Stage 3 passes its own registration.
 
-**Stage 1 — merge the two weekly panels (PR-19, registered, running).** `claims_weekly` and
-`energy_weekly` share one clock — both are `**_WEEKLY` (same `start`, same `drop_spans`, same
-`W-SAT` freq) — so `joint_weekly = _scope(_WEEKLY_COLS, ("claims","gas_retail","wti","natgas",
-"rbob"))` is well-posed with no alignment machinery: 5 × 13 = 65 dims, 690 rows. This alone
-fixes the four bridge pairs (`claims` × each energy column, real |corr| up to 0.523) *within one
-draw*. The risk it must clear is on the record in `panel.py`'s own comments: `core_monthly` at
-144 dims loses to a block bootstrap of its own history at every conditioning width — wide panels
-are not free, and 65 dims sits between the narrow specs (13–52) that work and the wide ones
-(130–144) that failed. PR-19's criteria: `dep x` excess vs boot ≤ 0.03 (the join must actually
-capture the cross structure — at the zero model the 4 dead bridge pairs would push the 10-pair
-mean excess to ~0.1), `crps_ratio` < 1.0 and ≤ 0.9786 (column-weighted narrow baseline + 0.02),
-C2ST vs boot ≤ 0.169, `dup` ≤ 0.05, cover80 |gap| ≤ 0.1100.
+**Stage 1 — merge the two weekly panels (PR-19) — NOT ADOPTED, and the failure is
+informative.** `claims_weekly` and `energy_weekly` share one clock — both are `**_WEEKLY`
+(same `start`, same `drop_spans`, same `W-SAT` freq) — so `joint_weekly = _scope(_WEEKLY_COLS,
+("claims","gas_retail","wti","natgas","rbob"))` is well-posed with no alignment machinery:
+5 × 13 = 65 dims, 690 rows. The registered hope: fix the four bridge pairs (`claims` × each
+energy column, real |corr| up to 0.523) *within one draw*, without the `core_monthly` failure
+(144 dims loses to a block bootstrap at every conditioning width).
+
+The verdict run (3355s, criteria frozen in `PREREGISTER.md` §PR-19 and committed before the
+run finished): **A PASS** — `dep x` excess vs boot **+0.0069** against a 0.03 bar, so the
+joint draw really does carry the cross-column structure, with 4× margin; **B1 PASS** —
+`crps_ratio` 0.9804 < 1.0, no wide-panel curse; **B3 PASS** (+0.1452 ≤ 0.169); **(b) PASS**
+(`dup` 0.0000); **(c) PASS** — cover80 gap 0.0214, incidentally *closer* to 0.80 than either
+narrow panel (0.0638 / 0.0591), reported and not used. **B2 FAIL**: `crps_ratio` 0.9804
+against the bar of 0.9786 (column-weighted narrow baseline 0.9586 + 0.02), over by **0.0018**.
+Per the registration's own sentence, Stage 1 is dead and Stages 2–3 below stay unregistered —
+they are kept as the record of the plan this verdict killed, because Stage 2's inpainting idea
+survives unchanged if a future architecture re-earns the joint draw it depends on. The B2 baseline was itself a registered approximation and the miss is inside that
+approximation's plausible error — recorded, and irrelevant: the bar judges, not a post-hoc
+estimate of the bar's error, which is precisely the move the discipline forbids.
+
+**What the run established for the next architecture.** The premise held and the price was the
+problem: drawing jointly captures the bridges (A, 4× margin), but merging the *sampling*
+degraded sharpness by +0.0218 against the weighted narrow baseline — 0.0018 more than the
+registration was willing to pay. So the next candidate must keep the narrow panels' marginals
+**bit-identical** — the four production generators untouched, drawing exactly what they draw
+today — and couple *after* the draw: reorder which path of panel A is paired with which path
+of panel B inside a world (an Iman–Conover-style rank coupling on path summaries, targeting
+the measured bridge correlations). By construction every per-panel metric (`crps`, `cover`,
+C2ST, the whole battery) is unchanged — a B2-type cost is structurally zero — and the only
+question left to register is how much of the real cross-panel correlation survives at
+n_paths-world granularity. That is #214's next registration when it is written; it is not
+registered here.
 
 **Stage 2 — pin the monthly duplicates by inpainting (not yet registered).** `labor_monthly.
 claims` and `inflation_monthly.gas_retail` are monthly means of series the weekly draw already
@@ -3291,7 +3312,8 @@ the same-frequency variance ratio is 0.883, a joint law licenses *more* risk on 
 and that step is (a), which needs its own harness and its own registration when and if Stage 3
 exists.
 
-Registration: `PREREGISTER.md` §PR-19 (Stage 1). Artifacts: `/tmp/dfm_verify/pr19_joint_weekly.py`.
+Registration: `PREREGISTER.md` §PR-19 (Stage 1, NOT ADOPTED). Artifacts:
+`/tmp/dfm_verify/pr19_joint_weekly.py` (+ `.json`, `.log`).
 
 ## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
 
