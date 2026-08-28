@@ -626,17 +626,29 @@ def measure_lattice(levels: pd.DataFrame, spec: PanelSpec) -> dict[str, dict]:
 
     Discovered, not declared, and the difference is visible in the output: `gas_retail` is
     the SAME FRED series in two panels and comes back with a 0.001 grid in `energy_weekly`
-    (agg="last", the published price survives) and NOTHING in `inflation_monthly`
-    (agg="mean", the monthly average of four weekly prints lands off every grid). A
-    hardcoded table would have forced GASREGW's three decimals onto a column that provably
-    does not have them.
+    (agg="last", the published price survives) and 5e-05 in `inflation_monthly` (agg="mean",
+    so 0.001/20 by the rule below). A hardcoded table would have forced GASREGW's three
+    decimals onto a column that provably does not carry them.
 
     A consequence worth stating: this finds any exact grid the real data occupies, whatever
     produced it, and not only publication grids. Monthly `claims` is an average of four or
-    five weekly ICSA prints and comes back on a grid of 10 — an artefact of the averaging,
-    not a Bureau decision. That is still the right target, because the C2ST exploits an
-    arithmetic regularity exactly as happily as an institutional one, and at 0.0003 of the
-    column's increment sd it costs the sample nothing.
+    five weekly ICSA prints and comes back on a grid of 50 — an artefact of the averaging
+    (`gcd(1000/4, 1000/5)`; see `_LATTICE_STEPS` above and §4e-I), not a Bureau decision.
+    That is still the right target, because the C2ST exploits an arithmetic regularity
+    exactly as happily as an institutional one, and at 0.0003 of the column's increment sd
+    it costs the sample nothing.
+
+    WHAT THIS RETURNS IS THE POOLED GRID, AND THE POOLED GRID IS NOT THE ACHIEVABLE SET.
+    Measured (§4e-K, #203): of `labor_monthly.claims`'s 715 months, the 467 with four ICSA
+    prints sit on 250 and the 248 with five sit on 200 — each at a hit rate of 1.0000, each
+    confirmed by an independent exact GCD. 50 is the gcd of those two lattices and so
+    describes the POOLED column correctly, but the UNION of {multiples of 250} and
+    {multiples of 200} covers only 40.3% of the 50-grid. A caller that rounds onto the scalar
+    returned here therefore emits an unreachable number about 60% of the time, while real
+    `claims` lands in that hole 0 times in 425 — a one-bit separator at AUC 0.800, against a
+    pooled C2ST that cannot see the same defect at all (0.7854 vs 0.7853, §4e-I). Fixing it
+    means a PERIOD-CONDITIONAL grid rather than a scalar, which changes generated levels, so
+    it is registered as PR-17 and deliberately not slipped in here mid-A/B.
     """
     out: dict[str, dict] = {}
     for col in spec.gen_columns:

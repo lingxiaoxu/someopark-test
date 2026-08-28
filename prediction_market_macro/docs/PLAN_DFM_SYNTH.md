@@ -1754,6 +1754,73 @@ strength of this section.
 Artifacts: `/tmp/dfm_verify/acf1_targets.json`, `acf1_reachable.py` (+ `.json`, `.log`),
 `acf1_reachable_pooled.py` (+ `.json`, `.log`).
 
+### 4e-K. The anchor-conditional lattice statistic exists, and it is one bit (#203, 2026-08-28)
+
+§4e-I closed by saying the tell a C2ST could use *"would have to be anchor-conditional… #203
+stays open for that"*, and it had just measured why: the pooled increment C2ST scores a
+generator that is 19.1% correct on the grid at 0.7854 and one that is 100% correct at 0.7853.
+The statistic it was open for falls out of §4e-I's own derivation, needs no classifier, and is
+a **single bit per value**.
+
+**The derivation, one step further than §4e-I took it.** A month with four weekly prints, each
+a multiple of `g`, has a mean that is a multiple of `g/4` and of nothing finer; a month with
+five has a mean that is a multiple of `g/5`. §4e-I stopped at `gcd(g/4, g/5) = g/20`, which is
+the right answer for the *pooled* column. But the pooled gcd is not the achievable set: the
+**union** of {multiples of 250} and {multiples of 200} is not the 50-lattice, because 50, 100,
+150, 300, 350 … belong to neither. A quantiser that rounds onto the pooled grid — which is
+exactly what `quantise_levels` does, correctly, after #203 — emits values that are on the
+measured grid and still impossible.
+
+**Measured, and the derivation is exact rather than approximate.** `labor_monthly.claims`,
+ICSA source grid confirmed at 1000.0 by `_exact_gcd_step` over 7783 observations with zero
+exceptions:
+
+| months with … | count | grid the derivation predicts | on it | independent exact GCD |
+|---|---|---|---|---|
+| four ICSA prints | 467 | `1000/4` = **250** | **1.0000** | **250.0** |
+| five ICSA prints | 248 | `1000/5` = **200** | **1.0000** | **200.0** |
+
+Two predictions, both hit at 1.0000, each corroborated by a GCD computed without reference to
+the prediction. Of the pooled 50-grid, **40.3%** of rungs are reachable by some month length
+and **59.7% are not**. The real column lands in that hole **0 times in 425**, which is the
+control: if the derivation were wrong, real data would fall in the hole and everything above
+would be void.
+
+**Its power, against the battery that cannot see the defect at all.** Put continuous levels of
+the right magnitude through the shipped quantiser and ask the one-bit question *is this value
+reachable?*:
+
+| | flagged impossible |
+|---|---|
+| real `claims` levels (425) | **0.0%** |
+| levels rounded onto the pooled 50-grid (170 000) | **60.1%** |
+| | **AUC of that single bit: 0.8004** |
+
+Zero false positives, by construction rather than by luck. For comparison, §4e-I's whole
+pooled C2ST separates a 19%-correct generator from a 100%-correct one by Δ = −0.0001. One
+derived bit beats the battery on this defect by an unbounded margin, and the reason is the
+same reason §4e-I gave for the battery's blindness: the bit is evaluated per value, so the
+anchor is never averaged out.
+
+**This is a live defect, not only a statistic.** It applies to every `agg="mean"` column whose
+sub-period count varies: `labor_monthly.claims` (measured 50) and `inflation_monthly.gas_retail`
+(measured 5e-05 = 0.001/20, the same four-or-five weekly structure). It also applies one level
+down, to `_sub_monthly`, which writes weekly ICSA rows into `labor_monthly` worlds as
+continuous floats pinned to the generated monthly mean — those rows are off the 1000 grid
+entirely, and the pin and the grid are compatible only because `g/4` and `g/5` means are
+exactly what integer-multiple-of-1000 weeks produce.
+
+**Why it is not fixed in this commit.** The fix is a period-conditional grid in place of a
+scalar: `measure_lattice` must carry the source step and the aggregation, and
+`quantise_levels` must be told which period each row is, so it can round onto `g/n(period)`.
+That changes generated levels. PR-15's `whiten` A/B is running against a fixed lattice, and
+landing a lattice change underneath it would void its control — which is precisely the
+sequencing PR-16 was careful about and stated. Registered as **PR-17**, to land after PR-15
+is harvested. #203 remains open until it does, but no longer for want of a statistic.
+
+Artifacts: `/tmp/dfm_verify/lattice_conditional.py` (+ `.json`), `level_step_audit.py`
+(+ `.json`).
+
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
 > This section is the *survey*, and its counts are as of the survey. KXGDP was built the same

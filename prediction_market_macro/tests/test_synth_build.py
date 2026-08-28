@@ -84,6 +84,72 @@ def test_level_step_aligns_the_grid_only_where_a_grid_exists():
     assert BD.SETTLES["KXCPIYOY"].level_step(0.1) is None
 
 
+class _FakePanelData:
+    """Only `lattice` is read by the guard, so only `lattice` is supplied. Building a real
+    `PanelData` here would need a database and would test `panel.build` rather than the
+    nesting rule."""
+
+    def __init__(self, lattice):
+        self.lattice = lattice
+
+
+class _FakeSpec:
+    def __init__(self, ticker, round_rule):
+        self.ticker, self.round_rule = ticker, round_rule
+
+
+def test_the_settle_grid_guard_passes_every_series_as_it_stands_today():
+    """The two grids are different quantities — the measured print grid and the Kalshi ladder
+    step — and nothing has ever required them to agree. Measured 2026-08-28 they nest on all
+    eleven entries, claims by a factor of four (ICSA prints on 1000, strikes are 250). That is
+    the fact this guard exists to keep true, so it is worth asserting directly."""
+    cases = [("KXJOBLESSCLAIMS", 250.0, {"claims": {"step": 1000.0}}),
+             ("KXWTIW", 0.01, {"wti": {"step": 0.01}}),
+             ("KXNATGASW", 0.001, {"natgas": {"step": 0.001}}),
+             ("KXPAYROLLS", 1000.0, {"payems": {"step": 1.0}}),
+             ("KXU3", 0.1, {"unrate": {"step": 0.1}}),
+             ("KXGDP", 0.1, {"gdp": {"step": 0.1}})]
+    for ticker, rr, lat in cases:
+        st = BD.SETTLES[ticker]
+        step = BD._check_settle_grid_nests(st, _FakeSpec(ticker, rr),
+                                           _FakePanelData(lat), lambda _m: None)
+        assert step == pytest.approx(rr / st.scale), ticker
+        # nesting, stated as the property rather than as six separate numbers
+        assert (lat[st.column]["step"] / step) == pytest.approx(
+            round(lat[st.column]["step"] / step)), ticker
+
+
+def test_the_settle_grid_guard_raises_when_the_ladder_step_would_coarsen_the_print_grid():
+    """The dangerous direction. ICSA prints on 1000; if the ladder step were 2500 the world
+    would hold levels the series cannot print, and because KXJOBLESSCLAIMS settles
+    `print == strike` YES, every manufactured tie would settle YES."""
+    with pytest.raises(ValueError, match="do not nest"):
+        BD._check_settle_grid_nests(
+            BD.SETTLES["KXJOBLESSCLAIMS"], _FakeSpec("KXJOBLESSCLAIMS", 2500.0),
+            _FakePanelData({"claims": {"step": 1000.0}}), lambda _m: None)
+
+
+def test_the_settle_grid_guard_raises_when_the_two_grids_do_not_divide_each_other():
+    """The worst case: rounding onto the ladder step moves an on-grid level OFF the print
+    grid, which is defect A reintroduced downstream of the fix for it."""
+    with pytest.raises(ValueError, match="do not nest"):
+        BD._check_settle_grid_nests(
+            BD.SETTLES["KXWTIW"], _FakeSpec("KXWTIW", 0.03),
+            _FakePanelData({"wti": {"step": 0.01}}), lambda _m: None)
+
+
+def test_the_settle_grid_guard_stays_silent_where_there_is_nothing_to_compare():
+    """No measured grid, or no second rounding at all, are both legitimate and neither is a
+    licence to invent a comparison. `level_step` is still returned so the caller rounds with
+    the value the guard actually saw."""
+    assert BD._check_settle_grid_nests(
+        BD.SETTLES["KXCPI"], _FakeSpec("KXCPI", 0.1),
+        _FakePanelData({"cpi": {"step": 0.001}}), lambda _m: None) is None
+    assert BD._check_settle_grid_nests(
+        BD.SETTLES["KXWTIW"], _FakeSpec("KXWTIW", 0.01),
+        _FakePanelData({}), lambda _m: None) == pytest.approx(0.01)
+
+
 def test_aaa_is_not_generatable_and_says_so_rather_than_inventing_an_outcome():
     """KXAAAGASW settles on the AAA national average: 21 observations, all after
     2026-07-31. Setting AAA equal to the generated GASREGW would hand its drift regression

@@ -704,6 +704,52 @@ class BuildResult:
         return len(self.events)
 
 
+def _check_settle_grid_nests(st: Settle, spec, pdata: P.PanelData, say) -> float | None:
+    """`level_step` rounds a level that `level_paths` has ALREADY put on the print grid.
+
+    Two roundings, applied one after the other, from two different sources: the measured
+    publication grid (`panel.measure_lattice`, carried in the generator's scaler) and the
+    Kalshi ladder's strike spacing (`round_rule`). Nothing has ever required them to agree,
+    and they are different quantities — they coincide for WTI because a cent is both the tick
+    and the print, and for KXPAYROLLS only after the `/scale` divide. KXJOBLESSCLAIMS is the
+    case where they visibly differ: strikes every 250, ICSA printing only in multiples of
+    1000 (exact GCD over 7783 observations, zero exceptions).
+
+    Measured 2026-08-28 across all eleven `SETTLES` entries, the second rounding is a no-op
+    on every one: six identical, five `None`, and claims' measured grid four times COARSER
+    than its `level_step` and therefore already on it. So this guard costs nothing today.
+    It exists because the two ways it can stop being a no-op are both silent:
+
+      * `level_step` coarser than the measured grid — writes levels at a resolution the real
+        series never uses, and for a `strict_gt=False` ladder like KXJOBLESSCLAIMS that
+        manufactures exact strike ties, every one of which settles YES;
+      * the two not nested at all — the second rounding moves an on-grid level OFF the grid,
+        which is defect A reintroduced downstream of the fix for it.
+
+    A changed `round_rule`, a re-specified panel column or a re-measured lattice can each
+    trigger either. Raising is the right response rather than warning: a world built on a
+    grid the series cannot print is not a degraded world, it is a wrong one, and `verify_settle`
+    downstream checks settlement values against real outcomes — not the grid they live on.
+    """
+    ent = dict(pdata.lattice or {}).get(st.column)
+    step_settle = st.level_step(spec.round_rule)
+    if step_settle is None or not ent:
+        return step_settle
+    meas = float(ent["step"])
+    ratio = meas / step_settle
+    if abs(ratio - round(ratio)) > 1e-9 or round(ratio) < 1:
+        raise ValueError(
+            f"{spec.ticker}: the settlement rounding grid and the measured print grid do "
+            f"not nest — level_step={step_settle:g} (round_rule={spec.round_rule:g}, "
+            f"scale={st.scale:g}) against a measured {st.column} grid of {meas:g}. "
+            "Rounding onto the first would move levels off the second. Fix whichever is "
+            "wrong; do not widen this check.")
+    if round(ratio) > 1:
+        say(f"  settle grid: {st.column} prints on {meas:g}, {round(ratio)}x coarser than "
+            f"the {step_settle:g} ladder step — second rounding is a no-op")
+    return step_settle
+
+
 def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
           donors: list[B.Donor], out_dir: Path | str, n_paths: int = 8,
           seed: int = 0, epochs: int = 1500, k_local: int = 120, k_draw: int = 10,
@@ -756,6 +802,9 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     gen = G.Generator.fit_local(pdata, cfg, c_raw, k=k_local)
     say(f"  generator {gen.meta}")
     paths = gen.level_paths(c_raw, anchor_levels, n_paths, seed=seed + 3)
+    # Checked once, before any world is written, and the checked value is the one used —
+    # a guard that recomputes what it guards can drift away from it.
+    settle_step = _check_settle_grid_nests(st, spec, pdata, say)
     # The panel's own offset, not a hardcoded week: `_MONTHLY` steps MS and `_WEEKLY` W-SAT,
     # and generating a monthly path on a weekly calendar would date every print wrong.
     fwd = pd.date_range(anchor, periods=psp.horizon + 1, freq=psp.freq)[1:]
@@ -810,9 +859,8 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
         for col, sk in sinks.items():
             lv = pd.Series(paths[i, :, col_ix[col]], index=fwd)
             if col == settle_col:
-                step = st.level_step(spec.round_rule)
-                if step:
-                    lv = (lv / step).round() * step
+                if settle_step:
+                    lv = (lv / settle_step).round() * settle_step
                 # Derived from the level that is about to be written, so the number the
                 # world holds and the number the event settles on are the same object.
                 outcomes = outcome_path(pd.concat([real_tail, lv]), st).reindex(fwd)
