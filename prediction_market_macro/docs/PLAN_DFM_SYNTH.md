@@ -1482,6 +1482,17 @@ than large. That column is in-sample on 2–14 events and is descriptive only. �
 paid for the lesson that counting series is not counting money, and this is the same trap
 wearing a different hat.
 
+And the one apparent winner does not survive the configuration question. This run, like
+`market_recal.py`, replays at the model's **registered defaults** (`params_pit=False`), which
+is not what production has predicted with since 2026-08-11. `backtest.py`'s own docstring
+records the measurement: under the PIT-adopted sets **KXU3 flips from 0.03774 to 0.04270 and
+loses to the market**, while KXFED flips the other way. So the single series that beat the
+market at n = 3 beats it only under a parameter set production has not run in months. The
+caveat is stated rather than buried, and it cuts the same direction as everything else here:
+it makes #184d's closure stronger, not weaker. It does not touch the blend verdict, because
+that verdict is a monotone curve with every non-trivial cell's CI strictly on the wrong side
+of zero, and a per-series parameter swap of this size cannot bend a curve that shape.
+
 **What is left of #184 after this.** Route (a), blending, is closed by measurement. Route (d),
 per-series routing, is closed as a corollary — it needs a series where the model wins, and
 there is one, at n = 3. The two that survive are the two that need machinery this study does
@@ -1492,6 +1503,97 @@ the only route aligned with what the DFM actually produces — a *joint* draw �
 the per-contract comparison we have now lost four different ways.
 
 Artifact: `/tmp/dfm_verify/blend_wf.py`, `blend_wf.json`.
+
+#### The thinness gate: the tie is real, worthless, and it exposes what every Brier here is conditioned on (#184b, 2026-08-28)
+
+The gate route asks something the pooled comparisons cannot: the market's price is only as
+good as the people making it, so is its advantage *uniform across the book*? If the model's
+disadvantage vanishes on the strikes nobody is trading, that is a gate that needs no
+forecasting skill at all — only knowing where not to compete.
+
+It needed plumbing that did not exist. `replay_series(collect_legs=True)` emitted
+`(fair, market, outcome)` and nothing else, so `_market_leg_prob` was split into
+`_market_leg_bar` — same acceptance rule, now in one place, returning `spread`, `volume` and
+`staleness_s` (the *age* of the quote) from the **same bar the price came from** — with
+`collect_leg_meta=True` writing a parallel, index-aligned list. Three proxies because they
+are three different ways for a market to be absent: a tight book can be stale and a busy book
+can be wide.
+
+Registered before the run: PRIMARY, in the thinnest tercile of at least one proxy the paired
+`Δ(model − market)` must be **< 0** with `P(better) ≥ 0.95`; SUPPORT, the tercile ordering
+must be monotone in the predicted direction; K = 12; a tercile with fewer than 10 events is
+not scored at all. And one thing registered that turned out to decide the whole question —
+**print the Brier LEVELS beside the difference**, because a tercile where `Δ = 0` since both
+sides score 0.002 and one where `Δ = 0` since both score 0.15 are opposite situations that a
+paired difference cannot tell apart.
+
+| proxy | tercile | legs | events | Δ(model − market) | P(better) | market | model |
+|---|---|---|---|---|---|---|---|
+| **volume** | **thinnest (= 0)** | 587 | 63 | **+0.000034** | 0.460 | **0.00246** | **0.00304** |
+| volume | middle (≤ 1081) | 507 | 72 | +0.026311 | 0.000 | 0.01957 | 0.04393 |
+| volume | thickest (> 1081) | 548 | 75 | +0.064934 | 0.000 | 0.07576 | 0.14946 |
+| staleness | stalest | 936 | 33 | +0.040808 | 0.000 | 0.01072 | 0.05001 |
+| staleness | middle | 270 | 14 | +0.001955 | 0.119 | 0.03235 | 0.03367 |
+| staleness | freshest | 436 | 39 | +0.037313 | 0.000 | 0.07824 | 0.11483 |
+
+`spread` is not in the table because it is **degenerate on this book** — all three tercile
+cuts land on 0.01, so its "terciles" do not separate anything and its rows are not evidence
+about thinness. Recorded rather than dropped, because a proxy that cannot form terciles looks
+identical to one that can until you check the cuts.
+
+**Volume is monotone exactly as predicted, and the primary still fails.** The market's edge
+falls to nothing as volume falls — +0.065 → +0.026 → +0.000034 — and on zero-volume legs the
+two are statistically identical (`P(better) = 0.460`, CI straddling zero). But the model never
+*wins* there, and the levels say why the tie is worthless: **both sides score ≈ 0.003**. Those
+are the strikes where the answer was never in doubt, deep enough out or in that nobody quotes
+them because they are worth ≈ 0 or ≈ 1. Tying on a question with no uncertainty in it pays
+nothing, and it certainly does not pay a spread. Meanwhile the thickest tercile — where the
+uncertainty and therefore the money is, market Brier 0.076 — is where the model is nearly
+**twice** as bad, 0.149.
+
+So the gate is a **selection effect on difficulty, not a discovery of market weakness**, and
+it is the levels column that separates those two readings. The staleness middle tercile
+(Δ = +0.002 at market Brier 0.032, a genuine near-tie at a non-trivial level) is the one cell
+that is not obviously difficulty-selection — and it is non-monotone, `P = 0.119`, on 14
+events, at K = 12. That is noise, and it is written down as noise rather than promoted.
+**#184b REJECTED.**
+
+**The count that needed no hypothesis, and it reframes the whole of §5b.** Legs with no
+two-sided book at asof are silently dropped from every Brier in this document — that is what
+`_market_leg_bar` returning `None` does — and the size of that drop had never been counted.
+It is **80.4%**: 8360 settled legs across the fourteen series, of which **1642 are quoted**.
+
+| series | settled legs | quoted | unquoted |
+|---|---|---|---|
+| KXFED / KXU3 / KXCPI / KXFEDDECISION | 402 / 571 / 493 / 140 | 22 / 34 / 33 / 10 | 94.5% / 94.0% / 93.3% / 92.9% |
+| KXCPICOREYOY / KXCPICORE / KXCPIYOY | 626 / 441 / 624 | 45 / 33 / 69 | 92.8% / 92.5% / 88.9% |
+| KXWTIW / KXPAYROLLS / KXPCECORE | 2408 / 364 / 121 | 270 / 45 / 15 | 88.8% / 87.6% / 87.6% |
+| KXJOBLESSCLAIMS / KXAAAGASW / KXNATGASW | 491 / 820 / 850 | 129 / 368 / 560 | 73.7% / 55.1% / 34.1% |
+| **total** | **8360** | **1642** | **80.4%** |
+
+(A lower bound: this pass uses close−1h without `replay_series`' clamp that steps `asof` back
+behind a print, and the clamp only moves `asof` earlier, which can only make a book look
+*less* quoted.)
+
+Two things follow, and they point in opposite directions, which is why both are stated.
+
+1. **Every model-versus-market number in this document is computed on the liquid fifth of the
+   book.** "The model is 78% worse than the market" is true *conditional on a quoted book*,
+   and that condition is not random — it selects the strikes people care about. This is a
+   scope statement §5b should have carried from the start and did not.
+2. **It is not a rescue.** The direction is already measured above: on the liquid part the
+   model is worse, and it approaches parity only where the questions are trivial. Removing the
+   conditioning would move the comparison toward the 0.003-Brier corner of the book, which
+   makes the model look better by making the question easier. No edge lives there.
+
+What the 80.4% *does* bound is §5b-2's hypothesis (b) — events with no quote at all, where
+there is no market number to lose to. It is a large denominator and it is now measured
+instead of assumed. Whether any of it is *tradeable* is a different question with a likely
+unpleasant answer (nobody quoting is nobody to trade with), and it belongs to #183's utility
+work, not here.
+
+Artifact: `/tmp/dfm_verify/thin_gate.py`, `thin_gate.json`; plumbing in
+`research/backtest.py::_market_leg_bar` / `collect_leg_meta`.
 
 ### 5c. What the S4 build measured (2026-08-21) — and the two things that were wrong
 
