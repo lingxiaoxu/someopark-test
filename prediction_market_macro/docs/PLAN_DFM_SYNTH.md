@@ -2057,6 +2057,196 @@ Artifacts: `/tmp/dfm_verify/pr15_whiten.py` (the two-pass runner), `pr15_{panel}
 no threshold of its own), `pr15_acf1.py` (+ `.json`, the ungraded diagnostic).
 Registration and 结论: `docs/PREREGISTER.md`, PR-15 row.
 
+### 4e-M. The period-conditional print grid, end-to-end — ADOPTED (PR-17, #203, 2026-08-28)
+
+The landing section for **PR-17**. Verdict: **主判据 MET, ADOPTED**, on the one quantity the
+change is directly responsible for. Falsifiers (a), (b), (c) all clean. **K = 2**, as registered
+— the third action on the grid axis (§4e-A stood the lattice up, PR-16 corrected its coarseness,
+this one makes it conditional), and neither earlier conclusion changes because of this one.
+
+**The claim, restated so the arithmetic is visible.** The pooled grid is *not* the achievable set.
+`gcd(g/4, g/5) = g/20` describes an `agg="mean"` column correctly and is still the wrong thing to
+**round onto**: the union of {multiples of `g/4`} and {multiples of `g/5`} covers only 40.3% of
+the `g/20` lattice. Quantising a monthly mean onto the pooled scalar therefore writes numbers the
+source could never print.
+
+**主判据 — both columns, both readings, to 0.0000%.**
+
+| column | source `g` | pooled | unreachable (union) | unreachable (own `n`) | real |
+|---|---|---|---|---|---|
+| `labor_monthly.claims` | 1000 | 50 | 58.23% → **0.0000%** | 76.25% → **0.0000%** | 0.0000% |
+| `inflation_monthly.gas_retail` | 0.001 | 5e-05 | 58.04% → **0.0000%** | 76.38% → **0.0000%** | 0.0000% |
+
+425 periods and 169,992 drawn values per column. The `own n` column is the stricter reading —
+against the grid that period could actually print on, not the union over all `n` — and it is the
+one that was at 76%.
+
+**证伪 (c) is enforced in code, not left to a report.** Condition 5 of `_sub_period_rule` requires
+the real levels of *every* observed `n` to sit on `g_src/n` at exactly `1.0000`, and returns
+`None` — column keeps its scalar — otherwise. Measured: **zero violations** across 425 periods on
+both columns. Condition 7 is the independent corroboration: `g_src / lcm(n)` must reproduce the
+separately-measured pooled step, so two measurements made different ways have to agree before
+anything is applied.
+
+**`n(period)` must be a CALENDAR fact, and that is what limits the scope.** Quantisation runs on
+*future* paths, so `n` cannot be a lookup of what was observed. For a weekly source printing on a
+fixed weekday it is arithmetic — count that weekday in the month. For a business-daily source it
+is not, and `DGS2`/`DGS10` are refused at condition 1 and **recorded as still defective**. The
+refusal is right twice over: H.15 prints on five weekdays, and even the obvious business-day rule
+mispredicts **53 of 2171** complete weeks (2.44%) — **33 of them Good Friday**, a bond-market
+close that is not a federal holiday, the rest Saturday-observed federal holidays and the 1994
+national day of mourning. A federal calendar structurally cannot describe H.15.
+
+**Truncation is not a hole, and conflating them would have made the rule flicker.** A panel's
+first or last period is short because the source's coverage window clips it, not because a print
+was skipped — that says nothing about whether a future *complete* period will print `n_cal` times,
+and it depends on what day the training cut lands on. Condition 3 separates the two and applies
+the recency fence (condition 4) only to genuine skips, so the rule does not appear and disappear
+with the PIT cut date.
+
+**证伪 (b) — NOT TRIPPED, and here is how much of that is actually evidence.** Only **2 of the 4**
+panels have any period-conditional column; `claims_weekly` and `energy_weekly` report
+`conditional_columns: []`, and are bit-identical to the pre-landing run on **0 of 12** comparable
+metrics differing, with their lattices unchanged by PR-16 as well. On those two, (b) could not
+have fired whatever the fix did, and they are **not counted as independent confirmations**.
+On the two panels that PR-17 can touch:
+
+| panel | `dfm` `crps_ratio` Δ | bar | `cover80` | resolution |
+|---|---|---|---|---|
+| labor_monthly | **−7.584e-07** | +0.02 | unchanged | 1/993 = 0.001007 |
+| inflation_monthly | **−1.600e-07** | +0.02 | unchanged | 1/1324 = 0.000755 |
+
+`crps_ratio` **moved** — so the clause was live and had ~5 orders of margin. `cover80` is an exact
+count of cells (757/993, 891/1324); it only moves when a real value crosses a percentile edge, and
+the perturbation is orders below one flip. Its being unchanged is a **resolution limit, not a
+passed test**, and is reported as such. **PR-16 ⑥ is discharged by this same run**, as PR-16
+registered it must be.
+
+**A self-consistency check that came free.** On both touched panels the `boot` and `knn` arms are
+**bit-identical** across the landing. That is the right answer rather than a suspicious one: those
+arms return verbatim real rows, which are on the true grid by definition, so a *correct* grid must
+leave them exactly where they are. A grid that moved them would be a grid real data cannot sit on.
+
+**影响面 disclosure — the change reaches four columns beyond the two registered.** The
+registration named `labor_monthly.claims` and `inflation_monthly.gas_retail`. The landed lattice
+also carries conditional rules for `core_monthly.{claims, gas_retail, crude_stocks, gaso_stocks}`
+— six column-instances across three panels, not two. No new judgement was made for them: they
+pass the same seven conditions, and `core_monthly` is not one of the four scored panels. Recorded
+because the 影响面 row was written narrower than the mechanism turned out to be, not because
+anything additional was decided.
+
+**One superseded artifact, flagged so it is not re-read as a contradiction.** The exploratory
+`pr17_feasible.py` scan marks `gas_retail` and `crude_stocks` `APPLICABLE: False`. That scan
+required weekly gaps of *exactly* 7 days; the landed `_weekly_print_dow` requires **positive
+multiples of 7** and hands the resulting hole to conditions 3–4 explicitly — GASREGW is
+Monday-only with six Mondays missing between 1990-12-03 and 1991-01-21. The scan was superseded by
+a deliberately better test, not contradicted by a laxer one.
+
+**顺带一条 (judged separately, as registered): the weekly prints are now on the source grid.**
+`_sub_monthly` was writing weekly ICSA into `labor_monthly`'s worlds as continuous floats,
+completely off the 1000 grid, while still satisfying the monthly-mean pin. **This fix was
+arithmetically impossible before PR-17.** `_sub_monthly` pins `sum(week) = n * mean`; under the
+pooled grid `mean` is a multiple of `g/20`, so `n·mean` is a multiple of `g/5` (n=4) or `g/4`
+(n=5) — neither a multiple of `g`, so no assignment of on-grid weekly values can hit the pin.
+Under the conditional grid `mean` is a multiple of `g/n`, `n·mean` is an exact multiple of `g`,
+and **largest-remainder** rounding hits the pin exactly by construction.
+
+| column | prints | on grid before | on grid after | pin error before | pin error after | max move |
+|---|---|---|---|---|---|---|
+| `labor_monthly.claims` | 261 | 0.0% | **100.0%** | 5.8e-14 cells | **0.0 cells** | 0.659 cells |
+| `inflation_monthly.gas_retail` | 261 | 0.0% | **100.0%** | 8.9e-13 cells | 8.9e-13 cells | 0.647 cells |
+
+No value moves a full cell, by construction. `_largest_remainder` returns `None` rather than
+approximating when `total` is not itself a multiple of `grid`; the caller then **keeps the pin and
+drops the grid**, and logs the month — a documented, counted degradation instead of a silent one.
+
+**End-to-end, because none of the above exercises the wiring.** A grid resolved to `None` by a
+weekday mismatch would fail silently in `build.build` and every unit test would still pass. So one
+real `KXPAYROLLS` world was built and its rows read back with SQL: **47 post-splice ICSA rows, all
+on weekday 5, 100.0000% on the 1000 grid, 11 complete months with `n*mean` off by at most
+0.00e+00 cells.** Seven new unit tests pin `_largest_remainder`, `_emit`, `_sub_print_grid` and
+`_sub_monthly` — including that a month off the grid keeps the pin and says so, and that the
+no-grid path is byte-for-byte the function that was there before. Suite: **1341 passed**.
+
+Artifacts: `/tmp/dfm_verify/pr17_primary.py` (+`.json`), `pr17_weekly.py` (+`.json`),
+`pr17_build_smoke.py`, `pr17_postland.py` (+ `pr17_post_{panel}.json` ×4), `pr17_verdict.py`
+(+`.json`), `pr17_dgs_refusal.json`, `pr17_cover_resolution.json`.
+Registration and 结论: `docs/PREREGISTER.md`, PR-17 row.
+
+### 4e-N. The sub-null `boot` AUC was a group-tagging defect in my own harness (#203, 2026-08-28)
+
+§4e left one reading filed as **unexplained**, deliberately rather than mechanistically: the
+`boot` arm's raw C2ST AUC is **0.235 / 0.248 / 0.284 / 0.287** across the four panels,
+reproducibly, against measured null bands of roughly `[0.46, 0.57]`. Below 0.5 is not "harder to
+tell apart" — it means the classifier ranks the *synthetic* side above the real side, which for
+an arm that resamples real history should be impossible on the merits. `boot_auc_anomaly.py` had
+already eliminated degenerate folds and the pooling geometry and left two hypotheses alive. This
+section names the mechanism, **derives it from the code before testing it**, and then tests it.
+It is a defect in the /tmp research harness, not a fidelity fact, and **production is provably
+unaffected**.
+
+**The mechanism, read off two functions.** `generator.block_bootstrap` returns `Z[pick] * sd + mu`
+— *verbatim* training rows; every `boot` row **is** some real row, to the last bit.
+`fixA_pools.py` then tags it `grp[a].append(np.full(len(s), int(k) // H))`, where `k` is the
+**held-out anchor the draw was made for**. The row it copied came from `tr`, a different fold. So
+a `boot` row's group id is never the group of the row it is a copy of, and every cross-class exact
+duplicate is *guaranteed* to straddle the CV boundary. `GroupKFold` is doing the exact opposite of
+its job on this arm — sharpened from "duplicates can straddle" to "duplicates always straddle, by
+construction".
+
+**Why it inverts rather than merely adding noise** — the asymmetry is the whole point. A unique
+row appears **once** on the real side and `560/265 ≈ 2.11` times on the `boot` side. When its real
+copy lands in the test fold, the training folds still hold ~1.7 `boot` copies of the identical
+vector and nothing else; the classifier memorises *"this exact point is synthetic"*, and is then
+asked about it on the real side, where it is wrong every time. Wrong on one class, right on the
+other, in the same direction for every point: the ranking inverts. Duplicates do not blunt this
+C2ST, they **reverse** it.
+
+**The test, and the three ways it could have refuted me.** Re-tag each `boot` row with the group
+of the real row it copies, changing *nothing* else — same rows, same features, same classifier,
+same seed, same splitter. Registered refutation routes: (a) `boot` stays below the band → the
+inversion is not the grouping; (b) `local`/`global`, which contain no exact duplicates at all,
+**move** → the re-tag is doing something other than closing the leak; (c) `knn`, which also copies
+verbatim but covers fewer unique rows, does **not** land in between → the predicted dose-response
+is absent.
+
+| panel | pool | copies a real row | group matches | AUC as tagged | AUC re-tagged | null band | back in band? |
+|---|---|---|---|---|---|---|---|
+| labor_monthly | 560 | 560/560 | **0/560** | 0.235 | **0.472** | [0.462, 0.569] | **yes** |
+| inflation_monthly | 560 | 560/560 | **0/560** | 0.248 | **0.489** | [0.453, 0.579] | **yes** |
+| claims_weekly | 1120 | 1120/1120 | **0/1120** | 0.284 | **0.496** | [0.473, 0.577] | **yes** |
+| energy_weekly | 1120 | 1120/1120 | **0/1120** | 0.287 | **0.503** | [0.426, 0.538] | **yes** |
+
+`0` group matches out of every single row, on 4/4 panels, is the analytic prediction confirmed as
+an identity rather than a tendency. **4/4 panels return inside the null band.**
+
+**Both controls held.** `local` and `global` contain `0/560` and `0/1120` copies of a real row, so
+the re-tag is a no-op on them, and their AUCs are **bit-unchanged** (1.000/1.000, 0.737, 0.570,
+0.790 and 0.755, 0.600, 0.861 — the set of moved values is empty). `knn` sits in between exactly
+as predicted: 0.405 → 0.501, 0.433 → 0.558, 0.436 → 0.521, 0.447 → 0.603. Note `knn` is *not*
+expected to re-enter the null band — it resamples non-uniformly, so a genuine distributional
+difference survives the fix, and energy_weekly's 0.603 above the band is the honest reading, not a
+failed control. Only the **direction** was registered for `knn`, and only the direction is claimed.
+
+**Production is immune, and this is checkable two ways.** `generator._separability` scores **one
+fold at a time** with `tr ∩ te = ∅`, and dedups each pool through `_unique_rows` before scoring;
+its own docstring states the battery is *"never pooled across folds"* — which is precisely the
+invariant `fixA_pools.py` violated. Independently of the code reading, the symptom is absent from
+production output: PR-15's four reports print `floor_boot` ≈ `floor_train` on every panel
+(0.744/0.747, 0.712/0.693, 0.478/0.484, 0.715/0.723). A leak of this shape would have driven those
+two floors apart, since only one of them is built from duplicated rows.
+
+**What this invalidates, stated at full width.** Every `boot` and `knn` C2ST AUC that the fixA /
+fixB /tmp harness produced is **wrong and may not be quoted**, including the ones already written
+into earlier notes as raw numbers. The `local` and `global` arms from the same harness are
+provably unaffected — zero copies, zero movement under the re-tag — and stand. No production
+verdict, threshold or adopted parameter depends on any of the invalidated numbers, so nothing
+downstream has to be re-run; this is a retraction of readings, not of decisions. The anomaly is no
+longer unexplained, and it was closed by finding the bug rather than by inventing a mechanism for
+it — which was the reason it was filed as unexplained in the first place.
+
+Artifacts: `/tmp/dfm_verify/boot_auc_regroup.py` (+ `.json`), building on `boot_auc_anomaly.py`.
+
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
 > This section is the *survey*, and its counts are as of the survey. KXGDP was built the same
