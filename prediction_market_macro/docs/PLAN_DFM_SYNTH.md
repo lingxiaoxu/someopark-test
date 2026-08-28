@@ -1031,6 +1031,159 @@ Artifacts: `/tmp/dfm_verify/auc1_probe.py`, `underdisp.py`, `lattice.py`, `latti
 `fixB_diag.py`, `fixB_fix.py`, `fixB_m2.py`, `fixB_ab.py`, `fixC_recolour.py`,
 `fixC_plain.py`, `fixC_split.py`.
 
+## 4f. What is actually generatable, series by series (#183, 2026-08-28)
+
+The standing instruction is that the DFM must serve **all fourteen** traded series, so the
+first thing owed is an honest count of where it stands and what each gap actually costs.
+`SETTLES` holds **10 of 14** today. The other four were each recorded as excluded, and on
+re-examination two of those four exclusions were written down more confidently than the
+evidence supported — in opposite directions.
+
+| series | in `SETTLES` | blocker | kind of blocker |
+|---|---|---|---|
+| KXJOBLESSCLAIMS, KXWTIW, KXNATGASW | ✓ | — | — |
+| KXPAYROLLS, KXU3 | ✓ | — | — |
+| KXCPI, KXCPICORE, KXCPIYOY, KXCPICOREYOY, KXPCECORE | ✓ | — | — |
+| KXAAAGASW | ✗ | 21 observations of `AAA_DAILY`, all after 2026-07-31 | **data** |
+| KXGDP | ✗ | 43 quarters of GDPNow — and the nowcast IS the model's mean | **data** |
+| KXFED, KXFEDDECISION | ✗ | the settlement variable is 86–97% an atom at zero | **model class** |
+
+**KXAAAGASW — I had this scoped wrong, and `build.py` already had it right.** My note read
+"`energy_weekly` already generates `gas_retail`, so this is a one-line `SETTLES` entry that
+needs a GASREGW→AAA proxy offset". `build.py`'s module docstring states the actual and
+stronger reason: `AAA_DAILY` holds 21 observations and `energy._aaa_drift_fit` predicts the
+AAA-minus-GASREGW **gap**, so setting AAA equal to the generated GASREGW hands that regression
+a target that is identically zero, while resampling the gap independently destroys the very
+dependence the model exists to exploit. Either choice fabricates the answer. Not addable, for
+a data reason, and the reason was already written down.
+
+**KXFED — the recorded exclusion is true as written and proves less than it appears to.** It
+says KXFED "settles on a policy decision, not a macro variable any panel generates". That is
+two claims welded together: no panel generates it *today*, and it *cannot* be generated. Only
+the first is established. KXFED settles on `DFEDTARU`, which is in the db with **6463 daily
+observations back to 2008-12-16**, and `model/fed.py`'s other three inputs (CPILFESL, DGS2,
+UNRATE) are already columns of `_MONTHLY_COLS` carried as context. So the missing piece is one
+column, not a panel.
+
+What actually blocks it is the **shape** of that column, and it is worth stating precisely
+because §4e-A's lattice work makes this the best-case series on one axis and the worst on
+another:
+
+| resampled | n | unchanged | distinct non-zero moves | non-zero moves on the 25bp grid |
+|---|---|---|---|---|
+| weekly | 924 | **96.6%** | 6 | **100%** |
+| monthly | 213 | **85.8%** | 6 | **100%** |
+
+The grid column is the best result in this entire document — 100%, against 0.4–3.4% on the
+`dlog` columns of §4e-A — because `DFEDTARU` differences are *exactly* a 25bp lattice and the
+transform would be `diff`, which §4e-A's law says is the one case quantisation can fix.
+The `unchanged` column is what kills it anyway: a score-based diffusion produces an absolutely
+continuous law and cannot represent an 86–97% atom at zero. Quantisation maps a continuum onto
+the grid, so it can manufacture *an* atom, but its size would then be an artifact of the
+generated dispersion rather than of the FOMC's meeting calendar — and the calendar is the
+actual generating mechanism, is deterministic, and is known. So KXFED is blocked on **model
+class**, not on data, and the honest next step for it is a calendar-conditional two-part
+model (meeting? × move size on a 6-point support), not a wider DFM. That is a different
+project and it should not be smuggled in as a panel.
+
+**KXGDP is the one genuinely open case, and its blocker is specific.** `model/gdp.py` reads
+two things, and a world missing either cannot be priced at all: first prints of
+`A191RL1Q225SBEA` (the settle value, the sigma history, the off-quarter AR(1)) and
+`nowcast_vintages(GDPNow, KXGDP)` — which **is** the mean of the predictive distribution, not
+a feature of it. The two halves are nothing alike in size:
+
+| panel shape | d | H | rows | `d_flat` | max `factor_dim` at the ≥6-rows-per-factor rule |
+|---|---|---|---|---|---|
+| truth only, ex-COVID | 1 | 5 | 308 | 5 | 51 |
+| truth + nowcast | 2 | 5 | 38 | 10 | 6 |
+| truth + nowcast, ex-COVID | 2 | 5 | 34 | 10 | 5 |
+
+The truth half would be the **healthiest panel in the project** — 308 rows for 5 output dims,
+against `labor_monthly`'s 331 for 36. The joint half is one to two orders of magnitude
+thinner than anything that has been validated here.
+
+#### The measurement that decides whether KXGDP is buildable anyway
+
+If the nowcast cannot be generated jointly, the only remaining construction is to generate the
+truth and derive the nowcast as `truth + ε` with ε resampled from real history — the same
+idiom `_daily_bridge` and `_sub_monthly` already use to expand a generated column into the
+finer observations a model reads. The objection is the AAA one: an independently resampled
+error destroys any dependence the model exists to exploit. **So the question is whether that
+dependence exists**, and unlike AAA it can be measured — 41 quarters carry both a truth print
+and a pre-release vintage, thin for fitting but adequate for testing one coefficient. (44
+quarters have GDPNow vintages; 43 of those also have a truth print, which is the number the
+panel-shape table counts; 41 have a vintage landing *before* the advance release, which is the
+number the regression counts. The gap is PIT filtering, not a different sample.)
+
+Regress `truth = a + b·nowcast` and test H₀: b = 1. (The first cut of this measured
+`corr(err, nowcast) = +0.474` and annotated it "the anchor is biased". **That was the wrong
+test and the annotation was wrong**: with `err = nowcast − truth`, an unbiased nowcast carrying
+independent noise gives `cov(err, nowcast) = var(ε) > 0` mechanically. The errors-in-variables
+form below is the right one, and it asks about *reliability*, not bias.)
+
+| window | n | b | se | t(b−1) |
+|---|---|---|---|---|
+| all | 41 | 0.946 | 0.025 | −2.16 |
+| ex-COVID | 37 | **0.776** | 0.070 | **−3.18** |
+| ex-COVID, from 2017 | 34 | 0.776 | 0.071 | −3.16 |
+| ex-COVID, from 2021 | 22 | 0.784 | 0.090 | −2.39 |
+
+and it survives at real trading horizons rather than only on the best available vintage —
+b = 0.744 / 0.785 / 0.765 / **0.701** at 7 / 14 / 30 / 60 days before the release, the last of
+those at t = −3.73. Which looked like a live defect: `model/gdp.py` shrinks the **off**-quarter
+anchor (`mu = m + φ^k(nowcast − m)`, and its own docstring records that this cut out-of-sample
+RMSE from 2.533 to 1.57), while at k = 0 that expression is φ⁰ = 1 and a separate branch sets
+`mu = nowcast` unshrunk.
+
+**It is not a defect. The walk-forward killed it, and the thing that killed it is the one
+choice the first pass made silently.** `gdp_shrink.py` dropped COVID from the *training*
+history as well as from the scored set. `model/gdp.py`'s design note argues the opposite —
+*"Winsorising is what replaces a hand-drawn 'drop 2020' — production sees the history it is
+standing in"* — so the fit was re-run under all three regimes, same scored quarters, shrink
+coefficient fitted only on already-settled quarters, sigma identical in both arms so only `mu`
+is on trial:
+
+| regime | min train | n | mean b | RMSE raw | RMSE shrunk | Δ | 90% paired boot | Wilcoxon p | CRPS raw → shrunk |
+|---|---|---|---|---|---|---|---|---|---|
+| drop | 12 | 25 | 0.818 | 1.060 | 0.987 | +0.073 | [−0.105, +0.239] | 0.353 | 0.578 → 0.530 |
+| drop | 20 | 17 | 0.849 | 1.045 | 0.907 | +0.138 | [+0.015, +0.254] | 0.378 | 0.552 → 0.486 |
+| **keep** | 12 | 25 | 0.927 | 1.060 | 1.058 | +0.002 | [−0.118, +0.113] | 0.937 | 0.578 → 0.576 |
+| **keep** | 20 | 21 | 0.952 | 1.094 | 1.139 | **−0.045** | [−0.170, +0.061] | 0.473 | 0.595 → **0.638** |
+| **winsor** | 12 | 25 | 0.936 | 1.060 | 1.031 | +0.029 | [−0.043, +0.092] | 0.731 | 0.578 → 0.560 |
+| **winsor** | 20 | 21 | 0.957 | 1.094 | 1.089 | +0.006 | [−0.076, +0.075] | 0.562 | 0.595 → 0.600 |
+
+The single 2020 quarter the nowcast got roughly right moves the fitted `b` from 0.818 to
+0.927–0.957, and at b ≈ 0.95 the shrink does nothing. Under the two regimes this codebase's
+own philosophy allows, every interval straddles zero, no Wilcoxon is close, and CRPS moves the
+wrong way in two of four cells. Only `drop`/20 has an interval excluding zero, on n = 17, at
+Wilcoxon p = 0.378, in the regime that was explicitly rejected — and against K = 19 looks. Not
+a finding. **Recorded because a hand-drawn "drop 2020" would have produced a confident,
+wrong, production change, which is the second independent time that decision has been
+load-bearing in this file.**
+
+The consolation is that the refutation is exactly what #183 needed. It says the GDPNow error,
+over the 41 quarters that can be scored, is not measurably state-dependent — no reliable slope
+(b = 0.95 ± 0.03), no heteroskedasticity (corr(|err|, nowcast) = −0.163, sd by nowcast tercile
+1.03 / 0.62 / 0.96, unordered), no persistence (corr(err, err₋₁) = −0.256 on n = 36). So
+resampling the error independently is not an assumption imposed on the world; it is the
+conclusion the data supports and the alternative was tested and failed. That is the precise
+respect in which KXGDP differs from KXAAAGASW, where the same question could not be asked at
+all on 21 observations.
+
+**Verdict.** KXGDP is buildable as a `gdp_quarterly` panel generating the truth alone, with
+the nowcast derived as `truth + ε`. It would take `SETTLES` from 10 to **11 of 14**, and
+11 is the ceiling for this architecture — KXFED/KXFEDDECISION need a different model class and
+KXAAAGASW needs data that does not exist yet. What the build costs is not the panel but the
+frequency: `build.py` currently has exactly two frequency classes (`_weekly(spec)` switches
+the token convention, the observation date, the sub-monthly disaggregation and the clock), and
+KXGDP is a third — quarterly data under a *date*-keyed token, since its markets are named for
+the release date (2027-01-28) and not the reference quarter. Tracked as #212, with the
+explicit note that this refactor sits under ten live series and must not be attempted as a
+special case bolted onto `_weekly`.
+
+Artifacts: `/tmp/dfm_verify/gdp_feas.py`, `gdp_shrink.py`, `gdp_shrink2.py`,
+`fed_gdp_scope.py`.
+
 ## 5. The market book (S4) — the part that can kill the project
 
 The model's side of the trade can be synthesized honestly. The market's side cannot be
