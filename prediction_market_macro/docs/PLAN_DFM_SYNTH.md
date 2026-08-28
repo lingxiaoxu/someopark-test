@@ -3369,6 +3369,54 @@ only what the probe survives.
 Artifacts: `/tmp/dfm_verify/xcouple_probe.py` (+ `.json`, `.log`), `xcouple_paths.npz`,
 `xcouple_levels.json`.
 
+### 5d-4. Noise coupling probed — it does what rank pairing could not (#214, 2026-08-28)
+
+`xnoise_probe.py` implemented §5d-3's surviving candidate end to end: both weekly panels'
+reverse SDEs run in lockstep in a copy of the integrator loop, each consuming its OWN
+torch.Generator stream in production's exact call order, with energy's `rbob` noise
+coordinates overwritten as `rho·eps_claims[w] + sqrt(1−rho²)·eps_own[w]` — base draw (before
+`@R.T`) and every Brownian step. The control that makes the rest readable: **at rho=0 both
+panels reproduce `gen.sample` bit for bit** (the overwrite is the identity, so this proves
+the loop copy has not drifted), and claims' stream is untouched, so its draw is bit-identical
+at every rho.
+
+Measured, against the weekly-clock `rbob~claims` target of −0.218:
+
+* **The rho → achieved map is smooth and monotone** — −0.20/−0.40/−0.60/−0.80/−0.99 give
+  −0.080/−0.160/−0.244/−0.327/−0.404: the score drift attenuates noise correlation ~2.5×,
+  and a linear interpolation calibrates in one step: **rho\* = −0.538 → achieved −0.2178**.
+* **The coupling reaches every week.** Per-week profile at rho\*: −0.28…−0.31 with no trend
+  (the `@R.T` smear did not delocalize it), and settlement-LEVEL correlation is flat at
+  target across the horizon — **−0.277 at week 1** through −0.231 at week 13. Rank pairing's
+  kill #1 (zero at the front weeks, where the events are) does not occur.
+* **The law survives n = 8.** The 8-world weekly-mean estimate distributes as mean −0.206,
+  sd 0.102 — against rank pairing's −0.057 / 0.210 on the same target. Kill #2 does not
+  occur either.
+* **Ride-along is ~zero** (gas_retail/wti/natgas at −0.01…−0.06): per-coordinate noise
+  coupling buys exactly one bridge. Unlike the path-pairing world there is a clean multi-
+  bridge extension: couple each energy column j to claims' week-w noise with its own rho_j
+  via `eps_e = rho·eps_c + eta @ L.T`, `L L.T = I − rho rho.T` — energy's internal noise
+  correlation stays exactly 0 and its marginal law exactly unchanged provided **Σ rho_j² ≤ 1**
+  (Schur complement). The four weekly targets need rho ≈ (−0.27, −0.41, −0.08, −0.54),
+  Σrho² ≈ 0.54 — comfortably feasible. At rho = 0, L = I, so the bit-identity control
+  survives the generalization.
+* **Marginal drift of the coupled column** vs the rho=0 draw: mean shift ≤ 0.08 sd, variance
+  ×1.004 at rho\* — consistent with the construction's claim that the marginal law is
+  untouched (the realization differs; the law cannot, since each panel still sees jointly-iid
+  standard normal noise, and the correlation lives where its own law cannot see it).
+
+**What a PR-20 registration still owes before this can be judged:** the map was measured at
+ONE condition (the last anchor) and one seed — the attenuation factor may be condition-
+dependent, so rho calibration must be registered as a *procedure* (fit the map on training
+anchors, apply out of sample), not as a constant; the marginal-invariance criterion must be
+distributional (the realization changes, so bit-level battery equality is not available —
+the falsifier should be the per-panel battery within registered bars of the uncoupled run);
+and the natgas target (−0.033) sits inside measurement noise, so the registration should
+either drop it or bar it honestly. Cost is not an obstacle: fits are 5 s and a full coupled
+draw is 0.2 s.
+
+Artifacts: `/tmp/dfm_verify/xnoise_probe.py` (+ `.json`, `.log`).
+
 ## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
 
 #184b measured a denominator and stopped there on purpose: of **8360** settled legs across the
