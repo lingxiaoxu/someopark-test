@@ -104,6 +104,13 @@ SINKS: dict[str, dict[str, Sink]] = {
         "pce_core": Sink("fred", "PCEPILFE"),
         "gas_retail": Sink("fred", "GASREGW"),
     },
+    # The quarterly panel — one column, and the whole of KXGDP (#183). The advance print is
+    # written straight to its own FRED sid; what makes this panel different from the other
+    # five is that the MODEL's anchor is not the sid at all but a published forecast of it,
+    # which nothing here generates as a column. See `NOWCASTS`.
+    "gdp_quarterly": {
+        "gdp": Sink("fred", "A191RL1Q225SBEA"),
+    },
 }
 
 @dataclass(frozen=True)
@@ -159,6 +166,11 @@ SETTLES: dict[str, Settle] = {
     "KXCPIYOY": Settle("inflation_monthly", "cpi", "yoy100", lookback=12),
     "KXCPICOREYOY": Settle("inflation_monthly", "cpi_core", "yoy100", lookback=12),
     "KXPCECORE": Settle("inflation_monthly", "pce_core", "pct100"),
+    # quarterly — the advance estimate settles on the growth RATE itself, which is what
+    # A191RL1Q225SBEA publishes and what the panel carries as `transform="level"`. There is
+    # no second transform here and that is the point: for KXPAYROLLS the panel holds a level
+    # and the market settles on a change, for KXGDP the published series IS the change.
+    "KXGDP": Settle("gdp_quarterly", "gdp", "level"),
     # KXFED is absent on purpose: it settles on a policy decision, not a macro variable any
     # panel generates, and §5b measured it as the one categorical series with no numeric book
     # descriptor — so it has no donors either. Two independent reasons, same answer.
@@ -523,6 +535,144 @@ def _real_prints(src: sqlite3.Connection, sid: str, upto: datetime) -> pd.Series
     return ser[~ser.index.duplicated(keep="last")].sort_index()
 
 
+# ── the published forecast a model reads as an input ─────────────────────────
+@dataclass(frozen=True)
+class Nowcast:
+    """A published forecast OF a generated column, which a model reads as its anchor.
+
+    Deliberately not a `Sink`. A sink is where a generated column is WRITTEN; this is a
+    second series that has to be INVENTED alongside it, because the thing the model actually
+    conditions on was never in the panel. `gdp.predict` does not read A191RL1Q225SBEA to
+    price the current quarter at all — it reads the latest GDPNow vintage and treats the FRED
+    series only as the label its error is measured against. A world with a generated GDP path
+    and an empty `nowcast_vintages` therefore prices nothing: every event raises "no GDPNow
+    vintage visible" and the build reports zero events, which reads as a modelling failure.
+
+    This is the first of these in the project and it may stay the only one. The two other
+    forecast tables — `cleveland_nowcast` and `preds` — are not the same shape: Cleveland's
+    inflation nowcast is read by `cpi` as one input among several and the panel generates the
+    series it forecasts, while `preds` holds this repo's OWN predictions and a world is
+    supposed to regenerate those, not inherit them.
+    """
+    source: str          # nowcast_vintages.source, e.g. 'GDPNow'
+    target: str          # nowcast_vintages.target, e.g. 'KXGDP'
+    column: str          # the panel column it forecasts
+    k_donor: int = 8     # neighbours drawn from, on |truth| — see `synth_nowcast`
+
+    def key(self, period: pd.Timestamp) -> str:
+        """The table's `event_time` for a panel period, in the ingest's own convention.
+
+        `ingest/nowcast._quarter_of` writes the REAL rows and this writes the synthetic ones.
+        The two must agree exactly, or a world's synthetic path and the real history it is
+        spliced onto key the same quarter differently and `predict` finds neither. Pinned
+        against that function in the tests rather than shared with it: that one parses a FRED
+        `event_time` string, this takes a panel period, and collapsing them would make the
+        panel side inherit the ingest side's parsing.
+        """
+        ts = pd.Timestamp(period)
+        return f"{ts.year}-Q{(ts.month - 1) // 3 + 1}"
+
+
+NOWCASTS: dict[str, Nowcast] = {
+    "gdp_quarterly": Nowcast("GDPNow", "KXGDP", "gdp"),
+}
+
+
+def nowcast_donors(src: sqlite3.Connection, nc: Nowcast, sid: str,
+                   upto: datetime) -> list[tuple[float, list[tuple[float, float]]]]:
+    """Real `(truth, [(days before release, error)])` blocks for `nc`, PIT at `upto`.
+
+    A BLOCK per reference period, not a bag of errors. A nowcast path tightens as the release
+    approaches — GDPNow's mean |error| runs about 2pp three months out and 0.89pp at the last
+    vintage — and it is serially dependent within the quarter, because consecutive vintages
+    differ only by the data released between them. Drawing vintages independently would
+    manufacture a forecast that jitters from one reading to the next and converges on nothing,
+    which is neither of those two facts.
+
+    Errors, not levels, so the block can be transplanted onto a synthetic truth. Which is the
+    construction §4f licensed by TESTING the dependence rather than assuming it away — see
+    `synth_nowcast` for what that test does and does not cover.
+    """
+    labels: dict[str, tuple[float, pd.Timestamp]] = {}
+    for r in src.execute(
+            "SELECT event_time, value, MIN(knowledge_time) kt FROM fred_obs WHERE sid=?"
+            " AND knowledge_time<=? AND value IS NOT NULL GROUP BY event_time",
+            (sid, upto.isoformat())).fetchall():
+        labels[nc.key(pd.Timestamp(r["event_time"]))] = (float(r["value"]),
+                                                         pd.Timestamp(r["kt"]))
+    out = []
+    for (period,) in src.execute(
+            "SELECT DISTINCT event_time FROM nowcast_vintages WHERE source=? AND target=?"
+            " AND knowledge_time<=? ORDER BY event_time",
+            (nc.source, nc.target, upto.isoformat())).fetchall():
+        if period not in labels:
+            continue                      # forecast of a quarter whose print is not out yet
+        y, rel = labels[period]
+        seq = [((pd.Timestamp(r["knowledge_time"]) - rel).total_seconds() / 86400.0,
+                float(r["value"]) - y)
+               for r in src.execute(
+                   "SELECT value, knowledge_time FROM nowcast_vintages WHERE source=?"
+                   " AND target=? AND event_time=? AND knowledge_time<?"
+                   " ORDER BY knowledge_time",
+                   (nc.source, nc.target, period, rel.isoformat())).fetchall()
+               if r["value"] is not None]
+        if seq:
+            out.append((y, seq))
+    return out
+
+
+def synth_nowcast(donors: list[tuple[float, list[tuple[float, float]]]],
+                  truths: pd.Series, releases: dict, rng, nc: Nowcast,
+                  floor: datetime, lead: timedelta = CLOSE_LEAD,
+                  ) -> dict[str, list[tuple[datetime, float]]]:
+    """Transplant a real error block onto each generated truth: nowcast = truth + eps.
+
+    **Why the donor is drawn on |truth| rather than uniformly.** §4f tested the GDPNow error
+    for state-dependence at the FINAL pre-release vintage and found none worth modelling
+    (b = 0.95 +/- 0.03, corr(|err|, nowcast) = -0.163), which licenses an independent draw.
+    Re-measured here over the whole block, that conclusion holds only at the short horizon:
+    corr(|final err|, |truth|) is +0.331 over all 41 donor quarters and -0.222 excluding
+    2020 — sign-flipping, i.e. not measurable — but at 45 days out it is **+0.624**, and
+    dropping 2020 takes it to +0.161. So the long end of the path IS state-dependent and it
+    is 2020 that says so. Transplanting 2020Q3's block (GDPNow was 21pp low three months
+    before a +33.1% quarter) onto a synthetic +2.5% quarter would write a +23% nowcast into
+    a world, which is not a fat tail — it is a reading that never happened at that state.
+
+    A nearest-neighbour draw on |truth| respects the +0.624 without inventing a functional
+    form for it, and it is the same device `bookdonor.draw` already uses for book shapes.
+    Because 37 of the 41 donors sit between |truth| 0 and 6, the k nearest of an ordinary
+    quarter are very nearly a uniform sample of the ordinary quarters, so this costs almost
+    nothing where the correlation is absent and binds only where it is not.
+
+    **Why each path is clipped to start after the PREVIOUS release.** Not a de-collision
+    hack, though it is also that. It is how the forecast is actually produced: GDPNow begins
+    running on a quarter once the previous quarter's advance estimate is out, and the real
+    windows show it exactly — 2024Q4 runs to 2025-01-29, 2025Q1 starts 2025-01-31. Clipping
+    to that boundary reproduces the real generating process, and as a by-product no two
+    generated periods can collide on a `knowledge_time`, which matters because
+    `worlds.write_nowcast`'s primary key does not include the period.
+    """
+    if not donors:
+        raise ValueError(
+            f"synth_nowcast: no real {nc.source}/{nc.target} error blocks are visible at the "
+            "splice. A world would carry an empty nowcast table and every event would raise "
+            "the model's own 'no vintage visible', which reports as zero events generated")
+    ys = np.abs(np.array([d[0] for d in donors], dtype=float))
+    k = min(int(nc.k_donor), len(donors))
+    out: dict[str, list[tuple[datetime, float]]] = {}
+    lo = pd.Timestamp(floor)
+    for period, y in truths.items():
+        rel = pd.Timestamp(releases[period])
+        near = np.argsort(np.abs(ys - abs(float(y))), kind="stable")[:k]
+        _, seq = donors[int(near[rng.integers(k)])]
+        rows = [(rel + timedelta(days=dt), float(y) + err) for dt, err in seq]
+        rows = [(kt, v) for kt, v in rows if lo < kt < rel - lead]
+        if rows:
+            out[nc.key(period)] = [(kt.to_pydatetime(), v) for kt, v in rows]
+        lo = max(lo, rel)
+    return out
+
+
 # ── one built world ──────────────────────────────────────────────────────────
 @dataclass
 class SynthEvent:
@@ -634,6 +784,21 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
         say("  sub-monthly sinks: " + ", ".join(
             f"{c} -> {sinks[c].name} on weekday {w}, within-month sd {sd:.4f}"
             for c, (w, sd, _) in submonthly.items()))
+    # The donor blocks are PIT at the splice and independent of the path, so they are read
+    # once. `nc_rel` likewise: the release calendar is a property of the panel's clock.
+    ncst = NOWCASTS.get(panel_name)
+    nc_donors, nc_rel = [], {}
+    if ncst is not None:
+        if ncst.column not in sinks:
+            raise ValueError(
+                f"build: panel {panel_name!r} has a nowcast of column {ncst.column!r}, which "
+                f"is not one of its sinks {sorted(sinks)} — the error blocks are measured "
+                "against the FRED series the column is written to, so there is nothing to "
+                "measure them against")
+        nc_donors = nowcast_donors(src, ncst, sinks[ncst.column].name, splice)
+        nc_rel = {t: knowable_at(psp, clocks[ncst.column], t) for t in fwd}
+        say(f"  nowcast {ncst.source}/{ncst.target} of {ncst.column}: "
+            f"{len(nc_donors)} real error blocks visible at the splice")
 
     world_paths, events, z_ys = [], [], []
     for i in range(n_paths):
@@ -641,7 +806,7 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
         dst = W.materialize(src, wp, splice)
         W.clear_series(dst, series, after=splice)
 
-        outcomes = None
+        outcomes, written = None, {}
         for col, sk in sinks.items():
             lv = pd.Series(paths[i, :, col_ix[col]], index=fwd)
             if col == settle_col:
@@ -651,6 +816,9 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
                 # Derived from the level that is about to be written, so the number the
                 # world holds and the number the event settles on are the same object.
                 outcomes = outcome_path(pd.concat([real_tail, lv]), st).reindex(fwd)
+            # After the quantisation, so a nowcast is a forecast of the number the world will
+            # actually hold rather than of the unrounded draw behind it.
+            written[col] = lv
             ck = clocks[col]
             idx = pd.DatetimeIndex([observation_date(psp, ck, t) for t in lv.index])
             if col in submonthly:
@@ -672,6 +840,16 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
                                            float(anchor_levels[col])}), lv.set_axis(idx)])
                 W.write_fut(dst, sk.name, _daily_bridge(wk, sigmas[col], rng),
                             hour=ck.hour)
+
+        if ncst is not None:
+            npaths = synth_nowcast(nc_donors, written[ncst.column], nc_rel, rng, ncst,
+                                   floor=splice)
+            n_nc = W.write_nowcast(dst, ncst.target, npaths, source=ncst.source)
+            if not n_nc:
+                raise ValueError(
+                    f"build: {series} generated no {ncst.source} vintages for path {i}. Every "
+                    "event would then hit the model's own 'no vintage visible' refusal and "
+                    "the build would report zero events, which reads as a modelling failure")
 
         n_ok = 0
         for w in range(1, psp.horizon):

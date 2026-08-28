@@ -71,6 +71,14 @@ _PIT_TABLES: dict[str, str | None] = {
     "fut_daily": "knowledge_time",
     "quotes": "ts",
     "cleveland_nowcast": "knowledge_time",
+    # ABSENT until #183, and its absence was silent in exactly the way this table's docstring
+    # warns about: `materialize` never copied it, so every world ever built carried an EMPTY
+    # `nowcast_vintages`, and `model/gdp.predict` would have raised "no GDPNow vintage visible"
+    # for every KXGDP event. That never surfaced because KXGDP was not in `SETTLES` — the gap
+    # and the thing that would have exposed it were missing together. `cleveland_nowcast` sat
+    # one line above it and was carried from the start, which is the whole reason this was
+    # easy to miss on a read.
+    "nowcast_vintages": "knowledge_time",
     "fed_statements": "knowledge_time",
     "event_flags": "ts",
     "releases": "scheduled_ts",
@@ -248,6 +256,59 @@ def write_fred(dst: sqlite3.Connection, sid: str, values: pd.Series,
     dst.execute("DELETE FROM fred_obs WHERE sid=? AND event_time>=?", (sid, start))
     dst.executemany(
         "INSERT OR REPLACE INTO fred_obs(sid, event_time, value, vintage_date,"
+        " knowledge_time, first_seen_ts) VALUES(?,?,?,?,?,?)", rows)
+    dst.commit()
+    return len(rows)
+
+
+def write_nowcast(dst: sqlite3.Connection, target: str,
+                  paths: dict[str, list[tuple[datetime, float]]],
+                  source: str = "GDPNow", first_seen: str = "synthetic") -> int:
+    """Write generated nowcast vintages for `target`, one path per reference period.
+
+    `paths` maps the table's `event_time` — for GDPNow a quarter string like '2027-Q1' — to
+    the (knowledge_time, value) sequence that period's forecast took. Sequences, not single
+    values: a nowcast is a *path* that tightens as the release approaches, and
+    `gdp._nowcast_error_sigma` scores the LAST vintage before each release against the print,
+    so a world that carried one vintage per quarter would make the model's own error
+    estimate a different quantity from the one production measures.
+
+    **The two DELETEs are the same discipline as `write_fred`, for a sharper reason.** The
+    primary key is `(source, target, knowledge_time)` — it does NOT include `event_time` —
+    so `INSERT OR REPLACE` will happily overwrite quarter Q's vintage with quarter Q+1's if
+    the two land on the same timestamp, and will happily leave a REAL vintage of a generated
+    quarter sitting beside the synthetic one whenever the timestamps merely differ. The first
+    DELETE clears every vintage of every period being generated; the second clears everything
+    at or after the earliest generated knowledge time, because a real vintage inside the
+    synthetic future is a leaked forecast of a series the model reads as an input.
+
+    The collision check is not defensive programming. Because the key omits `event_time`, two
+    generated periods colliding on one timestamp would silently lose a row rather than raise,
+    and the world would simply have a shorter path for one quarter — which is indistinguishable
+    from an ingest gap and would be read as one.
+    """
+    rows, seen = [], {}
+    for period, seq in paths.items():
+        for kt, v in seq:
+            key = kt.isoformat()
+            if key in seen and seen[key] != period:
+                raise ValueError(
+                    f"write_nowcast: {seen[key]!r} and {period!r} both claim knowledge_time "
+                    f"{key} for {source}/{target}, but the primary key is "
+                    "(source, target, knowledge_time) — one of them would be silently lost")
+            seen[key] = period
+            rows.append((source, target, period, float(v), key, first_seen))
+    if not rows:
+        return 0
+    marks = ",".join("?" * len(paths))
+    dst.execute(
+        f"DELETE FROM nowcast_vintages WHERE source=? AND target=? "
+        f"AND event_time IN ({marks})", (source, target, *paths))
+    dst.execute(
+        "DELETE FROM nowcast_vintages WHERE source=? AND target=? AND knowledge_time>=?",
+        (source, target, min(r[4] for r in rows)))
+    dst.executemany(
+        "INSERT OR REPLACE INTO nowcast_vintages(source, target, event_time, value,"
         " knowledge_time, first_seen_ts) VALUES(?,?,?,?,?,?)", rows)
     dst.commit()
     return len(rows)

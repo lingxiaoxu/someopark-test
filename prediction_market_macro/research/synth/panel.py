@@ -282,9 +282,59 @@ CLAIMS_WEEKLY = PanelSpec(
     **_WEEKLY,
 )
 
+# The quarterly column set, for KXGDP (#183). Three columns, and the two that are context
+# were chosen against the calendar rather than for economic taste: A191RL1Q225SBEA reaches
+# 1947Q2 and the binding constraint on the panel's start is whichever context column starts
+# LATEST, because `build` drops rows until every column has one. UNRATE (1948-01) and
+# CPIAUCSL (1947-01) cost essentially nothing; DGS2/DGS10 begin 1985 and ICSA 1967, and
+# either would have thrown away half the history that makes this the healthiest panel in
+# the project — 313 quarters for 5 output dims, against labor_monthly's 331 for 36.
+#
+# `transform="level"` and not `diff`. Quarterly real GDP growth is ALREADY a rate of change
+# and already stationary (mean ~3.1%, no unit root); differencing it a second time would
+# over-difference, manufacture a −0.5 MA(1) in the increments and make the generator learn
+# to reverse a shock it should merely forget. `_from_increment` returns a "level" path
+# unchanged, so the round trip is the identity and the settlement transform reads the rate
+# itself, which is exactly what the market settles on.
+#
+# `prints="first"` because KXGDP settles on the BEA ADVANCE estimate. The second and third
+# estimates revise it — often by several tenths — and a panel trained on the latest vintage
+# would be training on a number nobody can trade, the same distinction `_WEEKLY_COLS`
+# records for ICSA.
+_QUARTERLY_COLS = (
+    Column("gdp", "fred", "A191RL1Q225SBEA", "first", "last", "level", "%saar"),
+    Column("unrate", "fred", "UNRATE", "first", "last", "diff", "pct"),
+    Column("cpi", "fred", "CPIAUCSL", "latest", "last", "pct100", "%qoq"),
+)
+
+# H=5: the KXGDP ladder trades the current quarter and four ahead, which is what
+# `gdp._ar1_offquarter` is built for (k=0..4). level_lag=20 is the monthly panel's five
+# years expressed in quarters; VOL_LAG is a module constant in periods, so 12 quarters of
+# vol window comes along with it and `back` = max(12, 20) = 20.
+#
+# The COVID span starts a quarter earlier than the monthly panels'. Their "2020-02-01" is
+# right for months — January 2020 was still normal — but the quarterly bucket labelled
+# 2020-01-01 CONTAINS March, and real GDP fell 5.5% annualised in it. Starting the span at
+# the month those panels use would have left the largest peacetime contraction on record
+# inside the training set of a panel with 313 rows.
+_QUARTERLY = dict(freq="QS", horizon=5, start="1948-01-01",
+                  drop_spans=(("2020-01-01", "2021-01-01"),),
+                  level_lag=20)
+
+GDP_QUARTERLY = PanelSpec(
+    name="gdp_quarterly",
+    note="KXGDP: the advance real-GDP print alone, 1 x 5 = 5 dims. The nowcast the model "
+         "anchors on is NOT generated jointly — 43 quarters carry both, against 313 that "
+         "carry the truth — it is derived as truth + resampled error, which §4f licensed "
+         "by testing the dependence rather than assuming it away",
+    columns=_scope(_QUARTERLY_COLS, ("gdp",)),
+    **_QUARTERLY,
+)
+
 PANELS: dict[str, PanelSpec] = {p.name: p for p in (
     CORE_MONTHLY, ENERGY_WEEKLY_WIDE,
     LABOR_MONTHLY, INFLATION_MONTHLY, ENERGY_WEEKLY, CLAIMS_WEEKLY,
+    GDP_QUARTERLY,
 )}
 
 # How many trailing increments the condition vector summarises. `DRIFT_LAG` is "where has

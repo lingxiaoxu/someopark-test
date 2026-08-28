@@ -130,6 +130,50 @@ def test_fit_refuses_fewer_than_six_rows_per_factor():
         G.Generator.fit(pdata, cfg, rows=np.arange(40))
 
 
+# ── the OTHER factor ceiling: the data dimension (#183) ──────────────────────
+# Rows-per-factor says how many factors the SAMPLE can identify. It says nothing about how
+# many the SPACE has room for, and `arch='factor'` needs a non-empty residual subspace
+# because `sigma0 = (Z - (Z@beta0)@beta0.T).var(0) + 1e-4` is the diagonal its score uses
+# outside span(V). Both failures above k = d - 1 are silent-ish and neither is dfm's to fix:
+# at k > d the warm start truncates V to (d, d) while the MLP is sized on the k that was
+# asked for, and at k = d the residual is exactly zero so sigma0 is the 1e-4 floor for every
+# dimension and d_t reaches 1e4. gdp_quarterly (d_flat = 5) is the first panel to reach it.
+def test_factor_dim_is_clamped_to_leave_a_residual_subspace():
+    """k = d is not a tight fit, it is an unidentified one, and it does not raise — it
+    generates. Measured on gdp_quarterly at k = d = 5: levels went to sd 11.90 with a draw at
+    -172.9% annualised GDP growth, against sd 2.76 and min -10.9 at k = 4. The clamp is
+    asserted through `fit` rather than on the expression so that a future refactor moving it
+    into dfm's caller chain still has to keep the guarantee."""
+    pdata = _toy_panel(n=400, H=4, d=1)                  # d_flat = 4
+    g = G.Generator.fit(pdata, G.GenConfig(panel="toy", factor_dim=8, epochs=1))
+    assert g.meta["data_dim"] == 4
+    assert g.meta["factor_dim"] == 3                     # d - 1, not d, and not 8
+    assert g.meta["factor_dim_requested"] == 8           # what was asked is still reported
+
+
+def test_the_factor_clamp_changes_nothing_for_any_panel_that_predates_it():
+    """The safety claim of #183's generator edit, stated as arithmetic rather than as a
+    promise: every panel that existed before gdp_quarterly has d_flat = horizon * columns
+    comfortably above the default factor_dim, so the clamp is inert on all of them and the
+    four fitted artefacts stay bit-identical. gdp_quarterly is the first panel it binds on
+    (5 - 1 = 4 < 8), which is why it is asserted here as the exception rather than skipped."""
+    default = G.GenConfig(panel="x").factor_dim
+    for name, spec in P.PANELS.items():
+        d_flat = spec.horizon * len(spec.gen_columns)
+        binds = d_flat - 1 < default
+        assert binds is (name == "gdp_quarterly"), f"{name}: d_flat={d_flat}"
+
+
+def test_load_sizes_the_net_from_what_was_fitted_not_what_was_asked(tmp_path):
+    """`save` stores the whole config, including the UNCLAMPED factor_dim. Rebuilding the
+    module from `cfg` would size the MLP for 8 factors and `load_state_dict` would fail on a
+    tensor shape — after the artefact was written, which is the worst place to find out."""
+    pdata = _toy_panel(n=400, H=4, d=1)
+    g = G.Generator.fit(pdata, G.GenConfig(panel="toy", factor_dim=8, epochs=1))
+    back = G.Generator.load(g.save(tmp_path / "g.pt"))
+    assert back.cfg.factor_dim == 8 and back.meta["factor_dim"] == 3
+
+
 # ── the reverse-SDE start (#181B) ────────────────────────────────────────────
 # `dfm.generate.reverse_sample` starts the reverse diffusion at N(0, I), which is right only
 # once the forward process has reached its prior. This fork's has not: beta = 1 over T = 1.0

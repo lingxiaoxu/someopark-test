@@ -462,8 +462,16 @@ def test_cadence_reproduces_exactly_what_the_weekly_boolean_decided():
     """The refactor's whole safety claim. Ten live series build through these five call
     sites, so every axis must return, for every panel that exists today, precisely what
     `spec.freq.upper().startswith("W")` used to hand that site. Asserted per panel rather
-    than in aggregate so a failure names the panel it broke."""
+    than in aggregate so a failure names the panel it broke.
+
+    `gdp_quarterly` is excluded BY NAME, not by a `freq != "QS"` filter, because the exclusion
+    is a claim about history rather than about frequency: the boolean never saw this panel, so
+    there is no prior answer for it to reproduce. Written this way so that a second weekly or
+    monthly panel added later is still caught here instead of slipping through a frequency
+    filter; the quarterly axes are pinned in the next test."""
     for name, spec in P.PANELS.items():
+        if name == "gdp_quarterly":       # post-dates the boolean — see the docstring
+            continue
         was_weekly = spec.freq.upper().startswith("W")
         cad = BD.cadence(spec)
         assert (cad.token == "close_date") is was_weekly, name       # _token, _panel_period
@@ -514,6 +522,151 @@ def test_build_refuses_a_series_whose_cadence_disagrees_with_its_panel():
     import inspect
     src = inspect.getsource(BD.build)
     assert "settles off panel" in src, "the cadence guard was removed"
+
+
+# ── #183: the generated nowcast, which is an INPUT rather than a print ──────
+# KXGDP is the only series whose model does not read the generated column to price the
+# event: `gdp.predict` reads a GDPNow vintage and treats A191RL1Q225SBEA only as the answer.
+# So a world needs a forecast OF its own generated truth, and it has to be a forecast that
+# behaves like GDPNow — a path that tightens toward the release, not a single number.
+def test_the_nowcast_key_agrees_with_the_ingest_module_that_writes_the_real_rows(tmp_path):
+    """`nowcast_vintages.event_time` holds a quarter STRING, and the only reason it does is
+    that `ingest/nowcast._quarter_of` put it there. The generated rows sit in the same table
+    and are read by the same query, so a disagreement here is not a formatting difference —
+    the model would simply find no vintage for the quarter it was asked about, report "no
+    vintage visible", and the build would score zero events as a modelling failure.
+
+    Pinned by comparing the two functions on real quarter boundaries rather than by having
+    one call the other: `build` must not import an ingest module to write a world, and the
+    duplication is deliberate. This is the test that makes it safe."""
+    from prediction_market_macro.ingest.nowcast import _quarter_of
+    nc = BD.NOWCASTS["gdp_quarterly"]
+    for ts in ("2026-01-01", "2026-03-31", "2026-04-01", "2026-12-31", "2027-07-01"):
+        assert nc.key(pd.Timestamp(ts)) == _quarter_of(ts), ts
+
+
+def test_every_nowcast_forecasts_a_column_its_own_panel_writes_to_fred():
+    """The error blocks are measured as `vintage - print`, and the print comes from the FRED
+    series the column is written to. A nowcast of a column with no sink has nothing to be
+    measured against, and the transplant would silently be a transplant of noise."""
+    for panel, nc in BD.NOWCASTS.items():
+        sinks = BD._sinks(panel)
+        assert nc.column in sinks, f"{panel}: nowcast of {nc.column!r}, sinks {sorted(sinks)}"
+        assert sinks[nc.column].kind == "fred"
+
+
+def _donor_book():
+    """Two real error blocks with distinguishable magnitudes, at distinguishable leads."""
+    return [(1.0, [(-60.0, +0.5), (-30.0, +0.3), (-2.0, +0.1)]),
+            (8.0, [(-55.0, -4.0), (-25.0, -3.0), (-3.0, -2.0)])]
+
+
+def _truths():
+    idx = pd.to_datetime(["2027-01-01", "2027-04-01", "2027-07-01"])
+    return pd.Series([2.0, 1.5, 3.0], index=idx), {
+        idx[0]: datetime(2027, 4, 29, 12, 30, tzinfo=UTC),
+        idx[1]: datetime(2027, 7, 29, 12, 30, tzinfo=UTC),
+        idx[2]: datetime(2027, 10, 28, 12, 30, tzinfo=UTC)}
+
+
+def test_synth_nowcast_is_the_generated_truth_plus_a_real_error_block():
+    """The whole construction in one assertion. §4f measured the final vintage at
+    b = 0.95 +/- 0.03 against the print, which licenses `nowcast = truth + eps` with eps
+    transplanted rather than modelled — but only if the transplant lands on the TRUTH THE
+    WORLD HOLDS. Reconstructing the errors from the output and matching them to a donor
+    block is what catches a transplant onto the unrounded draw, or onto the wrong period."""
+    nc = BD.NOWCASTS["gdp_quarterly"]
+    truths, rel = _truths()
+    got = BD.synth_nowcast(_donor_book(), truths, rel, np.random.default_rng(0), nc,
+                           floor=datetime(2026, 12, 1, tzinfo=UTC))
+    by_key = {nc.key(t): float(y) for t, y in truths.items()}
+    assert set(got) == set(by_key)                        # every quarter got a path
+    blocks = {tuple(e for _, e in seq) for _, seq in _donor_book()}
+    for period, seq in got.items():
+        assert len(seq) == 3
+        assert tuple(round(v - by_key[period], 9) for _, v in seq) in blocks, period
+
+
+def test_synth_nowcast_draws_its_donor_on_the_size_of_the_truth_not_uniformly():
+    """§4f licensed a uniform draw off the FINAL vintage, where corr(|err|, |truth|) is
+    +0.331 over all 41 donors and -0.222 ex-2020 — sign-flipping, so not measurable. Measured
+    over the whole block instead, at 45 days out it is +0.624 (ex-2020 +0.161), and that is
+    the lead the model actually prices at. Uniformly drawn, 2020Q3's block lands on a +2.5%
+    quarter and writes a +23% nowcast into a world — a number no GDPNow vintage has ever
+    printed, handed to the model as its anchor."""
+    truths = pd.Series([8.2], index=pd.to_datetime(["2027-01-01"]))
+    rel = {pd.Timestamp("2027-01-01"): datetime(2027, 4, 29, 12, 30, tzinfo=UTC)}
+    nc = BD.NOWCASTS["gdp_quarterly"]
+    from dataclasses import replace
+    got = BD.synth_nowcast(_donor_book(), truths, rel, np.random.default_rng(0),
+                           replace(nc, k_donor=1), floor=datetime(2026, 1, 1, tzinfo=UTC))
+    errs = [round(v - 8.2, 9) for _, v in got["2027-Q1"]]
+    assert errs == [-4.0, -3.0, -2.0], "the |truth|=8 block is the near neighbour of 8.2"
+
+
+def test_synth_nowcast_starts_each_path_after_the_previous_quarters_release():
+    """How GDPNow is actually produced — the 2025-Q1 window opens on 2025-01-31, two days
+    after the 2024-Q4 advance print — and, as a by-product, the reason two generated periods
+    can never collide on a knowledge_time. The by-product is not the justification: a path
+    that ran from 60 days before its own release would overlap the previous quarter's tail
+    and `write_nowcast` would raise, which is a correct refusal of an incorrect path."""
+    truths, rel = _truths()
+    got = BD.synth_nowcast(_donor_book(), truths, rel, np.random.default_rng(0),
+                           BD.NOWCASTS["gdp_quarterly"],
+                           floor=datetime(2026, 12, 1, tzinfo=UTC))
+    spans = {p: (min(k for k, _ in s), max(k for k, _ in s)) for p, s in got.items()}
+    order = sorted(spans, key=lambda p: spans[p][0])
+    for a, b in zip(order, order[1:]):
+        assert spans[a][1] < spans[b][0], f"{a} overlaps {b}"
+    for p, (k0, k1) in spans.items():
+        r = rel[[t for t in truths.index if BD.NOWCASTS["gdp_quarterly"].key(t) == p][0]]
+        assert k1 < r - BD.CLOSE_LEAD, f"{p}: a vintage at or after its own close"
+        assert k0 > datetime(2026, 12, 1, tzinfo=UTC), f"{p}: a vintage before the splice"
+
+
+def test_synth_nowcast_refuses_an_empty_donor_book_rather_than_writing_no_vintages():
+    """The failure this converts into an error is the expensive one: an empty nowcast table
+    makes every event raise the model's own 'no vintage visible', which the build reports as
+    zero events generated — indistinguishable, at the log line, from a generator that failed
+    to produce a usable path."""
+    truths, rel = _truths()
+    with pytest.raises(ValueError, match="no real GDPNow/KXGDP error blocks"):
+        BD.synth_nowcast([], truths, rel, np.random.default_rng(0),
+                         BD.NOWCASTS["gdp_quarterly"],
+                         floor=datetime(2026, 12, 1, tzinfo=UTC))
+
+
+def test_nowcast_donors_reads_neither_a_vintage_nor_a_print_from_after_the_splice(tmp_path):
+    """Two separate cutoffs and both matter. The vintages are the donor's SHAPE and the
+    prints are what makes them errors rather than levels, so a print visible early would
+    label a block with an answer the world has not published yet — and the resulting error
+    block would be, quietly, a better forecast than GDPNow has ever managed."""
+    conn = init_db(tmp_path / "d.db")
+    for q, y, kt in (("2026-01-01", 2.0, "2026-04-29T12:30:00+00:00"),
+                     ("2026-04-01", 3.0, "2026-07-29T12:30:00+00:00")):
+        conn.execute("INSERT INTO fred_obs(sid, event_time, value, vintage_date,"
+                     " knowledge_time, first_seen_ts) VALUES('A191RL1Q225SBEA',?,?,?,?,"
+                     "'real')", (q, y, kt[:10], kt))
+    for q, kt, v in (("2026-Q1", "2026-03-01T14:30:00+00:00", 2.4),
+                     ("2026-Q1", "2026-04-01T14:30:00+00:00", 2.1),
+                     ("2026-Q2", "2026-06-01T14:30:00+00:00", 3.9)):
+        conn.execute("INSERT INTO nowcast_vintages VALUES('GDPNow','KXGDP',?,?,?,'real')",
+                     (q, v, kt))
+    conn.commit()
+    nc = BD.NOWCASTS["gdp_quarterly"]
+    got = BD.nowcast_donors(conn, nc, "A191RL1Q225SBEA", datetime(2026, 6, 15, tzinfo=UTC))
+    assert [(y, [round(e, 9) for _, e in s]) for y, s in got] == [(2.0, [0.4, 0.1])]
+    later = BD.nowcast_donors(conn, nc, "A191RL1Q225SBEA", datetime(2026, 8, 1, tzinfo=UTC))
+    assert [y for y, _ in later] == [2.0, 3.0]
+
+
+def test_nowcast_donors_keeps_each_quarter_as_a_block_not_a_bag_of_errors():
+    """`synth_nowcast` transplants a WHOLE path, because the thing being reproduced is how a
+    nowcast tightens toward its release. A flat pool of errors would let a 60-day-out error
+    land two days before the print, which is the one shape GDPNow never has."""
+    import inspect
+    src = inspect.getsource(BD.nowcast_donors)
+    assert "out.append((y, seq))" in src, "the per-period block structure was flattened"
 
 
 # ── parallel scoring (2026-08-21) ───────────────────────────────────────────

@@ -184,14 +184,35 @@ class Generator:
             raise ValueError(f"{len(Z)} training rows is too few to fit {cfg.factor_dim} "
                              f"factors (need {6 * cfg.factor_dim}) — widen the panel, "
                              "shorten the horizon, or lower factor_dim")
+        # `arch='factor'` needs a NON-EMPTY residual subspace, and dfm does not say so. Two
+        # separate failures sit above k = d - 1, and only the first one announces itself:
+        #
+        #   k > d   the warm start is `beta0 = evecs[:, :k]` off a (d, d) eigenbasis, so `V`
+        #           comes out (d, d) while `CondFactorScoreNet` sizes its MLP on the k that
+        #           was ASKED for. The forward pass dies inside torch on a shape no traceback
+        #           connects to a config.
+        #   k = d   the factors span everything, `resid = Z - (Z@beta0)@beta0.T` is exactly
+        #           zero, and `sigma0 = resid.var(0) + 1e-4` becomes the 1e-4 FLOOR for every
+        #           dimension rather than a measurement. `d_t = 1/(h + alpha^2*exp(log_c))`
+        #           then reaches 1e4 near t0 and the sampler blows up quietly. Measured on
+        #           gdp_quarterly (d=5, k=120 neighbourhood): generated levels go from sd 2.76
+        #           at k=4 to sd 11.90 at k=5, with a draw at -172.9% annualised GDP growth.
+        #           Nothing raises. This is the same collapse §4e-D measured on the `rot` arm.
+        #
+        # dfm is call-only, so the clamp belongs here — and k >= d is the CALLER's error
+        # either way: it is not a tight fit, it is an unidentified one. Bit-identical for the
+        # four panels that existed before this line (d_flat 13/36/36/13 against factor_dim 8);
+        # it binds for the first time on gdp_quarterly, whose d_flat is H*d = 5*1 = 5.
+        fdim = max(1, min(int(cfg.factor_dim), int(Z.shape[1]) - 1))
         proj = _fit_proj(C, cfg.cond_pcs)
         Cp = _apply_proj(C, proj)
         d = _dfm()
-        net = d["train_conditional"](Z, Cp, factor_dim=cfg.factor_dim, epochs=cfg.epochs,
+        net = d["train_conditional"](Z, Cp, factor_dim=fdim, epochs=cfg.epochs,
                                      lr=cfg.lr, batch=cfg.batch, seed=cfg.seed,
                                      verbose=verbose, arch="factor")
         meta = {"n_train": int(len(Z)), "cond_dim": int(Cp.shape[1]),
-                "cond_raw_dim": int(C.shape[1]),
+                "cond_raw_dim": int(C.shape[1]), "factor_dim": fdim,
+                "factor_dim_requested": int(cfg.factor_dim),
                 "data_dim": int(Z.shape[1]), "panel_end": pdata.end.isoformat(),
                 "anchor_first": str(pdata.anchors[0].date()),
                 "anchor_last": str(pdata.anchors[-1].date())}
@@ -241,8 +262,13 @@ class Generator:
         near = idx[np.argsort(dist)[:take]]
         # Factors are budgeted out of the neighbourhood, not inherited from a config sized
         # for the whole panel: `fit`'s six-rows-per-factor bar has to be met by k, and a
-        # tighter neighbourhood buys its sharpness by supporting fewer factors.
-        fdim = max(1, min(cfg.factor_dim, take // 6))
+        # tighter neighbourhood buys its sharpness by supporting fewer factors. The data
+        # dimension is the OTHER ceiling and it is not the same one — `take // 6` says how
+        # many factors the sample can identify, `d - 1` says how many the space has room for
+        # while leaving the residual the score's diagonal is measured on. `fit` enforces the
+        # second regardless; it is repeated here only so `local_factor_dim` reports the
+        # number that was actually fitted.
+        fdim = max(1, min(cfg.factor_dim, take // 6, int(pdata.Z.shape[1]) - 1))
         local = _replace(cfg, cond_pcs=0, factor_dim=fdim)  # the neighbourhood IS the cond
         g = cls.fit(pdata, local, rows=near, verbose=verbose)
         g.meta["local_k"] = int(take)
@@ -426,8 +452,14 @@ class Generator:
         cfg = GenConfig(**blob["cfg"])
         meta, scaler = blob["meta"], blob["scaler"]
         d = _dfm()
+        # `meta["factor_dim"]` is what was FITTED; `cfg.factor_dim` is what was asked for, and
+        # `fit` clamps the first to the data dimension. Rebuilding from the config would size
+        # the MLP wrong for any panel where the clamp bit and fail in `load_state_dict`. The
+        # fallback is for artefacts written before the clamp existed, where the two agreed by
+        # construction because every panel then had d_flat > factor_dim.
         net = d["CondFactorScoreNet"](meta["data_dim"], meta["cond_dim"],
-                                      factor_dim=cfg.factor_dim).to(d["DEVICE"])
+                                      factor_dim=int(meta.get("factor_dim",
+                                                              cfg.factor_dim))).to(d["DEVICE"])
         net.load_state_dict(blob["state"])
         net.eval()
         p = blob["proj"]

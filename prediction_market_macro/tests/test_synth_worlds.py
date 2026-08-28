@@ -286,6 +286,97 @@ def test_write_fut_clears_real_bars_after_the_generated_path_starts(tmp_path):
     assert got == {"2026-03-01": 9.0, "2026-03-02": 61.5}
 
 
+# ── the nowcast table (#183) ─────────────────────────────────────────────────
+# `nowcast_vintages` is the only generated table whose primary key does NOT include
+# `event_time`: it is (source, target, knowledge_time). Everything below follows from that
+# one fact, so it is asserted first rather than assumed by the tests under it.
+def _vint(conn, source="GDPNow", target="KXGDP"):
+    return [tuple(r) for r in conn.execute(
+        "SELECT event_time, knowledge_time, value, first_seen_ts FROM nowcast_vintages"
+        " WHERE source=? AND target=? ORDER BY knowledge_time", (source, target)).fetchall()]
+
+
+def _kt(day, hour=14):
+    return datetime(2027, 1, day, hour, 30, tzinfo=UTC)
+
+
+def test_the_nowcast_key_omits_the_reference_period(tmp_path):
+    """The premise of the collision guard. If this ever gains `event_time`, the guard becomes
+    dead weight and `write_nowcast` can drop it — but until then a second quarter landing on
+    an occupied timestamp REPLACES the first, silently, and the world just has a shorter path
+    for one quarter, which is indistinguishable from an ingest gap."""
+    conn = _db(tmp_path)
+    cols = [r[1] for r in conn.execute(
+        "PRAGMA table_info(nowcast_vintages)").fetchall() if r[5]]
+    assert cols == ["source", "target", "knowledge_time"]
+
+
+def test_write_nowcast_keeps_a_whole_path_per_period_not_one_value(tmp_path):
+    """`gdp._nowcast_error_sigma` scores the LAST vintage before each release against the
+    print. A world carrying one vintage per quarter would make the model's own error estimate
+    a different quantity from the one production measures — it would be the error of whatever
+    single vintage happened to be written, at whatever lead."""
+    conn = _db(tmp_path)
+    n = W.write_nowcast(conn, "KXGDP", {
+        "2026-Q4": [(_kt(5), 2.1), (_kt(12), 2.4), (_kt(19), 2.3)],
+        "2027-Q1": [(_kt(26), 1.8), (_kt(28), 1.9)]})
+    assert n == 5
+    got = _vint(conn)
+    assert [r[0] for r in got] == ["2026-Q4"] * 3 + ["2027-Q1"] * 2
+    assert all(r[3] == "synthetic" for r in got)
+
+
+def test_write_nowcast_raises_rather_than_losing_a_period_to_a_shared_timestamp(tmp_path):
+    """Not defensive programming: with `event_time` outside the key this is a REPLACE, so
+    without the check the failure is a missing row, not an error. `synth_nowcast` makes the
+    collision impossible by clipping each path to start after the previous release — this is
+    the assertion that a future generator which forgets to hears about it."""
+    conn = _db(tmp_path)
+    with pytest.raises(ValueError, match="both claim knowledge_time"):
+        W.write_nowcast(conn, "KXGDP", {"2026-Q4": [(_kt(5), 2.1)],
+                                        "2027-Q1": [(_kt(5), 1.8)]})
+
+
+def test_write_nowcast_clears_the_real_vintages_of_the_quarters_it_generates(tmp_path):
+    """A real vintage of a generated quarter is a forecast of a print the world overwrote.
+    REPLACE alone does not remove it: it only lands where the timestamps happen to coincide,
+    and real GDPNow updates land on dates a generated path never names."""
+    conn = _db(tmp_path)
+    for d, v in ((3, 9.0), (7, 9.1), (11, 9.2)):
+        conn.execute("INSERT INTO nowcast_vintages VALUES('GDPNow','KXGDP','2026-Q4',?,?,"
+                     "'real')", (v, _kt(d).isoformat()))
+    conn.commit()
+    W.write_nowcast(conn, "KXGDP", {"2026-Q4": [(_kt(5), 2.1)]})
+    assert _vint(conn) == [("2026-Q4", _kt(5).isoformat(), 2.1, "synthetic")]
+
+
+def test_write_nowcast_clears_every_real_vintage_after_the_path_starts(tmp_path):
+    """The second DELETE, and the one that is not about the generated quarters at all: a real
+    vintage of ANY period sitting inside the synthetic future is a leaked forecast of a series
+    the model reads as its anchor. History before the path is real on purpose and must stay —
+    that is what makes the world a continuation rather than a replacement."""
+    conn = _db(tmp_path)
+    conn.execute("INSERT INTO nowcast_vintages VALUES('GDPNow','KXGDP','2026-Q3',8.0,?,"
+                 "'real')", (_kt(2).isoformat(),))          # before the path — kept
+    conn.execute("INSERT INTO nowcast_vintages VALUES('GDPNow','KXGDP','2027-Q2',8.5,?,"
+                 "'real')", (_kt(20).isoformat(),))         # after the path starts — gone
+    conn.commit()
+    W.write_nowcast(conn, "KXGDP", {"2026-Q4": [(_kt(5), 2.1)]})
+    assert [(r[0], r[3]) for r in _vint(conn)] == [
+        ("2026-Q3", "real"), ("2026-Q4", "synthetic")]
+
+
+def test_write_nowcast_of_nothing_writes_nothing_and_deletes_nothing(tmp_path):
+    """An empty `paths` must not run the DELETEs — `min()` over no rows has no meaning and
+    an unbounded clear would wipe the real history the world is built on."""
+    conn = _db(tmp_path)
+    conn.execute("INSERT INTO nowcast_vintages VALUES('GDPNow','KXGDP','2026-Q3',8.0,?,"
+                 "'real')", (_kt(2).isoformat(),))
+    conn.commit()
+    assert W.write_nowcast(conn, "KXGDP", {}) == 0
+    assert len(_vint(conn)) == 1
+
+
 def test_clear_series_leaves_no_real_event_to_mix_with_the_synthetic_one(tmp_path):
     """A world inherits the market side by byte copy. Left in place, `quotable_events`
     returns a MIXTURE: some events priced against the generated macro path, some against
@@ -419,6 +510,29 @@ def test_materialize_clones_every_table_so_a_world_is_the_shape_production_reads
         "SELECT name FROM sqlite_master WHERE type='table'"
         " AND name NOT LIKE 'sqlite_%'").fetchall()}
     assert src_tables <= have
+
+
+def test_materialize_carries_the_rows_of_every_table_a_model_reads_as_an_input(tmp_path):
+    """The defect #183 found, and the reason the test above did not catch it: `clone_schema`
+    copies every table, `_PIT_TABLES` decides which ones get their ROWS, and
+    `nowcast_vintages` was in the first list and not the second. Every world ever built
+    therefore carried an empty one, and `model/gdp.predict` would have raised its own "no
+    GDPNow vintage visible" for every KXGDP event. Nothing surfaced it because KXGDP was not
+    in `SETTLES` — the gap and the thing that would have exposed it were missing together.
+
+    Asserted as "every input table that has rows before the cutoff has rows after
+    materialize" rather than by naming nowcast_vintages, so the next table added to the
+    schema and forgotten in `_PIT_TABLES` fails here instead of in six months."""
+    src = _db(tmp_path, "src.db")
+    src.execute("INSERT INTO nowcast_vintages VALUES('GDPNow','KXGDP','2026-Q1',2.4,"
+                "'2026-03-01T14:30:00+00:00','real')")
+    src.execute("INSERT INTO nowcast_vintages VALUES('GDPNow','KXGDP','2026-Q2',1.1,"
+                "'2026-06-01T14:30:00+00:00','real')")   # after the cutoff — must NOT carry
+    src.commit()
+    dst = W.materialize(src, tmp_path / "w.db", cutoff=datetime(2026, 4, 1, tzinfo=UTC))
+    assert [tuple(r) for r in dst.execute(
+        "SELECT event_time, value FROM nowcast_vintages").fetchall()] == [("2026-Q1", 2.4)]
+    assert W._PIT_TABLES["nowcast_vintages"] == "knowledge_time"
 
 
 def test_verify_world_names_the_tables_that_came_back_empty(tmp_path):

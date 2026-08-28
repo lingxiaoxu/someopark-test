@@ -1267,6 +1267,9 @@ Artifacts: `/tmp/dfm_verify/sep_redo.py`, `sep_redo.json`, `sep_redo.log`.
 
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
+> This section is the *survey*, and its counts are as of the survey. KXGDP was built the same
+> day and `SETTLES` now holds 11 of 14 — see §4g. The exclusions below stand unchanged.
+
 The standing instruction is that the DFM must serve **all fourteen** traded series, so the
 first thing owed is an honest count of where it stands and what each gap actually costs.
 `SETTLES` holds **10 of 14** today. The other four were each recorded as excluded, and on
@@ -1417,6 +1420,139 @@ special case bolted onto `_weekly`.
 
 Artifacts: `/tmp/dfm_verify/gdp_feas.py`, `gdp_shrink.py`, `gdp_shrink2.py`,
 `fed_gdp_scope.py`.
+
+## 4g. KXGDP as built — 10 of 14 to 11 of 14 (#183, 2026-08-28)
+
+§4f's verdict is now code. `SETTLES` holds **11 of 14**. What follows is what the build
+actually required, which was not the panel — the panel was the easy half — and two defects
+found on the way that had nothing to do with GDP.
+
+### The panel is the healthiest in the project, as predicted
+
+| | rows | anchors | `Z` | `C` | `n_eff_hint` | print lattice |
+|---|---|---|---|---|---|---|
+| `gdp_quarterly` | 313 | 280 | (280, 5) | (280, 11) | **56.0** | 0.1, exact |
+
+One column, `A191RL1Q225SBEA`, `transform="level"` — and the `level` is the point. For
+KXPAYROLLS the panel carries a level and the market settles on a change; for KXGDP the
+published series **is** the change, so there is no second transform and no place for one to
+disagree. `n_eff_hint` 56.0 is the highest in the project (`labor_monthly` 21.6), and the
+lattice is the exact 0.1 BEA prints on, which makes this the one panel where §4e-A's
+quantisation is a rounding rather than a repair: the generated outcomes come off it at a
+maximum off-grid residual of **7.1e-15**. COVID is dropped by `drop_spans` — the same
+2020-01-01/2021-01-01 window §4f's regressions used, now a panel property rather than a
+per-script choice.
+
+### The nowcast is an input, not a print, and that is the whole build
+
+Every other series in `SETTLES` has a model that reads the generated column. `model/gdp.py`
+does not: it reads a **GDPNow vintage** and treats `A191RL1Q225SBEA` only as the answer. So a
+world needs a forecast *of its own generated truth*, written into `nowcast_vintages`, and
+`build.py` had nothing that wrote a forecast. `Nowcast`/`NOWCASTS`/`nowcast_donors`/
+`synth_nowcast` are that, plus `worlds.write_nowcast`.
+
+Three choices in it are load-bearing and each was measured rather than assumed.
+
+**A path per quarter, not a value.** `gdp._nowcast_error_sigma` scores the LAST vintage before
+each release against the print. A world holding one vintage per quarter would make the model's
+own error estimate a different quantity from the one production measures — the error of
+whichever vintage happened to be written, at whichever lead. So the donor unit is a *block*:
+`(truth, [(days before release, error)])`, transplanted whole.
+
+**The donor is drawn on |truth|, and §4f licensed the opposite.** §4f tested the FINAL vintage
+and found no measurable state dependence (b = 0.95 ± 0.03, `corr(|err|, nowcast) = −0.163`),
+which licenses a uniform draw. Re-measured **over the whole block** — which is what a
+transplant actually copies — that conclusion holds only at the final vintage:
+
+| lead | corr(\|err\|, \|truth\|), all 41 donors | ex-2020 |
+|---|---|---|
+| final vintage | +0.331 | −0.222 |
+| 45 days before release | **+0.624** | +0.161 |
+
+Sign-flipping at the final vintage, so §4f was right about it; not sign-flipping at 45 days
+out, which is where the model actually prices. Uniformly drawn, 2020Q3's block lands on a
++2.5% quarter and writes a **+23% nowcast** into a world — a number no GDPNow vintage has ever
+printed, handed to the model as its anchor. Hence `k_donor=8` nearest neighbours on |truth|.
+This does not overturn §4f; it says §4f measured the right thing for the question it asked and
+a transplant asks a wider one.
+
+**Each path is clipped to start after the previous quarter's release.** That is how GDPNow is
+produced — the 2025-Q1 window opens 2025-01-31, two days after the 2024-Q4 advance print. The
+by-product is that two generated periods can never collide on a `knowledge_time`, which
+matters because of the defect below. The by-product is not the justification.
+
+### Two defects found on the way, neither of them about GDP
+
+**`nowcast_vintages` was absent from `worlds._PIT_TABLES`.** `clone_schema` copies every table
+and `_PIT_TABLES` decides which ones get their *rows*, so the table was present and empty in
+**every world ever built**. Nothing surfaced it because KXGDP was not in `SETTLES` — the gap
+and the thing that would have exposed it were missing together, which is the failure mode
+`materialize`'s own docstring warns about for `cleveland_nowcast`, one line above it in the
+same dict. Now carried and tested by rows rather than by schema.
+
+**The table's primary key is `(source, target, knowledge_time)` — it does not include
+`event_time`.** So two generated quarters sharing one timestamp is an `INSERT OR REPLACE`, not
+an error: one quarter silently loses a row and its path is short, which is indistinguishable
+from an ingest gap and would be read as one. `write_nowcast` raises instead, and carries the
+same two DELETEs as `write_fred` for a sharper reason (a real vintage of a *generated* quarter
+is a forecast of a print the world overwrote; a real vintage of any quarter inside the
+synthetic future is a leaked forecast of the model's own anchor).
+
+### The `arch='factor'` identifiability ceiling — a real generator bug, found because d = 5
+
+`gdp_quarterly` is the first panel with `d_flat = H × d = 5 × 1 = 5`; the other four are
+13/36/36/13, all comfortably above the default `factor_dim=8`. Two separate failures sit above
+k = d − 1 and **only the first announces itself**:
+
+- **k > d.** `train_conditional` warm-starts `beta0 = evecs[:, ::-1][:, :k]` off a (d, d)
+  eigenbasis, so `V` comes out (d, d) while `CondFactorScoreNet` sizes its MLP on the k that
+  was *asked* for. Dies inside torch on a shape no traceback connects to a config.
+- **k = d.** The factors span everything, `resid = Z − (Z@beta0)@beta0ᵀ` is exactly zero, and
+  `sigma0 = resid.var(0) + 1e-4` becomes the 1e-4 **floor** for every dimension rather than a
+  measurement. Nothing raises. It generates:
+
+| k | `sigma0` range | max `d_t` | generated levels: mean / sd / min / max | \|level\| > 15% |
+|---|---|---|---|---|
+| 4 | 2.0e-02 – 1.3e-01 | 50 | +3.02 / 2.76 / −10.9 / +11.7 | 0.000 |
+| **5 = d** | 1.0e-04 flat | **1e4** | +1.22 / **11.90** / **−172.9** / +53.8 | **0.066** |
+| real, 1990–, ex-COVID | — | — | +2.46 / 2.33 / −8.2 / +7.8 | — |
+
+−172.9% annualised GDP growth, from a build that logged no warning. This is the same collapse
+§4e-D measured on the `rot` arm, reached by a different route. `dfm/` is call-only and k ≥ d is
+the **caller's** error in any case — it is not a tight fit, it is an unidentified one — so the
+clamp is `fdim = max(1, min(cfg.factor_dim, d − 1))` in `Generator.fit`, repeated in
+`fit_local` alongside the existing `take // 6` so that `local_factor_dim` reports the number
+actually fitted, and `Generator.load` now sizes the net from `meta["factor_dim"]` (what was
+fitted) rather than `cfg.factor_dim` (what was asked). **Inert on all four pre-existing
+panels**, which is asserted as arithmetic in the suite rather than promised here.
+
+### End to end
+
+Built at splice 2026-07-29, anchor 2026-04-01, 4 paths, `factor_dim` 8 → 4:
+
+| | |
+|---|---|
+| real error blocks visible at the splice | 40 |
+| events | **16** (4/4 per path, quotable 4/4) |
+| synthetic vintage rows across the four worlds | 3541 |
+| predictions, by branch | **`gdpnow_anchor` 112 / `gdpnow_offquarter` 0** |
+| PIT violations | **0** |
+| cross-period timestamp collisions | **0** |
+| max off-grid residual (round rule 0.1) | 7.1e-15 |
+| generated outcomes | min −3.30, max +5.10, mean +1.39 |
+
+The branch row is #196's rule and it is the one that would have been quietly wrong: an
+off-quarter fallback firing here would mean the worlds were scoring an AR(1) production never
+runs on this series. Settlement parity: the ten pre-existing series recompute **byte-identical**
+to their pre-change `verify_settle` output, and KXGDP returns `n_ok=1, n_bad=0, n_skipped=0` —
+one real settled event (`26JUL30`), recomputed inside its implied interval.
+
+**11 of 14 is the ceiling for this architecture** and §4f already established why: KXFED and
+KXFEDDECISION need a different model class, KXAAAGASW needs data that does not exist. Neither
+is a DFM widening and neither should be attempted as one.
+
+Artifacts: `/tmp/dfm_verify/gdp_panel_probe.py`, `gdp_nowcast_probe.py`,
+`gdp_err_dependence.py`, `gdp_factor_dim.py`, `gdp_build_e2e.py`, `verify_parity.py`.
 
 ## 5. The market book (S4) — the part that can kill the project
 
