@@ -274,6 +274,75 @@ strike types on a *ladder* raise instead of settling by a plausible default, and
 whose stored settlements pin no consistent value is reported as unrebuildable rather than
 approximated. Neither fired on today's data; both would have been silent wrong numbers.
 
+## 4d. The C2ST was dead twice over, and what it says once revived (#185, 2026-08-27)
+
+§1 names the trap: a generator fitted on the same history buys no license by itself. The
+discriminative test — can a classifier tell a synthetic window from a real one? — is the
+direct check on that, and for two rounds it was not running at all.
+
+**Death 1: the duplicate detector could not find a duplicate.** It hashed each path after
+dividing by a per-column scale computed *from that array*:
+
+```python
+s = np.abs(X).max(axis=0)          # real's own max for real, the pool's own max for the pool
+hash((X[i] / s).round(9).tobytes())
+```
+
+Two identical paths on the two sides got two different divisors and therefore two different
+hashes. It reported **0 duplicates on every panel and every arm**, and that zero was relayed
+as "the duplicate hypothesis is refuted". It was never tested. Re-run with ONE scale vector
+derived from the real paths and applied to both sides (`/tmp/dfm_verify/boot_inversion3.py`),
+the duplicates are not merely present, they are the majority:
+
+| panel | real paths | `boot` copies | `knn` copies |
+|---|---|---|---|
+| inflation_monthly | 331 | **265** | 199 |
+| labor_monthly | 331 | **265** | 199 |
+| claims_weekly | 690 | **540** | 410 |
+| energy_weekly | 690 | **540** | 410 |
+
+**Death 2: the pooling, not `block_bootstrap`.** `block_bootstrap` draws from fold *f*'s
+training rows and `splits` purges, so no fold leaks on its own. The C2ST pooled across
+folds: the real class was the union of every fold's held-out block, and a row held out in
+fold 1 sits in the training set of folds 2..5, where the bootstrap draws it verbatim. Each
+duplicated real path then carries label 1 once and label 0 *k* times, the Bayes output at
+that point is 1/(1+*k*), and the real class ranks *below* its own copies.
+
+That is the whole explanation of the inversion — `boot` and `knn` scoring 0.235–0.447, i.e.
+**below** chance, which no honest two-sample test can do at scale. **Those numbers are void.**
+Not "weak evidence", not "a baseline that ties": void. And they cannot be rescued by dedup,
+because dropping the duplicated rows leaves those two arms with **zero** pool rows. A
+per-fold-honest C2ST that never pools is the only version worth running, and that is #181.
+
+**What survives, and it is not good news.** The two DFM arms — `local` (`fit_local`) and
+`global` (`fit`) — have **0 duplicates on all four panels**, so their AUCs were never
+touched by the bug and are unchanged by dedup:
+
+| panel | `local` | `global` |
+|---|---|---|
+| inflation_monthly | 0.737 | 0.755 |
+| labor_monthly | **1.000** | **1.000** |
+| claims_weekly | 0.570 | 0.600 |
+| energy_weekly | 0.790 | 0.861 |
+
+A classifier separates DFM output from real windows **well above chance on all four panels,
+and perfectly on `labor_monthly`.** Against §1's standard the answer is currently no: these
+draws are not a valid diffusion of the real data in the discriminative sense, and the
+measured `lambda = 0` of §6a now has a mechanism behind it rather than only a number.
+
+One caveat that is a lead, not a hedge. An AUC of exactly 1.000 is bug-shaped, not
+model-shaped: a generator that is merely *poor* lands at 0.7–0.9, whereas 1.000 means some
+coordinate separates the two classes with a clean threshold — a scale, an offset, a
+clipped tail. #181 must report **which coordinate does it** before anyone concludes the
+labor panel's generator is beyond repair; the answer may be one un-inverted standardisation.
+
+**Consequence for §8's gates: `dfm_gate` stays shut and #183 stays blocked.** Extending
+coverage from 7 series to the traded universe would be widening the reach of a generator
+that has not passed the one test that asks whether its output is real.
+
+Artifacts: `/tmp/dfm_verify/boot_inversion{,2,3}.py`, `boot_inversion3.json`, `bootinv3.log`,
+`c2st_control3.py`, `c2st_control3.json`.
+
 ## 5. The market book (S4) — the part that can kill the project
 
 The model's side of the trade can be synthesized honestly. The market's side cannot be
