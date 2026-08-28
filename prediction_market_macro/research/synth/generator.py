@@ -82,6 +82,9 @@ def _dfm() -> dict[str, Any]:
             "DEVICE": mods["model"].DEVICE,
             "reverse_sample": mods["generate"].reverse_sample,
             "make_regressed_guidance": mods["generate"].make_regressed_guidance,
+            # read, never assumed: `_start_root` needs the diffusion horizon, and a
+            # hardcoded 1.0 here would silently go wrong the day dfm retunes its schedule.
+            "DIFFUSION_CONFIG": dict(mods["model"].DIFFUSION_CONFIG),
         })
     finally:
         # Leave dfm's own `model`/`generate` out of the global namespace: `dfm/model.py`
@@ -146,10 +149,12 @@ class Generator:
     nobody would notice, because they still look like macro data.
     """
 
-    def __init__(self, cfg: GenConfig, net, scaler: dict, meta: dict, proj=None):
+    def __init__(self, cfg: GenConfig, net, scaler: dict, meta: dict, proj=None,
+                 start_root=None):
         self.cfg, self.net, self.scaler, self.meta = cfg, net, scaler, meta
         self._ridge = None
         self._proj = proj          # (mean, loadings, scales) from `_fit_proj`
+        self._start = start_root   # (d, d) root of S_T from `_start_root` (#181B)
         self.H = int(scaler["horizon"])
         self.names = list(scaler["names"])
         self.d = len(self.names)
@@ -190,7 +195,12 @@ class Generator:
                 "data_dim": int(Z.shape[1]), "panel_end": pdata.end.isoformat(),
                 "anchor_first": str(pdata.anchors[0].date()),
                 "anchor_last": str(pdata.anchors[-1].date())}
-        g = cls(cfg, net, pdata.scaler, meta, proj=proj)
+        # From the fit's OWN rows, which is what makes this self-consistent rather than a
+        # peek: `fit_local` passes the k-neighbourhood, so its start is the conditional
+        # marginal of that neighbourhood, and `validate` fitting on an early span gets a
+        # start estimated on the early span and is still graded on the late one.
+        g = cls(cfg, net, pdata.scaler, meta, proj=proj, start_root=_start_root(Z))
+        g.meta["start"] = "marginal"
         if cfg.guidance == "ridge":
             g._ridge = _fit_ridge(Z, Cp, cfg.guidance_lam)
         return g
@@ -241,11 +251,76 @@ class Generator:
         return g
 
     # -- sampling -------------------------------------------------------------
-    def sample(self, c_raw: np.ndarray, n: int, seed: int = 0) -> np.ndarray:
+    def _reverse(self, c_z: np.ndarray, n: int, seed: int, guidance, start: str):
+        """`dfm.generate.reverse_sample` with the INITIAL DRAW exposed — see `_start_root`.
+
+        dfm is call-only, and `reverse_sample` hardcodes `x = randn(n, d)`, so there is no
+        way to correct the start through it. The Euler-Maruyama loop below is therefore a
+        copy, and a copy is a liability: two implementations of the same integrator drift.
+        The guard is `test_reverse_matches_dfm_with_the_identity_start`, which asserts this
+        returns dfm's array BIT FOR BIT at `start="identity"`, so any future divergence in
+        dfm fails the suite rather than quietly changing the sample.
+
+        The correction reuses the SAME standard-normal draw and maps it, `x = base @ R.T`
+        with `R R' = S_T`. Two consequences worth stating: `R = I` makes it literally the
+        production draw (which is what makes the bit-for-bit test possible at all), and the
+        two starts consume the identical random stream, so an A/B differs by exactly the
+        linear map and by nothing else.
+        """
+        import torch
+        d = _dfm()
+        dev, dc = d["DEVICE"], d["DIFFUSION_CONFIG"]
+        t0, T = float(dc["t0"]), float(dc["T"])
+        ns = int(self.cfg.noise_steps)
+        dim = self.d * self.H
+        g = torch.Generator(device="cpu").manual_seed(int(seed))
+        base = torch.randn(n, dim, generator=g)
+        if start == "marginal":
+            if self._start is None:
+                raise ValueError(
+                    "this generator has no start root: it was saved before #181B and its "
+                    "training covariance was never stored, so the corrected reverse-SDE "
+                    "start cannot be reconstructed. Refit it — sampling it with "
+                    "start='identity' reproduces the under-dispersion bug (variance ratio "
+                    "0.61-0.90 of the training marginal) and must be a deliberate choice.")
+            base = base @ torch.as_tensor(self._start, dtype=torch.float32).T
+        elif start != "identity":
+            raise ValueError(f"start must be 'marginal' or 'identity', got {start!r}")
+        x = base.to(dev)
+        c = torch.tensor(np.asarray(c_z), dtype=torch.float32, device=dev)
+        if c.dim() == 1:
+            c = c.expand(n, -1)
+        times = torch.linspace(T, t0, ns)
+        dt = (T - t0) / (ns - 1)
+        with torch.no_grad():
+            for t in times[:-1]:
+                tt = t.expand(n).to(dev)
+                score = self.net(x, tt, c)
+                if guidance is not None:
+                    score = score + float(torch.exp(-0.5 * t)) * guidance(x)
+                x = x + (0.5 * x + score) * dt + np.sqrt(dt) * torch.randn(
+                    x.shape, generator=g).to(dev)
+            tt = times[-1].expand(n).to(dev)
+            a0 = float(np.exp(-0.5 * t0))
+            score = self.net(x, tt, c)
+            if guidance is not None:
+                score = score + guidance(x)
+            x = (x + (1 - a0 ** 2) * score) / a0
+        return x.cpu().numpy()
+
+    def sample(self, c_raw: np.ndarray, n: int, seed: int = 0,
+               start: str = "marginal") -> np.ndarray:
         """(cond_dim,) raw condition -> (n, H, d) increments in natural units.
 
         `c_raw` comes from `panel.condition_row` and is standardized here with the training
         scaler, so callers never have to know the standardization exists.
+
+        `start="identity"` reproduces dfm's `reverse_sample` exactly, which is the
+        pre-#181B behaviour and is under-dispersed by construction. It is kept reachable
+        because the A/B that established that is worth being able to re-run, and it is NOT
+        the default: an under-dispersed sample makes every candidate parameter set look
+        more skilful than it is, which is the one failure `validate`'s docstring calls
+        disqualifying.
         """
         c_raw = np.asarray(c_raw, dtype=float)
         if c_raw.shape != (len(self.scaler["cmu"]),):
@@ -253,32 +328,61 @@ class Generator:
                              f"{(len(self.scaler['cmu']),)}")
         c_z = (c_raw - self.scaler["cmu"]) / self.scaler["csd"]
         c_z = _apply_proj(c_z[None, :], self._proj)[0]
-        d = _dfm()
         guidance = None
         if self.cfg.guidance == "ridge":
             guidance = self._ridge_guidance(c_z, n)
-        z = d["reverse_sample"](self.net, c_z, n, self.d * self.H, guidance=guidance,
-                                noise_steps=self.cfg.noise_steps, seed=seed)
+        z = self._reverse(c_z, n, seed, guidance, start)
         raw = np.asarray(z, dtype=float) * self.scaler["sd"] + self.scaler["mu"]
         return raw.reshape(n, self.H, self.d)
 
     def level_paths(self, c_raw: np.ndarray, anchor_levels: pd.Series, n: int,
-                    seed: int = 0) -> np.ndarray:
+                    seed: int = 0, quantise: bool = True,
+                    start: str = "marginal") -> np.ndarray:
         """(n, H, d) LEVELS in natural units, integrated forward from `anchor_levels`.
 
         This is what a synthetic world is written from. Integrating from the real anchor is
         what makes the sample "close to the current environment" in the only sense that
         matters to a strike ladder: the path starts at today's WTI print, not at the
         1990-2026 average.
+
+        The result is then rounded onto the measured publication grid
+        (`panel.quantise_levels`), because a synthetic world is read by settlement code:
+        the level written here is compared to a Kalshi strike, and a continuous level makes
+        strike boundaries that the real print can never land on. This is also the single
+        choke point that fixes the validity side — `sample_printed` re-differences the same
+        quantised object, so the C2ST scores what production writes rather than a smoother
+        intermediate it never sees. `quantise=False` exists to reproduce the pre-fix
+        behaviour for A/B measurement and for generators saved before the grid was
+        measured (their scaler has no `lattice`, which is also handled: no entry means
+        continuous, and nothing is rounded).
         """
-        inc = self.sample(c_raw, n, seed=seed)
+        inc = self.sample(c_raw, n, seed=seed, start=start)
         spec = P.PANELS[self.cfg.panel]
-        out = np.empty_like(inc)
-        for j, col in enumerate(spec.gen_columns):
-            a = float(anchor_levels[col.name])
-            for i in range(n):
-                out[i, :, j] = P._from_increment(inc[i, :, j], a, col.transform, col.scale)
-        return out
+        return P.integrate_paths(inc, anchor_levels, spec,
+                                 self.lattice if quantise else None)
+
+    @property
+    def lattice(self) -> dict:
+        """The publication grid measured on the training panel, carried in the scaler.
+
+        `.get` rather than `[...]`: a generator pickled before #181's fix has no entry, and
+        the honest behaviour there is "no grid known, quantise nothing" rather than an
+        AttributeError on load of an artefact that was valid when written."""
+        return dict(self.scaler.get("lattice") or {})
+
+    def sample_printed(self, c_raw: np.ndarray, anchor_levels: pd.Series, n: int,
+                       seed: int = 0, start: str = "marginal") -> np.ndarray:
+        """(n, H, d) INCREMENTS implied by the quantised levels — the printed increments.
+
+        `sample` returns the generator's raw output; this returns the increments a consumer
+        would compute from the world that was actually written. They differ by exactly the
+        rounding, and that difference is the whole of defect A: on `labor_monthly` the real
+        increments are 100% on a grid and `sample`'s are 0%, which is separable with one
+        threshold and is why the C2ST read 1.000.
+        """
+        lv = self.level_paths(c_raw, anchor_levels, n, seed=seed, quantise=True,
+                              start=start)
+        return P.to_increments(lv, anchor_levels, P.PANELS[self.cfg.panel])
 
     def _ridge_guidance(self, c_z: np.ndarray, n: int):
         W, v = self._ridge
@@ -308,6 +412,8 @@ class Generator:
                          "scale": self._proj[2]},
                 "scaler": {k: (np.asarray(v) if isinstance(v, np.ndarray) else v)
                            for k, v in self.scaler.items()}}
+        if self._start is not None:
+            blob["start_root"] = np.asarray(self._start, dtype=float)
         if self.cfg.guidance == "ridge":
             blob["ridge"] = {"W": self._ridge[0], "v": self._ridge[1]}
         torch.save(blob, path)
@@ -325,7 +431,13 @@ class Generator:
         net.load_state_dict(blob["state"])
         net.eval()
         p = blob["proj"]
-        g = cls(cfg, net, scaler, meta, proj=(p["mean"], p["load"], p["scale"]))
+        # A file written before #181B has no start root and cannot be given one — the
+        # training rows are gone. It loads, because refusing to load an artefact that was
+        # valid when written helps nobody, and `sample` raises the moment it is asked for
+        # the corrected start. Silently falling back to the identity would reintroduce the
+        # under-dispersion into a lane whose whole job is to compare parameter sets.
+        g = cls(cfg, net, scaler, meta, proj=(p["mean"], p["load"], p["scale"]),
+                start_root=blob.get("start_root"))
         if "ridge" in blob:
             g._ridge = (blob["ridge"]["W"], blob["ridge"]["v"])
         return g
@@ -365,6 +477,42 @@ def _fit_ridge(Z: np.ndarray, C: np.ndarray, lam: float):
     W = np.linalg.solve(C.T @ C + lam * np.eye(C.shape[1]), C.T @ Z)
     v = (Z - C @ W).var(0) + 0.25          # same variance floor the football fork uses
     return W, v
+
+
+def _start_root(Z: np.ndarray) -> np.ndarray:
+    """Matrix root of the marginal the reverse SDE is supposed to BEGIN at (#181B).
+
+    `dfm.generate.reverse_sample` starts the reverse diffusion at `x ~ N(0, I)`. That is
+    correct only once the forward process has reached its prior, and this fork's has not:
+    it runs beta = 1 over T = 1.0, so `a_T = exp(-T/2) = 0.607` and the true marginal at the
+    top of the diffusion is
+
+        S_T = a_T^2 * Sigma + h_T * I = 0.368 * Sigma + 0.632 * I
+
+    with 37% of the signal variance still present. (A standard VP schedule ramps beta 0.1
+    -> 20 so that the integral is ~10 and a_T ~ 0.007; here the integral is 1.)
+
+    Why this survived review: `Z` is standardized, so `diag(Sigma) = 1` and therefore
+    `diag(S_T) = 1` — the identity start has the right marginal variance in every
+    COORDINATE and is wrong in every DIRECTION that is not an eigenvector of eigenvalue 1.
+    A direction of variance L must start at `0.368*L + 0.632` and starts at 1 instead, so
+    the dominant factors are born too tight and the tail too wide; the reverse SDE is
+    contracting, so the dominant factors never recover. Measured with the EXACT analytic
+    score (the network perfect by construction), the production sampler returns 0.630 of a
+    variance-4 direction and 0.539 of a realistic panel, flat across a 16x increase in
+    `noise_steps` — i.e. this is not a discretization error and cannot be integrated away.
+    The same integrator started here returns 0.991.
+
+    Eigendecomposition rather than Cholesky: `Sigma` is estimated from the fit's own rows
+    and can be singular when a panel has fewer rows than `H*d`, and clipping a negative
+    eigenvalue to zero is the honest handling of a direction the training data never moved
+    in — a Cholesky would simply raise.
+    """
+    a2 = float(np.exp(-float(_dfm()["DIFFUSION_CONFIG"]["T"])))
+    S = a2 * np.cov(np.asarray(Z, dtype=float), rowvar=False) + (1.0 - a2) * np.eye(
+        np.shape(Z)[1])
+    w, V = np.linalg.eigh(S)
+    return V @ np.diag(np.sqrt(np.clip(w, 0.0, None)))
 
 
 # ── validation (the S2 gate) ─────────────────────────────────────────────────
@@ -498,7 +646,7 @@ def splits(n_rows: int, horizon: int, holdout: float = 0.25, folds: int = 1):
 
 def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: int = 1,
              n_samples: int = 400, seed: int = 0, verbose: bool = False,
-             knn_k: int = 40) -> dict:
+             knn_k: int = 40, printed: bool = True, start: str = "marginal") -> dict:
     """Fit out-of-sample, score in-sample-free. Returns a report, never raises on a bad
     result — a generator that fails its gate is a finding, not an exception.
 
@@ -516,6 +664,19 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
 
     Both are reported for the DFM and for `block_bootstrap`. The baseline is expected to
     win on moments (it IS the history) and to lose on calibration if conditioning works.
+
+    `printed=True` scores the DFM arm on the increments implied by the QUANTISED levels
+    (`Generator.sample_printed`) rather than the sampler's raw output. That is not a
+    cosmetic choice about which array to grab: `worlds.py` writes levels, settlement reads
+    levels, and scoring the un-quantised intermediate meant every validity number here
+    described an object no consumer ever sees. `boot`/`knn` need no such treatment — they
+    resample real rows, which are already on the grid by construction, and that is exactly
+    why they are the control.
+
+    `start` selects the reverse-SDE initialization (`Generator._reverse`). The default is
+    the corrected one; `start="identity"` reproduces dfm's `N(0, I)` and therefore the
+    pre-#181B under-dispersion, and exists so that the A/B which established the fix can be
+    re-run on demand rather than trusted from a doc.
     """
     n_rows = len(pdata.anchors)
     H, d = pdata.spec.horizon, pdata.spec.d
@@ -537,7 +698,11 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
         for i, k in enumerate(te):
             c_raw = P.condition_row(pdata.levels, pdata.inc, pdata.spec, pdata.anchors[k])
             sd = seed + 977 * f + i
-            draws = {"dfm": gen.sample(c_raw, n_samples, seed=sd),
+            anchor_lv = pdata.levels.loc[pdata.anchors[k]]
+            dfm_draw = (gen.sample_printed(c_raw, anchor_lv, n_samples, seed=sd,
+                                           start=start)
+                        if printed else gen.sample(c_raw, n_samples, seed=sd, start=start))
+            draws = {"dfm": dfm_draw,
                      "boot": block_bootstrap(pdata, tr, n_samples, seed=sd),
                      "knn": knn_bootstrap(pdata, tr, c_raw, n_samples, k=knn_k, seed=sd)}
             for tag, s in draws.items():
@@ -550,6 +715,8 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
 
     real_stats = path_stats(np.concatenate(real_all))
     out = {"panel": pdata.spec.name, "cfg": asdict(cfg), "config_key": cfg.key(),
+           "printed": bool(printed), "start": str(start),
+           "lattice": dict(pdata.lattice or {}),
            "folds": int(folds), "n_train": n_train, "knn_k": int(knn_k),
            "n_holdout": int(len(ranks["dfm"])),
            "n_samples": n_samples, "columns": pdata.spec.names, "arms": {}}

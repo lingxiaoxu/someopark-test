@@ -332,16 +332,300 @@ measured `lambda = 0` of §6a now has a mechanism behind it rather than only a n
 
 One caveat that is a lead, not a hedge. An AUC of exactly 1.000 is bug-shaped, not
 model-shaped: a generator that is merely *poor* lands at 0.7–0.9, whereas 1.000 means some
-coordinate separates the two classes with a clean threshold — a scale, an offset, a
-clipped tail. #181 must report **which coordinate does it** before anyone concludes the
-labor panel's generator is beyond repair; the answer may be one un-inverted standardisation.
+coordinate separates the two classes with a clean threshold. #181 must report **which
+coordinate does it** before anyone concludes the labor panel's generator is beyond repair.
 
-**Consequence for §8's gates: `dfm_gate` stays shut and #183 stays blocked.** Extending
-coverage from 7 series to the traded universe would be widening the reach of a generator
-that has not passed the one test that asks whether its output is real.
+> **Correction, same day.** The sentence that stood here guessed the answer — "the answer
+> may be one un-inverted standardisation" — and the guess is **refuted**. `auc1_probe.py`
+> scored the Mann-Whitney AUC of all 36 coordinates one at a time: the largest
+> |AUC − 0.5| is **0.026** (`local`) and **0.050** (`global`). No raw number separates the
+> classes, so there is no scale, offset or clipped tail to find. The real mechanism is
+> §4e-A, and the difference matters: a standardisation bug is a typo, a missing
+> discretisation is a modelling omission that had to be designed around.
+
+**Consequence for §8's gates: `dfm_gate` stays shut.** Extending coverage to the traded
+universe (#183) would widen the reach of a generator that has not passed the one test that
+asks whether its output is real. #183 is **gated on the §4e fixes, not abandoned** — the
+standing instruction is that the DFM must be used and must be repaired until its output is
+valid statistically and in utility, not shelved.
 
 Artifacts: `/tmp/dfm_verify/boot_inversion{,2,3}.py`, `boot_inversion3.json`, `bootinv3.log`,
-`c2st_control3.py`, `c2st_control3.json`.
+`c2st_control3.py`, `c2st_control3.json`, `auc1_probe.py`.
+
+## 4e. Why it separates: three named defects, each with a working control (#181, 2026-08-27)
+
+§4d left one question — *which coordinate* — and answering it honestly turned up three
+distinct defects rather than one. All three are measured against `boot`/`knn`, which
+resample **real** rows: a defect the controls also exhibit is the harness's, and a defect
+only the DFM arms exhibit is the generator's. On every number below the controls behave,
+which is what makes the diagnosis load-bearing.
+
+### A. The generator does not know that macro data is *printed*
+
+Every series here is published on a grid, and a continuous diffusion emits none of it.
+Measured on the cached pools (`/tmp/dfm_verify/lattice.py`) and then on the levels
+themselves (`lattice_v2.py`), the grid is unmistakable and the DFM misses it completely:
+
+| panel | column | grid (level) | real | `local` | `global` | `boot` | `knn` |
+|---|---|---|---|---|---|---|---|
+| labor_monthly | payems | 1.0 thousand → **1000 jobs** | 100.0% | 0.0% | 0.0% | 100.0% | 100.0% |
+| labor_monthly | unrate | **0.1 pp** | 100.0% | 0.0% | 0.0% | 100.0% | 100.0% |
+
+A tree splitting on the fractional part separates those two classes with one threshold.
+That is exactly an AUC of 1.000, it is why `labor_monthly` alone reaches it, and no amount
+of model quality could ever have moved it.
+
+**It is not only a validity bug.** Kalshi settles on the *printed* value and a ladder strike
+sits **on** a grid point (KXU3 at 4.2/4.3, KXPAYROLLS on 25k boundaries). An un-quantised
+world therefore puts probability mass on outcomes the settlement rule cannot produce, and
+hands `param_argmin` a bucket structure the real process does not have. Statistical and
+utility invalidity here are the same defect seen from two sides.
+
+Discovering the grid rather than declaring it was worth the extra work, and the output
+proves it. `measure_lattice` finds a grid for **11 of the 12** generated columns across the
+four panels:
+
+| panel | column | transform | grid | precision | step / increment sd |
+|---|---|---|---|---|---|
+| labor_monthly | payems | diff | 1 | f64 | 0.0009 |
+| labor_monthly | claims | dlog | 10 | f64 | 0.0003 |
+| labor_monthly | unrate | diff | 0.1 | f64 | **0.1798** |
+| inflation_monthly | cpi | pct100 | 0.001 | f64 | 0.0011 |
+| inflation_monthly | cpi_core | pct100 | 0.001 | f64 | 0.0023 |
+| inflation_monthly | pce_core | pct100 | 0.001 | f64 | 0.0062 |
+| inflation_monthly | gas_retail | dlog | **NONE** | — | — |
+| claims_weekly | claims | dlog | 1000 | f64 | 0.0452 |
+| energy_weekly | gas_retail | dlog | 0.001 | f64 | 0.0129 |
+| energy_weekly | wti | dlog | 0.01 | f32 | 0.0023 |
+| energy_weekly | natgas | dlog | 0.001 | f32 | 0.0048 |
+| energy_weekly | rbob | dlog | 0.0001 | f32 | 0.0006 |
+
+Four things in that table are the reason it is measured and not hardcoded:
+
+* **`gas_retail` appears twice with two different answers.** Same FRED series, 0.001 in
+  `energy_weekly` (`agg="last"`, the published price survives) and **nothing** in
+  `inflation_monthly` (`agg="mean"`, the monthly average of four weekly prints lands off
+  every grid). A hardcoded table would have forced GASREGW's three decimals onto a column
+  that provably does not have them.
+* **wti/natgas/rbob are 0.01 / 0.001 / 0.0001 — the CME tick sizes** — and not one value is
+  an exact multiple of them, because `fut_closes` returns float32-precision doubles
+  (71.41 comes back as 71.41000366). Discovery therefore runs two passes: exact first, and
+  a float32-aware pass only if the first fails, fenced by `g ≥ 8·eps32·max|x|` so a grid
+  finer than the number's own storage resolution can never be "found". The fix must also
+  **cast the quantised synth through float32**: emitting an exact 71.41 against a real class
+  that stores 71.41000366 would not close the hole, it would invert it.
+* **Monthly `claims` comes back on a grid of 10**, which is an artefact of averaging four
+  or five thousand-grid weekly prints, not a Bureau decision. It is still the right target:
+  the C2ST exploits an arithmetic regularity exactly as happily as an institutional one.
+* **The cost column is the honest part.** Nine of the eleven grids move a path by under 5%
+  of the column's own increment sd — free. `unrate` moves it by **18%**, and that one is a
+  real change to the sample. It is also correct: a monthly UNRATE change genuinely only
+  takes 0.0, ±0.1, ±0.2, and KXU3 settles on precisely that grid. A generator that emits
+  −0.037 is not being more precise than the data, it is being wrong in a way the ladder
+  can price.
+
+**Where the fix goes, and why nowhere else.** Quantisation belongs on the reconstructed
+**level**, because that is where the grid lives. For a `diff` column level and increment
+grids coincide (payems' 1.0-thousand level grid × scale 1000 = the 1000-job increment
+grid), but for `dlog`/`pct100` the log change of grid-spaced levels is *not* grid-spaced,
+so rounding the increment would emit levels that are off-grid while claiming to be on it.
+Rounding the level and re-differencing also bounds the error at half a step forever, where
+difference-then-round lets it accumulate along the horizon.
+
+`Generator.level_paths` is the single choke point — `synth/build.py:544` (worlds → utility)
+and `generator.validate` (→ C2ST/CRPS) are its only two call sites — so one change fixes
+the utility path and the validity path together. `Generator.sample_printed` re-differences
+the quantised levels so `validate` scores **the object `worlds.py` writes** rather than a
+smoother intermediate no consumer ever sees; that scoring gap is why the omission survived
+two rounds of validation.
+
+**The measured grid also grades the one that was already there.** `build.Settle.level_step`
+rounds the SETTLE column only, and derives its step from the *contract's* `round_rule` —
+ladder granularity — rather than from publication precision. Set side by side:
+
+| series | column | `level_step` (ladder) | measured grid | |
+|---|---|---|---|---|
+| KXPAYROLLS | payems | 1.0 | 1.0 | agree |
+| KXU3 | unrate | 0.1 | 0.1 | agree |
+| KXWTIW | wti | 0.01 | 0.01 | agree |
+| KXNATGASW | natgas | 0.001 | 0.001 | agree |
+| KXJOBLESSCLAIMS | claims | **250** | **1000** | ladder is 4× too fine |
+| KXCPI / CORE / YOY / PCECORE | cpi, cpi_core, pce_core | **None** | **0.001** | grid declared absent |
+
+Four of six agree exactly, which is independent corroboration that the discovery finds real
+structure and not arithmetic noise. The two disagreements are both the hand-declared rule
+being wrong: ICSA prints on the thousand and never on 231,250, and the CPI indices are
+published to three decimals — `level_step`'s docstring argues correctly that rounding the
+index to the ladder's 0.1 would inject a third of a bucket into the settlement, and then
+concludes "no such grid exists", which does not follow. Rounding to the real 0.001 moves the
+implied MoM by ~0.0003pp, under a percent of a bucket.
+
+No behaviour depends on resolving this today: every ladder step above divides the measured
+grid, so `level_step` is now an idempotent no-op running after `quantise_levels`. It stays
+as the fallback for a series whose panel column has no measured grid.
+
+**Two residual gaps, downstream of the choke point** and deliberately not fixed in this
+pass, because neither touches the settlement value: `_sub_monthly` disaggregates a monthly
+mean into weekly prints and `_daily_bridge` expands a weekly close into business days, both
+by adding noise, so the *auxiliary* rows a world writes are off-grid even when the settle
+column is on it. A model reading those rows sees prints the real series never made. Tracked
+separately.
+
+### B. Under-dispersion — the failure `validate`'s own docstring calls disqualifying
+
+Variance ratio synth/real, per panel and column (`/tmp/dfm_verify/underdisp.py`):
+
+| panel | column | `local` | `global` | `boot` | `knn` |
+|---|---|---|---|---|---|
+| claims_weekly | claims | 0.784 | 0.854 | 0.998 | 0.954 |
+| inflation_monthly | cpi | 0.468 | 0.557 | 1.100 | 0.918 |
+| inflation_monthly | cpi_core | 0.438 | 0.528 | 1.129 | 0.459 |
+| inflation_monthly | pce_core | 0.622 | 0.603 | 1.042 | 0.648 |
+| inflation_monthly | gas_retail | 0.509 | 0.628 | 1.066 | 0.963 |
+| labor_monthly | payems | **0.412** | **0.407** | 0.998 | 0.694 |
+| labor_monthly | claims | 0.721 | 0.762 | 1.041 | 0.971 |
+| labor_monthly | unrate | 0.681 | 0.750 | 0.959 | 0.823 |
+| energy_weekly | gas_retail | 0.531 | 0.619 | 1.047 | 0.737 |
+| energy_weekly | wti | 0.564 | 0.748 | 0.990 | 0.678 |
+| energy_weekly | natgas | 0.752 | 0.975 | 1.028 | 0.847 |
+| energy_weekly | rbob | 0.567 | 0.714 | 1.039 | 0.703 |
+
+`boot` sits at 0.96–1.13 everywhere; the DFM arms sit at 0.41–0.98 everywhere. The stored
+#180 battery says the same thing in calibration units (`cov_table.py`): `global payems`
+**cover50 = 0.189, cover80 = 0.333** against nominal 0.50/0.80, and the `sd` moment verdict
+falls outside the bootstrap CI for essentially every DFM arm/column while `boot` is inside
+everywhere.
+
+This is not a new discovery so much as one that was measured and not treated as blocking —
+§4b reports the S2 coverage numbers and mentions "the analog draw's under-dispersion
+(cover50 0.382 → 0.456 against a nominal 0.50)" without the full per-panel table. It should
+have been blocking: `generator.validate`'s docstring already names it as *"the failure that
+would make a synthetic sample actively harmful: a too-narrow generator makes every candidate
+parameter set look more skilful than it is"* — which is a precise description of a
+`param_argmin` that trusts this sample.
+
+Under-dispersion is **not** the labor 1.000, and it was tempting to stop there: the best
+single dispersion scalar reaches AUC 0.72, and the multivariate test reads 1.000. A. is the
+remainder. Both are real; neither explains the other.
+
+#### The first suspect was wrong, and the real root is in the sampler
+
+The suspect named here was `Generator._ridge_guidance`, which returns `-w·(x − m_t)/v_t` —
+a literal pull toward the ridge-predicted conditional mean, and the textbook variance
+killer. It is **refuted before it can be tested**: `GenConfig.guidance` defaults to
+`"none"`, and neither `validate` nor `build` overrides it, so `_ridge_guidance` is never
+called on the path that produced the table above. Written down because the shape of the
+error is worth keeping — the guidance term *looks* exactly like the defect, and reading a
+plausible mechanism off the source without checking that it runs is how a week goes missing.
+
+**The root is the reverse-SDE initialization, and it is a genuine bug, not an estimation
+limit.** `dfm/football/generate.reverse_sample` starts the reverse diffusion at
+`x ~ N(0, I)`. That is correct only if the forward process has actually reached its prior by
+`T`. It has not. The fork runs β = 1 over `T = 1.0` (`dfm/config.DIFFUSION_CONFIG`), so
+`a_T = exp(−T/2) = 0.607` and the true marginal at the top of the diffusion is
+
+>  `S_T = a_T²·Σ + h_T·I = 0.368·Σ + 0.632·I`
+
+with **37% of the signal variance still present**. A standard VP schedule ramps β from 0.1
+to 20 so that `∫β dt ≈ 10` and `a_T ≈ 0.007`; here the integral is 1. Because `Z` is
+standardized, `diag(Σ) = 1` and therefore `diag(S_T) = 1` — which is why the identity start
+*looks* right and survived review. It is wrong in every direction that is not an eigenvector
+of eigenvalue 1: a direction of variance `L` should start at `0.368·L + 0.632` and starts at
+`1.0` instead. Large factors are born too tight, the tail is born too wide, and the reverse
+SDE is contracting, so the large directions never recover.
+
+This was established with the score set to the **exact analytic score** of the true Gaussian
+marginal (`/tmp/dfm_verify/fixB_euler.py`) — the network is perfect by construction there,
+so nothing in the result can be blamed on estimation. Terminal variance ratio `V/L` for the
+production sampler:
+
+| eigenvalue `L` | 240 steps | 960 | 3840 | uniform 240, **exact start** |
+|---|---|---|---|---|
+| 4.0 | 0.630 | 0.630 | 0.630 | 0.996 |
+| 2.0 | 0.850 | 0.850 | 0.850 | 0.994 |
+| 1.0 | 0.991 | 0.990 | 0.990 | 0.991 |
+| 0.1 | 0.953 | 0.940 | 0.937 | 0.926 |
+| 0.01 | 0.558 | 0.515 | 0.505 | 0.554 |
+
+Aggregated over a plausible macro spectrum (d = 120, 8 factors carrying 70%) that is a
+panel-level ratio of **0.539** at 240 steps and **0.538** at 3840 — against **0.991** from
+the same integrator started correctly.
+
+Two knobs die here. **`noise_steps` is not the fix**: the column is flat to three decimals
+across a 16× increase. **The time grid is not the fix either**: bunching steps where the
+drift is stiff (`t₀ + (T−t₀)u²`) moves nothing. Both were on the original suspect list and
+both are now excluded on measurement rather than on argument.
+
+The signature reproduces on the real fitted nets (`/tmp/dfm_verify/fixB_diag.py`, fitted
+with `cond_pcs=0` so the target is exactly 1.000 — a *conditional* sample is supposed to be
+tighter than the pooled real marginal, so a conditional ratio below 1 could never have
+settled this):
+
+| panel | `d_flat` | 240 | 960 | 3840 | quad grid | Tweedie off |
+|---|---|---|---|---|---|---|
+| labor_monthly | 36 | **0.683** | 0.682 | 0.683 | 0.685 | 0.695 |
+| claims_weekly | 13 | **0.898** | 0.913 | 0.914 | 0.901 | 0.909 |
+| inflation_monthly | 48 | **0.605** | 0.604 | 0.607 | 0.607 | 0.619 |
+| energy_weekly | 52 | **0.800** | 0.798 | 0.799 | 0.800 | 0.812 |
+
+#### What correcting the start buys, and what it does not
+
+Starting at `N(0, a_T²·Σ̂ + h_T·I)` with `Σ̂` from the **training rows only**
+(`/tmp/dfm_verify/fixB_fix.py`, fit on the early 70%, graded on the late 30%):
+
+| panel | production | corrected start | gap closed | top-4 eigen-direction ratio, prod → fixed |
+|---|---|---|---|---|
+| labor_monthly | 0.656 | **0.812** | 45% | 0.21 0.39 0.92 0.68 → 0.64 0.65 0.86 0.81 |
+| claims_weekly | 0.863 | **0.923** | 44% | 0.78 0.79 0.81 0.85 → 0.83 0.94 0.91 0.87 |
+| inflation_monthly | 0.686 | **0.779** | 30% | 0.26 0.29 0.50 0.49 → 0.46 0.53 0.68 0.71 |
+| energy_weekly | 0.818 | **0.906** | 48% | 0.47 0.56 0.60 0.68 → 0.89 0.86 0.78 0.80 |
+
+(`var/train`, not `var/test`: held-out z-variance is 0.851–1.409 across these panels, which
+is a real regime difference between the early and late spans and not something a generator
+should be graded on.)
+
+Two internal checks that the number is not an artifact of the new code path. Shrinking `Σ̂`
+toward the identity walks the result **monotonically** back to production on all four
+panels, and at γ = 1 it reproduces it (labor 0.776 vs 0.761, claims 1.090 vs 1.090,
+inflation 0.502 vs 0.504, energy 0.478 vs 0.478) — γ = 1 *is* `N(0, I)`, so this is the
+identity the fix must satisfy. And the per-direction pattern is the predicted one rather
+than a uniform rescaling: the correction lands almost entirely on the dominant factors,
+which is where the analytic control says the loss was.
+
+**It closes 30–48% of the deficit, not all of it.** With a perfect score net the corrected
+start returns 0.991, so the residual 8–22% is the network. The architecture says where:
+`CondFactorScoreNet` returns `subspace − dtx`, the Woodbury form `−Dx + DVMV'Dx` of the
+Gaussian score, and the correction term lives **entirely in `span(V)`**, which has
+`factor_dim = 8` columns. Every direction outside that span is scored as diagonal. On these
+panels the top 8 eigen-directions carry only **49–77%** of the variance — and the measured
+residual is exactly that shape: after the fix the top directions are still short (0.46–0.89)
+while the **tail is over-dispersed at 1.81–3.30**. Too tight where the structure is, too
+loose where it isn't. Capacity sweep (`factor_dim` × `epochs`, with a nearest-neighbour
+memorization guard so that a config cannot win on moments by copying the training set) is
+`/tmp/dfm_verify/fixB_m2.py`. Tracked as #181B.
+
+Honest note on the two things the start fix does **not** buy. It corrects the second moment
+by construction, so the only informative question is whether anything it does not construct
+moves with it. Marginal *shape* (per-coordinate KS against held-out real) gets slightly
+worse on three of four panels, and `acf1` moves toward the real value on two panels and away
+on two. So this is a variance fix and nothing more; **C is not a corollary of B** and #181C
+stays open on its own merits.
+
+### C. Persistence
+
+The `acf1` moment verdict is outside the bootstrap CI for most DFM arm/column pairs; real
+`payems` acf1 = **+0.083** against synth **−0.026**, i.e. the generator emits paths that
+mean-revert slightly where the real series persists slightly.
+
+The plan was to measure this again **after** B, on the theory that a guidance term crushing
+the variance was a plausible common root and a C that disappeared with B would need no
+separate treatment. That theory is now dead twice over: the guidance term never ran, and the
+start fix moves `acf1` toward the real value on two panels and away on two. C is its own
+defect. Tracked as #181C.
+
+Artifacts: `/tmp/dfm_verify/auc1_probe.py`, `underdisp.py`, `lattice.py`, `lattice_v2.py`,
+`cov_table.py`, `fut_grid_probe.py`, `fixA_pools.py`, `fixB_euler.py`, `fixB_diag.py`,
+`fixB_fix.py`, `fixB_m2.py`.
 
 ## 5. The market book (S4) — the part that can kill the project
 

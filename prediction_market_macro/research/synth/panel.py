@@ -36,7 +36,7 @@ observations.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 
 import numpy as np
@@ -301,7 +301,9 @@ class PanelData:
 
     `levels` is in natural units (dollars, thousands of jobs, percent) and is what
     `worlds.py` writes into a synthetic db. `inc` is the stationary matrix the generator
-    sees. `Z`/`C` are the standardized training arrays.
+    sees. `Z`/`C` are the standardized training arrays. `lattice` is the publication grid
+    measured off `levels` — see `measure_lattice`; it also rides in `scaler` so a saved
+    generator can quantise without the panel it was fitted on.
     """
     spec: PanelSpec
     levels: pd.DataFrame
@@ -311,6 +313,7 @@ class PanelData:
     C: np.ndarray            # (n, c_dim) standardized conditions
     scaler: dict
     end: datetime
+    lattice: dict = field(default_factory=dict)
 
     @property
     def n_eff_hint(self) -> float:
@@ -394,6 +397,206 @@ def _from_increment(inc: np.ndarray, anchor: float, transform: str,
     if transform == "pct100":
         return anchor * np.exp(np.cumsum(np.asarray(inc, dtype=float) / 100.0))
     raise ValueError(transform)
+
+
+# ── the print lattice ────────────────────────────────────────────────────────
+# Every series in this panel is PUBLISHED on a grid. PAYEMS is printed to the nearest
+# thousand persons, UNRATE to one decimal, the CPI indices to three, a futures settlement
+# to a tick. A diffusion emits none of them, and the gap is neither cosmetic nor small:
+#
+# * **Validity.** Measured 2026-08-26 on the cached C2ST pools, the real `labor_monthly`
+#   increments are 100.0% on a 1000-job grid (payems) and a 0.1pp grid (unrate); both DFM
+#   arms are 0.0%; `boot`/`knn`, which resample real rows, are 100.0%. A classifier
+#   splitting on the fractional part therefore separates the classes with one threshold,
+#   which is exactly the observed C2ST AUC of 1.000 — a number no amount of model quality
+#   could have moved, because it was measuring a missing discretisation and nothing else.
+#   `auc1_probe` had already ruled out a scaling bug (max univariate |AUC-0.5| = 0.026),
+#   and the best single dispersion scalar only reaches 0.72, so this is the remainder.
+# * **Utility.** Kalshi settles on the PRINTED value. A ladder strike sits AT a grid point
+#   (KXU3 at 4.2/4.3, KXPAYROLLS on 25k boundaries), so an un-quantised synthetic world
+#   puts probability mass on outcomes the settlement rule cannot produce and hands the
+#   parameter argmin a bucket structure the real process does not have.
+#
+# The grid is MEASURED from the real levels, never asserted from what the release format is
+# believed to be, because the panel's own resampling can destroy it: monthly-`mean` claims
+# is an average of four weekly prints and lands on no grid at all, and that column must
+# come back "continuous" rather than be forced onto ICSA's weekly thousand.
+_LATTICE_STEPS = (1000.0, 100.0, 10.0, 1.0, 0.5, 0.25, 0.1, 0.05, 0.01, 0.005, 0.001, 1e-4)
+_LATTICE_TOL = 1e-6      # |x/g - round(x/g)| for a value stored at full float64 precision
+_LATTICE_HIT = 0.995     # fraction of real levels that must sit exactly on the grid
+_LATTICE_MIN_PTS = 20    # distinct grid points the real series must occupy
+_F32_EPS = float(np.finfo(np.float32).eps)
+
+
+def on_lattice(x: np.ndarray, step: float, tol: float = _LATTICE_TOL,
+               dtype: str = "float64") -> float:
+    """Fraction of `x` sitting on the `step` grid, to the precision `dtype` can express.
+
+    `dtype="float32"` widens the tolerance to the storage error of a float32 round trip,
+    which is what the futures columns need: `fut_closes` hands back 71.41000366 for a
+    settlement of 71.41, so the tick grid is unmistakably present and not one value is an
+    exact multiple of it.
+    """
+    q = np.asarray(x, dtype=float) / step
+    q = q[np.isfinite(q)]
+    if not len(q):
+        return 0.0
+    t = tol if dtype == "float64" else np.maximum(tol, 4.0 * _F32_EPS * np.abs(q))
+    return float((np.abs(q - np.round(q)) < t).mean())
+
+
+def _best_step(x: np.ndarray) -> dict | None:
+    """The COARSEST grid the series sits on as `{"step", "dtype"}`, or None for continuous.
+
+    Two passes, and the order is what keeps a loose tolerance from inventing a grid.
+
+    Pass 1 demands EXACTNESS. Everything read from FRED arrives at full float64 precision,
+    so PAYEMS' thousand, UNRATE's 0.1 and the CPI indices' 0.001 are found here, and
+    coarsest-first means a spuriously-passing fine step is never reached — at a level of
+    159123 a step of 0.001 passes on rounding noise alone, but 1.0 has already been taken.
+
+    Pass 2 runs only if pass 1 found nothing, and allows a float32 round trip. It is
+    fenced by `g >= 8 * eps32 * max|x|`: a grid finer than the number's own storage
+    resolution is undetectable in principle, and without that fence the widened tolerance
+    would "find" a 1e-4 grid in a series of 230000-sized levels, where it spans the entire
+    interval and the test is vacuous. Requiring pass 1 to fail first also means no float64
+    column can ever be judged by the loose rule.
+
+    `_LATTICE_MIN_PTS` stops a near-constant column from being declared to live on a grid
+    it merely has too few distinct values to contradict.
+    """
+    v = np.asarray(x, dtype=float)
+    v = v[np.isfinite(v)]
+    if not len(v):
+        return None
+    for dtype in ("float64", "float32"):
+        floor = 0.0 if dtype == "float64" else 8.0 * _F32_EPS * float(np.abs(v).max())
+        for g in _LATTICE_STEPS:
+            if g < floor:
+                continue
+            if on_lattice(v, g, dtype=dtype) < _LATTICE_HIT:
+                continue
+            if len(np.unique(np.round(v / g))) < _LATTICE_MIN_PTS:
+                continue
+            return {"step": float(g), "dtype": dtype}
+    return None
+
+
+def measure_lattice(levels: pd.DataFrame, spec: PanelSpec) -> dict[str, dict]:
+    """Per GENERATED column, the grid DISCOVERED from the real level series.
+
+    Columns with no grid are absent, so a caller reads "no entry" as "continuous" and never
+    carries a None through the arithmetic.
+
+    Discovered, not declared, and the difference is visible in the output: `gas_retail` is
+    the SAME FRED series in two panels and comes back with a 0.001 grid in `energy_weekly`
+    (agg="last", the published price survives) and NOTHING in `inflation_monthly`
+    (agg="mean", the monthly average of four weekly prints lands off every grid). A
+    hardcoded table would have forced GASREGW's three decimals onto a column that provably
+    does not have them.
+
+    A consequence worth stating: this finds any exact grid the real data occupies, whatever
+    produced it, and not only publication grids. Monthly `claims` is an average of four or
+    five weekly ICSA prints and comes back on a grid of 10 — an artefact of the averaging,
+    not a Bureau decision. That is still the right target, because the C2ST exploits an
+    arithmetic regularity exactly as happily as an institutional one, and at 0.0003 of the
+    column's increment sd it costs the sample nothing.
+    """
+    out: dict[str, dict] = {}
+    for col in spec.gen_columns:
+        if col.name not in levels.columns:
+            continue
+        g = _best_step(levels[col.name].to_numpy(dtype=float))
+        if g is not None:
+            out[col.name] = g
+    return out
+
+
+def _grid(entry) -> tuple[float, str] | None:
+    """`(step, dtype)` from a lattice entry, accepting the bare float an older artefact
+    may carry."""
+    if not entry:
+        return None
+    if isinstance(entry, dict):
+        return float(entry["step"]), str(entry.get("dtype", "float64"))
+    return float(entry), "float64"
+
+
+def quantise_levels(paths: np.ndarray, spec: PanelSpec,
+                    lattice: dict | None) -> np.ndarray:
+    """Round generated LEVELS onto each column's measured grid. Copy, never in place.
+
+    Quantising the LEVEL rather than the increment is the only correct placement, and the
+    two are not interchangeable: the grid lives on the printed number. For a `diff` column
+    they happen to coincide (payems' 1.0-thousand level grid times scale 1000 is the
+    1000-job increment grid), but for `dlog`/`pct100` the log change of grid-spaced levels
+    is not itself grid-spaced, so rounding the increment would emit levels that are off-grid
+    while claiming to be on it. Rounding the level and re-differencing (`to_increments`)
+    also bounds the error at half a step forever, where difference-then-round lets it
+    accumulate along the horizon.
+
+    A float32 column is rounded to the grid AND THEN cast through float32, because matching
+    the real class means matching its representation too. Emitting an exact 71.41 against a
+    real class that stores 71.41000366 would not close the separability hole — it would
+    invert it, and hand the classifier the same free split with the labels swapped.
+    """
+    out = np.array(paths, dtype=float, copy=True)
+    for j, col in enumerate(spec.gen_columns):
+        g = _grid((lattice or {}).get(col.name))
+        if g is None:
+            continue
+        step, dtype = g
+        q = np.round(out[..., j] / step) * step
+        out[..., j] = q.astype(np.float32).astype(float) if dtype == "float32" else q
+    return out
+
+
+def integrate_paths(inc: np.ndarray, anchor_levels: pd.Series, spec: PanelSpec,
+                    lattice: dict | None = None) -> np.ndarray:
+    """(..., H, d) increments -> (..., H, d) levels, optionally on the print grid.
+
+    The array-shaped twin of `integrate`, and the one `Generator.level_paths` delegates to
+    so that the integrate-then-quantise sequence exists in exactly one place. A validity
+    harness that re-implemented these two lines to save a second sampling pass would be
+    scoring its own copy of production rather than production.
+    """
+    inc = np.asarray(inc, dtype=float)
+    out = np.empty_like(inc)
+    for j, col in enumerate(spec.gen_columns):
+        a = float(anchor_levels[col.name])
+        flat = inc[..., j].reshape(-1, inc.shape[-2])
+        res = np.empty_like(flat)
+        for i in range(len(flat)):
+            res[i] = _from_increment(flat[i], a, col.transform, col.scale)
+        out[..., j] = res.reshape(inc[..., j].shape)
+    return quantise_levels(out, spec, lattice) if lattice else out
+
+
+def to_increments(level_paths: np.ndarray, anchor_levels: pd.Series,
+                  spec: PanelSpec) -> np.ndarray:
+    """(..., H, d) levels + the anchor level -> the increments those levels imply.
+
+    The exact inverse of `_from_increment`, vectorised over any leading axes. It exists so
+    the validity harness can score the object production actually writes: `validate`
+    compares INCREMENTS, `worlds.py` writes LEVELS, and without this round trip the
+    quantisation would be invisible to every test that is supposed to police it.
+    """
+    lv = np.asarray(level_paths, dtype=float)
+    out = np.empty_like(lv)
+    for j, col in enumerate(spec.gen_columns):
+        cur = lv[..., j]
+        if col.transform == "level":
+            out[..., j] = cur
+            continue
+        a = float(anchor_levels[col.name])
+        prev = np.concatenate(
+            [np.full(cur.shape[:-1] + (1,), a, dtype=float), cur[..., :-1]], axis=-1)
+        if col.transform == "diff":
+            out[..., j] = (cur - prev) * col.scale
+        else:
+            dl = np.log(np.maximum(cur, 1e-12)) - np.log(np.maximum(prev, 1e-12))
+            out[..., j] = dl * (100.0 if col.transform == "pct100" else 1.0)
+    return out
 
 
 # ── condition vector ─────────────────────────────────────────────────────────
@@ -506,19 +709,31 @@ def build(conn, name: str, end: datetime) -> PanelData:
     Cr = np.asarray(cs, dtype=float)
     mu, sd = Zr.mean(0), Zr.std(0) + 1e-12
     cmu, csd = Cr.mean(0), Cr.std(0) + 1e-12
+    lattice = measure_lattice(levels, spec)
     scaler = {"mu": mu, "sd": sd, "cmu": cmu, "csd": csd,
               "names": spec.names, "horizon": H,
-              "transforms": [c.transform for c in spec.gen_columns]}
+              "transforms": [c.transform for c in spec.gen_columns],
+              "lattice": lattice}
     return PanelData(spec=spec, levels=levels, inc=inc, anchors=anchors,
-                     Z=(Zr - mu) / sd, C=(Cr - cmu) / csd, scaler=scaler, end=end)
+                     Z=(Zr - mu) / sd, C=(Cr - cmu) / csd, scaler=scaler, end=end,
+                     lattice=lattice)
 
 
-def integrate(inc_path: pd.DataFrame, anchor_levels: pd.Series,
-              spec: PanelSpec) -> pd.DataFrame:
-    """(H, d) increments + the level at the anchor -> (H, d) levels in natural units."""
+def integrate(inc_path: pd.DataFrame, anchor_levels: pd.Series, spec: PanelSpec,
+              lattice: dict | None = None) -> pd.DataFrame:
+    """(H, d) increments + the level at the anchor -> (H, d) levels in natural units.
+
+    `lattice` rounds the result onto the publication grid. It defaults to None — off — so
+    that this stays the exact analytic inverse `test_integrate_inverts_the_transform`
+    pins; the production path supplies it through `Generator.level_paths`.
+    """
     out = {}
     for col in spec.gen_columns:
         out[col.name] = _from_increment(inc_path[col.name].to_numpy(dtype=float),
                                         float(anchor_levels[col.name]), col.transform,
                                         col.scale)
-    return pd.DataFrame(out, index=inc_path.index)
+    df = pd.DataFrame(out, index=inc_path.index)
+    if lattice:
+        arr = quantise_levels(df[spec.names].to_numpy(dtype=float), spec, lattice)
+        df = pd.DataFrame(arr, index=inc_path.index, columns=spec.names)
+    return df

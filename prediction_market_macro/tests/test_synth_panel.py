@@ -148,6 +148,97 @@ def test_integrate_inverts_the_transform(transform, scale, anchor):
                                rtol=1e-12, atol=1e-9)
 
 
+def _lattice_spec():
+    """Three columns whose grids are known by construction, so discovery can be graded."""
+    return _spec(columns=(
+        P.Column("jobs", "fred", "J", "first", "last", "diff", "jobs", scale=1000.0),
+        P.Column("tick", "fred", "T", "latest", "last", "dlog", "$"),
+        P.Column("cont", "fred", "C", "latest", "last", "dlog", "$"),
+    ))
+
+
+def _lattice_levels(n=300):
+    rng = np.random.default_rng(4)
+    idx = pd.date_range("2000-01-01", periods=n, freq="MS")
+    return pd.DataFrame({
+        "jobs": np.round(150_000 + np.cumsum(rng.normal(150, 60, n))),      # grid 1
+        "tick": np.round(60 + np.cumsum(rng.normal(0, 1.2, n)), 2),         # grid 0.01
+        "cont": 60 * np.exp(np.cumsum(rng.normal(0, 0.02, n))),             # none
+    }, index=idx)
+
+
+def test_measure_lattice_discovers_the_grid_and_admits_when_there_is_none():
+    """The grid must be READ off the data, not declared. `cont` is continuous by
+    construction and must come back absent: a discovery that reported a grid for it would
+    quantise a column that has none, and every downstream 'on-grid' number would be a
+    tautology rather than a measurement."""
+    spec = _lattice_spec()
+    lat = P.measure_lattice(_lattice_levels(), spec)
+    assert lat["jobs"] == {"step": 1.0, "dtype": "float64"}
+    assert lat["tick"] == {"step": 0.01, "dtype": "float64"}
+    assert "cont" not in lat
+
+
+def test_measure_lattice_sees_through_float32_storage():
+    """`fut_closes` hands back 71.41000366 for a settlement of 71.41, so an exactness-only
+    test finds no grid on wti/natgas/rbob even though the CME tick is right there. The
+    second pass must find it — and must NOT be reachable for a column that already failed
+    on its own merits, which is what `cont` pins."""
+    lv = _lattice_levels()
+    lv["tick"] = lv["tick"].astype(np.float32).astype(float)
+    lv["cont"] = lv["cont"].astype(np.float32).astype(float)
+    lat = P.measure_lattice(lv, _lattice_spec())
+    assert lat["tick"] == {"step": 0.01, "dtype": "float32"}
+    assert "cont" not in lat, "a continuous column must not acquire a grid from the f32 pass"
+
+
+def test_quantisation_lands_on_the_grid_and_is_idempotent():
+    """The property the C2ST reads: after quantisation the synthetic levels are on the same
+    grid as the real ones, 100% of the time and not 99%."""
+    spec = _lattice_spec()
+    lv = _lattice_levels()
+    lat = P.measure_lattice(lv, spec)
+    rng = np.random.default_rng(1)
+    paths = np.stack([lv[c].to_numpy()[:40] + rng.normal(0, 0.3, 40)
+                      for c in spec.names], axis=-1)[None, ...]
+    q = P.quantise_levels(paths, spec, lat)
+    for j, name in enumerate(spec.names):
+        e = lat.get(name)
+        if e is None:
+            np.testing.assert_array_equal(q[..., j], paths[..., j])
+            continue
+        assert P.on_lattice(paths[..., j], e["step"], dtype=e["dtype"]) < 0.5
+        assert P.on_lattice(q[..., j], e["step"], dtype=e["dtype"]) == 1.0
+    np.testing.assert_array_equal(q, P.quantise_levels(q, spec, lat))
+
+
+def test_to_increments_inverts_integrate_paths():
+    """`validate` scores INCREMENTS and `worlds.py` writes LEVELS. Without an exact round
+    trip the quantisation is invisible to the test that exists to police it, which is
+    precisely how the missing grid survived two rounds of validation."""
+    spec = _lattice_spec()
+    lv = _lattice_levels()
+    anchor = lv.iloc[10]
+    rng = np.random.default_rng(2)
+    inc = np.stack([rng.normal(0, s, (5, 12)) for s in (2e5, 0.02, 0.02)], axis=-1)
+    levels = P.integrate_paths(inc, anchor, spec, None)
+    np.testing.assert_allclose(P.to_increments(levels, anchor, spec), inc,
+                               rtol=1e-10, atol=1e-10)
+    # and the quantised branch really is the unquantised one plus a rounding
+    lat = P.measure_lattice(lv, spec)
+    qq = P.integrate_paths(inc, anchor, spec, lat)
+    np.testing.assert_array_equal(qq, P.quantise_levels(levels, spec, lat))
+
+
+def test_build_carries_the_lattice_into_the_scaler(env):
+    """A saved Generator quantises from `scaler["lattice"]`, not from the panel it was
+    fitted on — the panel is long gone by the time `build.py` samples."""
+    conn, end = env
+    pdata = _build(conn, _spec(), end)
+    assert pdata.scaler["lattice"] == pdata.lattice
+    assert set(pdata.lattice) <= set(_spec().names)
+
+
 def test_a_first_print_column_ignores_the_revision(env):
     """`prints` has to match the consuming model or the generator fits a series nobody
     traded. Two columns over the SAME sid, one first-print and one latest-vintage, must
