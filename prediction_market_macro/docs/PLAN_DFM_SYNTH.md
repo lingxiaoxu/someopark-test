@@ -628,10 +628,20 @@ three times, scoring 0.929 against 0.565 before the fix and indistinguishable af
 test asserts against the clean arm rather than against a number, for the same reason every other
 metric here is read against `boot`.
 
-What still has to happen: `data/synth/` and `data/synth_wf/` were written by the pre-fix code,
-so **no `excess_over_boot` in §4e may be quoted again until those artifacts are regenerated.**
-Production λ is unaffected — the corrupted quantity is the validation report, not the sample —
-but the study's headline numbers are, and in the direction that flatters the DFM.
+What still has to happen — **and the first version of this paragraph named the wrong
+artifacts, which is worth correcting in place because following it would have cost a 590MB
+regeneration that changes nothing.** It said `data/synth/` and `data/synth_wf/` "were written
+by the pre-fix code" and had to be regenerated. They were not. `data/synth/<series>/` holds
+only `world_*.db`; `build.py` reaches the generator at exactly two lines (`G.GenConfig` and
+`G.Generator.fit_local`) and never calls `validate()`; and `_separability` is reachable only
+through `validate()`, which has **no production caller anywhere in the repo** — only tests and
+`/tmp` research scripts. The generation path is bit-identical before and after the fix, so the
+worlds on disk are clean and production λ was never at risk.
+
+What *is* corrupted is the validation **report**, and that is a smaller object and a bigger
+problem: it is where every number in this section comes from. So the rule stands with the
+right referent — **no `excess_over_boot` in §4e may be quoted until the reports are
+re-measured** — and the re-measurement is §4e-C below.
 
 Scope of what still stands: `local`/`global` rows are generated and never exactly equal each
 other or a real row (§4d measured 0 duplicates on all four panels), so the raw-vs-printed moves
@@ -850,7 +860,8 @@ breaks B. **No cell in
 this 26-cell sweep satisfies B, C and the `mem` band at once**, and after this sweep that is an
 architectural statement rather than a search that was not run long enough: it is the same
 `span(V)` bottleneck seen from both ends. Which is exactly the case for #207 — rotate the basis
-so the span is spent where the variance is, instead of buying more span.
+so the span is spent where the variance is, instead of buying more span. **That was run, and it
+works: §4e-D.**
 
 Honest note on the two things the start fix does **not** buy. It corrects the second moment
 by construction, so the only informative question is whether anything it does not construct
@@ -1029,7 +1040,117 @@ utility question is tracked in #183.
 Artifacts: `/tmp/dfm_verify/auc1_probe.py`, `underdisp.py`, `lattice.py`, `lattice_v2.py`,
 `cov_table.py`, `fut_grid_probe.py`, `fixA_pools.py`, `fixA_score.py`, `fixB_euler.py`,
 `fixB_diag.py`, `fixB_fix.py`, `fixB_m2.py`, `fixB_ab.py`, `fixC_recolour.py`,
-`fixC_plain.py`, `fixC_split.py`.
+`fixC_plain.py`, `fixC_split.py`, `fixB_rotate.py`.
+
+### D. The residual of B, fixed — whiten the basis instead of widening it (#207, 2026-08-28)
+
+§4e-B ends by naming the remedy it could not test: *"the same `span(V)` bottleneck seen from
+both ends… rotate the basis so the span is spent where the variance is, instead of buying more
+span."* This is that test. It is the first thing in this document that clears its own
+preregistered primaries **on all four panels at once**, and it does it with **zero added
+parameters** — the arms differ by one invertible linear map applied outside `dfm/`, and `dfm/`
+is called exactly as production calls it.
+
+**The mechanism, stated before the run so it could be wrong.** `dfm/football/model.py:275-283`
+(`arch='factor'`) computes `resid = Z - (Z @ beta0) @ beta0.T; sigma0 = resid.var(0) + 1e-4`,
+and the forward pass at `model.py:203-214` makes the score outside `span(V)` exactly
+`-x * d_t` — a **diagonal in raw coordinates**. The residual covariance is not diagonal in raw
+coordinates, so the diagonal approximation pulls eigenvalues toward their mean: the small ones
+inflate (the over-dispersed tail) and the large ones deflate (the collapsed top). That is
+`top < 1` with `tail > 1`, which is precisely the signature §4e-B measured on three of four
+panels and could not explain.
+
+Two arms follow from it, and the first one is the *falsifier*. `rot` = plain eigenbasis
+(`Z @ U`) axis-aligns Σ and should therefore fix everything — except that projecting out the
+top-`k` of a **diagonal** covariance leaves exactly `k` coordinates with exactly zero residual,
+so `sigma0` collapses to its `1e-4` floor on the directions carrying most of the variance and
+`d_t` blows up. `whi` = full whitening (`Y = Z @ U / sqrt(λ)`, `cov(Y) = I`) is the canonical
+choice, not a tuned one: under it the residual `(I − P)` has eigenvalues `{0 (×k), 1 (×d−k)}`,
+whose best diagonal approximation is the uniform `(1 − k/d)·I` — non-degenerate everywhere.
+A partial rotation `Z @ U / λ^(p/2)` with `p` swept was deliberately **not** run: it would be
+fishing for a panel-specific `p` and would not survive its own preregistration.
+
+Registered before the run, from `fixB_rotate.py`'s docstring: **PRIMARY** `tail` into
+[0.80, 1.25] and `var/train ≥ 0.90`; **VETO** `mem` inside the panel's #206 band, read from
+`mem_null.json` rather than retyped so the script cannot quietly use a friendlier number;
+**SECONDARY** `acf1` against the *training-row* target #205 established is the reachable one,
+reported not graded; **CONTROL** `raw` must reproduce `fixB_m2`'s `fd8_Σ̂` row. Four panels,
+`factor_dim = 8`, 6000 epochs, 1024 draws, seed 11. Capacity is held fixed on purpose — this
+experiment is about *where* the span sits, and the capacity axis was already refuted above.
+
+| panel | arm | `var/tr` | `top8` | `tail` | `d_acf` | `mem` | KS p | `sig0_min` | `mem`? |
+|---|---|---|---|---|---|---|---|---|---|
+| labor (band [0.956,1.052]) | raw | 0.815 | 0.784 | 1.795 | 0.0539 | 1.066 | 0.028 | 2.1e-01 | WIDE |
+| | rot | 1.211 | 1.440 | 0.980 | 0.0485 | 1.100 | 0.005 | **1.0e-04** | WIDE |
+| | **whi** | **0.966** | **0.971** | **0.901** | 0.0739 | 1.143 | 0.110 | 2.9e-01 | WIDE |
+| claims (band [0.933,1.088]) | raw | 0.927 | 0.903 | 1.012 | 0.0437 | 0.997 | 0.795 | 1.4e-01 | PASS |
+| | rot | 1.754 | 1.979 | 1.332 | −0.0452 | 1.219 | 0.861 | **1.0e-04** | WIDE |
+| | **whi** | **0.929** | **0.945** | **0.888** | **0.0134** | **0.990** | 0.849 | 7.3e-02 | **PASS** |
+| inflation (band [0.879,1.156]) | raw | 0.791 | 0.663 | 3.381 | −0.0430 | 1.012 | 0.076 | 1.6e-01 | PASS |
+| | rot | 1.441 | 1.778 | 0.945 | −0.0168 | 1.100 | 0.053 | **1.0e-04** | PASS |
+| | **whi** | **0.929** | **0.901** | **0.960** | **−0.0136** | **1.059** | 0.066 | 4.5e-01 | **PASS** |
+| energy (band [0.953,1.043]) | raw | 0.918 | 0.823 | 2.164 | 0.0063 | 0.854 | 0.275 | 2.4e-01 | COPY |
+| | rot | 1.530 | 2.127 | 0.957 | 0.0394 | 0.946 | 0.261 | **1.0e-04** | COPY |
+| | **whi** | **0.937** | **0.929** | **0.922** | −0.0100 | 0.841 | 0.256 | 5.6e-01 | COPY |
+
+**The control holds.** `raw` reproduces `fixB_m2`'s `fd8_Σ̂` row on every panel to the printed
+precision (0.815/1.795/1.066/−0.0343 against 0.814/1.79/1.07/−0.034, and likewise for the other
+three), so the movement in the `whi` rows is attributable to the basis and to nothing else in
+the pipeline.
+
+**Both primaries pass on all four panels, for `whi` only.** `tail` lands inside [0.80, 1.25]
+everywhere — 1.795 → 0.901, 1.012 → 0.888, 3.381 → 0.960, 2.164 → 0.922 — and `var/train`
+clears 0.90 everywhere: 0.815 → 0.966, 0.927 → 0.929, 0.791 → 0.929, 0.918 → 0.937. The
+number that matters most is the one that was *not* a primary: `top8`, the dispersion of the
+dominant directions, goes 0.784 → 0.971, 0.903 → 0.945, 0.663 → 0.901, 0.823 → 0.929. Every
+capacity setting in the 26-cell sweep above bought tail correction by making the top **worse**;
+whitening corrects both ends simultaneously, which is the specific thing the sweep proved
+capacity cannot do.
+
+**`rot` is rejected, and its rejection is what makes the mechanism a measurement rather than a
+story.** `sig0_min` is exactly the `1e-4` floor on all four panels for `rot` — the predicted
+`sigma0` collapse, observed — against 0.073–0.556 for `whi`. And the consequence predicted from
+it follows: `rot` overshoots to `var/tr` 1.211–1.754 with `top8` up to 1.979, i.e. an
+*over*-dispersed top, and `mem` blows out to 1.100–1.219, failing the veto on three panels. The
+run was built so that `whi` showing a near-`1e-4` `sig0_min` would have said the explanation was
+wrong. It did not.
+
+**The `mem` veto splits the verdict by panel, and that is where this stops.** `whi` PASSES on
+`claims_weekly` (0.990) and `inflation_monthly` (1.059). It FAILS on `labor_monthly` (1.143 vs
+[0.956, 1.052]) and `energy_weekly` (0.841 vs [0.953, 1.043]) — but production `raw` **already
+fails both**, 1.066 WIDE and 0.854 COPY, which is #208 and predates this experiment. So the
+honest statement is not "whitening fails on half the panels" and not "whitening is adoptable":
+it is that whitening is **clean on the two panels where the baseline is clean**, and on the two
+where the baseline is already outside its band it moves labor further out by 0.077 and energy
+further out by 0.013 without changing the direction of the failure. Adoption on labor and energy
+is blocked behind #208, not behind this result.
+
+**Defect C is improved on half the panels and this must not be called a fix for it.** `d_acf`
+against the reachable target improves 69% on claims (0.0437 → 0.0134) and 68% on inflation
+(−0.0430 → −0.0136) — the two panels where the veto also passes, which is at least consistent —
+and worsens on labor (0.0539 → 0.0739) and energy (0.0063 → −0.0100, a sign flip at a magnitude
+too small to interpret). §4e-C already concluded C is not a defect once scored against each
+panel's own floor; this does not disturb that, it just declines to claim a bonus.
+
+**KS p**, reported because it was the axis the start fix hurt: labor 0.028 → 0.110 (crosses from
+failing to passing), claims 0.795 → 0.849, inflation 0.076 → 0.066, energy 0.275 → 0.256. Two
+up, two marginally down, no panel driven to a floor.
+
+**What this is not, yet.** It is a z-space measurement on `Generator.fit` with a zero condition
+vector, exactly like `fixB_m2`, and B's own history is the reason to say so loudly: §4e-B's
+start fix looked decisive in z-space (`var/train` 0.76 → 0.94) and closed only 3.6–7.6% of the
+coverage gap end-to-end. Before any of this can be quoted as a product improvement it needs the
+same treatment the start fix got — `Generator.validate` end-to-end, on `fit_local` rather than
+`fit`, with `boot`/`knn` asserted bit-identical across the passes, against the **de-duplicated**
+floor #209 established. That is sequenced after §4e-C, because until the floors are re-measured
+there is no honest number to compare an improvement to.
+
+**Landing shape when it does land.** A whiten/unwhiten wrapper inside
+`research/synth/generator.py` — `Z @ U / sqrt(λ)` in, `diag(sqrt(λ)) @ U.T` back out, with the
+round-trip asserted per fit as `fixB_rotate.py` already asserts it. `dfm/` is not touched; the
+one-line alternative (passing a corrected `init_sigma_diag` into `train_conditional`) is not
+available because `sigma0` is derived internally, and `dfm/` is call-only. Preregistration for
+the end-to-end run is owed before it is written, per `docs/PREREGISTER.md`.
 
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
