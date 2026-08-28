@@ -27,7 +27,7 @@ from datetime import datetime, timezone
 
 REGS = ("pr1_claims", "pr2_argmax", "pr7_s2",
         "pr8_nowcast_yoy", "pr8_nowcast_core", "pr10_nowcast_mom",
-        "pr11_seasonal", "pr12_width_natgas", "pr12_width_wti")
+        "pr11_seasonal", "pr12_width_natgas", "pr12_width_wti", "pr13_otm_sell")
 
 
 def _graders():
@@ -48,8 +48,8 @@ def _graders():
     not be retried three times to produce the same three GRADER ERROR lines.
     """
     from prediction_market_macro.research import (shadow_claims, shadow_nowcast,
-                                                  shadow_pr2, shadow_s2, shadow_seasonal,
-                                                  shadow_width)
+                                                  shadow_otm, shadow_pr2, shadow_s2,
+                                                  shadow_seasonal, shadow_width)
     cache: dict = {}
 
     def _once(mod):
@@ -64,6 +64,10 @@ def _graders():
                 raise err
             return rep
         return call
+
+    def otm(conn):
+        r = shadow_otm.run(conn)
+        return {**r, "code": r["code_change"]}
 
     nowcast, width = _once(shadow_nowcast), _once(shadow_width)
     return {
@@ -81,6 +85,11 @@ def _graders():
                                         "code": width(c)["code_change"]},
         "pr12_width_wti": lambda c: {**width(c)["series"]["KXWTIW"],
                                      "code": width(c)["code_change"]},
+        # PR-13 reads only the book, so it is a query rather than a replay and needs no
+        # `_once`. Its fingerprint tracks `strategy/edge.py` (the FEE schedule) instead of
+        # a model file — see the module docstring for why that is the thing that can
+        # silently void the paired comparison here.
+        "pr13_otm_sell": otm,
     }
 
 
@@ -102,11 +111,12 @@ def run_all(conn) -> dict:
     longer PENDING and whose text differs from the last alert we filed for it."""
     out = {}
     for name, grade in _graders().items():
-        code = {}
+        code, warn = {}, None
         try:
             rep = grade(conn)
             verdict = str(rep.get("verdict", "?"))
             code = rep.get("code") or {}
+            warn = rep.get("data_warning")
         except Exception as e:                              # noqa: BLE001
             verdict = f"GRADER ERROR: {e}"
         out[name] = verdict.split("—")[0].strip()[:40]
@@ -125,6 +135,15 @@ def run_all(conn) -> dict:
                        f"PREREG-CODE {name}: CODE CHANGED since registration and the"
                        f" change is NOT documented — {str(code.get('note', ''))[:200]}",
                        f"PREREG-CODE {name}:%", level="warn")
+        # Third channel, same reasoning as the second and the same prefix discipline: a
+        # grader can say "the sample I am accumulating is being pruned by something that
+        # is not the hypothesis". That is only actionable WHILE the window is still
+        # filling, i.e. exactly while the verdict is PENDING and the branch below is
+        # deliberately silent — a pruned forward sample discovered at maturation is a
+        # window that has to be thrown away.
+        if warn:
+            _file_once(conn, f"PREREG-DATA {name}: {str(warn)[:300]}",
+                       f"PREREG-DATA {name}:%", level="warn")
         if verdict.startswith("PENDING"):
             continue
         _file_once(conn, f"PREREG {name}: {verdict[:300]}", f"PREREG {name}:%")

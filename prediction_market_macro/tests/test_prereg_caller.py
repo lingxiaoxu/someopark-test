@@ -10,6 +10,10 @@
    three CPI verdicts do not get crossed.
 6. An undocumented fingerprint change alerts even while the verdict is PENDING, on its
    own prefix so it cannot re-trigger the verdict alert.
+7. A `data_warning` — "the sample I am accumulating is being pruned by something that is
+   not the hypothesis" — alerts on a THIRD prefix, also while PENDING, for the same
+   reason: a pruned forward window found at maturation is a window that must be thrown
+   away, and by then it is too late to fix the ingest that pruned it.
 """
 from __future__ import annotations
 
@@ -194,3 +198,42 @@ def test_the_code_alert_cannot_retrigger_the_verdict_alert(conn, monkeypatch):
     msgs = _alerts(conn)
     assert sum(m.startswith("PREREG pr7_s2:") for m in msgs) == 1
     assert sum(m.startswith("PREREG-CODE pr7_s2:") for m in msgs) == 1
+
+
+# --- the data-warning channel (PR-13) -----------------------------------------------
+
+def _patch_warn(monkeypatch, name, verdict, warn):
+    monkeypatch.setattr(prereg, "_graders",
+                        lambda: {name: lambda _c: {"verdict": verdict,
+                                                   "data_warning": warn}})
+
+
+def test_a_data_warning_alerts_while_the_verdict_is_still_pending(conn, monkeypatch):
+    _patch_warn(monkeypatch, "pr13_otm_sell", "PENDING — 12/150 forward settled legs",
+                "3 event(s) in the FORWARD window have a leg with no strike_type")
+    prereg.run_all(conn)
+    msgs = _alerts(conn)
+    assert len(msgs) == 1 and msgs[0].startswith("PREREG-DATA pr13_otm_sell:")
+    assert "no strike_type" in msgs[0]
+    assert [r["level"] for r in conn.execute("SELECT level FROM alerts")] == ["warn"]
+
+
+def test_no_data_warning_is_silent(conn, monkeypatch):
+    for warn in (None, "", 0):
+        _patch_warn(monkeypatch, "pr13_otm_sell", "PENDING — 12/150", warn)
+        prereg.run_all(conn)
+    assert _alerts(conn) == []
+
+
+def test_the_data_channel_has_its_own_prefix_and_fires_once(conn, monkeypatch):
+    """Same prefix discipline as PREREG-CODE: three channels, three edge triggers, none
+    of them able to re-arm another."""
+    monkeypatch.setattr(prereg, "_graders", lambda: {
+        "pr13_otm_sell": lambda _c: {"verdict": "FALSIFIED — total -1.20",
+                                     "code": CHANGED, "data_warning": "2 NULL events"}})
+    for _ in range(3):
+        prereg.run_all(conn)
+    msgs = _alerts(conn)
+    assert sum(m.startswith("PREREG pr13_otm_sell:") for m in msgs) == 1
+    assert sum(m.startswith("PREREG-CODE pr13_otm_sell:") for m in msgs) == 1
+    assert sum(m.startswith("PREREG-DATA pr13_otm_sell:") for m in msgs) == 1
