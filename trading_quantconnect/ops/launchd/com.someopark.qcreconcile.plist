@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.someopark.qcreconcile</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-lc</string>
+		<string>/Users/xuling/code/someopark-test/trading_quantconnect/ops/qc_reconcile.sh</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/Users/xuling/code/someopark-test/trading_quantconnect</string>
+	<!-- 定时任务,不是常驻:装载时不要乱跑一次(会在任意时刻产出报告) -->
+	<key>RunAtLoad</key>
+	<false/>
+	<!-- 本地时=ET(机器时区就是纽约),与 controllerreconcile 同一约定。
+
+	     16:20 —— holdings/target 平面的**唯一**窗口:21:30 的 someopark-daily-pipeline
+	       一改 inventory,exporter 就推新 target,"QC 持仓 vs 当时已推 target"的现场
+	       就没了。16:00 收盘 + 15 分钟延迟行情送完,16:20 刚好。
+	     23:15 —— equity 平面最早能跑的时候:官方 EOD json 由 21:30 那趟 pipeline 写出
+	       (watchdog 21:55 兜底),23:15 留足余量。这趟把 16:20 留下的 equity_check=pending
+	       补成终态;merge_section() 保证它不会抹掉 16:20 已出的真裁决。
+	     23:50 —— 纯补跑:21:30 若延迟/失败,23:15 只能拿到 pending,再给一次机会;
+	       三段已全终态则 wrapper 幂等跳过。
+
+	     为什么没有跨零点的补跑:wrapper 用 ET 当天日期定报告文件名,而 python 侧用
+	     last_session() 推交易日 —— 过了零点这两个会错位(00:40 时 ET_DATE 已是次日,
+	     last_session 仍是前一交易日),会写出一份张冠李戴的报告。补跑必须留在当天之内。
+
+	     不设 Weekday —— 交易日判断统一交给 wrapper 里的 NYSE 闸门(节假日也能挡),
+	     两处各判一次迟早会打架。 -->
+	<key>StartCalendarInterval</key>
+	<array>
+		<dict>
+			<key>Hour</key><integer>16</integer>
+			<key>Minute</key><integer>20</integer>
+		</dict>
+		<dict>
+			<key>Hour</key><integer>23</integer>
+			<key>Minute</key><integer>15</integer>
+		</dict>
+		<dict>
+			<key>Hour</key><integer>23</integer>
+			<key>Minute</key><integer>50</integer>
+		</dict>
+	</array>
+	<!-- wrapper 自己写日期分片日志;这两个只兜住 wrapper 起不来时的输出 -->
+	<key>StandardOutPath</key>
+	<string>/Users/xuling/code/someopark-test/trading_quantconnect/logs/qc_reconcile_launchd.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/xuling/code/someopark-test/trading_quantconnect/logs/qc_reconcile_launchd.log</string>
+</dict>
+</plist>

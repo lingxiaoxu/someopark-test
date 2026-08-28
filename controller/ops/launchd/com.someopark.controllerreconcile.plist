@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.someopark.controllerreconcile</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-lc</string>
+		<string>/Users/xuling/code/someopark-test/controller/ops/reconcile_eod.sh</string>
+	</array>
+	<key>WorkingDirectory</key>
+	<string>/Users/xuling/code/someopark-test</string>
+	<!-- 定时任务,不是常驻:装载/开机时不要乱跑一次(会在任意时刻产出报告) -->
+	<key>RunAtLoad</key>
+	<false/>
+	<!-- 16:45 本地时(=ET,机器时区就是纽约):15 分钟延迟行情此时已送完 16:00 收盘,
+	     controller 的收盘行也已落地;且早于 rolloff --freeze 的 17:00-04:00 窗口,
+	     冻 K 那天能有当天的持仓级对账垫底。
+	     17:30 是纯补跑:16:45 若因 controller 中断只拿到 incomplete,wrapper 会重跑;
+	     已有终态裁决(ok/breach/partial)则幂等跳过。
+	     不设 Weekday —— 交易日判断统一交给 wrapper 里的 NYSE 闸门(节假日也能挡),
+	     两处各判一次迟早会打架。 -->
+	<key>StartCalendarInterval</key>
+	<array>
+		<dict>
+			<key>Hour</key><integer>16</integer>
+			<key>Minute</key><integer>45</integer>
+		</dict>
+		<dict>
+			<key>Hour</key><integer>17</integer>
+			<key>Minute</key><integer>30</integer>
+		</dict>
+	</array>
+	<!-- wrapper 自己写日期分片日志;这两个只兜住 wrapper 起不来时的输出 -->
+	<key>StandardOutPath</key>
+	<string>/Users/xuling/code/someopark-test/controller/logs/reconcile_launchd.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/xuling/code/someopark-test/controller/logs/reconcile_launchd.log</string>
+</dict>
+</plist>

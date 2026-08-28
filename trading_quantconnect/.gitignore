@@ -1,3 +1,6 @@
 state/
 __pycache__/
 *.pyc
+# 对账报告含实盘 equity/持仓,仓库是 public —— 代码进版本库,产出不进
+reconcile/*.json
+logs/

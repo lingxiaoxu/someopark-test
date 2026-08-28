@@ -118,14 +118,27 @@ def official_eod() -> tuple[str, dict[str, float]]:
     return next(iter(dates.values())), vals
 
 
-def qc_snapshot() -> dict:
-    """QC 只读快照:逐票股数 + 持仓市值 + 现金 + 账户净值(自算与 QC 报的对拍)。"""
+def qc_client_project():
+    """→ (QcClient, project_id)。抽出来供对账平面复用:一次会话里 find_project
+    只做一遍,免得每个只读检查各自再拉一次项目列表。"""
     from ops.deploy import ALGOS
     from qc_api import QcClient
     c = QcClient()
     pid = c.find_project(ALGOS["mirror"]["project"])
     if pid is None:
         raise SourceError("QC 上找不到 mirror 项目")
+    return c, pid
+
+
+def qc_snapshot(client=None, pid=None) -> dict:
+    """QC 只读快照:逐票股数 + 持仓市值 + 现金 + 账户净值(自算与 QC 报的对拍)。
+
+    client/pid 省略时自建(--measure/--freeze 的原有用法一字不变);对账平面
+    传入已有会话,让持仓/订单/日志三次取数落在同一个 project 解析上。
+    """
+    if client is None or pid is None:
+        client, pid = qc_client_project()
+    c = client
     lr = c.live_read(pid)
     if lr.get("status") != "Running":
         raise SourceError(f"mirror 不在 Running(status={lr.get('status')})")
@@ -140,7 +153,14 @@ def qc_snapshot() -> dict:
     # 净值一律用同一份 payload 自算(持仓市值 + 现金),口径内部自洽;QC 自报值只留作
     # 静止判据与审计留痕,不参与 K 的计算。
     equity = mv + cash
+    # gross = Σ|持仓市值|:对账把它当 bp 的分母(净额对市场中性簿是退化统计量,
+    # 净额→0 时 bp→∞)。prices 按**仓库现行代码**归一化(QC 的 ORCC/NB/CMB
+    # 是 security ID 的历史首名),这样残差表等本地文件可以直接按票取价。
+    gross = sum(abs(float(v.get("v") or 0.0)) for v in holds.values())
+    prices = {_canon(t): float(v.get("p") or 0.0)
+              for t, v in holds.items() if v.get("p")}
     return {"shares": {t: s for t, s in shares.items() if s},
+            "holdings": holds, "gross": gross, "prices": prices,
             "holdings_mv": mv, "cash": cash, "equity": equity,
             "equity_reported": eq_rep,
             "quiet_gap": None if eq_rep is None else eq_rep - equity,
