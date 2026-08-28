@@ -3417,6 +3417,55 @@ draw is 0.2 s.
 
 Artifacts: `/tmp/dfm_verify/xnoise_probe.py` (+ `.json`, `.log`).
 
+### 5d-5. PR-20 landed: coupled weekly worlds are in production (#214, 2026-08-28)
+
+PR-20 was registered (frozen calibration procedure, out-of-sample confirm), judged
+**ADOPTED** (mean bridge error 0.0122 on a 0.06 bar; marginal-invariance B1–B4 all inside
+their bars; both bit-identity controls held — full record in `PREREGISTER.md` §PR-20), and
+landed the same day:
+
+* `generator.sample_coupled` + the frozen `WEEKLY_COUPLING` (gas_retail −0.287, wti −0.384,
+  rbob −0.527; natgas excluded by the registration). Refusals for every unjudged
+  generalization: multi-column hub, horizon/noise_steps mismatch, Σrho² > 1 (no silent
+  rescale), ridge guidance.
+* `build(paths=…)` — pre-drawn quantised level paths injected, fit-and-draw skipped,
+  everything downstream of the draw identical in both modes; the injection is recorded in
+  the run's `meta_json`.
+* `regen.run_weekly` — fits both weekly panels ONCE in the PR-20 calibration fit regime
+  (`GenConfig` defaults + `fit_local(k=120)`, deliberately not `build`'s `epochs=1500`:
+  the frozen rhos are only valid with the fit regime their slopes were solved against),
+  draws once through `sample_coupled`, and hands each weekly series its panel's slice of
+  the SAME draw. Wired into the weekly refresh as `weekly_synth_regen_coupled`, so this is
+  the recurring production path, not a one-off.
+* Five unit tests hold the structure: rho=0 bit-identity (PR-20's falsifier (b) as a
+  permanent tripwire), hub stream untouched at any rho, induced-correlation sign, PSD
+  refusal, multi-hub/unknown-column refusal.
+
+**The first full production recompute under the landed code ran to completion**
+(2026-08-28): all 7 monthly targets stored fresh runs (the coupling touches nothing
+monthly — their path through `build` is unchanged), and all three weekly series generated
+from one coupled draw. Verified on the worlds themselves: each weekly run's `meta_json`
+carries the injection marker; KXWTIW's and KXNATGASW's 8 worlds hold byte-identical
+GASREGW paths; and the cross-world ICSA~GASREGW weekly-increment correlation across the 8
+world pairs is **−0.087** — sign right, magnitude consistent with the −0.12 law at n=8
+sampling noise (the per-week swings of ±0.7 are exactly §5d-4's n=8 distribution). The
+n=256 magnitude verification is PR-20's confirm, not this smoke check.
+
+One first-run footnote, with the fix in the file: the driver of the recompute initially
+died on the exact footgun `build.py`'s scorer documents — a `__main__` that is not
+import-safe meets the spawn-mode process pool — leaving worlds written but no run stored;
+consumers degraded to the previous runs as designed, and the guarded rerun superseded
+everything. Also honest: the weekly series carry `weight=0.0` because no λ row exists for
+them — the λ machinery predates weekly regen and is untouched by this change; whether
+weekly series should accrue λ is its own question and nothing here answers it.
+
+**Still open in #214, deliberately:** the monthly panels are still drawn independently of
+the weekly pair (a cross-frequency coupling needs its own clock statement and its own
+registration), and `claims`/`gas_retail` are still generated twice across frequencies with
+no reconciliation — §5d-2's Stage-2 pin or a single-write remain the candidates, gated on
+their own registrations.
+
+
 ## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
 
 #184b measured a denominator and stopped there on purpose: of **8360** settled legs across the
