@@ -1879,6 +1879,85 @@ class**, not on data, and the honest next step for it is a calendar-conditional 
 model (meeting? × move size on a 6-point support), not a wider DFM. That is a different
 project and it should not be smuggled in as a panel.
 
+#### 4f-1. Meeting-time reindexing: tested, rejected, reason sharpened (#215, 2026-08-28)
+
+The paragraph above was re-examined before being accepted, because its atom could have been an
+artifact of the **index** rather than of the process. In calendar time `DFEDTARU` is a step
+function that moves eight days a year, so a daily or weekly panel must generate zeros on the
+other 350 days and needs a calendar gate bolted on to do it. In **meeting** time — one row per
+FOMC decision, increment = the move that decision made — that particular pathology vanishes
+without any gate, because the calendar *is* the index. `model/features.py::fomc_meeting_moves`
+already emits exactly that sequence, PIT, with holds included (which is why its docstring
+insists the calendar come from the statement table: a rate series records only changes, so a
+meeting that held is invisible in it).
+
+Three gates were preregistered before looking, and **all three passed**:
+
+| gate | registered as | measured | |
+|---|---|---|---|
+| G1 sample | ≥150 resolved meetings, ≥30 non-zero | **242** meetings 1994-02→2026-07, **88** non-zero | PASS |
+| G2 lattice | every move an exact multiple of 25bp | **0 / 242** off-lattice, max residual 0.00e+00 | PASS |
+| G3 conditioning | Spearman(DGS2 − target, next move) outside a circular-shift band | **+0.587** vs [−0.401, +0.412] | PASS |
+
+**And those three gates do not answer §4f's objection.** That is recorded here rather than
+quietly repaired, because reporting three passes as if they settled the question is exactly
+the error this document keeps finding in its own past sections. §4f blocks KXFED on the atom
+at zero; reindexing does not repeal that argument, it only changes the number, from 96.6%
+(weekly) to **63.9%** (per meeting). So a fourth gate was registered — explicitly as an
+**added** gate, not a re-threshold of a failed one — asking the only thing that could rescue
+it: whether the DFM's one distinguishing feature, conditioning, locates the atom.
+
+Terciles of the anchor spread, a fixed ex-ante rule with no search over cut points:
+
+| bucket | n | spread range | P(move = 0) | mean move | realized P(\|move\| > 37.5bp) |
+|---|---|---|---|---|---|
+| low | 80 | [−1.91, −0.08] | 0.575 | −0.144 | 0.200 |
+| mid | 80 | [−0.07, +0.43] | 0.812 | −0.003 | 0.038 |
+| high | 81 | [+0.44, +2.45] | 0.531 | +0.154 | 0.136 |
+
+**G4a — regime separation — FAILS at 0.282 against a registered 0.30**, and the near-miss is
+written down as a near-miss rather than argued around. **G4b — within-bucket feasibility —
+fails much harder, and it is the informative one.** Unconditionally, the sd that reproduces a
+63.9% zero bin is 0.1368pp and puts 0.61% beyond ±37.5bp where the data has 12.45% — **20.3×
+too thin**, which is §4f's objection with numbers on it. Conditionally it does not improve; in
+two of three buckets it becomes *impossible*:
+
+| bucket | observed atom | best atom ANY Gaussian at that conditional mean can reach | |
+|---|---|---|---|
+| low | 0.575 | **0.425** (at sd 0.1166) | unreachable |
+| high | 0.531 | **0.396** (at sd 0.1304) | unreachable |
+| mid | 0.812 | 1.000 (sd → 0) | reachable, tail 488× too thin |
+
+That is not a numerical failure and it is worth reading precisely. In a cycle bucket the
+conditional law is **bimodal** — hold, or move 25bp — and a unimodal law centred between the
+two modes cannot put the observed mass at both. It is the same conclusion §4f reached, arrived
+at from the opposite direction and with a mechanism attached: what a KXFED panel would have to
+learn is a *mixture*, which is precisely the "two-part model (meeting? × move size)" §4f named.
+
+**Limitation, stated because it cuts against the conclusion.** G4b's stand-in for the
+conditional law is a Gaussian. A score-based diffusion is not restricted to Gaussians and can
+in principle represent a bimodal conditional, so this is a demonstration that the target is a
+mixture, **not** a proof that this architecture could never fit one. What makes it decisive in
+practice is the sample: ~80 meetings per regime, against a bimodal target, in a stack whose
+four existing panels already under-generate variance (§4e-B) and under-generate persistence
+(§4e-C) on far easier targets.
+
+**Verdict: §4f's exclusion of KXFED and KXFEDDECISION stands, and no panel is proposed.** What
+the exercise leaves behind is worth keeping for whoever builds the two-part model: the
+meeting-indexed frame is the right one, `fomc_meeting_moves` already supplies it PIT with holds
+included, the 25bp support is exact rather than approximate (G2 at 0/242 is the cleanest lattice
+result in this document), and the conditioning variable has measured signal (G3, ρ = +0.587).
+`SETTLES` therefore stays at **11 of 14**. Tracked as **#215**, closed as measured-and-rejected.
+Artifacts: `/tmp/dfm_verify/fed_panel_feasible.py`, `fed_atom_conditional.py`, and their
+`.json`/`.log`.
+
+> **KXAAAGASW, re-counted the same day.** `AAA_DAILY` now holds **27** observations
+> (2026-07-31 .. 2026-08-26), accruing about one per day, against **21** at the survey. The
+> blocker in `build.py`'s scope note is unchanged and is arithmetic: the AAA-minus-GASREGW gap
+> that `energy._aaa_drift_fit` predicts has under a month of history. At this accrual rate a
+> year of gap history exists around **2027-07**, and that — not a modelling choice — is the
+> earliest date the exclusion can be revisited. See #210.
+
 **KXGDP is the one genuinely open case, and its blocker is specific.** `model/gdp.py` reads
 two things, and a world missing either cannot be priced at all: first prints of
 `A191RL1Q225SBEA` (the settle value, the sigma history, the off-quarter AR(1)) and
