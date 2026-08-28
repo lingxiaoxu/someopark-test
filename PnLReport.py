@@ -666,12 +666,28 @@ def download_prices_mongo(tickers: set, price_start: str, price_end: str) -> pd.
     start_ms = int(pd.Timestamp(price_start).timestamp() * 1000)
     end_ms = int((pd.Timestamp(price_end) + pd.Timedelta(days=1)).timestamp() * 1000)
 
+    # 改名(BK→BNY):Mongo 的 stock_data 按**入库当时请求的代码**归档,与 Polygon
+    # 同款 —— BK 的行停在 2026-05-20(改名前一日),BNY 一行没有。故按市场名分段查、
+    # 拼回请求名下。无改名的票只有一段且同名,查询与接线前逐字节相同。
+    try:
+        from ticker_aliases import market_segments
+    except Exception:  # noqa: BLE001
+        market_segments = None
+
     frames = {}
     for sym in sorted(tickers):
-        docs = list(col.find(
-            {"symbol": sym, "t": {"$gte": start_ms, "$lte": end_ms}},
-            {"c": 1, "t": 1, "_id": 0}
-        ).sort("t", 1))
+        segs = (market_segments(sym, price_start, price_end)
+                if market_segments else [(sym, price_start, price_end)])
+        docs = []
+        for vendor_sym, seg_start, seg_end in segs:
+            s_ms = int(pd.Timestamp(seg_start).timestamp() * 1000)
+            e_ms = int((pd.Timestamp(seg_end) + pd.Timedelta(days=1)).timestamp() * 1000)
+            docs += list(col.find(
+                {"symbol": vendor_sym, "t": {"$gte": max(s_ms, start_ms),
+                                             "$lte": min(e_ms, end_ms)}},
+                {"c": 1, "t": 1, "_id": 0}
+            ).sort("t", 1))
+        docs.sort(key=lambda d: d["t"])
         if docs:
             dates = [pd.Timestamp(d["t"], unit="ms").normalize() for d in docs]
             closes = [d["c"] for d in docs]
@@ -694,12 +710,38 @@ def download_prices_mongo(tickers: set, price_start: str, price_end: str) -> pd.
     return df
 
 
+def _yf_fetch_names(tickers: set, as_of: str) -> dict:
+    """请求名 → **yfinance 上的取数名**(改名票走现名)。
+
+    2026-08-27 BK 实证:两个外部源的归档口径相反,不能共用一个映射 ——
+      · yfinance 把整段历史迁到**现名**下: BNY 从 2026-03-05 起 122 行全有,
+        BK 一行都没有(所以每天 "1 Failed download: ['BK']");
+      · Polygon 按**成交当日的代码**归档,必须分段拼(见 PriceDataStore)。
+    故此处用 `canonical`(整段现名),Polygon 那边用 `market_segments`。
+    别名库不可用时原样返回,取数行为与接线前一致。"""
+    try:
+        from ticker_aliases import canonical
+    except Exception:  # noqa: BLE001
+        return {t: t for t in tickers}
+    return {t: canonical(t, as_of) for t in tickers}
+
+
+def _yf_relabel(field_df, name_map: dict):
+    """把按取数名返回的列改回**请求名**(多个请求名映射到同一取数名时各取一份)。"""
+    out = {}
+    for req, fetch in name_map.items():
+        if fetch in getattr(field_df, 'columns', []):
+            out[req] = field_df[fetch]
+    return pd.DataFrame(out) if out else field_df
+
+
 def download_prices(tickers: set, price_start: str, price_end: str) -> pd.DataFrame:
     end_plus = str((pd.Timestamp(price_end) + pd.Timedelta(days=1)).date())
     print(f'  Downloading prices ({len(tickers)} tickers, {price_start}→{price_end})...')
-    raw = yf.download(sorted(tickers), start=price_start, end=end_plus,
+    name_map = _yf_fetch_names(set(tickers), price_end)
+    raw = yf.download(sorted(set(name_map.values())), start=price_start, end=end_plus,
                       auto_adjust=True, progress=False)
-    return raw['Close']
+    return _yf_relabel(raw['Close'], name_map)
 
 
 def download_open_prices(tickers: set, price_start: str, price_end: str) -> pd.DataFrame:
@@ -714,9 +756,10 @@ def download_open_prices(tickers: set, price_start: str, price_end: str) -> pd.D
     yfinance untouched, so unaffected rows are byte-identical.
     """
     end_plus = str((pd.Timestamp(price_end) + pd.Timedelta(days=2)).date())  # +2 for exec day
-    raw = yf.download(sorted(tickers), start=price_start, end=end_plus,
+    name_map = _yf_fetch_names(set(tickers), price_end)
+    raw = yf.download(sorted(set(name_map.values())), start=price_start, end=end_plus,
                       auto_adjust=True, progress=False)
-    opens = raw['Open']
+    opens = _yf_relabel(raw['Open'], name_map)
 
     try:
         from CorporateActions import _load_splits_cache
@@ -1216,6 +1259,49 @@ def load_ledger_totals(start: str, end: str) -> dict:
     return out
 
 
+MTM_STALE_BDAYS = 5      # 与 PriceDataStore.STALE_TRADING_DAYS 同口径:一整周无新点
+
+
+def _warn_stale_mtm(prices, tickers, end: str) -> None:
+    """MTM 价格序列**提前终止**的票 → 大声 WARN(只报告,不改任何数值)。
+
+    2026-08-27 BK 起因:`_missing` 只查"有没有",BK 在 Mongo 里有 54 行(停在改名
+    前一日 2026-05-20)于是判定为"有" —— 之后 `get_price` 的 as-of 取法会把 5/20
+    的收盘一路当作 8 月的价格用,而日志一个字都不说。这里**不**动 MTM 数值:改口径
+    会动 R11(新窗口必须 diff=0)的红线,先让它可见。基准取全表最新交易日,历史窗口
+    (end 在过去)因此不会误报。"""
+    try:
+        import numpy as np
+        from ticker_aliases import stale_report
+        last = {}
+        for t in sorted(tickers):
+            s = prices[t].dropna() if t in getattr(prices, 'columns', []) else None
+            last[t] = s.index[-1].date() if s is not None and len(s) else None
+        present = [d for d in last.values() if d is not None]
+        if not present:
+            return
+        ref = max(present)
+        stale = {}
+        for t, d in last.items():
+            if d is None:
+                stale[t] = (None, None)
+                continue
+            gap = int(np.busday_count(np.datetime64(d), np.datetime64(ref)))
+            if gap > MTM_STALE_BDAYS:
+                stale[t] = (d, gap)
+        if not stale:
+            return
+        unknown, known = stale_report(stale, str(ref))
+        tail = f"(共 {len(stale)}/{len(tickers)} 票, 基准 {ref}, 报告终点 {end})"
+        if unknown:
+            print(f"  [WARN][STALE] MTM 序列**无登记解释**地提前终止: {unknown} —— "
+                  f"持仓行会沿用末点收盘价 {tail}")
+        if known:
+            print(f"  [STALE][已登记] MTM 序列提前终止: {known} {tail}")
+    except Exception as e:  # noqa: BLE001 — 体检项绝不影响报告生成
+        print(f"  [WARN] stale-MTM check skipped: {e}")
+
+
 def build_report_data(start: str, end: str) -> dict:
     """Collect all data needed for the PDF."""
     start_ts = pd.Timestamp(start)
@@ -1247,6 +1333,7 @@ def build_report_data(start: str, end: str) -> dict:
         for _t in _missing:
             if _t in getattr(_yf, 'columns', []):
                 prices[_t] = _yf[_t]
+    _warn_stale_mtm(prices, tickers, end)
 
     # Download Open prices for execution-price comparison (Section 六)
     try:

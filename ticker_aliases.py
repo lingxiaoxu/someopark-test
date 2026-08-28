@@ -165,11 +165,125 @@ def describe(tickers, date: str | None = None) -> dict:
     return out
 
 
+def stale_report(last_by_ticker: dict, ref: str) -> tuple[str, str]:
+    """把"序列停在 ref 之前"的票按**能不能解释**分两桶 → (unknown, known) 两段文本。
+
+    分桶是为了不喊狼(2026-08-27):改名/退市是**已登记的既成事实**,天天用 WARNING
+    喊同一件事,三天后没人再看这行 —— 而真正要命的恰恰是**没有解释**的那种停更
+    (数据源静默断流),它必须一眼可见。所以:
+      unknown → 调用方按 WARNING 打(可行动:去查数据源)
+      known   → 调用方按 INFO 打(可见即可:BK 是 renamed→BNY、AVB 是 delisted)
+    `last_by_ticker` = {ticker: (last_date|None, 落后工作日|None)};空桶返回空串。"""
+    notes = describe(list(last_by_ticker), ref)
+    def _fmt(items):
+        return "; ".join(
+            f"{t}: last={d or 'NONE'} (落后 {g if g is not None else '∞'} 工作日)"
+            + _note_tag(notes.get(t))
+            for t, (d, g) in sorted(items))
+    unknown = [(t, v) for t, v in last_by_ticker.items() if t not in notes]
+    known = [(t, v) for t, v in last_by_ticker.items() if t in notes]
+    return (_fmt(unknown) if unknown else "", _fmt(known) if known else "")
+
+
+def _note_tag(n: dict | None) -> str:
+    if not n:
+        return ""
+    bits = n.get("status", "")
+    if n.get("current"):
+        bits += f"→{n['current']}"
+    if n.get("delisted"):
+        bits += f" {n['delisted']}"
+    return f" [{bits}]"
+
+
 def rename_map(date: str) -> dict:
     """历史归一: 该日应把哪些 old→current(仅 date < changed 的条目——
     改名日后 old 名或无效或已被回收实体占用,绝不再映射)。"""
     return {old: e["current"] for old, e in load_aliases().items()
             if date < e["changed"]}
+
+
+# ── 外部行情源取数(按**当日市场名**归档的源: Polygon aggs 实证) ─────────────
+# 三个"名字函数"服务三种不同的存储口径,别混用(2026-08-27 BK 实证):
+#   resolve       市场名语义,**只正向** —— 历史工件里写的是当日市场名,拿旧名
+#                 问新日期要转发。拿**现名**问改名前的日期会原样返回。
+#   canonical     归一数据语义 —— 本地库已把历史行 old→current,整段都用现名。
+#   market_name   外部源语义 —— Polygon 的 aggs 按**成交当日的代码**归档:
+#                   BK  2026-03-02→03-08  count=5   BK  2026-08-24→08-27 count=0
+#                   BNY 2026-03-02→03-08  count=0   BNY 2026-08-24→08-27 count=4
+#                 所以跨改名日的窗口**必须分段拼接**,而且要双向(拿现名问改名前
+#                 的日期得回退到旧名)。yfinance 相反 —— 整段历史迁到现名下
+#                 (BNY 2026-03-05 起 122 行全有,BK 全空),那边用 canonical。
+
+def _predecessor(ticker: str) -> tuple[str, str] | None:
+    """反向一跳: 现名 → (前名, changed)。多个前名指向同一个 current 时**不猜**
+    (返回 None,调用方按现名取数,缺口交给取数端的陈旧体检暴露)—— 猜错就是
+    张冠李戴地把另一家公司的历史接上来,比缺一段更坏。"""
+    prev = [(old, e["changed"]) for old, e in load_aliases().items()
+            if e.get("current") == ticker]
+    return prev[0] if len(prev) == 1 else None
+
+
+def market_name(ticker: str, date: str | None = None) -> str:
+    """该实体在 `date` 当天的行情挂在哪个**市场代码**下(双向)。
+        BK,  2026-03-05 → 'BK'    BK,  2026-08-27 → 'BNY'   (正向 = resolve)
+        BNY, 2026-03-05 → 'BK'    BNY, 2026-08-27 → 'BNY'   (反向)
+    """
+    d = date or _today()
+    fwd = resolve(ticker, d)
+    if fwd != ticker:
+        return fwd
+    al = load_aliases()
+    cur = ticker
+    for _ in range(_MAX_HOPS):
+        p = _predecessor(cur)
+        if not p:
+            return cur
+        old, changed = p
+        if d >= changed:
+            return cur
+        # 旧名当日若已被**另一实体**回收,它就不再指本实体,不能拿去取价(FB 型)。
+        e = al.get(old) or {}
+        if e.get("recycled") and d >= e["recycled"]:
+            return cur
+        cur = old
+    return cur
+
+
+def market_segments(ticker: str, start: str, end: str) -> list[tuple[str, str, str]]:
+    """把 [start, end] 按改名/回收日切成 [(market_name, seg_start, seg_end), …]。
+
+    无事的票返回单段 [(ticker, start, end)],调用方不必分支。边界日取自全部
+    别名条目的 changed/recycled(当前 1 条,天然 O(1)),落在窗口内的才切。"""
+    if not start or not end or start > end:
+        return [(ticker, start, end)]
+    bounds = set()
+    for e in load_aliases().values():
+        for b in (e.get("changed"), e.get("recycled")):
+            if b and start < b <= end:
+                bounds.add(b)
+    segs: list[tuple[str, str, str]] = []
+    cuts = sorted(bounds)
+    seg_start = start
+    for nxt in cuts + [None]:
+        seg_end = end if nxt is None else _prev_day(nxt)
+        if seg_start > seg_end:
+            seg_start = nxt
+            continue
+        nm = market_name(ticker, seg_start)
+        if segs and segs[-1][0] == nm:                 # 与上一段同名 → 合并
+            segs[-1] = (nm, segs[-1][1], seg_end)
+        else:
+            segs.append((nm, seg_start, seg_end))
+        if nxt is None:
+            break
+        seg_start = nxt
+    return segs or [(ticker, start, end)]
+
+
+def _prev_day(d: str) -> str:
+    from datetime import date as _date, timedelta as _td
+    return (_date.fromisoformat(d) - _td(days=1)).isoformat()
 
 
 def normalize_day_frame(df, date: str, col: str = "ticker"):

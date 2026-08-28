@@ -28,6 +28,10 @@ log = logging.getLogger(__name__)
 
 STORED_FIELDS = ['Open', 'High', 'Low', 'Close', 'Volume']
 
+# 序列陈旧告警阈值(工作日)。5 = 一整周没新点。放宽=白装,收紧=天天喊狼没人看
+# (与 AISS aiss_pit.STALE_TRADING_DAYS 同口径、同理由)。
+STALE_TRADING_DAYS = 5
+
 
 class PriceDataStore:
 
@@ -80,7 +84,51 @@ class PriceDataStore:
 
         log.info(f"PriceDataStore: assembled {len(combined)} rows, "
                  f"{len(combined.columns)} columns")
+        self._freshness_check(combined, symbols, end_date)
         return combined
+
+    # ------------------------------------------------------- freshness check
+    # 2026-08-27 BK→BNY 起因: 本类**只查有没有、不查新不新**。改名/退市后 Polygon
+    # 对旧名回 resultsCount=0,`_get_or_fetch_week` 当"假日周"跳过,索引照记"已缓存",
+    # 于是该票的序列从事发日起永久冻结,而每天的日志只写 "assembled N rows" —— 检测
+    # 器跑着却永远说正常(同 AISS capex_pulse / VP RNN 冻结)。
+    # 判据不用日历、不用 today: 拿**本次结果里最新的交易日**当基准(全表共识),逐票
+    # 比自己的末点落后多少个工作日。这样历史窗口查询(end_date 在过去)不会误报,
+    # 而"别人都有今天、就你停在三个月前"必然被抓到。
+
+    def _freshness_check(self, combined, symbols, end_date):
+        """落后基准超过 STALE_TRADING_DAYS 的票 → 告警(非致命,绝不改变返回值)。"""
+        try:
+            import numpy as np
+            from ticker_aliases import stale_report
+            last = {}
+            for sym in symbols:
+                col = ('Close', sym)
+                s = combined[col].dropna() if col in combined.columns else None
+                last[sym] = s.index[-1].date() if s is not None and len(s) else None
+            present = [d for d in last.values() if d is not None]
+            if not present:
+                return
+            ref = max(present)
+            stale = {}
+            for sym, d in last.items():
+                if d is None:
+                    stale[sym] = (None, None)
+                    continue
+                gap = int(np.busday_count(np.datetime64(d), np.datetime64(ref)))
+                if gap > STALE_TRADING_DAYS:
+                    stale[sym] = (d, gap)
+            if not stale:
+                return
+            unknown, known = stale_report(stale, str(ref))
+            tail = f"(共 {len(stale)}/{len(symbols)} 只停在基准 {ref} 前,请求终点 {end_date})"
+            if unknown:
+                log.warning(f"[STALE] **无登记解释**的停更: {unknown} —— 数据源静默"
+                            f"断流?取这些票的价格会用陈旧值 {tail}")
+            if known:
+                log.info(f"[STALE][已登记] {known} {tail}")
+        except Exception as e:  # noqa: BLE001 — 体检项绝不因自身出错而影响取数
+            log.debug(f"PriceDataStore freshness check skipped: {e}")
 
     # -------------------------------------------------------------- date math
 
@@ -243,59 +291,100 @@ class PriceDataStore:
 
     def _fetch_from_api(self, symbols, start_date, end_date):
         """Fetch split-adjusted OHLCV from Polygon (no dividend adjustment).
-        Returns dict[symbol] -> dict with keys Open, High, Low, Close, Volume."""
+        Returns dict[symbol] -> dict with keys Open, High, Low, Close, Volume.
+
+        改名(2026-08-27 BK→BNY 实证): Polygon 的 aggs 按**成交当日的代码**归档 ——
+        BK 在 2026-05-21 之后返回 0 条,BNY 在那之前也是 0 条。而 `_get_or_fetch_week`
+        把 resultsCount=0 当"假日周"静默跳过,于是改名后的每一周都写进一个**没有该
+        票列**的 parquet、索引里却记成"已缓存",序列从改名日起永久断在那里,日志一
+        片祥和 —— 与 AISS capex_pulse 冻结、VP RNN 冻结同一病理。
+        故取数前按 `ticker_aliases.market_segments` 把窗口切成"当日市场名"分段,
+        逐段取、拼回**调用方请求的那个名字**下。无改名的票 segments 只有一段且同名,
+        走的路径与改动前逐字节相同。"""
+        try:
+            from ticker_aliases import market_segments
+        except Exception:  # noqa: BLE001 — 别名库不可用绝不阻断取数
+            market_segments = None
+
         result = {}
         for i, symbol in enumerate(symbols):
-            url = (
-                f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/"
-                f"{start_date}/{end_date}?adjusted=true&sort=asc&limit=50000"
-                f"&apiKey={self._api_key}"
-            )
-            last_err = None
-            for attempt in range(3):
-                try:
-                    resp = requests.get(url, timeout=45)
-                    resp.raise_for_status()
-                    body = resp.json()
-
-                    if body.get('status') not in ('OK', 'DELAYED'):
-                        if body.get('resultsCount', 0) == 0:
-                            # No data for this week (e.g., holiday week) — skip
-                            break
-                        raise ValueError(f"Polygon API error for {symbol}: "
-                                         f"status={body.get('status')}")
-
-                    results = body.get('results')
-                    if not results:
-                        break
-
-                    df = pd.DataFrame(results)
-                    df['date'] = pd.to_datetime(df['t'], unit='ms')
-                    df = df.set_index('date')
-
-                    result[symbol] = {
-                        'Open': df['o'],
-                        'High': df['h'],
-                        'Low': df['l'],
-                        'Close': df['c'],
-                        'Volume': df['v'],
-                    }
-                    last_err = None
-                    break
-                except Exception as e:
-                    last_err = e
-                    wait = 2 ** attempt  # 1s, 2s, 4s
-                    log.warning(f"  API fetch failed for {symbol} (attempt {attempt+1}/3): {e}. "
-                                f"Retrying in {wait}s...")
-                    time_module.sleep(wait)
-            if last_err is not None:
-                log.error(f"  API fetch failed for {symbol} after 3 attempts: {last_err}")
-                raise last_err
+            try:
+                segments = (market_segments(symbol, start_date, end_date)
+                            if market_segments else [(symbol, start_date, end_date)])
+            except Exception as e:  # noqa: BLE001
+                log.warning(f"  alias lookup failed for {symbol} ({e}) — 按原名取数")
+                segments = [(symbol, start_date, end_date)]
+            parts = []
+            for j, (vendor_sym, seg_start, seg_end) in enumerate(segments):
+                if j:
+                    time_module.sleep(self._api_delay)   # 同一票的分段之间也限速
+                got = self._fetch_one(vendor_sym, seg_start, seg_end, symbol)
+                if got is not None:
+                    parts.append(got)
+            if not parts:
+                continue
+            if len(parts) == 1:
+                result[symbol] = parts[0]
+            else:
+                # 分段的日期区间互斥(market_segments 按边界日切),直接拼接后排序。
+                result[symbol] = {
+                    f: pd.concat([p[f] for p in parts]).sort_index()
+                    for f in STORED_FIELDS
+                }
+                log.info(f"  {symbol}: spliced {len(parts)} market-name segments "
+                         f"({', '.join(s[0] for s in segments)})")
 
             if i < len(symbols) - 1:
                 time_module.sleep(self._api_delay)
 
         return result
+
+    def _fetch_one(self, vendor_symbol, start_date, end_date, requested_symbol):
+        """One Polygon aggs request (3 attempts). Returns the field dict or None
+        when the vendor has no rows for this window (holiday week / pre-listing)."""
+        url = (
+            f"https://api.polygon.io/v2/aggs/ticker/{vendor_symbol}/range/1/day/"
+            f"{start_date}/{end_date}?adjusted=true&sort=asc&limit=50000"
+            f"&apiKey={self._api_key}"
+        )
+        last_err = None
+        for attempt in range(3):
+            try:
+                resp = requests.get(url, timeout=45)
+                resp.raise_for_status()
+                body = resp.json()
+
+                if body.get('status') not in ('OK', 'DELAYED'):
+                    if body.get('resultsCount', 0) == 0:
+                        # No data for this week (e.g., holiday week) — skip
+                        return None
+                    raise ValueError(f"Polygon API error for {vendor_symbol}: "
+                                     f"status={body.get('status')}")
+
+                results = body.get('results')
+                if not results:
+                    return None
+
+                df = pd.DataFrame(results)
+                df['date'] = pd.to_datetime(df['t'], unit='ms')
+                df = df.set_index('date')
+
+                return {
+                    'Open': df['o'],
+                    'High': df['h'],
+                    'Low': df['l'],
+                    'Close': df['c'],
+                    'Volume': df['v'],
+                }
+            except Exception as e:
+                last_err = e
+                wait = 2 ** attempt  # 1s, 2s, 4s
+                log.warning(f"  API fetch failed for {vendor_symbol} "
+                            f"(attempt {attempt+1}/3): {e}. Retrying in {wait}s...")
+                time_module.sleep(wait)
+        log.error(f"  API fetch failed for {vendor_symbol} after 3 attempts "
+                  f"(requested as {requested_symbol}): {last_err}")
+        raise last_err
 
     def _load_div_cache(self):
         """Load the dividend cache from disk (once per session)."""
