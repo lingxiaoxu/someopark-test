@@ -230,3 +230,161 @@ def test_label_agrees_with_the_settled_ladder(live, series):
         f"{series}: {agree}/{n} = {rate:.1%} agree with the settled ladder, floor "
         f"{floor:.0%}{' (' + why + ')' if why else ''}. A label that disagrees with the "
         f"ladder is what snipe.py calls a certainty.\n  " + "\n  ".join(misses[:6]))
+
+
+# ── layer 3: a leg with no strike must produce no expectation, not a crash ───
+# `_leg_expected` returning None is the answer both callers are written for — they skip
+# the leg. Raising is a different outcome entirely: `_settle_label_check` is the 铁律 2
+# GLOBAL breaker, so a TypeError there is not a caught mismatch, it is the 06:00 health
+# run dying before it checks anything else. The shape is in the live db (604 settled legs
+# with strike_type IS NULL and floor_strike IS NULL, from the pre-2025-02 backfill) and
+# reachable in strategy/snipe.py, which back-fills `strike` from `cap_strike` for its own
+# None-check and then passes the still-None `strike` in here under `greater*` semantics.
+@pytest.mark.parametrize("strike_type,floor,cap", [
+    ("greater", None, 4.3),            # snipe.py's exact shape: cap set, floor not
+    ("greater_or_equal", None, None),
+    (None, None, 4.3),                 # strike_type absent -> defaults to a greater*
+    ("less", 4.3, None),
+    ("less_or_equal", None, None),
+    ("between", None, 4.3),
+    ("between", 4.3, None),
+])
+@pytest.mark.parametrize("strict", [True, False])
+def test_missing_bound_yields_no_expectation_rather_than_raising(strike_type, floor,
+                                                                 cap, strict):
+    from prediction_market_macro.research.health import _leg_expected
+    assert _leg_expected(4.4, strike_type, floor, cap, strict) is None
+
+
+@pytest.mark.parametrize("strike_type,floor,cap,y,want", [
+    ("greater", 4.3, None, 4.4, "yes"),
+    ("greater", 4.3, None, 4.3, "no"),          # strict: equality is NOT yes
+    ("greater_or_equal", 4.3, None, 4.3, "yes"),
+    ("greater_or_equal", 4.3, None, 4.2, "no"),
+    ("less", None, 4.3, 4.2, "yes"),
+    ("less", None, 4.3, 4.3, "no"),
+    ("less_or_equal", None, 4.3, 4.3, "yes"),
+    ("less_or_equal", None, 4.3, 4.4, "no"),
+    ("between", 4.0, 4.3, 4.3, "yes"),
+    ("between", 4.0, 4.3, 4.4, "no"),
+])
+def test_the_guard_did_not_move_any_leg_that_already_had_an_answer(strike_type, floor,
+                                                                  cap, y, want):
+    """The other half of the guard: every bounded case, including both open/closed
+    ends, must land exactly where it landed before. A None-guard that also flipped a
+    boundary would be a settlement-label change wearing a robustness fix's clothes."""
+    from prediction_market_macro.research.health import _leg_expected
+    assert _leg_expected(y, strike_type, floor, cap, False) == want
+
+
+def test_the_strike_type_default_still_follows_strict_gt():
+    from prediction_market_macro.research.health import _leg_expected
+    assert _leg_expected(4.3, None, 4.3, None, True) == "no"      # -> greater
+    assert _leg_expected(4.3, None, 4.3, None, False) == "yes"    # -> greater_or_equal
+
+
+# ── layer 4: a strike is only as precise as the encoding that carried it ─────
+# KXU3-25FEB-T4.1 is stored as floor_strike = 4.099999. On a strict-greater ladder that
+# ULP flips the exactly-at-strike case from NO to YES. Five KXU3 legs in the live db
+# print exactly 4.1 against that strike and settled NO; before the guard, all five read
+# as settle_label_mismatch — five false GLOBAL-breaker fires sitting in the history of a
+# series that IS in _FUSE_SERIES, held off production only by being outside the window.
+# Measured over the whole live book, the guard moves exactly those five legs and nothing
+# else (6124 unchanged, 600 previously-crashing now None).
+#
+# The encoding is historical — KXU3's `.1` rungs are 4.099999 from 23JAN to 25JUN and
+# clean 4.1 for all fourteen periods since — so these tests are pinning behaviour on the
+# STORED book, which is what the breaker reads and what a re-ingest can move.
+def test_a_sub_quantum_strike_offset_is_declined_not_decided():
+    from prediction_market_macro.research.health import _leg_expected
+    assert _leg_expected(4.1, "greater", 4.099999, None, True) is None
+    assert _leg_expected(4.1, "greater_or_equal", 4.099999, None, False) is None
+    assert _leg_expected(64.99, "less", None, 64.989999, True) is None
+    assert _leg_expected(64.99, "between", 64.0, 64.989999, True) is None
+
+
+def test_exact_equality_is_still_decided_because_that_is_what_strict_gt_is_for():
+    """The band is `0 < |y-bound| <= eps`, open at zero. KXJOBLESSCLAIMS strikes sit on
+    a 250 lattice with integer prints, so a print landing exactly on a strike is ordinary
+    and `greater_or_equal` calls it YES correctly. A blanket 'near the line' guard would
+    swallow it, retire strict_gt altogether, and cost the breaker real coverage on the
+    one series it was built for."""
+    from prediction_market_macro.research.health import _leg_expected
+    assert _leg_expected(235000.0, "greater_or_equal", 235000.0, None, False) == "yes"
+    assert _leg_expected(235000.0, "greater", 235000.0, None, True) == "no"
+
+
+def test_a_deliberate_sub_lattice_offset_is_not_swallowed():
+    """KXPAYROLLS writes '>= 100,000' as '> 99,999' — nine such strikes in the live db,
+    each exactly 1.0 off the 1000 lattice. That is semantics, not transport, and it is
+    six orders of magnitude from the 1e-6 the guard is for. If a future eps ever grows
+    past 1.0 this test is the thing that stops it."""
+    from prediction_market_macro.research.health import _STRIKE_EPS, _leg_expected
+    assert _STRIKE_EPS < 1.0
+    assert _leg_expected(100000.0, "greater", 99999.0, None, True) == "yes"
+    assert _leg_expected(99999.0, "greater", 99999.0, None, True) == "no"
+
+
+def test_a_genuine_rounding_disagreement_is_still_reported():
+    """The guard must not become a way to make CPI/PCE look clean. Their misses are of
+    order 1e-2 — the raw MoM sits above a strike whose published, rounded print does not
+    — and those are exactly the disagreements that keep the family OUT of _FUSE_SERIES."""
+    from prediction_market_macro.research.health import _leg_expected
+    assert _leg_expected(0.2081, "greater", 0.2, None, True) == "yes"     # settled 'no'
+    assert _leg_expected(0.2455, "greater", 0.2, None, True) == "yes"     # settled 'no'
+
+
+# ── layer 5: the fused set, and the window it is read over (#216) ────────────
+def test_the_fused_set_is_pinned():
+    """_settle_label_check is a GLOBAL breaker. Its membership was widened from 2 to 5
+    on measured 100.0% agreement (see the comment on _FUSE_SERIES); a series drifting in
+    or out must be a deliberate edit that fails here, not a quiet import-time change."""
+    from prediction_market_macro.research.health import _FUSE_SERIES
+    assert set(_FUSE_SERIES) == {"KXJOBLESSCLAIMS", "KXU3", "KXPAYROLLS", "KXFED",
+                                 "KXAAAGASW"}
+    for excluded in ("KXCPI", "KXCPICORE", "KXCPIYOY", "KXCPICOREYOY", "KXPCECORE",
+                     "KXWTIW", "KXNATGASW", "KXFEDDECISION", "KXGDP"):
+        assert excluded not in _FUSE_SERIES
+
+
+def test_the_window_is_per_series_so_a_daily_ladder_cannot_evict_a_monthly_one(tmp_path):
+    """The reason the widening needed a window change at all. KXAAAGASW settles a ~34-leg
+    ladder EVERY DAY; under one shared LIMIT it took 87 of 120 rows on the live db and
+    pushed KXU3 to exactly zero — the breaker would have stopped checking a series it
+    already guarded. Seeded here at 10x so the eviction is unambiguous."""
+    from prediction_market_macro.research.health import _FUSE_PER_SERIES
+    conn = init_db(tmp_path / "win.db")
+    for i in range(_FUSE_PER_SERIES * 10):        # the loud daily series, newest first
+        conn.execute("INSERT INTO settlements(ticker, series, period, result,"
+                     " settled_ts, first_seen_ts) VALUES(?,?,?,?,?,?)",
+                     (f"KXAAAGASW-X{i}", "KXAAAGASW", "26AUG27", "no",
+                      f"2026-08-27T{i // 3600:02d}:00:00Z", "2026-08-27T00:00:00Z"))
+    for i in range(5):                            # the quiet monthly one, older
+        conn.execute("INSERT INTO settlements(ticker, series, period, result,"
+                     " settled_ts, first_seen_ts) VALUES(?,?,?,?,?,?)",
+                     (f"KXU3-Y{i}", "KXU3", "26JUL", "no",
+                      "2026-07-03T12:25:00Z", "2026-07-03T00:00:00Z"))
+    conn.commit()
+
+    shared = [r[0] for r in conn.execute(
+        "SELECT series FROM settlements WHERE series IN ('KXAAAGASW','KXU3')"
+        " ORDER BY settled_ts DESC LIMIT ?", (_FUSE_PER_SERIES,))]
+    assert shared.count("KXU3") == 0, "the shared window is what the fix is about"
+
+    per = []
+    for s in ("KXAAAGASW", "KXU3"):
+        per += [r[0] for r in conn.execute(
+            "SELECT series FROM settlements WHERE series=? ORDER BY settled_ts DESC"
+            " LIMIT ?", (s, _FUSE_PER_SERIES))]
+    assert per.count("KXU3") == 5, "per-series, the quiet series keeps its own budget"
+
+
+def test_the_live_breaker_is_silent(live):
+    """The end of #216, run against the real db through the real function rather than a
+    reimplementation of it: the widened set over the per-series window must produce no
+    flags. This is the test that would have caught the five false KXU3 fires, and it is
+    the one that fires if a future re-ingest breaks a label."""
+    from prediction_market_macro.research.health import _settle_label_check
+    from datetime import datetime, timezone
+    flags = _settle_label_check(live, datetime.now(timezone.utc))
+    assert flags == [], "\n  ".join(flags)

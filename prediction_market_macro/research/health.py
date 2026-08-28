@@ -153,24 +153,110 @@ def _detect_chronos(conn, series: str) -> str | None:
     return None
 
 
-# series where the FRED first print IS the settlement value in contract units —
-# only these can be fused honestly (CPI/PCE need index→% transforms with their own
-# rounding conventions; AAA settles on AAA readings, GASREGW is only a model proxy)
-_FUSE_SERIES = ("KXJOBLESSCLAIMS", "KXU3")
+# Series whose label can be fused with the settled ladder, chosen by MEASUREMENT rather
+# than by the old assertion (#216). Admission is all three of: 100.0% per-leg agreement
+# over the whole settled history — no floor below 1.0, because a breaker expected to
+# misfire is a breaker that gets disabled the first morning it fires — at least 8 labelled
+# periods, and zero disagreements inside the window the breaker actually reads.
+#
+# Measured 2026-08-28 over the live db, per-leg agreement:
+#   KXJOBLESSCLAIMS 492/492   KXU3 455/455   KXPAYROLLS 350/350
+#   KXFED           314/314   KXAAAGASW 118/118            -> admitted
+#   KXWTIW      2205/2213 (.9964)  KXCPIYOY .9624  KXCPICOREYOY .9645
+#   KXCPI       .9474  KXCPICORE .9439  KXPCECORE .9262      -> excluded, and the old
+# comment's reason is confirmed for the CPI/PCE family: the label is a raw MoM float
+# while Kalshi settles on the PUBLISHED value rounded to the contract unit, so a print of
+# 0.2081 against a T0.2 rung reads YES and settled NO. That is a real ~1e-2 disagreement,
+# far above the 1e-5 transport band `_leg_expected` declines, and it must keep them out.
+# KXWTIW's residual is the known CL front-month roll. KXNATGASW and KXFEDDECISION produce
+# no labelled legs at all (no label / 'custom' strikes) and would fuse vacuously.
+# KXGDP passes on 9 legs from 1 period — untested, not narrowly passing.
+# AAA left the excluded list because the 2026-08-27 fix moved `_realized_print` off the
+# EIA weekly pump average and onto the AAA daily national average it settles on.
+_FUSE_SERIES = ("KXJOBLESSCLAIMS", "KXU3", "KXPAYROLLS", "KXFED", "KXAAAGASW")
+
+# PER SERIES, not across them. With one shared `LIMIT 120` the window is won by whoever
+# settles most often: KXAAAGASW posts a ~34-leg ladder DAILY, so on the five-series set it
+# takes 87 of 120 rows and evicts KXU3 to exactly ZERO — a widening that reads as more
+# coverage and silently removes the breaker from a series it already guarded, collapsing
+# the window's span from two months to seventeen days. Per-series, no cadence can crowd
+# out another and 120 is the same depth each fused series has today: claims goes 96 -> 120
+# legs and U3 24 -> 120. Cost of the whole check on the live db is 33ms against 13ms.
+_FUSE_PER_SERIES = 120
+
+
+# Some strikes in the stored book sit one part in 1e-6 BELOW their nominal lattice value:
+# `KXU3-25FEB-T4.1` has floor_strike = 4.099999. On a strict-greater ladder that unit in
+# the last place is not cosmetic — it moves the exactly-at-strike case from NO to YES,
+# which is the whole of 铁律 2. Measured over the live db: 123 settled legs across
+# KXU3 / KXCPIYOY / KXCPICOREYOY / KXWTIW carry such a strike, every one of them LOW, and
+# every one off by exactly 1.000e-06. Five KXU3 legs print exactly on the nominal strike;
+# Kalshi settled all five NO while a raw comparison against 4.099999 says YES.
+#
+# This is a HISTORICAL encoding, not one still on the wire: KXU3's `.1` rungs are
+# 4.099999 for every period from 23JAN through 25JUN and clean 4.1 for all fourteen
+# periods from 25JUL on, including the three currently active. The guard therefore
+# defends the stored book — which is what the breaker reads, and which a re-ingest or a
+# window change can pull back into range — rather than tomorrow's fetch.
+#
+# The separation from a DELIBERATE offset is six orders of magnitude and must be kept:
+# KXPAYROLLS strikes are stored at 99999 / 149999 / -1, exactly 1.0 below the lattice,
+# because Kalshi writes ">= 100,000" as "> 99,999". That is semantics, not transport, and
+# it must survive untouched. Any threshold in [1e-6, 1.0) separates the two; this is ten
+# times the observed offset.
+_STRIKE_EPS = 1e-5
 
 
 def _leg_expected(y: float, strike_type: str | None, floor, cap,
                   default_strict: bool) -> str | None:
+    """The label this leg SHOULD have carried, or None when it cannot be said.
+
+    None already means "no honest expectation here" to both callers — they skip it. Two
+    guards route into that same answer rather than into a wrong one:
+
+    (1) A MISSING bound used to raise. That is not cosmetic either: `_settle_label_check`
+        is a global breaker, and a breaker that raises does not flag a mismatch, it takes
+        the whole 06:00 health run down with a stack trace. 604 settled legs in the live
+        db carry `strike_type IS NULL` together with `floor_strike IS NULL` (the
+        pre-2025-02 deep backfill, where Kalshi's older payloads had no strike fields) —
+        all currently far outside the newest-120 window, but the shape reappears whenever
+        a settlement lands before its contract row is filled in. `strategy/snipe.py`
+        reaches it sooner: it back-fills `strike` from `cap_strike` for its own None-check
+        and then passes the original, still-None `strike` in here under `greater*`.
+
+    (2) A print sitting a STRICTLY POSITIVE but sub-quantum distance from the bound is
+        not judged. `0 < |y - bound| <= _STRIKE_EPS` is the signature of transport loss
+        and nothing else: the bound is not the number Kalshi settled on, so neither
+        answer is defensible, and this function's caller escalates a wrong answer to a
+        production halt. Exact equality is deliberately NOT in the band — `|y - bound|
+        == 0` is a real, decidable case, and it is the case `strict_gt` exists to decide.
+        KXJOBLESSCLAIMS strikes sit on a 250 lattice with integer prints, so landing
+        exactly on one is ordinary, and `greater_or_equal` calls it YES correctly; a
+        blanket "near the line" guard would swallow that, silently retire `strict_gt`
+        altogether, and cost the breaker real coverage on the series it was built for.
+
+        It DECLINES rather than snapping the strike to the lattice: the five observed
+        cases would all snap correctly, but snapping asserts that every sub-lattice
+        offset is transport noise, and KXPAYROLLS is standing proof that some are meant.
+        Declining costs 5 checks out of 9663 and asserts nothing. Legs missed this way
+        are not dropped from the world — `strategy/snipe.py` already refuses to trade a
+        far wider band (`BOUNDARY_FRAC`, half a grid step) around the same line.
+    """
+    def _ulp(bound) -> bool:
+        return 0.0 < abs(y - bound) <= _STRIKE_EPS
+
     st = strike_type or ("greater" if default_strict else "greater_or_equal")
-    if st == "greater":
-        return "yes" if y > floor else "no"
-    if st == "greater_or_equal":
-        return "yes" if y >= floor else "no"
-    if st == "less":
-        return "yes" if y < cap else "no"
-    if st == "less_or_equal":
-        return "yes" if y <= cap else "no"
+    if st in ("greater", "greater_or_equal"):
+        if floor is None or _ulp(floor):
+            return None
+        return "yes" if (y > floor if st == "greater" else y >= floor) else "no"
+    if st in ("less", "less_or_equal"):
+        if cap is None or _ulp(cap):
+            return None
+        return "yes" if (y < cap if st == "less" else y <= cap) else "no"
     if st == "between" and floor is not None and cap is not None:
+        if _ulp(floor) or _ulp(cap):
+            return None
         return "yes" if floor <= y <= cap else "no"
     return None
 
@@ -184,12 +270,14 @@ def _settle_label_check(conn, now: datetime) -> list[str]:
     from prediction_market_macro.ops.pnl import _realized_print
     from prediction_market_macro.util.periods import kalshi_period_to_key
     bad = []
-    ph = ",".join("?" for _ in _FUSE_SERIES)
-    rows = conn.execute(
-        f"SELECT s.series, s.period, s.ticker, s.result, c.floor_strike, c.cap_strike,"
-        f" c.strike_type FROM settlements s JOIN contracts c ON c.ticker=s.ticker"
-        f" WHERE s.result IN ('yes','no') AND s.series IN ({ph})"
-        f" ORDER BY s.settled_ts DESC LIMIT 120", _FUSE_SERIES).fetchall()
+    rows = []
+    for _s in _FUSE_SERIES:                      # one budget each — see _FUSE_PER_SERIES
+        rows += conn.execute(
+            "SELECT s.series, s.period, s.ticker, s.result, c.floor_strike,"
+            " c.cap_strike, c.strike_type FROM settlements s"
+            " JOIN contracts c ON c.ticker=s.ticker"
+            " WHERE s.result IN ('yes','no') AND s.series=?"
+            " ORDER BY s.settled_ts DESC LIMIT ?", (_s, _FUSE_PER_SERIES)).fetchall()
     cache: dict[tuple[str, str], float | None] = {}
     for r in rows:
         key = kalshi_period_to_key(r["period"]) if r["period"] else None
