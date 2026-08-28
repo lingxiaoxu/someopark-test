@@ -3232,6 +3232,67 @@ will need its own preregistration before any of it is scored.
 Artifacts: `/tmp/dfm_verify/xseries_dep.py`, `xpanel_dep.py`, and the preserved
 `xseries_dep_BUGGY_matchcount.{json,log}`.
 
+### 5d-2. The fix, staged — three registrations, each allowed to kill the next (#214, 2026-08-28)
+
+§5d measured the cost and refused to propose the fix in the same breath. This is the proposal,
+written as architecture rather than as one registration, because the three pieces have different
+risk profiles and a single up-or-down verdict would let the safe piece smuggle in the dangerous
+one. Each stage gates the next: a stage that fails kills everything after it, and nothing lands
+in a generated world until Stage 3 passes its own registration.
+
+**Stage 1 — merge the two weekly panels (PR-19, registered, running).** `claims_weekly` and
+`energy_weekly` share one clock — both are `**_WEEKLY` (same `start`, same `drop_spans`, same
+`W-SAT` freq) — so `joint_weekly = _scope(_WEEKLY_COLS, ("claims","gas_retail","wti","natgas",
+"rbob"))` is well-posed with no alignment machinery: 5 × 13 = 65 dims, 690 rows. This alone
+fixes the four bridge pairs (`claims` × each energy column, real |corr| up to 0.523) *within one
+draw*. The risk it must clear is on the record in `panel.py`'s own comments: `core_monthly` at
+144 dims loses to a block bootstrap of its own history at every conditioning width — wide panels
+are not free, and 65 dims sits between the narrow specs (13–52) that work and the wide ones
+(130–144) that failed. PR-19's criteria: `dep x` excess vs boot ≤ 0.03 (the join must actually
+capture the cross structure — at the zero model the 4 dead bridge pairs would push the 10-pair
+mean excess to ~0.1), `crps_ratio` < 1.0 and ≤ 0.9786 (column-weighted narrow baseline + 0.02),
+C2ST vs boot ≤ 0.169, `dup` ≤ 0.05, cover80 |gap| ≤ 0.1100.
+
+**Stage 2 — pin the monthly duplicates by inpainting (not yet registered).** `labor_monthly.
+claims` and `inflation_monthly.gas_retail` are monthly means of series the weekly draw already
+generates. Instead of drawing them a second time, the monthly panels are drawn *conditioned* on
+the weekly draw's monthly aggregates, by replacement inpainting in the reverse SDE: at each
+Euler step the pinned coordinates of `x` are overwritten with the forward-noised pinned values,
+so the net fills in the free coordinates coherently around them. Three properties make this the
+right tool here: it adds **zero trained parameters**; it lives entirely in `generator._reverse`
+— macro's own copy of the integrator, NOT `dfm/` — as an optional argument whose `None` default
+leaves the loop bit-identical, so `test_reverse_matches_dfm_with_the_identity_start` keeps
+guarding the copy; and it transfers cross-panel structure through dependence the panel already
+learned — pin `gas_retail` and the panel's own `cpi ~ gas_retail` coupling carries the energy
+shock into `cpi`, which is the real +0.676 pathway.
+
+Two honest limits, stated before anyone measures them. *Horizon:* the weekly draw covers 13
+weeks ≈ 3 months of the monthly panels' 12-month horizon, so only the first ~3 monthly periods
+can be pinned; beyond the seam the free coordinates revert to within-panel structure. The
+cross-panel correlation this buys is therefore front-loaded, which is also where the traded
+events are. *Reach:* `labor ~ inflation` pairs with no shared column (`payems ~ cpi_core`
++0.294) are coupled only through `corr(claims, gas_retail)` inside the weekly joint draw —
+partial by construction, and Stage 2's registration must measure what fraction of the real
+correlation survives the two hops rather than assume it.
+
+**Stage 3 — joint worlds, one write per sid (not yet registered).** A world stops being
+per-series: one `materialize`, weekly panel drawn first, monthly panels drawn pinned, and every
+sid written exactly once — ICSA and GASREGW weeks 1–13 come from the weekly draw, later weeks
+from the monthly disaggregation, with the seam handled by `_sub_monthly`'s existing `fixed=`
+machinery (it already solves a month's mean around weeks it must hold fixed — the splice does
+this today). That makes §5d's control identity **exact by construction**: there is one gasoline
+number per week in the world, so KXCPI's gasoline and KXAAAGASW's gasoline cannot disagree.
+This changes every generated world and therefore every downstream number in this document,
+which is why it is a separate registration with its own falsifiers (event counts, per-series
+battery parity) and lands nothing until judged.
+
+**Explicitly not proposed, again:** any sizing, λ, or execution change. §5d's warning stands —
+the same-frequency variance ratio is 0.883, a joint law licenses *more* risk on those pairs,
+and that step is (a), which needs its own harness and its own registration when and if Stage 3
+exists.
+
+Registration: `PREREGISTER.md` §PR-19 (Stage 1). Artifacts: `/tmp/dfm_verify/pr19_joint_weekly.py`.
+
 ## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
 
 #184b measured a denominator and stopped there on purpose: of **8360** settled legs across the
