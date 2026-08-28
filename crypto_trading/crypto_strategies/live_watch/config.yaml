@@ -71,6 +71,14 @@ w7_noisefade:             # RE-FROZEN 2026-08-27: 15M up-side-premium fade
   demo_mirror: true       # ON 2026-08-26 (user): entries ALSO order on demo
                           # (KXBTCD preferred, flagship fallback; deviation logged)
   contracts: 25
-  max_cum_loss_usd: 30
-  min_trades_for_kill: 40
-  # LIVE criteria (watchlist): post-registration n>=60 AND hit>=45% AND NW-t>=2
+  # Scale-matched kill (2026-08-27): each binary trade risks 25 x ~0.77 = $19,
+  # so the old $30 bar was 1.5 losing trades — it fired on noise, not on
+  # evidence (window-clustered t was -0.58 at the time). Set to ~10 losing
+  # trades AND require enough INDEPENDENT windows for the number to mean
+  # something.
+  max_cum_loss_usd: 200
+  min_trades_for_kill: 150
+  # LIVE criteria: post-registration INDEPENDENT WINDOWS >= 200 — NOT raw
+  # trades. The five 15M markets settle the same macro move (one 12:30 window
+  # produced three identical results on 2026-08-27), so trade count overstates
+  # evidence 3-5x. Plus mean > 0 AND window-clustered t >= 2.5.

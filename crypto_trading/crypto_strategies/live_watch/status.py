@@ -57,6 +57,22 @@ def main() -> int:
         if st.get("killed"):
             parts.append("| ⚠️ KILLED")
         print("  ".join(parts))
+        wins = st.get("windows") or {}
+        if wins:
+            wm = [v["sum_c"] / v["n"] for v in wins.values() if v["n"]]
+            pos = sum(1 for x in wm if x > 0)
+            avg = sum(wm) / len(wm) if wm else 0.0
+            print(f"      └ 独立窗口 {len(wm)}  均值{avg:+.2f}c  正{pos}/{len(wm)}"
+                  f"  ← 有效样本(五币=一次宏观下注)")
+        sl = [t["depth"]["slippage_c"] for t in (st.get("trades") or [])
+              if isinstance(t.get("depth"), dict) and t["depth"].get("slippage_c") is not None]
+        tp = [t["depth"]["top_size"] for t in (st.get("trades") or [])
+              if isinstance(t.get("depth"), dict) and t["depth"].get("top_size")]
+        if sl:
+            sl2 = sorted(sl); tp2 = sorted(tp) if tp else [0]
+            print(f"      └ prod 实盘成交(走簿 25 张): 滑点中位 {sl2[len(sl2)//2]:+.2f}c "
+                  f"· 最差 {sl2[-1]:+.2f}c · 首档中位 {tp2[len(tp2)//2]:,.0f} 张"
+                  f"  ← 只读记录,不交易")
         # W7's per-coin book: the only OOS-reproducing dimension
         for sr, b in (st.get("by_series") or {}).items():
             if b.get("n"):
@@ -64,8 +80,8 @@ def main() -> int:
                       f"均值{b['sum_c']/b['n']:+.2f}c")
 
     print("-" * 88)
-    print("FOCUS W7: verdict at post-registration n>=60 & hit>=45% & NW-t>=2 "
-          "(~6-7 weeks @1.3/day)")
+    print("FOCUS W7: verdict at INDEPENDENT WINDOWS >= 200 (5 coins = 1 macro "
+          "bet; raw trades overstate 3-5x) & mean>0 & window-clustered t>=2.5")
     print("FOCUS W4: funding trail30 is the income leg — see the daily "
           "heartbeat; verdict needs the external spot account (user).")
     return 0

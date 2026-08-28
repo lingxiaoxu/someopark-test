@@ -18,9 +18,10 @@ drift; structural test enforces it):
 
 Registered comparand (scan cell): n=1,621, hit 78.8% @ cost 0.750,
 +2.62c/contract, NW-t 2.36, 135 trades/day. LIVE criteria (watchlist):
-post-registration n ≥ 600 AND mean > 0 AND NW-t ≥ 2.5 — the bar is above the
-usual 2.0 because this cell surfaced from an exploratory scan (24 cells,
-Bonferroni |t| ≥ 3.08, which it did NOT clear on the scan's own data).
+post-registration INDEPENDENT WINDOWS ≥ 200 (not raw trades — the five
+markets are one macro bet) AND mean > 0 AND window-clustered t ≥ 2.5. The
+bar exceeds the usual 2.0 because the cell surfaced from an exploratory scan
+(24 cells, Bonferroni |t| ≥ 3.08, which it did NOT clear on scan data).
 
 PAPER + demo mirror. Cadence 60s: 15-minute windows close 4×/hour per market,
 and the entry point is a one-minute-wide target, so the probe must look often.
@@ -86,6 +87,61 @@ def official_result(ticker: str) -> str | None:
     return None
 
 
+def walk_book_for_no(ticker: str, contracts: int) -> dict | None:
+    """PROD book walk for a NO buyer — READ ONLY, and the honest fill price.
+
+    Kalshi runs ONE book: a resting YES bid at p IS an offer of NO at 1−p.
+    So buying NO consumes the ``yes_dollars`` ladder from the HIGHEST yes bid
+    downward (highest yes bid = cheapest NO). The first version of this
+    helper read ``no_dollars`` — that ladder is other NO *buyers*, i.e. our
+    competition, not our counterparty. Fixed 2026-08-27.
+
+    Returns top-of-book cost, the size-weighted cost of actually filling
+    ``contracts``, and how deep we had to reach — so paper P&L can be marked
+    at a fill price a real order would get instead of the touch.
+    """
+    import requests
+
+    from crypto_trading.crypto_common.kalshi.enums import rest_base
+    try:
+        r = requests.get(rest_base("prod") + f"/markets/{ticker}/orderbook",
+                         timeout=6, headers={"User-Agent": "someopark-crypto/0.1"})
+        if r.status_code != 200:
+            return None
+        ob = (r.json() or {}).get("orderbook_fp") or {}
+    except requests.RequestException:
+        return None
+    ladder = []
+    for p_, sz in (ob.get("yes_dollars") or []):
+        try:
+            p_, sz = float(p_), float(sz)
+        except (TypeError, ValueError):
+            continue
+        if 0.0 < p_ < 1.0 and sz > 0:
+            ladder.append((p_, sz))
+    if not ladder:
+        return None
+    ladder.sort(key=lambda x: -x[0])          # best (highest) yes bid first
+    need, paid, taken = float(contracts), 0.0, 0.0
+    for p_, sz in ladder:
+        take = min(need, sz)
+        paid += take * (1.0 - p_)             # NO costs 1 − yes price
+        taken += take
+        need -= take
+        if need <= 0:
+            break
+    top_cost = round(1.0 - ladder[0][0], 4)
+    if taken <= 0:
+        return {"top_cost": top_cost, "filled": 0, "levels": len(ladder)}
+    return {"top_cost": top_cost,
+            "fill_cost": round(paid / taken, 4),      # size-weighted, realistic
+            "filled": round(taken),
+            "shortfall": round(max(need, 0.0)),       # unfillable at any price
+            "slippage_c": round((paid / taken - (1.0 - ladder[0][0])) * 100, 2),
+            "levels": len(ladder),
+            "top_size": round(ladder[0][1])}
+
+
 def quote(m: dict) -> tuple[float, float] | None:
     """(yes_bid, yes_ask) from a snapshot market row (dollars-as-strings)."""
     try:
@@ -132,6 +188,16 @@ def run(cfg: dict | None = None, **_) -> dict:
         # per-series books: the ONLY dimension that reproduced out-of-sample
         # (small caps +2.6~7.7c vs BTC −0.18c). If the ordering holds forward,
         # the thing to change is the COIN UNIVERSE, not the entry clock.
+        # CROSS-COIN CORRELATION (measured 2026-08-27): the five 15M markets
+        # settle the same macro move — one 12:30 window produced three
+        # identical "yes" results. Nominal trade count therefore overstates
+        # evidence by 3-5x; track INDEPENDENT WINDOWS (distinct close_time)
+        # as the honest denominator for any t-statistic.
+        wins_by_close = st.setdefault("windows", {})
+        wc = wins_by_close.setdefault(p["close"], {"n": 0, "wins": 0, "sum_c": 0.0})
+        wc["n"] += 1
+        wc["wins"] += int(win)
+        wc["sum_c"] = round(wc["sum_c"] + pnl_c, 2)
         sk = st.setdefault("by_series", {})
         b = sk.setdefault(p.get("series", "?"), {"n": 0, "wins": 0, "sum_c": 0.0})
         b["n"] += 1
@@ -139,6 +205,8 @@ def run(cfg: dict | None = None, **_) -> dict:
         b["sum_c"] = round(b["sum_c"] + pnl_c, 2)
         st.setdefault("trades", []).append(
             {"ticker": tkr, "series": p.get("series"), "cost": p["cost"],
+             "snap_age_s": p.get("snap_age_s"), "rem_min": p.get("rem_min"),
+             "depth": p.get("depth"),
              "win": win, "pnl_c": round(pnl_c, 2), "closed": str(now)})
         settled.append({"ticker": tkr, "win": win, "pnl_c": round(pnl_c, 2)})
         vpos.pop(tkr)
@@ -151,7 +219,12 @@ def run(cfg: dict | None = None, **_) -> dict:
             per_series[series] = "NO_TAPE"
             continue
         age = now.timestamp() - snap["recv_ts"]
-        if age > 180:
+        # 90s = one tape cycle. The old 180s allowed entering on a quote up to
+        # 20% of the window old — that is adverse selection, not a signal: we
+        # would only "enter" when the stale view still looked favourable while
+        # the live market had already moved. Recorded per entry so the effect
+        # stays measurable.
+        if age > 90:
             per_series[series] = f"STALE {age:.0f}s"
             continue
         per_series[series] = "scanned"
@@ -175,11 +248,20 @@ def run(cfg: dict | None = None, **_) -> dict:
                 continue
             probe["entered"] += 1
             seen.append(tkr)
+            bk = walk_book_for_no(tkr, contracts)    # read-only, prod book
+            # Mark the paper trade at the price a real 25-lot would actually
+            # pay (book-walk VWAP), falling back to the touch when the book
+            # is unavailable. Touch-price marking flatters thin books.
+            if bk and bk.get("fill_cost") and not bk.get("shortfall"):
+                cost = bk["fill_cost"]
+            depth = bk
             vpos[tkr] = {"cost": round(cost, 4), "close": ct, "series": series,
-                         "rem_min": round(rem_min, 2), "opened": str(now)}
+                         "rem_min": round(rem_min, 2), "snap_age_s": round(age),
+                         "depth": depth, "opened": str(now)}
             entry = {"action": "paper_entry", "series": series, "ticker": tkr,
                      "side": "no", "cost": round(cost, 4),
-                     "rem_min": round(rem_min, 2), "contracts": contracts}
+                     "rem_min": round(rem_min, 2), "contracts": contracts,
+                     "depth": depth}
             if cfg.get("demo_mirror", False):
                 from crypto_trading.crypto_common.execution_events import (
                     EventExecutionRouter)
@@ -196,5 +278,6 @@ def run(cfg: dict | None = None, **_) -> dict:
     return {**rep, "entries": entries, "settled": settled,
             "markets": per_series, "open_virtual": len(vpos), "probe": probe,
             "by_series": st.get("by_series", {}),
+            "independent_windows": len(st.get("windows", {})),
             "paper_cum_usd": round(st.get("cum_net_usd", 0.0), 3),
             "status": "OK"}

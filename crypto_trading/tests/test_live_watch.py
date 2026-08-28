@@ -409,3 +409,36 @@ def test_w7_survives_state_from_a_previous_freeze(sandbox, monkeypatch):
     assert rep["status"] == "OK"
     for k in ("looked", "entered", "unresolved"):
         assert k in rep["probe"]
+
+
+def test_walk_book_for_no_is_read_only_and_prices_correctly(monkeypatch):
+    """Buying NO consumes the YES-bid ladder at 1-p, best (highest) bid first.
+    Reading the no_dollars ladder instead would price against our competition
+    rather than our counterparty (the bug this test locks out)."""
+    import inspect
+
+    from crypto_trading.crypto_strategies.live_watch import w7_noisefade as w7
+    src = inspect.getsource(w7.walk_book_for_no)
+    assert "requests.get" in src and ".post(" not in src        # read-only
+    # the ladder must be read in CODE — the docstring legitimately mentions
+    # no_dollars while explaining the bug this test locks out
+    code = "\n".join(l for l in src.splitlines() if "``" not in l)
+    assert 'ob.get("yes_dollars")' in code
+    assert 'ob.get("no_dollars")' not in code                   # right ladder
+
+    class R:
+        status_code = 200
+        @staticmethod
+        def json():
+            # yes bids: 0.30 x10 (NO @0.70), 0.28 x20 (NO @0.72), 0.20 x999
+            return {"orderbook_fp": {"yes_dollars": [["0.20", "999"],
+                                                     ["0.28", "20"],
+                                                     ["0.30", "10"]],
+                                     "no_dollars": [["0.99", "5"]]}}
+    monkeypatch.setattr("requests.get", lambda *a, **k: R())
+    d = w7.walk_book_for_no("KXBTC15M-X", 25)
+    assert d["top_cost"] == 0.70                       # 1 - best yes bid 0.30
+    # 10 @0.70 + 15 @0.72 = 17.8 / 25 = 0.712
+    assert d["fill_cost"] == 0.712
+    assert d["filled"] == 25 and d["shortfall"] == 0
+    assert d["slippage_c"] == 1.2                      # 1.2c worse than touch
