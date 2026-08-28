@@ -99,9 +99,10 @@ def _dfm() -> dict[str, Any]:
 # ── configuration ────────────────────────────────────────────────────────────
 @dataclass(frozen=True)
 class GenConfig:
-    """Everything that changes the weights. `key()` hashes it, and the hash is what the
-    stored artefacts and the `synth_runs` bookkeeping are filed under — a config that has
-    not been validated cannot be silently confused with one that has.
+    """Everything that changes the weights. `key()` hashes it so that a config which has not
+    been validated cannot be silently confused with one that has — the hash is carried in
+    `validate`'s report and in `synth_runs.meta_json`, and (see `key()`) it is deliberately
+    NOT a filename.
 
     `factor_dim` is the number of latent drivers. The panel's d is 10-12 columns over
     12-13 periods (120-156 dims) from ~400 rows, so the factor structure is doing real
@@ -122,6 +123,23 @@ class GenConfig:
     Compressing the condition is the regularizer. `cond_pcs=0` means unconditional — kept
     reachable because it is the control arm that separates "conditioning is overfitting"
     from "the sampler is broken".
+
+    `whiten` selects the BASIS the score net sees, and it is the only knob here that adds no
+    degrees of freedom: the map is `(Z - mu) @ U / sqrt(λ)` with `mu`, `U`, `λ` all read off
+    the fit's own rows, so there is nothing to tune. It exists because `dfm`'s `arch='factor'`
+    approximates the residual covariance by a DIAGONAL in whatever coordinates it is handed
+    (`model.py:275-283`), and the residual is not diagonal in raw coordinates — the small
+    eigenvalues inflate and the large ones deflate, which is exactly the `top < 1` with
+    `tail > 1` signature §4e-B measured and could not explain. Whitening makes the residual
+    `(I - P)`, whose eigenvalues are `{0 (x k), 1 (x d-k)}` and whose best diagonal
+    approximation is the uniform `(1 - k/d) I` — non-degenerate everywhere. The plain
+    eigenbasis (`Z @ U`, no rescale) is the falsifier and is NOT reachable from here: it
+    leaves exactly `k` coordinates with exactly zero residual, `sigma0` collapses to its
+    `1e-4` floor, and the measured result was an over-dispersed blow-out (§4e-D's `rot` arm,
+    `var/tr` 1.211-1.754). A partial rotation `Z @ U / λ^(p/2)` is likewise absent on purpose:
+    sweeping `p` would be fishing for a panel-specific exponent.
+
+    Default `False`, so every config written before #207 hashes and samples bit-identically.
     """
     panel: str
     factor_dim: int = 8
@@ -134,8 +152,14 @@ class GenConfig:
     guidance: str = "none"          # "none" | "ridge"
     guidance_weight: float = 0.4
     guidance_lam: float = 3.0
+    whiten: bool = False            # #207 — see the class docstring
 
     def key(self) -> str:
+        """Hash of every field. Adding a field therefore moves the key of every config,
+        which is safe HERE and would not be safe if the docstring above were still literally
+        true: nothing on disk is filed under this string. `synth_runs.run_id` is
+        `series_timestamp` and `data/synth/` is laid out by series, so `key()` is a report
+        label and a bookkeeping join, not a path."""
         blob = json.dumps(asdict(self), sort_keys=True).encode()
         return hashlib.sha256(blob).hexdigest()[:12]
 
@@ -150,14 +174,20 @@ class Generator:
     """
 
     def __init__(self, cfg: GenConfig, net, scaler: dict, meta: dict, proj=None,
-                 start_root=None):
+                 start_root=None, whiten=None):
         self.cfg, self.net, self.scaler, self.meta = cfg, net, scaler, meta
         self._ridge = None
         self._proj = proj          # (mean, loadings, scales) from `_fit_proj`
-        self._start = start_root   # (d, d) root of S_T from `_start_root` (#181B)
+        self._start = start_root   # (r, r) root of S_T from `_start_root` (#181B)
+        self._whiten = whiten      # None, or `_whiten_basis`'s dict (#207)
         self.H = int(scaler["horizon"])
         self.names = list(scaler["names"])
         self.d = len(self.names)
+        # The dimension the NET works in, which is `H*d` unless #207's basis change dropped
+        # rank. Read from `meta` rather than recomputed so that a loaded artefact and a fresh
+        # fit agree by construction; the fallback covers hand-built metas in tests and every
+        # artefact written before `data_dim` existed, where the two were equal anyway.
+        self._dim = int(meta.get("data_dim", self.H * self.d))
 
     # -- construction ---------------------------------------------------------
     @classmethod
@@ -203,27 +233,52 @@ class Generator:
         # either way: it is not a tight fit, it is an unidentified one. Bit-identical for the
         # four panels that existed before this line (d_flat 13/36/36/13 against factor_dim 8);
         # it binds for the first time on gdp_quarterly, whose d_flat is H*d = 5*1 = 5.
-        fdim = max(1, min(int(cfg.factor_dim), int(Z.shape[1]) - 1))
+        # #207. The basis change happens HERE and nowhere else: everything below this line —
+        # the factor clamp, the score net, the start root, the ridge — is fitted in whatever
+        # coordinates `Zt` is in, and `sample` maps back. `dfm/` never learns that the basis
+        # moved, which is the point: it is call-only, and the one-line alternative (handing
+        # `train_conditional` a corrected `init_sigma_diag`) does not exist because `sigma0`
+        # is derived inside it.
+        wh = _whiten_basis(Z) if cfg.whiten else None
+        if wh is None:
+            Zt = Z
+        else:
+            Zt = (Z - wh["mu"]) @ wh["fwd"]
+            # Asserted per fit, on the data, because a silently wrong inverse would produce
+            # paths that are wrong by a linear map and still look like macro data — the exact
+            # failure mode the scaler's own docstring warns about two classes up.
+            back = Zt @ wh["inv"] + wh["mu"]
+            err = float(np.abs(back - Z).max() / max(np.abs(Z).max(), 1e-12))
+            if not err < 1e-8:
+                raise ValueError(f"whitening round trip is not exact (rel {err:.2e}); rank "
+                                 f"{wh['rank']} of {Z.shape[1]}, {wh['dropped']} dropped")
+        fdim = max(1, min(int(cfg.factor_dim), int(Zt.shape[1]) - 1))
         proj = _fit_proj(C, cfg.cond_pcs)
         Cp = _apply_proj(C, proj)
         d = _dfm()
-        net = d["train_conditional"](Z, Cp, factor_dim=fdim, epochs=cfg.epochs,
+        net = d["train_conditional"](Zt, Cp, factor_dim=fdim, epochs=cfg.epochs,
                                      lr=cfg.lr, batch=cfg.batch, seed=cfg.seed,
                                      verbose=verbose, arch="factor")
         meta = {"n_train": int(len(Z)), "cond_dim": int(Cp.shape[1]),
                 "cond_raw_dim": int(C.shape[1]), "factor_dim": fdim,
                 "factor_dim_requested": int(cfg.factor_dim),
-                "data_dim": int(Z.shape[1]), "panel_end": pdata.end.isoformat(),
+                "data_dim": int(Zt.shape[1]), "panel_end": pdata.end.isoformat(),
                 "anchor_first": str(pdata.anchors[0].date()),
                 "anchor_last": str(pdata.anchors[-1].date())}
+        if wh is not None:
+            meta["whiten_rank"] = int(wh["rank"])
+            meta["whiten_dropped"] = int(wh["dropped"])
         # From the fit's OWN rows, which is what makes this self-consistent rather than a
         # peek: `fit_local` passes the k-neighbourhood, so its start is the conditional
         # marginal of that neighbourhood, and `validate` fitting on an early span gets a
         # start estimated on the early span and is still graded on the late one.
-        g = cls(cfg, net, pdata.scaler, meta, proj=proj, start_root=_start_root(Z))
+        g = cls(cfg, net, pdata.scaler, meta, proj=proj, start_root=_start_root(Zt),
+                whiten=wh)
         g.meta["start"] = "marginal"
         if cfg.guidance == "ridge":
-            g._ridge = _fit_ridge(Z, Cp, cfg.guidance_lam)
+            # Fitted in the SAME coordinates the guidance is applied in — `_ridge_guidance`
+            # pushes on `x` inside `_reverse`, which is the net's space, not the panel's.
+            g._ridge = _fit_ridge(Zt, Cp, cfg.guidance_lam)
         return g
 
     @classmethod
@@ -298,7 +353,7 @@ class Generator:
         dev, dc = d["DEVICE"], d["DIFFUSION_CONFIG"]
         t0, T = float(dc["t0"]), float(dc["T"])
         ns = int(self.cfg.noise_steps)
-        dim = self.d * self.H
+        dim = self._dim
         g = torch.Generator(device="cpu").manual_seed(int(seed))
         base = torch.randn(n, dim, generator=g)
         if start == "marginal":
@@ -357,8 +412,13 @@ class Generator:
         guidance = None
         if self.cfg.guidance == "ridge":
             guidance = self._ridge_guidance(c_z, n)
-        z = self._reverse(c_z, n, seed, guidance, start)
-        raw = np.asarray(z, dtype=float) * self.scaler["sd"] + self.scaler["mu"]
+        z = np.asarray(self._reverse(c_z, n, seed, guidance, start), dtype=float)
+        # #207's other half. The net emitted whitened coordinates; the scaler below is
+        # defined on the panel's, so the inverse map has to happen BETWEEN them and nowhere
+        # else. `_whiten is None` is production's path and leaves the array untouched.
+        if self._whiten is not None:
+            z = z @ self._whiten["inv"] + self._whiten["mu"]
+        raw = z * self.scaler["sd"] + self.scaler["mu"]
         return raw.reshape(n, self.H, self.d)
 
     def level_paths(self, c_raw: np.ndarray, anchor_levels: pd.Series, n: int,
@@ -440,6 +500,14 @@ class Generator:
                            for k, v in self.scaler.items()}}
         if self._start is not None:
             blob["start_root"] = np.asarray(self._start, dtype=float)
+        if self._whiten is not None:
+            # Stored as plain arrays for the same reason as everything else in this blob: a
+            # generator whose basis matrices did not travel with it would sample paths that
+            # are wrong by a linear map, silently, and `data_dim` alone cannot reconstruct
+            # them — `U` and `λ` come from training rows the artefact does not carry.
+            blob["whiten"] = {k: (np.asarray(v, dtype=float)
+                                  if k in ("mu", "fwd", "inv") else int(v))
+                              for k, v in self._whiten.items()}
         if self.cfg.guidance == "ridge":
             blob["ridge"] = {"W": self._ridge[0], "v": self._ridge[1]}
         torch.save(blob, path)
@@ -468,8 +536,19 @@ class Generator:
         # valid when written helps nobody, and `sample` raises the moment it is asked for
         # the corrected start. Silently falling back to the identity would reintroduce the
         # under-dispersion into a lane whose whole job is to compare parameter sets.
+        # A `whiten=True` config whose blob carries no basis is not loadable into anything
+        # meaningful: sampling it would apply the panel scaler to whitened coordinates and
+        # return paths that are wrong by a linear map without a single number looking odd.
+        # That is precisely the failure `save`'s docstring exists to prevent, so it raises
+        # here rather than at the first suspicious chart.
+        wh = blob.get("whiten")
+        if cfg.whiten and wh is None:
+            raise ValueError(
+                f"{path} was written by a whitening config (#207) but carries no basis. Its "
+                "training rows are gone and `U`/`lambda` cannot be reconstructed from the "
+                "scaler, so it cannot be sampled — refit it.")
         g = cls(cfg, net, scaler, meta, proj=(p["mean"], p["load"], p["scale"]),
-                start_root=blob.get("start_root"))
+                start_root=blob.get("start_root"), whiten=wh)
         if "ridge" in blob:
             g._ridge = (blob["ridge"]["W"], blob["ridge"]["v"])
         return g
@@ -545,6 +624,45 @@ def _start_root(Z: np.ndarray) -> np.ndarray:
         np.shape(Z)[1])
     w, V = np.linalg.eigh(S)
     return V @ np.diag(np.sqrt(np.clip(w, 0.0, None)))
+
+
+def _whiten_basis(Z: np.ndarray) -> dict:
+    """The #207 basis change: `(mu, fwd, inv)` with `Zw = (Z - mu) @ fwd` white.
+
+    `fwd = U / sqrt(λ)` and `inv = diag(sqrt(λ)) @ U.T`, both from `eigh(cov(Z))` on the
+    fit's OWN rows — the same self-consistency rule `_start_root` follows, and the reason
+    this arm adds no degrees of freedom. `inv @ fwd` is not the identity when directions are
+    dropped (below), so the round trip is asserted on the data rather than on the matrices:
+    `Zw @ inv + mu` must return `Z` to 1e-8 relative, and `fit` re-checks it every time.
+
+    **Rank.** `cov(Z)` is singular whenever the fit has fewer rows than `H*d`, which is not
+    hypothetical — `fit_local` exists to use 120 rows, and `core_monthly`'s `d_flat` is 144.
+    A direction the training rows never moved in has `λ = 0`, and `1/sqrt(λ)` there is not a
+    large number, it is a division by an estimate of nothing. Those directions are DROPPED,
+    at numpy's own numerical-rank tolerance (`λ_max * max(shape) * eps`, the `matrix_rank`
+    convention, chosen because it is a convention rather than a threshold anyone here picked).
+    The generator then works in `r <= H*d` dimensions and `inv` maps back to `H*d`, so the
+    emitted paths have exactly zero variance in the dropped directions. That is the honest
+    behaviour and it is not new: `_start_root` already clips the same eigenvalues to zero.
+    On the four production panels at `k_local = 120` the rank is full (`d_flat` 13-52), so
+    nothing is dropped there; it binds first on the wide panels of §4g.
+
+    Emitting a warning rather than raising on a heavy drop would be a lie either way, so the
+    count is recorded in `meta` (`whiten_rank`, `whiten_dropped`) and travels with the
+    artefact, where `report` and `save` can both see it.
+    """
+    Z = np.asarray(Z, dtype=float)
+    mu = Z.mean(0)
+    w, V = np.linalg.eigh(np.cov(Z, rowvar=False))
+    tol = float(w.max(initial=0.0)) * max(Z.shape) * float(np.finfo(float).eps)
+    keep = w > tol
+    if not keep.any():
+        raise ValueError("whitening asked for on rows with no variance in any direction — "
+                         f"largest eigenvalue {float(w.max(initial=0.0)):.3e}")
+    w, V = w[keep], V[:, keep]
+    root = np.sqrt(w)
+    return {"mu": mu, "fwd": V / root[None, :], "inv": (root[:, None] * V.T),
+            "rank": int(keep.sum()), "dropped": int((~keep).sum())}
 
 
 # ── validation (the S2 gate) ─────────────────────────────────────────────────
@@ -678,7 +796,8 @@ def splits(n_rows: int, horizon: int, holdout: float = 0.25, folds: int = 1):
 
 def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: int = 1,
              n_samples: int = 400, seed: int = 0, verbose: bool = False,
-             knn_k: int = 40, printed: bool = True, start: str = "marginal") -> dict:
+             knn_k: int = 40, printed: bool = True, start: str = "marginal",
+             local_k: int | None = None) -> dict:
     """Fit out-of-sample, score in-sample-free. Returns a report, never raises on a bad
     result — a generator that fails its gate is a finding, not an exception.
 
@@ -719,6 +838,15 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
     pre-#181B under-dispersion, and exists so that the A/B which established the fix can be
     re-run on demand rather than trusted from a doc.
 
+    `local_k` switches the DFM arm from one global `fit` per fold to a `fit_local` per
+    held-out anchor, which is **the estimator production deploys** — `fit_local`'s own
+    docstring explains why the asymmetry is the right way round, and it means every number
+    this function has ever produced with `local_k=None` describes an arm the product does
+    not use. It is off by default because the cost is one 6000-epoch fit per anchor rather
+    than per fold: three folds of `claims_weekly` is 690 fits. `boot` and `knn` are untouched
+    by it and stay bit-identical, which is what makes a `local_k` pass and a `local_k=None`
+    pass comparable at all — they share their floors.
+
     3. **Separability**, added in #181 — `out["separability"]`. Calibration and moments are
        both *marginal* checks: a generator can pass every one of them and still be trivially
        recognisable from a property no moment names. A classifier two-sample test asks the
@@ -743,10 +871,26 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
 
        `mem` is the memorization guard that makes the rest of it meaningful: median
        nearest-neighbour distance from the generated pool to the training rows, over the same
-       distance for the real held-out rows. Near 1 is honest; well below 1 means the sample is
-       winning by copying, which improves every other number in this report at once. The band
-       around 1 is measured, not assumed — see `docs/PLAN_DFM_SYNTH.md` §4e-B — and it is
-       TWO-sided: above the band is over-dispersion, which is a different defect, not a pass.
+       distance for the real held-out rows. Well below it means the sample is winning by
+       copying, which improves every other number in this report at once.
+
+       **`mem` needs a floor for exactly the reason the C2ST does, and it went without one for
+       longer** (#208). "Near 1 is honest" was an assumption, and it is false: draws from
+       `N(mu_tr, Sigma_tr)`, which cannot have memorized anything, score **1.166** on
+       `labor_monthly` and **0.876** on `energy_weekly` — production's own two failing verdicts,
+       in production's own two opposite directions, on precisely the two panels where production
+       failed, with the other two passing in both. Four panels, four matches. The #206 band was
+       measured, but it was measured around an implicit centre of 1.0, so it inherited the
+       assumption it was built to remove. `mem_gauss` is that honest level measured on the same
+       panel and fold against the same denominator, and **`mem_pos = mem / mem_gauss`** is the
+       number to read — the arm's position between `boot` at 0.0 and an independent draw at 1.0.
+       It is a LEVEL and not a veto: PR-14 proposed a cut at 0.90 and its own out-of-sample test
+       killed it on two of four criteria (`MEM_POS_CUT` carries the full result). What survived
+       is that the four old panels' production readings tighten from a spread of 0.212 on `mem`
+       to 0.0711 on `mem_pos`, and that `boot` still reads exactly 0. The anchor is biased high
+       by off-manifold mass, so neither end of `mem_pos` is dispersion evidence; `var_train` and
+       `tail` measure that directly and without the bias. See §4e-F and §4e-G of
+       `docs/PLAN_DFM_SYNTH.md` and PR-14.
 
        `dep_within`/`dep_cross`, the third leg, close a gap the first two leave open by
        construction. `moments` scores each coordinate alone and the C2ST says only whether
@@ -773,7 +917,10 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
             raise ValueError(f"fold {f}: {len(tr)} train / {len(te)} test is too small "
                              "to say anything")
         n_train.append(int(len(tr)))
-        gen = Generator.fit(pdata, cfg, rows=tr, verbose=verbose)
+        # `None` when `local_k` is set: the fit moves inside the anchor loop, because a local
+        # fit is defined BY the anchor's condition. Fitting once and reusing it would be a
+        # different estimator wearing this one's name.
+        gen = None if local_k else Generator.fit(pdata, cfg, rows=tr, verbose=verbose)
         real = (pdata.Z[te] * pdata.scaler["sd"] + pdata.scaler["mu"]).reshape(len(te), H, d)
         rs = path_stats(real)
         real_all.append(real)
@@ -787,9 +934,11 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
             c_raw = P.condition_row(pdata.levels, pdata.inc, pdata.spec, pdata.anchors[k])
             sd = seed + 977 * f + i
             anchor_lv = pdata.levels.loc[pdata.anchors[k]]
-            dfm_draw = (gen.sample_printed(c_raw, anchor_lv, n_samples, seed=sd,
-                                           start=start)
-                        if printed else gen.sample(c_raw, n_samples, seed=sd, start=start))
+            g = gen if gen is not None else Generator.fit_local(
+                pdata, cfg, c_raw, rows=tr, k=int(local_k), verbose=verbose)
+            dfm_draw = (g.sample_printed(c_raw, anchor_lv, n_samples, seed=sd,
+                                         start=start)
+                        if printed else g.sample(c_raw, n_samples, seed=sd, start=start))
             draws = {"dfm": dfm_draw,
                      "boot": block_bootstrap(pdata, tr, n_samples, seed=sd),
                      "knn": knn_bootstrap(pdata, tr, c_raw, n_samples, k=knn_k, seed=sd)}
@@ -814,6 +963,7 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
            "printed": bool(printed), "start": str(start),
            "lattice": dict(pdata.lattice or {}),
            "folds": int(folds), "n_train": n_train, "knn_k": int(knn_k),
+           "local_k": (None if local_k is None else int(local_k)),
            "n_holdout": int(len(ranks["dfm"])),
            "n_samples": n_samples, "columns": pdata.spec.names, "arms": {}}
     for tag in arms:
@@ -893,10 +1043,16 @@ def validate(pdata: P.PanelData, cfg: GenConfig, holdout: float = 0.25, folds: i
         "folds": sep_folds,
         "floor_train": _mean_or_none([s["floor_train"] for s in sep_folds]),
         "floor_boot": _mean_or_none([s["floor_boot"] for s in sep_folds]),
+        # PR-14. Averaged across folds like every other headline here, and NOT recomputed from
+        # the fold-mean `mem` and fold-mean `mem_gauss` — the ratio of two means is not the
+        # mean of the ratios, and the per-fold ratio is the one that was measured against its
+        # own fold's anchor.
+        "mem_gauss": _mean_or_none([s.get("mem_gauss") for s in sep_folds]),
         "arms": {tag: {
             "auc": _mean_or_none([s["arms"][tag]["auc"] for s in sep_folds]),
             "dup_frac": _mean_or_none([s["arms"][tag]["dup_frac"] for s in sep_folds]),
             "mem": _mean_or_none([s["arms"][tag]["mem"] for s in sep_folds]),
+            "mem_pos": _mean_or_none([s["arms"][tag].get("mem_pos") for s in sep_folds]),
             "excess_over_boot": _mean_or_none(
                 [s["arms"][tag]["excess_over_boot"] for s in sep_folds]),
             "dep_within": _dep_mean(tag, "dep", "within"),
@@ -1023,6 +1179,81 @@ def _dependence(Zte: np.ndarray, pool: np.ndarray, H: int, d: int) -> dict:
             "cross": float(err[~within].mean()) if (~within).any() else float("nan")}
 
 
+MEM_POS_CUT = None
+"""There is NO adopted memorization cut. PR-14 proposed one at `mem_pos = 0.90` and its own
+out-of-sample test killed it the same day; this constant is `None` so that any code reaching
+for a threshold fails loudly instead of picking one up by habit.
+
+What was registered and what happened, in full (`docs/PREREGISTER.md` PR-14, §4e-G of
+`docs/PLAN_DFM_SYNTH.md`). 0.90 was read off #208's 52-cell sweep AFTER seeing it — production
+`fd8` cells fell in 0.914-0.985 and every `fd32` cell in 0.606-0.876, no crossing on any of
+four panels — so PR-14 required it to survive on three panels that took no part in choosing
+it. Two of the four criteria failed:
+
+  (a) PASS  `boot` reads `mem_pos` 0.000000 on all three. Verbatim plagiarism is still exact.
+  (b) FAIL  the anchor's own K=40 re-draws span [0.973, 1.046] on `gdp_quarterly` against a
+            registered [0.97, 1.03]. At `d_flat = 5` the anchor is not precise enough to
+            adjudicate a 0.10 margin. It IS precise enough at 130-144 dims: [0.994, 1.007]
+            on `core_monthly`, [0.996, 1.006] on `energy_weekly_wide`.
+  (c) FAIL  `energy_weekly_wide` `fd32` landed at 0.902, on the PASSING side of 0.90 by
+            0.002. The separation that produced the number does not generalize.
+  (d) PASS  and decisively: the production arm's spread across the four old panels falls from
+            0.212 on `mem` to 0.0711 on `mem_pos`. Whatever else is true, the same-panel
+            anchor really does divide out most of what `mem`'s level was carrying.
+
+PR-14's own text forbids retuning, swapping panels, or swapping K, so `mem_pos` is REPORTED
+and is not a veto. The only automatic memorization test still standing is the exact one:
+`dup_frac`, and `boot`'s 0.0 identity. See `report()` for what a reader is asked to do
+instead."""
+
+_MEM_GAUSS_K = 8
+"""Re-draws of the honest anchor. The anchor's own 95% re-draw spread was measured at
+0.017-0.039 of its level under K=40 (`/tmp/dfm_verify/mem_calib.py`), against #206 band widths
+of 0.090-0.278 — so the median is stable well before 40 and 8 buys the stability without
+paying for it once per fold per panel."""
+
+
+def _mem_gauss(Ztr: np.ndarray, n_draw: int, seed: int,
+               k: int = _MEM_GAUSS_K) -> list[float]:
+    """#208/PR-14 — what an HONEST generator scores on this panel, measured on this panel.
+
+    `mem` divides by `_nn_median(Zte, Ztr)`, the held-out block's distance to training. That
+    denominator was read for a long time as if an honest generator would score 1.0 against it.
+    It does not, and the difference is not small: draws from `N(mu_tr, Sigma_tr)` — a sample
+    that CANNOT have memorized, because each row is independent of every training row given
+    two moments — score 1.166 on labor_monthly and 0.876 on energy_weekly. Those are, exactly,
+    production's two failing verdicts in production's two opposite directions, on the two
+    panels where production failed, with claims and inflation passing in both. Four panels,
+    four matches. §4e-F of `docs/PLAN_DFM_SYNTH.md` has the table and the two rejected repairs.
+
+    So this returns the anchor: `k` independent `N(mu_tr, Sigma_tr)` pools, each scored by the
+    SAME `_nn_median(., Ztr)` the arms are scored by, UNDIVIDED. The caller divides by the same
+    `base_nn` so that `mem_gauss` and `mem` are the same statistic on the same scale, and
+    `mem_pos = mem / mem_gauss` is then the arm's position between the two anchors that bracket
+    the question — `boot` at 0.0 (verbatim copies) and `gauss` at 1.0 (independent draws).
+
+    KNOWN BIAS, stated because it bounds what the anchor may be used for. A Gaussian with the
+    right Sigma fills the ambient ellipsoid, including regions a curved data manifold never
+    visits, so its nearest-neighbour distances are biased UPWARD by an amount that is
+    off-manifold mass rather than honesty. An on-manifold generator therefore sits BELOW 1.0
+    without copying anything, so a `mem_pos` under 1 is not by itself evidence of copying and
+    a `mem_pos` over 1 is not evidence of over-dispersion. Over-dispersion is not this number's
+    job at all — `var_train`, `top8` and `tail` measure it directly and without this bias.
+
+    NOT A VETO. PR-14 tried to turn this into one at 0.90 and failed its own out-of-sample
+    criteria (b) and (c); see `MEM_POS_CUT`. The anchor stays because §4e-F's finding stands —
+    `mem` alone rejects a generator that provably cannot memorize — and a reader who is shown
+    `mem` without it will make exactly the reading that produced #208.
+    """
+    if len(Ztr) < 2 or n_draw < 1:
+        return []
+    mu = Ztr.mean(0)
+    w, V = np.linalg.eigh(np.cov(Ztr, rowvar=False))
+    L = V @ np.diag(np.sqrt(np.clip(w, 0.0, None)))
+    return [_nn_median(mu + np.random.default_rng(seed + i).standard_normal(
+        (n_draw, Ztr.shape[1])) @ L.T, Ztr) for i in range(k)]
+
+
 def _separability(pdata: P.PanelData, tr: np.ndarray, te: np.ndarray,
                   pools: dict[str, np.ndarray], seed: int) -> dict:
     """One fold of the #181 separability battery. See `validate`'s docstring for why this is
@@ -1059,17 +1290,38 @@ def _separability(pdata: P.PanelData, tr: np.ndarray, te: np.ndarray,
     deps = {tag: _dependence(Zte, pool, H, d) for tag, pool in pools.items()}
     dep_boot = deps.get("boot")
 
+    # PR-14's honest anchor, measured on THIS panel, THIS fold, against THE SAME `base_nn`.
+    # Drawn at the largest arm pool size so the median it reports carries the same sampling
+    # noise the arms' own `mem` carries; a smaller pool would make the anchor the noisier of
+    # the two and put that noise into every ratio below.
+    n_draw = max((len(p) for p in pools.values()), default=0)
+    gauss = _mem_gauss(Ztr, n_draw, seed + 7) if base_nn > 0 else []
+    mem_gauss = float(np.median(gauss) / base_nn) if gauss else float("nan")
+
     out = {"n_real": int(len(Zte)),
            "floor_train": _auc_2sample(Zte, Ztr[idx], seed + 4),
            "floor_boot": floor_boot,
            "dep_boot": dep_boot,
+           # The `gauss` anchor and its own re-draw range. The RANGE is reported because a
+           # `mem_pos` is only as trustworthy as the anchor under it: if the anchor's k draws
+           # straddle a range comparable to the gap between an arm and the threshold, the
+           # ratio is not deciding anything and the reader has to be able to see that.
+           "mem_gauss": mem_gauss,
+           "mem_gauss_range": ([float(min(gauss) / base_nn), float(max(gauss) / base_nn)]
+                               if gauss else None),
            "arms": {}}
     for tag, pool in pools.items():
         auc = aucs[tag]
+        mem = float(_nn_median(pool, Ztr) / base_nn) if base_nn > 0 else float("nan")
         out["arms"][tag] = {
             "auc": auc,
             "dup_frac": dup_frac[tag],
-            "mem": float(_nn_median(pool, Ztr) / base_nn) if base_nn > 0 else float("nan"),
+            "mem": mem,
+            # `mem` is kept verbatim and `mem_pos` is added beside it. Neither replaces the
+            # other: `mem` is what every number in the plan document was measured as, and
+            # silently redefining it would make this run incomparable with all of them.
+            "mem_pos": (float(mem / mem_gauss)
+                        if np.isfinite(mem_gauss) and mem_gauss > 0 else float("nan")),
             "excess_over_boot": (None if auc is None or floor_boot is None
                                  else float(auc - floor_boot)),
             "dep": deps[tag],
@@ -1094,9 +1346,17 @@ def _ks_uniform(u: np.ndarray) -> float:
 
 def report(v: dict) -> str:
     """The validation report as the line a human reads before trusting anything."""
+    # `fit` vs `fit_local` and raw vs whitened are the two ways two runs of this function can
+    # describe different estimators while printing the same column headers, so both are on
+    # the header line rather than buried in the dict. `.get` keeps reports written before
+    # #207 readable instead of raising on a missing key.
+    est = ("fit" if v.get("local_k") in (None, 0)
+           else f"fit_local(k={v['local_k']})")
+    basis = "whiten" if (v.get("cfg") or {}).get("whiten") else "raw"
     lines = [f"panel={v['panel']} key={v['config_key']} folds={v['folds']} "
              f"train={min(v['n_train'])}-{max(v['n_train'])} "
-             f"scored={v['n_holdout']} draws={v['n_samples']}",
+             f"scored={v['n_holdout']} draws={v['n_samples']} "
+             f"est={est} basis={basis}",
              f"{'arm':<6} {'moments in CI':>14} {'cover50':>9} {'cover80':>9} {'KS':>7} "
              f"{'CRPS/boot':>10} {'t':>7}"]
     for tag, a in v["arms"].items():
@@ -1116,10 +1376,12 @@ def report(v: dict) -> str:
             return f"{'  n/a':>{w}}" if x is None else f"{x:>{w}.3f}"
 
         lines += ["", f"{'separability':<6} {'C2ST':>8} {'vs boot':>8} {'mem':>8} "
-                      f"{'dup':>8} {'dep in':>8} {'vs boot':>8} {'dep x':>8} {'vs boot':>8}"]
+                      f"{'mem_pos':>8} {'dup':>8} {'dep in':>8} {'vs boot':>8} {'dep x':>8} "
+                      f"{'vs boot':>8}"]
         for tag, a in sep["arms"].items():
             lines.append(f"{tag:<6}       {_f(a['auc'])} {_f(a['excess_over_boot'])} "
-                         f"{_f(a['mem'])} {_f(a.get('dup_frac'))} {_f(a.get('dep_within'))} "
+                         f"{_f(a['mem'])} {_f(a.get('mem_pos'))} {_f(a.get('dup_frac'))} "
+                         f"{_f(a.get('dep_within'))} "
                          f"{_f(a.get('dep_within_excess'))} {_f(a.get('dep_cross'))} "
                          f"{_f(a.get('dep_cross_excess'))}")
         lines += [
@@ -1130,11 +1392,24 @@ def report(v: dict) -> str:
             "  of 0.56 can be above it — it depends on the panel and the floor is measured",
             "  here for exactly that reason. 0 means as hard to tell from real as real",
             "  history is; negative means harder.",
-            "  `mem` well below 1 VOIDS the row: the sample sits closer to the training rows",
-            "  than a genuine held-out observation does, which is copying, and copying",
-            "  improves every other number in this report at the same time. `boot`/`knn` sit",
-            "  at ~0 by construction — they ARE training rows — which is why they are the",
-            "  baseline to beat and never a candidate. The veto applies to `dfm`.",
+            "  READ `mem_pos`, NOT `mem` — same reason as `vs boot`, and it took #208 to find",
+            "  it. `mem` divides by the HELD-OUT block's distance to training, and that is not",
+            "  1.0 for an honest generator: draws from N(mu, Sigma) that CANNOT have copied",
+            "  anything score 1.166 on labor_monthly and 0.876 on energy_weekly — production's",
+            "  own two failing verdicts, in production's own two opposite directions, on",
+            "  exactly those two panels. `mem_gauss` is that anchor measured HERE, and",
+            "  `mem_pos = mem / mem_gauss` is the arm's position between the two anchors that",
+            "  bracket the question: `boot` at 0.0 (verbatim copies), independent draws at 1.0.",
+            "  THERE IS NO CUT ON `mem_pos` AND YOU MAY NOT INVENT ONE. PR-14 proposed 0.90 and",
+            "  its own out-of-sample test killed it: the anchor is too imprecise to adjudicate",
+            "  0.10 on a 5-dimensional panel, and a known-memorizing `fd32` arm landed at 0.902",
+            "  on a panel it had not been tuned on. What survived is the SPREAD — the four old",
+            "  panels' production readings tighten from 0.212 to 0.071 — so `mem_pos` is worth",
+            "  reading as a level and is not worth thresholding. `boot`/`knn` sit at ~0 by",
+            "  construction: they ARE training rows, which is why they are the baseline to beat",
+            "  and never a candidate. A `mem_pos` above 1 is NOT over-dispersion evidence; the",
+            "  anchor is biased high by off-manifold mass and `var_train`/`tail` measure",
+            "  dispersion directly without that bias.",
             "  `boot`'s own excess is 0 by definition; it is printed as the identity check.",
             "  `dup` is the fraction of the arm's pool that was a VERBATIM copy of another row",
             "  in the same pool, before scoring. Those copies are dropped (#209), so the pool",

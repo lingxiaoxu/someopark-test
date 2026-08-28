@@ -1030,6 +1030,15 @@ reframe what C was ever asking for:
   (−0.272 vs −0.212), so matching it overshoots to −0.239 and the discriminator sees the
   overshoot.
 
+> **THE FIRST BULLET IS REFUTED BY §4e-J (2026-08-28), and the refutation costs the DFM.**
+> "The held-out `acf1` is not a reachable target" was measured fold-by-fold, and the number it
+> was invoked to excuse — `moments_inside`, as `validate` actually computes it — is **not** a
+> per-fold quantity. It pools the three folds' held-out rows into one CI. In that geometry a
+> perfect train-reproducer scores **48/48, 100%, on all four moments**, `acf1` included. The
+> target is not merely reachable; it is reached exactly, by construction. So the `acf1` misses
+> in the table above are misses against an attainable target and they do stand as generator
+> evidence. The second bullet is untouched and still load-bearing.
+
 **Where C stands.** Not "the generator has a persistence defect" but: measured against the
 floor that real resampled history sets on each panel, the DFM is +0.012 to +0.066 away on
 three panels and **0.048 better than real block-bootstrap on the fourth**. Three fixes aimed
@@ -1039,10 +1048,12 @@ making the sample *more* separable. The remaining honest question is not how to 
 utility question (§6), not a generative one. #181C is closed as **premise corrected**; the
 utility question is tracked in #183.
 
-> **CORRECTED BY §4e-E (2026-08-28).** The paragraph above is left standing because the
-> reasoning above *it* — the unreachable held-out `acf1` target, and `acf1` being mostly a
-> second-moment quantity — is unaffected and still load-bearing. Its **verdict sentence is
-> not.** Every excess in that table was read against a `floor_boot` inflated by duplicate rows
+> **CORRECTED BY §4e-E (2026-08-28), and again by §4e-J the same day.** The paragraph above
+> was left standing on the grounds that the reasoning above *it* was unaffected. Half of that
+> is now false: §4e-J refutes the unreachable-target bullet outright, so only the second one —
+> `acf1` being mostly a second-moment quantity — still carries weight here. Its **verdict
+> sentence is not.** Every excess in that table was read against a `floor_boot` inflated by
+> duplicate rows
 > (#209). Re-measured on de-duplicated pools, `claims_weekly`'s floor is 0.486 rather than
 > 0.611, the −0.048 becomes **+0.100**, and it is the *worst* panel rather than the only good
 > one. The DFM is behind real block-bootstrap on **all four** panels, by +0.029 to +0.144.
@@ -1136,6 +1147,15 @@ it is that whitening is **clean on the two panels where the baseline is clean**,
 where the baseline is already outside its band it moves labor further out by 0.077 and energy
 further out by 0.013 without changing the direction of the failure. Adoption on labor and energy
 is blocked behind #208, not behind this result.
+
+> **CORRECTED BY §4e-F (2026-08-28), same day.** The paragraph above is left standing because
+> its numbers are unchanged and its reasoning was right given what was known. What it got wrong
+> is the last sentence's implied cause: #208 turned out to be the *instrument*. An honest
+> Gaussian that cannot memorize scores 1.166 WIDE on labor and 0.876 COPY on energy — production's
+> exact two verdicts, in production's exact two directions, on 4/4 panels. So "the baseline is
+> already outside its band" is a fact about the band. Adoption on labor and energy is blocked
+> behind a **veto that needs a per-panel anchor**, not behind a generator defect, and the
+> whitening run is not gated on moving those two readings. See §4e-F.
 
 **Defect C is improved on half the panels and this must not be called a fix for it.** `d_acf`
 against the reachable target improves 69% on claims (0.0437 → 0.0134) and 68% on inflation
@@ -1247,23 +1267,492 @@ claims and 0.526 on inflation fold 1 — below chance again, in a test that neve
 folds and has had its duplicates removed, so neither of §4d's two deaths applies. A plausible
 mechanism is that dedup removes 30–38% of the `knn` pool and the rows it removes are the ones
 *with* near twins, leaving a surviving pool biased toward atypical rows; but that is a story,
-not a measurement, and it goes in the same drawer as §4e-A's unexplained 0.235/0.248. Both stay
-open and neither is used to support any conclusion here.
+not a measurement, and it stays open and is not used to support any conclusion here.
+
+> **Cross-reference corrected (2026-08-28).** This paragraph originally sent the reader to "the
+> same drawer as §4e-A's unexplained 0.235/0.248". Those readings are **not** unexplained: §4e-A
+> itself, four hundred lines above, opens with "**They were already explained.**" — §4d "Death 2"
+> fold concatenation, re-derived from scratch by `boot_auc_anomaly.py`. The drawer had exactly
+> one thing in it, and it is this `knn` inversion. It was taken out and measured in §4e-H.
 
 **What this does and does not disturb elsewhere.** §4e-D's whitening result is a z-space
 variance/tail measurement on `Generator.fit`, not a C2ST, so none of its numbers move — but
 its end-to-end adoption run must be scored against *these* floors, which is what "sequenced
 after the re-measurement" meant. #205 (defect C) is reopened by this: its closure rested on the
-inflated floors. #208 is untouched; `mem` is scored against #206's null band, not against
-`boot`. The stored worlds in `data/synth/` remain unaffected for the reason §4e-A gives —
+inflated floors. #208 is untouched **by this run**; `mem` is scored against #206's null band,
+not against `boot`. (§4e-F, written later the same day, then settled #208 the other way: the
+#206 band is not calibrated for the panel it is applied to, and the sentence "`mem` is scored
+against #206's null band" is exactly the problem rather than a reassurance.) The stored worlds in `data/synth/` remain unaffected for the reason §4e-A gives —
 `_separability` has no production caller — so this is a correction to the **report**, not to
 the product.
 
-The remaining leg is the per-fold local pass (`SEP_LOCAL=1`, `k_local = 120` on `fit_local`
-rather than `fit`), which is the arm production actually generates from. It is running; until
-it lands, every number above is the `fit`-path arm and is labelled as such.
+**The fourth leg has landed: the arm production actually generates from (`SEP_LOCAL=1`).** Every
+row in the table above is the `fit` path — one global generator per fold. Production does not
+use it. `Generator.fit_local` refits on the `k_local = 120` training rows nearest each anchor,
+and that is the estimator whose draws reach `data/synth/`. The re-run adds a fifth arm, `local`,
+scored inside the *same* folds against the *same* de-duplicated floors, with `dfm`, `boot` and
+`knn` recomputed alongside it. **Control: 216 values compared across the two passes — the three
+pre-existing arms, all three folds, all four panels, plus every fold's `floor_boot`,
+`floor_train` and `n_real` — 0 mismatches.** The `local` column is purely additive, so the
+contrast below is controlled and not a re-run artifact.
 
-Artifacts: `/tmp/dfm_verify/sep_redo.py`, `sep_redo.json`, `sep_redo.log`.
+| panel | fold | floor (dedup `boot`) | `dfm` AUC / excess | **`local` AUC / excess** |
+|---|---|---|---|---|
+| labor_monthly | 0 | 0.670 | 0.882 / +0.211 | **0.804 / +0.133** |
+| | 1 | 0.737 | 0.785 / +0.047 | **0.760 / +0.022** |
+| | 2 | 0.825 | 0.804 / −0.021 | **0.830 / +0.005** |
+| claims_weekly | 0 | 0.486 | 0.566 / +0.080 | **0.471 / −0.015** |
+| | 1 | 0.462 | 0.588 / +0.127 | **0.513 / +0.051** |
+| | 2 | 0.487 | 0.580 / +0.093 | **0.546 / +0.059** |
+| inflation_monthly | 0 | 0.743 | 0.675 / −0.068 | **0.715 / −0.028** |
+| | 1 | 0.722 | 0.792 / +0.070 | **0.881 / +0.158** |
+| | 2 | 0.670 | 0.755 / +0.086 | **0.751 / +0.081** |
+| energy_weekly | 0 | 0.711 | 0.873 / +0.162 | **0.833 / +0.122** |
+| | 1 | 0.639 | 0.794 / +0.155 | **0.735 / +0.096** |
+| | 2 | 0.794 | 0.909 / +0.115 | **0.926 / +0.132** |
+
+`local`'s `dup_frac` is **0.000 on all twelve folds**, same as `dfm` — local refitting does not
+turn the generator into a copier, which was the obvious way this could have gone wrong.
+
+**Mean excess, `dfm` → `local`:** labor +0.079 → **+0.053**, claims +0.100 → **+0.032**,
+inflation +0.029 → **+0.070**, energy +0.144 → **+0.117**. Local refitting closes 26% to 68% of
+the gap to the floor on three panels and **opens it by +0.041 on `inflation_monthly`**, driven
+almost entirely by fold 1 (0.792 → 0.881, the worst single cell in the whole table). Per fold,
+`local` is nearer the floor on **8 of 12**; the four it loses are labor fold 2, energy fold 2 and
+inflation folds 0 and 1 — and inflation fold 0 is a loss only in the bookkeeping sense that both
+arms are *below* the floor and `local` is less far below it.
+
+**The one cell where the production estimator reaches its floor.** `claims_weekly` fold 0:
+`local` scores 0.471 against a de-duplicated block-bootstrap floor of 0.486, i.e. `excess =
+−0.015` — the production arm is, on that fold, no more separable from held-out reality than
+resampled real history is. It is a single cell out of twelve and the two neighbouring claims
+folds are +0.051 and +0.059, so this is **not** "claims is solved"; it is the first cell anywhere
+in §4e where the arm the product ships is not measurably behind its own null.
+
+**The dependence legs move the same way, 4 for 4.** Mean |`dep_excess_over_boot`| on the
+`within` split: labor 0.071 → **0.026**, claims 0.0056 → **0.0050**, inflation 0.121 →
+**0.109**, energy 0.0131 → **0.0114**; `cross` (undefined on the single-column panel) 0.038 →
+**0.018**, 0.073 → **0.062**, 0.0079 → **0.0056**. This is a different statistic from the C2ST,
+computed on the joint lag structure rather than by a classifier, and it prefers `local` on every
+panel including `inflation_monthly` — which is the panel where the C2ST says `local` is worse.
+The two disagree there and neither is retracted: they measure different things, and the honest
+reading is that on inflation local refitting reproduces the joint dependence better while making
+the draws easier for a boosted-tree classifier to pick out on some other feature.
+
+**What this does not license.** The headline of this section is unchanged: the DFM — `fit` path
+or `fit_local` path — is behind real block-bootstrap on all four panels, by a per-panel mean of
++0.032 to +0.117 in its better arm. `local` is closer, not past. And the numbers in the twelve-row
+table above stay in the record as the `fit`-path arm, because §4e-C, §4e-D and #205 were all read
+off that path and their re-reading has to be against the same thing they claimed.
+
+**#211 closes here.** The floors are re-measured on de-duplicated pools, on both estimators, and
+§4e-C's headline is corrected in the direction that costs the DFM. `mem` on the `local` arm is
+lower than on `dfm` in 10 of 12 folds (panel means 0.940 / 0.868 / 0.939 / 0.923 against 0.975 /
+0.949 / 0.982 / 1.035) — recorded, and **not** read as a verdict, for the reason §4e-F and §4e-G
+give: there is no memorization threshold in the code and `mem` is not a veto.
+
+Artifacts: `/tmp/dfm_verify/sep_redo.py`, `sep_redo.json`, `sep_redo.log`, `sep_redo_local.json`,
+`sep_redo_local.log`. The `local_k` argument that makes this reproducible from the production
+entry point rather than from a `/tmp` script is now in `validate` itself (#207's PR-15 wiring),
+and `report`'s header prints `est=fit_local(k=120)` so a report can no longer be silently read
+as describing the wrong estimator.
+
+### F. `mem` fails a generator that cannot memorize — the veto is the defect, not labor and energy (#208, 2026-08-28)
+
+> **This section retracts a premise, not a number.** Every `mem` figure printed anywhere above
+> is reproduced here unchanged. What changes is what they are allowed to mean.
+
+**The thing that had to be explained.** Production `raw` fails the #206 band on two of four
+panels and fails them in *opposite directions* — labor_monthly 1.066 WIDE, energy_weekly 0.854
+COPY — while every knob ever tried moves both the same way. The 26-cell capacity sweep drops
+`mem` monotonically on every panel (labor 1.07 → 0.84, inflation 1.01 → 0.80, energy 0.85 →
+0.75); §4e-D's whitening moves labor further out by 0.077 and energy further out by 0.013. One
+knob cannot repair two failures that point in opposite directions, so either there were two
+independent generator defects, or `mem` was not only measuring the generator.
+
+**Part 1 — the referent is not exchangeable, and this is a fact about real rows only.**
+`mem = median(d(pool, Ztr)) / median(d(Zte, Ztr))`. The denominator is supposed to say "how far
+would a genuine, non-memorized row sit from the training set" and it answers with the late 30%
+of the same series — across a time boundary, so it carries epoch drift and serial-correlation
+asymmetry, neither of which is memorization. Measured against a same-epoch referent (`loo` =
+each training row's distance to the nearest *other* training row) and a shuffled null (400
+permutations of the same 70/30 sizes, SEED 11):
+
+| panel | `median d(te→tr)` | `loo(tr)` | `drift_end` | shuffled 95% | | `drift_mid` |
+|---|---|---|---|---|---|---|
+| labor_monthly | 4.3185 | 4.6737 | **0.924** | [0.947, 1.079] | OUTSIDE | 1.121 |
+| claims_weekly | 2.2987 | 2.1457 | 1.071 | [0.938, 1.069] | outside by 0.002 | 1.139 |
+| inflation_monthly | 5.0730 | 4.9161 | 1.032 | [0.937, 1.065] | inside | 1.023 |
+| energy_weekly | 6.6261 | 5.4087 | **1.225** | [0.959, 1.047] | OUTSIDE | 0.851 |
+
+The two panels whose `mem` fails sit on **opposite sides** of the shuffled band, in the order
+that matches their opposite failures: labor's held-out block is anomalously *close* to training
+(denominator too small → `mem` inflated → WIDE), energy's is anomalously *far* (denominator too
+large → `mem` deflated → COPY). `drift_mid` — the same measurement on an interior held-out
+block that training brackets in time — disagrees with `drift_end` by 0.20 on labor and 0.37 on
+energy and in the opposite direction on each, which is the signature of *which block you chose*,
+not of blockiness. Energy is the interpretable case: the late 30% of `energy_weekly` is the
+2022-onward regime, and `natgas` carries the largest share of the distance (0.366).
+
+**Part 2 — the demonstration. A generator that cannot memorize gets production's verdict.**
+`gauss`: 1024 draws from `N(mu_tr, Sigma_tr)`. Each draw is independent of every training row
+given two moments, so there is no mechanism by which it could copy one. Scored by the
+production metric, unchanged:
+
+| panel | #206 band | `mem(gauss)` | verdict | production `raw` | verdict |
+|---|---|---|---|---|---|
+| labor_monthly | [0.956, 1.052] | 1.166 | **WIDE** | 1.066 | **WIDE** |
+| claims_weekly | [0.933, 1.088] | 1.060 | PASS | 0.997 | PASS |
+| inflation_monthly | [0.879, 1.156] | 1.100 | PASS | 1.012 | PASS |
+| energy_weekly | [0.953, 1.043] | 0.876 | **COPY** | 0.854 | **COPY** |
+
+Four panels, four matches, **both failure directions reproduced**. Whatever `mem` is measuring
+panel-to-panel, it is not the generator. This was preregistered as P2 and it is the load-bearing
+result of the section: it needs no DFM, no fit, and no argument.
+
+**Part 2 also killed the obvious fix, on its own preregistered rule.** Re-basing `mem` on the
+same-epoch referent (`mem_adj = mem × drift_end`) rescues labor outright (1.066 → 0.985 PASS)
+and takes energy from 0.099 below its band to 0.003 above it (0.854 → 1.046) — and then
+**rejects the honest `gauss` control on three of four panels** (1.077 / 1.136 / 1.073). P1
+FAILED: the same disease, relocated. Power was checked in the same run and is not the reason —
+both referents catch verbatim copies at `eta = 0` on all four panels, and the largest `eta` each
+still calls COPY differs by one sweep step in either direction (labor 0.5 vs 0.75, energy 0.75
+vs 0.5, claims and inflation identical). *The over-dispersion adversary in that run is defective
+and its result is discarded for both metrics equally: scaling training rows away from the mean
+by `beta` lands them near other training rows, so `beta = 1.5` reads COPY under both referents.
+It is not an over-dispersion adversary and nothing is concluded from it.*
+
+**Part 3 — calibrating the centre instead of replacing the denominator, and that fails too.**
+#206's band is built from halvings of the held-out block against itself, so it is centred at 1.0
+*by construction*: it assumes an honest generator scores 1.0, and part 2 measured that it does
+not. `mem_cal = mem / median(mem_gauss)` keeps #206's width and moves its centre to the measured
+honest level (K = 40 re-draws per panel). Preregistered results: X1 calibration PASS, X2 width
+PASS (the `gauss` re-draw spread is 0.017–0.039 against band widths 0.090–0.278, so the
+numerator's sampling noise is not what the band is made of), X4 `boot` still reads COPY at
+exactly 0.0 on all four, X5 **no `fd32` cell is released** — every capacity cell the
+uncalibrated veto rejected as COPY is still rejected. X3, the over-dispersion falsifier, needs
+its two readings reported separately and the discrepancy is mine: the registered text says the
+`rot` arm must **still** be rejected, and under that text it passes (labor WIDE→COPY, claims
+WIDE→WIDE, energy COPY→WIDE — all still rejected; inflation was PASS under the incumbent too, so
+"still" does not apply). The *code* I wrote implemented the stricter "must be rejected on every
+panel", and under that stricter rule it fires on inflation — a panel where the incumbent `mem`
+fails identically. Both readings are recorded; neither is used to rescue the proposal, because
+the proposal fails anyway:
+
+| panel | `raw` `mem` | verdict | `raw` `mem_cal` | verdict |
+|---|---|---|---|---|
+| labor_monthly | 1.066 | WIDE | 0.9145 | **COPY** (direction flips, still fails) |
+| claims_weekly | 0.997 | PASS | 0.9304 | **COPY** (newly fails, by 0.0021) |
+| inflation_monthly | 1.012 | PASS | 0.9244 | PASS |
+| energy_weekly | 0.854 | COPY | 0.9854 | PASS (fixed) |
+
+Calibration fixes energy, breaks claims, and flips labor's failure to the other side without
+fixing it. Still two of four. It is not a fix either, and the reason is stated in its own
+preregistration: `gauss` fills the ambient ellipsoid including regions a curved data manifold
+never visits, so it is a *biased-high* calibrator, and an on-manifold generator will sit below
+it by an amount that is not copying. There is a second, sharper error in the proposal that the
+run exposed — under `mem_cal` the denominator **cancels exactly** (`num/num_gauss`), so #206's
+band, which is denominator noise, is the wrong width for it. Neither available width is right,
+and the one that would be right requires an honest *on-manifold* generator, which is the thing
+that does not exist.
+
+**What all three referents agree on, and it is the only thing any of them should be quoted for.**
+The ORDERING is stable across the production referent, the same-epoch referent and the
+`gauss`-calibrated one:
+
+    boot  0.00     <     fd32  0.61-0.88     <     production fd8  0.91-0.99     <   gauss 1.00
+
+Every referent puts `boot` at exactly 0, every referent puts the high-capacity cells well below
+the honest level, and every referent puts production's `fd8` within ~1-9% of an independent
+draw. What the three disagree about is *where the absolute threshold sits* — and that is the
+only thing the veto has ever been read for.
+
+**Verdict on #208, and it is a retraction.** The premise "production fails the `mem` band on
+energy_weekly and labor_monthly" is withdrawn as a statement about the generator. The band it
+fails is not calibrated for the panel it is applied to, and an honest Gaussian fails the same
+two panels in the same two directions. Consequently:
+
+* labor_monthly and energy_weekly are **not shown to memorize**, and the 26-cell sweep's
+  conclusion that "no cell satisfies B, C and the `mem` band at once" is a statement about the
+  band, not about capacity — *except* on the capacity axis itself, where the `fd32` rejection
+  survives all three referents and stands.
+* §4e-D's "adoption on labor and energy is blocked behind #208" is now blocked by an
+  **instrument**, not by a defect. That sentence must be re-read the same way, and the whitening
+  adoption run in #207 is not gated on repairing labor's and energy's `mem` readings.
+* `mem` stays in the report and stays at its current definition. Nothing is silently re-scored.
+  What changes is that a `mem` outside its band is, on its own, **no longer sufficient** to veto
+  a configuration; it is sufficient only alongside an anchor measured on the same panel in the
+  same run.
+
+**The replacement, and it is owed a preregistration before it is written.** Report the two
+anchors alongside `mem` — `boot` (verbatim copy, 0.0) and `gauss` (independent draw, matched
+moments) — and veto on the generator's position between them rather than on an absolute band.
+The threshold cannot be chosen from the table above: on this evidence a single cut at 0.90
+separates every production cell (0.914–0.985) from every `fd32` cell (0.606–0.876) on all four
+panels, which is exactly the kind of number that must not be adopted by having been noticed. The
+procedure that sets it, and the capacity-axis validation that has independent ground truth
+(`fd32`'s `var/tr` and `top8` corroborate memorization without using `mem` at all), go into
+`docs/PREREGISTER.md` first.
+
+Artifacts: `/tmp/dfm_verify/mem_referent.py|.json|.log`, `mem_power.py|.json|.log`,
+`mem_calib.py|.json|.log`. No production file was written and `dfm/` was not called.
+
+> **The replacement was written, registered as PR-14, and then FALSIFIED by its own
+> out-of-sample test the same day. See §4e-G. There is no memorization threshold in the code.**
+
+### 4e-G. PR-14's replacement threshold is dead too — out-of-sample, same day (#208, 2026-08-28)
+
+§4e-F retracted `mem` as a veto and proposed `mem_pos = mem / mem_gauss` with a cut at 0.90 in
+its place, flagging in the same breath that 0.90 had been *noticed* rather than derived. PR-14
+registered four criteria on three panels that had taken no part in any `mem` measurement —
+`gdp_quarterly`, `core_monthly`, `energy_weekly_wide` — and the implementation went into
+`research/synth/generator.py` before the criteria were run. Then they were run.
+
+| criterion | result | numbers |
+|---|---|---|
+| (a) `boot`'s `mem_pos` is exactly 0.000 on all three | **PASS** | `mem` and `mem_pos` both exactly `0.000000` on all three |
+| (b) the anchor's own K=40 re-draws all inside [0.97, 1.03] | **FAIL** | `gdp_quarterly` [0.9732, **1.0457**]; `core_monthly` [0.9944, 1.0073] ok; `energy_weekly_wide` [0.9959, 1.0063] ok |
+| (c) `fd8 ≥ 0.90` **and** `fd32 < 0.90` on the two wide panels | **FAIL** | `core_monthly` fd8 0.986 / fd32 0.833 both right; `energy_weekly_wide` fd8 0.986 right, **fd32 0.902** on the passing side by 0.002 |
+| (d) the four old panels' production spread beats 0.212 | **PASS** | 0.9143 / 0.9301 / 0.9247 / 0.9854 → spread **0.0711**, one third of the old |
+
+Two of four failed, and PR-14's registration says on one line that four must hold together and
+that there is to be no retuning, no panel swap and no K swap. So the verdict is **falsified**,
+`MEM_POS_CUT` is `None` in the code, and `mem_pos` is a reported level with no cut attached.
+
+**(b) and (c) are not the same kind of failure and are not recorded as one.**
+
+**(b) is the instrument, and the criterion did its job.** `gdp_quarterly` has `d_flat = 5` and
+196 training rows; a nearest-neighbour median in five dimensions re-draws an order of magnitude
+more loosely than in 130–144, which is visible in the same run — the other two panels' anchors
+span 0.013 and 0.010. The honest reading is *this panel cannot resolve a 0.10 margin*, not
+*widen the interval*. `_separability` already emits `mem_gauss_range` per fold, which is what
+lets a reader see this without re-deriving it, and that is why it was added.
+
+**(c) is the threshold failing to generalize — and its own ground truth is contaminated.** The
+0.90 came from a 52-cell sweep on four panels where production `fd8` sat in 0.914–0.985 and
+every `fd32` in 0.606–0.876. On a fifth panel `fd32` reads 0.902 and would be waved through.
+Separately, and it must be said in the same place: on these two panels `fd32`'s `var/tr` is
+0.614 and 0.771 against `fd8`'s 0.849 and 0.937 — **lower**, not higher. #204's finding that
+extra capacity buys variance by memorizing does not reproduce here, so `fd32` is not the
+memorizing arm on these panels and criterion (c) was resting on an assumption that does not
+hold outside the four it was written from. **That is not a reason to reopen the verdict.** A
+criterion discovered after the fact to have been badly designed gets written down as badly
+designed; it does not get its result voided.
+
+**A third weakness, found while writing the tests and recorded because it would have bitten
+whether or not (b) and (c) had passed.** `mem_pos`'s numerator is a single pool's
+nearest-neighbour median, and that carries sampling noise nobody had measured. Forty re-draws
+of an honest arm on a toy panel span 95% [0.76, 1.38] at a 100-row pool, [0.89, 1.11] at 512
+and [0.91, 1.06] at production's own 1024 — the same order as the 0.10 the cut was being asked
+to adjudicate. `mem_gauss_range` exposes the *denominator's* noise; the numerator's is not
+exposed anywhere. Any future threshold proposal has to clear this first, and the pre-check is
+cheap to state: **the anchor's width, and the arm's own re-draw width, must both be smaller
+than the gap being judged.**
+
+**What (d) bought, because something did survive.** The same-panel anchor really does divide
+out most of what `mem`'s absolute level was carrying: the production arm's four readings go
+from a 0.212 spread to 0.0711. And on all three unseen panels an honest `N(mu_tr, Sigma_tr)`
+arm reads `mem_pos` 0.9888 / 0.9990 / 0.9992 — near 1 by construction rather than by luck, so
+this is a self-consistency check and not independent evidence, but it is the check that `mem`
+itself fails (§4e-F) and it is why the column stays in the report.
+
+**What is left as an automatic memorization test: exactly one thing, and it needs no
+threshold.** `dup_frac` plus `boot`'s 0.000 identity. Verbatim plagiarism is caught exactly, on
+every panel, at every dimension. The middle of the range — a generator that is neither copying
+rows nor drawing independently — currently has **no** automatic verdict, and the report says so
+in those words rather than leaving a number lying around that looks like a cut.
+
+**Why no PR-15 today.** All seven panels have now taken part in a `mem` measurement. A new
+registration would have no clean out-of-sample panel left to judge on, and a preregistration
+with nothing to be judged against is post-hoc tuning in a table. It waits for §4g's new panels
+(the KXGDP extension, and AAA once it has real history), and its criteria must include the
+width pre-check above as a gate rather than as a footnote.
+
+Artifacts: `/tmp/dfm_verify/pr14_ab.py|.json|.log` (criteria a, b, d — no fit, no `dfm/` call),
+`pr14_c.py|.json|.log` (criterion c — four fits on production's path, `dfm/` called and not
+modified). Code: `MEM_POS_CUT`, `_mem_gauss`, `_separability`'s `mem_gauss`/`mem_gauss_range`/
+`mem_pos`, and eight tests in `tests/test_synth_generator.py`.
+
+### 4e-I. The print grid was measured five times too fine, and the reason is derivable (#203, 2026-08-28)
+
+§4e-A closes #203's first half — the generator does not know macro data is printed — and leaves
+its second half open with a specific pointer: *"on a `dlog` column the tell would have to be
+anchor-conditional … which the current `measure_lattice` does not test for. #203 stays open for
+that."* Following that pointer found something else on the way, and the something else is
+larger: **`measure_lattice` was returning the wrong grid on four columns, and the error is not
+random.**
+
+**The law, derived before it was looked for.** `_best_step`'s docstring promises "the COARSEST
+grid the series sits on". Averaging a series whose prints are multiples of `g` over a window of
+four sub-periods lands on `g/4`; over five, on `g/5`. A column whose windows are a *mix* of the
+two — every monthly-from-weekly and weekly-from-daily column in this repo — therefore sits
+exactly on `gcd(g/4, g/5) = g/20`, and on nothing coarser. That is arithmetic, not a fit, and it
+makes a prediction for every `agg="mean"` column in the project before any of them is measured.
+
+**Four for four.**
+
+| panel spec | column | agg | source grid `g` | `g/20` | `measure_lattice` returned | real levels on `g/20` |
+|---|---|---|---|---|---|---|
+| labor_monthly, core_monthly | `claims` | mean | 1000 (ICSA) | **50** | 10 | **100.00%** (383 pts) |
+| energy_weekly_wide | `dgs2` | mean | 0.01 (DGS2) | **0.0005** | 0.0001 | **100.00%** (677 pts) |
+| energy_weekly_wide | `dgs10` | mean | 0.01 (DGS10) | **0.0005** | 0.0001 | **100.00%** (723 pts) |
+| inflation_monthly, core_monthly | `gas_retail` | mean | 0.001 (GASREGW) | **0.00005** | *nothing* | **100.00%** |
+| core_monthly | `crude_stocks`, `gaso_stocks` | mean | 1.0 (EIA) | **0.05** | 0.05 ✓ | — |
+
+The one the ladder got right is the one whose `g/20` happens to be a rung of it. `_LATTICE_STEPS`
+is `(1000, 100, 10, 1, 0.5, 0.25, 0.1, 0.05, 0.01, 0.005, 0.001, 1e-4)` — it carries the "5 and
+25" mantissas in the middle of its range and drops them at both ends, so 0.05 is present and 50,
+0.0005 and 0.00005 are not. 0.00005 is finer than the ladder's finest rung, so on `gas_retail` no
+choice of mantissa could have rescued it: that column was reported **continuous** and was not
+quantised at all.
+
+**The consequence, stated as what it costs and not as a category.** The grid the code used was
+in every case a *divisor* of the true one, so the check `on_lattice(real, step) ≥ 0.995` passed —
+which is exactly why this survived. What it does not do is bind the generator: quantising to 10
+when the truth is 50 leaves **four of every five emitted grid classes** occupied by values the
+publication process cannot produce. Measured on `labor_monthly`'s `claims` with production's own
+`quantise_levels`: 19.1% of the emitted levels land on the 50-grid, against 100.0% of the real
+ones.
+
+**The correction has no candidate list and nothing to tune.** `_exact_gcd_step` scales the finite
+values to integers and takes the integer GCD. It is exact on 100% of the rows by construction
+rather than on `_LATTICE_HIT`'s 99.5%, and it is wired in as a **coarsening-only third pass**: the
+ladder's answer stands unless the GCD is strictly coarser, float32 columns never reach it, and a
+single rogue row — which drags an exact GCD to the resolution floor where the 0.995 tolerance
+would have shrugged — produces a value that is *not* coarser and is therefore discarded. The
+failure mode is a no-op, which is the only reason an exact statistic is safe to consult here at
+all. Re-measured across all seven panel specs, exactly the four columns above move and every
+other column is bit-identical, including `claims_weekly`'s `claims` (agg=`last`, 1000 stands) and
+the three float32 futures columns.
+
+**Cost, as a fraction of each column's own increment sd.** Half a grid step: `claims` 0.0109% →
+**0.0543%**, `dgs2` 0.0643% → **0.3217%**, `dgs10` 0.0548% → **0.2740%**, `gas_retail` 0% →
+**0.0186%**. The largest is a third of one percent.
+
+**And now the part that matters most, because it is the part I would otherwise have been tempted
+to claim.** PR-16 was registered predicting that the pooled C2ST would **not** see this
+correction, for §4e-A's own reason: on a `dlog` column the grid signature is anchor-conditional,
+and `_separability` scores an increment vector with the anchor stripped out. That prediction was
+then measured, on `labor_monthly`, with the diffusion taken out of the loop entirely — the
+"generated" class is the real forward levels perturbed by 5e-4 in log (0.36% of the column's
+increment sd, about three 50-steps at the median level) and then quantised, so the only thing
+that differs between arms is the grid:
+
+| arm | emitted on the 50-grid | C2ST AUC on increments |
+|---|---|---|
+| no quantisation (control) | 0.0% | **0.9994** |
+| grid 10 (the code's answer) | 19.1% | **0.7854** |
+| grid 50 (the truth) | 100.0% | **0.7853** |
+
+Read it in the right order. The control reproduces §4e-A from scratch: a perturbation of a third
+of a percent of the increment sd, left un-quantised, is separable at **0.9994** — the grid really
+was the whole of that finding. Quantising at all takes it to 0.785, which is the perturbation
+itself and is the floor this probe can reach. And moving from the *wrong* grid to the *right* one
+moves the AUC by **−0.0001**: nothing, inside any noise band worth naming.
+
+So the correction is adopted on the fidelity and settlement argument alone — the same one §4e-A
+used, that Kalshi settles on the printed value and a synthetic world must not put mass on
+outcomes the settlement rule cannot produce — and **explicitly not** on any validity improvement,
+because there is not one to claim and the measurement above says so with a number rather than
+with a hedge. PR-16's falsifier is the other direction: if the next four-panel `validate` shows
+`crps_ratio` worse by more than +0.02 anywhere, then 0.32% of an increment sd was not as harmless
+as the arithmetic says and this has to be reargued.
+
+**What is still open on #203.** The anchor-conditional lattice statistic §4e-A asked for still
+does not exist. This section found and fixed a different, larger defect while looking for it, and
+the probe above shows why the missing statistic is worth having: the pooled increment C2ST is
+**structurally blind** to grid errors on `dlog` columns — it scored 0.7854 and 0.7853 for a
+generator that was 19% correct and one that was 100% correct. A test that cannot tell those apart
+cannot police the quantisation, and the only reason the original §4e-A finding was visible at all
+is that "no grid" also perturbs the *marginal* distribution of the increments. #203 stays open
+for that statistic, now with a measured reason rather than a suspicion.
+
+Artifacts: `panel.py::_exact_gcd_step` and `_best_step`'s third pass, four tests in
+`tests/test_synth_panel.py`, PR-16 in `docs/PREREGISTER.md`.
+
+### 4e-J. `moments_inside` is an in-sample check, and that is why C's excuse fails (#205, 2026-08-28)
+
+§4e-C's persistence verdict rests on a defence — *"the held-out `acf1` is not a reachable
+target"* — and §4e-E, while correcting almost everything else in that section, explicitly
+exempted the defence as "unaffected and still load-bearing". It is neither. This section
+measures it directly, and the result goes **against** the DFM: the target is reachable, so the
+misses are real.
+
+**The control needs no model.** The best any estimator fitted on the training rows can do on a
+moment is to reproduce the training rows' own value of it. So take the real training rows,
+treat their moment as an arm's score, and push it through `validate`'s own `_boot_ci` — same
+function, same `seed + j` convention, same `lo <= v <= hi` rule. If real training data cannot
+pass, failing is evidence about the test, not about a generator. For an arm that draws from
+the training pool this is an *identity* rather than a simulation: every held-out anchor's
+expected draw-mean is the training pool's mean, so the pooled arm mean **is** the pooled
+training rows' mean. No sampling, no seed, nothing to tune.
+
+**Run fold-by-fold, the defence looks right.** Against each fold's own held-out 90% CI, on
+PR-15's exact folds (`seed=7, folds=3, holdout=0.3`), the perfect train-reproducer is inside:
+
+| moment | inside | rate |
+|---|---|---|
+| `mean` | 8/36 | 22.2% |
+| `sd` | 6/36 | 16.7% |
+| `cum` | 8/36 | 22.2% |
+| **`acf1`** | **7/36** | **19.4%** |
+
+Against a nominal 90% band. So a genuinely per-fold `moments_inside` is unpassable by *any*
+train-fitted estimator — and note that `acf1` is not special: all four moments fail at the
+same rate. That already breaks the original argument's shape, which was specifically that
+persistence was the unreachable one.
+
+**But `validate` does not work per fold, and that is the whole finding.** One line decides it:
+
+```python
+real_stats = path_stats(np.concatenate(real_all))     # generator.py:960
+lo, hi = _boot_ci(real_stats[stat][:, j], seed=seed + j)
+```
+
+The CI is built on the three folds' held-out rows **pooled**, and each arm's score is its mean
+over the pooled draws. With a 70/30 split repeated three times over one series, the union of
+the three training sets and the union of the three held-out sets are the same rows. Measured,
+not assumed: **100.0% of pooled held-out anchors also appear in some fold's training set**, on
+all four panels. Re-run in that geometry, the perfect train-reproducer scores:
+
+| panel | `moments_inside` |
+|---|---|
+| labor_monthly | **12/12** |
+| claims_weekly | **4/4** |
+| inflation_monthly | **16/16** |
+| energy_weekly | **16/16** |
+
+48/48. 100% on `mean`, `sd`, `cum` and `acf1` alike. Not one cell is near an edge — pooled
+labor `payems` `acf1` is train +0.0895 against a CI of [+0.0538, +0.1116] on holdout +0.0829.
+
+Three consequences, and they do not all point the same way.
+
+1. **§4e-C's reachability defence is dead, and #205 is a real defect.** The DFM's `acf1`
+   misses are misses against a target the training rows hit exactly. Whatever else is wrong
+   with the persistence verdict, "no train-fitted generator could have done better" is not
+   available as an explanation. This is the opposite of what the control was expected to show,
+   and it is the reason #205 stays open rather than closing a second time.
+2. **`moments_inside` must never again be cited as out-of-sample evidence.** It is an
+   in-sample marginal-matching check: it asks whether an arm's pooled marginal moment matches
+   the full sample's, which is a real and achievable property, but it is not a held-out one.
+   Every conditional claim in this document already rests on `cover80` / `crps_ratio` / the
+   C2ST rather than on `moments_inside`, so nothing downstream has to be withdrawn — but the
+   distinction was never written down and it should have been.
+3. **The report's own footnote about `boot` is right about the number and wrong about the
+   reason.** It says `boot` scoring 100% is "near-tautological — it IS the history". `boot`
+   draws only from `tr`, so if the folds did not overlap that would not follow. It is the
+   *pooling*, not the arm, that makes it tautological — and the same pooling grants the
+   tautology to every train-fitted arm, which is why the statistic separates arms so weakly.
+
+**What is not claimed.** That per-fold scoring should replace pooled scoring. A per-fold
+`moments_inside` would be inside 17–22% of the time for a perfect estimator, i.e. useless in
+the other direction; both geometries are bad tests of a *conditional* generator and the fix is
+not to swap one for the other but to keep judging on the rank-based statistics that already
+carry the conditional claims. No threshold, no config and no shipped code changes on the
+strength of this section.
+
+Artifacts: `/tmp/dfm_verify/acf1_targets.json`, `acf1_reachable.py` (+ `.json`, `.log`),
+`acf1_reachable_pooled.py` (+ `.json`, `.log`).
 
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 

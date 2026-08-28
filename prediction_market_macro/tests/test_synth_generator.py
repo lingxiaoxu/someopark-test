@@ -174,6 +174,184 @@ def test_load_sizes_the_net_from_what_was_fitted_not_what_was_asked(tmp_path):
     assert back.cfg.factor_dim == 8 and back.meta["factor_dim"] == 3
 
 
+# ── the whitened basis (#207 / PR-15) ────────────────────────────────────────
+# `dfm`'s `arch='factor'` approximates the residual covariance by a DIAGONAL in whatever
+# coordinates it is handed, and the residual is not diagonal in the panel's. §4e-D measured
+# the consequence and its own falsifier in one run: whitening (`Z @ U / sqrt(lambda)`) put
+# `tail` inside [0.80, 1.25] and `var/train` above 0.90 on 4/4 panels, while the plain
+# eigenbasis (`Z @ U`, the `rot` arm) collapsed `sigma0` to its 1e-4 floor exactly as
+# predicted and blew the dispersion out to 1.21-1.75. So `whiten` is a bool and there is no
+# `rot` and no swept exponent — the arms that would need tuning are the ones that failed.
+#
+# NOTHING HERE ASSERTS THAT WHITENING IS BETTER. That is PR-15's question, it is answered
+# end-to-end on real panels, and a toy panel cannot speak to it. What these tests pin is the
+# part that must be true whatever the answer: the map is exactly invertible, it is inert when
+# off, it survives a save/load round trip, and it cannot be half-loaded.
+def test_whitening_round_trips_exactly_and_produces_an_identity_covariance():
+    rng = np.random.default_rng(0)
+    A = rng.normal(size=(12, 12))
+    Z = rng.normal(size=(300, 12)) @ A.T + np.arange(12.0)
+    wh = G._whiten_basis(Z)
+    Zw = (Z - wh["mu"]) @ wh["fwd"]
+    assert wh["rank"] == 12 and wh["dropped"] == 0
+    assert np.abs(np.cov(Zw, rowvar=False) - np.eye(12)).max() < 1e-9
+    assert np.abs(Zw @ wh["inv"] + wh["mu"] - Z).max() < 1e-9
+
+
+def test_whitening_drops_directions_the_training_rows_never_moved_in():
+    """`fit_local` exists to use 120 rows and `core_monthly`'s d_flat is 144, so a singular
+    covariance is the normal case, not the pathological one. `1/sqrt(lambda)` on a direction
+    with no measured variance is not a large number, it is a division by an estimate of
+    nothing — those directions come out, and the round trip still has to be exact on the rows
+    that defined the span, because they live in it."""
+    rng = np.random.default_rng(1)
+    Z = rng.normal(size=(10, 20))                     # 10 rows, 20 dims -> rank <= 9
+    wh = G._whiten_basis(Z)
+    assert wh["rank"] == 9 and wh["dropped"] == 11
+    assert wh["fwd"].shape == (20, 9) and wh["inv"].shape == (9, 20)
+    Zw = (Z - wh["mu"]) @ wh["fwd"]
+    assert np.abs(Zw @ wh["inv"] + wh["mu"] - Z).max() < 1e-8
+    with pytest.raises(ValueError, match="no variance in any direction"):
+        G._whiten_basis(np.ones((8, 4)))
+
+
+def test_whitening_is_off_by_default_and_leaves_the_fit_in_the_panel_basis():
+    """The inertness claim that lets #207 land without re-validating everything that came
+    before it: `whiten` defaults False, and with it False the generator carries no basis and
+    works in H*d dimensions exactly as it did."""
+    assert G.GenConfig(panel="toy").whiten is False
+    pdata = _toy_panel(n=400, H=4, d=1)
+    g = G.Generator.fit(pdata, G.GenConfig(panel="toy", factor_dim=2, epochs=1))
+    assert g._whiten is None
+    assert g._dim == 4 and g.meta["data_dim"] == 4
+    assert "whiten_rank" not in g.meta
+
+
+def test_a_whitened_fit_trains_and_samples_in_the_panel_shape():
+    """The net works in the whitened space and the caller must never see it. Shape and
+    finiteness only — whether the paths are BETTER is PR-15's measurement, not a unit test's."""
+    pdata = _toy_panel(n=400, H=4, d=1)
+    cfg = G.GenConfig(panel="toy", factor_dim=2, epochs=1, noise_steps=8, whiten=True)
+    g = G.Generator.fit(pdata, cfg)
+    assert g._whiten is not None
+    assert g.meta["whiten_rank"] == 4 and g.meta["whiten_dropped"] == 0
+    out = g.sample(np.array([1.0, 0.0]), 16, seed=3)
+    assert out.shape == (16, 4, 1) and np.isfinite(out).all()
+
+
+def test_a_whitened_generator_survives_save_and_load_bit_for_bit(tmp_path):
+    """A basis that did not travel with the weights would produce paths wrong by a linear
+    map, and they would still look like macro data — the exact failure `save`'s docstring
+    exists to prevent, applied to the one thing #207 adds."""
+    pdata = _toy_panel(n=400, H=4, d=1)
+    cfg = G.GenConfig(panel="toy", factor_dim=2, epochs=1, noise_steps=8, whiten=True)
+    g = G.Generator.fit(pdata, cfg)
+    before = g.sample(np.array([1.0, 0.0]), 8, seed=11)
+    back = G.Generator.load(g.save(tmp_path / "w.pt"))
+    assert back._whiten is not None and back.meta["whiten_rank"] == 4
+    assert np.array_equal(before, back.sample(np.array([1.0, 0.0]), 8, seed=11))
+
+
+def test_load_refuses_a_whitening_artefact_whose_basis_did_not_travel(tmp_path):
+    """Loading it and sampling anyway would apply the panel scaler to whitened coordinates
+    and return a number for every strike without one of them looking odd. Refusing is the
+    only honest option: `U` and `lambda` came from training rows the artefact does not carry,
+    so there is nothing to reconstruct them from."""
+    import torch
+    pdata = _toy_panel(n=400, H=4, d=1)
+    cfg = G.GenConfig(panel="toy", factor_dim=2, epochs=1, noise_steps=8, whiten=True)
+    p = G.Generator.fit(pdata, cfg).save(tmp_path / "w.pt")
+    blob = torch.load(p, map_location="cpu", weights_only=False)
+    blob.pop("whiten")
+    torch.save(blob, p)
+    with pytest.raises(ValueError, match="carries no basis"):
+        G.Generator.load(p)
+
+
+def _toy_panel_end_to_end(n=200, H=4, seed=0):
+    """`_toy_panel` with a condition vector `panel.condition_row` would ACTUALLY produce.
+
+    `_toy_panel` hands `validate` a two-column condition it invented, and `validate` rebuilds
+    the condition from `levels`/`inc` through `condition_row` — 3*d+2 = 5 dims — so the two
+    disagree the moment `sample` checks its own scaler. That mismatch is why nothing in this
+    file has ever called `validate`; it is cheap to remove and worth removing, because the
+    control PR-15 rests on is a property of `validate` and cannot be tested one layer down.
+
+    Built the way a real panel is: a regime-driven random walk in `levels`, `inc` its first
+    difference, `Z` the H forward increments at each anchor, `C` `condition_row` evaluated at
+    that anchor, both standardized on the panel exactly as `build` standardizes them.
+    """
+    rng = np.random.default_rng(seed)
+    spec = P.PanelSpec(
+        name="toy2", freq="MS", horizon=H, start="2000-01-01", level_lag=6,
+        columns=(P.Column("x", "fred", "X", "latest", "last", "diff", "u"),))
+    idx = pd.date_range("2000-01-01", periods=n + H, freq="MS")
+    regime = rng.choice([-1.0, 1.0], size=n + H)
+    levels = pd.DataFrame({"x": 100.0 + np.cumsum(rng.normal(regime, 0.25))}, index=idx)
+    inc = pd.DataFrame({"x": levels["x"].diff().fillna(0.0)}, index=idx)
+    anchors = list(idx[:n])
+    step = inc["x"].to_numpy()
+    Zr = np.array([step[i + 1:i + 1 + H] for i in range(n)])
+    Cr = np.array([P.condition_row(levels, inc, spec, t) for t in anchors])
+    mu, sd = Zr.mean(0), Zr.std(0)
+    cmu, csd = Cr.mean(0), Cr.std(0)
+    return P.PanelData(
+        spec=spec, levels=levels, inc=inc, anchors=anchors,
+        Z=(Zr - mu) / sd, C=(Cr - cmu) / csd, end=idx[-1].to_pydatetime(),
+        scaler={"mu": mu, "sd": sd, "cmu": cmu, "csd": csd,
+                "names": ["x"], "horizon": H, "transforms": ["diff"]})
+
+
+def test_validate_local_k_fits_per_anchor_and_leaves_the_floors_bit_identical():
+    """PR-15's CONTROL, asserted in the suite rather than only in the run it guards.
+
+    The whole comparison in PR-15 is `whi` against `raw` on shared floors, and the same
+    requirement applies to `fit` against `fit_local`: `boot` and `knn` are drawn from
+    `seed=sd` and never touch the generator, so if any of their numbers move between two
+    passes then something other than the estimator moved and the run is void. Asserting it
+    here means that failure surfaces as a red test instead of as a plausible table.
+
+    Sized at 24 held-out anchors on purpose, which is BELOW `_auc_2sample`'s 25-row refusal,
+    so the C2ST leg declines on both passes and the whole test costs two seconds instead of
+    two minutes. What is pinned here is the control, not the classifier: 97% of
+    `_separability`'s runtime is 3000 boosted trees, and its floors and refusals already have
+    their own tests above. `mem` and `dup_frac` do not decline at this size and are the legs
+    that carry the claim.
+    """
+    pdata = _toy_panel_end_to_end(n=80, H=4)
+    cfg = G.GenConfig(panel="toy2", factor_dim=2, epochs=1, noise_steps=4)
+    kw = dict(holdout=0.3, folds=1, n_samples=16, seed=2, printed=False)
+    glob = G.validate(pdata, cfg, **kw)
+    loc = G.validate(pdata, cfg, local_k=40, **kw)
+    assert glob["local_k"] is None and loc["local_k"] == 40
+    assert glob["n_holdout"] == 24                      # below the C2ST's own refusal
+    for tag in ("boot", "knn"):
+        a, b = glob["arms"][tag], loc["arms"][tag]
+        for k in ("cover50", "cover80", "ks", "moments_inside", "crps_ratio"):
+            assert a[k] == b[k], f"{tag}.{k} moved between the two passes"
+        for f_a, f_b in zip(glob["separability"]["folds"], loc["separability"]["folds"]):
+            for k in ("mem", "dup_frac", "auc"):
+                assert f_a["arms"][tag][k] == f_b["arms"][tag][k], f"{tag}.{k} moved"
+    # And the thing the pass was for: the DFM arm IS a different estimator, so it is not
+    # required to match — a test asserting it did would be asserting `local_k` is inert.
+    # Read on CRPS and `mem` rather than on coverage: coverage is a rank frequency over 24
+    # anchors, so it moves in steps of 1/24 and two genuinely different arms can tie on it.
+    assert loc["arms"]["dfm"]["crps_ratio"] != glob["arms"]["dfm"]["crps_ratio"]
+    assert (loc["separability"]["folds"][0]["arms"]["dfm"]["mem"]
+            != glob["separability"]["folds"][0]["arms"]["dfm"]["mem"])
+
+
+def test_report_names_the_estimator_and_the_basis():
+    """Two runs of `validate` can describe different estimators under identical column
+    headers. `fit` vs `fit_local` was the first way (#211 re-ran every floor because of it)
+    and raw vs whitened is the second, so both go on the header line."""
+    v = {"panel": "toy", "config_key": "k", "folds": 1, "n_train": [10], "n_holdout": 9,
+         "n_samples": 4, "arms": {}}
+    assert "est=fit basis=raw" in G.report(v)
+    v2 = dict(v, local_k=120, cfg={"whiten": True})
+    assert "est=fit_local(k=120) basis=whiten" in G.report(v2)
+
+
 # ── the reverse-SDE start (#181B) ────────────────────────────────────────────
 # `dfm.generate.reverse_sample` starts the reverse diffusion at N(0, I), which is right only
 # once the forward process has reached its prior. This fork's has not: beta = 1 over T = 1.0
@@ -348,6 +526,178 @@ def test_mem_separates_a_copier_from_an_honest_sample():
     s = G._separability(pdata, tr, te, pools, seed=6)
     assert s["arms"]["boot"]["mem"] < 0.05, s["arms"]["boot"]["mem"]
     assert s["arms"]["dfm"]["mem"] == pytest.approx(1.0, abs=0.15), s["arms"]["dfm"]["mem"]
+
+
+# ── the memorization anchor (#208 / PR-14) ───────────────────────────────────
+# `mem` divides by the HELD-OUT block's distance to training, and #208 established on four
+# production panels that this denominator is not 1.0-worth on an honest generator: draws
+# from N(mu_tr, Sigma_tr), which cannot have copied anything, scored 1.166 on labor_monthly
+# and 0.876 on energy_weekly — production's own two failing verdicts, in production's own
+# two opposite directions, on exactly the two panels production failed. These pin that fact
+# as an executable statement, in both directions, and pin that the fix did not cost the veto
+# its power against verbatim plagiarism.
+#
+# WHY NOTHING HERE ASSERTS A THRESHOLD. There is no adopted cut on `mem_pos` — PR-14 proposed
+# 0.90 and its own out-of-sample run falsified it (`MEM_POS_CUT`, §4e-G) — and there was never
+# a toy-panel case for one either. `mem_pos`'s numerator is ONE draw's nn-median and that
+# carries real sampling noise: measured at 40 re-draws on this very panel, an honest arm's
+# `mem_pos` spans 95% [0.76, 1.38] at a 100-row pool, [0.89, 1.11] at 512, and [0.91, 1.06] at
+# 1024, so even at production's `N_DRAW = 1024` the spread is as wide as the 0.10 PR-14 wanted
+# to adjudicate. That measurement is why these tests assert the RATIO — `mem_pos` is closer to
+# 1 than `mem` is — which is the claim that survived and the claim the code makes.
+def _gauss_like(Ztr, n, seed):
+    """An honest generator: independent draws matched to `Ztr`'s first two moments.
+
+    It cannot have memorized a training row — given mu and Sigma, every draw is independent
+    of every row that produced them. Whatever a memorization metric says about this pool is
+    the metric's own behaviour, not the pool's.
+    """
+    mu = Ztr.mean(0)
+    w, V = np.linalg.eigh(np.cov(Ztr, rowvar=False))
+    L = V @ np.diag(np.sqrt(np.clip(w, 0.0, None)))
+    return mu + np.random.default_rng(seed).standard_normal((n, Ztr.shape[1])) @ L.T
+
+
+def test_mem_gauss_returns_k_undivided_medians_and_is_reproducible():
+    """The anchor is `k` raw `_nn_median` values, NOT a ratio. `_separability` divides them by
+    the same `base_nn` the arms divide by, and that shared denominator is the entire point —
+    it cancels in `mem_pos`. Returning a pre-divided number here would silently make the
+    cancellation approximate.
+    """
+    rng = np.random.default_rng(31)
+    Ztr = rng.normal(size=(120, 4))
+    g = G._mem_gauss(Ztr, 64, seed=5, k=3)
+    assert len(g) == 3
+    assert g == G._mem_gauss(Ztr, 64, seed=5, k=3)          # seeded, not wall-clock
+    assert len(set(g)) == 3                                 # k DRAWS, not one repeated
+    assert all(x > 0 for x in g)
+
+
+def test_mem_gauss_declines_rather_than_inventing_an_anchor():
+    """A fold too short to estimate a covariance gets `[]`, which becomes `nan` upstream and
+    prints as `n/a`. A fabricated anchor would put a `mem_pos` next to every arm that reads
+    like a measurement and is not one."""
+    assert G._mem_gauss(np.zeros((1, 4)), 64, seed=5) == []
+    assert G._mem_gauss(np.zeros((40, 4)), 0, seed=5) == []
+
+
+def test_mem_falsely_calls_an_honest_generator_a_copier_when_the_holdout_drifts():
+    """#208's COPY direction, reproduced small.
+
+    The held-out block sits 1.2 away from training, so `base_nn` — `mem`'s denominator — is
+    inflated by a regime break that has nothing to do with copying. An honest N(mu, Sigma)
+    pool then reads far below 1 and the old band would have vetoed it. `mem_pos` divides that
+    same inflation out of both sides and lands at 1.
+    """
+    pdata = _toy_panel(n=400, H=4, d=1, seed=41)
+    pdata.Z[280:] += 1.2                                    # regime break, both sides real
+    tr, te = np.arange(0, 280), np.arange(280, 400)
+    rng = np.random.default_rng(42)
+    pools = {"dfm": _gauss_like(pdata.Z[tr], 512, 43),      # cannot have memorized
+             "boot": pdata.Z[rng.choice(tr, len(te))],
+             "knn": pdata.Z[rng.choice(tr, len(te))]}
+    s = G._separability(pdata, tr, te, pools, seed=44)
+    a = s["arms"]["dfm"]
+    assert a["mem"] < 0.8, a["mem"]                                        # the false verdict
+    assert abs(a["mem_pos"] - 1.0) < 0.2, a["mem_pos"]
+    assert abs(a["mem_pos"] - 1.0) < abs(a["mem"] - 1.0) / 2, (a["mem"], a["mem_pos"])
+
+
+def test_mem_falsely_calls_an_honest_generator_over_dispersed_when_the_holdout_is_close():
+    """#208's WIDE direction, the same defect with the sign flipped.
+
+    Here the held-out rows are near-duplicates of training rows, so `base_nn` collapses and
+    every arm's `mem` explodes. Production saw this on labor_monthly, where an honest draw
+    read 1.166 and was called over-dispersed. `mem_pos` is unmoved.
+    """
+    pdata = _toy_panel(n=400, H=4, d=1, seed=45)
+    rng = np.random.default_rng(46)
+    pdata.Z[280:400] = pdata.Z[60:180] + 0.02 * rng.normal(size=(120, 4))
+    tr, te = np.arange(0, 280), np.arange(280, 400)
+    pools = {"dfm": _gauss_like(pdata.Z[tr], 512, 47),
+             "boot": pdata.Z[rng.choice(tr, len(te))],
+             "knn": pdata.Z[rng.choice(tr, len(te))]}
+    s = G._separability(pdata, tr, te, pools, seed=48)
+    a = s["arms"]["dfm"]
+    assert a["mem"] > 1.5, a["mem"]                                        # the false verdict
+    assert abs(a["mem_pos"] - 1.0) < 0.2, a["mem_pos"]
+    assert abs(a["mem_pos"] - 1.0) < abs(a["mem"] - 1.0) / 2, (a["mem"], a["mem_pos"])
+
+
+def test_mem_pos_still_catches_verbatim_plagiarism():
+    """The whole reason the column exists. A recalibration that stopped firing on literal
+    training rows would have cured the false positives by removing the test."""
+    pdata = _toy_panel(n=400, H=4, d=1, seed=49)
+    tr, te = np.arange(0, 280), np.arange(280, 400)
+    rng = np.random.default_rng(50)
+    pools = {"dfm": _gauss_like(pdata.Z[tr], 512, 51),
+             "boot": pdata.Z[rng.choice(tr, len(te))],      # literal training rows
+             "knn": pdata.Z[rng.choice(tr, len(te))]}
+    s = G._separability(pdata, tr, te, pools, seed=52)
+    assert s["arms"]["boot"]["mem"] == 0.0                  # literal rows, distance 0
+    assert s["arms"]["boot"]["mem_pos"] == 0.0
+    # ...and the honest arm is nowhere near it. The gap is what the column has to preserve;
+    # the exact 0.0 is what makes plagiarism detectable WITHOUT a threshold, which is the only
+    # memorization test left standing after PR-14 (see `MEM_POS_CUT`).
+    assert s["arms"]["dfm"]["mem_pos"] > 0.5, s["arms"]["dfm"]["mem_pos"]
+
+
+def test_the_anchor_changes_no_arm_number_it_sits_beside():
+    """`mem` is what every number in `PLAN_DFM_SYNTH.md` was measured as. The anchor is
+    ADDITIVE: it must not consume shared RNG state, reorder a pool, or shift a denominator.
+    Recomputed here from the raw arrays, byte for byte.
+    """
+    pdata = _toy_panel(n=300, H=4, d=1, seed=53)
+    tr, te = np.arange(0, 200), np.arange(200, 300)
+    rng = np.random.default_rng(54)
+    pools = {"dfm": _gauss_like(pdata.Z[tr], len(te), 55),
+             "boot": pdata.Z[rng.choice(tr, len(te))],
+             "knn": pdata.Z[rng.choice(tr, len(te))]}
+    s = G._separability(pdata, tr, te, {k: p.copy() for k, p in pools.items()}, seed=56)
+    Ztr = pdata.Z[tr]
+    base = G._nn_median(pdata.Z[te], Ztr)
+    for tag, pool in pools.items():
+        uniq = pool[G._unique_rows(pool)]
+        assert s["arms"][tag]["mem"] == G._nn_median(uniq, Ztr) / base
+        assert s["arms"][tag]["mem_pos"] == pytest.approx(
+            s["arms"][tag]["mem"] / s["mem_gauss"], rel=1e-12)
+    # The anchor shares the arms' denominator exactly — that shared `base_nn` is what cancels
+    # in every ratio above, and a different one would make `mem_pos` a different statistic.
+    assert s["mem_gauss"] == pytest.approx(
+        float(np.median(G._mem_gauss(Ztr, max(len(p[G._unique_rows(p)]) for p in pools.values()),
+                                     56 + 7))) / base, rel=1e-12)
+    lo, hi = s["mem_gauss_range"]
+    assert lo <= s["mem_gauss"] <= hi
+
+
+def test_report_prints_the_position_beside_the_raw_mem_and_refuses_to_name_a_cut():
+    """Both numbers, and NO threshold.
+
+    #208 happened because a bare `mem` column looked self-explanatory, so `mem_pos` has to be
+    in the text. PR-14's 0.90 then failed out-of-sample, so the text must also say that there
+    is no cut — a report that prints a number and stays silent about how to read it is how the
+    next reader invents one.
+    """
+    v = {"panel": "toy", "config_key": "k", "folds": 1, "n_train": [10],
+         "n_holdout": 5, "n_samples": 7, "arms": {}, "separability": {
+             "floor_train": 0.79, "floor_boot": 0.86, "folds": [], "mem_gauss": 1.17,
+             "arms": {"dfm": {"auc": 0.88, "mem": 1.06, "mem_pos": 0.91,
+                              "excess_over_boot": 0.02}}}}
+    text = G.report(v)
+    assert "mem_pos" in text and "1.060" in text and "0.910" in text
+    assert "NO CUT ON `mem_pos`" in text
+    assert G.MEM_POS_CUT is None
+    assert not hasattr(G, "MEM_POS_MIN")                    # the dead threshold stays dead
+
+
+def test_report_survives_a_separability_block_written_before_the_anchor_existed():
+    """Every `validate` JSON on disk predates PR-14 and has no `mem_pos`. Reading one has to
+    print `n/a` in that column, not crash and not invent a position."""
+    v = {"panel": "toy", "config_key": "k", "folds": 1, "n_train": [10],
+         "n_holdout": 5, "n_samples": 7, "arms": {}, "separability": {
+             "floor_train": 0.79, "floor_boot": 0.86, "folds": [],
+             "arms": {"dfm": {"auc": 0.88, "mem": 1.02, "excess_over_boot": 0.02}}}}
+    assert "n/a" in G.report(v)
 
 
 def test_the_floor_is_not_half_when_train_and_test_differ():

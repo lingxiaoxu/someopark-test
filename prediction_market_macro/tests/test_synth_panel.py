@@ -192,6 +192,87 @@ def test_measure_lattice_sees_through_float32_storage():
     assert "cont" not in lat, "a continuous column must not acquire a grid from the f32 pass"
 
 
+def _mean_agg_levels(n=300, source_step=1000.0, seed=11):
+    """A column built the way `agg="mean"` builds one: each period is the average of four OR
+    five sub-period prints, each print a multiple of `source_step`.
+
+    This is not a toy. It is the exact construction behind `labor_monthly`'s monthly `claims`
+    (four-or-five weekly ICSA prints), `energy_weekly_wide`'s `dgs2`/`dgs10` (four-or-five
+    daily yields) and `inflation_monthly`'s `gas_retail` (four-or-five weekly GASREGW prints).
+    A mean of 4 lands on `g/4` and a mean of 5 on `g/5`, so a mix sits on `gcd(g/4, g/5)` =
+    `g/20` and on nothing coarser.
+    """
+    rng = np.random.default_rng(seed)
+    idx = pd.date_range("2000-01-01", periods=n, freq="MS")
+    base = 300_000.0 + np.cumsum(rng.normal(0, 4_000, n))
+    vals = []
+    for i, b in enumerate(base):
+        k = 4 + (i % 2)                       # alternating 4 and 5, like real month lengths
+        prints = np.round((b + rng.normal(0, 8_000, k)) / source_step) * source_step
+        vals.append(float(prints.mean()))
+    return pd.DataFrame({"jobs": np.round(base), "tick": np.round(base / 5000, 2),
+                         "cont": np.asarray(vals)}, index=idx)
+
+
+def test_the_grid_of_a_mean_aggregated_column_is_the_source_grid_over_twenty():
+    """#203/§4e-I. The hand-written `_LATTICE_STEPS` ladder contains `g/20` for `g = 1.0` and
+    for nothing else that matters, so on four real columns it returned a grid FIVE TIMES
+    FINER than the series occupies — and four of every five grid classes the generator then
+    emitted were values the publication process cannot produce.
+
+    The assertion is on the derived value, `1000 / 20 = 50`, not on whatever the code happens
+    to return: 10 is what the ladder finds (a multiple of 50 passes the 10-grid trivially) and
+    is the wrong answer; 250 and 200 are the two per-month grids and neither holds across the
+    mix."""
+    lv = _mean_agg_levels()
+    v = lv["cont"].to_numpy()
+    assert P.on_lattice(v, 50.0) == 1.0
+    assert P.on_lattice(v, 10.0) == 1.0, "the ladder's answer is not wrong, it is not coarsest"
+    assert P.on_lattice(v, 250.0) < 0.995 and P.on_lattice(v, 200.0) < 0.995
+    lat = P.measure_lattice(lv, _lattice_spec())
+    assert lat["cont"] == {"step": 50.0, "dtype": "float64"}
+
+
+def test_the_exact_gcd_pass_only_ever_coarsens_and_one_rogue_row_makes_it_a_no_op():
+    """The GCD is exact on 100% of rows, which is also its failure mode: a single row off the
+    grid drags it to the resolution floor, where `_LATTICE_HIT`'s 0.995 would have shrugged.
+    That is survivable only because the GCD may not make the answer finer. Corrupt one row of
+    300 and the ladder's 10.0 must come back — not 50.0, and above all not a resolution-floor
+    grid that would quantise the column to nothing."""
+    lv = _mean_agg_levels()
+    assert P.measure_lattice(lv, _lattice_spec())["cont"]["step"] == 50.0
+    lv.iloc[7, lv.columns.get_loc("cont")] += 0.37       # off every grid in the ladder
+    lat = P.measure_lattice(lv, _lattice_spec())
+    assert P._exact_gcd_step(lv["cont"].to_numpy()) is None
+    assert lat["cont"] == {"step": 10.0, "dtype": "float64"}
+
+
+def test_the_exact_gcd_pass_declines_a_continuous_column_and_a_float32_one():
+    """Two ways the GCD must stay silent. A continuous column has no grid and must not acquire
+    one — `_exact_gcd_step` returns None because the GCD bottoms out at its own resolution.
+    A float32 column has already been judged by the loose rule, and an exact GCD of values
+    that are only APPROXIMATELY on their grid is meaningless, so pass 3 never runs on it."""
+    lv = _lattice_levels()
+    assert P._exact_gcd_step(lv["cont"].to_numpy()) is None
+    lv["tick"] = lv["tick"].astype(np.float32).astype(float)
+    lat = P.measure_lattice(lv, _lattice_spec())
+    assert lat["tick"] == {"step": 0.01, "dtype": "float32"}
+    assert "cont" not in lat
+
+
+def test_the_exact_gcd_floor_rejects_a_grid_that_is_float64_bookkeeping():
+    """`8 * eps32 * max|x|` is borrowed from the float32 pass and here means something weaker:
+    below ~1e-7 of the series' own scale, "every value is a multiple of g" is a fact about
+    float64 storage, not about a publication process. `gas_retail` is the tightest real case
+    and clears it by ~10x, so the fence is load-bearing and is pinned in both directions."""
+    v = np.arange(1, 400, dtype=float) * 5e-05 + 2.5          # gas_retail's real geometry
+    assert P._exact_gcd_step(v) == pytest.approx(5e-05, rel=1e-9)
+    big = v * 1e6                                              # same grid, 1e6 larger scale
+    assert P._exact_gcd_step(big) == pytest.approx(50.0, rel=1e-9)
+    # a grid 1e-9 of the series' own magnitude is below the floor and must be refused
+    assert P._exact_gcd_step(np.arange(1, 400, dtype=float) * 1e-9 + 1000.0) is None
+
+
 def test_quantisation_lands_on_the_grid_and_is_idempotent():
     """The property the C2ST reads: after quantisation the synthetic levels are on the same
     grid as the real ones, 100% of the time and not 99%."""

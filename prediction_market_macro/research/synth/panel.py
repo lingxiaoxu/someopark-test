@@ -468,9 +468,16 @@ def _from_increment(inc: np.ndarray, anchor: float, transform: str,
 #   parameter argmin a bucket structure the real process does not have.
 #
 # The grid is MEASURED from the real levels, never asserted from what the release format is
-# believed to be, because the panel's own resampling can destroy it: monthly-`mean` claims
-# is an average of four weekly prints and lands on no grid at all, and that column must
-# come back "continuous" rather than be forced onto ICSA's weekly thousand.
+# believed to be, because the panel's own resampling MOVES it. `agg="mean"` over a window of
+# four-or-five sub-periods does not destroy the grid, which is what an earlier version of
+# this comment claimed; it DIVIDES it by twenty. Averaging values that are multiples of `g`
+# over 4 points lands on `g/4` and over 5 points on `g/5`, so a series whose months are a mix
+# of the two sits exactly on `gcd(g/4, g/5) = g/20` and on nothing coarser. That is a
+# derivation, not a fit, and it is confirmed on every mean-aggregated column in the repo
+# (#203, §4e-I): ICSA's 1000 → 50, DGS2/DGS10's 0.01 → 0.0005, GASREGW's 0.001 → 0.00005,
+# the EIA stock series' 1.0 → 0.05. `_LATTICE_STEPS` below contains `g/20` for exactly one of
+# those four (0.05) and misses the other three, which is why `_exact_gcd_step` exists and why
+# the ladder is no longer the only thing consulted.
 _LATTICE_STEPS = (1000.0, 100.0, 10.0, 1.0, 0.5, 0.25, 0.1, 0.05, 0.01, 0.005, 0.001, 1e-4)
 _LATTICE_TOL = 1e-6      # |x/g - round(x/g)| for a value stored at full float64 precision
 _LATTICE_HIT = 0.995     # fraction of real levels that must sit exactly on the grid
@@ -495,6 +502,62 @@ def on_lattice(x: np.ndarray, step: float, tol: float = _LATTICE_TOL,
     return float((np.abs(q - np.round(q)) < t).mean())
 
 
+def _exact_gcd_step(x: np.ndarray) -> float | None:
+    """The coarsest grid `x` sits on EXACTLY, found with no candidate ladder at all.
+
+    `_LATTICE_STEPS` is hand-written, and it is incomplete in a way that is not random. Three
+    of this repo's columns are `agg="mean"` over a 4-or-5 sub-period window, which by the
+    derivation at the top of this section puts them on `g/20`. The ladder happens to contain
+    `g/20` for `g = 1.0` and to omit it for `g = 1000`, `g = 0.01` and `g = 0.001` — so it
+    returned 10 where the truth is 50, 0.0001 where the truth is 0.0005, and *nothing* where
+    the truth is 0.00005 (0.00005 is finer than the ladder's finest rung, so no mantissa could
+    have saved it). Four columns across three panel specs were being quantised onto a grid
+    five times finer than the real series occupies, which means four of every five grid
+    classes the generator emitted were values the publication process cannot produce.
+
+    So this does not guess. Every finite value is scaled to an integer and the integer GCD is
+    taken; the result is exact on 100% of the rows by construction, not on `_LATTICE_HIT` of
+    them, and there is nothing to tune.
+
+    **Why it is a second opinion and not a replacement.** Being exact on 100% is also its
+    weakness: one bad row drags the GCD to the resolution floor, where `_best_step`'s 0.995
+    tolerance would have shrugged it off. It is therefore only ever allowed to make the answer
+    COARSER (`_best_step` applies that rule, not this function), so a row that ruins the GCD
+    costs nothing — the ladder's answer stands.
+
+    **The floor.** `8 * eps32 * max|x|` is borrowed from `_best_step`'s float32 pass, and the
+    borrowing is not a free ride: there it means "finer than the storage can express", here
+    the data is float64 and it means something weaker — below about 1e-7 of the series' own
+    scale, "every value is a multiple of `g`" stops being a statement about a publication
+    process and starts being one about float64 bookkeeping. The tightest real case clears it
+    by only about 10x (`gas_retail` at 5e-05 against a floor of 4.8e-06), so it is a real
+    fence and not a formality.
+    """
+    v = np.asarray(x, dtype=float)
+    v = v[np.isfinite(v)]
+    if not len(v):
+        return None
+    top = float(np.abs(v).max())
+    if top <= 0.0:
+        return None
+    # Ten significant decimal digits below the largest magnitude: comfortably inside float64's
+    # ~15-16, and it keeps the scaled integers under 1e10 so the int64 GCD cannot overflow.
+    base = 10.0 ** (math.ceil(math.log10(top)) - 10)
+    q = v / base
+    r = np.round(q)
+    if not np.all(np.abs(q - r) < 1e-3):
+        return None                      # not representable at this resolution — no verdict
+    g = 0
+    for n in np.unique(np.abs(r.astype(np.int64))):
+        g = math.gcd(g, int(n))
+        if g == 1:
+            return None                  # resolution-limited, i.e. no grid worth the name
+    if g <= 1:
+        return None
+    step = g * base
+    return step if step >= 8.0 * _F32_EPS * top else None
+
+
 def _best_step(x: np.ndarray) -> dict | None:
     """The COARSEST grid the series sits on as `{"step", "dtype"}`, or None for continuous.
 
@@ -514,11 +577,20 @@ def _best_step(x: np.ndarray) -> dict | None:
 
     `_LATTICE_MIN_PTS` stops a near-constant column from being declared to live on a grid
     it merely has too few distinct values to contradict.
+
+    Pass 3 is `_exact_gcd_step`, and it is a **coarsening-only** override of pass 1. The
+    ladder's answer is kept unless the GCD is strictly coarser and still occupies enough
+    distinct points, so the GCD can correct an incompleteness in `_LATTICE_STEPS` (it does, on
+    four columns) and can never invent a finer grid, never overrule a float32 verdict, and
+    never turn a passing column into a failing one. If a single rogue row collapses the GCD,
+    the collapsed value is not coarser and is therefore discarded — the failure mode is a
+    no-op, which is the only reason an exact statistic is safe to consult at all.
     """
     v = np.asarray(x, dtype=float)
     v = v[np.isfinite(v)]
     if not len(v):
         return None
+    found = None
     for dtype in ("float64", "float32"):
         floor = 0.0 if dtype == "float64" else 8.0 * _F32_EPS * float(np.abs(v).max())
         for g in _LATTICE_STEPS:
@@ -528,8 +600,22 @@ def _best_step(x: np.ndarray) -> dict | None:
                 continue
             if len(np.unique(np.round(v / g))) < _LATTICE_MIN_PTS:
                 continue
-            return {"step": float(g), "dtype": dtype}
-    return None
+            found = {"step": float(g), "dtype": dtype}
+            break
+        if found is not None:
+            break
+    # A float32 column has already been judged by the loose rule, and an exact GCD of values
+    # that are only approximately on their own grid is meaningless, so pass 3 is float64-only.
+    if found is not None and found["dtype"] == "float32":
+        return found
+    exact = _exact_gcd_step(v)
+    if exact is None:
+        return found
+    if found is not None and exact <= found["step"] * (1.0 + 1e-9):
+        return found
+    if len(np.unique(np.round(v / exact))) < _LATTICE_MIN_PTS:
+        return found
+    return {"step": float(exact), "dtype": "float64"}
 
 
 def measure_lattice(levels: pd.DataFrame, spec: PanelSpec) -> dict[str, dict]:
