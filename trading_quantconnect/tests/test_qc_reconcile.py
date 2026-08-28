@@ -19,6 +19,7 @@ sys.path.insert(0, str(_DIR))
 
 import qc_api                                        # noqa: E402
 from ops import rolloff                              # noqa: E402
+from reconcile import official_close                 # noqa: E402
 from reconcile import qc_reconcile as qr             # noqa: E402
 
 _ET = ZoneInfo("America/New_York")
@@ -29,9 +30,16 @@ class _NetBan:
         raise AssertionError("TEST NETWORK BAN: QcClient touched in unit test")
 
 
+def _polygon_ban(session):
+    raise AssertionError("TEST NETWORK BAN: Polygon grouped bars in unit test")
+
+
 @pytest.fixture(autouse=True)
 def _ban_network(monkeypatch):
     monkeypatch.setattr(qc_api, "QcClient", _NetBan)
+    # Q 现在要官方收盘价,取数走 Polygon —— 同样禁网。需要价的单测由 eq_env
+    # 覆盖成固定表;没覆盖却走到这里的,是漏掉了桩,必须炸而不是偷偷联网。
+    monkeypatch.setattr(official_close, "grouped_closes", _polygon_ban)
     yield
 
 
@@ -213,16 +221,47 @@ def eq_env(monkeypatch, tmp_path):
     res.write_text(json.dumps({"residual": {"X": 0.5}}))
     monkeypatch.setattr(qr, "RESIDUAL_PATH", res)
     monkeypatch.setattr(qr, "ROLLOFF_PATH", tmp_path / "no_rolloff.json")
-    monkeypatch.setattr(rolloff, "official_eod",
-                        lambda: ("2026-08-27", {"mrpt": 1_200_000.0,
-                                                "mtfs": 1_200_000.0,
-                                                "ssrs": 1_200_000.0,
-                                                "aiss": 1_200_000.0,
-                                                "bdc": 1_200_000.0}))
+    # 官方 EOD 桩成"只有 8/27 那一行"。**按日期查**:问别的日子就抛,和真的
+    # official_eod(session) 一个脾气 —— 桩成"问什么都给 8/27"会把 equity_plane
+    # 是否真把 session 传下去这件事一起桩没了。
+    def _official_eod(session=None):
+        if session not in (None, "2026-08-27"):
+            raise rolloff.SourceError(
+                f"strategy_performance.json 里没有 {session} 那一行"
+                f"(末行 2026-08-27)")
+        return ("2026-08-27", {"mrpt": 1_200_000.0, "mtfs": 1_200_000.0,
+                               "ssrs": 1_200_000.0, "aiss": 1_200_000.0,
+                               "bdc": 1_200_000.0})
+    monkeypatch.setattr(rolloff, "official_eod", _official_eod)
     monkeypatch.setattr(qr, "_ledger_accounts", lambda s: (
         {st: {"as_of": s, "equity": 1_000_000.0, "cumulative_dividends": 0.0}
          for st in ("mrpt", "mtfs", "ssrs", "aiss", "bdc")}, []))
+    # 官方 EOD 文件目录也要接到 tmp:盘中定稿闸门会去 stat 这些文件的 mtime,
+    # 不接的话单测会读生产目录 —— 既违反"生产文件只读"的底线,又会让判定
+    # 随生产文件什么时候被写而漂移(2026-08-27 就是这么把 7 个测试拦成 pending 的)。
+    _perf_files(tmp_path, monkeypatch)
+    # 官方收盘价:只桩掉**取数**那一层,closes_for 的缺价判定照常真跑 ——
+    # "缺一只就不出裁决"是这层最要紧的一条,桩掉 closes_for 就把它一起桩没了。
+    monkeypatch.setattr(official_close, "grouped_closes", lambda s: dict(_CLOSES))
     return tmp_path
+
+
+def _perf_files(tmp_path, monkeypatch):
+    """三份 official EOD 文件,默认 mtime = 收盘后 5 小时(即"正常夜间写出")。"""
+    import os
+    monkeypatch.setattr(rolloff, "DATA", tmp_path)
+    close = datetime(2026, 8, 27, 16, 0, tzinfo=_ET).timestamp()
+
+    def _write(fn, hours_from_close=5.0):
+        p = tmp_path / fn
+        p.write_text("[]")
+        t = close + hours_from_close * 3600
+        os.utime(p, (t, t))
+        return p
+    for fn in ("strategy_performance.json", "master_portfolio_performance.json",
+               "private_credit_bdc_performance.json"):
+        _write(fn)
+    return _write
 
 
 def _prev(D, cash, frac=3.0):
@@ -234,10 +273,25 @@ def _prev(D, cash, frac=3.0):
                                                     "aiss", "bdc")}}}
 
 
-def _qc(cash):
-    return {"equity": 5_900_000.0, "gross": 1_000_000.0, "cash": cash,
-            "holdings_mv": 5_900_000.0 - cash, "quiet_gap": 0.0,
-            "prices": {"X": 10.0}}
+# 该 session 的官方收盘价表(eq_env 里替掉 Polygon 取数)。X 同时是小数残差
+# 那只票 —— 残差必须按**这张表**定值,不是按 QC payload 里的价。
+_CLOSES = {"X": 10.0, "Y": 1.0}
+
+
+def _qc(cash, **over):
+    """一份收盘快照。Q = cash + Σ 股数×官方收盘价 恒等于 5,900,000。
+
+    Y 的股数随现金反向配平,让所有既有断言(D_usd=100,000 等)在 Q 换口径后
+    仍然逐位不变 —— 换的是 Q 怎么来的,不是 Q 是多少。
+    prices 是 QC payload 里那份**盘中陈价**,故意与收盘价不同:任何一处仍拿它
+    定值(例如小数残差)都会立刻算出别的数,被单测抓住。
+    """
+    qc = {"equity": 5_900_000.0, "gross": 1_000_000.0, "cash": cash,
+          "holdings_mv": 5_900_000.0 - cash, "equity_reported": 5_900_000.0,
+          "shares": {"X": 1000, "Y": int(5_890_000 - cash)},
+          "prices": {"X": 7.0, "Y": 0.5}, "deploy_id": "L-cur"}
+    qc.update(over)
+    return qc
 
 
 def test_equity_decomposition_signs_and_rebalance_threshold(monkeypatch, eq_env):
@@ -296,20 +350,75 @@ def test_equity_partial_when_a_term_cannot_be_computed(monkeypatch, eq_env):
     assert any("L/S" in b for b in row["blocked_terms"])
 
 
-def test_equity_pending_when_official_eod_is_a_different_day(monkeypatch, eq_env):
-    monkeypatch.setattr(rolloff, "official_eod",
-                        lambda: ("2026-08-26", {"mrpt": 1.0}))
-    row = qr.equity_plane("2026-08-27", _qc(388.0), [], {}, {}, {})
-    assert row["status"] == "pending" and row["official_date"] == "2026-08-26"
+def test_equity_pending_when_official_eod_lacks_that_session(eq_env):
+    """官方 EOD 里没有 session 那一行(夜间 pipeline 未跑完)→ 不出裁决。
+
+    eq_env 的桩只有 8/27,所以问 8/28 必然落空 —— 这同时钉住了
+    equity_plane 确实把 session **传了下去**:传空的话会拿到 8/27 的 P
+    去对 8/28 收盘的 Q,量出来的是一整天行情,而且一个字都不会报错。
+    """
+    row = qr.equity_plane("2026-08-28", _qc(388.0), [], {}, {}, {})
+    assert row["status"] == "pending"
+    assert "没有 2026-08-28 那一行" in row["note"]
     assert "D_usd" not in row
 
 
-def test_equity_pending_when_qc_not_quiet(monkeypatch, eq_env):
+def test_equity_pending_when_two_paths_disagree(monkeypatch, eq_env):
+    """收盘价复算的 Q 与 QC 自报净值对不上 → 不挑一个信,直接不出裁决。
+
+    gross = 1,000,000,CROSS_TOL_BP = 3 → 容差 $300。差 $400 必须拦下。
+    """
+    monkeypatch.setattr(qr, "prev_report", lambda s: _prev(100_000.0, 388.0))
+    row = qr.equity_plane("2026-08-27",
+                          _qc(388.0, equity_reported=5_900_400.0),
+                          [], {}, {}, {})
+    assert row["status"] == "pending"
+    assert row["cross_check_usd"] == -400.0
+    assert row["cross_check_bp"] == 4.0
+    assert "两条独立" in row["note"] and "D_usd" not in row
+
+
+def test_equity_cross_check_passes_just_inside_tolerance(monkeypatch, eq_env):
+    """容差内照常出裁决 —— 闸门不能宽到形同虚设,也不能严到永远拦着。"""
+    monkeypatch.setattr(qr, "prev_report", lambda s: None)
+    row = qr.equity_plane("2026-08-27",
+                          _qc(388.0, equity_reported=5_900_299.0),
+                          [], {}, {}, {})
+    assert row["status"] == "baseline"
+    assert row["cross_check_bp"] == 2.99 and row["D_usd"] == 100_000.0
+
+
+def test_equity_pending_when_snapshot_has_no_shares(monkeypatch, eq_env):
+    """旧版收盘存档只有总数没有股数 —— 拿盘中自算净值当 Q 会错 48.5bp。"""
     monkeypatch.setattr(qr, "prev_report", lambda s: _prev(100_000.0, 388.0))
     qc = _qc(388.0)
-    qc["quiet_gap"] = qr.QUIET_TOL + 1.0
+    del qc["shares"]
     row = qr.equity_plane("2026-08-27", qc, [], {}, {}, {})
-    assert row["status"] == "pending" and "没静下来" in row["note"]
+    assert row["status"] == "pending" and "股数" in row["note"]
+    assert "D_usd" not in row
+
+
+def test_equity_pending_when_a_close_is_missing(monkeypatch, eq_env):
+    """少一只票的收盘价 → 那只票的市值会被 D 全额吸收且不报错,故拒绝出裁决。"""
+    monkeypatch.setattr(official_close, "grouped_closes",
+                        lambda s: {"X": 10.0})          # Y 没有收盘价
+    monkeypatch.setattr(qr, "prev_report", lambda s: _prev(100_000.0, 388.0))
+    row = qr.equity_plane("2026-08-27", _qc(388.0), [], {}, {}, {})
+    assert row["status"] == "pending" and "收盘价" in row["note"]
+    assert "D_usd" not in row
+
+
+def test_fractional_residual_uses_official_close_not_payload_price(
+        monkeypatch, eq_env):
+    """残差必须与 Q 同一套价。X 收盘 10.0、payload 陈价 7.0:
+
+    0.5 股 × 10.0 = 5.0(对);按 payload 价则是 3.5 —— 那 1.5 会一分不差地
+    漏进 unattributed,而且没有任何东西会报错。
+    """
+    monkeypatch.setattr(qr, "prev_report", lambda s: None)
+    row = qr.equity_plane("2026-08-27", _qc(388.0), [], {}, {}, {})
+    assert row["fractional_residual"]["value_usd"] == 5.0
+    assert row["fractional_residual"]["unpriced"] == []
 
 
 def test_equity_baseline_on_first_ever_run(monkeypatch, eq_env):
@@ -436,4 +545,420 @@ def test_orders_never_silently_truncate(monkeypatch):
         def call(self, path, payload):
             return {"orders": [{"id": i} for i in range(100)], "length": 10_000}
     with pytest.raises(qr.SourceError, match="hard_cap"):
-        qr.qc_orders(_C(), 1, page=100, hard_cap=300)
+        qr.qc_orders(_C(), 1, "L-cur", page=100, hard_cap=300)
+
+
+# ── 订单流按部署隔离(2026-08-28 实测:端点返回项目下所有历史部署的单)────────
+
+def _ord(oid, algo, tkr="AAPL", q=10.0, px=5.0):
+    return {"id": oid, "symbol": {"value": tkr}, "tag": "",
+            "events": [{"id": f"{algo}-{oid}-1", "algorithmId": algo,
+                        "status": "submitted", "fillQuantity": 0.0},
+                       {"id": f"{algo}-{oid}-2", "algorithmId": algo,
+                        "status": "filled", "fillQuantity": q,
+                        "fillPrice": px, "time": 1786973820.0}]}
+
+
+def test_orders_drop_other_deployments():
+    """order id 在每个部署里都从 1 重编 —— 只能按 events 的 algorithmId 归属。
+
+    生产现场(2026-08-28):111 条记录只有 67 个不同 id,id 1..N 各出现三次。
+    单看 id 去重会保留错的那条;不过滤则每票股数三倍。
+    """
+    raw = [_ord(1, "L-dead1"), _ord(1, "L-dead2"), _ord(1, "L-cur"),
+           _ord(2, "L-cur"), _ord(3, "L-dead1")]
+    keep = qr._of_deploy(raw, "L-cur")
+    assert [o["id"] for o in keep] == [1, 2]
+    assert all(e["algorithmId"] == "L-cur"
+               for o in keep for e in o["events"])
+
+
+def test_orders_of_dead_deployment_cannot_inflate_todays_fills():
+    """死部署当天的单不得进当日成交 —— 换手额翻倍会同时选错 3bp/5bp 阈值。"""
+    raw = [_ord(1, "L-cur", q=10.0), _ord(1, "L-dead", q=10.0)]
+    fills = qr.fills_of_session(qr._of_deploy(raw, "L-cur"),
+                                "2026-08-17", _ET)
+    assert len(fills) == 1
+    assert sum(f["qty"] for f in fills) == 10.0
+    # 不过滤会是两笔 —— 把这条反过来钉住,防止哪天有人把过滤挪走
+    assert len(qr.fills_of_session(raw, "2026-08-17", _ET)) == 2
+
+
+def test_orders_without_events_are_dropped_not_kept():
+    """无 event 的记录判不出归属:对 fills 无贡献,留下只会污染归属判断。"""
+    assert qr._of_deploy([{"id": 9, "events": []}, {"id": 8}], "L-cur") == []
+
+
+def test_qc_orders_refuses_without_deploy_id():
+    """缺 deploy_id 宁可不出裁决,也不能混着算。"""
+    with pytest.raises(qr.SourceError, match="deploy_id"):
+        qr.qc_orders(object(), 1, "")
+
+
+# ── 盘中定稿的官方 EOD(日期对、值是陈的)──────────────────────────────────
+
+@pytest.fixture()
+def perf_dir(monkeypatch, tmp_path):
+    """official EOD 文件目录接到 tmp,mtime 可控(与 eq_env 共用同一 tmp_path)。"""
+    return _perf_files(tmp_path, monkeypatch)
+
+
+def test_intraday_guard_clean_when_all_written_after_close(perf_dir):
+    assert qr.intraday_official_files("2026-08-27") == []
+
+
+def test_intraday_guard_catches_file_finalized_before_close(perf_dir):
+    """BDC 2026-08-27 实况:末行是当天,但文件 10:17 就定稿了。"""
+    perf_dir("private_credit_bdc_performance.json", -5.7)   # 约 10:18
+    got = qr.intraday_official_files("2026-08-27")
+    assert len(got) == 1 and "private_credit_bdc" in got[0]
+    assert "早于" in got[0]
+
+
+def test_intraday_guard_skips_when_session_is_no_longer_the_last_row(perf_dir):
+    """文件里 session 之后还有行 ⇒ 已被之后的收盘后跑批全段重写过。
+
+    整份文件的 mtime 说的是**末行**那天的成色;拿它判一行更早的,判的是别人家
+    的时刻,只会把补得回来的天白白拦掉 —— 而"补得回来"正是按日期取 P 的全部
+    意义。这里刻意把 mtime 留在 8/27 盘前:忘了这道跳过,8/27 就会被拦下。
+    """
+    import os
+    p = perf_dir("private_credit_bdc_performance.json", -5.7)   # 约 10:18 定稿
+    mt = p.stat().st_mtime
+    p.write_text(json.dumps([{"date": "2026-08-27", "bdc_equity": 1.0},
+                             {"date": "2026-08-28", "bdc_equity": 2.0}]))
+    os.utime(p, (mt, mt))                       # 改内容不许动 mtime
+    assert qr.intraday_official_files("2026-08-27") == []
+    # 但对**末行**那天,mtime 判据照常有效 —— 别把闸门整个拆了
+    assert any("private_credit_bdc" in s
+               for s in qr.intraday_official_files("2026-08-28"))
+
+
+def test_equity_plane_refuses_when_official_is_intraday(monkeypatch, eq_env,
+                                                        perf_dir):
+    """日期全对也不许出裁决 —— 否则错的 P 会被焊成基准 D。"""
+    perf_dir("private_credit_bdc_performance.json", -5.7)
+    monkeypatch.setattr(qr, "prev_report", lambda s: _prev(99_000.0, 1000.0))
+    row = qr.equity_plane("2026-08-27", _qc(1000.0), [],
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    assert row["status"] == "pending"
+    assert "D_usd" not in row                      # 绝不能留下可被当基准的 D
+    assert any("private_credit_bdc" in s for s in row["intraday_official"])
+
+
+# ── 值级佐证:mtime 陈 ≠ 值陈 ──────────────────────────────────────────────
+# 光看 mtime 会误杀:2026-08-27 的 BDC perf 文件 10:17 定稿,但 16:07 收盘后写出的
+# daily_report 里 bdc_equity 与 perf 末行分毫不差 —— 那行本来就是收盘值,16:07 那趟
+# 只是"值没变、不重写"。所以补一层值级佐证。
+#
+# 这一组测试的要害不是"BDC 能放行",而是**另外三条拒绝分支**:佐证文件不存在 /
+# 佐证文件自己也是盘前写的 / 值对不上。它们只要有一条写反(比如 mt < close 写成
+# mt > close),这层佐证就退化成无条件放行 —— 盘中陈值闸门被悄悄拆掉,且不报错。
+
+@pytest.fixture()
+def corrob(perf_dir, monkeypatch, tmp_path):
+    """复刻 BDC 2026-08-27 的现场,四个变量可控。
+
+    perf 文件固定为**盘前定稿**(10:18),放不放行完全取决于佐证。
+    """
+    import os
+    monkeypatch.setattr(qr, "REPO", tmp_path)
+    close = datetime(2026, 8, 27, 16, 0, tzinfo=_ET).timestamp()
+
+    def setup(perf_value=943_460.12, corrob_value=943_460.12,
+              corrob_hours=0.12, write_corrob=True, perf_date="2026-08-27"):
+        p = perf_dir("private_credit_bdc_performance.json", -5.7)   # 10:18
+        p.write_text(json.dumps([{"date": perf_date,
+                                  "bdc_equity": perf_value}]))
+        t = close - 5.7 * 3600         # write_text 会刷新 mtime,写完再压回去
+        os.utime(p, (t, t))
+        if write_corrob:
+            d = tmp_path / "portfolio_of_private_credit_deals" / "bdc_results"
+            d.mkdir(parents=True, exist_ok=True)
+            c = d / "daily_report_2026-08-27.json"
+            c.write_text(json.dumps(
+                {"date": "2026-08-27",
+                 "stock_layer": {"bdc_equity": corrob_value}}))
+            tc = close + corrob_hours * 3600
+            os.utime(c, (tc, tc))
+    return setup
+
+
+def test_corroborated_value_match_clears_stale_mtime(corrob):
+    """收盘后独立产物的值与 perf 末行一致 → 那行是真收盘值,放行。"""
+    corrob()
+    assert qr.intraday_official_files("2026-08-27") == []
+
+
+def test_corroborator_value_mismatch_still_blocks(corrob):
+    """差 $50 就不算佐证 —— perf 里那行确实是陈的。"""
+    corrob(corrob_value=943_410.12)
+    got = qr.intraday_official_files("2026-08-27")
+    assert len(got) == 1 and "不符" in got[0]
+
+
+def test_corroborator_written_before_close_still_blocks(corrob):
+    """佐证文件自己也是盘前写的 → 两份都是盘中值,互证等于没证。"""
+    corrob(corrob_hours=-0.5)                       # 15:30 写出
+    got = qr.intraday_official_files("2026-08-27")
+    assert len(got) == 1 and "也是收盘前" in got[0]
+
+
+def test_missing_corroborator_still_blocks(corrob):
+    """当天那份独立产物压根没写出来 → 无从佐证,照拦。"""
+    corrob(write_corrob=False)
+    got = qr.intraday_official_files("2026-08-27")
+    assert len(got) == 1 and "佐证文件不存在" in got[0]
+
+
+def test_corroborator_wont_vouch_for_yesterdays_row(corrob):
+    """perf 末行还停在昨天 → 就算今天的佐证值恰好相同也不许放行。
+
+    值相等在净值上完全可能(周末、或一天下来净变动为零),不能凭"值一样"
+    就认下一行不存在的今日行。
+    """
+    corrob(perf_date="2026-08-26")
+    got = qr.intraday_official_files("2026-08-27")
+    assert len(got) == 1 and "2026-08-26" in got[0]
+
+
+def test_unregistered_file_has_no_corroboration_path(corrob):
+    """登记表里没有的文件(master/strategy)永远走不到放行分支。"""
+    corrob()                                        # BDC 已可佐证
+    perf = qr.rolloff.DATA / "master_portfolio_performance.json"
+    import os
+    t = datetime(2026, 8, 27, 10, 16, tzinfo=_ET).timestamp()
+    os.utime(perf, (t, t))
+    got = qr.intraday_official_files("2026-08-27")
+    assert len(got) == 1 and "master_portfolio" in got[0]
+    assert "无收盘后独立产物可佐证" in got[0]
+
+
+def test_equity_plane_proceeds_once_bdc_corroborated(monkeypatch, eq_env,
+                                                     corrob):
+    """整条链:mtime 陈但值被证实 → 闸门放行,equity 段照常出裁决。"""
+    corrob()
+    monkeypatch.setattr(qr, "prev_report", lambda s: _prev(99_000.0, 1000.0))
+    row = qr.equity_plane("2026-08-27", _qc(1000.0), [],
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    assert "intraday_official" not in row
+    assert "D_usd" in row
+
+
+# ── 收盘窗口:Q 只在 [session 收盘, 次交易日开盘) 内等于该 session 的收盘净值 ─
+# P 与 Q 的可得窗口不重叠(P 要等次日 ~10:15 的 pipeline),所以"同时读两边"
+# 在结构上做不到。窗口判据是把这件事挡在门外的唯一一道闸门:一旦放过去,
+# 算出来的 D 外表完全正常,没有任何东西会报错。
+
+def _at(y, m, d, hh, mm):
+    return datetime(y, m, d, hh, mm, tzinfo=_ET)
+
+
+@pytest.mark.parametrize("when", [(2026, 8, 27, 16, 20),      # 收盘后 20 分钟
+                                  (2026, 8, 27, 23, 15),      # 夜里那趟
+                                  (2026, 8, 28, 9, 29)])      # 次日开盘前一分钟
+def test_close_window_accepts_the_three_scheduled_times(when):
+    ok, why = qr.in_close_window("2026-08-27", _at(*when))
+    assert ok, why
+
+
+def test_close_window_rejects_before_the_close():
+    ok, why = qr.in_close_window("2026-08-27", _at(2026, 8, 27, 15, 59))
+    assert not ok and "还没到" in why
+
+
+def test_close_window_rejects_after_next_open():
+    """8/28 中午手工补跑 8/27 —— 读到的是 8/28 的盘中净值,必须拒绝。
+
+    这正是 pipeline 延迟那天我差点建议用户去做的事。
+    """
+    ok, why = qr.in_close_window("2026-08-27", _at(2026, 8, 28, 12, 0))
+    assert not ok and "已越过下一交易日开盘" in why
+
+
+def test_close_window_spans_the_weekend():
+    """周五 session:周六整天仍在窗口内(下一开盘是周一 9:30),周一开盘后失效。
+
+    周五 20:30 的 pipeline 周六上午才收工 —— 这一条决定了周五那场能不能补。
+    """
+    assert qr.in_close_window("2026-08-28", _at(2026, 8, 29, 11, 0))[0]
+    assert not qr.in_close_window("2026-08-28", _at(2026, 8, 31, 9, 31))[0]
+
+
+# ── settle:次日用收盘存档补算,全程不碰 QC ────────────────────────────────
+
+def _archived(rd, session="2026-08-27", equity_status="pending", **over):
+    """一份 D 日报告:holdings/target 已终态,equity 待补,QC 侧已存档。"""
+    rep = {"session": session,
+           "holdings_check": {"status": "ok", "n_tickers": 29, "n_matched": 29},
+           "target_check": {"status": "ok"},
+           "equity_check": {"status": equity_status, "note": "等官方 EOD"},
+           "bootstrap": {"legacy_remaining": 0, "scaled_remaining": 0},
+           "verdict": "partial",
+           "close_snapshot": {
+               "taken_at": "2026-08-27T23:15:02-04:00",
+               # 存档必须带逐票股数:次日 settle 时 QC 那边已经是新一天的账户,
+               # 拿不回 D 日收盘的股数,没股数就用不了官方收盘价定 Q。
+               # 存档里的残差股数(2.0)与 state/ 里现存的(0.5)故意不同,
+               # 用来验证 settle 用的是存档、不是次日已被覆盖的那份。
+               "qc": _qc(1000.0),
+               "fills": [], "scalars": {},
+               "residual": {"residual": {"X": 2.0}}}}
+    rep.update(over)
+    (rd / f"qc_reconcile_{session}.json").write_text(json.dumps(rep))
+    return rep
+
+
+@pytest.fixture()
+def settle_env(monkeypatch, tmp_path, eq_env):
+    """REPORT_DIR 与持仓读取全接到 tmp/桩;时钟固定在 8/28 11:00(已开盘)。"""
+    import exporter as exp
+    import inventory_source as isrc
+    rd = tmp_path / "reports"
+    rd.mkdir()
+    monkeypatch.setattr(qr, "REPORT_DIR", rd)
+    monkeypatch.setattr(rolloff, "_et_now", lambda: _at(2026, 8, 28, 11, 0))
+    monkeypatch.setattr(isrc, "read_snapshot", lambda: {})
+    monkeypatch.setattr(exp, "compose",
+                        lambda s: {"built": {"legacy_alive": {},
+                                             "scaled_alive": {}}})
+    return rd
+
+
+def test_settle_uses_archived_q_and_never_creates_a_qc_client(settle_env):
+    """全程零 QC 调用 —— 自动生效的 _ban_network 会在任何一次触碰时炸掉。"""
+    _archived(settle_env)
+    rep = qr.settle(dry=True)
+    eq = rep["equity_check"]
+    assert eq["status"] == "baseline"
+    assert eq["qc_equity_Q"] == 5_900_000.0          # 存档的 Q,不是此刻的
+    assert eq["q_source"]["taken_at"].startswith("2026-08-27T23:15")
+
+
+def test_settle_prefers_archived_residual_over_current_state(settle_env):
+    """次日 state/fractional_residual.json 可能已被新一轮推送覆盖。
+
+    存档是 2.0 股 × $10 = $20;eq_env 在 state/ 里放的是 0.5 股 = $5。
+    取到 $5 就说明读了次日那份 —— 那是另一个 target 的残差。
+    """
+    _archived(settle_env)
+    rep = qr.settle(dry=True)
+    assert rep["equity_check"]["fractional_residual"]["value_usd"] == 20.0
+
+
+def test_settle_refuses_when_no_report_exists(settle_env):
+    with pytest.raises(qr.SourceError, match="没有 2026-08-27 的报告"):
+        qr.settle(dry=True)
+
+
+def test_settle_refuses_when_snapshot_missing(settle_env):
+    """收盘那趟没跑成 → Q 已永久错过,只能拒绝,绝不拿次日的数凑。"""
+    _archived(settle_env, close_snapshot=None)
+    with pytest.raises(qr.SourceError, match="close_snapshot"):
+        qr.settle(dry=True)
+
+
+def test_settle_is_idempotent_once_equity_is_terminal(settle_env):
+    _archived(settle_env, equity_status="ok")
+    rep = qr.settle(dry=True)
+    assert rep["equity_check"]["status"] == "ok"
+    assert "q_source" not in rep["equity_check"]      # 根本没重算
+    assert "settled_at" not in rep
+
+
+# ── ΔD 的跨度必须是"一天" ──────────────────────────────────────────────────
+
+def test_equity_pending_when_prev_report_is_not_the_adjacent_session(
+        monkeypatch, eq_env):
+    """前一份出过 D 的报告不是紧邻交易日 → 不出裁决。
+
+    prev_report 会跳过没出 D 的报告,所以中间漏一天就变成跨两天的 ΔD,而滑点
+    只累当天 fills、股息由 Δcash 反解 —— 漏掉那天成交的整笔名义现金流会冒充
+    成股息。这是**错项**不是漏项,给 partial 都算抬举。
+    """
+    p = _prev(100_000.0, 388.0)
+    p["equity_check"]["session"] = "2026-08-25"       # 中间的 8/26 没出过 D
+    monkeypatch.setattr(qr, "prev_report", lambda s: p)
+    row = qr.equity_plane("2026-08-27", _qc(388.0), [], {}, {}, {})
+    assert row["status"] == "pending"
+    assert row["expected_prev_session"] == "2026-08-26"
+    assert "delta_D_usd" not in row and "attribution" not in row
+    # D 是可信锚点(P/Q 两侧闸门都过了),必须留在报告里 —— 否则 prev_report
+    # 明天也会跳过这一份,一次断链会一路断下去。
+    assert row["D_usd"] == 100_000.0
+
+
+def test_equity_judges_normally_when_prev_is_adjacent(monkeypatch, eq_env):
+    """紧邻就照常出裁决 —— 闸门不能顺手把正常的日子也拦了。"""
+    monkeypatch.setattr(qr, "prev_report", lambda s: _prev(100_000.0, 388.0))
+    row = qr.equity_plane("2026-08-27", _qc(388.0), [],
+                          {"legacy_alive": {}, "scaled_alive": {}}, {}, {})
+    assert row["status"] in ("ok", "partial")
+    assert row["delta_D_usd"] == 0.0
+
+
+# ── 派活按"还欠着什么",不按"今天是哪天" ──────────────────────────────────
+
+def test_unsettled_sessions_only_lists_recoverable_days_oldest_first(
+        monkeypatch, tmp_path):
+    rd = tmp_path / "reports"
+    rd.mkdir()
+    monkeypatch.setattr(qr, "REPORT_DIR", rd)
+
+    def _w(session, status, snap=True):
+        doc = {"session": session, "equity_check": {"status": status}}
+        if snap:
+            doc["close_snapshot"] = {"taken_at": f"{session}T23:15:00-04:00"}
+        (rd / f"qc_reconcile_{session}.json").write_text(json.dumps(doc))
+    _w("2026-08-26", "pending")
+    _w("2026-08-25", "ok")                       # 已终态 → 不欠
+    _w("2026-08-27", "pending")
+    _w("2026-08-24", "pending", snap=False)      # 没存档 → 补不回来,不列
+    _w("2026-07-01", "pending")                  # 超出 14 天回看窗
+    got = qr.unsettled_sessions(_at(2026, 8, 28, 11, 0))
+    assert got == ["2026-08-26", "2026-08-27"]
+
+
+def test_settle_all_settles_every_owed_day_in_order(monkeypatch, settle_env):
+    """欠了两天就补两天。只补 last_session 的话 8/26 会永久停在 pending。"""
+    _archived(settle_env, session="2026-08-26")
+    _archived(settle_env, session="2026-08-27")
+    seen = []
+
+    def _fake(session, dry=False):
+        seen.append(session)
+        return {"verdict": "ok"}
+    monkeypatch.setattr(qr, "settle", _fake)
+    assert qr.settle_all(dry=True) == 0
+    assert seen == ["2026-08-26", "2026-08-27"]
+
+
+def test_settle_all_still_runs_current_session_when_it_has_no_report(
+        monkeypatch, settle_env):
+    """当天报告缺失进不了欠账清单 —— 那种情况必须炸出来,不能变成"今天没活"。"""
+    monkeypatch.setattr(qr, "settle_all", qr.settle_all)   # 用真的
+    rc = qr.settle_all(dry=True)
+    assert rc == 1                                # settle() 抛"没有报告可补算"
+
+
+def test_settle_all_backlog_only_skips_current_session(monkeypatch, settle_env):
+    """live 那趟的收尾:当天现场刚由 reconcile() 取过,别拿存档覆盖。"""
+    _archived(settle_env, session="2026-08-26")
+    _archived(settle_env, session="2026-08-27")
+    seen = []
+    monkeypatch.setattr(qr, "settle",
+                        lambda s, dry=False: (seen.append(s), {"verdict": "ok"})[1])
+    assert qr.settle_all(dry=True, include_current=False) == 0
+    assert seen == ["2026-08-26"]
+
+
+def test_settle_all_reports_breach_over_failure(monkeypatch, settle_env):
+    _archived(settle_env, session="2026-08-26")
+    _archived(settle_env, session="2026-08-27")
+
+    def _fake(session, dry=False):
+        if session == "2026-08-26":
+            raise qr.SourceError("补不回来了")
+        return {"verdict": "breach"}
+    monkeypatch.setattr(qr, "settle", _fake)
+    assert qr.settle_all(dry=True) == 2

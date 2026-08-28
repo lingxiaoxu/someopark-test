@@ -52,11 +52,19 @@ OFFICIAL_FIELDS = {
 }
 # 逐票对拍允许的股数偏差:0。QC 是整数股镜像,差 1 股就说明没收敛(或有单在飞)。
 TOL_SHARES = 0
-# runtimeStatistics.Equity 与 (持仓市值 + 现金) 是**两个不同时刻的采样**(前者随
-# 图表节流更新),盘中差几万美元是正常的 —— 8/19 23:4x 实测差 $32,854 ≈ 0.57%。
-# 所以它不是"对不对"的判据,而是"此刻静不静"的判据:收盘后两次采样应当几乎重合。
-# K 一旦冻结就是永久常数,必须在静止时刻测,故 --freeze 要求这个差 ≤ TOL_QUIET。
-TOL_QUIET = 500.0
+# Q 与 QC 自报净值的交叉校验容差(gross 的 bp)。与 M4 的 CROSS_TOL_BP 同义同值。
+#
+# 这里原先是 TOL_QUIET = 500.0,注释说 runtimeStatistics.Equity 与"持仓市值 + 现金"
+# 只是两个采样时刻不同、"收盘后两次采样应当几乎重合",并据此当"静不静"的判据。
+# **那个前提是错的**(2026-08-28 实测,详见 reconcile/official_close.py 顶部):
+# payload 里每票的 p 停在收盘前约 15 分钟,收盘后十小时都不再更新,所以自算净值
+# 恒等于 15:45 那一刻的值,永远不会与收盘净值重合。8/27 差 27,979(48.5bp),
+# 收盘后再静也是这个数。照原写法 --freeze 要么永远过不去,要么(把阈值放宽)
+# 把少算的 2.8 万**永久焊进 K**。
+#
+# 现在 Q 改用"现金 + Σ 逐票股数 × 官方收盘价",与 P 同价源族;QC 自报净值降级为
+# 独立交叉校验。自算净值仍留着,只作审计留痕(price_staleness_usd),不参与 K。
+CROSS_TOL_BP = 3.0
 
 
 def _load(p: Path, default=None):
@@ -101,16 +109,66 @@ def alive_queues() -> dict:
     return out
 
 
-def official_eod() -> tuple[str, dict[str, float]]:
-    """已发布的官方 EOD 净值(五策略必须同一天,否则拒绝)。"""
+def official_rows(p: Path) -> list:
+    """读一份官方 EOD 序列文件。
+
+    JSON 半截 → SourceError,不让 JSONDecodeError 裸奔:这三份文件由夜间 pipeline
+    直接 json.dump 覆写(非原子),对账正好撞在写的当口就会读到截断的 JSON。
+    那是"这一趟先别对,等下一趟"而不是"程序崩了",裸的 JSONDecodeError 会穿过
+    equity_plane 的 SourceError 捕获,把整趟对账连同已经算好的 ①② 一起打掉。
+    """
+    if not p.exists():
+        raise SourceError(f"读不到 {p.name}")
+    try:
+        rows = json.loads(p.read_text())
+    except json.JSONDecodeError as e:
+        raise SourceError(f"{p.name} 不是完整 JSON({e})—— 多半正被夜间 "
+                          f"pipeline 覆写,这一趟先别对") from e
+    if not rows:
+        raise SourceError(f"读不到 {p.name}")
+    return rows
+
+
+def official_eod(session: str | None = None) -> tuple[str, dict[str, float]]:
+    """已发布的官方 EOD 净值(五策略必须同一天,否则拒绝)。
+
+    session=None —— 取每份文件的**末行**,即"现在发布到哪天了"。--measure/--freeze
+      问的正是这个:冻 K 要冻在最新那天。
+
+    session 给定 —— **按日期查行**,不看末行。M4 补算必须走这条:session D 的 P
+      只在 "P(D) 落地 → P(D+1) 落地" 之间当过末行(实测约 D+1 10:15 到 D+1 21:30),
+      按末行取数等于把补算窗口硬压到不足一天 —— 连着两晚 pipeline 出问题,那两天
+      的 equity 段就永久补不回来。
+      按日期回查安全的前提是**三份文件都全历史重算重写**:strategy_performance
+      每趟 `--start 2026-03-19` 起全段重算后整表落盘(DailySignal.py:3018);
+      master 与 bdc 从头重建。所以 D 那一行会被 D 之后的每一趟收盘后跑批修正过
+      —— 2026-08-27 BDC 那个 10:17 写下的盘中行就是这么自愈的(8/26 那行实测
+      复算差 −0.00)。**这个前提若改成增量追加,这里必须跟着改**,否则会读到
+      一行再没人碰过的陈值。
+    """
     vals, dates = {}, {}
+    cache: dict[str, list] = {}
     for st, (fn, field) in OFFICIAL_FIELDS.items():
-        rows = _load(DATA / fn)
-        if not rows:
-            raise SourceError(f"读不到 {fn}")
-        last = rows[-1]
+        rows = cache.get(fn)
+        if rows is None:
+            rows = official_rows(DATA / fn)
+            cache[fn] = rows
+        if session is None:
+            last = rows[-1]
+        else:
+            hits = [r for r in rows if str(r.get("date")) == session]
+            if not hits:
+                raise SourceError(
+                    f"{fn} 里没有 {session} 那一行(末行 "
+                    f"{rows[-1].get('date')})—— 那天的官方 EOD 还没发布"
+                    f"(夜间 pipeline 未跑完 / 未跑齐)")
+            if len(hits) > 1:
+                # 同一天两行说明 merge 逻辑坏了。挑一行读下去就是在猜哪行是真的。
+                raise SourceError(f"{fn} 里 {session} 有 {len(hits)} 行重复 —— "
+                                  f"官方序列本身坏了,不猜哪行是真的")
+            last = hits[0]
         if field not in last:
-            raise SourceError(f"{fn} 末行缺字段 {field}")
+            raise SourceError(f"{fn} 的 {last.get('date')} 行缺字段 {field}")
         vals[st], dates[st] = float(last[field]), str(last["date"])
     if len(set(dates.values())) != 1:
         raise SourceError(f"五策略官方 EOD 日期不一致 {dates} —— 夜间 pipeline "
@@ -150,8 +208,9 @@ def qc_snapshot(client=None, pid=None) -> dict:
     cash = float(pf["cash"]["USD"]["amount"])
     reported = lr.get("runtimeStatistics", {}).get("Equity")
     eq_rep = float(str(reported).replace("$", "").replace(",", "")) if reported else None
-    # 净值一律用同一份 payload 自算(持仓市值 + 现金),口径内部自洽;QC 自报值只留作
-    # 静止判据与审计留痕,不参与 K 的计算。
+    # equity = 同一份 payload 自算(持仓市值 + 现金)。**这不是收盘净值**:payload
+    # 里的逐票价停在收盘前约 15 分钟,所以它是 15:45 那一刻的净值。留着只作审计
+    # 留痕与陈旧度度量,K 与 M4 的 Q 都不许用它 —— 用官方收盘价逐票复算(official_q)。
     equity = mv + cash
     # gross = Σ|持仓市值|:对账把它当 bp 的分母(净额对市场中性簿是退化统计量,
     # 净额→0 时 bp→∞)。prices 按**仓库现行代码**归一化(QC 的 ORCC/NB/CMB
@@ -163,8 +222,32 @@ def qc_snapshot(client=None, pid=None) -> dict:
             "holdings": holds, "gross": gross, "prices": prices,
             "holdings_mv": mv, "cash": cash, "equity": equity,
             "equity_reported": eq_rep,
-            "quiet_gap": None if eq_rep is None else eq_rep - equity,
+            # 曾叫 quiet_gap 并被当作"账户静不静"的判据 —— 它量的其实是 payload
+            # 价格的陈旧度(收盘前 15 分钟到收盘之间那段行情),与静不静无关,
+            # 收盘后也不会收敛到 0。改名是为了不让它再被当判据用。
+            "price_staleness_usd": None if eq_rep is None else eq_rep - equity,
             "deploy_id": lr.get("deployId")}
+
+
+def official_q(session: str, qc: dict) -> dict:
+    """用官方收盘价把 QC 快照定值成该 session 的收盘净值。
+
+    → {"Q", "closes", "cross_usd", "cross_bp"};取不到价一律抛 SourceError。
+    与 M4 reconcile.qc_reconcile.equity_plane 是同一套定义,改一处必须改两处。
+    """
+    from reconcile import official_close
+    shares = qc.get("shares")
+    if not shares:
+        raise SourceError("QC 快照里没有逐票股数 —— 定不出收盘 Q")
+    closes = official_close.closes_for(session, [_canon(t) for t in shares])
+    cash = float(qc["cash"])
+    Q = cash + sum(int(s) * closes[_canon(t)] for t, s in shares.items())
+    gross = float(qc.get("gross") or 0.0)
+    rep = qc.get("equity_reported")
+    cross = None if rep is None else Q - float(rep)
+    return {"Q": Q, "closes": closes, "cross_usd": cross,
+            "cross_bp": (None if cross is None or gross <= 0
+                         else abs(cross) / gross * 1e4)}
 
 
 def _et_now() -> datetime:
@@ -245,17 +328,28 @@ def cmd_measure(freeze: bool = False) -> int:
         print(f"   {t:<6} QC {a:>8,}  target {b:>8,}  差 {a - b:+,}")
     d, off = official_eod()
     P = sum(off.values())
-    K = P - qc["equity"]
+    # Q 必须用**官方收盘价**逐票复算。取不到价就没有 Q,--measure 也不硬凑一个
+    # 数出来看 —— 那个数会被当成"今天的 K"记在脑子里。
+    oq = official_q(d, qc)
+    Q, cross, cross_bp, closes = (oq["Q"], oq["cross_usd"], oq["cross_bp"],
+                                  oq["closes"])
+    K = P - Q
     print(f"\n官方 EOD {d}: " + " ".join(f"{s}={v:,.0f}" for s, v in off.items()))
     print(f"  面板/官方口径合计 P = {P:>16,.2f}")
-    print(f"  QC 账户净值      Q = {qc['equity']:>16,.2f}"
-          f"   (持仓 {qc['holdings_mv']:,.2f} + 现金 {qc['cash']:,.2f})")
+    print(f"  QC 账户净值      Q = {Q:>16,.2f}"
+          f"   (现金 {qc['cash']:,.2f} + Σ 股数×{d} 官方收盘价)")
     print(f"  K = P − Q         = {K:>16,.2f}")
-    gap = qc["quiet_gap"]
-    if gap is not None:
-        print(f"  静止判据: QC 自报 Equity {qc['equity_reported']:,.2f}"
-              f" 与自算差 {gap:+,.2f}"
-              f" ({'静止 ✓' if abs(gap) <= TOL_QUIET else '仍在动 — 盘中/有单在飞'})")
+    if cross is not None:
+        ok = cross_bp is not None and cross_bp <= CROSS_TOL_BP
+        print(f"  交叉校验: QC 自报 Equity {qc['equity_reported']:,.2f}"
+              f" 与收盘价复算差 {cross:+,.2f}"
+              f" ({'—' if cross_bp is None else f'{cross_bp:.2f}bp'},"
+              f" {'一致 ✓' if ok else f'超 {CROSS_TOL_BP}bp — 股数/现金/收盘价有一样不对'})")
+    stale = qc.get("price_staleness_usd")
+    if stale is not None:
+        print(f"  (参考)payload 自算净值 {qc['equity']:,.2f},比 QC 自报少"
+              f" {stale:+,.2f} —— 这是逐票价停在收盘前 ~15 分钟造成的陈旧度,"
+              f"不是账户在动;K 不用这个数)")
     if not freeze:
         prev = _load(ROLLOFF_PATH)
         if prev:
@@ -276,9 +370,30 @@ def cmd_measure(freeze: bool = False) -> int:
         raise SourceError(f"现在 {et:%H:%M} ET 属于盘中/盘后波动时段。K 是永久常数,"
                           f"必须在收盘静止后测(17:00–04:00 ET),否则两边不同时刻的"
                           f"标价差会被永久焊进常数里")
-    if gap is not None and abs(gap) > TOL_QUIET:
-        raise SourceError(f"QC 两个净值采样仍差 {gap:+,.2f}(阈值 ±{TOL_QUIET:,.0f})"
-                          f" —— 账户还没静下来,等收盘结算完再冻")
+    if cross is None:
+        raise SourceError("拿不到 QC 自报净值 —— 收盘 Q 没有第二条路径可校验,"
+                          "此刻冻 K 等于把一个没人复核过的数定成永久常数")
+    if cross_bp is None or cross_bp > CROSS_TOL_BP:
+        raise SourceError(f"收盘价复算的 Q({Q:,.2f})与 QC 自报净值"
+                          f"({qc['equity_reported']:,.2f})差 {cross:+,.2f}"
+                          f"({'gross 为 0' if cross_bp is None else f'{cross_bp:.2f}bp'}"
+                          f" > {CROSS_TOL_BP}bp)—— 两条独立路径对不上,"
+                          f"股数/现金/收盘价至少有一样是错的,不能冻")
+    # M4 那份日报是对 Q 的独立复核(官方 EOD 日期一致、没有盘中写的 performance
+    # 文件、交叉校验通过)。K 是永久常数,必须冻在**已经被对账平面判过**的那个
+    # session 上,而不是"我这一趟自己算得挺顺"。
+    m4 = _THIS_DIR / "reconcile" / f"qc_reconcile_{d}.json"
+    doc4 = _load(m4)
+    st4 = ((doc4 or {}).get("equity_check") or {}).get("status")
+    if st4 not in ("ok", "baseline"):
+        raise SourceError(
+            f"M4 对账报告 {m4.name} 的 equity 段是 {st4 or '缺失'},不是 ok/baseline"
+            f" —— 那趟对账没能给 {d} 的 Q 出裁决(官方 EOD 未落地 / 有盘中写的"
+            f" performance 文件 / 交叉校验没过)。先把那天对平再冻 K")
+    q4 = (doc4["equity_check"] or {}).get("qc_equity_Q")
+    if q4 is None or abs(float(q4) - Q) > 1.0:
+        raise SourceError(f"M4 判过的 Q({q4})与此刻复算的 Q({Q:,.2f})对不上"
+                          f" —— 两趟之间账户变过(有成交/持仓变动),冻哪个都是错的")
     if d != et.strftime("%Y-%m-%d"):
         print(f"  注意: 官方 EOD 是 {d},不是今天({et:%Y-%m-%d} ET)"
               f" —— 确认这是最近一个已收盘交易日。")
@@ -287,13 +402,24 @@ def cmd_measure(freeze: bool = False) -> int:
            "k_equity": round(K, 2),
            "panel_official_total": round(P, 2),
            "official_eod": {s: round(v, 2) for s, v in off.items()},
-           "qc_equity": round(qc["equity"], 2),
+           "qc_equity": round(Q, 2),
+           "q_basis": "cash + Σ 逐票股数 × 官方收盘价(Polygon 日 K)",
+           "qc_equity_reported": round(float(qc["equity_reported"]), 2),
+           "cross_check_usd": round(cross, 2),
+           "cross_check_bp": round(cross_bp, 2),
+           "qc_shares": dict(qc["shares"]),
+           "official_closes": {t: closes[t] for t in sorted(closes)},
+           "qc_equity_payload_selfcalc": round(qc["equity"], 2),
            "qc_holdings_mv": round(qc["holdings_mv"], 2),
            "qc_cash": round(qc["cash"], 2),
            "qc_deploy_id": qc["deploy_id"],
+           "m4_report": m4.name,
            "n_tickers_matched": n_all,
            "note": "退场日实测:L/S 两队已清空且 QC 逐票收敛,两边持仓相同 ⇒ "
-                   "净值差只剩现金项,定格为常数。QC 净值 + k_equity ≡ 面板净值。"}
+                   "净值差只剩现金项,定格为常数。恒等式是 "
+                   "**按官方收盘价复算的 QC 净值** + k_equity ≡ 面板净值 —— "
+                   "不是 QC 面板上显示的那个数,也不是 payload 自算的那个数"
+                   "(后者停在收盘前 ~15 分钟,8/27 实测差 48.5bp)。"}
     _atomic_write(ROLLOFF_PATH, doc)
     print(f"\n[rolloff] 已冻结 K = {K:,.2f} → {ROLLOFF_PATH}")
     return 0

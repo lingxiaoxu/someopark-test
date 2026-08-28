@@ -19,21 +19,42 @@
 
 	     16:20 —— holdings/target 平面的**唯一**窗口:21:30 的 someopark-daily-pipeline
 	       一改 inventory,exporter 就推新 target,"QC 持仓 vs 当时已推 target"的现场
-	       就没了。16:00 收盘 + 15 分钟延迟行情送完,16:20 刚好。
+	       就没了。16:00 收盘 + 15 分钟延迟行情送完,16:20 刚好。同时这趟负责
+	       close_snapshot:D 日的逐票股数/现金只在 [16:00 D, 09:30 D+1) 可观测,
+	       错过就永远补不回来,次日 --settle 无米下锅。
 	     23:15 —— equity 平面最早能跑的时候:官方 EOD json 由 21:30 那趟 pipeline 写出
 	       (watchdog 21:55 兜底),23:15 留足余量。这趟把 16:20 留下的 equity_check=pending
 	       补成终态;merge_section() 保证它不会抹掉 16:20 已出的真裁决。
 	     23:50 —— 纯补跑:21:30 若延迟/失败,23:15 只能拿到 pending,再给一次机会;
 	       三段已全终态则 wrapper 幂等跳过。
+	     11:00 / 13:30 —— 次日 settle 窗口。实测那趟 pipeline 常常要到次日 ~10:15 才把
+	       官方 EOD 落地(有时更晚),所以前一夜三趟全部只能留 pending。这两个时点跑的
+	       是 --settle:用昨天 16:20 存的 close_snapshot 补算,**一行 QC API 都不调**
+	       (此刻 QC 读数是新一天的盘中值,拿它算 D 量到的是隔夜跳空)。
+	       13:30 是 11:00 的补跑;全终态则幂等跳过。
 
-	     为什么没有跨零点的补跑:wrapper 用 ET 当天日期定报告文件名,而 python 侧用
-	     last_session() 推交易日 —— 过了零点这两个会错位(00:40 时 ET_DATE 已是次日,
-	     last_session 仍是前一交易日),会写出一份张冠李戴的报告。补跑必须留在当天之内。
+	     这五个时点只决定"什么时候看一眼",**不决定看哪天**:派活口径是
+	     unsettled_sessions() 的欠账清单。官方 EOD 若拖过次日 13:30(实测那趟
+	     pipeline 起步晚 2h35m 就会),16:20 一到 last_session 就换成新一天,
+	     按点钟派活的话前一天再也轮不到,equity 段永久停在 pending。
 
-	     不设 Weekday —— 交易日判断统一交给 wrapper 里的 NYSE 闸门(节假日也能挡),
-	     两处各判一次迟早会打架。 -->
+	     live 还是 settle 不由排期时刻决定,而是 wrapper 问 in_close_window() ——
+	     同一个时点在不同日子可能属于不同模式(比如周六 11:00 仍在周五的收盘窗口外),
+	     硬编码迟早错。
+
+	     不设 Weekday,也没有"墙上今天是不是交易日"的闸门(已删):周五 20:30 的
+	     pipeline 周六上午才收工,周五那场的官方 EOD 只能在周六补 —— 墙上闸门会把
+	     周六判成 CLOSED,那场就永远补不上。该不该跑交给幂等闸门(三段全终态就跳过)。 -->
 	<key>StartCalendarInterval</key>
 	<array>
+		<dict>
+			<key>Hour</key><integer>11</integer>
+			<key>Minute</key><integer>0</integer>
+		</dict>
+		<dict>
+			<key>Hour</key><integer>13</integer>
+			<key>Minute</key><integer>30</integer>
+		</dict>
 		<dict>
 			<key>Hour</key><integer>16</integer>
 			<key>Minute</key><integer>20</integer>

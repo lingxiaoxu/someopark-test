@@ -26,6 +26,15 @@ QC**。它 ok 只证明本地账本没算错,对"QC 云上那本书是否真的�
 所以:同一份报告、两趟写。每个 section 自带 status,没轮到的显式 `pending`
 (带原因),**绝不用零或旧值冒充**。第二趟合并进同一个 session 文件。
 
+派活口径是"还欠着哪天"(`unsettled_sessions`),不是"今天是哪天":官方 EOD 若
+拖过次日 13:30(pipeline 晚起两三个钟头就会),16:20 一到 last_session 就换成
+新一天,前一天再也轮不到,equity 段永久停在 pending。而 `prev_report` 会跳过它,
+后一天的 ΔD 就悄悄变成跨两天的量 —— 滑点与"现金反解股息"两项却只吃当天成交,
+混跨度算出来的残差是**错的**不是缺的。两条路都堵:派活按欠账清单走(§settle_all),
+真漏了也有 equity_plane 的紧邻性闸门拦住不出裁决。
+配套地,③ 取官方 EOD 一律**按 session 查行**而不是取末行(rolloff.official_eod):
+取末行的话 P(D) 只在 "P(D) 落地 → P(D+1) 落地" 那不到一天里取得到。
+
 ①在 23:15 那趟会自动降级为 `pending_apply`:pipeline 换书后 exporter 会立刻
 推新 target,而 QC 要等明早 09:30 才执行 —— 此刻 QC 持仓 ≠ 最新 target 是
 **正确**行为。靠 QC 日志里的 `applied v{n} CONVERGED` 判断已应用版本,版本有
@@ -87,6 +96,7 @@ sys.path.insert(0, str(_PKG))
 from inventory_source import (LEDGER_ACCOUNT_FILES, PAIR_STRATEGIES,  # noqa: E402
                               SourceError, stable_read)
 from ops import rolloff                                              # noqa: E402
+from reconcile import official_close                                 # noqa: E402
 
 REPO = _PKG.parent
 STATE_DIR = _PKG / "state"
@@ -100,9 +110,14 @@ ROLLOFF_PATH = STATE_DIR / "rolloff.json"
 # 名义额缩放;净额对市场中性簿是退化统计量(净额→0 时 bp→∞)。
 STEADY_TOL_BP = 5.0        # 无成交日:扣掉 bootstrap 项后的残差
 REBAL_TOL_BP = 3.0         # 有成交日:全部可归因项扣完后的残差
-# 官方 EOD 与 QC 快照必须是同一个收盘的两侧。QC 侧"静没静"沿用 rolloff 的判据
-# (runtimeStatistics.Equity 与自算净值两个采样的差)。
-QUIET_TOL = rolloff.TOL_QUIET
+# Q 的交叉校验:我们用官方收盘价逐票复算的净值,与 QC 引擎自报的
+# runtimeStatistics.Equity 之差。两条路径互不相干,对得上才说明股数、现金、
+# 收盘价三样都对。8/27 实测 −474.73 = 0.82bp。
+#
+# 原先这里是 QUIET_TOL(= rolloff 的 TOL_QUIET,±$500),比的是 QC 自报净值与
+# **同一份 payload 自算值**之差。那两个数一新一陈,量到的是 payload 价格的陈旧
+# 度(8/27 = 48.5bp),不是账户静不静,永远过不去。已废弃,不要复活。
+CROSS_TOL_BP = 3.0
 
 LOG_WINDOW = 250        # live/logs/read 单次窗口硬上限(QC 端拒绝更大的请求)
 MAX_LOG_WINDOWS = 8     # 最多回扫 2000 行;扫穿了宁可报错也不假装"未应用"
@@ -149,6 +164,97 @@ def last_session(et: datetime) -> str:
     if not done:
         raise SourceError(f"{et:%Y-%m-%d %H:%M} ET 之前 14 天内没有已收盘交易日")
     return done[-1].strftime("%Y-%m-%d")
+
+
+def close_window(session: str, et: datetime) -> tuple[datetime, datetime]:
+    """session 的收盘时刻,与**下一个**交易日的开盘时刻。"""
+    try:
+        import pandas_market_calendars as mcal
+    except ImportError as e:
+        raise SourceError(f"缺 pandas_market_calendars({e}) —— 定不出收盘窗口") from e
+    end = datetime.strptime(session, "%Y-%m-%d").date() + timedelta(days=10)
+    sched = mcal.get_calendar("NYSE").schedule(start_date=session,
+                                               end_date=str(end))
+    if sched.empty or sched.index[0].strftime("%Y-%m-%d") != session:
+        raise SourceError(f"{session} 不在 NYSE 排程里,定不出收盘/次开时刻")
+    if len(sched) < 2:
+        raise SourceError(f"{session} 之后 10 天内取不到下一个交易日开盘时刻")
+    return (sched["market_close"].iloc[0].tz_convert(et.tzinfo),
+            sched["market_open"].iloc[1].tz_convert(et.tzinfo))
+
+
+def prev_trading_session(session: str) -> str:
+    """session 的**前一个** NYSE 交易日。
+
+    ΔD 的分母是"一天"。滑点与"现金反解股息"两项只吃 session 当天的成交,
+    所以前一份报告必须恰好是紧邻的上一个交易日,不能是"最近一份出过 D 的"。
+    这条要精确到节假日/半日市,同 last_session 一样不做周末近似。
+    """
+    try:
+        import pandas_market_calendars as mcal
+    except ImportError as e:
+        raise SourceError(f"缺 pandas_market_calendars({e}) —— 定不出前一交易日") from e
+    start = datetime.strptime(session, "%Y-%m-%d").date() - timedelta(days=14)
+    sched = mcal.get_calendar("NYSE").schedule(start_date=str(start),
+                                               end_date=session)
+    days = [d.strftime("%Y-%m-%d") for d in sched.index]
+    if not days or days[-1] != session:
+        raise SourceError(f"{session} 不在 NYSE 排程里,定不出前一交易日")
+    if len(days) < 2:
+        raise SourceError(f"{session} 之前 14 天内没有交易日")
+    return days[-2]
+
+
+def unsettled_sessions(et: datetime, back_days: int = 14) -> list[str]:
+    """近 back_days 天内 equity 段未出终态、且**存着收盘快照**的 session(升序)。
+
+    存在的意义:wrapper 只按 last_session 派活,而 --settle 能补的窗口只有次日
+    盘中那两趟。官方 EOD 若拖过 13:30(2026-08-27 那趟 pipeline 起步就晚了
+    2h35m —— 23:05 才起,常态是 20:30),16:20 之后 last_session 就换成新一天,
+    前一天再也不会被派到,那天的 equity 段就永久停在 pending。所以补算按
+    "还欠着哪天"派活,不按"今天是哪天"。
+
+    没有 close_snapshot 的一律不列:那种天补不回来(D 日收盘的逐票股数只在
+    [16:00 D, 09:30 D+1) 可观测),列进来只会让闸门永远过不去。它造成的后果由
+    equity_plane 的紧邻性闸门负责喊出来,不在这里假装还有救。
+    """
+    if not REPORT_DIR.exists():
+        return []
+    floor = str(et.date() - timedelta(days=back_days))
+    out = []
+    for p in REPORT_DIR.glob("qc_reconcile_*.json"):
+        d = p.stem.replace("qc_reconcile_", "")
+        if d < floor:
+            continue
+        try:
+            doc = json.loads(p.read_text())
+        except json.JSONDecodeError:
+            continue
+        if (doc.get("equity_check") or {}).get("status") in TERMINAL:
+            continue
+        if not doc.get("close_snapshot"):
+            continue
+        out.append(d)
+    return sorted(out)
+
+
+def in_close_window(session: str, et: datetime) -> tuple[bool, str]:
+    """此刻读到的 QC 实时净值,是否还等于 session 的**收盘**净值。
+
+    只在 [session 收盘, 下一交易日开盘) 之间成立。开盘一响,live/portfolio 报的
+    就是新一天的盘中值 —— 拿它去减 P(session) 量出来的是隔夜跳空加一段盘中
+    行情,而这个数会被写成基准 D 或 ΔD,外表完全正常、没有任何东西会报错。
+    16:20/23:15/23:50 三个排期天然落在窗口内,只有手工跑才可能跑出去。
+    """
+    close, nxt_open = close_window(session, et)
+    if et < close:
+        return False, (f"此刻 {et:%m-%d %H:%M} 还没到 {session} 收盘"
+                       f"({close:%H:%M})—— 读到的是盘中净值")
+    if et >= nxt_open:
+        return False, (f"此刻 {et:%m-%d %H:%M} 已越过下一交易日开盘"
+                       f"({nxt_open:%m-%d %H:%M})—— QC 实时净值已是新一天的"
+                       f"盘中值,不再等于 {session} 的收盘净值")
+    return True, ""
 
 
 TERMINAL = ("ok", "breach", "partial", "baseline")
@@ -200,14 +306,45 @@ def prev_report(session: str) -> dict | None:
 
 # ── QC 只读取数 ─────────────────────────────────────────────────────────────
 
-def qc_orders(c, pid, page: int = 100, hard_cap: int = 5000) -> list[dict]:
-    """全部历史订单(分页)。
+def _of_deploy(orders: list[dict], deploy_id: str) -> list[dict]:
+    """只留当前部署的订单记录。
+
+    归属看 events 里的 algorithmId(order 记录本身不带部署标识)。一张单的所有
+    event 同属一个部署,所以取第一个非空 algorithmId 即可判归属;整条记录归属
+    别的部署就整条丢弃,不做逐 event 拆分 —— 混部署的单不存在"一半是我们的"。
+    没有任何 event 的记录(已提交未成交)无法判归属:它对 fills 没贡献,丢掉是
+    安全的,留下反而会让"当日有单在飞"的判断被死部署的陈单污染。
+    """
+    keep = []
+    for o in orders:
+        aid = next((e.get("algorithmId") for e in (o.get("events") or [])
+                    if e.get("algorithmId")), None)
+        if aid == deploy_id:
+            keep.append(o)
+    return keep
+
+
+def qc_orders(c, pid, deploy_id: str, page: int = 100,
+              hard_cap: int = 5000) -> list[dict]:
+    """当前部署的全部历史订单(分页 + 按 deployId 过滤)。
 
     live/orders/read 首次调用会返回 {"status":"loading","progress":0.0} —— QC
     在后台准备结果,要轮询到 payload 里出现 orders 键。实测(2026-08-27)第一
     次 loading、第二次即就绪。不轮询就会静默拿到空单列表 → 把换仓日误判成
     无成交日 → 用错阈值(5bp 而非 3bp)。
+
+    **必须按 deployId 过滤**(2026-08-28 实测):这个端点返回的是**项目**下所有
+    历史部署的订单,不是当前部署的。本项目重部署过三次,111 条记录里只有 67 个
+    不同 order id —— id 1..N 在每个部署里各出现一次(events 的 algorithmId 不同,
+    order id 与 event id 都各自从头编号,单看 id 无法去重)。
+    只按当前部署的 fills 重算持仓,与 live/portfolio 逐票严丝合缝;混着算则每票
+    都是三倍。今天不咬人只因为死部署的单都停在 8/17–8/18;下一次重部署那天,
+    死部署当天的单会和活部署的单同日出现,fills_of_session 会把换手额翻倍,
+    滑点归因和 3bp/5bp 阈值一起错 —— 而那恰恰是最需要对账的一天。
     """
+    if not deploy_id:
+        raise SourceError("qc_orders 缺 deploy_id —— 不按部署过滤会把历史部署的"
+                          "订单混进当日成交流水")
     out: list[dict] = []
     start = 0
     while start < hard_cap:
@@ -227,7 +364,7 @@ def qc_orders(c, pid, page: int = 100, hard_cap: int = 5000) -> list[dict]:
         total = d.get("length")
         start += page
         if not batch or (total is not None and start >= int(total)):
-            return out
+            return _of_deploy(out, deploy_id)
     # 走到这儿说明订单数超过 hard_cap。绝不能静默截断:少读到的若正好是当日
     # 成交,换仓日会被当成无成交日 → 用 5bp 而不是 3bp,还会漏掉滑点项。
     raise SourceError(f"历史订单超过 hard_cap={hard_cap} 条仍未读完 —— "
@@ -435,6 +572,99 @@ def _queue_pnl(session: str, prev_session: str, built: dict, snap: dict,
     return out
 
 
+def intraday_official_files(session: str) -> list[str]:
+    """官方 EOD 文件里,末行日期 = session 却在该日收盘**之前**就写完没再动的。
+
+    2026-08-27 实测踩到:BDC 的 perf json 末行是 08-27,但文件 10:17 就写完了
+    (当日 16:00 才收盘),那个 bdc_equity 是盘中值。等其余四个策略夜里落到
+    08-27,五策略日期一致性闸门会直接放行 —— 日期对、值是陈的,那道闸门按定义
+    抓不到。而当晚恰好是 baseline 日,错的 P 会被焊成基准 D,次日 ΔD 平白多出
+    "盘中→收盘"那段移动,大概率误判 breach。
+
+    判据只用来**拒绝**、绝不用来放行:mtime 会被 touch/复制重置,所以它单向可信
+    —— 说"这文件在收盘前就定稿了"是硬证据,说"在收盘后写的"不等于内容就对。
+
+    但光看 mtime 太钝,会误杀:2026-08-27 的 BDC 就是——perf json 10:17 写的没错,
+    可另有一份 16:07(收盘后)独立写出的 daily_report 给出**同一个** bdc_equity,
+    值本身是收盘值,只是 Step D 见"今天已有行"就幂等跳过、没去刷新文件。这种情形
+    拦下来就是白白丢一天对账。所以补一层**值级佐证**:若存在收盘后写出的独立产物
+    且其值与 perf json 末行一致,则视为已证实,放行。
+    """
+    import pandas_market_calendars as mcal
+    et = rolloff._et_now().tzinfo
+    sched = mcal.get_calendar("NYSE").schedule(start_date=session,
+                                               end_date=session)
+    if sched.empty:
+        raise SourceError(f"{session} 不在 NYSE 排程里,判不了收盘时点")
+    close = sched["market_close"].iloc[0].tz_convert(et)
+    out = []
+    for fn in sorted({f for f, _ in rolloff.OFFICIAL_FIELDS.values()}):
+        p = rolloff.DATA / fn
+        if not p.exists():
+            continue
+        # mtime 判据只在 session 还是**末行**时说得通:它量的是"整份文件最后
+        # 一次落盘的时刻",能证明的只有末行那天的成色。文件里 session 之后还有
+        # 行,就说明至少有一趟 session 之后的收盘后跑批把整段重算重写过
+        # (三份文件都是全历史重写,见 rolloff.official_eod 的说明),session
+        # 那行不可能还停在盘中值 —— 此时再用整份文件的 mtime 去判它,判的是
+        # 别人家的时刻,只会把补得回来的天白白拦掉。
+        try:
+            rows = rolloff.official_rows(p)
+        except SourceError:
+            # 读不出内容(空/半截)就退回纯 mtime 判据 —— 那是偏严的一边。
+            # 走到这里时 official_eod 其实已经把同样的文件读通过一遍了。
+            rows = []
+        if rows and str(rows[-1].get("date") or "") > session:
+            continue
+        mt = datetime.fromtimestamp(p.stat().st_mtime, tz=et)
+        if mt >= close:
+            continue
+        ok, why = _corroborated(fn, session, close, et)
+        if ok:
+            continue
+        out.append(f"{fn}(写于 {mt:%m-%d %H:%M},早于 {close:%m-%d %H:%M} 收盘;"
+                   f"{why})")
+    return out
+
+
+# 收盘后独立产物,用来给"盘中定稿"的官方 EOD 文件做值级佐证。
+# 路径含 {session};取值路径是嵌套 key 序列;只覆盖列出的字段。
+CORROBORATORS = {
+    "private_credit_bdc_performance.json": {
+        "path": "portfolio_of_private_credit_deals/bdc_results/"
+                "daily_report_{session}.json",
+        "value_at": ("stock_layer", "bdc_equity"),
+        "field": "bdc_equity",
+    },
+}
+
+
+def _corroborated(fn: str, session: str, close, et) -> tuple[bool, str]:
+    """该 perf 文件末行的值,是否被一份收盘后写出的独立产物证实。"""
+    spec = CORROBORATORS.get(fn)
+    if not spec:
+        return False, "无收盘后独立产物可佐证"
+    p = REPO / spec["path"].format(session=session)
+    if not p.exists():
+        return False, f"佐证文件不存在 {p.name}"
+    mt = datetime.fromtimestamp(p.stat().st_mtime, tz=et)
+    if mt < close:
+        return False, f"佐证文件 {p.name} 也是收盘前({mt:%H:%M})写的"
+    doc = _load(p) or {}
+    for k in spec["value_at"]:
+        doc = (doc or {}).get(k) if isinstance(doc, dict) else None
+    rows = _load(rolloff.DATA / fn) or []
+    if not rows or doc is None:
+        return False, f"佐证值或 perf 末行取不到"
+    got = rows[-1].get(spec["field"])
+    if str(rows[-1].get("date")) != session:
+        return False, f"perf 末行日期 {rows[-1].get('date')} ≠ {session}"
+    if got is None or abs(float(got) - float(doc)) > 0.01:
+        return False, (f"佐证值 {doc} 与 perf 末行 {got} 不符 —— "
+                       f"perf 里那行确实是陈的")
+    return True, ""
+
+
 def _ledger_accounts(session: str) -> tuple[dict, list[str]]:
     """五本 account json(须 as_of == session,否则该策略列进 stale)。"""
     acc, stale = {}, []
@@ -447,52 +677,102 @@ def _ledger_accounts(session: str) -> tuple[dict, list[str]]:
 
 
 def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
-                 snap: dict | None, scalars: dict) -> dict:
+                 snap: dict | None, scalars: dict,
+                 residual: dict | None = None) -> dict:
     row: dict = {"session": session}
     if built is None or snap is None:
         return {"status": "pending", "session": session,
                 "note": "持仓文件快照读不出来(见 target_check)—— 过渡期未镜像"
                         "盈亏算不了,不出净值裁决"}
-    # 官方 EOD:五策略必须同一天(official_eod 自带这道闸门),且必须就是 session。
+    # 官方 EOD:**按 session 查行**,不取末行。取末行的话,P(D) 只在
+    # "P(D) 落地 → P(D+1) 落地" 那不到一天里能取到,过了就永久补不了 D 了。
+    # 五策略必须同一天、且必须就是 session —— 两条都由 official_eod(session)
+    # 保证:哪份文件缺这一行就抛,所以这里拿到的 d_off 必然等于 session,
+    # 不再需要单独一道日期比对(那道闸门是"取末行"时代的产物)。
     try:
-        d_off, off = rolloff.official_eod()
+        d_off, off = rolloff.official_eod(session)
     except SourceError as e:
         return {"status": "pending", "session": session,
-                "note": f"官方 EOD 不可用: {e}"}
-    if d_off != session:
+                "note": f"{session} 的官方 EOD 取不到: {e} —— 拿别的日子的官方"
+                        f"净值去对 {session} 收盘的 QC 净值,量出来的是一整天"
+                        f"行情不是对账误差,故不出裁决"}
+    stale = intraday_official_files(session)
+    if stale:
         return {"status": "pending", "session": session, "official_date": d_off,
-                "note": f"官方 EOD 末行还停在 {d_off},不是 {session} —— 夜间 "
-                        f"pipeline(21:30 ET)未跑完。拿 {d_off} 的官方净值去对 "
-                        f"{session} 收盘的 QC 净值,量出来的是一整天行情不是"
-                        f"对账误差,故不出裁决(等 23:15 那趟补)"}
-    gap = qc.get("quiet_gap")
-    if gap is not None and abs(gap) > QUIET_TOL:
+                "intraday_official": stale,
+                "note": f"官方 EOD 有文件是**盘中**写的、事后没再更新: {stale} —— "
+                        f"日期是 {session} 但值不是收盘值。日期一致性闸门抓不到这种"
+                        f"(日期对、值是陈的),放过去会把错的 P 焊进基准 D,"
+                        f"明天的 ΔD 就凭空多出这段盘中到收盘的移动"}
+    # ── Q:逐票股数 × 官方收盘价 + 现金 ───────────────────────────────────────
+    # 不用 QC payload 里的逐票价。那份价停在收盘前约 15 分钟(2026-08-28 实测,
+    # 详见 reconcile/official_close.py 顶部),8/27 差 48.5bp —— 静止阈值的十倍。
+    shares = qc.get("shares")
+    if shares is None:
         return {"status": "pending", "session": session,
-                "quiet_gap": round(gap, 2),
-                "note": f"QC 两个净值采样仍差 {gap:+,.2f}(阈值 ±{QUIET_TOL:,.0f})"
-                        f" —— 账户没静下来(盘中/有单在飞),此刻的 Q 不是收盘态"}
-    P = sum(off.values())
-    Q = float(qc["equity"])
-    D = P - Q
+                "note": "QC 快照里没有逐票股数(旧版收盘存档)—— 没有股数就无法用"
+                        "官方收盘价定 Q,而 payload 自算的净值是盘中值,不出裁决"}
+    try:
+        closes = official_close.closes_for(
+            session, [rolloff._canon(t) for t in shares])
+    except SourceError as e:
+        return {"status": "pending", "session": session,
+                "note": f"官方收盘价不可用: {e}"}
+    cash = float(qc["cash"])
+    Q = cash + sum(int(s) * closes[rolloff._canon(t)]
+                   for t, s in shares.items())
+
+    # QC 自报净值降级为**独立交叉校验**:同一个收盘、两条互不相干的路径
+    # (QC 引擎自己的 TotalPortfolioValue vs 我们用 Polygon 收盘价逐票复算)。
+    # 对不上说明股数、现金或收盘价至少有一样是错的 —— 那时不出裁决,而不是
+    # 挑一个信。这才是原先 quiet_gap 想干却干不了的事:它比的是同一份 payload
+    # 的两个字段,一陈一新,量到的是价格陈旧度,不是账户静不静。
     gross = float(qc["gross"])
+    q_rep = qc.get("equity_reported")
+    cross = None if q_rep is None else Q - float(q_rep)
+    if cross is not None and gross > 0:
+        cross_bp = abs(cross) / gross * 1e4
+        if cross_bp > CROSS_TOL_BP:
+            return {"status": "pending", "session": session,
+                    "qc_equity_Q": round(Q, 2),
+                    "qc_equity_reported": round(float(q_rep), 2),
+                    "cross_check_usd": round(cross, 2),
+                    "cross_check_bp": round(cross_bp, 2),
+                    "note": f"官方收盘价复算的 Q({Q:,.2f})与 QC 自报净值"
+                            f"({float(q_rep):,.2f})差 {cross:+,.2f}"
+                            f"({cross_bp:.2f}bp > {CROSS_TOL_BP}bp)—— 两条独立"
+                            f"路径对不上,股数/现金/收盘价至少有一样是错的,"
+                            f"不出裁决"}
+    P = sum(off.values())
+    D = P - Q
     row.update(official_date=d_off,
                official_eod={s: round(v, 2) for s, v in off.items()},
                official_total_P=round(P, 2), qc_equity_Q=round(Q, 2),
-               qc_holdings_mv=round(qc["holdings_mv"], 2),
-               qc_cash=round(qc["cash"], 2), gross_exposure=round(gross, 2),
+               q_basis="cash + Σ 逐票股数 × 官方收盘价(Polygon 日 K)",
+               qc_equity_reported=(None if q_rep is None
+                                   else round(float(q_rep), 2)),
+               cross_check_usd=(None if cross is None else round(cross, 2)),
+               cross_check_bp=(None if cross is None or gross <= 0 else
+                               round(abs(cross) / gross * 1e4, 2)),
+               qc_holdings_mv=round(Q - cash, 2),
+               qc_cash=round(cash, 2), gross_exposure=round(gross, 2),
                D_usd=round(D, 2))
     frozen = _load(ROLLOFF_PATH)
     if frozen:
         row["k_frozen"] = float(frozen["k_equity"])
         row["D_minus_K_usd"] = round(D - float(frozen["k_equity"]), 2)
 
-    # 小数残差市值:官方口径持有 x 股,QC 只持 round(x) 股,差额靠 QC 自己
-    # 报的现价定值(QC 没持有的票没有价 → 逐票列进 unpriced,不硬凑)。
-    res = (_load(RESIDUAL_PATH) or {}).get("residual") or {}
-    px = qc.get("prices") or {}
+    # 小数残差市值:官方口径持有 x 股,QC 只持 round(x) 股,差额按**官方收盘价**
+    # 定值 —— 与 Q 同一套价,否则残差项和 Q 各按各的价算,差额会直接漏进
+    # unattributed。QC 当天没持有的票不在 closes 里 → 逐票列进 unpriced,不硬凑。
+    # residual 由调用方传入时用传入的:--settle 那趟跑在次日,state/ 里的残差
+    # 可能已被当天的新一轮推送覆盖,必须用 D 日收盘存下的那份。
+    if residual is None:
+        residual = _load(RESIDUAL_PATH) or {}
+    res = residual.get("residual") or {}
     frac_usd, unpriced = 0.0, []
     for t, r in res.items():
-        p = px.get(t)
+        p = closes.get(rolloff._canon(t))
         if p is None:
             unpriced.append(t)
             continue
@@ -515,6 +795,36 @@ def equity_plane(session: str, qc: dict, fills: list[dict], built: dict | None,
         return row
     pe = prev["equity_check"]
     d_prev = pe["session"]
+
+    # 前一份必须恰好是**紧邻的**上一个交易日。prev_report 会跳过没出 D 的报告,
+    # 中间只要漏掉一天,ΔD 就变成跨两天的量,而下面的项**不是同一个跨度**:
+    #   _queue_pnl 按 (prev_session, session) 两点取值,跨两天是对的;
+    #   滑点只累 session 当天的 fills —— 漏掉那天的滑点;
+    #   股息项由现金恒等式反解 qc_div = Δcash + fill_cash + fees,Δcash 跨了两天
+    #     而 fill_cash 只有一天 ⇒ 漏掉那天成交的**整笔名义现金流**会冒充成股息。
+    # 混跨度算出来的 unattributed 不是"漏了一项"而是"错了一项",给 partial 都算
+    # 抬举它。所以不出裁决,先把中间那天补上(--settle --session <那天>)。
+    # D_usd 照常留在报告里:它只依赖 P 与 Q,上面每道闸门都过了,是个可信的锚点
+    # ——留着,明天的 prev_report 才能接上它,链条不至于一断就再也接不回来。
+    try:
+        expect = prev_trading_session(session)
+    except SourceError as e:
+        row["status"] = "pending"
+        row["note"] = f"定不出 {session} 的前一交易日: {e} —— ΔD 跨度不明,不出裁决"
+        return row
+    if d_prev != expect:
+        row["status"] = "pending"
+        row["prev"] = {"session": d_prev, "D_usd": pe["D_usd"]}
+        row["expected_prev_session"] = expect
+        row["note"] = (
+            f"最近一份出过 D 的报告是 {d_prev},但 {session} 的前一交易日是 "
+            f"{expect} —— 中间的 {expect} 还没出 D(equity 段停在 pending 或报告"
+            f"缺失)。ΔD 会变成跨多日的量,而滑点/股息两项只吃当天成交,混跨度"
+            f"算出来的残差是错的不是缺的。先补 {expect}"
+            f"(python -m reconcile.qc_reconcile --settle --session {expect}),"
+            f"再重跑本日")
+        return row
+
     row["prev"] = {"session": d_prev, "D_usd": pe["D_usd"],
                    "qc_cash": pe.get("qc_cash"),
                    "fractional_residual_usd":
@@ -677,11 +987,11 @@ def reconcile(session: str | None = None, dry: bool = False) -> dict:
     c, pid = rolloff.qc_client_project()
     qc = rolloff.qc_snapshot(client=c, pid=pid)
     rep["qc"] = {k: qc[k] for k in ("holdings_mv", "cash", "equity",
-                                    "equity_reported", "quiet_gap", "gross",
-                                    "deploy_id")}
+                                    "equity_reported", "price_staleness_usd",
+                                    "gross", "deploy_id")}
     rep["qc"]["n_positions"] = len(qc["shares"])
     applied = qc_applied_version(c, pid)
-    orders = qc_orders(c, pid)
+    orders = qc_orders(c, pid, qc.get("deploy_id"))
     fills = fills_of_session(orders, session, et.tzinfo)
     rep["fills"] = {"n": len(fills), "gross_notional_usd":
                     round(sum(abs(f["fill_px"] * f["qty"]) for f in fills), 2),
@@ -715,11 +1025,44 @@ def reconcile(session: str | None = None, dry: bool = False) -> dict:
             "L/S 两队已清空 —— 退场条件满足,可在 17:00–04:00 ET 静止窗口跑 "
             "ops/rolloff.py --freeze 焊死 K")
 
-    rep["equity_check"] = merge_section(
-        prior.get("equity_check"),
-        equity_plane(session, qc, fills, built, snap, scalars))
+    # ── QC 侧收盘存档 ──────────────────────────────────────────────────────
+    # D 日的 Q 只在 [16:00 D, 09:30 D+1) 可观测;D 日的官方 EOD 与 monitor_log
+    # 都由 20:30 那趟 pipeline 写出,次日 ~10:15 才落地(git 历史逐提交核过:
+    # perf json 末行恒定滞后一个交易日)。两个窗口不重叠 ⇒ 同一时刻凑不齐 P 和
+    # Q。所以把 QC 侧冻在这里,次日 --settle 用存档补算。
+    in_win, win_why = in_close_window(session, et)
+    rep["close_window"] = {"ok": in_win, "why": win_why or "在收盘窗口内"}
+    if in_win:
+        rep["close_snapshot"] = {
+            "taken_at": et.isoformat(timespec="seconds"),
+            # shares/deploy_id 必须一起存档:次日 --settle 时 QC 那边已经是新一
+            # 天的账户,拿不回 D 日收盘的逐票股数;没有股数就没法用官方收盘价独立
+            # 复算 Q,只能信 QC 自报的一个总数,失去交叉验证。
+            "qc": {k: qc[k] for k in ("holdings_mv", "cash", "equity",
+                                      "equity_reported", "price_staleness_usd",
+                                      "gross", "prices", "shares", "deploy_id")},
+            "fills": fills,
+            "scalars": scalars,
+            "residual": _load(RESIDUAL_PATH) or {}}
+        eq_fresh = equity_plane(session, qc, fills, built, snap, scalars)
+    else:
+        # 窗口外读到的 Q 是别的交易日的盘中值。既不能拿它出裁决,更不能让它
+        # 覆盖已存档的收盘快照 —— 存档一旦被污染,次日 settle 会用它算出一个
+        # 外表完全正常的假 D,没有任何东西会报错。原样保留旧存档。
+        if prior.get("close_snapshot"):
+            rep["close_snapshot"] = prior["close_snapshot"]
+        eq_fresh = {"status": "pending", "session": session,
+                    "note": f"不在收盘窗口内: {win_why}。此刻的 QC 读数不能当 "
+                            f"{session} 的收盘净值;equity 段交给 --settle "
+                            f"用收盘存档补算"}
+    rep["equity_check"] = merge_section(prior.get("equity_check"), eq_fresh)
+    _verdict(rep)
+    _emit(rep, dry=dry)
+    return rep
 
-    st_all = [rep[k].get("status") for k in
+
+def _verdict(rep: dict) -> str:
+    st_all = [(rep.get(k) or {}).get("status") for k in
               ("holdings_check", "target_check", "equity_check")]
     if "breach" in st_all:
         rep["verdict"] = "breach"
@@ -729,9 +1072,96 @@ def reconcile(session: str | None = None, dry: bool = False) -> dict:
         rep["verdict"] = "partial"
     else:
         rep["verdict"] = "incomplete"
+    return rep["verdict"]
 
+
+def settle(session: str | None = None, dry: bool = False) -> dict:
+    """次日补算 equity 段:QC 侧用收盘存档,本地侧用此刻(才齐)的数据。
+
+    这趟**一行 QC API 都不调**,连客户端都不创建 —— 因此在结构上不可能推
+    target、不可能下单。它只碰 equity 段,holdings/target 两段原样保留(那两段
+    的现场在收盘那趟已经取过,此刻的 QC 持仓属于新一个交易日,拿来覆盖会把
+    别人家的数写进 session 的报告)。
+    """
+    et = rolloff._et_now()
+    session = session or last_session(et)
+    rep = _load(report_path(session))
+    if not rep:
+        raise SourceError(
+            f"没有 {session} 的报告可补算 —— 收盘那趟(16:20/23:15)没跑成,"
+            f"那天的 QC 收盘净值已经错过,事后补不回来")
+    cs = rep.get("close_snapshot")
+    if not cs:
+        raise SourceError(
+            f"{session} 的报告里没有 close_snapshot —— 收盘窗口内没取到 QC 快照;"
+            f"P 与 Q 不同源,不出裁决")
+    prior_eq = rep.get("equity_check") or {}
+    if prior_eq.get("status") in TERMINAL:
+        print(f"[qc_reconcile] {session} equity 段已是终态"
+              f"({prior_eq['status']}) — 幂等跳过")
+        return rep
+
+    import exporter as exp
+    from inventory_source import read_snapshot
+    try:
+        snap = read_snapshot()
+        built = exp.compose(snap)["built"]
+    except SourceError as e:
+        fresh = {"status": "pending", "session": session,
+                 "note": f"持仓文件读不出来: {e} —— 过渡期未镜像盈亏算不了"}
+    else:
+        fresh = equity_plane(session, cs["qc"], cs["fills"], built, snap,
+                             cs["scalars"], residual=cs.get("residual"))
+        fresh["q_source"] = {"basis": "D 日收盘存档(本趟未读 QC)",
+                             "taken_at": cs["taken_at"]}
+    rep["equity_check"] = merge_section(prior_eq, fresh)
+    rep["passes"] = (rep.get("passes") or []) + [et.isoformat(timespec="seconds")]
+    rep["settled_at"] = et.isoformat(timespec="seconds")
+    _verdict(rep)
     _emit(rep, dry=dry)
     return rep
+
+
+def settle_all(dry: bool = False, include_current: bool = True) -> int:
+    """不带 --session 的补算:把**还欠着的**每一天按时间顺序补完,不只补今天。
+
+    返回进程退出码(2=有 breach,1=有真失败,0=都好)。breach 压过失败:前者是
+    钱对不上,后者多半是某天补不回来了 —— 两条都会原样打出来,不互相掩盖。
+    """
+    et = rolloff._et_now()
+    todo = unsettled_sessions(et)
+    if include_current:
+        cur = last_session(et)
+        # 当天那份即便报告缺失/没快照也要走一遍 —— 那两种情况该炸出来,
+        # 不能因为它进不了 unsettled_sessions 就变成"今天没活干"。
+        # sorted:补算必须**从旧到新**,ΔD 链是逐日接的,顺序反了就接不上。
+        todo = sorted(set(todo) | {cur})
+    else:
+        # live 那趟的收尾:当天的现场刚由 reconcile() 取过,别再拿存档覆盖。
+        todo = [s for s in todo if s != last_session(et)]
+    if not todo:
+        print("[qc_reconcile] 没有欠账可补算")
+        return 0
+    if len(todo) > 1:
+        print(f"[qc_reconcile] 待补算 {len(todo)} 天: {', '.join(todo)}")
+    rc, failed, breached = 0, [], []
+    for s in todo:
+        try:
+            rep = settle(s, dry=dry)
+        except SourceError as e:
+            print(f"!!!! [qc_reconcile] {s}: {e}")
+            failed.append(s)
+            continue
+        if rep.get("verdict") == "breach":
+            breached.append(s)
+    if breached:
+        rc = 2
+    elif failed:
+        rc = 1
+    if failed or breached:
+        print(f"[qc_reconcile] 补算小结: breach={breached or '无'} "
+              f"失败={failed or '无'}")
+    return rc
 
 
 def _emit(rep: dict, dry: bool = False) -> None:
@@ -773,9 +1203,25 @@ def main() -> int:
     ap.add_argument("--session", default=None, metavar="YYYY-MM-DD",
                     help="交易日;不传=最近一个已收盘交易日(NYSE 日历)")
     ap.add_argument("--dry", action="store_true", help="只打印,不写报告文件")
+    ap.add_argument("--settle", action="store_true",
+                    help="次日补算模式:用收盘存档的 QC 数据补 equity 段。"
+                         "不创建 QC 客户端,不调用任何 QC API")
+    ap.add_argument("--backlog", action="store_true",
+                    help="只补算**欠账**(还没出终态、但存着收盘快照的往日),"
+                         "跳过 last_session 那天。给 live 那趟收尾用")
     a = ap.parse_args()
+    # --settle / --backlog 不带 --session:补**所有**欠着的天,不只是今天。
+    # wrapper 只按 last_session 派活,官方 EOD 一拖过次日 13:30,前一天就再也
+    # 派不到活了 —— 派活口径必须是"还欠着什么",不是"今天是哪天"。
+    if (a.settle or a.backlog) and a.session is None:
+        try:
+            return settle_all(dry=a.dry, include_current=not a.backlog)
+        except SourceError as e:
+            print(f"!!!! [qc_reconcile] {e}")
+            return 1
     try:
-        rep = reconcile(a.session, dry=a.dry)
+        rep = settle(a.session, dry=a.dry) if a.settle \
+            else reconcile(a.session, dry=a.dry)
     except SourceError as e:
         print(f"!!!! [qc_reconcile] {e}")
         return 1
