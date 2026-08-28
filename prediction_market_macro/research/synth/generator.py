@@ -665,6 +665,141 @@ def _whiten_basis(Z: np.ndarray) -> dict:
             "rank": int(keep.sum()), "dropped": int((~keep).sum())}
 
 
+# ── cross-panel noise coupling (#214, PR-20) ─────────────────────────────────
+# The frozen coupling for the weekly pair, calibrated by PR-20's registered procedure
+# (8 training anchors x 4 rhos per bridge, slope through origin, rho = target/slope) and
+# judged out of sample: achieved -0.121/-0.165/-0.224 against weekly-clock training targets
+# -0.129/-0.185/-0.231, mean error 0.0122 on a 0.06 bar. `natgas` is excluded BY THE
+# REGISTRATION — its target (-0.033) sits inside measurement noise and a bar on it would be
+# fake precision. Sum of squares 0.507, inside the PSD constraint. Do not retune by hand:
+# these numbers are only valid together with the procedure that produced them
+# (docs/PREREGISTER.md §PR-20, /tmp artefacts xnoise_pr20.{py,json,log}).
+WEEKLY_COUPLING: dict[str, float] = {
+    "gas_retail": -0.286810734294335,
+    "wti": -0.3835268871941313,
+    "rbob": -0.5268234523869307,
+}
+
+
+def sample_coupled(gen_a: "Generator", gen_b: "Generator",
+                   c_raw_a: np.ndarray, c_raw_b: np.ndarray, n: int,
+                   rho: dict[str, float], seed: int = 0,
+                   start: str = "marginal") -> tuple[np.ndarray, np.ndarray]:
+    """Draw the two panels JOINTLY: same-week driving noise correlated across them.
+
+    This is the PR-20 mechanism (#214). Panel A must be single-column (claims_weekly is);
+    each named column of panel B has its week-w noise coordinates — base draw, before the
+    marginal-start correction, and every Euler step — replaced by
+
+        eps_b[:, coords_j] = rho_j * eps_a + (eta @ L.T)_j,   L L.T = I - rho rho.T
+
+    which leaves each panel's MARGINAL law untouched by construction: panel A's stream is
+    never modified at all (its draw is bit-identical to `sample` at every rho), and panel
+    B still sees jointly-iid standard normal noise — the correlation exists only across
+    panels, where neither marginal can observe it. At rho = {} or all-zero, L = I and both
+    panels reproduce `sample` bit for bit; `test_sample_coupled_is_the_identity_at_rho_zero`
+    holds this the way `test_reverse_matches_dfm_with_the_identity_start` holds the loop.
+
+    Whole-path alternatives were measured and rejected before this landed: merging the
+    panels pays sharpness (PR-19, NOT ADOPTED by its own bar), and rank-pairing finished
+    paths delivers no correlation at the front weeks where the events actually settle and
+    a quarter of the target at production's n_paths=8 (§5d-3). Noise coupling is flat
+    across the horizon and survives n=8 (§5d-4).
+
+    Returns the two `(n, H, d)` increment arrays in natural units, exactly `sample`'s
+    output for each panel. Callers integrate/quantise exactly as they would after
+    `sample` — this function adds correlation, not a new output convention.
+    """
+    import torch
+    if gen_a.d != 1:
+        raise ValueError(f"panel A must be single-column, got d={gen_a.d} — the coupling "
+                         "was registered and judged with claims_weekly as the hub")
+    if gen_a.H != gen_b.H:
+        raise ValueError(f"panels disagree on horizon: {gen_a.H} != {gen_b.H} — week-w "
+                         "coordinates would not mean the same week")
+    if int(gen_a.cfg.noise_steps) != int(gen_b.cfg.noise_steps):
+        raise ValueError("panels disagree on noise_steps — the streams would desynchronise")
+    if gen_a.cfg.guidance != "none" or gen_b.cfg.guidance != "none":
+        raise ValueError("sample_coupled does not carry the ridge guidance term — a guided "
+                         "config would silently sample a different law here than in "
+                         "`sample`, breaking the rho=0 bit-identity this function promises")
+    unknown = sorted(set(rho) - set(gen_b.names))
+    if unknown:
+        raise ValueError(f"coupled columns not in panel B: {unknown} (has {gen_b.names})")
+    js = sorted(gen_b.names.index(c) for c in rho)
+    rv = np.array([rho[gen_b.names[j]] for j in js], dtype=float)
+    ss = float((rv * rv).sum())
+    if ss > 1.0:
+        raise ValueError(f"sum of squared rhos {ss:.3f} > 1 — the joint Gaussian would not "
+                         "be PSD; rescale the couplings, and say so out loud (PR-20 (c))")
+    M = np.linalg.cholesky(np.eye(len(js)) - np.outer(rv, rv)) if js else None
+
+    d = _dfm()
+    dev, dc = d["DEVICE"], d["DIFFUSION_CONFIG"]
+    t0, T = float(dc["t0"]), float(dc["T"])
+    ns = int(gen_a.cfg.noise_steps)
+    H = gen_a.H
+    coords = {j: [w * gen_b.d + j for w in range(H)] for j in js}
+
+    czs = {}
+    for tag, gen, c_raw in (("a", gen_a, c_raw_a), ("b", gen_b, c_raw_b)):
+        c_raw = np.asarray(c_raw, dtype=float)
+        if c_raw.shape != (len(gen.scaler["cmu"]),):
+            raise ValueError(f"panel {tag} condition has shape {c_raw.shape}, expected "
+                             f"{(len(gen.scaler['cmu']),)}")
+        c_z = (c_raw - gen.scaler["cmu"]) / gen.scaler["csd"]
+        czs[tag] = _apply_proj(c_z[None, :], gen._proj)[0]
+
+    g_a = torch.Generator(device="cpu").manual_seed(int(seed))
+    g_b = torch.Generator(device="cpu").manual_seed(int(seed))
+
+    def couple(eps_a, eps_b):
+        if not js:
+            return eps_b
+        eta = torch.stack([eps_b[:, coords[j]] for j in js])
+        mixed = torch.einsum("ab,bnh->anh", torch.as_tensor(M, dtype=eps_b.dtype), eta)
+        for i, j in enumerate(js):
+            eps_b[:, coords[j]] = rv[i] * eps_a[:, :H] + mixed[i]
+        return eps_b
+
+    base_a = torch.randn(n, gen_a._dim, generator=g_a)
+    base_b = couple(base_a, torch.randn(n, gen_b._dim, generator=g_b))
+    xs, cts = {}, {}
+    for tag, gen, base in (("a", gen_a, base_a), ("b", gen_b, base_b)):
+        if start == "marginal":
+            if gen._start is None:
+                raise ValueError(f"panel {tag}'s generator has no start root — refit it "
+                                 "(see `_reverse` for why identity is not a fallback)")
+            base = base @ torch.as_tensor(gen._start, dtype=torch.float32).T
+        elif start != "identity":
+            raise ValueError(f"start must be 'marginal' or 'identity', got {start!r}")
+        xs[tag] = base.to(dev)
+        cts[tag] = torch.tensor(np.asarray(czs[tag]), dtype=torch.float32,
+                                device=dev).expand(n, -1)
+    times = torch.linspace(T, t0, ns)
+    dt = (T - t0) / (ns - 1)
+    with torch.no_grad():
+        for t in times[:-1]:
+            eps_a = torch.randn(xs["a"].shape, generator=g_a)
+            eps_b = couple(eps_a, torch.randn(xs["b"].shape, generator=g_b))
+            for tag, gen, eps in (("a", gen_a, eps_a), ("b", gen_b, eps_b)):
+                tt = t.expand(n).to(dev)
+                score = gen.net(xs[tag], tt, cts[tag])
+                xs[tag] = xs[tag] + (0.5 * xs[tag] + score) * dt + np.sqrt(dt) * eps.to(dev)
+        a0 = float(np.exp(-0.5 * t0))
+        for tag, gen in (("a", gen_a), ("b", gen_b)):
+            tt = times[-1].expand(n).to(dev)
+            score = gen.net(xs[tag], tt, cts[tag])
+            xs[tag] = (xs[tag] + (1 - a0 ** 2) * score) / a0
+    out = {}
+    for tag, gen in (("a", gen_a), ("b", gen_b)):
+        z = xs[tag].cpu().numpy().astype(float)
+        if gen._whiten is not None:
+            z = z @ gen._whiten["inv"] + gen._whiten["mu"]
+        out[tag] = (z * gen.scaler["sd"] + gen.scaler["mu"]).reshape(n, gen.H, gen.d)
+    return out["a"], out["b"]
+
+
 # ── validation (the S2 gate) ─────────────────────────────────────────────────
 def path_stats(paths: np.ndarray) -> dict[str, np.ndarray]:
     """(n, H, d) increments -> four per-path summaries, each (n, d).

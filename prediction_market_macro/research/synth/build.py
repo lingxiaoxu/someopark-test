@@ -838,12 +838,21 @@ def _check_settle_grid_nests(st: Settle, spec, pdata: P.PanelData, say) -> float
 def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
           donors: list[B.Donor], out_dir: Path | str, n_paths: int = 8,
           seed: int = 0, epochs: int = 1500, k_local: int = 120, k_draw: int = 10,
-          log=None) -> BuildResult:
+          paths: np.ndarray | None = None, log=None) -> BuildResult:
     """Generate `n_paths` synthetic worlds for `series` as of `cutoff` and score every event.
 
     `src` is a snapshot, never the live db — `worlds.snapshot` exists for that. Nothing here
     writes to `src`, but the models are handed the WORLD connection and a model that ever
     learns to write would write into a copy.
+
+    `paths` injects pre-drawn LEVEL paths `(n_paths, horizon, d)` — already integrated from
+    the anchor AND quantised onto the panel's lattice, i.e. exactly `level_paths`' output —
+    and skips the fit-and-draw. It exists for one caller: `regen.run_weekly`'s coupled
+    prepass (#214, PR-20), which draws the two weekly panels JOINTLY so that world `i` of
+    KXJOBLESSCLAIMS and world `i` of KXWTIW/KXNATGASW carry the same cross-panel draw.
+    Everything downstream of the draw — splice, sinks, sub-monthly expansion, events —
+    is identical in both modes on purpose: the coupling changes which numbers are drawn,
+    never what a world is.
     """
     say = log or (lambda *_a, **_k: None)
     if series not in SETTLES:
@@ -883,10 +892,20 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     splice = max(knowable_at(psp, ck, anchor) for ck in clocks.values())
     say(f"  splice {splice.isoformat()}")
 
-    cfg = G.GenConfig(panel=panel_name, epochs=epochs, seed=seed + 7)
-    gen = G.Generator.fit_local(pdata, cfg, c_raw, k=k_local)
-    say(f"  generator {gen.meta}")
-    paths = gen.level_paths(c_raw, anchor_levels, n_paths, seed=seed + 3)
+    if paths is None:
+        cfg = G.GenConfig(panel=panel_name, epochs=epochs, seed=seed + 7)
+        gen = G.Generator.fit_local(pdata, cfg, c_raw, k=k_local)
+        say(f"  generator {gen.meta}")
+        paths = gen.level_paths(c_raw, anchor_levels, n_paths, seed=seed + 3)
+        gen_meta = gen.meta
+    else:
+        want = (n_paths, psp.horizon, len(psp.gen_columns))
+        if paths.shape != want:
+            raise ValueError(f"build: injected paths have shape {paths.shape}, expected "
+                             f"{want} for panel {panel_name!r} — a wrong-shaped injection "
+                             "would write worlds whose columns mean the wrong series")
+        gen_meta = {"injected": "coupled prepass (#214, PR-20)", "panel": panel_name}
+        say(f"  paths injected by the coupled prepass ({paths.shape})")
     # Checked once, before any world is written, and the checked value is the one used —
     # a guard that recomputes what it guards can drift away from it.
     settle_step = _check_settle_grid_nests(st, spec, pdata, say)
@@ -1015,7 +1034,7 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     cov = B.coverage(donors, z_ys)
     return BuildResult(series=series, cutoff=cutoff, splice=splice, anchor=anchor,
                        worlds=world_paths, events=events, coverage=cov,
-                       meta={"panel": panel_name, "generator": gen.meta,
+                       meta={"panel": panel_name, "generator": gen_meta,
                              "n_paths": n_paths, "sigma_daily": sigmas,
                              "clocks": {c: vars(k) for c, k in clocks.items()}})
 

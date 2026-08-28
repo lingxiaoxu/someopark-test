@@ -872,3 +872,80 @@ def test_report_shows_how_much_of_each_pool_was_copies():
     text = G.report(v)
     assert "0.417" in text
     assert "VERBATIM copy" in text
+
+
+# ── sample_coupled (#214, PR-20) ─────────────────────────────────────────────
+def _toy_pair(seed=0):
+    """A single-column hub panel and a two-column panel on the same toy clock."""
+    a = _toy_panel(n=400, H=4, d=1, seed=seed)
+    rng = np.random.default_rng(seed + 50)
+    regime = rng.choice([-1.0, 1.0], size=400)
+    Z = rng.normal(regime[:, None], 0.25, size=(400, 8))
+    C = np.column_stack([regime, rng.normal(0, 1, size=400)])
+    spec = P.PanelSpec(
+        name="toy2", freq="MS", horizon=4, start="2000-01-01", level_lag=1,
+        columns=(P.Column("p", "fred", "PP", "latest", "last", "diff", "u"),
+                 P.Column("q", "fred", "QQ", "latest", "last", "diff", "u")))
+    idx = pd.date_range("2000-01-01", periods=400, freq="MS")
+    b = P.PanelData(
+        spec=spec, levels=pd.DataFrame({"p": np.zeros(400), "q": np.zeros(400)}, index=idx),
+        inc=pd.DataFrame({"p": np.zeros(400), "q": np.zeros(400)}, index=idx),
+        anchors=list(idx), Z=Z, C=C, end=idx[-1].to_pydatetime(),
+        scaler={"mu": np.zeros(8), "sd": np.ones(8), "cmu": np.zeros(2),
+                "csd": np.ones(2), "names": ["p", "q"], "horizon": 4,
+                "transforms": ["diff", "diff"]})
+    cfg = G.GenConfig(panel="toy", factor_dim=2, epochs=1, noise_steps=8)
+    ga = G.Generator.fit(a, cfg)
+    gb = G.Generator.fit(b, G.GenConfig(panel="toy2", factor_dim=2, epochs=1,
+                                        noise_steps=8))
+    c = np.array([1.0, 0.0])
+    return ga, gb, c
+
+
+def test_sample_coupled_is_the_identity_at_rho_zero():
+    """PR-20's falsifier (b), held as a unit test: with no coupling both panels must
+    reproduce `sample` BIT FOR BIT — the joint loop is a copy, and this is the tripwire
+    that a future edit to `_reverse` or `sample` desynchronising the copy fails loudly."""
+    ga, gb, c = _toy_pair()
+    ra, rb = G.sample_coupled(ga, gb, c, c, 16, rho={}, seed=9)
+    assert np.array_equal(ra, ga.sample(c, 16, seed=9))
+    assert np.array_equal(rb, gb.sample(c, 16, seed=9))
+
+
+def test_sample_coupled_never_touches_the_hub_panels_stream():
+    """Panel A's noise is read, never written, so its draw is bit-identical at EVERY rho.
+    This is the structural half of PR-20's marginal-invariance criterion (B1)."""
+    ga, gb, c = _toy_pair()
+    ra, _ = G.sample_coupled(ga, gb, c, c, 16, rho={"p": -0.6}, seed=9)
+    assert np.array_equal(ra, ga.sample(c, 16, seed=9))
+
+
+def test_sample_coupled_induces_correlation_of_the_requested_sign():
+    """The point of the mechanism: coupled noise -> correlated same-week increments.
+    Sign only — the magnitude is the calibrated, registered quantity, not a unit test's."""
+    ga, gb, c = _toy_pair()
+    ra, rb = G.sample_coupled(ga, gb, c, c, 128, rho={"p": -0.9}, seed=9)
+    r = np.mean([np.corrcoef(ra[:, w, 0], rb[:, w, 0])[0, 1] for w in range(4)])
+    assert r < -0.15
+    _, rb0 = G.sample_coupled(ga, gb, c, c, 128, rho={}, seed=9)
+    r0 = np.mean([np.corrcoef(ra[:, w, 0], rb0[:, w, 0])[0, 1] for w in range(4)])
+    assert abs(r0) < abs(r)
+
+
+def test_sample_coupled_refuses_a_non_psd_coupling():
+    """PR-20 (c): sum(rho^2) > 1 has no joint Gaussian. Refusal, not silent rescale —
+    the rescale is a registered, reported act, never an automatic one."""
+    ga, gb, c = _toy_pair()
+    with pytest.raises(ValueError, match="PSD"):
+        G.sample_coupled(ga, gb, c, c, 8, rho={"p": 0.8, "q": 0.8}, seed=9)
+
+
+def test_sample_coupled_refuses_a_multi_column_hub_and_mismatched_horizons():
+    """The judged mechanism has claims_weekly (d=1) as the hub and week-w meaning the
+    same week on both sides; anything else is an unjudged generalisation and must not
+    run silently."""
+    ga, gb, c = _toy_pair()
+    with pytest.raises(ValueError, match="single-column"):
+        G.sample_coupled(gb, ga, c, c, 8, rho={}, seed=9)
+    with pytest.raises(ValueError, match="not in panel B"):
+        G.sample_coupled(ga, gb, c, c, 8, rho={"nope": -0.5}, seed=9)
