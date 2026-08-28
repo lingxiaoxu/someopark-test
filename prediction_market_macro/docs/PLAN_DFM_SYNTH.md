@@ -1269,6 +1269,18 @@ mechanism is that dedup removes 30–38% of the `knn` pool and the rows it remov
 *with* near twins, leaving a surviving pool biased toward atypical rows; but that is a story,
 not a measurement, and it stays open and is not used to support any conclusion here.
 
+> **AMENDED by §4e-H (#211).** Two things in the paragraph above are wrong. (1) **"and 0.526 on
+> inflation fold 1 — below chance"** is false: the reading is **0.5257**, which is *above* 0.5.
+> It was put in a list of sub-chance numbers for being small. What is true of it is that it sits
+> under its own `floor_train` of 0.829 — and 14 of the run's 24 fold-arms do that, on all four
+> panels and both arms, so it is the ordinary condition here and not a flag. (2) Calling the
+> finding a **`knn`** inversion is wrong: at the 0.5 line, three of the six inverting cells are
+> the **`boot`** arm, and all six are `claims_weekly` — the panel whose floor this same section
+> measures *at chance*. The survivorship story was then tested and did not survive (§4e-H): the
+> nn distance rose on 8/24, mean −0.0104, i.e. the sign points the other way. The residual is
+> real but smaller and differently shaped than this paragraph says, and it stays **UNEXPLAINED**
+> by D4 rather than being attached to whichever hypothesis was left standing.
+
 > **Cross-reference corrected (2026-08-28).** This paragraph originally sent the reader to "the
 > same drawer as §4e-A's unexplained 0.235/0.248". Those readings are **not** unexplained: §4e-A
 > itself, four hundred lines above, opens with "**They were already explained.**" — §4d "Death 2"
@@ -1572,6 +1584,102 @@ Artifacts: `/tmp/dfm_verify/pr14_ab.py|.json|.log` (criteria a, b, d — no fit,
 `pr14_c.py|.json|.log` (criterion c — four fits on production's path, `dfm/` called and not
 modified). Code: `MEM_POS_CUT`, `_mem_gauss`, `_separability`'s `mem_gauss`/`mem_gauss_range`/
 `mem_pos`, and eight tests in `tests/test_synth_generator.py`.
+
+### 4e-H. The drawer, opened — and what was in it was mislabelled twice (#211, 2026-08-28)
+
+§4e-E left exactly one result flagged and unexplained, and §4d's correction above narrowed the
+drawer to that one thing. `knn_inversion.py` was written to empty it, and it registered its own
+decision rule *before* it ran:
+
+> **D1.** H1 (near-twin crowding) is ESTABLISHED only if `auc_1nn` is below 0.5 on EVERY fold
+> where `auc` is below 0.5, AND the across-fold Pearson correlation between `auc_1nn - 0.5` and
+> `auc - 0.5` over all folds and both resampling arms exceeds +0.5.
+> **D2.** H3 (seed artifact) is killed only if at least 18 of 20 seeds land below 0.5 on each
+> inverting fold. **D3.** H4 (boosting artifact) is killed only if the linear classifier ALSO
+> reads below 0.5 on the inverting folds. **D4.** If D1 fails, the result goes back in the drawer
+> marked UNEXPLAINED. I do not get to pick whichever of H2/H3/H4 survived and call it the
+> mechanism.
+
+`knn_harvest.py` applies those four verbatim and contains **no threshold of its own**. It adds
+two things the original did not have: each fold's own `floor_train` from the `sep_redo.json` run
+§4e-E was written from, carried strictly to *annotate*; and a CONTROL.
+
+**CONTROL first, because nothing below is readable without it.** The `dfm` arm was deliberately
+not rebuilt in this pass and its rng draw was consumed by a placeholder of identical size,
+precisely so that `boot` and `knn` would come back bit-identical to `sep_redo.json`. They did:
+**24 of 24, to 1e-12**. The comparison is between two readings of one run, not two runs.
+
+| panel | fold | arm | auc | floor_train | auc_1nn | auc_lin | seeds < 0.5 |
+|---|---|---|---|---|---|---|---|
+| claims_weekly | 0 | boot | 0.486 | 0.476 | 0.519 | 0.451 | 20/20 |
+| claims_weekly | 0 | knn | **0.391** | 0.476 | 0.486 | 0.457 | 20/20 |
+| claims_weekly | 1 | boot | 0.462 | 0.439 | 0.539 | 0.578 | 14/20 |
+| claims_weekly | 1 | knn | **0.394** | 0.439 | 0.520 | 0.513 | 20/20 |
+| claims_weekly | 2 | boot | 0.487 | 0.538 | 0.531 | 0.525 | 10/20 |
+| claims_weekly | 2 | knn | **0.460** | 0.538 | 0.514 | 0.489 | 10/20 |
+
+Those six are the **entire** set of fold-arms below 0.5 out of 24.
+
+**Mislabel 1: `inflation_monthly` fold 1 is not below chance, and never was.** §4e-E's flagging
+paragraph reads "0.391 / 0.394 / 0.460 on claims and 0.526 on inflation fold 1 — below chance
+again". `sep_redo.json` gives that reading as **0.5257**, which is *above* 0.5, and the harvest
+reproduces it bit for bit. It does not belong in a list of sub-chance readings; the sentence put
+it there because it was small, not because it was below the line the sentence itself named.
+(`knn_inversion.py`'s own docstring compounds this, citing "0.484 on `inflation_monthly` fold 1"
+— a number that appears in no artifact in this project. Both are corrected below rather than
+quietly dropped.) What *is* true of that cell is that 0.5257 sits far under its own
+`floor_train` of **0.829** — but that is a different statement, and it is not rare: **14 of 24**
+fold-arms read below their own panel/fold floor, spanning all four panels and both arms. Below
+its own floor is the *ordinary* condition of this run, not the anomaly.
+
+**Mislabel 2: it is not a `knn` phenomenon.** At the 0.5 line the rule was registered on, the
+inverting set is three `boot` cells and three `knn` cells, and every one of them is
+`claims_weekly`. The structural fact is the *panel*, not the arm — and §4e-E supplies the reason
+in its own prose two paragraphs earlier: on the single-column panel block bootstrap destroys
+nothing a classifier can see, so `claims_weekly`'s floor *is* chance (0.476 / 0.439 / 0.538).
+Readings scattered a few points either side of 0.5 on a panel whose floor is 0.5 are what a
+floor at 0.5 looks like from below.
+
+> **An observation that is recorded and deliberately NOT applied.** Measured against each fold's
+> own floor rather than against 0.5, the three `boot` cells are unremarkable (+0.010, +0.023,
+> −0.051) while the three `knn` cells are not (−0.085, −0.045, −0.078) — so a
+> floor-relative reading would put the name "knn inversion" back. **The rule was registered at 0.5 and is
+> applied at 0.5.** Re-cutting it at the floor after seeing which cells that moves is precisely
+> the threshold retry `docs/PREREGISTER.md` forbids, and §4e-E's whole correction was that a
+> floor has to be measured *before* it is used as a line. This goes into a future registration,
+> with its own K, or nowhere.
+
+**D1 fails on (a) and passes on (b).** `auc_1nn` is below 0.5 on **1 of 6** inverting cells —
+the five violations are claims f0 boot (1nn 0.519), f1 boot (0.539), f1 knn (0.520), f2 boot
+(0.531), f2 knn (0.514). Across all 24 cells corr(`auc_1nn` − 0.5, `auc` − 0.5) = **+0.611**,
+clearing the +0.5 the rule asked for. Both halves were required. **H1 is NOT ESTABLISHED.**
+
+**D2 and D3 are falsifiers, and neither fired cleanly.** H3 (seeds) survives on claims f1 boot
+(14/20), f2 boot (10/20) and f2 knn (10/20); H4 (boosting) survives on claims f1 boot
+(`auc_lin` 0.578), f1 knn (0.513) and f2 boot (0.525). **Their survival promotes nothing.**
+Neither was written as a positive explanation — they were written as ways to kill the finding,
+and a killer that misses leaves the finding exactly where it was.
+
+**H2 was measured even though its sign was wrong before the run.** §4e-E's survivorship story
+requires dedup to leave a pool *further* from the held-out real rows. The nearest-neighbour
+distance to held-out real rows **rose** on 8 of 24 fold-arms, mean change **−0.0104** (sd
+0.0630). The data points the other way, weakly.
+
+**D4, applied as written: UNEXPLAINED.** Not "probably the floor", not "probably survivorship".
+The drawer had one thing in it, the thing turned out to be two mislabels plus a residual, the
+two mislabels are corrected here, and the residual — `knn` reading 0.045 to 0.085 under a
+measured floor on one single-column panel — has no mechanism that survived its own test. It is
+recorded at that size, which is small, and it stays open.
+
+**What this does and does not disturb.** Nothing in the product: `_separability` still has no
+production caller (§4e-A), so this is a correction to the **report**. §4e-E's floors, its
+reversal of §4e-C's headline, and its amendment of #185 are all untouched — the CONTROL says so
+in 24 places. The two corrected sentences are amended in place at §4e-E rather than rewritten,
+for the same reason #184b's point 2 was.
+
+Artifacts: `/tmp/dfm_verify/knn_inversion.py|.json|.log` (the run, four panels × three folds ×
+two arms), `knn_harvest.py|.json` (D1–D4 applied, CONTROL, floor annotation). No `dfm/` call and
+no production write in either.
 
 ### 4e-I. The print grid was measured five times too fine, and the reason is derivable (#203, 2026-08-28)
 
