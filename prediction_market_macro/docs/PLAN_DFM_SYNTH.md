@@ -2391,6 +2391,13 @@ Two things follow, and they point in opposite directions, which is why both are 
    conditioning would move the comparison toward the 0.003-Brier corner of the book, which
    makes the model look better by making the question easier. No edge lives there.
 
+   > **AMENDED by §5e (#213c).** The conclusion "not a rescue" stands, but *this reason for it
+   > is wrong and is corrected there.* The unquoted book is **not** the 0.003-Brier corner —
+   > its best-constant Brier is 0.2245, and 0.2490 once KXWTIW is excluded, i.e. **more**
+   > uncertain than the quoted book's 0.2394. It is not a rescue because none of those 6718
+   > legs ever carried a quote in its life, so there is no counterparty; not because the
+   > questions are easy. Point 1 is *strengthened* by that, not weakened.
+
 What the 80.4% *does* bound is §5b-2's hypothesis (b) — events with no quote at all, where
 there is no market number to lose to. It is a large denominator and it is now measured
 instead of assumed. Whether any of it is *tradeable* is a different question with a likely
@@ -2642,6 +2649,99 @@ will need its own preregistration before any of it is scored.
 
 Artifacts: `/tmp/dfm_verify/xseries_dep.py`, `xpanel_dep.py`, and the preserved
 `xseries_dep_BUGGY_matchcount.{json,log}`.
+
+## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
+
+#184b measured a denominator and stopped there on purpose: of **8360** settled legs across the
+fourteen series, only **1642** carry a usable two-sided book one hour before close, so **80.4%
+of the book is dropped from every Brier in this document**. It handed the open half forward in
+one sentence — *"whether any of it is tradeable is a different question with a likely
+unpleasant answer (nobody quoting is nobody to trade with)"*. That sentence was a guess.
+`/tmp/dfm_verify/unquoted_b.py` replaces it with a count, and reproduces #184b's
+8360 / 1642 / 80.4% exactly before splitting it.
+
+**Registered before the run** (§5b-2 (b) is the hypothesis that unquoted events are where the
+DFM earns, because there is no market number to lose to): (b) survives only if a material share
+of unquoted legs **both** ever trade **and** settle away from the degenerate corner that killed
+#184b's thinness gate. Two conditions, and they are answered in opposite directions.
+
+### Reachability: closed, hard
+
+`_market_leg_bar` can reject a leg for three distinct reasons, and #184b's single percentage
+collapsed them. Split:
+
+| drop reason | legs | share of unquoted |
+|---|---|---|
+| R1 — no candle at or before asof | 6 | 0.1% |
+| R2 — a bar exists but a side is NULL | 6712 | 99.9% |
+| R3 — a bar with `bid ≤ 0` and `ask ≥ 1` | 0 | 0.0% |
+
+R1 is the ambiguous one — "we asked early" rather than "there was nothing" — and it is
+**6 legs**. Of those, **0** ever got a bar later. So the 80.4% is not an artifact of asking an
+hour before close.
+
+The 6712 R2 legs are not one-sided books. Every NULL bar in the table is **entirely NULL with
+`end_ts = 0`**: 6716 such rows, **exactly one per ticker**, and **zero** tickers carry both a
+sentinel and a real bar. That row shape has one writer and a documented meaning —
+`ingest/kalshi_md.py::MD.candles` writes it on an HTTP **404**, *"Kalshi never generated
+candlesticks for this ticker"*, and `ops/archive_candles.py::_confirm_empty` reuses the same
+shape for a 200 with an empty list. It is a record of absence, not of a broken quote.
+
+The step that makes this decisive is that **a Kalshi candle is produced by a quote, not by a
+trade**: 4262 real bars carry `volume = 0` with both sides present, and **217 of the 1642**
+tickers with real bars have zero lifetime volume. A market that was merely quoted and never
+traded therefore *does* get candles. So a 404 does not mean "untraded" — it means the ticker
+**never carried a two-sided quote in its life**. Consistent with that, lifetime volume is zero
+for **6718 / 6718** unquoted legs, and `unquoted & ever traded` is an empty bucket in every one
+of the fourteen series.
+
+This confirms #184b's guess, and it should be stated at its true strength and no higher. It
+does **not** say those strikes are impossible to trade — Kalshi markets are open and one can
+post a resting order on an untraded strike. It says that across the whole recorded history
+**nobody else ever did**, so any fill would come from someone crossing a lone resting order,
+which is the adverse-selected side of every trade one gets. There is no passive liquidity to
+lift.
+
+### Uncertainty: the guess was wrong here
+
+The second half of #184b's sentence assumed the unquoted book is the same deep-OTM triviality
+that made the thinness gate meaningless (both sides scoring Brier 0.003 there). Measured with
+the best-constant Brier `p(1−p)` — the most generous model-free reading of how much uncertainty
+a bucket holds; 0.25 is a coin flip, 0.003 is the dead corner:
+
+| bucket | n | P(yes) | best-constant Brier |
+|---|---|---|---|
+| quoted | 1642 | 0.397 | 0.2394 |
+| unquoted | 6718 | 0.340 | **0.2245** |
+| unquoted, excluding KXWTIW | 4580 | 0.468 | **0.2490** |
+
+The unquoted book is **not** the degenerate corner. It is very slightly flatter than the quoted
+book overall, and once the one genuinely degenerate series is removed it is **more** uncertain
+than the book that gets quoted. Per series, unquoted P(yes) runs KXFED 0.629, KXPAYROLLS 0.571,
+KXCPICOREYOY 0.565, KXPCECORE 0.500, KXAAAGASW 0.493 — these are coin-flip strikes that nobody
+quoted. Only **KXWTIW** matches #184b's picture (P(yes) = 0.066 on 2138 legs, i.e. 2138 of its
+3998 sentinel rows), and KXFEDDECISION leans the other way at 0.200. KXGDP is the sole series
+with **no** unquoted legs at all (9 / 9 quoted).
+
+### Verdict on (b)
+
+**(b) is closed, negative, and for the opposite reason to the one that was assumed.** The
+unquoted 80.4% is not trivial — it is where the interesting questions are, and it is precisely
+where a model has the largest edge over a market number that does not exist. It is unusable
+anyway because condition 1 fails completely: 6718 of 6718 legs never carried a quote, so the
+DFM's advantage there is an advantage over a counterparty who is not present. The 0.2245 is
+worth recording rather than discarding because it says the loss is real: this is not 6718 legs
+of nothing, it is 6718 legs of genuine uncertainty with no market attached.
+
+One consequence for the rest of this document: **every Brier, CRPS and coverage number here is
+computed on the quoted 19.6%, and that subsample is now known to be selected on
+uncertainty-and-liquidity jointly, not at random.** It is the easier, more-traded fifth of the
+book. Nothing in §4 or §5 should be read as an estimate of performance over the full universe.
+
+With this, §5b-2's three surviving hypotheses stand as: **(b) closed negative** (here),
+**(c) measured and real, generated at zero** (§5d, fix tracked as #214), **(a) still open** —
+sizing and λ under a correct joint law, which cannot be asked until #214 makes a joint law
+exist. Artifacts: `/tmp/dfm_verify/unquoted_b.py`, `unquoted_b.{json,log}`.
 
 ## 6. Calibrating lambda (S5)
 
