@@ -523,3 +523,23 @@ def test_corr_cluster_cap_is_inert_without_the_matrix_and_one_sided_with_it(monk
     monkeypatch.setattr(risk, "_corr_matrix",
                         lambda: {"KXWTIW|KXPAYROLLS": 0.2})
     assert risk.check(conn, "KXPAYROLLS", "2026-09", 3.0) is None
+
+
+def test_fut_closes_excludes_null_closes():
+    """2026-08-29: one NULL-close bar per root NaN'd every consumer (KXFED x5, KXCPI,
+    KXCPIYOY, KXWTIW). A close-less bar is an absent observation, and the count guards
+    downstream (len(rb) >= 5) only do their job if it never reaches them."""
+    import sqlite3
+    from datetime import datetime, timezone
+    from prediction_market_macro.model.features import FeatureStore
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE fut_daily(root TEXT, event_time TEXT, close REAL,"
+                 " knowledge_time TEXT)")
+    conn.executemany("INSERT INTO fut_daily VALUES('RB',?,?,?)",
+                     [("2026-08-26", 3.32, "2026-08-26T18:00:00"),
+                      ("2026-08-27", 3.38, "2026-08-27T18:00:00"),
+                      ("2026-08-28", None, "2026-08-28T18:00:00")])
+    s, _ = FeatureStore(conn).fut_closes("RB", datetime(2026, 8, 29, tzinfo=timezone.utc))
+    assert len(s) == 2 and float(s.iloc[-1]) == 3.38
+    assert not s.isna().any()

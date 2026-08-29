@@ -169,7 +169,11 @@ class FeatureStore:
             "SELECT event_time, close, knowledge_time FROM fut_daily WHERE root=? AND"
             " knowledge_time<=? ORDER BY event_time DESC LIMIT ?",
             (root, asof.isoformat(), n)).fetchall()
-        s = pd.Series({pd.Timestamp(r["event_time"]): r["close"] for r in rows}).sort_index()
+        # completed bars only — the contract energy.py's docstring already states. A
+        # NULL close (pre-fix ingest wrote them for half-formed sessions) is an absent
+        # observation, and iloc[-1] arithmetic on one turns a prediction into NaN.
+        s = pd.Series({pd.Timestamp(r["event_time"]): r["close"] for r in rows
+                       if r["close"] is not None}).sort_index()
         horizon = max((r["knowledge_time"] for r in rows), default=None)
         return s, horizon
 

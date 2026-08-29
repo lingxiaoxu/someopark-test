@@ -13,6 +13,8 @@ PIT: only COMPLETED daily bars are stored; knowledge_time = bar date 18:00 ET
 """
 from __future__ import annotations
 
+import math
+
 import json
 import urllib.request
 from datetime import date, datetime, time, timedelta, timezone
@@ -96,6 +98,12 @@ def pull_futures(conn, roots: list[str] | None = None, lookback_days: int = 900,
         for ts, r in df.iterrows():
             d = ts.date()
             if d >= today:                      # §5-bis 口2: today's bar is incomplete
+                continue
+            # A bar without a close is not a completed session — yfinance emits these
+            # for half-formed or holiday days. float(nan) stores as NULL and one such
+            # row poisoned every fut_closes consumer on 2026-08-29 (KXFED x5 / KXCPI /
+            # KXCPIYOY / KXWTIW predictions all NaN'd off the same 08-28 rows).
+            if not math.isfinite(float(r["Close"])):
                 continue
             conn.execute(
                 "INSERT OR REPLACE INTO fut_daily(root, event_time, open, high, low, close,"
