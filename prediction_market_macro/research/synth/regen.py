@@ -484,6 +484,93 @@ def remeasure_weekly_lambda(conn, s, *, now: datetime | None = None, log=None) -
     return out
 
 
+def portfolio_corr(conn, s, *, now: datetime | None = None, n_paths: int = 64,
+                   seed: int = 0, log=None) -> dict:
+    """The correlated-cluster matrix (PR-29): 10 series' settlement summaries, one joint draw.
+
+    A dedicated `n_paths=64` pass through the production samplers — coupled+AR weekly,
+    pinned monthly — WITHOUT writing worlds (draws cost seconds; §5f measured that 8 is
+    hopeless and 64 resolves). Each series' summary is its settle column's total increment
+    over its own horizon; the pairwise correlation across the 64 joint draws lands in
+    `data/synth/portfolio_corr.json`, which `ops/risk.py` reads for the one-sided
+    `per_corr_cluster_usd` cap. File absent -> cap inert; this function failing therefore
+    degrades to today's behavior, never to a wrong number.
+    """
+    import pandas as pd
+    now = now or datetime.now(UTC)
+    root = _root(s)
+    root.mkdir(parents=True, exist_ok=True)
+    snap = W.snapshot(s.db_path, root / "snapshot.db")
+    src = sqlite3.connect(snap)
+    src.row_factory = sqlite3.Row
+    try:
+        prep = {}
+        for pname in ("claims_weekly", "energy_weekly"):
+            pdata = P.build(src, pname, now)
+            anchor = pdata.inc.index[-1]
+            c_raw = P.condition_row(pdata.levels, pdata.inc, pdata.spec, anchor)
+            gen = G.Generator.fit_local(pdata, G.GenConfig(panel=pname, seed=seed + 7),
+                                        c_raw, k=120)
+            prep[pname] = (pdata, gen, c_raw)
+        (pc, gc, cc), (pe, ge, ce) = prep["claims_weekly"], prep["energy_weekly"]
+        inc_c, inc_e = G.sample_coupled(gc, ge, cc, ce, n_paths,
+                                        rho=G.WEEKLY_COUPLING, seed=seed + 3,
+                                        ar_phi_b=G.PANEL_AR.get("energy_weekly"))
+        lv = {"claims_weekly": P.integrate_paths(
+                  inc_c, pc.levels.loc[pc.inc.index[-1]], pc.spec, gc.lattice),
+              "energy_weekly": P.integrate_paths(
+                  inc_e, pe.levels.loc[pe.inc.index[-1]], pe.spec, ge.lattice)}
+        fwd_w = P.forward_periods(pc.spec, pc.inc.index[-1], pc.spec.horizon)
+        incs = {"claims_weekly": inc_c, "energy_weekly": inc_e}
+        for mpanel, (col, hub_panel, hub_col) in PINNED_MONTHLY.items():
+            pdata = P.build(src, mpanel, now)
+            anchor = pdata.inc.index[-1]
+            c_raw = P.condition_row(pdata.levels, pdata.inc, pdata.spec, anchor)
+            gen = G.Generator.fit_local(
+                pdata, G.GenConfig(panel=mpanel, seed=seed + 7,
+                                   ar_phi=G.PANEL_AR.get(mpanel)), c_raw, k=120)
+            hub_p = pc if hub_panel == "claims_weekly" else pe
+            hub_j = [c.name for c in hub_p.spec.gen_columns].index(hub_col)
+            mm, _fd = _month_means(hub_p.levels[hub_col].dropna(), fwd_w,
+                                   lv[hub_panel][:, :, hub_j], n_paths)
+            cols = [c.name for c in pdata.spec.gen_columns]
+            J, d = cols.index(col), pdata.spec.d
+            fwd_m = P.forward_periods(pdata.spec, anchor, pdata.spec.horizon)
+            pins = {}
+            for mi, t in enumerate(fwd_m):
+                ym = (t.year, t.month)
+                pm_ = t - pd.offsets.MonthBegin(1)
+                if ym in mm and (pm_.year, pm_.month) in mm:
+                    pins[mi * d + J] = np.log(mm[ym]) - np.log(mm[(pm_.year, pm_.month)])
+            incs[mpanel] = G.sample_pinned(gen, c_raw, pins, n_paths, seed=seed + 3)
+    finally:
+        src.close()
+
+    summaries, panels = {}, {}
+    for series, st in BD.SETTLES.items():
+        if st.panel not in incs:
+            continue
+        conn_p = sqlite3.connect(f"file:{snap}?mode=ro", uri=True)
+        conn_p.close()
+        spec = P.PANELS[st.panel]
+        j = [c.name for c in spec.gen_columns].index(st.column)
+        summaries[series] = incs[st.panel][:, :, j].sum(axis=1)
+        panels[series] = st.panel
+    names = sorted(summaries)
+    corr = {}
+    for i, a in enumerate(names):
+        for b in names[i + 1:]:
+            corr[f"{a}|{b}"] = round(float(np.corrcoef(summaries[a],
+                                                       summaries[b])[0, 1]), 4)
+    out = {"measured_ts": now.isoformat(), "n_paths": n_paths, "seed": seed,
+           "series": names, "panels": panels, "corr": corr}
+    path = root / "portfolio_corr.json"
+    path.write_text(json.dumps(out, indent=1))
+    if log:
+        log(f"  portfolio_corr: {len(names)} series, {len(corr)} pairs -> {path}")
+    return out
+
+
 def lambda_board(conn, *, now: datetime | None = None) -> dict:
     """What lambda every monthly target would trade at TODAY, with its basis and age.
 

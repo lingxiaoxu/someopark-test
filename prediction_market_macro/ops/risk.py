@@ -22,9 +22,33 @@ LIMITS = {
     "per_cluster_usd": 8.0,     # same (family, period) across series — correlated prints
                                 # (plan said $40; kept at $8 deliberately — more
                                 # conservative until any series passes the gate)
+    "per_corr_cluster_usd": 8.0,  # PR-29: exposure across series whose JOINT-LAW settle
+                                  # correlation with the candidate is >= CORR_CLUSTER_MIN,
+                                  # regardless of family. One-sided by construction; inert
+                                  # when data/synth/portfolio_corr.json is absent.
     "per_release_day_usd": 30.0,  # total NEW exposure opened per calendar day (§12)
     "gross_usd": 100.0,
 }
+CORR_CLUSTER_MIN = 0.5           # frozen with the limit by PR-29; changes need a new PR
+
+
+def _corr_matrix() -> dict:
+    # The weekly-refreshed joint-law correlation pairs, or {} when absent/unreadable.
+    # {} makes the corr-cluster cap a no-op: the registered degradation direction — this
+    # cap may only ever remove risk, so its failure mode must be "no cap", never "wrong
+    # cap".
+    import json
+    from prediction_market_macro.config.settings import load_settings
+    try:
+        p = load_settings(require_keys=False).db_path
+        raw = json.loads((p.parent / "synth" / "portfolio_corr.json").read_text())
+        return {k: float(v) for k, v in raw.get("corr", {}).items()}
+    except Exception:                                              # noqa: BLE001
+        return {}
+
+
+def _corr(pairs: dict, a: str, b: str) -> float:
+    return pairs.get(f"{a}|{b}", pairs.get(f"{b}|{a}", 0.0))
 
 
 @dataclass(frozen=True)
@@ -67,6 +91,17 @@ def check(conn, series: str, period: str, size_usd: float) -> Veto | None:
         return Veto(f"risk_per_family {fam_ex + size_usd:.2f}>{LIMITS['per_family_usd']}")
     if cl + size_usd > LIMITS["per_cluster_usd"]:
         return Veto(f"risk_cluster {cl + size_usd:.2f}>{LIMITS['per_cluster_usd']}")
+    # PR-29: the joint-law generalization of the cluster cap — series whose generated
+    # settle summaries co-move (same panel draw, coupled bridges, pins) count together
+    # whatever their family. Reads the weekly matrix; inert without it.
+    pairs = _corr_matrix()
+    if pairs:
+        corr_ex = sum((p["size_usd"] or 0.0) for p in _open_exposure(conn)
+                      if p["series"] != series
+                      and _corr(pairs, series, p["series"]) >= CORR_CLUSTER_MIN)
+        if corr_ex + size_usd > LIMITS["per_corr_cluster_usd"]:
+            return Veto(f"risk_corr_cluster {corr_ex + size_usd:.2f}"
+                        f">{LIMITS['per_corr_cluster_usd']}")
     if gross + size_usd > LIMITS["gross_usd"]:
         return Veto(f"risk_gross {gross + size_usd:.2f}>{LIMITS['gross_usd']}")
     # #151/F7. Every cap above reads `_open_exposure` -> `ledger.open_positions`, which

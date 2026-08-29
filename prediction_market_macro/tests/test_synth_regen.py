@@ -500,3 +500,26 @@ def test_month_means_pins_only_fully_drawn_calendar_months():
     assert (2026, 8) in mm and (2026, 8) not in fully     # mixed real+drawn: mean, no pin
     assert (2026, 9) in fully and (2026, 10) in fully     # fully drawn calendar months
     assert (2026, 11) not in mm                           # truncated at the horizon
+
+
+def test_corr_cluster_cap_is_inert_without_the_matrix_and_one_sided_with_it(monkeypatch):
+    """PR-29's C criterion as tripwires: no file -> check() behaves exactly as before
+    (the cap cannot fire); with a matrix, it can only Veto — there is no code path that
+    raises a size."""
+    from prediction_market_macro.ops import risk
+    monkeypatch.setattr(risk, "_corr_matrix", lambda: {})
+    monkeypatch.setattr(risk, "_open_exposure",
+                        lambda conn: [{"series": "KXWTIW", "period": "2026-09",
+                                       "size_usd": 6.0}])
+    import sqlite3
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE decisions(kind TEXT, ts_utc TEXT, size_usd REAL)")
+    assert risk.check(conn, "KXPAYROLLS", "2026-09", 3.0) is None
+    monkeypatch.setattr(risk, "_corr_matrix",
+                        lambda: {"KXWTIW|KXPAYROLLS": 0.9})
+    v = risk.check(conn, "KXPAYROLLS", "2026-09", 3.0)
+    assert v is not None and "risk_corr_cluster" in v.reason
+    monkeypatch.setattr(risk, "_corr_matrix",
+                        lambda: {"KXWTIW|KXPAYROLLS": 0.2})
+    assert risk.check(conn, "KXPAYROLLS", "2026-09", 3.0) is None
