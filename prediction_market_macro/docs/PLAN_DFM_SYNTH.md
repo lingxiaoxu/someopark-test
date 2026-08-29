@@ -3625,6 +3625,16 @@ larger-n_paths calibration draw, priced into that registration.
 
 Artifacts: `/tmp/dfm_verify/sizing_first_measure.json`.
 
+**Addendum, the power question answered (2026-08-29).** Measured on dedicated coupled
+draws (claims/wti/natgas standardized, frozen production rho + phi): at `n_paths = 8` the
+ratio's 5–95% band is 0.36 wide and cannot exclude 1.0; at **64** it is 0.864
+[0.792, 0.939] — excludes 1.0, effect resolvable; at 256, 0.929 [0.882, 0.978]. A
+portfolio-λ registration is therefore FEASIBLE with a dedicated `n_paths >= 64`
+calibration draw (draws cost ~1s; only worlds are expensive), and the measured joint-law
+ratio sits in the neighbourhood of §5d's real-data 0.883 — the direction that LICENSES
+more risk, which is exactly why §5d's warning, not this number, still gates adoption.
+Artifacts: `/tmp/dfm_verify/sizing_power.{json,log}`.
+
 ## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
 
 #184b measured a denominator and stopped there on purpose: of **8360** settled legs across the
