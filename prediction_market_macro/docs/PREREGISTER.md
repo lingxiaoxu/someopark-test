@@ -973,4 +973,4 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | 纯真实月的处理,如实声明 | **不钉**。已公布数据的信息注入是真实且有价值的条件化,但它需要自己的杠体系(信息注入类),留给未来注册;本条不用它、不判它 |
 | K | 钉机制第 2 次判定 |
 | 影响面 | 采纳=预抽扩展为十系列联合 pass:`run_weekly` 起周度耦合 draw 后,对 labor/inflation 两 panel 以 `sample_pinned` 生成钉后路径、`build(paths=…)` 注入其 7 个月度系列;`refresh` 的两步 regen 并为一步 `run_joint`;KXGDP 不动;只对新世界生效 |
-| 结论 | 待跑 |
+| 结论 | **ADOPTED**(2026-08-29。钉域=全抽出月(两 panel 各得 Sep/Oct 2026)。**A PASS** 被钉增量逐位精确;**B PASS 全余量**:labor payems drift 0.019sd/var 0.959/acf1 −0.003,unrate 0.016/0.991/+0.006;inflation cpi 0.062/0.906/−0.011,cpi_core 0.055/0.998,pce_core 0.043/0.997;被钉列 var 1.187/0.911 均在 [0.80,1.25];**C1/C2/D 全 PASS**(空钉逐位、周度流确定、事件 88=88 两面两 panel)。被钉月的水平恒等相关 0.73/0.84(labor)、0.46/0.66(inflation)——增量精确但前月未钉,水平部分传递,与注册的钉域定义一致、如实报告。落地:`regen.run_joint` 十系列联合 pass(`_month_means` 域规则带单测),`refresh` 两步并一步 `weekly_synth_regen_joint`;`sample_pinned` 自此在产生效。工件 `pr26_judge.py`、`pr26_verdict.json` |

@@ -481,3 +481,22 @@ def test_a_fresh_sample_invalidates_the_daily_cache(tmp_path):
     conn.commit()
     assert PA._fingerprint(conn, "KXPCECORE", NOW) != fp2, \
         "the day lambda lands, every monthly market must rescore"
+
+
+def test_month_means_pins_only_fully_drawn_calendar_months():
+    """PR-26's domain rule: a month qualifies only if every W-SAT of the CALENDAR month
+    is present, and it is pinnable only if every one of those weeks is DRAWN — a month
+    truncated at the horizon or padded with real weeks must not enter the pin domain."""
+    import numpy as np
+    import pandas as pd
+    from prediction_market_macro.research.synth.regen import _month_means
+    real = pd.Series({pd.Timestamp("2026-08-01"): 100.0,
+                      pd.Timestamp("2026-08-08"): 101.0,
+                      pd.Timestamp("2026-08-15"): 102.0,
+                      pd.Timestamp("2026-08-22"): 103.0})
+    fwd = pd.date_range("2026-08-29", periods=13, freq="W-SAT")
+    drawn = np.tile(np.arange(13, dtype=float) + 200.0, (4, 1))
+    mm, fully = _month_means(real, fwd, drawn, 4)
+    assert (2026, 8) in mm and (2026, 8) not in fully     # mixed real+drawn: mean, no pin
+    assert (2026, 9) in fully and (2026, 10) in fully     # fully drawn calendar months
+    assert (2026, 11) not in mm                           # truncated at the horizon

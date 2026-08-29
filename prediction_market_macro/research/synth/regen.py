@@ -48,6 +48,8 @@ from __future__ import annotations
 import json
 import shutil
 import sqlite3
+
+import numpy as np
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -298,6 +300,138 @@ def run_weekly(conn, s, *, now: datetime | None = None, n_paths: int = N_PATHS,
             out[name] = (f"ok run={r['run_id']} n_synth={r['n_synth']} k={r['k']} "
                          f"weight={r['weight']}" if r["stored"]
                          else f"skipped: {r['reason']}")
+    finally:
+        src.close()
+    return out
+
+
+PINNED_MONTHLY: dict[str, tuple[str, str, str]] = {
+    # monthly panel -> (pinned column, hub weekly panel, hub column). PR-26 (#214).
+    "labor_monthly": ("claims", "claims_weekly", "claims"),
+    "inflation_monthly": ("gas_retail", "energy_weekly", "gas_retail"),
+}
+
+
+def _month_means(levels_real, fwd_w, drawn, n_paths):
+    """(year, month) -> per-path month-mean weekly levels, plus which months are FULLY
+    drawn. The completeness rule is the registered one: every W-SAT of the CALENDAR month
+    must be present (real or drawn); a month truncated at the horizon is incomplete. The
+    pin domain (PR-26) is the fully-drawn months only — a pin built from real weeks is a
+    cross-path constant, and PR-25 measured what that does to the panel's variance."""
+    import pandas as pd
+    have, drawn_stamps = {}, set()
+    for t, v in levels_real.items():
+        have[pd.Timestamp(t)] = np.full(n_paths, float(v))
+    for wi, t in enumerate(fwd_w):
+        have[pd.Timestamp(t)] = drawn[:, wi]
+        drawn_stamps.add(pd.Timestamp(t))
+    out, fully_drawn = {}, set()
+    for ym in {(t.year, t.month) for t in have}:
+        start = pd.Timestamp(ym[0], ym[1], 1)
+        stamps = pd.date_range(start, start + pd.offsets.MonthEnd(1), freq="W-SAT")
+        if len(stamps) and all(t in have for t in stamps):
+            out[ym] = np.mean([have[t] for t in stamps], axis=0)
+            if all(t in drawn_stamps for t in stamps):
+                fully_drawn.add(ym)
+    return out, fully_drawn
+
+
+def run_joint(conn, s, *, now: datetime | None = None, n_paths: int = N_PATHS,
+              seed: int = 0, log=print) -> dict:
+    """The ten-series joint pass (PR-26): one coupled weekly draw, everything downstream.
+
+    Order and provenance, because every piece was judged separately:
+      1. weekly pair drawn ONCE through `sample_coupled` with the frozen PR-20 rho and
+         PR-24's `ar_phi_b` — the three weekly series' worlds share draw i;
+      2. labor/inflation drawn through `sample_pinned` with their PR-23 phi, the
+         `claims`/`gas_retail` columns pinned to the weekly draw's month-means on the
+         FULLY-DRAWN months (PR-26's domain — real-week months are deliberately not
+         pinned, see PR-25's verdict);
+      3. every series' worlds built from its panel's slice of that one joint draw via
+         `build(paths=...)`.
+
+    Replaces both `run` (whose whole target list is the labor/inflation series) and
+    `run_weekly` in the refresh lane; both remain callable for explicit use.
+    """
+    import pandas as pd
+    now = now or datetime.now(UTC)
+    root = _root(s)
+    root.mkdir(parents=True, exist_ok=True)
+    snap = W.snapshot(s.db_path, root / "snapshot.db")
+    src = sqlite3.connect(snap)
+    src.row_factory = sqlite3.Row
+    out: dict[str, str] = {}
+    try:
+        book = donors(src, root, now=now, log=log)
+        prep = {}
+        for pname in ("claims_weekly", "energy_weekly"):
+            pdata = P.build(src, pname, now)
+            anchor = pdata.inc.index[-1]
+            c_raw = P.condition_row(pdata.levels, pdata.inc, pdata.spec, anchor)
+            gen = G.Generator.fit_local(pdata, G.GenConfig(panel=pname, seed=seed + 7),
+                                        c_raw, k=120)
+            prep[pname] = (pdata, gen, c_raw, pdata.levels.loc[anchor])
+        (pc, gc, cc, ac) = prep["claims_weekly"]
+        (pe, ge, ce, ae) = prep["energy_weekly"]
+        inc_c, inc_e = G.sample_coupled(gc, ge, cc, ce, n_paths,
+                                        rho=G.WEEKLY_COUPLING, seed=seed + 3,
+                                        ar_phi_b=G.PANEL_AR.get("energy_weekly"))
+        lv = {"claims_weekly": P.integrate_paths(inc_c, ac, pc.spec, gc.lattice),
+              "energy_weekly": P.integrate_paths(inc_e, ae, pe.spec, ge.lattice)}
+        fwd_w = P.forward_periods(pc.spec, pc.inc.index[-1], pc.spec.horizon)
+        if log:
+            log(f"  joint prepass: rho={G.WEEKLY_COUPLING} n_paths={n_paths}")
+
+        for name, pname in WEEKLY_SERIES.items():
+            try:
+                r = one(conn, src, name, root=root, book=book, now=now,
+                        n_paths=n_paths, seed=seed, paths=lv[pname], log=log)
+                out[name] = (f"ok run={r['run_id']} n_synth={r['n_synth']} k={r['k']} "
+                             f"weight={r['weight']}" if r["stored"]
+                             else f"skipped: {r['reason']}")
+            except Exception as exc:                               # noqa: BLE001
+                out[name] = f"FAIL {type(exc).__name__}: {str(exc)[:160]}"
+                if log:
+                    log(f"  {name}: {out[name]}")
+
+        for mpanel, (col, hub_panel, hub_col) in PINNED_MONTHLY.items():
+            pdata = P.build(src, mpanel, now)
+            anchor = pdata.inc.index[-1]
+            c_raw = P.condition_row(pdata.levels, pdata.inc, pdata.spec, anchor)
+            gen = G.Generator.fit_local(
+                pdata, G.GenConfig(panel=mpanel, seed=seed + 7,
+                                   ar_phi=G.PANEL_AR.get(mpanel)), c_raw, k=120)
+            hub_p, hub_lv = prep[hub_panel][0], lv[hub_panel]
+            hub_j = [c.name for c in hub_p.spec.gen_columns].index(hub_col)
+            mm, fully_drawn = _month_means(hub_p.levels[hub_col].dropna(), fwd_w,
+                                           hub_lv[:, :, hub_j], n_paths)
+            cols = [c.name for c in pdata.spec.gen_columns]
+            J, d = cols.index(col), pdata.spec.d
+            fwd_m = P.forward_periods(pdata.spec, anchor, pdata.spec.horizon)
+            pins = {}
+            for mi, t in enumerate(fwd_m):
+                ym = (t.year, t.month)
+                pm_ = t - pd.offsets.MonthBegin(1)
+                if ym in fully_drawn and (pm_.year, pm_.month) in mm:
+                    pins[mi * d + J] = np.log(mm[ym]) - np.log(mm[(pm_.year, pm_.month)])
+            inc_m = G.sample_pinned(gen, c_raw, pins, n_paths, seed=seed + 3)
+            lv_m = P.integrate_paths(inc_m, pdata.levels.loc[anchor], pdata.spec,
+                                     gen.lattice)
+            if log:
+                log(f"  {mpanel}: pinned {sorted(str(fwd_m[c // d].date()) for c in pins)}")
+            for series, st in BD.SETTLES.items():
+                if st.panel != mpanel:
+                    continue
+                try:
+                    r = one(conn, src, series, root=root, book=book, now=now,
+                            n_paths=n_paths, seed=seed, paths=lv_m, log=log)
+                    out[series] = (f"ok run={r['run_id']} n_synth={r['n_synth']} "
+                                   f"k={r['k']} weight={r['weight']}" if r["stored"]
+                                   else f"skipped: {r['reason']}")
+                except Exception as exc:                           # noqa: BLE001
+                    out[series] = f"FAIL {type(exc).__name__}: {str(exc)[:160]}"
+                    if log:
+                        log(f"  {series}: {out[series]}")
     finally:
         src.close()
     return out

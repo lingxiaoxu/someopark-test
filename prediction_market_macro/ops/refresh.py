@@ -233,13 +233,11 @@ def _run(weekly: bool = False) -> dict:
         # the *scores* it leaves in macro.db and never touches a world again. Regenerating
         # weekly keeps every sample inside `param_argmin.SYNTH_MAX_AGE_DAYS`.
         from prediction_market_macro.research.synth import regen as synth_regen
-        step("weekly_synth_regen",
-             lambda: json.dumps(synth_regen.run(conn, s, log=None))[:600])
-        # The coupled weekly pass (#214, PR-20). Separate from `run` on purpose: `run`'s
-        # loop is monthly-only by construction, and the weekly series need ONE joint draw
-        # shared across all three, which no per-series loop can produce.
-        step("weekly_synth_regen_coupled",
-             lambda: json.dumps(synth_regen.run_weekly(conn, s, log=None))[:600])
+        # The ten-series joint pass (PR-26): one coupled weekly draw, weekly worlds from
+        # its slices, monthly labor/inflation worlds pinned to its month-means. Replaces
+        # the former weekly_synth_regen + weekly_synth_regen_coupled pair.
+        step("weekly_synth_regen_joint",
+             lambda: json.dumps(synth_regen.run_joint(conn, s, log=None))[:600])
         # The switch position, stated out loud (§7c): "no lambda row" and "a lambda row
         # that is zero" refuse with the same line in the daily log, which is how a missing
         # writer went unnoticed for a full build cycle. The weekly log therefore records
