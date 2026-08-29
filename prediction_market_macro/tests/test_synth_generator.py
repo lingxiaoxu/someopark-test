@@ -989,3 +989,13 @@ def test_ar_phi_refuses_misalignment_and_out_of_range():
     g.cfg = dataclasses.replace(cfg, ar_phi=(1.0,))
     with pytest.raises(ValueError, match="inside"):
         g.sample(np.array([1.0, 0.0]), 8, seed=3)
+
+
+def test_panel_ar_is_aligned_with_the_panels_it_names():
+    """The frozen PR-23 phis are only valid against the column order they were solved on;
+    a panel edit that reorders or resizes gen_columns must fail here, not sample wrongly."""
+    for name, phis in G.PANEL_AR.items():
+        spec = P.PANELS[name]
+        assert len(phis) == len(spec.gen_columns), (name, phis)
+        assert all(abs(p) < 1.0 for p in phis)
+    assert "claims_weekly" not in G.PANEL_AR

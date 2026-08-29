@@ -912,4 +912,4 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | 证伪 | (a) A 或 B 未达;(b) 任一板 crps 差过 **+0.02**,或 cover80 离 0.80 的距离**增加超过 0.01**(松量来源:PR-21↔22 跨 seed within-run cover 增量波动实测 ~0.007,向上取整;两次历史触发中真效应 0.0203 仍会触发、噪声 0.0060 不会);(c) `boot`/`knn` 非逐位不变 → 作废 |
 | K | acf1 判据第 **4** 次。**本假设族终局注册**:NOT ADOPTED 即 #205 对 AR 噪声一族永久关闭 |
 | 影响面/与实盘 | 同 PR-21/22:采纳=三个 phi≠0 panel 入 build/regen,只对新世界生效,不回溯 |
-| 结论 | 待跑 |
+| 结论 | **ADOPTED**(2026-08-28,seed=31 第三盲 seed。(c) 0 列移动;claims 双臂 delta 0.0000。**A PASS** 0.0614→**0.0223(−63.6%)**、9/12;**B PASS** 0.0223 ≤ 同跑 knn 0.0270;**(b) 干净**:crps 四板全改善或不动(+0.0000/−0.0043/−0.0039/−0.0012),cover 增量全部为改善或在松量内(inflation/energy/labor 全**更近** 0.80)。三个盲 seed 的 A/B 六判全过,acf1 缺陷砍 64% 且不付 crps/cover 代价。**落地口径,如实记一处偏差**:inflation_monthly/labor_monthly 的 phi 经 `build` 的拟合路径直接入产(与判定路径完全一致);energy_weekly 的生产抽样自 PR-20 起走 `sample_coupled` 联合路径,**AR×跨panel耦合的相互作用从未被判过**,故 energy 的 phi 已采纳但暂不接线,等一条小注册判完相互作用再入——宁可少拿 energy 的收益也不让未判的组合进生产。工件 `pr23_persist.py`、`pr23_verdict.{py,json}`、`pr23_<panel>.{json,log}`×4 |

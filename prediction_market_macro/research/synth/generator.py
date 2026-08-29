@@ -717,6 +717,19 @@ WEEKLY_COUPLING: dict[str, float] = {
 }
 
 
+# The frozen PR-23 persistence calibration (#205, ADOPTED 2026-08-28): per-column AR(1)
+# driving-noise phi per panel, solved by the xar2 diagonal procedure and judged on three
+# blind seeds (A -64.0/-63.4/-63.6%, B beat same-run knn all three times). claims_weekly
+# is deliberately absent (phi=0 — its cover was the one real casualty, PR-21). energy's
+# phi is ADOPTED but not wired into the coupled weekly path: the AR x cross-panel
+# interaction was never judged, and it enters only when its own registration passes.
+PANEL_AR: dict[str, tuple] = {
+    "inflation_monthly": (0.17, 0.05, 0.10, 0.20),
+    "energy_weekly": (0.45, -0.05, 0.02, -0.17),
+    "labor_monthly": (0.25, -0.08, -0.29),
+}
+
+
 def sample_coupled(gen_a: "Generator", gen_b: "Generator",
                    c_raw_a: np.ndarray, c_raw_b: np.ndarray, n: int,
                    rho: dict[str, float], seed: int = 0,

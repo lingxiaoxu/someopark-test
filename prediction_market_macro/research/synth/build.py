@@ -893,7 +893,8 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
     say(f"  splice {splice.isoformat()}")
 
     if paths is None:
-        cfg = G.GenConfig(panel=panel_name, epochs=epochs, seed=seed + 7)
+        cfg = G.GenConfig(panel=panel_name, epochs=epochs, seed=seed + 7,
+                          ar_phi=G.PANEL_AR.get(panel_name))
         gen = G.Generator.fit_local(pdata, cfg, c_raw, k=k_local)
         say(f"  generator {gen.meta}")
         paths = gen.level_paths(c_raw, anchor_levels, n_paths, seed=seed + 3)
