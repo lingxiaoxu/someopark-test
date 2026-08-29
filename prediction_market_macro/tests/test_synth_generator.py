@@ -999,3 +999,19 @@ def test_panel_ar_is_aligned_with_the_panels_it_names():
         assert len(phis) == len(spec.gen_columns), (name, phis)
         assert all(abs(p) < 1.0 for p in phis)
     assert "claims_weekly" not in G.PANEL_AR
+
+
+def test_sample_coupled_ar_phi_b_default_changes_nothing_and_hub_stays_raw():
+    """PR-24's controls as tripwires: None default bit-identical; with the mix on, the
+    hub panel's stream is still never touched."""
+    ga, gb, c = _toy_pair()
+    a0, b0 = G.sample_coupled(ga, gb, c, c, 16, rho={"p": -0.5}, seed=9)
+    a1, b1 = G.sample_coupled(ga, gb, c, c, 16, rho={"p": -0.5}, seed=9,
+                              ar_phi_b=None)
+    assert np.array_equal(a0, a1) and np.array_equal(b0, b1)
+    a2, b2 = G.sample_coupled(ga, gb, c, c, 16, rho={"p": -0.5}, seed=9,
+                              ar_phi_b=(0.3, 0.0))
+    assert np.array_equal(a2, ga.sample(c, 16, seed=9))
+    assert not np.array_equal(b2, b0)
+    with pytest.raises(ValueError, match="entries"):
+        G.sample_coupled(ga, gb, c, c, 8, rho={}, seed=9, ar_phi_b=(0.3,))

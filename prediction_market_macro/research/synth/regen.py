@@ -280,7 +280,8 @@ def run_weekly(conn, s, *, now: datetime | None = None, n_paths: int = N_PATHS,
         (pc, gc, cc, ac) = prep["claims_weekly"]
         (pe, ge, ce, ae) = prep["energy_weekly"]
         inc_c, inc_e = G.sample_coupled(gc, ge, cc, ce, n_paths,
-                                        rho=G.WEEKLY_COUPLING, seed=seed + 3)
+                                        rho=G.WEEKLY_COUPLING, seed=seed + 3,
+                                        ar_phi_b=G.PANEL_AR.get("energy_weekly"))
         lv = {"claims_weekly": P.integrate_paths(inc_c, ac, pc.spec, gc.lattice),
               "energy_weekly": P.integrate_paths(inc_e, ae, pe.spec, ge.lattice)}
         if log:

@@ -932,4 +932,4 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | 证伪 | (a) A 或 B 未达;(b) 无 crps/cover 条款——energy 边际按构造=已判 PR-23 法则,若 B2 过则边际已由 PR-23 的三盲 seed 判过,重判即重复计数 |
 | K | 相互作用第 1 次判定。rho/phi 均为已判冻结值,本条不引入任何新自由度 |
 | 影响面 | 采纳=energy 的 phi 经耦合路径入产,只对新世界生效;可选跟进(不在本条):按 PR-20 程序在 AR 采样器下重标定 rho(探针显示可把 mean err 压到 0.0096),那是一条新注册 |
-| 结论 | 待跑 |
+| 结论 | **ADOPTED**(2026-08-29,seed=2026。**B PASS ×4**:phi=0 与现行 `sample_coupled` 逐位相同、rho=0 与 `GenConfig.ar_phi` 判过的 AR 采样逐位相同、claims 任意设置下与 raw 逐位相同、判定 seed 上再验一次;**A PASS**:三桥 achieved −0.081/−0.165/−0.199 对目标 −0.129/−0.185/−0.231,mean err **0.0330** ≤ 0.06,单桥最大 0.048 ≤ 0.10。落地:`sample_coupled(ar_phi_b=…)` 默认 None 逐位不变,`run_weekly` 为 energy 传 `PANEL_AR`,新单测三重对照;至此 PR-23 的 phi 在四 panel 的入产状态:inflation/labor 经 build、energy 经耦合路径、claims 有意 phi=0——#205 完整闭环。工件 `pr24_judge.py`、`pr24_verdict.json`、探针 `xarcouple_probe.{py,json}` |

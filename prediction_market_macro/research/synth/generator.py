@@ -733,7 +733,8 @@ PANEL_AR: dict[str, tuple] = {
 def sample_coupled(gen_a: "Generator", gen_b: "Generator",
                    c_raw_a: np.ndarray, c_raw_b: np.ndarray, n: int,
                    rho: dict[str, float], seed: int = 0,
-                   start: str = "marginal") -> tuple[np.ndarray, np.ndarray]:
+                   start: str = "marginal",
+                   ar_phi_b: tuple | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Draw the two panels JOINTLY: same-week driving noise correlated across them.
 
     This is the PR-20 mechanism (#214). Panel A must be single-column (claims_weekly is);
@@ -782,6 +783,22 @@ def sample_coupled(gen_a: "Generator", gen_b: "Generator",
         raise ValueError(f"sum of squared rhos {ss:.3f} > 1 — the joint Gaussian would not "
                          "be PSD; rescale the couplings, and say so out loud (PR-20 (c))")
     M = np.linalg.cholesky(np.eye(len(js)) - np.outer(rv, rv)) if js else None
+    # PR-24 (#214/#205): panel B's per-column AR(1) mix, applied AFTER the coupling. The
+    # order is the whole argument: the coupling leaves B's noise jointly iid standard
+    # normal, so mixing afterwards gives B exactly the PR-23-judged marginal law at any
+    # rho, and the only thing the combination changes is the bridge correlation — judged
+    # inside PR-20's bars (mean err 0.0330 on the frozen rho, seed 2026). None default is
+    # bit-identical, held by test_sample_coupled_is_the_identity_at_rho_zero's family.
+    ar_Ts = {}
+    if ar_phi_b:
+        from scipy.linalg import toeplitz, cholesky as _chol
+        if len(ar_phi_b) != gen_b.d:
+            raise ValueError(f"ar_phi_b has {len(ar_phi_b)} entries for a {gen_b.d}-column "
+                             f"panel ({gen_b.names})")
+        import torch as _t
+        ar_Ts = {j: _t.as_tensor(_chol(toeplitz(p ** np.arange(gen_b.H)), lower=True),
+                                 dtype=_t.float32)
+                 for j, p in enumerate(ar_phi_b) if p != 0.0}
 
     d = _dfm()
     dev, dc = d["DEVICE"], d["DIFFUSION_CONFIG"]
@@ -802,13 +819,16 @@ def sample_coupled(gen_a: "Generator", gen_b: "Generator",
     g_a = torch.Generator(device="cpu").manual_seed(int(seed))
     g_b = torch.Generator(device="cpu").manual_seed(int(seed))
 
+    ar_coords = {j: [w * gen_b.d + j for w in range(H)] for j in ar_Ts}
+
     def couple(eps_a, eps_b):
-        if not js:
-            return eps_b
-        eta = torch.stack([eps_b[:, coords[j]] for j in js])
-        mixed = torch.einsum("ab,bnh->anh", torch.as_tensor(M, dtype=eps_b.dtype), eta)
-        for i, j in enumerate(js):
-            eps_b[:, coords[j]] = rv[i] * eps_a[:, :H] + mixed[i]
+        if js:
+            eta = torch.stack([eps_b[:, coords[j]] for j in js])
+            mixed = torch.einsum("ab,bnh->anh", torch.as_tensor(M, dtype=eps_b.dtype), eta)
+            for i, j in enumerate(js):
+                eps_b[:, coords[j]] = rv[i] * eps_a[:, :H] + mixed[i]
+        for j, Tm in ar_Ts.items():
+            eps_b[:, ar_coords[j]] = eps_b[:, ar_coords[j]] @ Tm.T
         return eps_b
 
     base_a = torch.randn(n, gen_a._dim, generator=g_a)
