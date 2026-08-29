@@ -250,6 +250,12 @@ def _run(weekly: bool = False) -> dict:
              lambda: json.dumps(synth_regen.remeasure_weekly_lambda(conn, s, log=None))[:600])
         step("weekly_synth_lambda",
              lambda: json.dumps(synth_regen.lambda_board(conn))[:600])
+        # PR-30: refresh the joint-law correlation matrix the corr-cluster cap reads.
+        # n_paths=512 is the judged precision; failure leaves the old file (or none),
+        # and an absent/stale matrix degrades the cap to inert, never to wrong.
+        step("weekly_portfolio_corr",
+             lambda: {"pairs": len(synth_regen.portfolio_corr(conn, s, n_paths=512,
+                                                              log=None)["corr"])})
         # S5-WF accrual: each monthly release that settled since last week gets scored
         # point-in-time and stored (~10 min once a month per series, no-op other weeks);
         # then every series' pooled matrices are re-aggregated, and a series that has

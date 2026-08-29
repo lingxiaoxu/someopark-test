@@ -1041,4 +1041,4 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | 项 | 内容 |
 |---|---|
 | 登记日 | 2026-08-29,判定跑之前。与 PR-29 唯一差异:矩阵抽样 **n_paths=512**(单对 SE≈0.044,45 对 max 的跨 seed 差期望 ~0.13,杠内)。判据 A(max \|Δ\| ≤ 0.15 双 seed)/B/C/影子报告、阈值 0.5、限额 8.0 **逐字不变**。K=2 |
-| 结论 | 待跑 |
+| 结论 | **ADOPTED**(2026-08-29。**A PASS** 双 seed 512 路径 max \|Δcorr\| **0.147** ≤ 0.15;**B PASS**(同 draw 对 +1.000;桥 KXJOBLESSCLAIMS~KXWTIW −0.307 为负);影子应用对当前在持零追溯拦截。矩阵(seed=0)已落 `data/synth/portfolio_corr.json`,`per_corr_cluster_usd=8.0`/阈值 0.5 的限额自下一次 decide_all 起生效;`weekly_portfolio_corr` 步已接进周刷新(失败退化为惰性,永不给错数)。强相关簇实测:CPI 族内 0.62–1.00、KXPAYROLLS~KXU3 −0.645(负相关不入簇,对冲方向正确地不受限)。联合律放宽风险的方向仍显式不取(§5d)。工件 `pr30_verdict.json` |
