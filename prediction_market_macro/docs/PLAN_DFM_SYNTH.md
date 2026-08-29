@@ -2391,6 +2391,43 @@ criterion, said out loud so the reader discounts accordingly.
 
 Artifacts: `/tmp/dfm_verify/pr21_persist.py`, `pr21_verdict.{py,json}`, `pr21_<panel>.{json,log}` ×4.
 
+### 4e-R. PR-22/PR-23: the cover clause measured at its own noise floor, then the fix ADOPTED (#205, 2026-08-29)
+
+PR-22 (claims at phi=0, blind seed 19) reproduced both primaries — A −63.4% with 9/12,
+B 0.0226 ≤ knn 0.0268, claims' two arms bit-identical as constructed — and tripped the
+zero-slack cover clause on a DIFFERENT panel: labor, cover away by 0.0060. The same panel
+on seed 7 had moved CLOSER by 0.0010. The two seeds are a paired measurement: the
+within-run cover delta the clause judges has a seed-to-seed noise of ~0.007, and a
+zero-slack clause was flipping coins on it. Three otherwise-passing changes had now died
+on that clause (PR-19 by 0.0018, PR-21 by 0.0203, PR-22 by 0.0060) and only PR-21's trip
+was a reproducible real effect.
+
+PR-23 registered exactly one change — the cover half of (b) trips only past a slack of
+0.01, derived from that measurement, sized so PR-21's real 0.0203 would still trip and
+PR-22's 0.0060 would not — declared **K=4 and terminal for the AR family**, and judged on
+a third blind seed (31). Result: **ADOPTED.** A −63.6% with 9/12; B 0.0223 ≤ knn 0.0270
+(six A/B judgments across three blind seeds, six passes); (b) clean with every panel's
+crps improved or flat and every unfrozen panel's cover CLOSER to 0.80; (c) clean.
+
+**Landed** (`PANEL_AR` in `generator.py`, wired into `build`'s fit config; alignment
+guard test): inflation_monthly and labor_monthly enter production through exactly the
+path the judgment ran. Two deliberate exclusions, both stated in the registration record:
+`claims_weekly` stays at phi=0 (PR-21 identified it as the one real casualty), and
+`energy_weekly`'s phi — the single largest per-column gain, 0.1677 → 0.0107 on
+`gas_retail` — is adopted but NOT wired: its production draw goes through PR-20's coupled
+weekly path, the AR × cross-panel-coupling interaction has never been judged, and it
+enters only when a registration of that interaction passes. The post-adoption full
+production recompute ran clean: 10/10 series, monthly worlds now drawn with the frozen
+phi, weekly coupled pass unchanged.
+
+What #205 looked like this morning: no candidate, whitening dead. What it looks like now:
+a zero-parameter remedy that beats the structure-free baseline on persistence three blind
+seeds out of three, at no crps/cover cost, in production for two of four panels with the
+other two excluded for stated, judged reasons.
+
+Artifacts: `pr22_persist.py` / `pr22_verdict.{py,json}` / `pr22_*.{json,log}`,
+`pr23_persist.py` / `pr23_verdict.{py,json}` / `pr23_*.{json,log}`, `full_recompute2.log`.
+
 ## 4f. What is actually generatable, series by series (#183, 2026-08-28)
 
 > This section is the *survey*, and its counts are as of the survey. KXGDP was built the same
