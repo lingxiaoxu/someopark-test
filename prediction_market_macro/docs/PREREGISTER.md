@@ -974,3 +974,22 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | K | 钉机制第 2 次判定 |
 | 影响面 | 采纳=预抽扩展为十系列联合 pass:`run_weekly` 起周度耦合 draw 后,对 labor/inflation 两 panel 以 `sample_pinned` 生成钉后路径、`build(paths=…)` 注入其 7 个月度系列;`refresh` 的两步 regen 并为一步 `run_joint`;KXGDP 不动;只对新世界生效 |
 | 结论 | **ADOPTED**(2026-08-29。钉域=全抽出月(两 panel 各得 Sep/Oct 2026)。**A PASS** 被钉增量逐位精确;**B PASS 全余量**:labor payems drift 0.019sd/var 0.959/acf1 −0.003,unrate 0.016/0.991/+0.006;inflation cpi 0.062/0.906/−0.011,cpi_core 0.055/0.998,pce_core 0.043/0.997;被钉列 var 1.187/0.911 均在 [0.80,1.25];**C1/C2/D 全 PASS**(空钉逐位、周度流确定、事件 88=88 两面两 panel)。被钉月的水平恒等相关 0.73/0.84(labor)、0.46/0.66(inflation)——增量精确但前月未钉,水平部分传递,与注册的钉域定义一致、如实报告。落地:`regen.run_joint` 十系列联合 pass(`_month_means` 域规则带单测),`refresh` 两步并一步 `weekly_synth_regen_joint`;`sample_pinned` 自此在产生效。工件 `pr26_judge.py`、`pr26_verdict.json` |
+
+### PR-27 周度 λ 重测(#214 item 4):五修复后的样本重跑既有 §6 测量(2026-08-29)
+
+> 现行三条周度 lam=0 是 **2026-08-21 的逐系列测量**(basis measured_lower_bound,下界=0;
+> KXWTIW/KXNATGASW 未识别且真实改善为负)——不是政策拍板,不得用池化先验推翻。但该测量的
+> 合成样本先于 PR-16/17/20/23/24/26 全部六项修复。用户已明示批准开启周度 λ;本条以**唯一
+> 合法的方式**执行批准:同一注册机制(`calibrate.run` + `persist`,§6 规则一字不改:逐系列
+> lam=下界、`'*'` 三级策略)在**修复后样本**上重测,**写入测量说的数**——包括仍为 0 的可能。
+> `'*'` 随之刷新(其现值 0.1356 本就来自 KXJOBLESSCLAIMS 的 8/21 去衰减测量)。
+
+| 项 | 内容 |
+|---|---|
+| 登记日 | 2026-08-29,重测跑之前 |
+| 改动 | 无代码改动。执行:production db 快照上对三个周度系列跑 `calibrate.run`(内部 `BD.build` 自动携带全部已采纳修复),`persist(conn_live, pooled=True)` 落 production `synth_lambda` |
+| 判据 | 无采纳判据——测量结果即结果。**预期声明**(不作判据):若新样本仍给下界 0,周度 λ 保持 0 且证据换新;任何非零值按 §6 规则自动进入次日 argmin lane |
+| 证伪 | (a) 任一系列 `calibrate.run` 因样本不足拒绝(<3 事件/格过窄)→ 该系列不写行、旧行保留、如实报告;(b) 重测后 `'*'` 变化 >±50% → 停下向用户报告后再让其生效(monthly 口径大变不静默) |
+| K | 同一测量机制的第 2 次执行(第 1 次 2026-08-21) |
+| 与实盘 | 用户 2026-08-29 明示批准("你来决定我全都批");写入即生效于次日 argmin lane |
+| 结论 | 待跑 |
