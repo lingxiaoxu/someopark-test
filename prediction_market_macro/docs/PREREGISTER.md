@@ -933,3 +933,26 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | K | 相互作用第 1 次判定。rho/phi 均为已判冻结值,本条不引入任何新自由度 |
 | 影响面 | 采纳=energy 的 phi 经耦合路径入产,只对新世界生效;可选跟进(不在本条):按 PR-20 程序在 AR 采样器下重标定 rho(探针显示可把 mean err 压到 0.0096),那是一条新注册 |
 | 结论 | **ADOPTED**(2026-08-29,seed=2026。**B PASS ×4**:phi=0 与现行 `sample_coupled` 逐位相同、rho=0 与 `GenConfig.ar_phi` 判过的 AR 采样逐位相同、claims 任意设置下与 raw 逐位相同、判定 seed 上再验一次;**A PASS**:三桥 achieved −0.081/−0.165/−0.199 对目标 −0.129/−0.185/−0.231,mean err **0.0330** ≤ 0.06,单桥最大 0.048 ≤ 0.10。落地:`sample_coupled(ar_phi_b=…)` 默认 None 逐位不变,`run_weekly` 为 energy 传 `PANEL_AR`,新单测三重对照;至此 PR-23 的 phi 在四 panel 的入产状态:inflation/labor 经 build、energy 经耦合路径、claims 有意 phi=0——#205 完整闭环。工件 `pr24_judge.py`、`pr24_verdict.json`、探针 `xarcouple_probe.{py,json}` |
+
+### PR-25 对账钉列(#214 item 2/3):月度 claims/gas_retail 钉在周度 draw 的月聚合上(2026-08-29)
+
+> §5d-6 杀掉跨频噪声耦合(恒等对 +0.23 对 0.881,结构性够不着)并复活了 §5d-2 的 Stage-2:
+> PR-20/24 已把联合周度 draw 挣回来,钉列的前置条件成立。探针 `xpin_probe.py` 已验证机制:
+> replacement inpainting 把被钉月增量精确置位,边际损伤小(唯一可钉月上 payems drift
+> 0.037sd、var ×0.959、acf1 稳),0.342 的恒等上限纯属探针缺 splice 前真实周数据的接缝伪影
+> ——生产 build 持有它们,可钉月覆盖后恒等在月度分辨率上**精确成立**。
+> 关键事实:**被钉列在各自 panel 里都不是结算列**(labor 结算 payems/unrate;inflation 结算
+> cpi/cpi_core/pce_core),钉列影响结算列只经 panel 内联动,杠设在联动的余量上。
+
+| 项 | 内容 |
+|---|---|
+| 登记日 | 2026-08-29,判定跑之前 |
+| 改动 | `generator.sample_pinned(gen, c_raw, pins, n, seed)`:单 panel 反向 SDE,对指定平坐标每步覆写 `exp(−t/2)·z + sqrt(1−exp(−t))·η`、末步硬置;`pins={}` 逐位=`sample`。预抽:联合周度 draw(现行 PR-20/24 路径)→ 对每个**全周可得**的月(该月每个 W-SAT 都有真实或抽出的周值,且前月同)计算月均对数差 → 钉 labor_monthly.claims 与 inflation_monthly.gas_retail 对应坐标 → `build(paths=…)` 注入 7 个月度系列 |
+| 主判据 A(恒等) | 判定跑中,每个被钉月:月度增量与周度 draw 隐含增量**逐位相等**(硬置的构造检验);跨面:labor/inflation 的被钉列月值 = 周度侧月聚合,float 容差内精确 |
+| 主判据 B(边际损伤,杠=探针余量×2–3) | 对**结算列**(payems/unrate/cpi/cpi_core/pce_core):逐坐标均值漂移 max ≤ **0.15 sd**、方差比均值 ∈ **[0.90, 1.10]**、\|acf1 漂移\| ≤ **0.05**(探针:0.037/0.959/0.003);对**被钉列**(本就该变):方差比 ∈ [0.80, 1.25] |
+| 主判据 C(对照) | **C1** `pins={}` 时与 `sample` 逐位相同;**C2** 周度 draw 与现行 `run_weekly` 抽样逐位相同(钉列不得回触周度流);任一破 → 作废 |
+| 主判据 D(build 平价) | 注入钉后路径的月度 build 事件数与未钉注入逐 path 相同(不丢事件) |
+| 明确不判、如实声明 | 钉后月度法则的 crps/cover **本条不判**——validate 无法表达钉(需要周度 draw);风险敞口=结算列经联动的二阶变化,由 B 的三条杠约束。若未来 validate 学会条件化判定,可另注册重判 |
+| K | 钉列机制第 1 次判定 |
+| 影响面 | 采纳=预抽扩展为十系列联合 pass(周度 3 注入耦合 draw、月度 7 注入钉后 draw),`refresh` 两步并一步;只对新世界生效,不回溯;KXGDP 不动 |
+| 结论 | 待跑 |
