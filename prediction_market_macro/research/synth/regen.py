@@ -403,7 +403,7 @@ def run_joint(conn, s, *, now: datetime | None = None, n_paths: int = N_PATHS,
                                    ar_phi=G.PANEL_AR.get(mpanel)), c_raw, k=120)
             hub_p, hub_lv = prep[hub_panel][0], lv[hub_panel]
             hub_j = [c.name for c in hub_p.spec.gen_columns].index(hub_col)
-            mm, fully_drawn = _month_means(hub_p.levels[hub_col].dropna(), fwd_w,
+            mm, _fully_drawn = _month_means(hub_p.levels[hub_col].dropna(), fwd_w,
                                            hub_lv[:, :, hub_j], n_paths)
             cols = [c.name for c in pdata.spec.gen_columns]
             J, d = cols.index(col), pdata.spec.d
@@ -412,7 +412,11 @@ def run_joint(conn, s, *, now: datetime | None = None, n_paths: int = N_PATHS,
             for mi, t in enumerate(fwd_m):
                 ym = (t.year, t.month)
                 pm_ = t - pd.offsets.MonthBegin(1)
-                if ym in fully_drawn and (pm_.year, pm_.month) in mm:
+                # PR-28: ALL calendar-complete months. Fully-drawn pins carry cross-path
+                # variance (PR-26's class); real/mixed pins condition on published truth
+                # (the information-injection class PR-28 judged) — together the level
+                # identity is exact from the anchor on.
+                if ym in mm and (pm_.year, pm_.month) in mm:
                     pins[mi * d + J] = np.log(mm[ym]) - np.log(mm[(pm_.year, pm_.month)])
             inc_m = G.sample_pinned(gen, c_raw, pins, n_paths, seed=seed + 3)
             lv_m = P.integrate_paths(inc_m, pdata.levels.loc[anchor], pdata.spec,
