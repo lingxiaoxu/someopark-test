@@ -243,6 +243,11 @@ def _run(weekly: bool = False) -> dict:
         # writer went unnoticed for a full build cycle. The weekly log therefore records
         # the effective lambda per monthly target, its basis (measured vs pre-registered)
         # and the row's age, every week, whether or not anything changed.
+        # PR-27's follow-through: the weekly series' lambda is re-MEASURED weekly under
+        # the standing §6 rule (per-series rows only; '*' stays owned by the original
+        # measurement + S5-WF). It turns on the day the accruing real sample says so.
+        step("weekly_synth_lambda_remeasure",
+             lambda: json.dumps(synth_regen.remeasure_weekly_lambda(conn, s, log=None))[:600])
         step("weekly_synth_lambda",
              lambda: json.dumps(synth_regen.lambda_board(conn))[:600])
         # S5-WF accrual: each monthly release that settled since last week gets scored

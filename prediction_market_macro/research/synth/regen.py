@@ -437,6 +437,49 @@ def run_joint(conn, s, *, now: datetime | None = None, n_paths: int = N_PATHS,
     return out
 
 
+def remeasure_weekly_lambda(conn, s, *, now: datetime | None = None, log=None) -> dict:
+    """Re-measure the weekly series' lambda under the standing §6 rule, weekly (PR-27).
+
+    The 2026-08-21 and 2026-08-29 measurements were both manual; without this step the
+    weekly zeros could only ever be refreshed by someone remembering to. Per-series rows
+    only (`pooled=False`): the '*' row the monthly markets read stays owned by the
+    original measurement and the S5-WF machinery — a weekly-only re-pool would let three
+    series' lower bounds rewrite a number seven other markets trade on.
+
+    A series the measurement refuses (too few real events, grid too narrow) keeps its
+    previous row — refusal is not evidence.
+    """
+    from prediction_market_macro.research.synth import calibrate as C
+    now = now or datetime.now(UTC)
+    root = _root(s)
+    root.mkdir(parents=True, exist_ok=True)
+    snap = W.snapshot(s.db_path, root / "snapshot.db")
+    src = sqlite3.connect(snap)
+    src.row_factory = sqlite3.Row
+    out: dict[str, str] = {}
+    try:
+        book = donors(src, root, now=now, log=log)
+        results = []
+        for series in WEEKLY_SERIES:
+            try:
+                r = C.run(src, series, now, donors=book,
+                          out_dir=root / "lambda_worlds", log=log)
+            except Exception as exc:                               # noqa: BLE001
+                out[series] = f"FAIL {type(exc).__name__}: {str(exc)[:120]}"
+                continue
+            if r is None:
+                out[series] = "refused (insufficient sample) — previous row stands"
+            else:
+                results.append(r)
+                out[series] = f"lam_lo={max(r.lam_lo, 0.0):.4f} point={r.lam_point:.4f}"
+        if results:
+            C.persist(conn, results, now=now, log=log, pooled=False)
+            conn.commit()
+    finally:
+        src.close()
+    return out
+
+
 def lambda_board(conn, *, now: datetime | None = None) -> dict:
     """What lambda every monthly target would trade at TODAY, with its basis and age.
 
