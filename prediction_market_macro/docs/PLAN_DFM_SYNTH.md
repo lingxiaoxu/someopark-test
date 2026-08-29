@@ -3570,6 +3570,40 @@ no reconciliation — §5d-2's Stage-2 pin or a single-write remain the candidat
 their own registrations.
 
 
+### 5d-6. Cross-frequency noise coupling probed and killed; the pin is re-licensed (#214, 2026-08-29)
+
+With the weekly pair coupled in production (PR-20/24), the remaining cross-panel gap is
+monthly<->weekly — headlined by the CONTROL identity pairs (labor.claims is the monthly mean
+of the ICSA that claims_weekly draws; real monthly-clock correlation 0.881, generated 0).
+`xfreq_probe.py` tried the cheap mechanism first: couple the monthly claims column's month-m
+noise coordinate to the normalized mean of that month's weekly noise coordinates, hub
+untouched, marginals exact by the PR-20 argument. Controls all passed (rho=0 bit-identical
+both panels, hub bit-frozen, drift <=0.05 sd, var ratio ~1.00). **The transfer does not
+reach**: at rho = 0.3/0.6/0.9 the identity-pair level correlation on the overlap months came
+out +0.07/+0.15/**+0.23** against 0.881. The arithmetic is structural, not fixable by more
+rho: the 0.881 is levels sharing ONE cumulative path, while per-period noise coupling ties
+only same-month increments — the monthly level is dominated by uncoupled earlier months, the
+weekly month-mean level by its own cumulative history, and the ~2.4x score-drift attenuation
+sits on top. Correlational reconciliation cannot substitute for writing the number once.
+Recorded so it is not retried.
+
+**What this re-licenses.** §5d-2's Stage 2 — pin `labor.claims`/`inflation.gas_retail` to
+the weekly draw's monthly aggregates by replacement inpainting in the monthly reverse SDE —
+was shelved with a sentence: it "survives unchanged if a future architecture re-earns the
+joint draw it depends on." PR-20/24 re-earned exactly that: production's weekly pair is one
+coupled draw. The pin is therefore the live candidate for the identity pairs, and unlike
+noise coupling it ties LEVELS by construction at the pinned months. It conditions the
+monthly panel (marginal law changes — that is the point), so its registration needs the
+full battery falsifiers, PR-18-style. Not registered here; the next session's probe.
+
+Also closed on the way: the weekly `weight=0.0` question — `synth_lambda` prefers
+per-series rows, and the three weekly series carry EXPLICIT `lam=0.0` rows (2026-08-21)
+that shadow `'*' = 0.1356`. A policy row, not a bug; flipping it puts synthetic samples
+into live weekly parameter selection and waits for per-series user approval plus its own
+registration.
+
+Artifacts: `/tmp/dfm_verify/xfreq_probe.{py,json}`.
+
 ## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
 
 #184b measured a denominator and stopped there on purpose: of **8360** settled legs across the
