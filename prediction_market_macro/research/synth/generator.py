@@ -363,7 +363,8 @@ class Generator:
             return eps
         return mix
 
-    def _reverse(self, c_z: np.ndarray, n: int, seed: int, guidance, start: str):
+    def _reverse(self, c_z: np.ndarray, n: int, seed: int, guidance, start: str,
+                 repin=None):
         """`dfm.generate.reverse_sample` with the INITIAL DRAW exposed — see `_start_root`.
 
         dfm is call-only, and `reverse_sample` hardcodes `x = randn(n, d)`, so there is no
@@ -390,6 +391,7 @@ class Generator:
         noise_mix = self._noise_mix()
         if noise_mix is not None:
             base = noise_mix(base)
+        t0_, T_ = t0, T
         if start == "marginal":
             if self._start is None:
                 raise ValueError(
@@ -402,13 +404,15 @@ class Generator:
         elif start != "identity":
             raise ValueError(f"start must be 'marginal' or 'identity', got {start!r}")
         x = base.to(dev)
+        if repin is not None:
+            x = repin(x, T_)
         c = torch.tensor(np.asarray(c_z), dtype=torch.float32, device=dev)
         if c.dim() == 1:
             c = c.expand(n, -1)
         times = torch.linspace(T, t0, ns)
         dt = (T - t0) / (ns - 1)
         with torch.no_grad():
-            for t in times[:-1]:
+            for i_t, t in enumerate(times[:-1]):
                 tt = t.expand(n).to(dev)
                 score = self.net(x, tt, c)
                 if guidance is not None:
@@ -417,6 +421,8 @@ class Generator:
                 if noise_mix is not None:
                     eps = noise_mix(eps)
                 x = x + (0.5 * x + score) * dt + np.sqrt(dt) * eps.to(dev)
+                if repin is not None:
+                    x = repin(x, float(times[i_t + 1]))
             tt = times[-1].expand(n).to(dev)
             a0 = float(np.exp(-0.5 * t0))
             score = self.net(x, tt, c)
@@ -867,6 +873,71 @@ def sample_coupled(gen_a: "Generator", gen_b: "Generator",
             z = z @ gen._whiten["inv"] + gen._whiten["mu"]
         out[tag] = (z * gen.scaler["sd"] + gen.scaler["mu"]).reshape(n, gen.H, gen.d)
     return out["a"], out["b"]
+
+
+def sample_pinned(gen: "Generator", c_raw: np.ndarray, pins: dict[int, np.ndarray],
+                  n: int, seed: int = 0, start: str = "marginal") -> np.ndarray:
+    """`sample` with named flat coordinates PINNED to per-path values (PR-25, #214).
+
+    `pins` maps a flat coordinate (w * d + j, the same layout `_noise_mix` uses) to an
+    (n,)-array of RAW increment values. Replacement inpainting: after the base draw and
+    after every Euler step the pinned coordinates of the state are overwritten with the
+    forward-noised target `exp(-t/2) * z + sqrt(1 - exp(-t)) * eta`, and hard-set at the
+    end, so the returned paths carry the target values EXACTLY while the free coordinates
+    are filled in coherently around them by the score net. `pins={}` is bit-identical to
+    `sample` — the same guarantee every optional knob in this file carries.
+
+    The repin noise comes from a SEPARATE generator (seed+777): the main stream is never
+    perturbed, so a pinned and an unpinned run of the same seed see identical driving
+    noise on the free coordinates.
+
+    Refuses a whitened generator (a flat coordinate is not a panel coordinate in the
+    rotated basis) and ridge guidance (same reason as `sample_coupled`).
+    """
+    import torch
+    if gen._whiten is not None:
+        raise ValueError("sample_pinned on a whitened generator — flat coordinates do "
+                         "not mean panel coordinates in the rotated basis")
+    if gen.cfg.guidance != "none":
+        raise ValueError("sample_pinned does not carry the ridge guidance term")
+    dim = gen._dim
+    zpins = {}
+    for c, v in pins.items():
+        c = int(c)
+        if not 0 <= c < dim:
+            raise ValueError(f"pinned coordinate {c} outside [0, {dim})")
+        v = np.asarray(v, dtype=float)
+        if v.shape != (n,):
+            raise ValueError(f"pin for coord {c} has shape {v.shape}, expected {(n,)}")
+        if not np.isfinite(v).all():
+            raise ValueError(f"pin for coord {c} has non-finite values")
+        zpins[c] = torch.as_tensor((v - gen.scaler["mu"][c]) / gen.scaler["sd"][c],
+                                   dtype=torch.float32)
+
+    c_raw = np.asarray(c_raw, dtype=float)
+    if c_raw.shape != (len(gen.scaler["cmu"]),):
+        raise ValueError(f"condition has shape {c_raw.shape}, expected "
+                         f"{(len(gen.scaler['cmu']),)}")
+    c_z = (c_raw - gen.scaler["cmu"]) / gen.scaler["csd"]
+    c_z = _apply_proj(c_z[None, :], gen._proj)[0]
+
+    repin = None
+    if zpins:
+        g_p = torch.Generator(device="cpu").manual_seed(int(seed) + 777)
+
+        def repin(x, t):
+            a = float(np.exp(-0.5 * t))
+            s2 = float(np.sqrt(max(1.0 - a * a, 0.0)))
+            for c, zt in zpins.items():
+                x[:, c] = a * zt.to(x.device) + s2 * torch.randn(
+                    x.shape[0], generator=g_p).to(x.device)
+            return x
+
+    z = np.asarray(gen._reverse(c_z, n, seed, None, start, repin=repin), dtype=float)
+    for c, zt in zpins.items():
+        z[:, c] = zt.numpy()
+    raw = z * gen.scaler["sd"] + gen.scaler["mu"]
+    return raw.reshape(n, gen.H, gen.d)
 
 
 # ── validation (the S2 gate) ─────────────────────────────────────────────────

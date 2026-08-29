@@ -1015,3 +1015,46 @@ def test_sample_coupled_ar_phi_b_default_changes_nothing_and_hub_stays_raw():
     assert not np.array_equal(b2, b0)
     with pytest.raises(ValueError, match="entries"):
         G.sample_coupled(ga, gb, c, c, 8, rho={}, seed=9, ar_phi_b=(0.3,))
+
+
+# ── sample_pinned (#214, PR-25) ──────────────────────────────────────────────
+def test_sample_pinned_empty_is_the_identity_and_pins_are_exact():
+    """PR-25's C1 as a tripwire, plus the hard-set guarantee: the returned paths carry
+    the pinned RAW values bit-exactly."""
+    pdata = _toy_panel(n=400, H=4, d=1)
+    g = G.Generator.fit(pdata, G.GenConfig(panel="toy", factor_dim=2, epochs=1,
+                                           noise_steps=8))
+    c = np.array([1.0, 0.0])
+    assert np.array_equal(G.sample_pinned(g, c, {}, 16, seed=3), g.sample(c, 16, seed=3))
+    tgt = np.linspace(-1.0, 1.0, 16)
+    out = G.sample_pinned(g, c, {2: tgt}, 16, seed=3)
+    assert np.allclose(out[:, 2, 0], tgt, rtol=0, atol=1e-6)
+
+
+def test_sample_pinned_free_coords_move_with_the_pin_but_share_the_stream():
+    """The point of inpainting: free coordinates are filled coherently around the pin
+    (they may move), while the main noise stream is untouched (the repin generator is
+    separate), so an extreme pin changes them through the score net only."""
+    pdata = _toy_panel(n=400, H=4, d=1)
+    g = G.Generator.fit(pdata, G.GenConfig(panel="toy", factor_dim=2, epochs=1,
+                                           noise_steps=8))
+    c = np.array([1.0, 0.0])
+    a = G.sample_pinned(g, c, {2: np.full(32, 3.0)}, 32, seed=3)
+    b = g.sample(c, 32, seed=3)
+    assert not np.array_equal(a[:, 3, 0], b[:, 3, 0])
+    assert np.isfinite(a).all()
+
+
+def test_sample_pinned_refusals():
+    pdata = _toy_panel(n=400, H=4, d=1)
+    g = G.Generator.fit(pdata, G.GenConfig(panel="toy", factor_dim=2, epochs=1,
+                                           noise_steps=8))
+    c = np.array([1.0, 0.0])
+    with pytest.raises(ValueError, match="outside"):
+        G.sample_pinned(g, c, {99: np.zeros(8)}, 8, seed=3)
+    with pytest.raises(ValueError, match="shape"):
+        G.sample_pinned(g, c, {1: np.zeros(7)}, 8, seed=3)
+    gw = G.Generator.fit(pdata, G.GenConfig(panel="toy", factor_dim=2, epochs=1,
+                                            noise_steps=8, whiten=True))
+    with pytest.raises(ValueError, match="whitened"):
+        G.sample_pinned(gw, c, {1: np.zeros(8)}, 8, seed=3)
