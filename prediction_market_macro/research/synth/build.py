@@ -898,7 +898,11 @@ def build(src: sqlite3.Connection, series: str, cutoff: datetime, *,
         gen = G.Generator.fit_local(pdata, cfg, c_raw, k=k_local)
         say(f"  generator {gen.meta}")
         paths = gen.level_paths(c_raw, anchor_levels, n_paths, seed=seed + 3)
-        gen_meta = gen.meta
+        # cfg provenance, recorded because the fit meta never carries it: which frozen
+        # persistence phi this run drew with (PR-23) is otherwise unverifiable from the
+        # stored run — exactly the gap the 2026-08-29 post-landing audit hit.
+        gen_meta = {**gen.meta, "ar_phi": list(cfg.ar_phi) if cfg.ar_phi else None,
+                    "cfg_key": cfg.key()}
     else:
         want = (n_paths, psp.horizon, len(psp.gen_columns))
         if paths.shape != want:
