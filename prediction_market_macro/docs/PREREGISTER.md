@@ -913,3 +913,23 @@ AAA 有真历史之后)出现再登记,而且判据必须把"**锚的宽度、�
 | K | acf1 判据第 **4** 次。**本假设族终局注册**:NOT ADOPTED 即 #205 对 AR 噪声一族永久关闭 |
 | 影响面/与实盘 | 同 PR-21/22:采纳=三个 phi≠0 panel 入 build/regen,只对新世界生效,不回溯 |
 | 结论 | **ADOPTED**(2026-08-28,seed=31 第三盲 seed。(c) 0 列移动;claims 双臂 delta 0.0000。**A PASS** 0.0614→**0.0223(−63.6%)**、9/12;**B PASS** 0.0223 ≤ 同跑 knn 0.0270;**(b) 干净**:crps 四板全改善或不动(+0.0000/−0.0043/−0.0039/−0.0012),cover 增量全部为改善或在松量内(inflation/energy/labor 全**更近** 0.80)。三个盲 seed 的 A/B 六判全过,acf1 缺陷砍 64% 且不付 crps/cover 代价。**落地口径,如实记一处偏差**:inflation_monthly/labor_monthly 的 phi 经 `build` 的拟合路径直接入产(与判定路径完全一致);energy_weekly 的生产抽样自 PR-20 起走 `sample_coupled` 联合路径,**AR×跨panel耦合的相互作用从未被判过**,故 energy 的 phi 已采纳但暂不接线,等一条小注册判完相互作用再入——宁可少拿 energy 的收益也不让未判的组合进生产。工件 `pr23_persist.py`、`pr23_verdict.{py,json}`、`pr23_<panel>.{json,log}`×4 |
+
+### PR-24 AR×耦合相互作用(#214/#205 收尾):先耦合后混合,零新增数字(2026-08-29)
+
+> PR-23 采纳时 energy_weekly 的 phi 有意不接线:其生产抽样走 PR-20 联合路径,相互作用未判。
+> 构造(探针 `xarcouple_probe.py` 已端到端验证):`eps_e = AR_mix(couple(eps_c, eps_e_iid))`。
+> **边际精确性是论证而非测量**:PR-20 的耦合让 energy 噪声保持联合 iid 标准正态(列间协方差
+> 恰好相消),其后的 AR 混合与 PR-23 判过的采样器逐字相同——所以 energy 边际=已判 AR 法则、
+> claims 边际=raw,在任意 rho 下成立。唯一变化是桥相关被下三角混合抹散(gas 衰减 ~16%)。
+> **本条零新增数字**:rho 用 PR-20 冻结值、phi 用 PR-23 冻结值,不重标定。
+
+| 项 | 内容 |
+|---|---|
+| 登记日 | 2026-08-29,判定跑(seed=2026)之前 |
+| 改动 | `sample_coupled` 增加可选 `ar_phi_b`(默认 None 逐位不变);`regen.run_weekly` 为 energy 侧传 `G.PANEL_AR["energy_weekly"]` |
+| 主判据 A(联合性不因混合失效) | 新 seed 上三桥 mean \|achieved − target\| ≤ **0.06** 且每桥 ≤ **0.10**(PR-20 的杠原文;目标 −0.129/−0.185/−0.231 周度时钟训练值)。探针读数(不作证据):未重标定 mean err ~0.012 |
+| 主判据 B(三重逐位对照) | **B1** phi=0 时与现行 `sample_coupled` 逐位相同;**B2** rho=0 时 energy 与 `GenConfig.ar_phi` 判过的 AR 采样逐位相同;**B3** claims 在任意设置下与 raw `sample` 逐位相同。任一破 → 构造论证失效,作废 |
+| 证伪 | (a) A 或 B 未达;(b) 无 crps/cover 条款——energy 边际按构造=已判 PR-23 法则,若 B2 过则边际已由 PR-23 的三盲 seed 判过,重判即重复计数 |
+| K | 相互作用第 1 次判定。rho/phi 均为已判冻结值,本条不引入任何新自由度 |
+| 影响面 | 采纳=energy 的 phi 经耦合路径入产,只对新世界生效;可选跟进(不在本条):按 PR-20 程序在 AR 采样器下重标定 rho(探针显示可把 mean err 压到 0.0096),那是一条新注册 |
+| 结论 | 待跑 |
