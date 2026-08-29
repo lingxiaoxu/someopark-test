@@ -3604,6 +3604,27 @@ registration.
 
 Artifacts: `/tmp/dfm_verify/xfreq_probe.{py,json}`.
 
+### 5f. The sizing harness exists, and its first reading is honest (§5b-2 (a), 2026-08-29)
+
+`research/synth/sizing.py` (unit-tested) measures the (a) precondition on the generated
+worlds themselves: portfolio variance under the TRUE world pairing (world i shares the
+joint draw across series, PR-20/24/26) against the expectation over SHUFFLED pairings —
+the same permutation logic `xpanel_dep.py` used on real data, ratio 1.0 under independence
+by construction. **It changes no position size**; §5d's 0.883 warning gates any adoption
+and a sizing change needs its own registration, which now has a harness to cite.
+
+First reading, weekly trio (ICSA/CL/NG, 8 worlds, 12 weeks): **ratio 1.015, band
+[0.80, 1.20]**. Two honest notes travel with it: (i) this trio is nearly variance-neutral
+BY ITS REAL STRUCTURE — claims~wti is negative (−0.167), wti~natgas internal is positive,
+claims~natgas was excluded by PR-20's own registration (target −0.033 inside noise) — so
+~1.0 is what faithfulness looks like here; the 0.883 headline belongs to the monthly-block
+pairs, which enter only when their events coexist in a portfolio window; (ii) at
+`n_paths = 8` the band is ±0.2, so a portfolio-λ registration calibrated on generated
+worlds is under-powered at production path counts — it will need a dedicated
+larger-n_paths calibration draw, priced into that registration.
+
+Artifacts: `/tmp/dfm_verify/sizing_first_measure.json`.
+
 ## 5e. The unquoted 80.4% — hypothesis (b), counted instead of guessed (#213c, 2026-08-28)
 
 #184b measured a denominator and stopped there on purpose: of **8360** settled legs across the
